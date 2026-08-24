@@ -15,7 +15,9 @@ export type ChatMessage = {
   room_id: string
   user_id: string | null
   client_id: string
+  character_id: string | null
   author_name: string
+  author_avatar_url: string | null
   body: string
   created_at: string
 }

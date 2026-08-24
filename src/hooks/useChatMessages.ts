@@ -2,13 +2,14 @@ import { useCallback, useEffect, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
 import { supabase } from "../lib/supabase"
-import { useAuth } from "../context/AuthContext"
 import type { ChatMessage } from "../types/chat"
 
 type RealtimeState = "connecting" | "live" | "offline"
 
+const fields =
+  "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at"
+
 export function useChatMessages(roomId: string) {
-  const { user } = useAuth()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
@@ -21,7 +22,7 @@ export function useChatMessages(roomId: string) {
 
     const { data, error: loadError } = await supabase
       .from("chat_messages")
-      .select("id, room_id, user_id, client_id, author_name, body, created_at")
+      .select(fields)
       .eq("room_id", roomId)
       .order("created_at", { ascending: true })
       .limit(200)
@@ -92,7 +93,7 @@ export function useChatMessages(roomId: string) {
           room_id: roomId,
           body,
         })
-        .select("id, room_id, user_id, client_id, author_name, body, created_at")
+        .select(fields)
         .single()
 
       setSending(false)
@@ -123,7 +124,6 @@ export function useChatMessages(roomId: string) {
     sending,
     error,
     realtime,
-    userId: user.id,
     sendMessage,
   }
 }

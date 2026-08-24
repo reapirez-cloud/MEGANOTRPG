@@ -1,4 +1,8 @@
-import { characters, diaryPosts } from "../data/mock"
+import { useMemo } from "react"
+
+import { useCharacters } from "../context/CharacterContext"
+import CharacterAvatar from "../components/characters/CharacterAvatar"
+import { diaryPosts } from "../data/mock"
 
 type Props = {
   characterId: string
@@ -6,8 +10,32 @@ type Props = {
 }
 
 export default function CharacterProfile({ characterId, onBack }: Props) {
-  const character =
-    characters.find((item) => item.id === characterId) ?? characters[0]
+  const { characters, activeCharacter, setActiveCharacter } = useCharacters()
+
+  const character = useMemo(
+    () => characters.find((item) => item.id === characterId) ?? null,
+    [characterId, characters],
+  )
+
+  if (!character) {
+    return (
+      <div className="screen">
+        <header className="screen-header">
+          <button className="icon-button" type="button" onClick={onBack}>
+            ←
+          </button>
+          <h1 className="screen-header__title">Персонаж</h1>
+          <span />
+        </header>
+
+        <div className="center-state">
+          Персонаж не найден.
+        </div>
+      </div>
+    )
+  }
+
+  const active = character.id === activeCharacter?.id
 
   return (
     <div className="screen">
@@ -23,17 +51,32 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
       </header>
 
       <div className="profile-scroll">
-        <section className="profile-hero">
-          <div className="profile-hero__avatar">
-            {character.name.slice(0, 1)}
-          </div>
+        <section className="profile-hero profile-hero--real-avatar">
+          <CharacterAvatar character={character} size="large" />
 
-          <div>
-            <h2 className="profile-name">{character.name}</h2>
-            <p className="profile-subtitle">{character.role}</p>
-            <p className="profile-subtitle">{character.bio}</p>
+          <div className="profile-hero__copy">
+            <div className="profile-name-row">
+              <h2 className="profile-name">{character.name}</h2>
+              {active && <span className="active-badge">Активен</span>}
+            </div>
+            <p className="profile-subtitle">
+              {character.character_class} · {character.level} уровень
+            </p>
+            <p className="profile-subtitle">
+              {character.bio || "Пока без описания."}
+            </p>
           </div>
         </section>
+
+        {!active && (
+          <button
+            className="profile-active-button"
+            type="button"
+            onClick={() => void setActiveCharacter(character.id)}
+          >
+            Сделать активным персонажем
+          </button>
+        )}
 
         <nav className="profile-tabs" aria-label="Разделы персонажа">
           <button className="profile-tab profile-tab--active" type="button">Дневник</button>
@@ -45,9 +88,7 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
           {diaryPosts.map((post) => (
             <article className="diary-post surface" key={post.id}>
               <div className="diary-post__top">
-                <div className="diary-post__mini-avatar">
-                  {character.name.slice(0, 1)}
-                </div>
+                <CharacterAvatar character={character} size="small" />
 
                 <div>
                   <div className="item-title">{character.name}</div>

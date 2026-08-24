@@ -1,10 +1,12 @@
 import { useState } from "react"
 import "./App.css"
 import "./auth.css"
+import "./character-system.css"
 
 import BottomNav, { type MainTab } from "./components/app/BottomNav"
 import TopBar from "./components/app/TopBar"
 import AuthGate from "./components/auth/AuthGate"
+import { CharacterProvider } from "./context/CharacterContext"
 
 import World from "./pages/World"
 import Art from "./pages/Art"
@@ -18,7 +20,7 @@ type Overlay =
   | { type: "character"; id: string }
   | null
 
-function AppContent() {
+function Workspace() {
   const [tab, setTab] = useState<MainTab>("chats")
   const [overlay, setOverlay] = useState<Overlay>(null)
 
@@ -74,6 +76,14 @@ function AppContent() {
 
       <BottomNav active={tab} onChange={changeTab} />
     </div>
+  )
+}
+
+function AppContent() {
+  return (
+    <CharacterProvider>
+      <Workspace />
+    </CharacterProvider>
   )
 }
 

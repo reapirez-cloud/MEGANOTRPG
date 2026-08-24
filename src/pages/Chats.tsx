@@ -1,5 +1,5 @@
 import { useRooms } from "../hooks/useRooms"
-import { useAuth } from "../context/AuthContext"
+import ActiveCharacterPicker from "../components/characters/ActiveCharacterPicker"
 import type { ChatRoom } from "../types/chat"
 
 type Props = {
@@ -55,7 +55,6 @@ function RoomList({
 }
 
 export default function Chats({ onOpenRoom }: Props) {
-  const { profile } = useAuth()
   const { rooms, campaignTitle, loading, error, reload } = useRooms()
 
   const gameRooms = rooms.filter((room) => room.category === "game")
@@ -88,15 +87,13 @@ export default function Chats({ onOpenRoom }: Props) {
 
   return (
     <div className="page-stack">
-      <div className="campaign-strip">
+      <div className="campaign-strip campaign-strip--character">
         <div>
           <div className="campaign-strip__label">Кампания</div>
           <div className="campaign-strip__title">{campaignTitle}</div>
         </div>
 
-        <div className="identity-chip identity-chip--static">
-          Вы: {profile.display_name}
-        </div>
+        <ActiveCharacterPicker compact />
       </div>
 
       <RoomList title="Игра" items={gameRooms} onOpenRoom={onOpenRoom} />

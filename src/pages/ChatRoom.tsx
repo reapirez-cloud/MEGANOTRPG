@@ -3,7 +3,10 @@ import type { FormEvent } from "react"
 
 import { supabase } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
+import { useCharacters } from "../context/CharacterContext"
 import { useChatMessages } from "../hooks/useChatMessages"
+import CharacterAvatar from "../components/characters/CharacterAvatar"
+import ActiveCharacterPicker from "../components/characters/ActiveCharacterPicker"
 
 type Props = {
   roomId: string
@@ -18,7 +21,8 @@ function formatTime(value: string) {
 }
 
 export default function ChatRoom({ roomId, onBack }: Props) {
-  const { profile } = useAuth()
+  const { user } = useAuth()
+  const { characters, activeCharacter } = useCharacters()
   const [roomTitle, setRoomTitle] = useState("Чат")
   const [draft, setDraft] = useState("")
   const bottomRef = useRef<HTMLDivElement | null>(null)
@@ -29,9 +33,13 @@ export default function ChatRoom({ roomId, onBack }: Props) {
     sending,
     error,
     realtime,
-    userId,
     sendMessage,
   } = useChatMessages(roomId)
+
+  const characterById = useMemo(
+    () => new Map(characters.map((character) => [character.id, character])),
+    [characters],
+  )
 
   const realtimeLabel = useMemo(() => {
     if (realtime === "live") return "онлайн"
@@ -60,13 +68,15 @@ export default function ChatRoom({ roomId, onBack }: Props) {
   async function submit(event: FormEvent) {
     event.preventDefault()
 
+    if (!activeCharacter) return
+
     const sent = await sendMessage(draft)
     if (sent) setDraft("")
   }
 
   return (
     <div className="screen">
-      <header className="screen-header">
+      <header className="screen-header screen-header--with-character">
         <button
           className="icon-button"
           type="button"
@@ -92,12 +102,10 @@ export default function ChatRoom({ roomId, onBack }: Props) {
           </div>
         </div>
 
-        <div className="profile-link profile-link--static">
-          {profile.display_name}
-        </div>
+        <ActiveCharacterPicker compact />
       </header>
 
-      <div className="message-list">
+      <div className="message-list message-list--avatars">
         {loading && (
           <div className="chat-state">Загружаем сообщения…</div>
         )}
@@ -109,27 +117,64 @@ export default function ChatRoom({ roomId, onBack }: Props) {
         )}
 
         {messages.map((message) => {
-          const own =
-            message.user_id === userId ||
-            (message.user_id === null && message.client_id === userId)
+          const own = message.user_id === user.id
+          const linkedCharacter = message.character_id
+            ? characterById.get(message.character_id) ?? null
+            : null
 
-          return (
+          const displayCharacter = linkedCharacter
+            ? linkedCharacter
+            : {
+                name: message.author_name,
+                avatar_url: message.author_avatar_url,
+              }
+
+          const bubble = (
             <article
               className={`message ${own ? "message--self" : ""}`}
-              key={message.id}
+              key={`bubble-${message.id}`}
             >
-              <div className="message__author">{message.author_name}</div>
+              <div className="message__author">{displayCharacter.name}</div>
               <p className="message__text">{message.body}</p>
               <div className="message__time">
                 {formatTime(message.created_at)}
               </div>
             </article>
           )
+
+          return (
+            <div
+              className={`message-row ${own ? "message-row--self" : ""}`}
+              key={message.id}
+            >
+              {!own && (
+                <CharacterAvatar
+                  character={displayCharacter}
+                  size="small"
+                />
+              )}
+
+              {bubble}
+
+              {own && (
+                <CharacterAvatar
+                  character={displayCharacter}
+                  size="small"
+                />
+              )}
+            </div>
+          )
         })}
 
         {error && <div className="chat-error">{error}</div>}
         <div ref={bottomRef} />
       </div>
+
+      {!activeCharacter && (
+        <div className="chat-character-warning">
+          Выбери активного персонажа, чтобы писать в игровой чат.
+        </div>
+      )}
 
       <form className="composer" onSubmit={submit}>
         <button
@@ -144,15 +189,16 @@ export default function ChatRoom({ roomId, onBack }: Props) {
           className="composer__input"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="Сообщение…"
+          placeholder={activeCharacter ? `От лица ${activeCharacter.name}…` : "Сначала выбери персонажа"}
           maxLength={4000}
           autoComplete="off"
+          disabled={!activeCharacter}
         />
 
         <button
           className="send-button"
           type="submit"
-          disabled={!draft.trim() || sending}
+          disabled={!activeCharacter || !draft.trim() || sending}
           aria-label="Отправить"
         >
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
