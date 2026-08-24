@@ -2,7 +2,9 @@ import { useMemo, useState } from "react"
 
 import { useCharacters } from "../context/CharacterContext"
 import { useWorldContent } from "../hooks/useWorldContent"
-import WorldEditor, { type WorldEditorMode } from "../components/world/WorldEditor"
+import WorldEditor, {
+  type WorldEditorMode,
+} from "../components/world/WorldEditor"
 import type { CampaignUpdate, LocationEntry } from "../types/world"
 
 type View =
@@ -24,8 +26,14 @@ function BackRow({ title, onBack }: { title: string; onBack: () => void }) {
   return (
     <div className="world-back-row">
       <button className="world-back-button" type="button" onClick={onBack}>
-        <svg viewBox="0 0 24 24" fill="none">
-          <path d="m15 5-7 7 7 7" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="m15 5-7 7 7 7"
+            stroke="currentColor"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </button>
       <h2>{title}</h2>
@@ -33,18 +41,24 @@ function BackRow({ title, onBack }: { title: string; onBack: () => void }) {
   )
 }
 
+function EditButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button className="manage-edit-button" type="button" onClick={onClick}>
+      ✎ Изменить
+    </button>
+  )
+}
+
 function LocationCard({
   location,
   onClick,
-  large = false,
 }: {
   location: LocationEntry
   onClick: () => void
-  large?: boolean
 }) {
   return (
     <button
-      className={`world-location-card surface ${large ? "world-location-card--large" : ""}`}
+      className="world-location-card surface"
       type="button"
       onClick={onClick}
     >
@@ -66,7 +80,15 @@ function LocationCard({
   )
 }
 
-function UpdateRow({ item }: { item: CampaignUpdate }) {
+function UpdateRow({
+  item,
+  canManage,
+  onEdit,
+}: {
+  item: CampaignUpdate
+  canManage: boolean
+  onEdit: () => void
+}) {
   return (
     <article className="world-update-row">
       <div className={`world-update-icon world-update-icon--${item.kind}`}>
@@ -78,9 +100,16 @@ function UpdateRow({ item }: { item: CampaignUpdate }) {
           <span>{formatDate(item.published_at)}</span>
         </div>
         {item.body && <p>{item.body}</p>}
-        <small>
-          {item.kind === "announcement" ? "Объявление GM" : "Изменение GM"}
-        </small>
+        <div className="managed-item-footer">
+          <small>
+            {item.kind === "announcement" ? "Объявление GM" : "Изменение GM"}
+          </small>
+          {canManage && (
+            <button type="button" onClick={onEdit}>
+              Изменить
+            </button>
+          )}
+        </div>
       </div>
     </article>
   )
@@ -90,9 +119,10 @@ export default function World() {
   const {
     campaignTitle,
     updateCampaignTitle,
-    isGm,
-    hasGm,
-    claimGm,
+    canManage,
+    isOwner,
+    hasOwner,
+    claimOwner,
     characters,
     members,
   } = useCharacters()
@@ -100,7 +130,7 @@ export default function World() {
   const world = useWorldContent()
   const [view, setView] = useState<View>({ type: "main" })
   const [editor, setEditor] = useState<WorldEditorMode>(null)
-  const [claiming, setClaiming] = useState(false)
+  const [claimingOwner, setClaimingOwner] = useState(false)
   const [claimError, setClaimError] = useState("")
 
   const sectionArticleCounts = useMemo(() => {
@@ -116,15 +146,12 @@ export default function World() {
     [world.locations],
   )
 
-  async function becomeGm() {
-    setClaiming(true)
+  async function becomeOwner() {
+    setClaimingOwner(true)
     setClaimError("")
-    const result = await claimGm()
-    setClaiming(false)
-
-    if (!result.ok) {
-      setClaimError(result.error || "Не удалось назначить GM.")
-    }
+    const result = await claimOwner()
+    setClaimingOwner(false)
+    if (!result.ok) setClaimError(result.error || "Не удалось назначить владельца.")
   }
 
   const editorNode = (
@@ -134,16 +161,24 @@ export default function World() {
       onClose={() => setEditor(null)}
       campaignTitle={campaignTitle}
       locations={world.locations}
+      locationSections={world.locationSections}
       characters={characters}
       members={members}
       updateCampaignTitle={updateCampaignTitle}
       createWorldSection={world.createWorldSection}
+      updateWorldSection={world.updateWorldSection}
       createWorldArticle={world.createWorldArticle}
+      updateWorldArticle={world.updateWorldArticle}
       createLocation={world.createLocation}
+      updateLocation={world.updateLocation}
       createLocationSection={world.createLocationSection}
+      updateLocationSection={world.updateLocationSection}
       createLocationLink={world.createLocationLink}
+      updateLocationLink={world.updateLocationLink}
       createAchievement={world.createAchievement}
+      updateAchievement={world.updateAchievement}
       createUpdate={world.createUpdate}
+      updateUpdate={world.updateUpdate}
     />
   )
 
@@ -161,7 +196,11 @@ export default function World() {
       <div className="center-state">
         <strong>Не удалось загрузить мир</strong>
         <span>{world.error}</span>
-        <button className="primary-mini-button" type="button" onClick={() => void world.reload()}>
+        <button
+          className="primary-mini-button"
+          type="button"
+          onClick={() => void world.reload()}
+        >
           Повторить
         </button>
       </div>
@@ -177,15 +216,12 @@ export default function World() {
           <div className="world-library-intro surface">
             <span>Библиотека кампании</span>
             <strong>{campaignTitle}</strong>
-            <p>
-              Никаких заранее заданных «правил» или «фракций»: GM сам создаёт
-              любые нужные разделы.
-            </p>
+            <p>Разделы создаются с нуля и потом в любой момент редактируются GM или владельцем.</p>
           </div>
 
           <div className="section-head">
             <h3 className="section-title">Разделы мира</h3>
-            {isGm && (
+            {canManage && (
               <button className="section-link" type="button" onClick={() => setEditor({ type: "world-section" })}>
                 + Раздел
               </button>
@@ -194,9 +230,7 @@ export default function World() {
 
           <div className="world-section-list">
             {world.sections.length === 0 && (
-              <div className="world-empty surface">
-                Пока пусто. GM может создать первый раздел с нуля.
-              </div>
+              <div className="world-empty surface">Пока пусто.</div>
             )}
 
             {world.sections.map((section) => (
@@ -235,13 +269,18 @@ export default function World() {
         <div className="page-stack world-page">
           <BackRow title={section.title} onBack={() => setView({ type: "library" })} />
 
-          <div className="world-section-description surface">
-            <p>{section.description || "Без описания раздела."}</p>
+          <div className="managed-heading-row">
+            <div className="world-section-description surface">
+              <p>{section.description || "Без описания раздела."}</p>
+            </div>
+            {canManage && (
+              <EditButton onClick={() => setEditor({ type: "world-section-edit", section })} />
+            )}
           </div>
 
           <div className="section-head">
             <h3 className="section-title">Записи</h3>
-            {isGm && (
+            {canManage && (
               <button
                 className="section-link"
                 type="button"
@@ -283,18 +322,26 @@ export default function World() {
     const parent = world.sections.find((item) => item.id === article.section_id)
 
     return (
-      <div className="page-stack world-page">
-        <BackRow
-          title={parent?.title || "Мир"}
-          onBack={() => setView({ type: "section", sectionId: article.section_id })}
-        />
-        <article className="world-reading surface">
-          <span>Запись мира</span>
-          <h2>{article.title}</h2>
-          {article.summary && <p className="world-reading__lead">{article.summary}</p>}
-          <div className="world-reading__body">{article.body}</div>
-        </article>
-      </div>
+      <>
+        <div className="page-stack world-page">
+          <BackRow
+            title={parent?.title || "Мир"}
+            onBack={() => setView({ type: "section", sectionId: article.section_id })}
+          />
+          {canManage && (
+            <div className="manage-toolbar">
+              <EditButton onClick={() => setEditor({ type: "article-edit", article })} />
+            </div>
+          )}
+          <article className="world-reading surface">
+            <span>Запись мира</span>
+            <h2>{article.title}</h2>
+            {article.summary && <p className="world-reading__lead">{article.summary}</p>}
+            <div className="world-reading__body">{article.body}</div>
+          </article>
+        </div>
+        {editorNode}
+      </>
     )
   }
 
@@ -309,7 +356,7 @@ export default function World() {
               <h3 className="section-title">Корневые локации</h3>
               <p className="item-meta">Подлокации открываются внутри родительской</p>
             </div>
-            {isGm && (
+            {canManage && (
               <button className="section-link" type="button" onClick={() => setEditor({ type: "location", parentId: null })}>
                 + Локация
               </button>
@@ -317,16 +364,11 @@ export default function World() {
           </div>
 
           <div className="world-location-list">
-            {rootLocations.length === 0 && (
-              <div className="world-empty surface">
-                Локаций пока нет. GM начинает с нуля.
-              </div>
-            )}
+            {rootLocations.length === 0 && <div className="world-empty surface">Локаций пока нет.</div>}
             {rootLocations.map((location) => (
               <LocationCard
                 key={location.id}
                 location={location}
-                large
                 onClick={() => setView({ type: "location", locationId: location.id })}
               />
             ))}
@@ -360,6 +402,12 @@ export default function World() {
             }
           />
 
+          {canManage && (
+            <div className="manage-toolbar">
+              <EditButton onClick={() => setEditor({ type: "location-edit", location })} />
+            </div>
+          )}
+
           <article className="world-location-detail surface">
             <div
               className="world-location-detail__art"
@@ -385,7 +433,7 @@ export default function World() {
                 <h3 className="section-title">Подлокации</h3>
                 <p className="item-meta">Места внутри этой локации</p>
               </div>
-              {isGm && (
+              {canManage && (
                 <button
                   className="section-link"
                   type="button"
@@ -405,7 +453,6 @@ export default function World() {
                 />
               ))}
             </div>
-
             {children.length === 0 && <div className="world-empty surface">Подлокаций пока нет.</div>}
           </section>
 
@@ -413,9 +460,9 @@ export default function World() {
             <div className="section-head">
               <div>
                 <h3 className="section-title">Разделы локации</h3>
-                <p className="item-meta">Отдельные смысловые блоки, а не одна простыня</p>
+                <p className="item-meta">Отдельные смысловые блоки</p>
               </div>
-              {isGm && (
+              {canManage && (
                 <button
                   className="section-link"
                   type="button"
@@ -436,13 +483,15 @@ export default function World() {
                   <article className="location-info-section surface" key={section.id}>
                     <div className="location-info-section__head">
                       <h4>{section.title}</h4>
-                      {isGm && (
-                        <button
-                          type="button"
-                          onClick={() => setEditor({ type: "location-link", section })}
-                        >
-                          + Переход
-                        </button>
+                      {canManage && (
+                        <div className="mini-action-row">
+                          <button type="button" onClick={() => setEditor({ type: "location-section-edit", section })}>
+                            Изменить
+                          </button>
+                          <button type="button" onClick={() => setEditor({ type: "location-link", section })}>
+                            + Переход
+                          </button>
+                        </div>
                       )}
                     </div>
 
@@ -457,18 +506,28 @@ export default function World() {
                           if (!target) return null
 
                           return (
-                            <button
-                              type="button"
-                              className="location-link-row"
-                              key={link.id}
-                              onClick={() => setView({ type: "location", locationId: target.id })}
-                            >
-                              <span>
-                                <small>Перейти</small>
-                                <strong>{link.label || target.name}</strong>
-                              </span>
-                              <span>›</span>
-                            </button>
+                            <div className="managed-link-row" key={link.id}>
+                              <button
+                                type="button"
+                                className="location-link-row"
+                                onClick={() => setView({ type: "location", locationId: target.id })}
+                              >
+                                <span>
+                                  <small>Перейти</small>
+                                  <strong>{link.label || target.name}</strong>
+                                </span>
+                                <span>›</span>
+                              </button>
+                              {canManage && (
+                                <button
+                                  className="managed-link-edit"
+                                  type="button"
+                                  onClick={() => setEditor({ type: "location-link-edit", link })}
+                                >
+                                  ✎
+                                </button>
+                              )}
+                            </div>
                           )
                         })}
                       </div>
@@ -478,10 +537,7 @@ export default function World() {
               })}
 
               {details.length === 0 && (
-                <div className="world-empty surface">
-                  GM может добавить «Жители», «Опасности», «Что находится внутри»,
-                  «История места» — любые свои разделы.
-                </div>
+                <div className="world-empty surface">Разделов пока нет.</div>
               )}
             </div>
           </section>
@@ -494,31 +550,52 @@ export default function World() {
   return (
     <>
       <div className="page-stack world-page">
-        {!hasGm && (
-          <div className="gm-bootstrap surface">
+        {!hasOwner && (
+          <div className="owner-bootstrap surface">
             <div>
-              <strong>Кампания ещё без GM</strong>
-              <p>В тестовой кампании GM нужно назначить один раз.</p>
+              <strong>Назначить владельца приложения</strong>
+              <p>
+                Это отдельная роль от GM. Владелец получает те же права управления,
+                но GM остаётся другим человеком.
+              </p>
               {claimError && <small>{claimError}</small>}
             </div>
-            <button type="button" onClick={() => void becomeGm()} disabled={claiming}>
-              Стать GM
+            <button type="button" onClick={() => void becomeOwner()} disabled={claimingOwner}>
+              Я владелец
             </button>
           </div>
         )}
 
+        {isOwner && (
+          <div className="owner-status surface">
+            <span>Владелец</span>
+            <strong>У тебя права управления наравне с GM</strong>
+          </div>
+        )}
+
         <div className="world-hero-wrap">
-          <button className="hero-card surface world-hero-button" type="button" onClick={() => setView({ type: "library" })}>
+          <button
+            className="hero-card surface world-hero-button"
+            type="button"
+            onClick={() => setView({ type: "library" })}
+          >
             <div className="world-hero-button__copy">
               <div className="hero-card__eyebrow">Мир кампании</div>
               <h2 className="hero-card__title">{campaignTitle}</h2>
-              <p className="hero-card__copy">Все правила, история и лор создаются GM с нуля.</p>
+              <p className="hero-card__copy">Все правила, история и лор создаются с нуля.</p>
               <span className="world-hero-button__open">Открыть содержание →</span>
             </div>
           </button>
 
-          {isGm && (
-            <button className="world-hero-edit" type="button" onClick={() => setEditor({ type: "campaign" })} aria-label="Изменить название">✎</button>
+          {canManage && (
+            <button
+              className="world-hero-edit"
+              type="button"
+              onClick={() => setEditor({ type: "campaign" })}
+              aria-label="Изменить название кампании"
+            >
+              ✎
+            </button>
           )}
         </div>
 
@@ -529,21 +606,26 @@ export default function World() {
               <p className="item-meta">Две последние корневые локации</p>
             </div>
             <div className="section-actions">
-              {isGm && (
+              {canManage && (
                 <button className="section-link" type="button" onClick={() => setEditor({ type: "location", parentId: null })}>
                   + Добавить
                 </button>
               )}
-              <button className="section-link" type="button" onClick={() => setView({ type: "locations" })}>Все</button>
+              <button className="section-link" type="button" onClick={() => setView({ type: "locations" })}>
+                Все
+              </button>
             </div>
           </div>
 
           <div className="compact-grid world-latest-locations">
             {rootLocations.slice(0, 2).map((location) => (
-              <LocationCard key={location.id} location={location} onClick={() => setView({ type: "location", locationId: location.id })} />
+              <LocationCard
+                key={location.id}
+                location={location}
+                onClick={() => setView({ type: "location", locationId: location.id })}
+              />
             ))}
           </div>
-
           {rootLocations.length === 0 && <div className="world-empty surface">Пока нет ни одной локации.</div>}
         </section>
 
@@ -553,7 +635,7 @@ export default function World() {
               <h3 className="section-title">Достижения игроков</h3>
               <p className="item-meta">Список наград и памятных моментов</p>
             </div>
-            {isGm && (
+            {canManage && (
               <button className="section-link" type="button" onClick={() => setEditor({ type: "achievement" })}>
                 + Достижение
               </button>
@@ -562,7 +644,6 @@ export default function World() {
 
           <div className="world-achievement-list surface">
             {world.achievements.length === 0 && <div className="world-empty">Достижений пока нет.</div>}
-
             {world.achievements.map((achievement) => {
               const character = achievement.character_id
                 ? characters.find((item) => item.id === achievement.character_id)
@@ -580,13 +661,20 @@ export default function World() {
                       <span>{formatDate(achievement.awarded_at)}</span>
                     </div>
                     {achievement.description && <p>{achievement.description}</p>}
-                    <small>
-                      {character
-                        ? member
-                          ? `${character.name} (${member.display_name})`
-                          : character.name
-                        : "Вся группа"}
-                    </small>
+                    <div className="managed-item-footer">
+                      <small>
+                        {character
+                          ? member
+                            ? `${character.name} (${member.display_name})`
+                            : character.name
+                          : "Вся группа"}
+                      </small>
+                      {canManage && (
+                        <button type="button" onClick={() => setEditor({ type: "achievement-edit", achievement })}>
+                          Изменить
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </article>
               )
@@ -598,9 +686,9 @@ export default function World() {
           <div className="section-head">
             <div>
               <h3 className="section-title">Последние изменения</h3>
-              <p className="item-meta">Только ручные записи и объявления GM</p>
+              <p className="item-meta">Только ручные записи и объявления</p>
             </div>
-            {isGm && (
+            {canManage && (
               <button className="section-link" type="button" onClick={() => setEditor({ type: "update" })}>
                 + Запись
               </button>
@@ -608,12 +696,18 @@ export default function World() {
           </div>
 
           <div className="world-update-list surface">
-            {world.updates.length === 0 && <div className="world-empty">GM пока ничего не публиковал.</div>}
-            {world.updates.map((item) => <UpdateRow item={item} key={item.id} />)}
+            {world.updates.length === 0 && <div className="world-empty">Пока ничего не публиковали.</div>}
+            {world.updates.map((item) => (
+              <UpdateRow
+                item={item}
+                key={item.id}
+                canManage={canManage}
+                onEdit={() => setEditor({ type: "update-edit", update: item })}
+              />
+            ))}
           </div>
         </section>
       </div>
-
       {editorNode}
     </>
   )

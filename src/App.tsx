@@ -2,6 +2,7 @@ import { useState } from "react"
 import "./App.css"
 import "./auth.css"
 import "./character-system.css"
+import "./character-sheet.css"
 import "./world.css"
 
 import BottomNav, { type MainTab } from "./components/app/BottomNav"

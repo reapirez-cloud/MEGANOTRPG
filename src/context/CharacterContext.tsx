@@ -28,11 +28,12 @@ export type CampaignMember = {
   campaign_id: string
   user_id: string
   role: "gm" | "player"
+  is_owner: boolean
   active_character_id: string | null
   display_name: string
 }
 
-type CreateCharacterInput = {
+export type CharacterInput = {
   name: string
   character_class: string
   level: number
@@ -40,6 +41,8 @@ type CreateCharacterInput = {
   avatar_url: string | null
   assigned_user_id: string | null
 }
+
+type Result = { ok: boolean; error?: string }
 
 type CharacterContextValue = {
   campaignId: string
@@ -50,23 +53,22 @@ type CharacterContextValue = {
   activeCharacter: Character | null
   myMember: CampaignMember | null
   isGm: boolean
+  isOwner: boolean
+  canManage: boolean
   hasGm: boolean
+  hasOwner: boolean
   loading: boolean
   error: string | null
   refresh: () => Promise<void>
-  claimGm: () => Promise<{ ok: boolean; error?: string }>
-  updateCampaignTitle: (title: string) => Promise<{ ok: boolean; error?: string }>
-  createCharacter: (
-    input: CreateCharacterInput,
-  ) => Promise<{ ok: boolean; error?: string }>
-  assignCharacter: (
-    characterId: string,
-    userId: string | null,
-  ) => Promise<{ ok: boolean; error?: string }>
-  setActiveForMember: (
-    userId: string,
-    characterId: string,
-  ) => Promise<{ ok: boolean; error?: string }>
+  claimOwner: () => Promise<Result>
+  claimGm: () => Promise<Result>
+  setGm: (userId: string) => Promise<Result>
+  updateCampaignTitle: (title: string) => Promise<Result>
+  createCharacter: (input: CharacterInput) => Promise<Result>
+  updateCharacter: (characterId: string, input: CharacterInput) => Promise<Result>
+  updateOwnCharacterAvatar: (characterId: string, avatarUrl: string) => Promise<Result>
+  assignCharacter: (characterId: string, userId: string | null) => Promise<Result>
+  setActiveForMember: (userId: string, characterId: string) => Promise<Result>
 }
 
 const CharacterContext = createContext<CharacterContextValue | null>(null)
@@ -109,12 +111,10 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         .order("created_at", { ascending: true }),
       supabase
         .from("campaign_members")
-        .select("campaign_id, user_id, role, active_character_id")
+        .select("campaign_id, user_id, role, is_owner, active_character_id")
         .eq("campaign_id", campaign.id)
         .order("created_at", { ascending: true }),
-      supabase
-        .from("profiles")
-        .select("user_id, display_name"),
+      supabase.from("profiles").select("user_id, display_name"),
     ])
 
     const firstError =
@@ -127,15 +127,16 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     }
 
     const profileMap = new Map(
-      (profileResult.data || []).map((profile) => [
+      (profileResult.data || []).map((profile: { user_id: string; display_name: string }) => [
         profile.user_id,
         profile.display_name,
       ]),
     )
 
-    const nextMembers = (memberResult.data || []).map((member) => ({
+    const nextMembers = (memberResult.data || []).map((member: { campaign_id: string; user_id: string; role: string; is_owner: boolean; active_character_id: string | null }) => ({
       ...member,
       role: member.role === "gm" ? "gm" : "player",
+      is_owner: Boolean(member.is_owner),
       display_name: profileMap.get(member.user_id) || "Игрок",
     })) as CampaignMember[]
 
@@ -174,21 +175,45 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   }, [characters, myMember, user.id])
 
   const isGm = myMember?.role === "gm"
+  const isOwner = myMember?.is_owner === true
+  const canManage = isGm || isOwner
   const hasGm = members.some((member) => member.role === "gm")
+  const hasOwner = members.some((member) => member.is_owner)
 
-  const claimGm = useCallback(async () => {
-    const { error: claimError } = await supabase.rpc("claim_demo_gm")
+  const claimOwner = useCallback(async (): Promise<Result> => {
+    const { error: claimError } = await supabase.rpc("claim_demo_owner")
 
-    if (claimError) {
-      return { ok: false, error: claimError.message }
-    }
+    if (claimError) return { ok: false, error: claimError.message }
 
     await load()
     return { ok: true }
   }, [load])
 
+  const claimGm = useCallback(async (): Promise<Result> => {
+    const { error: claimError } = await supabase.rpc("claim_demo_gm")
+
+    if (claimError) return { ok: false, error: claimError.message }
+
+    await load()
+    return { ok: true }
+  }, [load])
+
+  const setGm = useCallback(
+    async (userId: string): Promise<Result> => {
+      const { error: setError } = await supabase.rpc("set_demo_gm", {
+        p_user_id: userId,
+      })
+
+      if (setError) return { ok: false, error: setError.message }
+
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
+
   const updateCampaignTitle = useCallback(
-    async (title: string) => {
+    async (title: string): Promise<Result> => {
       const cleaned = title.trim()
       if (!campaignId || !cleaned) {
         return { ok: false, error: "Нужно название кампании." }
@@ -199,9 +224,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         .update({ title: cleaned })
         .eq("id", campaignId)
 
-      if (updateError) {
-        return { ok: false, error: updateError.message }
-      }
+      if (updateError) return { ok: false, error: updateError.message }
 
       setCampaignTitle(cleaned)
       return { ok: true }
@@ -210,7 +233,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   )
 
   const createCharacter = useCallback(
-    async (input: CreateCharacterInput) => {
+    async (input: CharacterInput): Promise<Result> => {
       if (!campaignId) {
         return { ok: false, error: "Кампания ещё не загружена." }
       }
@@ -257,15 +280,13 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   )
 
   const assignCharacter = useCallback(
-    async (characterId: string, userId: string | null) => {
+    async (characterId: string, userId: string | null): Promise<Result> => {
       if (!campaignId) {
         return { ok: false, error: "Кампания ещё не загружена." }
       }
 
       const character = characters.find((item) => item.id === characterId)
-      if (!character) {
-        return { ok: false, error: "Персонаж не найден." }
-      }
+      if (!character) return { ok: false, error: "Персонаж не найден." }
 
       const oldUserId = character.assigned_user_id
 
@@ -277,9 +298,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         })
         .eq("id", characterId)
 
-      if (characterError) {
-        return { ok: false, error: characterError.message }
-      }
+      if (characterError) return { ok: false, error: characterError.message }
 
       if (oldUserId && oldUserId !== userId) {
         const oldMember = members.find((item) => item.user_id === oldUserId)
@@ -311,8 +330,57 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     [campaignId, characters, load, members],
   )
 
+  const updateCharacter = useCallback(
+    async (characterId: string, input: CharacterInput): Promise<Result> => {
+      const character = characters.find((item) => item.id === characterId)
+      if (!character) return { ok: false, error: "Персонаж не найден." }
+
+      const { error: updateError } = await supabase
+        .from("characters")
+        .update({
+          name: input.name.trim(),
+          character_class: input.character_class.trim() || "Персонаж",
+          level: input.level,
+          bio: input.bio.trim(),
+          avatar_url: input.avatar_url?.trim() || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", characterId)
+
+      if (updateError) return { ok: false, error: updateError.message }
+
+      if (character.assigned_user_id !== input.assigned_user_id) {
+        const assignmentResult = await assignCharacter(
+          characterId,
+          input.assigned_user_id,
+        )
+        if (!assignmentResult.ok) return assignmentResult
+      } else {
+        await load()
+      }
+
+      return { ok: true }
+    },
+    [assignCharacter, characters, load],
+  )
+
+  const updateOwnCharacterAvatar = useCallback(
+    async (characterId: string, avatarUrl: string): Promise<Result> => {
+      const { error: avatarError } = await supabase.rpc("set_my_character_avatar", {
+        p_character_id: characterId,
+        p_avatar_url: avatarUrl,
+      })
+
+      if (avatarError) return { ok: false, error: avatarError.message }
+
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
+
   const setActiveForMember = useCallback(
-    async (userId: string, characterId: string) => {
+    async (userId: string, characterId: string): Promise<Result> => {
       if (!campaignId) {
         return { ok: false, error: "Кампания ещё не загружена." }
       }
@@ -337,9 +405,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         .eq("campaign_id", campaignId)
         .eq("user_id", userId)
 
-      if (updateError) {
-        return { ok: false, error: updateError.message }
-      }
+      if (updateError) return { ok: false, error: updateError.message }
 
       await load()
       return { ok: true }
@@ -384,13 +450,20 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         activeCharacter,
         myMember,
         isGm,
+        isOwner,
+        canManage,
         hasGm,
+        hasOwner,
         loading,
         error,
         refresh: load,
+        claimOwner,
         claimGm,
+        setGm,
         updateCampaignTitle,
         createCharacter,
+        updateCharacter,
+        updateOwnCharacterAvatar,
         assignCharacter,
         setActiveForMember,
       }}

@@ -55,29 +55,40 @@ export function useWorldContent() {
       achievementResult,
       updateResult,
     ] = await Promise.all([
-      supabase.from("world_sections")
+      supabase
+        .from("world_sections")
         .select("id, campaign_id, slug, title, description, sort_order")
         .eq("campaign_id", campaignId)
         .order("sort_order", { ascending: true }),
-      supabase.from("world_articles")
+      supabase
+        .from("world_articles")
         .select("id, campaign_id, section_id, title, summary, body, sort_order")
         .eq("campaign_id", campaignId)
         .order("sort_order", { ascending: true }),
-      supabase.from("locations")
-        .select("id, campaign_id, parent_location_id, name, summary, description, image_url, sort_order, created_at, updated_at")
+      supabase
+        .from("locations")
+        .select(
+          "id, campaign_id, parent_location_id, name, summary, description, image_url, sort_order, created_at, updated_at",
+        )
         .eq("campaign_id", campaignId)
         .order("updated_at", { ascending: false }),
-      supabase.from("location_sections")
+      supabase
+        .from("location_sections")
         .select("id, location_id, title, body, sort_order")
         .order("sort_order", { ascending: true }),
-      supabase.from("location_links")
+      supabase
+        .from("location_links")
         .select("id, section_id, target_location_id, label, sort_order")
         .order("sort_order", { ascending: true }),
-      supabase.from("achievements")
-        .select("id, campaign_id, character_id, title, description, icon, awarded_at")
+      supabase
+        .from("achievements")
+        .select(
+          "id, campaign_id, character_id, title, description, icon, awarded_at",
+        )
         .eq("campaign_id", campaignId)
         .order("awarded_at", { ascending: false }),
-      supabase.from("campaign_updates")
+      supabase
+        .from("campaign_updates")
         .select("id, campaign_id, kind, title, body, published_at")
         .eq("campaign_id", campaignId)
         .order("published_at", { ascending: false })
@@ -102,7 +113,9 @@ export function useWorldContent() {
     setSections((sectionResult.data || []) as WorldSection[])
     setArticles((articleResult.data || []) as WorldArticle[])
     setLocations((locationResult.data || []) as LocationEntry[])
-    setLocationSections((locationSectionResult.data || []) as LocationSection[])
+    setLocationSections(
+      (locationSectionResult.data || []) as LocationSection[],
+    )
     setLocationLinks((locationLinkResult.data || []) as LocationLink[])
     setAchievements((achievementResult.data || []) as AchievementEntry[])
     setUpdates((updateResult.data || []) as CampaignUpdate[])
@@ -113,120 +126,306 @@ export function useWorldContent() {
     void load()
   }, [load])
 
-  const createWorldSection = useCallback(async (title: string, description: string): Promise<Result> => {
-    const { error } = await supabase.from("world_sections").insert({
-      campaign_id: campaignId,
-      slug: makeSlug(title),
-      title: title.trim(),
-      description: description.trim(),
-    })
-    if (error) return { ok: false, error: error.message }
-    await load()
-    return { ok: true }
-  }, [campaignId, load])
+  const createWorldSection = useCallback(
+    async (title: string, description: string): Promise<Result> => {
+      const { error } = await supabase.from("world_sections").insert({
+        campaign_id: campaignId,
+        slug: makeSlug(title),
+        title: title.trim(),
+        description: description.trim(),
+      })
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+    [campaignId, load],
+  )
 
-  const createWorldArticle = useCallback(async (
-    sectionId: string,
-    title: string,
-    summary: string,
-    body: string,
-  ): Promise<Result> => {
-    const { error } = await supabase.from("world_articles").insert({
-      campaign_id: campaignId,
-      section_id: sectionId,
-      title: title.trim(),
-      summary: summary.trim(),
-      body: body.trim(),
-    })
-    if (error) return { ok: false, error: error.message }
-    await load()
-    return { ok: true }
-  }, [campaignId, load])
+  const updateWorldSection = useCallback(
+    async (
+      sectionId: string,
+      title: string,
+      description: string,
+    ): Promise<Result> => {
+      const { error } = await supabase
+        .from("world_sections")
+        .update({
+          title: title.trim(),
+          description: description.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", sectionId)
 
-  const createLocation = useCallback(async (input: {
-    parent_location_id: string | null
-    name: string
-    summary: string
-    description: string
-    image_url: string | null
-  }): Promise<Result> => {
-    const { error } = await supabase.from("locations").insert({
-      campaign_id: campaignId,
-      parent_location_id: input.parent_location_id,
-      name: input.name.trim(),
-      summary: input.summary.trim(),
-      description: input.description.trim(),
-      image_url: input.image_url?.trim() || null,
-    })
-    if (error) return { ok: false, error: error.message }
-    await load()
-    return { ok: true }
-  }, [campaignId, load])
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
 
-  const createLocationSection = useCallback(async (
-    locationId: string,
-    title: string,
-    body: string,
-  ): Promise<Result> => {
-    const { error } = await supabase.from("location_sections").insert({
-      location_id: locationId,
-      title: title.trim(),
-      body: body.trim(),
-    })
-    if (error) return { ok: false, error: error.message }
-    await load()
-    return { ok: true }
-  }, [load])
+  const createWorldArticle = useCallback(
+    async (
+      sectionId: string,
+      title: string,
+      summary: string,
+      body: string,
+    ): Promise<Result> => {
+      const { error } = await supabase.from("world_articles").insert({
+        campaign_id: campaignId,
+        section_id: sectionId,
+        title: title.trim(),
+        summary: summary.trim(),
+        body: body.trim(),
+      })
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+    [campaignId, load],
+  )
 
-  const createLocationLink = useCallback(async (
-    sectionId: string,
-    targetLocationId: string,
-    label: string,
-  ): Promise<Result> => {
-    const { error } = await supabase.from("location_links").insert({
-      section_id: sectionId,
-      target_location_id: targetLocationId,
-      label: label.trim(),
-    })
-    if (error) return { ok: false, error: error.message }
-    await load()
-    return { ok: true }
-  }, [load])
+  const updateWorldArticle = useCallback(
+    async (
+      articleId: string,
+      title: string,
+      summary: string,
+      body: string,
+    ): Promise<Result> => {
+      const { error } = await supabase
+        .from("world_articles")
+        .update({
+          title: title.trim(),
+          summary: summary.trim(),
+          body: body.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", articleId)
 
-  const createAchievement = useCallback(async (input: {
-    character_id: string | null
-    title: string
-    description: string
-    icon: string
-  }): Promise<Result> => {
-    const { error } = await supabase.from("achievements").insert({
-      campaign_id: campaignId,
-      character_id: input.character_id,
-      title: input.title.trim(),
-      description: input.description.trim(),
-      icon: input.icon.trim() || "★",
-    })
-    if (error) return { ok: false, error: error.message }
-    await load()
-    return { ok: true }
-  }, [campaignId, load])
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
 
-  const createUpdate = useCallback(async (input: {
-    kind: "change" | "announcement"
-    title: string
-    body: string
-  }): Promise<Result> => {
-    const { error } = await supabase.from("campaign_updates").insert({
-      campaign_id: campaignId,
-      created_by: user.id,
-      kind: input.kind,
-      title: input.title.trim(),
-      body: input.body.trim(),
-    })
-    if (error) return { ok: false, error: error.message }
-    await load()
-    return { ok: true }
-  }, [campaignId, load, user.id])
+  const createLocation = useCallback(
+    async (input: {
+      parent_location_id: string | null
+      name: string
+      summary: string
+      description: string
+      image_url: string | null
+    }): Promise<Result> => {
+      const { error } = await supabase.from("locations").insert({
+        campaign_id: campaignId,
+        parent_location_id: input.parent_location_id,
+        name: input.name.trim(),
+        summary: input.summary.trim(),
+        description: input.description.trim(),
+        image_url: input.image_url?.trim() || null,
+      })
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+    [campaignId, load],
+  )
+
+  const updateLocation = useCallback(
+    async (
+      locationId: string,
+      input: {
+        name: string
+        summary: string
+        description: string
+        image_url: string | null
+      },
+    ): Promise<Result> => {
+      const { error } = await supabase
+        .from("locations")
+        .update({
+          name: input.name.trim(),
+          summary: input.summary.trim(),
+          description: input.description.trim(),
+          image_url: input.image_url?.trim() || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", locationId)
+
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
+
+  const createLocationSection = useCallback(
+    async (
+      locationId: string,
+      title: string,
+      body: string,
+    ): Promise<Result> => {
+      const { error } = await supabase.from("location_sections").insert({
+        location_id: locationId,
+        title: title.trim(),
+        body: body.trim(),
+      })
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
+
+  const updateLocationSection = useCallback(
+    async (
+      sectionId: string,
+      title: string,
+      body: string,
+    ): Promise<Result> => {
+      const { error } = await supabase
+        .from("location_sections")
+        .update({ title: title.trim(), body: body.trim() })
+        .eq("id", sectionId)
+
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
+
+  const createLocationLink = useCallback(
+    async (
+      sectionId: string,
+      targetLocationId: string,
+      label: string,
+    ): Promise<Result> => {
+      const { error } = await supabase.from("location_links").insert({
+        section_id: sectionId,
+        target_location_id: targetLocationId,
+        label: label.trim(),
+      })
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
+
+  const updateLocationLink = useCallback(
+    async (
+      linkId: string,
+      targetLocationId: string,
+      label: string,
+    ): Promise<Result> => {
+      const { error } = await supabase
+        .from("location_links")
+        .update({
+          target_location_id: targetLocationId,
+          label: label.trim(),
+        })
+        .eq("id", linkId)
+
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
+
+  const createAchievement = useCallback(
+    async (input: {
+      character_id: string | null
+      title: string
+      description: string
+      icon: string
+    }): Promise<Result> => {
+      const { error } = await supabase.from("achievements").insert({
+        campaign_id: campaignId,
+        character_id: input.character_id,
+        title: input.title.trim(),
+        description: input.description.trim(),
+        icon: input.icon.trim() || "★",
+      })
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+    [campaignId, load],
+  )
+
+  const updateAchievement = useCallback(
+    async (
+      achievementId: string,
+      input: {
+        character_id: string | null
+        title: string
+        description: string
+        icon: string
+      },
+    ): Promise<Result> => {
+      const { error } = await supabase
+        .from("achievements")
+        .update({
+          character_id: input.character_id,
+          title: input.title.trim(),
+          description: input.description.trim(),
+          icon: input.icon.trim() || "★",
+        })
+        .eq("id", achievementId)
+
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
+
+  const createUpdate = useCallback(
+    async (input: {
+      kind: "change" | "announcement"
+      title: string
+      body: string
+    }): Promise<Result> => {
+      const { error } = await supabase.from("campaign_updates").insert({
+        campaign_id: campaignId,
+        created_by: user.id,
+        kind: input.kind,
+        title: input.title.trim(),
+        body: input.body.trim(),
+      })
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+    [campaignId, load, user.id],
+  )
+
+  const updateUpdate = useCallback(
+    async (
+      updateId: string,
+      input: {
+        kind: "change" | "announcement"
+        title: string
+        body: string
+      },
+    ): Promise<Result> => {
+      const { error } = await supabase
+        .from("campaign_updates")
+        .update({
+          kind: input.kind,
+          title: input.title.trim(),
+          body: input.body.trim(),
+        })
+        .eq("id", updateId)
+
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
 
   return {
     sections,
@@ -240,11 +439,18 @@ export function useWorldContent() {
     error,
     reload: load,
     createWorldSection,
+    updateWorldSection,
     createWorldArticle,
+    updateWorldArticle,
     createLocation,
+    updateLocation,
     createLocationSection,
+    updateLocationSection,
     createLocationLink,
+    updateLocationLink,
     createAchievement,
+    updateAchievement,
     createUpdate,
+    updateUpdate,
   }
 }

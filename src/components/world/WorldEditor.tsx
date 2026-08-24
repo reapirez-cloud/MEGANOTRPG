@@ -1,17 +1,36 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
-import type { Character, CampaignMember } from "../../context/CharacterContext"
-import type { LocationEntry, LocationSection } from "../../types/world"
+
+import type {
+  CampaignMember,
+  Character,
+} from "../../context/CharacterContext"
+import type {
+  AchievementEntry,
+  CampaignUpdate,
+  LocationEntry,
+  LocationLink,
+  LocationSection,
+  WorldArticle,
+  WorldSection,
+} from "../../types/world"
 
 export type WorldEditorMode =
   | { type: "campaign" }
   | { type: "world-section" }
+  | { type: "world-section-edit"; section: WorldSection }
   | { type: "article"; sectionId: string }
+  | { type: "article-edit"; article: WorldArticle }
   | { type: "location"; parentId: string | null }
+  | { type: "location-edit"; location: LocationEntry }
   | { type: "location-section"; locationId: string }
+  | { type: "location-section-edit"; section: LocationSection }
   | { type: "location-link"; section: LocationSection }
+  | { type: "location-link-edit"; link: LocationLink }
   | { type: "achievement" }
+  | { type: "achievement-edit"; achievement: AchievementEntry }
   | { type: "update" }
+  | { type: "update-edit"; update: CampaignUpdate }
   | null
 
 type AsyncResult = Promise<{ ok: boolean; error?: string }>
@@ -21,11 +40,28 @@ type Props = {
   onClose: () => void
   campaignTitle: string
   locations: LocationEntry[]
+  locationSections: LocationSection[]
   characters: Character[]
   members: CampaignMember[]
   updateCampaignTitle: (title: string) => AsyncResult
   createWorldSection: (title: string, description: string) => AsyncResult
-  createWorldArticle: (sectionId: string, title: string, summary: string, body: string) => AsyncResult
+  updateWorldSection: (
+    sectionId: string,
+    title: string,
+    description: string,
+  ) => AsyncResult
+  createWorldArticle: (
+    sectionId: string,
+    title: string,
+    summary: string,
+    body: string,
+  ) => AsyncResult
+  updateWorldArticle: (
+    articleId: string,
+    title: string,
+    summary: string,
+    body: string,
+  ) => AsyncResult
   createLocation: (input: {
     parent_location_id: string | null
     name: string
@@ -33,64 +69,180 @@ type Props = {
     description: string
     image_url: string | null
   }) => AsyncResult
-  createLocationSection: (locationId: string, title: string, body: string) => AsyncResult
-  createLocationLink: (sectionId: string, targetLocationId: string, label: string) => AsyncResult
+  updateLocation: (
+    locationId: string,
+    input: {
+      name: string
+      summary: string
+      description: string
+      image_url: string | null
+    },
+  ) => AsyncResult
+  createLocationSection: (
+    locationId: string,
+    title: string,
+    body: string,
+  ) => AsyncResult
+  updateLocationSection: (
+    sectionId: string,
+    title: string,
+    body: string,
+  ) => AsyncResult
+  createLocationLink: (
+    sectionId: string,
+    targetLocationId: string,
+    label: string,
+  ) => AsyncResult
+  updateLocationLink: (
+    linkId: string,
+    targetLocationId: string,
+    label: string,
+  ) => AsyncResult
   createAchievement: (input: {
     character_id: string | null
     title: string
     description: string
     icon: string
   }) => AsyncResult
+  updateAchievement: (
+    achievementId: string,
+    input: {
+      character_id: string | null
+      title: string
+      description: string
+      icon: string
+    },
+  ) => AsyncResult
   createUpdate: (input: {
     kind: "change" | "announcement"
     title: string
     body: string
   }) => AsyncResult
+  updateUpdate: (
+    updateId: string,
+    input: {
+      kind: "change" | "announcement"
+      title: string
+      body: string
+    },
+  ) => AsyncResult
+}
+
+function initialTitle(mode: Exclude<WorldEditorMode, null>, campaignTitle: string) {
+  if (mode.type === "campaign") return campaignTitle
+  if (mode.type === "world-section-edit") return mode.section.title
+  if (mode.type === "article-edit") return mode.article.title
+  if (mode.type === "location-edit") return mode.location.name
+  if (mode.type === "location-section-edit") return mode.section.title
+  if (mode.type === "location-link-edit") return mode.link.label
+  if (mode.type === "achievement-edit") return mode.achievement.title
+  if (mode.type === "update-edit") return mode.update.title
+  return ""
+}
+
+function initialSummary(mode: Exclude<WorldEditorMode, null>) {
+  if (mode.type === "article-edit") return mode.article.summary
+  if (mode.type === "location-edit") return mode.location.summary
+  return ""
+}
+
+function initialBody(mode: Exclude<WorldEditorMode, null>) {
+  if (mode.type === "world-section-edit") return mode.section.description
+  if (mode.type === "article-edit") return mode.article.body
+  if (mode.type === "location-edit") return mode.location.description
+  if (mode.type === "location-section-edit") return mode.section.body
+  if (mode.type === "achievement-edit") return mode.achievement.description
+  if (mode.type === "update-edit") return mode.update.body
+  return ""
 }
 
 export default function WorldEditor(props: Props) {
   const { mode } = props
-  const [title, setTitle] = useState(mode?.type === "campaign" ? props.campaignTitle : "")
-  const [summary, setSummary] = useState("")
-  const [body, setBody] = useState("")
-  const [imageUrl, setImageUrl] = useState("")
-  const [targetId, setTargetId] = useState("")
-  const [characterId, setCharacterId] = useState("")
-  const [icon, setIcon] = useState("★")
-  const [kind, setKind] = useState<"change" | "announcement">("change")
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
 
   if (!mode) return null
 
-  // Important for TypeScript: keep a non-null, immutable reference.
-  // `submit` is a nested async function, so narrowing the nullable prop
-  // directly is not preserved reliably across the closure.
   const currentMode = mode
+
+  const [title, setTitle] = useState(() =>
+    initialTitle(currentMode, props.campaignTitle),
+  )
+  const [summary, setSummary] = useState(() => initialSummary(currentMode))
+  const [body, setBody] = useState(() => initialBody(currentMode))
+  const [imageUrl, setImageUrl] = useState(() =>
+    currentMode.type === "location-edit"
+      ? currentMode.location.image_url || ""
+      : "",
+  )
+  const [targetId, setTargetId] = useState(() =>
+    currentMode.type === "location-link-edit"
+      ? currentMode.link.target_location_id
+      : "",
+  )
+  const [characterId, setCharacterId] = useState(() =>
+    currentMode.type === "achievement-edit"
+      ? currentMode.achievement.character_id || ""
+      : "",
+  )
+  const [icon, setIcon] = useState(() =>
+    currentMode.type === "achievement-edit"
+      ? currentMode.achievement.icon
+      : "★",
+  )
+  const [kind, setKind] = useState<"change" | "announcement">(() =>
+    currentMode.type === "update-edit" ? currentMode.update.kind : "change",
+  )
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
 
   const editorTitle =
     currentMode.type === "campaign" ? "Название кампании" :
     currentMode.type === "world-section" ? "Новый раздел мира" :
+    currentMode.type === "world-section-edit" ? "Редактировать раздел" :
     currentMode.type === "article" ? "Новая запись" :
+    currentMode.type === "article-edit" ? "Редактировать запись" :
     currentMode.type === "location" ? (currentMode.parentId ? "Новая подлокация" : "Новая локация") :
-    currentMode.type === "location-section" ? "Раздел локации" :
+    currentMode.type === "location-edit" ? "Редактировать локацию" :
+    currentMode.type === "location-section" ? "Новый раздел локации" :
+    currentMode.type === "location-section-edit" ? "Редактировать раздел локации" :
     currentMode.type === "location-link" ? "Переход к локации" :
+    currentMode.type === "location-link-edit" ? "Редактировать переход" :
     currentMode.type === "achievement" ? "Новое достижение" :
-    "Запись GM"
+    currentMode.type === "achievement-edit" ? "Редактировать достижение" :
+    currentMode.type === "update" ? "Запись GM" :
+    "Редактировать запись GM"
 
-  const sourceLocationId =
-    currentMode.type === "location-link" ? currentMode.section.location_id : null
-  const targets = props.locations.filter((location) => location.id !== sourceLocationId)
+  const sourceLocationId = (() => {
+    if (currentMode.type === "location-link") {
+      return currentMode.section.location_id
+    }
+
+    if (currentMode.type === "location-link-edit") {
+      const sourceSection = props.locationSections.find(
+        (section) => section.id === currentMode.link.section_id,
+      )
+      return sourceSection?.location_id || null
+    }
+
+    return null
+  })()
+
+  const targets = props.locations.filter(
+    (location) => location.id !== sourceLocationId,
+  )
 
   async function submit(event: FormEvent) {
     event.preventDefault()
 
-    if (currentMode.type !== "location-link" && !title.trim()) {
+    const isLink =
+      currentMode.type === "location-link" ||
+      currentMode.type === "location-link-edit"
+
+    if (!isLink && !title.trim()) {
       setError("Нужно название.")
       return
     }
 
-    if (currentMode.type === "location-link" && !targetId) {
+    if (isLink && !targetId) {
       setError("Выбери локацию для перехода.")
       return
     }
@@ -104,8 +256,26 @@ export default function WorldEditor(props: Props) {
       result = await props.updateCampaignTitle(title)
     } else if (currentMode.type === "world-section") {
       result = await props.createWorldSection(title, body)
+    } else if (currentMode.type === "world-section-edit") {
+      result = await props.updateWorldSection(
+        currentMode.section.id,
+        title,
+        body,
+      )
     } else if (currentMode.type === "article") {
-      result = await props.createWorldArticle(currentMode.sectionId, title, summary, body)
+      result = await props.createWorldArticle(
+        currentMode.sectionId,
+        title,
+        summary,
+        body,
+      )
+    } else if (currentMode.type === "article-edit") {
+      result = await props.updateWorldArticle(
+        currentMode.article.id,
+        title,
+        summary,
+        body,
+      )
     } else if (currentMode.type === "location") {
       result = await props.createLocation({
         parent_location_id: currentMode.parentId,
@@ -114,10 +284,37 @@ export default function WorldEditor(props: Props) {
         description: body,
         image_url: imageUrl || null,
       })
+    } else if (currentMode.type === "location-edit") {
+      result = await props.updateLocation(currentMode.location.id, {
+        name: title,
+        summary,
+        description: body,
+        image_url: imageUrl || null,
+      })
     } else if (currentMode.type === "location-section") {
-      result = await props.createLocationSection(currentMode.locationId, title, body)
+      result = await props.createLocationSection(
+        currentMode.locationId,
+        title,
+        body,
+      )
+    } else if (currentMode.type === "location-section-edit") {
+      result = await props.updateLocationSection(
+        currentMode.section.id,
+        title,
+        body,
+      )
     } else if (currentMode.type === "location-link") {
-      result = await props.createLocationLink(currentMode.section.id, targetId, title)
+      result = await props.createLocationLink(
+        currentMode.section.id,
+        targetId,
+        title,
+      )
+    } else if (currentMode.type === "location-link-edit") {
+      result = await props.updateLocationLink(
+        currentMode.link.id,
+        targetId,
+        title,
+      )
     } else if (currentMode.type === "achievement") {
       result = await props.createAchievement({
         character_id: characterId || null,
@@ -125,8 +322,21 @@ export default function WorldEditor(props: Props) {
         description: body,
         icon,
       })
-    } else {
+    } else if (currentMode.type === "achievement-edit") {
+      result = await props.updateAchievement(currentMode.achievement.id, {
+        character_id: characterId || null,
+        title,
+        description: body,
+        icon,
+      })
+    } else if (currentMode.type === "update") {
       result = await props.createUpdate({ kind, title, body })
+    } else {
+      result = await props.updateUpdate(currentMode.update.id, {
+        kind,
+        title,
+        body,
+      })
     }
 
     setSaving(false)
@@ -138,6 +348,27 @@ export default function WorldEditor(props: Props) {
 
     props.onClose()
   }
+
+  const showSummary =
+    currentMode.type === "article" ||
+    currentMode.type === "article-edit" ||
+    currentMode.type === "location" ||
+    currentMode.type === "location-edit"
+
+  const showImage =
+    currentMode.type === "location" || currentMode.type === "location-edit"
+
+  const showUpdateKind =
+    currentMode.type === "update" || currentMode.type === "update-edit"
+
+  const showAchievement =
+    currentMode.type === "achievement" ||
+    currentMode.type === "achievement-edit"
+
+  const showBody =
+    currentMode.type !== "campaign" &&
+    currentMode.type !== "location-link" &&
+    currentMode.type !== "location-link-edit"
 
   return (
     <div className="sheet-backdrop" onMouseDown={props.onClose}>
@@ -151,82 +382,174 @@ export default function WorldEditor(props: Props) {
         <div className="world-editor-head">
           <div>
             <h3 className="sheet-title">{editorTitle}</h3>
-            <p className="sheet-copy">Приложение ничего не придумывает само — это данные GM.</p>
+            <p className="sheet-copy">
+              GM и создатель кампании могут менять эти данные в любой момент.
+            </p>
           </div>
-          <button className="world-sheet-close" type="button" onClick={props.onClose}>×</button>
+          <button
+            className="world-sheet-close"
+            type="button"
+            onClick={props.onClose}
+          >
+            ×
+          </button>
         </div>
 
-        {currentMode.type === "update" && (
+        {showUpdateKind && (
           <div className="world-kind-switch">
-            <button type="button" className={kind === "change" ? "world-kind-switch__active" : ""} onClick={() => setKind("change")}>Изменение</button>
-            <button type="button" className={kind === "announcement" ? "world-kind-switch__active" : ""} onClick={() => setKind("announcement")}>Объявление</button>
+            <button
+              type="button"
+              className={kind === "change" ? "world-kind-switch__active" : ""}
+              onClick={() => setKind("change")}
+            >
+              Изменение
+            </button>
+            <button
+              type="button"
+              className={
+                kind === "announcement" ? "world-kind-switch__active" : ""
+              }
+              onClick={() => setKind("announcement")}
+            >
+              Объявление
+            </button>
           </div>
         )}
 
-        {currentMode.type === "location-link" && (
+        {(currentMode.type === "location-link" ||
+          currentMode.type === "location-link-edit") && (
           <>
-            <label className="field-label" htmlFor="world-target">Куда ведёт переход</label>
-            <select id="world-target" className="app-select" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+            <label className="field-label" htmlFor="world-target">
+              Куда ведёт переход
+            </label>
+            <select
+              id="world-target"
+              className="app-select"
+              value={targetId}
+              onChange={(event) => setTargetId(event.target.value)}
+            >
               <option value="">Выбрать локацию</option>
-              {targets.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
+              {targets.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                </option>
+              ))}
             </select>
           </>
         )}
 
-        {currentMode.type === "achievement" && (
+        {showAchievement && (
           <>
-            <label className="field-label" htmlFor="achievement-character">Кому</label>
-            <select id="achievement-character" className="app-select" value={characterId} onChange={(e) => setCharacterId(e.target.value)}>
+            <label className="field-label" htmlFor="achievement-character">
+              Кому
+            </label>
+            <select
+              id="achievement-character"
+              className="app-select"
+              value={characterId}
+              onChange={(event) => setCharacterId(event.target.value)}
+            >
               <option value="">Вся группа</option>
               {props.characters.map((character) => {
                 const member = character.assigned_user_id
-                  ? props.members.find((item) => item.user_id === character.assigned_user_id)
+                  ? props.members.find(
+                      (item) => item.user_id === character.assigned_user_id,
+                    )
                   : null
-                const label = member ? `${character.name} (${member.display_name})` : character.name
-                return <option key={character.id} value={character.id}>{label}</option>
+                const label = member
+                  ? `${character.name} (${member.display_name})`
+                  : character.name
+
+                return (
+                  <option key={character.id} value={character.id}>
+                    {label}
+                  </option>
+                )
               })}
             </select>
 
-            <label className="field-label" htmlFor="achievement-icon">Значок</label>
-            <input id="achievement-icon" className="app-input world-icon-input" value={icon} onChange={(e) => setIcon(e.target.value)} maxLength={4} />
+            <label className="field-label" htmlFor="achievement-icon">
+              Значок
+            </label>
+            <input
+              id="achievement-icon"
+              className="app-input world-icon-input"
+              value={icon}
+              onChange={(event) => setIcon(event.target.value)}
+              maxLength={4}
+            />
           </>
         )}
 
         <label className="field-label" htmlFor="world-title">
-          {currentMode.type === "location-link" ? "Подпись перехода" : "Название"}
+          {currentMode.type === "location-link" ||
+          currentMode.type === "location-link-edit"
+            ? "Подпись перехода"
+            : "Название"}
         </label>
         <input
           id="world-title"
           className="app-input"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder={currentMode.type === "location-link" ? "Например: Старый тракт" : "Введите название"}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="Введите название"
           maxLength={120}
-          autoFocus={currentMode.type !== "location-link"}
+          autoFocus={
+            currentMode.type !== "location-link" &&
+            currentMode.type !== "location-link-edit"
+          }
         />
 
-        {(currentMode.type === "article" || currentMode.type === "location") && (
+        {showSummary && (
           <>
-            <label className="field-label" htmlFor="world-summary">Короткое описание</label>
-            <input id="world-summary" className="app-input" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Для карточки и списка" maxLength={240} />
+            <label className="field-label" htmlFor="world-summary">
+              Короткое описание
+            </label>
+            <input
+              id="world-summary"
+              className="app-input"
+              value={summary}
+              onChange={(event) => setSummary(event.target.value)}
+              placeholder="Для карточки и списка"
+              maxLength={240}
+            />
           </>
         )}
 
-        {currentMode.type === "location" && (
+        {showImage && (
           <>
-            <label className="field-label" htmlFor="world-image">Арт</label>
-            <input id="world-image" className="app-input" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Пока ссылка; потом Storage" />
+            <label className="field-label" htmlFor="world-image">
+              Арт
+            </label>
+            <input
+              id="world-image"
+              className="app-input"
+              value={imageUrl}
+              onChange={(event) => setImageUrl(event.target.value)}
+              placeholder="Пока ссылка; потом Storage"
+            />
           </>
         )}
 
-        {currentMode.type !== "campaign" && currentMode.type !== "location-link" && (
+        {showBody && (
           <>
             <label className="field-label" htmlFor="world-body">
-              {currentMode.type === "world-section" ? "Описание раздела" :
-               currentMode.type === "achievement" ? "Описание достижения" :
-               currentMode.type === "update" ? "Текст" : "Содержание"}
+              {currentMode.type === "world-section" ||
+              currentMode.type === "world-section-edit"
+                ? "Описание раздела"
+                : showAchievement
+                  ? "Описание достижения"
+                  : showUpdateKind
+                    ? "Текст"
+                    : "Содержание"}
             </label>
-            <textarea id="world-body" className="app-textarea world-editor-textarea" value={body} onChange={(e) => setBody(e.target.value)} maxLength={12000} />
+            <textarea
+              id="world-body"
+              className="app-textarea world-editor-textarea"
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+              maxLength={12000}
+            />
           </>
         )}
 
