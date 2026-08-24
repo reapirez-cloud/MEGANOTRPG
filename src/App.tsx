@@ -1,32 +1,49 @@
-import { useEffect, useState } from 'react'
-import { supabase } from './lib/supabase'
+import { useState } from 'react'
+import ChatMenu from './components/ChatMenu'
+import './App.css'
 
 function App() {
-  const [message, setMessage] = useState('Проверяю подключение...')
-
-  useEffect(() => {
-    async function checkSupabase() {
-      const { data, error } = await supabase
-        .from('app_test')
-        .select('message')
-        .single()
-
-      if (error) {
-        setMessage(`Ошибка: ${error.message}`)
-        return
-      }
-
-      setMessage(data.message)
-    }
-
-    checkSupabase()
-  }, [])
+  const [activeTab, setActiveTab] = useState('chats')
 
   return (
-    <main>
-      <h1>MEGANOTRPG</h1>
-      <p>{message}</p>
-    </main>
+    <div className="app">
+      <header className="top-bar">
+        <h1>MEGANOTRPG</h1>
+        <button>⚙</button>
+      </header>
+
+      <main className="content">
+        {activeTab === 'chats' && <ChatMenu />}
+        {activeTab !== 'chats' && <h2>Раздел в разработке</h2>}
+      </main>
+
+      <nav className="bottom-nav">
+        <button onClick={() => setActiveTab('chats')}>
+          💬
+          <span>Чаты</span>
+        </button>
+
+        <button onClick={() => setActiveTab('character')}>
+          👤
+          <span>Персонаж</span>
+        </button>
+
+        <button onClick={() => setActiveTab('world')}>
+          🌍
+          <span>Мир</span>
+        </button>
+
+        <button onClick={() => setActiveTab('gallery')}>
+          🎨
+          <span>Галерея</span>
+        </button>
+
+        <button onClick={() => setActiveTab('more')}>
+          ☰
+          <span>Ещё</span>
+        </button>
+      </nav>
+    </div>
   )
 }
 
