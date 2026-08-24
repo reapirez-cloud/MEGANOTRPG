@@ -15,7 +15,7 @@ function formatTime(value: string) {
 
 export default function ChatRoom({ roomId, onBack }: Props) {
   const { user, profile } = useAuth()
-  const { characters, activeCharacter } = useCharacters()
+  const { characters, activeCharacter, isGm, isOwner } = useCharacters()
   const [roomTitle, setRoomTitle] = useState("Чат")
   const [draft, setDraft] = useState("")
   const bottomRef = useRef<HTMLDivElement | null>(null)
@@ -29,6 +29,9 @@ export default function ChatRoom({ roomId, onBack }: Props) {
   const realtimeLabel =
     realtime === "live" ? "онлайн" :
     realtime === "connecting" ? "подключение" : "офлайн"
+
+  const canSendWithoutCharacter = isGm || isOwner
+  const canSend = Boolean(activeCharacter || canSendWithoutCharacter)
 
   useEffect(() => {
     void supabase
@@ -47,14 +50,34 @@ export default function ChatRoom({ roomId, onBack }: Props) {
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (!activeCharacter) return
+    if (!canSend) return
     const sent = await sendMessage(draft)
     if (sent) setDraft("")
   }
 
   const activeLabel = activeCharacter
     ? `${activeCharacter.name} (${profile.display_name})`
-    : "Нет персонажа"
+    : isOwner
+      ? `Владелец (${profile.display_name})`
+      : isGm
+        ? `GM (${profile.display_name})`
+        : "Нет персонажа"
+
+  const roleAvatar = activeCharacter ?? (
+    isOwner
+      ? { name: "Владелец", avatar_url: null }
+      : isGm
+        ? { name: "GM", avatar_url: null }
+        : null
+  )
+
+  const placeholder = activeCharacter
+    ? `От лица ${activeCharacter.name}…`
+    : isOwner
+      ? "Сообщение от владельца…"
+      : isGm
+        ? "Сообщение от GM…"
+        : "Нет активного персонажа"
 
   return (
     <div className="screen">
@@ -69,7 +92,7 @@ export default function ChatRoom({ roomId, onBack }: Props) {
         </div>
 
         <div className="chat-active-character">
-          <CharacterAvatar character={activeCharacter} size="small" />
+          <CharacterAvatar character={roleAvatar} size="small" />
           <strong>{activeLabel}</strong>
         </div>
       </header>
@@ -108,9 +131,17 @@ export default function ChatRoom({ roomId, onBack }: Props) {
         <div ref={bottomRef} />
       </div>
 
-      {!activeCharacter && (
+      {!activeCharacter && canSendWithoutCharacter && (
+        <div className="chat-role-info">
+          {isOwner
+            ? "Персонаж не требуется: ты пишешь как владелец кампании."
+            : "Персонаж не требуется: ты пишешь как GM."}
+        </div>
+      )}
+
+      {!activeCharacter && !canSendWithoutCharacter && (
         <div className="chat-character-warning">
-          GM должен прикрепить персонажа к твоему профилю и сделать его активным.
+          К твоему Telegram-профилю пока не прикреплён активный персонаж.
         </div>
       )}
 
@@ -120,12 +151,12 @@ export default function ChatRoom({ roomId, onBack }: Props) {
           className="composer__input"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder={activeCharacter ? `От лица ${activeCharacter.name}…` : "Нет активного персонажа"}
+          placeholder={placeholder}
           maxLength={4000}
           autoComplete="off"
-          disabled={!activeCharacter}
+          disabled={!canSend}
         />
-        <button className="send-button" type="submit" disabled={!activeCharacter || !draft.trim() || sending} aria-label="Отправить">
+        <button className="send-button" type="submit" disabled={!canSend || !draft.trim() || sending} aria-label="Отправить">
           <svg viewBox="0 0 24 24" fill="none"><path d="m5 12 13-7-4 14-3-5-6-2Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="m11 14 7-9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
         </button>
       </form>

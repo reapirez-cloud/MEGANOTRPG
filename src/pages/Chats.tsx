@@ -39,7 +39,7 @@ function RoomList({ title, items, onOpenRoom }: {
 
 export default function Chats({ onOpenRoom }: Props) {
   const { profile } = useAuth()
-  const { activeCharacter } = useCharacters()
+  const { activeCharacter, isGm, isOwner } = useCharacters()
   const { rooms, campaignTitle, loading, error, reload } = useRooms()
 
   const gameRooms = rooms.filter((room) => room.category === "game")
@@ -61,7 +61,19 @@ export default function Chats({ onOpenRoom }: Props) {
 
   const identity = activeCharacter
     ? `${activeCharacter.name} (${profile.display_name})`
-    : "GM ещё не назначил персонажа"
+    : isOwner
+      ? `Владелец (${profile.display_name})`
+      : isGm
+        ? `GM (${profile.display_name})`
+        : "Персонаж не назначен"
+
+  const roleAvatar = activeCharacter ?? (
+    isOwner
+      ? { name: "Владелец", avatar_url: null }
+      : isGm
+        ? { name: "GM", avatar_url: null }
+        : null
+  )
 
   return (
     <div className="page-stack">
@@ -72,7 +84,7 @@ export default function Chats({ onOpenRoom }: Props) {
         </div>
 
         <div className="assigned-character-chip">
-          <CharacterAvatar character={activeCharacter} size="small" />
+          <CharacterAvatar character={roleAvatar} size="small" />
           <span><small>В игре</small><strong>{identity}</strong></span>
         </div>
       </div>

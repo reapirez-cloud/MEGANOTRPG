@@ -31,6 +31,8 @@ export type CampaignMember = {
   is_owner: boolean
   active_character_id: string | null
   display_name: string
+  telegram_user_id: string | null
+  telegram_username: string | null
 }
 
 export type CharacterInput = {
@@ -63,6 +65,7 @@ type CharacterContextValue = {
   claimOwner: () => Promise<Result>
   claimGm: () => Promise<Result>
   setGm: (userId: string) => Promise<Result>
+  setMemberRole: (userId: string, role: "gm" | "player") => Promise<Result>
   updateCampaignTitle: (title: string) => Promise<Result>
   createCharacter: (input: CharacterInput) => Promise<Result>
   updateCharacter: (characterId: string, input: CharacterInput) => Promise<Result>
@@ -101,24 +104,31 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     setCampaignId(campaign.id)
     setCampaignTitle(campaign.title)
 
-    const [characterResult, memberResult, profileResult] = await Promise.all([
-      supabase
-        .from("characters")
-        .select(
-          "id, campaign_id, assigned_user_id, name, character_class, level, bio, avatar_url, created_at, updated_at",
-        )
-        .eq("campaign_id", campaign.id)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("campaign_members")
-        .select("campaign_id, user_id, role, is_owner, active_character_id")
-        .eq("campaign_id", campaign.id)
-        .order("created_at", { ascending: true }),
-      supabase.from("profiles").select("user_id, display_name"),
-    ])
+    const [characterResult, memberResult, profileResult, telegramResult] =
+      await Promise.all([
+        supabase
+          .from("characters")
+          .select(
+            "id, campaign_id, assigned_user_id, name, character_class, level, bio, avatar_url, created_at, updated_at",
+          )
+          .eq("campaign_id", campaign.id)
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("campaign_members")
+          .select("campaign_id, user_id, role, is_owner, active_character_id")
+          .eq("campaign_id", campaign.id)
+          .order("created_at", { ascending: true }),
+        supabase.from("profiles").select("user_id, display_name"),
+        supabase
+          .from("telegram_identities")
+          .select("user_id, telegram_user_id, username"),
+      ])
 
     const firstError =
-      characterResult.error || memberResult.error || profileResult.error
+      characterResult.error ||
+      memberResult.error ||
+      profileResult.error ||
+      telegramResult.error
 
     if (firstError) {
       setError(firstError.message)
@@ -127,18 +137,49 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     }
 
     const profileMap = new Map(
-      (profileResult.data || []).map((profile: { user_id: string; display_name: string }) => [
-        profile.user_id,
-        profile.display_name,
-      ]),
+      (profileResult.data || []).map(
+        (profile: { user_id: string; display_name: string }) => [
+          profile.user_id,
+          profile.display_name,
+        ],
+      ),
     )
 
-    const nextMembers = (memberResult.data || []).map((member: { campaign_id: string; user_id: string; role: string; is_owner: boolean; active_character_id: string | null }) => ({
-      ...member,
-      role: member.role === "gm" ? "gm" : "player",
-      is_owner: Boolean(member.is_owner),
-      display_name: profileMap.get(member.user_id) || "Игрок",
-    })) as CampaignMember[]
+    const telegramMap = new Map(
+      (telegramResult.data || []).map(
+        (identity: {
+          user_id: string
+          telegram_user_id: string | number
+          username: string | null
+        }) => [
+          identity.user_id,
+          {
+            telegram_user_id: String(identity.telegram_user_id),
+            telegram_username: identity.username || null,
+          },
+        ],
+      ),
+    )
+
+    const nextMembers = (memberResult.data || []).map(
+      (member: {
+        campaign_id: string
+        user_id: string
+        role: string
+        is_owner: boolean
+        active_character_id: string | null
+      }) => {
+        const telegram = telegramMap.get(member.user_id)
+        return {
+          ...member,
+          role: member.role === "gm" ? "gm" : "player",
+          is_owner: Boolean(member.is_owner),
+          display_name: profileMap.get(member.user_id) || "Игрок",
+          telegram_user_id: telegram?.telegram_user_id || null,
+          telegram_username: telegram?.telegram_username || null,
+        }
+      },
+    ) as CampaignMember[]
 
     setCharacters((characterResult.data || []) as Character[])
     setMembers(nextMembers)
@@ -155,10 +196,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   )
 
   const myCharacters = useMemo(
-    () =>
-      characters.filter(
-        (character) => character.assigned_user_id === user.id,
-      ),
+    () => characters.filter((character) => character.assigned_user_id === user.id),
     [characters, user.id],
   )
 
@@ -182,34 +220,35 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
 
   const claimOwner = useCallback(async (): Promise<Result> => {
     const { error: claimError } = await supabase.rpc("claim_demo_owner")
-
     if (claimError) return { ok: false, error: claimError.message }
-
     await load()
     return { ok: true }
   }, [load])
 
   const claimGm = useCallback(async (): Promise<Result> => {
     const { error: claimError } = await supabase.rpc("claim_demo_gm")
-
     if (claimError) return { ok: false, error: claimError.message }
-
     await load()
     return { ok: true }
   }, [load])
 
-  const setGm = useCallback(
-    async (userId: string): Promise<Result> => {
-      const { error: setError } = await supabase.rpc("set_demo_gm", {
+  const setMemberRole = useCallback(
+    async (userId: string, role: "gm" | "player"): Promise<Result> => {
+      const { error: roleError } = await supabase.rpc("set_demo_member_role", {
         p_user_id: userId,
+        p_role: role,
       })
 
-      if (setError) return { ok: false, error: setError.message }
-
+      if (roleError) return { ok: false, error: roleError.message }
       await load()
       return { ok: true }
     },
     [load],
+  )
+
+  const setGm = useCallback(
+    async (userId: string): Promise<Result> => setMemberRole(userId, "gm"),
+    [setMemberRole],
   )
 
   const updateCampaignTitle = useCallback(
@@ -225,7 +264,6 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         .eq("id", campaignId)
 
       if (updateError) return { ok: false, error: updateError.message }
-
       setCampaignTitle(cleaned)
       return { ok: true }
     },
@@ -260,10 +298,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.assigned_user_id) {
-        const member = members.find(
-          (item) => item.user_id === data.assigned_user_id,
-        )
-
+        const member = members.find((item) => item.user_id === data.assigned_user_id)
         if (member && !member.active_character_id) {
           await supabase
             .from("campaign_members")
@@ -302,7 +337,6 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
 
       if (oldUserId && oldUserId !== userId) {
         const oldMember = members.find((item) => item.user_id === oldUserId)
-
         if (oldMember?.active_character_id === characterId) {
           await supabase
             .from("campaign_members")
@@ -314,7 +348,6 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
 
       if (userId) {
         const newMember = members.find((item) => item.user_id === userId)
-
         if (newMember && !newMember.active_character_id) {
           await supabase
             .from("campaign_members")
@@ -372,7 +405,6 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       })
 
       if (avatarError) return { ok: false, error: avatarError.message }
-
       await load()
       return { ok: true }
     },
@@ -406,7 +438,6 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         .eq("user_id", userId)
 
       if (updateError) return { ok: false, error: updateError.message }
-
       await load()
       return { ok: true }
     },
@@ -460,6 +491,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         claimOwner,
         claimGm,
         setGm,
+        setMemberRole,
         updateCampaignTitle,
         createCharacter,
         updateCharacter,
@@ -475,10 +507,8 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
 
 export function useCharacters() {
   const value = useContext(CharacterContext)
-
   if (!value) {
     throw new Error("useCharacters must be used inside CharacterProvider")
   }
-
   return value
 }

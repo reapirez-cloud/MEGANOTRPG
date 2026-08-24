@@ -16,9 +16,6 @@ function validateTelegramInitData(initData, botToken) {
     throw new Error("Telegram hash is missing or invalid")
   }
 
-  // For bot-token HMAC validation Telegram says the data-check-string
-  // contains every received field except `hash`, sorted alphabetically.
-  // Newer clients also send `signature`; it MUST stay in this HMAC string.
   params.delete("hash")
 
   const dataCheckString = [...params.entries()]
@@ -41,7 +38,7 @@ function validateTelegramInitData(initData, botToken) {
     expectedBuffer.length !== receivedBuffer.length ||
     !timingSafeEqual(expectedBuffer, receivedBuffer)
   ) {
-    throw new Error("Telegram hash check failed")
+    throw new Error("Telegram signature check failed")
   }
 
   const authDate = Number(params.get("auth_date"))
@@ -56,9 +53,7 @@ function validateTelegramInitData(initData, botToken) {
   }
 
   const rawUser = params.get("user")
-  if (!rawUser) {
-    throw new Error("Telegram user is missing")
-  }
+  if (!rawUser) throw new Error("Telegram user is missing")
 
   let telegramUser
   try {
@@ -146,20 +141,15 @@ export default async function handler(req, res) {
 
   if (linkError || !linkData?.user || !linkData?.properties?.hashed_token) {
     console.error("Supabase generateLink failed:", linkError)
-    return json(res, 500, {
-      error: "Не удалось создать сессию игрока.",
-    })
+    return json(res, 500, { error: "Не удалось создать сессию игрока." })
   }
 
   const cleanTelegramUser = {
     id: telegramUser.id,
     first_name: telegramUser.first_name,
-    last_name:
-      typeof telegramUser.last_name === "string" ? telegramUser.last_name : null,
-    username:
-      typeof telegramUser.username === "string" ? telegramUser.username : null,
-    photo_url:
-      typeof telegramUser.photo_url === "string" ? telegramUser.photo_url : null,
+    last_name: typeof telegramUser.last_name === "string" ? telegramUser.last_name : null,
+    username: typeof telegramUser.username === "string" ? telegramUser.username : null,
+    photo_url: typeof telegramUser.photo_url === "string" ? telegramUser.photo_url : null,
   }
 
   const { error: metadataError } = await admin.auth.admin.updateUserById(
@@ -179,6 +169,28 @@ export default async function handler(req, res) {
 
   if (metadataError) {
     console.error("Supabase Telegram metadata update failed:", metadataError)
+  }
+
+  const { error: identityError } = await admin
+    .from("telegram_identities")
+    .upsert(
+      {
+        user_id: linkData.user.id,
+        telegram_user_id: cleanTelegramUser.id,
+        username: cleanTelegramUser.username,
+        first_name: cleanTelegramUser.first_name,
+        last_name: cleanTelegramUser.last_name,
+        photo_url: cleanTelegramUser.photo_url,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    )
+
+  if (identityError) {
+    console.error("Telegram identity upsert failed:", identityError)
+    return json(res, 500, {
+      error: "Telegram подтверждён, но не удалось сохранить Telegram ID игрока.",
+    })
   }
 
   return json(res, 200, {

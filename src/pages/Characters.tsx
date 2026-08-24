@@ -1,9 +1,10 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import type { FormEvent } from "react"
 
 import { useAuth } from "../context/AuthContext"
 import {
   useCharacters,
+  type CampaignMember,
   type Character,
 } from "../context/CharacterContext"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
@@ -12,7 +13,7 @@ type Props = { onOpenCharacter: (id: string) => void }
 type Editor =
   | { type: "create" }
   | { type: "edit"; character: Character }
-  | { type: "gm" }
+  | { type: "role"; member: CampaignMember }
   | null
 
 export default function Characters({ onOpenCharacter }: Props) {
@@ -23,12 +24,10 @@ export default function Characters({ onOpenCharacter }: Props) {
     myCharacters,
     canManage,
     isOwner,
-    hasOwner,
-    claimOwner,
     createCharacter,
     updateCharacter,
     setActiveForMember,
-    setGm,
+    setMemberRole,
   } = useCharacters()
 
   const [editor, setEditor] = useState<Editor>(null)
@@ -38,9 +37,21 @@ export default function Characters({ onOpenCharacter }: Props) {
   const [bio, setBio] = useState("")
   const [avatarUrl, setAvatarUrl] = useState("")
   const [assignedUserId, setAssignedUserId] = useState("")
-  const [gmUserId, setGmUserId] = useState("")
+  const [telegramIdInput, setTelegramIdInput] = useState("")
+  const [roleValue, setRoleValue] = useState<"gm" | "player">("player")
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState("")
+
+  const telegramMembers = useMemo(
+    () => members.filter((member) => Boolean(member.telegram_user_id)),
+    [members],
+  )
+
+  const telegramMatch = useMemo(() => {
+    const cleaned = telegramIdInput.trim()
+    if (!cleaned) return null
+    return members.find((member) => member.telegram_user_id === cleaned) ?? null
+  }, [members, telegramIdInput])
 
   function resetForm() {
     setName("")
@@ -49,6 +60,7 @@ export default function Characters({ onOpenCharacter }: Props) {
     setBio("")
     setAvatarUrl("")
     setAssignedUserId("")
+    setTelegramIdInput("")
     setFormError("")
   }
 
@@ -58,29 +70,31 @@ export default function Characters({ onOpenCharacter }: Props) {
   }
 
   function openEdit(character: Character) {
+    const assignedMember = character.assigned_user_id
+      ? members.find((member) => member.user_id === character.assigned_user_id)
+      : null
+
     setName(character.name)
     setCharacterClass(character.character_class)
     setLevel(String(character.level))
     setBio(character.bio)
     setAvatarUrl(character.avatar_url || "")
     setAssignedUserId(character.assigned_user_id || "")
+    setTelegramIdInput(assignedMember?.telegram_user_id || "")
     setFormError("")
     setEditor({ type: "edit", character })
   }
 
-  function openGmEditor() {
-    const currentGm = members.find((member) => member.role === "gm")
-    setGmUserId(currentGm?.user_id || "")
+  function openRoleEditor(member: CampaignMember) {
+    setRoleValue(member.role)
     setFormError("")
-    setEditor({ type: "gm" })
+    setEditor({ type: "role", member })
   }
 
-  async function becomeOwner() {
-    setSaving(true)
-    setFormError("")
-    const result = await claimOwner()
-    setSaving(false)
-    if (!result.ok) setFormError(result.error || "Не удалось назначить владельца.")
+  function selectMember(userId: string) {
+    setAssignedUserId(userId)
+    const member = members.find((item) => item.user_id === userId)
+    setTelegramIdInput(member?.telegram_user_id || "")
   }
 
   async function submitCharacter(event: FormEvent) {
@@ -99,6 +113,24 @@ export default function Characters({ onOpenCharacter }: Props) {
       return
     }
 
+    let resolvedUserId: string | null = assignedUserId || null
+    const requestedTelegramId = telegramIdInput.trim()
+
+    if (requestedTelegramId) {
+      const matchedMember = members.find(
+        (member) => member.telegram_user_id === requestedTelegramId,
+      )
+
+      if (!matchedMember) {
+        setFormError(
+          "Игрок с таким Telegram ID не найден. Он должен хотя бы один раз открыть Mini App через бота.",
+        )
+        return
+      }
+
+      resolvedUserId = matchedMember.user_id
+    }
+
     setSaving(true)
     setFormError("")
 
@@ -108,7 +140,7 @@ export default function Characters({ onOpenCharacter }: Props) {
       level: parsedLevel,
       bio,
       avatar_url: avatarUrl || null,
-      assigned_user_id: assignedUserId || null,
+      assigned_user_id: resolvedUserId,
     }
 
     const result =
@@ -126,21 +158,17 @@ export default function Characters({ onOpenCharacter }: Props) {
     setEditor(null)
   }
 
-  async function submitGm(event: FormEvent) {
+  async function submitRole(event: FormEvent) {
     event.preventDefault()
-
-    if (!gmUserId) {
-      setFormError("Выбери игрока, который будет GM.")
-      return
-    }
+    if (editor?.type !== "role") return
 
     setSaving(true)
     setFormError("")
-    const result = await setGm(gmUserId)
+    const result = await setMemberRole(editor.member.user_id, roleValue)
     setSaving(false)
 
     if (!result.ok) {
-      setFormError(result.error || "Не удалось назначить GM.")
+      setFormError(result.error || "Не удалось изменить роль.")
       return
     }
 
@@ -159,6 +187,17 @@ export default function Characters({ onOpenCharacter }: Props) {
     if (!result.ok) {
       setFormError(result.error || "Не удалось изменить активного персонажа.")
     }
+  }
+
+  function memberLabel(member: CampaignMember) {
+    if (member.is_owner) return "Владелец"
+    return member.role === "gm" ? "GM" : "Игрок"
+  }
+
+  function telegramLabel(member: CampaignMember) {
+    if (!member.telegram_user_id) return "Старый web-профиль"
+    const username = member.telegram_username ? `@${member.telegram_username} · ` : ""
+    return `${username}TG ID ${member.telegram_user_id}`
   }
 
   function renderCard(character: Character) {
@@ -189,6 +228,11 @@ export default function Characters({ onOpenCharacter }: Props) {
             <small>
               {character.character_class} · {character.level} уровень
             </small>
+            {member?.telegram_user_id && (
+              <span className="character-telegram-owner">
+                TG ID {member.telegram_user_id}
+              </span>
+            )}
             <span className="character-social-card__bio">
               {character.bio || "Пока без описания."}
             </span>
@@ -229,31 +273,14 @@ export default function Characters({ onOpenCharacter }: Props) {
   return (
     <>
       <div className="page-stack">
-        {!hasOwner && (
-          <div className="owner-bootstrap surface">
-            <div>
-              <strong>Кампания ещё без владельца</strong>
-              <p>
-                Владелец — это держатель приложения. Он не обязан быть GM, но
-                имеет те же права управления.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void becomeOwner()}
-              disabled={saving}
-            >
-              Я владелец
-            </button>
-          </div>
-        )}
-
         {isOwner && (
           <section className="section owner-control-section">
             <div className="section-head">
               <div>
-                <h3 className="section-title">Управление кампанией</h3>
-                <p className="item-meta">Владелец приложения · отдельная роль от GM</p>
+                <h3 className="section-title">Роли кампании</h3>
+                <p className="item-meta">
+                  Роль игрока и привязка персонажа теперь независимы друг от друга
+                </p>
               </div>
             </div>
 
@@ -262,9 +289,9 @@ export default function Characters({ onOpenCharacter }: Props) {
                 <span>Текущий GM</span>
                 <strong>{currentGm?.display_name || "Не назначен"}</strong>
               </div>
-              <button type="button" onClick={openGmEditor}>
-                {currentGm ? "Сменить GM" : "Назначить GM"}
-              </button>
+              <small className="owner-role-hint">
+                GM может вообще не иметь персонажа
+              </small>
             </div>
           </section>
         )}
@@ -277,16 +304,12 @@ export default function Characters({ onOpenCharacter }: Props) {
               </h3>
               <p className="item-meta">
                 {canManage
-                  ? "GM и владелец создают, прикрепляют и редактируют персонажей"
-                  : "Здесь только персонажи, заранее прикреплённые к тебе"}
+                  ? "Персонажа можно привязать к конкретному Telegram ID"
+                  : "Здесь только персонажи, прикреплённые к твоему Telegram-профилю"}
               </p>
             </div>
             {canManage && (
-              <button
-                className="section-link"
-                type="button"
-                onClick={openCreate}
-              >
+              <button className="section-link" type="button" onClick={openCreate}>
                 + Персонаж
               </button>
             )}
@@ -297,7 +320,7 @@ export default function Characters({ onOpenCharacter }: Props) {
               <div className="character-empty surface">
                 {canManage
                   ? "Персонажей пока нет."
-                  : "GM или владелец пока не прикрепил к тебе персонажа."}
+                  : "К тебе пока не прикреплён персонаж."}
               </div>
             )}
             {(canManage ? characters : myCharacters).map(renderCard)}
@@ -309,7 +332,9 @@ export default function Characters({ onOpenCharacter }: Props) {
             <div className="section-head">
               <div>
                 <h3 className="section-title">Участники</h3>
-                <p className="item-meta">Кто игрок, кто GM, кто владелец</p>
+                <p className="item-meta">
+                  Роль назначается отдельно. Telegram ID показан прямо здесь.
+                </p>
               </div>
             </div>
 
@@ -319,16 +344,22 @@ export default function Characters({ onOpenCharacter }: Props) {
                   <span className="member-role-avatar">
                     {member.display_name.slice(0, 1).toUpperCase()}
                   </span>
-                  <div>
+                  <div className="member-role-copy">
                     <strong>{member.display_name}</strong>
-                    <small>
-                      {member.is_owner
-                        ? "Владелец"
-                        : member.role === "gm"
-                          ? "GM"
-                          : "Игрок"}
-                    </small>
+                    <small>{memberLabel(member)}</small>
+                    <span className={member.telegram_user_id ? "member-telegram" : "member-telegram member-telegram--legacy"}>
+                      {telegramLabel(member)}
+                    </span>
                   </div>
+                  {isOwner && !member.is_owner && (
+                    <button
+                      className="member-role-edit"
+                      type="button"
+                      onClick={() => openRoleEditor(member)}
+                    >
+                      Роль
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -349,19 +380,13 @@ export default function Characters({ onOpenCharacter }: Props) {
             <div className="character-editor-head">
               <div>
                 <h3 className="sheet-title">
-                  {editor.type === "create"
-                    ? "Новый персонаж"
-                    : "Редактировать персонажа"}
+                  {editor.type === "create" ? "Новый персонаж" : "Редактировать персонажа"}
                 </h3>
                 <p className="sheet-copy">
-                  Эти данные меняют только GM или владелец.
+                  Роль игрока здесь не меняется. Здесь только сам персонаж и его владелец.
                 </p>
               </div>
-              <button
-                className="sheet-close"
-                type="button"
-                onClick={() => setEditor(null)}
-              >
+              <button className="sheet-close" type="button" onClick={() => setEditor(null)}>
                 ×
               </button>
             </div>
@@ -381,9 +406,7 @@ export default function Characters({ onOpenCharacter }: Props) {
 
             <div className="character-editor-grid">
               <div>
-                <label className="field-label" htmlFor="character-class">
-                  Класс / роль
-                </label>
+                <label className="field-label" htmlFor="character-class">Класс / роль</label>
                 <input
                   id="character-class"
                   className="app-input"
@@ -393,9 +416,7 @@ export default function Characters({ onOpenCharacter }: Props) {
                 />
               </div>
               <div>
-                <label className="field-label" htmlFor="character-level">
-                  Уровень
-                </label>
+                <label className="field-label" htmlFor="character-level">Уровень</label>
                 <input
                   id="character-level"
                   className="app-input"
@@ -408,42 +429,64 @@ export default function Characters({ onOpenCharacter }: Props) {
               </div>
             </div>
 
-            <label className="field-label" htmlFor="character-player">
-              Прикрепить к игроку
-            </label>
-            <select
-              id="character-player"
-              className="app-select"
-              value={assignedUserId}
-              onChange={(event) => setAssignedUserId(event.target.value)}
-            >
-              <option value="">Пока никому</option>
-              {members.map((member) => (
-                <option value={member.user_id} key={member.user_id}>
-                  {member.display_name}
-                  {member.is_owner
-                    ? " · владелец"
-                    : member.role === "gm"
-                      ? " · GM"
-                      : ""}
-                </option>
-              ))}
-            </select>
+            <div className="telegram-assignment-box">
+              <label className="field-label" htmlFor="character-telegram-id">
+                Telegram ID игрока
+              </label>
+              <input
+                id="character-telegram-id"
+                className="app-input"
+                value={telegramIdInput}
+                onChange={(event) => {
+                  setTelegramIdInput(event.target.value.replace(/\D/g, ""))
+                  setAssignedUserId("")
+                }}
+                inputMode="numeric"
+                placeholder="Например: 465441613"
+              />
 
-            <label className="field-label" htmlFor="character-avatar">
-              Аватар
-            </label>
+              {telegramIdInput && (
+                <div className={`telegram-id-match ${telegramMatch ? "telegram-id-match--ok" : "telegram-id-match--missing"}`}>
+                  {telegramMatch
+                    ? `Найден: ${telegramMatch.display_name}${telegramMatch.telegram_username ? ` (@${telegramMatch.telegram_username})` : ""}`
+                    : "Такого Telegram ID среди вошедших участников пока нет"}
+                </div>
+              )}
+
+              <label className="field-label" htmlFor="character-player">
+                Или выбрать вошедшего игрока
+              </label>
+              <select
+                id="character-player"
+                className="app-select"
+                value={assignedUserId}
+                onChange={(event) => selectMember(event.target.value)}
+              >
+                <option value="">Не привязывать</option>
+                {telegramMembers.map((member) => (
+                  <option value={member.user_id} key={member.user_id}>
+                    {member.display_name}
+                    {member.telegram_username ? ` · @${member.telegram_username}` : ""}
+                    {` · TG ${member.telegram_user_id}`}
+                  </option>
+                ))}
+              </select>
+
+              <p className="telegram-assignment-help">
+                Если игрока нет в списке, он должен один раз открыть приложение через Telegram-бота.
+              </p>
+            </div>
+
+            <label className="field-label" htmlFor="character-avatar">Аватар</label>
             <input
               id="character-avatar"
               className="app-input"
               value={avatarUrl}
               onChange={(event) => setAvatarUrl(event.target.value)}
-              placeholder="Пока ссылка; потом Storage"
+              placeholder="Пока ссылка; потом загрузка файла"
             />
 
-            <label className="field-label" htmlFor="character-bio">
-              Короткое описание
-            </label>
+            <label className="field-label" htmlFor="character-bio">Короткое описание</label>
             <textarea
               id="character-bio"
               className="app-textarea"
@@ -460,53 +503,51 @@ export default function Characters({ onOpenCharacter }: Props) {
         </div>
       )}
 
-      {editor?.type === "gm" && (
+      {editor?.type === "role" && (
         <div className="sheet-backdrop" onMouseDown={() => setEditor(null)}>
           <form
             className="bottom-sheet assignment-sheet"
-            onSubmit={submitGm}
+            onSubmit={submitRole}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="sheet-handle" />
             <div className="character-editor-head">
               <div>
-                <h3 className="sheet-title">Назначить GM</h3>
+                <h3 className="sheet-title">Роль: {editor.member.display_name}</h3>
                 <p className="sheet-copy">
-                  GM может быть только один. Старый GM автоматически станет игроком.
+                  Роль не привязывает персонажа. GM может работать вообще без персонажа.
                 </p>
               </div>
-              <button
-                className="sheet-close"
-                type="button"
-                onClick={() => setEditor(null)}
-              >
+              <button className="sheet-close" type="button" onClick={() => setEditor(null)}>
                 ×
               </button>
             </div>
 
-            <label className="field-label" htmlFor="gm-player">
-              Новый GM
-            </label>
+            {editor.member.telegram_user_id && (
+              <div className="role-telegram-card">
+                <span>{editor.member.telegram_username ? `@${editor.member.telegram_username}` : "Telegram"}</span>
+                <strong>TG ID {editor.member.telegram_user_id}</strong>
+              </div>
+            )}
+
+            <label className="field-label" htmlFor="member-role">Роль участника</label>
             <select
-              id="gm-player"
+              id="member-role"
               className="app-select"
-              value={gmUserId}
-              onChange={(event) => setGmUserId(event.target.value)}
+              value={roleValue}
+              onChange={(event) => setRoleValue(event.target.value === "gm" ? "gm" : "player")}
             >
-              <option value="">Выбрать игрока</option>
-              {members
-                .filter((member) => !member.is_owner)
-                .map((member) => (
-                  <option value={member.user_id} key={member.user_id}>
-                    {member.display_name}
-                    {member.role === "gm" ? " · текущий GM" : ""}
-                  </option>
-                ))}
+              <option value="player">Игрок</option>
+              <option value="gm">GM</option>
             </select>
+
+            <div className="auth-note">
+              В кампании остаётся один GM. Если назначить нового GM, предыдущий автоматически станет игроком. Персонажи при этом не перепривязываются.
+            </div>
 
             {formError && <div className="auth-error">{formError}</div>}
             <button className="sheet-save" type="submit" disabled={saving}>
-              {saving ? "Назначаем…" : "Назначить GM"}
+              {saving ? "Сохраняем…" : "Сохранить роль"}
             </button>
           </form>
         </div>
