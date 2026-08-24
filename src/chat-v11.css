@@ -80,3 +80,27 @@
   .room-access-toggle span{font-size:7px}
   .spell-slot-editor__grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
+
+/* v11.1 character resource controls */
+.character-resource-editor{max-height:min(88dvh,760px);overflow-y:auto}
+.resource-editor-section{margin-top:12px;padding:12px;border:1px solid #29272e;border-radius:16px;background:#151517}
+.resource-editor-section__head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.resource-editor-section__head strong{font-size:12px}
+.resource-editor-section__head small{max-width:230px;color:#77717e;font-size:8px;line-height:1.35;text-align:right}
+.resource-hp-grid{margin-top:9px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.resource-hp-grid label,.resource-slot-grid label{color:#817b87;font-size:9px}
+.resource-hp-grid .app-input,.resource-slot-grid .app-input{margin-top:5px}
+.resource-slot-grid{margin-top:9px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.resource-slot-grid label{padding:7px;border:1px solid #29272e;border-radius:11px;background:#111113}
+.resource-slot-grid label>span{display:block;color:#c4b5fd;font-weight:750}
+.resource-slot-grid label>small{display:block;margin-top:4px;color:#6f6876;font-size:8px}
+.character-resource-card{padding:11px 12px}
+.character-resource-card__head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.character-resource-card__head>div{display:flex;flex-direction:column}
+.character-resource-card__head strong{font-size:11px}
+.character-resource-card__head small{margin-top:2px;color:#77717e;font-size:8px}
+.character-slot-strip{margin-top:9px;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.character-slot-strip>span{min-width:55px;padding:7px 8px;border:1px solid #334237;border-radius:11px;background:#121b15;display:flex;flex-direction:column;align-items:center}
+.character-slot-strip small{color:#86a58e;font-size:8px}
+.character-slot-strip strong{margin-top:2px;color:#bbf7d0;font-size:11px}
+.resource-empty-note{margin-top:9px;padding:9px;border:1px dashed #3b3541;border-radius:10px;color:#7f7788;text-align:center;font-size:9px}

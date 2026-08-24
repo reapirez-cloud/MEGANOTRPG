@@ -7,6 +7,7 @@ import { useCharacterSheet } from "../hooks/useCharacterSheet"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
 import ImageUploadField from "../components/common/ImageUploadField"
 import CharacterSheetEditor from "../components/characters/CharacterSheetEditor"
+import CharacterResourcesEditor from "../components/characters/CharacterResourcesEditor"
 import InventoryItemEditor from "../components/characters/InventoryItemEditor"
 import SpellEditor from "../components/characters/SpellEditor"
 import FeatureEditor from "../components/characters/FeatureEditor"
@@ -24,6 +25,7 @@ type Tab = "diary" | "inventory" | "equipment" | "sheet" | "spells"
 type Editor =
   | { type: "avatar" }
   | { type: "sheet" }
+  | { type: "resources" }
   | { type: "inventory"; item: InventoryItem | null }
   | { type: "spell"; spell: CharacterSpell | null }
   | { type: "feature"; feature: CharacterFeature | null }
@@ -291,6 +293,7 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
             features={data.features}
             canManage={canManage}
             onEditSheet={() => setEditor({ type: "sheet" })}
+            onEditResources={() => setEditor({ type: "resources" })}
             onAddFeature={() => setEditor({ type: "feature", feature: null })}
             onEditFeature={(feature) => setEditor({ type: "feature", feature })}
           />
@@ -317,6 +320,55 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
                   <div><span>СЛ</span><strong>{sheet.spell_save_dc ?? "—"}</strong></div>
                   <div><span>Атака</span><strong>{sheet.spell_attack_bonus == null ? "—" : signed(sheet.spell_attack_bonus)}</strong></div>
                 </div>
+
+                <div className="character-resource-card surface">
+                  <div className="character-resource-card__head">
+                    <div>
+                      <strong>Ячейки</strong>
+                      <small>Осталось / максимум</small>
+                    </div>
+                    {canManage && (
+                      <button
+                        className="section-link"
+                        type="button"
+                        onClick={() => setEditor({ type: "resources" })}
+                      >
+                        ⚙ Ресурсы
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="character-slot-strip">
+                    {Array.from({ length: 9 }, (_, index) => index + 1)
+                      .map((level) => {
+                        const slot = sheet.spell_slots?.[String(level)]
+                        const max = Math.max(0, Number(slot?.max || 0))
+                        const used = Math.max(0, Number(slot?.used || 0))
+                        return {
+                          level,
+                          max,
+                          remaining: Math.max(0, max - used),
+                        }
+                      })
+                      .filter((slot) => slot.max > 0)
+                      .map((slot) => (
+                        <span key={slot.level}>
+                          <small>{slot.level} ур.</small>
+                          <strong>{slot.remaining}/{slot.max}</strong>
+                        </span>
+                      ))}
+                  </div>
+
+                  {!Object.values(sheet.spell_slots || {}).some(
+                    (slot) => Number(slot?.max || 0) > 0,
+                  ) && (
+                    <div className="resource-empty-note">
+                      Ячейки ещё не назначены.
+                      {canManage ? " Нажми «Ресурсы»." : ""}
+                    </div>
+                  )}
+                </div>
+
                 {canEditSpells && (
                   <button className="spell-disable-link" type="button" onClick={() => void data.setSpellcastingEnabled(false)}>Отключить раздел заклинаний</button>
                 )}
@@ -374,6 +426,13 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
       )}
 
       {editor?.type === "sheet" && sheet && <CharacterSheetEditor sheet={sheet} onClose={() => setEditor(null)} onSave={data.updateSheet} />}
+      {editor?.type === "resources" && sheet && (
+        <CharacterResourcesEditor
+          sheet={sheet}
+          onClose={() => setEditor(null)}
+          onSave={data.updateSheet}
+        />
+      )}
       {editor?.type === "inventory" && (
         <InventoryItemEditor
           item={editor.item}
@@ -407,6 +466,7 @@ function SheetTab({
   features,
   canManage,
   onEditSheet,
+  onEditResources,
   onAddFeature,
   onEditFeature,
 }: {
@@ -414,6 +474,7 @@ function SheetTab({
   features: CharacterFeature[]
   canManage: boolean
   onEditSheet: () => void
+  onEditResources: () => void
   onAddFeature: () => void
   onEditFeature: (feature: CharacterFeature) => void
 }) {
@@ -423,7 +484,12 @@ function SheetTab({
     <section className="character-tab-section">
       <div className="section-head">
         <div><h3 className="section-title">Лист персонажа</h3><p className="item-meta">Полный компактный D&D-лист</p></div>
-        {canManage && <button className="section-link" type="button" onClick={onEditSheet}>✎ Лист</button>}
+        {canManage && (
+          <div className="section-actions">
+            <button className="section-link" type="button" onClick={onEditResources}>♥ Ресурсы</button>
+            <button className="section-link" type="button" onClick={onEditSheet}>✎ Лист</button>
+          </div>
+        )}
       </div>
 
       <div className="sheet-identity surface">
