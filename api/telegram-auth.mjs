@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto"
 import { createClient } from "@supabase/supabase-js"
 
 const MAX_INIT_DATA_AGE_SECONDS = 24 * 60 * 60
+const FALLBACK_SUPABASE_URL = "https://msjvdnrpzuavqjcndeqj.supabase.co"
 
 function json(res, status, body) {
   res.status(status).json(body)
@@ -87,13 +88,20 @@ export default async function handler(req, res) {
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN
-  const supabaseUrl = process.env.VITE_SUPABASE_URL
+  const supabaseUrl =
+    process.env.SUPABASE_URL ||
+    process.env.VITE_SUPABASE_URL ||
+    FALLBACK_SUPABASE_URL
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY
 
-  if (!botToken || !supabaseUrl || !supabaseSecretKey) {
-    console.error("Telegram auth server environment is incomplete")
+  const missing = []
+  if (!botToken) missing.push("TELEGRAM_BOT_TOKEN")
+  if (!supabaseSecretKey) missing.push("SUPABASE_SECRET_KEY")
+
+  if (missing.length > 0) {
+    console.error("Telegram auth missing env vars:", missing.join(", "))
     return json(res, 500, {
-      error: "Сервер Telegram-авторизации ещё не настроен.",
+      error: `На Vercel не найдены переменные: ${missing.join(", ")}.`,
     })
   }
 
