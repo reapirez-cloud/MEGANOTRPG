@@ -1,32 +1,45 @@
-import { useEffect, useState } from 'react'
-import { supabase } from './lib/supabase'
+import './App.css'
 
 function App() {
-  const [message, setMessage] = useState('Проверяю подключение...')
-
-  useEffect(() => {
-    async function checkSupabase() {
-      const { data, error } = await supabase
-        .from('app_test')
-        .select('message')
-        .single()
-
-      if (error) {
-        setMessage(`Ошибка: ${error.message}`)
-        return
-      }
-
-      setMessage(data.message)
-    }
-
-    checkSupabase()
-  }, [])
-
   return (
-    <main>
-      <h1>MEGANOTRPG</h1>
-      <p>{message}</p>
-    </main>
+    <div className="app">
+      <header className="top-bar">
+        <h1>MEGANOTRPG</h1>
+        <button>⚙</button>
+      </header>
+
+      <main className="content">
+        <h2>Добро пожаловать</h2>
+        <p>Выберите раздел игры</p>
+      </main>
+
+      <nav className="bottom-nav">
+        <button>
+          💬
+          <span>Чаты</span>
+        </button>
+
+        <button>
+          👤
+          <span>Персонаж</span>
+        </button>
+
+        <button>
+          🌍
+          <span>Мир</span>
+        </button>
+
+        <button>
+          🎨
+          <span>Галерея</span>
+        </button>
+
+        <button>
+          ☰
+          <span>Ещё</span>
+        </button>
+      </nav>
+    </div>
   )
 }
 
