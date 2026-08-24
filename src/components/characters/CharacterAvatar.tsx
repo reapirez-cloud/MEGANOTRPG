@@ -5,10 +5,7 @@ type Props = {
   size?: "small" | "medium" | "large"
 }
 
-export default function CharacterAvatar({
-  character,
-  size = "medium",
-}: Props) {
+export default function CharacterAvatar({ character, size = "medium" }: Props) {
   const className = `character-avatar character-avatar--${size}`
 
   if (character?.avatar_url) {

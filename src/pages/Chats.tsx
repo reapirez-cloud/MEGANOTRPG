@@ -1,16 +1,12 @@
 import { useRooms } from "../hooks/useRooms"
-import ActiveCharacterPicker from "../components/characters/ActiveCharacterPicker"
+import { useAuth } from "../context/AuthContext"
+import { useCharacters } from "../context/CharacterContext"
+import CharacterAvatar from "../components/characters/CharacterAvatar"
 import type { ChatRoom } from "../types/chat"
 
-type Props = {
-  onOpenRoom: (id: string) => void
-}
+type Props = { onOpenRoom: (id: string) => void }
 
-function RoomList({
-  title,
-  items,
-  onOpenRoom,
-}: {
+function RoomList({ title, items, onOpenRoom }: {
   title: string
   items: ChatRoom[]
   onOpenRoom: (id: string) => void
@@ -19,27 +15,14 @@ function RoomList({
     <section className="section">
       <div className="section-head">
         <h3 className="section-title">{title}</h3>
-        {title === "Игра" && (
-          <button className="section-link" type="button" disabled>
-            + Новый
-          </button>
-        )}
+        {title === "Игра" && <button className="section-link" type="button" disabled>+ Новый</button>}
       </div>
 
       <div className="chat-section surface">
-        {items.length === 0 && (
-          <div className="empty-row">Здесь пока нет комнат</div>
-        )}
-
+        {items.length === 0 && <div className="empty-row">Здесь пока нет комнат</div>}
         {items.map((room) => (
-          <button
-            key={room.id}
-            type="button"
-            className="chat-row"
-            onClick={() => onOpenRoom(room.id)}
-          >
+          <button key={room.id} type="button" className="chat-row" onClick={() => onOpenRoom(room.id)}>
             <div className="avatar">{room.title.slice(0, 1)}</div>
-
             <div className="chat-row__content">
               <div className="chat-row__top">
                 <span className="chat-row__title">{room.title}</span>
@@ -55,18 +38,15 @@ function RoomList({
 }
 
 export default function Chats({ onOpenRoom }: Props) {
+  const { profile } = useAuth()
+  const { activeCharacter } = useCharacters()
   const { rooms, campaignTitle, loading, error, reload } = useRooms()
 
   const gameRooms = rooms.filter((room) => room.category === "game")
   const floodRooms = rooms.filter((room) => room.category === "flood")
 
   if (loading) {
-    return (
-      <div className="center-state">
-        <span className="status-spinner" />
-        <div>Загружаем комнаты…</div>
-      </div>
-    )
+    return <div className="center-state"><span className="status-spinner" /><div>Загружаем комнаты…</div></div>
   }
 
   if (error) {
@@ -74,16 +54,14 @@ export default function Chats({ onOpenRoom }: Props) {
       <div className="center-state">
         <strong>Не удалось загрузить чаты</strong>
         <span>{error}</span>
-        <button
-          type="button"
-          className="primary-mini-button"
-          onClick={() => void reload()}
-        >
-          Повторить
-        </button>
+        <button type="button" className="primary-mini-button" onClick={() => void reload()}>Повторить</button>
       </div>
     )
   }
+
+  const identity = activeCharacter
+    ? `${activeCharacter.name} (${profile.display_name})`
+    : "GM ещё не назначил персонажа"
 
   return (
     <div className="page-stack">
@@ -93,7 +71,10 @@ export default function Chats({ onOpenRoom }: Props) {
           <div className="campaign-strip__title">{campaignTitle}</div>
         </div>
 
-        <ActiveCharacterPicker compact />
+        <div className="assigned-character-chip">
+          <CharacterAvatar character={activeCharacter} size="small" />
+          <span><small>В игре</small><strong>{identity}</strong></span>
+        </div>
       </div>
 
       <RoomList title="Игра" items={gameRooms} onOpenRoom={onOpenRoom} />

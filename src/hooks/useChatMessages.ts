@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
-
 import { supabase } from "../lib/supabase"
 import type { ChatMessage } from "../types/chat"
 
 type RealtimeState = "connecting" | "live" | "offline"
-
-const fields =
-  "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at"
+const fields = "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at"
 
 export function useChatMessages(roomId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -42,33 +39,21 @@ export function useChatMessages(roomId: string) {
 
     let channel: RealtimeChannel | null = supabase
       .channel(`chat-room-${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "chat_messages",
-          filter: `room_id=eq.${roomId}`,
-        },
-        (payload) => {
-          const incoming = payload.new as ChatMessage
-
-          setMessages((current) => {
-            if (current.some((message) => message.id === incoming.id)) {
-              return current
-            }
-
-            return [...current, incoming]
-          })
-        },
-      )
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "chat_messages",
+        filter: `room_id=eq.${roomId}`,
+      }, (payload) => {
+        const incoming = payload.new as ChatMessage
+        setMessages((current) =>
+          current.some((m) => m.id === incoming.id) ? current : [...current, incoming]
+        )
+      })
       .subscribe((status) => {
         if (status === "SUBSCRIBED") setRealtime("live")
-        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          setRealtime("offline")
-        } else {
-          setRealtime("connecting")
-        }
+        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") setRealtime("offline")
+        else setRealtime("connecting")
       })
 
     return () => {
@@ -79,51 +64,32 @@ export function useChatMessages(roomId: string) {
     }
   }, [loadMessages, roomId])
 
-  const sendMessage = useCallback(
-    async (text: string) => {
-      const body = text.trim()
-      if (!body || sending) return false
+  const sendMessage = useCallback(async (text: string) => {
+    const body = text.trim()
+    if (!body || sending) return false
 
-      setSending(true)
-      setError(null)
+    setSending(true)
+    setError(null)
 
-      const { data, error: sendError } = await supabase
-        .from("chat_messages")
-        .insert({
-          room_id: roomId,
-          body,
-        })
-        .select(fields)
-        .single()
+    const { data, error: sendError } = await supabase
+      .from("chat_messages")
+      .insert({ room_id: roomId, body })
+      .select(fields)
+      .single()
 
-      setSending(false)
+    setSending(false)
 
-      if (sendError) {
-        setError(sendError.message)
-        return false
-      }
+    if (sendError) {
+      setError(sendError.message)
+      return false
+    }
 
-      const inserted = data as ChatMessage
+    const inserted = data as ChatMessage
+    setMessages((current) =>
+      current.some((m) => m.id === inserted.id) ? current : [...current, inserted]
+    )
+    return true
+  }, [roomId, sending])
 
-      setMessages((current) => {
-        if (current.some((message) => message.id === inserted.id)) {
-          return current
-        }
-
-        return [...current, inserted]
-      })
-
-      return true
-    },
-    [roomId, sending],
-  )
-
-  return {
-    messages,
-    loading,
-    sending,
-    error,
-    realtime,
-    sendMessage,
-  }
+  return { messages, loading, sending, error, realtime, sendMessage }
 }

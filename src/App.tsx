@@ -2,6 +2,7 @@ import { useState } from "react"
 import "./App.css"
 import "./auth.css"
 import "./character-system.css"
+import "./world.css"
 
 import BottomNav, { type MainTab } from "./components/app/BottomNav"
 import TopBar from "./components/app/TopBar"
@@ -21,7 +22,7 @@ type Overlay =
   | null
 
 function Workspace() {
-  const [tab, setTab] = useState<MainTab>("chats")
+  const [tab, setTab] = useState<MainTab>("world")
   const [overlay, setOverlay] = useState<Overlay>(null)
 
   function changeTab(next: MainTab) {
@@ -38,10 +39,7 @@ function Workspace() {
   if (overlay?.type === "chat") {
     return (
       <div className="app-shell">
-        <ChatRoom
-          roomId={overlay.id}
-          onBack={() => setOverlay(null)}
-        />
+        <ChatRoom roomId={overlay.id} onBack={() => setOverlay(null)} />
       </div>
     )
   }
