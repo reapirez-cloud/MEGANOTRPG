@@ -23,6 +23,7 @@ const messages: Message[] = [
   { id: 1, author: 'GM', text: 'Вы входите в древний зал. В воздухе пахнет пылью и старым камнем.', side: 'gm', time: '12:01' },
   { id: 2, author: 'Вильям Кидд', text: 'Осматриваю помещение и ищу необычные детали.', side: 'player', time: '12:03' },
   { id: 3, author: 'GM', text: '🎲 Проверка восприятия: результат 18', side: 'gm', time: '12:04' },
+  { id: 4, author: 'GM', text: 'За старой колонной обнаруживается скрытая дверь.', side: 'gm', time: '12:05' },
 ]
 
 function ChatRoom({ room, onBack, onCharacter }: Props) {
@@ -34,7 +35,7 @@ function ChatRoom({ room, onBack, onCharacter }: Props) {
         <button className="character-button" onClick={onCharacter}>Вильям Кидд</button>
       </header>
 
-      <div className="messages">
+      <main className="messages">
         {messages.map((message) => (
           <div key={message.id} className={`message ${message.side}`}>
             <div className="message-meta">
@@ -44,13 +45,13 @@ function ChatRoom({ room, onBack, onCharacter }: Props) {
             <p>{message.text}</p>
           </div>
         ))}
-      </div>
+      </main>
 
-      <div className="chat-input">
+      <footer className="chat-input">
         <button>🎲</button>
         <div>Написать сообщение...</div>
         <button>📎</button>
-      </div>
+      </footer>
     </div>
   )
 }
