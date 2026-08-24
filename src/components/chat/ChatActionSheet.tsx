@@ -173,8 +173,8 @@ export default function ChatActionSheet({
             </div>
           </div>
 
-          <div className="dice-builder">
-            <label>
+          <div className="dice-builder dice-builder--mobile">
+            <label className="dice-select-field">
               Куб
               <select
                 className="app-select"
@@ -189,37 +189,75 @@ export default function ChatActionSheet({
               </select>
             </label>
 
-            <label>
-              Кол-во
-              <input
-                className="app-input"
-                type="number"
-                min="1"
-                max="20"
-                value={dieCount}
-                onChange={(event) =>
-                  setDieCount(
-                    Math.max(1, Math.min(20, Number(event.target.value) || 1)),
-                  )
-                }
-              />
-            </label>
+            <div className="dice-step-field">
+              <span className="dice-step-field__label">Количество</span>
+              <div className="dice-stepper">
+                <button
+                  type="button"
+                  aria-label="Уменьшить количество кубиков"
+                  onClick={() => setDieCount((value) => Math.max(1, value - 1))}
+                  disabled={dieCount <= 1}
+                >
+                  −
+                </button>
+                <strong>{dieCount}</strong>
+                <button
+                  type="button"
+                  aria-label="Увеличить количество кубиков"
+                  onClick={() => setDieCount((value) => Math.min(20, value + 1))}
+                  disabled={dieCount >= 20}
+                >
+                  +
+                </button>
+              </div>
+              <div className="dice-preset-row">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    type="button"
+                    key={value}
+                    className={dieCount === value ? "dice-preset dice-preset--active" : "dice-preset"}
+                    onClick={() => setDieCount(value)}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-            <label>
-              Модификатор
-              <input
-                className="app-input"
-                type="number"
-                min="-100"
-                max="100"
-                value={modifier}
-                onChange={(event) =>
-                  setModifier(
-                    Math.max(-100, Math.min(100, Number(event.target.value) || 0)),
-                  )
-                }
-              />
-            </label>
+            <div className="dice-step-field">
+              <span className="dice-step-field__label">Модификатор</span>
+              <div className="dice-stepper">
+                <button
+                  type="button"
+                  aria-label="Уменьшить модификатор"
+                  onClick={() => setModifier((value) => Math.max(-100, value - 1))}
+                  disabled={modifier <= -100}
+                >
+                  −
+                </button>
+                <strong>{modifier > 0 ? `+${modifier}` : modifier}</strong>
+                <button
+                  type="button"
+                  aria-label="Увеличить модификатор"
+                  onClick={() => setModifier((value) => Math.min(100, value + 1))}
+                  disabled={modifier >= 100}
+                >
+                  +
+                </button>
+              </div>
+              <div className="dice-preset-row dice-preset-row--modifier">
+                {[-5, -2, -1, 0, 1, 2, 5].map((value) => (
+                  <button
+                    type="button"
+                    key={value}
+                    className={modifier === value ? "dice-preset dice-preset--active" : "dice-preset"}
+                    onClick={() => setModifier(value)}
+                  >
+                    {value > 0 ? `+${value}` : value}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <button

@@ -104,3 +104,83 @@
 .character-slot-strip small{color:#86a58e;font-size:8px}
 .character-slot-strip strong{margin-top:2px;color:#bbf7d0;font-size:11px}
 .resource-empty-note{margin-top:9px;padding:9px;border:1px dashed #3b3541;border-radius:10px;color:#7f7788;text-align:center;font-size:9px}
+
+/* v11.2 mobile dice controls */
+.dice-builder--mobile{
+  grid-template-columns:1fr;
+  gap:10px;
+}
+.dice-select-field{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+.dice-step-field{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.dice-step-field__label{
+  color:#8b8592;
+  font-size:9px;
+}
+.dice-stepper{
+  min-height:46px;
+  display:grid;
+  grid-template-columns:52px minmax(0,1fr) 52px;
+  gap:7px;
+  align-items:center;
+}
+.dice-stepper button{
+  min-height:46px;
+  border:1px solid #3a3147;
+  border-radius:12px;
+  background:#1a1620;
+  color:#ddd6fe;
+  font-size:25px;
+  line-height:1;
+  font-weight:500;
+}
+.dice-stepper button:disabled{
+  opacity:.3;
+}
+.dice-stepper strong{
+  min-height:46px;
+  border:1px solid #302b37;
+  border-radius:12px;
+  background:#101012;
+  display:grid;
+  place-items:center;
+  color:#f4f4f5;
+  font-size:16px;
+  font-variant-numeric:tabular-nums;
+}
+.dice-preset-row{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:5px;
+}
+.dice-preset-row--modifier{
+  grid-template-columns:repeat(7,minmax(0,1fr));
+}
+.dice-preset{
+  min-height:32px;
+  padding:0 4px;
+  border:1px solid #2e2934;
+  border-radius:9px;
+  background:#121214;
+  color:#8d8794;
+  font-size:9px;
+  font-weight:700;
+}
+.dice-preset--active{
+  border-color:#5c4380;
+  background:#241a31;
+  color:#ddd6fe;
+}
+@media(max-width:390px){
+  .dice-builder--mobile{grid-template-columns:1fr}
+  .dice-stepper{grid-template-columns:48px minmax(0,1fr) 48px}
+  .dice-preset-row--modifier{gap:4px}
+  .dice-preset{min-height:30px;font-size:8px}
+}
