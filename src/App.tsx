@@ -5,6 +5,7 @@ import "./character-system.css"
 import "./character-sheet.css"
 import "./character-equipment.css"
 import "./world.css"
+import "./chat-v11.css"
 
 import BottomNav, { type MainTab } from "./components/app/BottomNav"
 import TopBar from "./components/app/TopBar"
@@ -20,7 +21,7 @@ import CharacterProfile from "./pages/CharacterProfile"
 
 type Overlay =
   | { type: "chat"; id: string }
-  | { type: "character"; id: string }
+  | { type: "character"; id: string; returnRoomId?: string }
   | null
 
 function Workspace() {
@@ -41,7 +42,17 @@ function Workspace() {
   if (overlay?.type === "chat") {
     return (
       <div className="app-shell">
-        <ChatRoom roomId={overlay.id} onBack={() => setOverlay(null)} />
+        <ChatRoom
+          roomId={overlay.id}
+          onBack={() => setOverlay(null)}
+          onOpenCharacter={(characterId) =>
+            setOverlay({
+              type: "character",
+              id: characterId,
+              returnRoomId: overlay.id,
+            })
+          }
+        />
       </div>
     )
   }
@@ -51,7 +62,11 @@ function Workspace() {
       <div className="app-shell">
         <CharacterProfile
           characterId={overlay.id}
-          onBack={() => setOverlay(null)}
+          onBack={() =>
+            overlay.returnRoomId
+              ? setOverlay({ type: "chat", id: overlay.returnRoomId })
+              : setOverlay(null)
+          }
         />
       </div>
     )

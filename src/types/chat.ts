@@ -10,6 +10,15 @@ export type ChatRoom = {
   time: string
 }
 
+export type ChatRoomMember = {
+  room_id: string
+  user_id: string
+  can_read: boolean
+  can_write: boolean
+  created_at?: string
+  updated_at?: string
+}
+
 export type ChatMessage = {
   id: number
   room_id: string

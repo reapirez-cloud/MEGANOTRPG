@@ -31,6 +31,11 @@ export type EquipmentSlot =
   | "ammo"
   | "other"
 
+export type SpellSlotState = {
+  max: number
+  used: number
+}
+
 export type CharacterSheet = {
   character_id: string
   race: string
@@ -69,7 +74,7 @@ export type CharacterSheet = {
   spellcasting_ability: string | null
   spell_save_dc: number | null
   spell_attack_bonus: number | null
-  spell_slots: Record<string, { max: number; used: number }>
+  spell_slots: Record<string, SpellSlotState>
   created_at: string
   updated_at: string
 }
@@ -103,6 +108,8 @@ export type CharacterSpell = {
   concentration: boolean
   ritual: boolean
   prepared: boolean
+  cast_mode: "cantrip" | "slot"
+  slot_level: number | null
   description: string
   source: string
   sort_order: number
@@ -159,6 +166,8 @@ export type SpellInput = {
   concentration: boolean
   ritual: boolean
   prepared: boolean
+  cast_mode: "cantrip" | "slot"
+  slot_level: number | null
   description: string
   source: string
 }
