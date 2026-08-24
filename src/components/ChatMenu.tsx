@@ -1,28 +1,35 @@
 import './ChatMenu.css'
 
-function ChatMenu() {
+type Room = {
+  id: number
+  name: string
+  category: string
+}
+
+type Props = {
+  onSelectRoom: (room: Room) => void
+}
+
+const rooms: Room[] = [
+  { id: 1, name: 'Общая сцена', category: '⚔ Игра' },
+  { id: 2, name: 'Встреча в таверне', category: '⚔ Игра' },
+  { id: 3, name: 'Флуд', category: '💬 Общение' },
+  { id: 4, name: 'Локации', category: '📚 Мир' },
+]
+
+function ChatMenu({ onSelectRoom }: Props) {
   return (
     <div className="chat-menu">
       <h2>Чаты</h2>
 
-      <section>
-        <h3>💬 Общение</h3>
-        <button>Флуд</button>
-        <button>Обсуждение игры</button>
-      </section>
-
-      <section>
-        <h3>⚔ Игра</h3>
-        <button>Общая сцена</button>
-        <button>Каин + GM</button>
-        <button>Эррен + GM</button>
-      </section>
-
-      <section>
-        <h3>📚 Мир</h3>
-        <button>Локации</button>
-        <button>NPC</button>
-      </section>
+      {rooms.map((room) => (
+        <section key={room.id}>
+          <h3>{room.category}</h3>
+          <button onClick={() => onSelectRoom(room)}>
+            {room.name}
+          </button>
+        </section>
+      ))}
     </div>
   )
 }
