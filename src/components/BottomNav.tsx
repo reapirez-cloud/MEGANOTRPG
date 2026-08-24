@@ -1,22 +1,25 @@
 type Props = {
   active: string
-  onChange: (tab: string) => void
+  onChange: (value: string) => void
 }
 
-export default function BottomNav({ active, onChange }: Props) {
+export default function BottomNav({active, onChange}: Props) {
   const items = [
-    ['game', '⚔', 'Игра'],
-    ['flood', '💬', 'Флуд'],
-    ['world', '🌍', 'Мир'],
-    ['art', '🎨', 'Арт'],
+    ["🌍", "world"],
+    ["🎨", "art"],
+    ["💬", "chats"],
+    ["👥", "characters"],
   ]
 
   return (
     <nav className="bottom-nav">
-      {items.map(([id, icon, label]) => (
-        <button className={active === id ? 'active' : ''} onClick={() => onChange(id)} key={id}>
-          <span>{icon}</span>
-          <small>{label}</small>
+      {items.map(([icon, id]) => (
+        <button
+          key={id}
+          onClick={() => onChange(id)}
+          style={{opacity: active === id ? 1 : 0.6}}
+        >
+          {icon}
         </button>
       ))}
     </nav>
