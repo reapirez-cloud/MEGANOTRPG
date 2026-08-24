@@ -1,9 +1,17 @@
 import { useState } from 'react'
 import ChatMenu from './components/ChatMenu'
+import ChatRoom from './components/ChatRoom'
 import './App.css'
 
+type Room = {
+  id: number
+  name: string
+  category: string
+}
+
 function App() {
-  const [page, setPage] = useState('home')
+  const [activeTab, setActiveTab] = useState('chats')
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
 
   return (
     <div className="app">
@@ -13,42 +21,42 @@ function App() {
       </header>
 
       <main className="content">
-        {page === 'chat' && <ChatMenu />}
-
-        {page === 'home' && (
-          <>
-            <h2>Добро пожаловать</h2>
-            <p>Выберите раздел игры</p>
-          </>
+        {activeTab === 'chats' && !selectedRoom && (
+          <ChatMenu onSelectRoom={setSelectedRoom} />
         )}
 
-        {page !== 'chat' && page !== 'home' && (
-          <h2>Раздел в разработке</h2>
+        {activeTab === 'chats' && selectedRoom && (
+          <ChatRoom
+            room={selectedRoom}
+            onBack={() => setSelectedRoom(null)}
+          />
         )}
+
+        {activeTab !== 'chats' && <h2>Раздел в разработке</h2>}
       </main>
 
       <nav className="bottom-nav">
-        <button onClick={() => setPage('chat')}>
+        <button onClick={() => { setActiveTab('chats'); setSelectedRoom(null) }}>
           💬
           <span>Чаты</span>
         </button>
 
-        <button onClick={() => setPage('character')}>
+        <button onClick={() => setActiveTab('character')}>
           👤
           <span>Персонаж</span>
         </button>
 
-        <button onClick={() => setPage('world')}>
+        <button onClick={() => setActiveTab('world')}>
           🌍
           <span>Мир</span>
         </button>
 
-        <button onClick={() => setPage('gallery')}>
+        <button onClick={() => setActiveTab('gallery')}>
           🎨
           <span>Галерея</span>
         </button>
 
-        <button onClick={() => setPage('more')}>
+        <button onClick={() => setActiveTab('more')}>
           ☰
           <span>Ещё</span>
         </button>
