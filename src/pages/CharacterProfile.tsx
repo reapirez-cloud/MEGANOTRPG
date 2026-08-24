@@ -9,6 +9,7 @@ import CharacterSheetEditor from "../components/characters/CharacterSheetEditor"
 import InventoryItemEditor from "../components/characters/InventoryItemEditor"
 import SpellEditor from "../components/characters/SpellEditor"
 import FeatureEditor from "../components/characters/FeatureEditor"
+import CharacterInventory from "../components/characters/CharacterInventory"
 import type {
   CharacterFeature,
   CharacterSheet,
@@ -18,7 +19,7 @@ import type {
 } from "../types/characterSheet"
 
 type Props = { characterId: string; onBack: () => void }
-type Tab = "diary" | "inventory" | "sheet" | "spells"
+type Tab = "diary" | "inventory" | "equipment" | "sheet" | "spells"
 type Editor =
   | { type: "avatar" }
   | { type: "sheet" }
@@ -131,9 +132,10 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
   const isAssignedPlayer = currentCharacter.assigned_user_id === user.id
   const canEditAvatar = canManage || isAssignedPlayer
   const canEditSpells = canManage || isAssignedPlayer
+  const canUseInventory = canManage || isAssignedPlayer
   const canWriteDiary = canManage || isAssignedPlayer
   const sheet = data.sheet
-  const spellTabVisible = Boolean(sheet?.spellcasting_enabled || data.spells.length > 0 || canManage)
+  const spellTabVisible = Boolean(sheet?.spellcasting_enabled || data.spells.length > 0 || canEditSpells)
 
   async function saveAvatar(event: FormEvent) {
     event.preventDefault()
@@ -226,6 +228,7 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
         <nav className="profile-tabs character-sheet-tabs">
           <button className={`profile-tab ${tab === "diary" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("diary")}>Дневник</button>
           <button className={`profile-tab ${tab === "inventory" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("inventory")}>Инвентарь</button>
+          <button className={`profile-tab ${tab === "equipment" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("equipment")}>Экипировка</button>
           <button className={`profile-tab ${tab === "sheet" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("sheet")}>Лист</button>
           {spellTabVisible && <button className={`profile-tab ${tab === "spells" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("spells")}>Заклинания</button>}
         </nav>
@@ -258,32 +261,27 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
         )}
 
         {!data.loading && tab === "inventory" && (
-          <section className="character-tab-section">
-            <div className="section-head">
-              <div><h3 className="section-title">Инвентарь</h3><p className="item-meta">Предметы, снаряжение и их арты</p></div>
-              {canManage && <button className="section-link" type="button" onClick={() => setEditor({ type: "inventory", item: null })}>+ Предмет</button>}
-            </div>
+          <CharacterInventory
+            mode="inventory"
+            items={data.inventory}
+            canManage={canManage}
+            canEquip={canUseInventory}
+            onCreate={() => setEditor({ type: "inventory", item: null })}
+            onEdit={(item) => setEditor({ type: "inventory", item })}
+            onSetEquipped={data.setInventoryEquipped}
+          />
+        )}
 
-            <div className="inventory-list">
-              {data.inventory.length === 0 && <div className="character-empty surface">Инвентарь пока пуст.</div>}
-              {data.inventory.map((item) => (
-                <article className="inventory-card surface" key={item.id}>
-                  <div className="inventory-card__art">
-                    {item.image_url ? <img src={item.image_url} alt="" /> : <span>◆</span>}
-                  </div>
-                  <div className="inventory-card__body">
-                    <div className="inventory-card__top"><strong>{item.name}</strong><span>×{item.quantity}</span></div>
-                    <div className="inventory-card__meta">
-                      {item.equipped && <em>Экипировано</em>}
-                      {item.weight != null && <span>{item.weight} ф.</span>}
-                    </div>
-                    {item.description && <p>{item.description}</p>}
-                  </div>
-                  {canManage && <button className="card-edit-icon" type="button" onClick={() => setEditor({ type: "inventory", item })}>✎</button>}
-                </article>
-              ))}
-            </div>
-          </section>
+        {!data.loading && tab === "equipment" && (
+          <CharacterInventory
+            mode="equipment"
+            items={data.inventory}
+            canManage={canManage}
+            canEquip={canUseInventory}
+            onCreate={() => setEditor({ type: "inventory", item: null })}
+            onEdit={(item) => setEditor({ type: "inventory", item })}
+            onSetEquipped={data.setInventoryEquipped}
+          />
         )}
 
         {!data.loading && tab === "sheet" && sheet && (
@@ -300,19 +298,31 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
         {!data.loading && tab === "spells" && (
           <section className="character-tab-section">
             <div className="section-head">
-              <div><h3 className="section-title">Заклинания</h3><p className="item-meta">{sheet?.spellcasting_enabled ? "Список может менять сам игрок" : "Заклинания отключены в листе"}</p></div>
+              <div><h3 className="section-title">Заклинания</h3><p className="item-meta">{sheet?.spellcasting_enabled ? "Список может менять сам игрок" : "Магия сейчас отключена"}</p></div>
               {canEditSpells && sheet?.spellcasting_enabled && <button className="section-link" type="button" onClick={() => setEditor({ type: "spell", spell: null })}>+ Заклинание</button>}
             </div>
 
-            {sheet?.spellcasting_enabled && (
-              <div className="spellcasting-summary surface">
-                <div><span>Характеристика</span><strong>{sheet.spellcasting_ability || "—"}</strong></div>
-                <div><span>СЛ</span><strong>{sheet.spell_save_dc ?? "—"}</strong></div>
-                <div><span>Атака</span><strong>{sheet.spell_attack_bonus == null ? "—" : signed(sheet.spell_attack_bonus)}</strong></div>
+            {!sheet?.spellcasting_enabled && canEditSpells && (
+              <div className="spell-enable-card surface">
+                <div><strong>Персонаж использует заклинания?</strong><p>Включи раздел — существующий список не потеряется, а новые заклинания можно будет добавлять сразу.</p></div>
+                <button type="button" onClick={() => void data.setSpellcastingEnabled(true)}>Включить</button>
               </div>
             )}
 
-            {!sheet?.spellcasting_enabled && !canManage && <div className="character-empty surface">Этот персонаж не использует заклинания.</div>}
+            {sheet?.spellcasting_enabled && (
+              <>
+                <div className="spellcasting-summary surface">
+                  <div><span>Характеристика</span><strong>{sheet.spellcasting_ability || "—"}</strong></div>
+                  <div><span>СЛ</span><strong>{sheet.spell_save_dc ?? "—"}</strong></div>
+                  <div><span>Атака</span><strong>{sheet.spell_attack_bonus == null ? "—" : signed(sheet.spell_attack_bonus)}</strong></div>
+                </div>
+                {canEditSpells && (
+                  <button className="spell-disable-link" type="button" onClick={() => void data.setSpellcastingEnabled(false)}>Отключить раздел заклинаний</button>
+                )}
+              </>
+            )}
+
+            {!sheet?.spellcasting_enabled && !canEditSpells && <div className="character-empty surface">Этот персонаж не использует заклинания.</div>}
 
             {Array.from(new Set(data.spells.map((spell) => spell.spell_level))).sort((a, b) => a - b).map((level) => (
               <div className="spell-level-block" key={level}>

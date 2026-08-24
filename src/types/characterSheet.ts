@@ -1,5 +1,36 @@
 export type SkillRank = 0 | 1 | 2
 
+export type InventoryCategory =
+  | "equipment"
+  | "consumable"
+  | "tool"
+  | "book"
+  | "trinket"
+  | "quest"
+  | "material"
+  | "currency"
+  | "container"
+  | "other"
+
+export type EquipmentSlot =
+  | "main_hand"
+  | "off_hand"
+  | "two_hands"
+  | "head"
+  | "neck"
+  | "shoulders"
+  | "chest"
+  | "hands"
+  | "wrists"
+  | "waist"
+  | "legs"
+  | "feet"
+  | "back"
+  | "ring_left"
+  | "ring_right"
+  | "ammo"
+  | "other"
+
 export type CharacterSheet = {
   character_id: string
   race: string
@@ -50,6 +81,8 @@ export type InventoryItem = {
   quantity: number
   weight: number | null
   equipped: boolean
+  category: InventoryCategory
+  equipment_slot: EquipmentSlot | null
   image_url: string | null
   description: string
   sort_order: number
@@ -109,6 +142,8 @@ export type InventoryInput = {
   quantity: number
   weight: number | null
   equipped: boolean
+  category: InventoryCategory
+  equipment_slot: EquipmentSlot | null
   image_url: string | null
   description: string
 }

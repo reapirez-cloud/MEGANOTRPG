@@ -137,7 +137,9 @@ export function useCharacterSheet(characterId: string) {
           name: input.name.trim(),
           quantity: input.quantity,
           weight: input.weight,
-          equipped: input.equipped,
+          equipped: input.category === "equipment" ? input.equipped : false,
+          category: input.category,
+          equipment_slot: input.category === "equipment" ? input.equipment_slot : null,
           image_url: input.image_url?.trim() || null,
           description: input.description.trim(),
         })
@@ -157,7 +159,9 @@ export function useCharacterSheet(characterId: string) {
           name: input.name.trim(),
           quantity: input.quantity,
           weight: input.weight,
-          equipped: input.equipped,
+          equipped: input.category === "equipment" ? input.equipped : false,
+          category: input.category,
+          equipment_slot: input.category === "equipment" ? input.equipment_slot : null,
           image_url: input.image_url?.trim() || null,
           description: input.description.trim(),
           updated_at: new Date().toISOString(),
@@ -181,6 +185,45 @@ export function useCharacterSheet(characterId: string) {
         .eq("character_id", characterId)
 
       if (deleteError) return { ok: false, error: deleteError.message }
+      await load()
+      return { ok: true }
+    },
+    [characterId, load],
+  )
+
+  const setInventoryEquipped = useCallback(
+    async (
+      itemId: string,
+      equipped: boolean,
+      equipmentSlot: InventoryItem["equipment_slot"],
+    ): Promise<Result> => {
+      const { error: equipError } = await supabase.rpc(
+        "set_character_inventory_equipped",
+        {
+          p_item_id: itemId,
+          p_equipped: equipped,
+          p_equipment_slot: equipmentSlot,
+        },
+      )
+
+      if (equipError) return { ok: false, error: equipError.message }
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
+
+  const setSpellcastingEnabled = useCallback(
+    async (enabled: boolean): Promise<Result> => {
+      const { error: toggleError } = await supabase.rpc(
+        "set_character_spellcasting_enabled",
+        {
+          p_character_id: characterId,
+          p_enabled: enabled,
+        },
+      )
+
+      if (toggleError) return { ok: false, error: toggleError.message }
       await load()
       return { ok: true }
     },
@@ -349,6 +392,8 @@ export function useCharacterSheet(characterId: string) {
     addInventoryItem,
     updateInventoryItem,
     deleteInventoryItem,
+    setInventoryEquipped,
+    setSpellcastingEnabled,
     addSpell,
     updateSpell,
     deleteSpell,
