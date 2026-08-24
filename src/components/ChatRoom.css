@@ -1,0 +1,29 @@
+.chat-room {
+  width: 100%;
+  max-width: 500px;
+}
+
+.messages {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message {
+  padding: 12px;
+  border-radius: 12px;
+  background: #171722;
+}
+
+.message.player {
+  border-left: 3px solid #8b5cf6;
+}
+
+.input-placeholder {
+  margin-top: 20px;
+  padding: 15px;
+  border: 1px solid #292936;
+  border-radius: 10px;
+  color: #888;
+}
