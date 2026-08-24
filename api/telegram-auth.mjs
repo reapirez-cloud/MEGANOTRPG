@@ -16,10 +16,10 @@ function validateTelegramInitData(initData, botToken) {
     throw new Error("Telegram hash is missing or invalid")
   }
 
-  // `signature` is used for Telegram's third-party Ed25519 validation.
-  // It is not part of the bot-token HMAC data-check string.
+  // For bot-token HMAC validation Telegram says the data-check-string
+  // contains every received field except `hash`, sorted alphabetically.
+  // Newer clients also send `signature`; it MUST stay in this HMAC string.
   params.delete("hash")
-  params.delete("signature")
 
   const dataCheckString = [...params.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
@@ -41,7 +41,7 @@ function validateTelegramInitData(initData, botToken) {
     expectedBuffer.length !== receivedBuffer.length ||
     !timingSafeEqual(expectedBuffer, receivedBuffer)
   ) {
-    throw new Error("Telegram signature check failed")
+    throw new Error("Telegram hash check failed")
   }
 
   const authDate = Number(params.get("auth_date"))
@@ -136,8 +136,6 @@ export default async function handler(req, res) {
     },
   })
 
-  // Deterministic internal email: one Telegram account always maps
-  // to the same Supabase Auth user. No email is actually sent.
   const internalEmail = `tg_${telegramUser.id}@telegram.meganotrpg.invalid`
 
   const { data: linkData, error: linkError } =
@@ -164,7 +162,6 @@ export default async function handler(req, res) {
       typeof telegramUser.photo_url === "string" ? telegramUser.photo_url : null,
   }
 
-  // Useful server-verified metadata. RLS still uses the Supabase user id.
   const { error: metadataError } = await admin.auth.admin.updateUserById(
     linkData.user.id,
     {
