@@ -1,8 +1,10 @@
 import { useState } from "react"
 import "./App.css"
+import "./auth.css"
 
 import BottomNav, { type MainTab } from "./components/app/BottomNav"
 import TopBar from "./components/app/TopBar"
+import AuthGate from "./components/auth/AuthGate"
 
 import World from "./pages/World"
 import Art from "./pages/Art"
@@ -16,7 +18,7 @@ type Overlay =
   | { type: "character"; id: string }
   | null
 
-export default function App() {
+function AppContent() {
   const [tab, setTab] = useState<MainTab>("chats")
   const [overlay, setOverlay] = useState<Overlay>(null)
 
@@ -37,7 +39,6 @@ export default function App() {
         <ChatRoom
           roomId={overlay.id}
           onBack={() => setOverlay(null)}
-          onCharacter={(id) => setOverlay({ type: "character", id })}
         />
       </div>
     )
@@ -73,5 +74,13 @@ export default function App() {
 
       <BottomNav active={tab} onChange={changeTab} />
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthGate>
+      <AppContent />
+    </AuthGate>
   )
 }

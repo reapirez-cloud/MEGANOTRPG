@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { FormEvent } from "react"
+
 import { supabase } from "../lib/supabase"
-import { getDemoAuthorName } from "../lib/demoIdentity"
+import { useAuth } from "../context/AuthContext"
 import { useChatMessages } from "../hooks/useChatMessages"
 
 type Props = {
   roomId: string
   onBack: () => void
-  onCharacter: (id: string) => void
 }
 
 function formatTime(value: string) {
@@ -17,7 +17,8 @@ function formatTime(value: string) {
   }).format(new Date(value))
 }
 
-export default function ChatRoom({ roomId, onBack, onCharacter }: Props) {
+export default function ChatRoom({ roomId, onBack }: Props) {
+  const { profile } = useAuth()
   const [roomTitle, setRoomTitle] = useState("Чат")
   const [draft, setDraft] = useState("")
   const bottomRef = useRef<HTMLDivElement | null>(null)
@@ -28,7 +29,7 @@ export default function ChatRoom({ roomId, onBack, onCharacter }: Props) {
     sending,
     error,
     realtime,
-    clientId,
+    userId,
     sendMessage,
   } = useChatMessages(roomId)
 
@@ -66,9 +67,20 @@ export default function ChatRoom({ roomId, onBack, onCharacter }: Props) {
   return (
     <div className="screen">
       <header className="screen-header">
-        <button className="icon-button" type="button" onClick={onBack} aria-label="Назад">
+        <button
+          className="icon-button"
+          type="button"
+          onClick={onBack}
+          aria-label="Назад"
+        >
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="m15 5-7 7 7 7" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
+            <path
+              d="m15 5-7 7 7 7"
+              stroke="currentColor"
+              strokeWidth="1.9"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </button>
 
@@ -80,13 +92,9 @@ export default function ChatRoom({ roomId, onBack, onCharacter }: Props) {
           </div>
         </div>
 
-        <button
-          type="button"
-          className="profile-link"
-          onClick={() => onCharacter("william")}
-        >
-          {getDemoAuthorName()}
-        </button>
+        <div className="profile-link profile-link--static">
+          {profile.display_name}
+        </div>
       </header>
 
       <div className="message-list">
@@ -101,7 +109,9 @@ export default function ChatRoom({ roomId, onBack, onCharacter }: Props) {
         )}
 
         {messages.map((message) => {
-          const own = message.client_id === clientId
+          const own =
+            message.user_id === userId ||
+            (message.user_id === null && message.client_id === userId)
 
           return (
             <article
@@ -110,7 +120,9 @@ export default function ChatRoom({ roomId, onBack, onCharacter }: Props) {
             >
               <div className="message__author">{message.author_name}</div>
               <p className="message__text">{message.body}</p>
-              <div className="message__time">{formatTime(message.created_at)}</div>
+              <div className="message__time">
+                {formatTime(message.created_at)}
+              </div>
             </article>
           )
         })}
@@ -120,7 +132,11 @@ export default function ChatRoom({ roomId, onBack, onCharacter }: Props) {
       </div>
 
       <form className="composer" onSubmit={submit}>
-        <button className="icon-button composer__icon" type="button" aria-label="Бросок кубика">
+        <button
+          className="icon-button composer__icon"
+          type="button"
+          aria-label="Бросок кубика"
+        >
           ◇
         </button>
 
@@ -140,8 +156,18 @@ export default function ChatRoom({ roomId, onBack, onCharacter }: Props) {
           aria-label="Отправить"
         >
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="m5 12 13-7-4 14-3-5-6-2Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-            <path d="m11 14 7-9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <path
+              d="m5 12 13-7-4 14-3-5-6-2Z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            <path
+              d="m11 14 7-9"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
           </svg>
         </button>
       </form>

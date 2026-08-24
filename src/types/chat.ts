@@ -13,6 +13,7 @@ export type ChatRoom = {
 export type ChatMessage = {
   id: number
   room_id: string
+  user_id: string | null
   client_id: string
   author_name: string
   body: string

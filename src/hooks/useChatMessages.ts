@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
+
 import { supabase } from "../lib/supabase"
-import { getClientId, getDemoAuthorName } from "../lib/demoIdentity"
+import { useAuth } from "../context/AuthContext"
 import type { ChatMessage } from "../types/chat"
 
 type RealtimeState = "connecting" | "live" | "offline"
 
 export function useChatMessages(roomId: string) {
-  const clientId = useMemo(() => getClientId(), [])
+  const { user } = useAuth()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
@@ -20,7 +21,7 @@ export function useChatMessages(roomId: string) {
 
     const { data, error: loadError } = await supabase
       .from("chat_messages")
-      .select("id, room_id, client_id, author_name, body, created_at")
+      .select("id, room_id, user_id, client_id, author_name, body, created_at")
       .eq("room_id", roomId)
       .order("created_at", { ascending: true })
       .limit(200)
@@ -62,8 +63,11 @@ export function useChatMessages(roomId: string) {
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") setRealtime("live")
-        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") setRealtime("offline")
-        else setRealtime("connecting")
+        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setRealtime("offline")
+        } else {
+          setRealtime("connecting")
+        }
       })
 
     return () => {
@@ -86,11 +90,9 @@ export function useChatMessages(roomId: string) {
         .from("chat_messages")
         .insert({
           room_id: roomId,
-          client_id: clientId,
-          author_name: getDemoAuthorName(),
           body,
         })
-        .select("id, room_id, client_id, author_name, body, created_at")
+        .select("id, room_id, user_id, client_id, author_name, body, created_at")
         .single()
 
       setSending(false)
@@ -112,7 +114,7 @@ export function useChatMessages(roomId: string) {
 
       return true
     },
-    [clientId, roomId, sending],
+    [roomId, sending],
   )
 
   return {
@@ -121,7 +123,7 @@ export function useChatMessages(roomId: string) {
     sending,
     error,
     realtime,
-    clientId,
+    userId: user.id,
     sendMessage,
   }
 }

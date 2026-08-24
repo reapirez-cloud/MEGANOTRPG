@@ -1,6 +1,5 @@
-import { useState } from "react"
 import { useRooms } from "../hooks/useRooms"
-import { getDemoAuthorName, setDemoAuthorName } from "../lib/demoIdentity"
+import { useAuth } from "../context/AuthContext"
 import type { ChatRoom } from "../types/chat"
 
 type Props = {
@@ -56,20 +55,11 @@ function RoomList({
 }
 
 export default function Chats({ onOpenRoom }: Props) {
+  const { profile } = useAuth()
   const { rooms, campaignTitle, loading, error, reload } = useRooms()
-  const [identityOpen, setIdentityOpen] = useState(false)
-  const [name, setName] = useState(() => getDemoAuthorName())
 
   const gameRooms = rooms.filter((room) => room.category === "game")
   const floodRooms = rooms.filter((room) => room.category === "flood")
-
-  function saveIdentity() {
-    const cleaned = name.trim()
-    if (!cleaned) return
-
-    setDemoAuthorName(cleaned)
-    setIdentityOpen(false)
-  }
 
   if (loading) {
     return (
@@ -85,7 +75,11 @@ export default function Chats({ onOpenRoom }: Props) {
       <div className="center-state">
         <strong>Не удалось загрузить чаты</strong>
         <span>{error}</span>
-        <button type="button" className="primary-mini-button" onClick={() => void reload()}>
+        <button
+          type="button"
+          className="primary-mini-button"
+          onClick={() => void reload()}
+        >
           Повторить
         </button>
       </div>
@@ -93,54 +87,20 @@ export default function Chats({ onOpenRoom }: Props) {
   }
 
   return (
-    <>
-      <div className="page-stack">
-        <div className="campaign-strip">
-          <div>
-            <div className="campaign-strip__label">Кампания</div>
-            <div className="campaign-strip__title">{campaignTitle}</div>
-          </div>
-
-          <button
-            type="button"
-            className="identity-chip"
-            onClick={() => setIdentityOpen(true)}
-          >
-            Вы: {getDemoAuthorName()}
-          </button>
+    <div className="page-stack">
+      <div className="campaign-strip">
+        <div>
+          <div className="campaign-strip__label">Кампания</div>
+          <div className="campaign-strip__title">{campaignTitle}</div>
         </div>
 
-        <RoomList title="Игра" items={gameRooms} onOpenRoom={onOpenRoom} />
-        <RoomList title="Флуд" items={floodRooms} onOpenRoom={onOpenRoom} />
+        <div className="identity-chip identity-chip--static">
+          Вы: {profile.display_name}
+        </div>
       </div>
 
-      {identityOpen && (
-        <div className="sheet-backdrop" onMouseDown={() => setIdentityOpen(false)}>
-          <div className="bottom-sheet" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="sheet-handle" />
-            <h3 className="sheet-title">Тестовый профиль</h3>
-            <p className="sheet-copy">
-              Пока Telegram-вход не подключён, имя хранится только в этом браузере.
-            </p>
-
-            <label className="field-label" htmlFor="demo-name">
-              Имя в чате
-            </label>
-            <input
-              id="demo-name"
-              className="app-input"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              maxLength={80}
-              autoFocus
-            />
-
-            <button type="button" className="sheet-save" onClick={saveIdentity}>
-              Сохранить
-            </button>
-          </div>
-        </div>
-      )}
-    </>
+      <RoomList title="Игра" items={gameRooms} onOpenRoom={onOpenRoom} />
+      <RoomList title="Флуд" items={floodRooms} onOpenRoom={onOpenRoom} />
+    </div>
   )
 }
