@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
 import { useCharacterSheet } from "../hooks/useCharacterSheet"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
+import ImageUploadField from "../components/common/ImageUploadField"
 import CharacterSheetEditor from "../components/characters/CharacterSheetEditor"
 import InventoryItemEditor from "../components/characters/InventoryItemEditor"
 import SpellEditor from "../components/characters/SpellEditor"
@@ -359,9 +360,13 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
         <div className="sheet-backdrop" onMouseDown={() => setEditor(null)}>
           <form className="bottom-sheet compact-editor-sheet" onSubmit={saveAvatar} onMouseDown={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
-            <div className="character-editor-head"><div><h3 className="sheet-title">Арт персонажа</h3><p className="sheet-copy">Игрок может менять только арт своего персонажа. Пока используем ссылку; загрузку файла подключим через Storage.</p></div><button className="sheet-close" type="button" onClick={() => setEditor(null)}>×</button></div>
-            <label className="field-label">Ссылка на изображение</label>
-            <input className="app-input" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." autoFocus />
+            <div className="character-editor-head"><div><h3 className="sheet-title">Арт персонажа</h3><p className="sheet-copy">Выбери картинку прямо с телефона. После загрузки нажми «Сохранить арт».</p></div><button className="sheet-close" type="button" onClick={() => setEditor(null)}>×</button></div>
+            <ImageUploadField
+              value={avatarUrl}
+              onChange={setAvatarUrl}
+              folder="character-avatars"
+              label="Изображение персонажа"
+            />
             {avatarError && <div className="auth-error">{avatarError}</div>}
             <button className="sheet-save" type="submit" disabled={avatarSaving}>{avatarSaving ? "Сохраняем…" : "Сохранить арт"}</button>
           </form>

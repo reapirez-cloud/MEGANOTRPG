@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
+import ImageUploadField from "../common/ImageUploadField"
 
 import { equipmentSlots, inventoryCategories } from "../../lib/dndInventory"
 import type {
@@ -107,8 +108,12 @@ export default function InventoryItemEditor({ item, onClose, onSave, onDelete }:
           <label>Вес<input className="app-input" type="number" min="0" step="0.01" value={weight} onChange={(e) => setWeight(e.target.value)} /></label>
         </div>
 
-        <label className="field-label">Арт предмета</label>
-        <input className="app-input" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Ссылка на изображение" />
+        <ImageUploadField
+          value={imageUrl}
+          onChange={setImageUrl}
+          folder="items"
+          label="Арт предмета"
+        />
 
         <label className="field-label">Описание</label>
         <textarea className="app-textarea" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={3000} />

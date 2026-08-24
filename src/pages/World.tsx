@@ -780,12 +780,8 @@ export default function World() {
                   + Добавить
                 </button>
               )}
-              <button
-                className="section-link"
-                type="button"
-                onClick={() => setView({ type: "achievements" })}
-              >
-                Все
+              <button className="world-all-link" type="button" onClick={() => setView({ type: "achievements" })}>
+                Все достижения →
               </button>
             </div>
           </div>
@@ -853,12 +849,8 @@ export default function World() {
                   + Добавить
                 </button>
               )}
-              <button
-                className="section-link"
-                type="button"
-                onClick={() => setView({ type: "updates" })}
-              >
-                Все
+              <button className="world-all-link" type="button" onClick={() => setView({ type: "updates" })}>
+                Все события →
               </button>
             </div>
           </div>

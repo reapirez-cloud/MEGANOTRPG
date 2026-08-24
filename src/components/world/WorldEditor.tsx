@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
+import ImageUploadField from "../common/ImageUploadField"
 
 import type {
   CampaignMember,
@@ -517,18 +518,13 @@ export default function WorldEditor(props: Props) {
         )}
 
         {showImage && (
-          <>
-            <label className="field-label" htmlFor="world-image">
-              Арт
-            </label>
-            <input
-              id="world-image"
-              className="app-input"
-              value={imageUrl}
-              onChange={(event) => setImageUrl(event.target.value)}
-              placeholder="Пока ссылка; потом Storage"
-            />
-          </>
+          <ImageUploadField
+            value={imageUrl}
+            onChange={setImageUrl}
+            folder="locations"
+            label="Арт локации"
+            hint="Выбери изображение из галереи телефона или камеры."
+          />
         )}
 
         {showBody && (
