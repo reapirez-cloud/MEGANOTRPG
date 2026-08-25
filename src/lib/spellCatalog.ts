@@ -31,6 +31,8 @@ export type CatalogSpell = {
   check_type: string
   damage: string
   effect_summary: string
+  author_description: string
+  author_comment: string
   upcast: string
   notes: string
   rules_text: string | null
