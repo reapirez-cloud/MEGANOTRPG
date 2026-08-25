@@ -50,7 +50,7 @@ export default function Art() {
   }, [load])
 
   async function addArt(file: File | null) {
-    if (!file || !campaignId) return
+    if (!file || !campaignId || !canManage) return
     setUploading(true)
     setError("")
 
@@ -81,22 +81,6 @@ export default function Art() {
     await load()
   }
 
-  async function removeArt(item: ArtItem) {
-    setError("")
-    const { error: deleteError } = await supabase
-      .from("campaign_art_items")
-      .delete()
-      .eq("id", item.id)
-
-    if (deleteError) {
-      setError(deleteError.message)
-      return
-    }
-
-    setSelected(null)
-    await load()
-  }
-
   return (
     <>
       <div className="page-stack">
@@ -104,28 +88,36 @@ export default function Art() {
           <div className="section-head">
             <div>
               <h3 className="section-title">Галерея кампании</h3>
-              <p className="item-meta">Загружай арты прямо с телефона</p>
+              <p className="item-meta">
+                {canManage
+                  ? "Загружай арты прямо с телефона · зажми арт для действий"
+                  : "Арты кампании"}
+              </p>
             </div>
 
-            <button
-              className="section-link media-add-art"
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-            >
-              {uploading ? "Загрузка…" : "+ Добавить"}
-            </button>
-            <input
-              ref={fileRef}
-              className="media-hidden-input"
-              type="file"
-              accept="image/*"
-              onChange={(event) => {
-                const file = event.target.files?.[0] || null
-                event.currentTarget.value = ""
-                void addArt(file)
-              }}
-            />
+            {canManage && (
+              <>
+                <button
+                  className="section-link media-add-art"
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? "Загрузка…" : "+ Добавить"}
+                </button>
+                <input
+                  ref={fileRef}
+                  className="media-hidden-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] || null
+                    event.currentTarget.value = ""
+                    void addArt(file)
+                  }}
+                />
+              </>
+            )}
           </div>
 
           {error && <div className="auth-error">{error}</div>}
@@ -138,7 +130,9 @@ export default function Art() {
 
           {!loading && items.length === 0 && (
             <div className="character-empty surface">
-              Артов пока нет. Нажми «+ Добавить» и выбери картинку на телефоне.
+              {canManage
+                ? "Артов пока нет. Нажми «+ Добавить» и выбери картинку на телефоне."
+                : "Артов кампании пока нет."}
             </div>
           )}
 
@@ -170,7 +164,11 @@ export default function Art() {
             <div className="character-editor-head">
               <div>
                 <h3 className="sheet-title">{selected.title || "Арт"}</h3>
-                <p className="sheet-copy">Галерея кампании</p>
+                <p className="sheet-copy">
+                  {canManage
+                    ? "Галерея кампании · действия доступны по долгому нажатию на плитку"
+                    : "Галерея кампании"}
+                </p>
               </div>
               <button
                 className="sheet-close"
@@ -185,15 +183,6 @@ export default function Art() {
               src={selected.image_url}
               alt={selected.title}
             />
-            {(selected.uploaded_by === user.id || canManage) && (
-              <button
-                className="danger-mini-button art-delete-button"
-                type="button"
-                onClick={() => void removeArt(selected)}
-              >
-                Удалить из галереи
-              </button>
-            )}
           </div>
         </div>
       )}
