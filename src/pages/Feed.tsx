@@ -2,17 +2,25 @@ import { useMemo, useRef, useState } from "react"
 import type { FormEvent } from "react"
 
 import CampaignImage from "../components/common/CampaignImage"
+import ContextActionSheet, {
+  type ContextAction,
+} from "../components/common/ContextActionSheet"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
 import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
 import { useFeed } from "../hooks/useFeed"
 import { uploadCampaignImage } from "../lib/mediaUpload"
 import type { FeedComment, FeedItem, FeedSource } from "../types/feed"
+import { useLongPressItem } from "../hooks/useLongPressItem"
 
 type Props = {
   onOpenCharacter: (id: string) => void
   onOpenGallery: () => void
 }
+
+type FeedMenu =
+  | { type: "item"; item: FeedItem }
+  | { type: "comment"; item: FeedComment }
 
 const sourceLabels: Record<FeedSource, string> = {
   diary: "Дневник",
@@ -51,6 +59,10 @@ export default function Feed({ onOpenCharacter, onOpenGallery }: Props) {
   const [openComments, setOpenComments] = useState<string | null>(null)
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const [feedMenu, setFeedMenu] = useState<FeedMenu | null>(null)
+  const bindFeedLongPress = useLongPressItem<FeedMenu>((target) => {
+    setFeedMenu(target)
+  })
 
   const characterMap = useMemo(
     () => new Map(characters.map((character) => [character.id, character])),
@@ -137,11 +149,92 @@ export default function Feed({ onOpenCharacter, onOpenGallery }: Props) {
     setCommentDrafts((current) => ({ ...current, [itemId]: "" }))
   }
 
-  async function deleteItem(itemId: string) {
+  async function deleteItem(item: FeedItem) {
+    if (!window.confirm("Удалить эту публикацию из хроники?")) return
     setActionError("")
-    const result = await feed.deleteItem(itemId)
+    const result = await feed.deleteItem(item.id)
     setOpenMenu(null)
     if (!result.ok) setActionError(result.error || "Не удалось удалить публикацию.")
+  }
+
+  async function copyComment(comment: FeedComment) {
+    try {
+      await navigator.clipboard.writeText(comment.body)
+    } catch {
+      setActionError("Не удалось скопировать комментарий.")
+    }
+  }
+
+  function feedActions(target: FeedMenu): ContextAction[] {
+    if (target.type === "comment") {
+      const comment = target.item
+      const canDeleteComment = canManage || comment.user_id === user.id
+      return [
+        {
+          id: "copy",
+          label: "Копировать комментарий",
+          detail: "Сохранить текст в буфер обмена",
+          icon: "▣",
+          onSelect: () => copyComment(comment),
+        },
+        ...(canDeleteComment
+          ? [{
+              id: "delete",
+              label: "Удалить комментарий",
+              detail: "Комментарий исчезнет из публикации",
+              icon: "×",
+              danger: true,
+              onSelect: async () => {
+                if (!window.confirm("Удалить комментарий?")) return
+                const result = await feed.deleteComment(comment.id)
+                setOpenMenu(null)
+                if (!result.ok) setActionError(result.error || "Не удалось удалить комментарий.")
+              },
+            }]
+          : []),
+      ]
+    }
+
+    const item = target.item
+    const author = authorFor(item)
+    const canDeleteItem = canManage || item.created_by === user.id
+    return [
+      ...(author.character
+        ? [{
+            id: "character",
+            label: "Открыть персонажа",
+            detail: "Перейти к профилю автора",
+            icon: "↗",
+            onSelect: () => onOpenCharacter(author.character!.id),
+          }]
+        : []),
+      ...(item.source_type === "art"
+        ? [{
+            id: "gallery",
+            label: "Открыть галерею",
+            detail: "Посмотреть арт в общем разделе",
+            icon: "▧",
+            onSelect: onOpenGallery,
+          }]
+        : []),
+      {
+        id: "comments",
+        label: "Комментарии",
+        detail: `${item.comments.length} в этой публикации`,
+        icon: "◌",
+        onSelect: () => setOpenComments(item.id),
+      },
+      ...(canDeleteItem
+        ? [{
+            id: "delete",
+            label: "Удалить публикацию",
+            detail: "Публикация исчезнет из хроники",
+            icon: "×",
+            danger: true,
+            onSelect: () => deleteItem(item),
+          }]
+        : []),
+    ]
   }
 
   return (
@@ -191,7 +284,12 @@ export default function Feed({ onOpenCharacter, onOpenGallery }: Props) {
           const commentsOpen = openComments === item.id
 
           return (
-            <article className="feed-card surface" key={item.id}>
+            <article
+              {...bindFeedLongPress({ type: "item", item })}
+              className="feed-card surface"
+              key={item.id}
+              style={{ touchAction: "pan-y" }}
+            >
               <header className="feed-card__header">
                 <button
                   className="feed-author"
@@ -207,7 +305,7 @@ export default function Feed({ onOpenCharacter, onOpenGallery }: Props) {
                     <button className="item-menu-button" type="button" aria-label="Действия" onClick={() => setOpenMenu(openMenu === item.id ? null : item.id)}>•••</button>
                     {openMenu === item.id && (
                       <div className="item-menu-popover">
-                        <button type="button" onClick={() => void deleteItem(item.id)}>Удалить публикацию</button>
+                        <button type="button" onClick={() => void deleteItem(item)}>Удалить публикацию</button>
                       </div>
                     )}
                   </div>
@@ -236,7 +334,12 @@ export default function Feed({ onOpenCharacter, onOpenGallery }: Props) {
               {(commentsOpen || item.comments.length > 0) && (
                 <div className="feed-comments">
                   {item.comments.map((comment) => (
-                    <div className="feed-comment" key={comment.id}>
+                    <div
+                      {...bindFeedLongPress({ type: "comment", item: comment })}
+                      className="feed-comment"
+                      key={comment.id}
+                      style={{ touchAction: "pan-y" }}
+                    >
                       <p><strong>{commentAuthor(comment)}</strong> {comment.body}</p>
                       {(canManage || comment.user_id === user.id) && <button type="button" onClick={() => void feed.deleteComment(comment.id)}>Удалить</button>}
                     </div>
@@ -271,6 +374,15 @@ export default function Feed({ onOpenCharacter, onOpenGallery }: Props) {
             <div className="composer-actions"><button className="media-file-button" type="button" onClick={() => fileRef.current?.click()}>▧ Добавить фото</button><button className="sheet-save" type="submit" disabled={publishing || (!draft.trim() && !mediaFile)}>{publishing ? "Публикуем…" : "Опубликовать"}</button></div>
           </form>
         </div>
+      )}
+
+      {feedMenu && (
+        <ContextActionSheet
+          title={feedMenu.type === "item" ? authorFor(feedMenu.item).label : commentAuthor(feedMenu.item)}
+          subtitle="Долгое нажатие открывает доступные действия"
+          actions={feedActions(feedMenu)}
+          onClose={() => setFeedMenu(null)}
+        />
       )}
     </div>
   )

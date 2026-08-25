@@ -2,10 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { FormEvent } from "react"
 
 import CampaignImage from "../components/common/CampaignImage"
+import ContextActionSheet, {
+  type ContextAction,
+} from "../components/common/ContextActionSheet"
 import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
 import { uploadCampaignImage } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
+import { useLongPressItem } from "../hooks/useLongPressItem"
 
 type ArtKind = "art" | "comic" | "map" | "sketch"
 
@@ -54,6 +58,8 @@ export default function Art() {
   const [selected, setSelected] = useState<ArtItem | null>(null)
   const [selectedPage, setSelectedPage] = useState(0)
   const [composerOpen, setComposerOpen] = useState(false)
+  const [editing, setEditing] = useState<ArtItem | null>(null)
+  const [artMenu, setArtMenu] = useState<ArtItem | null>(null)
   const [kind, setKind] = useState<ArtKind>("art")
   const [title, setTitle] = useState("")
   const [caption, setCaption] = useState("")
@@ -61,6 +67,7 @@ export default function Art() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
+  const bindArtLongPress = useLongPressItem<ArtItem>((item) => setArtMenu(item))
 
   const load = useCallback(async () => {
     if (!campaignId) return
@@ -127,12 +134,16 @@ export default function Art() {
     setTitle("")
     setCaption("")
     setSelectedFiles([])
+    setEditing(null)
     setError("")
   }
 
-  function openComposer(nextKind: ArtKind = "art") {
+  function openComposer(nextKind: ArtKind = "art", item: ArtItem | null = null) {
     resetComposer()
-    setKind(nextKind)
+    setEditing(item)
+    setKind(item?.kind || nextKind)
+    setTitle(item?.title || "")
+    setCaption(item?.caption || "")
     setComposerOpen(true)
   }
 
@@ -153,6 +164,28 @@ export default function Art() {
 
   async function publish(event: FormEvent) {
     event.preventDefault()
+    if (editing) {
+      setUploading(true)
+      setError("")
+      const { error: updateError } = await supabase
+        .from("campaign_art_items")
+        .update({
+          title: title.trim() || kindLabels[editing.kind],
+          caption: caption.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editing.id)
+      setUploading(false)
+      if (updateError) {
+        setError(updateError.message)
+        return
+      }
+      setComposerOpen(false)
+      resetComposer()
+      await load()
+      return
+    }
+
     const files = kind === "comic" ? selectedFiles : selectedFiles.slice(0, 1)
     if (files.length === 0) {
       setError("Выбери хотя бы одно изображение.")
@@ -223,19 +256,66 @@ export default function Art() {
     await load()
   }
 
-  async function deleteSelected() {
-    if (!selected) return
+  function imagesFor(item: ArtItem) {
+    const comicPages = pages
+      .filter((page) => page.art_item_id === item.id)
+      .sort((a, b) => a.page_number - b.page_number)
+      .map((page) => page.image_url)
+    return comicPages.length > 0 ? comicPages : [item.image_url]
+  }
+
+  async function deleteItem(item: ArtItem) {
+    if (!window.confirm(`Удалить «${item.title || kindLabels[item.kind]}»?`)) return
     const { error: deleteError } = await supabase
       .from("campaign_art_items")
       .delete()
-      .eq("id", selected.id)
+      .eq("id", item.id)
     if (deleteError) {
       setError(deleteError.message)
       return
     }
-    await supabase.storage.from("campaign-media").remove(selectedImages)
-    setSelected(null)
+    await supabase.storage.from("campaign-media").remove(imagesFor(item))
+    if (selected?.id === item.id) setSelected(null)
     await load()
+  }
+
+  async function deleteSelected() {
+    if (selected) await deleteItem(selected)
+  }
+
+  function canEdit(item: ArtItem) {
+    return canManage || item.uploaded_by === user.id
+  }
+
+  function artActions(item: ArtItem): ContextAction[] {
+    return [
+      {
+        id: "open",
+        label: "Открыть",
+        detail: item.kind === "comic" ? "Читать комикс по страницам" : "Посмотреть изображение",
+        icon: "↗",
+        onSelect: () => openViewer(item),
+      },
+      ...(canEdit(item)
+        ? [
+            {
+              id: "edit",
+              label: "Редактировать",
+              detail: "Изменить название и подпись",
+              icon: "✎",
+              onSelect: () => openComposer(item.kind, item),
+            },
+            {
+              id: "delete",
+              label: "Удалить публикацию",
+              detail: "Изображения и страницы комикса будут удалены",
+              icon: "×",
+              danger: true,
+              onSelect: () => deleteItem(item),
+            },
+          ]
+        : []),
+    ]
   }
 
   return (
@@ -290,7 +370,14 @@ export default function Art() {
             {visibleItems.map((art) => {
               const pageCount = pages.filter((page) => page.art_item_id === art.id).length
               return (
-                <button type="button" className={`art-library-card art-library-card--${art.kind}`} key={art.id} onClick={() => openViewer(art)}>
+                <button
+                  {...bindArtLongPress(art)}
+                  type="button"
+                  className={`art-library-card art-library-card--${art.kind}`}
+                  key={art.id}
+                  onClick={() => openViewer(art)}
+                  style={{ touchAction: "pan-y" }}
+                >
                   <CampaignImage value={art.image_url} alt={art.title} loading="lazy" />
                   <span className="art-library-card__shade" />
                   <span className="art-library-card__kind">{kindLabels[art.kind]}</span>
@@ -308,27 +395,27 @@ export default function Art() {
           <form className="bottom-sheet art-composer-sheet" onSubmit={publish} onMouseDown={(event) => event.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="character-editor-head">
-              <div><h3 className="sheet-title">Новая публикация</h3><p className="sheet-copy">Комикс можно загрузить сразу несколькими страницами в нужном порядке.</p></div>
+              <div><h3 className="sheet-title">{editing ? "Редактировать публикацию" : "Новая публикация"}</h3><p className="sheet-copy">{editing ? "Можно изменить название и подпись." : "Комикс можно загрузить сразу несколькими страницами в нужном порядке."}</p></div>
               <button className="sheet-close" type="button" onClick={() => setComposerOpen(false)}>×</button>
             </div>
 
-            <div className="art-kind-switch">
+            {!editing && <div className="art-kind-switch">
               {filters.slice(1).map((item) => (
                 <button type="button" key={item.id} className={kind === item.id ? "active" : ""} onClick={() => setKind(item.id as ArtKind)}>{item.label}</button>
               ))}
-            </div>
+            </div>}
 
             <label className="field-label">Название</label>
             <input className="app-input" value={title} onChange={(event) => setTitle(event.target.value)} placeholder={kindLabels[kind]} maxLength={160} />
             <label className="field-label">Подпись</label>
             <textarea className="app-textarea" value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Автор, сцена или короткий комментарий" maxLength={1200} />
 
-            <button className="art-file-picker" type="button" onClick={() => fileRef.current?.click()}>
+            {!editing && <button className="art-file-picker" type="button" onClick={() => fileRef.current?.click()}>
               <span>{kind === "comic" ? "▥" : "▧"}</span>
               <strong>{selectedFiles.length > 0 ? `${selectedFiles.length} файл(ов) выбрано` : kind === "comic" ? "Выбрать страницы комикса" : "Выбрать изображение"}</strong>
               <small>{kind === "comic" ? "Порядок страниц можно поменять ниже" : "JPG, PNG, WEBP, GIF до 20 МБ"}</small>
-            </button>
-            <input
+            </button>}
+            {!editing && <input
               ref={fileRef}
               className="media-hidden-input"
               type="file"
@@ -338,7 +425,7 @@ export default function Art() {
                 setSelectedFiles(Array.from(event.currentTarget.files || []))
                 event.currentTarget.value = ""
               }}
-            />
+            />}
 
             {selectedFiles.length > 0 && (
               <ol className="art-selected-files">
@@ -359,7 +446,7 @@ export default function Art() {
             )}
 
             {error && <div className="auth-error">{error}</div>}
-            <button className="sheet-save" type="submit" disabled={uploading || selectedFiles.length === 0}>{uploading ? "Загружаем…" : "Опубликовать"}</button>
+            <button className="sheet-save" type="submit" disabled={uploading || (!editing && selectedFiles.length === 0)}>{uploading ? "Сохраняем…" : editing ? "Сохранить" : "Опубликовать"}</button>
           </form>
         </div>
       )}
@@ -369,7 +456,7 @@ export default function Art() {
           <header>
             <button type="button" onClick={() => setSelected(null)} aria-label="Закрыть">←</button>
             <div><strong>{selected.title || kindLabels[selected.kind]}</strong><small>{kindLabels[selected.kind]}{selectedImages.length > 1 ? ` · ${selectedPage + 1}/${selectedImages.length}` : ""}</small></div>
-            <span />
+            {canEdit(selected) ? <button type="button" onClick={() => openComposer(selected.kind, selected)} aria-label="Редактировать">•••</button> : <span />}
           </header>
           <div className="art-lightbox__stage">
             <CampaignImage value={selectedImages[selectedPage] || selected.image_url} alt={`${selected.title}, страница ${selectedPage + 1}`} />
@@ -386,6 +473,15 @@ export default function Art() {
             {(canManage || selected.uploaded_by === user.id) && <button className="danger-mini-button" type="button" onClick={() => void deleteSelected()}>Удалить публикацию</button>}
           </footer>
         </div>
+      )}
+
+      {artMenu && (
+        <ContextActionSheet
+          title={artMenu.title || kindLabels[artMenu.kind]}
+          subtitle="Долгое нажатие открывает действия с публикацией"
+          actions={artActions(artMenu)}
+          onClose={() => setArtMenu(null)}
+        />
       )}
     </>
   )

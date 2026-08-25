@@ -16,6 +16,10 @@ import type {
   InventoryItem,
 } from "../../types/characterSheet"
 import CampaignImage from "../common/CampaignImage"
+import ContextActionSheet, {
+  type ContextAction,
+} from "../common/ContextActionSheet"
+import { useLongPressItem } from "../../hooks/useLongPressItem"
 
 type Result = Promise<{ ok: boolean; error?: string }>
 
@@ -26,6 +30,7 @@ type Props = {
   canEquip: boolean
   onCreate: () => void
   onEdit: (item: InventoryItem) => void
+  onDelete: (itemId: string) => Result
   onSetEquipped: (
     itemId: string,
     equipped: boolean,
@@ -40,10 +45,82 @@ export default function CharacterInventory({
   canEquip,
   onCreate,
   onEdit,
+  onDelete,
   onSetEquipped,
 }: Props) {
   const [filter, setFilter] = useState<"all" | InventoryCategory>("all")
   const [detail, setDetail] = useState<InventoryItem | null>(null)
+  const [itemMenu, setItemMenu] = useState<InventoryItem | null>(null)
+  const [actionError, setActionError] = useState("")
+  const bindItemLongPress = useLongPressItem<InventoryItem>((item) => {
+    setItemMenu(item)
+  })
+
+  async function quickEquip(item: InventoryItem) {
+    setActionError("")
+    const result = await onSetEquipped(
+      item.id,
+      !item.equipped,
+      item.equipped ? item.equipment_slot : item.equipment_slot || "main_hand",
+    )
+    if (!result.ok) setActionError(result.error || "Не удалось изменить экипировку.")
+  }
+
+  async function removeItem(item: InventoryItem) {
+    if (!window.confirm(`Удалить предмет «${item.name}»?`)) return
+    setActionError("")
+    const result = await onDelete(item.id)
+    if (!result.ok) setActionError(result.error || "Не удалось удалить предмет.")
+  }
+
+  function itemActions(item: InventoryItem): ContextAction[] {
+    return [
+      {
+        id: "open",
+        label: "Открыть предмет",
+        detail: "Описание, количество, вес и состояние",
+        icon: "↗",
+        onSelect: () => setDetail(item),
+      },
+      ...(item.category === "equipment" && canEquip
+        ? [{
+            id: "equip",
+            label: item.equipped ? "Снять" : "Надеть",
+            detail: item.equipped ? "Вернуть предмет в инвентарь" : "Использовать назначенный слот",
+            icon: item.equipped ? "↓" : "↑",
+            onSelect: () => quickEquip(item),
+          }]
+        : []),
+      ...(canManage
+        ? [
+            {
+              id: "edit",
+              label: "Редактировать",
+              detail: "Название, тег, количество, арт и описание",
+              icon: "✎",
+              onSelect: () => onEdit(item),
+            },
+            {
+              id: "delete",
+              label: "Удалить предмет",
+              detail: "Предмет исчезнет из инвентаря",
+              icon: "×",
+              danger: true,
+              onSelect: () => removeItem(item),
+            },
+          ]
+        : []),
+    ]
+  }
+
+  const itemActionNode = itemMenu ? (
+    <ContextActionSheet
+      title={itemMenu.name}
+      subtitle="Долгое нажатие открывает действия с предметом"
+      actions={itemActions(itemMenu)}
+      onClose={() => setItemMenu(null)}
+    />
+  ) : null
 
   const sorted = useMemo(
     () => [...items].sort((a, b) => {
@@ -72,6 +149,7 @@ export default function CharacterInventory({
       .sort((a, b) => slotOrder(a.equipment_slot) - slotOrder(b.equipment_slot))
 
     return (
+      <>
       <section className="character-tab-section">
         <div className="section-head">
           <div>
@@ -85,11 +163,13 @@ export default function CharacterInventory({
             const item = equipped.find((entry) => entry.equipment_slot === slot.value)
             return (
               <button
+                {...(item ? bindItemLongPress(item) : {})}
                 className={`equipment-slot-row ${item ? "equipment-slot-row--filled" : ""}`}
                 type="button"
                 key={slot.value}
                 onClick={() => item && setDetail(item)}
                 disabled={!item}
+                style={{ touchAction: "pan-y" }}
               >
                 <span className="equipment-slot-row__slot">{slot.label}</span>
                 {item ? (
@@ -114,6 +194,8 @@ export default function CharacterInventory({
           <div className="character-empty surface">Пока ничего не надето. Открой предмет в инвентаре и нажми «Надеть».</div>
         )}
 
+        {actionError && <div className="auth-error">{actionError}</div>}
+
         {detail && (
           <InventoryDetail
             item={detail}
@@ -125,6 +207,8 @@ export default function CharacterInventory({
           />
         )}
       </section>
+      {itemActionNode}
+      </>
     )
   }
 
@@ -171,7 +255,12 @@ export default function CharacterInventory({
         )}
 
         {filtered.map((item) => (
-          <article className="inventory-card surface inventory-card--interactive" key={item.id}>
+          <article
+            {...bindItemLongPress(item)}
+            className="inventory-card surface inventory-card--interactive"
+            key={item.id}
+            style={{ touchAction: "pan-y" }}
+          >
             <button className="inventory-card__open" type="button" onClick={() => setDetail(item)}>
               <span className="inventory-card__art">
                 {item.image_url ? <CampaignImage value={item.image_url} alt="" /> : <span>◆</span>}
@@ -199,6 +288,8 @@ export default function CharacterInventory({
         ))}
       </div>
 
+      {actionError && <div className="auth-error">{actionError}</div>}
+
       {detail && (
         <InventoryDetail
           item={detail}
@@ -209,6 +300,7 @@ export default function CharacterInventory({
           onSetEquipped={onSetEquipped}
         />
       )}
+      {itemActionNode}
     </section>
   )
 }

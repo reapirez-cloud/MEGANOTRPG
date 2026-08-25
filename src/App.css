@@ -762,3 +762,79 @@ button { color: inherit; }
     border-right: 1px solid #1f1f23;
   }
 }
+.context-action-sheet {
+  max-height: min(78dvh, 620px);
+  overflow-y: auto;
+}
+
+.context-action-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.context-action {
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid #2d2933;
+  border-radius: 14px;
+  background: #141416;
+  color: #e4e4e7;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+}
+
+.context-action:disabled {
+  opacity: 0.42;
+}
+
+.context-action__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #c084fc;
+  background: rgba(126, 34, 206, 0.16);
+  font-size: 15px;
+}
+
+.context-action__copy {
+  min-width: 0;
+}
+
+.context-action__copy strong,
+.context-action__copy small {
+  display: block;
+}
+
+.context-action__copy strong {
+  font-size: 13px;
+}
+
+.context-action__copy small {
+  margin-top: 3px;
+  color: #85808b;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.context-action__chevron {
+  color: #68616f;
+  font-size: 20px;
+}
+
+.context-action--danger {
+  border-color: #4b292d;
+  background: #1a1214;
+  color: #fecaca;
+}
+
+.context-action--danger .context-action__icon {
+  color: #fca5a5;
+  background: rgba(127, 29, 29, 0.2);
+}
