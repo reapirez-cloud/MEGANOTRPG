@@ -6,9 +6,11 @@ import "./character-sheet.css"
 import "./character-equipment.css"
 import "./world.css"
 import "./chat-v11.css"
+import "./global-actions.css"
 
 import BottomNav, { type MainTab } from "./components/app/BottomNav"
 import TopBar from "./components/app/TopBar"
+import GlobalLongPressActions from "./components/app/GlobalLongPressActions"
 import AuthGate from "./components/auth/AuthGate"
 import { CharacterProvider } from "./context/CharacterContext"
 
@@ -89,6 +91,7 @@ function Workspace() {
         )}
       </main>
 
+      <GlobalLongPressActions activeTab={tab} />
       <BottomNav active={tab} onChange={changeTab} />
     </div>
   )
