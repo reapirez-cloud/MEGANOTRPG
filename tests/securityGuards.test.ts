@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises"
 import test from "node:test"
 
 const permissionMigrationPath = new URL(
-  "../supabase/migrations/20260825121500_private_gm_content_and_character_assignment.sql",
+  "../supabase/migrations/20260825104504_private_gm_content_and_character_assignment.sql",
   import.meta.url,
 )
 const auditMigrationPath = new URL(
