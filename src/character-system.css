@@ -18,6 +18,7 @@
 .character-social-card__chevron{color:#54545d;font-size:22px}
 .gm-character-actions{min-height:38px;padding:5px 7px;border-top:1px solid #252529;display:flex;gap:6px;background:#111113}
 .gm-character-actions button{min-height:30px;padding:0 10px;border:1px solid #2d2933;border-radius:10px;background:#18171b;color:#c4b5fd;font-size:9px;font-weight:750}
+.character-card-menu-button{width:100%;min-height:34px;border:0;border-top:1px solid #252529;background:#111113;color:#a78bfa;font-size:14px;font-weight:800;letter-spacing:.12em}
 .player-character-note{padding:8px 12px;border-top:1px solid #252529;color:#7f7887;font-size:9px}
 .character-empty{padding:18px 14px;color:#71717a;text-align:center;font-size:11px}
 .gm-bootstrap{padding:13px;display:flex;align-items:center;gap:12px;justify-content:space-between;border-color:#4b3524;background:#17130f}

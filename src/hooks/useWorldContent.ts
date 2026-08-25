@@ -14,6 +14,14 @@ import type {
 } from "../types/world"
 
 type Result = { ok: boolean; error?: string }
+type WorldTable =
+  | "world_sections"
+  | "world_articles"
+  | "locations"
+  | "location_sections"
+  | "location_links"
+  | "achievements"
+  | "campaign_updates"
 
 function makeSlug(title: string) {
   const base = title
@@ -427,6 +435,20 @@ export function useWorldContent() {
     [load],
   )
 
+  const deleteWorldItem = useCallback(
+    async (table: WorldTable, id: string): Promise<Result> => {
+      const { error: deleteError } = await supabase
+        .from(table)
+        .delete()
+        .eq("id", id)
+
+      if (deleteError) return { ok: false, error: deleteError.message }
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
+
   return {
     sections,
     articles,
@@ -452,5 +474,6 @@ export function useWorldContent() {
     updateAchievement,
     createUpdate,
     updateUpdate,
+    deleteWorldItem,
   }
 }

@@ -2,13 +2,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { FormEvent } from "react"
 
 import CharacterAvatar from "../components/characters/CharacterAvatar"
+import ContextActionSheet, {
+  type ContextAction,
+} from "../components/common/ContextActionSheet"
 import ImageUploadField from "../components/common/ImageUploadField"
 import { useAuth } from "../context/AuthContext"
-import { useCharacters } from "../context/CharacterContext"
+import {
+  useCharacters,
+  type Character,
+} from "../context/CharacterContext"
+import { useLongPressItem } from "../hooks/useLongPressItem"
 import { useRooms } from "../hooks/useRooms"
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
 import { uploadCampaignFile } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
+import type { ChatRoom } from "../types/chat"
 
 type Props = {
   onOpenCharacter: (id: string) => void
@@ -57,9 +65,16 @@ type NpcNote = {
 type Dialog =
   | { type: "profile" }
   | { type: "npc" }
-  | { type: "folder" }
+  | { type: "folder"; folder: WorkspaceFolder | null }
   | { type: "note"; file: WorkspaceFile | null }
+  | { type: "room"; room: ChatRoom }
   | null
+
+type WorkspaceMenu =
+  | { type: "npc"; item: Character }
+  | { type: "folder"; item: WorkspaceFolder }
+  | { type: "file"; item: WorkspaceFile }
+  | { type: "room"; item: ChatRoom }
 
 const tabs: Array<{ id: WorkspaceTab; label: string; icon: string }> = [
   { id: "desk", label: "Пульт", icon: "✦" },
@@ -106,6 +121,7 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
     characters,
     isOwner,
     createCharacter,
+    deleteCharacter,
   } = useCharacters()
   const rooms = useRooms()
   const uploadRef = useRef<HTMLInputElement | null>(null)
@@ -118,6 +134,7 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
   const [activeNpcNote, setActiveNpcNote] = useState<string | null>(null)
   const [selectedFolder, setSelectedFolder] = useState("all")
   const [dialog, setDialog] = useState<Dialog>(null)
+  const [workspaceMenu, setWorkspaceMenu] = useState<WorkspaceMenu | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -134,6 +151,9 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
   const [noteTitle, setNoteTitle] = useState("")
   const [noteBody, setNoteBody] = useState("")
   const [roomTitle, setRoomTitle] = useState("")
+  const bindWorkspaceLongPress = useLongPressItem<WorkspaceMenu>((item) => {
+    setWorkspaceMenu(item)
+  })
 
   const npcs = useMemo(
     () => characters.filter((character) => character.character_type === "npc"),
@@ -179,7 +199,8 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
       supabase
         .from("gm_npc_notes")
         .select("character_id, body")
-        .eq("campaign_id", campaignId),
+        .eq("campaign_id", campaignId)
+        .eq("workspace_user_id", user.id),
     ])
 
     const firstError =
@@ -226,10 +247,10 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
     setDialog({ type: "npc" })
   }
 
-  function openFolderEditor() {
+  function openFolderEditor(folder: WorkspaceFolder | null = null) {
     setError("")
-    setFolderName("")
-    setDialog({ type: "folder" })
+    setFolderName(folder?.name || "")
+    setDialog({ type: "folder", folder })
   }
 
   function openNoteEditor(file: WorkspaceFile | null = null) {
@@ -287,16 +308,22 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
     setTab("npcs")
   }
 
-  async function createFolder(event: FormEvent) {
+  async function saveFolder(event: FormEvent) {
     event.preventDefault()
-    if (!folderName.trim()) return
+    if (!folderName.trim() || dialog?.type !== "folder") return
     setSaving(true)
     setError("")
-    const { error: saveError } = await supabase.from("gm_workspace_folders").insert({
-      campaign_id: campaignId,
-      workspace_user_id: user.id,
-      name: folderName.trim(),
-    })
+    const query = dialog.folder
+      ? supabase
+          .from("gm_workspace_folders")
+          .update({ name: folderName.trim(), updated_at: new Date().toISOString() })
+          .eq("id", dialog.folder.id)
+      : supabase.from("gm_workspace_folders").insert({
+          campaign_id: campaignId,
+          workspace_user_id: user.id,
+          name: folderName.trim(),
+        })
+    const { error: saveError } = await query
     setSaving(false)
     if (saveError) {
       setError(saveError.message)
@@ -375,11 +402,12 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
       {
         character_id: characterId,
         campaign_id: campaignId,
+        workspace_user_id: user.id,
         body: npcNotes[characterId]?.trim() || "",
         updated_by: user.id,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "character_id" },
+      { onConflict: "character_id,workspace_user_id" },
     )
     setSaving(false)
     if (saveError) setError(saveError.message)
@@ -430,6 +458,154 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
     }
     setRoomTitle("")
     if (result.id) onOpenRoom(result.id)
+  }
+
+  async function saveRoom(event: FormEvent) {
+    event.preventDefault()
+    if (dialog?.type !== "room" || !roomTitle.trim()) return
+    setSaving(true)
+    setError("")
+    const result = await rooms.renameRoom(dialog.room.id, roomTitle)
+    setSaving(false)
+    if (!result.ok) {
+      setError(result.error || "Не удалось переименовать чат.")
+      return
+    }
+    setDialog(null)
+  }
+
+  async function removeNpc(npc: Character) {
+    if (!window.confirm(`Удалить NPC «${npc.name}» и все связанные данные?`)) return
+    const result = await deleteCharacter(npc.id)
+    if (!result.ok) setError(result.error || "Не удалось удалить NPC.")
+  }
+
+  async function removeRoom(room: ChatRoom) {
+    if (!window.confirm(`Удалить чат «${room.title}» вместе с сообщениями?`)) return
+    const result = await rooms.deleteRoom(room.id)
+    if (!result.ok) setError(result.error || "Не удалось удалить чат.")
+  }
+
+  function workspaceActions(target: WorkspaceMenu): ContextAction[] {
+    if (target.type === "npc") {
+      const npc = target.item
+      return [
+        {
+          id: "open",
+          label: "Открыть NPC",
+          detail: "Профиль, лист и игровые данные",
+          icon: "↗",
+          onSelect: () => onOpenCharacter(npc.id),
+        },
+        {
+          id: "note",
+          label: "Секретная заметка",
+          detail: "Эту заметку видишь только ты",
+          icon: "✎",
+          onSelect: () => {
+            setTab("npcs")
+            setActiveNpcNote(npc.id)
+          },
+        },
+        {
+          id: "delete",
+          label: "Удалить NPC",
+          detail: "NPC и связанные игровые данные будут удалены",
+          icon: "×",
+          danger: true,
+          onSelect: () => removeNpc(npc),
+        },
+      ]
+    }
+
+    if (target.type === "folder") {
+      const folder = target.item
+      return [
+        {
+          id: "open",
+          label: "Открыть папку",
+          detail: "Показать материалы внутри",
+          icon: "▤",
+          onSelect: () => {
+            setTab("files")
+            setSelectedFolder(folder.id)
+          },
+        },
+        {
+          id: "rename",
+          label: "Переименовать",
+          detail: "Изменить название папки",
+          icon: "✎",
+          onSelect: () => openFolderEditor(folder),
+        },
+        {
+          id: "delete",
+          label: "Удалить папку",
+          detail: "Материалы останутся без папки",
+          icon: "×",
+          danger: true,
+          onSelect: () => removeFolder(folder),
+        },
+      ]
+    }
+
+    if (target.type === "file") {
+      const file = target.item
+      return [
+        ...(file.kind === "note"
+          ? [{
+              id: "edit",
+              label: "Редактировать заметку",
+              detail: "Изменить заголовок и содержание",
+              icon: "✎",
+              onSelect: () => openNoteEditor(file),
+            }]
+          : []),
+        {
+          id: "delete",
+          label: file.kind === "note" ? "Удалить заметку" : "Удалить файл",
+          detail: "Удаление нельзя будет отменить",
+          icon: "×",
+          danger: true,
+          onSelect: () => removeFile(file),
+        },
+      ]
+    }
+
+    const room = target.item
+    return [
+      {
+        id: "open",
+        label: "Открыть чат",
+        detail: "Перейти к игровой сцене",
+        icon: "↗",
+        onSelect: () => onOpenRoom(room.id),
+      },
+      {
+        id: "rename",
+        label: "Переименовать",
+        detail: "Изменить название игровой сцены",
+        icon: "✎",
+        onSelect: () => {
+          setRoomTitle(room.title)
+          setDialog({ type: "room", room })
+        },
+      },
+      {
+        id: "delete",
+        label: "Удалить чат",
+        detail: "Комната и её сообщения будут удалены",
+        icon: "×",
+        danger: true,
+        onSelect: () => removeRoom(room),
+      },
+    ]
+  }
+
+  function workspaceMenuTitle(target: WorkspaceMenu) {
+    if (target.type === "npc") return target.item.name
+    if (target.type === "folder") return target.item.name
+    return target.item.title
   }
 
   if (loading) {
@@ -502,7 +678,13 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
               <div className="section-head"><div><h3 className="section-title">Под рукой</h3><p className="item-meta">Последние наработки и сцены</p></div></div>
               <div className="gm-recent-list surface">
                 {files.slice(0, 3).map((file) => (
-                  <button key={file.id} type="button" onClick={() => { setTab("files"); if (file.kind === "note") openNoteEditor(file) }}>
+                  <button
+                    {...bindWorkspaceLongPress({ type: "file", item: file })}
+                    key={file.id}
+                    type="button"
+                    onClick={() => { setTab("files"); if (file.kind === "note") openNoteEditor(file) }}
+                    style={{ touchAction: "pan-y" }}
+                  >
                     <span>{file.kind === "note" ? "✎" : "▧"}</span>
                     <span><strong>{file.title}</strong><small>{formatUpdated(file.updated_at)}</small></span>
                     <em>›</em>
@@ -522,10 +704,15 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
             </div>
             <div className="gm-npc-list">
               {npcs.map((npc) => (
-                <article className="gm-npc-card surface" key={npc.id}>
+                <article
+                  {...bindWorkspaceLongPress({ type: "npc", item: npc })}
+                  className="gm-npc-card surface"
+                  key={npc.id}
+                  style={{ touchAction: "pan-y" }}
+                >
                   <button className="gm-npc-card__main" type="button" onClick={() => onOpenCharacter(npc.id)}>
                     <CharacterAvatar character={npc} size="large" />
-                    <span><strong>{npc.name}</strong><small>{npc.character_class} · {npc.visibility === "private" ? "скрыт" : "виден игрокам"}</small><p>{npc.bio || "Без публичного описания."}</p></span>
+                    <span><strong>{npc.name}</strong><small>{npc.character_class} · {npc.visibility === "private" ? "только я" : "виден игрокам"}</small><p>{npc.bio || "Без публичного описания."}</p></span>
                     <em>›</em>
                   </button>
                   <button className="gm-npc-note-toggle" type="button" onClick={() => setActiveNpcNote(activeNpcNote === npc.id ? null : npc.id)}>
@@ -553,9 +740,9 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
         {tab === "files" && (
           <section className="section">
             <div className="section-head">
-              <div><h3 className="section-title">Материалы ГМ</h3><p className="item-meta">Эти записи видны только тебе и владельцу</p></div>
+              <div><h3 className="section-title">Материалы ГМ</h3><p className="item-meta">Эти записи и файлы видишь только ты</p></div>
               <div className="section-actions">
-                <button className="section-link" type="button" onClick={openFolderEditor}>+ Папка</button>
+                <button className="section-link" type="button" onClick={() => openFolderEditor()}>+ Папка</button>
                 <button className="section-link" type="button" onClick={() => openNoteEditor()}>+ Заметка</button>
               </div>
             </div>
@@ -564,7 +751,14 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
               <button type="button" className={selectedFolder === "all" ? "active" : ""} onClick={() => setSelectedFolder("all")}>Все</button>
               <button type="button" className={selectedFolder === "root" ? "active" : ""} onClick={() => setSelectedFolder("root")}>Без папки</button>
               {folders.map((folder) => (
-                <button key={folder.id} type="button" className={selectedFolder === folder.id ? "active" : ""} onClick={() => setSelectedFolder(folder.id)} onContextMenu={(event) => { event.preventDefault(); void removeFolder(folder) }}>
+                <button
+                  {...bindWorkspaceLongPress({ type: "folder", item: folder })}
+                  key={folder.id}
+                  type="button"
+                  className={selectedFolder === folder.id ? "active" : ""}
+                  onClick={() => setSelectedFolder(folder.id)}
+                  style={{ touchAction: "pan-y" }}
+                >
                   ▤ {folder.name}
                 </button>
               ))}
@@ -592,7 +786,12 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
 
             <div className="gm-file-list">
               {visibleFiles.map((file) => (
-                <article className="gm-file-card surface" key={file.id}>
+                <article
+                  {...bindWorkspaceLongPress({ type: "file", item: file })}
+                  className="gm-file-card surface"
+                  key={file.id}
+                  style={{ touchAction: "pan-y" }}
+                >
                   <div className="gm-file-card__icon">{file.kind === "note" ? "✎" : "▧"}</div>
                   <div className="gm-file-card__copy">
                     <strong>{file.title}</strong>
@@ -620,7 +819,13 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
             </form>
             <div className="gm-room-list surface">
               {gameRooms.map((room) => (
-                <button type="button" key={room.id} onClick={() => onOpenRoom(room.id)}>
+                <button
+                  {...bindWorkspaceLongPress({ type: "room", item: room })}
+                  type="button"
+                  key={room.id}
+                  onClick={() => onOpenRoom(room.id)}
+                  style={{ touchAction: "pan-y" }}
+                >
                   <span className="gm-room-list__icon">◌</span>
                   <span><strong>{room.title}</strong><small>{room.preview || "Открыть сцену и настроить участников"}</small></span>
                   {room.unread_count > 0 && <em>{room.unread_count}</em>}
@@ -665,7 +870,7 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
         <div className="sheet-backdrop" onMouseDown={() => setDialog(null)}>
           <form className="bottom-sheet gm-editor-sheet" onSubmit={createNpc} onMouseDown={(event) => event.stopPropagation()}>
             <div className="sheet-handle" />
-            <div className="character-editor-head"><div><h3 className="sheet-title">Новый NPC</h3><p className="sheet-copy">Скрытого NPC увидят только ведущие и владелец.</p></div><button className="sheet-close" type="button" onClick={() => setDialog(null)}>×</button></div>
+            <div className="character-editor-head"><div><h3 className="sheet-title">Новый NPC</h3><p className="sheet-copy">NPC с отметкой «Только я» не увидят игроки, другие ГМ и владелец.</p></div><button className="sheet-close" type="button" onClick={() => setDialog(null)}>×</button></div>
             <label className="field-label">Имя</label>
             <input className="app-input" value={npcName} onChange={(event) => setNpcName(event.target.value)} maxLength={80} autoFocus />
             <label className="field-label">Роль / архетип</label>
@@ -674,7 +879,7 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
             <textarea className="app-textarea" value={npcBio} onChange={(event) => setNpcBio(event.target.value)} maxLength={1200} />
             <label className="field-label">Видимость</label>
             <select className="app-select" value={npcVisibility} onChange={(event) => setNpcVisibility(event.target.value === "campaign" ? "campaign" : "private")}>
-              <option value="private">Скрыт от игроков</option>
+              <option value="private">Только я</option>
               <option value="campaign">Виден всей кампании</option>
             </select>
             {error && <div className="auth-error">{error}</div>}
@@ -685,12 +890,12 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
 
       {dialog?.type === "folder" && (
         <div className="sheet-backdrop" onMouseDown={() => setDialog(null)}>
-          <form className="bottom-sheet compact-editor-sheet" onSubmit={createFolder} onMouseDown={(event) => event.stopPropagation()}>
+          <form className="bottom-sheet compact-editor-sheet" onSubmit={saveFolder} onMouseDown={(event) => event.stopPropagation()}>
             <div className="sheet-handle" />
-            <div className="character-editor-head"><div><h3 className="sheet-title">Новая папка</h3><p className="sheet-copy">Например: «Сессия 8», «Злодеи» или «Карты».</p></div><button className="sheet-close" type="button" onClick={() => setDialog(null)}>×</button></div>
+            <div className="character-editor-head"><div><h3 className="sheet-title">{dialog.folder ? "Переименовать папку" : "Новая папка"}</h3><p className="sheet-copy">Например: «Сессия 8», «Злодеи» или «Карты».</p></div><button className="sheet-close" type="button" onClick={() => setDialog(null)}>×</button></div>
             <input className="app-input" value={folderName} onChange={(event) => setFolderName(event.target.value)} placeholder="Название папки" maxLength={120} autoFocus />
             {error && <div className="auth-error">{error}</div>}
-            <button className="sheet-save" type="submit" disabled={saving || !folderName.trim()}>{saving ? "Создаём…" : "Создать папку"}</button>
+            <button className="sheet-save" type="submit" disabled={saving || !folderName.trim()}>{saving ? "Сохраняем…" : dialog.folder ? "Сохранить" : "Создать папку"}</button>
           </form>
         </div>
       )}
@@ -706,6 +911,27 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
             <button className="sheet-save" type="submit" disabled={saving || !noteTitle.trim()}>{saving ? "Сохраняем…" : "Сохранить заметку"}</button>
           </form>
         </div>
+      )}
+
+      {dialog?.type === "room" && (
+        <div className="sheet-backdrop" onMouseDown={() => setDialog(null)}>
+          <form className="bottom-sheet compact-editor-sheet" onSubmit={saveRoom} onMouseDown={(event) => event.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="character-editor-head"><div><h3 className="sheet-title">Переименовать чат</h3><p className="sheet-copy">Название изменится у всех участников комнаты.</p></div><button className="sheet-close" type="button" onClick={() => setDialog(null)}>×</button></div>
+            <input className="app-input" value={roomTitle} onChange={(event) => setRoomTitle(event.target.value)} maxLength={120} autoFocus />
+            {error && <div className="auth-error">{error}</div>}
+            <button className="sheet-save" type="submit" disabled={saving || !roomTitle.trim()}>{saving ? "Сохраняем…" : "Сохранить"}</button>
+          </form>
+        </div>
+      )}
+
+      {workspaceMenu && (
+        <ContextActionSheet
+          title={workspaceMenuTitle(workspaceMenu)}
+          subtitle="Долгое нажатие открывает действия"
+          actions={workspaceActions(workspaceMenu)}
+          onClose={() => setWorkspaceMenu(null)}
+        />
       )}
     </>
   )

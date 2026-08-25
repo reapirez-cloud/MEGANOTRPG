@@ -14,13 +14,18 @@ import SpellEditor from "../components/characters/SpellEditor"
 import FeatureEditor from "../components/characters/FeatureEditor"
 import CharacterInventory from "../components/characters/CharacterInventory"
 import CampaignImage from "../components/common/CampaignImage"
+import ContextActionSheet, {
+  type ContextAction,
+} from "../components/common/ContextActionSheet"
 import { uploadCampaignImage } from "../lib/mediaUpload"
+import { useLongPressItem } from "../hooks/useLongPressItem"
 import type {
   CharacterFeature,
   CharacterArt,
   CharacterSheet,
   CharacterSpell,
   CharacterSpellOption,
+  DiaryComment,
   DiaryPost,
   InventoryItem,
 } from "../types/characterSheet"
@@ -35,7 +40,17 @@ type Editor =
   | { type: "spell"; spell: CharacterSpell | null }
   | { type: "spell-option"; option: CharacterSpellOption | null }
   | { type: "feature"; feature: CharacterFeature | null }
+  | { type: "art"; art: CharacterArt }
   | null
+
+type ProfileMenu =
+  | { type: "art"; item: CharacterArt }
+  | { type: "spell"; item: CharacterSpell }
+  | { type: "spell-option"; item: CharacterSpellOption }
+
+type DiaryMenu =
+  | { type: "post"; item: DiaryPost }
+  | { type: "comment"; item: DiaryComment }
 
 const abilities = [
   ["strength", "СИЛ", "Сила"],
@@ -127,6 +142,13 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
   const [artUploading, setArtUploading] = useState(false)
   const [artError, setArtError] = useState("")
   const [selectedArt, setSelectedArt] = useState<CharacterArt | null>(null)
+  const [artTitle, setArtTitle] = useState("")
+  const [artCaption, setArtCaption] = useState("")
+  const [artSaving, setArtSaving] = useState(false)
+  const [profileMenu, setProfileMenu] = useState<ProfileMenu | null>(null)
+  const bindProfileLongPress = useLongPressItem<ProfileMenu>((target) => {
+    setProfileMenu(target)
+  })
 
   if (!character) {
     return (
@@ -239,9 +261,35 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
     if (!result.ok) setArtError(result.error || "Не удалось добавить арт.")
   }
 
-  async function removeCharacterArt() {
-    if (!selectedArt) return
-    const result = await data.deleteArt(selectedArt.id)
+  function openArtEditor(art: CharacterArt) {
+    setSelectedArt(null)
+    setArtTitle(art.title)
+    setArtCaption(art.caption)
+    setArtError("")
+    setEditor({ type: "art", art })
+  }
+
+  async function saveCharacterArt(event: FormEvent) {
+    event.preventDefault()
+    if (editor?.type !== "art") return
+    setArtSaving(true)
+    setArtError("")
+    const result = await data.updateArt(editor.art.id, artTitle, artCaption)
+    setArtSaving(false)
+    if (!result.ok) {
+      setArtError(result.error || "Не удалось сохранить арт.")
+      return
+    }
+    setSelectedArt((current) => current?.id === editor.art.id
+      ? { ...current, title: artTitle.trim() || "Арт персонажа", caption: artCaption.trim() }
+      : current)
+    setEditor(null)
+  }
+
+  async function removeCharacterArt(art: CharacterArt) {
+    if (!window.confirm(`Удалить арт «${art.title || currentCharacter.name}»?`)) return
+    setArtError("")
+    const result = await data.deleteArt(art.id)
     if (!result.ok) {
       setArtError(result.error || "Не удалось удалить арт.")
       return
@@ -276,6 +324,122 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
     const result = await data.deleteSpell(spell.id)
     setSpellActionId(null)
     if (!result.ok) setSpellError(result.error || "Не удалось убрать заклинание.")
+  }
+
+  async function removeSpellOption(option: CharacterSpellOption) {
+    if (!window.confirm(`Убрать «${option.name}» из доступных заклинаний?`)) return
+    setSpellError("")
+    const result = await data.deleteSpellOption(option.id)
+    if (!result.ok) setSpellError(result.error || "Не удалось убрать доступ к заклинанию.")
+  }
+
+  function profileActions(target: ProfileMenu): ContextAction[] {
+    if (target.type === "art") {
+      const art = target.item
+      const canEditArt = canManage || art.uploaded_by === user.id
+      return [
+        {
+          id: "open",
+          label: "Открыть арт",
+          detail: "Посмотреть изображение целиком",
+          icon: "↗",
+          onSelect: () => setSelectedArt(art),
+        },
+        ...(canEditArt
+          ? [
+              {
+                id: "edit",
+                label: "Редактировать",
+                detail: "Название и подпись",
+                icon: "✎",
+                onSelect: () => openArtEditor(art),
+              },
+              {
+                id: "delete",
+                label: "Удалить арт",
+                detail: "Изображение исчезнет из галереи персонажа",
+                icon: "×",
+                danger: true,
+                onSelect: () => removeCharacterArt(art),
+              },
+            ]
+          : []),
+      ]
+    }
+
+    if (target.type === "spell-option") {
+      const option = target.item
+      const learned = learnedSpellNames.has(option.name.trim().toLocaleLowerCase("ru-RU"))
+      return [
+        ...(!learned && canChooseSpells
+          ? [{
+              id: "learn",
+              label: "Добавить заклинание",
+              detail: "Перенести в изученные заклинания персонажа",
+              icon: "+",
+              onSelect: () => learnSpell(option.id),
+            }]
+          : []),
+        ...(canManage
+          ? [
+              {
+                id: "edit",
+                label: "Редактировать доступ",
+                detail: "Параметры заклинания в списке ГМ",
+                icon: "✎",
+                onSelect: () => setEditor({ type: "spell-option", option }),
+              },
+              {
+                id: "delete",
+                label: "Убрать из доступных",
+                detail: "Игрок больше не сможет изучить его из этого списка",
+                icon: "×",
+                danger: true,
+                onSelect: () => removeSpellOption(option),
+              },
+            ]
+          : []),
+      ]
+    }
+
+    const spell = target.item
+    return [
+      {
+        id: "open",
+        label: expandedSpell === spell.id ? "Свернуть описание" : "Открыть описание",
+        detail: "Параметры, источник и эффект",
+        icon: "↗",
+        onSelect: () => setExpandedSpell(expandedSpell === spell.id ? null : spell.id),
+      },
+      ...(canChooseSpells
+        ? [{
+            id: "prepared",
+            label: spell.prepared ? "Убрать из подготовленных" : "Подготовить",
+            detail: "Изменить состояние заклинания",
+            icon: spell.prepared ? "↓" : "↑",
+            onSelect: () => toggleSpellPrepared(spell),
+          }]
+        : []),
+      ...(canManage
+        ? [{
+            id: "edit",
+            label: "Редактировать параметры",
+            detail: "Уровень, школа, компоненты и описание",
+            icon: "✎",
+            onSelect: () => setEditor({ type: "spell", spell }),
+          }]
+        : []),
+      ...(canChooseSpells
+        ? [{
+            id: "delete",
+            label: "Убрать заклинание",
+            detail: "Заклинание исчезнет из изученных",
+            icon: "×",
+            danger: true,
+            onSelect: () => forgetSpell(spell),
+          }]
+        : []),
+    ]
   }
 
   return (
@@ -355,6 +519,7 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
             setCommentDrafts={setCommentDrafts}
             addComment={addComment}
             authorName={authorName}
+            updatePost={data.updateDiaryPost}
             deletePost={data.deleteDiaryPost}
             deleteComment={data.deleteComment}
           />
@@ -375,7 +540,14 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
             {data.arts.length === 0 && <div className="character-empty surface">У персонажа пока нет артов.</div>}
             <div className="character-art-grid">
               {data.arts.map((art) => (
-                <button type="button" key={art.id} onClick={() => setSelectedArt(art)} aria-label={art.title}>
+                <button
+                  type="button"
+                  key={art.id}
+                  onClick={() => setSelectedArt(art)}
+                  aria-label={art.title}
+                  {...bindProfileLongPress({ type: "art", item: art })}
+                  style={{ touchAction: "pan-y" }}
+                >
                   <CampaignImage value={art.image_url} alt={art.title} loading="lazy" />
                 </button>
               ))}
@@ -389,9 +561,10 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
             items={data.inventory}
             canManage={canManage}
             canEquip={canUseInventory}
-            onCreate={() => setEditor({ type: "inventory", item: null })}
-            onEdit={(item) => setEditor({ type: "inventory", item })}
-            onSetEquipped={data.setInventoryEquipped}
+              onCreate={() => setEditor({ type: "inventory", item: null })}
+              onEdit={(item) => setEditor({ type: "inventory", item })}
+              onDelete={data.deleteInventoryItem}
+              onSetEquipped={data.setInventoryEquipped}
           />
         )}
 
@@ -401,9 +574,10 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
             items={data.inventory}
             canManage={canManage}
             canEquip={canUseInventory}
-            onCreate={() => setEditor({ type: "inventory", item: null })}
-            onEdit={(item) => setEditor({ type: "inventory", item })}
-            onSetEquipped={data.setInventoryEquipped}
+              onCreate={() => setEditor({ type: "inventory", item: null })}
+              onEdit={(item) => setEditor({ type: "inventory", item })}
+              onDelete={data.deleteInventoryItem}
+              onSetEquipped={data.setInventoryEquipped}
           />
         )}
 
@@ -417,6 +591,7 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
             onEditResources={() => setEditor({ type: "resources" })}
             onAddFeature={() => setEditor({ type: "feature", feature: null })}
             onEditFeature={(feature) => setEditor({ type: "feature", feature })}
+            onDeleteFeature={data.deleteFeature}
           />
         )}
 
@@ -513,7 +688,12 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
                     const learned = learnedSpellNames.has(option.name.trim().toLocaleLowerCase("ru-RU"))
                     const learning = spellActionId === `learn:${option.id}`
                     return (
-                      <article className="spell-option-card surface" key={option.id}>
+                      <article
+                        className="spell-option-card surface"
+                        key={option.id}
+                        {...bindProfileLongPress({ type: "spell-option", item: option })}
+                        style={{ touchAction: "pan-y" }}
+                      >
                         <div className="spell-card__rune">{option.spell_level === 0 ? "∞" : option.spell_level}</div>
                         <div className="spell-option-card__copy">
                           <strong>{option.name}</strong>
@@ -536,7 +716,12 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
               <div className="spell-level-block" key={level}>
                 <h4>{level === 0 ? "Заговоры" : `${level} уровень`}</h4>
                 {data.spells.filter((spell) => spell.spell_level === level).map((spell) => (
-                  <article className="spell-card surface" key={spell.id}>
+                  <article
+                    className="spell-card surface"
+                    key={spell.id}
+                    {...bindProfileLongPress({ type: "spell", item: spell })}
+                    style={{ touchAction: "pan-y" }}
+                  >
                     <button className="spell-card__main" type="button" onClick={() => setExpandedSpell(expandedSpell === spell.id ? null : spell.id)}>
                       <div className="spell-card__rune">{level === 0 ? "∞" : level}</div>
                       <div className="spell-card__copy">
@@ -595,8 +780,30 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
             <div className="sheet-handle" />
             <div className="character-editor-head"><div><h3 className="sheet-title">{selectedArt.title || currentCharacter.name}</h3><p className="sheet-copy">Галерея персонажа</p></div><button className="sheet-close" type="button" onClick={() => setSelectedArt(null)}>×</button></div>
             <CampaignImage className="art-viewer-image" value={selectedArt.image_url} alt={selectedArt.title} />
-            {(canManage || selectedArt.uploaded_by === user.id) && <button className="danger-mini-button art-viewer-delete" type="button" onClick={() => void removeCharacterArt()}>Удалить арт</button>}
+            {selectedArt.caption && <p className="sheet-copy">{selectedArt.caption}</p>}
+            {(canManage || selectedArt.uploaded_by === user.id) && (
+              <div className="spell-card__actions">
+                <button className="inline-edit-button" type="button" onClick={() => openArtEditor(selectedArt)}>✎ Редактировать</button>
+                <button className="danger-mini-button art-viewer-delete" type="button" onClick={() => void removeCharacterArt(selectedArt)}>Удалить арт</button>
+              </div>
+            )}
           </div>
+        </div>
+      )}
+
+      {editor?.type === "art" && (
+        <div className="sheet-backdrop" onMouseDown={() => setEditor(null)}>
+          <form className="bottom-sheet compact-editor-sheet" onSubmit={saveCharacterArt} onMouseDown={(event) => event.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="character-editor-head">
+              <div><h3 className="sheet-title">Редактировать арт</h3><p className="sheet-copy">Название и подпись в галерее персонажа</p></div>
+              <button className="sheet-close" type="button" onClick={() => setEditor(null)}>×</button>
+            </div>
+            <label className="editor-label">Название<input value={artTitle} onChange={(event) => setArtTitle(event.target.value)} maxLength={120} /></label>
+            <label className="editor-label">Подпись<textarea value={artCaption} onChange={(event) => setArtCaption(event.target.value)} maxLength={1200} /></label>
+            {artError && <div className="auth-error">{artError}</div>}
+            <button className="sheet-save" type="submit" disabled={artSaving}>{artSaving ? "Сохраняем…" : "Сохранить"}</button>
+          </form>
         </div>
       )}
 
@@ -642,6 +849,16 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
           onDelete={editor.feature ? () => data.deleteFeature(editor.feature!.id) : undefined}
         />
       )}
+      {profileMenu && (
+        <ContextActionSheet
+          title={profileMenu.type === "art"
+            ? profileMenu.item.title || currentCharacter.name
+            : profileMenu.item.name}
+          subtitle="Долгое нажатие открывает доступные действия"
+          actions={profileActions(profileMenu)}
+          onClose={() => setProfileMenu(null)}
+        />
+      )}
     </div>
   )
 }
@@ -655,6 +872,7 @@ function SheetTab({
   onEditResources,
   onAddFeature,
   onEditFeature,
+  onDeleteFeature,
 }: {
   sheet: CharacterSheet
   features: CharacterFeature[]
@@ -664,10 +882,45 @@ function SheetTab({
   onEditResources: () => void
   onAddFeature: () => void
   onEditFeature: (feature: CharacterFeature) => void
+  onDeleteFeature: (featureId: string) => Promise<{ ok: boolean; error?: string }>
 }) {
   const saveSet = new Set(sheet.saving_throw_proficiencies || [])
+  const [featureMenu, setFeatureMenu] = useState<CharacterFeature | null>(null)
+  const [featureError, setFeatureError] = useState("")
+  const bindFeatureLongPress = useLongPressItem<CharacterFeature>((feature) => {
+    setFeatureMenu(feature)
+  })
+
+  async function removeFeature(feature: CharacterFeature) {
+    if (!window.confirm(`Удалить особенность «${feature.name}»?`)) return
+    setFeatureError("")
+    const result = await onDeleteFeature(feature.id)
+    if (!result.ok) setFeatureError(result.error || "Не удалось удалить особенность.")
+  }
+
+  function featureActions(feature: CharacterFeature): ContextAction[] {
+    if (!canManage) return []
+    return [
+      {
+        id: "edit",
+        label: "Редактировать",
+        detail: "Название, тип и описание",
+        icon: "✎",
+        onSelect: () => onEditFeature(feature),
+      },
+      {
+        id: "delete",
+        label: "Удалить особенность",
+        detail: "Она исчезнет из листа персонажа",
+        icon: "×",
+        danger: true,
+        onSelect: () => removeFeature(feature),
+      },
+    ]
+  }
 
   return (
+    <>
     <section className="character-tab-section">
       <div className="section-head">
         <div><h3 className="section-title">Лист персонажа</h3><p className="item-meta">Полный компактный D&D-лист</p></div>
@@ -754,15 +1007,30 @@ function SheetTab({
       </div>
 
       <div className="feature-list">
+        {featureError && <div className="auth-error">{featureError}</div>}
         {features.length === 0 && <div className="character-empty surface">Особенности пока не заполнены.</div>}
         {features.map((feature) => (
-          <article className="feature-card surface" key={feature.id}>
+          <article
+            className="feature-card surface"
+            key={feature.id}
+            {...(canManage ? bindFeatureLongPress(feature) : {})}
+            style={{ touchAction: "pan-y" }}
+          >
             <div className="feature-card__top"><div><span>{featureLabels[feature.kind]}</span><strong>{feature.name}</strong></div>{canManage && <button className="card-edit-icon" type="button" onClick={() => onEditFeature(feature)}>✎</button>}</div>
             {feature.description && <p>{feature.description}</p>}
           </article>
         ))}
       </div>
     </section>
+    {featureMenu && (
+      <ContextActionSheet
+        title={featureMenu.name}
+        subtitle="Долгое нажатие открывает действия с особенностью"
+        actions={featureActions(featureMenu)}
+        onClose={() => setFeatureMenu(null)}
+      />
+    )}
+    </>
   )
 }
 
@@ -791,6 +1059,7 @@ function DiaryTab({
   setCommentDrafts,
   addComment,
   authorName,
+  updatePost,
   deletePost,
   deleteComment,
 }: {
@@ -814,9 +1083,128 @@ function DiaryTab({
   setCommentDrafts: Dispatch<SetStateAction<Record<string, string>>>
   addComment: (postId: string) => Promise<void>
   authorName: (userId: string) => string
+  updatePost: (postId: string, body: string) => Promise<{ ok: boolean; error?: string }>
   deletePost: (postId: string) => Promise<{ ok: boolean; error?: string }>
   deleteComment: (commentId: string) => Promise<{ ok: boolean; error?: string }>
 }) {
+  const [diaryMenu, setDiaryMenu] = useState<DiaryMenu | null>(null)
+  const [editingPost, setEditingPost] = useState<DiaryPost | null>(null)
+  const [editBody, setEditBody] = useState("")
+  const [editSaving, setEditSaving] = useState(false)
+  const [actionError, setActionError] = useState("")
+  const bindDiaryLongPress = useLongPressItem<DiaryMenu>((target) => {
+    setDiaryMenu(target)
+  })
+
+  function openPostEditor(post: DiaryPost) {
+    setEditBody(post.body)
+    setActionError("")
+    setEditingPost(post)
+  }
+
+  async function savePost(event: FormEvent) {
+    event.preventDefault()
+    if (!editingPost || (!editBody.trim() && !editingPost.media_url)) return
+    setEditSaving(true)
+    setActionError("")
+    const result = await updatePost(editingPost.id, editBody)
+    setEditSaving(false)
+    if (!result.ok) {
+      setActionError(result.error || "Не удалось сохранить запись.")
+      return
+    }
+    setEditingPost(null)
+  }
+
+  async function removePost(post: DiaryPost) {
+    if (!window.confirm("Удалить эту запись из дневника?")) return
+    setActionError("")
+    const result = await deletePost(post.id)
+    if (!result.ok) setActionError(result.error || "Не удалось удалить запись.")
+  }
+
+  async function removeComment(comment: DiaryComment) {
+    if (!window.confirm("Удалить комментарий?")) return
+    setActionError("")
+    const result = await deleteComment(comment.id)
+    if (!result.ok) setActionError(result.error || "Не удалось удалить комментарий.")
+  }
+
+  async function copyText(value: string) {
+    try {
+      await navigator.clipboard.writeText(value)
+    } catch {
+      setActionError("Не удалось скопировать текст.")
+    }
+  }
+
+  function diaryActions(target: DiaryMenu): ContextAction[] {
+    if (target.type === "comment") {
+      const comment = target.item
+      const canDelete = canManage || comment.created_by === currentUserId
+      return [
+        {
+          id: "copy",
+          label: "Копировать комментарий",
+          detail: "Сохранить текст в буфер обмена",
+          icon: "▣",
+          onSelect: () => copyText(comment.body),
+        },
+        ...(canDelete
+          ? [{
+              id: "delete",
+              label: "Удалить комментарий",
+              detail: "Комментарий исчезнет из дневника",
+              icon: "×",
+              danger: true,
+              onSelect: () => removeComment(comment),
+            }]
+          : []),
+      ]
+    }
+
+    const post = target.item
+    const canEditPost = canManage || post.created_by === currentUserId
+    const commentsOpen = openComments === post.id
+    return [
+      {
+        id: "comments",
+        label: commentsOpen ? "Скрыть комментарии" : "Открыть комментарии",
+        detail: `${commentsFor(post.id).length} в обсуждении`,
+        icon: "◯",
+        onSelect: () => setOpenComments(commentsOpen ? null : post.id),
+      },
+      ...(post.body
+        ? [{
+            id: "copy",
+            label: "Копировать запись",
+            detail: "Сохранить текст в буфер обмена",
+            icon: "▣",
+            onSelect: () => copyText(post.body),
+          }]
+        : []),
+      ...(canEditPost
+        ? [
+            {
+              id: "edit",
+              label: "Редактировать запись",
+              detail: "Изменить текст дневника",
+              icon: "✎",
+              onSelect: () => openPostEditor(post),
+            },
+            {
+              id: "delete",
+              label: "Удалить запись",
+              detail: "Запись исчезнет из дневника и ленты",
+              icon: "×",
+              danger: true,
+              onSelect: () => removePost(post),
+            },
+          ]
+        : []),
+    ]
+  }
+
   return (
     <section className="character-tab-section diary-real-feed">
       {canWrite && (
@@ -834,19 +1222,23 @@ function DiaryTab({
       )}
 
       {error && <div className="auth-error">{error}</div>}
+      {actionError && <div className="auth-error">{actionError}</div>}
       {posts.length === 0 && <div className="character-empty surface">В дневнике пока нет записей.</div>}
 
       {posts.map((post) => {
         const postComments = commentsFor(post.id)
         const commentsOpen = openComments === post.id
-        const canDeletePost = canManage || post.created_by === currentUserId
-
         return (
-          <article className="diary-post surface diary-post--real" key={post.id}>
+          <article
+            className="diary-post surface diary-post--real"
+            key={post.id}
+            {...bindDiaryLongPress({ type: "post", item: post })}
+            style={{ touchAction: "pan-y" }}
+          >
             <div className="diary-post__top">
               <CharacterAvatar character={avatar} size="small" />
               <div className="diary-post__identity"><div className="item-title">{characterName}</div><div className="item-meta">{formatTime(post.created_at)}</div></div>
-              {canDeletePost && <button className="diary-delete" type="button" onClick={() => void deletePost(post.id)}>Удалить</button>}
+              <button className="diary-delete" type="button" aria-label="Действия с записью" onClick={() => setDiaryMenu({ type: "post", item: post })}>•••</button>
             </div>
             {post.media_url && <CampaignImage className="diary-post__media" value={post.media_url} alt="Иллюстрация к записи" loading="lazy" />}
             {post.title && <h3 className="diary-post__title">{post.title}</h3>}
@@ -856,10 +1248,15 @@ function DiaryTab({
             {commentsOpen && (
               <div className="diary-comments">
                 {postComments.map((comment) => (
-                  <div className="diary-comment" key={comment.id}>
+                  <div
+                    className="diary-comment"
+                    key={comment.id}
+                    {...bindDiaryLongPress({ type: "comment", item: comment })}
+                    style={{ touchAction: "pan-y" }}
+                  >
                     <div><strong>{authorName(comment.created_by)}</strong><span>{formatTime(comment.created_at)}</span></div>
                     <p>{comment.body}</p>
-                    {(canManage || comment.created_by === currentUserId) && <button type="button" onClick={() => void deleteComment(comment.id)}>Удалить</button>}
+                    <button type="button" aria-label="Действия с комментарием" onClick={() => setDiaryMenu({ type: "comment", item: comment })}>•••</button>
                   </div>
                 ))}
                 <div className="diary-comment-composer">
@@ -871,6 +1268,30 @@ function DiaryTab({
           </article>
         )
       })}
+
+      {diaryMenu && (
+        <ContextActionSheet
+          title={diaryMenu.type === "post" ? "Запись дневника" : "Комментарий"}
+          subtitle="Долгое нажатие открывает доступные действия"
+          actions={diaryActions(diaryMenu)}
+          onClose={() => setDiaryMenu(null)}
+        />
+      )}
+
+      {editingPost && (
+        <div className="sheet-backdrop" onMouseDown={() => setEditingPost(null)}>
+          <form className="bottom-sheet compact-editor-sheet" onSubmit={savePost} onMouseDown={(event) => event.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="character-editor-head">
+              <div><h3 className="sheet-title">Редактировать запись</h3><p className="sheet-copy">Изменения сразу появятся в дневнике и хронике</p></div>
+              <button className="sheet-close" type="button" onClick={() => setEditingPost(null)}>×</button>
+            </div>
+            <label className="editor-label">Текст<textarea value={editBody} onChange={(event) => setEditBody(event.target.value)} maxLength={5000} rows={7} /></label>
+            {actionError && <div className="auth-error">{actionError}</div>}
+            <button className="sheet-save" type="submit" disabled={editSaving || (!editBody.trim() && !editingPost.media_url)}>{editSaving ? "Сохраняем…" : "Сохранить"}</button>
+          </form>
+        </div>
+      )}
     </section>
   )
 }

@@ -5,6 +5,9 @@ import { useRooms } from "../hooks/useRooms"
 import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
+import ContextActionSheet, {
+  type ContextAction,
+} from "../components/common/ContextActionSheet"
 import type { ChatRoom } from "../types/chat"
 import { useLongPressItem } from "../hooks/useLongPressItem"
 
@@ -13,16 +16,14 @@ type Props = { onOpenRoom: (id: string) => void }
 function RoomList({
   items,
   onOpenRoom,
-  canManage,
   onManage,
 }: {
   items: ChatRoom[]
   onOpenRoom: (id: string) => void
-  canManage: boolean
   onManage: (room: ChatRoom) => void
 }) {
   const bindLongPress = useLongPressItem<ChatRoom>((room) => {
-    if (canManage && room.category === "game") onManage(room)
+    onManage(room)
   })
 
   return (
@@ -48,9 +49,14 @@ function RoomList({
             </div>
             {room.unread_count > 0 && <span className="chat-unread-badge">{room.unread_count > 99 ? "99+" : room.unread_count}</span>}
           </button>
-          {canManage && room.category === "game" && (
-            <button className="chat-row-menu" type="button" aria-label={`Действия: ${room.title}`} onClick={() => onManage(room)}>•••</button>
-          )}
+          <button
+            className="chat-row-menu"
+            type="button"
+            aria-label={`Действия: ${room.title}`}
+            onClick={() => onManage(room)}
+          >
+            •••
+          </button>
         </article>
       ))}
     </div>
@@ -76,6 +82,7 @@ export default function Chats({ onOpenRoom }: Props) {
   const [createError, setCreateError] = useState("")
   const [saving, setSaving] = useState(false)
   const [managedRoom, setManagedRoom] = useState<ChatRoom | null>(null)
+  const [roomMenu, setRoomMenu] = useState<ChatRoom | null>(null)
   const [managedTitle, setManagedTitle] = useState("")
   const [manageError, setManageError] = useState("")
 
@@ -141,6 +148,10 @@ export default function Chats({ onOpenRoom }: Props) {
   }
 
   function openRoomMenu(room: ChatRoom) {
+    setRoomMenu(room)
+  }
+
+  function openRoomEditor(room: ChatRoom) {
     setManagedRoom(room)
     setManagedTitle(room.title)
     setManageError("")
@@ -161,6 +172,7 @@ export default function Chats({ onOpenRoom }: Props) {
 
   async function removeManagedRoom() {
     if (!managedRoom) return
+    if (!window.confirm(`Удалить чат «${managedRoom.title}» вместе с сообщениями?`)) return
     setSaving(true)
     const result = await deleteRoom(managedRoom.id)
     setSaving(false)
@@ -169,6 +181,48 @@ export default function Chats({ onOpenRoom }: Props) {
       return
     }
     setManagedRoom(null)
+  }
+
+  async function removeRoom(room: ChatRoom) {
+    if (!window.confirm(`Удалить чат «${room.title}» вместе с сообщениями?`)) return
+    setSaving(true)
+    setManageError("")
+    const result = await deleteRoom(room.id)
+    setSaving(false)
+    if (!result.ok) {
+      setManageError(result.error || "Не удалось удалить чат.")
+    }
+  }
+
+  function roomActions(room: ChatRoom): ContextAction[] {
+    return [
+      {
+        id: "open",
+        label: "Открыть чат",
+        detail: room.category === "flood" ? "Перейти во флуд" : "Перейти в игровую сцену",
+        icon: "↗",
+        onSelect: () => onOpenRoom(room.id),
+      },
+      ...(canManage && room.category === "game"
+        ? [
+            {
+              id: "rename",
+              label: "Переименовать",
+              detail: "Изменить название комнаты",
+              icon: "✎",
+              onSelect: () => openRoomEditor(room),
+            },
+            {
+              id: "delete",
+              label: "Удалить чат",
+              detail: "Комната и сообщения будут удалены",
+              icon: "×",
+              danger: true,
+              onSelect: () => removeRoom(room),
+            },
+          ]
+        : []),
+    ]
   }
 
   return (
@@ -196,7 +250,7 @@ export default function Chats({ onOpenRoom }: Props) {
               <p className="item-meta">Всегда доступен всем участникам кампании</p>
             </div>
           </div>
-          <RoomList items={floodRooms} onOpenRoom={onOpenRoom} canManage={canManage} onManage={openRoomMenu} />
+          <RoomList items={floodRooms} onOpenRoom={onOpenRoom} onManage={openRoomMenu} />
         </section>
 
         <section className="section chat-room-section">
@@ -219,7 +273,7 @@ export default function Chats({ onOpenRoom }: Props) {
               </button>
             )}
           </div>
-          <RoomList items={gameRooms} onOpenRoom={onOpenRoom} canManage={canManage} onManage={openRoomMenu} />
+          <RoomList items={gameRooms} onOpenRoom={onOpenRoom} onManage={openRoomMenu} />
         </section>
       </div>
 
@@ -285,6 +339,15 @@ export default function Chats({ onOpenRoom }: Props) {
             </div>
           </form>
         </div>
+      )}
+
+      {roomMenu && (
+        <ContextActionSheet
+          title={roomMenu.title}
+          subtitle="Долгое нажатие открывает действия с чатом"
+          actions={roomActions(roomMenu)}
+          onClose={() => setRoomMenu(null)}
+        />
       )}
     </>
   )

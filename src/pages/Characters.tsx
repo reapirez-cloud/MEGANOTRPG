@@ -9,6 +9,9 @@ import {
 } from "../context/CharacterContext"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
 import ImageUploadField from "../components/common/ImageUploadField"
+import ContextActionSheet, {
+  type ContextAction,
+} from "../components/common/ContextActionSheet"
 import { useLongPressItem } from "../hooks/useLongPressItem"
 
 type Props = { onOpenCharacter: (id: string) => void }
@@ -29,6 +32,7 @@ export default function Characters({ onOpenCharacter }: Props) {
     createInvite,
     createCharacter,
     updateCharacter,
+    deleteCharacter,
     setActiveForMember,
     setMemberRole,
   } = useCharacters()
@@ -49,9 +53,13 @@ export default function Characters({ onOpenCharacter }: Props) {
   const [inviteCode, setInviteCode] = useState("")
   const [inviteStatus, setInviteStatus] = useState("")
   const [creatingInvite, setCreatingInvite] = useState(false)
+  const [characterMenu, setCharacterMenu] = useState<Character | null>(null)
+  const [memberMenu, setMemberMenu] = useState<CampaignMember | null>(null)
   const bindCharacterLongPress = useLongPressItem<Character>((character) => {
-    if (canManage || character.assigned_user_id === user.id) openEdit(character)
-    else onOpenCharacter(character.id)
+    setCharacterMenu(character)
+  })
+  const bindMemberLongPress = useLongPressItem<CampaignMember>((member) => {
+    setMemberMenu(member)
   })
 
   const telegramMembers = useMemo(
@@ -79,6 +87,7 @@ export default function Characters({ onOpenCharacter }: Props) {
   }
 
   function openCreate() {
+    if (!canManage) return
     resetForm()
     setEditor({ type: "create" })
   }
@@ -220,6 +229,130 @@ export default function Characters({ onOpenCharacter }: Props) {
     }
   }
 
+  async function removeCharacter(character: Character) {
+    if (!canManage) return
+    const accepted = window.confirm(
+      `Удалить «${character.name}»? Лист, дневник, инвентарь и связанные записи будут удалены.`,
+    )
+    if (!accepted) return
+
+    setSaving(true)
+    setFormError("")
+    const result = await deleteCharacter(character.id)
+    setSaving(false)
+    if (!result.ok) {
+      setFormError(result.error || "Не удалось удалить персонажа.")
+    }
+  }
+
+  function characterActions(character: Character): ContextAction[] {
+    const member = character.assigned_user_id
+      ? members.find((item) => item.user_id === character.assigned_user_id)
+      : null
+    const isActive = member?.active_character_id === character.id
+    const isOwn = character.assigned_user_id === user.id
+    const canEdit = canManage || isOwn
+
+    return [
+      {
+        id: "open",
+        label: "Открыть профиль",
+        detail: "Лист, дневник, арты, инвентарь и заклинания",
+        icon: "↗",
+        onSelect: () => onOpenCharacter(character.id),
+      },
+      ...(canEdit
+        ? [{
+            id: "edit",
+            label: "Редактировать",
+            detail: canManage
+              ? "Профиль, назначение, тип и видимость"
+              : "Имя, описание и аватар своего персонажа",
+            icon: "✎",
+            onSelect: () => openEdit(character),
+          }]
+        : []),
+      ...(member && character.character_type === "pc" && (canManage || isOwn)
+        ? [{
+            id: "active",
+            label: isActive ? "Убрать из активных" : "Сделать активным",
+            detail: isActive
+              ? "Другие игроки перестанут видеть этого персонажа"
+              : "Персонаж появится у остальных игроков",
+            icon: isActive ? "○" : "●",
+            onSelect: () => isActive
+              ? clearActive(character)
+              : makeActive(character),
+          }]
+        : []),
+      ...(canManage
+        ? [{
+            id: "delete",
+            label: "Удалить персонажа",
+            detail: "Удаление листа и связанных данных без восстановления",
+            icon: "×",
+            danger: true,
+            onSelect: () => removeCharacter(character),
+          }]
+        : []),
+    ]
+  }
+
+  function memberActions(member: CampaignMember): ContextAction[] {
+    const activeMemberCharacter = member.active_character_id
+      ? characters.find((character) => character.id === member.active_character_id)
+      : null
+
+    return [
+      ...(activeMemberCharacter
+        ? [{
+            id: "character",
+            label: "Открыть активного персонажа",
+            detail: activeMemberCharacter.name,
+            icon: "↗",
+            onSelect: () => onOpenCharacter(activeMemberCharacter.id),
+          }]
+        : []),
+      {
+        id: "copy-name",
+        label: "Копировать имя",
+        detail: member.display_name,
+        icon: "▣",
+        onSelect: async () => {
+          try {
+            await navigator.clipboard.writeText(member.display_name)
+          } catch {
+            setFormError("Не удалось скопировать имя участника.")
+          }
+        },
+      },
+      ...(member.telegram_user_id
+        ? [{
+            id: "copy-telegram",
+            label: "Копировать Telegram ID",
+            detail: member.telegram_user_id,
+            icon: "▣",
+            onSelect: async () => {
+              try {
+                await navigator.clipboard.writeText(member.telegram_user_id!)
+              } catch {
+                setFormError("Не удалось скопировать Telegram ID.")
+              }
+            },
+          }]
+        : []),
+      ...(isOwner && !member.is_owner
+        ? [{
+            id: "role",
+            label: "Изменить роль",
+            detail: "Назначить игроком или ГМ",
+            icon: "✎",
+            onSelect: () => openRoleEditor(member),
+          }]
+        : []),
+    ]
+  }
+
   async function makeInvite() {
     setCreatingInvite(true)
     setInviteStatus("")
@@ -287,7 +420,7 @@ export default function Characters({ onOpenCharacter }: Props) {
               <strong>{title}</strong>
               {isActive && <em>Активен</em>}
               {character.character_type === "npc" && <em className="npc-badge">NPC</em>}
-              {character.visibility === "private" && <em className="private-badge">Скрыт</em>}
+              {character.visibility === "private" && <em className="private-badge">Только я</em>}
             </span>
             <small>
               {character.character_class} · {character.level} уровень
@@ -305,22 +438,14 @@ export default function Characters({ onOpenCharacter }: Props) {
         </button>
 
         {(canManage || isOwn) && (
-          <div className="gm-character-actions">
-            <button type="button" onClick={() => openEdit(character)}>
-              ✎ Редактировать
-            </button>
-            {member && character.character_type === "pc" && (
-              isActive ? (
-                <button type="button" onClick={() => void clearActive(character)} disabled={saving}>
-                  Убрать активного
-                </button>
-              ) : (
-                <button type="button" onClick={() => void makeActive(character)} disabled={saving}>
-                  Сделать активным
-                </button>
-              )
-            )}
-          </div>
+          <button
+            className="character-card-menu-button"
+            type="button"
+            aria-label={`Действия: ${character.name}`}
+            onClick={() => setCharacterMenu(character)}
+          >
+            •••
+          </button>
         )}
 
         {!canManage && isOwn && (
@@ -411,9 +536,11 @@ export default function Characters({ onOpenCharacter }: Props) {
                   : "Активные герои других игроков видны вместе с их историями"}
               </p>
             </div>
-            <button className="section-link" type="button" onClick={openCreate}>
-              {canManage ? "+ Персонаж / NPC" : "+ Мой герой"}
-            </button>
+            {canManage && (
+              <button className="section-link" type="button" onClick={openCreate}>
+                + Персонаж / NPC
+              </button>
+            )}
           </div>
 
           <div className="character-social-list">
@@ -421,7 +548,7 @@ export default function Characters({ onOpenCharacter }: Props) {
               <div className="character-empty surface">
                 {canManage
                   ? "Персонажей пока нет."
-                  : "В кампании пока нет доступных персонажей."}
+                  : "ГМ пока не назначил тебе персонажа, а активных героев других игроков ещё нет."}
               </div>
             )}
             {characters.map(renderCard)}
@@ -441,7 +568,12 @@ export default function Characters({ onOpenCharacter }: Props) {
 
             <div className="member-role-list surface">
               {members.map((member) => (
-                <div className="member-role-row" key={member.user_id}>
+                <div
+                  className="member-role-row"
+                  key={member.user_id}
+                  {...bindMemberLongPress(member)}
+                  style={{ touchAction: "pan-y" }}
+                >
                   <span className="member-role-avatar">
                     {member.display_name.slice(0, 1).toUpperCase()}
                   </span>
@@ -452,15 +584,14 @@ export default function Characters({ onOpenCharacter }: Props) {
                       {telegramLabel(member)}
                     </span>
                   </div>
-                  {isOwner && !member.is_owner && (
-                    <button
-                      className="member-role-edit"
-                      type="button"
-                      onClick={() => openRoleEditor(member)}
-                    >
-                      Роль
-                    </button>
-                  )}
+                  <button
+                    className="member-role-edit"
+                    type="button"
+                    aria-label={`Действия: ${member.display_name}`}
+                    onClick={() => setMemberMenu(member)}
+                  >
+                    •••
+                  </button>
                 </div>
               ))}
             </div>
@@ -534,7 +665,7 @@ export default function Characters({ onOpenCharacter }: Props) {
                     onChange={(event) => setVisibility(event.target.value === "private" ? "private" : "campaign")}
                   >
                     <option value="campaign">Видят игроки</option>
-                    <option value="private">Только ГМ и владелец</option>
+                    <option value="private">Только я</option>
                   </select>
                 </div>
               </div>
@@ -690,6 +821,23 @@ export default function Characters({ onOpenCharacter }: Props) {
             </button>
           </form>
         </div>
+      )}
+
+      {characterMenu && (
+        <ContextActionSheet
+          title={characterMenu.name}
+          subtitle="Долгое нажатие открывает действия с персонажем"
+          actions={characterActions(characterMenu)}
+          onClose={() => setCharacterMenu(null)}
+        />
+      )}
+      {memberMenu && (
+        <ContextActionSheet
+          title={memberMenu.display_name}
+          subtitle="Долгое нажатие открывает действия с участником"
+          actions={memberActions(memberMenu)}
+          onClose={() => setMemberMenu(null)}
+        />
       )}
     </>
   )

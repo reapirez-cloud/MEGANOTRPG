@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import type {
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
@@ -18,6 +18,8 @@ export function useLongPressItem<T>(
       timerRef.current = null
     }
   }, [])
+
+  useEffect(() => clearTimer, [clearTimer])
 
   return useCallback(
     (item: T) => ({

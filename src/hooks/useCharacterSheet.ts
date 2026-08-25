@@ -445,6 +445,21 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
     [characterId, load, user.id],
   )
 
+  const updateDiaryPost = useCallback(
+    async (postId: string, body: string): Promise<Result> => {
+      const { error: updateError } = await supabase
+        .from("character_diary_posts")
+        .update({ body: body.trim(), updated_at: new Date().toISOString() })
+        .eq("id", postId)
+        .eq("character_id", characterId)
+
+      if (updateError) return { ok: false, error: updateError.message }
+      await load()
+      return { ok: true }
+    },
+    [characterId, load],
+  )
+
   const deleteDiaryPost = useCallback(
     async (postId: string): Promise<Result> => {
       const { error: deleteError } = await supabase
@@ -508,6 +523,25 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
     [campaignId, characterId, load, user.id],
   )
 
+  const updateArt = useCallback(
+    async (artId: string, title: string, caption: string): Promise<Result> => {
+      const { error: updateError } = await supabase
+        .from("campaign_art_items")
+        .update({
+          title: title.trim() || "Арт персонажа",
+          caption: caption.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", artId)
+        .eq("character_id", characterId)
+
+      if (updateError) return { ok: false, error: updateError.message }
+      await load()
+      return { ok: true }
+    },
+    [characterId, load],
+  )
+
   const deleteArt = useCallback(
     async (artId: string): Promise<Result> => {
       const { error: deleteError } = await supabase
@@ -551,10 +585,12 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
     updateFeature,
     deleteFeature,
     addDiaryPost,
+    updateDiaryPost,
     deleteDiaryPost,
     addComment,
     deleteComment,
     addArt,
+    updateArt,
     deleteArt,
   }
 }

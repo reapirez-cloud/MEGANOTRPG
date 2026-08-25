@@ -81,6 +81,7 @@ type CharacterContextValue = {
   updateCampaignInfo: (input: CampaignInfoInput) => Promise<Result>
   createCharacter: (input: CharacterInput) => Promise<Result>
   updateCharacter: (characterId: string, input: CharacterInput) => Promise<Result>
+  deleteCharacter: (characterId: string) => Promise<Result>
   updateOwnCharacterAvatar: (characterId: string, avatarUrl: string) => Promise<Result>
   setActiveForMember: (userId: string, characterId: string | null) => Promise<Result>
 }
@@ -356,6 +357,13 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: "Кампания ещё не загружена." }
       }
 
+      if (!canManage) {
+        return {
+          ok: false,
+          error: "Персонажей создаёт и назначает ГМ или владелец.",
+        }
+      }
+
       const { error: insertError } = await supabase.rpc(
         "create_campaign_character",
         {
@@ -381,7 +389,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       await load()
       return { ok: true }
     },
-    [campaignId, load],
+    [campaignId, canManage, load],
   )
 
   const updateCharacter = useCallback(
@@ -419,6 +427,20 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       })
 
       if (avatarError) return { ok: false, error: avatarError.message }
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
+
+  const deleteCharacter = useCallback(
+    async (characterId: string): Promise<Result> => {
+      const { error: deleteError } = await supabase.rpc(
+        "delete_campaign_character",
+        { p_character_id: characterId },
+      )
+
+      if (deleteError) return { ok: false, error: deleteError.message }
       await load()
       return { ok: true }
     },
@@ -519,6 +541,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         updateCampaignInfo,
         createCharacter,
         updateCharacter,
+        deleteCharacter,
         updateOwnCharacterAvatar,
         setActiveForMember,
       }}

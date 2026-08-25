@@ -7,7 +7,17 @@ import WorldEditor, {
 } from "../components/world/WorldEditor"
 import type { CampaignUpdate, LocationEntry } from "../types/world"
 import CampaignBackground from "../components/common/CampaignBackground"
+import ContextActionSheet, {
+  type ContextAction,
+} from "../components/common/ContextActionSheet"
 import { useLongPressItem } from "../hooks/useLongPressItem"
+import type {
+  AchievementEntry,
+  LocationLink,
+  LocationSection,
+  WorldArticle,
+  WorldSection,
+} from "../types/world"
 
 type View =
   | { type: "main" }
@@ -18,6 +28,16 @@ type View =
   | { type: "updates" }
   | { type: "locations" }
   | { type: "location"; locationId: string }
+
+type WorldMenu =
+  | { type: "campaign"; item: { title: string } }
+  | { type: "section"; item: WorldSection }
+  | { type: "article"; item: WorldArticle }
+  | { type: "location"; item: LocationEntry }
+  | { type: "location-section"; item: LocationSection }
+  | { type: "location-link"; item: LocationLink }
+  | { type: "achievement"; item: AchievementEntry }
+  | { type: "update"; item: CampaignUpdate }
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("ru-RU", {
@@ -91,13 +111,20 @@ function UpdateRow({
   item,
   canManage,
   onEdit,
+  onLongPress,
 }: {
   item: CampaignUpdate
   canManage: boolean
   onEdit: () => void
+  onLongPress: () => void
 }) {
+  const bindLongPress = useLongPressItem<CampaignUpdate>(() => onLongPress())
   return (
-    <article className="world-update-row">
+    <article
+      {...bindLongPress(item)}
+      className="world-update-row"
+      style={{ touchAction: "pan-y" }}
+    >
       <div className={`world-update-icon world-update-icon--${item.kind}`}>
         {item.kind === "announcement" ? "!" : "+"}
       </div>
@@ -139,6 +166,122 @@ export default function World() {
   const world = useWorldContent()
   const [view, setView] = useState<View>({ type: "main" })
   const [editor, setEditor] = useState<WorldEditorMode>(null)
+  const [worldMenu, setWorldMenu] = useState<WorldMenu | null>(null)
+  const [actionError, setActionError] = useState("")
+  const bindWorldLongPress = useLongPressItem<WorldMenu>((target) => {
+    const canOpen = ["campaign", "section", "article", "location", "location-link"].includes(target.type)
+    if (canManage || canOpen) setWorldMenu(target)
+  })
+
+  function worldMenuTitle(target: WorldMenu) {
+    if (target.type === "campaign") return target.item.title
+    if (target.type === "location") return target.item.name
+    if (target.type === "location-link") {
+      const destination = world.locations.find(
+        (location) => location.id === target.item.target_location_id,
+      )
+      return target.item.label || destination?.name || "Переход"
+    }
+    return target.item.title
+  }
+
+  function openWorldTarget(target: WorldMenu) {
+    if (target.type === "campaign") {
+      setView({ type: "library" })
+    } else if (target.type === "section") {
+      setView({ type: "section", sectionId: target.item.id })
+    } else if (target.type === "article") {
+      setView({ type: "article", articleId: target.item.id })
+    } else if (target.type === "location") {
+      setView({ type: "location", locationId: target.item.id })
+    } else if (target.type === "location-link") {
+      setView({ type: "location", locationId: target.item.target_location_id })
+    }
+  }
+
+  function editWorldTarget(target: WorldMenu) {
+    if (target.type === "campaign") {
+      setEditor({ type: "campaign" })
+    } else if (target.type === "section") {
+      setEditor({ type: "world-section-edit", section: target.item })
+    } else if (target.type === "article") {
+      setEditor({ type: "article-edit", article: target.item })
+    } else if (target.type === "location") {
+      setEditor({ type: "location-edit", location: target.item })
+    } else if (target.type === "location-section") {
+      setEditor({ type: "location-section-edit", section: target.item })
+    } else if (target.type === "location-link") {
+      setEditor({ type: "location-link-edit", link: target.item })
+    } else if (target.type === "achievement") {
+      setEditor({ type: "achievement-edit", achievement: target.item })
+    } else {
+      setEditor({ type: "update-edit", update: target.item })
+    }
+  }
+
+  async function removeWorldTarget(target: WorldMenu) {
+    if (target.type === "campaign") return
+    const title = worldMenuTitle(target)
+    if (!window.confirm(`Удалить «${title}»? Связанные вложенные данные тоже будут удалены.`)) return
+
+    const table =
+      target.type === "section" ? "world_sections" :
+      target.type === "article" ? "world_articles" :
+      target.type === "location" ? "locations" :
+      target.type === "location-section" ? "location_sections" :
+      target.type === "location-link" ? "location_links" :
+      target.type === "achievement" ? "achievements" :
+      "campaign_updates"
+
+    setActionError("")
+    const result = await world.deleteWorldItem(table, target.item.id)
+    if (!result.ok) {
+      setActionError(result.error || "Не удалось удалить элемент.")
+      return
+    }
+
+    if (
+      (target.type === "section" && view.type === "section" && view.sectionId === target.item.id)
+      || (target.type === "article" && view.type === "article" && view.articleId === target.item.id)
+      || (target.type === "location" && view.type === "location" && view.locationId === target.item.id)
+    ) {
+      setView({ type: "main" })
+    }
+  }
+
+  function worldActions(target: WorldMenu): ContextAction[] {
+    const canOpen = ["campaign", "section", "article", "location", "location-link"].includes(target.type)
+    return [
+      ...(canOpen
+        ? [{
+            id: "open",
+            label: "Открыть",
+            detail: "Перейти к содержанию",
+            icon: "↗",
+            onSelect: () => openWorldTarget(target),
+          }]
+        : []),
+      ...(canManage
+        ? [{
+            id: "edit",
+            label: "Редактировать",
+            detail: "Изменить название и содержание",
+            icon: "✎",
+            onSelect: () => editWorldTarget(target),
+          }]
+        : []),
+      ...(canManage && target.type !== "campaign"
+        ? [{
+            id: "delete",
+            label: "Удалить",
+            detail: "Удаление нельзя будет отменить",
+            icon: "×",
+            danger: true,
+            onSelect: () => removeWorldTarget(target),
+          }]
+        : []),
+    ]
+  }
 
   const sectionArticleCounts = useMemo(() => {
     const map = new Map<string, number>()
@@ -203,6 +346,19 @@ export default function World() {
     />
   )
 
+  const worldActionNode = worldMenu ? (
+    <ContextActionSheet
+      title={worldMenuTitle(worldMenu)}
+      subtitle="Долгое нажатие открывает редактор и удаление"
+      actions={worldActions(worldMenu)}
+      onClose={() => setWorldMenu(null)}
+    />
+  ) : null
+
+  const actionErrorNode = actionError ? (
+    <div className="auth-error">{actionError}</div>
+  ) : null
+
   if (world.loading) {
     return (
       <div className="center-state">
@@ -256,10 +412,12 @@ export default function World() {
 
             {world.sections.map((section) => (
               <button
+                {...bindWorldLongPress({ type: "section", item: section })}
                 className="world-section-card surface"
                 type="button"
                 key={section.id}
                 onClick={() => setView({ type: "section", sectionId: section.id })}
+                style={{ touchAction: "pan-y" }}
               >
                 <div className="world-section-card__mark" />
                 <div className="world-section-card__body">
@@ -272,7 +430,9 @@ export default function World() {
             ))}
           </div>
         </div>
+        {actionErrorNode}
         {editorNode}
+        {worldActionNode}
       </>
     )
   }
@@ -318,10 +478,12 @@ export default function World() {
             )}
             {sectionArticles.map((article) => (
               <button
+                {...bindWorldLongPress({ type: "article", item: article })}
                 className="world-article-row"
                 type="button"
                 key={article.id}
                 onClick={() => setView({ type: "article", articleId: article.id })}
+                style={{ touchAction: "pan-y" }}
               >
                 <div>
                   <strong>{article.title}</strong>
@@ -332,7 +494,9 @@ export default function World() {
             ))}
           </div>
         </div>
+        {actionErrorNode}
         {editorNode}
+        {worldActionNode}
       </>
     )
   }
@@ -354,14 +518,20 @@ export default function World() {
               <EditButton onClick={() => setEditor({ type: "article-edit", article })} />
             </div>
           )}
-          <article className="world-reading surface">
+          <article
+            {...bindWorldLongPress({ type: "article", item: article })}
+            className="world-reading surface"
+            style={{ touchAction: "pan-y" }}
+          >
             <span>Запись мира</span>
             <h2>{article.title}</h2>
             {article.summary && <p className="world-reading__lead">{article.summary}</p>}
             <div className="world-reading__body">{article.body}</div>
           </article>
         </div>
+        {actionErrorNode}
         {editorNode}
+        {worldActionNode}
       </>
     )
   }
@@ -402,7 +572,12 @@ export default function World() {
                 : null
 
               return (
-                <article className="world-achievement-row" key={achievement.id}>
+                <article
+                  {...bindWorldLongPress({ type: "achievement", item: achievement })}
+                  className="world-achievement-row"
+                  key={achievement.id}
+                  style={{ touchAction: "pan-y" }}
+                >
                   <div className="world-achievement-row__icon">{achievement.icon}</div>
                   <div className="world-achievement-row__body">
                     <div className="world-achievement-row__top">
@@ -435,7 +610,9 @@ export default function World() {
             })}
           </div>
         </div>
+        {actionErrorNode}
         {editorNode}
+        {worldActionNode}
       </>
     )
   }
@@ -472,11 +649,14 @@ export default function World() {
                 key={item.id}
                 canManage={canManage}
                 onEdit={() => setEditor({ type: "update-edit", update: item })}
+                onLongPress={() => canManage && setWorldMenu({ type: "update", item })}
               />
             ))}
           </div>
         </div>
+        {actionErrorNode}
         {editorNode}
+        {worldActionNode}
       </>
     )
   }
@@ -506,12 +686,14 @@ export default function World() {
                 key={location.id}
                 location={location}
                 onClick={() => setView({ type: "location", locationId: location.id })}
-                onLongPress={canManage ? () => setEditor({ type: "location-edit", location }) : undefined}
+                onLongPress={() => setWorldMenu({ type: "location", item: location })}
               />
             ))}
           </div>
         </div>
+        {actionErrorNode}
         {editorNode}
+        {worldActionNode}
       </>
     )
   }
@@ -545,7 +727,11 @@ export default function World() {
             </div>
           )}
 
-          <article className="world-location-detail surface">
+          <article
+            {...bindWorldLongPress({ type: "location", item: location })}
+            className="world-location-detail surface"
+            style={{ touchAction: "pan-y" }}
+          >
             <CampaignBackground
               className="world-location-detail__art"
               value={location.image_url}
@@ -582,7 +768,7 @@ export default function World() {
                   key={child.id}
                   location={child}
                   onClick={() => setView({ type: "location", locationId: child.id })}
-                  onLongPress={canManage ? () => setEditor({ type: "location-edit", location: child }) : undefined}
+                onLongPress={() => setWorldMenu({ type: "location", item: child })}
                 />
               ))}
             </div>
@@ -613,7 +799,12 @@ export default function World() {
                 )
 
                 return (
-                  <article className="location-info-section surface" key={section.id}>
+                  <article
+                    {...bindWorldLongPress({ type: "location-section", item: section })}
+                    className="location-info-section surface"
+                    key={section.id}
+                    style={{ touchAction: "pan-y" }}
+                  >
                     <div className="location-info-section__head">
                       <h4>{section.title}</h4>
                       {canManage && (
@@ -639,7 +830,12 @@ export default function World() {
                           if (!target) return null
 
                           return (
-                            <div className="managed-link-row" key={link.id}>
+                            <div
+                              {...bindWorldLongPress({ type: "location-link", item: link })}
+                              className="managed-link-row"
+                              key={link.id}
+                              style={{ touchAction: "pan-y" }}
+                            >
                               <button
                                 type="button"
                                 className="location-link-row"
@@ -675,7 +871,9 @@ export default function World() {
             </div>
           </section>
         </div>
+        {actionErrorNode}
         {editorNode}
+        {worldActionNode}
       </>
     )
   }
@@ -686,15 +884,17 @@ export default function World() {
         {isOwner && (
           <div className="owner-status surface">
             <span>Владелец</span>
-            <strong>Полный доступ к ролям, миру и инструментам ГМ</strong>
+            <strong>Роли и общие игровые данные доступны; чужое «Только я» скрыто</strong>
           </div>
         )}
 
         <div className="world-hero-wrap">
           <button
+            {...bindWorldLongPress({ type: "campaign", item: { title: campaignTitle } })}
             className="hero-card surface world-hero-button"
             type="button"
             onClick={() => setView({ type: "library" })}
+            style={{ touchAction: "pan-y" }}
           >
             <CampaignBackground
               className="world-hero-cover"
@@ -747,7 +947,7 @@ export default function World() {
                 key={location.id}
                 location={location}
                 onClick={() => setView({ type: "location", locationId: location.id })}
-                onLongPress={canManage ? () => setEditor({ type: "location-edit", location }) : undefined}
+                onLongPress={() => setWorldMenu({ type: "location", item: location })}
               />
             ))}
           </div>
@@ -789,7 +989,12 @@ export default function World() {
                 : null
 
               return (
-                <article className="world-achievement-row" key={achievement.id}>
+                <article
+                  {...bindWorldLongPress({ type: "achievement", item: achievement })}
+                  className="world-achievement-row"
+                  key={achievement.id}
+                  style={{ touchAction: "pan-y" }}
+                >
                   <div className="world-achievement-row__icon">{achievement.icon}</div>
                   <div className="world-achievement-row__body">
                     <div className="world-achievement-row__top">
@@ -855,12 +1060,15 @@ export default function World() {
                 key={item.id}
                 canManage={canManage}
                 onEdit={() => setEditor({ type: "update-edit", update: item })}
+                onLongPress={() => canManage && setWorldMenu({ type: "update", item })}
               />
             ))}
           </div>
         </section>
       </div>
+      {actionErrorNode}
       {editorNode}
+      {worldActionNode}
     </>
   )
 }
