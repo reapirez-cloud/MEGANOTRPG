@@ -29,4 +29,5 @@ export type ChatMessage = {
   author_avatar_url: string | null
   body: string
   created_at: string
+  edited_at: string | null
 }

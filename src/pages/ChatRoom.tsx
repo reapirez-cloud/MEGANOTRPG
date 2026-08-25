@@ -5,9 +5,12 @@ import { supabase } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
 import { useChatMessages } from "../hooks/useChatMessages"
+import { useLongPressItem } from "../hooks/useLongPressItem"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
 import ChatActionSheet from "../components/chat/ChatActionSheet"
 import ChatRoomSettings from "../components/chat/ChatRoomSettings"
+import ChatMessageActions from "../components/chat/ChatMessageActions"
+import type { ChatMessage } from "../types/chat"
 
 type Props = {
   roomId: string
@@ -43,6 +46,7 @@ export default function ChatRoom({
   const [draft, setDraft] = useState("")
   const [actionsOpen, setActionsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(null)
   const bottomRef = useRef<HTMLDivElement | null>(null)
 
   const {
@@ -52,12 +56,28 @@ export default function ChatRoom({
     error,
     realtime,
     sendMessage,
+    editMessage,
+    deleteMessage,
   } = useChatMessages(roomId)
 
   const characterById = useMemo(
     () => new Map(characters.map((character) => [character.id, character])),
     [characters],
   )
+
+  function resolveMessageCharacterId(message: ChatMessage) {
+    if (message.character_id) return message.character_id
+    if (!message.user_id) return null
+
+    const member = members.find((item) => item.user_id === message.user_id)
+    if (!member || member.is_owner || member.role === "gm") return null
+
+    return member.active_character_id
+  }
+
+  const bindMessageLongPress = useLongPressItem<ChatMessage>((message) => {
+    setSelectedMessage(message)
+  })
 
   const realtimeLabel =
     realtime === "live"
@@ -197,8 +217,9 @@ export default function ChatRoom({
 
         {messages.map((message) => {
           const own = message.user_id === user.id
-          const linkedCharacter = message.character_id
-            ? characterById.get(message.character_id) ?? null
+          const linkedCharacterId = resolveMessageCharacterId(message)
+          const linkedCharacter = linkedCharacterId
+            ? characterById.get(linkedCharacterId) ?? null
             : null
           const avatarCharacter = linkedCharacter ?? {
             name: message.author_name,
@@ -207,21 +228,59 @@ export default function ChatRoom({
 
           return (
             <div
+              {...bindMessageLongPress(message)}
               className={`message-row ${own ? "message-row--self" : ""}`}
               key={message.id}
+              style={{ touchAction: "pan-y" }}
             >
               {!own && (
-                <CharacterAvatar character={avatarCharacter} size="small" />
+                linkedCharacterId ? (
+                  <button
+                    type="button"
+                    aria-label="Открыть персонажа"
+                    onClick={() => onOpenCharacter(linkedCharacterId)}
+                    style={avatarButtonStyle}
+                  >
+                    <CharacterAvatar character={avatarCharacter} size="small" />
+                  </button>
+                ) : (
+                  <CharacterAvatar character={avatarCharacter} size="small" />
+                )
               )}
+
               <article className={`message ${own ? "message--self" : ""}`}>
-                <div className="message__author">{message.author_name}</div>
+                {linkedCharacterId ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenCharacter(linkedCharacterId)}
+                    style={authorButtonStyle}
+                  >
+                    {message.author_name}
+                  </button>
+                ) : (
+                  <div className="message__author">{message.author_name}</div>
+                )}
+
                 <p className="message__text">{message.body}</p>
                 <div className="message__time">
                   {formatTime(message.created_at)}
+                  {message.edited_at ? " · изм." : ""}
                 </div>
               </article>
+
               {own && (
-                <CharacterAvatar character={avatarCharacter} size="small" />
+                linkedCharacterId ? (
+                  <button
+                    type="button"
+                    aria-label="Открыть персонажа"
+                    onClick={() => onOpenCharacter(linkedCharacterId)}
+                    style={avatarButtonStyle}
+                  >
+                    <CharacterAvatar character={avatarCharacter} size="small" />
+                  </button>
+                ) : (
+                  <CharacterAvatar character={avatarCharacter} size="small" />
+                )
               )}
             </div>
           )
@@ -326,6 +385,44 @@ export default function ChatRoom({
           onSaved={(nextTitle) => setRoomTitle(nextTitle)}
         />
       )}
+
+      {selectedMessage && (
+        <ChatMessageActions
+          message={selectedMessage}
+          characterId={resolveMessageCharacterId(selectedMessage)}
+          own={selectedMessage.user_id === user.id}
+          canManage={canManage}
+          onOpenCharacter={onOpenCharacter}
+          onClose={() => setSelectedMessage(null)}
+          onEdit={editMessage}
+          onDelete={deleteMessage}
+        />
+      )}
     </div>
   )
+}
+
+const avatarButtonStyle = {
+  flex: "0 0 auto",
+  width: "auto",
+  height: "auto",
+  padding: 0,
+  border: 0,
+  borderRadius: 999,
+  background: "transparent",
+}
+
+const authorButtonStyle = {
+  width: "max-content",
+  maxWidth: "100%",
+  padding: 0,
+  border: 0,
+  background: "transparent",
+  color: "inherit",
+  font: "inherit",
+  fontWeight: 800,
+  textAlign: "left" as const,
+  textDecoration: "underline",
+  textDecorationColor: "#4b3b63",
+  textUnderlineOffset: 2,
 }

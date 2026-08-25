@@ -4,7 +4,10 @@ import { supabase } from "../lib/supabase"
 import type { ChatMessage } from "../types/chat"
 
 type RealtimeState = "connecting" | "live" | "offline"
-const fields = "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at"
+type Result = { ok: boolean; error?: string }
+
+const fields =
+  "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at"
 
 export function useChatMessages(roomId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -39,21 +42,62 @@ export function useChatMessages(roomId: string) {
 
     let channel: RealtimeChannel | null = supabase
       .channel(`chat-room-${roomId}`)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "chat_messages",
-        filter: `room_id=eq.${roomId}`,
-      }, (payload) => {
-        const incoming = payload.new as ChatMessage
-        setMessages((current) =>
-          current.some((m) => m.id === incoming.id) ? current : [...current, incoming]
-        )
-      })
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "chat_messages",
+          filter: `room_id=eq.${roomId}`,
+        },
+        (payload) => {
+          const incoming = payload.new as ChatMessage
+          setMessages((current) =>
+            current.some((message) => message.id === incoming.id)
+              ? current
+              : [...current, incoming],
+          )
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "chat_messages",
+          filter: `room_id=eq.${roomId}`,
+        },
+        (payload) => {
+          const incoming = payload.new as ChatMessage
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === incoming.id ? incoming : message,
+            ),
+          )
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "chat_messages",
+        },
+        (payload) => {
+          const removed = payload.old as Partial<ChatMessage>
+          if (removed.id == null) return
+          setMessages((current) =>
+            current.filter((message) => message.id !== removed.id),
+          )
+        },
+      )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") setRealtime("live")
-        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") setRealtime("offline")
-        else setRealtime("connecting")
+        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setRealtime("offline")
+        } else {
+          setRealtime("connecting")
+        }
       })
 
     return () => {
@@ -64,32 +108,81 @@ export function useChatMessages(roomId: string) {
     }
   }, [loadMessages, roomId])
 
-  const sendMessage = useCallback(async (text: string) => {
-    const body = text.trim()
-    if (!body || sending) return false
+  const sendMessage = useCallback(
+    async (text: string) => {
+      const body = text.trim()
+      if (!body || sending) return false
 
-    setSending(true)
-    setError(null)
+      setSending(true)
+      setError(null)
 
-    const { data, error: sendError } = await supabase
-      .from("chat_messages")
-      .insert({ room_id: roomId, body })
-      .select(fields)
-      .single()
+      const { data, error: sendError } = await supabase
+        .from("chat_messages")
+        .insert({ room_id: roomId, body })
+        .select(fields)
+        .single()
 
-    setSending(false)
+      setSending(false)
 
-    if (sendError) {
-      setError(sendError.message)
-      return false
-    }
+      if (sendError) {
+        setError(sendError.message)
+        return false
+      }
 
-    const inserted = data as ChatMessage
-    setMessages((current) =>
-      current.some((m) => m.id === inserted.id) ? current : [...current, inserted]
-    )
-    return true
-  }, [roomId, sending])
+      const inserted = data as ChatMessage
+      setMessages((current) =>
+        current.some((message) => message.id === inserted.id)
+          ? current
+          : [...current, inserted],
+      )
+      return true
+    },
+    [roomId, sending],
+  )
 
-  return { messages, loading, sending, error, realtime, sendMessage }
+  const editMessage = useCallback(
+    async (messageId: number, text: string): Promise<Result> => {
+      const body = text.trim()
+      if (!body) return { ok: false, error: "Сообщение не может быть пустым." }
+
+      const { error: editError } = await supabase.rpc("edit_chat_message", {
+        p_message_id: messageId,
+        p_body: body,
+      })
+
+      if (editError) return { ok: false, error: editError.message }
+
+      await loadMessages()
+      return { ok: true }
+    },
+    [loadMessages],
+  )
+
+  const deleteMessage = useCallback(
+    async (messageId: number): Promise<Result> => {
+      const { error: deleteError } = await supabase.rpc(
+        "delete_chat_message",
+        { p_message_id: messageId },
+      )
+
+      if (deleteError) return { ok: false, error: deleteError.message }
+
+      setMessages((current) =>
+        current.filter((message) => message.id !== messageId),
+      )
+      return { ok: true }
+    },
+    [],
+  )
+
+  return {
+    messages,
+    loading,
+    sending,
+    error,
+    realtime,
+    sendMessage,
+    editMessage,
+    deleteMessage,
+  }
 }
