@@ -3,6 +3,11 @@ import type { RealtimeChannel } from "@supabase/supabase-js"
 
 import { supabase } from "../lib/supabase"
 import { deleteCampaignMediaObject } from "../lib/mediaUpload"
+import {
+  compareFeedOrder,
+  feedCursorFilter,
+  type FeedCursor,
+} from "../lib/feedPagination"
 import type { FeedItem } from "../types/feed"
 
 const PAGE_SIZE = 12
@@ -14,12 +19,6 @@ const feedFields = `
 `
 
 type Result = { ok: boolean; error?: string }
-type Cursor = { published_at: string; id: string }
-
-function compareFeedItems(a: FeedItem, b: FeedItem) {
-  const byDate = b.published_at.localeCompare(a.published_at)
-  return byDate || b.id.localeCompare(a.id)
-}
 
 export function useFeed(campaignId: string) {
   const [items, setItems] = useState<FeedItem[]>([])
@@ -29,7 +28,7 @@ export function useFeed(campaignId: string) {
   const [error, setError] = useState<string | null>(null)
 
   const fetchPage = useCallback(
-    async (before?: Cursor) => {
+    async (before?: FeedCursor) => {
       let query = supabase
         .from("feed_items")
         .select(feedFields)
@@ -38,12 +37,7 @@ export function useFeed(campaignId: string) {
         .order("id", { ascending: false })
         .limit(PAGE_SIZE + 1)
 
-      if (before) {
-        query = query.or(
-          `published_at.lt.${before.published_at},and(published_at.eq.${before.published_at},id.lt.${before.id})`,
-        )
-      }
-
+      if (before) query = query.or(feedCursorFilter(before))
       return query
     },
     [campaignId],
@@ -75,7 +69,7 @@ export function useFeed(campaignId: string) {
       const next = exists
         ? current.map((item) => (item.id === feedItemId ? fresh : item))
         : [fresh, ...current]
-      return next.sort(compareFeedItems)
+      return next.sort(compareFeedOrder)
     })
   }, [fetchItem])
 
@@ -107,7 +101,7 @@ export function useFeed(campaignId: string) {
     setItems((current) => {
       const byId = new Map(current.map((item) => [item.id, item]))
       for (const item of head) byId.set(item.id, item)
-      return [...byId.values()].sort(compareFeedItems)
+      return [...byId.values()].sort(compareFeedOrder)
     })
   }, [campaignId, fetchPage])
 
