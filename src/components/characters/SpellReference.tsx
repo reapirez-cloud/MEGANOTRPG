@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 
+import { spellReferenceAuthor } from "../../data/spellReferenceAuthor"
 import { supabase } from "../../lib/supabase"
 import {
   catalogSpellName,
@@ -11,6 +12,7 @@ import {
   type CatalogSpell,
   type SpellClassKey,
 } from "../../lib/spellCatalog"
+import SpellAuthorProfile from "./SpellAuthorProfile"
 
 type CharacterTarget = {
   id: string
@@ -66,6 +68,7 @@ export default function SpellReference({
   const [error, setError] = useState("")
   const [query, setQuery] = useState("")
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [authorOpen, setAuthorOpen] = useState(false)
   const [classFilter, setClassFilter] = useState<"" | SpellClassKey>("")
   const [levelFilter, setLevelFilter] = useState<"all" | string>("all")
   const [schoolFilter, setSchoolFilter] = useState("")
@@ -85,7 +88,7 @@ export default function SpellReference({
 
       const catalogPromise = supabase
         .from("spell_catalog")
-        .select("id, slug, name_en, name_ru, spell_level, school, casting_time, spell_range, area, duration, components, material, concentration, ritual, check_type, damage, effect_summary, upcast, notes, rules_text, source, source_kind, license, sort_order, spell_catalog_classes(class_key)")
+        .select("id, slug, name_en, name_ru, spell_level, school, casting_time, spell_range, area, duration, components, material, concentration, ritual, check_type, damage, effect_summary, author_description, author_comment, upcast, notes, rules_text, source, source_kind, license, sort_order, spell_catalog_classes(class_key)")
         .order("spell_level", { ascending: true })
         .order("sort_order", { ascending: true })
         .order("name_en", { ascending: true })
@@ -166,7 +169,7 @@ export default function SpellReference({
 
     return spells.filter((spell) => {
       if (needle) {
-        const haystack = `${spell.name_ru || ""} ${spell.name_en} ${spell.effect_summary}`.toLocaleLowerCase("ru-RU")
+        const haystack = `${spell.name_ru || ""} ${spell.name_en} ${spell.effect_summary} ${spell.author_description} ${spell.author_comment}`.toLocaleLowerCase("ru-RU")
         if (!haystack.includes(needle)) return false
       }
       if (classFilter && !spell.classes.includes(classFilter)) return false
@@ -254,7 +257,9 @@ export default function SpellReference({
           <button className="icon-button" type="button" onClick={onClose} aria-label="Закрыть справочник">←</button>
           <div>
             <h2>Справочник заклинаний</h2>
-            <p>Официальный каталог без хомбрю</p>
+            <button className="spell-author-byline" type="button" onClick={() => setAuthorOpen(true)}>
+              {spellReferenceAuthor.byline} · об авторе
+            </button>
           </div>
           <span />
         </header>
@@ -342,9 +347,11 @@ export default function SpellReference({
         )}
 
         <footer className="spell-reference-license">
-          SRD 5.2.1: Wizards of the Coast LLC, CC BY 4.0. Для закрытых официальных источников справочник хранит только собственные краткие механические карточки.
+          SRD 5.2.1: Wizards of the Coast LLC, CC BY 4.0. Авторские русские объяснения и комментарии написаны специально для этого справочника.
         </footer>
       </section>
+
+      {authorOpen && <SpellAuthorProfile onClose={() => setAuthorOpen(false)} />}
 
       {filtersOpen && (
         <div className="sheet-backdrop spell-filter-backdrop" onMouseDown={() => setFiltersOpen(false)}>
@@ -427,6 +434,13 @@ export default function SpellReference({
               <button className="sheet-close" type="button" onClick={() => setSelected(null)}>×</button>
             </div>
 
+            {selected.author_description && (
+              <div className="spell-author-description">
+                <span>{spellReferenceAuthor.name} объясняет</span>
+                <p>{selected.author_description}</p>
+              </div>
+            )}
+
             <div className="spell-detail-facts">
               <div><span>Наложение</span><strong>{selected.casting_time || "—"}</strong></div>
               <div><span>Дистанция</span><strong>{selected.spell_range || "—"}</strong></div>
@@ -443,9 +457,16 @@ export default function SpellReference({
             </div>
 
             {selected.material && <div className="spell-detail-block"><span>Материал</span><p>{selected.material}</p></div>}
-            <div className="spell-detail-block"><span>Эффект</span><p>{selected.effect_summary || selected.rules_text || "Краткое описание ещё не заполнено."}</p></div>
+            <div className="spell-detail-block"><span>Механика</span><p>{selected.effect_summary || selected.rules_text || "Краткое описание ещё не заполнено."}</p></div>
             {selected.upcast && <div className="spell-detail-block"><span>На больших ячейках</span><p>{selected.upcast}</p></div>}
             {selected.notes && <div className="spell-detail-block"><span>Нюансы</span><p>{selected.notes}</p></div>}
+
+            {selected.author_comment && (
+              <blockquote className="spell-author-comment">
+                <span>Заметка Восса</span>
+                <p>{selected.author_comment}</p>
+              </blockquote>
+            )}
 
             <div className="spell-detail-source">
               <span>Классы</span>
