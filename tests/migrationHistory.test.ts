@@ -4,7 +4,10 @@ import test from "node:test"
 
 const migrationsDir = new URL("../supabase/migrations/", import.meta.url)
 
-const expectedMigrations = [
+// These versions are the immutable history already applied in production.
+// New migrations are expected and are allowed, but the production baseline
+// must never be deleted, renamed, or replaced with another timestamp.
+const productionBaseline = [
   "20260824083149_create_app_test.sql",
   "20260824143843_create_realtime_chat_vertical_slice.sql",
   "20260824151018_auth_profiles_and_campaign_membership.sql",
@@ -37,19 +40,39 @@ const expectedMigrations = [
   "20260825073542_make_campaign_media_private.sql",
   "20260825090028_roles_gm_workspace_gallery.sql",
   "20260825104504_private_gm_content_and_character_assignment.sql",
-  "20260825150000_audit_hardening.sql",
 ].sort()
 
-test("repository preserves the production Supabase migration history", async () => {
-  const actual = (await readdir(migrationsDir))
+async function repositoryMigrations() {
+  return (await readdir(migrationsDir))
     .filter((name) => name.endsWith(".sql"))
     .sort()
+}
 
-  assert.deepEqual(actual, expectedMigrations)
+function migrationVersion(name: string) {
+  const match = name.match(/^(\d{14})_[a-z0-9_]+\.sql$/)
+  assert.ok(match, `Invalid migration filename: ${name}`)
+  return match[1]
+}
+
+test("repository preserves the applied production Supabase baseline", async () => {
+  const actual = new Set(await repositoryMigrations())
+  for (const expected of productionBaseline) {
+    assert.ok(actual.has(expected), `Missing production migration: ${expected}`)
+  }
 })
 
-test("migration versions are unique and monotonically ordered", () => {
-  const versions = expectedMigrations.map((name) => name.slice(0, 14))
-  assert.equal(new Set(versions).size, versions.length)
-  assert.deepEqual(versions, [...versions].sort())
+test("new migrations only extend the production history", async () => {
+  const actual = await repositoryMigrations()
+  const baseline = new Set(productionBaseline)
+  const latestProductionVersion = migrationVersion(productionBaseline.at(-1)!)
+  const versions = actual.map(migrationVersion)
+
+  assert.equal(new Set(versions).size, versions.length, "Migration versions must be unique")
+
+  for (const name of actual.filter((migration) => !baseline.has(migration))) {
+    assert.ok(
+      migrationVersion(name) > latestProductionVersion,
+      `New migration must be newer than production baseline: ${name}`,
+    )
+  }
 })
