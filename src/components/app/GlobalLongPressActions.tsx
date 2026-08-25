@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase"
 type Tab = "world" | "art" | "chats" | "characters"
 
 type EntityKind =
+  | "campaign"
   | "character"
   | "member"
   | "chat"
@@ -14,6 +15,7 @@ type EntityKind =
   | "world-section"
   | "world-article"
   | "location"
+  | "location-section"
   | "achievement"
   | "update"
 
@@ -38,39 +40,36 @@ function textOf(element: Element | null) {
   return element?.textContent?.trim() || ""
 }
 
-function primaryClick(element: HTMLElement) {
-  if (element instanceof HTMLButtonElement) {
-    element.click()
-    return
-  }
-
-  element.querySelector<HTMLButtonElement>("button")?.click()
+function firstButton(element: HTMLElement) {
+  if (element instanceof HTMLButtonElement) return element
+  return element.querySelector<HTMLButtonElement>("button")
 }
 
 export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }) {
   const { canManage, campaignId, characters, members } = useCharacters()
+  const db = supabase as any
 
   const [target, setTarget] = useState<MenuTarget | null>(null)
-  const [error, setError] = useState("")
-  const [busy, setBusy] = useState(false)
   const [renameTarget, setRenameTarget] = useState<MenuTarget | null>(null)
   const [renameValue, setRenameValue] = useState("")
+  const [error, setError] = useState("")
+  const [busy, setBusy] = useState(false)
 
   const timerRef = useRef<number | null>(null)
   const startRef = useRef<{ x: number; y: number } | null>(null)
-  const suppressUntilRef = useRef(0)
+  const suppressClickRef = useRef(false)
 
-  const characterTitleMap = useMemo(() => {
+  const characterMap = useMemo(() => {
     const map = new Map<string, string>()
 
     for (const character of characters) {
       const member = character.assigned_user_id
         ? members.find((item) => item.user_id === character.assigned_user_id)
         : null
-      const label = member
+      const title = member
         ? `${character.name} (${member.display_name})`
         : character.name
-      map.set(label, character.id)
+      map.set(title, character.id)
     }
 
     return map
@@ -83,68 +82,66 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
     }
   }
 
-  function selectorForTab() {
+  function selector() {
     if (activeTab === "characters") {
       return ".character-social-card, .member-role-row"
     }
+
     if (activeTab === "chats") return ".chat-row"
     if (activeTab === "art") return ".art-tile--real"
+
     return [
+      ".world-hero-button",
       ".world-section-card",
+      ".world-section-description",
       ".world-article-row",
+      ".world-reading",
       ".world-location-card",
+      ".world-location-detail",
+      ".location-info-section",
       ".world-achievement-row",
       ".world-update-row",
     ].join(", ")
   }
 
-  async function resolveUnique(
+  async function oneBy(
     table: string,
-    titleColumn: string,
-    title: string,
+    column: string,
+    value: string,
     select = "id",
-  ) {
-    let query = supabase
-      .from(table)
-      .select(select)
-      .eq(titleColumn, title)
-      .limit(2)
+    scopeCampaign = true,
+  ): Promise<Record<string, unknown>> {
+    let query = db.from(table).select(select).eq(column, value)
+    if (scopeCampaign && campaignId) query = query.eq("campaign_id", campaignId)
+    const { data, error: lookupError } = await query.limit(2)
 
-    if (
-      campaignId &&
-      [
-        "chat_rooms",
-        "campaign_art_items",
-        "world_sections",
-        "world_articles",
-        "locations",
-        "achievements",
-        "campaign_updates",
-      ].includes(table)
-    ) {
-      query = query.eq("campaign_id", campaignId)
-    }
-
-    const { data, error: lookupError } = await query
     if (lookupError) throw new Error(lookupError.message)
-    if (!data || data.length === 0) throw new Error("Объект уже не найден.")
+    if (!data || data.length === 0) throw new Error("Объект не найден.")
     if (data.length > 1) {
-      throw new Error(
-        "Есть несколько объектов с одинаковым названием. Сначала переименуй один из них обычным редактором.",
-      )
+      throw new Error("Есть несколько объектов с одинаковым названием.")
     }
 
     return data[0] as Record<string, unknown>
   }
 
   async function resolveElement(element: HTMLElement): Promise<MenuTarget> {
+    if (element.matches(".world-hero-button")) {
+      return {
+        kind: "campaign",
+        id: campaignId,
+        title: textOf(element.querySelector(".hero-card__title")) || "Кампания",
+        element,
+        fixed: true,
+      }
+    }
+
     if (element.matches(".character-social-card")) {
-      const label = textOf(
+      const title = textOf(
         element.querySelector(".character-social-card__name-row strong"),
       )
-      const id = characterTitleMap.get(label)
+      const id = characterMap.get(title)
       if (!id) throw new Error("Не удалось определить персонажа.")
-      return { kind: "character", id, title: label, element }
+      return { kind: "character", id, title, element }
     }
 
     if (element.matches(".member-role-row")) {
@@ -156,12 +153,7 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
 
     if (element.matches(".chat-row")) {
       const title = textOf(element.querySelector(".chat-row__title"))
-      const row = await resolveUnique(
-        "chat_rooms",
-        "title",
-        title,
-        "id, category",
-      )
+      const row = await oneBy("chat_rooms", "title", title, "id, category")
       const category = String(row.category || "game")
       return {
         kind: "chat",
@@ -175,7 +167,7 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
 
     if (element.matches(".art-tile--real")) {
       const title = element.querySelector<HTMLImageElement>("img")?.alt || "Арт"
-      const row = await resolveUnique(
+      const row = await oneBy(
         "campaign_art_items",
         "title",
         title,
@@ -190,45 +182,66 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
       }
     }
 
-    if (element.matches(".world-section-card")) {
-      const title = textOf(element.querySelector("strong"))
-      const row = await resolveUnique("world_sections", "title", title)
-      return {
-        kind: "world-section",
-        id: String(row.id),
-        title,
-        element,
-      }
+    if (element.matches(".world-section-card, .world-section-description")) {
+      const title = element.matches(".world-section-card")
+        ? textOf(element.querySelector("strong"))
+        : textOf(document.querySelector(".world-back-row h2"))
+      const row = await oneBy("world_sections", "title", title)
+      return { kind: "world-section", id: String(row.id), title, element }
     }
 
-    if (element.matches(".world-article-row")) {
-      const title = textOf(element.querySelector("strong"))
-      const row = await resolveUnique("world_articles", "title", title)
-      return {
-        kind: "world-article",
-        id: String(row.id),
-        title,
-        element,
-      }
+    if (element.matches(".world-article-row, .world-reading")) {
+      const title = element.matches(".world-article-row")
+        ? textOf(element.querySelector("strong"))
+        : textOf(element.querySelector("h2"))
+      const row = await oneBy("world_articles", "title", title)
+      return { kind: "world-article", id: String(row.id), title, element }
     }
 
-    if (element.matches(".world-location-card")) {
-      const title = textOf(element.querySelector("strong"))
-      const row = await resolveUnique("locations", "name", title)
+    if (element.matches(".world-location-card, .world-location-detail")) {
+      const title = element.matches(".world-location-card")
+        ? textOf(element.querySelector("strong"))
+        : textOf(element.querySelector("h2"))
+      const row = await oneBy("locations", "name", title)
       return { kind: "location", id: String(row.id), title, element }
+    }
+
+    if (element.matches(".location-info-section")) {
+      const title = textOf(element.querySelector(".location-info-section__head h4"))
+      const locationName = textOf(document.querySelector(".world-location-detail h2"))
+      const location = await oneBy("locations", "name", locationName)
+
+      const { data, error: sectionError } = await db
+        .from("location_sections")
+        .select("id")
+        .eq("location_id", String(location.id))
+        .eq("title", title)
+        .limit(2)
+
+      if (sectionError) throw new Error(sectionError.message)
+      if (!data || data.length !== 1) {
+        throw new Error("Не удалось определить раздел локации.")
+      }
+
+      return {
+        kind: "location-section",
+        id: String(data[0].id),
+        title,
+        element,
+      }
     }
 
     if (element.matches(".world-achievement-row")) {
       const title = textOf(
         element.querySelector(".world-achievement-row__top strong"),
       )
-      const row = await resolveUnique("achievements", "title", title)
+      const row = await oneBy("achievements", "title", title)
       return { kind: "achievement", id: String(row.id), title, element }
     }
 
     if (element.matches(".world-update-row")) {
       const title = textOf(element.querySelector(".world-update-row__top strong"))
-      const row = await resolveUnique("campaign_updates", "title", title)
+      const row = await oneBy("campaign_updates", "title", title)
       return { kind: "update", id: String(row.id), title, element }
     }
 
@@ -254,9 +267,9 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
   useEffect(() => {
     if (!canManage) return
 
-    const selector = selectorForTab()
+    const manageableSelector = selector()
 
-    function findTarget(eventTarget: EventTarget | null) {
+    function targetFrom(eventTarget: EventTarget | null) {
       if (!(eventTarget instanceof Element)) return null
       if (
         eventTarget.closest(
@@ -265,12 +278,12 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
       ) {
         return null
       }
-      return eventTarget.closest<HTMLElement>(selector)
+      return eventTarget.closest(manageableSelector) as HTMLElement | null
     }
 
     function pointerDown(event: PointerEvent) {
       if (event.pointerType === "mouse" && event.button !== 0) return
-      const element = findTarget(event.target)
+      const element = targetFrom(event.target)
       if (!element) return
 
       clearTimer()
@@ -278,18 +291,17 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
 
       timerRef.current = window.setTimeout(() => {
         timerRef.current = null
-        suppressUntilRef.current = Date.now() + 700
+        suppressClickRef.current = true
         void openMenu(element)
       }, 500)
     }
 
     function pointerMove(event: PointerEvent) {
-      if (!startRef.current) return
-      const distance = Math.hypot(
-        event.clientX - startRef.current.x,
-        event.clientY - startRef.current.y,
-      )
-      if (distance > 14) clearTimer()
+      const start = startRef.current
+      if (!start) return
+      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 14) {
+        clearTimer()
+      }
     }
 
     function pointerEnd() {
@@ -298,18 +310,18 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
     }
 
     function clickCapture(event: MouseEvent) {
-      if (Date.now() > suppressUntilRef.current) return
+      if (!suppressClickRef.current) return
       event.preventDefault()
       event.stopPropagation()
-      suppressUntilRef.current = 0
+      suppressClickRef.current = false
     }
 
     function contextMenu(event: MouseEvent) {
-      const element = findTarget(event.target)
+      const element = targetFrom(event.target)
       if (!element) return
       event.preventDefault()
       clearTimer()
-      suppressUntilRef.current = Date.now() + 700
+      suppressClickRef.current = true
       void openMenu(element)
     }
 
@@ -329,23 +341,20 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
       document.removeEventListener("click", clickCapture, true)
       document.removeEventListener("contextmenu", contextMenu, true)
     }
-  }, [activeTab, canManage, campaignId, characterTitleMap, members])
+  }, [activeTab, canManage, campaignId, characterMap, members])
 
-  function closeMenu() {
-    if (busy) return
+  function openItem(item: MenuTarget) {
     setTarget(null)
-    setError("")
+    firstButton(item.element)?.click()
   }
 
-  function startRename(item: MenuTarget) {
-    setRenameTarget(item)
-    setRenameValue(item.title)
+  function editItem(item: MenuTarget) {
     setTarget(null)
-    setError("")
-  }
 
-  function clickEdit(item: MenuTarget) {
-    setTarget(null)
+    if (item.kind === "campaign") {
+      document.querySelector<HTMLButtonElement>(".world-hero-edit")?.click()
+      return
+    }
 
     if (item.kind === "character") {
       const button = Array.from(
@@ -370,16 +379,61 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
       return
     }
 
-    if (
-      item.kind === "world-section" ||
-      item.kind === "world-article" ||
-      item.kind === "location"
-    ) {
-      primaryClick(item.element)
-      window.setTimeout(() => {
-        document.querySelector<HTMLButtonElement>(".manage-edit-button")?.click()
-      }, 120)
+    if (item.kind === "location-section") {
+      const button = Array.from(
+        item.element.querySelectorAll<HTMLButtonElement>(".mini-action-row button"),
+      ).find((candidate) => candidate.textContent?.includes("Изменить"))
+      button?.click()
+      return
     }
+
+    firstButton(item.element)?.click()
+    window.setTimeout(() => {
+      document.querySelector<HTMLButtonElement>(".manage-edit-button")?.click()
+    }, 180)
+  }
+
+  function startRename(item: MenuTarget) {
+    setTarget(null)
+    setRenameTarget(item)
+    setRenameValue(item.title)
+    setError("")
+  }
+
+  async function submitRename(event: FormEvent) {
+    event.preventDefault()
+    if (!renameTarget) return
+
+    const title = renameValue.trim()
+    if (!title) {
+      setError("Название не может быть пустым.")
+      return
+    }
+
+    const table = renameTarget.kind === "chat"
+      ? "chat_rooms"
+      : renameTarget.kind === "art"
+        ? "campaign_art_items"
+        : null
+
+    if (!table) return
+
+    setBusy(true)
+    setError("")
+    const { error: updateError } = await db
+      .from(table)
+      .update({ title })
+      .eq("id", renameTarget.id)
+
+    if (updateError) {
+      setBusy(false)
+      setError(updateError.message)
+      return
+    }
+
+    setBusy(false)
+    setRenameTarget(null)
+    window.location.reload()
   }
 
   async function deleteItem(item: MenuTarget) {
@@ -398,18 +452,19 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
                 ? "world_articles"
                 : item.kind === "location"
                   ? "locations"
-                  : item.kind === "achievement"
-                    ? "achievements"
-                    : item.kind === "update"
-                      ? "campaign_updates"
-                      : null
+                  : item.kind === "location-section"
+                    ? "location_sections"
+                    : item.kind === "achievement"
+                      ? "achievements"
+                      : item.kind === "update"
+                        ? "campaign_updates"
+                        : null
 
     if (!table) return
 
     setBusy(true)
     setError("")
-
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await db
       .from(table)
       .delete()
       .eq("id", item.id)
@@ -431,46 +486,8 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
       }
     }
 
+    setBusy(false)
     setTarget(null)
-    setBusy(false)
-    window.location.reload()
-  }
-
-  async function submitRename(event: FormEvent) {
-    event.preventDefault()
-    if (!renameTarget) return
-
-    const cleaned = renameValue.trim()
-    if (!cleaned) {
-      setError("Название не может быть пустым.")
-      return
-    }
-
-    const table =
-      renameTarget.kind === "chat"
-        ? "chat_rooms"
-        : renameTarget.kind === "art"
-          ? "campaign_art_items"
-          : null
-
-    if (!table) return
-
-    setBusy(true)
-    setError("")
-
-    const { error: updateError } = await supabase
-      .from(table)
-      .update({ title: cleaned })
-      .eq("id", renameTarget.id)
-
-    if (updateError) {
-      setBusy(false)
-      setError(updateError.message)
-      return
-    }
-
-    setBusy(false)
-    setRenameTarget(null)
     window.location.reload()
   }
 
@@ -480,15 +497,13 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
     if (
       item.kind !== "achievement" &&
       item.kind !== "update" &&
-      item.kind !== "member"
+      item.kind !== "member" &&
+      item.kind !== "location-section"
     ) {
       actions.push({
         label: "Открыть",
         detail: "Обычный короткий переход",
-        onClick: () => {
-          setTarget(null)
-          primaryClick(item.element)
-        },
+        onClick: () => openItem(item),
       })
     }
 
@@ -496,25 +511,22 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
       if (!item.fixed) {
         actions.push({
           label: "Переименовать",
-          detail:
-            item.kind === "chat"
-              ? "Изменить название чата"
-              : "Изменить название арта",
+          detail: item.kind === "chat" ? "Изменить название чата" : "Изменить название арта",
           onClick: () => startRename(item),
         })
       }
     } else {
       actions.push({
         label: item.kind === "member" ? "Изменить роль" : "Редактировать",
-        detail: "Открыть обычный редактор",
-        onClick: () => clickEdit(item),
+        detail: "Открыть редактор",
+        onClick: () => editItem(item),
       })
     }
 
     if (!item.fixed && item.kind !== "member") {
       actions.push({
         label: busy ? "Удаляем…" : "Удалить",
-        detail: "Действие необратимо",
+        detail: "Удаление выполняется сразу",
         danger: true,
         disabled: busy,
         onClick: () => void deleteItem(item),
@@ -528,8 +540,17 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
 
   return (
     <>
+      {error && !target && !renameTarget && (
+        <div className="global-action-toast">{error}</div>
+      )}
+
       {target && (
-        <div className="sheet-backdrop" onMouseDown={closeMenu}>
+        <div
+          className="sheet-backdrop"
+          onMouseDown={() => {
+            if (!busy) setTarget(null)
+          }}
+        >
           <div
             className="bottom-sheet global-action-sheet"
             onMouseDown={(event) => event.stopPropagation()}
@@ -540,11 +561,15 @@ export default function GlobalLongPressActions({ activeTab }: { activeTab: Tab }
                 <h3 className="sheet-title">{target.title}</h3>
                 <p className="sheet-copy">
                   {target.fixed
-                    ? "Закреплённый системный чат"
+                    ? "Закреплённый элемент"
                     : "Действия по долгому нажатию"}
                 </p>
               </div>
-              <button className="sheet-close" type="button" onClick={closeMenu}>
+              <button
+                className="sheet-close"
+                type="button"
+                onClick={() => setTarget(null)}
+              >
                 ×
               </button>
             </div>
