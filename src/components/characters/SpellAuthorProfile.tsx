@@ -1,3 +1,5 @@
+import "../../spell-author.css"
+
 import { spellAuthorAttitudes, spellReferenceAuthor } from "../../data/spellReferenceAuthor"
 import { spellClassLabel } from "../../lib/spellCatalog"
 
