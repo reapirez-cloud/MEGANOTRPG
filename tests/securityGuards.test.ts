@@ -7,7 +7,7 @@ const permissionMigrationPath = new URL(
   import.meta.url,
 )
 const auditMigrationPath = new URL(
-  "../supabase/migrations/20260825150000_audit_hardening.sql",
+  "../supabase/migrations/20260825131836_audit_hardening.sql",
   import.meta.url,
 )
 const telegramAuthPath = new URL("../api/telegram-auth.mjs", import.meta.url)
