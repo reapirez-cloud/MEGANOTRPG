@@ -53,8 +53,13 @@ export default function ChatRoom({
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
   const [attachmentError, setAttachmentError] = useState("")
   const [uploadingAttachment, setUploadingAttachment] = useState(false)
+  const [showNewMessages, setShowNewMessages] = useState(false)
+  const messageListRef = useRef<HTMLDivElement | null>(null)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const attachmentRef = useRef<HTMLInputElement | null>(null)
+  const nearBottomRef = useRef(true)
+  const initialScrollDoneRef = useRef(false)
+  const previousLastMessageIdRef = useRef<number | null>(null)
 
   const {
     messages,
@@ -68,6 +73,7 @@ export default function ChatRoom({
     loadingOlder,
     hasOlder,
     loadOlder,
+    markRead,
   } = useChatMessages(roomId)
 
   const characterById = useMemo(
@@ -99,6 +105,13 @@ export default function ChatRoom({
   const canSendWithoutCharacter = isGm || isOwner
   const hasIdentity = Boolean(activeCharacter || canSendWithoutCharacter)
   const canSend = canWriteRoom && hasIdentity
+
+  useEffect(() => {
+    initialScrollDoneRef.current = false
+    previousLastMessageIdRef.current = null
+    nearBottomRef.current = true
+    setShowNewMessages(false)
+  }, [roomId])
 
   useEffect(() => {
     let cancelled = false
@@ -137,8 +150,75 @@ export default function ChatRoom({
   }, [canManage, roomId, user.id])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" })
-  }, [messages.length])
+    if (loading) return
+
+    const lastMessage = messages[messages.length - 1] ?? null
+    const lastMessageId = lastMessage?.id ?? null
+
+    if (!initialScrollDoneRef.current) {
+      initialScrollDoneRef.current = true
+      previousLastMessageIdRef.current = lastMessageId
+      window.requestAnimationFrame(() => {
+        const list = messageListRef.current
+        if (list) list.scrollTop = list.scrollHeight
+      })
+      if (lastMessageId != null) void markRead(lastMessageId)
+      return
+    }
+
+    const previousLastMessageId = previousLastMessageIdRef.current
+    previousLastMessageIdRef.current = lastMessageId
+    if (lastMessageId == null || previousLastMessageId === lastMessageId) return
+
+    const shouldFollow = nearBottomRef.current || lastMessage?.user_id === user.id
+    if (shouldFollow) {
+      setShowNewMessages(false)
+      window.requestAnimationFrame(() => {
+        const list = messageListRef.current
+        if (list) list.scrollTop = list.scrollHeight
+      })
+      void markRead(lastMessageId)
+    } else {
+      setShowNewMessages(true)
+    }
+  }, [loading, markRead, messages, user.id])
+
+  function handleMessageListScroll() {
+    const list = messageListRef.current
+    if (!list) return
+    const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 120
+    nearBottomRef.current = nearBottom
+    if (!nearBottom) return
+
+    setShowNewMessages(false)
+    const lastMessageId = messages[messages.length - 1]?.id
+    if (lastMessageId != null) void markRead(lastMessageId)
+  }
+
+  async function handleLoadOlder() {
+    const list = messageListRef.current
+    const previousHeight = list?.scrollHeight ?? 0
+    const previousTop = list?.scrollTop ?? 0
+    const loadedCount = await loadOlder()
+    if (!loadedCount || !list) return
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const nextList = messageListRef.current
+        if (!nextList) return
+        nextList.scrollTop = previousTop + (nextList.scrollHeight - previousHeight)
+      })
+    })
+  }
+
+  function jumpToLatest() {
+    const list = messageListRef.current
+    if (list) list.scrollTop = list.scrollHeight
+    nearBottomRef.current = true
+    setShowNewMessages(false)
+    const lastMessageId = messages[messages.length - 1]?.id
+    if (lastMessageId != null) void markRead(lastMessageId)
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -231,11 +311,15 @@ export default function ChatRoom({
         )}
       </header>
 
-      <div className="message-list message-list--avatars">
+      <div
+        ref={messageListRef}
+        className="message-list message-list--avatars"
+        onScroll={handleMessageListScroll}
+      >
         {loading && <div className="chat-state">Загружаем сообщения…</div>}
 
         {!loading && hasOlder && (
-          <button className="chat-load-older" type="button" onClick={() => void loadOlder()} disabled={loadingOlder}>
+          <button className="chat-load-older" type="button" onClick={() => void handleLoadOlder()} disabled={loadingOlder}>
             {loadingOlder ? "Загружаем…" : "Показать более ранние сообщения"}
           </button>
         )}
@@ -328,6 +412,12 @@ export default function ChatRoom({
         {error && <div className="chat-error">{error}</div>}
         <div ref={bottomRef} />
       </div>
+
+      {showNewMessages && (
+        <button type="button" onClick={jumpToLatest} style={newMessagesButtonStyle}>
+          Новые сообщения ↓
+        </button>
+      )}
 
       {activeCharacter ? (
         <button
@@ -492,4 +582,21 @@ const authorButtonStyle = {
   textDecoration: "underline",
   textDecorationColor: "#4b3b63",
   textUnderlineOffset: 2,
+}
+
+const newMessagesButtonStyle = {
+  position: "fixed" as const,
+  zIndex: 40,
+  left: "50%",
+  bottom: 150,
+  transform: "translateX(-50%)",
+  minHeight: 36,
+  padding: "0 14px",
+  border: "1px solid #4b3b63",
+  borderRadius: 999,
+  background: "#17131d",
+  color: "#ddd6fe",
+  fontSize: 11,
+  fontWeight: 800,
+  boxShadow: "0 8px 24px rgba(0,0,0,.35)",
 }
