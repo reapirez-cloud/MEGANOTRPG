@@ -8,11 +8,13 @@ import "./world.css"
 import "./chat-v11.css"
 import "./social.css"
 import "./gm-workspace.css"
+import "./spell-reference.css"
 
 import BottomNav from "./components/app/BottomNav"
 import NotificationsSheet from "./components/app/NotificationsSheet"
 import TopBar from "./components/app/TopBar"
 import AuthGate from "./components/auth/AuthGate"
+import SpellReference from "./components/characters/SpellReference"
 import { CharacterProvider, useCharacters } from "./context/CharacterContext"
 import { useNotifications } from "./hooks/useNotifications"
 import {
@@ -31,12 +33,21 @@ import GmWorkspace from "./pages/GmWorkspace"
 import World from "./pages/World"
 
 function Workspace() {
-  const { campaignId, activeCharacter, myCharacters, isGm, isOwner } = useCharacters()
+  const {
+    campaignId,
+    activeCharacter,
+    myCharacters,
+    isGm,
+    isOwner,
+    canManage,
+  } = useCharacters()
   const notifications = useNotifications(campaignId)
   const [route, setRoute] = useState<AppRoute>(() =>
     parseAppRoute(window.location.hash),
   )
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [spellReferenceOpen, setSpellReferenceOpen] = useState(false)
+  const [characterRefreshKey, setCharacterRefreshKey] = useState(0)
 
   useEffect(() => {
     if (!window.location.hash) {
@@ -167,9 +178,24 @@ function Workspace() {
             }
           />
         )}
+        {route.tab === "me" && (
+          <button
+            className="spell-reference-launch"
+            type="button"
+            onClick={() => setSpellReferenceOpen(true)}
+          >
+            <span className="spell-reference-launch__icon">⌘</span>
+            <span className="spell-reference-launch__copy">
+              <strong>Справочник заклинаний</strong>
+              <small>Все официальные заклинания, поиск и фильтры</small>
+            </span>
+            <span className="spell-reference-launch__chevron">›</span>
+          </button>
+        )}
         {route.tab === "me" &&
           (activeCharacter && (isOwner || !isGm) ? (
             <CharacterProfile
+              key={`${activeCharacter.id}:${characterRefreshKey}`}
               characterId={activeCharacter.id}
               onBack={() => navigate("#/feed")}
               embedded
@@ -203,6 +229,19 @@ function Workspace() {
           onClose={() => setNotificationsOpen(false)}
           onMarkRead={notifications.markAllRead}
           onOpenFeed={() => navigate("#/feed")}
+        />
+      )}
+
+      {spellReferenceOpen && (
+        <SpellReference
+          character={activeCharacter ? {
+            id: activeCharacter.id,
+            name: activeCharacter.name,
+            character_class: activeCharacter.character_class,
+          } : null}
+          canManage={canManage}
+          onClose={() => setSpellReferenceOpen(false)}
+          onCharacterChanged={() => setCharacterRefreshKey((current) => current + 1)}
         />
       )}
 
