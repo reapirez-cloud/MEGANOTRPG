@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
 import { supabase } from "../lib/supabase"
-import { deleteCampaignMediaObject } from "../lib/mediaUpload"
+import {
+  deleteCampaignMediaObject,
+  deleteCampaignMediaObjects,
+} from "../lib/mediaUpload"
 import {
   compareFeedOrder,
   feedCursorFilter,
@@ -241,14 +244,34 @@ export function useFeed(campaignId: string) {
 
   const deleteItem = useCallback(
     async (feedItemId: string): Promise<Result> => {
+      const target = items.find((item) => item.id === feedItemId)
+      const mediaPaths: Array<string | null | undefined> = target?.media_url
+        ? [target.media_url]
+        : []
+
+      if (target?.source_type === "art" && target.source_id) {
+        const { data: pageRows, error: pageError } = await supabase
+          .from("campaign_art_pages")
+          .select("image_url")
+          .eq("art_item_id", target.source_id)
+
+        if (pageError) {
+          console.warn("Could not collect comic media before deletion:", pageError.message)
+        } else {
+          mediaPaths.push(...(pageRows || []).map((page) => page.image_url as string | null))
+        }
+      }
+
       const { error: deleteError } = await supabase.rpc("delete_feed_item", {
         p_feed_item_id: feedItemId,
       })
       if (deleteError) return { ok: false, error: deleteError.message }
+
       setItems((current) => current.filter((item) => item.id !== feedItemId))
+      void deleteCampaignMediaObjects(mediaPaths)
       return { ok: true }
     },
-    [],
+    [items],
   )
 
   return {
