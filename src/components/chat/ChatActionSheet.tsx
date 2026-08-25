@@ -292,7 +292,7 @@ export default function ChatActionSheet({
 
           {!characterId && (
             <div className="chat-action-empty">
-              Для заклинаний нужен активный персонаж. Кубики GM может бросать и без него.
+              Для заклинаний нужен активный персонаж. Кубики ГМ может бросать и без него.
             </div>
           )}
 

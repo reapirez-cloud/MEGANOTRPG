@@ -263,7 +263,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
           <div className="auth-note">
             Старые браузерные тестовые сессии пока продолжают работать, чтобы мы
-            спокойно перенесли владельца и GM на Telegram.
+            спокойно перенесли владельца и ГМ на Telegram.
           </div>
 
           <button

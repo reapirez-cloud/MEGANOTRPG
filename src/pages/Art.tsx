@@ -1,31 +1,66 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { FormEvent } from "react"
 
+import CampaignImage from "../components/common/CampaignImage"
 import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
 import { uploadCampaignImage } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
-import CampaignImage from "../components/common/CampaignImage"
-import { useLongPressItem } from "../hooks/useLongPressItem"
+
+type ArtKind = "art" | "comic" | "map" | "sketch"
 
 type ArtItem = {
   id: string
   campaign_id: string
   uploaded_by: string | null
+  character_id: string | null
   title: string
+  caption: string
   image_url: string
+  kind: ArtKind
   created_at: string
+}
+
+type ArtPage = {
+  id: string
+  art_item_id: string
+  page_number: number
+  image_url: string
+}
+
+const filters: Array<{ id: "all" | ArtKind; label: string }> = [
+  { id: "all", label: "Все" },
+  { id: "art", label: "Арты" },
+  { id: "comic", label: "Комиксы" },
+  { id: "map", label: "Карты" },
+  { id: "sketch", label: "Скетчи" },
+]
+
+const kindLabels: Record<ArtKind, string> = {
+  art: "Арт",
+  comic: "Комикс",
+  map: "Карта",
+  sketch: "Скетч",
 }
 
 export default function Art() {
   const { user } = useAuth()
-  const { campaignId, canManage } = useCharacters()
+  const { campaignId, campaignTitle, canManage } = useCharacters()
   const fileRef = useRef<HTMLInputElement | null>(null)
+
   const [items, setItems] = useState<ArtItem[]>([])
+  const [pages, setPages] = useState<ArtPage[]>([])
+  const [filter, setFilter] = useState<"all" | ArtKind>("all")
   const [selected, setSelected] = useState<ArtItem | null>(null)
+  const [selectedPage, setSelectedPage] = useState(0)
+  const [composerOpen, setComposerOpen] = useState(false)
+  const [kind, setKind] = useState<ArtKind>("art")
+  const [title, setTitle] = useState("")
+  const [caption, setCaption] = useState("")
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
-  const bindArtLongPress = useLongPressItem<ArtItem>((art) => setSelected(art))
 
   const load = useCallback(async () => {
     if (!campaignId) return
@@ -34,7 +69,7 @@ export default function Art() {
 
     const { data, error: loadError } = await supabase
       .from("campaign_art_items")
-      .select("id, campaign_id, uploaded_by, title, image_url, created_at")
+      .select("id, campaign_id, uploaded_by, character_id, title, caption, image_url, kind, created_at")
       .eq("campaign_id", campaignId)
       .order("created_at", { ascending: false })
 
@@ -44,7 +79,28 @@ export default function Art() {
       return
     }
 
-    setItems((data || []) as ArtItem[])
+    const nextItems = (data || []) as ArtItem[]
+    setItems(nextItems)
+
+    if (nextItems.length === 0) {
+      setPages([])
+      setLoading(false)
+      return
+    }
+
+    const { data: pageRows, error: pageError } = await supabase
+      .from("campaign_art_pages")
+      .select("id, art_item_id, page_number, image_url")
+      .in("art_item_id", nextItems.map((item) => item.id))
+      .order("page_number", { ascending: true })
+
+    if (pageError) {
+      setError(pageError.message)
+      setLoading(false)
+      return
+    }
+
+    setPages((pageRows || []) as ArtPage[])
     setLoading(false)
   }, [campaignId])
 
@@ -52,35 +108,118 @@ export default function Art() {
     void load()
   }, [load])
 
-  async function addArt(file: File | null) {
-    if (!file || !campaignId) return
-    setUploading(true)
-    setError("")
+  const visibleItems = useMemo(
+    () => items.filter((item) => filter === "all" || item.kind === filter),
+    [filter, items],
+  )
 
-    const upload = await uploadCampaignImage(file, "gallery", campaignId)
-    if (!upload.ok) {
-      setError(upload.error)
-      setUploading(false)
+  const selectedImages = useMemo(() => {
+    if (!selected) return []
+    const comicPages = pages
+      .filter((page) => page.art_item_id === selected.id)
+      .sort((a, b) => a.page_number - b.page_number)
+      .map((page) => page.image_url)
+    return comicPages.length > 0 ? comicPages : [selected.image_url]
+  }, [pages, selected])
+
+  function resetComposer() {
+    setKind("art")
+    setTitle("")
+    setCaption("")
+    setSelectedFiles([])
+    setError("")
+  }
+
+  function openComposer(nextKind: ArtKind = "art") {
+    resetComposer()
+    setKind(nextKind)
+    setComposerOpen(true)
+  }
+
+  function openViewer(item: ArtItem) {
+    setSelected(item)
+    setSelectedPage(0)
+  }
+
+  function moveSelectedFile(index: number, offset: -1 | 1) {
+    setSelectedFiles((current) => {
+      const target = index + offset
+      if (target < 0 || target >= current.length) return current
+      const next = [...current]
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
+  }
+
+  async function publish(event: FormEvent) {
+    event.preventDefault()
+    const files = kind === "comic" ? selectedFiles : selectedFiles.slice(0, 1)
+    if (files.length === 0) {
+      setError("Выбери хотя бы одно изображение.")
       return
     }
 
-    const title = file.name.replace(/\.[^.]+$/, "").slice(0, 120) || "Арт"
-    const { error: insertError } = await supabase
+    setUploading(true)
+    setError("")
+    const uploaded: string[] = []
+
+    for (const file of files) {
+      const result = await uploadCampaignImage(
+        file,
+        kind === "comic" ? "comics" : "gallery",
+        campaignId,
+      )
+      if (!result.ok) {
+        setUploading(false)
+        setError(result.error)
+        return
+      }
+      uploaded.push(result.url)
+    }
+
+    const fallbackTitle =
+      files[0].name.replace(/\.[^.]+$/, "").slice(0, 120) || kindLabels[kind]
+    const { data: artItem, error: insertError } = await supabase
       .from("campaign_art_items")
       .insert({
         campaign_id: campaignId,
         uploaded_by: user.id,
-        title,
-        image_url: upload.url,
+        title: title.trim() || fallbackTitle,
+        caption: caption.trim(),
+        image_url: uploaded[0],
+        kind,
       })
+      .select("id")
+      .single()
 
-    setUploading(false)
-
-    if (insertError) {
-      setError(insertError.message)
+    if (insertError || !artItem) {
+      await supabase.storage.from("campaign-media").remove(uploaded)
+      setUploading(false)
+      setError(insertError?.message || "Не удалось создать публикацию.")
       return
     }
 
+    if (kind === "comic") {
+      const { error: pagesError } = await supabase.from("campaign_art_pages").insert(
+        uploaded.map((imageUrl, index) => ({
+          art_item_id: artItem.id,
+          created_by: user.id,
+          page_number: index + 1,
+          image_url: imageUrl,
+        })),
+      )
+      if (pagesError) {
+        await supabase.from("campaign_art_items").delete().eq("id", artItem.id)
+        await supabase.storage.from("campaign-media").remove(uploaded)
+        setUploading(false)
+        setError(pagesError.message)
+        return
+      }
+    }
+
+    setUploading(false)
+    setComposerOpen(false)
+    resetComposer()
     await load()
   }
 
@@ -94,116 +233,158 @@ export default function Art() {
       setError(deleteError.message)
       return
     }
+    await supabase.storage.from("campaign-media").remove(selectedImages)
     setSelected(null)
     await load()
   }
 
   return (
     <>
-      <div className="page-stack">
-        <section className="section">
-          <div className="section-head">
-            <div>
-              <h3 className="section-title">Галерея кампании</h3>
-              <p className="item-meta">
-                Арты, карты, портреты и памятные моменты игроков
-              </p>
-            </div>
-
-            <>
-              <button
-                className="section-link media-add-art"
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-              >
-                {uploading ? "Загрузка…" : "+ Добавить"}
-              </button>
-              <input
-                ref={fileRef}
-                className="media-hidden-input"
-                type="file"
-                accept="image/*"
-                onChange={(event) => {
-                  const file = event.target.files?.[0] || null
-                  event.currentTarget.value = ""
-                  void addArt(file)
-                }}
-              />
-            </>
+      <div className="art-library page-stack">
+        <section className="art-library-hero surface">
+          <div>
+            <span>Галерея кампании</span>
+            <h2>{campaignTitle}</h2>
+            <p>Иллюстрации, игровые карты, скетчи и комиксы живут отдельно от страниц персонажей.</p>
           </div>
-
-          {error && <div className="auth-error">{error}</div>}
-          {loading && (
-            <div className="center-state">
-              <span className="status-spinner" />
-              <span>Загружаем арты…</span>
-            </div>
-          )}
-
-          {!loading && items.length === 0 && (
-            <div className="character-empty surface">
-              Артов пока нет. Нажми «+ Добавить» и выбери картинку на телефоне.
-            </div>
-          )}
-
-          {!loading && items.length > 0 && (
-            <div className="art-grid art-grid--real" aria-label="Галерея артов">
-              {items.map((art) => (
-                <button
-                  {...bindArtLongPress(art)}
-                  type="button"
-                  className="art-tile art-tile--real"
-                  key={art.id}
-                  aria-label={art.title}
-                  onClick={() => setSelected(art)}
-                  style={{ touchAction: "pan-y" }}
-                >
-                  <CampaignImage value={art.image_url} alt={art.title} loading="lazy" />
-                </button>
-              ))}
-            </div>
-          )}
+          <button type="button" onClick={() => openComposer("art")}>＋</button>
         </section>
+
+        <div className="art-filter-rail" role="tablist" aria-label="Фильтр галереи">
+          {filters.map((item) => (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === item.id}
+              className={filter === item.id ? "active" : ""}
+              key={item.id}
+              onClick={() => setFilter(item.id)}
+            >
+              {item.label}
+              {item.id !== "all" && <small>{items.filter((art) => art.kind === item.id).length}</small>}
+            </button>
+          ))}
+        </div>
+
+        <section className="art-create-strip surface">
+          <button type="button" onClick={() => openComposer("art")}><span>✦</span><strong>Арт</strong></button>
+          <button type="button" onClick={() => openComposer("comic")}><span>▥</span><strong>Комикс</strong></button>
+          <button type="button" onClick={() => openComposer("map")}><span>⌖</span><strong>Карта</strong></button>
+          <button type="button" onClick={() => openComposer("sketch")}><span>✎</span><strong>Скетч</strong></button>
+        </section>
+
+        {error && !composerOpen && <div className="auth-error">{error}</div>}
+        {loading && <div className="center-state"><span className="status-spinner" /><span>Загружаем галерею…</span></div>}
+
+        {!loading && visibleItems.length === 0 && (
+          <div className="art-library-empty surface">
+            <span>▧</span>
+            <strong>{filter === "all" ? "Галерея пока пуста" : `Нет материалов: ${filters.find((item) => item.id === filter)?.label}`}</strong>
+            <p>Добавь изображение или собери многостраничный комикс прямо с телефона.</p>
+            <button type="button" onClick={() => openComposer(filter === "all" ? "art" : filter)}>Добавить</button>
+          </div>
+        )}
+
+        {!loading && visibleItems.length > 0 && (
+          <div className="art-library-grid" aria-label="Галерея">
+            {visibleItems.map((art) => {
+              const pageCount = pages.filter((page) => page.art_item_id === art.id).length
+              return (
+                <button type="button" className={`art-library-card art-library-card--${art.kind}`} key={art.id} onClick={() => openViewer(art)}>
+                  <CampaignImage value={art.image_url} alt={art.title} loading="lazy" />
+                  <span className="art-library-card__shade" />
+                  <span className="art-library-card__kind">{kindLabels[art.kind]}</span>
+                  {art.kind === "comic" && <span className="art-library-card__pages">▥ {pageCount || 1}</span>}
+                  <span className="art-library-card__copy"><strong>{art.title || kindLabels[art.kind]}</strong>{art.caption && <small>{art.caption}</small>}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      {selected && (
-        <div className="sheet-backdrop" onMouseDown={() => setSelected(null)}>
-          <div
-            className="bottom-sheet art-viewer-sheet"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
+      {composerOpen && (
+        <div className="sheet-backdrop" onMouseDown={() => setComposerOpen(false)}>
+          <form className="bottom-sheet art-composer-sheet" onSubmit={publish} onMouseDown={(event) => event.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="character-editor-head">
-              <div>
-                <h3 className="sheet-title">{selected.title || "Арт"}</h3>
-                <p className="sheet-copy">
-                  Галерея кампании
-                </p>
-              </div>
-              <button
-                className="sheet-close"
-                type="button"
-                onClick={() => setSelected(null)}
-              >
-                ×
-              </button>
+              <div><h3 className="sheet-title">Новая публикация</h3><p className="sheet-copy">Комикс можно загрузить сразу несколькими страницами в нужном порядке.</p></div>
+              <button className="sheet-close" type="button" onClick={() => setComposerOpen(false)}>×</button>
             </div>
-            <CampaignImage
-              className="art-viewer-image"
-              value={selected.image_url}
-              alt={selected.title}
+
+            <div className="art-kind-switch">
+              {filters.slice(1).map((item) => (
+                <button type="button" key={item.id} className={kind === item.id ? "active" : ""} onClick={() => setKind(item.id as ArtKind)}>{item.label}</button>
+              ))}
+            </div>
+
+            <label className="field-label">Название</label>
+            <input className="app-input" value={title} onChange={(event) => setTitle(event.target.value)} placeholder={kindLabels[kind]} maxLength={160} />
+            <label className="field-label">Подпись</label>
+            <textarea className="app-textarea" value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Автор, сцена или короткий комментарий" maxLength={1200} />
+
+            <button className="art-file-picker" type="button" onClick={() => fileRef.current?.click()}>
+              <span>{kind === "comic" ? "▥" : "▧"}</span>
+              <strong>{selectedFiles.length > 0 ? `${selectedFiles.length} файл(ов) выбрано` : kind === "comic" ? "Выбрать страницы комикса" : "Выбрать изображение"}</strong>
+              <small>{kind === "comic" ? "Порядок страниц можно поменять ниже" : "JPG, PNG, WEBP, GIF до 20 МБ"}</small>
+            </button>
+            <input
+              ref={fileRef}
+              className="media-hidden-input"
+              type="file"
+              accept="image/*"
+              multiple={kind === "comic"}
+              onChange={(event) => {
+                setSelectedFiles(Array.from(event.currentTarget.files || []))
+                event.currentTarget.value = ""
+              }}
             />
-            {(canManage || selected.uploaded_by === user.id) && (
-              <button
-                className="danger-mini-button art-viewer-delete"
-                type="button"
-                onClick={() => void deleteSelected()}
-              >
-                Удалить арт
-              </button>
+
+            {selectedFiles.length > 0 && (
+              <ol className="art-selected-files">
+                {(kind === "comic" ? selectedFiles : selectedFiles.slice(0, 1)).map((file, index, shownFiles) => (
+                  <li key={`${file.name}-${file.lastModified}-${index}`}>
+                    <span>{index + 1}</span>
+                    <strong>{file.name}</strong>
+                    {kind === "comic" && (
+                      <span className="art-selected-files__actions">
+                        <button type="button" aria-label="Переместить страницу выше" disabled={index === 0} onClick={() => moveSelectedFile(index, -1)}>↑</button>
+                        <button type="button" aria-label="Переместить страницу ниже" disabled={index === shownFiles.length - 1} onClick={() => moveSelectedFile(index, 1)}>↓</button>
+                      </span>
+                    )}
+                    <button className="art-selected-files__remove" type="button" aria-label={`Убрать ${file.name}`} onClick={() => setSelectedFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))}>×</button>
+                  </li>
+                ))}
+              </ol>
             )}
+
+            {error && <div className="auth-error">{error}</div>}
+            <button className="sheet-save" type="submit" disabled={uploading || selectedFiles.length === 0}>{uploading ? "Загружаем…" : "Опубликовать"}</button>
+          </form>
+        </div>
+      )}
+
+      {selected && (
+        <div className="art-lightbox" role="dialog" aria-modal="true" aria-label={selected.title}>
+          <header>
+            <button type="button" onClick={() => setSelected(null)} aria-label="Закрыть">←</button>
+            <div><strong>{selected.title || kindLabels[selected.kind]}</strong><small>{kindLabels[selected.kind]}{selectedImages.length > 1 ? ` · ${selectedPage + 1}/${selectedImages.length}` : ""}</small></div>
+            <span />
+          </header>
+          <div className="art-lightbox__stage">
+            <CampaignImage value={selectedImages[selectedPage] || selected.image_url} alt={`${selected.title}, страница ${selectedPage + 1}`} />
           </div>
+          {selectedImages.length > 1 && (
+            <div className="art-page-controls">
+              <button type="button" onClick={() => setSelectedPage((page) => Math.max(0, page - 1))} disabled={selectedPage === 0}>← Назад</button>
+              <span>{selectedPage + 1} / {selectedImages.length}</span>
+              <button type="button" onClick={() => setSelectedPage((page) => Math.min(selectedImages.length - 1, page + 1))} disabled={selectedPage === selectedImages.length - 1}>Дальше →</button>
+            </div>
+          )}
+          <footer>
+            {selected.caption && <p>{selected.caption}</p>}
+            {(canManage || selected.uploaded_by === user.id) && <button className="danger-mini-button" type="button" onClick={() => void deleteSelected()}>Удалить публикацию</button>}
+          </footer>
         </div>
       )}
     </>

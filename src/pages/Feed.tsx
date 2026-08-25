@@ -84,7 +84,7 @@ export default function Feed({ onOpenCharacter, onOpenGallery }: Props) {
         : null
     return {
       character,
-      label: character?.name || (member?.is_owner ? "Владелец" : member?.role === "gm" ? "GM" : member?.display_name) || campaignTitle,
+      label: character?.name || (member?.is_owner ? "Владелец" : member?.role === "gm" ? "ГМ" : member?.display_name) || campaignTitle,
       sublabel: character && member ? member.display_name : sourceLabels[item.source_type],
     }
   }
@@ -146,6 +146,11 @@ export default function Feed({ onOpenCharacter, onOpenGallery }: Props) {
 
   return (
     <div className="feed-page">
+      <div className="social-hub-switch" aria-label="Социальные разделы">
+        <button className="social-hub-switch__active" type="button">Хроника</button>
+        <button type="button" onClick={onOpenGallery}>Галерея и комиксы</button>
+      </div>
+
       <section className="story-rail" aria-label="Активные персонажи">
         <button className="story story--create" type="button" onClick={() => setComposerOpen(true)}>
           <span className="story__avatar"><CharacterAvatar character={activeCharacter} size="large" /><em>+</em></span>
@@ -157,10 +162,6 @@ export default function Feed({ onOpenCharacter, onOpenGallery }: Props) {
             <small>{character.name}</small>
           </button>
         ))}
-        <button className="story story--gallery" type="button" onClick={onOpenGallery}>
-          <span className="story__avatar story__gallery-icon">✦</span>
-          <small>Арты</small>
-        </button>
       </section>
 
       <button className="feed-composer-prompt surface" type="button" onClick={() => setComposerOpen(true)}>
