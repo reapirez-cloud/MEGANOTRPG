@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
 import { useCharacters } from "../context/CharacterContext"
+import { deleteCampaignMediaObjects } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
 import type { ChatRoom } from "../types/chat"
 
@@ -147,9 +148,22 @@ export function useRooms() {
       const room = rooms.find((candidate) => candidate.id === roomId)
       if (!room) return { ok: false, error: "Чат не найден." }
       if (room.category === "flood") return { ok: false, error: "Основной флуд удалить нельзя." }
+
+      const { data: attachmentRows, error: attachmentsError } = await supabase
+        .from("chat_messages")
+        .select("attachment_url")
+        .eq("room_id", roomId)
+        .not("attachment_url", "is", null)
+
+      if (attachmentsError) return { ok: false, error: attachmentsError.message }
+
       const { error: deleteError } = await supabase.from("chat_rooms").delete().eq("id", roomId)
       if (deleteError) return { ok: false, error: deleteError.message }
+
       setRooms((current) => current.filter((candidate) => candidate.id !== roomId))
+      void deleteCampaignMediaObjects(
+        (attachmentRows || []).map((row) => row.attachment_url as string | null),
+      )
       return { ok: true }
     },
     [rooms],
