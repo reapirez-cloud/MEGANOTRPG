@@ -40,6 +40,8 @@ const productionBaseline = [
   "20260825073542_make_campaign_media_private.sql",
   "20260825090028_roles_gm_workspace_gallery.sql",
   "20260825104504_private_gm_content_and_character_assignment.sql",
+  "20260825131836_audit_hardening.sql",
+  "20260825143246_spell_catalog.sql",
 ].sort()
 
 async function repositoryMigrations() {
