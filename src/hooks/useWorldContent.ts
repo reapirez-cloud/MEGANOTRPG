@@ -54,61 +54,44 @@ export function useWorldContent() {
     setLoading(true)
     setError(null)
 
-    const [
-      sectionResult,
-      articleResult,
-      locationResult,
-      locationSectionResult,
-      locationLinkResult,
-      achievementResult,
-      updateResult,
-    ] = await Promise.all([
-      supabase
-        .from("world_sections")
-        .select("id, campaign_id, slug, title, description, sort_order")
-        .eq("campaign_id", campaignId)
-        .order("sort_order", { ascending: true }),
-      supabase
-        .from("world_articles")
-        .select("id, campaign_id, section_id, title, summary, body, sort_order")
-        .eq("campaign_id", campaignId)
-        .order("sort_order", { ascending: true }),
-      supabase
-        .from("locations")
-        .select(
-          "id, campaign_id, parent_location_id, name, summary, description, image_url, sort_order, created_at, updated_at",
-        )
-        .eq("campaign_id", campaignId)
-        .order("updated_at", { ascending: false }),
-      supabase
-        .from("location_sections")
-        .select("id, location_id, title, body, sort_order")
-        .order("sort_order", { ascending: true }),
-      supabase
-        .from("location_links")
-        .select("id, section_id, target_location_id, label, sort_order")
-        .order("sort_order", { ascending: true }),
-      supabase
-        .from("achievements")
-        .select(
-          "id, campaign_id, character_id, title, description, icon, awarded_at",
-        )
-        .eq("campaign_id", campaignId)
-        .order("awarded_at", { ascending: false }),
-      supabase
-        .from("campaign_updates")
-        .select("id, campaign_id, kind, title, body, published_at")
-        .eq("campaign_id", campaignId)
-        .order("published_at", { ascending: false })
-        .limit(20),
-    ])
+    const [sectionResult, articleResult, locationResult, achievementResult, updateResult] =
+      await Promise.all([
+        supabase
+          .from("world_sections")
+          .select("id, campaign_id, slug, title, description, sort_order")
+          .eq("campaign_id", campaignId)
+          .order("sort_order", { ascending: true }),
+        supabase
+          .from("world_articles")
+          .select("id, campaign_id, section_id, title, summary, body, sort_order")
+          .eq("campaign_id", campaignId)
+          .order("sort_order", { ascending: true }),
+        supabase
+          .from("locations")
+          .select(
+            "id, campaign_id, parent_location_id, name, summary, description, image_url, sort_order, created_at, updated_at",
+          )
+          .eq("campaign_id", campaignId)
+          .order("updated_at", { ascending: false }),
+        supabase
+          .from("achievements")
+          .select(
+            "id, campaign_id, character_id, title, description, icon, awarded_at",
+          )
+          .eq("campaign_id", campaignId)
+          .order("awarded_at", { ascending: false }),
+        supabase
+          .from("campaign_updates")
+          .select("id, campaign_id, kind, title, body, published_at")
+          .eq("campaign_id", campaignId)
+          .order("published_at", { ascending: false })
+          .limit(20),
+      ])
 
     const firstError =
       sectionResult.error ||
       articleResult.error ||
       locationResult.error ||
-      locationSectionResult.error ||
-      locationLinkResult.error ||
       achievementResult.error ||
       updateResult.error
 
@@ -118,13 +101,50 @@ export function useWorldContent() {
       return
     }
 
+    const nextLocations = (locationResult.data || []) as LocationEntry[]
+    const locationIds = nextLocations.map((location) => location.id)
+
+    let nextLocationSections: LocationSection[] = []
+    let nextLocationLinks: LocationLink[] = []
+
+    if (locationIds.length > 0) {
+      const { data: sectionRows, error: locationSectionError } = await supabase
+        .from("location_sections")
+        .select("id, location_id, title, body, sort_order")
+        .in("location_id", locationIds)
+        .order("sort_order", { ascending: true })
+
+      if (locationSectionError) {
+        setError(locationSectionError.message)
+        setLoading(false)
+        return
+      }
+
+      nextLocationSections = (sectionRows || []) as LocationSection[]
+      const locationSectionIds = nextLocationSections.map((section) => section.id)
+
+      if (locationSectionIds.length > 0) {
+        const { data: linkRows, error: locationLinkError } = await supabase
+          .from("location_links")
+          .select("id, section_id, target_location_id, label, sort_order")
+          .in("section_id", locationSectionIds)
+          .order("sort_order", { ascending: true })
+
+        if (locationLinkError) {
+          setError(locationLinkError.message)
+          setLoading(false)
+          return
+        }
+
+        nextLocationLinks = (linkRows || []) as LocationLink[]
+      }
+    }
+
     setSections((sectionResult.data || []) as WorldSection[])
     setArticles((articleResult.data || []) as WorldArticle[])
-    setLocations((locationResult.data || []) as LocationEntry[])
-    setLocationSections(
-      (locationSectionResult.data || []) as LocationSection[],
-    )
-    setLocationLinks((locationLinkResult.data || []) as LocationLink[])
+    setLocations(nextLocations)
+    setLocationSections(nextLocationSections)
+    setLocationLinks(nextLocationLinks)
     setAchievements((achievementResult.data || []) as AchievementEntry[])
     setUpdates((updateResult.data || []) as CampaignUpdate[])
     setLoading(false)
@@ -150,11 +170,7 @@ export function useWorldContent() {
   )
 
   const updateWorldSection = useCallback(
-    async (
-      sectionId: string,
-      title: string,
-      description: string,
-    ): Promise<Result> => {
+    async (sectionId: string, title: string, description: string): Promise<Result> => {
       const { error } = await supabase
         .from("world_sections")
         .update({
@@ -172,12 +188,7 @@ export function useWorldContent() {
   )
 
   const createWorldArticle = useCallback(
-    async (
-      sectionId: string,
-      title: string,
-      summary: string,
-      body: string,
-    ): Promise<Result> => {
+    async (sectionId: string, title: string, summary: string, body: string): Promise<Result> => {
       const { error } = await supabase.from("world_articles").insert({
         campaign_id: campaignId,
         section_id: sectionId,
@@ -193,12 +204,7 @@ export function useWorldContent() {
   )
 
   const updateWorldArticle = useCallback(
-    async (
-      articleId: string,
-      title: string,
-      summary: string,
-      body: string,
-    ): Promise<Result> => {
+    async (articleId: string, title: string, summary: string, body: string): Promise<Result> => {
       const { error } = await supabase
         .from("world_articles")
         .update({
@@ -242,12 +248,7 @@ export function useWorldContent() {
   const updateLocation = useCallback(
     async (
       locationId: string,
-      input: {
-        name: string
-        summary: string
-        description: string
-        image_url: string | null
-      },
+      input: { name: string; summary: string; description: string; image_url: string | null },
     ): Promise<Result> => {
       const { error } = await supabase
         .from("locations")
@@ -268,11 +269,7 @@ export function useWorldContent() {
   )
 
   const createLocationSection = useCallback(
-    async (
-      locationId: string,
-      title: string,
-      body: string,
-    ): Promise<Result> => {
+    async (locationId: string, title: string, body: string): Promise<Result> => {
       const { error } = await supabase.from("location_sections").insert({
         location_id: locationId,
         title: title.trim(),
@@ -286,11 +283,7 @@ export function useWorldContent() {
   )
 
   const updateLocationSection = useCallback(
-    async (
-      sectionId: string,
-      title: string,
-      body: string,
-    ): Promise<Result> => {
+    async (sectionId: string, title: string, body: string): Promise<Result> => {
       const { error } = await supabase
         .from("location_sections")
         .update({ title: title.trim(), body: body.trim() })
@@ -304,11 +297,7 @@ export function useWorldContent() {
   )
 
   const createLocationLink = useCallback(
-    async (
-      sectionId: string,
-      targetLocationId: string,
-      label: string,
-    ): Promise<Result> => {
+    async (sectionId: string, targetLocationId: string, label: string): Promise<Result> => {
       const { error } = await supabase.from("location_links").insert({
         section_id: sectionId,
         target_location_id: targetLocationId,
@@ -322,17 +311,10 @@ export function useWorldContent() {
   )
 
   const updateLocationLink = useCallback(
-    async (
-      linkId: string,
-      targetLocationId: string,
-      label: string,
-    ): Promise<Result> => {
+    async (linkId: string, targetLocationId: string, label: string): Promise<Result> => {
       const { error } = await supabase
         .from("location_links")
-        .update({
-          target_location_id: targetLocationId,
-          label: label.trim(),
-        })
+        .update({ target_location_id: targetLocationId, label: label.trim() })
         .eq("id", linkId)
 
       if (error) return { ok: false, error: error.message }
@@ -366,12 +348,7 @@ export function useWorldContent() {
   const updateAchievement = useCallback(
     async (
       achievementId: string,
-      input: {
-        character_id: string | null
-        title: string
-        description: string
-        icon: string
-      },
+      input: { character_id: string | null; title: string; description: string; icon: string },
     ): Promise<Result> => {
       const { error } = await supabase
         .from("achievements")
@@ -391,11 +368,7 @@ export function useWorldContent() {
   )
 
   const createUpdate = useCallback(
-    async (input: {
-      kind: "change" | "announcement"
-      title: string
-      body: string
-    }): Promise<Result> => {
+    async (input: { kind: "change" | "announcement"; title: string; body: string }): Promise<Result> => {
       const { error } = await supabase.from("campaign_updates").insert({
         campaign_id: campaignId,
         created_by: user.id,
@@ -413,19 +386,11 @@ export function useWorldContent() {
   const updateUpdate = useCallback(
     async (
       updateId: string,
-      input: {
-        kind: "change" | "announcement"
-        title: string
-        body: string
-      },
+      input: { kind: "change" | "announcement"; title: string; body: string },
     ): Promise<Result> => {
       const { error } = await supabase
         .from("campaign_updates")
-        .update({
-          kind: input.kind,
-          title: input.title.trim(),
-          body: input.body.trim(),
-        })
+        .update({ kind: input.kind, title: input.title.trim(), body: input.body.trim() })
         .eq("id", updateId)
 
       if (error) return { ok: false, error: error.message }
@@ -437,11 +402,7 @@ export function useWorldContent() {
 
   const deleteWorldItem = useCallback(
     async (table: WorldTable, id: string): Promise<Result> => {
-      const { error: deleteError } = await supabase
-        .from(table)
-        .delete()
-        .eq("id", id)
-
+      const { error: deleteError } = await supabase.from(table).delete().eq("id", id)
       if (deleteError) return { ok: false, error: deleteError.message }
       await load()
       return { ok: true }
