@@ -8,6 +8,8 @@ import {
   type Character,
 } from "../context/CharacterContext"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
+import ImageUploadField from "../components/common/ImageUploadField"
+import { useLongPressItem } from "../hooks/useLongPressItem"
 
 type Props = { onOpenCharacter: (id: string) => void }
 type Editor =
@@ -21,9 +23,10 @@ export default function Characters({ onOpenCharacter }: Props) {
   const {
     characters,
     members,
-    myCharacters,
+    campaignId,
     canManage,
     isOwner,
+    createInvite,
     createCharacter,
     updateCharacter,
     setActiveForMember,
@@ -41,6 +44,13 @@ export default function Characters({ onOpenCharacter }: Props) {
   const [roleValue, setRoleValue] = useState<"gm" | "player">("player")
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState("")
+  const [inviteCode, setInviteCode] = useState("")
+  const [inviteStatus, setInviteStatus] = useState("")
+  const [creatingInvite, setCreatingInvite] = useState(false)
+  const bindCharacterLongPress = useLongPressItem<Character>((character) => {
+    if (canManage) openEdit(character)
+    else onOpenCharacter(character.id)
+  })
 
   const telegramMembers = useMemo(
     () => members.filter((member) => Boolean(member.telegram_user_id)),
@@ -189,6 +199,34 @@ export default function Characters({ onOpenCharacter }: Props) {
     }
   }
 
+  async function makeInvite() {
+    setCreatingInvite(true)
+    setInviteStatus("")
+    const result = await createInvite()
+    setCreatingInvite(false)
+    if (!result.ok || !result.code) {
+      setInviteStatus(result.error || "Не удалось создать приглашение.")
+      return
+    }
+    setInviteCode(result.code)
+    try {
+      await navigator.clipboard.writeText(result.code)
+      setInviteStatus("Код скопирован — можно отправить игроку.")
+    } catch {
+      setInviteStatus("Код готов — нажми на него, чтобы скопировать.")
+    }
+  }
+
+  async function copyInvite() {
+    if (!inviteCode) return
+    try {
+      await navigator.clipboard.writeText(inviteCode)
+      setInviteStatus("Код скопирован.")
+    } catch {
+      setInviteStatus("Не удалось скопировать автоматически.")
+    }
+  }
+
   function memberLabel(member: CampaignMember) {
     if (member.is_owner) return "Владелец"
     return member.role === "gm" ? "GM" : "Игрок"
@@ -211,8 +249,10 @@ export default function Characters({ onOpenCharacter }: Props) {
 
     return (
       <article
+        {...bindCharacterLongPress(character)}
         className={`character-social-card surface ${isActive ? "character-social-card--active" : ""}`}
         key={character.id}
+        style={{ touchAction: "pan-y" }}
       >
         <button
           className="character-social-card__main"
@@ -296,16 +336,49 @@ export default function Characters({ onOpenCharacter }: Props) {
           </section>
         )}
 
+        {canManage && (
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <h3 className="section-title">Пригласить игрока</h3>
+                <p className="item-meta">
+                  Одно приглашение действует 30 дней и рассчитано на 20 входов.
+                </p>
+              </div>
+              <button
+                className="section-link"
+                type="button"
+                onClick={() => void makeInvite()}
+                disabled={creatingInvite}
+              >
+                {creatingInvite ? "Создаём…" : "+ Код"}
+              </button>
+            </div>
+            {inviteCode && (
+              <button
+                className="campaign-invite-card surface"
+                type="button"
+                onClick={() => void copyInvite()}
+              >
+                <span>Код приглашения</span>
+                <strong>{inviteCode}</strong>
+                <small>Нажми, чтобы скопировать</small>
+              </button>
+            )}
+            {inviteStatus && <p className="inline-status">{inviteStatus}</p>}
+          </section>
+        )}
+
         <section className="section">
           <div className="section-head">
             <div>
               <h3 className="section-title">
-                {canManage ? "Персонажи кампании" : "Мои персонажи"}
+                Персонажи кампании
               </h3>
               <p className="item-meta">
                 {canManage
                   ? "Персонажа можно привязать к конкретному Telegram ID"
-                  : "Здесь только персонажи, прикреплённые к твоему Telegram-профилю"}
+                  : "Активные герои других игроков видны вместе с их историями"}
               </p>
             </div>
             {canManage && (
@@ -316,14 +389,14 @@ export default function Characters({ onOpenCharacter }: Props) {
           </div>
 
           <div className="character-social-list">
-            {(canManage ? characters : myCharacters).length === 0 && (
+            {characters.length === 0 && (
               <div className="character-empty surface">
                 {canManage
                   ? "Персонажей пока нет."
-                  : "К тебе пока не прикреплён персонаж."}
+                  : "В кампании пока нет доступных персонажей."}
               </div>
             )}
-            {(canManage ? characters : myCharacters).map(renderCard)}
+            {characters.map(renderCard)}
           </div>
         </section>
 
@@ -477,13 +550,13 @@ export default function Characters({ onOpenCharacter }: Props) {
               </p>
             </div>
 
-            <label className="field-label" htmlFor="character-avatar">Аватар</label>
-            <input
-              id="character-avatar"
-              className="app-input"
+            <ImageUploadField
               value={avatarUrl}
-              onChange={(event) => setAvatarUrl(event.target.value)}
-              placeholder="Пока ссылка; потом загрузка файла"
+              onChange={setAvatarUrl}
+              folder="character-avatars"
+              campaignId={campaignId}
+              label="Аватар"
+              hint="Квадратное изображение лучше всего смотрится в профиле."
             />
 
             <label className="field-label" htmlFor="character-bio">Короткое описание</label>

@@ -11,6 +11,8 @@ import ChatActionSheet from "../components/chat/ChatActionSheet"
 import ChatRoomSettings from "../components/chat/ChatRoomSettings"
 import ChatMessageActions from "../components/chat/ChatMessageActions"
 import type { ChatMessage } from "../types/chat"
+import { uploadCampaignImage } from "../lib/mediaUpload"
+import CampaignImage from "../components/common/CampaignImage"
 
 type Props = {
   roomId: string
@@ -38,6 +40,7 @@ export default function ChatRoom({
     isGm,
     isOwner,
     canManage,
+    campaignId,
   } = useCharacters()
 
   const [roomTitle, setRoomTitle] = useState("Чат")
@@ -47,7 +50,11 @@ export default function ChatRoom({
   const [actionsOpen, setActionsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(null)
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
+  const [attachmentError, setAttachmentError] = useState("")
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
   const bottomRef = useRef<HTMLDivElement | null>(null)
+  const attachmentRef = useRef<HTMLInputElement | null>(null)
 
   const {
     messages,
@@ -58,6 +65,9 @@ export default function ChatRoom({
     sendMessage,
     editMessage,
     deleteMessage,
+    loadingOlder,
+    hasOlder,
+    loadOlder,
   } = useChatMessages(roomId)
 
   const characterById = useMemo(
@@ -133,8 +143,23 @@ export default function ChatRoom({
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!canSend) return
-    const sent = await sendMessage(draft)
-    if (sent) setDraft("")
+    setAttachmentError("")
+    let attachmentUrl: string | null = null
+    if (attachmentFile) {
+      setUploadingAttachment(true)
+      const upload = await uploadCampaignImage(attachmentFile, "chat", campaignId)
+      setUploadingAttachment(false)
+      if (!upload.ok) {
+        setAttachmentError(upload.error)
+        return
+      }
+      attachmentUrl = upload.url
+    }
+    const sent = await sendMessage(draft, attachmentUrl)
+    if (sent) {
+      setDraft("")
+      setAttachmentFile(null)
+    }
   }
 
   const activeLabel = activeCharacter
@@ -209,6 +234,12 @@ export default function ChatRoom({
       <div className="message-list message-list--avatars">
         {loading && <div className="chat-state">Загружаем сообщения…</div>}
 
+        {!loading && hasOlder && (
+          <button className="chat-load-older" type="button" onClick={() => void loadOlder()} disabled={loadingOlder}>
+            {loadingOlder ? "Загружаем…" : "Показать более ранние сообщения"}
+          </button>
+        )}
+
         {!loading && messages.length === 0 && (
           <div className="chat-state">
             Здесь пока пусто. Первое сообщение может быть твоим.
@@ -261,7 +292,15 @@ export default function ChatRoom({
                   <div className="message__author">{message.author_name}</div>
                 )}
 
-                <p className="message__text">{message.body}</p>
+                {message.attachment_url && (
+                  <CampaignImage
+                    className="message__attachment"
+                    value={message.attachment_url}
+                    alt="Вложение"
+                    loading="lazy"
+                  />
+                )}
+                {message.body && <p className="message__text">{message.body}</p>}
                 <div className="message__time">
                   {formatTime(message.created_at)}
                   {message.edited_at ? " · изм." : ""}
@@ -323,6 +362,14 @@ export default function ChatRoom({
         </div>
       )}
 
+      {attachmentFile && (
+        <div className="chat-attachment-preview">
+          <span>▧ {attachmentFile.name}</span>
+          <button type="button" onClick={() => setAttachmentFile(null)}>Убрать</button>
+        </div>
+      )}
+      {attachmentError && <div className="chat-error chat-attachment-error">{attachmentError}</div>}
+
       <form className="composer" onSubmit={submit}>
         <button
           className="icon-button composer__icon chat-action-button"
@@ -333,6 +380,26 @@ export default function ChatRoom({
         >
           +
         </button>
+
+        <button
+          className="icon-button composer__icon"
+          type="button"
+          onClick={() => attachmentRef.current?.click()}
+          disabled={!canSend || uploadingAttachment}
+          aria-label="Добавить изображение"
+        >
+          ▧
+        </button>
+        <input
+          ref={attachmentRef}
+          className="media-hidden-input"
+          type="file"
+          accept="image/*"
+          onChange={(event) => {
+            setAttachmentFile(event.target.files?.[0] || null)
+            event.currentTarget.value = ""
+          }}
+        />
 
         <input
           className="composer__input"
@@ -347,7 +414,7 @@ export default function ChatRoom({
         <button
           className="send-button"
           type="submit"
-          disabled={!canSend || !draft.trim() || sending}
+          disabled={!canSend || (!draft.trim() && !attachmentFile) || sending || uploadingAttachment}
           aria-label="Отправить"
         >
           <svg viewBox="0 0 24 24" fill="none">

@@ -4,6 +4,7 @@ import type { Dispatch, FormEvent, SetStateAction } from "react"
 import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
 import { useCharacterSheet } from "../hooks/useCharacterSheet"
+import { useCampaignMedia } from "../hooks/useCampaignMedia"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
 import ImageUploadField from "../components/common/ImageUploadField"
 import CharacterSheetEditor from "../components/characters/CharacterSheetEditor"
@@ -12,16 +13,19 @@ import InventoryItemEditor from "../components/characters/InventoryItemEditor"
 import SpellEditor from "../components/characters/SpellEditor"
 import FeatureEditor from "../components/characters/FeatureEditor"
 import CharacterInventory from "../components/characters/CharacterInventory"
+import CampaignImage from "../components/common/CampaignImage"
+import { uploadCampaignImage } from "../lib/mediaUpload"
 import type {
   CharacterFeature,
+  CharacterArt,
   CharacterSheet,
   CharacterSpell,
   DiaryPost,
   InventoryItem,
 } from "../types/characterSheet"
 
-type Props = { characterId: string; onBack: () => void }
-type Tab = "diary" | "inventory" | "equipment" | "sheet" | "spells"
+type Props = { characterId: string; onBack: () => void; embedded?: boolean }
+type Tab = "diary" | "arts" | "inventory" | "equipment" | "sheet" | "spells"
 type Editor =
   | { type: "avatar" }
   | { type: "sheet" }
@@ -86,21 +90,23 @@ function formatTime(value: string) {
   }).format(new Date(value))
 }
 
-export default function CharacterProfile({ characterId, onBack }: Props) {
+export default function CharacterProfile({ characterId, onBack, embedded = false }: Props) {
   const { user } = useAuth()
   const {
     characters,
     members,
+    campaignId,
     canManage,
     refresh,
     updateOwnCharacterAvatar,
   } = useCharacters()
-  const data = useCharacterSheet(characterId)
+  const data = useCharacterSheet(characterId, campaignId)
 
   const character = useMemo(
     () => characters.find((item) => item.id === characterId) ?? null,
     [characterId, characters],
   )
+  const heroImageUrl = useCampaignMedia(character?.avatar_url)
 
   const [tab, setTab] = useState<Tab>("diary")
   const [editor, setEditor] = useState<Editor>(null)
@@ -108,10 +114,15 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
   const [avatarError, setAvatarError] = useState("")
   const [avatarSaving, setAvatarSaving] = useState(false)
   const [diaryDraft, setDiaryDraft] = useState("")
+  const [diaryMediaFile, setDiaryMediaFile] = useState<File | null>(null)
+  const [diaryPublishing, setDiaryPublishing] = useState(false)
   const [diaryError, setDiaryError] = useState("")
   const [expandedSpell, setExpandedSpell] = useState<string | null>(null)
   const [openComments, setOpenComments] = useState<string | null>(null)
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
+  const [artUploading, setArtUploading] = useState(false)
+  const [artError, setArtError] = useState("")
+  const [selectedArt, setSelectedArt] = useState<CharacterArt | null>(null)
 
   if (!character) {
     return (
@@ -156,14 +167,31 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
 
   async function publishDiary(event: FormEvent) {
     event.preventDefault()
-    if (!diaryDraft.trim()) return
+    if (!diaryDraft.trim() && !diaryMediaFile) return
     setDiaryError("")
-    const result = await data.addDiaryPost(diaryDraft)
+    setDiaryPublishing(true)
+    let mediaUrl: string | null = null
+    if (diaryMediaFile) {
+      const upload = await uploadCampaignImage(
+        diaryMediaFile,
+        "character-diary",
+        campaignId,
+      )
+      if (!upload.ok) {
+        setDiaryPublishing(false)
+        setDiaryError(upload.error)
+        return
+      }
+      mediaUrl = upload.url
+    }
+    const result = await data.addDiaryPost(diaryDraft, mediaUrl)
+    setDiaryPublishing(false)
     if (!result.ok) {
       setDiaryError(result.error || "Не удалось опубликовать запись.")
       return
     }
     setDiaryDraft("")
+    setDiaryMediaFile(null)
   }
 
   async function addComment(postId: string) {
@@ -181,27 +209,53 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
     return data.comments.filter((comment) => comment.post_id === postId)
   }
 
+  async function addCharacterArt(file: File | null) {
+    if (!file) return
+    setArtUploading(true)
+    setArtError("")
+    const upload = await uploadCampaignImage(file, "character-art", campaignId)
+    if (!upload.ok) {
+      setArtUploading(false)
+      setArtError(upload.error)
+      return
+    }
+    const title = file.name.replace(/\.[^.]+$/, "").slice(0, 120) || currentCharacter.name
+    const result = await data.addArt(title, upload.url)
+    setArtUploading(false)
+    if (!result.ok) setArtError(result.error || "Не удалось добавить арт.")
+  }
+
+  async function removeCharacterArt() {
+    if (!selectedArt) return
+    const result = await data.deleteArt(selectedArt.id)
+    if (!result.ok) {
+      setArtError(result.error || "Не удалось удалить арт.")
+      return
+    }
+    setSelectedArt(null)
+  }
+
   function authorName(userId: string) {
     return members.find((item) => item.user_id === userId)?.display_name || "Игрок"
   }
 
   return (
-    <div className="screen character-profile-screen">
-      <header className="screen-header">
+    <div className={`screen character-profile-screen ${embedded ? "character-profile-screen--embedded" : ""}`}>
+      {!embedded && <header className="screen-header">
         <button className="icon-button" type="button" onClick={onBack} aria-label="Назад">
           <svg viewBox="0 0 24 24" fill="none"><path d="m15 5-7 7 7 7" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <h1 className="screen-header__title">{fullName}</h1>
         <span />
-      </header>
+      </header>}
 
       <div className="profile-scroll character-profile-scroll">
         <section className="character-sheet-hero surface">
           <div
             className="character-sheet-hero__art"
-            style={currentCharacter.avatar_url ? { backgroundImage: `linear-gradient(180deg, transparent 30%, rgba(10,10,12,.94)), url(${currentCharacter.avatar_url})` } : undefined}
+            style={heroImageUrl ? { backgroundImage: `linear-gradient(180deg, transparent 30%, rgba(10,10,12,.94)), url(${heroImageUrl})` } : undefined}
           >
-            {!currentCharacter.avatar_url && <div className="character-sheet-hero__fallback">{currentCharacter.name.slice(0, 1).toUpperCase()}</div>}
+            {!heroImageUrl && <div className="character-sheet-hero__fallback">{currentCharacter.name.slice(0, 1).toUpperCase()}</div>}
             {canEditAvatar && (
               <button
                 className="character-art-edit"
@@ -230,6 +284,7 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
 
         <nav className="profile-tabs character-sheet-tabs">
           <button className={`profile-tab ${tab === "diary" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("diary")}>Дневник</button>
+          <button className={`profile-tab ${tab === "arts" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("arts")}>Арты</button>
           <button className={`profile-tab ${tab === "inventory" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("inventory")}>Инвентарь</button>
           <button className={`profile-tab ${tab === "equipment" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("equipment")}>Экипировка</button>
           <button className={`profile-tab ${tab === "sheet" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("sheet")}>Лист</button>
@@ -249,6 +304,9 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
             currentUserId={user.id}
             draft={diaryDraft}
             setDraft={setDiaryDraft}
+            mediaFile={diaryMediaFile}
+            setMediaFile={setDiaryMediaFile}
+            publishing={diaryPublishing}
             publish={publishDiary}
             error={diaryError}
             commentsFor={commentsFor}
@@ -261,6 +319,29 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
             deletePost={data.deleteDiaryPost}
             deleteComment={data.deleteComment}
           />
+        )}
+
+        {!data.loading && tab === "arts" && (
+          <section className="character-tab-section character-art-tab">
+            <div className="section-head">
+              <div><h3 className="section-title">Галерея персонажа</h3><p className="item-meta">Портреты, сцены и памятные моменты</p></div>
+              {(canManage || isAssignedPlayer) && (
+                <label className="section-link character-art-upload">
+                  {artUploading ? "Загрузка…" : "+ Арт"}
+                  <input type="file" accept="image/*" disabled={artUploading} onChange={(event) => { void addCharacterArt(event.target.files?.[0] || null); event.currentTarget.value = "" }} />
+                </label>
+              )}
+            </div>
+            {artError && <div className="auth-error">{artError}</div>}
+            {data.arts.length === 0 && <div className="character-empty surface">У персонажа пока нет артов.</div>}
+            <div className="character-art-grid">
+              {data.arts.map((art) => (
+                <button type="button" key={art.id} onClick={() => setSelectedArt(art)} aria-label={art.title}>
+                  <CampaignImage value={art.image_url} alt={art.title} loading="lazy" />
+                </button>
+              ))}
+            </div>
+          </section>
         )}
 
         {!data.loading && tab === "inventory" && (
@@ -417,11 +498,23 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
               value={avatarUrl}
               onChange={setAvatarUrl}
               folder="character-avatars"
+              campaignId={campaignId}
               label="Изображение персонажа"
             />
             {avatarError && <div className="auth-error">{avatarError}</div>}
             <button className="sheet-save" type="submit" disabled={avatarSaving}>{avatarSaving ? "Сохраняем…" : "Сохранить арт"}</button>
           </form>
+        </div>
+      )}
+
+      {selectedArt && (
+        <div className="sheet-backdrop" onMouseDown={() => setSelectedArt(null)}>
+          <div className="bottom-sheet art-viewer-sheet" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="character-editor-head"><div><h3 className="sheet-title">{selectedArt.title || currentCharacter.name}</h3><p className="sheet-copy">Галерея персонажа</p></div><button className="sheet-close" type="button" onClick={() => setSelectedArt(null)}>×</button></div>
+            <CampaignImage className="art-viewer-image" value={selectedArt.image_url} alt={selectedArt.title} />
+            {(canManage || selectedArt.uploaded_by === user.id) && <button className="danger-mini-button art-viewer-delete" type="button" onClick={() => void removeCharacterArt()}>Удалить арт</button>}
+          </div>
         </div>
       )}
 
@@ -436,6 +529,7 @@ export default function CharacterProfile({ characterId, onBack }: Props) {
       {editor?.type === "inventory" && (
         <InventoryItemEditor
           item={editor.item}
+          campaignId={campaignId}
           onClose={() => setEditor(null)}
           onSave={(input) => editor.item ? data.updateInventoryItem(editor.item.id, input) : data.addInventoryItem(input)}
           onDelete={editor.item ? () => data.deleteInventoryItem(editor.item!.id) : undefined}
@@ -592,6 +686,9 @@ function DiaryTab({
   currentUserId,
   draft,
   setDraft,
+  mediaFile,
+  setMediaFile,
+  publishing,
   publish,
   error,
   commentsFor,
@@ -612,6 +709,9 @@ function DiaryTab({
   currentUserId: string
   draft: string
   setDraft: (value: string) => void
+  mediaFile: File | null
+  setMediaFile: (value: File | null) => void
+  publishing: boolean
   publish: (event: FormEvent) => Promise<void>
   error: string
   commentsFor: (postId: string) => ReturnType<typeof useCharacterSheet>["comments"]
@@ -629,7 +729,14 @@ function DiaryTab({
       {canWrite && (
         <form className="diary-composer surface" onSubmit={(event) => void publish(event)}>
           <CharacterAvatar character={avatar} size="small" />
-          <div><textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Запись в дневник от лица персонажа…" maxLength={5000} /><button type="submit" disabled={!draft.trim()}>Опубликовать</button></div>
+          <div>
+            <textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Запись в дневник от лица персонажа…" maxLength={5000} />
+            {mediaFile && <span className="diary-media-name">▧ {mediaFile.name}<button type="button" onClick={() => setMediaFile(null)}>×</button></span>}
+            <div className="diary-composer__actions">
+              <label className="diary-media-button">▧ Фото<input type="file" accept="image/*" onChange={(event) => { setMediaFile(event.target.files?.[0] || null); event.currentTarget.value = "" }} /></label>
+              <button type="submit" disabled={publishing || (!draft.trim() && !mediaFile)}>{publishing ? "Публикуем…" : "Опубликовать"}</button>
+            </div>
+          </div>
         </form>
       )}
 
@@ -648,7 +755,9 @@ function DiaryTab({
               <div className="diary-post__identity"><div className="item-title">{characterName}</div><div className="item-meta">{formatTime(post.created_at)}</div></div>
               {canDeletePost && <button className="diary-delete" type="button" onClick={() => void deletePost(post.id)}>Удалить</button>}
             </div>
-            <p className="diary-post__body">{post.body}</p>
+            {post.media_url && <CampaignImage className="diary-post__media" value={post.media_url} alt="Иллюстрация к записи" loading="lazy" />}
+            {post.title && <h3 className="diary-post__title">{post.title}</h3>}
+            {post.body && <p className="diary-post__body">{post.body}</p>}
             <button className="diary-comments-toggle" type="button" onClick={() => setOpenComments(commentsOpen ? null : post.id)}>◯ {postComments.length} {postComments.length === 1 ? "комментарий" : "комментариев"}</button>
 
             {commentsOpen && (

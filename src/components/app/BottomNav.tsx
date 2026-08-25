@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 
-export type MainTab = "world" | "art" | "chats" | "characters"
+export type MainTab = "feed" | "chats" | "world" | "characters" | "me"
 
 type Props = {
   active: MainTab
@@ -16,12 +16,19 @@ function WorldIcon() {
   )
 }
 
-function ArtIcon() {
+function FeedIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="1.8"/>
-      <circle cx="9" cy="9" r="1.6" stroke="currentColor" strokeWidth="1.5"/>
-      <path d="m5.5 17 4.5-4 3 2.5 2.5-2 3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="m4 10 8-6 8 6v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-9Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+    </svg>
+  )
+}
+
+function MeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8"/>
+      <path d="M4.5 21c.7-4.2 3.2-6.5 7.5-6.5s6.8 2.3 7.5 6.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
     </svg>
   )
 }
@@ -47,10 +54,11 @@ function CharactersIcon() {
 }
 
 const items: Array<{ id: MainTab; label: string; icon: ReactNode }> = [
-  { id: "world", label: "Мир", icon: <WorldIcon /> },
-  { id: "art", label: "Арты", icon: <ArtIcon /> },
+  { id: "feed", label: "Лента", icon: <FeedIcon /> },
   { id: "chats", label: "Чаты", icon: <ChatsIcon /> },
+  { id: "world", label: "Мир", icon: <WorldIcon /> },
   { id: "characters", label: "Персонажи", icon: <CharactersIcon /> },
+  { id: "me", label: "Я", icon: <MeIcon /> },
 ]
 
 export default function BottomNav({ active, onChange }: Props) {

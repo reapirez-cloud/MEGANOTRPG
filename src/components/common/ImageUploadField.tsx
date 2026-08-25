@@ -1,11 +1,13 @@
 import { useState } from "react"
 
 import { uploadCampaignImage } from "../../lib/mediaUpload"
+import CampaignImage from "./CampaignImage"
 
 type Props = {
   value: string
   onChange: (value: string) => void
   folder: string
+  campaignId: string
   label?: string
   hint?: string
 }
@@ -14,6 +16,7 @@ export default function ImageUploadField({
   value,
   onChange,
   folder,
+  campaignId,
   label = "Арт",
   hint = "Можно выбрать изображение прямо из галереи телефона.",
 }: Props) {
@@ -24,7 +27,7 @@ export default function ImageUploadField({
     if (!file) return
     setUploading(true)
     setError("")
-    const result = await uploadCampaignImage(file, folder)
+    const result = await uploadCampaignImage(file, folder, campaignId)
     setUploading(false)
 
     if (!result.ok) {
@@ -44,7 +47,7 @@ export default function ImageUploadField({
 
       {value && (
         <div className="image-upload-preview">
-          <img src={value} alt="" />
+          <CampaignImage value={value} alt="" />
         </div>
       )}
 

@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
 import type {
   CharacterFeature,
+  CharacterArt,
   CharacterSheet,
   CharacterSpell,
   DiaryComment,
@@ -16,7 +17,7 @@ import type {
 
 type Result = { ok: boolean; error?: string }
 
-export function useCharacterSheet(characterId: string) {
+export function useCharacterSheet(characterId: string, campaignId: string) {
   const { user } = useAuth()
   const [sheet, setSheet] = useState<CharacterSheet | null>(null)
   const [inventory, setInventory] = useState<InventoryItem[]>([])
@@ -24,6 +25,7 @@ export function useCharacterSheet(characterId: string) {
   const [features, setFeatures] = useState<CharacterFeature[]>([])
   const [posts, setPosts] = useState<DiaryPost[]>([])
   const [comments, setComments] = useState<DiaryComment[]>([])
+  const [arts, setArts] = useState<CharacterArt[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -31,7 +33,7 @@ export function useCharacterSheet(characterId: string) {
     setLoading(true)
     setError(null)
 
-    const [sheetResult, inventoryResult, spellsResult, featuresResult, postsResult] =
+    const [sheetResult, inventoryResult, spellsResult, featuresResult, postsResult, artsResult] =
       await Promise.all([
         supabase
           .from("character_sheets")
@@ -62,6 +64,11 @@ export function useCharacterSheet(characterId: string) {
           .select("*")
           .eq("character_id", characterId)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("campaign_art_items")
+          .select("id, campaign_id, uploaded_by, character_id, title, caption, image_url, created_at, updated_at")
+          .eq("character_id", characterId)
+          .order("created_at", { ascending: false }),
       ])
 
     const firstError =
@@ -69,7 +76,8 @@ export function useCharacterSheet(characterId: string) {
       inventoryResult.error ||
       spellsResult.error ||
       featuresResult.error ||
-      postsResult.error
+      postsResult.error ||
+      artsResult.error
 
     if (firstError) {
       setError(firstError.message)
@@ -102,6 +110,7 @@ export function useCharacterSheet(characterId: string) {
     setFeatures((featuresResult.data || []) as CharacterFeature[])
     setPosts(nextPosts)
     setComments(nextComments)
+    setArts((artsResult.data || []) as CharacterArt[])
     setLoading(false)
   }, [characterId])
 
@@ -317,13 +326,14 @@ export function useCharacterSheet(characterId: string) {
   )
 
   const addDiaryPost = useCallback(
-    async (body: string): Promise<Result> => {
+    async (body: string, mediaUrl: string | null = null): Promise<Result> => {
       const { error: insertError } = await supabase
         .from("character_diary_posts")
         .insert({
           character_id: characterId,
           created_by: user.id,
           body: body.trim(),
+          media_url: mediaUrl,
         })
 
       if (insertError) return { ok: false, error: insertError.message }
@@ -378,6 +388,37 @@ export function useCharacterSheet(characterId: string) {
     [load],
   )
 
+  const addArt = useCallback(
+    async (title: string, imageUrl: string): Promise<Result> => {
+      const { error: insertError } = await supabase
+        .from("campaign_art_items")
+        .insert({
+          campaign_id: campaignId,
+          uploaded_by: user.id,
+          character_id: characterId,
+          title: title.trim() || "Арт персонажа",
+          image_url: imageUrl,
+        })
+      if (insertError) return { ok: false, error: insertError.message }
+      await load()
+      return { ok: true }
+    },
+    [campaignId, characterId, load, user.id],
+  )
+
+  const deleteArt = useCallback(
+    async (artId: string): Promise<Result> => {
+      const { error: deleteError } = await supabase
+        .from("campaign_art_items")
+        .delete()
+        .eq("id", artId)
+      if (deleteError) return { ok: false, error: deleteError.message }
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
+
   return {
     sheet,
     inventory,
@@ -385,6 +426,7 @@ export function useCharacterSheet(characterId: string) {
     features,
     posts,
     comments,
+    arts,
     loading,
     error,
     reload: load,
@@ -404,5 +446,7 @@ export function useCharacterSheet(characterId: string) {
     deleteDiaryPost,
     addComment,
     deleteComment,
+    addArt,
+    deleteArt,
   }
 }

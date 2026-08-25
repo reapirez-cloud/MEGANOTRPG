@@ -8,6 +8,8 @@ export type ChatRoom = {
   position: number
   preview: string
   time: string
+  last_message_id: number | null
+  unread_count: number
 }
 
 export type ChatRoomMember = {
@@ -30,4 +32,6 @@ export type ChatMessage = {
   body: string
   created_at: string
   edited_at: string | null
+  attachment_url: string | null
+  attachment_kind: "image" | null
 }

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react"
+
+import { useCharacters } from "../context/CharacterContext"
 import { supabase } from "../lib/supabase"
 import type { ChatRoom } from "../types/chat"
 
 type Result = { ok: boolean; error?: string; id?: string }
 
-function formatTime(value?: string) {
+function formatTime(value?: string | null) {
   if (!value) return ""
-
   return new Intl.DateTimeFormat("ru-RU", {
     hour: "2-digit",
     minute: "2-digit",
@@ -14,74 +15,52 @@ function formatTime(value?: string) {
 }
 
 export function useRooms() {
+  const { campaignId, campaignTitle } = useCharacters()
   const [rooms, setRooms] = useState<ChatRoom[]>([])
-  const [campaignId, setCampaignId] = useState("")
-  const [campaignTitle, setCampaignTitle] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const loadRooms = useCallback(async () => {
+    if (!campaignId) return
     setLoading(true)
     setError(null)
 
-    const { data: campaign, error: campaignError } = await supabase
-      .from("campaigns")
-      .select("id, title")
-      .eq("slug", "demo")
-      .single()
-
-    if (campaignError || !campaign) {
-      setLoading(false)
-      setError(campaignError?.message || "Кампания не найдена")
-      return
-    }
-
-    setCampaignId(campaign.id)
-    setCampaignTitle(campaign.title)
-
-    const { data: roomRows, error: roomsError } = await supabase
-      .from("chat_rooms")
-      .select("id, slug, title, category, position")
-      .eq("campaign_id", campaign.id)
-      .order("position", { ascending: true })
-
-    if (roomsError || !roomRows) {
-      setLoading(false)
-      setError(roomsError?.message || "Не удалось загрузить комнаты")
-      return
-    }
-
-    const hydrated = await Promise.all(
-      roomRows.map(async (room) => {
-        const { data: lastMessage } = await supabase
-          .from("chat_messages")
-          .select("author_name, body, created_at")
-          .eq("room_id", room.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-
-        return {
-          ...room,
-          category: room.category as "game" | "flood",
-          preview: lastMessage
-            ? `${lastMessage.author_name}: ${lastMessage.body}`
-            : room.category === "flood"
-              ? "Общий разговор кампании"
-              : "Пока без сообщений",
-          time: formatTime(lastMessage?.created_at),
-        } satisfies ChatRoom
-      }),
+    const { data, error: roomsError } = await supabase.rpc(
+      "get_campaign_chat_rooms",
+      { p_campaign_id: campaignId },
     )
 
-    hydrated.sort((a, b) => {
-      if (a.category !== b.category) return a.category === "flood" ? -1 : 1
-      return a.position - b.position
-    })
+    if (roomsError) {
+      setLoading(false)
+      setError(roomsError.message)
+      return
+    }
+
+    const hydrated = ((data || []) as Array<{
+      id: string
+      slug: string
+      title: string
+      category: string
+      room_position: number
+      preview: string
+      last_message_at: string | null
+      last_message_id: number | null
+      unread_count: number
+    }>).map((room) => ({
+      id: room.id,
+      slug: room.slug,
+      title: room.title,
+      category: room.category === "flood" ? "flood" : "game",
+      position: room.room_position,
+      preview: room.preview,
+      time: formatTime(room.last_message_at),
+      last_message_id: room.last_message_id,
+      unread_count: room.unread_count,
+    })) satisfies ChatRoom[]
 
     setRooms(hydrated)
     setLoading(false)
-  }, [])
+  }, [campaignId])
 
   useEffect(() => {
     void loadRooms()
@@ -94,13 +73,7 @@ export function useRooms() {
       if (!cleaned) return { ok: false, error: "Укажи название игрового чата." }
 
       const nextPosition =
-        Math.max(
-          0,
-          ...rooms
-            .filter((room) => room.category === "game")
-            .map((room) => room.position),
-        ) + 10
-
+        Math.max(0, ...rooms.filter((room) => room.category === "game").map((room) => room.position)) + 10
       const random =
         globalThis.crypto?.randomUUID?.().slice(0, 8) ||
         Math.random().toString(36).slice(2, 10)
@@ -118,16 +91,41 @@ export function useRooms() {
         .single()
 
       if (insertError || !data) {
-        return {
-          ok: false,
-          error: insertError?.message || "Не удалось создать игровой чат.",
-        }
+        return { ok: false, error: insertError?.message || "Не удалось создать игровой чат." }
       }
 
       await loadRooms()
       return { ok: true, id: data.id }
     },
     [campaignId, loadRooms, rooms],
+  )
+
+  const renameRoom = useCallback(
+    async (roomId: string, title: string): Promise<Result> => {
+      const cleaned = title.trim()
+      if (!cleaned) return { ok: false, error: "Название не может быть пустым." }
+      const { error: updateError } = await supabase
+        .from("chat_rooms")
+        .update({ title: cleaned })
+        .eq("id", roomId)
+      if (updateError) return { ok: false, error: updateError.message }
+      await loadRooms()
+      return { ok: true }
+    },
+    [loadRooms],
+  )
+
+  const deleteRoom = useCallback(
+    async (roomId: string): Promise<Result> => {
+      const room = rooms.find((candidate) => candidate.id === roomId)
+      if (!room) return { ok: false, error: "Чат не найден." }
+      if (room.category === "flood") return { ok: false, error: "Основной флуд удалить нельзя." }
+      const { error: deleteError } = await supabase.from("chat_rooms").delete().eq("id", roomId)
+      if (deleteError) return { ok: false, error: deleteError.message }
+      setRooms((current) => current.filter((candidate) => candidate.id !== roomId))
+      return { ok: true }
+    },
+    [rooms],
   )
 
   return {
@@ -138,5 +136,7 @@ export function useRooms() {
     error,
     reload: loadRooms,
     createGameRoom,
+    renameRoom,
+    deleteRoom,
   }
 }

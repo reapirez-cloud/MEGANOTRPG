@@ -12,12 +12,13 @@ import type {
 
 type Props = {
   item: InventoryItem | null
+  campaignId: string
   onClose: () => void
   onSave: (input: InventoryInput) => Promise<{ ok: boolean; error?: string }>
   onDelete?: () => Promise<{ ok: boolean; error?: string }>
 }
 
-export default function InventoryItemEditor({ item, onClose, onSave, onDelete }: Props) {
+export default function InventoryItemEditor({ item, campaignId, onClose, onSave, onDelete }: Props) {
   const [name, setName] = useState(item?.name || "")
   const [quantity, setQuantity] = useState(String(item?.quantity ?? 1))
   const [weight, setWeight] = useState(item?.weight == null ? "" : String(item.weight))
@@ -112,6 +113,7 @@ export default function InventoryItemEditor({ item, onClose, onSave, onDelete }:
           value={imageUrl}
           onChange={setImageUrl}
           folder="items"
+          campaignId={campaignId}
           label="Арт предмета"
         />
 

@@ -4,6 +4,8 @@ import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
 import { uploadCampaignImage } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
+import CampaignImage from "../components/common/CampaignImage"
+import { useLongPressItem } from "../hooks/useLongPressItem"
 
 type ArtItem = {
   id: string
@@ -23,6 +25,7 @@ export default function Art() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
+  const bindArtLongPress = useLongPressItem<ArtItem>((art) => setSelected(art))
 
   const load = useCallback(async () => {
     if (!campaignId) return
@@ -50,11 +53,11 @@ export default function Art() {
   }, [load])
 
   async function addArt(file: File | null) {
-    if (!file || !campaignId || !canManage) return
+    if (!file || !campaignId) return
     setUploading(true)
     setError("")
 
-    const upload = await uploadCampaignImage(file, "gallery")
+    const upload = await uploadCampaignImage(file, "gallery", campaignId)
     if (!upload.ok) {
       setError(upload.error)
       setUploading(false)
@@ -81,6 +84,20 @@ export default function Art() {
     await load()
   }
 
+  async function deleteSelected() {
+    if (!selected) return
+    const { error: deleteError } = await supabase
+      .from("campaign_art_items")
+      .delete()
+      .eq("id", selected.id)
+    if (deleteError) {
+      setError(deleteError.message)
+      return
+    }
+    setSelected(null)
+    await load()
+  }
+
   return (
     <>
       <div className="page-stack">
@@ -89,35 +106,31 @@ export default function Art() {
             <div>
               <h3 className="section-title">Галерея кампании</h3>
               <p className="item-meta">
-                {canManage
-                  ? "Загружай арты прямо с телефона · зажми арт для действий"
-                  : "Арты кампании"}
+                Арты, карты, портреты и памятные моменты игроков
               </p>
             </div>
 
-            {canManage && (
-              <>
-                <button
-                  className="section-link media-add-art"
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={uploading}
-                >
-                  {uploading ? "Загрузка…" : "+ Добавить"}
-                </button>
-                <input
-                  ref={fileRef}
-                  className="media-hidden-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0] || null
-                    event.currentTarget.value = ""
-                    void addArt(file)
-                  }}
-                />
-              </>
-            )}
+            <>
+              <button
+                className="section-link media-add-art"
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? "Загрузка…" : "+ Добавить"}
+              </button>
+              <input
+                ref={fileRef}
+                className="media-hidden-input"
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] || null
+                  event.currentTarget.value = ""
+                  void addArt(file)
+                }}
+              />
+            </>
           </div>
 
           {error && <div className="auth-error">{error}</div>}
@@ -130,9 +143,7 @@ export default function Art() {
 
           {!loading && items.length === 0 && (
             <div className="character-empty surface">
-              {canManage
-                ? "Артов пока нет. Нажми «+ Добавить» и выбери картинку на телефоне."
-                : "Артов кампании пока нет."}
+              Артов пока нет. Нажми «+ Добавить» и выбери картинку на телефоне.
             </div>
           )}
 
@@ -140,13 +151,15 @@ export default function Art() {
             <div className="art-grid art-grid--real" aria-label="Галерея артов">
               {items.map((art) => (
                 <button
+                  {...bindArtLongPress(art)}
                   type="button"
                   className="art-tile art-tile--real"
                   key={art.id}
                   aria-label={art.title}
                   onClick={() => setSelected(art)}
+                  style={{ touchAction: "pan-y" }}
                 >
-                  <img src={art.image_url} alt={art.title} loading="lazy" />
+                  <CampaignImage value={art.image_url} alt={art.title} loading="lazy" />
                 </button>
               ))}
             </div>
@@ -165,9 +178,7 @@ export default function Art() {
               <div>
                 <h3 className="sheet-title">{selected.title || "Арт"}</h3>
                 <p className="sheet-copy">
-                  {canManage
-                    ? "Галерея кампании · действия доступны по долгому нажатию на плитку"
-                    : "Галерея кампании"}
+                  Галерея кампании
                 </p>
               </div>
               <button
@@ -178,11 +189,20 @@ export default function Art() {
                 ×
               </button>
             </div>
-            <img
+            <CampaignImage
               className="art-viewer-image"
-              src={selected.image_url}
+              value={selected.image_url}
               alt={selected.title}
             />
+            {(canManage || selected.uploaded_by === user.id) && (
+              <button
+                className="danger-mini-button art-viewer-delete"
+                type="button"
+                onClick={() => void deleteSelected()}
+              >
+                Удалить арт
+              </button>
+            )}
           </div>
         </div>
       )}

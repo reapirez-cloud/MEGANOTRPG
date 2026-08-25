@@ -7,7 +7,9 @@ type RealtimeState = "connecting" | "live" | "offline"
 type Result = { ok: boolean; error?: string }
 
 const fields =
-  "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at"
+  "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at, attachment_url, attachment_kind"
+
+const PAGE_SIZE = 50
 
 export function useChatMessages(roomId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -15,6 +17,15 @@ export function useChatMessages(roomId: string) {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [realtime, setRealtime] = useState<RealtimeState>("connecting")
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [hasOlder, setHasOlder] = useState(false)
+
+  const markRead = useCallback(async (messageId?: number | null) => {
+    await supabase.rpc("mark_chat_read", {
+      p_room_id: roomId,
+      p_message_id: messageId ?? null,
+    })
+  }, [roomId])
 
   const loadMessages = useCallback(async () => {
     setLoading(true)
@@ -24,8 +35,8 @@ export function useChatMessages(roomId: string) {
       .from("chat_messages")
       .select(fields)
       .eq("room_id", roomId)
-      .order("created_at", { ascending: true })
-      .limit(200)
+      .order("id", { ascending: false })
+      .limit(PAGE_SIZE + 1)
 
     if (loadError) {
       setError(loadError.message)
@@ -33,9 +44,34 @@ export function useChatMessages(roomId: string) {
       return
     }
 
-    setMessages((data || []) as ChatMessage[])
+    const rows = (data || []) as ChatMessage[]
+    setHasOlder(rows.length > PAGE_SIZE)
+    const visible = rows.slice(0, PAGE_SIZE).reverse()
+    setMessages(visible)
+    void markRead(visible[visible.length - 1]?.id)
     setLoading(false)
-  }, [roomId])
+  }, [markRead, roomId])
+
+  const loadOlder = useCallback(async () => {
+    const oldestId = messages[0]?.id
+    if (!oldestId || loadingOlder || !hasOlder) return
+    setLoadingOlder(true)
+    const { data, error: olderError } = await supabase
+      .from("chat_messages")
+      .select(fields)
+      .eq("room_id", roomId)
+      .lt("id", oldestId)
+      .order("id", { ascending: false })
+      .limit(PAGE_SIZE + 1)
+    setLoadingOlder(false)
+    if (olderError) {
+      setError(olderError.message)
+      return
+    }
+    const rows = (data || []) as ChatMessage[]
+    setHasOlder(rows.length > PAGE_SIZE)
+    setMessages((current) => [...rows.slice(0, PAGE_SIZE).reverse(), ...current])
+  }, [hasOlder, loadingOlder, messages, roomId])
 
   useEffect(() => {
     void loadMessages()
@@ -57,6 +93,7 @@ export function useChatMessages(roomId: string) {
               ? current
               : [...current, incoming],
           )
+          void markRead(incoming.id)
         },
       )
       .on(
@@ -106,19 +143,24 @@ export function useChatMessages(roomId: string) {
         channel = null
       }
     }
-  }, [loadMessages, roomId])
+  }, [loadMessages, markRead, roomId])
 
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (text: string, attachmentUrl: string | null = null) => {
       const body = text.trim()
-      if (!body || sending) return false
+      if ((!body && !attachmentUrl) || sending) return false
 
       setSending(true)
       setError(null)
 
       const { data, error: sendError } = await supabase
         .from("chat_messages")
-        .insert({ room_id: roomId, body })
+        .insert({
+          room_id: roomId,
+          body,
+          attachment_url: attachmentUrl,
+          attachment_kind: attachmentUrl ? "image" : null,
+        })
         .select(fields)
         .single()
 
@@ -135,9 +177,10 @@ export function useChatMessages(roomId: string) {
           ? current
           : [...current, inserted],
       )
+      void markRead(inserted.id)
       return true
     },
-    [roomId, sending],
+    [markRead, roomId, sending],
   )
 
   const editMessage = useCallback(
@@ -181,6 +224,9 @@ export function useChatMessages(roomId: string) {
     sending,
     error,
     realtime,
+    loadingOlder,
+    hasOlder,
+    loadOlder,
     sendMessage,
     editMessage,
     deleteMessage,

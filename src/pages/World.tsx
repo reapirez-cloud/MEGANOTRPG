@@ -6,6 +6,8 @@ import WorldEditor, {
   type WorldEditorMode,
 } from "../components/world/WorldEditor"
 import type { CampaignUpdate, LocationEntry } from "../types/world"
+import CampaignBackground from "../components/common/CampaignBackground"
+import { useLongPressItem } from "../hooks/useLongPressItem"
 
 type View =
   | { type: "main" }
@@ -54,25 +56,28 @@ function EditButton({ onClick }: { onClick: () => void }) {
 function LocationCard({
   location,
   onClick,
+  onLongPress,
 }: {
   location: LocationEntry
   onClick: () => void
+  onLongPress?: () => void
 }) {
+  const bindLongPress = useLongPressItem<LocationEntry>(() => {
+    const action = onLongPress ?? onClick
+    action()
+  })
   return (
     <button
+      {...bindLongPress(location)}
       className="world-location-card surface"
       type="button"
       onClick={onClick}
+      style={{ touchAction: "pan-y" }}
     >
-      <div
+      <CampaignBackground
         className="world-location-card__art"
-        style={
-          location.image_url
-            ? {
-                backgroundImage: `linear-gradient(180deg, transparent, rgba(8,8,10,.82)), url(${location.image_url})`,
-              }
-            : undefined
-        }
+        value={location.image_url}
+        overlay="linear-gradient(180deg, transparent, rgba(8,8,10,.82))"
       />
       <div className="world-location-card__copy">
         <strong>{location.name}</strong>
@@ -120,11 +125,10 @@ function UpdateRow({
 export default function World() {
   const {
     campaignTitle,
+    campaignId,
     updateCampaignTitle,
     canManage,
     isOwner,
-    hasOwner,
-    claimOwner,
     characters,
     members,
   } = useCharacters()
@@ -132,8 +136,6 @@ export default function World() {
   const world = useWorldContent()
   const [view, setView] = useState<View>({ type: "main" })
   const [editor, setEditor] = useState<WorldEditorMode>(null)
-  const [claimingOwner, setClaimingOwner] = useState(false)
-  const [claimError, setClaimError] = useState("")
 
   const sectionArticleCounts = useMemo(() => {
     const map = new Map<string, number>()
@@ -166,20 +168,13 @@ export default function World() {
     [world.updates],
   )
 
-  async function becomeOwner() {
-    setClaimingOwner(true)
-    setClaimError("")
-    const result = await claimOwner()
-    setClaimingOwner(false)
-    if (!result.ok) setClaimError(result.error || "Не удалось назначить владельца.")
-  }
-
   const editorNode = (
     <WorldEditor
       key={editor ? JSON.stringify(editor) : "none"}
       mode={editor}
       onClose={() => setEditor(null)}
       campaignTitle={campaignTitle}
+      campaignId={campaignId}
       locations={world.locations}
       locationSections={world.locationSections}
       characters={characters}
@@ -505,6 +500,7 @@ export default function World() {
                 key={location.id}
                 location={location}
                 onClick={() => setView({ type: "location", locationId: location.id })}
+                onLongPress={canManage ? () => setEditor({ type: "location-edit", location }) : undefined}
               />
             ))}
           </div>
@@ -544,15 +540,10 @@ export default function World() {
           )}
 
           <article className="world-location-detail surface">
-            <div
+            <CampaignBackground
               className="world-location-detail__art"
-              style={
-                location.image_url
-                  ? {
-                      backgroundImage: `linear-gradient(180deg, transparent, rgba(8,8,10,.88)), url(${location.image_url})`,
-                    }
-                  : undefined
-              }
+              value={location.image_url}
+              overlay="linear-gradient(180deg, transparent, rgba(8,8,10,.88))"
             />
             <div className="world-location-detail__body">
               <span>Локация</span>
@@ -585,6 +576,7 @@ export default function World() {
                   key={child.id}
                   location={child}
                   onClick={() => setView({ type: "location", locationId: child.id })}
+                  onLongPress={canManage ? () => setEditor({ type: "location-edit", location: child }) : undefined}
                 />
               ))}
             </div>
@@ -685,22 +677,6 @@ export default function World() {
   return (
     <>
       <div className="page-stack world-page">
-        {!hasOwner && (
-          <div className="owner-bootstrap surface">
-            <div>
-              <strong>Назначить владельца приложения</strong>
-              <p>
-                Это отдельная роль от GM. Владелец получает те же права управления,
-                но GM остаётся другим человеком.
-              </p>
-              {claimError && <small>{claimError}</small>}
-            </div>
-            <button type="button" onClick={() => void becomeOwner()} disabled={claimingOwner}>
-              Я владелец
-            </button>
-          </div>
-        )}
-
         {isOwner && (
           <div className="owner-status surface">
             <span>Владелец</span>
@@ -758,6 +734,7 @@ export default function World() {
                 key={location.id}
                 location={location}
                 onClick={() => setView({ type: "location", locationId: location.id })}
+                onLongPress={canManage ? () => setEditor({ type: "location-edit", location }) : undefined}
               />
             ))}
           </div>
