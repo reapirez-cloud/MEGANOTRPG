@@ -100,7 +100,7 @@ const aliases: Record<string, SpellClassKey> = {
 }
 
 function normalizeLabel(value: string) {
-  return value.trim().toLocaleLowerCase("ru-RU").replaceAll("ё", "е")
+  return value.trim().toLocaleLowerCase("ru-RU").replace(/ё/g, "е")
 }
 
 export function normalizeSpellClass(value: string | null | undefined): SpellClassKey | null {
