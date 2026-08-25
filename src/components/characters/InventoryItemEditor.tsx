@@ -78,7 +78,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
         <div className="character-editor-head">
           <div>
             <h3 className="sheet-title">{item ? "Редактировать предмет" : "Новый предмет"}</h3>
-            <p className="sheet-copy">GM задаёт предмет, его тег и слот. Игрок потом сам надевает и снимает свою экипировку.</p>
+            <p className="sheet-copy">ГМ задаёт предмет, его тег и слот. Игрок потом сам надевает и снимает свою экипировку.</p>
           </div>
           <button className="sheet-close" type="button" onClick={onClose}>×</button>
         </div>
@@ -122,7 +122,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
 
         {category === "equipment" && (
           <label className="dnd-switch-row">
-            <span><strong>Надеть сразу</strong><small>GM может сразу пометить предмет надетым. Потом игрок управляет этим сам.</small></span>
+            <span><strong>Надеть сразу</strong><small>ГМ может сразу пометить предмет надетым. Потом игрок управляет этим сам.</small></span>
             <input type="checkbox" checked={equipped} onChange={(e) => setEquipped(e.target.checked)} />
           </label>
         )}

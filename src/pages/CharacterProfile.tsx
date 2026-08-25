@@ -20,6 +20,7 @@ import type {
   CharacterArt,
   CharacterSheet,
   CharacterSpell,
+  CharacterSpellOption,
   DiaryPost,
   InventoryItem,
 } from "../types/characterSheet"
@@ -32,6 +33,7 @@ type Editor =
   | { type: "resources" }
   | { type: "inventory"; item: InventoryItem | null }
   | { type: "spell"; spell: CharacterSpell | null }
+  | { type: "spell-option"; option: CharacterSpellOption | null }
   | { type: "feature"; feature: CharacterFeature | null }
   | null
 
@@ -118,6 +120,8 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
   const [diaryPublishing, setDiaryPublishing] = useState(false)
   const [diaryError, setDiaryError] = useState("")
   const [expandedSpell, setExpandedSpell] = useState<string | null>(null)
+  const [spellActionId, setSpellActionId] = useState<string | null>(null)
+  const [spellError, setSpellError] = useState("")
   const [openComments, setOpenComments] = useState<string | null>(null)
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [artUploading, setArtUploading] = useState(false)
@@ -145,11 +149,21 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
   const fullName = member ? `${currentCharacter.name} (${member.display_name})` : currentCharacter.name
   const isAssignedPlayer = currentCharacter.assigned_user_id === user.id
   const canEditAvatar = canManage || isAssignedPlayer
-  const canEditSpells = canManage || isAssignedPlayer
+  const canEditSheet = canManage || isAssignedPlayer
+  const canChooseSpells = canManage || isAssignedPlayer
   const canUseInventory = canManage || isAssignedPlayer
   const canWriteDiary = canManage || isAssignedPlayer
   const sheet = data.sheet
-  const spellTabVisible = Boolean(sheet?.spellcasting_enabled || data.spells.length > 0 || canEditSpells)
+  const learnedSpellNames = new Set(
+    data.spells.map((spell) => spell.name.trim().toLocaleLowerCase("ru-RU")),
+  )
+  const availableSpellOptions = data.spellOptions.filter(
+    (option) => !learnedSpellNames.has(option.name.trim().toLocaleLowerCase("ru-RU")),
+  )
+  const visibleSpellOptions = canManage ? data.spellOptions : availableSpellOptions
+  const spellTabVisible = Boolean(
+    sheet?.spellcasting_enabled || data.spells.length > 0 || data.spellOptions.length > 0 || canManage,
+  )
 
   async function saveAvatar(event: FormEvent) {
     event.preventDefault()
@@ -237,6 +251,31 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
 
   function authorName(userId: string) {
     return members.find((item) => item.user_id === userId)?.display_name || "Игрок"
+  }
+
+  async function learnSpell(optionId: string) {
+    setSpellActionId(`learn:${optionId}`)
+    setSpellError("")
+    const result = await data.learnSpell(optionId)
+    setSpellActionId(null)
+    if (!result.ok) setSpellError(result.error || "Не удалось добавить заклинание.")
+  }
+
+  async function toggleSpellPrepared(spell: CharacterSpell) {
+    setSpellActionId(`prepare:${spell.id}`)
+    setSpellError("")
+    const result = await data.setSpellPrepared(spell.id, !spell.prepared)
+    setSpellActionId(null)
+    if (!result.ok) setSpellError(result.error || "Не удалось изменить подготовку.")
+  }
+
+  async function forgetSpell(spell: CharacterSpell) {
+    if (!window.confirm(`Убрать «${spell.name}» из изученных заклинаний?`)) return
+    setSpellActionId(`forget:${spell.id}`)
+    setSpellError("")
+    const result = await data.deleteSpell(spell.id)
+    setSpellActionId(null)
+    if (!result.ok) setSpellError(result.error || "Не удалось убрать заклинание.")
   }
 
   return (
@@ -373,6 +412,7 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
             sheet={sheet}
             features={data.features}
             canManage={canManage}
+            canEdit={canEditSheet}
             onEditSheet={() => setEditor({ type: "sheet" })}
             onEditResources={() => setEditor({ type: "resources" })}
             onAddFeature={() => setEditor({ type: "feature", feature: null })}
@@ -383,13 +423,15 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
         {!data.loading && tab === "spells" && (
           <section className="character-tab-section">
             <div className="section-head">
-              <div><h3 className="section-title">Заклинания</h3><p className="item-meta">{sheet?.spellcasting_enabled ? "Список может менять сам игрок" : "Магия сейчас отключена"}</p></div>
-              {canEditSpells && sheet?.spellcasting_enabled && <button className="section-link" type="button" onClick={() => setEditor({ type: "spell", spell: null })}>+ Заклинание</button>}
+              <div><h3 className="section-title">Заклинания</h3><p className="item-meta">{sheet?.spellcasting_enabled ? "ГМ открывает доступ — игрок выбирает и готовит" : "Магия сейчас отключена"}</p></div>
+              {canManage && sheet?.spellcasting_enabled && <button className="section-link" type="button" onClick={() => setEditor({ type: "spell-option", option: null })}>+ Выдать доступ</button>}
             </div>
 
-            {!sheet?.spellcasting_enabled && canEditSpells && (
+            {spellError && <div className="auth-error">{spellError}</div>}
+
+            {!sheet?.spellcasting_enabled && canManage && (
               <div className="spell-enable-card surface">
-                <div><strong>Персонаж использует заклинания?</strong><p>Включи раздел — существующий список не потеряется, а новые заклинания можно будет добавлять сразу.</p></div>
+                <div><strong>Персонаж использует заклинания?</strong><p>Открой раздел и выдай список доступных заклинаний. Игрок сам выберет нужные.</p></div>
                 <button type="button" onClick={() => void data.setSpellcastingEnabled(true)}>Включить</button>
               </div>
             )}
@@ -450,13 +492,45 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
                   )}
                 </div>
 
-                {canEditSpells && (
+                {canManage && (
                   <button className="spell-disable-link" type="button" onClick={() => void data.setSpellcastingEnabled(false)}>Отключить раздел заклинаний</button>
                 )}
               </>
             )}
 
-            {!sheet?.spellcasting_enabled && !canEditSpells && <div className="character-empty surface">Этот персонаж не использует заклинания.</div>}
+            {!sheet?.spellcasting_enabled && !canManage && <div className="character-empty surface">ГМ пока не открыл этому персонажу доступ к магии.</div>}
+
+            {sheet?.spellcasting_enabled && visibleSpellOptions.length > 0 && (
+              <div className="spell-options-block">
+                <div className="section-head feature-head">
+                  <div>
+                    <h3 className="section-title">Доступно для изучения</h3>
+                    <p className="item-meta">{canManage ? "Список, который видит игрок" : "Выбери заклинания из списка ГМ"}</p>
+                  </div>
+                </div>
+                <div className="spell-option-list">
+                  {visibleSpellOptions.map((option) => {
+                    const learned = learnedSpellNames.has(option.name.trim().toLocaleLowerCase("ru-RU"))
+                    const learning = spellActionId === `learn:${option.id}`
+                    return (
+                      <article className="spell-option-card surface" key={option.id}>
+                        <div className="spell-card__rune">{option.spell_level === 0 ? "∞" : option.spell_level}</div>
+                        <div className="spell-option-card__copy">
+                          <strong>{option.name}</strong>
+                          <small>{[option.school, option.source].filter(Boolean).join(" · ") || (option.spell_level === 0 ? "Заговор" : `${option.spell_level} уровень`)}</small>
+                        </div>
+                        {learned ? (
+                          <span className="spell-option-learned">Изучено</span>
+                        ) : canChooseSpells ? (
+                          <button type="button" disabled={learning} onClick={() => void learnSpell(option.id)}>{learning ? "…" : "Добавить"}</button>
+                        ) : null}
+                        {canManage && <button className="card-edit-icon" type="button" aria-label={`Изменить доступ к ${option.name}`} onClick={() => setEditor({ type: "spell-option", option })}>✎</button>}
+                      </article>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {Array.from(new Set(data.spells.map((spell) => spell.spell_level))).sort((a, b) => a - b).map((level) => (
               <div className="spell-level-block" key={level}>
@@ -476,7 +550,15 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
                         <div className="spell-tag-row">{spell.concentration && <span>Концентрация</span>}{spell.ritual && <span>Ритуал</span>}{spell.components && <span>{spell.components}</span>}{spell.duration && <span>{spell.duration}</span>}</div>
                         {spell.description && <p>{spell.description}</p>}
                         {spell.source && <small>Источник: {spell.source}</small>}
-                        {canEditSpells && <button className="inline-edit-button" type="button" onClick={() => setEditor({ type: "spell", spell })}>✎ Изменить</button>}
+                        {canChooseSpells && (
+                          <div className="spell-card__actions">
+                            <button className="inline-edit-button" type="button" disabled={spellActionId === `prepare:${spell.id}`} onClick={() => void toggleSpellPrepared(spell)}>
+                              {spell.prepared ? "Убрать из подготовленных" : "Подготовить"}
+                            </button>
+                            <button className="danger-mini-button" type="button" disabled={spellActionId === `forget:${spell.id}`} onClick={() => void forgetSpell(spell)}>Убрать</button>
+                            {canManage && <button className="inline-edit-button" type="button" onClick={() => setEditor({ type: "spell", spell })}>✎ Параметры</button>}
+                          </div>
+                        )}
                       </div>
                     )}
                   </article>
@@ -518,7 +600,7 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
         </div>
       )}
 
-      {editor?.type === "sheet" && sheet && <CharacterSheetEditor sheet={sheet} onClose={() => setEditor(null)} onSave={data.updateSheet} />}
+      {editor?.type === "sheet" && sheet && <CharacterSheetEditor sheet={sheet} systemEditable={canManage} onClose={() => setEditor(null)} onSave={data.updateSheet} />}
       {editor?.type === "resources" && sheet && (
         <CharacterResourcesEditor
           sheet={sheet}
@@ -543,6 +625,15 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
           onDelete={editor.spell ? () => data.deleteSpell(editor.spell!.id) : undefined}
         />
       )}
+      {editor?.type === "spell-option" && (
+        <SpellEditor
+          spell={editor.option}
+          purpose="option"
+          onClose={() => setEditor(null)}
+          onSave={(input) => editor.option ? data.updateSpellOption(editor.option.id, input) : data.addSpellOption(input)}
+          onDelete={editor.option ? () => data.deleteSpellOption(editor.option!.id) : undefined}
+        />
+      )}
       {editor?.type === "feature" && (
         <FeatureEditor
           feature={editor.feature}
@@ -559,6 +650,7 @@ function SheetTab({
   sheet,
   features,
   canManage,
+  canEdit,
   onEditSheet,
   onEditResources,
   onAddFeature,
@@ -567,6 +659,7 @@ function SheetTab({
   sheet: CharacterSheet
   features: CharacterFeature[]
   canManage: boolean
+  canEdit: boolean
   onEditSheet: () => void
   onEditResources: () => void
   onAddFeature: () => void
@@ -578,10 +671,10 @@ function SheetTab({
     <section className="character-tab-section">
       <div className="section-head">
         <div><h3 className="section-title">Лист персонажа</h3><p className="item-meta">Полный компактный D&D-лист</p></div>
-        {canManage && (
+        {canEdit && (
           <div className="section-actions">
-            <button className="section-link" type="button" onClick={onEditResources}>♥ Ресурсы</button>
-            <button className="section-link" type="button" onClick={onEditSheet}>✎ Лист</button>
+            {canManage && <button className="section-link" type="button" onClick={onEditResources}>♥ Ресурсы</button>}
+            <button className="section-link" type="button" onClick={onEditSheet}>{canManage ? "✎ Лист" : "✎ Моя часть"}</button>
           </div>
         )}
       </div>

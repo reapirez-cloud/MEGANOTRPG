@@ -98,7 +98,7 @@ export default function CharacterResourcesEditor({
           <div>
             <h3 className="sheet-title">Ресурсы персонажа</h3>
             <p className="sheet-copy">
-              Здесь GM задаёт HP и максимум ячеек. Потраченные ячейки считает приложение.
+              Здесь ГМ задаёт HP и максимум ячеек. Потраченные ячейки считает приложение.
             </p>
           </div>
           <button className="sheet-close" type="button" onClick={onClose}>

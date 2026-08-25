@@ -112,14 +112,14 @@ export default function Chats({ onOpenRoom }: Props) {
     : isOwner
       ? `Владелец (${profile.display_name})`
       : isGm
-        ? `GM (${profile.display_name})`
+        ? `ГМ (${profile.display_name})`
         : "Персонаж не назначен"
 
   const roleAvatar = activeCharacter ?? (
     isOwner
       ? { name: "Владелец", avatar_url: null }
       : isGm
-        ? { name: "GM", avatar_url: null }
+        ? { name: "ГМ", avatar_url: null }
         : null
   )
 
@@ -203,7 +203,7 @@ export default function Chats({ onOpenRoom }: Props) {
           <div className="section-head">
             <div>
               <h3 className="section-title">Игра</h3>
-              <p className="item-meta">Игровые чаты создаёт GM</p>
+              <p className="item-meta">Игровые чаты создаёт ГМ</p>
             </div>
             {canManage && (
               <button

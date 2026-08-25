@@ -217,7 +217,7 @@ export default function ChatMessageActions({
                 <small style={{ ...detailStyle, color: "#a9797d" }}>
                   {own
                     ? "Удалить своё сообщение"
-                    : "Модерация GM / владельца"}
+                    : "Модерация ГМ / владельца"}
                 </small>
               </span>
               <span>›</span>

@@ -237,7 +237,7 @@ export default function ChatRoomSettings({
           <div>
             <h3 className="sheet-title">Настройки игрового чата</h3>
             <p className="sheet-copy">
-              GM решает, кто видит комнату и кто может в неё писать.
+              ГМ решает, кто видит комнату и кто может в неё писать.
             </p>
           </div>
           <button className="sheet-close" type="button" onClick={onClose}>
@@ -270,7 +270,7 @@ export default function ChatRoomSettings({
 
           {!loading && playerMembers.length === 0 && (
             <div className="chat-action-empty">
-              Пока нет обычных игроков. Owner и GM имеют доступ всегда.
+              Пока нет обычных игроков. Владелец и ГМ имеют доступ всегда.
             </div>
           )}
 
@@ -326,7 +326,7 @@ export default function ChatRoomSettings({
           <div className="room-settings-section__head">
             <div>
               <strong>Долгий отдых</strong>
-              <small>GM восстанавливает персонажу HP и все ячейки</small>
+              <small>ГМ восстанавливает персонажу HP и все ячейки</small>
             </div>
           </div>
 

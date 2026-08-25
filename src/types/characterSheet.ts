@@ -117,6 +117,10 @@ export type CharacterSpell = {
   updated_at: string
 }
 
+export type CharacterSpellOption = CharacterSpell & {
+  granted_by: string | null
+}
+
 export type CharacterFeature = {
   id: string
   character_id: string

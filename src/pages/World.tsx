@@ -109,7 +109,7 @@ function UpdateRow({
         {item.body && <p>{item.body}</p>}
         <div className="managed-item-footer">
           <small>
-            {item.kind === "announcement" ? "Объявление GM" : "Изменение GM"}
+            {item.kind === "announcement" ? "Объявление ГМ" : "Изменение ГМ"}
           </small>
           {canManage && (
             <button type="button" onClick={onEdit}>
@@ -126,7 +126,10 @@ export default function World() {
   const {
     campaignTitle,
     campaignId,
-    updateCampaignTitle,
+    campaignSummary,
+    campaignRulesSummary,
+    campaignCoverUrl,
+    updateCampaignInfo,
     canManage,
     isOwner,
     characters,
@@ -174,12 +177,15 @@ export default function World() {
       mode={editor}
       onClose={() => setEditor(null)}
       campaignTitle={campaignTitle}
+      campaignSummary={campaignSummary}
+      campaignRulesSummary={campaignRulesSummary}
+      campaignCoverUrl={campaignCoverUrl}
       campaignId={campaignId}
       locations={world.locations}
       locationSections={world.locationSections}
       characters={characters}
       members={members}
-      updateCampaignTitle={updateCampaignTitle}
+      updateCampaignInfo={updateCampaignInfo}
       createWorldSection={world.createWorldSection}
       updateWorldSection={world.updateWorldSection}
       createWorldArticle={world.createWorldArticle}
@@ -231,7 +237,7 @@ export default function World() {
           <div className="world-library-intro surface">
             <span>Библиотека кампании</span>
             <strong>{campaignTitle}</strong>
-            <p>Разделы создаются с нуля и потом в любой момент редактируются GM или владельцем.</p>
+            <p>{campaignRulesSummary || "Добавь вводную, правила и важные договорённости кампании."}</p>
           </div>
 
           <div className="section-head">
@@ -680,7 +686,7 @@ export default function World() {
         {isOwner && (
           <div className="owner-status surface">
             <span>Владелец</span>
-            <strong>У тебя права управления наравне с GM</strong>
+            <strong>Полный доступ к ролям, миру и инструментам ГМ</strong>
           </div>
         )}
 
@@ -690,10 +696,17 @@ export default function World() {
             type="button"
             onClick={() => setView({ type: "library" })}
           >
+            <CampaignBackground
+              className="world-hero-cover"
+              value={campaignCoverUrl}
+              overlay="linear-gradient(90deg, rgba(13,10,16,.9), rgba(13,10,16,.46))"
+            />
             <div className="world-hero-button__copy">
               <div className="hero-card__eyebrow">Мир кампании</div>
               <h2 className="hero-card__title">{campaignTitle}</h2>
-              <p className="hero-card__copy">Все правила, история и лор создаются с нуля.</p>
+              <p className="hero-card__copy">
+                {campaignSummary || "Добавь короткое описание мира — его увидят все участники."}
+              </p>
               <span className="world-hero-button__open">Открыть содержание →</span>
             </div>
           </button>
@@ -703,7 +716,7 @@ export default function World() {
               className="world-hero-edit"
               type="button"
               onClick={() => setEditor({ type: "campaign" })}
-              aria-label="Изменить название кампании"
+              aria-label="Изменить оформление кампании"
             >
               ✎
             </button>

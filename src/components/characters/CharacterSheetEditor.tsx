@@ -39,6 +39,7 @@ const skills = [
 
 type Props = {
   sheet: CharacterSheet
+  systemEditable?: boolean
   onClose: () => void
   onSave: (
     input: Partial<CharacterSheet>,
@@ -54,6 +55,7 @@ function normalizeSlot(value: SpellSlotState | undefined): SpellSlotState {
 
 export default function CharacterSheetEditor({
   sheet,
+  systemEditable = true,
   onClose,
   onSave,
 }: Props) {
@@ -131,6 +133,76 @@ export default function CharacterSheetEditor({
     onClose()
   }
 
+  if (!systemEditable) {
+    const narrativeFields: Array<{
+      key: keyof CharacterSheet
+      label: string
+      multiline?: boolean
+    }> = [
+      { key: "race", label: "Раса / вид" },
+      { key: "background", label: "Предыстория" },
+      { key: "alignment", label: "Мировоззрение" },
+      { key: "proficiencies", label: "Владения", multiline: true },
+      { key: "languages", label: "Языки", multiline: true },
+      { key: "senses", label: "Чувства", multiline: true },
+      { key: "personality_traits", label: "Черты личности", multiline: true },
+      { key: "ideals", label: "Идеалы", multiline: true },
+      { key: "bonds", label: "Привязанности", multiline: true },
+      { key: "flaws", label: "Слабости", multiline: true },
+      { key: "backstory", label: "История", multiline: true },
+      { key: "notes", label: "Личные заметки", multiline: true },
+    ]
+
+    return (
+      <div className="sheet-backdrop" onMouseDown={onClose}>
+        <form
+          className="bottom-sheet dnd-sheet-editor"
+          onSubmit={submit}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <div className="sheet-handle" />
+          <div className="character-editor-head">
+            <div>
+              <h3 className="sheet-title">Моя часть листа</h3>
+              <p className="sheet-copy">
+                Здесь ты ведёшь историю и описание героя. Числа, уровень и ресурсы меняет ГМ.
+              </p>
+            </div>
+            <button className="sheet-close" type="button" onClick={onClose}>×</button>
+          </div>
+
+          <div className="dnd-editor-section narrative-editor-grid">
+            {narrativeFields.map((field) => (
+              <label key={field.key}>
+                {field.label}
+                {field.multiline ? (
+                  <textarea
+                    className="app-textarea"
+                    value={String(draft[field.key] ?? "")}
+                    onChange={(event) => setDraft({ ...draft, [field.key]: event.target.value })}
+                    maxLength={12000}
+                  />
+                ) : (
+                  <input
+                    className="app-input"
+                    value={String(draft[field.key] ?? "")}
+                    onChange={(event) => setDraft({ ...draft, [field.key]: event.target.value })}
+                    maxLength={240}
+                  />
+                )}
+              </label>
+            ))}
+          </div>
+
+          {error && <div className="auth-error">{error}</div>}
+          <button className="sheet-save" type="submit" disabled={saving}>
+            {saving ? "Сохраняем…" : "Сохранить мою часть"}
+          </button>
+        </form>
+      </div>
+    )
+  }
+
   return (
     <div className="sheet-backdrop" onMouseDown={onClose}>
       <form
@@ -143,7 +215,7 @@ export default function CharacterSheetEditor({
           <div>
             <h3 className="sheet-title">Редактировать лист</h3>
             <p className="sheet-copy">
-              Основные параметры D&D-персонажа. GM задаёт максимум ячеек.
+              Основные параметры D&D-персонажа. ГМ задаёт максимум ячеек.
             </p>
           </div>
           <button className="sheet-close" type="button" onClick={onClose}>

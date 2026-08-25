@@ -3,6 +3,7 @@ import type { FormEvent } from "react"
 import ImageUploadField from "../common/ImageUploadField"
 
 import type {
+  CampaignInfoInput,
   CampaignMember,
   Character,
 } from "../../context/CharacterContext"
@@ -40,12 +41,15 @@ type Props = {
   mode: WorldEditorMode
   onClose: () => void
   campaignTitle: string
+  campaignSummary: string
+  campaignRulesSummary: string
+  campaignCoverUrl: string | null
   campaignId: string
   locations: LocationEntry[]
   locationSections: LocationSection[]
   characters: Character[]
   members: CampaignMember[]
-  updateCampaignTitle: (title: string) => AsyncResult
+  updateCampaignInfo: (input: CampaignInfoInput) => AsyncResult
   createWorldSection: (title: string, description: string) => AsyncResult
   updateWorldSection: (
     sectionId: string,
@@ -171,10 +175,20 @@ function WorldEditorForm(
   const [title, setTitle] = useState(() =>
     initialTitle(currentMode, props.campaignTitle),
   )
-  const [summary, setSummary] = useState(() => initialSummary(currentMode))
-  const [body, setBody] = useState(() => initialBody(currentMode))
+  const [summary, setSummary] = useState(() =>
+    currentMode.type === "campaign"
+      ? props.campaignSummary
+      : initialSummary(currentMode),
+  )
+  const [body, setBody] = useState(() =>
+    currentMode.type === "campaign"
+      ? props.campaignRulesSummary
+      : initialBody(currentMode),
+  )
   const [imageUrl, setImageUrl] = useState(() =>
-    currentMode.type === "location-edit"
+    currentMode.type === "campaign"
+      ? props.campaignCoverUrl || ""
+      : currentMode.type === "location-edit"
       ? currentMode.location.image_url || ""
       : "",
   )
@@ -200,7 +214,7 @@ function WorldEditorForm(
   const [error, setError] = useState("")
 
   const editorTitle =
-    currentMode.type === "campaign" ? "Название кампании" :
+    currentMode.type === "campaign" ? "Оформление кампании" :
     currentMode.type === "world-section" ? "Новый раздел мира" :
     currentMode.type === "world-section-edit" ? "Редактировать раздел" :
     currentMode.type === "article" ? "Новая запись" :
@@ -213,8 +227,8 @@ function WorldEditorForm(
     currentMode.type === "location-link-edit" ? "Редактировать переход" :
     currentMode.type === "achievement" ? "Новое достижение" :
     currentMode.type === "achievement-edit" ? "Редактировать достижение" :
-    currentMode.type === "update" ? "Запись GM" :
-    "Редактировать запись GM"
+    currentMode.type === "update" ? "Запись ГМ" :
+    "Редактировать запись ГМ"
 
   const sourceLocationId = (() => {
     if (currentMode.type === "location-link") {
@@ -258,7 +272,12 @@ function WorldEditorForm(
     let result: { ok: boolean; error?: string }
 
     if (currentMode.type === "campaign") {
-      result = await props.updateCampaignTitle(title)
+      result = await props.updateCampaignInfo({
+        title,
+        summary,
+        rules_summary: body,
+        cover_url: imageUrl || null,
+      })
     } else if (currentMode.type === "world-section") {
       result = await props.createWorldSection(title, body)
     } else if (currentMode.type === "world-section-edit") {
@@ -355,13 +374,16 @@ function WorldEditorForm(
   }
 
   const showSummary =
+    currentMode.type === "campaign" ||
     currentMode.type === "article" ||
     currentMode.type === "article-edit" ||
     currentMode.type === "location" ||
     currentMode.type === "location-edit"
 
   const showImage =
-    currentMode.type === "location" || currentMode.type === "location-edit"
+    currentMode.type === "campaign" ||
+    currentMode.type === "location" ||
+    currentMode.type === "location-edit"
 
   const showUpdateKind =
     currentMode.type === "update" || currentMode.type === "update-edit"
@@ -371,7 +393,6 @@ function WorldEditorForm(
     currentMode.type === "achievement-edit"
 
   const showBody =
-    currentMode.type !== "campaign" &&
     currentMode.type !== "location-link" &&
     currentMode.type !== "location-link-edit"
 
@@ -388,7 +409,7 @@ function WorldEditorForm(
           <div>
             <h3 className="sheet-title">{editorTitle}</h3>
             <p className="sheet-copy">
-              GM и создатель кампании могут менять эти данные в любой момент.
+              ГМ и владелец могут менять эти данные в любой момент.
             </p>
           </div>
           <button
@@ -508,14 +529,14 @@ function WorldEditorForm(
         {showSummary && (
           <>
             <label className="field-label" htmlFor="world-summary">
-              Короткое описание
+              {currentMode.type === "campaign" ? "Описание на обложке" : "Короткое описание"}
             </label>
             <input
               id="world-summary"
               className="app-input"
               value={summary}
               onChange={(event) => setSummary(event.target.value)}
-              placeholder="Для карточки и списка"
+              placeholder={currentMode.type === "campaign" ? "О чём эта кампания" : "Для карточки и списка"}
               maxLength={240}
             />
           </>
@@ -525,9 +546,9 @@ function WorldEditorForm(
           <ImageUploadField
             value={imageUrl}
             onChange={setImageUrl}
-            folder="locations"
+            folder={currentMode.type === "campaign" ? "campaign-cover" : "locations"}
             campaignId={props.campaignId}
-            label="Арт локации"
+            label={currentMode.type === "campaign" ? "Обложка мира" : "Арт локации"}
             hint="Выбери изображение из галереи телефона или камеры."
           />
         )}
@@ -535,7 +556,9 @@ function WorldEditorForm(
         {showBody && (
           <>
             <label className="field-label" htmlFor="world-body">
-              {currentMode.type === "world-section" ||
+              {currentMode.type === "campaign"
+                ? "Правила и вводная"
+                : currentMode.type === "world-section" ||
               currentMode.type === "world-section-edit"
                 ? "Описание раздела"
                 : showAchievement

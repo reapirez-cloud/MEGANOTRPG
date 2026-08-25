@@ -167,14 +167,14 @@ export default function ChatRoom({
     : isOwner
       ? `Владелец (${profile.display_name})`
       : isGm
-        ? `GM (${profile.display_name})`
+        ? `ГМ (${profile.display_name})`
         : "Нет персонажа"
 
   const roleAvatar = activeCharacter ?? (
     isOwner
       ? { name: "Владелец", avatar_url: null }
       : isGm
-        ? { name: "GM", avatar_url: null }
+        ? { name: "ГМ", avatar_url: null }
         : null
   )
 
@@ -185,7 +185,7 @@ export default function ChatRoom({
       : isOwner
         ? "Сообщение от владельца…"
         : isGm
-          ? "Сообщение от GM…"
+          ? "Сообщение от ГМ…"
           : "Нет активного персонажа"
 
   return (
@@ -358,7 +358,7 @@ export default function ChatRoom({
 
       {!canWriteRoom && (
         <div className="chat-readonly-line">
-          Ты можешь читать этот чат, но GM не дал право писать.
+          Ты можешь читать этот чат, но ГМ не дал право писать.
         </div>
       )}
 

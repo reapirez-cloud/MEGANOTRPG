@@ -39,6 +39,8 @@ export default function Characters({ onOpenCharacter }: Props) {
   const [level, setLevel] = useState("1")
   const [bio, setBio] = useState("")
   const [avatarUrl, setAvatarUrl] = useState("")
+  const [characterType, setCharacterType] = useState<"pc" | "npc">("pc")
+  const [visibility, setVisibility] = useState<"campaign" | "private">("campaign")
   const [assignedUserId, setAssignedUserId] = useState("")
   const [telegramIdInput, setTelegramIdInput] = useState("")
   const [roleValue, setRoleValue] = useState<"gm" | "player">("player")
@@ -48,7 +50,7 @@ export default function Characters({ onOpenCharacter }: Props) {
   const [inviteStatus, setInviteStatus] = useState("")
   const [creatingInvite, setCreatingInvite] = useState(false)
   const bindCharacterLongPress = useLongPressItem<Character>((character) => {
-    if (canManage) openEdit(character)
+    if (canManage || character.assigned_user_id === user.id) openEdit(character)
     else onOpenCharacter(character.id)
   })
 
@@ -69,7 +71,9 @@ export default function Characters({ onOpenCharacter }: Props) {
     setLevel("1")
     setBio("")
     setAvatarUrl("")
-    setAssignedUserId("")
+    setCharacterType("pc")
+    setVisibility("campaign")
+    setAssignedUserId(canManage ? "" : user.id)
     setTelegramIdInput("")
     setFormError("")
   }
@@ -89,6 +93,8 @@ export default function Characters({ onOpenCharacter }: Props) {
     setLevel(String(character.level))
     setBio(character.bio)
     setAvatarUrl(character.avatar_url || "")
+    setCharacterType(character.character_type)
+    setVisibility(character.visibility)
     setAssignedUserId(character.assigned_user_id || "")
     setTelegramIdInput(assignedMember?.telegram_user_id || "")
     setFormError("")
@@ -123,10 +129,12 @@ export default function Characters({ onOpenCharacter }: Props) {
       return
     }
 
-    let resolvedUserId: string | null = assignedUserId || null
+    let resolvedUserId: string | null = canManage
+      ? assignedUserId || null
+      : user.id
     const requestedTelegramId = telegramIdInput.trim()
 
-    if (requestedTelegramId) {
+    if (canManage && characterType === "pc" && requestedTelegramId) {
       const matchedMember = members.find(
         (member) => member.telegram_user_id === requestedTelegramId,
       )
@@ -150,7 +158,9 @@ export default function Characters({ onOpenCharacter }: Props) {
       level: parsedLevel,
       bio,
       avatar_url: avatarUrl || null,
-      assigned_user_id: resolvedUserId,
+      assigned_user_id: characterType === "npc" ? null : resolvedUserId,
+      character_type: canManage ? characterType : "pc" as const,
+      visibility: canManage ? visibility : "campaign" as const,
     }
 
     const result =
@@ -199,6 +209,17 @@ export default function Characters({ onOpenCharacter }: Props) {
     }
   }
 
+  async function clearActive(character: Character) {
+    if (!character.assigned_user_id) return
+    setSaving(true)
+    setFormError("")
+    const result = await setActiveForMember(character.assigned_user_id, null)
+    setSaving(false)
+    if (!result.ok) {
+      setFormError(result.error || "Не удалось убрать активного персонажа.")
+    }
+  }
+
   async function makeInvite() {
     setCreatingInvite(true)
     setInviteStatus("")
@@ -229,7 +250,7 @@ export default function Characters({ onOpenCharacter }: Props) {
 
   function memberLabel(member: CampaignMember) {
     if (member.is_owner) return "Владелец"
-    return member.role === "gm" ? "GM" : "Игрок"
+    return member.role === "gm" ? "ГМ" : "Игрок"
   }
 
   function telegramLabel(member: CampaignMember) {
@@ -243,6 +264,7 @@ export default function Characters({ onOpenCharacter }: Props) {
       ? members.find((item) => item.user_id === character.assigned_user_id)
       : null
     const isActive = member?.active_character_id === character.id
+    const isOwn = character.assigned_user_id === user.id
     const title = member
       ? `${character.name} (${member.display_name})`
       : character.name
@@ -264,6 +286,8 @@ export default function Characters({ onOpenCharacter }: Props) {
             <span className="character-social-card__name-row">
               <strong>{title}</strong>
               {isActive && <em>Активен</em>}
+              {character.character_type === "npc" && <em className="npc-badge">NPC</em>}
+              {character.visibility === "private" && <em className="private-badge">Скрыт</em>}
             </span>
             <small>
               {character.character_class} · {character.level} уровень
@@ -280,35 +304,37 @@ export default function Characters({ onOpenCharacter }: Props) {
           <span className="character-social-card__chevron">›</span>
         </button>
 
-        {canManage && (
+        {(canManage || isOwn) && (
           <div className="gm-character-actions">
             <button type="button" onClick={() => openEdit(character)}>
               ✎ Редактировать
             </button>
-            {member && !isActive && (
-              <button
-                type="button"
-                onClick={() => void makeActive(character)}
-                disabled={saving}
-              >
-                Сделать активным
-              </button>
+            {member && character.character_type === "pc" && (
+              isActive ? (
+                <button type="button" onClick={() => void clearActive(character)} disabled={saving}>
+                  Убрать активного
+                </button>
+              ) : (
+                <button type="button" onClick={() => void makeActive(character)} disabled={saving}>
+                  Сделать активным
+                </button>
+              )
             )}
           </div>
         )}
 
-        {!canManage && character.assigned_user_id === user.id && (
+        {!canManage && isOwn && (
           <div className="player-character-note">
             {isActive
-              ? "Этот персонаж назначен тебе активным"
-              : "Персонаж прикреплён к тебе. Активного выбирает GM или владелец"}
+              ? "Твой активный персонаж"
+              : "Персонаж принадлежит тебе — можно сделать его активным"}
           </div>
         )}
       </article>
     )
   }
 
-  const currentGm = members.find((member) => member.role === "gm")
+  const gameMasters = members.filter((member) => member.role === "gm")
 
   return (
     <>
@@ -326,11 +352,15 @@ export default function Characters({ onOpenCharacter }: Props) {
 
             <div className="owner-control-card surface">
               <div>
-                <span>Текущий GM</span>
-                <strong>{currentGm?.display_name || "Не назначен"}</strong>
+                <span>Ведущие кампании</span>
+                <strong>
+                  {gameMasters.length > 0
+                    ? gameMasters.map((member) => member.display_name).join(", ")
+                    : "Пока не назначены"}
+                </strong>
               </div>
               <small className="owner-role-hint">
-                GM может вообще не иметь персонажа
+                ГМ может быть сколько угодно; у каждого своё рабочее пространство
               </small>
             </div>
           </section>
@@ -381,11 +411,9 @@ export default function Characters({ onOpenCharacter }: Props) {
                   : "Активные герои других игроков видны вместе с их историями"}
               </p>
             </div>
-            {canManage && (
-              <button className="section-link" type="button" onClick={openCreate}>
-                + Персонаж
-              </button>
-            )}
+            <button className="section-link" type="button" onClick={openCreate}>
+              {canManage ? "+ Персонаж / NPC" : "+ Мой герой"}
+            </button>
           </div>
 
           <div className="character-social-list">
@@ -456,7 +484,9 @@ export default function Characters({ onOpenCharacter }: Props) {
                   {editor.type === "create" ? "Новый персонаж" : "Редактировать персонажа"}
                 </h3>
                 <p className="sheet-copy">
-                  Роль игрока здесь не меняется. Здесь только сам персонаж и его владелец.
+                  {canManage
+                    ? "Игровой персонаж привязывается к игроку, NPC остаётся частью мира."
+                    : "Ты редактируешь свою страницу. Уровень, инвентарь и ресурсы выдаёт ГМ."}
                 </p>
               </div>
               <button className="sheet-close" type="button" onClick={() => setEditor(null)}>
@@ -476,6 +506,39 @@ export default function Characters({ onOpenCharacter }: Props) {
               maxLength={80}
               autoFocus
             />
+
+            {canManage && (
+              <div className="character-editor-grid">
+                <div>
+                  <label className="field-label" htmlFor="character-type">Тип</label>
+                  <select
+                    id="character-type"
+                    className="app-select"
+                    value={characterType}
+                    onChange={(event) => {
+                      const next = event.target.value === "npc" ? "npc" : "pc"
+                      setCharacterType(next)
+                      if (next === "npc") setAssignedUserId("")
+                    }}
+                  >
+                    <option value="pc">Персонаж игрока</option>
+                    <option value="npc">NPC</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="character-visibility">Видимость</label>
+                  <select
+                    id="character-visibility"
+                    className="app-select"
+                    value={visibility}
+                    onChange={(event) => setVisibility(event.target.value === "private" ? "private" : "campaign")}
+                  >
+                    <option value="campaign">Видят игроки</option>
+                    <option value="private">Только ГМ и владелец</option>
+                  </select>
+                </div>
+              </div>
+            )}
 
             <div className="character-editor-grid">
               <div>
@@ -498,10 +561,12 @@ export default function Characters({ onOpenCharacter }: Props) {
                   max="30"
                   value={level}
                   onChange={(event) => setLevel(event.target.value)}
+                  disabled={!canManage}
                 />
               </div>
             </div>
 
+            {canManage && characterType === "pc" && (
             <div className="telegram-assignment-box">
               <label className="field-label" htmlFor="character-telegram-id">
                 Telegram ID игрока
@@ -549,6 +614,7 @@ export default function Characters({ onOpenCharacter }: Props) {
                 Если игрока нет в списке, он должен один раз открыть приложение через Telegram-бота.
               </p>
             </div>
+            )}
 
             <ImageUploadField
               value={avatarUrl}
@@ -588,7 +654,7 @@ export default function Characters({ onOpenCharacter }: Props) {
               <div>
                 <h3 className="sheet-title">Роль: {editor.member.display_name}</h3>
                 <p className="sheet-copy">
-                  Роль не привязывает персонажа. GM может работать вообще без персонажа.
+                  Роль не привязывает персонажа. У каждого ГМ открывается собственное рабочее пространство.
                 </p>
               </div>
               <button className="sheet-close" type="button" onClick={() => setEditor(null)}>
@@ -611,11 +677,11 @@ export default function Characters({ onOpenCharacter }: Props) {
               onChange={(event) => setRoleValue(event.target.value === "gm" ? "gm" : "player")}
             >
               <option value="player">Игрок</option>
-              <option value="gm">GM</option>
+              <option value="gm">ГМ</option>
             </select>
 
             <div className="auth-note">
-              В кампании остаётся один GM. Если назначить нового GM, предыдущий автоматически станет игроком. Персонажи при этом не перепривязываются.
+              ГМ может быть несколько. Назначение нового ведущего не меняет роли остальных и не перепривязывает персонажей.
             </div>
 
             {formError && <div className="auth-error">{formError}</div>}

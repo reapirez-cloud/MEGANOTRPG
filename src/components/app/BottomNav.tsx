@@ -5,6 +5,7 @@ export type MainTab = "feed" | "chats" | "world" | "characters" | "me"
 type Props = {
   active: MainTab
   onChange: (tab: MainTab) => void
+  meLabel?: string
 }
 
 function WorldIcon() {
@@ -61,7 +62,7 @@ const items: Array<{ id: MainTab; label: string; icon: ReactNode }> = [
   { id: "me", label: "Я", icon: <MeIcon /> },
 ]
 
-export default function BottomNav({ active, onChange }: Props) {
+export default function BottomNav({ active, onChange, meLabel = "Я" }: Props) {
   return (
     <nav className="bottom-nav" aria-label="Основная навигация">
       {items.map((item) => (
@@ -72,7 +73,7 @@ export default function BottomNav({ active, onChange }: Props) {
           onClick={() => onChange(item.id)}
         >
           {item.icon}
-          <span>{item.label}</span>
+          <span>{item.id === "me" ? meLabel : item.label}</span>
         </button>
       ))}
     </nav>

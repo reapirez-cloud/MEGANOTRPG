@@ -7,6 +7,7 @@ import "./character-equipment.css"
 import "./world.css"
 import "./chat-v11.css"
 import "./social.css"
+import "./gm-workspace.css"
 
 import BottomNav from "./components/app/BottomNav"
 import NotificationsSheet from "./components/app/NotificationsSheet"
@@ -26,10 +27,11 @@ import Characters from "./pages/Characters"
 import ChatRoom from "./pages/ChatRoom"
 import Chats from "./pages/Chats"
 import Feed from "./pages/Feed"
+import GmWorkspace from "./pages/GmWorkspace"
 import World from "./pages/World"
 
 function Workspace() {
-  const { campaignId, activeCharacter } = useCharacters()
+  const { campaignId, activeCharacter, myCharacters, isGm, isOwner } = useCharacters()
   const notifications = useNotifications(campaignId)
   const [route, setRoute] = useState<AppRoute>(() =>
     parseAppRoute(window.location.hash),
@@ -84,8 +86,10 @@ function Workspace() {
     if (route.tab === "chats") return "Чаты"
     if (route.tab === "world") return "Мир"
     if (route.tab === "characters") return "Персонажи"
-    return "Мой герой"
-  }, [route])
+    if (activeCharacter && (isOwner || !isGm)) return "Мой персонаж"
+    if (isGm || isOwner) return "Я — ГМ"
+    return "Мой персонаж"
+  }, [activeCharacter, isGm, isOwner, route])
 
   if (route.type === "chat") {
     return (
@@ -124,7 +128,7 @@ function Workspace() {
             >
               ←
             </button>
-            <h1 className="screen-header__title">Галерея</h1>
+            <h1 className="screen-header__title">Арты и комиксы</h1>
             <span />
           </header>
           <main className="app-content app-content--overlay">
@@ -164,22 +168,28 @@ function Workspace() {
           />
         )}
         {route.tab === "me" &&
-          (activeCharacter ? (
+          (activeCharacter && (isOwner || !isGm) ? (
             <CharacterProfile
               characterId={activeCharacter.id}
               onBack={() => navigate("#/feed")}
               embedded
             />
+          ) : isGm || isOwner ? (
+            <GmWorkspace
+              onOpenCharacter={(id) => navigate(`#/character/${id}?from=me`)}
+              onOpenRoom={(id) => navigate(`#/chat/${id}`)}
+            />
           ) : (
             <section className="me-empty surface">
               <span>◇</span>
-              <h2>Активный персонаж не выбран</h2>
+              <h2>{myCharacters.length > 0 ? "Выбери активного персонажа" : "Создай своего персонажа"}</h2>
               <p>
-                GM или владелец назначит тебе героя. После этого здесь появится
-                его полноценная страница.
+                {myCharacters.length > 0
+                  ? "На странице персонажей выбери героя — здесь откроется его дневник, лист, инвентарь и арты."
+                  : "После создания здесь откроется его полноценная страница: дневник, арты, лист, инвентарь и заклинания."}
               </p>
               <button type="button" onClick={() => navigate("#/characters")}>
-                Открыть персонажей
+                {myCharacters.length > 0 ? "Выбрать персонажа" : "Создать персонажа"}
               </button>
             </section>
           ))}
@@ -199,6 +209,7 @@ function Workspace() {
       <BottomNav
         active={route.tab}
         onChange={(tab) => navigate(mainRouteHash(tab))}
+        meLabel={isGm && !isOwner ? "ГМ" : "Я"}
       />
     </div>
   )

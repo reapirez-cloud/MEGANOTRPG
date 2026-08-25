@@ -4,6 +4,7 @@ import type { CharacterSpell, SpellInput } from "../../types/characterSheet"
 
 type Props = {
   spell: CharacterSpell | null
+  purpose?: "spell" | "option"
   onClose: () => void
   onSave: (input: SpellInput) => Promise<{ ok: boolean; error?: string }>
   onDelete?: () => Promise<{ ok: boolean; error?: string }>
@@ -11,6 +12,7 @@ type Props = {
 
 export default function SpellEditor({
   spell,
+  purpose = "spell",
   onClose,
   onSave,
   onDelete,
@@ -99,10 +101,14 @@ export default function SpellEditor({
         <div className="character-editor-head">
           <div>
             <h3 className="sheet-title">
-              {spell ? "Редактировать заклинание" : "Добавить заклинание"}
+              {purpose === "option"
+                ? (spell ? "Настроить доступ" : "Выдать заклинание")
+                : (spell ? "Редактировать заклинание" : "Добавить заклинание")}
             </h3>
             <p className="sheet-copy">
-              Подготовленные заклинания становятся зелёными и появляются в меню действий чата.
+              {purpose === "option"
+                ? "После сохранения игрок сможет добавить это заклинание своему персонажу."
+                : "Подготовленные заклинания становятся зелёными и появляются в меню действий чата."}
             </p>
           </div>
           <button className="sheet-close" type="button" onClick={onClose}>

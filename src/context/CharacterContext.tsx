@@ -20,6 +20,9 @@ export type Character = {
   level: number
   bio: string
   avatar_url: string | null
+  character_type: "pc" | "npc"
+  visibility: "campaign" | "private"
+  created_by: string | null
   created_at: string
   updated_at: string
 }
@@ -42,6 +45,15 @@ export type CharacterInput = {
   bio: string
   avatar_url: string | null
   assigned_user_id: string | null
+  character_type?: "pc" | "npc"
+  visibility?: "campaign" | "private"
+}
+
+export type CampaignInfoInput = {
+  title: string
+  summary: string
+  rules_summary: string
+  cover_url: string | null
 }
 
 type Result = { ok: boolean; error?: string }
@@ -49,6 +61,9 @@ type Result = { ok: boolean; error?: string }
 type CharacterContextValue = {
   campaignId: string
   campaignTitle: string
+  campaignSummary: string
+  campaignRulesSummary: string
+  campaignCoverUrl: string | null
   characters: Character[]
   members: CampaignMember[]
   myCharacters: Character[]
@@ -63,12 +78,11 @@ type CharacterContextValue = {
   joinCampaign: (code: string) => Promise<Result>
   createInvite: () => Promise<Result & { code?: string }>
   setMemberRole: (userId: string, role: "gm" | "player") => Promise<Result>
-  updateCampaignTitle: (title: string) => Promise<Result>
+  updateCampaignInfo: (input: CampaignInfoInput) => Promise<Result>
   createCharacter: (input: CharacterInput) => Promise<Result>
   updateCharacter: (characterId: string, input: CharacterInput) => Promise<Result>
   updateOwnCharacterAvatar: (characterId: string, avatarUrl: string) => Promise<Result>
-  assignCharacter: (characterId: string, userId: string | null) => Promise<Result>
-  setActiveForMember: (userId: string, characterId: string) => Promise<Result>
+  setActiveForMember: (userId: string, characterId: string | null) => Promise<Result>
 }
 
 const CharacterContext = createContext<CharacterContextValue | null>(null)
@@ -77,6 +91,9 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [campaignId, setCampaignId] = useState("")
   const [campaignTitle, setCampaignTitle] = useState("")
+  const [campaignSummary, setCampaignSummary] = useState("")
+  const [campaignRulesSummary, setCampaignRulesSummary] = useState("")
+  const [campaignCoverUrl, setCampaignCoverUrl] = useState<string | null>(null)
   const [characters, setCharacters] = useState<Character[]>([])
   const [members, setMembers] = useState<CampaignMember[]>([])
   const [loading, setLoading] = useState(true)
@@ -102,6 +119,9 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     if (!ownMemberships?.length) {
       setCampaignId("")
       setCampaignTitle("")
+      setCampaignSummary("")
+      setCampaignRulesSummary("")
+      setCampaignCoverUrl(null)
       setCharacters([])
       setMembers([])
       setNeedsInvite(true)
@@ -119,7 +139,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
 
     const { data: campaign, error: campaignError } = await supabase
       .from("campaigns")
-      .select("id, title")
+      .select("id, title, summary, rules_summary, cover_url")
       .eq("id", selectedMembership.campaign_id)
       .single()
 
@@ -131,6 +151,9 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
 
     setCampaignId(campaign.id)
     setCampaignTitle(campaign.title)
+    setCampaignSummary(campaign.summary || "")
+    setCampaignRulesSummary(campaign.rules_summary || "")
+    setCampaignCoverUrl(campaign.cover_url || null)
     setNeedsInvite(false)
     window.localStorage.setItem("meganotrpg:v1:campaign-id", campaign.id)
 
@@ -139,7 +162,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         supabase
           .from("characters")
           .select(
-            "id, campaign_id, assigned_user_id, name, character_class, level, bio, avatar_url, created_at, updated_at",
+            "id, campaign_id, assigned_user_id, name, character_class, level, bio, avatar_url, character_type, visibility, created_by, created_at, updated_at",
           )
           .eq("campaign_id", campaign.id)
           .order("created_at", { ascending: true }),
@@ -226,7 +249,12 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   )
 
   const myCharacters = useMemo(
-    () => characters.filter((character) => character.assigned_user_id === user.id),
+    () =>
+      characters.filter(
+        (character) =>
+          character.assigned_user_id === user.id &&
+          character.character_type === "pc",
+      ),
     [characters, user.id],
   )
 
@@ -237,7 +265,8 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       characters.find(
         (character) =>
           character.id === myMember.active_character_id &&
-          character.assigned_user_id === user.id,
+          character.assigned_user_id === user.id &&
+          character.character_type === "pc",
       ) ?? null
     )
   }, [characters, myMember, user.id])
@@ -294,20 +323,28 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     [campaignId, load],
   )
 
-  const updateCampaignTitle = useCallback(
-    async (title: string): Promise<Result> => {
-      const cleaned = title.trim()
+  const updateCampaignInfo = useCallback(
+    async (input: CampaignInfoInput): Promise<Result> => {
+      const cleaned = input.title.trim()
       if (!campaignId || !cleaned) {
         return { ok: false, error: "Нужно название кампании." }
       }
 
       const { error: updateError } = await supabase
         .from("campaigns")
-        .update({ title: cleaned })
+        .update({
+          title: cleaned,
+          summary: input.summary.trim(),
+          rules_summary: input.rules_summary.trim(),
+          cover_url: input.cover_url?.trim() || null,
+        })
         .eq("id", campaignId)
 
       if (updateError) return { ok: false, error: updateError.message }
       setCampaignTitle(cleaned)
+      setCampaignSummary(input.summary.trim())
+      setCampaignRulesSummary(input.rules_summary.trim())
+      setCampaignCoverUrl(input.cover_url?.trim() || null)
       return { ok: true }
     },
     [campaignId],
@@ -319,91 +356,32 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: "Кампания ещё не загружена." }
       }
 
-      const { data, error: insertError } = await supabase
-        .from("characters")
-        .insert({
-          campaign_id: campaignId,
-          assigned_user_id: input.assigned_user_id,
-          name: input.name.trim(),
-          character_class: input.character_class.trim() || "Персонаж",
-          level: input.level,
-          bio: input.bio.trim(),
-          avatar_url: input.avatar_url?.trim() || null,
-        })
-        .select("id, assigned_user_id")
-        .single()
+      const { error: insertError } = await supabase.rpc(
+        "create_campaign_character",
+        {
+          p_campaign_id: campaignId,
+          p_name: input.name.trim(),
+          p_character_class: input.character_class.trim() || "Персонаж",
+          p_level: input.level,
+          p_bio: input.bio.trim(),
+          p_avatar_url: input.avatar_url?.trim() || null,
+          p_assigned_user_id: input.assigned_user_id,
+          p_character_type: input.character_type || "pc",
+          p_visibility: input.visibility || "campaign",
+        },
+      )
 
-      if (insertError || !data) {
+      if (insertError) {
         return {
           ok: false,
-          error: insertError?.message || "Не удалось создать персонажа.",
-        }
-      }
-
-      if (data.assigned_user_id) {
-        const member = members.find((item) => item.user_id === data.assigned_user_id)
-        if (member && !member.active_character_id) {
-          await supabase
-            .from("campaign_members")
-            .update({ active_character_id: data.id })
-            .eq("campaign_id", campaignId)
-            .eq("user_id", data.assigned_user_id)
+          error: insertError.message || "Не удалось создать персонажа.",
         }
       }
 
       await load()
       return { ok: true }
     },
-    [campaignId, load, members],
-  )
-
-  const assignCharacter = useCallback(
-    async (characterId: string, userId: string | null): Promise<Result> => {
-      if (!campaignId) {
-        return { ok: false, error: "Кампания ещё не загружена." }
-      }
-
-      const character = characters.find((item) => item.id === characterId)
-      if (!character) return { ok: false, error: "Персонаж не найден." }
-
-      const oldUserId = character.assigned_user_id
-
-      const { error: characterError } = await supabase
-        .from("characters")
-        .update({
-          assigned_user_id: userId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", characterId)
-
-      if (characterError) return { ok: false, error: characterError.message }
-
-      if (oldUserId && oldUserId !== userId) {
-        const oldMember = members.find((item) => item.user_id === oldUserId)
-        if (oldMember?.active_character_id === characterId) {
-          await supabase
-            .from("campaign_members")
-            .update({ active_character_id: null })
-            .eq("campaign_id", campaignId)
-            .eq("user_id", oldUserId)
-        }
-      }
-
-      if (userId) {
-        const newMember = members.find((item) => item.user_id === userId)
-        if (newMember && !newMember.active_character_id) {
-          await supabase
-            .from("campaign_members")
-            .update({ active_character_id: characterId })
-            .eq("campaign_id", campaignId)
-            .eq("user_id", userId)
-        }
-      }
-
-      await load()
-      return { ok: true }
-    },
-    [campaignId, characters, load, members],
+    [campaignId, load],
   )
 
   const updateCharacter = useCallback(
@@ -411,33 +389,26 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       const character = characters.find((item) => item.id === characterId)
       if (!character) return { ok: false, error: "Персонаж не найден." }
 
-      const { error: updateError } = await supabase
-        .from("characters")
-        .update({
-          name: input.name.trim(),
-          character_class: input.character_class.trim() || "Персонаж",
-          level: input.level,
-          bio: input.bio.trim(),
-          avatar_url: input.avatar_url?.trim() || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", characterId)
+      const { error: updateError } = await supabase.rpc(
+        "update_campaign_character",
+        {
+          p_character_id: characterId,
+          p_name: input.name.trim(),
+          p_character_class: input.character_class.trim() || "Персонаж",
+          p_level: input.level,
+          p_bio: input.bio.trim(),
+          p_avatar_url: input.avatar_url?.trim() || null,
+          p_assigned_user_id: input.assigned_user_id,
+          p_character_type: input.character_type || character.character_type,
+          p_visibility: input.visibility || character.visibility,
+        },
+      )
 
       if (updateError) return { ok: false, error: updateError.message }
-
-      if (character.assigned_user_id !== input.assigned_user_id) {
-        const assignmentResult = await assignCharacter(
-          characterId,
-          input.assigned_user_id,
-        )
-        if (!assignmentResult.ok) return assignmentResult
-      } else {
-        await load()
-      }
-
+      await load()
       return { ok: true }
     },
-    [assignCharacter, characters, load],
+    [characters, load],
   )
 
   const updateOwnCharacterAvatar = useCallback(
@@ -455,30 +426,36 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   )
 
   const setActiveForMember = useCallback(
-    async (userId: string, characterId: string): Promise<Result> => {
+    async (userId: string, characterId: string | null): Promise<Result> => {
       if (!campaignId) {
         return { ok: false, error: "Кампания ещё не загружена." }
       }
 
-      const character = characters.find(
-        (item) =>
-          item.id === characterId &&
-          item.assigned_user_id === userId &&
-          item.campaign_id === campaignId,
-      )
+      const character = characterId
+        ? characters.find(
+            (item) =>
+              item.id === characterId &&
+              item.assigned_user_id === userId &&
+              item.campaign_id === campaignId &&
+              item.character_type === "pc",
+          )
+        : null
 
-      if (!character) {
+      if (characterId && !character) {
         return {
           ok: false,
           error: "Сначала прикрепи этого персонажа к выбранному игроку.",
         }
       }
 
-      const { error: updateError } = await supabase
-        .from("campaign_members")
-        .update({ active_character_id: characterId })
-        .eq("campaign_id", campaignId)
-        .eq("user_id", userId)
+      const { error: updateError } = await supabase.rpc(
+        "set_campaign_active_character",
+        {
+          p_campaign_id: campaignId,
+          p_user_id: userId,
+          p_character_id: characterId,
+        },
+      )
 
       if (updateError) return { ok: false, error: updateError.message }
       await load()
@@ -522,6 +499,9 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       value={{
         campaignId,
         campaignTitle,
+        campaignSummary,
+        campaignRulesSummary,
+        campaignCoverUrl,
         characters,
         members,
         myCharacters,
@@ -536,11 +516,10 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         joinCampaign,
         createInvite,
         setMemberRole,
-        updateCampaignTitle,
+        updateCampaignInfo,
         createCharacter,
         updateCharacter,
         updateOwnCharacterAvatar,
-        assignCharacter,
         setActiveForMember,
       }}
     >
@@ -580,7 +559,7 @@ function JoinCampaign({
         <div className="auth-eyebrow">MEGANOTRPG</div>
         <h1 className="auth-title">Войти в кампанию</h1>
         <p className="auth-muted">
-          Попроси владельца или GM прислать код приглашения. Он действует 30
+          Попроси владельца или ГМ прислать код приглашения. Он действует 30
           дней и не открывает доступ посторонним.
         </p>
         <label className="auth-label" htmlFor="campaign-invite-code">
