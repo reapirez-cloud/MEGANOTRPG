@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import type { RealtimeChannel } from "@supabase/supabase-js"
 
 import { useCharacters } from "../context/CharacterContext"
 import { supabase } from "../lib/supabase"
@@ -20,9 +21,14 @@ export function useRooms() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadRooms = useCallback(async () => {
-    if (!campaignId) return
-    setLoading(true)
+  const loadRooms = useCallback(async (silent = false) => {
+    if (!campaignId) {
+      setRooms([])
+      setLoading(false)
+      return
+    }
+
+    if (!silent) setLoading(true)
     setError(null)
 
     const { data, error: roomsError } = await supabase.rpc(
@@ -31,7 +37,7 @@ export function useRooms() {
     )
 
     if (roomsError) {
-      setLoading(false)
+      if (!silent) setLoading(false)
       setError(roomsError.message)
       return
     }
@@ -64,7 +70,41 @@ export function useRooms() {
 
   useEffect(() => {
     void loadRooms()
-  }, [loadRooms])
+    if (!campaignId) return
+
+    let refreshTimer: number | null = null
+    const refreshSoon = () => {
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer)
+      refreshTimer = window.setTimeout(() => void loadRooms(true), 160)
+    }
+
+    let channel: RealtimeChannel | null = supabase
+      .channel(`campaign-rooms-${campaignId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "chat_rooms",
+          filter: `campaign_id=eq.${campaignId}`,
+        },
+        refreshSoon,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "chat_messages" },
+        refreshSoon,
+      )
+      .subscribe()
+
+    return () => {
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer)
+      if (channel) {
+        void supabase.removeChannel(channel)
+        channel = null
+      }
+    }
+  }, [campaignId, loadRooms])
 
   const createGameRoom = useCallback(
     async (title: string): Promise<Result> => {
@@ -94,7 +134,7 @@ export function useRooms() {
         return { ok: false, error: insertError?.message || "Не удалось создать игровой чат." }
       }
 
-      await loadRooms()
+      await loadRooms(true)
       return { ok: true, id: data.id }
     },
     [campaignId, loadRooms, rooms],
@@ -109,7 +149,7 @@ export function useRooms() {
         .update({ title: cleaned })
         .eq("id", roomId)
       if (updateError) return { ok: false, error: updateError.message }
-      await loadRooms()
+      await loadRooms(true)
       return { ok: true }
     },
     [loadRooms],
@@ -134,7 +174,7 @@ export function useRooms() {
     campaignTitle,
     loading,
     error,
-    reload: loadRooms,
+    reload: () => loadRooms(false),
     createGameRoom,
     renameRoom,
     deleteRoom,
