@@ -112,32 +112,19 @@ export function useRooms() {
       if (!campaignId) return { ok: false, error: "Кампания ещё не загружена." }
       if (!cleaned) return { ok: false, error: "Укажи название игрового чата." }
 
-      const nextPosition =
-        Math.max(0, ...rooms.filter((room) => room.category === "game").map((room) => room.position)) + 10
-      const random =
-        globalThis.crypto?.randomUUID?.().slice(0, 8) ||
-        Math.random().toString(36).slice(2, 10)
+      const { data, error: createError } = await supabase.rpc(
+        "create_campaign_chat_room",
+        { p_campaign_id: campaignId, p_title: cleaned },
+      )
 
-      const { data, error: insertError } = await supabase
-        .from("chat_rooms")
-        .insert({
-          campaign_id: campaignId,
-          slug: `game-${Date.now()}-${random}`,
-          title: cleaned,
-          category: "game",
-          position: nextPosition,
-        })
-        .select("id")
-        .single()
-
-      if (insertError || !data) {
-        return { ok: false, error: insertError?.message || "Не удалось создать игровой чат." }
+      if (createError || !data) {
+        return { ok: false, error: createError?.message || "Не удалось создать игровой чат." }
       }
 
       await loadRooms(true)
-      return { ok: true, id: data.id }
+      return { ok: true, id: String(data) }
     },
-    [campaignId, loadRooms, rooms],
+    [campaignId, loadRooms],
   )
 
   const renameRoom = useCallback(
