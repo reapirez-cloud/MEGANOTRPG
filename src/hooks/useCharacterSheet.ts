@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { supabase } from "../lib/supabase"
+import { deleteCampaignMediaObject } from "../lib/mediaUpload"
 import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
 import type {
@@ -18,6 +19,27 @@ import type {
 } from "../types/characterSheet"
 
 type Result = { ok: boolean; error?: string }
+
+function sortInventory(items: InventoryItem[]) {
+  return [...items].sort(
+    (a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at),
+  )
+}
+
+function sortSpells<T extends CharacterSpell>(items: T[]) {
+  return [...items].sort(
+    (a, b) =>
+      a.spell_level - b.spell_level ||
+      a.sort_order - b.sort_order ||
+      a.name.localeCompare(b.name, "ru"),
+  )
+}
+
+function sortFeatures(items: CharacterFeature[]) {
+  return [...items].sort(
+    (a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at),
+  )
+}
 
 export function useCharacterSheet(characterId: string, campaignId: string) {
   const { user } = useAuth()
@@ -127,6 +149,42 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
     setLoading(false)
   }, [characterId])
 
+  const reloadInventory = useCallback(async (): Promise<Result> => {
+    const { data, error: inventoryError } = await supabase
+      .from("character_inventory_items")
+      .select("*")
+      .eq("character_id", characterId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true })
+    if (inventoryError) return { ok: false, error: inventoryError.message }
+    setInventory((data || []) as InventoryItem[])
+    return { ok: true }
+  }, [characterId])
+
+  const reloadSpellCollections = useCallback(async (): Promise<Result> => {
+    const [spellResult, optionResult] = await Promise.all([
+      supabase
+        .from("character_spells")
+        .select("*")
+        .eq("character_id", characterId)
+        .order("spell_level", { ascending: true })
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true }),
+      supabase
+        .from("character_spell_options")
+        .select("*")
+        .eq("character_id", characterId)
+        .order("spell_level", { ascending: true })
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true }),
+    ])
+    const collectionError = spellResult.error || optionResult.error
+    if (collectionError) return { ok: false, error: collectionError.message }
+    setSpells((spellResult.data || []) as CharacterSpell[])
+    setSpellOptions((optionResult.data || []) as CharacterSpellOption[])
+    return { ok: true }
+  }, [characterId])
+
   useEffect(() => {
     void load()
   }, [load])
@@ -134,46 +192,68 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
   const updateSheet = useCallback(
     async (input: Partial<CharacterSheet>): Promise<Result> => {
       let updateError: { message: string } | null = null
+      const updatedAt = new Date().toISOString()
 
       if (canManage) {
         const patch = { ...input }
         delete patch.character_id
         delete patch.created_at
-        patch.updated_at = new Date().toISOString()
+        patch.updated_at = updatedAt
         const result = await supabase
           .from("character_sheets")
           .update(patch)
           .eq("character_id", characterId)
         updateError = result.error
+        if (!updateError) {
+          setSheet((current) => current ? { ...current, ...patch } : current)
+        }
       } else {
+        const narrativePatch = {
+          race: input.race ?? sheet?.race ?? "",
+          background: input.background ?? sheet?.background ?? "",
+          alignment: input.alignment ?? sheet?.alignment ?? "",
+          proficiencies: input.proficiencies ?? sheet?.proficiencies ?? "",
+          languages: input.languages ?? sheet?.languages ?? "",
+          senses: input.senses ?? sheet?.senses ?? "",
+          personality_traits: input.personality_traits ?? sheet?.personality_traits ?? "",
+          ideals: input.ideals ?? sheet?.ideals ?? "",
+          bonds: input.bonds ?? sheet?.bonds ?? "",
+          flaws: input.flaws ?? sheet?.flaws ?? "",
+          backstory: input.backstory ?? sheet?.backstory ?? "",
+          notes: input.notes ?? sheet?.notes ?? "",
+        }
         const result = await supabase.rpc("update_character_narrative", {
           p_character_id: characterId,
-          p_race: input.race ?? sheet?.race ?? "",
-          p_background: input.background ?? sheet?.background ?? "",
-          p_alignment: input.alignment ?? sheet?.alignment ?? "",
-          p_proficiencies: input.proficiencies ?? sheet?.proficiencies ?? "",
-          p_languages: input.languages ?? sheet?.languages ?? "",
-          p_senses: input.senses ?? sheet?.senses ?? "",
-          p_personality_traits: input.personality_traits ?? sheet?.personality_traits ?? "",
-          p_ideals: input.ideals ?? sheet?.ideals ?? "",
-          p_bonds: input.bonds ?? sheet?.bonds ?? "",
-          p_flaws: input.flaws ?? sheet?.flaws ?? "",
-          p_backstory: input.backstory ?? sheet?.backstory ?? "",
-          p_notes: input.notes ?? sheet?.notes ?? "",
+          p_race: narrativePatch.race,
+          p_background: narrativePatch.background,
+          p_alignment: narrativePatch.alignment,
+          p_proficiencies: narrativePatch.proficiencies,
+          p_languages: narrativePatch.languages,
+          p_senses: narrativePatch.senses,
+          p_personality_traits: narrativePatch.personality_traits,
+          p_ideals: narrativePatch.ideals,
+          p_bonds: narrativePatch.bonds,
+          p_flaws: narrativePatch.flaws,
+          p_backstory: narrativePatch.backstory,
+          p_notes: narrativePatch.notes,
         })
         updateError = result.error
+        if (!updateError) {
+          setSheet((current) =>
+            current ? { ...current, ...narrativePatch, updated_at: updatedAt } : current,
+          )
+        }
       }
 
       if (updateError) return { ok: false, error: updateError.message }
-      await load()
       return { ok: true }
     },
-    [canManage, characterId, load, sheet],
+    [canManage, characterId, sheet],
   )
 
   const addInventoryItem = useCallback(
     async (input: InventoryInput): Promise<Result> => {
-      const { error: insertError } = await supabase
+      const { data, error: insertError } = await supabase
         .from("character_inventory_items")
         .insert({
           character_id: characterId,
@@ -186,17 +266,19 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
           image_url: input.image_url?.trim() || null,
           description: input.description.trim(),
         })
+        .select("*")
+        .single()
 
       if (insertError) return { ok: false, error: insertError.message }
-      await load()
+      setInventory((current) => sortInventory([...current, data as InventoryItem]))
       return { ok: true }
     },
-    [characterId, load],
+    [characterId],
   )
 
   const updateInventoryItem = useCallback(
     async (itemId: string, input: InventoryInput): Promise<Result> => {
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from("character_inventory_items")
         .update({
           name: input.name.trim(),
@@ -211,12 +293,16 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
         })
         .eq("id", itemId)
         .eq("character_id", characterId)
+        .select("*")
+        .single()
 
       if (updateError) return { ok: false, error: updateError.message }
-      await load()
+      setInventory((current) =>
+        sortInventory(current.map((item) => item.id === itemId ? data as InventoryItem : item)),
+      )
       return { ok: true }
     },
-    [characterId, load],
+    [characterId],
   )
 
   const deleteInventoryItem = useCallback(
@@ -228,10 +314,10 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
         .eq("character_id", characterId)
 
       if (deleteError) return { ok: false, error: deleteError.message }
-      await load()
+      setInventory((current) => current.filter((item) => item.id !== itemId))
       return { ok: true }
     },
-    [characterId, load],
+    [characterId],
   )
 
   const setInventoryEquipped = useCallback(
@@ -250,10 +336,9 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
       )
 
       if (equipError) return { ok: false, error: equipError.message }
-      await load()
-      return { ok: true }
+      return reloadInventory()
     },
-    [load],
+    [reloadInventory],
   )
 
   const setSpellcastingEnabled = useCallback(
@@ -267,38 +352,48 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
       )
 
       if (toggleError) return { ok: false, error: toggleError.message }
-      await load()
+      setSheet((current) =>
+        current
+          ? { ...current, spellcasting_enabled: enabled, updated_at: new Date().toISOString() }
+          : current,
+      )
       return { ok: true }
     },
-    [characterId, load],
+    [characterId],
   )
 
   const addSpell = useCallback(
     async (input: SpellInput): Promise<Result> => {
-      const { error: insertError } = await supabase
+      const { data, error: insertError } = await supabase
         .from("character_spells")
         .insert({ character_id: characterId, ...input })
+        .select("*")
+        .single()
 
       if (insertError) return { ok: false, error: insertError.message }
-      await load()
+      setSpells((current) => sortSpells([...current, data as CharacterSpell]))
       return { ok: true }
     },
-    [characterId, load],
+    [characterId],
   )
 
   const updateSpell = useCallback(
     async (spellId: string, input: SpellInput): Promise<Result> => {
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from("character_spells")
         .update({ ...input, updated_at: new Date().toISOString() })
         .eq("id", spellId)
         .eq("character_id", characterId)
+        .select("*")
+        .single()
 
       if (updateError) return { ok: false, error: updateError.message }
-      await load()
+      setSpells((current) =>
+        sortSpells(current.map((spell) => spell.id === spellId ? data as CharacterSpell : spell)),
+      )
       return { ok: true }
     },
-    [characterId, load],
+    [characterId],
   )
 
   const deleteSpell = useCallback(
@@ -309,40 +404,48 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
       )
 
       if (deleteError) return { ok: false, error: deleteError.message }
-      await load()
+      setSpells((current) => current.filter((spell) => spell.id !== spellId))
       return { ok: true }
     },
-    [load],
+    [],
   )
 
   const addSpellOption = useCallback(
     async (input: SpellInput): Promise<Result> => {
-      const { error: insertError } = await supabase
+      const { data, error: insertError } = await supabase
         .from("character_spell_options")
         .insert({
           character_id: characterId,
           granted_by: user.id,
           ...input,
         })
+        .select("*")
+        .single()
       if (insertError) return { ok: false, error: insertError.message }
-      await load()
+      setSpellOptions((current) =>
+        sortSpells([...current, data as CharacterSpellOption]),
+      )
       return { ok: true }
     },
-    [characterId, load, user.id],
+    [characterId, user.id],
   )
 
   const updateSpellOption = useCallback(
     async (optionId: string, input: SpellInput): Promise<Result> => {
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from("character_spell_options")
         .update({ ...input, updated_at: new Date().toISOString() })
         .eq("id", optionId)
         .eq("character_id", characterId)
+        .select("*")
+        .single()
       if (updateError) return { ok: false, error: updateError.message }
-      await load()
+      setSpellOptions((current) =>
+        sortSpells(current.map((option) => option.id === optionId ? data as CharacterSpellOption : option)),
+      )
       return { ok: true }
     },
-    [characterId, load],
+    [characterId],
   )
 
   const deleteSpellOption = useCallback(
@@ -353,10 +456,10 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
         .eq("id", optionId)
         .eq("character_id", characterId)
       if (deleteError) return { ok: false, error: deleteError.message }
-      await load()
+      setSpellOptions((current) => current.filter((option) => option.id !== optionId))
       return { ok: true }
     },
-    [characterId, load],
+    [characterId],
   )
 
   const learnSpell = useCallback(
@@ -365,10 +468,9 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
         p_option_id: optionId,
       })
       if (learnError) return { ok: false, error: learnError.message }
-      await load()
-      return { ok: true }
+      return reloadSpellCollections()
     },
-    [load],
+    [reloadSpellCollections],
   )
 
   const setSpellPrepared = useCallback(
@@ -378,38 +480,50 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
         { p_spell_id: spellId, p_prepared: prepared },
       )
       if (preparedError) return { ok: false, error: preparedError.message }
-      await load()
+      setSpells((current) =>
+        current.map((spell) =>
+          spell.id === spellId
+            ? { ...spell, prepared, updated_at: new Date().toISOString() }
+            : spell,
+        ),
+      )
       return { ok: true }
     },
-    [load],
+    [],
   )
 
   const addFeature = useCallback(
     async (input: FeatureInput): Promise<Result> => {
-      const { error: insertError } = await supabase
+      const { data, error: insertError } = await supabase
         .from("character_features")
         .insert({ character_id: characterId, ...input })
+        .select("*")
+        .single()
 
       if (insertError) return { ok: false, error: insertError.message }
-      await load()
+      setFeatures((current) => sortFeatures([...current, data as CharacterFeature]))
       return { ok: true }
     },
-    [characterId, load],
+    [characterId],
   )
 
   const updateFeature = useCallback(
     async (featureId: string, input: FeatureInput): Promise<Result> => {
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from("character_features")
         .update({ ...input, updated_at: new Date().toISOString() })
         .eq("id", featureId)
         .eq("character_id", characterId)
+        .select("*")
+        .single()
 
       if (updateError) return { ok: false, error: updateError.message }
-      await load()
+      setFeatures((current) =>
+        sortFeatures(current.map((feature) => feature.id === featureId ? data as CharacterFeature : feature)),
+      )
       return { ok: true }
     },
-    [characterId, load],
+    [characterId],
   )
 
   const deleteFeature = useCallback(
@@ -421,15 +535,15 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
         .eq("character_id", characterId)
 
       if (deleteError) return { ok: false, error: deleteError.message }
-      await load()
+      setFeatures((current) => current.filter((feature) => feature.id !== featureId))
       return { ok: true }
     },
-    [characterId, load],
+    [characterId],
   )
 
   const addDiaryPost = useCallback(
     async (body: string, mediaUrl: string | null = null): Promise<Result> => {
-      const { error: insertError } = await supabase
+      const { data, error: insertError } = await supabase
         .from("character_diary_posts")
         .insert({
           character_id: characterId,
@@ -437,58 +551,72 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
           body: body.trim(),
           media_url: mediaUrl,
         })
+        .select("*")
+        .single()
 
-      if (insertError) return { ok: false, error: insertError.message }
-      await load()
+      if (insertError) {
+        if (mediaUrl) void deleteCampaignMediaObject(mediaUrl)
+        return { ok: false, error: insertError.message }
+      }
+      setPosts((current) => [data as DiaryPost, ...current])
       return { ok: true }
     },
-    [characterId, load, user.id],
+    [characterId, user.id],
   )
 
   const updateDiaryPost = useCallback(
     async (postId: string, body: string): Promise<Result> => {
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from("character_diary_posts")
         .update({ body: body.trim(), updated_at: new Date().toISOString() })
         .eq("id", postId)
         .eq("character_id", characterId)
+        .select("*")
+        .single()
 
       if (updateError) return { ok: false, error: updateError.message }
-      await load()
+      setPosts((current) => current.map((post) => post.id === postId ? data as DiaryPost : post))
       return { ok: true }
     },
-    [characterId, load],
+    [characterId],
   )
 
   const deleteDiaryPost = useCallback(
     async (postId: string): Promise<Result> => {
+      const target = posts.find((post) => post.id === postId)
       const { error: deleteError } = await supabase
         .from("character_diary_posts")
         .delete()
         .eq("id", postId)
 
       if (deleteError) return { ok: false, error: deleteError.message }
-      await load()
+      setPosts((current) => current.filter((post) => post.id !== postId))
+      setComments((current) => current.filter((comment) => comment.post_id !== postId))
+      if (target?.media_url) void deleteCampaignMediaObject(target.media_url)
       return { ok: true }
     },
-    [load],
+    [posts],
   )
 
   const addComment = useCallback(
     async (postId: string, body: string): Promise<Result> => {
-      const { error: insertError } = await supabase
+      const { data, error: insertError } = await supabase
         .from("character_diary_comments")
         .insert({
           post_id: postId,
           created_by: user.id,
           body: body.trim(),
         })
+        .select("*")
+        .single()
 
       if (insertError) return { ok: false, error: insertError.message }
-      await load()
+      setComments((current) =>
+        [...current, data as DiaryComment].sort((a, b) => a.created_at.localeCompare(b.created_at)),
+      )
       return { ok: true }
     },
-    [load, user.id],
+    [user.id],
   )
 
   const deleteComment = useCallback(
@@ -499,15 +627,15 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
         .eq("id", commentId)
 
       if (deleteError) return { ok: false, error: deleteError.message }
-      await load()
+      setComments((current) => current.filter((comment) => comment.id !== commentId))
       return { ok: true }
     },
-    [load],
+    [],
   )
 
   const addArt = useCallback(
     async (title: string, imageUrl: string): Promise<Result> => {
-      const { error: insertError } = await supabase
+      const { data, error: insertError } = await supabase
         .from("campaign_art_items")
         .insert({
           campaign_id: campaignId,
@@ -516,16 +644,21 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
           title: title.trim() || "Арт персонажа",
           image_url: imageUrl,
         })
-      if (insertError) return { ok: false, error: insertError.message }
-      await load()
+        .select("id, campaign_id, uploaded_by, character_id, title, caption, image_url, created_at, updated_at")
+        .single()
+      if (insertError) {
+        void deleteCampaignMediaObject(imageUrl)
+        return { ok: false, error: insertError.message }
+      }
+      setArts((current) => [data as CharacterArt, ...current])
       return { ok: true }
     },
-    [campaignId, characterId, load, user.id],
+    [campaignId, characterId, user.id],
   )
 
   const updateArt = useCallback(
     async (artId: string, title: string, caption: string): Promise<Result> => {
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from("campaign_art_items")
         .update({
           title: title.trim() || "Арт персонажа",
@@ -534,25 +667,29 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
         })
         .eq("id", artId)
         .eq("character_id", characterId)
+        .select("id, campaign_id, uploaded_by, character_id, title, caption, image_url, created_at, updated_at")
+        .single()
 
       if (updateError) return { ok: false, error: updateError.message }
-      await load()
+      setArts((current) => current.map((art) => art.id === artId ? data as CharacterArt : art))
       return { ok: true }
     },
-    [characterId, load],
+    [characterId],
   )
 
   const deleteArt = useCallback(
     async (artId: string): Promise<Result> => {
+      const target = arts.find((art) => art.id === artId)
       const { error: deleteError } = await supabase
         .from("campaign_art_items")
         .delete()
         .eq("id", artId)
       if (deleteError) return { ok: false, error: deleteError.message }
-      await load()
+      setArts((current) => current.filter((art) => art.id !== artId))
+      if (target?.image_url) void deleteCampaignMediaObject(target.image_url)
       return { ok: true }
     },
-    [load],
+    [arts],
   )
 
   return {
