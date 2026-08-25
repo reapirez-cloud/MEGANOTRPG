@@ -54,7 +54,8 @@ export function useChatMessages(roomId: string) {
 
   const loadOlder = useCallback(async () => {
     const oldestId = messages[0]?.id
-    if (!oldestId || loadingOlder || !hasOlder) return
+    if (!oldestId || loadingOlder || !hasOlder) return 0
+
     setLoadingOlder(true)
     const { data, error: olderError } = await supabase
       .from("chat_messages")
@@ -64,13 +65,20 @@ export function useChatMessages(roomId: string) {
       .order("id", { ascending: false })
       .limit(PAGE_SIZE + 1)
     setLoadingOlder(false)
+
     if (olderError) {
       setError(olderError.message)
-      return
+      return 0
     }
+
     const rows = (data || []) as ChatMessage[]
+    const older = rows.slice(0, PAGE_SIZE).reverse()
     setHasOlder(rows.length > PAGE_SIZE)
-    setMessages((current) => [...rows.slice(0, PAGE_SIZE).reverse(), ...current])
+    setMessages((current) => {
+      const knownIds = new Set(current.map((message) => message.id))
+      return [...older.filter((message) => !knownIds.has(message.id)), ...current]
+    })
+    return older.length
   }, [hasOlder, loadingOlder, messages, roomId])
 
   useEffect(() => {
@@ -93,7 +101,6 @@ export function useChatMessages(roomId: string) {
               ? current
               : [...current, incoming],
           )
-          void markRead(incoming.id)
         },
       )
       .on(
@@ -143,7 +150,7 @@ export function useChatMessages(roomId: string) {
         channel = null
       }
     }
-  }, [loadMessages, markRead, roomId])
+  }, [loadMessages, roomId])
 
   const sendMessage = useCallback(
     async (text: string, attachmentUrl: string | null = null) => {
@@ -195,10 +202,17 @@ export function useChatMessages(roomId: string) {
 
       if (editError) return { ok: false, error: editError.message }
 
-      await loadMessages()
+      const editedAt = new Date().toISOString()
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === messageId
+            ? { ...message, body, edited_at: editedAt }
+            : message,
+        ),
+      )
       return { ok: true }
     },
-    [loadMessages],
+    [],
   )
 
   const deleteMessage = useCallback(
@@ -227,6 +241,7 @@ export function useChatMessages(roomId: string) {
     loadingOlder,
     hasOlder,
     loadOlder,
+    markRead,
     sendMessage,
     editMessage,
     deleteMessage,
