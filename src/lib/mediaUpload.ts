@@ -105,11 +105,26 @@ async function optimizeCampaignImage(file: File): Promise<File> {
   }
 }
 
-export async function deleteCampaignMediaObject(value: string | null | undefined) {
-  const path = value?.trim()
-  if (!path || path.includes("://")) return
-  const { error } = await supabase.storage.from(BUCKET).remove([path])
+function cleanupPaths(values: Array<string | null | undefined>) {
+  return [...new Set(
+    values
+      .map((value) => value?.trim() || "")
+      .filter((path) => path.length > 0 && !path.includes("://")),
+  )]
+}
+
+export async function deleteCampaignMediaObjects(
+  values: Array<string | null | undefined>,
+) {
+  const paths = cleanupPaths(values)
+  if (paths.length === 0) return
+
+  const { error } = await supabase.storage.from(BUCKET).remove(paths)
   if (error) console.warn("Campaign media cleanup failed:", error.message)
+}
+
+export async function deleteCampaignMediaObject(value: string | null | undefined) {
+  await deleteCampaignMediaObjects([value])
 }
 
 export async function uploadCampaignImage(
