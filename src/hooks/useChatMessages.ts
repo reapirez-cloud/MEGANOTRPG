@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { supabase } from "../lib/supabase"
+import { deleteCampaignMediaObject } from "../lib/mediaUpload"
 import type { ChatMessage } from "../types/chat"
 
 type RealtimeState = "connecting" | "live" | "offline"
@@ -174,6 +175,7 @@ export function useChatMessages(roomId: string) {
       setSending(false)
 
       if (sendError) {
+        if (attachmentUrl) void deleteCampaignMediaObject(attachmentUrl)
         setError(sendError.message)
         return false
       }
