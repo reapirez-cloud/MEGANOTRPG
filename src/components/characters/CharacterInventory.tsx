@@ -15,6 +15,7 @@ import type {
   InventoryCategory,
   InventoryItem,
 } from "../../types/characterSheet"
+import CampaignImage from "../common/CampaignImage"
 
 type Result = Promise<{ ok: boolean; error?: string }>
 
@@ -94,7 +95,7 @@ export default function CharacterInventory({
                 {item ? (
                   <span className="equipment-slot-row__item">
                     <span className="equipment-slot-thumb">
-                      {item.image_url ? <img src={item.image_url} alt="" /> : "◆"}
+                      {item.image_url ? <CampaignImage value={item.image_url} alt="" /> : "◆"}
                     </span>
                     <span>
                       <strong>{item.name}</strong>
@@ -173,7 +174,7 @@ export default function CharacterInventory({
           <article className="inventory-card surface inventory-card--interactive" key={item.id}>
             <button className="inventory-card__open" type="button" onClick={() => setDetail(item)}>
               <span className="inventory-card__art">
-                {item.image_url ? <img src={item.image_url} alt="" /> : <span>◆</span>}
+                {item.image_url ? <CampaignImage value={item.image_url} alt="" /> : <span>◆</span>}
               </span>
               <span className="inventory-card__body">
                 <span className="inventory-card__top">
@@ -263,7 +264,7 @@ function InventoryDetail({
         </div>
 
         <div className="inventory-detail-art">
-          {item.image_url ? <img src={item.image_url} alt="" /> : <span>◆</span>}
+          {item.image_url ? <CampaignImage value={item.image_url} alt="" /> : <span>◆</span>}
         </div>
 
         <div className="inventory-detail-facts">

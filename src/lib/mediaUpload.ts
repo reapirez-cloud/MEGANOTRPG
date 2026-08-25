@@ -31,6 +31,7 @@ function extensionFor(file: File) {
 export async function uploadCampaignImage(
   file: File,
   folder: string,
+  campaignId: string,
 ): Promise<UploadImageResult> {
   if (!file.type.startsWith("image/")) {
     return { ok: false, error: "Выбери файл изображения." }
@@ -38,6 +39,10 @@ export async function uploadCampaignImage(
 
   if (file.size > MAX_IMAGE_BYTES) {
     return { ok: false, error: "Изображение слишком большое. Максимум 10 МБ." }
+  }
+
+  if (!campaignId) {
+    return { ok: false, error: "Кампания ещё не загружена." }
   }
 
   const { data: userData, error: userError } = await supabase.auth.getUser()
@@ -49,7 +54,7 @@ export async function uploadCampaignImage(
   const id =
     globalThis.crypto?.randomUUID?.() ||
     `${Date.now()}-${Math.random().toString(16).slice(2)}`
-  const objectPath = `${userData.user.id}/${safeFolder}/${id}.${extensionFor(file)}`
+  const objectPath = `${campaignId}/${userData.user.id}/${safeFolder}/${id}.${extensionFor(file)}`
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
@@ -63,10 +68,5 @@ export async function uploadCampaignImage(
     return { ok: false, error: uploadError.message }
   }
 
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(objectPath)
-  if (!data.publicUrl) {
-    return { ok: false, error: "Файл загрузился, но ссылка не была создана." }
-  }
-
-  return { ok: true, url: data.publicUrl }
+  return { ok: true, url: objectPath }
 }

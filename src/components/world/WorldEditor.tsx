@@ -40,6 +40,7 @@ type Props = {
   mode: WorldEditorMode
   onClose: () => void
   campaignTitle: string
+  campaignId: string
   locations: LocationEntry[]
   locationSections: LocationSection[]
   characters: Character[]
@@ -158,11 +159,14 @@ function initialBody(mode: Exclude<WorldEditorMode, null>) {
 }
 
 export default function WorldEditor(props: Props) {
-  const { mode } = props
+  if (!props.mode) return null
+  return <WorldEditorForm {...props} mode={props.mode} />
+}
 
-  if (!mode) return null
-
-  const currentMode = mode
+function WorldEditorForm(
+  props: Omit<Props, "mode"> & { mode: Exclude<WorldEditorMode, null> },
+) {
+  const currentMode = props.mode
 
   const [title, setTitle] = useState(() =>
     initialTitle(currentMode, props.campaignTitle),
@@ -522,6 +526,7 @@ export default function WorldEditor(props: Props) {
             value={imageUrl}
             onChange={setImageUrl}
             folder="locations"
+            campaignId={props.campaignId}
             label="Арт локации"
             hint="Выбери изображение из галереи телефона или камеры."
           />

@@ -133,7 +133,10 @@ export type DiaryPost = {
   character_id: string
   created_by: string
   body: string
+  title: string
+  media_url: string | null
   created_at: string
+  updated_at: string
 }
 
 export type DiaryComment = {
@@ -142,6 +145,18 @@ export type DiaryComment = {
   created_by: string
   body: string
   created_at: string
+}
+
+export type CharacterArt = {
+  id: string
+  campaign_id: string
+  uploaded_by: string | null
+  character_id: string | null
+  title: string
+  caption: string
+  image_url: string
+  created_at: string
+  updated_at: string
 }
 
 export type InventoryInput = {

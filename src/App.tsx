@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import "./App.css"
 import "./auth.css"
 import "./character-system.css"
@@ -6,93 +6,200 @@ import "./character-sheet.css"
 import "./character-equipment.css"
 import "./world.css"
 import "./chat-v11.css"
-import "./global-actions.css"
+import "./social.css"
 
-import BottomNav, { type MainTab } from "./components/app/BottomNav"
+import BottomNav from "./components/app/BottomNav"
+import NotificationsSheet from "./components/app/NotificationsSheet"
 import TopBar from "./components/app/TopBar"
-import GlobalLongPressActions from "./components/app/GlobalLongPressActions"
 import AuthGate from "./components/auth/AuthGate"
-import { CharacterProvider } from "./context/CharacterContext"
+import { CharacterProvider, useCharacters } from "./context/CharacterContext"
+import { useNotifications } from "./hooks/useNotifications"
+import {
+  mainRouteHash,
+  parseAppRoute,
+  type AppRoute,
+} from "./lib/appRoute"
 
-import World from "./pages/World"
 import Art from "./pages/Art"
-import Chats from "./pages/Chats"
+import CharacterProfile from "./pages/CharacterProfile"
 import Characters from "./pages/Characters"
 import ChatRoom from "./pages/ChatRoom"
-import CharacterProfile from "./pages/CharacterProfile"
-
-type Overlay =
-  | { type: "chat"; id: string }
-  | { type: "character"; id: string; returnRoomId?: string }
-  | null
+import Chats from "./pages/Chats"
+import Feed from "./pages/Feed"
+import World from "./pages/World"
 
 function Workspace() {
-  const [tab, setTab] = useState<MainTab>("world")
-  const [overlay, setOverlay] = useState<Overlay>(null)
+  const { campaignId, activeCharacter } = useCharacters()
+  const notifications = useNotifications(campaignId)
+  const [route, setRoute] = useState<AppRoute>(() =>
+    parseAppRoute(window.location.hash),
+  )
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
 
-  function changeTab(next: MainTab) {
-    setOverlay(null)
-    setTab(next)
-  }
+  useEffect(() => {
+    if (!window.location.hash) {
+      window.history.replaceState(null, "", "#/feed")
+    }
+    const update = () => setRoute(parseAppRoute(window.location.hash))
+    window.addEventListener("hashchange", update)
+    return () => window.removeEventListener("hashchange", update)
+  }, [])
 
-  const title =
-    tab === "world" ? "Мир" :
-    tab === "art" ? "Арты" :
-    tab === "chats" ? "Чаты" :
-    "Персонажи"
+  const navigate = useCallback((hash: string, replace = false) => {
+    if (window.location.hash === hash) return
+    if (replace) window.history.replaceState(null, "", hash)
+    else window.location.hash = hash
+    setRoute(parseAppRoute(hash))
+  }, [])
 
-  if (overlay?.type === "chat") {
+  const goBack = useCallback(() => {
+    if (route.type === "chat") navigate("#/chats")
+    else if (route.type === "gallery") navigate("#/feed")
+    else if (
+      route.type === "character" &&
+      route.from === "chat" &&
+      route.roomId
+    ) {
+      navigate(`#/chat/${route.roomId}`)
+    } else if (route.type === "character") {
+      navigate(route.from === "chat" ? "#/chats" : mainRouteHash(route.from))
+    }
+  }, [navigate, route])
+
+  useEffect(() => {
+    const backButton = window.Telegram?.WebApp?.BackButton
+    if (!backButton) return
+    if (route.type === "main") {
+      backButton.hide()
+    } else {
+      backButton.show()
+      backButton.onClick(goBack)
+    }
+    return () => backButton.offClick(goBack)
+  }, [goBack, route.type])
+
+  const title = useMemo(() => {
+    if (route.type !== "main") return ""
+    if (route.tab === "feed") return "Хроника"
+    if (route.tab === "chats") return "Чаты"
+    if (route.tab === "world") return "Мир"
+    if (route.tab === "characters") return "Персонажи"
+    return "Мой герой"
+  }, [route])
+
+  if (route.type === "chat") {
     return (
       <div className="app-shell">
         <ChatRoom
-          roomId={overlay.id}
-          onBack={() => setOverlay(null)}
+          roomId={route.id}
+          onBack={goBack}
           onOpenCharacter={(characterId) =>
-            setOverlay({
-              type: "character",
-              id: characterId,
-              returnRoomId: overlay.id,
-            })
+            navigate(
+              `#/character/${characterId}?from=chat&room=${route.id}`,
+            )
           }
         />
       </div>
     )
   }
 
-  if (overlay?.type === "character") {
+  if (route.type === "character") {
     return (
       <div className="app-shell">
-        <CharacterProfile
-          characterId={overlay.id}
-          onBack={() =>
-            overlay.returnRoomId
-              ? setOverlay({ type: "chat", id: overlay.returnRoomId })
-              : setOverlay(null)
-          }
-        />
+        <CharacterProfile characterId={route.id} onBack={goBack} />
+      </div>
+    )
+  }
+
+  if (route.type === "gallery") {
+    return (
+      <div className="app-shell">
+        <div className="screen">
+          <header className="screen-header">
+            <button
+              className="icon-button"
+              type="button"
+              onClick={goBack}
+              aria-label="Назад"
+            >
+              ←
+            </button>
+            <h1 className="screen-header__title">Галерея</h1>
+            <span />
+          </header>
+          <main className="app-content app-content--overlay">
+            <Art />
+          </main>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="app-shell">
-      <TopBar title={title} />
+      <TopBar
+        title={title}
+        unreadCount={notifications.unreadCount}
+        onOpenNotifications={() => setNotificationsOpen(true)}
+      />
 
       <main className="app-content">
-        {tab === "world" && <World />}
-        {tab === "art" && <Art />}
-        {tab === "chats" && (
-          <Chats onOpenRoom={(id) => setOverlay({ type: "chat", id })} />
-        )}
-        {tab === "characters" && (
-          <Characters
-            onOpenCharacter={(id) => setOverlay({ type: "character", id })}
+        {route.tab === "feed" && (
+          <Feed
+            onOpenCharacter={(id) =>
+              navigate(`#/character/${id}?from=feed`)
+            }
+            onOpenGallery={() => navigate("#/gallery")}
           />
         )}
+        {route.tab === "chats" && (
+          <Chats onOpenRoom={(id) => navigate(`#/chat/${id}`)} />
+        )}
+        {route.tab === "world" && <World />}
+        {route.tab === "characters" && (
+          <Characters
+            onOpenCharacter={(id) =>
+              navigate(`#/character/${id}?from=characters`)
+            }
+          />
+        )}
+        {route.tab === "me" &&
+          (activeCharacter ? (
+            <CharacterProfile
+              characterId={activeCharacter.id}
+              onBack={() => navigate("#/feed")}
+              embedded
+            />
+          ) : (
+            <section className="me-empty surface">
+              <span>◇</span>
+              <h2>Активный персонаж не выбран</h2>
+              <p>
+                GM или владелец назначит тебе героя. После этого здесь появится
+                его полноценная страница.
+              </p>
+              <button type="button" onClick={() => navigate("#/characters")}>
+                Открыть персонажей
+              </button>
+            </section>
+          ))}
       </main>
 
-      <GlobalLongPressActions activeTab={tab} />
-      <BottomNav active={tab} onChange={changeTab} />
+      {notificationsOpen && (
+        <NotificationsSheet
+          items={notifications.items}
+          loading={notifications.loading}
+          error={notifications.error}
+          onClose={() => setNotificationsOpen(false)}
+          onMarkRead={notifications.markAllRead}
+          onOpenFeed={() => navigate("#/feed")}
+        />
+      )}
+
+      <BottomNav
+        active={route.tab}
+        onChange={(tab) => navigate(mainRouteHash(tab))}
+      />
     </div>
   )
 }

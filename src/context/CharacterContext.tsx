@@ -57,14 +57,11 @@ type CharacterContextValue = {
   isGm: boolean
   isOwner: boolean
   canManage: boolean
-  hasGm: boolean
-  hasOwner: boolean
   loading: boolean
   error: string | null
   refresh: () => Promise<void>
-  claimOwner: () => Promise<Result>
-  claimGm: () => Promise<Result>
-  setGm: (userId: string) => Promise<Result>
+  joinCampaign: (code: string) => Promise<Result>
+  createInvite: () => Promise<Result & { code?: string }>
   setMemberRole: (userId: string, role: "gm" | "player") => Promise<Result>
   updateCampaignTitle: (title: string) => Promise<Result>
   createCharacter: (input: CharacterInput) => Promise<Result>
@@ -84,15 +81,46 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   const [members, setMembers] = useState<CampaignMember[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [needsInvite, setNeedsInvite] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
 
+    const { data: ownMemberships, error: membershipError } = await supabase
+      .from("campaign_members")
+      .select("campaign_id, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+
+    if (membershipError) {
+      setError(membershipError.message)
+      setLoading(false)
+      return
+    }
+
+    if (!ownMemberships?.length) {
+      setCampaignId("")
+      setCampaignTitle("")
+      setCharacters([])
+      setMembers([])
+      setNeedsInvite(true)
+      setLoading(false)
+      return
+    }
+
+    const rememberedCampaignId =
+      window.localStorage.getItem("meganotrpg:v1:campaign-id") ||
+      window.localStorage.getItem("meganotrpg:campaign-id")
+    const selectedMembership =
+      ownMemberships.find(
+        (membership) => membership.campaign_id === rememberedCampaignId,
+      ) ?? ownMemberships[0]
+
     const { data: campaign, error: campaignError } = await supabase
       .from("campaigns")
       .select("id, title")
-      .eq("slug", "demo")
+      .eq("id", selectedMembership.campaign_id)
       .single()
 
     if (campaignError || !campaign) {
@@ -103,6 +131,8 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
 
     setCampaignId(campaign.id)
     setCampaignTitle(campaign.title)
+    setNeedsInvite(false)
+    window.localStorage.setItem("meganotrpg:v1:campaign-id", campaign.id)
 
     const [characterResult, memberResult, profileResult, telegramResult] =
       await Promise.all([
@@ -184,7 +214,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     setCharacters((characterResult.data || []) as Character[])
     setMembers(nextMembers)
     setLoading(false)
-  }, [])
+  }, [user.id])
 
   useEffect(() => {
     void load()
@@ -215,26 +245,44 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   const isGm = myMember?.role === "gm"
   const isOwner = myMember?.is_owner === true
   const canManage = isGm || isOwner
-  const hasGm = members.some((member) => member.role === "gm")
-  const hasOwner = members.some((member) => member.is_owner)
+  const joinCampaign = useCallback(
+    async (code: string): Promise<Result> => {
+      const cleaned = code.trim()
+      if (!cleaned) return { ok: false, error: "Введи код приглашения." }
 
-  const claimOwner = useCallback(async (): Promise<Result> => {
-    const { error: claimError } = await supabase.rpc("claim_demo_owner")
-    if (claimError) return { ok: false, error: claimError.message }
-    await load()
-    return { ok: true }
-  }, [load])
+      const { data, error: joinError } = await supabase.rpc(
+        "join_campaign_by_invite",
+        { p_code: cleaned },
+      )
 
-  const claimGm = useCallback(async (): Promise<Result> => {
-    const { error: claimError } = await supabase.rpc("claim_demo_gm")
-    if (claimError) return { ok: false, error: claimError.message }
-    await load()
-    return { ok: true }
-  }, [load])
+      if (joinError) return { ok: false, error: joinError.message }
+      if (typeof data === "string") {
+        window.localStorage.setItem("meganotrpg:v1:campaign-id", data)
+      }
+      await load()
+      return { ok: true }
+    },
+    [load],
+  )
+
+  const createInvite = useCallback(async (): Promise<Result & { code?: string }> => {
+    if (!campaignId) return { ok: false, error: "Кампания ещё не загружена." }
+    const { data, error: inviteError } = await supabase.rpc(
+      "create_campaign_invite",
+      {
+        p_campaign_id: campaignId,
+        p_max_uses: 20,
+        p_expires_days: 30,
+      },
+    )
+    if (inviteError) return { ok: false, error: inviteError.message }
+    return { ok: true, code: String(data) }
+  }, [campaignId])
 
   const setMemberRole = useCallback(
     async (userId: string, role: "gm" | "player"): Promise<Result> => {
-      const { error: roleError } = await supabase.rpc("set_demo_member_role", {
+      const { error: roleError } = await supabase.rpc("set_campaign_member_role", {
+        p_campaign_id: campaignId,
         p_user_id: userId,
         p_role: role,
       })
@@ -243,12 +291,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       await load()
       return { ok: true }
     },
-    [load],
-  )
-
-  const setGm = useCallback(
-    async (userId: string): Promise<Result> => setMemberRole(userId, "gm"),
-    [setMemberRole],
+    [campaignId, load],
   )
 
   const updateCampaignTitle = useCallback(
@@ -470,6 +513,10 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     )
   }
 
+  if (needsInvite) {
+    return <JoinCampaign onJoin={joinCampaign} />
+  }
+
   return (
     <CharacterContext.Provider
       value={{
@@ -483,14 +530,11 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         isGm,
         isOwner,
         canManage,
-        hasGm,
-        hasOwner,
         loading,
         error,
         refresh: load,
-        claimOwner,
-        claimGm,
-        setGm,
+        joinCampaign,
+        createInvite,
         setMemberRole,
         updateCampaignTitle,
         createCharacter,
@@ -502,6 +546,67 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     >
       {children}
     </CharacterContext.Provider>
+  )
+}
+
+function JoinCampaign({
+  onJoin,
+}: {
+  onJoin: (code: string) => Promise<Result>
+}) {
+  const [code, setCode] = useState("")
+  const [joining, setJoining] = useState(false)
+  const [joinError, setJoinError] = useState("")
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault()
+    if (joining) return
+    setJoining(true)
+    setJoinError("")
+    const result = await onJoin(code)
+    setJoining(false)
+    if (!result.ok) {
+      setJoinError(
+        result.error === "Telegram account required"
+          ? "Приглашение можно принять только внутри Telegram Mini App."
+          : result.error || "Не удалось принять приглашение.",
+      )
+    }
+  }
+
+  return (
+    <div className="auth-screen">
+      <form className="auth-card" onSubmit={submit}>
+        <div className="auth-eyebrow">MEGANOTRPG</div>
+        <h1 className="auth-title">Войти в кампанию</h1>
+        <p className="auth-muted">
+          Попроси владельца или GM прислать код приглашения. Он действует 30
+          дней и не открывает доступ посторонним.
+        </p>
+        <label className="auth-label" htmlFor="campaign-invite-code">
+          Код приглашения
+        </label>
+        <input
+          id="campaign-invite-code"
+          className="auth-input auth-input--code"
+          value={code}
+          onChange={(event) => setCode(event.target.value.toUpperCase())}
+          placeholder="Например: A1B2C3D4E5F6"
+          maxLength={32}
+          autoCapitalize="characters"
+          autoComplete="off"
+          autoFocus
+        />
+        {joinError && <div className="auth-error">{joinError}</div>}
+        <button
+          className="auth-primary"
+          type="submit"
+          disabled={joining || !code.trim()}
+        >
+          {joining ? "Проверяем…" : "Присоединиться"}
+        </button>
+      </form>
+    </div>
   )
 }
 
