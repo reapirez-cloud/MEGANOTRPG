@@ -7,7 +7,10 @@ import ContextActionSheet, {
 } from "../components/common/ContextActionSheet"
 import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
-import { uploadCampaignImage } from "../lib/mediaUpload"
+import {
+  deleteCampaignMediaObjects,
+  uploadCampaignImage,
+} from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
 import { useLongPressItem } from "../hooks/useLongPressItem"
 
@@ -203,6 +206,7 @@ export default function Art() {
         campaignId,
       )
       if (!result.ok) {
+        await deleteCampaignMediaObjects(uploaded)
         setUploading(false)
         setError(result.error)
         return
@@ -226,7 +230,7 @@ export default function Art() {
       .single()
 
     if (insertError || !artItem) {
-      await supabase.storage.from("campaign-media").remove(uploaded)
+      await deleteCampaignMediaObjects(uploaded)
       setUploading(false)
       setError(insertError?.message || "Не удалось создать публикацию.")
       return
@@ -243,7 +247,7 @@ export default function Art() {
       )
       if (pagesError) {
         await supabase.from("campaign_art_items").delete().eq("id", artItem.id)
-        await supabase.storage.from("campaign-media").remove(uploaded)
+        await deleteCampaignMediaObjects(uploaded)
         setUploading(false)
         setError(pagesError.message)
         return
@@ -274,7 +278,7 @@ export default function Art() {
       setError(deleteError.message)
       return
     }
-    await supabase.storage.from("campaign-media").remove(imagesFor(item))
+    await deleteCampaignMediaObjects(imagesFor(item))
     if (selected?.id === item.id) setSelected(null)
     await load()
   }
