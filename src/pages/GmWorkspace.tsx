@@ -14,7 +14,10 @@ import {
 import { useLongPressItem } from "../hooks/useLongPressItem"
 import { useRooms } from "../hooks/useRooms"
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
-import { uploadCampaignFile } from "../lib/mediaUpload"
+import {
+  deleteCampaignMediaObject,
+  uploadCampaignFile,
+} from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
 import type { ChatRoom } from "../types/chat"
 
@@ -389,6 +392,7 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
     })
     setUploading(false)
     if (saveError) {
+      await deleteCampaignMediaObject(upload.url)
       setError(saveError.message)
       return
     }
@@ -416,9 +420,6 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
   async function removeFile(file: WorkspaceFile) {
     if (!window.confirm(`Удалить «${file.title}»?`)) return
     setError("")
-    if (file.file_url) {
-      await supabase.storage.from("campaign-media").remove([file.file_url])
-    }
     const { error: deleteError } = await supabase
       .from("gm_workspace_files")
       .delete()
@@ -427,6 +428,7 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
       setError(deleteError.message)
       return
     }
+    if (file.file_url) await deleteCampaignMediaObject(file.file_url)
     await load()
   }
 

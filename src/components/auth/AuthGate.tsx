@@ -33,6 +33,10 @@ function isLocalDevelopment() {
   )
 }
 
+function allowLegacyBrowserSession() {
+  return import.meta.env.VITE_ALLOW_LEGACY_BROWSER_SESSION === "true"
+}
+
 export default function AuthGate({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<Phase>("loading")
   const [user, setUser] = useState<User | null>(null)
@@ -126,6 +130,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }
 
   async function bootstrapLegacy() {
+    const localDevelopment = isLocalDevelopment()
+    const legacyAllowed = allowLegacyBrowserSession()
+
     const {
       data: { session },
       error: sessionError,
@@ -137,13 +144,20 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       return
     }
 
-    if (session?.user) {
+    if (session?.user && (localDevelopment || legacyAllowed)) {
       await loadProfile(session.user)
       return
     }
 
-    // Keep anonymous auth only for npm run dev on localhost.
-    if (isLocalDevelopment()) {
+    if (session?.user && !localDevelopment && !legacyAllowed) {
+      const { error: signOutError } = await supabase.auth.signOut({ scope: "local" })
+      if (signOutError) {
+        console.warn("Could not clear legacy browser session:", signOutError.message)
+      }
+    }
+
+    // Anonymous auth remains available only for npm run dev on localhost.
+    if (localDevelopment) {
       const { data, error: anonymousError } =
         await supabase.auth.signInAnonymously({
           options: {
@@ -167,6 +181,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       return
     }
 
+    setUser(null)
+    setProfile(null)
     setPhase("telegram-required")
   }
 
@@ -254,17 +270,16 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           <div className="auth-eyebrow">MEGANOTRPG</div>
           <h1 className="auth-title">Открой приложение в Telegram</h1>
           <p className="auth-muted">
-            Новые игроки входят через Mini App. Открой
-            {" "}
-            <strong>@DND_MEGABOTPROPLUS_BOT</strong>
-            {" "}
+            Вход в кампанию подтверждается Telegram Mini App. Открой{" "}
+            <strong>@DND_MEGABOTPROPLUS_BOT</strong>{" "}
             и нажми кнопку запуска приложения.
           </p>
 
-          <div className="auth-note">
-            Старые браузерные тестовые сессии пока продолжают работать, чтобы мы
-            спокойно перенесли владельца и ГМ на Telegram.
-          </div>
+          {allowLegacyBrowserSession() && (
+            <div className="auth-note">
+              Временный legacy-режим браузерных сессий включён настройкой окружения.
+            </div>
+          )}
 
           <button
             type="button"

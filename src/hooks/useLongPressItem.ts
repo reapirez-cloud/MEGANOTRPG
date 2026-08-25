@@ -10,7 +10,8 @@ export function useLongPressItem<T>(
 ) {
   const timerRef = useRef<number | null>(null)
   const startRef = useRef<{ x: number; y: number } | null>(null)
-  const suppressClickRef = useRef(false)
+  const suppressTargetRef = useRef<HTMLElement | null>(null)
+  const lastLongPressAtRef = useRef(0)
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -27,12 +28,14 @@ export function useLongPressItem<T>(
         if (event.pointerType === "mouse" && event.button !== 0) return
 
         clearTimer()
-        suppressClickRef.current = false
+        suppressTargetRef.current = null
         startRef.current = { x: event.clientX, y: event.clientY }
+        const target = event.currentTarget
 
         timerRef.current = window.setTimeout(() => {
           timerRef.current = null
-          suppressClickRef.current = true
+          suppressTargetRef.current = target
+          lastLongPressAtRef.current = Date.now()
           navigator.vibrate?.(18)
           onLongPress(item)
         }, delay)
@@ -48,6 +51,7 @@ export function useLongPressItem<T>(
           ) > 12
         ) {
           clearTimer()
+          startRef.current = null
         }
       },
       onPointerUp: () => {
@@ -61,14 +65,18 @@ export function useLongPressItem<T>(
       onContextMenu: (event: ReactMouseEvent<HTMLElement>) => {
         event.preventDefault()
         clearTimer()
-        suppressClickRef.current = true
+
+        if (Date.now() - lastLongPressAtRef.current < 900) return
+
+        suppressTargetRef.current = event.currentTarget
+        lastLongPressAtRef.current = Date.now()
         onLongPress(item)
       },
       onClickCapture: (event: ReactMouseEvent<HTMLElement>) => {
-        if (!suppressClickRef.current) return
+        if (suppressTargetRef.current !== event.currentTarget) return
         event.preventDefault()
         event.stopPropagation()
-        suppressClickRef.current = false
+        suppressTargetRef.current = null
       },
     }),
     [clearTimer, delay, onLongPress],

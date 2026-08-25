@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { supabase } from "../lib/supabase"
+import { deleteCampaignMediaObject } from "../lib/mediaUpload"
 import type { ChatMessage } from "../types/chat"
 
 type RealtimeState = "connecting" | "live" | "offline"
@@ -54,7 +55,8 @@ export function useChatMessages(roomId: string) {
 
   const loadOlder = useCallback(async () => {
     const oldestId = messages[0]?.id
-    if (!oldestId || loadingOlder || !hasOlder) return
+    if (!oldestId || loadingOlder || !hasOlder) return 0
+
     setLoadingOlder(true)
     const { data, error: olderError } = await supabase
       .from("chat_messages")
@@ -64,13 +66,20 @@ export function useChatMessages(roomId: string) {
       .order("id", { ascending: false })
       .limit(PAGE_SIZE + 1)
     setLoadingOlder(false)
+
     if (olderError) {
       setError(olderError.message)
-      return
+      return 0
     }
+
     const rows = (data || []) as ChatMessage[]
+    const older = rows.slice(0, PAGE_SIZE).reverse()
     setHasOlder(rows.length > PAGE_SIZE)
-    setMessages((current) => [...rows.slice(0, PAGE_SIZE).reverse(), ...current])
+    setMessages((current) => {
+      const knownIds = new Set(current.map((message) => message.id))
+      return [...older.filter((message) => !knownIds.has(message.id)), ...current]
+    })
+    return older.length
   }, [hasOlder, loadingOlder, messages, roomId])
 
   useEffect(() => {
@@ -93,7 +102,6 @@ export function useChatMessages(roomId: string) {
               ? current
               : [...current, incoming],
           )
-          void markRead(incoming.id)
         },
       )
       .on(
@@ -143,7 +151,7 @@ export function useChatMessages(roomId: string) {
         channel = null
       }
     }
-  }, [loadMessages, markRead, roomId])
+  }, [loadMessages, roomId])
 
   const sendMessage = useCallback(
     async (text: string, attachmentUrl: string | null = null) => {
@@ -167,6 +175,7 @@ export function useChatMessages(roomId: string) {
       setSending(false)
 
       if (sendError) {
+        if (attachmentUrl) void deleteCampaignMediaObject(attachmentUrl)
         setError(sendError.message)
         return false
       }
@@ -195,14 +204,22 @@ export function useChatMessages(roomId: string) {
 
       if (editError) return { ok: false, error: editError.message }
 
-      await loadMessages()
+      const editedAt = new Date().toISOString()
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === messageId
+            ? { ...message, body, edited_at: editedAt }
+            : message,
+        ),
+      )
       return { ok: true }
     },
-    [loadMessages],
+    [],
   )
 
   const deleteMessage = useCallback(
     async (messageId: number): Promise<Result> => {
+      const target = messages.find((message) => message.id === messageId)
       const { error: deleteError } = await supabase.rpc(
         "delete_chat_message",
         { p_message_id: messageId },
@@ -213,9 +230,12 @@ export function useChatMessages(roomId: string) {
       setMessages((current) =>
         current.filter((message) => message.id !== messageId),
       )
+      if (target?.attachment_url) {
+        void deleteCampaignMediaObject(target.attachment_url)
+      }
       return { ok: true }
     },
-    [],
+    [messages],
   )
 
   return {
@@ -227,6 +247,7 @@ export function useChatMessages(roomId: string) {
     loadingOlder,
     hasOlder,
     loadOlder,
+    markRead,
     sendMessage,
     editMessage,
     deleteMessage,

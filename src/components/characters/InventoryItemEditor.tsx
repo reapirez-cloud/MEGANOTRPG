@@ -3,6 +3,10 @@ import type { FormEvent } from "react"
 import ImageUploadField from "../common/ImageUploadField"
 
 import { equipmentSlots, inventoryCategories } from "../../lib/dndInventory"
+import {
+  deleteCampaignMediaObject,
+  deleteCampaignMediaObjects,
+} from "../../lib/mediaUpload"
 import type {
   EquipmentSlot,
   InventoryCategory,
@@ -19,16 +23,24 @@ type Props = {
 }
 
 export default function InventoryItemEditor({ item, campaignId, onClose, onSave, onDelete }: Props) {
+  const initialImageUrl = item?.image_url || ""
   const [name, setName] = useState(item?.name || "")
   const [quantity, setQuantity] = useState(String(item?.quantity ?? 1))
   const [weight, setWeight] = useState(item?.weight == null ? "" : String(item.weight))
   const [category, setCategory] = useState<InventoryCategory>(item?.category || "other")
   const [equipmentSlot, setEquipmentSlot] = useState<EquipmentSlot>(item?.equipment_slot || "main_hand")
   const [equipped, setEquipped] = useState(item?.equipped || false)
-  const [imageUrl, setImageUrl] = useState(item?.image_url || "")
+  const [imageUrl, setImageUrl] = useState(initialImageUrl)
   const [description, setDescription] = useState(item?.description || "")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+
+  async function cancel() {
+    if (imageUrl && imageUrl !== initialImageUrl) {
+      await deleteCampaignMediaObject(imageUrl)
+    }
+    onClose()
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -55,6 +67,10 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
       setError(result.error || "Не удалось сохранить предмет.")
       return
     }
+
+    if (initialImageUrl && initialImageUrl !== imageUrl) {
+      void deleteCampaignMediaObject(initialImageUrl)
+    }
     onClose()
   }
 
@@ -68,11 +84,16 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
       setError(result.error || "Не удалось удалить предмет.")
       return
     }
+
+    await deleteCampaignMediaObjects([
+      initialImageUrl,
+      imageUrl !== initialImageUrl ? imageUrl : null,
+    ])
     onClose()
   }
 
   return (
-    <div className="sheet-backdrop" onMouseDown={onClose}>
+    <div className="sheet-backdrop" onMouseDown={() => void cancel()}>
       <form className="bottom-sheet compact-editor-sheet" onSubmit={submit} onMouseDown={(e) => e.stopPropagation()}>
         <div className="sheet-handle" />
         <div className="character-editor-head">
@@ -80,7 +101,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
             <h3 className="sheet-title">{item ? "Редактировать предмет" : "Новый предмет"}</h3>
             <p className="sheet-copy">ГМ задаёт предмет, его тег и слот. Игрок потом сам надевает и снимает свою экипировку.</p>
           </div>
-          <button className="sheet-close" type="button" onClick={onClose}>×</button>
+          <button className="sheet-close" type="button" onClick={() => void cancel()}>×</button>
         </div>
 
         <label className="field-label">Название</label>

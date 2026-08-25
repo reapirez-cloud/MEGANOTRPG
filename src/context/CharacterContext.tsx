@@ -158,34 +158,56 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     setNeedsInvite(false)
     window.localStorage.setItem("meganotrpg:v1:campaign-id", campaign.id)
 
-    const [characterResult, memberResult, profileResult, telegramResult] =
-      await Promise.all([
-        supabase
-          .from("characters")
-          .select(
-            "id, campaign_id, assigned_user_id, name, character_class, level, bio, avatar_url, character_type, visibility, created_by, created_at, updated_at",
-          )
-          .eq("campaign_id", campaign.id)
-          .order("created_at", { ascending: true }),
-        supabase
-          .from("campaign_members")
-          .select("campaign_id, user_id, role, is_owner, active_character_id")
-          .eq("campaign_id", campaign.id)
-          .order("created_at", { ascending: true }),
-        supabase.from("profiles").select("user_id, display_name"),
-        supabase
-          .from("telegram_identities")
-          .select("user_id, telegram_user_id, username"),
-      ])
+    const [characterResult, memberResult] = await Promise.all([
+      supabase
+        .from("characters")
+        .select(
+          "id, campaign_id, assigned_user_id, name, character_class, level, bio, avatar_url, character_type, visibility, created_by, created_at, updated_at",
+        )
+        .eq("campaign_id", campaign.id)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("campaign_members")
+        .select("campaign_id, user_id, role, is_owner, active_character_id")
+        .eq("campaign_id", campaign.id)
+        .order("created_at", { ascending: true }),
+    ])
 
-    const firstError =
-      characterResult.error ||
-      memberResult.error ||
-      profileResult.error ||
-      telegramResult.error
+    const firstCoreError = characterResult.error || memberResult.error
+    if (firstCoreError) {
+      setError(firstCoreError.message)
+      setLoading(false)
+      return
+    }
 
-    if (firstError) {
-      setError(firstError.message)
+    const rawMembers = (memberResult.data || []) as Array<{
+      campaign_id: string
+      user_id: string
+      role: string
+      is_owner: boolean
+      active_character_id: string | null
+    }>
+    const memberUserIds = rawMembers.map((member) => member.user_id)
+
+    const [profileResult, telegramResult] = memberUserIds.length
+      ? await Promise.all([
+          supabase
+            .from("profiles")
+            .select("user_id, display_name")
+            .in("user_id", memberUserIds),
+          supabase
+            .from("telegram_identities")
+            .select("user_id, telegram_user_id, username")
+            .in("user_id", memberUserIds),
+        ])
+      : [
+          { data: [], error: null },
+          { data: [], error: null },
+        ]
+
+    const directoryError = profileResult.error || telegramResult.error
+    if (directoryError) {
+      setError(directoryError.message)
       setLoading(false)
       return
     }
@@ -215,25 +237,17 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       ),
     )
 
-    const nextMembers = (memberResult.data || []).map(
-      (member: {
-        campaign_id: string
-        user_id: string
-        role: string
-        is_owner: boolean
-        active_character_id: string | null
-      }) => {
-        const telegram = telegramMap.get(member.user_id)
-        return {
-          ...member,
-          role: member.role === "gm" ? "gm" : "player",
-          is_owner: Boolean(member.is_owner),
-          display_name: profileMap.get(member.user_id) || "Игрок",
-          telegram_user_id: telegram?.telegram_user_id || null,
-          telegram_username: telegram?.telegram_username || null,
-        }
-      },
-    ) as CampaignMember[]
+    const nextMembers = rawMembers.map((member) => {
+      const telegram = telegramMap.get(member.user_id)
+      return {
+        ...member,
+        role: member.role === "gm" ? "gm" : "player",
+        is_owner: Boolean(member.is_owner),
+        display_name: profileMap.get(member.user_id) || "Игрок",
+        telegram_user_id: telegram?.telegram_user_id || null,
+        telegram_username: telegram?.telegram_username || null,
+      }
+    }) as CampaignMember[]
 
     setCharacters((characterResult.data || []) as Character[])
     setMembers(nextMembers)
@@ -427,10 +441,16 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       })
 
       if (avatarError) return { ok: false, error: avatarError.message }
-      await load()
+      setCharacters((current) =>
+        current.map((character) =>
+          character.id === characterId
+            ? { ...character, avatar_url: avatarUrl, updated_at: new Date().toISOString() }
+            : character,
+        ),
+      )
       return { ok: true }
     },
-    [load],
+    [],
   )
 
   const deleteCharacter = useCallback(
@@ -441,10 +461,17 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       )
 
       if (deleteError) return { ok: false, error: deleteError.message }
-      await load()
+      setCharacters((current) => current.filter((character) => character.id !== characterId))
+      setMembers((current) =>
+        current.map((member) =>
+          member.active_character_id === characterId
+            ? { ...member, active_character_id: null }
+            : member,
+        ),
+      )
       return { ok: true }
     },
-    [load],
+    [],
   )
 
   const setActiveForMember = useCallback(
@@ -480,10 +507,16 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       )
 
       if (updateError) return { ok: false, error: updateError.message }
-      await load()
+      setMembers((current) =>
+        current.map((member) =>
+          member.user_id === userId
+            ? { ...member, active_character_id: characterId }
+            : member,
+        ),
+      )
       return { ok: true }
     },
-    [campaignId, characters, load],
+    [campaignId, characters],
   )
 
   if (loading) {

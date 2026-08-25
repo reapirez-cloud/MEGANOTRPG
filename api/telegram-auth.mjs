@@ -1,11 +1,38 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { createClient } from "@supabase/supabase-js"
 
-const MAX_INIT_DATA_AGE_SECONDS = 24 * 60 * 60
-const FALLBACK_SUPABASE_URL = "https://msjvdnrpzuavqjcndeqj.supabase.co"
+const MAX_INIT_DATA_AGE_SECONDS = 10 * 60
+const RATE_WINDOW_MS = 5 * 60 * 1000
+const RATE_LIMIT = 30
+const rateBuckets = new Map()
 
 function json(res, status, body) {
   res.status(status).json(body)
+}
+
+function requestKey(req) {
+  const forwarded = req.headers?.["x-forwarded-for"]
+  const firstForwarded = Array.isArray(forwarded) ? forwarded[0] : forwarded
+  return String(firstForwarded || req.socket?.remoteAddress || "unknown")
+    .split(",")[0]
+    .trim()
+}
+
+function isRateLimited(key) {
+  const now = Date.now()
+  const current = rateBuckets.get(key)
+  if (!current || current.resetAt <= now) {
+    rateBuckets.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS })
+    return false
+  }
+
+  current.count += 1
+  if (rateBuckets.size > 5000) {
+    for (const [bucketKey, bucket] of rateBuckets) {
+      if (bucket.resetAt <= now) rateBuckets.delete(bucketKey)
+    }
+  }
+  return current.count > RATE_LIMIT
 }
 
 function validateTelegramInitData(initData, botToken) {
@@ -44,7 +71,7 @@ function validateTelegramInitData(initData, botToken) {
   const authDate = Number(params.get("auth_date"))
   const now = Math.floor(Date.now() / 1000)
 
-  if (!Number.isFinite(authDate)) {
+  if (!Number.isSafeInteger(authDate) || authDate <= 0) {
     throw new Error("Telegram auth_date is missing")
   }
 
@@ -66,7 +93,9 @@ function validateTelegramInitData(initData, botToken) {
     !telegramUser ||
     typeof telegramUser.id !== "number" ||
     !Number.isSafeInteger(telegramUser.id) ||
-    typeof telegramUser.first_name !== "string"
+    telegramUser.id <= 0 ||
+    typeof telegramUser.first_name !== "string" ||
+    telegramUser.first_name.trim().length === 0
   ) {
     throw new Error("Telegram user data is incomplete")
   }
@@ -75,29 +104,31 @@ function validateTelegramInitData(initData, botToken) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "no-store")
+  res.setHeader("Cache-Control", "no-store, max-age=0")
+  res.setHeader("Pragma", "no-cache")
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST")
     return json(res, 405, { error: "Method not allowed" })
   }
 
+  if (isRateLimited(requestKey(req))) {
+    res.setHeader("Retry-After", "300")
+    return json(res, 429, { error: "Слишком много попыток входа. Попробуй чуть позже." })
+  }
+
   const botToken = process.env.TELEGRAM_BOT_TOKEN
-  const supabaseUrl =
-    process.env.SUPABASE_URL ||
-    process.env.VITE_SUPABASE_URL ||
-    FALLBACK_SUPABASE_URL
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY
 
   const missing = []
   if (!botToken) missing.push("TELEGRAM_BOT_TOKEN")
+  if (!supabaseUrl) missing.push("SUPABASE_URL")
   if (!supabaseSecretKey) missing.push("SUPABASE_SECRET_KEY")
 
   if (missing.length > 0) {
     console.error("Telegram auth missing env vars:", missing.join(", "))
-    return json(res, 500, {
-      error: `На Vercel не найдены переменные: ${missing.join(", ")}.`,
-    })
+    return json(res, 500, { error: "Сервер авторизации настроен не полностью." })
   }
 
   let body = req.body
@@ -118,7 +149,7 @@ export default async function handler(req, res) {
   try {
     telegramUser = validateTelegramInitData(initData, botToken)
   } catch (error) {
-    console.warn("Telegram initData rejected:", error)
+    console.warn("Telegram initData rejected:", error instanceof Error ? error.message : "unknown error")
     return json(res, 401, {
       error: "Telegram не смог подтвердить этот вход. Закрой Mini App и открой его заново.",
     })
@@ -146,10 +177,10 @@ export default async function handler(req, res) {
 
   const cleanTelegramUser = {
     id: telegramUser.id,
-    first_name: telegramUser.first_name,
-    last_name: typeof telegramUser.last_name === "string" ? telegramUser.last_name : null,
-    username: typeof telegramUser.username === "string" ? telegramUser.username : null,
-    photo_url: typeof telegramUser.photo_url === "string" ? telegramUser.photo_url : null,
+    first_name: telegramUser.first_name.trim().slice(0, 128),
+    last_name: typeof telegramUser.last_name === "string" ? telegramUser.last_name.trim().slice(0, 128) || null : null,
+    username: typeof telegramUser.username === "string" ? telegramUser.username.trim().slice(0, 64) || null : null,
+    photo_url: typeof telegramUser.photo_url === "string" ? telegramUser.photo_url.slice(0, 2048) : null,
   }
 
   const { error: metadataError } = await admin.auth.admin.updateUserById(

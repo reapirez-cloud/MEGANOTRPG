@@ -1,6 +1,9 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 
-import { uploadCampaignImage } from "../../lib/mediaUpload"
+import {
+  deleteCampaignMediaObject,
+  uploadCampaignImage,
+} from "../../lib/mediaUpload"
 import CampaignImage from "./CampaignImage"
 
 type Props = {
@@ -22,6 +25,15 @@ export default function ImageUploadField({
 }: Props) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
+  const pendingUploadRef = useRef<string | null>(null)
+
+  async function replacePending(nextValue: string) {
+    const previousPending = pendingUploadRef.current
+    if (previousPending && previousPending !== nextValue) {
+      await deleteCampaignMediaObject(previousPending)
+    }
+    pendingUploadRef.current = nextValue || null
+  }
 
   async function choose(file: File | null) {
     if (!file) return
@@ -35,7 +47,25 @@ export default function ImageUploadField({
       return
     }
 
+    await replacePending(result.url)
     onChange(result.url)
+  }
+
+  async function clearValue() {
+    setError("")
+    if (pendingUploadRef.current) {
+      await deleteCampaignMediaObject(pendingUploadRef.current)
+      pendingUploadRef.current = null
+    }
+    onChange("")
+  }
+
+  async function setManualValue(nextValue: string) {
+    if (pendingUploadRef.current && nextValue !== pendingUploadRef.current) {
+      await deleteCampaignMediaObject(pendingUploadRef.current)
+      pendingUploadRef.current = null
+    }
+    onChange(nextValue)
   }
 
   return (
@@ -78,10 +108,7 @@ export default function ImageUploadField({
           <button
             className="media-clear-button"
             type="button"
-            onClick={() => {
-              setError("")
-              onChange("")
-            }}
+            onClick={() => void clearValue()}
             disabled={uploading}
           >
             Убрать
@@ -94,7 +121,7 @@ export default function ImageUploadField({
         <input
           className="app-input"
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => void setManualValue(event.target.value)}
           placeholder="https://..."
         />
       </details>
