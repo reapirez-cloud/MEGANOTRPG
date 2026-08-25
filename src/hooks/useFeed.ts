@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
 import { supabase } from "../lib/supabase"
+import { deleteCampaignMediaObject } from "../lib/mediaUpload"
 import type { FeedItem } from "../types/feed"
 
 const PAGE_SIZE = 12
@@ -195,7 +196,10 @@ export function useFeed(campaignId: string) {
         p_body: body,
         p_media_url: mediaUrl,
       })
-      if (createError) return { ok: false, error: createError.message }
+      if (createError) {
+        if (mediaUrl) void deleteCampaignMediaObject(mediaUrl)
+        return { ok: false, error: createError.message }
+      }
       await refreshHead()
       return { ok: true }
     },
