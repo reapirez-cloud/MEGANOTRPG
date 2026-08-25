@@ -26,7 +26,6 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
   const initialImageUrl = item?.image_url || ""
   const [name, setName] = useState(item?.name || "")
   const [quantity, setQuantity] = useState(String(item?.quantity ?? 1))
-  const [weight, setWeight] = useState(item?.weight == null ? "" : String(item.weight))
   const [category, setCategory] = useState<InventoryCategory>(item?.category || "other")
   const [equipmentSlot, setEquipmentSlot] = useState<EquipmentSlot>(item?.equipment_slot || "main_hand")
   const [equipped, setEquipped] = useState(item?.equipped || false)
@@ -54,7 +53,9 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
     const result = await onSave({
       name,
       quantity: Math.max(0, Number.parseInt(quantity || "0", 10) || 0),
-      weight: weight.trim() ? Number(weight) : null,
+      // Вес больше не используется в текстовом интерфейсе. Старое значение
+      // сохраняем при редактировании, чтобы скрытие поля не уничтожало данные.
+      weight: item?.weight ?? null,
       category,
       equipment_slot: category === "equipment" ? equipmentSlot : null,
       equipped: category === "equipment" ? equipped : false,
@@ -125,10 +126,8 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
           </>
         )}
 
-        <div className="dnd-editor-grid dnd-editor-grid--2">
-          <label>Количество<input className="app-input" type="number" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></label>
-          <label>Вес<input className="app-input" type="number" min="0" step="0.01" value={weight} onChange={(e) => setWeight(e.target.value)} /></label>
-        </div>
+        <label className="field-label">Количество</label>
+        <input className="app-input" type="number" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
 
         <ImageUploadField
           value={imageUrl}
