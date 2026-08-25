@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
 import { supabase } from "../lib/supabase"
@@ -12,6 +12,37 @@ export function useNotifications(campaignId: string) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const countRefreshTimerRef = useRef<number | null>(null)
+
+  const refreshUnreadCount = useCallback(async () => {
+    if (!campaignId) {
+      setUnreadCount(0)
+      return
+    }
+
+    const { count, error: countError } = await supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", campaignId)
+      .is("read_at", null)
+
+    if (countError) {
+      setError(countError.message)
+      return
+    }
+
+    setUnreadCount(count || 0)
+  }, [campaignId])
+
+  const scheduleUnreadRefresh = useCallback(() => {
+    if (countRefreshTimerRef.current !== null) {
+      window.clearTimeout(countRefreshTimerRef.current)
+    }
+    countRefreshTimerRef.current = window.setTimeout(() => {
+      countRefreshTimerRef.current = null
+      void refreshUnreadCount()
+    }, 160)
+  }, [refreshUnreadCount])
 
   const load = useCallback(async () => {
     if (!campaignId) {
@@ -75,40 +106,32 @@ export function useNotifications(campaignId: string) {
 
           if (payload.eventType === "UPDATE") {
             const incoming = payload.new as AppNotification
-            setItems((current) => {
-              const previous = current.find((item) => item.id === incoming.id)
-              if (previous && !previous.read_at && incoming.read_at) {
-                setUnreadCount((count) => Math.max(0, count - 1))
-              } else if (previous?.read_at && !incoming.read_at) {
-                setUnreadCount((count) => count + 1)
-              }
-              return current.map((item) =>
-                item.id === incoming.id ? incoming : item,
-              )
-            })
+            setItems((current) =>
+              current.map((item) => item.id === incoming.id ? incoming : item),
+            )
+            scheduleUnreadRefresh()
             return
           }
 
           const removed = payload.old as Partial<AppNotification>
           if (!removed.id) return
-          setItems((current) => {
-            const previous = current.find((item) => item.id === removed.id)
-            if (previous && !previous.read_at) {
-              setUnreadCount((count) => Math.max(0, count - 1))
-            }
-            return current.filter((item) => item.id !== removed.id)
-          })
+          setItems((current) => current.filter((item) => item.id !== removed.id))
+          scheduleUnreadRefresh()
         },
       )
       .subscribe()
 
     return () => {
+      if (countRefreshTimerRef.current !== null) {
+        window.clearTimeout(countRefreshTimerRef.current)
+        countRefreshTimerRef.current = null
+      }
       if (channel) {
         void supabase.removeChannel(channel)
         channel = null
       }
     }
-  }, [campaignId, load])
+  }, [campaignId, load, scheduleUnreadRefresh])
 
   const markAllRead = useCallback(async () => {
     if (!campaignId) return
