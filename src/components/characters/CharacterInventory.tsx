@@ -78,7 +78,7 @@ export default function CharacterInventory({
       {
         id: "open",
         label: "Открыть предмет",
-        detail: "Описание, количество, вес и состояние",
+        detail: "Описание, количество и состояние",
         icon: "↗",
         onSelect: () => setDetail(item),
       },
@@ -179,7 +179,7 @@ export default function CharacterInventory({
                     </span>
                     <span>
                       <strong>{item.name}</strong>
-                      <small>×{item.quantity}{item.weight != null ? ` · ${item.weight} ф.` : ""}</small>
+                      <small>×{item.quantity}</small>
                     </span>
                   </span>
                 ) : (
@@ -361,7 +361,6 @@ function InventoryDetail({
 
         <div className="inventory-detail-facts">
           <div><span>Количество</span><strong>{item.quantity}</strong></div>
-          <div><span>Вес</span><strong>{item.weight == null ? "—" : `${item.weight} ф.`}</strong></div>
           <div><span>Состояние</span><strong>{item.equipped ? "Надето" : "В инвентаре"}</strong></div>
         </div>
 

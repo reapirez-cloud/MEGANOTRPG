@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import type { ChangeEvent, FormEvent } from "react"
 
+import "../../styles/textRpgSheet.css"
 import type {
   CharacterSheet,
   SkillRank,
@@ -140,8 +141,6 @@ export default function CharacterSheetEditor({
       multiline?: boolean
     }> = [
       { key: "race", label: "Раса / вид" },
-      { key: "background", label: "Предыстория" },
-      { key: "alignment", label: "Мировоззрение" },
       { key: "proficiencies", label: "Владения", multiline: true },
       { key: "languages", label: "Языки", multiline: true },
       { key: "senses", label: "Чувства", multiline: true },
@@ -149,7 +148,7 @@ export default function CharacterSheetEditor({
       { key: "ideals", label: "Идеалы", multiline: true },
       { key: "bonds", label: "Привязанности", multiline: true },
       { key: "flaws", label: "Слабости", multiline: true },
-      { key: "backstory", label: "История", multiline: true },
+      { key: "backstory", label: "История персонажа", multiline: true },
       { key: "notes", label: "Личные заметки", multiline: true },
     ]
 
@@ -165,7 +164,7 @@ export default function CharacterSheetEditor({
             <div>
               <h3 className="sheet-title">Моя часть листа</h3>
               <p className="sheet-copy">
-                Здесь ты ведёшь историю и описание героя. Числа, уровень и ресурсы меняет ГМ.
+                Здесь ты ведёшь описание и историю героя. Боевые параметры и ресурсы меняет ГМ.
               </p>
             </div>
             <button className="sheet-close" type="button" onClick={onClose}>×</button>
@@ -215,7 +214,7 @@ export default function CharacterSheetEditor({
           <div>
             <h3 className="sheet-title">Редактировать лист</h3>
             <p className="sheet-copy">
-              Основные параметры D&D-персонажа. ГМ задаёт максимум ячеек.
+              Параметры, которые используются в текстовой игре. ГМ ведёт боевые значения и доступы.
             </p>
           </div>
           <button className="sheet-close" type="button" onClick={onClose}>
@@ -225,7 +224,7 @@ export default function CharacterSheetEditor({
 
         <div className="dnd-editor-section">
           <h4>Основное</h4>
-          <div className="dnd-editor-grid dnd-editor-grid--2">
+          <div className="dnd-editor-grid">
             <label>
               Раса / вид
               <input
@@ -234,36 +233,6 @@ export default function CharacterSheetEditor({
                 onChange={(event) =>
                   setDraft({ ...draft, race: event.target.value })
                 }
-              />
-            </label>
-            <label>
-              Предыстория
-              <input
-                className="app-input"
-                value={draft.background}
-                onChange={(event) =>
-                  setDraft({ ...draft, background: event.target.value })
-                }
-              />
-            </label>
-            <label>
-              Мировоззрение
-              <input
-                className="app-input"
-                value={draft.alignment}
-                onChange={(event) =>
-                  setDraft({ ...draft, alignment: event.target.value })
-                }
-              />
-            </label>
-            <label>
-              Опыт
-              <input
-                className="app-input"
-                type="number"
-                min="0"
-                value={draft.experience}
-                onChange={numberField("experience", draft.experience)}
               />
             </label>
           </div>
@@ -289,7 +258,7 @@ export default function CharacterSheetEditor({
         </div>
 
         <div className="dnd-editor-section">
-          <h4>Бой</h4>
+          <h4>Бой и проверки</h4>
           <div className="dnd-editor-grid dnd-editor-grid--3">
             <label>
               КД
@@ -311,16 +280,6 @@ export default function CharacterSheetEditor({
                   "initiative_bonus",
                   draft.initiative_bonus,
                 )}
-              />
-            </label>
-            <label>
-              Скорость
-              <input
-                className="app-input"
-                type="number"
-                min="0"
-                value={draft.speed}
-                onChange={numberField("speed", draft.speed)}
               />
             </label>
             <label>
@@ -374,45 +333,6 @@ export default function CharacterSheetEditor({
                 onChange={numberField(
                   "passive_perception",
                   draft.passive_perception,
-                )}
-              />
-            </label>
-            <label>
-              Кости хитов
-              <input
-                className="app-input"
-                value={draft.hit_dice}
-                onChange={(event) =>
-                  setDraft({ ...draft, hit_dice: event.target.value })
-                }
-                placeholder="Напр. 5d8"
-              />
-            </label>
-            <label>
-              Успехи спасбросков от смерти
-              <input
-                className="app-input"
-                type="number"
-                min="0"
-                max="3"
-                value={draft.death_save_successes}
-                onChange={numberField(
-                  "death_save_successes",
-                  draft.death_save_successes,
-                )}
-              />
-            </label>
-            <label>
-              Провалы
-              <input
-                className="app-input"
-                type="number"
-                min="0"
-                max="3"
-                value={draft.death_save_failures}
-                onChange={numberField(
-                  "death_save_failures",
-                  draft.death_save_failures,
                 )}
               />
             </label>
@@ -571,7 +491,7 @@ export default function CharacterSheetEditor({
         </div>
 
         <div className="dnd-editor-section">
-          <h4>Владения и описание</h4>
+          <h4>Описание</h4>
           <label>
             Владения
             <textarea
@@ -646,7 +566,7 @@ export default function CharacterSheetEditor({
             />
           </label>
           <label>
-            Предыстория персонажа
+            История персонажа
             <textarea
               className="app-textarea dnd-long-text"
               value={draft.backstory}
