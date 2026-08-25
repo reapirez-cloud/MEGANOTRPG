@@ -1,8 +1,11 @@
 import { supabase } from "./supabase"
 
 const BUCKET = "campaign-media"
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024
+const MAX_SOURCE_IMAGE_BYTES = 30 * 1024 * 1024
+const MAX_UPLOAD_IMAGE_BYTES = 12 * 1024 * 1024
 const MAX_FILE_BYTES = 20 * 1024 * 1024
+const RESIZE_THRESHOLD_BYTES = 2.5 * 1024 * 1024
+const MAX_IMAGE_DIMENSION = 2560
 
 export type UploadImageResult =
   | { ok: true; url: string }
@@ -53,6 +56,62 @@ function contentTypeForExtension(extension: string) {
   return canonicalByExtension[extension] || null
 }
 
+async function optimizeCampaignImage(file: File): Promise<File> {
+  if (
+    typeof createImageBitmap !== "function" ||
+    !["image/jpeg", "image/png", "image/webp"].includes(file.type)
+  ) {
+    return file
+  }
+
+  let bitmap: ImageBitmap
+  try {
+    bitmap = await createImageBitmap(file)
+  } catch {
+    return file
+  }
+
+  try {
+    const largestSide = Math.max(bitmap.width, bitmap.height)
+    if (file.size <= RESIZE_THRESHOLD_BYTES && largestSide <= MAX_IMAGE_DIMENSION) {
+      return file
+    }
+
+    const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(1, largestSide))
+    const width = Math.max(1, Math.round(bitmap.width * scale))
+    const height = Math.max(1, Math.round(bitmap.height * scale))
+    const canvas = document.createElement("canvas")
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext("2d")
+    if (!context) return file
+
+    context.drawImage(bitmap, 0, 0, width, height)
+    const outputType = file.type === "image/png" ? "image/webp" : file.type
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, outputType, outputType === "image/png" ? undefined : 0.86),
+    )
+
+    if (!blob || blob.size >= file.size) return file
+
+    const stem = file.name.replace(/\.[^.]+$/, "") || "image"
+    const extension = outputType === "image/webp" ? "webp" : "jpg"
+    return new File([blob], `${stem}.${extension}`, {
+      type: outputType,
+      lastModified: file.lastModified,
+    })
+  } finally {
+    bitmap.close()
+  }
+}
+
+export async function deleteCampaignMediaObject(value: string | null | undefined) {
+  const path = value?.trim()
+  if (!path || path.includes("://")) return
+  const { error } = await supabase.storage.from(BUCKET).remove([path])
+  if (error) console.warn("Campaign media cleanup failed:", error.message)
+}
+
 export async function uploadCampaignImage(
   file: File,
   folder: string,
@@ -62,8 +121,8 @@ export async function uploadCampaignImage(
     return { ok: false, error: "Выбери файл изображения." }
   }
 
-  if (file.size > MAX_IMAGE_BYTES) {
-    return { ok: false, error: "Изображение слишком большое. Максимум 20 МБ." }
+  if (file.size > MAX_SOURCE_IMAGE_BYTES) {
+    return { ok: false, error: "Исходное изображение слишком большое. Максимум 30 МБ." }
   }
 
   if (!campaignId) {
@@ -75,18 +134,26 @@ export async function uploadCampaignImage(
     return { ok: false, error: "Не удалось определить текущего пользователя." }
   }
 
+  const optimized = await optimizeCampaignImage(file)
+  if (optimized.size > MAX_UPLOAD_IMAGE_BYTES) {
+    return {
+      ok: false,
+      error: "После обработки изображение всё ещё слишком большое. Максимум 12 МБ.",
+    }
+  }
+
   const safeFolder = folder.replace(/[^a-z0-9_-]/gi, "-") || "misc"
   const id =
     globalThis.crypto?.randomUUID?.() ||
     `${Date.now()}-${Math.random().toString(16).slice(2)}`
-  const objectPath = `${campaignId}/${userData.user.id}/${safeFolder}/${id}.${extensionFor(file)}`
+  const objectPath = `${campaignId}/${userData.user.id}/${safeFolder}/${id}.${extensionFor(optimized)}`
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
-    .upload(objectPath, file, {
+    .upload(objectPath, optimized, {
       cacheControl: "3600",
       upsert: false,
-      contentType: file.type || undefined,
+      contentType: optimized.type || undefined,
     })
 
   if (uploadError) {
