@@ -219,6 +219,7 @@ export function useChatMessages(roomId: string) {
 
   const deleteMessage = useCallback(
     async (messageId: number): Promise<Result> => {
+      const target = messages.find((message) => message.id === messageId)
       const { error: deleteError } = await supabase.rpc(
         "delete_chat_message",
         { p_message_id: messageId },
@@ -229,9 +230,12 @@ export function useChatMessages(roomId: string) {
       setMessages((current) =>
         current.filter((message) => message.id !== messageId),
       )
+      if (target?.attachment_url) {
+        void deleteCampaignMediaObject(target.attachment_url)
+      }
       return { ok: true }
     },
-    [],
+    [messages],
   )
 
   return {
