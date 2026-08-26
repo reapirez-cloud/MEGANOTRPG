@@ -41,6 +41,15 @@ export {
   applyNumericOperation,
   proficiencyBonusForLevel,
 } from "./numeric.ts"
+export {
+  ResourceEngineError,
+  applyResourceRecovery,
+  parseResourceGrantPayload,
+  resolveResources,
+  resourceMaxTarget,
+  resourceStateKey,
+  spendResource,
+} from "./resources.ts"
 export { resolveCharacter, resolveCharacterInput } from "./resolver.ts"
 export {
   SuppressionEngineError,
@@ -75,8 +84,13 @@ export {
   type ResolvedFormulaNumber,
   type ResolvedGrant,
   type ResolvedNumber,
+  type ResolvedResource,
   type ResolvedSavingThrow,
   type ResolvedSkill,
+  type ResourceGrantPayload,
+  type ResourceRechargeRule,
+  type ResourceRechargeTrigger,
+  type ResourceState,
   type SenseGrantPayload,
   type SkillKey,
   type StateCondition,
