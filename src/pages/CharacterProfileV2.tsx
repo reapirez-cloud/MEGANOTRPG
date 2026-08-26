@@ -33,7 +33,7 @@ import ContextActionSheet, { type ContextAction } from "../components/common/Con
 import { useLongPressItem } from "../hooks/useLongPressItem.ts"
 
 type Props = { characterId: string; onBack: () => void; embedded?: boolean }
-type Tab = "sheet" | "spells" | "inventory" | "diary" | "arts"
+type Tab = "sheet" | "inventory" | "diary" | "arts"
 type InventoryMode = "inventory" | "equipment"
 type Editor =
   | { type: "avatar" }
@@ -65,7 +65,12 @@ function normalizeClass(value: string): string {
 }
 
 function classReferenceId(value: string): SpellClassKey | null {
+  const aliases: Record<string, SpellClassKey> = {
+    клирик: "cleric",
+    жрец: "cleric",
+  }
   const wanted = normalizeClass(value)
+  if (aliases[wanted]) return aliases[wanted]
   const match = classReference.find((entry) =>
     [entry.id, entry.name, entry.nameEn].some((candidate) => normalizeClass(candidate) === wanted),
   )
@@ -174,8 +179,15 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
     !learnedNames.has(option.name.trim().toLocaleLowerCase("ru-RU")),
   )
   const visibleOptions = canManage ? data.spellOptions : availableOptions
-  const spellTabVisible = Boolean(
-    sheet?.spellcasting_enabled || data.spells.length || data.spellOptions.length || canManage,
+  // Transitional visibility until class/species adapters become the source of spell access.
+  // Once they do, contract.spells/methods alone will decide whether this panel exists.
+  const magicSectionVisible = Boolean(
+    engine.view && (
+      engine.view.contract.spells.length > 0 ||
+      engine.view.spellcastingAbility ||
+      sheet?.spellcasting_enabled ||
+      data.spellOptions.length > 0
+    ),
   )
 
   async function saveAvatar(event: FormEvent) {
@@ -385,7 +397,6 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
 
         <nav className="profile-tabs character-sheet-tabs v2-tabs">
           <button className={`profile-tab ${tab === "sheet" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("sheet")}>Лист</button>
-          {spellTabVisible && <button className={`profile-tab ${tab === "spells" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("spells")}>Заклинания</button>}
           <button className={`profile-tab ${tab === "inventory" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("inventory")}>Инвентарь</button>
           <button className={`profile-tab ${tab === "diary" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("diary")}>Дневник</button>
           <button className={`profile-tab ${tab === "arts" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("arts")}>Арты</button>
@@ -413,37 +424,42 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
           />
         )}
 
-        {!data.loading && tab === "spells" && sheet && (
-          <section className="character-tab-section v2-spells">
-            <div className="section-head">
-              <div><h3 className="section-title">Заклинания</h3><p className="item-meta">СЛ и атака берутся из Character Engine, не из старых сохранённых чисел</p></div>
-              <button className="section-link" type="button" onClick={() => setReference({ section: "spells" })}>⌘ Справочник</button>
-            </div>
-            {spellError && <div className="auth-error">{spellError}</div>}
+        {!data.loading && tab === "sheet" && sheet && magicSectionVisible && (
+          <section className="character-tab-section v2-spells v2-spells-in-sheet">
+            <details className="engine-sheet__panel surface v2-spells-panel" open>
+              <summary><span>Заклинания</span><small>{data.spells.length}</small></summary>
+              <div className="v2-spells-panel__body">
+                <div className="section-head">
+                  <div><p className="item-meta">Магия персонажа</p></div>
+                  <button className="section-link" type="button" onClick={() => setReference({ section: "spells" })}>⌘ Справочник</button>
+                </div>
+                {spellError && <div className="auth-error">{spellError}</div>}
 
-            {!sheet.spellcasting_enabled && canManage && <div className="spell-enable-card surface"><div><strong>Магия отключена</strong><p>Включи раздел, чтобы выдать персонажу заклинания.</p></div><button type="button" onClick={() => void data.setSpellcastingEnabled(true)}>Включить</button></div>}
+                {!sheet.spellcasting_enabled && canManage && <div className="spell-enable-card surface"><div><strong>Магия отключена</strong><p>Включи раздел, чтобы выдать персонажу заклинания.</p></div><button type="button" onClick={() => void data.setSpellcastingEnabled(true)}>Включить</button></div>}
 
-            {sheet.spellcasting_enabled && engine.view && (
-              <>
-                {engine.view.spellcastingAbility && <div className="spellcasting-summary surface"><div><span>Характеристика</span><strong>{engine.view.spellcastingAbility}</strong></div><div><span>СЛ</span><strong>{engine.view.contract.spellcasting.byAbility[engine.view.spellcastingAbility].saveDc}</strong></div><div><span>Атака</span><strong>{signed(engine.view.contract.spellcasting.byAbility[engine.view.spellcastingAbility].attackBonus)}</strong></div></div>}
-                <div className="character-resource-card surface"><div className="character-resource-card__head"><div><strong>Ячейки</strong><small>Осталось / максимум</small></div>{canManage && <button className="section-link" type="button" onClick={() => setEditor({ type: "resources" })}>Ресурсы</button>}</div><div className="character-slot-strip">{engine.view.contract.resources.filter((resource) => resource.key.startsWith("spell_slot_") && resource.max.value > 0).map((resource) => <span key={resource.stateKey}><small>{resource.key.replace("spell_slot_", "")} ур.</small><strong>{resource.current}/{resource.max.value}</strong></span>)}</div></div>
-              </>
-            )}
+                {sheet.spellcasting_enabled && engine.view && (
+                  <>
+                    {engine.view.spellcastingAbility && <div className="spellcasting-summary surface"><div><span>Характеристика</span><strong>{engine.view.spellcastingAbility}</strong></div><div><span>СЛ</span><strong>{engine.view.contract.spellcasting.byAbility[engine.view.spellcastingAbility].saveDc}</strong></div><div><span>Атака</span><strong>{signed(engine.view.contract.spellcasting.byAbility[engine.view.spellcastingAbility].attackBonus)}</strong></div></div>}
+                    <div className="character-resource-card surface"><div className="character-resource-card__head"><div><strong>Ячейки</strong><small>Осталось / максимум</small></div>{canManage && <button className="section-link" type="button" onClick={() => setEditor({ type: "resources" })}>Ресурсы</button>}</div><div className="character-slot-strip">{engine.view.contract.resources.filter((resource) => resource.key.startsWith("spell_slot_") && resource.max.value > 0).map((resource) => <span key={resource.stateKey}><small>{resource.key.replace("spell_slot_", "")} ур.</small><strong>{resource.current}/{resource.max.value}</strong></span>)}</div></div>
+                  </>
+                )}
 
-            {sheet.spellcasting_enabled && canManage && <div className="v2-spell-admin"><button className="section-link" type="button" onClick={() => setEditor({ type: "spell-option", option: null })}>+ В доступные</button><button className="spell-disable-link" type="button" onClick={() => void data.setSpellcastingEnabled(false)}>Отключить магию</button></div>}
+                {sheet.spellcasting_enabled && canManage && <div className="v2-spell-admin"><button className="section-link" type="button" onClick={() => setEditor({ type: "spell-option", option: null })}>+ В доступные</button><button className="spell-disable-link" type="button" onClick={() => void data.setSpellcastingEnabled(false)}>Отключить магию</button></div>}
 
-            {sheet.spellcasting_enabled && !canManage && <div className="v2-access-note surface"><strong>{sheet.spell_change_unlocked ? "Смена заклинаний открыта" : "Смена заклинаний закрыта"}</strong><p>{sheet.spell_change_unlocked ? "Можно менять выбор после долгого отдыха." : "Текущими заклинаниями можно пользоваться, но менять выбор пока нельзя."}</p></div>}
+                {sheet.spellcasting_enabled && !canManage && <div className="v2-access-note surface"><strong>{sheet.spell_change_unlocked ? "Смена заклинаний открыта" : "Смена заклинаний закрыта"}</strong><p>{sheet.spell_change_unlocked ? "Можно менять выбор после долгого отдыха." : "Текущими заклинаниями можно пользоваться, но менять выбор пока нельзя."}</p></div>}
 
-            {sheet.spellcasting_enabled && visibleOptions.length > 0 && (
-              <details className="v2-spell-options surface" open={canChooseSpells}><summary>Доступно для изучения <small>{visibleOptions.length}</small></summary>{visibleOptions.map((option) => { const learned = learnedNames.has(option.name.trim().toLocaleLowerCase("ru-RU")); return <div className="v2-option-row" key={option.id}><span><strong>{option.name}</strong><small>{option.spell_level === 0 ? "Заговор" : `${option.spell_level} уровень`}</small></span>{learned ? <em>Изучено</em> : canChooseSpells ? <button type="button" disabled={spellActionId === `learn:${option.id}`} onClick={() => void learnSpell(option)}>Добавить</button> : null}{canManage && <button type="button" onClick={() => setEditor({ type: "spell-option", option })}>✎</button>}</div> })}</details>
-            )}
+                {sheet.spellcasting_enabled && visibleOptions.length > 0 && (
+                  <details className="v2-spell-options surface" open={canChooseSpells}><summary>Доступно для изучения <small>{visibleOptions.length}</small></summary>{visibleOptions.map((option) => { const learned = learnedNames.has(option.name.trim().toLocaleLowerCase("ru-RU")); return <div className="v2-option-row" key={option.id}><span><strong>{option.name}</strong><small>{option.spell_level === 0 ? "Заговор" : `${option.spell_level} уровень`}</small></span>{learned ? <em>Изучено</em> : canChooseSpells ? <button type="button" disabled={spellActionId === `learn:${option.id}`} onClick={() => void learnSpell(option)}>Добавить</button> : null}{canManage && <button type="button" onClick={() => setEditor({ type: "spell-option", option })}>✎</button>}</div> })}</details>
+                )}
 
-            <div className="v2-spell-list">
-              {[...new Set(data.spells.map((spell) => spell.spell_level))].sort((a, b) => a - b).map((level) => (
-                <div className="spell-level-block" key={level}><h4>{level === 0 ? "Заговоры" : `${level} уровень`}</h4>{data.spells.filter((spell) => spell.spell_level === level).map((spell) => <article className="spell-card surface" key={spell.id}><button className="spell-card__main" type="button" onClick={() => setExpandedSpell(expandedSpell === spell.id ? null : spell.id)}><div className="spell-card__rune">{level === 0 ? "∞" : level}</div><div className="spell-card__copy"><div><strong>{spell.name}</strong>{spell.prepared && <em>Подготовлено</em>}</div><small>{[spell.school, spell.casting_time, spell.spell_range].filter(Boolean).join(" · ") || "Без параметров"}</small></div><span>{expandedSpell === spell.id ? "⌃" : "⌄"}</span></button>{expandedSpell === spell.id && <div className="spell-card__details"><div className="spell-tag-row">{spell.concentration && <span>Концентрация</span>}{spell.ritual && <span>Ритуал</span>}{spell.components && <span>{spell.components}</span>}{spell.duration && <span>{spell.duration}</span>}</div>{spell.description && <p>{spell.description}</p>}<div className="spell-card__actions">{canChooseSpells && <><button className="inline-edit-button" type="button" disabled={spellActionId === `prepare:${spell.id}`} onClick={() => void togglePrepared(spell)}>{spell.prepared ? "Убрать подготовку" : "Подготовить"}</button><button className="danger-mini-button" type="button" disabled={spellActionId === `forget:${spell.id}`} onClick={() => void forgetSpell(spell)}>Убрать</button></>}{canManage && <button className="inline-edit-button" type="button" onClick={() => setEditor({ type: "spell", spell })}>✎ Параметры</button>}</div></div>}</article>)}</div>
-              ))}
-              {data.spells.length === 0 && sheet.spellcasting_enabled && <div className="character-empty surface">Список заклинаний пока пуст.</div>}
-            </div>
+                <div className="v2-spell-list">
+                  {[...new Set(data.spells.map((spell) => spell.spell_level))].sort((a, b) => a - b).map((level) => (
+                    <div className="spell-level-block" key={level}><h4>{level === 0 ? "Заговоры" : `${level} уровень`}</h4>{data.spells.filter((spell) => spell.spell_level === level).map((spell) => <article className="spell-card surface" key={spell.id}><button className="spell-card__main" type="button" onClick={() => setExpandedSpell(expandedSpell === spell.id ? null : spell.id)}><div className="spell-card__rune">{level === 0 ? "∞" : level}</div><div className="spell-card__copy"><div><strong>{spell.name}</strong>{spell.prepared && <em>Подготовлено</em>}</div><small>{[spell.school, spell.casting_time, spell.spell_range].filter(Boolean).join(" · ") || "Без параметров"}</small></div><span>{expandedSpell === spell.id ? "⌃" : "⌄"}</span></button>{expandedSpell === spell.id && <div className="spell-card__details"><div className="spell-tag-row">{spell.concentration && <span>Концентрация</span>}{spell.ritual && <span>Ритуал</span>}{spell.components && <span>{spell.components}</span>}{spell.duration && <span>{spell.duration}</span>}</div>{spell.description && <p>{spell.description}</p>}<div className="spell-card__actions">{canChooseSpells && <><button className="inline-edit-button" type="button" disabled={spellActionId === `prepare:${spell.id}`} onClick={() => void togglePrepared(spell)}>{spell.prepared ? "Убрать подготовку" : "Подготовить"}</button><button className="danger-mini-button" type="button" disabled={spellActionId === `forget:${spell.id}`} onClick={() => void forgetSpell(spell)}>Убрать</button></>}{canManage && <button className="inline-edit-button" type="button" onClick={() => setEditor({ type: "spell", spell })}>✎ Параметры</button>}</div></div>}</article>)}</div>
+                  ))}
+                  {data.spells.length === 0 && sheet.spellcasting_enabled && <div className="character-empty surface">Список заклинаний пока пуст.</div>}
+                </div>
+              </div>
+            </details>
           </section>
         )}
 
