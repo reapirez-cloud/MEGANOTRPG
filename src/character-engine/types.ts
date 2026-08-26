@@ -36,10 +36,6 @@ export type ProficiencyRank = 0 | 1 | 2
 export const PASSIVE_KEYS = ["perception", "investigation", "insight"] as const
 export type PassiveKey = (typeof PASSIVE_KEYS)[number]
 
-/**
- * Raw character facts. This is input truth, not a place for values that the
- * engine can derive from other facts.
- */
 export interface BaseCharacter {
   id: string
   name: string
@@ -53,22 +49,10 @@ export interface BaseCharacter {
 
 export type StateFactValue = string | number | boolean | null
 
-/** Mutable gameplay state. It is intentionally separate from BaseCharacter. */
 export interface CharacterState {
   currentHp: number
   tempHp: number
   resources?: Record<string, ResourceState>
-  /**
-   * Generic runtime facts consumed by Conditions Engine.
-   *
-   * Examples are intentionally conventions, not hard-coded engine concepts:
-   * "equipment.ring-1.equipped" -> true
-   * "equipment.ring-1.attuned" -> true
-   * "combat.concentration" -> "bless"
-   * "combat.form" -> "brown-bear"
-   * "status.poisoned" -> true
-   * "rest.long.sequence" -> 7
-   */
   facts?: Record<string, StateFactValue>
 }
 
@@ -79,13 +63,7 @@ export interface ResourceState {
 
 export type SourceVisibility = "campaign" | "private"
 
-/**
- * Provenance only: who/what supplied a contribution.
- *
- * RED FLAG: sourceType is descriptive metadata. It must never be used as a
- * casting/access method or as a UI abbreviation. The engine must not branch on
- * concrete source types such as class/item/feat/frog-school.
- */
+/** Provenance only. Engine mechanics must not branch on sourceType. */
 export interface CharacterSource {
   id: string
   name: string
@@ -95,11 +73,7 @@ export interface CharacterSource {
 }
 
 export type StateCondition =
-  | {
-      kind: "state"
-      key: string
-      operator: "EXISTS" | "NOT_EXISTS"
-    }
+  | { kind: "state"; key: string; operator: "EXISTS" | "NOT_EXISTS" }
   | {
       kind: "state"
       key: string
@@ -113,13 +87,6 @@ export type StateCondition =
       value: number
     }
 
-/**
- * Universal condition language.
- *
- * Domain concepts such as equipped, attuned, concentrating, transformed or
- * "until long rest" are represented as state facts plus these generic
- * operators. Conditions Engine never branches on those domain names.
- */
 export type CharacterCondition =
   | { kind: "always" }
   | { kind: "hp_below_percent"; percent: number }
@@ -128,17 +95,13 @@ export type CharacterCondition =
   | { kind: "any"; conditions: CharacterCondition[] }
   | { kind: "not"; condition: CharacterCondition }
 
-/**
- * Universal numeric destinations understood by Numeric Engine.
- * Derived values such as a skill bonus or initiative are first calculated from
- * their dependencies and then receive contributions targeted at that value.
- */
 export type NumericTarget =
   | `abilities.${AbilityKey}`
   | "core.proficiencyBonus"
   | `skills.${SkillKey}.bonus`
   | `savingThrows.${AbilityKey}.bonus`
   | `passives.${PassiveKey}`
+  | "combat.ac"
   | "combat.initiative"
   | "combat.maxHp"
   | "combat.speed"
@@ -151,6 +114,34 @@ export interface NumericContribution {
   target: NumericTarget
   operation: NumericOperation
   value: number
+  source: CharacterSource
+  condition?: CharacterCondition
+  priority?: number
+}
+
+/**
+ * Generic formula AST. Reference keys are data, not hard-coded domain concepts.
+ * A consumer supplies a finite-number context such as
+ * "abilities.dexterity.modifier" -> 2.
+ */
+export type FormulaExpression =
+  | { kind: "literal"; value: number }
+  | { kind: "reference"; key: string }
+  | { kind: "add"; terms: FormulaExpression[] }
+  | { kind: "subtract"; left: FormulaExpression; right: FormulaExpression }
+  | { kind: "multiply"; factors: FormulaExpression[] }
+  | { kind: "min"; values: FormulaExpression[] }
+  | { kind: "max"; values: FormulaExpression[] }
+  | { kind: "clamp"; value: FormulaExpression; min?: number; max?: number }
+
+export type FormulaTarget = "combat.ac"
+
+export interface FormulaContribution {
+  id: string
+  kind: "formula"
+  target: FormulaTarget
+  operation: "SET_FORMULA"
+  formula: FormulaExpression
   source: CharacterSource
   condition?: CharacterCondition
   priority?: number
@@ -170,12 +161,7 @@ export interface GrantContribution<TPayload = unknown> {
   kind: "grant"
   operation: "GRANT" | "SUPPRESS"
   target: GrantTarget
-  /** Stable identity of the granted thing, e.g. "fire" or "cure-wounds". */
   key: string
-  /**
-   * Distinguishes mechanically different variants of the same grant.
-   * This is not a UI label and must not encode presentation abbreviations.
-   */
   variantKey?: string
   payload?: TPayload
   source: CharacterSource
@@ -183,9 +169,8 @@ export interface GrantContribution<TPayload = unknown> {
   priority?: number
 }
 
-export type CharacterContribution = NumericContribution | GrantContribution
+export type CharacterContribution = NumericContribution | FormulaContribution | GrantContribution
 
-/** Canonical input boundary for Character Engine. */
 export interface CharacterEngineInput {
   base: BaseCharacter
   state: CharacterState
@@ -197,15 +182,15 @@ export interface ResolvedSourceRef {
   source: CharacterSource
 }
 
-/**
- * A final number plus the value it had before direct contributions to this
- * target were applied. Deep dependency provenance is added in a later engine
- * step; direct source provenance is already retained here.
- */
 export interface ResolvedNumber {
   value: number
   baseValue: number
   sources: ResolvedSourceRef[]
+}
+
+export interface ResolvedFormulaNumber extends ResolvedNumber {
+  formula: FormulaExpression
+  formulaSources: ResolvedSourceRef[]
 }
 
 export interface ResolvedAbility extends ResolvedNumber {
@@ -233,10 +218,6 @@ export interface ResolvedGrant<TPayload = unknown> {
   sources: ResolvedSourceRef[]
 }
 
-/**
- * Final normalized character state. Consumers should render/read this object
- * instead of re-running character rules themselves.
- */
 export interface ResolvedCharacter {
   id: string
   name: string
@@ -246,6 +227,7 @@ export interface ResolvedCharacter {
   skills: Record<SkillKey, ResolvedSkill>
   savingThrows: Record<AbilityKey, ResolvedSavingThrow>
   combat: {
+    ac: ResolvedFormulaNumber
     maxHp: ResolvedNumber
     currentHp: number
     tempHp: number
