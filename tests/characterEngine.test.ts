@@ -134,7 +134,14 @@ test("equal boolean-like grants merge without stacking while preserving every ac
   )
 })
 
-test("one spell is deduplicated per mechanical variant while distinct variants stay separate", () => {
+test("one spell card contains distinct access paths while equal access grants merge provenance", () => {
+  const spell = { name: "Cure Wounds", level: 1, school: "evocation" }
+  const clericAccess = {
+    spell,
+    preparation: { mode: "prepared" as const, defaultPrepared: true },
+    methods: [{ key: "slots", kind: "spell_slots", ability: "wisdom" as const }],
+  }
+
   const contributions: CharacterContribution[] = [
     {
       id: "cleric-cure-wounds",
@@ -142,18 +149,18 @@ test("one spell is deduplicated per mechanical variant while distinct variants s
       operation: "GRANT",
       target: "spell",
       key: "cure-wounds",
-      variantKey: "slots",
-      payload: { mode: "spell_slots" },
+      variantKey: "cleric",
+      payload: clericAccess,
       source: source("cleric", "Клирик"),
     },
     {
-      id: "second-slot-source",
+      id: "second-cleric-source",
       kind: "grant",
       operation: "GRANT",
       target: "spell",
       key: "cure-wounds",
-      variantKey: "slots",
-      payload: { mode: "spell_slots" },
+      variantKey: "cleric",
+      payload: clericAccess,
       source: source("blessing", "Благословение"),
     },
     {
@@ -163,7 +170,11 @@ test("one spell is deduplicated per mechanical variant while distinct variants s
       target: "spell",
       key: "cure-wounds",
       variantKey: "frog-daily",
-      payload: { mode: "free_use", uses: 1, reset: "day" },
+      payload: {
+        spell,
+        preparation: { mode: "not_required" },
+        methods: [{ key: "free", kind: "free_use", ability: "wisdom" }],
+      },
       source: source("frog", "Жабья школа"),
     },
     {
@@ -173,25 +184,42 @@ test("one spell is deduplicated per mechanical variant while distinct variants s
       target: "spell",
       key: "cure-wounds",
       variantKey: "staff-charges",
-      payload: { mode: "charges", cost: 2 },
+      payload: {
+        spell,
+        preparation: { mode: "not_required" },
+        methods: [
+          {
+            key: "charges",
+            kind: "item_charges",
+            resourceOptions: [
+              {
+                key: "base",
+                castLevel: 1,
+                costs: [{ key: "staff-charge", amount: 2 }],
+              },
+            ],
+          },
+        ],
+      },
       source: source("staff", "Посох"),
     },
   ]
 
   const resolved = resolveCharacter(williamBase, fullHealth, contributions)
-  const cureWounds = resolved.grants.filter(
-    (grant) => grant.target === "spell" && grant.key === "cure-wounds",
-  )
-
-  assert.equal(cureWounds.length, 3)
+  assert.equal(resolved.spells.length, 1)
+  const cureWounds = resolved.spells[0]!
+  assert.equal(cureWounds.key, "cure-wounds")
+  assert.equal(cureWounds.accesses.length, 3)
   assert.deepEqual(
-    cureWounds.map((grant) => grant.variantKey).sort(),
-    ["frog-daily", "slots", "staff-charges"],
+    cureWounds.accesses.map((access) => access.key).sort(),
+    ["cleric", "frog-daily", "staff-charges"],
   )
 
-  const slots = cureWounds.find((grant) => grant.variantKey === "slots")
-  assert.ok(slots)
-  assert.equal(slots.sources.length, 2)
+  const cleric = cureWounds.accesses.find((access) => access.key === "cleric")
+  assert.ok(cleric)
+  assert.equal(cleric.sources.length, 2)
+  assert.equal(cleric.methods[0]?.attackBonus?.value, 6)
+  assert.equal(cleric.methods[0]?.saveDc?.value, 14)
 })
 
 test("priority makes mixed numeric operations deterministic", () => {
