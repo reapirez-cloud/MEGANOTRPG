@@ -3,12 +3,13 @@ import { resolveNumericConflicts } from "./conflicts.ts"
 import { validateCharacterEngineInput } from "./core.ts"
 import { evaluateFormula, selectFormula, type FormulaContext } from "./formulas.ts"
 import {
-  resolveGrants,
+  resolveGrantResolution,
   resolveProficiencyRank,
   savingThrowProficiencyKey,
   skillProficiencyKey,
 } from "./grants.ts"
 import { abilityModifier, proficiencyBonusForLevel } from "./numeric.ts"
+import { applySuppressions } from "./suppressions.ts"
 import {
   ABILITY_KEYS,
   PASSIVE_KEYS,
@@ -97,17 +98,22 @@ export function resolveCharacter(
 ): ResolvedCharacter {
   validateCharacterEngineInput({ base, state, contributions })
 
+  // Universal source/contribution suppression happens before every mechanical
+  // resolver so one control can consistently disable numeric, formula and grant effects.
+  const suppressionResolution = applySuppressions(contributions, state)
+  const activeContributions = suppressionResolution.contributions
+
   const maxHp = resolveNumber(
     "combat.maxHp",
     base.baseMaxHp,
-    contributions,
+    activeContributions,
     state,
     base.baseMaxHp,
   )
   const proficiencyBonus = resolveNumber(
     "core.proficiencyBonus",
     proficiencyBonusForLevel(base.level),
-    contributions,
+    activeContributions,
     state,
     maxHp.value,
   )
@@ -117,7 +123,7 @@ export function resolveCharacter(
       const resolved = resolveNumber(
         `abilities.${ability}`,
         base.abilities[ability],
-        contributions,
+        activeContributions,
         state,
         maxHp.value,
       )
@@ -126,16 +132,15 @@ export function resolveCharacter(
     }),
   ) as Record<AbilityKey, ResolvedAbility>
 
-  // Set-like grants are resolved before skills/saves because proficiency grants
-  // can change their derived numbers.
-  const grants = resolveGrants(contributions, state, maxHp.value)
+  const grantResolution = resolveGrantResolution(activeContributions, state, maxHp.value)
+  const grants = grantResolution.grants
 
   const skills = Object.fromEntries(
     SKILL_KEYS.map((skill) => {
       const ability = SKILL_ABILITIES[skill]
       const proficiency = resolveProficiencyRank(
         base.skillProficiencies?.[skill],
-        grants,
+        grantResolution,
         skillProficiencyKey(skill),
       )
       const result: ResolvedSkill = {
@@ -146,7 +151,7 @@ export function resolveCharacter(
         bonus: resolveNumber(
           `skills.${skill}.bonus`,
           abilities[ability].modifier + proficiencyBonus.value * proficiency.rank,
-          contributions,
+          activeContributions,
           state,
           maxHp.value,
         ),
@@ -159,7 +164,7 @@ export function resolveCharacter(
     ABILITY_KEYS.map((ability) => {
       const proficiency = resolveProficiencyRank(
         base.savingThrowProficiencies?.[ability],
-        grants,
+        grantResolution,
         savingThrowProficiencyKey(ability),
       )
       const result: ResolvedSavingThrow = {
@@ -169,7 +174,7 @@ export function resolveCharacter(
         bonus: resolveNumber(
           `savingThrows.${ability}.bonus`,
           abilities[ability].modifier + proficiencyBonus.value * proficiency.rank,
-          contributions,
+          activeContributions,
           state,
           maxHp.value,
         ),
@@ -184,7 +189,7 @@ export function resolveCharacter(
     formulaContext[`abilities.${ability}.modifier`] = abilities[ability].modifier
   }
 
-  const acFormulaContributions = contributions.filter(
+  const acFormulaContributions = activeContributions.filter(
     (contribution): contribution is FormulaContribution =>
       contribution.kind === "formula" &&
       contribution.target === "combat.ac" &&
@@ -192,18 +197,30 @@ export function resolveCharacter(
   )
   const acSelection = selectFormula("combat.ac", DEFAULT_AC_FORMULA, acFormulaContributions)
   const acFormulaValue = evaluateFormula(acSelection.formula, formulaContext)
-  const acNumeric = resolveNumber("combat.ac", acFormulaValue, contributions, state, maxHp.value)
+  const acNumeric = resolveNumber(
+    "combat.ac",
+    acFormulaValue,
+    activeContributions,
+    state,
+    maxHp.value,
+  )
   const ac = {
     ...acNumeric,
     formula: acSelection.formula,
     formulaSources: acSelection.sources,
   }
 
-  const speed = resolveNumber("combat.speed", base.baseSpeed, contributions, state, maxHp.value)
+  const speed = resolveNumber(
+    "combat.speed",
+    base.baseSpeed,
+    activeContributions,
+    state,
+    maxHp.value,
+  )
   const initiative = resolveNumber(
     "combat.initiative",
     abilities.dexterity.modifier,
-    contributions,
+    activeContributions,
     state,
     maxHp.value,
   )
@@ -215,7 +232,7 @@ export function resolveCharacter(
         resolveNumber(
           `passives.${passive}`,
           10 + skills[skill].bonus.value,
-          contributions,
+          activeContributions,
           state,
           maxHp.value,
         ),
