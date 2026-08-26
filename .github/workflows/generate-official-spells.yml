@@ -6,6 +6,7 @@ on:
       - dev
     paths:
       - scripts/generateOfficialSupplementSpells.mjs
+      - scripts/generateOfficialSupplementSpellsJson.mjs
       - .github/workflows/generate-official-spells.yml
 
 permissions:
@@ -26,17 +27,19 @@ jobs:
         with:
           node-version: 24
 
-      - name: Generate migration
-        run: node scripts/generateOfficialSupplementSpells.mjs
-
-      - name: Commit generated migration
+      - name: Generate packages
         run: |
-          if [ -z "$(git status --porcelain -- supabase/migrations/20260826095000_official_supplement_spell_catalog.sql)" ]; then
-            echo "Migration already up to date"
+          node scripts/generateOfficialSupplementSpells.mjs
+          node scripts/generateOfficialSupplementSpellsJson.mjs
+
+      - name: Commit generated packages
+        run: |
+          if [ -z "$(git status --porcelain -- supabase/migrations/20260826095000_official_supplement_spell_catalog.sql supabase/data/official_supplement_spells.json)" ]; then
+            echo "Generated spell data already up to date"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add supabase/migrations/20260826095000_official_supplement_spell_catalog.sql
-          git commit -m "Add official supplement spell catalog [generated-spells]"
+          git add supabase/migrations/20260826095000_official_supplement_spell_catalog.sql supabase/data/official_supplement_spells.json
+          git commit -m "Generate official supplement spell data [generated-spells]"
           git push origin HEAD:dev
