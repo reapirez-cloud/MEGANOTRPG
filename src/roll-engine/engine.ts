@@ -1,4 +1,4 @@
-import { evaluateRollValue, rollDice, validateDice } from "./dice.ts"
+import { defaultDiceRoller, evaluateRollValue, rollDice, validateDice } from "./dice.ts"
 import { applyScalingRules, validateScalingRule } from "./scaling.ts"
 import type {
   DiceRoller,
@@ -29,8 +29,8 @@ function positiveInteger(value: number, label: string): void {
 }
 
 function validateResolution(resolution: RollResolutionDefinition): void {
-  if (resolution.kind === "save") {
-    if (!resolution.ability) throw new RollEngineError("save ability must be defined")
+  if (resolution.kind === "save" && !resolution.ability) {
+    throw new RollEngineError("save ability must be defined")
   }
 }
 
@@ -44,8 +44,10 @@ function validateSequence(sequence: RollSequenceDefinition): void {
   nonEmpty(sequence.key, "sequence key")
   if (sequence.instances !== undefined) positiveInteger(sequence.instances, "sequence instances")
   validateResolution(sequence.resolution)
-  if (sequence.effects.length === 0) {
-    throw new RollEngineError(`sequence ${sequence.key} must contain at least one effect`)
+  if (sequence.effects.length === 0 && sequence.resolution.kind === "none") {
+    throw new RollEngineError(
+      `sequence ${sequence.key} must define a resolution and/or at least one rolled effect`,
+    )
   }
   const effectKeys = new Set<string>()
   for (const effect of sequence.effects) {
@@ -159,7 +161,7 @@ function resolveSequence(
 export function executeRollRecipe(
   recipe: RollRecipe,
   context: RollContext,
-  roller: DiceRoller,
+  roller: DiceRoller = defaultDiceRoller,
 ): RollExecutionResult {
   validateRollRecipe(recipe)
   if (!Number.isInteger(context.characterLevel) || context.characterLevel < 1) {
