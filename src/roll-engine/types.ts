@@ -128,6 +128,10 @@ export interface RollContext {
   values?: Record<string, number>
 }
 
+/**
+ * Canonical transparent dice result. `rolls` contains every raw die face in
+ * order; consumers never need to reconstruct hidden dice from `total`.
+ */
 export interface DiceRollResult {
   dice: DiceDefinition
   rolls: number[]
@@ -158,12 +162,18 @@ export interface RollEffectResult {
   kind: RollEffectDefinition["kind"]
   damageType?: string
   label?: string
+  /** Full raw dice breakdown for this damage/healing/custom effect. */
   roll: DiceRollResult
 }
 
 export interface RollInstanceResult {
   index: number
   resolution: RollResolutionResult
+  /**
+   * Raw dice for resolving the instance itself, currently the attack d20.
+   * Save resolutions intentionally omit this because the GM/target rolls them.
+   */
+  resolutionRoll?: DiceRollResult
   effects: RollEffectResult[]
 }
 
