@@ -14,7 +14,31 @@ export class RollDiceError extends Error {
   }
 }
 
-export const defaultDiceRoller: DiceRoller = (sides) => Math.floor(Math.random() * sides) + 1
+/**
+ * Default runtime roller. Uses Web Crypto with rejection sampling so every face
+ * has equal probability. Tests can inject a deterministic DiceRoller instead.
+ */
+export const defaultDiceRoller: DiceRoller = (sides) => {
+  if (!Number.isInteger(sides) || sides < 2) {
+    throw new RollDiceError("dice sides must be an integer >= 2")
+  }
+
+  const cryptoApi = globalThis.crypto
+  if (!cryptoApi?.getRandomValues) {
+    return Math.floor(Math.random() * sides) + 1
+  }
+
+  const range = 0x1_0000_0000
+  const limit = Math.floor(range / sides) * sides
+  const buffer = new Uint32Array(1)
+  let value = 0
+  do {
+    cryptoApi.getRandomValues(buffer)
+    value = buffer[0]!
+  } while (value >= limit)
+
+  return (value % sides) + 1
+}
 
 export function validateDice(dice: DiceDefinition): void {
   if (!Number.isInteger(dice.count) || dice.count < 0) {
