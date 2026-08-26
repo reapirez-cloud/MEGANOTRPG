@@ -62,6 +62,21 @@ export default function CharacterResourcesEditor({
     }))
   }
 
+  async function toggleSpellChangeAccess() {
+    const next = !spellChangeUnlocked
+    setSaving(true)
+    setError("")
+    const result = await onSave({ spell_change_unlocked: next })
+    setSaving(false)
+
+    if (!result.ok) {
+      setError(result.error || "Не удалось изменить доступ к смене заклинаний.")
+      return
+    }
+
+    setSpellChangeUnlocked(next)
+  }
+
   async function save() {
     setSaving(true)
     setError("")
@@ -166,7 +181,8 @@ export default function CharacterResourcesEditor({
             <button
               className={spellChangeUnlocked ? "danger-mini-button" : "secondary-action-button"}
               type="button"
-              onClick={() => setSpellChangeUnlocked((current) => !current)}
+              onClick={() => void toggleSpellChangeAccess()}
+              disabled={saving}
             >
               {spellChangeUnlocked ? "Закрыть доступ игроку" : "Дать доступ игроку"}
             </button>
