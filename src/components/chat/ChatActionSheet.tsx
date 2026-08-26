@@ -1,350 +1,405 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 
-import { supabase } from "../../lib/supabase"
-import type {
-  CharacterSheet,
-  CharacterSpell,
-  SpellSlotState,
-} from "../../types/characterSheet"
+import {
+  chatActionPrototypeData,
+  signedModifier,
+  type ChatAbilityOption,
+  type ChatActionPrototypeData,
+  type ChatCheckOption,
+  type ChatSpellOption,
+  type ChatSpellSlotOption,
+} from "./chatActionPrototype"
 
 type Props = {
-  roomId: string
   characterId: string | null
+  characterName?: string | null
   onClose: () => void
+  data?: ChatActionPrototypeData
+  onRollRequested?: (check: ChatCheckOption) => void | Promise<void>
+  onSpellRequested?: (spell: ChatSpellOption, slotLevel: number) => void | Promise<void>
+  onOpenSpellReference?: (spellId: string) => void
 }
 
-const dice = [4, 6, 8, 10, 12, 20, 100]
+type FlowView =
+  | "home"
+  | "abilities"
+  | "checks"
+  | "slots"
+  | "spells"
+  | "spell-detail"
+  | "roll-result"
+  | "cast-preview"
 
-function slotState(
-  slots: CharacterSheet["spell_slots"] | undefined,
-  level: number,
-): SpellSlotState {
-  const value = slots?.[String(level)]
-  return {
-    max: Math.max(0, Number(value?.max || 0)),
-    used: Math.max(0, Number(value?.used || 0)),
+function softPulse() {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    navigator.vibrate(8)
   }
+}
+
+function rollD20() {
+  return Math.floor(Math.random() * 20) + 1
 }
 
 export default function ChatActionSheet({
-  roomId,
   characterId,
+  characterName,
   onClose,
+  data = chatActionPrototypeData,
+  onRollRequested,
+  onSpellRequested,
+  onOpenSpellReference,
 }: Props) {
-  const [sheet, setSheet] = useState<CharacterSheet | null>(null)
-  const [spells, setSpells] = useState<CharacterSpell[]>([])
-  const [loadingSpells, setLoadingSpells] = useState(Boolean(characterId))
+  const [view, setView] = useState<FlowView>("home")
+  const [selectedAbility, setSelectedAbility] = useState<ChatAbilityOption | null>(null)
+  const [selectedCheck, setSelectedCheck] = useState<ChatCheckOption | null>(null)
+  const [selectedSlot, setSelectedSlot] = useState<ChatSpellSlotOption | null>(null)
+  const [selectedSpell, setSelectedSpell] = useState<ChatSpellOption | null>(null)
+  const [rollResult, setRollResult] = useState<{ die: number; total: number } | null>(null)
+  const [demoNotice, setDemoNotice] = useState("")
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState("")
 
-  const [dieSides, setDieSides] = useState(20)
-  const [dieCount, setDieCount] = useState(1)
-  const [modifier, setModifier] = useState(0)
+  const checks = useMemo(
+    () => data.checks.filter((item) => item.ability === selectedAbility?.id),
+    [data.checks, selectedAbility?.id],
+  )
 
-  useEffect(() => {
-    let cancelled = false
+  const regularChecks = checks.filter((item) => item.kind !== "save")
+  const saves = checks.filter((item) => item.kind === "save")
 
-    async function load() {
-      if (!characterId) {
-        setSheet(null)
-        setSpells([])
-        setLoadingSpells(false)
-        return
-      }
+  const availableSpells = useMemo(() => {
+    if (!selectedSlot) return []
+    return data.spells.filter((spell) =>
+      spell.availableSlotLevels.includes(selectedSlot.level),
+    )
+  }, [data.spells, selectedSlot])
 
-      setLoadingSpells(true)
-      const [sheetResult, spellResult] = await Promise.all([
-        supabase
-          .from("character_sheets")
-          .select("*")
-          .eq("character_id", characterId)
-          .maybeSingle(),
-        supabase
-          .from("character_spells")
-          .select("*")
-          .eq("character_id", characterId)
-          .eq("prepared", true)
-          .order("spell_level", { ascending: true })
-          .order("name", { ascending: true }),
-      ])
+  function move(next: FlowView) {
+    softPulse()
+    setDemoNotice("")
+    setView(next)
+  }
 
-      if (cancelled) return
-
-      const firstError = sheetResult.error || spellResult.error
-      if (firstError) {
-        setError(firstError.message)
-        setLoadingSpells(false)
-        return
-      }
-
-      setSheet((sheetResult.data || null) as CharacterSheet | null)
-      setSpells((spellResult.data || []) as CharacterSpell[])
-      setLoadingSpells(false)
+  function goBack() {
+    setDemoNotice("")
+    if (view === "home") {
+      onClose()
+      return
     }
-
-    void load()
-    return () => {
-      cancelled = true
+    if (view === "abilities" || view === "slots") {
+      move("home")
+      return
     }
-  }, [characterId])
+    if (view === "checks") {
+      setSelectedAbility(null)
+      move("abilities")
+      return
+    }
+    if (view === "spells") {
+      setSelectedSlot(null)
+      move("slots")
+      return
+    }
+    if (view === "spell-detail") {
+      setSelectedSpell(null)
+      move("spells")
+      return
+    }
+    if (view === "roll-result") {
+      setRollResult(null)
+      move("checks")
+      return
+    }
+    if (view === "cast-preview") {
+      move("spell-detail")
+    }
+  }
 
-  const configuredSlots = useMemo(() => {
-    if (!sheet) return []
-    return Array.from({ length: 9 }, (_, index) => index + 1)
-      .map((level) => ({ level, ...slotState(sheet.spell_slots, level) }))
-      .filter((slot) => slot.max > 0)
-  }, [sheet])
+  function selectAbility(ability: ChatAbilityOption) {
+    setSelectedAbility(ability)
+    move("checks")
+  }
 
-  async function roll() {
+  function selectSlot(slot: ChatSpellSlotOption) {
+    if (slot.remaining <= 0) return
+    setSelectedSlot(slot)
+    move("spells")
+  }
+
+  function selectSpell(spell: ChatSpellOption) {
+    setSelectedSpell(spell)
+    move("spell-detail")
+  }
+
+  async function triggerRoll(check: ChatCheckOption) {
+    setSelectedCheck(check)
     setBusy(true)
-    setError("")
-
-    const { error: rollError } = await supabase.rpc("roll_chat_dice", {
-      p_room_id: roomId,
-      p_sides: dieSides,
-      p_count: dieCount,
-      p_modifier: modifier,
-    })
-
-    setBusy(false)
-
-    if (rollError) {
-      setError(rollError.message)
+    if (onRollRequested) {
+      await onRollRequested(check)
+      setBusy(false)
+      onClose()
       return
     }
 
-    onClose()
+    const die = rollD20()
+    setRollResult({ die, total: die + check.modifier })
+    setBusy(false)
+    move("roll-result")
   }
 
-  async function cast(spell: CharacterSpell) {
+  async function triggerSpell() {
+    if (!selectedSpell || !selectedSlot) return
     setBusy(true)
-    setError("")
-
-    const { error: castError } = await supabase.rpc("cast_prepared_spell", {
-      p_room_id: roomId,
-      p_spell_id: spell.id,
-    })
-
-    setBusy(false)
-
-    if (castError) {
-      setError(castError.message)
+    if (onSpellRequested) {
+      await onSpellRequested(selectedSpell, selectedSlot.level)
+      setBusy(false)
+      onClose()
       return
     }
 
-    onClose()
+    setBusy(false)
+    setDemoNotice("Демо: действие не отправлено в чат и ячейка не потрачена.")
+    move("cast-preview")
   }
 
-  function remainingFor(spell: CharacterSpell) {
-    if (spell.cast_mode === "cantrip") return null
-    const level = spell.slot_level || spell.spell_level
-    const slot = slotState(sheet?.spell_slots, level)
-    return {
-      level,
-      max: slot.max,
-      remaining: Math.max(0, slot.max - slot.used),
-    }
-  }
+  const title = view === "home"
+    ? "Действия"
+    : view === "abilities"
+      ? "Проверка"
+      : view === "checks"
+        ? selectedAbility?.name || "Проверка"
+        : view === "slots"
+          ? "Заклинание"
+          : view === "spells"
+            ? `Ячейка ${selectedSlot?.level ?? "—"}`
+            : view === "spell-detail" || view === "cast-preview"
+              ? selectedSpell?.name || "Заклинание"
+              : selectedCheck?.name || "Результат"
 
   return (
-    <div className="sheet-backdrop" onMouseDown={onClose}>
-      <div
-        className="bottom-sheet chat-action-sheet"
+    <div className="chat-action-backdrop" onMouseDown={onClose}>
+      <section
+        className="chat-action-flow"
         onMouseDown={(event) => event.stopPropagation()}
+        aria-label="Действия в чате"
       >
-        <div className="sheet-handle" />
-        <div className="character-editor-head">
-          <div>
-            <h3 className="sheet-title">Действие</h3>
-            <p className="sheet-copy">
-              Бросок и заклинание сразу публикуются в игровом чате.
-            </p>
-          </div>
-          <button className="sheet-close" type="button" onClick={onClose}>
-            ×
-          </button>
-        </div>
+        <div className="chat-action-flow__handle" />
 
-        <section className="chat-action-block">
-          <div className="chat-action-block__head">
-            <div>
-              <strong>Бросить кубик</strong>
-              <small>Результат считает сервер</small>
-            </div>
-          </div>
-
-          <div className="dice-builder dice-builder--mobile">
-            <label className="dice-select-field">
-              Куб
-              <select
-                className="app-select"
-                value={dieSides}
-                onChange={(event) => setDieSides(Number(event.target.value))}
-              >
-                {dice.map((sides) => (
-                  <option key={sides} value={sides}>
-                    d{sides}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="dice-step-field">
-              <span className="dice-step-field__label">Количество</span>
-              <div className="dice-stepper">
-                <button
-                  type="button"
-                  aria-label="Уменьшить количество кубиков"
-                  onClick={() => setDieCount((value) => Math.max(1, value - 1))}
-                  disabled={dieCount <= 1}
-                >
-                  −
-                </button>
-                <strong>{dieCount}</strong>
-                <button
-                  type="button"
-                  aria-label="Увеличить количество кубиков"
-                  onClick={() => setDieCount((value) => Math.min(20, value + 1))}
-                  disabled={dieCount >= 20}
-                >
-                  +
-                </button>
-              </div>
-              <div className="dice-preset-row">
-                {[1, 2, 3, 4, 5].map((value) => (
-                  <button
-                    type="button"
-                    key={value}
-                    className={dieCount === value ? "dice-preset dice-preset--active" : "dice-preset"}
-                    onClick={() => setDieCount(value)}
-                  >
-                    {value}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="dice-step-field">
-              <span className="dice-step-field__label">Модификатор</span>
-              <div className="dice-stepper">
-                <button
-                  type="button"
-                  aria-label="Уменьшить модификатор"
-                  onClick={() => setModifier((value) => Math.max(-100, value - 1))}
-                  disabled={modifier <= -100}
-                >
-                  −
-                </button>
-                <strong>{modifier > 0 ? `+${modifier}` : modifier}</strong>
-                <button
-                  type="button"
-                  aria-label="Увеличить модификатор"
-                  onClick={() => setModifier((value) => Math.min(100, value + 1))}
-                  disabled={modifier >= 100}
-                >
-                  +
-                </button>
-              </div>
-              <div className="dice-preset-row dice-preset-row--modifier">
-                {[-5, -2, -1, 0, 1, 2, 5].map((value) => (
-                  <button
-                    type="button"
-                    key={value}
-                    className={modifier === value ? "dice-preset dice-preset--active" : "dice-preset"}
-                    onClick={() => setModifier(value)}
-                  >
-                    {value > 0 ? `+${value}` : value}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
+        <header className="chat-action-flow__header">
           <button
-            className="chat-action-primary"
+            className="chat-action-flow__back"
             type="button"
-            disabled={busy}
-            onClick={() => void roll()}
+            onClick={goBack}
+            aria-label={view === "home" ? "Закрыть" : "Назад"}
           >
-            🎲 Бросить {dieCount}d{dieSides}
-            {modifier > 0 ? ` +${modifier}` : modifier < 0 ? ` ${modifier}` : ""}
+            {view === "home" ? "×" : "‹"}
           </button>
-        </section>
-
-        <section className="chat-action-block">
-          <div className="chat-action-block__head">
-            <div>
-              <strong>Подготовленные заклинания</strong>
-              <small>В чате показываются только зелёные / подготовленные</small>
-            </div>
+          <div>
+            <strong>{title}</strong>
+            <small>
+              {characterName
+                ? `${characterName}${characterId ? " · данные пока демонстрационные" : ""}`
+                : "Демонстрационный режим"}
+            </small>
           </div>
+          <span className="chat-action-flow__header-spacer" />
+        </header>
 
-          {configuredSlots.length > 0 && (
-            <div className="chat-slot-strip">
-              {configuredSlots.map((slot) => (
-                <span key={slot.level}>
-                  <small>{slot.level} ур.</small>
-                  <strong>{Math.max(0, slot.max - slot.used)}/{slot.max}</strong>
-                </span>
-              ))}
-            </div>
-          )}
-
-          {!characterId && (
-            <div className="chat-action-empty">
-              Для заклинаний нужен активный персонаж. Кубики ГМ может бросать и без него.
-            </div>
-          )}
-
-          {characterId && loadingSpells && (
-            <div className="chat-action-empty">Загружаем заклинания…</div>
-          )}
-
-          {characterId && !loadingSpells && spells.length === 0 && (
-            <div className="chat-action-empty">
-              Нет подготовленных заклинаний. Открой персонажа → Заклинания и отметь нужные как «Подготовлено».
-            </div>
-          )}
-
-          <div className="prepared-spell-list">
-            {spells.map((spell) => {
-              const resource = remainingFor(spell)
-              const unavailable =
-                Boolean(resource) &&
-                (resource!.max <= 0 || resource!.remaining <= 0)
-
-              return (
-                <button
-                  className="prepared-spell-action"
-                  type="button"
-                  key={spell.id}
-                  disabled={busy || unavailable}
-                  onClick={() => void cast(spell)}
-                >
-                  <span className="prepared-spell-action__rune">
-                    {spell.cast_mode === "cantrip"
-                      ? "∞"
-                      : spell.slot_level || spell.spell_level}
+        <div className="chat-action-flow__viewport">
+          <div className="chat-action-flow__screen" key={view}>
+            {view === "home" && (
+              <div className="chat-action-home">
+                <button className="chat-action-choice" type="button" onClick={() => move("abilities")}>
+                  <span className="chat-action-choice__icon">◈</span>
+                  <span>
+                    <strong>Бросок кубика</strong>
+                    <small>Характеристика, навык или спасбросок</small>
                   </span>
-                  <span className="prepared-spell-action__copy">
-                    <strong>{spell.name}</strong>
-                    <small>
-                      {spell.cast_mode === "cantrip"
-                        ? "Кантрип · ячейка не тратится"
-                        : resource
-                          ? `Ячейка ${resource.level} ур. · осталось ${resource.remaining}/${resource.max}`
-                          : "Ячейка"}
-                    </small>
-                  </span>
-                  <span className="prepared-spell-action__go">›</span>
+                  <em>›</em>
                 </button>
-              )
-            })}
-          </div>
-        </section>
 
-        {error && <div className="auth-error">{error}</div>}
-      </div>
+                <button className="chat-action-choice" type="button" onClick={() => move("slots")}>
+                  <span className="chat-action-choice__icon">✦</span>
+                  <span>
+                    <strong>Заклинание</strong>
+                    <small>Выбор ячейки и доступного заклинания</small>
+                  </span>
+                  <em>›</em>
+                </button>
+              </div>
+            )}
+
+            {view === "abilities" && (
+              <div className="chat-ability-grid">
+                {data.abilities.map((ability) => (
+                  <button
+                    className="chat-ability-tile"
+                    type="button"
+                    key={ability.id}
+                    onClick={() => selectAbility(ability)}
+                  >
+                    <span>{ability.short}</span>
+                    <strong>{signedModifier(ability.modifier)}</strong>
+                    <small>{ability.name}</small>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {view === "checks" && (
+              <div className="chat-check-list">
+                {regularChecks.map((check) => (
+                  <button
+                    className="chat-check-row"
+                    type="button"
+                    key={check.id}
+                    disabled={busy}
+                    onClick={() => void triggerRoll(check)}
+                  >
+                    <span className={`chat-check-row__dot ${check.proficient ? "chat-check-row__dot--active" : ""}`} />
+                    <span className="chat-check-row__copy">
+                      <strong>{check.name}</strong>
+                      <small>{check.kind === "ability" ? "Проверка характеристики" : check.proficient ? "Есть владение" : "Без владения"}</small>
+                    </span>
+                    <span className="chat-check-row__modifier">{signedModifier(check.modifier)}</span>
+                  </button>
+                ))}
+
+                {saves.length > 0 && (
+                  <div className="chat-check-save-group">
+                    <span>Спасбросок</span>
+                    {saves.map((check) => (
+                      <button
+                        className="chat-check-row chat-check-row--save"
+                        type="button"
+                        key={check.id}
+                        disabled={busy}
+                        onClick={() => void triggerRoll(check)}
+                      >
+                        <span className={`chat-check-row__dot ${check.proficient ? "chat-check-row__dot--active" : ""}`} />
+                        <span className="chat-check-row__copy">
+                          <strong>{check.name}</strong>
+                          <small>{check.proficient ? "Есть владение" : "Без владения"}</small>
+                        </span>
+                        <span className="chat-check-row__modifier">{signedModifier(check.modifier)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {view === "roll-result" && selectedCheck && rollResult && (
+              <div className="chat-roll-preview">
+                <div className="chat-roll-preview__card">
+                  <span className="chat-roll-preview__icon">◈</span>
+                  <div>
+                    <small>{characterName || "Персонаж"}</small>
+                    <strong>{selectedCheck.name}</strong>
+                    <span>d20: {rollResult.die} {selectedCheck.modifier >= 0 ? "+" : "−"} {Math.abs(selectedCheck.modifier)}</span>
+                  </div>
+                  <b>{rollResult.total}</b>
+                </div>
+                <p>Демо-результат. Позже сервер возьмёт модификатор из листа и сам создаст такое сообщение в чате.</p>
+                <button type="button" className="chat-action-secondary" onClick={() => move("checks")}>Бросить другую проверку</button>
+              </div>
+            )}
+
+            {view === "slots" && (
+              <div className="chat-slot-picker">
+                <div className="chat-slot-picker__note">
+                  <strong>Выбери ячейку</strong>
+                  <small>Позже остаток будет загружаться прямо из ресурсов персонажа.</small>
+                </div>
+                <div className="chat-slot-picker__strip">
+                  {data.slots.map((slot) => (
+                    <button
+                      className={`chat-slot-chip ${slot.remaining <= 0 ? "chat-slot-chip--empty" : ""}`}
+                      type="button"
+                      key={slot.level}
+                      disabled={slot.remaining <= 0}
+                      onClick={() => selectSlot(slot)}
+                    >
+                      <span>{slot.level}</span>
+                      <strong>{slot.remaining}/{slot.max}</strong>
+                      <small>ячейка</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {view === "spells" && selectedSlot && (
+              <div className="chat-spell-list">
+                <div className="chat-spell-list__head">
+                  <span>{availableSpells.length} доступно</span>
+                  <small>ячейка {selectedSlot.level} уровня</small>
+                </div>
+                {availableSpells.map((spell) => {
+                  const upcast = spell.baseLevel < selectedSlot.level
+                  return (
+                    <button
+                      className="chat-spell-row"
+                      type="button"
+                      key={spell.id}
+                      onClick={() => selectSpell(spell)}
+                    >
+                      <span className="chat-spell-row__level">{spell.baseLevel}</span>
+                      <span className="chat-spell-row__copy">
+                        <strong>{spell.name}</strong>
+                        <small>{upcast ? `${spell.baseLevel} → ${selectedSlot.level} · ${spell.school}` : `${spell.baseLevel} ур. · ${spell.school}`}</small>
+                        <em>{spell.damageOrEffect}</em>
+                      </span>
+                      <span className="chat-spell-row__go">›</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {view === "spell-detail" && selectedSpell && selectedSlot && (
+              <div className="chat-spell-confirm">
+                <div className="chat-spell-confirm__hero">
+                  <span>✦</span>
+                  <div>
+                    <small>{selectedSpell.school}</small>
+                    <strong>{selectedSpell.name}</strong>
+                    <em>Ячейка {selectedSlot.level}</em>
+                  </div>
+                </div>
+                <div className="chat-spell-confirm__facts">
+                  <span><small>Эффект</small><strong>{selectedSpell.damageOrEffect}</strong></span>
+                  <span><small>Проверка</small><strong>{selectedSpell.check}</strong></span>
+                </div>
+                <p>{selectedSpell.description}</p>
+                {onOpenSpellReference && (
+                  <button className="chat-reference-link" type="button" onClick={() => onOpenSpellReference(selectedSpell.id)}>
+                    Открыть полное описание ›
+                  </button>
+                )}
+                <button className="chat-cast-button" type="button" disabled={busy} onClick={() => void triggerSpell()}>
+                  Произнести · ячейка {selectedSlot.level}
+                </button>
+              </div>
+            )}
+
+            {view === "cast-preview" && selectedSpell && selectedSlot && (
+              <div className="chat-cast-preview">
+                <div className="chat-cast-message">
+                  <span className="chat-cast-message__rune">✦</span>
+                  <div className="chat-cast-message__copy">
+                    <small>{characterName || "Персонаж"} · ячейка {selectedSlot.level}</small>
+                    <strong>{selectedSpell.name}</strong>
+                    <span>{selectedSpell.damageOrEffect} · {selectedSpell.check}</span>
+                    <em>Открыть описание ›</em>
+                  </div>
+                </div>
+                <p>{demoNotice}</p>
+                <button type="button" className="chat-action-secondary" onClick={() => move("slots")}>Выбрать другое заклинание</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   )
 }
