@@ -33,6 +33,9 @@ export const SKILL_KEYS = [
 export type SkillKey = (typeof SKILL_KEYS)[number]
 export type ProficiencyRank = 0 | 1 | 2
 
+export const PASSIVE_KEYS = ["perception", "investigation", "insight"] as const
+export type PassiveKey = (typeof PASSIVE_KEYS)[number]
+
 /**
  * Raw character facts. This is input truth, not a place for values that the
  * engine can derive from other facts.
@@ -81,9 +84,18 @@ export type CharacterCondition =
   | { kind: "always" }
   | { kind: "hp_below_percent"; percent: number }
 
+/**
+ * Universal numeric destinations understood by Numeric Engine.
+ * Derived values such as a skill bonus or initiative are first calculated from
+ * their dependencies and then receive contributions targeted at that value.
+ */
 export type NumericTarget =
   | `abilities.${AbilityKey}`
   | "core.proficiencyBonus"
+  | `skills.${SkillKey}.bonus`
+  | `savingThrows.${AbilityKey}.bonus`
+  | `passives.${PassiveKey}`
+  | "combat.initiative"
   | "combat.maxHp"
   | "combat.speed"
 
@@ -141,6 +153,11 @@ export interface ResolvedSourceRef {
   source: CharacterSource
 }
 
+/**
+ * A final number plus the value it had before direct contributions to this
+ * target were applied. Deep dependency provenance is added in a later engine
+ * step; direct source provenance is already retained here.
+ */
 export interface ResolvedNumber {
   value: number
   baseValue: number
@@ -155,13 +172,13 @@ export interface ResolvedSkill {
   key: SkillKey
   ability: AbilityKey
   proficiencyRank: ProficiencyRank
-  bonus: number
+  bonus: ResolvedNumber
 }
 
 export interface ResolvedSavingThrow {
   ability: AbilityKey
   proficiencyRank: ProficiencyRank
-  bonus: number
+  bonus: ResolvedNumber
 }
 
 export interface ResolvedGrant<TPayload = unknown> {
@@ -189,13 +206,9 @@ export interface ResolvedCharacter {
     currentHp: number
     tempHp: number
     speed: ResolvedNumber
-    initiative: number
+    initiative: ResolvedNumber
   }
-  passives: {
-    perception: number
-    investigation: number
-    insight: number
-  }
+  passives: Record<PassiveKey, ResolvedNumber>
   spellcasting: {
     byAbility: Record<AbilityKey, { saveDc: number; attackBonus: number }>
   }
