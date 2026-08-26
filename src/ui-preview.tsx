@@ -142,8 +142,6 @@ const extras: CharacterContribution[] = [
     payload: {
       label: "Сияющий удар с очень длинным названием",
       economy: "bonus_action",
-      attack: { bonus: { kind: "add", terms: [{ kind: "reference", key: "abilities.wisdom.modifier" }, { kind: "reference", key: "core.proficiencyBonus" }] } },
-      damage: [{ key: "radiant", type: "radiant", dice: { count: 2, sides: 8 }, modifier: { kind: "constant", value: 0 } }],
     },
     source: { id: "preview-relic", name: "Реликвия рассвета" },
   },
