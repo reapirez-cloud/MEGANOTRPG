@@ -122,6 +122,8 @@ export type NumericTarget =
   | "combat.maxHp"
   | "combat.speed"
   | `resources.${string}.max`
+  | `actions.${string}.attackBonus`
+  | `actions.${string}.damage.${string}.modifier`
 
 export type NumericOperation = "ADD" | "SUBTRACT" | "SET" | "MIN" | "MAX" | "MULTIPLY"
 
@@ -188,6 +190,58 @@ export interface ResourceGrantPayload {
   label?: string
 }
 
+export type ActionRange =
+  | { kind: "self" }
+  | { kind: "touch" }
+  | { kind: "melee"; reach: number; unit: string }
+  | { kind: "ranged"; normal: number; long?: number; unit: string }
+  | { kind: "area"; shape: string; size: number; unit: string }
+  | { kind: "custom"; label: string }
+
+export interface ActionAttackDefinition {
+  /** Resolves the modifier added to the attack roll. */
+  bonus: FormulaExpression
+  /** Free semantic target such as armor_class; engine does not branch on it. */
+  target?: string
+  /** Optional d20 critical threshold; defaults are renderer/ruleset concerns. */
+  criticalThreshold?: number
+}
+
+export interface ActionDice {
+  count: number
+  sides: number
+}
+
+export interface ActionDamageDefinition {
+  /** Stable identity so external modifiers can target one damage component. */
+  key: string
+  type: string
+  dice?: ActionDice
+  /** Optional deterministic modifier added to the dice result. */
+  modifier?: FormulaExpression
+}
+
+export interface ActionResourceCost {
+  key: string
+  variantKey?: string
+  amount: number
+}
+
+/**
+ * Generic action definition. Weapons, class abilities and custom attacks all use
+ * this same structure; sourceType never selects behavior.
+ */
+export interface ActionGrantPayload {
+  label?: string
+  /** Semantic action economy value, e.g. action, bonus_action, reaction, custom. */
+  economy: string
+  range?: ActionRange
+  attack?: ActionAttackDefinition
+  damage?: ActionDamageDefinition[]
+  resourceCosts?: ActionResourceCost[]
+  tags?: string[]
+}
+
 /** JSON-compatible mechanical data attached to a grant. */
 export type GrantPayload =
   | string
@@ -196,6 +250,7 @@ export type GrantPayload =
   | null
   | FormulaExpression
   | ResourceGrantPayload
+  | ActionGrantPayload
   | GrantPayload[]
   | { [key: string]: GrantPayload }
 
@@ -211,6 +266,7 @@ export type GrantTarget =
   | "feature"
   | "trait"
   | "resource"
+  | "action"
   | "spell"
 
 export interface GrantContribution<TPayload extends GrantPayload = GrantPayload> {
@@ -322,6 +378,47 @@ export interface ResolvedResource {
   sources: ResolvedSourceRef[]
 }
 
+export interface ResolvedActionAttack {
+  formula: FormulaExpression
+  bonus: ResolvedNumber
+  target?: string
+  criticalThreshold?: number
+}
+
+export interface ResolvedActionDamage {
+  key: string
+  type: string
+  dice?: ActionDice
+  modifier: ResolvedNumber
+  modifierFormula?: FormulaExpression
+}
+
+export interface ResolvedActionResourceCost {
+  key: string
+  variantKey: string
+  stateKey: string
+  amount: number
+  current: number
+  max: number
+  available: boolean
+}
+
+export interface ResolvedAction {
+  key: string
+  variantKey: string
+  stateKey: string
+  label?: string
+  economy: string
+  range?: ActionRange
+  attack?: ResolvedActionAttack
+  damage: ResolvedActionDamage[]
+  resourceCosts: ResolvedActionResourceCost[]
+  tags: string[]
+  /** False only when a required resolved resource is missing/insufficient. */
+  available: boolean
+  sources: ResolvedSourceRef[]
+}
+
 export interface ResolvedCharacter {
   id: string
   name: string
@@ -344,5 +441,7 @@ export interface ResolvedCharacter {
   }
   /** Dynamic section: empty array means UI should render no resource block. */
   resources: ResolvedResource[]
+  /** Dynamic section: empty array means UI should render no actions/attacks block. */
+  actions: ResolvedAction[]
   grants: ResolvedGrant[]
 }
