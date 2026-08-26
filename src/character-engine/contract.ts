@@ -1,4 +1,5 @@
 import { resolveCharacterInput } from "./resolver.ts"
+import { CHARACTER_ENGINE_VERSION } from "./version.ts"
 import type {
   CharacterEngineInput,
   GrantTarget,
@@ -49,6 +50,8 @@ export interface ResolvedCapabilities {
  * re-filtering raw grants themselves.
  */
 export interface ResolvedCharacterContract extends ResolvedCharacter {
+  /** Semver of the standalone mechanics engine that produced this result. */
+  engineVersion: typeof CHARACTER_ENGINE_VERSION
   contractVersion: typeof RESOLVED_CHARACTER_CONTRACT_VERSION
   capabilities: ResolvedCapabilities
 }
@@ -74,10 +77,7 @@ const SECTION_TO_TARGET: Record<ResolvedCapabilitySectionKey, GrantTarget> = {
 }
 
 function compareGrant(left: ResolvedGrant, right: ResolvedGrant): number {
-  return (
-    left.key.localeCompare(right.key) ||
-    left.variantKey.localeCompare(right.variantKey)
-  )
+  return left.key.localeCompare(right.key) || left.variantKey.localeCompare(right.variantKey)
 }
 
 export function resolveCapabilities(grants: ResolvedGrant[]): ResolvedCapabilities {
@@ -133,6 +133,11 @@ export class ResolvedCharacterContractError extends Error {
  * This is intentionally a contract validator, not a second resolver.
  */
 export function validateResolvedCharacterContract(contract: ResolvedCharacterContract): void {
+  if (contract.engineVersion !== CHARACTER_ENGINE_VERSION) {
+    throw new ResolvedCharacterContractError(
+      `unsupported character engine version: ${String(contract.engineVersion)}`,
+    )
+  }
   if (contract.contractVersion !== RESOLVED_CHARACTER_CONTRACT_VERSION) {
     throw new ResolvedCharacterContractError(
       `unsupported resolved character contract version: ${String(contract.contractVersion)}`,
@@ -184,13 +189,12 @@ export function validateResolvedCharacterContract(contract: ResolvedCharacterCon
   }
 }
 
-/**
- * Resolves and validates the canonical output consumed by future adapters/UI.
- */
+/** Resolves and validates the canonical output consumed by future adapters/UI. */
 export function resolveCharacterContract(input: CharacterEngineInput): ResolvedCharacterContract {
   const resolved = resolveCharacterInput(input)
   const contract: ResolvedCharacterContract = {
     ...resolved,
+    engineVersion: CHARACTER_ENGINE_VERSION,
     contractVersion: RESOLVED_CHARACTER_CONTRACT_VERSION,
     capabilities: resolveCapabilities(resolved.grants),
   }
