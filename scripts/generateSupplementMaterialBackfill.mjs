@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises"
 
+// Generates the durable DB backfill from the canonical supplement metadata package.
 const INPUT = "supabase/data/official_supplement_spells.json"
 const OUTPUT = "supabase/migrations/20260826124000_backfill_supplement_spell_materials.sql"
 
