@@ -4,6 +4,7 @@ import "./auth.css"
 import "./character-system.css"
 import "./character-sheet.css"
 import "./character-equipment.css"
+import "./character-engine-sheet.css"
 import "./world.css"
 import "./chat-v11.css"
 import "./social.css"
@@ -25,7 +26,7 @@ import {
 } from "./lib/appRoute"
 
 import Art from "./pages/Art"
-import CharacterProfile from "./pages/CharacterProfile"
+import CharacterProfileV2 from "./pages/CharacterProfileV2"
 import Characters from "./pages/Characters"
 import ChatRoom from "./pages/ChatRoom"
 import Chats from "./pages/Chats"
@@ -122,7 +123,7 @@ function Workspace() {
   if (route.type === "character") {
     return (
       <div className="app-shell">
-        <CharacterProfile characterId={route.id} onBack={goBack} />
+        <CharacterProfileV2 characterId={route.id} onBack={goBack} />
       </div>
     )
   }
@@ -195,7 +196,7 @@ function Workspace() {
         )}
         {route.tab === "me" &&
           (activeCharacter && (isOwner || !isGm) ? (
-            <CharacterProfile
+            <CharacterProfileV2
               key={`${activeCharacter.id}:${characterRefreshKey}`}
               characterId={activeCharacter.id}
               onBack={() => navigate("#/feed")}
