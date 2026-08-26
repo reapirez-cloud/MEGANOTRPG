@@ -95,6 +95,17 @@ export type CharacterCondition =
   | { kind: "any"; conditions: CharacterCondition[] }
   | { kind: "not"; condition: CharacterCondition }
 
+/**
+ * Pre-resolution suppression cannot depend on derived values, otherwise it can
+ * create cycles (for example by suppressing the source that changes Max HP).
+ */
+export type SuppressionCondition =
+  | { kind: "always" }
+  | StateCondition
+  | { kind: "all"; conditions: SuppressionCondition[] }
+  | { kind: "any"; conditions: SuppressionCondition[] }
+  | { kind: "not"; condition: SuppressionCondition }
+
 export type NumericTarget =
   | `abilities.${AbilityKey}`
   | "core.proficiencyBonus"
@@ -119,11 +130,6 @@ export interface NumericContribution {
   priority?: number
 }
 
-/**
- * Generic formula AST. Reference keys are data, not hard-coded domain concepts.
- * A consumer supplies a finite-number context such as
- * "abilities.dexterity.modifier" -> 2.
- */
 export type FormulaExpression =
   | { kind: "literal"; value: number }
   | { kind: "reference"; key: string }
@@ -173,7 +179,7 @@ export type GrantTarget =
 export interface GrantContribution<TPayload extends GrantPayload = GrantPayload> {
   id: string
   kind: "grant"
-  operation: "GRANT" | "SUPPRESS"
+  operation: "GRANT" | "SUPPRESS" | "REPLACE"
   target: GrantTarget
   /** Stable identity inside a target, e.g. fire, common, skill:medicine. */
   key: string
@@ -185,7 +191,37 @@ export interface GrantContribution<TPayload extends GrantPayload = GrantPayload>
   priority?: number
 }
 
-export type CharacterContribution = NumericContribution | FormulaContribution | GrantContribution
+export type SuppressionSelector =
+  | {
+      kind: "source"
+      sourceId: string
+      /** Defaults to true so suppressing an item also suppresses child feature sources. */
+      includeDescendants?: boolean
+    }
+  | {
+      kind: "contribution"
+      contributionId: string
+    }
+
+/**
+ * Universal pre-resolution suppression. These controls are authoritative input
+ * filters and are not themselves suppressible, avoiding recursive control loops.
+ */
+export interface SuppressionContribution {
+  id: string
+  kind: "suppression"
+  operation: "SUPPRESS"
+  selector: SuppressionSelector
+  source: CharacterSource
+  condition?: SuppressionCondition
+  priority?: number
+}
+
+export type CharacterContribution =
+  | NumericContribution
+  | FormulaContribution
+  | GrantContribution
+  | SuppressionContribution
 
 export interface CharacterEngineInput {
   base: BaseCharacter
