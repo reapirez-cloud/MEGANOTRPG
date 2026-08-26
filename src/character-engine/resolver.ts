@@ -18,7 +18,7 @@ import {
   type ResolvedSavingThrow,
   type ResolvedSkill,
   type SkillKey,
-} from "./types"
+} from "./types.ts"
 
 const SKILL_ABILITIES: Record<SkillKey, AbilityKey> = {
   acrobatics: "dexterity",
