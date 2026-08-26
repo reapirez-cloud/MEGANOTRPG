@@ -31,14 +31,6 @@ const base: BaseCharacter = {
 
 const source = (id: string, name: string) => ({ id, name })
 
-function resourceGrant(
-  id: string,
-  key: string,
-  payload: CharacterContribution & never,
-): never {
-  return { id, key, payload } as never
-}
-
 const channelDivinity: CharacterContribution = {
   id: "channel-divinity-resource",
   kind: "grant",
