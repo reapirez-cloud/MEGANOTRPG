@@ -81,7 +81,7 @@ export default function Characters({ onOpenCharacter }: Props) {
     setAvatarUrl("")
     setCharacterType("pc")
     setVisibility("campaign")
-    setAssignedUserId(canManage ? "" : user.id)
+    setAssignedUserId("")
     setTelegramIdInput("")
     setFormError("")
   }
@@ -93,6 +93,7 @@ export default function Characters({ onOpenCharacter }: Props) {
   }
 
   function openEdit(character: Character) {
+    if (!canManage) return
     const assignedMember = character.assigned_user_id
       ? members.find((member) => member.user_id === character.assigned_user_id)
       : null
@@ -124,6 +125,10 @@ export default function Characters({ onOpenCharacter }: Props) {
 
   async function submitCharacter(event: FormEvent) {
     event.preventDefault()
+    if (!canManage) {
+      setFormError("Редактор персонажа доступен только ГМ и владельцу.")
+      return
+    }
     if (editor?.type !== "create" && editor?.type !== "edit") return
 
     const parsedLevel = Number.parseInt(level, 10)
@@ -138,12 +143,10 @@ export default function Characters({ onOpenCharacter }: Props) {
       return
     }
 
-    let resolvedUserId: string | null = canManage
-      ? assignedUserId || null
-      : user.id
+    let resolvedUserId: string | null = assignedUserId || null
     const requestedTelegramId = telegramIdInput.trim()
 
-    if (canManage && characterType === "pc" && requestedTelegramId) {
+    if (characterType === "pc" && requestedTelegramId) {
       const matchedMember = members.find(
         (member) => member.telegram_user_id === requestedTelegramId,
       )
@@ -168,8 +171,8 @@ export default function Characters({ onOpenCharacter }: Props) {
       bio,
       avatar_url: avatarUrl || null,
       assigned_user_id: characterType === "npc" ? null : resolvedUserId,
-      character_type: canManage ? characterType : "pc" as const,
-      visibility: canManage ? visibility : "campaign" as const,
+      character_type: characterType,
+      visibility,
     }
 
     const result =
@@ -251,7 +254,6 @@ export default function Characters({ onOpenCharacter }: Props) {
       : null
     const isActive = member?.active_character_id === character.id
     const isOwn = character.assigned_user_id === user.id
-    const canEdit = canManage || isOwn
 
     return [
       {
@@ -261,13 +263,11 @@ export default function Characters({ onOpenCharacter }: Props) {
         icon: "↗",
         onSelect: () => onOpenCharacter(character.id),
       },
-      ...(canEdit
+      ...(canManage
         ? [{
             id: "edit",
             label: "Редактировать",
-            detail: canManage
-              ? "Профиль, назначение, тип и видимость"
-              : "Имя, описание и аватар своего персонажа",
+            detail: "Профиль, назначение, тип и видимость",
             icon: "✎",
             onSelect: () => openEdit(character),
           }]
@@ -601,7 +601,7 @@ export default function Characters({ onOpenCharacter }: Props) {
         {formError && !editor && <div className="auth-error">{formError}</div>}
       </div>
 
-      {(editor?.type === "create" || editor?.type === "edit") && (
+      {(editor?.type === "create" || editor?.type === "edit") && canManage && (
         <div className="sheet-backdrop" onMouseDown={() => setEditor(null)}>
           <form
             className="bottom-sheet character-editor-sheet"
@@ -615,9 +615,7 @@ export default function Characters({ onOpenCharacter }: Props) {
                   {editor.type === "create" ? "Новый персонаж" : "Редактировать персонажа"}
                 </h3>
                 <p className="sheet-copy">
-                  {canManage
-                    ? "Игровой персонаж привязывается к игроку, NPC остаётся частью мира."
-                    : "Ты редактируешь свою страницу. Уровень, инвентарь и ресурсы выдаёт ГМ."}
+                  Игровой персонаж привязывается к игроку, NPC остаётся частью мира.
                 </p>
               </div>
               <button className="sheet-close" type="button" onClick={() => setEditor(null)}>
@@ -638,38 +636,36 @@ export default function Characters({ onOpenCharacter }: Props) {
               autoFocus
             />
 
-            {canManage && (
-              <div className="character-editor-grid">
-                <div>
-                  <label className="field-label" htmlFor="character-type">Тип</label>
-                  <select
-                    id="character-type"
-                    className="app-select"
-                    value={characterType}
-                    onChange={(event) => {
-                      const next = event.target.value === "npc" ? "npc" : "pc"
-                      setCharacterType(next)
-                      if (next === "npc") setAssignedUserId("")
-                    }}
-                  >
-                    <option value="pc">Персонаж игрока</option>
-                    <option value="npc">NPC</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="character-visibility">Видимость</label>
-                  <select
-                    id="character-visibility"
-                    className="app-select"
-                    value={visibility}
-                    onChange={(event) => setVisibility(event.target.value === "private" ? "private" : "campaign")}
-                  >
-                    <option value="campaign">Видят игроки</option>
-                    <option value="private">Только я</option>
-                  </select>
-                </div>
+            <div className="character-editor-grid">
+              <div>
+                <label className="field-label" htmlFor="character-type">Тип</label>
+                <select
+                  id="character-type"
+                  className="app-select"
+                  value={characterType}
+                  onChange={(event) => {
+                    const next = event.target.value === "npc" ? "npc" : "pc"
+                    setCharacterType(next)
+                    if (next === "npc") setAssignedUserId("")
+                  }}
+                >
+                  <option value="pc">Персонаж игрока</option>
+                  <option value="npc">NPC</option>
+                </select>
               </div>
-            )}
+              <div>
+                <label className="field-label" htmlFor="character-visibility">Видимость</label>
+                <select
+                  id="character-visibility"
+                  className="app-select"
+                  value={visibility}
+                  onChange={(event) => setVisibility(event.target.value === "private" ? "private" : "campaign")}
+                >
+                  <option value="campaign">Видят игроки</option>
+                  <option value="private">Только я</option>
+                </select>
+              </div>
+            </div>
 
             <div className="character-editor-grid">
               <div>
@@ -692,59 +688,58 @@ export default function Characters({ onOpenCharacter }: Props) {
                   max="30"
                   value={level}
                   onChange={(event) => setLevel(event.target.value)}
-                  disabled={!canManage}
                 />
               </div>
             </div>
 
-            {canManage && characterType === "pc" && (
-            <div className="telegram-assignment-box">
-              <label className="field-label" htmlFor="character-telegram-id">
-                Telegram ID игрока
-              </label>
-              <input
-                id="character-telegram-id"
-                className="app-input"
-                value={telegramIdInput}
-                onChange={(event) => {
-                  setTelegramIdInput(event.target.value.replace(/\D/g, ""))
-                  setAssignedUserId("")
-                }}
-                inputMode="numeric"
-                placeholder="Например: 465441613"
-              />
+            {characterType === "pc" && (
+              <div className="telegram-assignment-box">
+                <label className="field-label" htmlFor="character-telegram-id">
+                  Telegram ID игрока
+                </label>
+                <input
+                  id="character-telegram-id"
+                  className="app-input"
+                  value={telegramIdInput}
+                  onChange={(event) => {
+                    setTelegramIdInput(event.target.value.replace(/\D/g, ""))
+                    setAssignedUserId("")
+                  }}
+                  inputMode="numeric"
+                  placeholder="Например: 465441613"
+                />
 
-              {telegramIdInput && (
-                <div className={`telegram-id-match ${telegramMatch ? "telegram-id-match--ok" : "telegram-id-match--missing"}`}>
-                  {telegramMatch
-                    ? `Найден: ${telegramMatch.display_name}${telegramMatch.telegram_username ? ` (@${telegramMatch.telegram_username})` : ""}`
-                    : "Такого Telegram ID среди вошедших участников пока нет"}
-                </div>
-              )}
+                {telegramIdInput && (
+                  <div className={`telegram-id-match ${telegramMatch ? "telegram-id-match--ok" : "telegram-id-match--missing"}`}>
+                    {telegramMatch
+                      ? `Найден: ${telegramMatch.display_name}${telegramMatch.telegram_username ? ` (@${telegramMatch.telegram_username})` : ""}`
+                      : "Такого Telegram ID среди вошедших участников пока нет"}
+                  </div>
+                )}
 
-              <label className="field-label" htmlFor="character-player">
-                Или выбрать вошедшего игрока
-              </label>
-              <select
-                id="character-player"
-                className="app-select"
-                value={assignedUserId}
-                onChange={(event) => selectMember(event.target.value)}
-              >
-                <option value="">Не привязывать</option>
-                {telegramMembers.map((member) => (
-                  <option value={member.user_id} key={member.user_id}>
-                    {member.display_name}
-                    {member.telegram_username ? ` · @${member.telegram_username}` : ""}
-                    {` · TG ${member.telegram_user_id}`}
-                  </option>
-                ))}
-              </select>
+                <label className="field-label" htmlFor="character-player">
+                  Или выбрать вошедшего игрока
+                </label>
+                <select
+                  id="character-player"
+                  className="app-select"
+                  value={assignedUserId}
+                  onChange={(event) => selectMember(event.target.value)}
+                >
+                  <option value="">Не привязывать</option>
+                  {telegramMembers.map((member) => (
+                    <option value={member.user_id} key={member.user_id}>
+                      {member.display_name}
+                      {member.telegram_username ? ` · @${member.telegram_username}` : ""}
+                      {` · TG ${member.telegram_user_id}`}
+                    </option>
+                  ))}
+                </select>
 
-              <p className="telegram-assignment-help">
-                Если игрока нет в списке, он должен один раз открыть приложение через Telegram-бота.
-              </p>
-            </div>
+                <p className="telegram-assignment-help">
+                  Если игрока нет в списке, он должен один раз открыть приложение через Telegram-бота.
+                </p>
+              </div>
             )}
 
             <ImageUploadField
