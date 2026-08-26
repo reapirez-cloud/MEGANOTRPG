@@ -3,6 +3,7 @@ import {
   ABILITY_KEYS,
   type CharacterCondition,
   type CharacterEngineInput,
+  type GrantPayload,
   type StateFactValue,
 } from "./types.ts"
 
@@ -25,9 +26,26 @@ function validateFactValue(value: StateFactValue, field: string) {
   if (typeof value === "number") requireFinite(value, field)
 }
 
+function validateGrantPayload(value: GrantPayload, field: string): void {
+  if (typeof value === "number") {
+    requireFinite(value, field)
+    return
+  }
+  if (value === null || typeof value === "string" || typeof value === "boolean") return
+  if (Array.isArray(value)) {
+    value.forEach((child, index) => validateGrantPayload(child, `${field}[${index}]`))
+    return
+  }
+  for (const [key, child] of Object.entries(value)) {
+    requireNonEmpty(key, `${field} key`)
+    validateGrantPayload(child, `${field}.${key}`)
+  }
+}
+
 function validateCondition(condition: CharacterCondition, field: string): void {
   switch (condition.kind) {
-    case "always": return
+    case "always":
+      return
     case "hp_below_percent":
       requireFinite(condition.percent, `${field}.percent`)
       if (condition.percent < 0 || condition.percent > 100) {
@@ -43,7 +61,9 @@ function validateCondition(condition: CharacterCondition, field: string): void {
       if (condition.conditions.length === 0) {
         throw new CharacterEngineInputError(`${field}.conditions must not be empty`)
       }
-      condition.conditions.forEach((child, index) => validateCondition(child, `${field}.conditions[${index}]`))
+      condition.conditions.forEach((child, index) =>
+        validateCondition(child, `${field}.conditions[${index}]`),
+      )
       return
     case "not":
       validateCondition(condition.condition, `${field}.condition`)
@@ -57,7 +77,9 @@ export function validateCharacterEngineInput(input: CharacterEngineInput) {
   if (!Number.isInteger(base.level) || base.level < 1) {
     throw new CharacterEngineInputError("base.level must be an integer >= 1")
   }
-  for (const ability of ABILITY_KEYS) requireFinite(base.abilities[ability], `base.abilities.${ability}`)
+  for (const ability of ABILITY_KEYS) {
+    requireFinite(base.abilities[ability], `base.abilities.${ability}`)
+  }
   requireFinite(base.baseMaxHp, "base.baseMaxHp")
   requireFinite(base.baseSpeed, "base.baseSpeed")
   requireFinite(state.currentHp, "state.currentHp")
@@ -69,7 +91,9 @@ export function validateCharacterEngineInput(input: CharacterEngineInput) {
   for (const [resourceKey, resource] of Object.entries(state.resources ?? {})) {
     requireNonEmpty(resourceKey, "state.resources key")
     requireFinite(resource.current, `state.resources.${resourceKey}.current`)
-    if (resource.max !== undefined) requireFinite(resource.max, `state.resources.${resourceKey}.max`)
+    if (resource.max !== undefined) {
+      requireFinite(resource.max, `state.resources.${resourceKey}.max`)
+    }
   }
   for (const [factKey, factValue] of Object.entries(state.facts ?? {})) {
     requireNonEmpty(factKey, "state.facts key")
@@ -85,8 +109,12 @@ export function validateCharacterEngineInput(input: CharacterEngineInput) {
     contributionIds.add(contribution.id)
     requireNonEmpty(contribution.source.id, `contribution.${contribution.id}.source.id`)
     requireNonEmpty(contribution.source.name, `contribution.${contribution.id}.source.name`)
-    if (contribution.priority !== undefined) requireFinite(contribution.priority, `contribution.${contribution.id}.priority`)
-    if (contribution.condition) validateCondition(contribution.condition, `contribution.${contribution.id}.condition`)
+    if (contribution.priority !== undefined) {
+      requireFinite(contribution.priority, `contribution.${contribution.id}.priority`)
+    }
+    if (contribution.condition) {
+      validateCondition(contribution.condition, `contribution.${contribution.id}.condition`)
+    }
 
     if (contribution.kind === "numeric") {
       requireFinite(contribution.value, `contribution.${contribution.id}.value`)
@@ -94,6 +122,25 @@ export function validateCharacterEngineInput(input: CharacterEngineInput) {
       validateFormula(contribution.formula)
     } else {
       requireNonEmpty(contribution.key, `contribution.${contribution.id}.key`)
+      if (contribution.variantKey !== undefined) {
+        requireNonEmpty(contribution.variantKey, `contribution.${contribution.id}.variantKey`)
+      }
+      if (contribution.payload !== undefined) {
+        validateGrantPayload(contribution.payload, `contribution.${contribution.id}.payload`)
+      }
+      if (contribution.target === "proficiency" && contribution.payload !== undefined) {
+        const payload = contribution.payload
+        if (
+          typeof payload !== "object" ||
+          payload === null ||
+          Array.isArray(payload) ||
+          (payload.rank !== 1 && payload.rank !== 2)
+        ) {
+          throw new CharacterEngineInputError(
+            `contribution.${contribution.id}.payload must be { rank: 1 | 2 } for proficiency`,
+          )
+        }
+      }
     }
   }
 }
