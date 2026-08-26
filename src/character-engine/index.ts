@@ -1,4 +1,4 @@
-export { abilityModifier, proficiencyBonusForLevel, resolveCharacter } from "./resolver"
+export { abilityModifier, proficiencyBonusForLevel, resolveCharacter } from "./resolver.ts"
 export {
   ABILITY_KEYS,
   SKILL_KEYS,
@@ -19,4 +19,4 @@ export {
   type ResolvedGrant,
   type ResolvedNumber,
   type SkillKey,
-} from "./types"
+} from "./types.ts"
