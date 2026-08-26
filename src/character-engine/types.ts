@@ -71,6 +71,7 @@ export type CharacterCondition =
 
 export type NumericTarget =
   | `abilities.${AbilityKey}`
+  | "core.proficiencyBonus"
   | "combat.maxHp"
   | "combat.speed"
 
@@ -156,7 +157,7 @@ export interface ResolvedCharacter {
   id: string
   name: string
   level: number
-  proficiencyBonus: number
+  proficiencyBonus: ResolvedNumber
   abilities: Record<AbilityKey, ResolvedAbility>
   skills: Record<SkillKey, ResolvedSkill>
   savingThrows: Record<AbilityKey, ResolvedSavingThrow>
@@ -173,8 +174,7 @@ export interface ResolvedCharacter {
     insight: number
   }
   spellcasting: {
-    wisdomSaveDc: number
-    wisdomAttackBonus: number
+    byAbility: Record<AbilityKey, { saveDc: number; attackBonus: number }>
   }
   grants: ResolvedGrant[]
 }
