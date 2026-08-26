@@ -20,14 +20,19 @@ async function auditSql() {
 test("spell audit fixes parser-derived casting times and concentration", async () => {
   const sql = await auditSql()
 
-  assert.match(sql, /slug = 'mending'/)
-  assert.match(sql, /slug = 'find-familiar'/)
-  assert.match(sql, /slug = 'animate-dead'/)
-  assert.match(sql, /slug = 'magic-mouth'/)
-  assert.match(sql, /slug = 'prayer-of-healing'/)
-  assert.match(sql, /slug = 'clairvoyance'/)
-  assert.match(sql, /slug = 'magic-circle'/)
-  assert.match(sql, /slug = 'glyph-of-warding'/)
+  for (const slug of [
+    "mending",
+    "find-familiar",
+    "animate-dead",
+    "magic-mouth",
+    "prayer-of-healing",
+    "clairvoyance",
+    "magic-circle",
+    "glyph-of-warding",
+  ]) {
+    assert.ok(sql.includes(`'${slug}'`), `audit must cover ${slug}`)
+  }
+
   assert.match(sql, /casting_time = '1 час', concentration = false where slug = 'glyph-of-warding'/)
   assert.match(sql, /Действие \(Зарастание\) или 8 часов \(Обогащение\)/)
 })
