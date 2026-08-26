@@ -2,6 +2,7 @@ import { defaultDiceRoller, evaluateRollValue, rollDice, validateDice } from "./
 import { applyScalingRules, validateScalingRule } from "./scaling.ts"
 import type {
   DiceRoller,
+  DiceRollResult,
   RollContext,
   RollEffectDefinition,
   RollEffectResult,
@@ -83,32 +84,42 @@ export function validateRollRecipe(recipe: RollRecipe): void {
   }
 }
 
+interface ResolvedResolution {
+  resolution: RollResolutionResult
+  roll?: DiceRollResult
+}
+
 function resolveResolution(
   resolution: RollResolutionDefinition,
   context: RollContext,
   roller: DiceRoller,
-): RollResolutionResult {
-  if (resolution.kind === "automatic" || resolution.kind === "none") return resolution
+): ResolvedResolution {
+  if (resolution.kind === "automatic" || resolution.kind === "none") {
+    return { resolution }
+  }
   if (resolution.kind === "save") {
     return {
-      kind: "save",
-      ability: resolution.ability,
-      dc: evaluateRollValue(resolution.dc, context),
-      onSuccess: resolution.onSuccess,
+      resolution: {
+        kind: "save",
+        ability: resolution.ability,
+        dc: evaluateRollValue(resolution.dc, context),
+        onSuccess: resolution.onSuccess,
+      },
     }
   }
 
-  const d20 = roller(20)
-  if (!Number.isInteger(d20) || d20 < 1 || d20 > 20) {
-    throw new RollEngineError(`dice roller returned invalid d20 result: ${d20}`)
-  }
   const bonus = evaluateRollValue(resolution.bonus, context)
+  const roll = rollDice({ count: 1, sides: 20 }, bonus, roller)
+  const d20 = roll.rolls[0]!
   return {
-    kind: "attack",
-    d20,
-    bonus,
-    total: d20 + bonus,
-    ...(resolution.target ? { target: resolution.target } : {}),
+    resolution: {
+      kind: "attack",
+      d20,
+      bonus,
+      total: roll.total,
+      ...(resolution.target ? { target: resolution.target } : {}),
+    },
+    roll,
   }
 }
 
@@ -149,9 +160,11 @@ function resolveSequence(
   )
   const instances: RollInstanceResult[] = []
   for (let index = 0; index < scaled.instances; index += 1) {
+    const resolved = resolveResolution(sequence.resolution, context, roller)
     instances.push({
       index,
-      resolution: resolveResolution(sequence.resolution, context, roller),
+      resolution: resolved.resolution,
+      ...(resolved.roll ? { resolutionRoll: resolved.roll } : {}),
       effects: sequence.effects.map((effect) => resolveEffect(effect, context, roller)),
     })
   }
