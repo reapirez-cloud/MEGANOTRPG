@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import "./ChatActionSheet.css"
 
 import {
   chatActionPrototypeData,
@@ -11,6 +12,7 @@ import {
 } from "./chatActionPrototype"
 
 type Props = {
+  roomId?: string
   characterId: string | null
   characterName?: string | null
   onClose: () => void
