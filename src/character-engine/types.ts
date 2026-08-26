@@ -56,8 +56,13 @@ export interface CharacterState {
   facts?: Record<string, StateFactValue>
 }
 
+/** Runtime truth for a consumable resource. */
 export interface ResourceState {
   current: number
+  /**
+   * @deprecated Maximum is resolved from the resource definition/contributions.
+   * Kept temporarily for adapter compatibility and intentionally ignored by Resource Engine.
+   */
   max?: number
 }
 
@@ -116,6 +121,7 @@ export type NumericTarget =
   | "combat.initiative"
   | "combat.maxHp"
   | "combat.speed"
+  | `resources.${string}.max`
 
 export type NumericOperation = "ADD" | "SUBTRACT" | "SET" | "MIN" | "MAX" | "MULTIPLY"
 
@@ -153,12 +159,43 @@ export interface FormulaContribution {
   priority?: number
 }
 
+export type ResourceRechargeTrigger =
+  | "short_rest"
+  | "long_rest"
+  | "dawn"
+  | "manual"
+  | "never"
+
+export type ResourceRechargeRule =
+  | {
+      triggers: ResourceRechargeTrigger[]
+      restore: "full"
+    }
+  | {
+      triggers: ResourceRechargeTrigger[]
+      restore: "amount"
+      amount: number
+    }
+
+/**
+ * Mechanical definition of a granted resource. `current` never belongs here.
+ * A missing initial policy defaults to `full` when no runtime state exists yet.
+ */
+export interface ResourceGrantPayload {
+  max: number | FormulaExpression
+  recharge?: ResourceRechargeRule
+  initial?: "full" | "empty" | number
+  label?: string
+}
+
 /** JSON-compatible mechanical data attached to a grant. */
 export type GrantPayload =
   | string
   | number
   | boolean
   | null
+  | FormulaExpression
+  | ResourceGrantPayload
   | GrantPayload[]
   | { [key: string]: GrantPayload }
 
@@ -272,6 +309,19 @@ export interface ResolvedGrant<TPayload extends GrantPayload = GrantPayload> {
   sources: ResolvedSourceRef[]
 }
 
+export interface ResolvedResource {
+  key: string
+  variantKey: string
+  /** Key used inside CharacterState.resources. */
+  stateKey: string
+  current: number
+  /** Unclamped runtime value retained for later explain/debug tooling. */
+  rawCurrent: number
+  max: ResolvedNumber
+  recharge: ResourceRechargeRule
+  sources: ResolvedSourceRef[]
+}
+
 export interface ResolvedCharacter {
   id: string
   name: string
@@ -292,5 +342,7 @@ export interface ResolvedCharacter {
   spellcasting: {
     byAbility: Record<AbilityKey, { saveDc: number; attackBonus: number }>
   }
+  /** Dynamic section: empty array means UI should render no resource block. */
+  resources: ResolvedResource[]
   grants: ResolvedGrant[]
 }
