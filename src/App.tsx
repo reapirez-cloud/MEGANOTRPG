@@ -9,12 +9,13 @@ import "./chat-v11.css"
 import "./social.css"
 import "./gm-workspace.css"
 import "./spell-reference.css"
+import "./reference-guide.css"
 
 import BottomNav from "./components/app/BottomNav"
 import NotificationsSheet from "./components/app/NotificationsSheet"
 import TopBar from "./components/app/TopBar"
 import AuthGate from "./components/auth/AuthGate"
-import SpellReference from "./components/characters/SpellReference"
+import ReferenceGuide from "./components/reference/ReferenceGuide"
 import { CharacterProvider, useCharacters } from "./context/CharacterContext"
 import { useNotifications } from "./hooks/useNotifications"
 import {
@@ -46,7 +47,7 @@ function Workspace() {
     parseAppRoute(window.location.hash),
   )
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [spellReferenceOpen, setSpellReferenceOpen] = useState(false)
+  const [referenceOpen, setReferenceOpen] = useState(false)
   const [characterRefreshKey, setCharacterRefreshKey] = useState(0)
 
   useEffect(() => {
@@ -182,12 +183,12 @@ function Workspace() {
           <button
             className="spell-reference-launch"
             type="button"
-            onClick={() => setSpellReferenceOpen(true)}
+            onClick={() => setReferenceOpen(true)}
           >
             <span className="spell-reference-launch__icon">⌘</span>
             <span className="spell-reference-launch__copy">
-              <strong>Справочник заклинаний</strong>
-              <small>Все официальные заклинания, поиск и фильтры</small>
+              <strong>Справочник</strong>
+              <small>Заклинания, классы, бестиарий и игровые таблицы</small>
             </span>
             <span className="spell-reference-launch__chevron">›</span>
           </button>
@@ -232,15 +233,15 @@ function Workspace() {
         />
       )}
 
-      {spellReferenceOpen && (
-        <SpellReference
+      {referenceOpen && (
+        <ReferenceGuide
           character={activeCharacter ? {
             id: activeCharacter.id,
             name: activeCharacter.name,
             character_class: activeCharacter.character_class,
           } : null}
           canManage={canManage}
-          onClose={() => setSpellReferenceOpen(false)}
+          onClose={() => setReferenceOpen(false)}
           onCharacterChanged={() => setCharacterRefreshKey((current) => current + 1)}
         />
       )}
