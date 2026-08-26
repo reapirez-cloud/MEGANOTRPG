@@ -18,6 +18,19 @@ export {
   type NumericConflictResolution,
 } from "./conflicts.ts"
 export {
+  RESOLVED_CHARACTER_CONTRACT_VERSION,
+  ResolvedCharacterContractError,
+  hasResolvedDynamicSection,
+  resolveCapabilities,
+  resolveCharacterContract,
+  resolvedDynamicSections,
+  validateResolvedCharacterContract,
+  type ResolvedCapabilities,
+  type ResolvedCapabilitySectionKey,
+  type ResolvedCharacterContract,
+  type ResolvedDynamicSectionKey,
+} from "./contract.ts"
+export {
   CharacterEngineInputError,
   createCharacterEngineInput,
   validateCharacterEngineInput,
