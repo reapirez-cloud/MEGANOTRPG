@@ -114,6 +114,11 @@ export {
   type TemporaryEffectSuppressionOptions,
 } from "./temporary-effects.ts"
 export {
+  CHARACTER_ENGINE_STATUS,
+  CHARACTER_ENGINE_VERSION,
+  CHARACTER_ENGINE_VERSION_INFO,
+} from "./version.ts"
+export {
   ABILITY_KEYS,
   PASSIVE_KEYS,
   SKILL_KEYS,
