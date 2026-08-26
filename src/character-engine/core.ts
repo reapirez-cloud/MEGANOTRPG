@@ -194,12 +194,13 @@ export function validateCharacterEngineInput(input: CharacterEngineInput) {
         contribution.operation !== "SUPPRESS"
       ) {
         const payload = contribution.payload
-        if (
-          typeof payload !== "object" ||
-          payload === null ||
-          Array.isArray(payload) ||
-          (payload.rank !== 1 && payload.rank !== 2)
-        ) {
+        if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+          throw new CharacterEngineInputError(
+            `contribution.${contribution.id}.payload must be { rank: 1 | 2 } for proficiency`,
+          )
+        }
+        const rank = (payload as unknown as Record<string, GrantPayload>).rank
+        if (rank !== 1 && rank !== 2) {
           throw new CharacterEngineInputError(
             `contribution.${contribution.id}.payload must be { rank: 1 | 2 } for proficiency`,
           )
