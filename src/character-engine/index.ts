@@ -1,4 +1,14 @@
-export { abilityModifier, proficiencyBonusForLevel, resolveCharacter } from "./resolver.ts"
+export {
+  CharacterEngineInputError,
+  createCharacterEngineInput,
+  validateCharacterEngineInput,
+} from "./core.ts"
+export {
+  abilityModifier,
+  proficiencyBonusForLevel,
+  resolveCharacter,
+  resolveCharacterInput,
+} from "./resolver.ts"
 export {
   ABILITY_KEYS,
   SKILL_KEYS,
@@ -6,6 +16,7 @@ export {
   type BaseCharacter,
   type CharacterCondition,
   type CharacterContribution,
+  type CharacterEngineInput,
   type CharacterSource,
   type CharacterState,
   type GrantContribution,
