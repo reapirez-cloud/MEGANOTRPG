@@ -134,6 +134,20 @@ function componentsOf(components = {}) {
   return out
 }
 
+function materialMetadata(components = {}) {
+  const material = components.m
+  if (!material) return { material: null, material_cost_gp: null, material_consumed: false }
+  if (typeof material === "string") {
+    return { material: stripTags(material), material_cost_gp: null, material_consumed: false }
+  }
+  const rawCost = Number(material.cost)
+  return {
+    material: stripTags(material.text || "") || null,
+    material_cost_gp: Number.isFinite(rawCost) ? rawCost / 100 : null,
+    material_consumed: Boolean(material.consume),
+  }
+}
+
 function checkTypeOf(spell) {
   const bits = []
   if (spell.savingThrow?.length) bits.push(`Спасбросок: ${spell.savingThrow.join(", ").toUpperCase()}`)
@@ -200,6 +214,7 @@ async function main() {
     const classes = classesFor(lookup, sourceCode, spell.name)
     const damage = (spell.damageInflict || []).join(", ")
     const summaryParts = []
+    const material = materialMetadata(spell.components)
     if (damage) summaryParts.push(`Тип урона: ${damage}.`)
     if (spell.savingThrow?.length) summaryParts.push(`Требует спасбросок ${spell.savingThrow.join(", ").toUpperCase()}.`)
     if (spell.spellAttack?.length) summaryParts.push("Использует атаку заклинанием.")
@@ -215,7 +230,9 @@ async function main() {
       area: range.area,
       duration: formatDuration(spell.duration),
       components: componentsOf(spell.components),
-      material: null,
+      material: material.material,
+      material_cost_gp: material.material_cost_gp,
+      material_consumed: material.material_consumed,
       concentration: Boolean((spell.duration || []).some((item) => item.concentration)),
       ritual: Boolean(spell.meta?.ritual),
       check_type: checkTypeOf(spell),
@@ -239,6 +256,7 @@ async function main() {
     throw new Error(`Primal Savagery metadata mismatch: ${JSON.stringify(primal)}`)
   }
   if (rows.some((row) => row.rules_text !== null)) throw new Error("Supplement rules_text must remain null")
+  if (rows.some((row) => row.components.includes("M") && !row.material)) throw new Error("Material component text must be preserved for supplement spells")
 
   await mkdir(dirname(OUTPUT), { recursive: true })
   await writeFile(OUTPUT, `${JSON.stringify({ generated_from: "5etools structured metadata", count: rows.length, spells: rows }, null, 2)}\n`, "utf8")
