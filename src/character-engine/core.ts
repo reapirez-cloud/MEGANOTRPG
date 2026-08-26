@@ -1,4 +1,9 @@
-import { ABILITY_KEYS, type CharacterEngineInput } from "./types.ts"
+import {
+  ABILITY_KEYS,
+  type CharacterCondition,
+  type CharacterEngineInput,
+  type StateFactValue,
+} from "./types.ts"
 
 export class CharacterEngineInputError extends Error {
   constructor(message: string) {
@@ -16,6 +21,46 @@ function requireNonEmpty(value: string, field: string) {
 function requireFinite(value: number, field: string) {
   if (!Number.isFinite(value)) {
     throw new CharacterEngineInputError(`${field} must be a finite number`)
+  }
+}
+
+function validateFactValue(value: StateFactValue, field: string) {
+  if (typeof value === "number") {
+    requireFinite(value, field)
+  }
+}
+
+function validateCondition(condition: CharacterCondition, field: string): void {
+  switch (condition.kind) {
+    case "always":
+      return
+
+    case "hp_below_percent":
+      requireFinite(condition.percent, `${field}.percent`)
+      if (condition.percent < 0 || condition.percent > 100) {
+        throw new CharacterEngineInputError(`${field}.percent must be between 0 and 100`)
+      }
+      return
+
+    case "state":
+      requireNonEmpty(condition.key, `${field}.key`)
+      if ("value" in condition) {
+        validateFactValue(condition.value, `${field}.value`)
+      }
+      return
+
+    case "all":
+    case "any":
+      if (condition.conditions.length === 0) {
+        throw new CharacterEngineInputError(`${field}.conditions must not be empty`)
+      }
+      condition.conditions.forEach((child, index) => {
+        validateCondition(child, `${field}.conditions[${index}]`)
+      })
+      return
+
+    case "not":
+      validateCondition(condition.condition, `${field}.condition`)
   }
 }
 
@@ -60,6 +105,11 @@ export function validateCharacterEngineInput(input: CharacterEngineInput) {
     }
   }
 
+  for (const [factKey, factValue] of Object.entries(state.facts ?? {})) {
+    requireNonEmpty(factKey, "state.facts key")
+    validateFactValue(factValue, `state.facts.${factKey}`)
+  }
+
   const contributionIds = new Set<string>()
   for (const contribution of contributions) {
     requireNonEmpty(contribution.id, "contribution.id")
@@ -75,16 +125,8 @@ export function validateCharacterEngineInput(input: CharacterEngineInput) {
       requireFinite(contribution.priority, `contribution.${contribution.id}.priority`)
     }
 
-    if (contribution.condition?.kind === "hp_below_percent") {
-      requireFinite(
-        contribution.condition.percent,
-        `contribution.${contribution.id}.condition.percent`,
-      )
-      if (contribution.condition.percent < 0 || contribution.condition.percent > 100) {
-        throw new CharacterEngineInputError(
-          `contribution.${contribution.id}.condition.percent must be between 0 and 100`,
-        )
-      }
+    if (contribution.condition) {
+      validateCondition(contribution.condition, `contribution.${contribution.id}.condition`)
     }
 
     if (contribution.kind === "numeric") {
