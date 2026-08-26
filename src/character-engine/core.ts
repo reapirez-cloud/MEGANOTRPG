@@ -1,3 +1,4 @@
+import { parseActionGrantPayload, ActionEngineError } from "./actions.ts"
 import { validateFormula } from "./formulas.ts"
 import { parseResourceGrantPayload, ResourceEngineError } from "./resources.ts"
 import {
@@ -211,6 +212,18 @@ export function validateCharacterEngineInput(input: CharacterEngineInput) {
           parseResourceGrantPayload(contribution.payload)
         } catch (error) {
           if (error instanceof ResourceEngineError) {
+            throw new CharacterEngineInputError(
+              `contribution.${contribution.id}.payload: ${error.message}`,
+            )
+          }
+          throw error
+        }
+      }
+      if (contribution.target === "action" && contribution.operation !== "SUPPRESS") {
+        try {
+          parseActionGrantPayload(contribution.payload)
+        } catch (error) {
+          if (error instanceof ActionEngineError) {
             throw new CharacterEngineInputError(
               `contribution.${contribution.id}.payload: ${error.message}`,
             )
