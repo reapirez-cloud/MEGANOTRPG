@@ -1,4 +1,9 @@
 export {
+  CharacterConflictError,
+  resolveNumericConflicts,
+  type NumericConflictResolution,
+} from "./conflicts.ts"
+export {
   CharacterEngineInputError,
   createCharacterEngineInput,
   validateCharacterEngineInput,
