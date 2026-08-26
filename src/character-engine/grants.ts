@@ -27,13 +27,6 @@ export class GrantConflictError extends GrantEngineError {
   }
 }
 
-function compareContributionOrder(
-  left: Pick<CharacterContribution, "id" | "priority">,
-  right: Pick<CharacterContribution, "id" | "priority">,
-) {
-  return (left.priority ?? 0) - (right.priority ?? 0) || left.id.localeCompare(right.id)
-}
-
 function canonicalPayload(value: GrantPayload | undefined): string {
   if (value === undefined) return "undefined"
   if (value === null || typeof value !== "object") return JSON.stringify(value)
@@ -113,12 +106,161 @@ function mergePayload(
   return current
 }
 
+function normalizedPayload(contribution: GrantContribution): GrantPayload | undefined {
+  if (contribution.target === "proficiency") {
+    return { rank: proficiencyRankFromPayload(contribution.payload) }
+  }
+  if (contribution.target === "sense") {
+    return sensePayload(contribution.payload) as GrantPayload
+  }
+  return contribution.payload
+}
+
+export function grantIdentity(target: GrantTarget, key: string, variantKey = "default"): string {
+  return `${target}:${key}:${variantKey}`
+}
+
 export function skillProficiencyKey(skill: SkillKey): string {
   return `skill:${skill}`
 }
 
 export function savingThrowProficiencyKey(ability: AbilityKey): string {
   return `savingThrow:${ability}`
+}
+
+export type GrantIdentityMode = "merge" | "replace" | "suppress"
+
+export interface GrantResolution {
+  grants: ResolvedGrant[]
+  modes: Map<string, GrantIdentityMode>
+}
+
+function mergeContributionsIntoGrant(
+  current: ResolvedGrant | undefined,
+  target: GrantTarget,
+  key: string,
+  variantKey: string,
+  contributions: GrantContribution[],
+): ResolvedGrant {
+  const identity = grantIdentity(target, key, variantKey)
+  let payload = current?.payload
+  const sources = current?.sources.slice() ?? []
+
+  for (const contribution of contributions.slice().sort((a, b) => a.id.localeCompare(b.id))) {
+    const incoming = normalizedPayload(contribution)
+    if (sources.length === 0 && payload === undefined) {
+      payload = incoming
+    } else {
+      payload = mergePayload(target, payload, incoming, identity)
+    }
+    sources.push({ contributionId: contribution.id, source: contribution.source })
+  }
+
+  return {
+    target,
+    key,
+    variantKey,
+    ...(payload === undefined ? {} : { payload }),
+    sources,
+  }
+}
+
+/**
+ * Resolves set-like facts by identity and priority.
+ *
+ * Per priority tier:
+ * - GRANT merges with the existing identity.
+ * - SUPPRESS clears the identity.
+ * - REPLACE discards lower-priority identity state and installs a new one.
+ *
+ * Mixing GRANT/SUPPRESS/REPLACE at the same priority is ambiguous and rejected.
+ * A higher-priority GRANT may restore an identity suppressed at a lower priority.
+ */
+export function resolveGrantResolution(
+  contributions: CharacterContribution[],
+  state: CharacterState,
+  maxHp: number,
+): GrantResolution {
+  const active = contributions.filter(
+    (contribution): contribution is GrantContribution =>
+      contribution.kind === "grant" &&
+      evaluateCondition(contribution.condition, { state, maxHp }),
+  )
+
+  const byIdentity = new Map<string, GrantContribution[]>()
+  for (const contribution of active) {
+    const identity = grantIdentity(
+      contribution.target,
+      contribution.key,
+      contribution.variantKey ?? "default",
+    )
+    const list = byIdentity.get(identity) ?? []
+    list.push(contribution)
+    byIdentity.set(identity, list)
+  }
+
+  const grants: ResolvedGrant[] = []
+  const modes = new Map<string, GrantIdentityMode>()
+
+  for (const [identity, group] of byIdentity) {
+    const sample = group[0]!
+    const target = sample.target
+    const key = sample.key
+    const variantKey = sample.variantKey ?? "default"
+    const priorities = [...new Set(group.map((item) => item.priority ?? 0))].sort((a, b) => a - b)
+
+    let current: ResolvedGrant | undefined
+    let mode: GrantIdentityMode = "merge"
+
+    for (const priority of priorities) {
+      const tier = group.filter((item) => (item.priority ?? 0) === priority)
+      const operations = new Set(tier.map((item) => item.operation))
+      if (operations.size > 1) {
+        throw new GrantConflictError(
+          `conflicting grant operations for ${identity} at priority ${priority}`,
+        )
+      }
+
+      const operation = tier[0]!.operation
+      if (operation === "SUPPRESS") {
+        current = undefined
+        mode = "suppress"
+        continue
+      }
+
+      if (operation === "REPLACE") {
+        current = mergeContributionsIntoGrant(undefined, target, key, variantKey, tier)
+        mode = "replace"
+        continue
+      }
+
+      current = mergeContributionsIntoGrant(current, target, key, variantKey, tier)
+      if (mode === "suppress") {
+        // A stronger re-grant restores the identity and its normal Base participation.
+        mode = "merge"
+      }
+    }
+
+    modes.set(identity, mode)
+    if (current) grants.push(current)
+  }
+
+  grants.sort(
+    (left, right) =>
+      left.target.localeCompare(right.target) ||
+      left.key.localeCompare(right.key) ||
+      left.variantKey.localeCompare(right.variantKey),
+  )
+
+  return { grants, modes }
+}
+
+export function resolveGrants(
+  contributions: CharacterContribution[],
+  state: CharacterState,
+  maxHp: number,
+): ResolvedGrant[] {
+  return resolveGrantResolution(contributions, state, maxHp).grants
 }
 
 export interface ResolvedProficiencyRank {
@@ -128,85 +270,22 @@ export interface ResolvedProficiencyRank {
 
 export function resolveProficiencyRank(
   baseRank: ProficiencyRank | undefined,
-  grants: ResolvedGrant[],
+  resolution: GrantResolution,
   key: string,
 ): ResolvedProficiencyRank {
-  const matching = grants.filter(
+  const identity = grantIdentity("proficiency", key)
+  const mode = resolution.modes.get(identity) ?? "merge"
+  if (mode === "suppress") return { rank: 0, sources: [] }
+
+  const matching = resolution.grants.filter(
     (grant) => grant.target === "proficiency" && grant.key === key && grant.variantKey === "default",
   )
 
-  let rank: ProficiencyRank = baseRank ?? 0
+  let rank: ProficiencyRank = mode === "replace" ? 0 : (baseRank ?? 0)
   const sources: ResolvedSourceRef[] = []
   for (const grant of matching) {
     rank = Math.max(rank, proficiencyRankFromPayload(grant.payload)) as ProficiencyRank
     sources.push(...grant.sources)
   }
   return { rank, sources }
-}
-
-/**
- * Resolves set-like character facts. Equal identities merge provenance.
- * Mechanically different payloads must be represented as different variants,
- * except for domains with natural monotonic strength (proficiency rank and sense range).
- *
- * SUPPRESS remains supported for compatibility; its full semantics are formalized in step 7.
- */
-export function resolveGrants(
-  contributions: CharacterContribution[],
-  state: CharacterState,
-  maxHp: number,
-): ResolvedGrant[] {
-  const active = contributions
-    .filter(
-      (contribution): contribution is GrantContribution =>
-        contribution.kind === "grant" &&
-        evaluateCondition(contribution.condition, { state, maxHp }),
-    )
-    .sort(compareContributionOrder)
-
-  const groups = new Map<string, ResolvedGrant>()
-
-  for (const contribution of active) {
-    const variantKey = contribution.variantKey ?? "default"
-    const identity = `${contribution.target}:${contribution.key}:${variantKey}`
-    const current = groups.get(identity)
-
-    if (contribution.operation === "SUPPRESS") {
-      groups.delete(identity)
-      continue
-    }
-
-    if (!current) {
-      const payload =
-        contribution.target === "proficiency"
-          ? ({ rank: proficiencyRankFromPayload(contribution.payload) } as GrantPayload)
-          : contribution.target === "sense"
-            ? (sensePayload(contribution.payload) as GrantPayload)
-            : contribution.payload
-
-      groups.set(identity, {
-        target: contribution.target,
-        key: contribution.key,
-        variantKey,
-        ...(payload === undefined ? {} : { payload }),
-        sources: [{ contributionId: contribution.id, source: contribution.source }],
-      })
-      continue
-    }
-
-    current.payload = mergePayload(
-      contribution.target,
-      current.payload,
-      contribution.payload,
-      identity,
-    )
-    current.sources.push({ contributionId: contribution.id, source: contribution.source })
-  }
-
-  return [...groups.values()].sort(
-    (left, right) =>
-      left.target.localeCompare(right.target) ||
-      left.key.localeCompare(right.key) ||
-      left.variantKey.localeCompare(right.variantKey),
-  )
 }
