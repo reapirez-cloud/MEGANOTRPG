@@ -4,13 +4,15 @@ export {
   validateCharacterEngineInput,
 } from "./core.ts"
 export {
+  NumericEngineError,
   abilityModifier,
+  applyNumericOperation,
   proficiencyBonusForLevel,
-  resolveCharacter,
-  resolveCharacterInput,
-} from "./resolver.ts"
+} from "./numeric.ts"
+export { resolveCharacter, resolveCharacterInput } from "./resolver.ts"
 export {
   ABILITY_KEYS,
+  PASSIVE_KEYS,
   SKILL_KEYS,
   type AbilityKey,
   type BaseCharacter,
@@ -24,10 +26,13 @@ export {
   type NumericContribution,
   type NumericOperation,
   type NumericTarget,
+  type PassiveKey,
   type ProficiencyRank,
   type ResolvedAbility,
   type ResolvedCharacter,
   type ResolvedGrant,
   type ResolvedNumber,
+  type ResolvedSavingThrow,
+  type ResolvedSkill,
   type SkillKey,
 } from "./types.ts"
