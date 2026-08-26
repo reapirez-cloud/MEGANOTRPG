@@ -124,6 +124,8 @@ export type NumericTarget =
   | `resources.${string}.max`
   | `actions.${string}.attackBonus`
   | `actions.${string}.damage.${string}.modifier`
+  | `spells.${string}.access.${string}.method.${string}.attackBonus`
+  | `spells.${string}.access.${string}.method.${string}.saveDc`
 
 export type NumericOperation = "ADD" | "SUBTRACT" | "SET" | "MIN" | "MAX" | "MULTIPLY"
 
@@ -242,6 +244,59 @@ export interface ActionGrantPayload {
   tags?: string[]
 }
 
+/** Canonical spell identity shared by every access to one spell key. */
+export interface SpellIdentityDefinition {
+  name: string
+  level: number
+  school?: string
+  ritual?: boolean
+}
+
+/** Preparation is an access concern, never a casting-method or source label. */
+export type SpellPreparationRule =
+  | { mode: "prepared"; defaultPrepared?: boolean }
+  | { mode: "always_prepared" }
+  | { mode: "not_required" }
+
+export interface SpellResourceCost {
+  key: string
+  variantKey?: string
+  amount: number
+}
+
+/** One alternative way to pay for a cast, e.g. a 1st-level slot or one item charge. */
+export interface SpellResourceOption {
+  key: string
+  castLevel?: number
+  costs: SpellResourceCost[]
+}
+
+/**
+ * How one access can cast the spell. `kind` is semantic mechanical data only;
+ * UI shorthand such as [И]/[Ф]/[Б] must never be stored here.
+ */
+export interface SpellCastingMethodDefinition {
+  key: string
+  kind: string
+  ability?: AbilityKey
+  attackBonus?: FormulaExpression
+  saveDc?: FormulaExpression
+  /** Defaults to true. Ritual-like methods may opt out independently. */
+  requiresPrepared?: boolean
+  /** Missing resourceOptions means this method has no resource cost. */
+  resourceOptions?: SpellResourceOption[]
+}
+
+/**
+ * One GRANT target=spell represents one access. Grant key is spell identity;
+ * variantKey is the access identity (class, domain, item access, feat access, etc.).
+ */
+export interface SpellGrantPayload {
+  spell: SpellIdentityDefinition
+  preparation: SpellPreparationRule
+  methods: SpellCastingMethodDefinition[]
+}
+
 /** JSON-compatible mechanical data attached to a grant. */
 export type GrantPayload =
   | string
@@ -251,6 +306,7 @@ export type GrantPayload =
   | FormulaExpression
   | ResourceGrantPayload
   | ActionGrantPayload
+  | SpellGrantPayload
   | GrantPayload[]
   | { [key: string]: GrantPayload }
 
@@ -419,6 +475,53 @@ export interface ResolvedAction {
   sources: ResolvedSourceRef[]
 }
 
+export interface ResolvedSpellResourceCost {
+  key: string
+  variantKey: string
+  stateKey: string
+  amount: number
+  current: number
+  max: number
+  available: boolean
+}
+
+export interface ResolvedSpellResourceOption {
+  key: string
+  castLevel: number
+  costs: ResolvedSpellResourceCost[]
+  available: boolean
+}
+
+export interface ResolvedSpellCastingMethod {
+  key: string
+  kind: string
+  ability?: AbilityKey
+  requiresPrepared: boolean
+  attackBonus?: ResolvedNumber
+  saveDc?: ResolvedNumber
+  resourceOptions: ResolvedSpellResourceOption[]
+  available: boolean
+}
+
+export interface ResolvedSpellAccess {
+  /** Grant variantKey; stable identity of why/how this character has the spell. */
+  key: string
+  preparationMode: SpellPreparationRule["mode"]
+  prepared: boolean
+  preparedFactKey?: string
+  methods: ResolvedSpellCastingMethod[]
+  available: boolean
+  /** Concrete source names/types are renderer-facing provenance badges. */
+  sources: ResolvedSourceRef[]
+}
+
+export interface ResolvedSpell {
+  key: string
+  identity: SpellIdentityDefinition
+  accesses: ResolvedSpellAccess[]
+  available: boolean
+}
+
 export interface ResolvedCharacter {
   id: string
   name: string
@@ -443,5 +546,7 @@ export interface ResolvedCharacter {
   resources: ResolvedResource[]
   /** Dynamic section: empty array means UI should render no actions/attacks block. */
   actions: ResolvedAction[]
+  /** One card per spell identity; each card contains one or more access paths. */
+  spells: ResolvedSpell[]
   grants: ResolvedGrant[]
 }
