@@ -23,6 +23,15 @@ export {
   type FormulaSelection,
 } from "./formulas.ts"
 export {
+  GrantConflictError,
+  GrantEngineError,
+  resolveGrants,
+  resolveProficiencyRank,
+  savingThrowProficiencyKey,
+  skillProficiencyKey,
+  type ResolvedProficiencyRank,
+} from "./grants.ts"
+export {
   NumericEngineError,
   abilityModifier,
   applyNumericOperation,
@@ -44,11 +53,13 @@ export {
   type FormulaExpression,
   type FormulaTarget,
   type GrantContribution,
+  type GrantPayload,
   type GrantTarget,
   type NumericContribution,
   type NumericOperation,
   type NumericTarget,
   type PassiveKey,
+  type ProficiencyGrantPayload,
   type ProficiencyRank,
   type ResolvedAbility,
   type ResolvedCharacter,
@@ -57,6 +68,7 @@ export {
   type ResolvedNumber,
   type ResolvedSavingThrow,
   type ResolvedSkill,
+  type SenseGrantPayload,
   type SkillKey,
   type StateCondition,
   type StateFactValue,
