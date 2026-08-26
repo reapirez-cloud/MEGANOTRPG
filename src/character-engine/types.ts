@@ -174,6 +174,7 @@ export interface GrantContribution<TPayload extends GrantPayload = GrantPayload>
   id: string
   kind: "grant"
   operation: "GRANT" | "SUPPRESS"
+  target: GrantTarget
   /** Stable identity inside a target, e.g. fire, common, skill:medicine. */
   key: string
   /** Mechanically distinct variants must use distinct keys here. */
