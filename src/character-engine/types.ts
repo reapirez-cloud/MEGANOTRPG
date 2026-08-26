@@ -147,21 +147,36 @@ export interface FormulaContribution {
   priority?: number
 }
 
+/** JSON-compatible mechanical data attached to a grant. */
+export type GrantPayload =
+  | string
+  | number
+  | boolean
+  | null
+  | GrantPayload[]
+  | { [key: string]: GrantPayload }
+
+export type ProficiencyGrantPayload = { rank: 1 | 2 }
+export type SenseGrantPayload = { range?: number; unit?: string }
+
 export type GrantTarget =
   | "resistance"
   | "immunity"
   | "language"
   | "proficiency"
+  | "sense"
   | "feature"
+  | "trait"
   | "resource"
   | "spell"
 
-export interface GrantContribution<TPayload = unknown> {
+export interface GrantContribution<TPayload extends GrantPayload = GrantPayload> {
   id: string
   kind: "grant"
   operation: "GRANT" | "SUPPRESS"
-  target: GrantTarget
+  /** Stable identity inside a target, e.g. fire, common, skill:medicine. */
   key: string
+  /** Mechanically distinct variants must use distinct keys here. */
   variantKey?: string
   payload?: TPayload
   source: CharacterSource
@@ -201,16 +216,18 @@ export interface ResolvedSkill {
   key: SkillKey
   ability: AbilityKey
   proficiencyRank: ProficiencyRank
+  proficiencySources: ResolvedSourceRef[]
   bonus: ResolvedNumber
 }
 
 export interface ResolvedSavingThrow {
   ability: AbilityKey
   proficiencyRank: ProficiencyRank
+  proficiencySources: ResolvedSourceRef[]
   bonus: ResolvedNumber
 }
 
-export interface ResolvedGrant<TPayload = unknown> {
+export interface ResolvedGrant<TPayload extends GrantPayload = GrantPayload> {
   target: GrantTarget
   key: string
   variantKey: string
