@@ -9,6 +9,7 @@ import {
   type NumericContribution,
   type ProficiencyRank,
   type ResolvedCharacterContract,
+  type ResourceState,
   type SkillKey,
   type SpellResourceOption,
 } from "../character-engine/index.ts"
@@ -76,8 +77,10 @@ function addTextGrants(
       kind: "grant",
       operation: "GRANT",
       target,
-      key: `legacy-${target}-${index}`,
-      payload: { label },
+      // Proficiency and sense payloads are strict engine structures, so the
+      // old human label becomes the stable key instead of arbitrary payload.
+      key: label,
+      ...(target === "proficiency" ? { payload: { rank: 1 } } : {}),
       source,
     })
   })
@@ -206,7 +209,7 @@ export function buildLegacyCharacterEngineInput(args: {
   }
 
   const slotLevels = configuredSlotLevels(sheet, spells)
-  const resources: CharacterEngineInput["state"]["resources"] = {}
+  const resources: Record<string, ResourceState> = {}
   for (const level of slotLevels) {
     const slot = sheet.spell_slots?.[String(level)]
     const max = Math.max(0, Number(slot?.max || 0))
@@ -301,11 +304,10 @@ export function resolveLegacyCharacterEngineView(args: {
   features: CharacterFeature[]
 }): LegacyCharacterEngineView {
   const input = buildLegacyCharacterEngineInput(args)
+  const spellcastingAbility = parseLegacySpellcastingAbility(args.sheet.spellcasting_ability)
   return {
     input,
     contract: resolveCharacterContract(input),
-    ...(parseLegacySpellcastingAbility(args.sheet.spellcasting_ability)
-      ? { spellcastingAbility: parseLegacySpellcastingAbility(args.sheet.spellcasting_ability) }
-      : {}),
+    ...(spellcastingAbility ? { spellcastingAbility } : {}),
   }
 }
