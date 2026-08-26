@@ -71,6 +71,7 @@ export type CharacterSheet = {
   backstory: string
   notes: string
   spellcasting_enabled: boolean
+  spell_change_unlocked: boolean
   spellcasting_ability: string | null
   spell_save_dc: number | null
   spell_attack_bonus: number | null
