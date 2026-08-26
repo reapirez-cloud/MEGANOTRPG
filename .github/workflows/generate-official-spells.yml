@@ -31,7 +31,7 @@ jobs:
 
       - name: Commit generated migration
         run: |
-          if git diff --quiet -- supabase/migrations/20260826095000_official_supplement_spell_catalog.sql; then
+          if [ -z "$(git status --porcelain -- supabase/migrations/20260826095000_official_supplement_spell_catalog.sql)" ]; then
             echo "Migration already up to date"
             exit 0
           fi
