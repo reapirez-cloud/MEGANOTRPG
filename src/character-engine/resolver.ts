@@ -1,3 +1,4 @@
+import { evaluateCondition } from "./conditions.ts"
 import { resolveNumericConflicts } from "./conflicts.ts"
 import { validateCharacterEngineInput } from "./core.ts"
 import { abilityModifier, proficiencyBonusForLevel } from "./numeric.ts"
@@ -7,7 +8,6 @@ import {
   SKILL_KEYS,
   type AbilityKey,
   type BaseCharacter,
-  type CharacterCondition,
   type CharacterContribution,
   type CharacterEngineInput,
   type CharacterState,
@@ -60,21 +60,6 @@ function compareContributionOrder(
   return priorityDifference || left.id.localeCompare(right.id)
 }
 
-function isConditionActive(
-  condition: CharacterCondition | undefined,
-  state: CharacterState,
-  maxHp: number,
-) {
-  if (!condition || condition.kind === "always") return true
-
-  if (condition.kind === "hp_below_percent") {
-    if (maxHp <= 0) return false
-    return state.currentHp / maxHp < condition.percent / 100
-  }
-
-  return false
-}
-
 function resolveNumber(
   target: NumericTarget,
   baseValue: number,
@@ -86,7 +71,7 @@ function resolveNumber(
     return (
       contribution.kind === "numeric" &&
       contribution.target === target &&
-      isConditionActive(contribution.condition, state, maxHpForConditions)
+      evaluateCondition(contribution.condition, { state, maxHp: maxHpForConditions })
     )
   })
 
@@ -109,7 +94,10 @@ function resolveGrants(
 ): ResolvedGrant[] {
   const active = contributions
     .filter((contribution): contribution is GrantContribution => {
-      return contribution.kind === "grant" && isConditionActive(contribution.condition, state, maxHp)
+      return (
+        contribution.kind === "grant" &&
+        evaluateCondition(contribution.condition, { state, maxHp })
+      )
     })
     .sort(compareContributionOrder)
 
