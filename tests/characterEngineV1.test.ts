@@ -120,16 +120,21 @@ test("every Character Engine TypeScript module imports only other standalone eng
   )
 })
 
-test("standalone engine modules do not directly reference app infrastructure packages", async () => {
+test("standalone engine modules do not import app infrastructure packages", async () => {
   const engineDirectory = new URL("../src/character-engine/", import.meta.url)
   const filenames = (await readdir(engineDirectory)).filter((filename) => filename.endsWith(".ts"))
-  const forbidden = ["@supabase/", "react", "react-dom", "vite"]
+  const forbiddenSpecifiers = [
+    { label: "@supabase", pattern: /["']@supabase\// },
+    { label: "react", pattern: /["']react["'/]/ },
+    { label: "react-dom", pattern: /["']react-dom["'/]/ },
+    { label: "vite", pattern: /["']vite["'/]/ },
+  ]
   const violations: string[] = []
 
   for (const filename of filenames) {
-    const source = (await readFile(new URL(filename, engineDirectory), "utf8")).toLowerCase()
-    for (const token of forbidden) {
-      if (source.includes(token)) violations.push(`${filename}:${token}`)
+    const source = await readFile(new URL(filename, engineDirectory), "utf8")
+    for (const forbidden of forbiddenSpecifiers) {
+      if (forbidden.pattern.test(source)) violations.push(`${filename}:${forbidden.label}`)
     }
   }
 
