@@ -5,6 +5,7 @@ import {
   type CharacterEngineInput,
   type GrantPayload,
   type StateFactValue,
+  type SuppressionCondition,
 } from "./types.ts"
 
 export class CharacterEngineInputError extends Error {
@@ -42,6 +43,14 @@ function validateGrantPayload(value: GrantPayload, field: string): void {
   }
 }
 
+function validateStateConditionFields(
+  condition: Extract<CharacterCondition, { kind: "state" }>,
+  field: string,
+) {
+  requireNonEmpty(condition.key, `${field}.key`)
+  if ("value" in condition) validateFactValue(condition.value, `${field}.value`)
+}
+
 function validateCondition(condition: CharacterCondition, field: string): void {
   switch (condition.kind) {
     case "always":
@@ -53,8 +62,7 @@ function validateCondition(condition: CharacterCondition, field: string): void {
       }
       return
     case "state":
-      requireNonEmpty(condition.key, `${field}.key`)
-      if ("value" in condition) validateFactValue(condition.value, `${field}.value`)
+      validateStateConditionFields(condition, field)
       return
     case "all":
     case "any":
@@ -67,6 +75,27 @@ function validateCondition(condition: CharacterCondition, field: string): void {
       return
     case "not":
       validateCondition(condition.condition, `${field}.condition`)
+  }
+}
+
+function validateSuppressionCondition(condition: SuppressionCondition, field: string): void {
+  switch (condition.kind) {
+    case "always":
+      return
+    case "state":
+      validateStateConditionFields(condition, field)
+      return
+    case "all":
+    case "any":
+      if (condition.conditions.length === 0) {
+        throw new CharacterEngineInputError(`${field}.conditions must not be empty`)
+      }
+      condition.conditions.forEach((child, index) =>
+        validateSuppressionCondition(child, `${field}.conditions[${index}]`),
+      )
+      return
+    case "not":
+      validateSuppressionCondition(condition.condition, `${field}.condition`)
   }
 }
 
@@ -112,6 +141,28 @@ export function validateCharacterEngineInput(input: CharacterEngineInput) {
     if (contribution.priority !== undefined) {
       requireFinite(contribution.priority, `contribution.${contribution.id}.priority`)
     }
+
+    if (contribution.kind === "suppression") {
+      if (contribution.condition) {
+        validateSuppressionCondition(
+          contribution.condition,
+          `contribution.${contribution.id}.condition`,
+        )
+      }
+      if (contribution.selector.kind === "source") {
+        requireNonEmpty(
+          contribution.selector.sourceId,
+          `contribution.${contribution.id}.selector.sourceId`,
+        )
+      } else {
+        requireNonEmpty(
+          contribution.selector.contributionId,
+          `contribution.${contribution.id}.selector.contributionId`,
+        )
+      }
+      continue
+    }
+
     if (contribution.condition) {
       validateCondition(contribution.condition, `contribution.${contribution.id}.condition`)
     }
@@ -125,10 +176,19 @@ export function validateCharacterEngineInput(input: CharacterEngineInput) {
       if (contribution.variantKey !== undefined) {
         requireNonEmpty(contribution.variantKey, `contribution.${contribution.id}.variantKey`)
       }
+      if (contribution.operation === "SUPPRESS" && contribution.payload !== undefined) {
+        throw new CharacterEngineInputError(
+          `contribution.${contribution.id}.payload is not allowed for SUPPRESS`,
+        )
+      }
       if (contribution.payload !== undefined) {
         validateGrantPayload(contribution.payload, `contribution.${contribution.id}.payload`)
       }
-      if (contribution.target === "proficiency" && contribution.payload !== undefined) {
+      if (
+        contribution.target === "proficiency" &&
+        contribution.payload !== undefined &&
+        contribution.operation !== "SUPPRESS"
+      ) {
         const payload = contribution.payload
         if (
           typeof payload !== "object" ||
