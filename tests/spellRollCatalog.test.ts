@@ -5,6 +5,7 @@ import {
   CatalogSpellRollError,
   catalogSpellToRollRecipe,
   isCatalogSpellRollReady,
+  isCatalogSpellRollReviewed,
   type CatalogSpellRollSource,
 } from "../src/lib/spellRollCatalog.ts"
 import { executeRollRecipe, type DiceRoller } from "../src/roll-engine/index.ts"
@@ -25,17 +26,29 @@ function spell(overrides: Partial<CatalogSpellRollSource> = {}): CatalogSpellRol
 
 test("unclassified catalog spell stays unavailable to Roll Engine", () => {
   const source = spell()
+  assert.equal(isCatalogSpellRollReviewed(source), false)
+  assert.equal(isCatalogSpellRollReady(source), false)
+  assert.equal(catalogSpellToRollRecipe(source), null)
+})
+
+test("contextual catalog spell is reviewed but waits for external runtime context", () => {
+  const source = spell({ slug: "true-strike", spell_level: 0, roll_mode: "contextual" })
+  assert.equal(isCatalogSpellRollReviewed(source), true)
   assert.equal(isCatalogSpellRollReady(source), false)
   assert.equal(catalogSpellToRollRecipe(source), null)
 })
 
 test("link-only catalog spell becomes a clean link recipe without hidden dice", () => {
-  const recipe = catalogSpellToRollRecipe(spell({
+  const source = spell({
     slug: "detect-magic",
     name_en: "Detect Magic",
     name_ru: "Обнаружение магии",
     roll_mode: "link",
-  }))
+  })
+  assert.equal(isCatalogSpellRollReviewed(source), true)
+  assert.equal(isCatalogSpellRollReady(source), true)
+
+  const recipe = catalogSpellToRollRecipe(source)
   assert.deepEqual(recipe, {
     key: "detect-magic",
     name: "Обнаружение магии",
@@ -98,6 +111,10 @@ test("malformed hidden mechanics fail closed instead of guessing from descriptio
   )
   assert.throws(
     () => catalogSpellToRollRecipe(spell({ roll_mode: "link", roll_recipe: { sequences: [] } })),
+    CatalogSpellRollError,
+  )
+  assert.throws(
+    () => catalogSpellToRollRecipe(spell({ roll_mode: "contextual", roll_recipe: { sequences: [] } })),
     CatalogSpellRollError,
   )
 })

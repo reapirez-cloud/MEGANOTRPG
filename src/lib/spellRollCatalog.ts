@@ -5,7 +5,7 @@ import {
   type RollSequenceDefinition,
 } from "../roll-engine/index.ts"
 
-export type CatalogSpellRollMode = "unclassified" | "link" | "roll"
+export type CatalogSpellRollMode = "unclassified" | "link" | "roll" | "contextual"
 
 export type CatalogSpellRollSource = Pick<
   CatalogSpell,
@@ -33,9 +33,19 @@ function readSequences(value: unknown): RollSequenceDefinition[] {
   return sequences as RollSequenceDefinition[]
 }
 
+function requireNoRecipe(spell: CatalogSpellRollSource, label: string): void {
+  if (spell.roll_recipe !== null && spell.roll_recipe !== undefined) {
+    throw new CatalogSpellRollError(`${label} spell must not carry roll_recipe`)
+  }
+}
+
 /**
  * Converts hidden spell-catalog mechanics into the public Roll Engine contract.
  * Visible spell prose is never parsed and never contains this technical recipe.
+ *
+ * Contextual spells are already reviewed, but intentionally return null until
+ * the caller can provide the external context they require (weapon, target
+ * state, cast mode, etc.).
  */
 export function catalogSpellToRollRecipe(spell: CatalogSpellRollSource): RollRecipe | null {
   const common = {
@@ -46,16 +56,17 @@ export function catalogSpellToRollRecipe(spell: CatalogSpellRollSource): RollRec
   } as const
 
   if (spell.roll_mode === "unclassified") {
-    if (spell.roll_recipe !== null && spell.roll_recipe !== undefined) {
-      throw new CatalogSpellRollError("unclassified spell must not carry roll_recipe")
-    }
+    requireNoRecipe(spell, "unclassified")
+    return null
+  }
+
+  if (spell.roll_mode === "contextual") {
+    requireNoRecipe(spell, "contextual")
     return null
   }
 
   if (spell.roll_mode === "link") {
-    if (spell.roll_recipe !== null && spell.roll_recipe !== undefined) {
-      throw new CatalogSpellRollError("link-only spell must not carry roll_recipe")
-    }
+    requireNoRecipe(spell, "link-only")
     const recipe: RollRecipe = { ...common, interaction: "link" }
     validateRollRecipe(recipe)
     return recipe
@@ -75,5 +86,9 @@ export function catalogSpellToRollRecipe(spell: CatalogSpellRollSource): RollRec
 }
 
 export function isCatalogSpellRollReady(spell: Pick<CatalogSpellRollSource, "roll_mode">): boolean {
+  return spell.roll_mode === "link" || spell.roll_mode === "roll"
+}
+
+export function isCatalogSpellRollReviewed(spell: Pick<CatalogSpellRollSource, "roll_mode">): boolean {
   return spell.roll_mode !== "unclassified"
 }
