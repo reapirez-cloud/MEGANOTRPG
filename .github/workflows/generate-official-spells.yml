@@ -1,0 +1,42 @@
+name: Generate official supplement spells
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - scripts/generateOfficialSupplementSpells.mjs
+      - .github/workflows/generate-official-spells.yml
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Generate migration
+        run: node scripts/generateOfficialSupplementSpells.mjs
+
+      - name: Commit generated migration
+        run: |
+          if git diff --quiet -- supabase/migrations/20260826095000_official_supplement_spell_catalog.sql; then
+            echo "Migration already up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/migrations/20260826095000_official_supplement_spell_catalog.sql
+          git commit -m "Add official supplement spell catalog [generated-spells]"
+          git push origin HEAD:dev
