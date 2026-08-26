@@ -32,6 +32,9 @@ export default function CharacterResourcesEditor({
   const [maxHp, setMaxHp] = useState(sheet.max_hp)
   const [currentHp, setCurrentHp] = useState(sheet.current_hp)
   const [tempHp, setTempHp] = useState(sheet.temp_hp)
+  const [spellChangeUnlocked, setSpellChangeUnlocked] = useState(
+    Boolean(sheet.spell_change_unlocked),
+  )
   const [slots, setSlots] = useState<CharacterSheet["spell_slots"]>({
     ...(sheet.spell_slots || {}),
   })
@@ -74,6 +77,7 @@ export default function CharacterResourcesEditor({
       current_hp: normalizedCurrentHp,
       temp_hp: Math.max(0, tempHp),
       spell_slots: slots,
+      spell_change_unlocked: spellChangeUnlocked,
     })
 
     setSaving(false)
@@ -98,7 +102,7 @@ export default function CharacterResourcesEditor({
           <div>
             <h3 className="sheet-title">Ресурсы персонажа</h3>
             <p className="sheet-copy">
-              Здесь ГМ задаёт HP и максимум ячеек. Потраченные ячейки считает приложение.
+              Здесь ГМ задаёт HP, ячейки и временно открывает игроку смену заклинаний после долгого отдыха.
             </p>
           </div>
           <button className="sheet-close" type="button" onClick={onClose}>
@@ -149,6 +153,25 @@ export default function CharacterResourcesEditor({
             </label>
           </div>
         </section>
+
+        {sheet.spellcasting_enabled && (
+          <section className="resource-editor-section">
+            <div className="resource-editor-section__head">
+              <strong>Смена заклинаний после отдыха</strong>
+              <small>
+                Пока доступ закрыт, игрок может пользоваться текущими заклинаниями, но не может добавлять, убирать или менять подготовленные.
+              </small>
+            </div>
+
+            <button
+              className={spellChangeUnlocked ? "danger-mini-button" : "secondary-action-button"}
+              type="button"
+              onClick={() => setSpellChangeUnlocked((current) => !current)}
+            >
+              {spellChangeUnlocked ? "Закрыть доступ игроку" : "Дать доступ игроку"}
+            </button>
+          </section>
+        )}
 
         <section className="resource-editor-section">
           <div className="resource-editor-section__head">
