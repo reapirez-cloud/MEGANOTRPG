@@ -14,6 +14,15 @@ export {
   validateCharacterEngineInput,
 } from "./core.ts"
 export {
+  FormulaConflictError,
+  FormulaEngineError,
+  evaluateFormula,
+  selectFormula,
+  validateFormula,
+  type FormulaContext,
+  type FormulaSelection,
+} from "./formulas.ts"
+export {
   NumericEngineError,
   abilityModifier,
   applyNumericOperation,
@@ -31,6 +40,9 @@ export {
   type CharacterEngineInput,
   type CharacterSource,
   type CharacterState,
+  type FormulaContribution,
+  type FormulaExpression,
+  type FormulaTarget,
   type GrantContribution,
   type GrantTarget,
   type NumericContribution,
@@ -40,6 +52,7 @@ export {
   type ProficiencyRank,
   type ResolvedAbility,
   type ResolvedCharacter,
+  type ResolvedFormulaNumber,
   type ResolvedGrant,
   type ResolvedNumber,
   type ResolvedSavingThrow,
