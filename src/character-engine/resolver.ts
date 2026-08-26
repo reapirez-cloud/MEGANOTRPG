@@ -9,6 +9,7 @@ import {
   skillProficiencyKey,
 } from "./grants.ts"
 import { abilityModifier, proficiencyBonusForLevel } from "./numeric.ts"
+import { resolveResources } from "./resources.ts"
 import { applySuppressions } from "./suppressions.ts"
 import {
   ABILITY_KEYS,
@@ -99,7 +100,7 @@ export function resolveCharacter(
   validateCharacterEngineInput({ base, state, contributions })
 
   // Universal source/contribution suppression happens before every mechanical
-  // resolver so one control can consistently disable numeric, formula and grant effects.
+  // resolver so one control can consistently disable numeric, formula, grant and resource effects.
   const suppressionResolution = applySuppressions(contributions, state)
   const activeContributions = suppressionResolution.contributions
 
@@ -183,11 +184,22 @@ export function resolveCharacter(
     }),
   ) as Record<AbilityKey, ResolvedSavingThrow>
 
-  const formulaContext: FormulaContext = { "core.proficiencyBonus": proficiencyBonus.value }
+  const formulaContext: FormulaContext = {
+    "core.level": base.level,
+    "core.proficiencyBonus": proficiencyBonus.value,
+  }
   for (const ability of ABILITY_KEYS) {
     formulaContext[`abilities.${ability}.score`] = abilities[ability].value
     formulaContext[`abilities.${ability}.modifier`] = abilities[ability].modifier
   }
+
+  const resources = resolveResources(
+    grants,
+    activeContributions,
+    state,
+    maxHp.value,
+    formulaContext,
+  )
 
   const acFormulaContributions = activeContributions.filter(
     (contribution): contribution is FormulaContribution =>
@@ -265,6 +277,7 @@ export function resolveCharacter(
     },
     passives,
     spellcasting: { byAbility: spellcastingByAbility },
+    resources,
     grants,
   }
 }
