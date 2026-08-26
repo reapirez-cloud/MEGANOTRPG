@@ -170,12 +170,16 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
   const active = member?.active_character_id === currentCharacter.id
   const fullName = member ? `${currentCharacter.name} (${member.display_name})` : currentCharacter.name
   const isAssignedPlayer = currentCharacter.assigned_user_id === user.id
-  const canEditAvatar = canManage || isAssignedPlayer
-  const canEditSheet = canManage || isAssignedPlayer
-  const canChooseSpells = canManage || isAssignedPlayer
+  const sheet = data.sheet
+  const canEditAvatar = canManage
+  const canEditSheet = canManage
+  const canChooseSpells = canManage || Boolean(
+    isAssignedPlayer &&
+    sheet?.spellcasting_enabled &&
+    sheet.spell_change_unlocked,
+  )
   const canUseInventory = canManage || isAssignedPlayer
   const canWriteDiary = canManage || isAssignedPlayer
-  const sheet = data.sheet
   const learnedSpellNames = new Set(
     data.spells.map((spell) => spell.name.trim().toLocaleLowerCase("ru-RU")),
   )
@@ -561,10 +565,10 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
             items={data.inventory}
             canManage={canManage}
             canEquip={canUseInventory}
-              onCreate={() => setEditor({ type: "inventory", item: null })}
-              onEdit={(item) => setEditor({ type: "inventory", item })}
-              onDelete={data.deleteInventoryItem}
-              onSetEquipped={data.setInventoryEquipped}
+            onCreate={() => setEditor({ type: "inventory", item: null })}
+            onEdit={(item) => setEditor({ type: "inventory", item })}
+            onDelete={data.deleteInventoryItem}
+            onSetEquipped={data.setInventoryEquipped}
           />
         )}
 
@@ -574,10 +578,10 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
             items={data.inventory}
             canManage={canManage}
             canEquip={canUseInventory}
-              onCreate={() => setEditor({ type: "inventory", item: null })}
-              onEdit={(item) => setEditor({ type: "inventory", item })}
-              onDelete={data.deleteInventoryItem}
-              onSetEquipped={data.setInventoryEquipped}
+            onCreate={() => setEditor({ type: "inventory", item: null })}
+            onEdit={(item) => setEditor({ type: "inventory", item })}
+            onDelete={data.deleteInventoryItem}
+            onSetEquipped={data.setInventoryEquipped}
           />
         )}
 
@@ -598,16 +602,51 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
         {!data.loading && tab === "spells" && (
           <section className="character-tab-section">
             <div className="section-head">
-              <div><h3 className="section-title">Заклинания</h3><p className="item-meta">{sheet?.spellcasting_enabled ? "ГМ открывает доступ — игрок выбирает и готовит" : "Магия сейчас отключена"}</p></div>
-              {canManage && sheet?.spellcasting_enabled && <button className="section-link" type="button" onClick={() => setEditor({ type: "spell-option", option: null })}>+ Выдать доступ</button>}
+              <div>
+                <h3 className="section-title">Заклинания</h3>
+                <p className="item-meta">
+                  {!sheet?.spellcasting_enabled
+                    ? "Магия сейчас отключена"
+                    : canManage
+                      ? sheet.spell_change_unlocked
+                        ? "Игроку открыта смена заклинаний после долгого отдыха"
+                        : "Смена заклинаний игроком закрыта"
+                      : sheet.spell_change_unlocked
+                        ? "ГМ открыл смену заклинаний после долгого отдыха"
+                        : "Смена заклинаний закрыта до разрешения ГМ"}
+                </p>
+              </div>
+              {canManage && sheet?.spellcasting_enabled && (
+                <button className="section-link" type="button" onClick={() => setEditor({ type: "spell-option", option: null })}>
+                  + В список
+                </button>
+              )}
             </div>
 
             {spellError && <div className="auth-error">{spellError}</div>}
 
             {!sheet?.spellcasting_enabled && canManage && (
               <div className="spell-enable-card surface">
-                <div><strong>Персонаж использует заклинания?</strong><p>Открой раздел и выдай список доступных заклинаний. Игрок сам выберет нужные.</p></div>
+                <div><strong>Персонаж использует заклинания?</strong><p>Открой раздел и выдай список доступных заклинаний. Игрок сможет менять выбор только когда ГМ отдельно откроет окно после долгого отдыха.</p></div>
                 <button type="button" onClick={() => void data.setSpellcastingEnabled(true)}>Включить</button>
+              </div>
+            )}
+
+            {sheet?.spellcasting_enabled && isAssignedPlayer && !canManage && !sheet.spell_change_unlocked && (
+              <div className="spell-enable-card surface">
+                <div>
+                  <strong>Смена заклинаний закрыта</strong>
+                  <p>Текущими заклинаниями можно пользоваться. Добавлять, убирать и менять подготовленные можно только после того, как ГМ даст доступ на долгом отдыхе.</p>
+                </div>
+              </div>
+            )}
+
+            {sheet?.spellcasting_enabled && isAssignedPlayer && !canManage && sheet.spell_change_unlocked && (
+              <div className="spell-enable-card surface">
+                <div>
+                  <strong>Смена заклинаний открыта</strong>
+                  <p>Сейчас можно добавить, убрать или подготовить заклинания. После выбора ГМ закроет доступ.</p>
+                </div>
               </div>
             )}
 
@@ -631,7 +670,7 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
                         type="button"
                         onClick={() => setEditor({ type: "resources" })}
                       >
-                        ⚙ Ресурсы
+                        {sheet.spell_change_unlocked ? "🔓 Закрыть доступ" : "🔒 Дать доступ"}
                       </button>
                     )}
                   </div>
@@ -662,7 +701,7 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
                   ) && (
                     <div className="resource-empty-note">
                       Ячейки ещё не назначены.
-                      {canManage ? " Нажми «Ресурсы»." : ""}
+                      {canManage ? " Нажми кнопку доступа/ресурсов выше." : ""}
                     </div>
                   )}
                 </div>
@@ -680,7 +719,13 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
                 <div className="section-head feature-head">
                   <div>
                     <h3 className="section-title">Доступно для изучения</h3>
-                    <p className="item-meta">{canManage ? "Список, который видит игрок" : "Выбери заклинания из списка ГМ"}</p>
+                    <p className="item-meta">
+                      {canManage
+                        ? "Список доступных персонажу заклинаний"
+                        : canChooseSpells
+                          ? "Сейчас можно изменить выбор"
+                          : "Список можно посмотреть, но менять выбор пока нельзя"}
+                    </p>
                   </div>
                 </div>
                 <div className="spell-option-list">
@@ -756,7 +801,7 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
         )}
       </div>
 
-      {editor?.type === "avatar" && (
+      {editor?.type === "avatar" && canManage && (
         <div className="sheet-backdrop" onMouseDown={() => setEditor(null)}>
           <form className="bottom-sheet compact-editor-sheet" onSubmit={saveAvatar} onMouseDown={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
@@ -807,15 +852,15 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
         </div>
       )}
 
-      {editor?.type === "sheet" && sheet && <CharacterSheetEditor sheet={sheet} systemEditable={canManage} onClose={() => setEditor(null)} onSave={data.updateSheet} />}
-      {editor?.type === "resources" && sheet && (
+      {editor?.type === "sheet" && sheet && canManage && <CharacterSheetEditor sheet={sheet} systemEditable onClose={() => setEditor(null)} onSave={data.updateSheet} />}
+      {editor?.type === "resources" && sheet && canManage && (
         <CharacterResourcesEditor
           sheet={sheet}
           onClose={() => setEditor(null)}
           onSave={data.updateSheet}
         />
       )}
-      {editor?.type === "inventory" && (
+      {editor?.type === "inventory" && canManage && (
         <InventoryItemEditor
           item={editor.item}
           campaignId={campaignId}
@@ -824,7 +869,7 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
           onDelete={editor.item ? () => data.deleteInventoryItem(editor.item!.id) : undefined}
         />
       )}
-      {editor?.type === "spell" && (
+      {editor?.type === "spell" && canManage && (
         <SpellEditor
           spell={editor.spell}
           onClose={() => setEditor(null)}
@@ -832,7 +877,7 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
           onDelete={editor.spell ? () => data.deleteSpell(editor.spell!.id) : undefined}
         />
       )}
-      {editor?.type === "spell-option" && (
+      {editor?.type === "spell-option" && canManage && (
         <SpellEditor
           spell={editor.option}
           purpose="option"
@@ -841,7 +886,7 @@ export default function CharacterProfile({ characterId, onBack, embedded = false
           onDelete={editor.option ? () => data.deleteSpellOption(editor.option!.id) : undefined}
         />
       )}
-      {editor?.type === "feature" && (
+      {editor?.type === "feature" && canManage && (
         <FeatureEditor
           feature={editor.feature}
           onClose={() => setEditor(null)}
@@ -927,7 +972,7 @@ function SheetTab({
         {canEdit && (
           <div className="section-actions">
             {canManage && <button className="section-link" type="button" onClick={onEditResources}>♥ Ресурсы</button>}
-            <button className="section-link" type="button" onClick={onEditSheet}>{canManage ? "✎ Лист" : "✎ Моя часть"}</button>
+            <button className="section-link" type="button" onClick={onEditSheet}>✎ Лист</button>
           </div>
         )}
       </div>
