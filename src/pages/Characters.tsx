@@ -748,7 +748,8 @@ export default function Characters({ onOpenCharacter }: Props) {
               folder="character-avatars"
               campaignId={campaignId}
               label="Аватар"
-              hint="Квадратное изображение лучше всего смотрится в профиле."
+              hint="После выбора можно настроить квадрат портрета."
+              crop="square"
             />
 
             <label className="field-label" htmlFor="character-bio">Короткое описание</label>

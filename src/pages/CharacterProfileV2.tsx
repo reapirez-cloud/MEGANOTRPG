@@ -4,7 +4,6 @@ import type { FormEvent } from "react"
 import { useAuth } from "../context/AuthContext.tsx"
 import { useCharacters } from "../context/CharacterContext.tsx"
 import { useCharacterSheet } from "../hooks/useCharacterSheet.ts"
-import { useCampaignMedia } from "../hooks/useCampaignMedia.ts"
 import { resolveLegacyCharacterEngineView, type LegacyCharacterEngineView } from "../lib/legacyCharacterEngineAdapter.ts"
 import { uploadCampaignImage } from "../lib/mediaUpload.ts"
 import { classReference } from "../data/classReference.ts"
@@ -20,6 +19,7 @@ import type {
 } from "../types/characterSheet.ts"
 
 import ResolvedCharacterSheet from "../components/characters/ResolvedCharacterSheet.tsx"
+import CharacterSpellbook from "../components/characters/CharacterSpellbook.tsx"
 import CharacterInventory from "../components/characters/CharacterInventory.tsx"
 import CharacterSheetEditor from "../components/characters/CharacterSheetEditor.tsx"
 import CharacterResourcesEditor from "../components/characters/CharacterResourcesEditor.tsx"
@@ -33,7 +33,7 @@ import ContextActionSheet, { type ContextAction } from "../components/common/Con
 import { useLongPressItem } from "../hooks/useLongPressItem.ts"
 
 type Props = { characterId: string; onBack: () => void; embedded?: boolean }
-type Tab = "sheet" | "inventory" | "diary" | "arts"
+type Tab = "sheet" | "spells" | "inventory" | "diary" | "arts"
 type InventoryMode = "inventory" | "equipment"
 type Editor =
   | { type: "avatar" }
@@ -55,10 +55,6 @@ type DiaryMenu =
   | { type: "comment"; item: DiaryComment }
 
 type ArtMenu = { item: CharacterArt }
-
-function signed(value: number): string {
-  return value >= 0 ? `+${value}` : String(value)
-}
 
 function normalizeClass(value: string): string {
   return value.trim().toLocaleLowerCase("ru-RU").replace(/[._-]+/g, " ").replace(/\s+/g, " ")
@@ -112,13 +108,12 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
   } = useCharacters()
   const data = useCharacterSheet(characterId, campaignId)
   const character = characters.find((item) => item.id === characterId) ?? null
-  const heroImageUrl = useCampaignMedia(character?.avatar_url)
 
   const [tab, setTab] = useState<Tab>("sheet")
   const [inventoryMode, setInventoryMode] = useState<InventoryMode>("inventory")
   const [editor, setEditor] = useState<Editor>(null)
   const [reference, setReference] = useState<ReferenceTarget>(null)
-  const [expandedSpell, setExpandedSpell] = useState<string | null>(null)
+  const [spellLevelFilter, setSpellLevelFilter] = useState<number | null>(null)
   const [spellActionId, setSpellActionId] = useState<string | null>(null)
   const [spellError, setSpellError] = useState("")
   const [avatarUrl, setAvatarUrl] = useState("")
@@ -162,6 +157,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
     : null
   const active = member?.active_character_id === currentCharacter.id
   const isAssignedPlayer = currentCharacter.assigned_user_id === user.id
+  const canEditAvatar = canManage || isAssignedPlayer
   const sheet = data.sheet
   const canChooseSpells = canManage || Boolean(
     isAssignedPlayer && sheet?.spellcasting_enabled && sheet.spell_change_unlocked,
@@ -381,25 +377,46 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
     <div className={`screen character-profile-screen character-profile-v2 ${embedded ? "character-profile-screen--embedded" : ""}`}>
       {!embedded && <header className="screen-header"><button className="icon-button" type="button" onClick={onBack} aria-label="Назад">←</button><h1 className="screen-header__title">{fullName}</h1><span /></header>}
 
-      <div className="profile-scroll character-profile-scroll">
-        <section className="character-sheet-hero surface">
-          <div className="character-sheet-hero__art" style={heroImageUrl ? { backgroundImage: `linear-gradient(180deg, transparent 30%, rgba(10,10,12,.94)), url(${heroImageUrl})` } : undefined}>
-            {!heroImageUrl && <div className="character-sheet-hero__fallback">{currentCharacter.name.slice(0, 1).toUpperCase()}</div>}
-            {canManage && <button className="character-art-edit" type="button" onClick={() => { setAvatarUrl(currentCharacter.avatar_url || ""); setAvatarError(""); setEditor({ type: "avatar" }) }}>✎ Арт</button>}
+      <div className="profile-scroll character-profile-scroll profile-v3">
+        <section className="profile-v3__hero">
+          <button
+            className="profile-v3__portrait"
+            type="button"
+            onClick={canEditAvatar ? () => { setAvatarUrl(currentCharacter.avatar_url || ""); setAvatarError(""); setEditor({ type: "avatar" }) } : undefined}
+            aria-label={canEditAvatar ? "Изменить портрет" : `Портрет ${currentCharacter.name}`}
+          >
+            {currentCharacter.avatar_url
+              ? <CampaignImage value={currentCharacter.avatar_url} alt={`Портрет ${currentCharacter.name}`} />
+              : <span>{currentCharacter.name.slice(0, 1).toUpperCase()}</span>}
+            {canEditAvatar && <i aria-hidden="true">✎</i>}
+          </button>
+          <div className="profile-v3__identity">
+            <div className="profile-v3__name-row">
+              <div>
+                <span>Персонаж</span>
+                <h2>{currentCharacter.name}</h2>
+              </div>
+              {active && <span className="profile-v3__active">Активен</span>}
+            </div>
+            {member && <p>Игрок · {member.display_name}</p>}
+            <button className="profile-v3__class" type="button" onClick={() => setReference({ section: "classes", classId })}>
+              <span><strong>{currentCharacter.character_class || "Класс не указан"}</strong><small>{currentCharacter.level} уровень</small></span>
+              <i aria-hidden="true">›</i>
+            </button>
+            {currentCharacter.bio && <p className="profile-v3__bio">{currentCharacter.bio}</p>}
           </div>
-          <div className="character-sheet-hero__body">
-            <div className="profile-name-row"><h2 className="profile-name">{currentCharacter.name}</h2>{active && <span className="active-badge">Активен</span>}</div>
-            {member && <p className="profile-player-name">Игрок: {member.display_name}</p>}
-            <button className="v2-class-link" type="button" onClick={() => setReference({ section: "classes", classId })}>{currentCharacter.character_class} · {currentCharacter.level} уровень <span>›</span></button>
-            {currentCharacter.bio && <p className="character-sheet-hero__bio">{currentCharacter.bio}</p>}
-          </div>
+          <button className="profile-v3__reference" type="button" onClick={() => setReference({ section: "classes", classId })}>
+            <span aria-hidden="true">⌘</span>
+            <span><strong>Справочник</strong><small>Классы и правила</small></span>
+          </button>
         </section>
 
-        <nav className="profile-tabs character-sheet-tabs v2-tabs">
-          <button className={`profile-tab ${tab === "sheet" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("sheet")}>Лист</button>
-          <button className={`profile-tab ${tab === "inventory" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("inventory")}>Инвентарь</button>
-          <button className={`profile-tab ${tab === "diary" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("diary")}>Дневник</button>
-          <button className={`profile-tab ${tab === "arts" ? "profile-tab--active" : ""}`} type="button" onClick={() => setTab("arts")}>Арты</button>
+        <nav className="profile-v3__tabs" aria-label="Разделы персонажа">
+          <button className={tab === "sheet" ? "is-active" : ""} type="button" onClick={() => setTab("sheet")}><span aria-hidden="true">◈</span>Лист</button>
+          {(magicSectionVisible || canManage) && <button className={tab === "spells" ? "is-active" : ""} type="button" onClick={() => setTab("spells")}><span aria-hidden="true">✦</span>Магия</button>}
+          <button className={tab === "inventory" ? "is-active" : ""} type="button" onClick={() => setTab("inventory")}><span aria-hidden="true">▣</span>Вещи</button>
+          <button className={tab === "diary" ? "is-active" : ""} type="button" onClick={() => setTab("diary")}><span aria-hidden="true">≡</span>Дневник</button>
+          <button className={tab === "arts" ? "is-active" : ""} type="button" onClick={() => setTab("arts")}><span aria-hidden="true">◇</span>Арты</button>
         </nav>
 
         {data.loading && <div className="center-state"><span className="status-spinner" /><span>Загружаем персонажа…</span></div>}
@@ -421,46 +438,37 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
             onEditFeature={(feature) => setEditor({ type: "feature", feature })}
             onDeleteFeature={data.deleteFeature}
             onOpenClassReference={() => setReference({ section: "classes", classId })}
+            onOpenSpells={(level) => {
+              setSpellLevelFilter(level ?? null)
+              setTab("spells")
+            }}
           />
         )}
 
-        {!data.loading && tab === "sheet" && sheet && magicSectionVisible && (
-          <section className="character-tab-section v2-spells v2-spells-in-sheet">
-            <details className="engine-sheet__panel surface v2-spells-panel" open>
-              <summary><span>Заклинания</span><small>{data.spells.length}</small></summary>
-              <div className="v2-spells-panel__body">
-                <div className="section-head">
-                  <div><p className="item-meta">Магия персонажа</p></div>
-                  <button className="section-link" type="button" onClick={() => setReference({ section: "spells" })}>⌘ Справочник</button>
-                </div>
-                {spellError && <div className="auth-error">{spellError}</div>}
-
-                {!sheet.spellcasting_enabled && canManage && <div className="spell-enable-card surface"><div><strong>Магия отключена</strong><p>Включи раздел, чтобы выдать персонажу заклинания.</p></div><button type="button" onClick={() => void data.setSpellcastingEnabled(true)}>Включить</button></div>}
-
-                {sheet.spellcasting_enabled && engine.view && (
-                  <>
-                    {engine.view.spellcastingAbility && <div className="spellcasting-summary surface"><div><span>Характеристика</span><strong>{engine.view.spellcastingAbility}</strong></div><div><span>СЛ</span><strong>{engine.view.contract.spellcasting.byAbility[engine.view.spellcastingAbility].saveDc}</strong></div><div><span>Атака</span><strong>{signed(engine.view.contract.spellcasting.byAbility[engine.view.spellcastingAbility].attackBonus)}</strong></div></div>}
-                    <div className="character-resource-card surface"><div className="character-resource-card__head"><div><strong>Ячейки</strong><small>Осталось / максимум</small></div>{canManage && <button className="section-link" type="button" onClick={() => setEditor({ type: "resources" })}>Ресурсы</button>}</div><div className="character-slot-strip">{engine.view.contract.resources.filter((resource) => resource.key.startsWith("spell_slot_") && resource.max.value > 0).map((resource) => <span key={resource.stateKey}><small>{resource.key.replace("spell_slot_", "")} ур.</small><strong>{resource.current}/{resource.max.value}</strong></span>)}</div></div>
-                  </>
-                )}
-
-                {sheet.spellcasting_enabled && canManage && <div className="v2-spell-admin"><button className="section-link" type="button" onClick={() => setEditor({ type: "spell-option", option: null })}>+ В доступные</button><button className="spell-disable-link" type="button" onClick={() => void data.setSpellcastingEnabled(false)}>Отключить магию</button></div>}
-
-                {sheet.spellcasting_enabled && !canManage && <div className="v2-access-note surface"><strong>{sheet.spell_change_unlocked ? "Смена заклинаний открыта" : "Смена заклинаний закрыта"}</strong><p>{sheet.spell_change_unlocked ? "Можно менять выбор после долгого отдыха." : "Текущими заклинаниями можно пользоваться, но менять выбор пока нельзя."}</p></div>}
-
-                {sheet.spellcasting_enabled && visibleOptions.length > 0 && (
-                  <details className="v2-spell-options surface" open={canChooseSpells}><summary>Доступно для изучения <small>{visibleOptions.length}</small></summary>{visibleOptions.map((option) => { const learned = learnedNames.has(option.name.trim().toLocaleLowerCase("ru-RU")); return <div className="v2-option-row" key={option.id}><span><strong>{option.name}</strong><small>{option.spell_level === 0 ? "Заговор" : `${option.spell_level} уровень`}</small></span>{learned ? <em>Изучено</em> : canChooseSpells ? <button type="button" disabled={spellActionId === `learn:${option.id}`} onClick={() => void learnSpell(option)}>Добавить</button> : null}{canManage && <button type="button" onClick={() => setEditor({ type: "spell-option", option })}>✎</button>}</div> })}</details>
-                )}
-
-                <div className="v2-spell-list">
-                  {[...new Set(data.spells.map((spell) => spell.spell_level))].sort((a, b) => a - b).map((level) => (
-                    <div className="spell-level-block" key={level}><h4>{level === 0 ? "Заговоры" : `${level} уровень`}</h4>{data.spells.filter((spell) => spell.spell_level === level).map((spell) => <article className="spell-card surface" key={spell.id}><button className="spell-card__main" type="button" onClick={() => setExpandedSpell(expandedSpell === spell.id ? null : spell.id)}><div className="spell-card__rune">{level === 0 ? "∞" : level}</div><div className="spell-card__copy"><div><strong>{spell.name}</strong>{spell.prepared && <em>Подготовлено</em>}</div><small>{[spell.school, spell.casting_time, spell.spell_range].filter(Boolean).join(" · ") || "Без параметров"}</small></div><span>{expandedSpell === spell.id ? "⌃" : "⌄"}</span></button>{expandedSpell === spell.id && <div className="spell-card__details"><div className="spell-tag-row">{spell.concentration && <span>Концентрация</span>}{spell.ritual && <span>Ритуал</span>}{spell.components && <span>{spell.components}</span>}{spell.duration && <span>{spell.duration}</span>}</div>{spell.description && <p>{spell.description}</p>}<div className="spell-card__actions">{canChooseSpells && <><button className="inline-edit-button" type="button" disabled={spellActionId === `prepare:${spell.id}`} onClick={() => void togglePrepared(spell)}>{spell.prepared ? "Убрать подготовку" : "Подготовить"}</button><button className="danger-mini-button" type="button" disabled={spellActionId === `forget:${spell.id}`} onClick={() => void forgetSpell(spell)}>Убрать</button></>}{canManage && <button className="inline-edit-button" type="button" onClick={() => setEditor({ type: "spell", spell })}>✎ Параметры</button>}</div></div>}</article>)}</div>
-                  ))}
-                  {data.spells.length === 0 && sheet.spellcasting_enabled && <div className="character-empty surface">Список заклинаний пока пуст.</div>}
-                </div>
-              </div>
-            </details>
-          </section>
+        {!data.loading && tab === "spells" && sheet && engine.view && (
+          <CharacterSpellbook
+            sheet={sheet}
+            contract={engine.view.contract}
+            spellcastingAbility={engine.view.spellcastingAbility}
+            spells={data.spells}
+            options={visibleOptions}
+            canManage={canManage}
+            canChooseSpells={canChooseSpells}
+            selectedLevel={spellLevelFilter}
+            actionId={spellActionId}
+            error={spellError}
+            onSelectedLevelChange={setSpellLevelFilter}
+            onOpenReference={() => setReference({ section: "spells" })}
+            onEditResources={() => setEditor({ type: "resources" })}
+            onEnableMagic={() => void data.setSpellcastingEnabled(true)}
+            onDisableMagic={() => void data.setSpellcastingEnabled(false)}
+            onAddOption={() => setEditor({ type: "spell-option", option: null })}
+            onEditOption={(option) => setEditor({ type: "spell-option", option })}
+            onLearn={(option) => void learnSpell(option)}
+            onTogglePrepared={(spell) => void togglePrepared(spell)}
+            onForget={(spell) => void forgetSpell(spell)}
+            onEditSpell={(spell) => setEditor({ type: "spell", spell })}
+          />
         )}
 
         {!data.loading && tab === "inventory" && (
@@ -490,7 +498,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
         )}
       </div>
 
-      {editor?.type === "avatar" && canManage && <div className="sheet-backdrop" onMouseDown={() => setEditor(null)}><form className="bottom-sheet compact-editor-sheet" onSubmit={saveAvatar} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="character-editor-head"><div><h3 className="sheet-title">Арт персонажа</h3><p className="sheet-copy">Загрузи новый портрет персонажа.</p></div><button className="sheet-close" type="button" onClick={() => setEditor(null)}>×</button></div><ImageUploadField value={avatarUrl} onChange={setAvatarUrl} folder="character-avatars" campaignId={campaignId} label="Изображение персонажа" />{avatarError && <div className="auth-error">{avatarError}</div>}<button className="sheet-save" type="submit" disabled={avatarSaving}>{avatarSaving ? "Сохраняем…" : "Сохранить арт"}</button></form></div>}
+      {editor?.type === "avatar" && canEditAvatar && <div className="sheet-backdrop" onMouseDown={() => setEditor(null)}><form className="bottom-sheet compact-editor-sheet" onSubmit={saveAvatar} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="character-editor-head"><div><h3 className="sheet-title">Портрет персонажа</h3><p className="sheet-copy">Выбери изображение, затем сам настрой квадрат кадра.</p></div><button className="sheet-close" type="button" onClick={() => setEditor(null)}>×</button></div><ImageUploadField value={avatarUrl} onChange={setAvatarUrl} folder="character-avatars" campaignId={campaignId} label="Изображение персонажа" hint="После выбора перемести и увеличь изображение внутри квадрата." crop="square" />{avatarError && <div className="auth-error">{avatarError}</div>}<button className="sheet-save" type="submit" disabled={avatarSaving}>{avatarSaving ? "Сохраняем…" : "Сохранить портрет"}</button></form></div>}
       {editor?.type === "sheet" && sheet && canManage && <CharacterSheetEditor sheet={sheet} systemEditable onClose={() => setEditor(null)} onSave={data.updateSheet} />}
       {editor?.type === "resources" && sheet && canManage && <CharacterResourcesEditor sheet={sheet} onClose={() => setEditor(null)} onSave={data.updateSheet} />}
       {editor?.type === "inventory" && canManage && <InventoryItemEditor item={editor.item} campaignId={campaignId} onClose={() => setEditor(null)} onSave={(input) => editor.item ? data.updateInventoryItem(editor.item.id, input) : data.addInventoryItem(input)} onDelete={editor.item ? () => data.deleteInventoryItem(editor.item!.id) : undefined} />}

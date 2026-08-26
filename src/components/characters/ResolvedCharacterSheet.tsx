@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState, type ReactNode } from "react"
 
 import {
   explainCharacter,
@@ -11,9 +11,11 @@ import {
   type ResolvedGrant,
   type SkillKey,
 } from "../../character-engine/index.ts"
+import { useLongPressItem } from "../../hooks/useLongPressItem.ts"
 import type { CharacterFeature, CharacterSheet } from "../../types/characterSheet.ts"
 import ContextActionSheet, { type ContextAction } from "../common/ContextActionSheet.tsx"
-import { useLongPressItem } from "../../hooks/useLongPressItem.ts"
+import SpellSlotMeter from "./SpellSlotMeter.tsx"
+import { spellSlotResources } from "./spellSlots.ts"
 
 const abilities: Array<[AbilityKey, string, string]> = [
   ["strength", "СИЛ", "Сила"],
@@ -23,10 +25,6 @@ const abilities: Array<[AbilityKey, string, string]> = [
   ["wisdom", "МДР", "Мудрость"],
   ["charisma", "ХАР", "Харизма"],
 ]
-
-const abilityShort = Object.fromEntries(
-  abilities.map(([key, short]) => [key, short]),
-) as Record<AbilityKey, string>
 
 const skills: Array<[SkillKey, string]> = [
   ["acrobatics", "Акробатика"],
@@ -49,6 +47,14 @@ const skills: Array<[SkillKey, string]> = [
   ["survival", "Выживание"],
 ]
 
+const abilityNames = Object.fromEntries(
+  abilities.map(([key, , label]) => [key, label]),
+) as Record<AbilityKey, string>
+
+const abilityShort = Object.fromEntries(
+  abilities.map(([key, short]) => [key, short]),
+) as Record<AbilityKey, string>
+
 function signed(value: number): string {
   return value >= 0 ? `+${value}` : String(value)
 }
@@ -59,9 +65,33 @@ function objectPayload(payload: GrantPayload | undefined): Record<string, unknow
     : null
 }
 
+function friendlyKey(value: string): string {
+  const known: Record<string, string> = {
+    action: "Действие",
+    bonus_action: "Бонусное действие",
+    reaction: "Реакция",
+    free: "Без действия",
+    short_rest: "Короткий отдых",
+    long_rest: "Долгий отдых",
+    dawn: "На рассвете",
+    manual: "Вручную",
+  }
+  if (known[value]) return known[value]
+
+  const cleaned = value
+    .replace(/^legacy[.:_-]*/i, "")
+    .replace(/[.:/_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+  if (!cleaned) return "Правило персонажа"
+  return cleaned.charAt(0).toLocaleUpperCase("ru-RU") + cleaned.slice(1)
+}
+
 function grantLabel(grant: ResolvedGrant): string {
   const payload = objectPayload(grant.payload)
-  return typeof payload?.label === "string" ? payload.label : grant.key
+  return typeof payload?.label === "string" && payload.label.trim()
+    ? payload.label
+    : friendlyKey(grant.key)
 }
 
 function grantDescription(grant: ResolvedGrant): string {
@@ -70,20 +100,17 @@ function grantDescription(grant: ResolvedGrant): string {
 }
 
 function resourceLabel(contract: ResolvedCharacterContract, key: string, variantKey: string): string {
+  const spellSlot = key.match(/^spell_slot_(\d+)$/)
+  if (spellSlot) return `Ячейки ${spellSlot[1]} уровня`
   const grant = contract.grants.find((entry) =>
     entry.target === "resource" && entry.key === key && entry.variantKey === variantKey,
   )
-  return grant ? grantLabel(grant) : key.replace(/^spell_slot_(\d+)$/, "Ячейки $1 уровня")
+  return grant ? grantLabel(grant) : friendlyKey(key)
 }
 
-function economyLabel(value: string): string {
-  const labels: Record<string, string> = {
-    action: "Действие",
-    bonus_action: "Бонусное действие",
-    reaction: "Реакция",
-    free: "Без действия",
-  }
-  return labels[value] || value
+function rechargeLabel(triggers: string[]): string {
+  if (!triggers.length) return "Восстановление не указано"
+  return triggers.map(friendlyKey).join(" · ")
 }
 
 function proficiencyMark(rank: number): string {
@@ -101,10 +128,32 @@ function collectSources(node: ExplanationNode, result = new Set<string>()): Set<
 function TextBlock({ title, text }: { title: string; text: string }) {
   if (!text.trim()) return null
   return (
-    <article className="engine-sheet__text surface">
-      <h4>{title}</h4>
+    <article className="sheet-v3__story-card">
+      <span>{title}</span>
       <p>{text}</p>
     </article>
+  )
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  count,
+  action,
+}: {
+  eyebrow: string
+  title: string
+  count?: number
+  action?: ReactNode
+}) {
+  return (
+    <div className="sheet-v3__section-heading">
+      <div>
+        <span>{eyebrow}</span>
+        <h3>{title}</h3>
+      </div>
+      {action ?? (count !== undefined ? <small>{count}</small> : null)}
+    </div>
   )
 }
 
@@ -122,6 +171,7 @@ type Props = {
   onEditFeature: (feature: CharacterFeature) => void
   onDeleteFeature: (featureId: string) => Promise<{ ok: boolean; error?: string }>
   onOpenClassReference?: () => void
+  onOpenSpells: (level?: number) => void
 }
 
 export default function ResolvedCharacterSheet({
@@ -138,7 +188,10 @@ export default function ResolvedCharacterSheet({
   onEditFeature,
   onDeleteFeature,
   onOpenClassReference,
+  onOpenSpells,
 }: Props) {
+  const abilityRailRef = useRef<HTMLDivElement>(null)
+  const [activeAbility, setActiveAbility] = useState(0)
   const [explain, setExplain] = useState<{ title: string; query: CharacterExplainQuery } | null>(null)
   const [featureMenu, setFeatureMenu] = useState<CharacterFeature | null>(null)
   const [featureError, setFeatureError] = useState("")
@@ -148,13 +201,11 @@ export default function ResolvedCharacterSheet({
     () => explain ? explainCharacter(input, explain.query) : null,
     [explain, input],
   )
-
-  // Spell slots belong to the spell screen. Other class/race/item resources
-  // belong on the main sheet automatically when their grants exist.
   const visibleResources = contract.resources.filter(
     (resource) => resource.max.value > 0 && !/^spell_slot_\d+$/.test(resource.key),
   )
   const magic = spellcastingAbility ? contract.spellcasting.byAbility[spellcastingAbility] : null
+  const slots = spellSlotResources(contract.resources)
   const featureGrants = [...contract.capabilities.features, ...contract.capabilities.traits]
   const hasNarrative = Boolean(
     narrative.personality_traits.trim() ||
@@ -167,6 +218,13 @@ export default function ResolvedCharacterSheet({
 
   function explainNumber(title: string, target: CharacterExplainQuery & { kind: "number" }) {
     setExplain({ title, query: target })
+  }
+
+  function showAbility(index: number) {
+    const rail = abilityRailRef.current
+    if (!rail) return
+    rail.scrollTo({ left: rail.clientWidth * index, behavior: "smooth" })
+    setActiveAbility(index)
   }
 
   async function removeFeature(feature: CharacterFeature) {
@@ -191,101 +249,145 @@ export default function ResolvedCharacterSheet({
         detail: "Она исчезнет из листа",
         icon: "×",
         danger: true,
-        onSelect: () => removeFeature(feature),
+        onSelect: () => void removeFeature(feature),
       },
     ]
   }
 
   return (
-    <section className="character-tab-section engine-sheet">
+    <section className="character-tab-section sheet-v3">
       {canManage && (
-        <div className="engine-sheet__admin">
-          <button type="button" onClick={onEditSheet}>Редактировать лист</button>
-          <button type="button" onClick={onEditResources}>HP и ресурсы</button>
-          <button type="button" onClick={onAddFeature}>+ Особенность</button>
+        <div className="sheet-v3__admin" aria-label="Инструменты ведущего">
+          <button type="button" onClick={onEditSheet}><span>✎</span> Лист</button>
+          <button type="button" onClick={onEditResources}><span>♥</span> Ресурсы</button>
+          <button type="button" onClick={onAddFeature}><span>＋</span> Особенность</button>
         </div>
       )}
 
-      <div className="engine-sheet__identity surface">
+      <section className="sheet-v3__identity">
         <button type="button" onClick={onOpenClassReference} disabled={!onOpenClassReference}>
           <span>Класс</span>
-          <strong>{characterClass || "—"}</strong>
-          <small>{contract.level} уровень{onOpenClassReference ? " · открыть ›" : ""}</small>
+          <strong>{characterClass || "Не указан"}</strong>
+          <small>{contract.level} уровень{onOpenClassReference ? " · открыть справочник" : ""}</small>
         </button>
-        {narrative.race && <div><span>Раса / вид</span><strong>{narrative.race}</strong></div>}
-        {narrative.background && <div><span>Предыстория</span><strong>{narrative.background}</strong></div>}
-        {narrative.alignment && <div><span>Мировоззрение</span><strong>{narrative.alignment}</strong></div>}
-      </div>
+        <div className="sheet-v3__identity-facts">
+          {narrative.race && <div><span>Раса / вид</span><strong>{narrative.race}</strong></div>}
+          {narrative.background && <div><span>Предыстория</span><strong>{narrative.background}</strong></div>}
+          {narrative.alignment && <div><span>Мировоззрение</span><strong>{narrative.alignment}</strong></div>}
+        </div>
+      </section>
 
-      <div className="engine-sheet__combat">
-        <button
-          className="engine-stat engine-stat--hp surface"
-          type="button"
-          onClick={() => explainNumber("Максимум HP", { kind: "number", target: "combat.maxHp" })}
-        >
-          <span>HP</span>
+      <section className="sheet-v3__combat" aria-label="Основные показатели">
+        <button className="sheet-v3__vital" type="button" onClick={() => explainNumber("Максимум здоровья", { kind: "number", target: "combat.maxHp" })}>
+          <span>Здоровье</span>
           <strong>{contract.combat.currentHp}<em> / {contract.combat.maxHp.value}</em></strong>
-          {contract.combat.tempHp > 0 && <small>+{contract.combat.tempHp} временных</small>}
+          <small>{contract.combat.tempHp > 0 ? `+${contract.combat.tempHp} временных` : "HP"}</small>
         </button>
-        <button className="engine-stat surface" type="button" onClick={() => explainNumber("Класс доспеха", { kind: "number", target: "combat.ac" })}>
-          <span>КД</span><strong>{contract.combat.ac.value}</strong><small>нажми для деталей</small>
+        <button type="button" onClick={() => explainNumber("Класс доспеха", { kind: "number", target: "combat.ac" })}>
+          <span>КД</span><strong>{contract.combat.ac.value}</strong><small>Защита</small>
         </button>
-        <button className="engine-stat surface" type="button" onClick={() => explainNumber("Инициатива", { kind: "number", target: "combat.initiative" })}>
-          <span>Инициатива</span><strong>{signed(contract.combat.initiative.value)}</strong><small>нажми для деталей</small>
+        <button type="button" onClick={() => explainNumber("Инициатива", { kind: "number", target: "combat.initiative" })}>
+          <span>Инициатива</span><strong>{signed(contract.combat.initiative.value)}</strong><small>Порядок хода</small>
         </button>
-        <button className="engine-stat surface" type="button" onClick={() => explainNumber("Скорость", { kind: "number", target: "combat.speed" })}>
+        <button type="button" onClick={() => explainNumber("Скорость", { kind: "number", target: "combat.speed" })}>
           <span>Скорость</span><strong>{contract.combat.speed.value}</strong><small>фт.</small>
         </button>
-        <button className="engine-stat surface" type="button" onClick={() => explainNumber("Бонус мастерства", { kind: "number", target: "core.proficiencyBonus" })}>
-          <span>Мастерство</span><strong>{signed(contract.proficiencyBonus.value)}</strong><small>по уровню и эффектам</small>
+        <button type="button" onClick={() => explainNumber("Бонус мастерства", { kind: "number", target: "core.proficiencyBonus" })}>
+          <span>Мастерство</span><strong>{signed(contract.proficiencyBonus.value)}</strong><small>Бонус</small>
         </button>
-        <button className="engine-stat surface" type="button" onClick={() => explainNumber("Пассивное восприятие", { kind: "number", target: "passives.perception" })}>
-          <span>Пассивное</span><strong>{contract.passives.perception.value}</strong><small>восприятие</small>
+        <button type="button" onClick={() => explainNumber("Пассивное восприятие", { kind: "number", target: "passives.perception" })}>
+          <span>Пассивное</span><strong>{contract.passives.perception.value}</strong><small>Восприятие</small>
         </button>
-      </div>
+      </section>
 
-      <div className="engine-sheet__abilities">
-        {abilities.map(([key, short, label]) => {
-          const ability = contract.abilities[key]
-          const save = contract.savingThrows[key]
-          return (
-            <article className="engine-ability surface" key={key}>
-              <button
-                className="engine-ability__score"
-                type="button"
-                onClick={() => explainNumber(label, { kind: "number", target: `abilities.${key}` })}
-              >
-                <span>{short}</span>
-                <strong>{ability.value}</strong>
-                <em>{signed(ability.modifier)}</em>
-              </button>
-              <button
-                className={save.proficiencyRank > 0 ? "engine-save engine-save--active" : "engine-save"}
-                type="button"
-                onClick={() => explainNumber(`Спасбросок: ${label}`, { kind: "number", target: `savingThrows.${key}.bonus` })}
-              >
-                <span>{proficiencyMark(save.proficiencyRank)}</span>
-                <span>Спас</span>
-                <strong>{signed(save.bonus.value)}</strong>
-              </button>
-            </article>
-          )
-        })}
-      </div>
+      <section className="sheet-v3__section sheet-v3__abilities">
+        <SectionHeading eyebrow="Проверки и спасброски" title="Характеристики" />
+        <div className="sheet-v3__ability-tabs" role="tablist" aria-label="Характеристики">
+          {abilities.map(([key, short], index) => (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeAbility === index}
+              className={activeAbility === index ? "is-active" : ""}
+              key={key}
+              onClick={() => showAbility(index)}
+            >
+              {short}
+            </button>
+          ))}
+        </div>
+        <div
+          className="sheet-v3__ability-rail"
+          ref={abilityRailRef}
+          onScroll={(event) => {
+            const width = event.currentTarget.clientWidth
+            if (width) setActiveAbility(Math.round(event.currentTarget.scrollLeft / width))
+          }}
+        >
+          {abilities.map(([key, short, label]) => {
+            const ability = contract.abilities[key]
+            const save = contract.savingThrows[key]
+            const relatedSkills = skills.filter(([skillKey]) => contract.skills[skillKey].ability === key)
+            return (
+              <article className="sheet-v3__ability-page" key={key} role="tabpanel">
+                <div className="sheet-v3__ability-score">
+                  <button type="button" onClick={() => explainNumber(label, { kind: "number", target: `abilities.${key}` })}>
+                    <span>{short}</span>
+                    <strong>{ability.value}</strong>
+                    <em>{signed(ability.modifier)}</em>
+                  </button>
+                  <div>
+                    <span>{label}</span>
+                    <button type="button" onClick={() => explainNumber(`Спасбросок: ${label}`, { kind: "number", target: `savingThrows.${key}.bonus` })}>
+                      <i className={save.proficiencyRank > 0 ? "is-proficient" : ""}>{proficiencyMark(save.proficiencyRank)}</i>
+                      Спасбросок
+                      <strong>{signed(save.bonus.value)}</strong>
+                    </button>
+                  </div>
+                </div>
+                <div className="sheet-v3__skill-column">
+                  {relatedSkills.length ? relatedSkills.map(([skillKey, skillLabel]) => {
+                    const skill = contract.skills[skillKey]
+                    return (
+                      <button type="button" key={skillKey} onClick={() => explainNumber(skillLabel, { kind: "number", target: `skills.${skillKey}.bonus` })}>
+                        <i className={skill.proficiencyRank > 0 ? "is-proficient" : ""}>{proficiencyMark(skill.proficiencyRank)}</i>
+                        <span><strong>{skillLabel}</strong><small>{abilityShort[skill.ability]}</small></span>
+                        <b>{signed(skill.bonus.value)}</b>
+                      </button>
+                    )
+                  }) : <p>Для этой характеристики нет отдельных навыков.</p>}
+                </div>
+              </article>
+            )
+          })}
+        </div>
+        <p className="sheet-v3__swipe-hint"><span aria-hidden="true">↔</span> Листай в сторону между характеристиками</p>
+      </section>
 
-      {magic && contract.spells.length > 0 && (
-        <article className="engine-sheet__magic surface">
-          <div><span>Магия</span><strong>{abilities.find(([key]) => key === spellcastingAbility)?.[2] || spellcastingAbility}</strong></div>
-          <div><span>СЛ</span><strong>{magic.saveDc}</strong></div>
-          <div><span>Атака</span><strong>{signed(magic.attackBonus)}</strong></div>
-          <div><span>Заклинаний</span><strong>{contract.spells.length}</strong></div>
-        </article>
+      {(magic || slots.length > 0 || contract.spells.length > 0) && (
+        <section className="sheet-v3__section sheet-v3__magic">
+          <SectionHeading
+            eyebrow="Магия"
+            title="Заклинания"
+            action={<button type="button" onClick={() => onOpenSpells()}>Открыть книгу <span>›</span></button>}
+          />
+          {magic && (
+            <div className="sheet-v3__magic-facts">
+              <div><span>Характеристика</span><strong>{spellcastingAbility ? abilityNames[spellcastingAbility] : "—"}</strong></div>
+              <div><span>СЛ</span><strong>{magic.saveDc}</strong></div>
+              <div><span>Атака</span><strong>{signed(magic.attackBonus)}</strong></div>
+              <div><span>Изучено</span><strong>{contract.spells.length}</strong></div>
+            </div>
+          )}
+          <SpellSlotMeter resources={contract.resources} compact onSelect={(level) => onOpenSpells(level)} />
+          {!slots.length && <button className="sheet-v3__magic-empty" type="button" onClick={() => onOpenSpells()}>Открыть подготовку и список заклинаний</button>}
+        </section>
       )}
 
       {visibleResources.length > 0 && (
-        <details className="engine-sheet__panel surface" open>
-          <summary><span>Ресурсы</span><small>{visibleResources.length}</small></summary>
-          <div className="engine-resource-list">
+        <section className="sheet-v3__section">
+          <SectionHeading eyebrow="Запасы персонажа" title="Ресурсы" count={visibleResources.length} />
+          <div className="sheet-v3__resource-list">
             {visibleResources.map((resource) => (
               <button
                 type="button"
@@ -295,136 +397,117 @@ export default function ResolvedCharacterSheet({
                   query: { kind: "resource", stateKey: resource.stateKey },
                 })}
               >
-                <span>{resourceLabel(contract, resource.key, resource.variantKey)}</span>
-                <strong>{resource.current}/{resource.max.value}</strong>
-                <small>{resource.recharge.triggers.join(" · ")}</small>
+                <span>
+                  <strong>{resourceLabel(contract, resource.key, resource.variantKey)}</strong>
+                  <small>{rechargeLabel(resource.recharge.triggers)}</small>
+                </span>
+                <b>{resource.current}<em> / {resource.max.value}</em></b>
               </button>
             ))}
           </div>
-        </details>
+        </section>
       )}
 
       {contract.actions.length > 0 && (
-        <details className="engine-sheet__panel surface" open>
-          <summary><span>Действия</span><small>{contract.actions.length}</small></summary>
-          <div className="engine-action-list">
+        <section className="sheet-v3__section">
+          <SectionHeading eyebrow="В бою и вне боя" title="Действия" count={contract.actions.length} />
+          <div className="sheet-v3__action-list">
             {contract.actions.map((action) => (
               <button
                 type="button"
-                className={!action.available ? "engine-action engine-action--disabled" : "engine-action"}
+                className={action.available ? "" : "is-unavailable"}
                 key={action.stateKey}
                 onClick={() => setExplain({
-                  title: action.label || action.key,
+                  title: action.label || friendlyKey(action.key),
                   query: { kind: "action", stateKey: action.stateKey },
                 })}
               >
-                <span>
-                  <strong>{action.label || action.key}</strong>
+                <span className="sheet-v3__action-icon" aria-hidden="true">{action.attack ? "⚔" : "✦"}</span>
+                <span className="sheet-v3__action-copy">
+                  <strong>{action.label || friendlyKey(action.key)}</strong>
                   <small>
-                    {economyLabel(action.economy)}
+                    {friendlyKey(action.economy)}
                     {action.resourceCosts.length
                       ? ` · ${action.resourceCosts.map((cost) => `${cost.amount} ${resourceLabel(contract, cost.key, cost.variantKey)}`).join(", ")}`
                       : ""}
                   </small>
                 </span>
-                <span className="engine-action__mechanics">
+                <span className="sheet-v3__action-values">
                   {action.attack && <em>Атака {signed(action.attack.bonus.value)}</em>}
                   {action.damage.map((damage) => (
                     <em key={damage.key}>
                       {damage.dice ? `${damage.dice.count}к${damage.dice.sides}` : ""}
                       {damage.modifier.value ? signed(damage.modifier.value) : ""}
-                      {damage.type ? ` ${damage.type}` : ""}
+                      {damage.type ? ` ${friendlyKey(damage.type).toLocaleLowerCase("ru-RU")}` : ""}
                     </em>
                   ))}
                 </span>
+                <span className="sheet-v3__chevron" aria-hidden="true">›</span>
               </button>
             ))}
           </div>
-        </details>
+        </section>
       )}
 
-      <details className="engine-sheet__panel surface">
-        <summary><span>Навыки</span><small>{skills.length}</small></summary>
-        <div className="engine-skill-list">
-          {skills.map(([key, label]) => {
-            const skill = contract.skills[key]
-            return (
-              <button
-                type="button"
-                key={key}
-                onClick={() => explainNumber(label, { kind: "number", target: `skills.${key}.bonus` })}
-              >
-                <span className={skill.proficiencyRank > 0 ? "engine-prof engine-prof--active" : "engine-prof"}>
-                  {proficiencyMark(skill.proficiencyRank)}
-                </span>
-                <span><strong>{label}</strong><small>{abilityShort[skill.ability]}</small></span>
-                <strong>{signed(skill.bonus.value)}</strong>
-              </button>
-            )
-          })}
-        </div>
-      </details>
-
       {(contract.capabilities.resistances.length > 0 || contract.capabilities.immunities.length > 0) && (
-        <details className="engine-sheet__panel surface">
-          <summary><span>Защиты</span></summary>
-          <div className="engine-chip-list">
-            {contract.capabilities.resistances.map((entry) => (
-              <span key={`r:${entry.key}:${entry.variantKey}`}>Сопротивление · {grantLabel(entry)}</span>
-            ))}
-            {contract.capabilities.immunities.map((entry) => (
-              <span key={`i:${entry.key}:${entry.variantKey}`}>Иммунитет · {grantLabel(entry)}</span>
-            ))}
+        <section className="sheet-v3__section">
+          <SectionHeading eyebrow="Устойчивость" title="Защиты" />
+          <div className="sheet-v3__chips">
+            {contract.capabilities.resistances.map((entry) => <span key={`r:${entry.key}:${entry.variantKey}`}><small>Сопротивление</small>{grantLabel(entry)}</span>)}
+            {contract.capabilities.immunities.map((entry) => <span key={`i:${entry.key}:${entry.variantKey}`}><small>Иммунитет</small>{grantLabel(entry)}</span>)}
           </div>
-        </details>
+        </section>
       )}
 
       {(["senses", "languages", "proficiencies"] as const).map((section) => {
         const entries = contract.capabilities[section]
         if (!entries.length) return null
-        const titles = { senses: "Чувства", languages: "Языки", proficiencies: "Владения" }
+        const labels = {
+          senses: ["Восприятие мира", "Чувства"],
+          languages: ["Общение", "Языки"],
+          proficiencies: ["Подготовка", "Владения"],
+        }
         return (
-          <details className="engine-sheet__panel surface" key={section}>
-            <summary><span>{titles[section]}</span><small>{entries.length}</small></summary>
-            <div className="engine-chip-list">
+          <section className="sheet-v3__section" key={section}>
+            <SectionHeading eyebrow={labels[section][0]} title={labels[section][1]} count={entries.length} />
+            <div className="sheet-v3__chips sheet-v3__chips--plain">
               {entries.map((entry) => <span key={`${entry.key}:${entry.variantKey}`}>{grantLabel(entry)}</span>)}
             </div>
-          </details>
+          </section>
         )
       })}
 
       {featureGrants.length > 0 && (
-        <details className="engine-sheet__panel surface" open>
-          <summary><span>Способности и черты</span><small>{featureGrants.length}</small></summary>
+        <section className="sheet-v3__section">
+          <SectionHeading eyebrow="Особые правила" title="Способности и черты" count={featureGrants.length} />
           {featureError && <div className="auth-error">{featureError}</div>}
-          <div className="engine-feature-list">
+          <div className="sheet-v3__feature-list">
             {featureGrants.map((entry) => {
               const payload = objectPayload(entry.payload)
               const legacyId = typeof payload?.legacyFeatureId === "string" ? payload.legacyFeatureId : null
               const feature = legacyId ? features.find((item) => item.id === legacyId) : undefined
               return (
                 <article
-                  className="engine-feature"
                   key={`${entry.target}:${entry.key}:${entry.variantKey}`}
                   {...(feature && canManage ? bindFeature(feature) : {})}
                   style={{ touchAction: "pan-y" }}
                 >
                   <div>
                     <strong>{grantLabel(entry)}</strong>
-                    {feature && canManage && <button type="button" onClick={() => onEditFeature(feature)}>✎</button>}
+                    {feature && canManage && <button type="button" onClick={() => onEditFeature(feature)} aria-label={`Редактировать ${feature.name}`}>✎</button>}
                   </div>
                   {grantDescription(entry) && <p>{grantDescription(entry)}</p>}
                 </article>
               )
             })}
           </div>
-        </details>
+        </section>
       )}
 
       {hasNarrative && (
-        <details className="engine-sheet__panel engine-sheet__story surface">
-          <summary><span>Характер и история</span></summary>
-          <div className="engine-sheet__narrative">
+        <section className="sheet-v3__section sheet-v3__story">
+          <SectionHeading eyebrow="Ролевая часть" title="Характер и история" />
+          <div className="sheet-v3__story-list">
             <TextBlock title="Черты личности" text={narrative.personality_traits} />
             <TextBlock title="Идеалы" text={narrative.ideals} />
             <TextBlock title="Привязанности" text={narrative.bonds} />
@@ -432,31 +515,28 @@ export default function ResolvedCharacterSheet({
             <TextBlock title="Предыстория" text={narrative.backstory} />
             <TextBlock title="Заметки" text={narrative.notes} />
           </div>
-        </details>
+        </section>
       )}
 
       {explain && explanation && (
         <div className="sheet-backdrop" onMouseDown={() => setExplain(null)}>
-          <div className="bottom-sheet engine-explain" onMouseDown={(event) => event.stopPropagation()}>
+          <div className="bottom-sheet sheet-v3__explain" onMouseDown={(event) => event.stopPropagation()}>
             <div className="sheet-handle" />
-            <div className="character-editor-head">
-              <div>
-                <h3 className="sheet-title">{explain.title}</h3>
-                <p className="sheet-copy">Откуда взялось это значение</p>
-              </div>
-              <button className="sheet-close" type="button" onClick={() => setExplain(null)}>×</button>
-            </div>
+            <header>
+              <div><span>Расчёт персонажа</span><h3>{explain.title}</h3></div>
+              <button type="button" onClick={() => setExplain(null)} aria-label="Закрыть">×</button>
+            </header>
             {explanation.value !== undefined && (
-              <div className="engine-explain__value">
+              <div className="sheet-v3__explain-value">
                 {typeof explanation.value === "number" ? signed(explanation.value) : String(explanation.value)}
               </div>
             )}
-            <p className="engine-explain__summary">{explanation.summary}</p>
-            <div className="engine-explain__sources">
+            <p>Значение собрано Character Engine из базовых параметров и действующих особенностей.</p>
+            <div className="sheet-v3__explain-sources">
               <strong>Источники</strong>
               {[...collectSources(explanation.tree)].length
                 ? [...collectSources(explanation.tree)].map((source) => <span key={source}>{source}</span>)
-                : <span>Базовое правило</span>}
+                : <span>Базовые параметры персонажа</span>}
             </div>
           </div>
         </div>
@@ -465,7 +545,7 @@ export default function ResolvedCharacterSheet({
       {featureMenu && (
         <ContextActionSheet
           title={featureMenu.name}
-          subtitle="Долгое нажатие открывает действия с особенностью"
+          subtitle="Действия с особенностью"
           actions={featureActions(featureMenu)}
           onClose={() => setFeatureMenu(null)}
         />

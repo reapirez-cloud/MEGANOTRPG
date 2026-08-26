@@ -11,6 +11,7 @@ import "./social.css"
 import "./gm-workspace.css"
 import "./spell-reference.css"
 import "./reference-guide.css"
+import "./character-profile-v3.css"
 
 import BottomNav from "./components/app/BottomNav"
 import NotificationsSheet from "./components/app/NotificationsSheet"
@@ -180,7 +181,7 @@ function Workspace() {
             }
           />
         )}
-        {route.tab === "me" && (
+        {route.tab === "me" && !(activeCharacter && (isOwner || !isGm)) && (
           <button
             className="spell-reference-launch"
             type="button"

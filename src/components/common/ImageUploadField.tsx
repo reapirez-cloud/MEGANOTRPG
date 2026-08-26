@@ -5,6 +5,7 @@ import {
   uploadCampaignImage,
 } from "../../lib/mediaUpload"
 import CampaignImage from "./CampaignImage"
+import SquareImageCropper from "./SquareImageCropper"
 
 type Props = {
   value: string
@@ -13,6 +14,7 @@ type Props = {
   campaignId: string
   label?: string
   hint?: string
+  crop?: "square"
 }
 
 export default function ImageUploadField({
@@ -22,9 +24,11 @@ export default function ImageUploadField({
   campaignId,
   label = "Арт",
   hint = "Можно выбрать изображение прямо из галереи телефона.",
+  crop,
 }: Props) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
+  const [cropFile, setCropFile] = useState<File | null>(null)
   const pendingUploadRef = useRef<string | null>(null)
 
   async function replacePending(nextValue: string) {
@@ -35,8 +39,7 @@ export default function ImageUploadField({
     pendingUploadRef.current = nextValue || null
   }
 
-  async function choose(file: File | null) {
-    if (!file) return
+  async function upload(file: File) {
     setUploading(true)
     setError("")
     const result = await uploadCampaignImage(file, folder, campaignId)
@@ -49,6 +52,15 @@ export default function ImageUploadField({
 
     await replacePending(result.url)
     onChange(result.url)
+  }
+
+  function choose(file: File | null) {
+    if (!file) return
+    if (crop === "square") {
+      setCropFile(file)
+      return
+    }
+    void upload(file)
   }
 
   async function clearValue() {
@@ -76,7 +88,7 @@ export default function ImageUploadField({
       </div>
 
       {value && (
-        <div className="image-upload-preview">
+        <div className={`image-upload-preview ${crop === "square" ? "image-upload-preview--square" : ""}`}>
           <CampaignImage value={value} alt="" />
         </div>
       )}
@@ -94,7 +106,7 @@ export default function ImageUploadField({
             onChange={(event) => {
               const file = event.target.files?.[0] || null
               event.currentTarget.value = ""
-              void choose(file)
+              choose(file)
             }}
           />
           {uploading
@@ -127,6 +139,17 @@ export default function ImageUploadField({
       </details>
 
       {error && <div className="auth-error">{error}</div>}
+
+      {cropFile && (
+        <SquareImageCropper
+          file={cropFile}
+          onCancel={() => setCropFile(null)}
+          onConfirm={(croppedFile) => {
+            setCropFile(null)
+            void upload(croppedFile)
+          }}
+        />
+      )}
     </div>
   )
 }
