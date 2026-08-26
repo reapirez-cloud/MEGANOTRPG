@@ -1,3 +1,4 @@
+import { resolveActions } from "./actions.ts"
 import { evaluateCondition } from "./conditions.ts"
 import { resolveNumericConflicts } from "./conflicts.ts"
 import { validateCharacterEngineInput } from "./core.ts"
@@ -100,7 +101,8 @@ export function resolveCharacter(
   validateCharacterEngineInput({ base, state, contributions })
 
   // Universal source/contribution suppression happens before every mechanical
-  // resolver so one control can consistently disable numeric, formula, grant and resource effects.
+  // resolver so one control can consistently disable numeric, formula, grant,
+  // resource and action effects.
   const suppressionResolution = applySuppressions(contributions, state)
   const activeContributions = suppressionResolution.contributions
 
@@ -200,6 +202,19 @@ export function resolveCharacter(
     maxHp.value,
     formulaContext,
   )
+  for (const resource of resources) {
+    formulaContext[`resources.${resource.stateKey}.current`] = resource.current
+    formulaContext[`resources.${resource.stateKey}.max`] = resource.max.value
+  }
+
+  const actions = resolveActions(
+    grants,
+    activeContributions,
+    resources,
+    state,
+    maxHp.value,
+    formulaContext,
+  )
 
   const acFormulaContributions = activeContributions.filter(
     (contribution): contribution is FormulaContribution =>
@@ -278,6 +293,7 @@ export function resolveCharacter(
     passives,
     spellcasting: { byAbility: spellcastingByAbility },
     resources,
+    actions,
     grants,
   }
 }
