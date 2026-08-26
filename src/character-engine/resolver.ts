@@ -1,6 +1,12 @@
 import { validateCharacterEngineInput } from "./core.ts"
 import {
+  abilityModifier,
+  applyNumericOperation,
+  proficiencyBonusForLevel,
+} from "./numeric.ts"
+import {
   ABILITY_KEYS,
+  PASSIVE_KEYS,
   SKILL_KEYS,
   type AbilityKey,
   type BaseCharacter,
@@ -10,8 +16,8 @@ import {
   type CharacterState,
   type GrantContribution,
   type NumericContribution,
-  type NumericOperation,
   type NumericTarget,
+  type PassiveKey,
   type ProficiencyRank,
   type ResolvedAbility,
   type ResolvedCharacter,
@@ -43,22 +49,18 @@ const SKILL_ABILITIES: Record<SkillKey, AbilityKey> = {
   survival: "wisdom",
 }
 
+const PASSIVE_SKILLS: Record<PassiveKey, SkillKey> = {
+  perception: "perception",
+  investigation: "investigation",
+  insight: "insight",
+}
+
 function compareContributionOrder(
   left: Pick<CharacterContribution, "id" | "priority">,
   right: Pick<CharacterContribution, "id" | "priority">,
 ) {
   const priorityDifference = (left.priority ?? 0) - (right.priority ?? 0)
   return priorityDifference || left.id.localeCompare(right.id)
-}
-
-export function abilityModifier(score: number) {
-  return Math.floor((score - 10) / 2)
-}
-
-/** Default 5e proficiency progression. A contribution can override or modify it. */
-export function proficiencyBonusForLevel(level: number) {
-  const normalizedLevel = Math.max(1, Math.min(20, Math.trunc(level)))
-  return 2 + Math.floor((normalizedLevel - 1) / 4)
 }
 
 function isConditionActive(
@@ -74,23 +76,6 @@ function isConditionActive(
   }
 
   return false
-}
-
-function applyNumericOperation(current: number, operation: NumericOperation, operand: number) {
-  switch (operation) {
-    case "ADD":
-      return current + operand
-    case "SUBTRACT":
-      return current - operand
-    case "SET":
-      return operand
-    case "MIN":
-      return Math.max(current, operand)
-    case "MAX":
-      return Math.min(current, operand)
-    case "MULTIPLY":
-      return current * operand
-  }
 }
 
 function resolveNumber(
@@ -235,11 +220,18 @@ export function resolveCharacter(
     SKILL_KEYS.map((skill) => {
       const ability = SKILL_ABILITIES[skill]
       const rank = proficiencyRank(base.skillProficiencies?.[skill])
+      const derivedBonus = abilities[ability].modifier + proficiencyBonus.value * rank
       const result: ResolvedSkill = {
         key: skill,
         ability,
         proficiencyRank: rank,
-        bonus: abilities[ability].modifier + proficiencyBonus.value * rank,
+        bonus: resolveNumber(
+          `skills.${skill}.bonus`,
+          derivedBonus,
+          contributions,
+          state,
+          maxHp.value,
+        ),
       }
       return [skill, result]
     }),
@@ -248,10 +240,17 @@ export function resolveCharacter(
   const savingThrows = Object.fromEntries(
     ABILITY_KEYS.map((ability) => {
       const rank = proficiencyRank(base.savingThrowProficiencies?.[ability])
+      const derivedBonus = abilities[ability].modifier + proficiencyBonus.value * rank
       const result: ResolvedSavingThrow = {
         ability,
         proficiencyRank: rank,
-        bonus: abilities[ability].modifier + proficiencyBonus.value * rank,
+        bonus: resolveNumber(
+          `savingThrows.${ability}.bonus`,
+          derivedBonus,
+          contributions,
+          state,
+          maxHp.value,
+        ),
       }
       return [ability, result]
     }),
@@ -264,6 +263,30 @@ export function resolveCharacter(
     state,
     maxHp.value,
   )
+
+  const initiative = resolveNumber(
+    "combat.initiative",
+    abilities.dexterity.modifier,
+    contributions,
+    state,
+    maxHp.value,
+  )
+
+  const passives = Object.fromEntries(
+    PASSIVE_KEYS.map((passive) => {
+      const skill = PASSIVE_SKILLS[passive]
+      return [
+        passive,
+        resolveNumber(
+          `passives.${passive}`,
+          10 + skills[skill].bonus.value,
+          contributions,
+          state,
+          maxHp.value,
+        ),
+      ]
+    }),
+  ) as Record<PassiveKey, ResolvedNumber>
 
   const spellcastingByAbility = Object.fromEntries(
     ABILITY_KEYS.map((ability) => {
@@ -291,13 +314,9 @@ export function resolveCharacter(
       currentHp: state.currentHp,
       tempHp: state.tempHp,
       speed,
-      initiative: abilities.dexterity.modifier,
+      initiative,
     },
-    passives: {
-      perception: 10 + skills.perception.bonus,
-      investigation: 10 + skills.investigation.bonus,
-      insight: 10 + skills.insight.bonus,
-    },
+    passives,
     spellcasting: {
       byAbility: spellcastingByAbility,
     },
