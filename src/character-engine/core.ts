@@ -1,4 +1,5 @@
 import { validateFormula } from "./formulas.ts"
+import { parseResourceGrantPayload, ResourceEngineError } from "./resources.ts"
 import {
   ABILITY_KEYS,
   type CharacterCondition,
@@ -39,7 +40,7 @@ function validateGrantPayload(value: GrantPayload, field: string): void {
   }
   for (const [key, child] of Object.entries(value)) {
     requireNonEmpty(key, `${field} key`)
-    validateGrantPayload(child, `${field}.${key}`)
+    validateGrantPayload(child as GrantPayload, `${field}.${key}`)
   }
 }
 
@@ -120,6 +121,9 @@ export function validateCharacterEngineInput(input: CharacterEngineInput) {
   for (const [resourceKey, resource] of Object.entries(state.resources ?? {})) {
     requireNonEmpty(resourceKey, "state.resources key")
     requireFinite(resource.current, `state.resources.${resourceKey}.current`)
+    if (resource.current < 0) {
+      throw new CharacterEngineInputError(`state.resources.${resourceKey}.current must be >= 0`)
+    }
     if (resource.max !== undefined) {
       requireFinite(resource.max, `state.resources.${resourceKey}.max`)
     }
@@ -199,6 +203,18 @@ export function validateCharacterEngineInput(input: CharacterEngineInput) {
           throw new CharacterEngineInputError(
             `contribution.${contribution.id}.payload must be { rank: 1 | 2 } for proficiency`,
           )
+        }
+      }
+      if (contribution.target === "resource" && contribution.operation !== "SUPPRESS") {
+        try {
+          parseResourceGrantPayload(contribution.payload)
+        } catch (error) {
+          if (error instanceof ResourceEngineError) {
+            throw new CharacterEngineInputError(
+              `contribution.${contribution.id}.payload: ${error.message}`,
+            )
+          }
+          throw error
         }
       }
     }
