@@ -25,10 +25,14 @@ export {
 export {
   GrantConflictError,
   GrantEngineError,
+  grantIdentity,
+  resolveGrantResolution,
   resolveGrants,
   resolveProficiencyRank,
   savingThrowProficiencyKey,
   skillProficiencyKey,
+  type GrantIdentityMode,
+  type GrantResolution,
   type ResolvedProficiencyRank,
 } from "./grants.ts"
 export {
@@ -38,6 +42,11 @@ export {
   proficiencyBonusForLevel,
 } from "./numeric.ts"
 export { resolveCharacter, resolveCharacterInput } from "./resolver.ts"
+export {
+  SuppressionEngineError,
+  applySuppressions,
+  type SuppressionResolution,
+} from "./suppressions.ts"
 export {
   ABILITY_KEYS,
   PASSIVE_KEYS,
@@ -72,4 +81,7 @@ export {
   type SkillKey,
   type StateCondition,
   type StateFactValue,
+  type SuppressionCondition,
+  type SuppressionContribution,
+  type SuppressionSelector,
 } from "./types.ts"
