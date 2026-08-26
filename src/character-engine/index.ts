@@ -78,6 +78,20 @@ export {
   type SuppressionResolution,
 } from "./suppressions.ts"
 export {
+  TemporaryEffectEngineError,
+  applyCharacterEvent,
+  createTemporaryEffectController,
+  createTemporaryEffectLifetime,
+  eventSequence,
+  eventSequenceFactKey,
+  isTemporaryEffectExpired,
+  remainingTemporaryEffectEvents,
+  type TemporaryEffectController,
+  type TemporaryEffectEvent,
+  type TemporaryEffectLifetime,
+  type TemporaryEffectSuppressionOptions,
+} from "./temporary-effects.ts"
+export {
   ABILITY_KEYS,
   PASSIVE_KEYS,
   SKILL_KEYS,
