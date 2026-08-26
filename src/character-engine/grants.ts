@@ -27,26 +27,27 @@ export class GrantConflictError extends GrantEngineError {
   }
 }
 
+function payloadObject(value: GrantPayload): Record<string, GrantPayload> {
+  return value as unknown as Record<string, GrantPayload>
+}
+
 function canonicalPayload(value: GrantPayload | undefined): string {
   if (value === undefined) return "undefined"
   if (value === null || typeof value !== "object") return JSON.stringify(value)
   if (Array.isArray(value)) return `[${value.map(canonicalPayload).join(",")}]`
 
-  return `{${Object.keys(value)
+  const object = payloadObject(value)
+  return `{${Object.keys(object)
     .sort()
-    .map((key) => `${JSON.stringify(key)}:${canonicalPayload(value[key])}`)
+    .map((key) => `${JSON.stringify(key)}:${canonicalPayload(object[key])}`)
     .join(",")}}`
 }
 
 function proficiencyRankFromPayload(payload: GrantPayload | undefined): 1 | 2 {
   if (payload === undefined) return 1
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    !Array.isArray(payload) &&
-    (payload.rank === 1 || payload.rank === 2)
-  ) {
-    return payload.rank
+  if (typeof payload === "object" && payload !== null && !Array.isArray(payload)) {
+    const rank = payloadObject(payload).rank
+    if (rank === 1 || rank === 2) return rank
   }
   throw new GrantEngineError("proficiency grant payload must be { rank: 1 | 2 }")
 }
@@ -57,8 +58,9 @@ function sensePayload(payload: GrantPayload | undefined): SenseGrantPayload {
     throw new GrantEngineError("sense grant payload must be an object")
   }
 
-  const range = payload.range
-  const unit = payload.unit
+  const object = payloadObject(payload)
+  const range = object.range
+  const unit = object.unit
   if (range !== undefined && (typeof range !== "number" || !Number.isFinite(range) || range < 0)) {
     throw new GrantEngineError("sense range must be a finite number >= 0")
   }
@@ -280,12 +282,12 @@ export function resolveProficiencyRank(
   const matching = resolution.grants.filter(
     (grant) => grant.target === "proficiency" && grant.key === key && grant.variantKey === "default",
   )
+  const grantRank = matching.reduce<ProficiencyRank>(
+    (rank, grant) => Math.max(rank, proficiencyRankFromPayload(grant.payload)) as ProficiencyRank,
+    0,
+  )
+  const sources = matching.flatMap((grant) => grant.sources)
 
-  let rank: ProficiencyRank = mode === "replace" ? 0 : (baseRank ?? 0)
-  const sources: ResolvedSourceRef[] = []
-  for (const grant of matching) {
-    rank = Math.max(rank, proficiencyRankFromPayload(grant.payload)) as ProficiencyRank
-    sources.push(...grant.sources)
-  }
-  return { rank, sources }
+  if (mode === "replace") return { rank: grantRank, sources }
+  return { rank: Math.max(baseRank ?? 0, grantRank) as ProficiencyRank, sources }
 }
