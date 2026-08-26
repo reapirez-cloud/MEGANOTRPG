@@ -51,11 +51,25 @@ export interface BaseCharacter {
   savingThrowProficiencies?: Partial<Record<AbilityKey, ProficiencyRank>>
 }
 
+export type StateFactValue = string | number | boolean | null
+
 /** Mutable gameplay state. It is intentionally separate from BaseCharacter. */
 export interface CharacterState {
   currentHp: number
   tempHp: number
   resources?: Record<string, ResourceState>
+  /**
+   * Generic runtime facts consumed by Conditions Engine.
+   *
+   * Examples are intentionally conventions, not hard-coded engine concepts:
+   * "equipment.ring-1.equipped" -> true
+   * "equipment.ring-1.attuned" -> true
+   * "combat.concentration" -> "bless"
+   * "combat.form" -> "brown-bear"
+   * "status.poisoned" -> true
+   * "rest.long.sequence" -> 7
+   */
+  facts?: Record<string, StateFactValue>
 }
 
 export interface ResourceState {
@@ -80,9 +94,39 @@ export interface CharacterSource {
   visibility?: SourceVisibility
 }
 
+export type StateCondition =
+  | {
+      kind: "state"
+      key: string
+      operator: "EXISTS" | "NOT_EXISTS"
+    }
+  | {
+      kind: "state"
+      key: string
+      operator: "EQUALS" | "NOT_EQUALS"
+      value: StateFactValue
+    }
+  | {
+      kind: "state"
+      key: string
+      operator: "GT" | "GTE" | "LT" | "LTE"
+      value: number
+    }
+
+/**
+ * Universal condition language.
+ *
+ * Domain concepts such as equipped, attuned, concentrating, transformed or
+ * "until long rest" are represented as state facts plus these generic
+ * operators. Conditions Engine never branches on those domain names.
+ */
 export type CharacterCondition =
   | { kind: "always" }
   | { kind: "hp_below_percent"; percent: number }
+  | StateCondition
+  | { kind: "all"; conditions: CharacterCondition[] }
+  | { kind: "any"; conditions: CharacterCondition[] }
+  | { kind: "not"; condition: CharacterCondition }
 
 /**
  * Universal numeric destinations understood by Numeric Engine.
