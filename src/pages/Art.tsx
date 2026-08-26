@@ -142,6 +142,7 @@ export default function Art() {
   }
 
   function openComposer(nextKind: ArtKind = "art", item: ArtItem | null = null) {
+    if (!item && !canManage) return
     resetComposer()
     setEditing(item)
     setKind(item?.kind || nextKind)
@@ -167,6 +168,10 @@ export default function Art() {
 
   async function publish(event: FormEvent) {
     event.preventDefault()
+    if (!editing && !canManage) {
+      setError("Общие публикации создаёт ГМ или владелец. Игрок добавляет арт через своего персонажа.")
+      return
+    }
     if (editing) {
       setUploading(true)
       setError("")
@@ -331,7 +336,7 @@ export default function Art() {
             <h2>{campaignTitle}</h2>
             <p>Иллюстрации, игровые карты, скетчи и комиксы живут отдельно от страниц персонажей.</p>
           </div>
-          <button type="button" onClick={() => openComposer("art")}>＋</button>
+          {canManage && <button type="button" onClick={() => openComposer("art")}>＋</button>}
         </section>
 
         <div className="art-filter-rail" role="tablist" aria-label="Фильтр галереи">
@@ -350,12 +355,14 @@ export default function Art() {
           ))}
         </div>
 
-        <section className="art-create-strip surface">
-          <button type="button" onClick={() => openComposer("art")}><span>✦</span><strong>Арт</strong></button>
-          <button type="button" onClick={() => openComposer("comic")}><span>▥</span><strong>Комикс</strong></button>
-          <button type="button" onClick={() => openComposer("map")}><span>⌖</span><strong>Карта</strong></button>
-          <button type="button" onClick={() => openComposer("sketch")}><span>✎</span><strong>Скетч</strong></button>
-        </section>
+        {canManage && (
+          <section className="art-create-strip surface">
+            <button type="button" onClick={() => openComposer("art")}><span>✦</span><strong>Арт</strong></button>
+            <button type="button" onClick={() => openComposer("comic")}><span>▥</span><strong>Комикс</strong></button>
+            <button type="button" onClick={() => openComposer("map")}><span>⌖</span><strong>Карта</strong></button>
+            <button type="button" onClick={() => openComposer("sketch")}><span>✎</span><strong>Скетч</strong></button>
+          </section>
+        )}
 
         {error && !composerOpen && <div className="auth-error">{error}</div>}
         {loading && <div className="center-state"><span className="status-spinner" /><span>Загружаем галерею…</span></div>}
@@ -364,8 +371,8 @@ export default function Art() {
           <div className="art-library-empty surface">
             <span>▧</span>
             <strong>{filter === "all" ? "Галерея пока пуста" : `Нет материалов: ${filters.find((item) => item.id === filter)?.label}`}</strong>
-            <p>Добавь изображение или собери многостраничный комикс прямо с телефона.</p>
-            <button type="button" onClick={() => openComposer(filter === "all" ? "art" : filter)}>Добавить</button>
+            <p>{canManage ? "Добавь изображение или собери многостраничный комикс прямо с телефона." : "Арты своего персонажа добавляются в его профиле."}</p>
+            {canManage && <button type="button" onClick={() => openComposer(filter === "all" ? "art" : filter)}>Добавить</button>}
           </div>
         )}
 
@@ -394,7 +401,7 @@ export default function Art() {
         )}
       </div>
 
-      {composerOpen && (
+      {composerOpen && (canManage || Boolean(editing)) && (
         <div className="sheet-backdrop" onMouseDown={() => setComposerOpen(false)}>
           <form className="bottom-sheet art-composer-sheet" onSubmit={publish} onMouseDown={(event) => event.stopPropagation()}>
             <div className="sheet-handle" />
