@@ -42,11 +42,11 @@ test("William Kidd is resolved from base values instead of stale derived sheet n
   assert.equal(resolved.proficiencyBonus.value, 2)
   assert.equal(resolved.abilities.wisdom.modifier, 4)
   assert.equal(resolved.abilities.charisma.modifier, 4)
-  assert.equal(resolved.combat.initiative, -1)
-  assert.equal(resolved.passives.perception, 14)
-  assert.equal(resolved.skills.deception.bonus, 8)
-  assert.equal(resolved.skills.persuasion.bonus, 8)
-  assert.equal(resolved.skills.religion.bonus, 2)
+  assert.equal(resolved.combat.initiative.value, -1)
+  assert.equal(resolved.passives.perception.value, 14)
+  assert.equal(resolved.skills.deception.bonus.value, 8)
+  assert.equal(resolved.skills.persuasion.bonus.value, 8)
+  assert.equal(resolved.skills.religion.bonus.value, 2)
 
   // The old stored DC 9 is deliberately not an input to the engine.
   assert.equal(resolved.spellcasting.byAbility.wisdom.saveDc, 14)
