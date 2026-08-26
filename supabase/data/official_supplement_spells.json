@@ -16,7 +16,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a melee weapon worth at least 1 sp",
+      "material_cost_gp": 0.1,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Атака заклинанием: M",
@@ -52,6 +54,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -87,6 +91,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -123,6 +129,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -154,6 +162,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -190,7 +200,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a melee weapon worth at least 1 sp",
+      "material_cost_gp": 0.1,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Атака заклинанием: M",
@@ -227,6 +239,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: STRENGTH",
@@ -262,7 +276,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a living flea",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -298,6 +314,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: STRENGTH",
@@ -334,6 +352,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Атака заклинанием: R",
@@ -368,6 +388,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: INTELLIGENCE",
@@ -402,6 +424,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -436,6 +460,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Атака заклинанием: M",
@@ -469,6 +495,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -501,6 +529,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -535,6 +565,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -570,6 +602,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -608,6 +642,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM",
@@ -642,7 +678,9 @@
         "V",
         "M"
       ],
-      "material": null,
+      "material": "a holy symbol",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -675,6 +713,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -712,7 +752,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a bit of fur wrapped in a cloth",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -746,6 +788,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -780,6 +824,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM",
@@ -814,7 +860,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "25 gp worth of powdered silver, which the spell consumes",
+      "material_cost_gp": 25,
+      "material_consumed": true,
       "concentration": false,
       "ritual": true,
       "check_type": "",
@@ -849,6 +897,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Атака заклинанием: R",
@@ -881,6 +931,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -917,6 +969,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -953,6 +1007,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -986,6 +1042,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -1018,7 +1076,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a drop of water or piece of ice",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY · Атака заклинанием: R",
@@ -1055,6 +1115,8 @@
         "R"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Атака заклинанием: R",
@@ -1088,6 +1150,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -1120,6 +1184,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -1154,7 +1220,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "25 feet of rope, which the spell consumes",
+      "material_cost_gp": null,
+      "material_consumed": true,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -1191,6 +1259,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Атака заклинанием: R",
@@ -1225,7 +1295,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a bit of rotten food",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -1261,7 +1333,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a miniature clay hand",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -1297,6 +1371,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -1330,7 +1406,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a red dragon's scale",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -1364,6 +1442,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -1401,7 +1481,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a book worth at least 25 gp",
+      "material_cost_gp": 25,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -1438,7 +1520,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "an onyx worth 50+ GP, which the spell consumes",
+      "material_cost_gp": 50,
+      "material_consumed": true,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -1473,7 +1557,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "powdered gemstones worth 100+ GP, which the spell consumes, and one set of Artisan's Tools with which you have proficiency",
+      "material_cost_gp": 100,
+      "material_consumed": true,
       "concentration": false,
       "ritual": true,
       "check_type": "",
@@ -1508,7 +1594,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a hot pepper",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -1543,7 +1631,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a pinch of dust",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: STRENGTH",
@@ -1578,6 +1668,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: STRENGTH",
@@ -1614,6 +1706,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -1647,6 +1741,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -1681,7 +1777,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a white pearl worth at least 100 gp, which the spell consumes",
+      "material_cost_gp": 100,
+      "material_consumed": true,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -1716,6 +1814,8 @@
         "R"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -1750,6 +1850,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -1784,7 +1886,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a gem worth 100+ GP",
+      "material_cost_gp": 100,
+      "material_consumed": false,
       "concentration": false,
       "ritual": true,
       "check_type": "",
@@ -1818,7 +1922,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "gold dust worth at least 25 gp, which the spell consumes",
+      "material_cost_gp": 25,
+      "material_consumed": true,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -1852,7 +1958,9 @@
         "M",
         "R"
       ],
-      "material": null,
+      "material": "a coin",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM",
@@ -1885,6 +1993,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -1921,7 +2031,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a miniature hand sculpted from clay",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: STRENGTH",
@@ -1955,6 +2067,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM",
@@ -1989,7 +2103,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a piece of crust from an apple pie",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY, WISDOM",
@@ -2025,6 +2141,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -2060,7 +2178,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a vial of meltwater",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -2095,6 +2215,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -2130,6 +2252,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": true,
       "check_type": "",
@@ -2166,7 +2290,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a piece of ice or a small white rock chip",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -2201,7 +2327,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a deck of cards",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -2238,7 +2366,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a feather, tuft of fur, and fish tail inside a gilded acorn worth at least 200 gp",
+      "material_cost_gp": 200,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -2272,6 +2402,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: INTELLIGENCE",
@@ -2306,6 +2438,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -2340,6 +2474,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -2376,7 +2512,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a razorvine leaf",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -2412,7 +2550,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a withered vine twisted into a loop",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -2447,6 +2587,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": true,
       "check_type": "",
@@ -2480,7 +2622,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a playing card depicting a rogue",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM",
@@ -2517,6 +2661,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -2553,6 +2699,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -2587,7 +2735,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a pinch of sand",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -2624,7 +2774,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a brass cog",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -2658,6 +2810,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: INTELLIGENCE",
@@ -2694,7 +2848,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a piece of obsidian",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -2729,6 +2885,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM",
@@ -2764,6 +2922,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -2801,7 +2961,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a fragment of stone, wood, or other building material",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -2835,7 +2997,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a gem worth at least 50 gp",
+      "material_cost_gp": 50,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM",
@@ -2870,6 +3034,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -2907,7 +3073,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a silver pin worth 250+ GP",
+      "material_cost_gp": 250,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: STRENGTH",
@@ -2943,6 +3111,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -2977,7 +3147,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "incense and powdered diamond worth at least 300 gp, which the spell consumes",
+      "material_cost_gp": 300,
+      "material_consumed": true,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -3014,7 +3186,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "niter, sulfur, and pine tar formed into a bead",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -3048,6 +3222,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -3082,6 +3258,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -3115,6 +3293,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -3151,7 +3331,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a gilded flower worth at least 300 gp",
+      "material_cost_gp": 300,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -3188,7 +3370,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a vial of blood from a humanoid killed within the past 24 hours",
+      "material_cost_gp": null,
+      "material_consumed": true,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -3223,7 +3407,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "tears inside a gem worth at least 300 gp",
+      "material_cost_gp": 300,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -3258,7 +3444,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a gilded skull worth at least 300 gp",
+      "material_cost_gp": 300,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -3293,7 +3481,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a snake fang",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Атака заклинанием: R",
@@ -3327,6 +3517,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -3362,7 +3554,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a drop of water",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -3398,6 +3592,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -3432,7 +3628,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a handful of sand",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -3466,7 +3664,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a drop of water",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -3501,6 +3701,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -3537,6 +3739,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM",
@@ -3574,7 +3778,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "soot and a dried eel",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM",
@@ -3610,6 +3816,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -3646,6 +3854,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -3679,7 +3889,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "25 gold pieces, or mineral goods of equivalent value, which the spell consumes",
+      "material_cost_gp": 25,
+      "material_consumed": true,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -3714,7 +3926,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a broken portal key, which the spell consumes",
+      "material_cost_gp": null,
+      "material_consumed": true,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -3750,7 +3964,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a black marble",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -3783,6 +3999,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -3816,6 +4034,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: INTELLIGENCE",
@@ -3852,7 +4072,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "an undead eyeball encased in a gem worth at least 150 gp",
+      "material_cost_gp": 150,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -3886,6 +4108,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -3921,6 +4145,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -3955,7 +4181,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a gilded playing card worth at least 400 gp and depicting an avatar of death",
+      "material_cost_gp": 400,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -3991,6 +4219,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: STRENGTH · Атака заклинанием: R",
@@ -4025,7 +4255,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a pickled tentacle and an eyeball in a platinum-inlaid vial worth at least 400 gp",
+      "material_cost_gp": 400,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -4060,7 +4292,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "an ornate stone and metal lockbox worth at least 400 gp",
+      "material_cost_gp": 400,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -4095,7 +4329,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "air, a pebble, ash, and water inside a gold-inlaid vial worth at least 400 gp",
+      "material_cost_gp": 400,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -4131,7 +4367,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a vial of blood from a humanoid killed within the past 24 hours",
+      "material_cost_gp": null,
+      "material_consumed": true,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: CHARISMA",
@@ -4166,7 +4404,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a drop of giant slug bile",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -4201,7 +4441,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a droplet of water",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: STRENGTH",
@@ -4237,7 +4479,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a moonstone worth 50+ GP",
+      "material_cost_gp": 50,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -4274,6 +4518,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: STRENGTH",
@@ -4309,7 +4555,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a crystal rod worth at least 5,000 gp, which the spell consumes",
+      "material_cost_gp": 5000,
+      "material_consumed": true,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -4344,6 +4592,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -4378,7 +4628,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a sunburst pendant worth at least 100 gp",
+      "material_cost_gp": 100,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -4413,6 +4665,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -4447,6 +4701,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -4482,6 +4738,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -4515,6 +4773,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -4549,7 +4809,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a ruby worth at least 999 gp",
+      "material_cost_gp": 999,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -4584,7 +4846,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "paper or leaf in the shape of a funnel",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: STRENGTH",
@@ -4617,7 +4881,9 @@
         "V",
         "M"
       ],
-      "material": null,
+      "material": "a broken bone and a square of black silk",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -4652,6 +4918,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -4688,7 +4956,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a pearl worth 100+ GP",
+      "material_cost_gp": 100,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -4723,7 +4993,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a melee weapon worth at least 1 sp",
+      "material_cost_gp": 0.1,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Атака заклинанием: M",
@@ -4758,7 +5030,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a golden reliquary worth at least 500 gp",
+      "material_cost_gp": 500,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -4793,7 +5067,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "an object with the image of a dragon engraved on it, worth at least 500 gp",
+      "material_cost_gp": 500,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -4829,6 +5105,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: INTELLIGENCE, CONSTITUTION",
@@ -4865,6 +5143,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM",
@@ -4898,7 +5178,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "clay and water",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: STRENGTH, DEXTERITY",
@@ -4934,7 +5216,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a hand mirror",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION · Атака заклинанием: R",
@@ -4970,6 +5254,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY, STRENGTH · Атака заклинанием: R",
@@ -5004,6 +5290,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -5037,7 +5325,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "clay, ash, and mandrake root, all of which the spell consumes, and a jewel-encrusted dagger worth at least 1,000 gp",
+      "material_cost_gp": 1000,
+      "material_consumed": true,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -5070,6 +5360,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -5104,7 +5396,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "mistletoe, which the spell consumes, that was harvested with a golden sickle under the light of a full moon",
+      "material_cost_gp": null,
+      "material_consumed": true,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -5138,7 +5432,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "an opal worth 1,000 GP+",
+      "material_cost_gp": 1000,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Атака заклинанием: R",
@@ -5174,7 +5470,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a platinum-plated dragon scale, worth at least 500 gp",
+      "material_cost_gp": 500,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -5209,7 +5507,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a fistful of iron filings",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -5243,6 +5543,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -5279,6 +5581,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -5315,6 +5619,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -5351,6 +5657,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -5386,6 +5694,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: INTELLIGENCE",
@@ -5421,6 +5731,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -5453,6 +5765,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM",
@@ -5488,7 +5802,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a tiny silver cage worth 100 gp",
+      "material_cost_gp": 100,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -5523,7 +5839,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "humanoid blood inside a ruby vial worth at least 600 gp",
+      "material_cost_gp": 600,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -5558,7 +5876,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "an object engraved with a symbol of the Outer Planes, worth at least 500 gp",
+      "material_cost_gp": 500,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -5594,7 +5914,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a few hairs from a bull",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -5628,7 +5950,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a vial of quicksilver worth 500 gp and a life-sized human doll, both of which the spell consumes, and an intricate crystal rod worth at least 1,500 gp that is not consumed",
+      "material_cost_gp": 500,
+      "material_consumed": true,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -5662,6 +5986,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Атака заклинанием: R",
@@ -5697,7 +6023,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a statuette of a dragon, worth at least 500 gp",
+      "material_cost_gp": 500,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY",
@@ -5733,7 +6061,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a magic item or a willing creature from the destination world",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -5769,6 +6099,8 @@
         "V"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -5804,6 +6136,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -5838,7 +6172,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a holy symbol worth at least 5 gp",
+      "material_cost_gp": 5,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CHARISMA",
@@ -5872,7 +6208,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a spool of platinum cord worth at least 250 gp, which the spell consumes",
+      "material_cost_gp": 250,
+      "material_consumed": true,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -5905,7 +6243,9 @@
         "V",
         "M"
       ],
-      "material": null,
+      "material": "a piece of straw",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: DEXTERITY, STRENGTH",
@@ -5941,7 +6281,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a bit of sponge",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -5976,7 +6318,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a shard of onyx and a drop of the caster's blood, both of which the spell consumes",
+      "material_cost_gp": null,
+      "material_consumed": true,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
@@ -6010,6 +6354,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Атака заклинанием: R",
@@ -6043,6 +6389,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM, INTELLIGENCE",
@@ -6075,7 +6423,9 @@
         "V",
         "M"
       ],
-      "material": null,
+      "material": "a drop of pitch mixed with a drop of mercury",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM",
@@ -6110,7 +6460,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a diamond worth at least 500 gp, which the spell consumes",
+      "material_cost_gp": 500,
+      "material_consumed": true,
       "concentration": false,
       "ritual": false,
       "check_type": "",
@@ -6144,7 +6496,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a crystal prism",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM, DEXTERITY",
@@ -6178,6 +6532,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Атака заклинанием: M",
@@ -6213,7 +6569,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a small piece of adamantine worth at least 500 gp, which the spell consumes",
+      "material_cost_gp": 500,
+      "material_consumed": true,
       "concentration": true,
       "ritual": false,
       "check_type": "",
@@ -6247,7 +6605,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a caterpillar cocoon",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: WISDOM",
@@ -6282,6 +6642,8 @@
         "S"
       ],
       "material": null,
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: INTELLIGENCE",
@@ -6318,7 +6680,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "a small, nine-pointed star made of iron",
+      "material_cost_gp": null,
+      "material_consumed": false,
       "concentration": true,
       "ritual": false,
       "check_type": "Спасбросок: STRENGTH",
@@ -6352,7 +6716,9 @@
         "S",
         "M"
       ],
-      "material": null,
+      "material": "an hourglass filled with diamond dust worth at least 5,000 gp, which the spell consumes",
+      "material_cost_gp": 5000,
+      "material_consumed": true,
       "concentration": false,
       "ritual": false,
       "check_type": "Спасбросок: CONSTITUTION",
