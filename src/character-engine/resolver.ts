@@ -1,3 +1,4 @@
+import { validateCharacterEngineInput } from "./core.ts"
 import {
   ABILITY_KEYS,
   SKILL_KEYS,
@@ -5,6 +6,7 @@ import {
   type BaseCharacter,
   type CharacterCondition,
   type CharacterContribution,
+  type CharacterEngineInput,
   type CharacterState,
   type GrantContribution,
   type NumericContribution,
@@ -193,6 +195,8 @@ export function resolveCharacter(
   state: CharacterState,
   contributions: CharacterContribution[] = [],
 ): ResolvedCharacter {
+  validateCharacterEngineInput({ base, state, contributions })
+
   // Max HP is resolved first so HP-dependent conditions elsewhere use the current resolved maximum.
   const maxHp = resolveNumber(
     "combat.maxHp",
@@ -299,4 +303,9 @@ export function resolveCharacter(
     },
     grants: resolveGrants(contributions, state, maxHp.value),
   }
+}
+
+/** Canonical object-based Character Engine entry point. */
+export function resolveCharacterInput(input: CharacterEngineInput): ResolvedCharacter {
+  return resolveCharacter(input.base, input.state, input.contributions)
 }
