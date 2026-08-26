@@ -1,4 +1,9 @@
 export {
+  ConditionEngineError,
+  evaluateCondition,
+  type ConditionContext,
+} from "./conditions.ts"
+export {
   CharacterConflictError,
   resolveNumericConflicts,
   type NumericConflictResolution,
@@ -40,4 +45,6 @@ export {
   type ResolvedSavingThrow,
   type ResolvedSkill,
   type SkillKey,
+  type StateCondition,
+  type StateFactValue,
 } from "./types.ts"
