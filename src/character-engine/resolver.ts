@@ -1,9 +1,6 @@
+import { resolveNumericConflicts } from "./conflicts.ts"
 import { validateCharacterEngineInput } from "./core.ts"
-import {
-  abilityModifier,
-  applyNumericOperation,
-  proficiencyBonusForLevel,
-} from "./numeric.ts"
+import { abilityModifier, proficiencyBonusForLevel } from "./numeric.ts"
 import {
   ABILITY_KEYS,
   PASSIVE_KEYS,
@@ -85,25 +82,20 @@ function resolveNumber(
   state: CharacterState,
   maxHpForConditions: number,
 ): ResolvedNumber {
-  const relevant = contributions
-    .filter((contribution): contribution is NumericContribution => {
-      return (
-        contribution.kind === "numeric" &&
-        contribution.target === target &&
-        isConditionActive(contribution.condition, state, maxHpForConditions)
-      )
-    })
-    .sort(compareContributionOrder)
+  const relevant = contributions.filter((contribution): contribution is NumericContribution => {
+    return (
+      contribution.kind === "numeric" &&
+      contribution.target === target &&
+      isConditionActive(contribution.condition, state, maxHpForConditions)
+    )
+  })
 
-  let value = baseValue
-  for (const contribution of relevant) {
-    value = applyNumericOperation(value, contribution.operation, contribution.value)
-  }
+  const resolution = resolveNumericConflicts(baseValue, relevant)
 
   return {
-    value,
+    value: resolution.value,
     baseValue,
-    sources: relevant.map((contribution) => ({
+    sources: resolution.contributions.map((contribution) => ({
       contributionId: contribution.id,
       source: contribution.source,
     })),
