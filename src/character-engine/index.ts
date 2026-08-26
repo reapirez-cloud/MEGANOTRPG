@@ -23,6 +23,15 @@ export {
   validateCharacterEngineInput,
 } from "./core.ts"
 export {
+  ExplainEngineError,
+  explainCharacter,
+  type CharacterExplainQuery,
+  type CharacterExplanation,
+  type ExplanationNode,
+  type ExplanationNodeKind,
+  type ExplanationStatus,
+} from "./explain.ts"
+export {
   FormulaConflictError,
   FormulaEngineError,
   evaluateFormula,
