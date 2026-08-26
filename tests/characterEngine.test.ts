@@ -134,7 +134,7 @@ test("equal boolean-like grants merge without stacking while preserving every ac
   )
 })
 
-test("one spell is deduplicated per casting method while distinct methods stay separate", () => {
+test("one spell is deduplicated per mechanical variant while distinct variants stay separate", () => {
   const contributions: CharacterContribution[] = [
     {
       id: "cleric-cure-wounds",
@@ -143,7 +143,7 @@ test("one spell is deduplicated per casting method while distinct methods stay s
       target: "spell",
       key: "cure-wounds",
       variantKey: "slots",
-      payload: { label: "Я", mode: "spell_slots" },
+      payload: { mode: "spell_slots" },
       source: source("cleric", "Клирик"),
     },
     {
@@ -153,7 +153,7 @@ test("one spell is deduplicated per casting method while distinct methods stay s
       target: "spell",
       key: "cure-wounds",
       variantKey: "slots",
-      payload: { label: "Я", mode: "spell_slots" },
+      payload: { mode: "spell_slots" },
       source: source("blessing", "Благословение"),
     },
     {
@@ -163,7 +163,7 @@ test("one spell is deduplicated per casting method while distinct methods stay s
       target: "spell",
       key: "cure-wounds",
       variantKey: "frog-daily",
-      payload: { label: "Ж", mode: "free_use", uses: 1, reset: "day" },
+      payload: { mode: "free_use", uses: 1, reset: "day" },
       source: source("frog", "Жабья школа"),
     },
     {
@@ -173,7 +173,7 @@ test("one spell is deduplicated per casting method while distinct methods stay s
       target: "spell",
       key: "cure-wounds",
       variantKey: "staff-charges",
-      payload: { label: "И", mode: "charges", cost: 2 },
+      payload: { mode: "charges", cost: 2 },
       source: source("staff", "Посох"),
     },
   ]
