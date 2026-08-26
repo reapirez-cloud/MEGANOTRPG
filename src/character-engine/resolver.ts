@@ -11,6 +11,7 @@ import {
 } from "./grants.ts"
 import { abilityModifier, proficiencyBonusForLevel } from "./numeric.ts"
 import { resolveResources } from "./resources.ts"
+import { resolveSpells } from "./spells.ts"
 import { applySuppressions } from "./suppressions.ts"
 import {
   ABILITY_KEYS,
@@ -102,7 +103,7 @@ export function resolveCharacter(
 
   // Universal source/contribution suppression happens before every mechanical
   // resolver so one control can consistently disable numeric, formula, grant,
-  // resource and action effects.
+  // resource, action and spell effects.
   const suppressionResolution = applySuppressions(contributions, state)
   const activeContributions = suppressionResolution.contributions
 
@@ -216,6 +217,15 @@ export function resolveCharacter(
     formulaContext,
   )
 
+  const spells = resolveSpells(
+    grants,
+    activeContributions,
+    resources,
+    state,
+    maxHp.value,
+    formulaContext,
+  )
+
   const acFormulaContributions = activeContributions.filter(
     (contribution): contribution is FormulaContribution =>
       contribution.kind === "formula" &&
@@ -294,6 +304,7 @@ export function resolveCharacter(
     spellcasting: { byAbility: spellcastingByAbility },
     resources,
     actions,
+    spells,
     grants,
   }
 }
