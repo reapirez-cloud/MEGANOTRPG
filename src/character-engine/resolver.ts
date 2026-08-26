@@ -1,6 +1,7 @@
 import { evaluateCondition } from "./conditions.ts"
 import { resolveNumericConflicts } from "./conflicts.ts"
 import { validateCharacterEngineInput } from "./core.ts"
+import { evaluateFormula, selectFormula, type FormulaContext } from "./formulas.ts"
 import { abilityModifier, proficiencyBonusForLevel } from "./numeric.ts"
 import {
   ABILITY_KEYS,
@@ -11,6 +12,8 @@ import {
   type CharacterContribution,
   type CharacterEngineInput,
   type CharacterState,
+  type FormulaContribution,
+  type FormulaExpression,
   type GrantContribution,
   type NumericContribution,
   type NumericTarget,
@@ -26,38 +29,22 @@ import {
 } from "./types.ts"
 
 const SKILL_ABILITIES: Record<SkillKey, AbilityKey> = {
-  acrobatics: "dexterity",
-  animal_handling: "wisdom",
-  arcana: "intelligence",
-  athletics: "strength",
-  deception: "charisma",
-  history: "intelligence",
-  insight: "wisdom",
-  intimidation: "charisma",
-  investigation: "intelligence",
-  medicine: "wisdom",
-  nature: "intelligence",
-  perception: "wisdom",
-  performance: "charisma",
-  persuasion: "charisma",
-  religion: "intelligence",
-  sleight_of_hand: "dexterity",
-  stealth: "dexterity",
-  survival: "wisdom",
+  acrobatics: "dexterity", animal_handling: "wisdom", arcana: "intelligence", athletics: "strength",
+  deception: "charisma", history: "intelligence", insight: "wisdom", intimidation: "charisma",
+  investigation: "intelligence", medicine: "wisdom", nature: "intelligence", perception: "wisdom",
+  performance: "charisma", persuasion: "charisma", religion: "intelligence", sleight_of_hand: "dexterity",
+  stealth: "dexterity", survival: "wisdom",
 }
 
 const PASSIVE_SKILLS: Record<PassiveKey, SkillKey> = {
-  perception: "perception",
-  investigation: "investigation",
-  insight: "insight",
+  perception: "perception", investigation: "investigation", insight: "insight",
 }
 
 function compareContributionOrder(
   left: Pick<CharacterContribution, "id" | "priority">,
   right: Pick<CharacterContribution, "id" | "priority">,
 ) {
-  const priorityDifference = (left.priority ?? 0) - (right.priority ?? 0)
-  return priorityDifference || left.id.localeCompare(right.id)
+  return (left.priority ?? 0) - (right.priority ?? 0) || left.id.localeCompare(right.id)
 }
 
 function resolveNumber(
@@ -67,16 +54,12 @@ function resolveNumber(
   state: CharacterState,
   maxHpForConditions: number,
 ): ResolvedNumber {
-  const relevant = contributions.filter((contribution): contribution is NumericContribution => {
-    return (
-      contribution.kind === "numeric" &&
-      contribution.target === target &&
-      evaluateCondition(contribution.condition, { state, maxHp: maxHpForConditions })
-    )
-  })
-
+  const relevant = contributions.filter((contribution): contribution is NumericContribution =>
+    contribution.kind === "numeric" &&
+    contribution.target === target &&
+    evaluateCondition(contribution.condition, { state, maxHp: maxHpForConditions }),
+  )
   const resolution = resolveNumericConflicts(baseValue, relevant)
-
   return {
     value: resolution.value,
     baseValue,
@@ -88,71 +71,41 @@ function resolveNumber(
 }
 
 function resolveGrants(
-  contributions: CharacterContribution[],
-  state: CharacterState,
-  maxHp: number,
+  contributions: CharacterContribution[], state: CharacterState, maxHp: number,
 ): ResolvedGrant[] {
   const active = contributions
-    .filter((contribution): contribution is GrantContribution => {
-      return (
-        contribution.kind === "grant" &&
-        evaluateCondition(contribution.condition, { state, maxHp })
-      )
-    })
+    .filter((contribution): contribution is GrantContribution =>
+      contribution.kind === "grant" && evaluateCondition(contribution.condition, { state, maxHp }),
+    )
     .sort(compareContributionOrder)
-
-  const groups = new Map<
-    string,
-    {
-      target: GrantContribution["target"]
-      key: string
-      variantKey: string
-      payload?: unknown
-      sources: ResolvedGrant["sources"]
-    }
-  >()
-
+  const groups = new Map<string, { target: GrantContribution["target"]; key: string; variantKey: string; payload?: unknown; sources: ResolvedGrant["sources"] }>()
   for (const contribution of active) {
     const variantKey = contribution.variantKey ?? "default"
     const identity = `${contribution.target}:${contribution.key}:${variantKey}`
-    const current = groups.get(identity) ?? {
-      target: contribution.target,
-      key: contribution.key,
-      variantKey,
-      payload: undefined,
-      sources: [],
-    }
-
+    const current = groups.get(identity) ?? { target: contribution.target, key: contribution.key, variantKey, payload: undefined, sources: [] }
     if (contribution.operation === "SUPPRESS") {
       current.sources = []
       current.payload = undefined
       groups.set(identity, current)
       continue
     }
-
-    if (current.payload === undefined && contribution.payload !== undefined) {
-      current.payload = contribution.payload
-    }
-    current.sources.push({
-      contributionId: contribution.id,
-      source: contribution.source,
-    })
+    if (current.payload === undefined && contribution.payload !== undefined) current.payload = contribution.payload
+    current.sources.push({ contributionId: contribution.id, source: contribution.source })
     groups.set(identity, current)
   }
-
-  return [...groups.values()]
-    .filter((grant) => grant.sources.length > 0)
-    .sort((left, right) => {
-      return (
-        left.target.localeCompare(right.target) ||
-        left.key.localeCompare(right.key) ||
-        left.variantKey.localeCompare(right.variantKey)
-      )
-    })
+  return [...groups.values()].filter((grant) => grant.sources.length > 0).sort((left, right) =>
+    left.target.localeCompare(right.target) || left.key.localeCompare(right.key) || left.variantKey.localeCompare(right.variantKey),
+  )
 }
 
-function proficiencyRank(value: ProficiencyRank | undefined): ProficiencyRank {
-  return value ?? 0
+function proficiencyRank(value: ProficiencyRank | undefined): ProficiencyRank { return value ?? 0 }
+
+const DEFAULT_AC_FORMULA: FormulaExpression = {
+  kind: "add",
+  terms: [
+    { kind: "literal", value: 10 },
+    { kind: "reference", key: "abilities.dexterity.modifier" },
+  ],
 }
 
 export function resolveCharacter(
@@ -161,150 +114,71 @@ export function resolveCharacter(
   contributions: CharacterContribution[] = [],
 ): ResolvedCharacter {
   validateCharacterEngineInput({ base, state, contributions })
+  const maxHp = resolveNumber("combat.maxHp", base.baseMaxHp, contributions, state, base.baseMaxHp)
+  const proficiencyBonus = resolveNumber("core.proficiencyBonus", proficiencyBonusForLevel(base.level), contributions, state, maxHp.value)
 
-  // Max HP is resolved first so HP-dependent conditions elsewhere use the current resolved maximum.
-  const maxHp = resolveNumber(
-    "combat.maxHp",
-    base.baseMaxHp,
-    contributions,
-    state,
-    base.baseMaxHp,
+  const abilities = Object.fromEntries(ABILITY_KEYS.map((ability) => {
+    const resolved = resolveNumber(`abilities.${ability}`, base.abilities[ability], contributions, state, maxHp.value)
+    const result: ResolvedAbility = { ...resolved, modifier: abilityModifier(resolved.value) }
+    return [ability, result]
+  })) as Record<AbilityKey, ResolvedAbility>
+
+  const skills = Object.fromEntries(SKILL_KEYS.map((skill) => {
+    const ability = SKILL_ABILITIES[skill]
+    const rank = proficiencyRank(base.skillProficiencies?.[skill])
+    const result: ResolvedSkill = {
+      key: skill, ability, proficiencyRank: rank,
+      bonus: resolveNumber(`skills.${skill}.bonus`, abilities[ability].modifier + proficiencyBonus.value * rank, contributions, state, maxHp.value),
+    }
+    return [skill, result]
+  })) as Record<SkillKey, ResolvedSkill>
+
+  const savingThrows = Object.fromEntries(ABILITY_KEYS.map((ability) => {
+    const rank = proficiencyRank(base.savingThrowProficiencies?.[ability])
+    const result: ResolvedSavingThrow = {
+      ability, proficiencyRank: rank,
+      bonus: resolveNumber(`savingThrows.${ability}.bonus`, abilities[ability].modifier + proficiencyBonus.value * rank, contributions, state, maxHp.value),
+    }
+    return [ability, result]
+  })) as Record<AbilityKey, ResolvedSavingThrow>
+
+  const formulaContext: FormulaContext = { "core.proficiencyBonus": proficiencyBonus.value }
+  for (const ability of ABILITY_KEYS) {
+    formulaContext[`abilities.${ability}.score`] = abilities[ability].value
+    formulaContext[`abilities.${ability}.modifier`] = abilities[ability].modifier
+  }
+
+  const acFormulaContributions = contributions.filter((contribution): contribution is FormulaContribution =>
+    contribution.kind === "formula" &&
+    contribution.target === "combat.ac" &&
+    evaluateCondition(contribution.condition, { state, maxHp: maxHp.value }),
   )
+  const acSelection = selectFormula("combat.ac", DEFAULT_AC_FORMULA, acFormulaContributions)
+  const acFormulaValue = evaluateFormula(acSelection.formula, formulaContext)
+  const acNumeric = resolveNumber("combat.ac", acFormulaValue, contributions, state, maxHp.value)
+  const ac = { ...acNumeric, formula: acSelection.formula, formulaSources: acSelection.sources }
 
-  const proficiencyBonus = resolveNumber(
-    "core.proficiencyBonus",
-    proficiencyBonusForLevel(base.level),
-    contributions,
-    state,
-    maxHp.value,
-  )
+  const speed = resolveNumber("combat.speed", base.baseSpeed, contributions, state, maxHp.value)
+  const initiative = resolveNumber("combat.initiative", abilities.dexterity.modifier, contributions, state, maxHp.value)
+  const passives = Object.fromEntries(PASSIVE_KEYS.map((passive) => {
+    const skill = PASSIVE_SKILLS[passive]
+    return [passive, resolveNumber(`passives.${passive}`, 10 + skills[skill].bonus.value, contributions, state, maxHp.value)]
+  })) as Record<PassiveKey, ResolvedNumber>
 
-  const abilities = Object.fromEntries(
-    ABILITY_KEYS.map((ability) => {
-      const resolved = resolveNumber(
-        `abilities.${ability}`,
-        base.abilities[ability],
-        contributions,
-        state,
-        maxHp.value,
-      )
-      const result: ResolvedAbility = {
-        ...resolved,
-        modifier: abilityModifier(resolved.value),
-      }
-      return [ability, result]
-    }),
-  ) as Record<AbilityKey, ResolvedAbility>
-
-  const skills = Object.fromEntries(
-    SKILL_KEYS.map((skill) => {
-      const ability = SKILL_ABILITIES[skill]
-      const rank = proficiencyRank(base.skillProficiencies?.[skill])
-      const derivedBonus = abilities[ability].modifier + proficiencyBonus.value * rank
-      const result: ResolvedSkill = {
-        key: skill,
-        ability,
-        proficiencyRank: rank,
-        bonus: resolveNumber(
-          `skills.${skill}.bonus`,
-          derivedBonus,
-          contributions,
-          state,
-          maxHp.value,
-        ),
-      }
-      return [skill, result]
-    }),
-  ) as Record<SkillKey, ResolvedSkill>
-
-  const savingThrows = Object.fromEntries(
-    ABILITY_KEYS.map((ability) => {
-      const rank = proficiencyRank(base.savingThrowProficiencies?.[ability])
-      const derivedBonus = abilities[ability].modifier + proficiencyBonus.value * rank
-      const result: ResolvedSavingThrow = {
-        ability,
-        proficiencyRank: rank,
-        bonus: resolveNumber(
-          `savingThrows.${ability}.bonus`,
-          derivedBonus,
-          contributions,
-          state,
-          maxHp.value,
-        ),
-      }
-      return [ability, result]
-    }),
-  ) as Record<AbilityKey, ResolvedSavingThrow>
-
-  const speed = resolveNumber(
-    "combat.speed",
-    base.baseSpeed,
-    contributions,
-    state,
-    maxHp.value,
-  )
-
-  const initiative = resolveNumber(
-    "combat.initiative",
-    abilities.dexterity.modifier,
-    contributions,
-    state,
-    maxHp.value,
-  )
-
-  const passives = Object.fromEntries(
-    PASSIVE_KEYS.map((passive) => {
-      const skill = PASSIVE_SKILLS[passive]
-      return [
-        passive,
-        resolveNumber(
-          `passives.${passive}`,
-          10 + skills[skill].bonus.value,
-          contributions,
-          state,
-          maxHp.value,
-        ),
-      ]
-    }),
-  ) as Record<PassiveKey, ResolvedNumber>
-
-  const spellcastingByAbility = Object.fromEntries(
-    ABILITY_KEYS.map((ability) => {
-      const attackBonus = abilities[ability].modifier + proficiencyBonus.value
-      return [
-        ability,
-        {
-          attackBonus,
-          saveDc: 8 + attackBonus,
-        },
-      ]
-    }),
-  ) as ResolvedCharacter["spellcasting"]["byAbility"]
+  const spellcastingByAbility = Object.fromEntries(ABILITY_KEYS.map((ability) => {
+    const attackBonus = abilities[ability].modifier + proficiencyBonus.value
+    return [ability, { attackBonus, saveDc: 8 + attackBonus }]
+  })) as ResolvedCharacter["spellcasting"]["byAbility"]
 
   return {
-    id: base.id,
-    name: base.name,
-    level: base.level,
-    proficiencyBonus,
-    abilities,
-    skills,
-    savingThrows,
-    combat: {
-      maxHp,
-      currentHp: state.currentHp,
-      tempHp: state.tempHp,
-      speed,
-      initiative,
-    },
+    id: base.id, name: base.name, level: base.level, proficiencyBonus, abilities, skills, savingThrows,
+    combat: { ac, maxHp, currentHp: state.currentHp, tempHp: state.tempHp, speed, initiative },
     passives,
-    spellcasting: {
-      byAbility: spellcastingByAbility,
-    },
+    spellcasting: { byAbility: spellcastingByAbility },
     grants: resolveGrants(contributions, state, maxHp.value),
   }
 }
 
-/** Canonical object-based Character Engine entry point. */
 export function resolveCharacterInput(input: CharacterEngineInput): ResolvedCharacter {
   return resolveCharacter(input.base, input.state, input.contributions)
 }
