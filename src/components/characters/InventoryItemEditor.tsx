@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import type { FormEvent } from "react"
 import ImageUploadField from "../common/ImageUploadField"
+import ItemMechanicPresets from "./ItemMechanicPresets"
 import MechanicsBuilder from "./MechanicsBuilder"
 import { equipmentSlots, inventoryCategories } from "../../lib/dndInventory"
 import { mechanicSummary } from "../../lib/characterMechanics"
@@ -188,7 +189,9 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
         {step === 3 && (
           <section className="creation-wizard__step">
             <div className="creation-wizard__intro"><span>03</span><div><strong>Что предмет делает?</strong><small>Этот шаг можно оставить пустым. Тогда предмет не влияет на Character Engine.</small></div></div>
-            <div className="creation-default-note creation-default-note--neutral"><span>✦</span><p><strong>{mechanics.length ? `${mechanics.length} эффектов настроено` : "Без эффектов — это нормально"}</strong><small>Можно добавить бонус к стату, сопротивление, иммунитет, ресурс/заряды, атаку или заклинание. У каждого эффекта можно задать условие.</small></p></div>
+            <div className="creation-default-note creation-default-note--neutral"><span>✦</span><p><strong>{mechanics.length ? `${mechanics.length} эффектов настроено` : "Без эффектов — это нормально"}</strong><small>Сначала выбери частый готовый эффект. Для редких правил ниже остаётся полный конструктор.</small></p></div>
+            <ItemMechanicPresets value={mechanics} onChange={setMechanics} />
+            <div className="creation-wizard__intro"><span>⚙</span><div><strong>Расширенная настройка</strong><small>Свои бонусы, произвольные теги, условия, атаки, ресурсы и нестандартные заклинания.</small></div></div>
             <MechanicsBuilder value={mechanics} onChange={setMechanics} itemMode />
           </section>
         )}
