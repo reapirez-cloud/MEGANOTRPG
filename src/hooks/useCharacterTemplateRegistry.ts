@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
-import { supabase } from "../lib/supabase"
-import { clearCharacterTemplateBundles, registerCharacterTemplateBundles } from "../rule-templates/registry"
-import type { CharacterTemplateAssignment, CharacterTemplateBundle, RuleTemplate, RuleTemplateLevel } from "../rule-templates/types"
+import { supabase } from "../lib/supabase.ts"
+import { clearCharacterTemplateBundles, registerCharacterTemplateBundles } from "../rule-templates/registry.ts"
+import type { CharacterTemplateAssignment, CharacterTemplateBundle, RuleTemplate, RuleTemplateLevel } from "../rule-templates/types.ts"
 
 export function useCharacterTemplateRegistry(characterId: string | null) {
   const [bundles, setBundles] = useState<CharacterTemplateBundle[]>([])
@@ -21,7 +21,7 @@ export function useCharacterTemplateRegistry(characterId: string | null) {
       setBundles([]); setRevision((value) => value + 1); setLoading(false); return
     }
     const [templateResult, levelResult] = await Promise.all([
-      supabase.from("rule_templates").select("id,campaign_id,kind,slug,name,description,version,mechanics,choices,is_active,created_by,created_at,updated_at").in("id", ids),
+      supabase.from("rule_templates").select("id,campaign_id,kind,slug,name,description,version,mechanics,choices,parent_template_id,unlock_level,is_active,created_by,created_at,updated_at").in("id", ids),
       supabase.from("rule_template_levels").select("id,template_id,level,mechanics,choices").in("template_id", ids).order("level"),
     ])
     const firstError = templateResult.error || levelResult.error

@@ -1,6 +1,6 @@
-import type { StoredMechanics } from "../types/characterMechanics"
+import type { StoredMechanics } from "../types/characterMechanics.ts"
 
-export type RuleTemplateKind = "race" | "class"
+export type RuleTemplateKind = "race" | "subrace" | "class" | "subclass"
 export type RuleChoiceTarget = "language" | "proficiency" | "sense" | "trait"
 
 export type RuleChoiceDefinition = {
@@ -21,6 +21,8 @@ export type RuleTemplate = {
   version: number
   mechanics: StoredMechanics
   choices: RuleChoiceDefinition[]
+  parent_template_id?: string | null
+  unlock_level?: number | null
   is_active: boolean
   created_by: string | null
   created_at: string

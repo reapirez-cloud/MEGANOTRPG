@@ -2,6 +2,7 @@ import type {
   AbilityKey,
   ActionRange,
   CharacterCondition,
+  FormulaExpression,
   GrantPayload,
   GrantTarget,
   NumericOperation,
@@ -39,8 +40,11 @@ export type StoredResourceMechanic = {
   type: "resource"
   key: string
   label: string
-  max: number
-  recharge: ResourceRechargeTrigger
+  max: number | FormulaExpression
+  /** Old stored rows may contain one string; adapters normalize both shapes. */
+  recharge: ResourceRechargeTrigger | ResourceRechargeTrigger[]
+  restore?: "full" | "amount"
+  restoreAmount?: number
   initial?: "full" | "empty" | number
   activation?: MechanicActivation
   condition?: CharacterCondition

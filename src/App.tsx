@@ -16,6 +16,7 @@ import "./ui-v2.css"
 import "./game-context-v3.css"
 import "./rule-templates.css"
 import "./rule-template-levels.css"
+import "./resource-runtime.css"
 
 import BottomNav from "./components/app/BottomNav"
 import NotificationsSheet from "./components/app/NotificationsSheet"

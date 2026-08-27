@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { supabase } from "../lib/supabase"
-import type { RuleTemplate, RuleTemplateKind, RuleTemplateLevel } from "../rule-templates/types"
+import { supabase } from "../lib/supabase.ts"
+import type { RuleTemplate, RuleTemplateKind, RuleTemplateLevel } from "../rule-templates/types.ts"
 
 export function useRuleTemplates(campaignId: string, includeInactive = false) {
   const [templates, setTemplates] = useState<RuleTemplate[]>([])
@@ -11,7 +11,7 @@ export function useRuleTemplates(campaignId: string, includeInactive = false) {
   const load = useCallback(async () => {
     if (!campaignId) { setTemplates([]); setLevels([]); setLoading(false); return }
     setLoading(true); setError("")
-    let query = supabase.from("rule_templates").select("id,campaign_id,kind,slug,name,description,version,mechanics,choices,is_active,created_by,created_at,updated_at").eq("campaign_id", campaignId).order("kind").order("name")
+    let query = supabase.from("rule_templates").select("id,campaign_id,kind,slug,name,description,version,mechanics,choices,parent_template_id,unlock_level,is_active,created_by,created_at,updated_at").eq("campaign_id", campaignId).order("kind").order("name")
     if (!includeInactive) query = query.eq("is_active", true)
     const result = await query
     if (result.error) { setError(result.error.message); setLoading(false); return }
@@ -29,7 +29,9 @@ export function useRuleTemplates(campaignId: string, includeInactive = false) {
 
   const byKind = useMemo(() => ({
     race: templates.filter((item) => item.kind === "race"),
+    subrace: templates.filter((item) => item.kind === "subrace"),
     class: templates.filter((item) => item.kind === "class"),
+    subclass: templates.filter((item) => item.kind === "subclass"),
   }) satisfies Record<RuleTemplateKind, RuleTemplate[]>, [templates])
 
   return { templates, levels, byKind, loading, error, reload: load }

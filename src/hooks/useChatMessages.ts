@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
-import { supabase } from "../lib/supabase"
-import { deleteCampaignMediaObject } from "../lib/mediaUpload"
-import type { ChatEventKind, ChatEventPayload, ChatMessage } from "../types/chat"
+import { supabase } from "../lib/supabase.ts"
+import { deleteCampaignMediaObject } from "../lib/mediaUpload.ts"
+import type { ChatEventKind, ChatEventPayload, ChatMessage } from "../types/chat.ts"
+import type { ResourceCostInput } from "../types/characterResources.ts"
 
 type RealtimeState = "connecting" | "live" | "offline"
 type Result = { ok: boolean; error?: string }
-export type ChatRollRequest = { characterId: string | null; label: string; kind: string; modifier?: number; rollD20?: boolean; diceCount?: number; diceSides?: number; diceModifier?: number }
+export type ChatRollRequest = { characterId: string | null; label: string; kind: string; modifier?: number; rollD20?: boolean; diceCount?: number; diceSides?: number; diceModifier?: number; resourceCosts?: ResourceCostInput[] }
 const fields = "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at, attachment_url, attachment_kind, event_kind, event_payload"
 const PAGE_SIZE = 50
 
@@ -25,8 +26,8 @@ export function useChatMessages(roomId: string) {
 
   const fetchInserted=useCallback(async(id:number)=>{const{data,error:e}=await supabase.from("chat_messages").select(fields).eq("id",id).eq("room_id",roomId).single();if(e){setError(e.message);return false};append(data as ChatMessage);return true},[append,roomId])
   const sendMessage=useCallback(async(text:string,attachmentUrl:string|null=null,characterId:string|null=null)=>{const body=text.trim();if((!body&&!attachmentUrl)||sending)return false;setSending(true);setError(null);const{data,error:e}=await supabase.from("chat_messages").insert({room_id:roomId,character_id:characterId,body,attachment_url:attachmentUrl,attachment_kind:attachmentUrl?"image":null}).select(fields).single();setSending(false);if(e){if(attachmentUrl)void deleteCampaignMediaObject(attachmentUrl);setError(e.message);return false};append(data as ChatMessage);return true},[append,roomId,sending])
-  const sendRoll=useCallback(async(request:ChatRollRequest)=>{if(sending)return false;setSending(true);setError(null);const{data,error:e}=await supabase.rpc("send_chat_roll_v2",{p_room_id:roomId,p_character_id:request.characterId,p_label:request.label,p_kind:request.kind,p_modifier:request.modifier??0,p_roll_d20:request.rollD20??true,p_dice_count:request.diceCount??0,p_dice_sides:request.diceSides??0,p_dice_modifier:request.diceModifier??0});setSending(false);if(e){setError(e.message);return false};return fetchInserted(Number(data))},[fetchInserted,roomId,sending])
-  const sendEvent=useCallback(async(characterId:string|null,eventKind:Exclude<ChatEventKind,"roll">,label:string,payload:ChatEventPayload={})=>{if(sending)return false;setSending(true);setError(null);const{data,error:e}=await supabase.rpc("send_chat_event_v2",{p_room_id:roomId,p_character_id:characterId,p_event_kind:eventKind,p_label:label,p_payload:payload});setSending(false);if(e){setError(e.message);return false};return fetchInserted(Number(data))},[fetchInserted,roomId,sending])
+  const sendRoll=useCallback(async(request:ChatRollRequest)=>{if(sending)return false;setSending(true);setError(null);const{data,error:e}=await supabase.rpc("send_chat_roll_v3",{p_room_id:roomId,p_character_id:request.characterId,p_label:request.label,p_kind:request.kind,p_modifier:request.modifier??0,p_roll_d20:request.rollD20??true,p_dice_count:request.diceCount??0,p_dice_sides:request.diceSides??0,p_dice_modifier:request.diceModifier??0,p_resource_costs:request.resourceCosts??[]});setSending(false);if(e){setError(e.message);return false};return fetchInserted(Number(data))},[fetchInserted,roomId,sending])
+  const sendEvent=useCallback(async(characterId:string|null,eventKind:Exclude<ChatEventKind,"roll">,label:string,payload:ChatEventPayload={},resourceCosts:ResourceCostInput[]=[]):Promise<boolean>=>{if(sending)return false;setSending(true);setError(null);const{data,error:e}=await supabase.rpc("send_chat_event_v3",{p_room_id:roomId,p_character_id:characterId,p_event_kind:eventKind,p_label:label,p_payload:payload,p_resource_costs:resourceCosts});setSending(false);if(e){setError(e.message);return false};return fetchInserted(Number(data))},[fetchInserted,roomId,sending])
   const editMessage=useCallback(async(messageId:number,text:string):Promise<Result>=>{const body=text.trim();if(!body)return{ok:false,error:"Сообщение не может быть пустым."};const{error:e}=await supabase.rpc("edit_chat_message",{p_message_id:messageId,p_body:body});if(e)return{ok:false,error:e.message};const edited_at=new Date().toISOString();setMessages((c)=>c.map((m)=>m.id===messageId?{...m,body,edited_at}:m));return{ok:true}},[])
   const deleteMessage=useCallback(async(messageId:number):Promise<Result>=>{const target=messages.find((m)=>m.id===messageId);const{error:e}=await supabase.rpc("delete_chat_message",{p_message_id:messageId});if(e)return{ok:false,error:e.message};setMessages((c)=>c.filter((m)=>m.id!==messageId));if(target?.attachment_url)void deleteCampaignMediaObject(target.attachment_url);return{ok:true}},[messages])
   return{messages,loading,sending,error,realtime,loadingOlder,hasOlder,loadOlder,markRead,sendMessage,sendRoll,sendEvent,editMessage,deleteMessage}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import type { FormEvent } from "react"
 import type { ResolvedAction, ResolvedSpell } from "../character-engine/index.ts"
 import { supabase } from "../lib/supabase"
+import { resourceCostInputs } from "../lib/resourceRuntime"
 import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
 import { useChatMessages } from "../hooks/useChatMessages"
@@ -196,21 +197,29 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
   }
 
   async function rollCheck(label: string, modifier: number, kind: "ability" | "skill" | "save") {
-    await chat.sendRoll({ characterId: actors.selected?.characterId || null, label, modifier, kind, rollD20: true }); setActionsOpen(false)
+    const sent = await chat.sendRoll({ characterId: actors.selected?.characterId || null, label, modifier, kind, rollD20: true })
+    if (sent) setActionsOpen(false)
   }
 
   async function runAction(action: ResolvedAction) {
+    const contract = resolved.contract
     const damage = action.damage[0]
-    if (action.attack || damage?.dice) await chat.sendRoll({ characterId: actors.selected?.characterId || null, label: action.label || action.key, kind: "action", modifier: action.attack?.bonus.value || 0, rollD20: Boolean(action.attack), diceCount: damage?.dice?.count || 0, diceSides: damage?.dice?.sides || 0, diceModifier: damage?.modifier.value || 0 })
-    else await chat.sendEvent(actors.selected?.characterId || null, "action", action.label || action.key, { detail: action.economy })
-    setActionsOpen(false)
+    const costs = contract ? resourceCostInputs(contract, action.resourceCosts) : []
+    const sent = action.attack || damage?.dice
+      ? await chat.sendRoll({ characterId: actors.selected?.characterId || null, label: action.label || action.key, kind: "action", modifier: action.attack?.bonus.value || 0, rollD20: Boolean(action.attack), diceCount: damage?.dice?.count || 0, diceSides: damage?.dice?.sides || 0, diceModifier: damage?.modifier.value || 0, resourceCosts: costs })
+      : await chat.sendEvent(actors.selected?.characterId || null, "action", action.label || action.key, { detail: action.economy }, costs)
+    if (sent) { resolved.refresh(); setActionsOpen(false) }
   }
 
   async function castSpell(spell: ResolvedSpell) {
+    const contract = resolved.contract
     const access = spell.accesses.find((item) => item.available) || spell.accesses[0]
     const method = access?.methods.find((item) => item.available) || access?.methods[0]
-    const detail = [spell.identity.level ? `${spell.identity.level} уровень` : "Кантрип", method?.attackBonus ? `атака ${method.attackBonus.value >= 0 ? "+" : ""}${method.attackBonus.value}` : "", method?.saveDc ? `СЛ ${method.saveDc.value}` : ""].filter(Boolean).join(" · ")
-    await chat.sendEvent(actors.selected?.characterId || null, "spell", spell.identity.name, { detail, spellKey: spell.key }); setActionsOpen(false)
+    const option = method?.resourceOptions.find((item) => item.available) || method?.resourceOptions[0]
+    const costs = contract && option ? resourceCostInputs(contract, option.costs) : []
+    const detail = [spell.identity.level ? `${spell.identity.level} уровень` : "Кантрип", option?.castLevel && option.castLevel !== spell.identity.level ? `ячейка ${option.castLevel} ур.` : "", method?.attackBonus ? `атака ${method.attackBonus.value >= 0 ? "+" : ""}${method.attackBonus.value}` : "", method?.saveDc ? `СЛ ${method.saveDc.value}` : ""].filter(Boolean).join(" · ")
+    const sent = await chat.sendEvent(actors.selected?.characterId || null, "spell", spell.identity.name, { detail, spellKey: spell.key }, costs)
+    if (sent) { resolved.refresh(); setActionsOpen(false) }
   }
 
   const realtimeLabel = chat.realtime === "live" ? "онлайн" : chat.realtime === "connecting" ? "подключение" : "офлайн"
