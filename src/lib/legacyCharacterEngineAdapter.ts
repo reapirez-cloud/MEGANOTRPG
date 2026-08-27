@@ -70,13 +70,20 @@ export function buildLegacyCharacterEngineInput(args: {
   if (sheet.passive_perception !== expectedPassive) contributions.push(setNumber("legacy:passive-perception-override", "passives.perception", sheet.passive_perception, sheetSource))
   addTextGrants(contributions, "language", sheet.languages, sheetSource); addTextGrants(contributions, "proficiency", sheet.proficiencies, sheetSource); addTextGrants(contributions, "sense", sheet.senses, sheetSource)
   for (const feature of features) { const source = legacySource(`legacy-feature:${feature.id}`, feature.name, "legacy_feature"); contributions.push({ id: `legacy:feature:${feature.id}`, kind: "grant", operation: "GRANT", target: "feature", key: feature.id, payload: { label: feature.name, description: feature.description, kind: feature.kind, legacyFeatureId: feature.id }, source }) }
-  contributions.push(...featureMechanicContributions(features), ...inventoryMechanicContributions(inventory), ...characterTemplateContributions(character.id, character.level))
+
+  const templateContributions = characterTemplateContributions(character.id, character.level)
+  contributions.push(...featureMechanicContributions(features), ...inventoryMechanicContributions(inventory), ...templateContributions)
+  const parserOwnedSlots = new Set(templateContributions
+    .filter((entry) => entry.kind === "grant" && entry.target === "resource" && /^spell_slot_[1-9]$/.test(entry.key))
+    .map((entry) => entry.kind === "grant" ? entry.key : ""))
 
   const resources: Record<string, ResourceState> = { ...registeredCharacterResourceState(character.id), ...(args.resourceStates || {}) }
   const slotLevels = configuredSlotLevels(sheet, spells)
   for (const level of slotLevels) {
     const slot = sheet.spell_slots?.[String(level)]; const max = Math.max(0, Number(slot?.max || 0)); const used = Math.max(0, Number(slot?.used || 0)); const key = slotResourceKey(level)
-    contributions.push({ id: `legacy:resource:${key}`, kind: "grant", operation: "GRANT", target: "resource", key, payload: { max, initial: "full", label: `Ячейки ${level} уровня`, recharge: { triggers: ["long_rest"], restore: "full" } }, source: sheetSource })
+    // New class templates own slot capacity. The legacy sheet only supplies the
+    // mutable spent/remaining state while old characters keep their legacy grant.
+    if (!parserOwnedSlots.has(key)) contributions.push({ id: `legacy:resource:${key}`, kind: "grant", operation: "GRANT", target: "resource", key, payload: { max, initial: "full", label: `Ячейки ${level} уровня`, recharge: { triggers: ["long_rest"], restore: "full" } }, source: sheetSource })
     resources[key] = { current: Math.max(0, max - used) }
   }
 
