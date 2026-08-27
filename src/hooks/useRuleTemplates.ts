@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { supabase } from "../lib/supabase.ts"
 import type { RuleTemplate, RuleTemplateKind, RuleTemplateLevel } from "../rule-templates/types.ts"
 
+const TEMPLATE_FIELDS = "id,campaign_id,kind,slug,name,description,version,mechanics,choices,parent_template_id,unlock_level,catalog_key,catalog_revision,source_kind,source_label,is_builtin,mechanical_summary,author_description,author_comment,rules_meta,is_active,created_by,created_at,updated_at"
+
 export function useRuleTemplates(campaignId: string, includeInactive = false) {
   const [templates, setTemplates] = useState<RuleTemplate[]>([])
   const [levels, setLevels] = useState<RuleTemplateLevel[]>([])
@@ -11,7 +13,7 @@ export function useRuleTemplates(campaignId: string, includeInactive = false) {
   const load = useCallback(async () => {
     if (!campaignId) { setTemplates([]); setLevels([]); setLoading(false); return }
     setLoading(true); setError("")
-    let query = supabase.from("rule_templates").select("id,campaign_id,kind,slug,name,description,version,mechanics,choices,parent_template_id,unlock_level,is_active,created_by,created_at,updated_at").eq("campaign_id", campaignId).order("kind").order("name")
+    let query = supabase.from("rule_templates").select(TEMPLATE_FIELDS).eq("campaign_id", campaignId).order("kind").order("name")
     if (!includeInactive) query = query.eq("is_active", true)
     const result = await query
     if (result.error) { setError(result.error.message); setLoading(false); return }
