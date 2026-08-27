@@ -12,6 +12,16 @@ import type {
 } from "../character-engine/index.ts"
 
 export type MechanicActivation = "carried" | "equipped"
+export type MechanicModuleTone = "neutral" | "violet" | "blue" | "cyan" | "green" | "amber" | "red"
+export type MechanicModuleDisplay = "counter" | "pips" | "bar"
+
+/** Presentation metadata is renderer-only. Character Engine never branches on it. */
+export type StoredMechanicPresentation = {
+  tone?: MechanicModuleTone
+  icon?: string
+  display?: MechanicModuleDisplay
+  priority?: number
+}
 
 type StoredMechanicMeta = {
   activation?: MechanicActivation
@@ -49,6 +59,7 @@ export type StoredResourceMechanic = StoredMechanicMeta & {
   restore?: "full" | "amount"
   restoreAmount?: number
   initial?: "full" | "empty" | number
+  presentation?: StoredMechanicPresentation
 }
 
 export type StoredActionDamage = {
@@ -75,6 +86,7 @@ export type StoredActionMechanic = StoredMechanicMeta & {
   resourceKey?: string
   resourceCost?: number
   tags?: string[]
+  presentation?: StoredMechanicPresentation
 }
 
 export type StoredSpellMechanic = StoredMechanicMeta & {
