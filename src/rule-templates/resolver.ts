@@ -5,10 +5,7 @@ import type { CharacterTemplateBundle, RuleChoiceDefinition, RuleTemplateKind } 
 
 export type TemplateSourceNodeKind = "template" | "mechanic" | "choice"
 
-/**
- * Read-model for GM/source UI. It is provenance only: Character Engine never
- * branches on these labels or node kinds.
- */
+/** Read-model for GM/source UI. CE never branches on these labels. */
 export type TemplateSourceNode = {
   id: string
   parentSourceId?: string
@@ -33,12 +30,7 @@ function templateRootId(bundle: CharacterTemplateBundle): string {
 }
 
 function templateRootSource(bundle: CharacterTemplateBundle): CharacterSource {
-  return {
-    id: templateRootId(bundle),
-    name: bundle.template.name,
-    sourceType: `${bundle.template.kind}_template`,
-    visibility: "campaign",
-  }
+  return { id: templateRootId(bundle), name: bundle.template.name, sourceType: `${bundle.template.kind}_template`, visibility: "campaign" }
 }
 
 function normalizeSelected(value: string | string[] | undefined): string[] {
@@ -81,21 +73,15 @@ function payloadLabel(mechanic: StoredMechanic): string | undefined {
 
 function mechanicFallbackName(mechanic: StoredMechanic): string {
   if (mechanic.type === "numeric") return mechanic.target
-  if (mechanic.type === "grant") return mechanic.key
   return mechanic.key
 }
 
 function sourceKeyForMechanic(mechanic: StoredMechanic): string {
-  const sourceKey = "sourceKey" in mechanic && typeof mechanic.sourceKey === "string"
-    ? mechanic.sourceKey.trim()
-    : ""
+  const sourceKey = "sourceKey" in mechanic && typeof mechanic.sourceKey === "string" ? mechanic.sourceKey.trim() : ""
   return sourceKey || `mechanic:${mechanic.id}`
 }
 
-function sourceForMechanic(
-  bundle: CharacterTemplateBundle,
-  mechanic: StoredMechanic,
-): CharacterSource {
+function sourceForMechanic(bundle: CharacterTemplateBundle, mechanic: StoredMechanic): CharacterSource {
   const root = templateRootSource(bundle)
   const key = sourceKeyForMechanic(mechanic)
   return {
@@ -107,17 +93,10 @@ function sourceForMechanic(
   }
 }
 
-function upsertNode(
-  nodes: Map<string, TemplateSourceNode>,
-  node: TemplateSourceNode,
-  mechanicId?: string,
-) {
+function upsertNode(nodes: Map<string, TemplateSourceNode>, node: TemplateSourceNode, mechanicId?: string) {
   const current = nodes.get(node.id)
   if (!current) {
-    nodes.set(node.id, {
-      ...node,
-      mechanicIds: mechanicId ? [mechanicId] : [...node.mechanicIds],
-    })
+    nodes.set(node.id, { ...node, mechanicIds: mechanicId ? [mechanicId] : [...node.mechanicIds] })
     return
   }
   if (mechanicId && !current.mechanicIds.includes(mechanicId)) current.mechanicIds.push(mechanicId)
@@ -155,8 +134,7 @@ function choiceContributions(
   unlockLevel: number,
   nodes: Map<string, TemplateSourceNode>,
 ): CharacterContribution[] {
-  const selected = normalizeSelected(bundle.assignment.selected_choices?.[definition.key])
-    .slice(0, Math.max(1, definition.count || 1))
+  const selected = normalizeSelected(bundle.assignment.selected_choices?.[definition.key]).slice(0, Math.max(1, definition.count || 1))
   const root = templateRootSource(bundle)
 
   return selected.flatMap((key, index) => {
@@ -191,24 +169,26 @@ function choiceContributions(
       ...(definition.target === "proficiency" ? { payload: { rank: 1 } } : {}),
       source,
     }
-    const optionMechanics = mechanicsAtSourceLevel(definition.option_mechanics?.[key] || [], sourceLevel)
-      .map((mechanic) => contributionForStoredMechanic(mechanic, source))
+
+    const unlockedMechanics: StoredMechanics = [
+      ...(definition.option_mechanics?.[key] || []),
+      ...Object.entries(definition.option_mechanics_by_level?.[key] || {})
+        .filter(([level]) => Number(level) <= sourceLevel)
+        .sort(([a], [b]) => Number(a) - Number(b))
+        .flatMap(([, mechanics]) => mechanics || []),
+    ]
+
+    const optionMechanics = mechanicsAtSourceLevel(unlockedMechanics, sourceLevel).map((mechanic) => contributionForStoredMechanic(mechanic, source))
     return [base, ...optionMechanics]
   })
 }
 
 /**
  * Pure parser between rule-template data and Character Engine input.
- *
- * It knows about class/subclass levels and template choices, but it does not
- * resolve character mechanics itself. Its only mechanical output is CE-native
- * CharacterContribution[]. UI consumers should read the resolved CE contract,
- * never call this parser for HP, slots, actions, etc.
+ * It knows class/subclass levels and persistent choices, but never resolves HP,
+ * slots, actions or other final character values itself.
  */
-export function resolveTemplateBundles(
-  bundles: CharacterTemplateBundle[],
-  characterLevel: number,
-): TemplateSourceResolution {
+export function resolveTemplateBundles(bundles: CharacterTemplateBundle[], characterLevel: number): TemplateSourceResolution {
   const contributions: CharacterContribution[] = []
   const nodes = new Map<string, TemplateSourceNode>()
 
@@ -226,39 +206,19 @@ export function resolveTemplateBundles(
       mechanicIds: [],
     })
 
-    contributions.push(...mechanicContributions(
-      bundle,
-      bundle.template.mechanics || [],
-      effectiveLevel,
-      1,
-      nodes,
-    ))
-    for (const definition of bundle.template.choices || []) {
-      contributions.push(...choiceContributions(bundle, definition, effectiveLevel, 1, nodes))
-    }
+    contributions.push(...mechanicContributions(bundle, bundle.template.mechanics || [], effectiveLevel, 1, nodes))
+    for (const definition of bundle.template.choices || []) contributions.push(...choiceContributions(bundle, definition, effectiveLevel, 1, nodes))
 
-    for (const level of bundle.levels
-      .filter((entry) => entry.level <= effectiveLevel)
-      .sort((a, b) => a.level - b.level)) {
-      contributions.push(...mechanicContributions(
-        bundle,
-        level.mechanics || [],
-        effectiveLevel,
-        level.level,
-        nodes,
-      ))
-      for (const definition of level.choices || []) {
-        contributions.push(...choiceContributions(bundle, definition, effectiveLevel, level.level, nodes))
-      }
+    for (const level of bundle.levels.filter((entry) => entry.level <= effectiveLevel).sort((a, b) => a.level - b.level)) {
+      contributions.push(...mechanicContributions(bundle, level.mechanics || [], effectiveLevel, level.level, nodes))
+      for (const definition of level.choices || []) contributions.push(...choiceContributions(bundle, definition, effectiveLevel, level.level, nodes))
     }
   }
 
   return {
     contributions,
     sources: [...nodes.values()].sort((left, right) =>
-      left.templateKind.localeCompare(right.templateKind) ||
-      left.unlockLevel - right.unlockLevel ||
-      left.name.localeCompare(right.name, "ru"),
+      left.templateKind.localeCompare(right.templateKind) || left.unlockLevel - right.unlockLevel || left.name.localeCompare(right.name, "ru"),
     ),
   }
 }
