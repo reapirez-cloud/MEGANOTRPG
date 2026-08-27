@@ -5,71 +5,211 @@ import { useCharacters, type Character } from "../context/CharacterContext"
 import { useRooms } from "../hooks/useRooms"
 import { useChatActors } from "../hooks/useChatActors"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
+import CharacterCreationWizard, { type CharacterWizardTarget } from "../components/characters/CharacterCreationWizard"
 import CampaignImage from "../components/common/CampaignImage"
-import ImageUploadField from "../components/common/ImageUploadField"
 import { supabase } from "../lib/supabase"
 import { deleteCampaignMediaObject, uploadCampaignFile } from "../lib/mediaUpload"
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
 
-type Props={onOpenCharacter:(id:string)=>void;onOpenRoom:(id:string)=>void}
-type Tab="characters"|"members"|"chats"|"materials"
-type CharFilter="all"|"active"|"inactive"|"npc"|"private"
-type CharEditor={mode:"create";type:"pc"|"npc"}|{mode:"edit";character:Character}|null
-type FileRow={id:string;folder_id:string|null;kind:"note"|"upload";title:string;body:string;file_url:string|null;original_name:string|null;mime_type:string|null;updated_at:string}
-type FolderRow={id:string;name:string;sort_order:number}
+type Props = { onOpenCharacter: (id: string) => void; onOpenRoom: (id: string) => void }
+type Tab = "characters" | "members" | "chats" | "materials"
+type CharFilter = "all" | "active" | "inactive" | "npc" | "private"
+type FileRow = { id: string; folder_id: string | null; kind: "note" | "upload"; title: string; body: string; file_url: string | null; original_name: string | null; mime_type: string | null; updated_at: string }
+type FolderRow = { id: string; name: string; sort_order: number }
 
-function MaterialLink({value,label}:{value:string;label:string}){const[href,setHref]=useState<string|null>(null);useEffect(()=>{let cancel=false;void resolveCampaignMediaUrl(value).then((url)=>{if(!cancel)setHref(url)});return()=>{cancel=true}},[value]);return href?<a className="control-file-link" href={href} target="_blank" rel="noreferrer">Открыть {label} ↗</a>:<span className="control-file-link">Готовим ссылку…</span>}
+function MaterialLink({ value, label }: { value: string; label: string }) {
+  const [href, setHref] = useState<string | null>(null)
+  useEffect(() => {
+    let cancel = false
+    void resolveCampaignMediaUrl(value).then((url) => { if (!cancel) setHref(url) })
+    return () => { cancel = true }
+  }, [value])
+  return href ? <a className="control-file-link" href={href} target="_blank" rel="noreferrer">Открыть {label} ↗</a> : <span className="control-file-link">Готовим ссылку…</span>
+}
 
-export default function GmWorkspace({onOpenCharacter,onOpenRoom}:Props){
-  const{user}=useAuth();const{campaignId,campaignTitle,characters,members,isOwner,refresh,createInvite,updateCharacter,deleteCharacter,setActiveForMember,setMemberRole}=useCharacters();const rooms=useRooms();const chatActors=useChatActors()
-  const[tab,setTab]=useState<Tab>("characters");const[filter,setFilter]=useState<CharFilter>("all");const[query,setQuery]=useState("");const[editor,setEditor]=useState<CharEditor>(null);const[step,setStep]=useState(1);const[name,setName]=useState("");const[role,setRole]=useState("");const[level,setLevel]=useState("1");const[bio,setBio]=useState("");const[avatar,setAvatar]=useState("");const[type,setType]=useState<"pc"|"npc">("pc");const[visibility,setVisibility]=useState<"campaign"|"private">("campaign");const[assigned,setAssigned]=useState("");const[saving,setSaving]=useState(false);const[error,setError]=useState("");const[deleteTarget,setDeleteTarget]=useState<Character|null>(null)
-  const[invite,setInvite]=useState("");const[memberEdit,setMemberEdit]=useState<string|null>(null);const[memberRole,setMemberRoleValue]=useState<"gm"|"player">("player")
-  const[folders,setFolders]=useState<FolderRow[]>([]);const[files,setFiles]=useState<FileRow[]>([]);const[folder,setFolder]=useState("all");const[noteOpen,setNoteOpen]=useState<FileRow|null|"new">(null);const[noteTitle,setNoteTitle]=useState("");const[noteBody,setNoteBody]=useState("");const uploadRef=useRef<HTMLInputElement|null>(null);const[roomCreate,setRoomCreate]=useState(false);const[roomTitle,setRoomTitle]=useState("")
+export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
+  const { user } = useAuth()
+  const { campaignId, campaignTitle, characters, members, isOwner, refresh, createInvite, updateCharacter, deleteCharacter, setActiveForMember, setMemberRole } = useCharacters()
+  const rooms = useRooms()
+  const chatActors = useChatActors()
 
-  const activeIds=useMemo(()=>new Set(members.map((m)=>m.active_character_id).filter(Boolean)),[members])
-  const visibleCharacters=useMemo(()=>characters.filter((character)=>{
-    const q=query.trim().toLocaleLowerCase("ru-RU");if(q&&!`${character.name} ${character.character_class} ${character.bio}`.toLocaleLowerCase("ru-RU").includes(q))return false
-    if(filter==="active")return character.character_type==="pc"&&activeIds.has(character.id)
-    if(filter==="inactive")return character.character_type==="pc"&&!activeIds.has(character.id)
-    if(filter==="npc")return character.character_type==="npc"
-    if(filter==="private")return character.visibility==="private"
+  const [tab, setTab] = useState<Tab>("characters")
+  const [filter, setFilter] = useState<CharFilter>("all")
+  const [query, setQuery] = useState("")
+  const [editor, setEditor] = useState<CharacterWizardTarget | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
+  const [deleteTarget, setDeleteTarget] = useState<Character | null>(null)
+  const [invite, setInvite] = useState("")
+  const [memberEdit, setMemberEdit] = useState<string | null>(null)
+  const [memberRole, setMemberRoleValue] = useState<"gm" | "player">("player")
+  const [folders, setFolders] = useState<FolderRow[]>([])
+  const [files, setFiles] = useState<FileRow[]>([])
+  const [folder, setFolder] = useState("all")
+  const [noteOpen, setNoteOpen] = useState<FileRow | null | "new">(null)
+  const [noteTitle, setNoteTitle] = useState("")
+  const [noteBody, setNoteBody] = useState("")
+  const uploadRef = useRef<HTMLInputElement | null>(null)
+  const [roomCreate, setRoomCreate] = useState(false)
+  const [roomTitle, setRoomTitle] = useState("")
+
+  const activeIds = useMemo(() => new Set(members.map((member) => member.active_character_id).filter(Boolean)), [members])
+  const visibleCharacters = useMemo(() => characters.filter((character) => {
+    const q = query.trim().toLocaleLowerCase("ru-RU")
+    if (q && !`${character.name} ${character.character_class} ${character.bio}`.toLocaleLowerCase("ru-RU").includes(q)) return false
+    if (filter === "active") return character.character_type === "pc" && activeIds.has(character.id)
+    if (filter === "inactive") return character.character_type === "pc" && !activeIds.has(character.id)
+    if (filter === "npc") return character.character_type === "npc"
+    if (filter === "private") return character.visibility === "private"
     return true
-  }),[activeIds,characters,filter,query])
+  }), [activeIds, characters, filter, query])
 
-  async function loadMaterials(){const[f,r]=await Promise.all([supabase.from("gm_workspace_folders").select("id,name,sort_order").eq("campaign_id",campaignId).eq("workspace_user_id",user.id).order("sort_order"),supabase.from("gm_workspace_files").select("id,folder_id,kind,title,body,file_url,original_name,mime_type,updated_at").eq("campaign_id",campaignId).eq("workspace_user_id",user.id).order("updated_at",{ascending:false})]);if(f.error||r.error){setError((f.error||r.error)!.message);return}setFolders((f.data||[])as FolderRow[]);setFiles((r.data||[])as FileRow[])}
-  useEffect(()=>{if(tab==="materials")void loadMaterials()},[tab,campaignId,user.id])
-  const visibleFiles=folder==="all"?files:folder==="root"?files.filter((f)=>!f.folder_id):files.filter((f)=>f.folder_id===folder)
-
-  function resetCharacter(kind:"pc"|"npc",character?:Character){setStep(1);setError("");setType(character?.character_type||kind);setName(character?.name||"");setRole(character?.character_class||"");setLevel(String(character?.level||1));setBio(character?.bio||"");setAvatar(character?.avatar_url||"");setVisibility(character?.visibility||(kind==="npc"?"private":"campaign"));setAssigned(character?.assigned_user_id||"")}
-  function createChar(kind:"pc"|"npc"){resetCharacter(kind);setEditor({mode:"create",type:kind})}
-  function editChar(character:Character){resetCharacter(character.character_type,character);setEditor({mode:"edit",character})}
-  async function closeCharEditor(){if(editor?.mode==="create"&&avatar)await deleteCampaignMediaObject(avatar);if(editor?.mode==="edit"&&avatar&&avatar!==editor.character.avatar_url)await deleteCampaignMediaObject(avatar);setEditor(null)}
-  async function saveCharacter(event:FormEvent){event.preventDefault();if(!editor||!name.trim())return;if(step<2){setStep(2);return}setSaving(true);setError("");const input={name:name.trim(),character_class:role.trim()|| (type==="npc"?"NPC":"Персонаж"),level:Math.max(1,Math.min(30,Number(level)||1)),bio,avatar_url:avatar||null,assigned_user_id:type==="pc"?(assigned||null):null,character_type:type,visibility}
-    if(editor.mode==="edit"){const result=await updateCharacter(editor.character.id,input);setSaving(false);if(!result.ok){setError(result.error||"Не удалось сохранить персонажа.");return}if(editor.character.avatar_url&&editor.character.avatar_url!==avatar)void deleteCampaignMediaObject(editor.character.avatar_url);setEditor(null);return}
-    const{data,error:e}=await supabase.rpc("create_campaign_character",{p_campaign_id:campaignId,p_name:input.name,p_character_class:input.character_class,p_level:input.level,p_bio:input.bio,p_avatar_url:input.avatar_url,p_assigned_user_id:input.assigned_user_id,p_character_type:input.character_type,p_visibility:input.visibility});setSaving(false);if(e||!data){setError(e?.message||"Не удалось создать персонажа.");return}await refresh();setEditor(null);onOpenCharacter(String(data))
+  async function loadMaterials() {
+    const [folderResult, fileResult] = await Promise.all([
+      supabase.from("gm_workspace_folders").select("id,name,sort_order").eq("campaign_id", campaignId).eq("workspace_user_id", user.id).order("sort_order"),
+      supabase.from("gm_workspace_files").select("id,folder_id,kind,title,body,file_url,original_name,mime_type,updated_at").eq("campaign_id", campaignId).eq("workspace_user_id", user.id).order("updated_at", { ascending: false }),
+    ])
+    if (folderResult.error || fileResult.error) { setError((folderResult.error || fileResult.error)!.message); return }
+    setFolders((folderResult.data || []) as FolderRow[])
+    setFiles((fileResult.data || []) as FileRow[])
   }
-  async function removeCharacter(){if(!deleteTarget)return;setSaving(true);const result=await deleteCharacter(deleteTarget.id);setSaving(false);if(!result.ok){setError(result.error||"Не удалось удалить персонажа.");return}if(deleteTarget.avatar_url)void deleteCampaignMediaObject(deleteTarget.avatar_url);setDeleteTarget(null)}
-  async function toggleActive(character:Character){if(!character.assigned_user_id)return;const active=activeIds.has(character.id);const result=await setActiveForMember(character.assigned_user_id,active?null:character.id);if(!result.ok)setError(result.error||"Не удалось изменить активность.")}
-  async function makeInvite(){const result=await createInvite();if(!result.ok||!result.code){setError(result.error||"Не удалось создать приглашение.");return}setInvite(result.code);try{await navigator.clipboard.writeText(result.code)}catch{}}
-  function openMember(id:string){const m=members.find((x)=>x.user_id===id);if(!m)return;setMemberRoleValue(m.role);setMemberEdit(id);setError("")}
-  async function saveMemberRole(){if(!memberEdit)return;const result=await setMemberRole(memberEdit,memberRole);if(!result.ok){setError(result.error||"Не удалось изменить роль.");return}setMemberEdit(null)}
-  async function saveNote(event:FormEvent){event.preventDefault();if(!noteOpen||!noteTitle.trim())return;setSaving(true);const payload={campaign_id:campaignId,workspace_user_id:user.id,folder_id:folder!=="all"&&folder!=="root"?folder:null,created_by:user.id,kind:"note",title:noteTitle.trim(),body:noteBody.trim(),updated_at:new Date().toISOString()};const result=noteOpen==="new"?await supabase.from("gm_workspace_files").insert(payload):await supabase.from("gm_workspace_files").update(payload).eq("id",noteOpen.id);setSaving(false);if(result.error){setError(result.error.message);return}setNoteOpen(null);await loadMaterials()}
-  async function uploadFile(file:File|null){if(!file)return;setSaving(true);const upload=await uploadCampaignFile(file,"gm-private",campaignId);if(!upload.ok){setSaving(false);setError(upload.error);return}const{error:e}=await supabase.from("gm_workspace_files").insert({campaign_id:campaignId,workspace_user_id:user.id,folder_id:folder!=="all"&&folder!=="root"?folder:null,created_by:user.id,kind:"upload",title:file.name.replace(/\.[^.]+$/,""),file_url:upload.url,original_name:file.name,mime_type:file.type||null});setSaving(false);if(e){await deleteCampaignMediaObject(upload.url);setError(e.message);return}await loadMaterials()}
-  async function deleteFile(file:FileRow){const{error:e}=await supabase.from("gm_workspace_files").delete().eq("id",file.id);if(e){setError(e.message);return}if(file.file_url)void deleteCampaignMediaObject(file.file_url);await loadMaterials()}
-  async function newFolder(){const value=window.prompt("Название папки");if(!value?.trim())return;const{error:e}=await supabase.from("gm_workspace_folders").insert({campaign_id:campaignId,workspace_user_id:user.id,name:value.trim()});if(e)setError(e.message);else await loadMaterials()}
-  async function createRoom(event:FormEvent){event.preventDefault();const result=await rooms.createGameRoom(roomTitle);if(!result.ok){setError(result.error||"Не удалось создать чат.");return}setRoomCreate(false);setRoomTitle("");if(result.id)onOpenRoom(result.id)}
 
-  const tabs:Array<[Tab,string,string]>=[["characters","Персонажи",String(characters.length)],["members","Участники",String(members.length)],["chats","Чаты",String(rooms.rooms.length)],["materials","Материалы",String(files.length)]]
-  return <><div className="control-center"><header className="control-center-head"><span>Управление кампанией</span><h2>{campaignTitle}</h2><p>Игровая витрина отдельно. Здесь — всё, что относится к управлению.</p></header><nav className="control-tabs">{tabs.map(([id,label,count])=><button type="button" className={tab===id?"is-active":""} key={id} onClick={()=>setTab(id)}><span>{label}</span><small>{count}</small></button>)}</nav>{error&&<div className="auth-error">{error}</div>}
-    {tab==="characters"&&<section className="control-section"><div className="control-toolbar"><label className="control-search"><span>⌕</span><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Найти персонажа"/></label><div className="control-create"><button type="button" onClick={()=>createChar("pc")}>＋ PC</button><button type="button" onClick={()=>createChar("npc")}>＋ NPC</button></div></div><div className="control-filter-rail">{(["all","active","inactive","npc","private"]as CharFilter[]).map((id)=><button type="button" className={filter===id?"is-active":""} onClick={()=>setFilter(id)} key={id}>{id==="all"?"Все":id==="active"?"Активные":id==="inactive"?"Неактивные":id==="npc"?"NPC":"Только я"}</button>)}</div><div className="control-character-list">{visibleCharacters.map((character)=>{const member=character.assigned_user_id?members.find((m)=>m.user_id===character.assigned_user_id):null;const active=activeIds.has(character.id);const bound=chatActors.boundIds.has(character.id);const bindable=chatActors.bindableCharacters.some((c)=>c.id===character.id);return <article className="control-character-row" key={character.id}><button className="control-character-main" type="button" onClick={()=>onOpenCharacter(character.id)}><CharacterAvatar character={character} size="large"/><span><span className="control-character-name"><strong>{character.name}</strong>{active&&<i>Активен</i>}{character.character_type==="npc"&&<i>NPC</i>}{character.visibility==="private"&&<i>Только я</i>}</span><small>{character.character_class} · {character.level} ур.{member?` · ${member.display_name}`:""}</small><p>{character.bio||"Без описания"}</p></span><em>›</em></button><div className="control-character-actions">{character.character_type==="pc"&&member&&<button type="button" className={active?"is-active":""} onClick={()=>void toggleActive(character)}>{active?"Убрать из активных":"Сделать активным"}</button>}{bindable&&<button type="button" className={bound?"is-active":""} onClick={()=>void chatActors.setBinding(character.id,!bound)}>{bound?"✓ Личность чата":"Говорить в чате"}</button>}<button type="button" onClick={()=>editChar(character)}>Изменить</button><button className="is-danger" type="button" onClick={()=>setDeleteTarget(character)}>Удалить</button></div></article>})}{!visibleCharacters.length&&<div className="v2-empty-state"><span>◇</span><strong>Ничего не найдено</strong><p>Измени фильтр или создай нового персонажа.</p></div>}</div></section>}
-    {tab==="members"&&<section className="control-section"><div className="section-head"><div><h3 className="section-title">Участники</h3><p className="item-meta">Роль аккаунта и персонаж — независимые вещи</p></div><button className="section-link" type="button" onClick={()=>void makeInvite()}>＋ Приглашение</button></div>{invite&&<button className="control-invite" type="button" onClick={()=>navigator.clipboard?.writeText(invite)}><span>Код приглашения</span><strong>{invite}</strong><small>Нажми, чтобы скопировать</small></button>}<div className="control-member-list">{members.map((member)=>{const active=member.active_character_id?characters.find((c)=>c.id===member.active_character_id):null;return <button type="button" key={member.user_id} onClick={()=>openMember(member.user_id)}><span className="control-member-avatar">{member.display_name.slice(0,1).toUpperCase()}</span><span><strong>{member.display_name}</strong><small>{member.is_owner?"Владелец":member.role==="gm"?"ГМ":"Игрок"}{active?` · играет ${active.name}`:" · без активного PC"}</small>{member.telegram_username&&<em>@{member.telegram_username}</em>}</span><i>›</i></button>})}</div></section>}
-    {tab==="chats"&&<section className="control-section"><div className="section-head"><div><h3 className="section-title">Чаты кампании</h3><p className="item-meta">Сцены, доступ и быстрый переход</p></div><button className="section-link" type="button" onClick={()=>setRoomCreate(true)}>＋ Чат</button></div><div className="control-room-list">{rooms.rooms.map((room)=><button type="button" key={room.id} onClick={()=>onOpenRoom(room.id)}><span className="control-room-art">{room.avatar_url?<CampaignImage value={room.avatar_url} alt=""/>:<span>{room.title.slice(0,1)}</span>}</span><span><strong>{room.title}</strong><small>{room.category==="flood"?"Флуд":"Игровая сцена"} · {room.preview}</small></span><em>›</em></button>)}</div></section>}
-    {tab==="materials"&&<section className="control-section"><div className="section-head"><div><h3 className="section-title">Материалы</h3><p className="item-meta">Приватное рабочее пространство этого ГМа</p></div><div className="section-actions"><button className="section-link" type="button" onClick={()=>void newFolder()}>＋ Папка</button><button className="section-link" type="button" onClick={()=>{setNoteTitle("");setNoteBody("");setNoteOpen("new")}}>＋ Заметка</button><button className="section-link" type="button" onClick={()=>uploadRef.current?.click()}>⇧ Файл</button></div></div><input ref={uploadRef} className="media-hidden-input" type="file" onChange={(e)=>{void uploadFile(e.target.files?.[0]||null);e.currentTarget.value=""}}/><div className="control-filter-rail"><button className={folder==="all"?"is-active":""} type="button" onClick={()=>setFolder("all")}>Все</button><button className={folder==="root"?"is-active":""} type="button" onClick={()=>setFolder("root")}>Без папки</button>{folders.map((f)=><button className={folder===f.id?"is-active":""} type="button" key={f.id} onClick={()=>setFolder(f.id)}>{f.name}</button>)}</div><div className="control-file-list">{visibleFiles.map((file)=><article key={file.id}><span className="control-file-icon">{file.kind==="note"?"✎":"▧"}</span><span><strong>{file.title}</strong><small>{new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(file.updated_at))}</small>{file.kind==="upload"&&file.file_url&&<MaterialLink value={file.file_url} label={file.original_name||"файл"}/>}</span><div>{file.kind==="note"&&<button type="button" onClick={()=>{setNoteTitle(file.title);setNoteBody(file.body);setNoteOpen(file)}}>Изменить</button>}<button className="is-danger" type="button" onClick={()=>void deleteFile(file)}>Удалить</button></div></article>)}{!visibleFiles.length&&<div className="v2-empty-state"><span>▤</span><strong>Материалов нет</strong><p>Заметки и файлы видишь только ты.</p></div>}</div></section>}
-  </div>
-  {editor&&<div className="sheet-backdrop" onMouseDown={()=>void closeCharEditor()}><form className="bottom-sheet v2-editor-sheet control-character-editor" onSubmit={saveCharacter} onMouseDown={(e)=>e.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>{editor.mode==="create"?`Шаг ${step} из 2`:"Персонаж"}</span><h3>{editor.mode==="create"?type==="npc"?"Новый NPC":"Новый персонаж":"Редактировать персонажа"}</h3><p>{step===1?"Сначала только то, что описывает героя.":"Теперь доступ, владелец и видимость."}</p></div><button type="button" onClick={()=>void closeCharEditor()}>×</button></header>{step===1?<section className="v2-form-section"><label className="field-label">Имя</label><input className="app-input" value={name} onChange={(e)=>setName(e.target.value)} autoFocus/><div className="v2-field-grid"><label><span className="field-label">Класс / роль</span><input className="app-input" value={role} onChange={(e)=>setRole(e.target.value)}/></label><label><span className="field-label">Уровень</span><input className="app-input" type="number" min="1" max="30" value={level} onChange={(e)=>setLevel(e.target.value)}/></label></div><ImageUploadField value={avatar} onChange={setAvatar} folder="character-avatars" campaignId={campaignId} label="Портрет" crop="square"/><label className="field-label">Короткое описание</label><textarea className="app-textarea" value={bio} onChange={(e)=>setBio(e.target.value)}/></section>:<section className="v2-form-section"><div className="v2-field-grid"><label><span className="field-label">Тип</span><select className="app-select" value={type} onChange={(e)=>{const next=e.target.value==="npc"?"npc":"pc";setType(next);if(next==="npc")setAssigned("")}}><option value="pc">Персонаж игрока</option><option value="npc">NPC</option></select></label><label><span className="field-label">Видимость</span><select className="app-select" value={visibility} onChange={(e)=>setVisibility(e.target.value==="private"?"private":"campaign")}><option value="campaign">Кампания</option><option value="private">Только я</option></select></label></div>{type==="pc"&&<label><span className="field-label">Кому принадлежит</span><select className="app-select" value={assigned} onChange={(e)=>setAssigned(e.target.value)}><option value="">Не назначен</option>{members.map((member)=><option value={member.user_id} key={member.user_id}>{member.display_name} · {member.is_owner?"владелец":member.role}</option>)}</select><small className="control-field-help">Здесь можно назначить PC и админу, и ГМу: роль аккаунта от персонажа не зависит.</small></label>}<div className="control-create-summary"><CharacterAvatar character={{name,avatar_url:avatar||null}} size="large"/><span><strong>{name||"Без имени"}</strong><small>{role||"Без класса"} · {level} ур.</small><p>{type==="npc"?"NPC":assigned?`Назначен: ${members.find((m)=>m.user_id===assigned)?.display_name||"игрок"}`:"Пока без игрока"} · {visibility==="private"?"только я":"виден кампании"}</p></span></div></section>}{error&&<div className="auth-error">{error}</div>}<div className="v2-editor-actions">{step===2&&editor.mode==="create"&&<button type="button" className="v2-secondary-button" onClick={()=>setStep(1)}>Назад</button>}<button className="v2-primary-button" type="submit" disabled={saving||!name.trim()}>{saving?"Сохраняем…":editor.mode==="create"&&step===1?"Далее":editor.mode==="create"?"Создать и открыть":"Сохранить"}</button></div></form></div>}
-  {deleteTarget&&<div className="sheet-backdrop" onMouseDown={()=>setDeleteTarget(null)}><section className="bottom-sheet v2-confirm" onMouseDown={(e)=>e.stopPropagation()}><div className="sheet-handle"/><span className="v2-confirm-icon">×</span><h3>Удалить «{deleteTarget.name}»?</h3><p>Лист, инвентарь, дневник и связанные данные будут удалены.</p><div><button type="button" onClick={()=>setDeleteTarget(null)}>Отмена</button><button className="is-danger" type="button" onClick={()=>void removeCharacter()} disabled={saving}>Удалить</button></div></section></div>}
-  {memberEdit&&<div className="sheet-backdrop" onMouseDown={()=>setMemberEdit(null)}><section className="bottom-sheet v2-editor-sheet" onMouseDown={(e)=>e.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Участник</span><h3>{members.find((m)=>m.user_id===memberEdit)?.display_name}</h3><p>Роль управляет правами, но не тем, какого PC человек может иметь.</p></div><button type="button" onClick={()=>setMemberEdit(null)}>×</button></header><section className="v2-form-section"><label className="field-label">Роль</label><select className="app-select" value={memberRole} disabled={!isOwner||members.find((m)=>m.user_id===memberEdit)?.is_owner} onChange={(e)=>setMemberRoleValue(e.target.value==="gm"?"gm":"player")}><option value="player">Игрок</option><option value="gm">ГМ</option></select><p className="control-field-help">Персонаж назначается в редакторе самого PC — туда можно выбрать любого участника, включая владельца и ГМа.</p></section>{isOwner&&<button className="v2-primary-button v2-full-button" type="button" onClick={()=>void saveMemberRole()}>Сохранить роль</button>}</section></div>}
-  {noteOpen&&<div className="sheet-backdrop" onMouseDown={()=>setNoteOpen(null)}><form className="bottom-sheet v2-editor-sheet" onSubmit={saveNote} onMouseDown={(e)=>e.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Материалы</span><h3>{noteOpen==="new"?"Новая заметка":"Редактировать заметку"}</h3><p>Эту запись видишь только ты.</p></div><button type="button" onClick={()=>setNoteOpen(null)}>×</button></header><section className="v2-form-section"><label className="field-label">Название</label><input className="app-input" value={noteTitle} onChange={(e)=>setNoteTitle(e.target.value)} autoFocus/><label className="field-label">Текст</label><textarea className="app-textarea control-note-text" value={noteBody} onChange={(e)=>setNoteBody(e.target.value)}/></section><button className="v2-primary-button v2-full-button" type="submit" disabled={saving||!noteTitle.trim()}>Сохранить</button></form></div>}
-  {roomCreate&&<div className="sheet-backdrop" onMouseDown={()=>setRoomCreate(false)}><form className="bottom-sheet v2-editor-sheet" onSubmit={createRoom} onMouseDown={(e)=>e.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Чаты</span><h3>Новая игровая сцена</h3><p>Арт и доступ можно настроить после создания.</p></div><button type="button" onClick={()=>setRoomCreate(false)}>×</button></header><section className="v2-form-section"><label className="field-label">Название</label><input className="app-input" value={roomTitle} onChange={(e)=>setRoomTitle(e.target.value)} autoFocus/></section><button className="v2-primary-button v2-full-button" type="submit" disabled={!roomTitle.trim()}>Создать и открыть</button></form></div>}
+  useEffect(() => { if (tab === "materials") void loadMaterials() }, [tab, campaignId, user.id])
+
+  const visibleFiles = folder === "all" ? files : folder === "root" ? files.filter((file) => !file.folder_id) : files.filter((file) => file.folder_id === folder)
+
+  function createChar(kind: "pc" | "npc") { setError(""); setEditor({ mode: "create", type: kind }) }
+  function editChar(character: Character) { setError(""); setEditor({ mode: "edit", character }) }
+
+  async function removeCharacter() {
+    if (!deleteTarget) return
+    setSaving(true)
+    const result = await deleteCharacter(deleteTarget.id)
+    setSaving(false)
+    if (!result.ok) { setError(result.error || "Не удалось удалить персонажа."); return }
+    if (deleteTarget.avatar_url) void deleteCampaignMediaObject(deleteTarget.avatar_url)
+    setDeleteTarget(null)
+  }
+
+  async function toggleActive(character: Character) {
+    if (!character.assigned_user_id) return
+    const active = activeIds.has(character.id)
+    const result = await setActiveForMember(character.assigned_user_id, active ? null : character.id)
+    if (!result.ok) setError(result.error || "Не удалось изменить активность.")
+  }
+
+  async function makeInvite() {
+    const result = await createInvite()
+    if (!result.ok || !result.code) { setError(result.error || "Не удалось создать приглашение."); return }
+    setInvite(result.code)
+    try { await navigator.clipboard.writeText(result.code) } catch { /* clipboard may be unavailable */ }
+  }
+
+  function openMember(id: string) {
+    const member = members.find((item) => item.user_id === id)
+    if (!member) return
+    setMemberRoleValue(member.role)
+    setMemberEdit(id)
+    setError("")
+  }
+
+  async function saveMemberRole() {
+    if (!memberEdit) return
+    const result = await setMemberRole(memberEdit, memberRole)
+    if (!result.ok) { setError(result.error || "Не удалось изменить роль."); return }
+    setMemberEdit(null)
+  }
+
+  async function saveNote(event: FormEvent) {
+    event.preventDefault()
+    if (!noteOpen || !noteTitle.trim()) return
+    setSaving(true)
+    const payload = { campaign_id: campaignId, workspace_user_id: user.id, folder_id: folder !== "all" && folder !== "root" ? folder : null, created_by: user.id, kind: "note", title: noteTitle.trim(), body: noteBody.trim(), updated_at: new Date().toISOString() }
+    const result = noteOpen === "new" ? await supabase.from("gm_workspace_files").insert(payload) : await supabase.from("gm_workspace_files").update(payload).eq("id", noteOpen.id)
+    setSaving(false)
+    if (result.error) { setError(result.error.message); return }
+    setNoteOpen(null)
+    await loadMaterials()
+  }
+
+  async function uploadFile(file: File | null) {
+    if (!file) return
+    setSaving(true)
+    const upload = await uploadCampaignFile(file, "gm-private", campaignId)
+    if (!upload.ok) { setSaving(false); setError(upload.error); return }
+    const { error: uploadError } = await supabase.from("gm_workspace_files").insert({ campaign_id: campaignId, workspace_user_id: user.id, folder_id: folder !== "all" && folder !== "root" ? folder : null, created_by: user.id, kind: "upload", title: file.name.replace(/\.[^.]+$/, ""), file_url: upload.url, original_name: file.name, mime_type: file.type || null })
+    setSaving(false)
+    if (uploadError) { await deleteCampaignMediaObject(upload.url); setError(uploadError.message); return }
+    await loadMaterials()
+  }
+
+  async function deleteFile(file: FileRow) {
+    const { error: deleteError } = await supabase.from("gm_workspace_files").delete().eq("id", file.id)
+    if (deleteError) { setError(deleteError.message); return }
+    if (file.file_url) void deleteCampaignMediaObject(file.file_url)
+    await loadMaterials()
+  }
+
+  async function newFolder() {
+    const value = window.prompt("Название папки")
+    if (!value?.trim()) return
+    const { error: folderError } = await supabase.from("gm_workspace_folders").insert({ campaign_id: campaignId, workspace_user_id: user.id, name: value.trim() })
+    if (folderError) setError(folderError.message)
+    else await loadMaterials()
+  }
+
+  async function createRoom(event: FormEvent) {
+    event.preventDefault()
+    const result = await rooms.createGameRoom(roomTitle)
+    if (!result.ok) { setError(result.error || "Не удалось создать чат."); return }
+    setRoomCreate(false)
+    setRoomTitle("")
+    if (result.id) onOpenRoom(result.id)
+  }
+
+  const tabs: Array<[Tab, string, string]> = [
+    ["characters", "Персонажи", String(characters.length)],
+    ["members", "Участники", String(members.length)],
+    ["chats", "Чаты", String(rooms.rooms.length)],
+    ["materials", "Материалы", String(files.length)],
+  ]
+
+  return <>
+    <div className="control-center">
+      <header className="control-center-head"><span>Управление кампанией</span><h2>{campaignTitle}</h2><p>Игровая витрина отдельно. Здесь — всё, что относится к управлению.</p></header>
+      <nav className="control-tabs">{tabs.map(([id, label, count]) => <button type="button" className={tab === id ? "is-active" : ""} key={id} onClick={() => setTab(id)}><span>{label}</span><small>{count}</small></button>)}</nav>
+      {error && <div className="auth-error">{error}</div>}
+
+      {tab === "characters" && <section className="control-section">
+        <div className="control-toolbar"><label className="control-search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти персонажа"/></label><div className="control-create"><button type="button" onClick={() => createChar("pc")}>＋ PC</button><button type="button" onClick={() => createChar("npc")}>＋ NPC</button></div></div>
+        <div className="control-filter-rail">{(["all", "active", "inactive", "npc", "private"] as CharFilter[]).map((id) => <button type="button" className={filter === id ? "is-active" : ""} onClick={() => setFilter(id)} key={id}>{id === "all" ? "Все" : id === "active" ? "Активные" : id === "inactive" ? "Неактивные" : id === "npc" ? "NPC" : "Только я"}</button>)}</div>
+        <div className="control-character-list">{visibleCharacters.map((character) => {
+          const member = character.assigned_user_id ? members.find((item) => item.user_id === character.assigned_user_id) : null
+          const active = activeIds.has(character.id)
+          const bound = chatActors.boundIds.has(character.id)
+          const bindable = chatActors.bindableCharacters.some((item) => item.id === character.id)
+          return <article className="control-character-row" key={character.id}>
+            <button className="control-character-main" type="button" onClick={() => onOpenCharacter(character.id)}><CharacterAvatar character={character} size="large"/><span><span className="control-character-name"><strong>{character.name}</strong>{active && <i>Активен</i>}{character.character_type === "npc" && <i>NPC</i>}{character.visibility === "private" && <i>Только я</i>}</span><small>{character.character_class} · {character.level} ур.{member ? ` · ${member.display_name}` : ""}</small><p>{character.bio || "Без описания"}</p></span><em>›</em></button>
+            <div className="control-character-actions">{character.character_type === "pc" && member && <button type="button" className={active ? "is-active" : ""} onClick={() => void toggleActive(character)}>{active ? "Убрать из активных" : "Сделать активным"}</button>}{bindable && <button type="button" className={bound ? "is-active" : ""} onClick={() => void chatActors.setBinding(character.id, !bound)}>{bound ? "✓ Личность чата" : "Говорить в чате"}</button>}<button type="button" onClick={() => editChar(character)}>Изменить</button><button className="is-danger" type="button" onClick={() => setDeleteTarget(character)}>Удалить</button></div>
+          </article>
+        })}{!visibleCharacters.length && <div className="v2-empty-state"><span>◇</span><strong>Ничего не найдено</strong><p>Измени фильтр или создай нового персонажа.</p></div>}</div>
+      </section>}
+
+      {tab === "members" && <section className="control-section"><div className="section-head"><div><h3 className="section-title">Участники</h3><p className="item-meta">Роль аккаунта и персонаж — независимые вещи</p></div><button className="section-link" type="button" onClick={() => void makeInvite()}>＋ Приглашение</button></div>{invite && <button className="control-invite" type="button" onClick={() => navigator.clipboard?.writeText(invite)}><span>Код приглашения</span><strong>{invite}</strong><small>Нажми, чтобы скопировать</small></button>}<div className="control-member-list">{members.map((member) => { const active = member.active_character_id ? characters.find((character) => character.id === member.active_character_id) : null; return <button type="button" key={member.user_id} onClick={() => openMember(member.user_id)}><span className="control-member-avatar">{member.display_name.slice(0, 1).toUpperCase()}</span><span><strong>{member.display_name}</strong><small>{member.is_owner ? "Владелец" : member.role === "gm" ? "ГМ" : "Игрок"}{active ? ` · играет ${active.name}` : " · без активного PC"}</small>{member.telegram_username && <em>@{member.telegram_username}</em>}</span><i>›</i></button> })}</div></section>}
+
+      {tab === "chats" && <section className="control-section"><div className="section-head"><div><h3 className="section-title">Чаты кампании</h3><p className="item-meta">Сцены, доступ и быстрый переход</p></div><button className="section-link" type="button" onClick={() => setRoomCreate(true)}>＋ Чат</button></div><div className="control-room-list">{rooms.rooms.map((room) => <button type="button" key={room.id} onClick={() => onOpenRoom(room.id)}><span className="control-room-art">{room.avatar_url ? <CampaignImage value={room.avatar_url} alt=""/> : <span>{room.title.slice(0, 1)}</span>}</span><span><strong>{room.title}</strong><small>{room.category === "flood" ? "Флуд" : "Игровая сцена"} · {room.preview}</small></span><em>›</em></button>)}</div></section>}
+
+      {tab === "materials" && <section className="control-section"><div className="section-head"><div><h3 className="section-title">Материалы</h3><p className="item-meta">Приватное рабочее пространство этого ГМа</p></div><div className="section-actions"><button className="section-link" type="button" onClick={() => void newFolder()}>＋ Папка</button><button className="section-link" type="button" onClick={() => { setNoteTitle(""); setNoteBody(""); setNoteOpen("new") }}>＋ Заметка</button><button className="section-link" type="button" onClick={() => uploadRef.current?.click()}>⇧ Файл</button></div></div><input ref={uploadRef} className="media-hidden-input" type="file" onChange={(event) => { void uploadFile(event.target.files?.[0] || null); event.currentTarget.value = "" }}/><div className="control-filter-rail"><button className={folder === "all" ? "is-active" : ""} type="button" onClick={() => setFolder("all")}>Все</button><button className={folder === "root" ? "is-active" : ""} type="button" onClick={() => setFolder("root")}>Без папки</button>{folders.map((item) => <button className={folder === item.id ? "is-active" : ""} type="button" key={item.id} onClick={() => setFolder(item.id)}>{item.name}</button>)}</div><div className="control-file-list">{visibleFiles.map((file) => <article key={file.id}><span className="control-file-icon">{file.kind === "note" ? "✎" : "▧"}</span><span><strong>{file.title}</strong><small>{new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(file.updated_at))}</small>{file.kind === "upload" && file.file_url && <MaterialLink value={file.file_url} label={file.original_name || "файл"}/>}</span><div>{file.kind === "note" && <button type="button" onClick={() => { setNoteTitle(file.title); setNoteBody(file.body); setNoteOpen(file) }}>Изменить</button>}<button className="is-danger" type="button" onClick={() => void deleteFile(file)}>Удалить</button></div></article>)}{!visibleFiles.length && <div className="v2-empty-state"><span>▤</span><strong>Материалов нет</strong><p>Заметки и файлы видишь только ты.</p></div>}</div></section>}
+    </div>
+
+    {editor && <CharacterCreationWizard target={editor} campaignId={campaignId} members={members} updateCharacter={updateCharacter} onClose={() => setEditor(null)} onSaved={async (characterId, openCharacter) => { await refresh(); setEditor(null); if (openCharacter) onOpenCharacter(characterId) }}/>} 
+
+    {deleteTarget && <div className="sheet-backdrop" onMouseDown={() => setDeleteTarget(null)}><section className="bottom-sheet v2-confirm" onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><span className="v2-confirm-icon">×</span><h3>Удалить «{deleteTarget.name}»?</h3><p>Лист, инвентарь, дневник и связанные данные будут удалены.</p><div><button type="button" onClick={() => setDeleteTarget(null)}>Отмена</button><button className="is-danger" type="button" onClick={() => void removeCharacter()} disabled={saving}>Удалить</button></div></section></div>}
+
+    {memberEdit && <div className="sheet-backdrop" onMouseDown={() => setMemberEdit(null)}><section className="bottom-sheet v2-editor-sheet" onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Участник</span><h3>{members.find((member) => member.user_id === memberEdit)?.display_name}</h3><p>Роль управляет правами, но не тем, какого PC человек может иметь.</p></div><button type="button" onClick={() => setMemberEdit(null)}>×</button></header><section className="v2-form-section"><label className="field-label">Роль</label><select className="app-select" value={memberRole} disabled={!isOwner || members.find((member) => member.user_id === memberEdit)?.is_owner} onChange={(event) => setMemberRoleValue(event.target.value === "gm" ? "gm" : "player")}><option value="player">Игрок</option><option value="gm">ГМ</option></select><p className="control-field-help">Персонаж назначается в редакторе самого PC — туда можно выбрать любого участника, включая владельца и ГМа.</p></section>{isOwner && <button className="v2-primary-button v2-full-button" type="button" onClick={() => void saveMemberRole()}>Сохранить роль</button>}</section></div>}
+
+    {noteOpen && <div className="sheet-backdrop" onMouseDown={() => setNoteOpen(null)}><form className="bottom-sheet v2-editor-sheet" onSubmit={saveNote} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Материалы</span><h3>{noteOpen === "new" ? "Новая заметка" : "Редактировать заметку"}</h3><p>Эту запись видишь только ты.</p></div><button type="button" onClick={() => setNoteOpen(null)}>×</button></header><section className="v2-form-section"><label className="field-label">Название</label><input className="app-input" value={noteTitle} onChange={(event) => setNoteTitle(event.target.value)} autoFocus/><label className="field-label">Текст</label><textarea className="app-textarea control-note-text" value={noteBody} onChange={(event) => setNoteBody(event.target.value)}/></section><button className="v2-primary-button v2-full-button" type="submit" disabled={saving || !noteTitle.trim()}>Сохранить</button></form></div>}
+
+    {roomCreate && <div className="sheet-backdrop" onMouseDown={() => setRoomCreate(false)}><form className="bottom-sheet v2-editor-sheet" onSubmit={createRoom} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Чаты</span><h3>Новая игровая сцена</h3><p>Арт и доступ можно настроить после создания.</p></div><button type="button" onClick={() => setRoomCreate(false)}>×</button></header><section className="v2-form-section"><label className="field-label">Название</label><input className="app-input" value={roomTitle} onChange={(event) => setRoomTitle(event.target.value)} autoFocus/></section><button className="v2-primary-button v2-full-button" type="submit" disabled={!roomTitle.trim()}>Создать и открыть</button></form></div>}
   </>
 }
