@@ -120,7 +120,8 @@
   line-height: 1.47;
 }
 
-.reference-class-feature blockquote {
+.reference-class-feature blockquote,
+.reference-subclass-card blockquote {
   margin: 8px 0 0;
   padding: 8px 10px;
   border-left: 2px solid rgba(188, 150, 90, .35);
@@ -129,4 +130,8 @@
   color: #a99b89;
   font-size: 10px;
   line-height: 1.45;
+}
+
+.reference-subclass-card blockquote {
+  font-style: normal;
 }
