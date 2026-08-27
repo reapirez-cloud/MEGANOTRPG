@@ -59,6 +59,15 @@ export function featureMechanicContributions(features: CharacterFeature[]): Char
   return contributions
 }
 
+export function itemCurseInfo(item: Pick<InventoryItem, "mechanics">): { cursed: boolean; description: string } {
+  const marker = mechanicsArray(item.mechanics).find((mechanic) => mechanic.type === "grant" && mechanic.target === "trait" && mechanic.key === "curse:item")
+  if (!marker || marker.type !== "grant") return { cursed: false, description: "" }
+  const payload = marker.payload
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return { cursed: true, description: "" }
+  const description = (payload as Record<string, unknown>).description
+  return { cursed: true, description: typeof description === "string" ? description : "" }
+}
+
 const targetNames: Record<string, string> = { "combat.ac": "КД", "combat.initiative": "инициатива", "combat.maxHp": "макс. HP", "combat.speed": "скорость", "core.proficiencyBonus": "мастерство", "abilities.strength": "Сила", "abilities.dexterity": "Ловкость", "abilities.constitution": "Телосложение", "abilities.intelligence": "Интеллект", "abilities.wisdom": "Мудрость", "abilities.charisma": "Харизма" }
 function conditionLabel(condition?: CharacterCondition): string { if (!condition || condition.kind === "always") return ""; if (condition.kind === "hp_below_percent") return `при HP < ${condition.percent}%`; return "при условии" }
 function formulaLabel(value: number | FormulaExpression): string {
@@ -75,7 +84,16 @@ function formulaLabel(value: number | FormulaExpression): string {
 export function mechanicSummary(mechanic: StoredMechanic): string {
   let result = "Эффект"
   if (mechanic.type === "numeric") { const sign = mechanic.operation === "ADD" && mechanic.value >= 0 ? "+" : ""; result = `${targetNames[mechanic.target] || mechanic.target} ${sign}${mechanic.value}` }
-  else if (mechanic.type === "grant") { const nouns: Record<string, string> = { resistance: "Сопротивление", immunity: "Иммунитет", language: "Язык", proficiency: "Владение", sense: "Чувство", feature: "Особенность", trait: "Черта" }; result = `${nouns[mechanic.target] || mechanic.target}: ${mechanic.key}` }
+  else if (mechanic.type === "grant") {
+    if (mechanic.target === "trait" && mechanic.key === "curse:item") {
+      const payload = mechanic.payload
+      const description = payload && typeof payload === "object" && !Array.isArray(payload) ? (payload as Record<string, unknown>).description : ""
+      result = typeof description === "string" && description.trim() ? `Проклятие: ${description.trim()}` : "Проклято"
+    } else {
+      const nouns: Record<string, string> = { resistance: "Сопротивление", immunity: "Иммунитет", language: "Язык", proficiency: "Владение", sense: "Чувство", feature: "Особенность", trait: "Черта" }
+      result = `${nouns[mechanic.target] || mechanic.target}: ${mechanic.key}`
+    }
+  }
   else if (mechanic.type === "resource") result = `${mechanic.label}: ${formulaLabel(mechanic.max)}`
   else if (mechanic.type === "action") result = `Действие: ${mechanic.label}${mechanic.resourceKey && mechanic.resourceCost ? ` · −${mechanic.resourceCost} ресурс` : ""}`
   else result = `Заклинание: ${mechanic.payload.spell.name}`
