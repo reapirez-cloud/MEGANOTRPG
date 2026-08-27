@@ -21,7 +21,7 @@ function sumFormula(parts: FormulaExpression[]): FormulaExpression { if (!parts.
 function abilityModifierFormula(ability?: AbilityKey): FormulaExpression[] { return ability ? [reference(`abilities.${ability}.modifier`)] : [] }
 function actionDamageFormula(damage: StoredActionDamage): FormulaExpression | undefined { const parts = abilityModifierFormula(damage.ability); if (damage.flat) parts.push(literal(damage.flat)); return parts.length ? sumFormula(parts) : undefined }
 function withCondition<T extends CharacterContribution>(contribution: T, condition?: CharacterCondition): T { return condition ? { ...contribution, condition } : contribution }
-function sourceFor(id: string, name: string, sourceType: string): CharacterSource { return { id, name, sourceType, visibility: "campaign" } }
+function sourceFor(id: string, name: string, sourceType: string, visibility: CharacterSource["visibility"] = "campaign", parentSourceId?: string): CharacterSource { return { id, name, sourceType, visibility, ...(parentSourceId ? { parentSourceId } : {}) } }
 function rechargeTriggers(value: ResourceRechargeTrigger | ResourceRechargeTrigger[]): ResourceRechargeTrigger[] { const triggers = Array.isArray(value) ? value : [value]; const unique = [...new Set(triggers)]; return unique.includes("never") ? ["never"] : unique.length ? unique : ["never"] }
 
 export function contributionForStoredMechanic(mechanic: StoredMechanic, source: CharacterSource): CharacterContribution {
@@ -52,10 +52,11 @@ export function inventoryMechanicContributions(items: InventoryItem[]): Characte
   const contributions: CharacterContribution[] = []
   for (const item of items) {
     const source = sourceFor(`item:${item.id}`, item.name, "inventory_item")
+    const privateCurseSource = sourceFor(`item:${item.id}:curse`, item.name, "inventory_item", "private", source.id)
     for (const mechanic of mechanicsArray(item.mechanics)) {
       const requiresEquipped = mechanic.activation === "equipped" && item.category === "equipment"
       if (requiresEquipped && !item.equipped) continue
-      contributions.push(contributionForStoredMechanic(mechanic, source))
+      contributions.push(contributionForStoredMechanic(mechanic, mechanic.curseEffect ? privateCurseSource : source))
     }
   }
   return contributions
@@ -66,13 +67,35 @@ export function featureMechanicContributions(features: CharacterFeature[]): Char
   return contributions
 }
 
-export function itemCurseInfo(item: Pick<InventoryItem, "mechanics">): { cursed: boolean; description: string } {
+export type ItemCurseInfo = {
+  cursed: boolean
+  description: string
+  showCurseToPlayer: boolean
+  showCurseEffectToPlayer: boolean
+}
+
+export function itemCurseInfo(item: Pick<InventoryItem, "mechanics">): ItemCurseInfo {
   const marker = mechanicsArray(item.mechanics).find((mechanic) => mechanic.type === "grant" && mechanic.target === "trait" && mechanic.key === "curse:item")
-  if (!marker || marker.type !== "grant") return { cursed: false, description: "" }
+  if (!marker || marker.type !== "grant") return { cursed: false, description: "", showCurseToPlayer: false, showCurseEffectToPlayer: false }
   const payload = marker.payload
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return { cursed: true, description: "" }
-  const description = (payload as Record<string, unknown>).description
-  return { cursed: true, description: typeof description === "string" ? description : "" }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return { cursed: true, description: "", showCurseToPlayer: true, showCurseEffectToPlayer: true }
+  const record = payload as Record<string, unknown>
+  const description = record.description
+  return {
+    cursed: true,
+    description: typeof description === "string" ? description : "",
+    showCurseToPlayer: typeof record.showCurseToPlayer === "boolean" ? record.showCurseToPlayer : true,
+    showCurseEffectToPlayer: typeof record.showCurseEffectToPlayer === "boolean" ? record.showCurseEffectToPlayer : true,
+  }
+}
+
+export function playerVisibleItemMechanics(item: Pick<InventoryItem, "mechanics">, canManage: boolean): StoredMechanics {
+  const curse = itemCurseInfo(item)
+  return mechanicsArray(item.mechanics).filter((mechanic) => {
+    if (mechanic.type === "grant" && mechanic.target === "trait" && mechanic.key === "curse:item") return false
+    if (!mechanic.curseEffect) return true
+    return canManage || (curse.showCurseToPlayer && curse.showCurseEffectToPlayer)
+  })
 }
 
 const targetNames: Record<string, string> = { "combat.ac": "КД", "combat.initiative": "инициатива", "combat.maxHp": "макс. HP", "combat.speed": "скорость", "core.proficiencyBonus": "мастерство", "abilities.strength": "Сила", "abilities.dexterity": "Ловкость", "abilities.constitution": "Телосложение", "abilities.intelligence": "Интеллект", "abilities.wisdom": "Мудрость", "abilities.charisma": "Харизма" }
