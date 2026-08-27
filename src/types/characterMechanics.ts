@@ -13,29 +13,32 @@ import type {
 
 export type MechanicActivation = "carried" | "equipped"
 
-export type StoredNumericMechanic = {
+type StoredMechanicMeta = {
+  activation?: MechanicActivation
+  condition?: CharacterCondition
+  /** Marks a mechanic as part of an item's curse. CE still resolves it normally; UI may hide it from players. */
+  curseEffect?: boolean
+}
+
+export type StoredNumericMechanic = StoredMechanicMeta & {
   id: string
   type: "numeric"
   label?: string
   target: NumericTarget
   operation: NumericOperation
   value: number
-  activation?: MechanicActivation
-  condition?: CharacterCondition
 }
 
-export type StoredGrantMechanic = {
+export type StoredGrantMechanic = StoredMechanicMeta & {
   id: string
   type: "grant"
   label?: string
   target: Exclude<GrantTarget, "resource" | "action" | "spell">
   key: string
   payload?: GrantPayload
-  activation?: MechanicActivation
-  condition?: CharacterCondition
 }
 
-export type StoredResourceMechanic = {
+export type StoredResourceMechanic = StoredMechanicMeta & {
   id: string
   type: "resource"
   key: string
@@ -46,8 +49,6 @@ export type StoredResourceMechanic = {
   restore?: "full" | "amount"
   restoreAmount?: number
   initial?: "full" | "empty" | number
-  activation?: MechanicActivation
-  condition?: CharacterCondition
 }
 
 export type StoredActionDamage = {
@@ -60,7 +61,7 @@ export type StoredActionDamage = {
   flat?: number
 }
 
-export type StoredActionMechanic = {
+export type StoredActionMechanic = StoredMechanicMeta & {
   id: string
   type: "action"
   key: string
@@ -74,17 +75,13 @@ export type StoredActionMechanic = {
   resourceKey?: string
   resourceCost?: number
   tags?: string[]
-  activation?: MechanicActivation
-  condition?: CharacterCondition
 }
 
-export type StoredSpellMechanic = {
+export type StoredSpellMechanic = StoredMechanicMeta & {
   id: string
   type: "spell"
   key: string
   payload: SpellGrantPayload
-  activation?: MechanicActivation
-  condition?: CharacterCondition
 }
 
 export type StoredMechanic =
