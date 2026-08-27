@@ -8,7 +8,7 @@ import type {
   ResourceRechargeTrigger,
 } from "../character-engine/index.ts"
 import type { CharacterFeature, InventoryItem } from "../types/characterSheet.ts"
-import type { StoredActionDamage, StoredMechanic, StoredMechanics } from "../types/characterMechanics.ts"
+import type { StoredActionDamage, StoredMechanic, StoredMechanics, StoredMechanicPresentation } from "../types/characterMechanics.ts"
 
 const inventoryRegistry = new Map<string, InventoryItem[]>()
 
@@ -23,6 +23,15 @@ function actionDamageFormula(damage: StoredActionDamage): FormulaExpression | un
 function withCondition<T extends CharacterContribution>(contribution: T, condition?: CharacterCondition): T { return condition ? { ...contribution, condition } : contribution }
 function sourceFor(id: string, name: string, sourceType: string, visibility: CharacterSource["visibility"] = "campaign", parentSourceId?: string): CharacterSource { return { id, name, sourceType, visibility, ...(parentSourceId ? { parentSourceId } : {}) } }
 function rechargeTriggers(value: ResourceRechargeTrigger | ResourceRechargeTrigger[]): ResourceRechargeTrigger[] { const triggers = Array.isArray(value) ? value : [value]; const unique = [...new Set(triggers)]; return unique.includes("never") ? ["never"] : unique.length ? unique : ["never"] }
+function presentationPayload(value?: StoredMechanicPresentation): GrantPayload | undefined {
+  if (!value) return undefined
+  return {
+    ...(value.tone ? { tone: value.tone } : {}),
+    ...(value.icon ? { icon: value.icon } : {}),
+    ...(value.display ? { display: value.display } : {}),
+    ...(value.priority !== undefined ? { priority: value.priority } : {}),
+  }
+}
 
 export function contributionForStoredMechanic(mechanic: StoredMechanic, source: CharacterSource): CharacterContribution {
   const id = `${source.id}:mechanic:${mechanic.id}`
@@ -33,14 +42,16 @@ export function contributionForStoredMechanic(mechanic: StoredMechanic, source: 
     const recharge = mechanic.restore === "amount"
       ? { triggers, restore: "amount" as const, amount: Math.max(1, mechanic.restoreAmount || 1) }
       : { triggers, restore: "full" as const }
-    return withCondition({ id, kind: "grant", operation: "GRANT", target: "resource", key: mechanic.key, payload: { max: mechanic.max, label: mechanic.label, initial: mechanic.initial ?? "full", recharge }, source }, mechanic.condition)
+    const presentation = presentationPayload(mechanic.presentation)
+    return withCondition({ id, kind: "grant", operation: "GRANT", target: "resource", key: mechanic.key, payload: { max: mechanic.max, label: mechanic.label, initial: mechanic.initial ?? "full", recharge, ...(presentation ? { presentation } : {}) }, source }, mechanic.condition)
   }
   if (mechanic.type === "action") {
     const attackParts = abilityModifierFormula(mechanic.attackAbility)
     if (mechanic.proficient) attackParts.push(reference("core.proficiencyBonus"))
     if (mechanic.attackFlat) attackParts.push(literal(mechanic.attackFlat))
     const damage = (mechanic.damage || []).map((entry) => { const modifier = actionDamageFormula(entry); return { key: entry.key, type: entry.damageType, dice: { count: entry.count, sides: entry.sides }, ...(modifier ? { modifier } : {}) } })
-    return withCondition({ id, kind: "grant", operation: "GRANT", target: "action", key: mechanic.key, payload: { label: mechanic.label, economy: mechanic.economy, ...(mechanic.range ? { range: mechanic.range } : {}), ...(attackParts.length ? { attack: { bonus: sumFormula(attackParts), target: "armor_class" } } : {}), damage, ...(mechanic.resourceKey && mechanic.resourceCost ? { resourceCosts: [{ key: mechanic.resourceKey, amount: mechanic.resourceCost }] } : {}), tags: mechanic.tags || [] }, source }, mechanic.condition)
+    const presentation = presentationPayload(mechanic.presentation)
+    return withCondition({ id, kind: "grant", operation: "GRANT", target: "action", key: mechanic.key, payload: { label: mechanic.label, economy: mechanic.economy, ...(mechanic.range ? { range: mechanic.range } : {}), ...(attackParts.length ? { attack: { bonus: sumFormula(attackParts), target: "armor_class" } } : {}), damage, ...(mechanic.resourceKey && mechanic.resourceCost ? { resourceCosts: [{ key: mechanic.resourceKey, amount: mechanic.resourceCost }] } : {}), tags: mechanic.tags || [], ...(presentation ? { presentation } : {}) }, source }, mechanic.condition)
   }
   return withCondition({ id, kind: "grant", operation: "GRANT", target: "spell", key: mechanic.key, variantKey: `mechanic-${mechanic.id}`, payload: mechanic.payload, source }, mechanic.condition)
 }
