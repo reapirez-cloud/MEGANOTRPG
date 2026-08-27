@@ -63,26 +63,35 @@ function isCurseMarker(mechanic: StoredMechanic) {
   return mechanic.type === "grant" && mechanic.target === "trait" && mechanic.key === "curse:item"
 }
 
-function curseText(mechanic: StoredMechanic | undefined) {
-  if (!mechanic || mechanic.type !== "grant") return ""
+function cursePayload(mechanic: StoredMechanic | undefined): Record<string, unknown> {
+  if (!mechanic || mechanic.type !== "grant") return {}
   const payload = mechanic.payload
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return ""
-  const description = (payload as Record<string, unknown>).description
+  return payload && typeof payload === "object" && !Array.isArray(payload) ? payload as Record<string, unknown> : {}
+}
+
+function curseText(mechanic: StoredMechanic | undefined) {
+  const description = cursePayload(mechanic).description
   return typeof description === "string" ? description : ""
+}
+
+function curseFlag(mechanic: StoredMechanic | undefined, key: "showCurseToPlayer" | "showCurseEffectToPlayer") {
+  const value = cursePayload(mechanic)[key]
+  return typeof value === "boolean" ? value : true
 }
 
 function presetForItem(item: InventoryItem | null): ItemPreset {
   if (!item) return "plain"
   if (item.category === "consumable") return "consumable"
   if (item.category !== "equipment") return "plain"
-  if (item.mechanics?.some((mechanic) => mechanic.type === "action" && mechanic.activation === "equipped")) return "weapon"
+  if (item.mechanics?.some((mechanic) => mechanic.type === "action" && mechanic.activation === "equipped" && !mechanic.curseEffect)) return "weapon"
   if (item.equipment_slot === "chest" || item.equipment_slot === "head" || item.equipment_slot === "legs") return "armor"
   return "artifact"
 }
 
 export default function InventoryItemEditor({ item, campaignId, onClose, onSave, onDelete }: Props) {
   const initialImageUrl = item?.image_url || ""
-  const existingCurse = item?.mechanics?.find(isCurseMarker)
+  const storedMechanics = item?.mechanics || []
+  const existingCurse = storedMechanics.find(isCurseMarker)
   const [step, setStep] = useState<WizardStep>(1)
   const [preset, setPreset] = useState<ItemPreset>(() => presetForItem(item))
   const [name, setName] = useState(item?.name || "")
@@ -94,35 +103,49 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
   const [description, setDescription] = useState(item?.description || "")
   const [cursed, setCursed] = useState(Boolean(existingCurse))
   const [curseDescription, setCurseDescription] = useState(curseText(existingCurse))
+  const [showCurseToPlayer, setShowCurseToPlayer] = useState(curseFlag(existingCurse, "showCurseToPlayer"))
+  const [showCurseEffectToPlayer, setShowCurseEffectToPlayer] = useState(curseFlag(existingCurse, "showCurseEffectToPlayer"))
   const [curseId] = useState(existingCurse?.id || makeId())
-  const [mechanics, setMechanics] = useState<StoredMechanics>((item?.mechanics || []).filter((mechanic) => !isCurseMarker(mechanic)))
+  const [mechanics, setMechanics] = useState<StoredMechanics>(storedMechanics.filter((mechanic) => !isCurseMarker(mechanic) && !mechanic.curseEffect))
+  const [curseMechanics, setCurseMechanics] = useState<StoredMechanics>(storedMechanics.filter((mechanic) => Boolean(mechanic.curseEffect)))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
   const currentPreset = presets.find((candidate) => candidate.id === preset) || presets[0]
 
-  function finalMechanics(): StoredMechanics {
-    const normalized = mechanics.map((mechanic) =>
+  function normalizeActivation(list: StoredMechanics): StoredMechanics {
+    return list.map((mechanic) =>
       category !== "equipment" && mechanic.activation === "equipped"
         ? { ...mechanic, activation: "carried" as const }
         : mechanic,
     )
-    if (!cursed) return normalized
+  }
+
+  function finalMechanics(): StoredMechanics {
+    const normal = normalizeActivation(mechanics).map((mechanic) => ({ ...mechanic, curseEffect: false }))
+    if (!cursed) return normal
+    const curseEffects = normalizeActivation(curseMechanics).map((mechanic) => ({ ...mechanic, curseEffect: true }))
     return [
-      ...normalized,
+      ...normal,
+      ...curseEffects,
       {
         id: curseId,
         type: "grant",
         target: "trait",
         key: "curse:item",
-        payload: { label: "Проклято", description: curseDescription.trim() },
+        payload: {
+          label: "Проклято",
+          description: curseDescription.trim(),
+          showCurseToPlayer,
+          showCurseEffectToPlayer: showCurseToPlayer && showCurseEffectToPlayer,
+        },
         activation: "carried",
       },
     ]
   }
 
-  const reviewMechanics = useMemo(() => finalMechanics().slice(0, 5).map(mechanicSummary), [mechanics, category, cursed, curseDescription, curseId])
-  const equippedOnlyCount = mechanics.filter((mechanic) => mechanic.activation === "equipped").length
+  const reviewMechanics = useMemo(() => finalMechanics().slice(0, 7).map(mechanicSummary), [mechanics, curseMechanics, category, cursed, curseDescription, curseId, showCurseToPlayer, showCurseEffectToPlayer])
+  const equippedOnlyCount = [...mechanics, ...curseMechanics].filter((mechanic) => mechanic.activation === "equipped").length
 
   function choosePreset(next: ItemPreset) {
     const selected = presets.find((candidate) => candidate.id === next) || presets[0]
@@ -132,6 +155,11 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
     setEquipped(false)
     if (!item && mechanics.length === 0 && next === "weapon") setMechanics([weaponBase()])
     if (!item && preset === "weapon" && next !== "weapon" && mechanics.length === 1 && mechanics[0]?.type === "action" && mechanics[0].label === "Атака оружием") setMechanics([])
+  }
+
+  function changeCurseVisibility(visible: boolean) {
+    setShowCurseToPlayer(visible)
+    if (!visible) setShowCurseEffectToPlayer(false)
   }
 
   async function cancel() {
@@ -220,34 +248,49 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
             <ImageUploadField value={imageUrl} onChange={setImageUrl} folder="items" campaignId={campaignId} label="Арт предмета" />
             <label className="field-label">Описание <small className="creation-optional">необязательно</small></label>
             <textarea className="app-textarea" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={3000} placeholder="Что увидит игрок, когда откроет предмет…" />
-            <label className="v2-toggle-row creation-inline-toggle creation-curse-toggle"><span><strong>☠ Проклято</strong><small>Отдельный статус предмета. Само проклятие может быть нарративным или иметь механику на следующем шаге.</small></span><input type="checkbox" checked={cursed} onChange={(e) => setCursed(e.target.checked)} /></label>
-            {cursed && <label><span className="field-label">Что делает проклятие</span><textarea className="app-textarea" value={curseDescription} onChange={(e) => setCurseDescription(e.target.value)} maxLength={2000} placeholder="Например: владелец слышит шёпот клинка и не может добровольно его выбросить…" /><small className="creation-curse-help">Если проклятие ещё и меняет цифры, добавь штраф или другой эффект на следующем шаге — он тоже пойдёт через Character Engine.</small></label>}
+            <label className="v2-toggle-row creation-inline-toggle creation-curse-toggle"><span><strong>☠ Проклято</strong><small>Проклятие может быть полностью скрытым, частично раскрытым или публичным.</small></span><input type="checkbox" checked={cursed} onChange={(e) => setCursed(e.target.checked)} /></label>
+            {cursed && <>
+              <label><span className="field-label">Что делает проклятие</span><textarea className="app-textarea" value={curseDescription} onChange={(e) => setCurseDescription(e.target.value)} maxLength={2000} placeholder="Например: владелец не может добровольно выбросить клинок…" /></label>
+              <div className="creation-curse-visibility">
+                <span>Что знает игрок</span>
+                <label className="v2-toggle-row creation-inline-toggle"><span><strong>Показывать игроку, что проклятие есть</strong><small>Выключено — игрок не увидит ни значок, ни статус «Проклято».</small></span><input type="checkbox" checked={showCurseToPlayer} onChange={(e) => changeCurseVisibility(e.target.checked)} /></label>
+                <label className="v2-toggle-row creation-inline-toggle"><span><strong>Показывать, что делает проклятие</strong><small>Выключено — описание и механика проклятия скрыты, но продолжают работать через CE.</small></span><input type="checkbox" checked={showCurseEffectToPlayer} disabled={!showCurseToPlayer} onChange={(e) => setShowCurseEffectToPlayer(e.target.checked)} /></label>
+              </div>
+            </>}
             {category === "equipment" && <label className="v2-toggle-row creation-inline-toggle"><span><strong>Надеть сразу</strong><small>Если выключено, эффекты с режимом «когда надето» пока не работают.</small></span><input type="checkbox" checked={equipped} onChange={(e) => setEquipped(e.target.checked)} /></label>}
           </section>
         )}
 
         {step === 3 && (
           <section className="creation-wizard__step">
-            <div className="creation-wizard__intro"><span>03</span><div><strong>Что предмет делает?</strong><small>Этот шаг можно оставить пустым. Тогда предмет не влияет на Character Engine.</small></div></div>
-            <div className="creation-default-note creation-default-note--neutral"><span>✦</span><p><strong>{mechanics.length ? `${mechanics.length} эффектов настроено` : "Без эффектов — это нормально"}</strong><small>Сначала выбери частый готовый эффект. Для редких правил ниже остаётся полный конструктор.</small></p></div>
+            <div className="creation-wizard__intro"><span>03</span><div><strong>Что предмет делает?</strong><small>Обычная механика и механика проклятия разделены, чтобы секрет не протекал игроку.</small></div></div>
+            <div className="creation-default-note creation-default-note--neutral"><span>✦</span><p><strong>{mechanics.length ? `${mechanics.length} обычных эффектов` : "Обычных эффектов нет"}</strong><small>Эти эффекты игрок видит как нормальную механику предмета.</small></p></div>
             <ItemMechanicPresets value={mechanics} onChange={setMechanics} equippable={category === "equipment"} />
-            {cursed && <div className="creation-default-note creation-default-note--curse"><span>☠</span><p><strong>Проклятие отмечено отдельно</strong><small>Для механического проклятия можно добавить ниже, например, «−1 к КД». Текст проклятия останется отдельным статусом предмета.</small></p></div>}
-            <div className="creation-wizard__intro"><span>⚙</span><div><strong>Расширенная настройка</strong><small>Свои бонусы, произвольные теги, условия, атаки, ресурсы и нестандартные заклинания.</small></div></div>
+            <div className="creation-wizard__intro"><span>⚙</span><div><strong>Расширенная настройка</strong><small>Свои бонусы, условия, атаки, ресурсы и нестандартные заклинания.</small></div></div>
             {category !== "equipment" && <div className="creation-activation-note">Ненадеваемый предмет не может иметь мёртвый режим «когда надето»: при сохранении такие эффекты автоматически станут «пока в инвентаре».</div>}
             <MechanicsBuilder value={mechanics} onChange={setMechanics} itemMode />
+
+            {cursed && <section className="creation-curse-mechanics">
+              <div className="creation-wizard__intro"><span>☠</span><div><strong>Механика проклятия</strong><small>Добавляй сюда только то, что является частью проклятия. Эти эффекты CE применяет всегда, даже когда игроку они скрыты.</small></div></div>
+              <div className="creation-default-note creation-default-note--curse"><span>☠</span><p><strong>{curseMechanics.length ? `${curseMechanics.length} эффектов проклятия` : "Проклятие пока только нарративное"}</strong><small>{showCurseEffectToPlayer ? "Игрок увидит эту механику." : "Игрок эту механику не увидит, но Character Engine всё равно её применит."}</small></p></div>
+              <MechanicsBuilder value={curseMechanics} onChange={setCurseMechanics} itemMode />
+            </section>}
           </section>
         )}
 
         {step === 4 && (
           <section className="creation-wizard__step">
-            <div className="creation-wizard__intro"><span>04</span><div><strong>Проверка</strong><small>Никаких скрытых правил: здесь видно, что именно сохранится.</small></div></div>
+            <div className="creation-wizard__intro"><span>04</span><div><strong>Проверка</strong><small>ГМ видит всё. Игрок получит только разрешённую часть информации.</small></div></div>
             <div className="creation-review-card">
               <div className="creation-review-card__icon">{currentPreset.icon}</div>
               <div><small>{currentPreset.title}</small><strong>{name.trim() || "Без названия"}</strong><span>{inventoryCategories.find((option) => option.value === category)?.label || category}{category === "equipment" ? ` · ${equipmentSlots.find((option) => option.value === equipmentSlot)?.label || equipmentSlot}` : ""} · ×{Math.max(0, Number.parseInt(quantity || "0", 10) || 0)}</span>{cursed && <b className="creation-review-curse">☠ Проклято</b>}</div>
             </div>
             <div className="creation-review-block"><span>Описание</span><p>{description.trim() || "Без описания."}</p></div>
-            {cursed && <div className="creation-review-block creation-review-block--curse"><span>Проклятие</span><p>{curseDescription.trim() || "Предмет отмечен как проклятый, описание проклятия не задано."}</p></div>}
-            {category === "equipment" && !equipped && equippedOnlyCount > 0 && <div className="creation-default-note creation-default-note--warning"><span>!</span><p><strong>{equippedOnlyCount} эффектов пока не активны</strong><small>Они настроены как «когда надето». После создания предмет нужно надеть, либо поменять режим эффекта на «пока в инвентаре».</small></p></div>}
+            {cursed && <>
+              <div className="creation-review-block creation-review-block--curse"><span>Проклятие</span><p>{curseDescription.trim() || "Предмет отмечен как проклятый, описание проклятия не задано."}</p></div>
+              <div className="creation-curse-preview"><strong>Видимость для игрока</strong><span>{showCurseToPlayer ? "✓ Видит, что предмет проклят" : "○ Не знает о проклятии"}</span><span>{showCurseToPlayer && showCurseEffectToPlayer ? "✓ Видит описание и эффекты" : "○ Не видит, что делает проклятие"}</span><small>Скрытие ничего не отключает в Character Engine.</small></div>
+            </>}
+            {category === "equipment" && !equipped && equippedOnlyCount > 0 && <div className="creation-default-note creation-default-note--warning"><span>!</span><p><strong>{equippedOnlyCount} эффектов пока не активны</strong><small>Они настроены как «когда надето». После создания предмет нужно надеть, либо поменять режим эффекта.</small></p></div>}
             <div className="creation-review-block"><span>Механика</span>{reviewMechanics.length ? <ul>{reviewMechanics.map((summary, index) => <li key={`${summary}:${index}`}>{summary}</li>)}{finalMechanics().length > reviewMechanics.length && <li>И ещё {finalMechanics().length - reviewMechanics.length}…</li>}</ul> : <p>Нет эффектов. Предмет не меняет характеристики и действия персонажа.</p>}</div>
           </section>
         )}
