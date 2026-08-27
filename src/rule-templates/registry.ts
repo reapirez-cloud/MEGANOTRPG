@@ -1,6 +1,6 @@
-import type { CharacterContribution, CharacterSource } from "../character-engine/index"
-import { storedMechanicContributions } from "../lib/characterMechanics"
-import type { CharacterTemplateBundle, RuleChoiceDefinition } from "./types"
+import type { CharacterContribution, CharacterSource } from "../character-engine/index.ts"
+import { storedMechanicContributions } from "../lib/characterMechanics.ts"
+import type { CharacterTemplateBundle, RuleChoiceDefinition } from "./types.ts"
 
 const registry = new Map<string, CharacterTemplateBundle[]>()
 
