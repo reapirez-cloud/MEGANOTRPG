@@ -9,6 +9,7 @@ import CampaignImage from "../components/common/CampaignImage"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
 import { formatCampaignTime } from "../world-state/time"
 import type { LocationEntry, VisibilityMode } from "../types/world"
+import { buildLocationHierarchy, locationAncestorIds, type LocationHierarchyNode } from "../lib/worldHierarchy"
 
 const visibilityLabel: Record<VisibilityMode, string> = { always: "Видно всегда", discover: "По открытию", private: "Только я" }
 
@@ -21,6 +22,7 @@ export default function World() {
   const [menuLocation, setMenuLocation] = useState<LocationEntry | null>(null)
   const [visibilityOpen, setVisibilityOpen] = useState(false)
   const [error, setError] = useState("")
+  const [expandedLocations, setExpandedLocations] = useState<Set<string>>(() => new Set())
   const bindLocationLongPress = useLongPressItem<LocationEntry>((location) => { if (context.canManage) setMenuLocation(location) })
 
   useEffect(() => {
@@ -29,14 +31,59 @@ export default function World() {
   }, [selectedId, state.currentLocation?.id, world.locations])
 
   const selected = useMemo(() => world.locations.find((location) => location.id === selectedId) || null, [selectedId, world.locations])
-  const parent = selected?.parent_location_id ? world.locations.find((location) => location.id === selected.parent_location_id) || null : null
   const children = useMemo(() => selected ? world.locations.filter((location) => location.parent_location_id === selected.id && location.lifecycle_state === "active") : world.locations.filter((location) => !location.parent_location_id && location.lifecycle_state === "active"), [selected, world.locations])
   const selectedSections = useMemo(() => selected ? world.locationSections.filter((section) => section.location_id === selected.id) : [], [selected, world.locationSections])
   const selectedSectionIds = new Set(selectedSections.map((section) => section.id))
   const transitions = useMemo(() => world.locationLinks.filter((link) => selectedSectionIds.has(link.section_id)).map((link) => ({ link, target: world.locations.find((location) => location.id === link.target_location_id) || null })).filter((entry) => entry.target), [world.locationLinks, world.locations, selectedSections])
   const peopleHere = useMemo(() => selected ? state.states.filter((entry) => entry.location_id === selected.id).map((entry) => ({ state: entry, character: context.characters.find((character) => character.id === entry.character_id) })).filter((entry) => entry.character) : [], [context.characters, selected, state.states])
   const scenesHere = useMemo(() => selected ? state.scenes.filter((scene) => scene.location_id === selected.id && scene.scene_state === "active") : [], [selected, state.scenes])
-  const knownLocations = useMemo(() => world.locations.filter((location) => location.lifecycle_state === "active"), [world.locations])
+  const activeLocations = useMemo(() => world.locations.filter((location) => location.lifecycle_state === "active"), [world.locations])
+  const locationTree = useMemo(() => buildLocationHierarchy(activeLocations), [activeLocations])
+  const ancestorPath = useMemo(() => {
+    const ids = locationAncestorIds(activeLocations, selected?.id || null)
+    return ids.map((id) => activeLocations.find((location) => location.id === id)).filter((location): location is LocationEntry => Boolean(location))
+  }, [activeLocations, selected?.id])
+
+  useEffect(() => {
+    const ids = new Set(locationTree.map((node) => node.location.id))
+    for (const id of locationAncestorIds(activeLocations, selected?.id || null)) ids.add(id)
+    setExpandedLocations((current) => {
+      const next = new Set(current)
+      for (const id of ids) next.add(id)
+      return next
+    })
+  }, [activeLocations, locationTree, selected?.id])
+
+  function toggleLocation(locationId: string) {
+    setExpandedLocations((current) => {
+      const next = new Set(current)
+      if (next.has(locationId)) next.delete(locationId)
+      else next.add(locationId)
+      return next
+    })
+  }
+
+  function renderLocationNode(node: LocationHierarchyNode<LocationEntry>, depth = 0) {
+    const location = node.location
+    const expanded = expandedLocations.has(location.id)
+    return <div className="world-tree-branch" key={location.id}>
+      <article
+        className={`world-tree-row ${location.id === selected?.id ? "is-active" : ""}`}
+        style={{ paddingInlineStart: `${10 + Math.min(depth, 5) * 19}px`, touchAction: "pan-y" }}
+        {...bindLocationLongPress(location)}
+      >
+        <button className="world-tree-open" type="button" onClick={() => setSelectedId(location.id)}>
+          <span className="world-tree-mark">{depth ? "└" : "◈"}</span>
+          <span className="world-tree-copy"><strong>{location.name}</strong><small>{location.summary || (depth ? "Подлокация" : "Локация")}</small></span>
+          {context.canManage && <em>{visibilityLabel[location.visibility_mode]}</em>}
+        </button>
+        {node.children.length > 0
+          ? <button className="world-tree-toggle" type="button" onClick={() => toggleLocation(location.id)} aria-label={expanded ? "Свернуть подлокации" : "Показать подлокации"} aria-expanded={expanded}>{expanded ? "⌃" : "⌄"}<small>{node.children.length}</small></button>
+          : <span className="world-tree-leaf">›</span>}
+      </article>
+      {expanded && node.children.length > 0 && <div className="world-tree-children">{node.children.map((child) => renderLocationNode(child, depth + 1))}</div>}
+    </div>
+  }
 
   async function setVisibility(mode: VisibilityMode) {
     if (!menuLocation) return
@@ -66,7 +113,7 @@ export default function World() {
         {selected.image_url && <CampaignImage className="world-location-hero__image" value={selected.image_url} alt={selected.name} />}
         <div className="world-location-hero__scrim" />
         <div className="world-location-hero__copy">
-          <div className="world-location-hero__crumb">{parent ? <button type="button" onClick={() => setSelectedId(parent.id)}>{parent.name}</button> : <span>{context.campaignTitle}</span>}<span>›</span></div>
+          <div className="world-location-hero__crumb"><span>{context.campaignTitle}</span>{ancestorPath.map((ancestor) => <span className="world-location-hero__crumb-segment" key={ancestor.id}><b>›</b><button type="button" onClick={() => setSelectedId(ancestor.id)}>{ancestor.name}</button></span>)}</div>
           <h1>{selected.name}</h1>
           {selected.summary && <p>{selected.summary}</p>}
           {context.canManage && <div className="world-location-hero__badges"><span>{visibilityLabel[selected.visibility_mode]}</span>{selected.lifecycle_state === "archived" && <span>Архив</span>}</div>}
@@ -81,7 +128,7 @@ export default function World() {
       {(selected.description || selectedSections.length > 0) && <section className="world-lore-section"><div className="world-section-title"><small>Известно</small><h3>О локации</h3></div>{selected.description && <p className="world-location-description">{selected.description}</p>}{selectedSections.map((section) => <article key={section.id} className="world-lore-card"><h4>{section.title}</h4><p>{section.body}</p></article>)}</section>}
     </> : <div className="world-v2-empty"><span>◇</span><strong>Мир ещё не открыт</strong><p>{context.canManage ? "Создайте первую локацию. Новые зоны по умолчанию будут видны персонажу только после открытия." : "Когда персонаж попадёт в первую доступную локацию, она появится здесь."}</p>{context.canManage && <button type="button" onClick={() => setEditor({ type: "location", parentId: null })}>Создать локацию</button>}</div>}
 
-    {knownLocations.length > 1 && <section className="world-known-section"><div className="world-section-title"><small>{context.canManage ? "Все доступные вам" : "Открытые персонажем"}</small><h3>Известные места</h3></div><div className="world-known-list">{knownLocations.map((location) => <button type="button" key={location.id} className={location.id === selected?.id ? "is-active" : ""} onClick={() => setSelectedId(location.id)} {...bindLocationLongPress(location)} style={{ touchAction: "pan-y" }}><span>◈</span><div><strong>{location.name}</strong><small>{location.summary || (location.parent_location_id ? "Подлокация" : "Локация")}</small></div>{context.canManage && <em>{visibilityLabel[location.visibility_mode]}</em>}<b>›</b></button>)}</div></section>}
+    {activeLocations.length > 1 && <section className="world-known-section world-hierarchy-section"><div className="world-section-title"><small>{context.canManage ? "Структура кампании" : "Открыто персонажу"}</small><h3>Локации и подлокации</h3></div><div className="world-location-tree">{locationTree.map((node) => renderLocationNode(node))}</div></section>}
 
     {error && <div className="world-inline-error">{error}<button type="button" onClick={() => setError("")}>×</button></div>}
 

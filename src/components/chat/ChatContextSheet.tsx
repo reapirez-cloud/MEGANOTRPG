@@ -93,6 +93,9 @@ export default function ChatContextSheet({ roomId, onClose, onOpenCharacter, onO
   if (!room) return <div className="soft-sheet-backdrop" onMouseDown={onClose}><section className="soft-sheet context-sheet" onMouseDown={(event) => event.stopPropagation()}><div className="soft-sheet__handle"/><div className="context-loading">{error || "Загружаем контекст…"}</div></section></div>
 
   const stateLabel = room.is_read_only ? "Только чтение" : room.room_state === "gm_only" ? "Только ГМ пишет" : room.room_state === "closed" ? "Закрыт" : "Открыт"
+  const accessLabel = room.open_to_campaign
+    ? room.campaign_can_write ? "Все читают и пишут" : "Все игроки читают"
+    : "Скрыт от остальных игроков"
 
   return (
     <>
@@ -116,9 +119,9 @@ export default function ChatContextSheet({ roomId, onClose, onOpenCharacter, onO
 
           {room.room_type === "scene" && <section className="context-section"><h3>Участники</h3>{sceneParticipants.length ? <div className="context-people">{sceneParticipants.map((person) => person && <button type="button" key={person.id} onClick={() => onOpenCharacter(person.id)}><CharacterAvatar character={person} size="small"/><span>{person.name}</span></button>)}</div> : <p className="context-empty">Участники ещё не выбраны.</p>}</section>}
 
-          <section className="context-section context-room-state"><div><small>Состояние комнаты</small><strong>{stateLabel}</strong></div>{canManage && <button type="button" onClick={onOpenSettings}>Управление</button>}</section>
+          <section className="context-section context-room-state"><div><small>Состояние комнаты</small><strong>{stateLabel}</strong><em>{accessLabel}</em></div>{canManage && <button type="button" onClick={onOpenSettings}>Управление</button>}</section>
 
-          {canManage && room.room_type !== "flood" && <section className="gm-context-actions"><h3>Быстрые действия ГМ</h3><div className="gm-context-actions__grid"><button type="button" onClick={() => setEditingPosition(true)}>◈ Изменить позицию</button>{room.room_type === "scene" && <button type="button" disabled={busy} onClick={() => void syncParticipants()}>⇄ Синхронизировать</button>}<button type="button" disabled={busy} onClick={() => void setAccess(true, true)}>Читать и писать всем</button><button type="button" disabled={busy} onClick={() => void setRoomState("gm_only")}>Только ГМ пишет</button><button type="button" disabled={busy} onClick={() => void setAccess(true, false)}>Читать всем</button><button type="button" disabled={busy} className="is-danger" onClick={() => void setRoomState("closed")}>Закрыть чат</button></div></section>}
+          {canManage && room.room_type !== "flood" && <section className="gm-context-actions"><h3>Быстрые действия ГМ</h3><div className="gm-context-actions__grid"><button type="button" onClick={() => setEditingPosition(true)}>◈ Изменить позицию</button>{room.room_type === "scene" && <button type="button" disabled={busy} onClick={() => void syncParticipants()}>⇄ Синхронизировать</button>}<button type="button" className={room.open_to_campaign && room.campaign_can_write ? "is-active" : ""} aria-pressed={room.open_to_campaign && room.campaign_can_write} disabled={busy} onClick={() => void setAccess(true, true)}>Читать и писать всем</button><button type="button" disabled={busy} onClick={() => void setRoomState("gm_only")}>Только ГМ пишет</button><button type="button" className={room.open_to_campaign && !room.campaign_can_write ? "is-active" : ""} aria-pressed={room.open_to_campaign && !room.campaign_can_write} disabled={busy} onClick={() => void setAccess(true, false)}>Читать всем</button><button type="button" className={!room.open_to_campaign ? "is-active is-danger" : "is-danger"} aria-pressed={!room.open_to_campaign} disabled={busy} onClick={() => void setAccess(false, false)}>Скрыть от игроков</button><button type="button" disabled={busy} className="is-danger" onClick={() => void setRoomState("closed")}>Закрыть чат</button></div></section>}
 
           {error && <div className="sheet-error">{error}</div>}
         </section>

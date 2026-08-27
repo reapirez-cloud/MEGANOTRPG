@@ -209,6 +209,7 @@ export default function Chats({ onOpenRoom }: Props) {
               <small>{roomLabel(room)}</small>
               {dead && <em>Мёртв</em>}
               {!dead && room.is_read_only && <em>Только чтение</em>}
+              {canManage && room.room_type !== "flood" && <em className={room.open_to_campaign ? "is-public" : "is-private"}>{room.open_to_campaign ? (room.campaign_can_write ? "Всем: запись" : "Всем: чтение") : "Скрыт"}</em>}
             </span>
             <strong>{room.title}</strong>
             {character && <small className="game-room-card__character">{character.character_class} · {character.level} ур.</small>}

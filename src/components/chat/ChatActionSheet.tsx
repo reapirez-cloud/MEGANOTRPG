@@ -7,7 +7,6 @@ import type {
   ResolvedSpell,
   SkillKey,
 } from "../../character-engine/index.ts"
-import { supabase } from "../../lib/supabase.ts"
 import { buildChatActionModel, type ChatActionSourceGroup } from "./chatActionModel.ts"
 import "./ChatActionSheet.css"
 
@@ -18,7 +17,7 @@ type Props = {
   contract: ResolvedCharacterContract | null
   loading?: boolean
   onClose: () => void
-  onFreeRoll?: (request: FreeDiceRequest) => void | Promise<void>
+  onFreeRoll: (request: FreeDiceRequest) => boolean | void | Promise<boolean | void>
   onCheck: (label: string, modifier: number, kind: "ability" | "skill" | "save") => void | Promise<void>
   onAction: (action: ResolvedAction) => void | Promise<void>
   onSpell: (spell: ResolvedSpell) => void | Promise<void>
@@ -109,11 +108,6 @@ function SourceGroup({ group, kind, resources, labels, busy, onAction, onSpell }
   </section>
 }
 
-function currentRoomId(): string | null {
-  const match = window.location.hash.match(/^#\/chat\/([^?]+)/)
-  return match?.[1] || null
-}
-
 export default function ChatActionSheet({ characterName, contract, loading = false, onClose, onFreeRoll, onCheck, onAction, onSpell }: Props) {
   const [tab, setTab] = useState<Tab>("dice")
   const [busy, setBusy] = useState(false)
@@ -133,27 +127,8 @@ export default function ChatActionSheet({ characterName, contract, loading = fal
   const notation = `${diceCount}d${diceSides}${diceModifier ? signed(diceModifier) : ""}`
 
   async function freeRoll(request: FreeDiceRequest) {
-    if (onFreeRoll) {
-      await onFreeRoll(request)
-      onClose()
-      return
-    }
-    const roomId = currentRoomId()
-    if (!roomId) throw new Error("Свободный бросок доступен только внутри чата.")
-    const label = `${request.count}d${request.sides}${request.modifier ? signed(request.modifier) : ""}`
-    const { error: rollError } = await supabase.rpc("send_chat_roll_v2", {
-      p_room_id: roomId,
-      p_character_id: contract?.id || null,
-      p_label: label,
-      p_kind: "Свободный бросок",
-      p_modifier: 0,
-      p_roll_d20: false,
-      p_dice_count: request.count,
-      p_dice_sides: request.sides,
-      p_dice_modifier: request.modifier,
-    })
-    if (rollError) throw new Error(rollError.message)
-    onClose()
+    const sent = await onFreeRoll(request)
+    if (sent !== false) onClose()
   }
 
   const tabs: Array<{ key: Tab; label: string; count?: number }> = [

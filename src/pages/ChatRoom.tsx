@@ -10,7 +10,7 @@ import { useChatActors } from "../hooks/useChatActors"
 import { useResolvedChatActor } from "../hooks/useResolvedChatActor"
 import { useLongPressItem } from "../hooks/useLongPressItem"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
-import ChatActionSheet from "../components/chat/ChatActionSheet"
+import ChatActionSheet, { type FreeDiceRequest } from "../components/chat/ChatActionSheet"
 import ChatActorPicker from "../components/chat/ChatActorPicker"
 import ChatRoomSettings from "../components/chat/ChatRoomSettings"
 import ChatMessageActions from "../components/chat/ChatMessageActions"
@@ -201,6 +201,21 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
     if (sent) setActionsOpen(false)
   }
 
+  async function freeRoll(request: FreeDiceRequest) {
+    const modifier = request.modifier ? `${request.modifier > 0 ? "+" : ""}${request.modifier}` : ""
+    const sent = await chat.sendRoll({
+      characterId: actors.selected?.characterId || null,
+      label: `${request.count}d${request.sides}${modifier}`,
+      kind: "Свободный бросок",
+      rollD20: false,
+      diceCount: request.count,
+      diceSides: request.sides,
+      diceModifier: request.modifier,
+    })
+    if (!sent) throw new Error("Не удалось выполнить бросок. Проверь доступ к комнате и попробуй снова.")
+    return true
+  }
+
   async function runAction(action: ResolvedAction) {
     const contract = resolved.contract
     const damage = action.damage[0]
@@ -273,7 +288,7 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
       <button className="send-button" type="submit" disabled={!canSend || (!draft.trim() && !attachmentFile) || chat.sending || uploadingAttachment} aria-label="Отправить">➤</button>
     </form>}
 
-    {actionsOpen && <ChatActionSheet characterName={actors.selected?.character?.name || null} contract={resolved.contract} loading={resolved.loading} onClose={() => setActionsOpen(false)} onCheck={rollCheck} onAction={runAction} onSpell={castSpell} />}
+    {actionsOpen && <ChatActionSheet characterName={actors.selected?.character?.name || null} contract={resolved.contract} loading={resolved.loading} onClose={() => setActionsOpen(false)} onFreeRoll={freeRoll} onCheck={rollCheck} onAction={runAction} onSpell={castSpell} />}
     {actorOpen && <ChatActorPicker actors={actors.actors} selected={actors.selected} onSelect={actors.selectActor} onClose={() => setActorOpen(false)} />}
     {contextOpen && <ChatContextSheet roomId={roomId} onClose={() => setContextOpen(false)} onOpenCharacter={onOpenCharacter} onOpenSettings={() => { setContextOpen(false); setSettingsOpen(true) }} onChanged={() => void loadRoomAccess()} />}
     {settingsOpen && <ChatRoomSettings roomId={roomId} roomTitle={roomTitle} members={members} characters={characters} onClose={() => setSettingsOpen(false)} onSaved={(nextTitle) => { setRoomTitle(nextTitle); void loadRoomAccess() }} />}
