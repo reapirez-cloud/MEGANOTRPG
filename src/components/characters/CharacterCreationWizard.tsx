@@ -95,9 +95,9 @@ function abilityLabel(key: string | null) {
 
 export default function CharacterCreationWizard({ target, campaignId, members, updateCharacter, onClose, onSaved }: Props) {
   const editing = target.mode === "edit"
-  const initialCharacter = editing ? target.character : null
-  const initialType = initialCharacter?.character_type || target.type
-  const initialLevel = initialCharacter?.level || 1
+  const initialCharacter = target.mode === "edit" ? target.character : null
+  const initialType = target.mode === "edit" ? target.character.character_type : target.type
+  const initialLevel = target.mode === "edit" ? target.character.level : 1
   const [step, setStep] = useState<Step>(1)
   const [name, setName] = useState(initialCharacter?.name || "")
   const [role, setRole] = useState(initialCharacter?.character_class || "")
