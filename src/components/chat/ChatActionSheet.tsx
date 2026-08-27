@@ -24,6 +24,7 @@ type Props = {
   characterName?: string | null
   contract: ResolvedCharacterContract | null
   loading?: boolean
+  includePrivateSources?: boolean
   onClose: () => void
   onFreeRoll: (request: FreeDiceRequest) => boolean | void | Promise<boolean | void>
   onCheck: (label: string, modifier: number, kind: "ability" | "skill" | "save") => void | Promise<void>
@@ -86,6 +87,12 @@ function actionSummary(action: ResolvedAction, resources: Map<string, ResolvedRe
 function spellSummary(spell: ResolvedSpell) {
   const sources = [...new Set(spell.accesses.flatMap((access) => access.sources.map((ref) => ref.source.name)).filter(Boolean))]
   return [spell.identity.level === 0 ? "Кантрип" : `${spell.identity.level} уровень`, spell.identity.school || "", sources.slice(0, 2).join(" · ")].filter(Boolean).join(" · ")
+}
+
+function spellVisibleToViewer(spell: ResolvedSpell, includePrivateSources: boolean) {
+  if (includePrivateSources) return true
+  const refs = spell.accesses.flatMap((access) => access.sources)
+  return refs.some((ref) => ref.source.visibility !== "private")
 }
 
 function cantripCast(spell: ResolvedSpell): SpellSlotCast | null {
@@ -177,7 +184,7 @@ function SourceGroup({ group, kind, resources, labels, busy, onAction, onSpell }
   </section>
 }
 
-export default function ChatActionSheet({ characterName, contract, loading = false, onClose, onFreeRoll, onCheck, onAction, onSpell }: Props) {
+export default function ChatActionSheet({ characterName, contract, loading = false, includePrivateSources = true, onClose, onFreeRoll, onCheck, onAction, onSpell }: Props) {
   const [tab, setTab] = useState<Tab>("dice")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
@@ -185,14 +192,15 @@ export default function ChatActionSheet({ characterName, contract, loading = fal
   const [diceSides, setDiceSides] = useState(20)
   const [diceModifier, setDiceModifier] = useState(0)
   const [spellChannel, setSpellChannel] = useState<SpellChannel>(null)
-  const model = useMemo(() => buildChatActionModel(contract), [contract])
+  const model = useMemo(() => buildChatActionModel(contract, includePrivateSources), [contract, includePrivateSources])
   const resources = useMemo(() => new Map((contract?.resources || []).map((resource) => [resource.stateKey, resource])), [contract])
   const labels = useMemo(() => resourceLabels(contract), [contract])
   const skills = useMemo(() => contract ? Object.entries(contract.skills).map(([key, value]) => ({ ...value, key: key as SkillKey })).sort((a, b) => skillNames[a.key].localeCompare(skillNames[b.key], "ru")) : [], [contract])
   const classCount = model.classGroups.reduce((sum, group) => sum + group.actions.length + group.spells.length, 0)
   const uniqueCount = model.uniqueGroups.reduce((sum, group) => sum + group.actions.length + group.spells.length, 0)
   const spellSlots = useMemo(() => spellSlotResources(contract?.resources || []), [contract])
-  const cantrips = useMemo(() => (contract?.spells || []).map(cantripCast).filter((item): item is SpellSlotCast => item !== null), [contract])
+  const visibleSpells = useMemo(() => (contract?.spells || []).filter((spell) => spellVisibleToViewer(spell, includePrivateSources)), [contract, includePrivateSources])
+  const cantrips = useMemo(() => visibleSpells.map(cantripCast).filter((item): item is SpellSlotCast => item !== null), [visibleSpells])
   const selectedSlot = spellChannel && spellChannel !== "cantrips"
     ? spellSlots.find(({ resource }) => resource.stateKey === spellChannel) || null
     : null
@@ -201,10 +209,10 @@ export default function ChatActionSheet({ characterName, contract, loading = fal
     if (spellChannel === "cantrips") return cantrips
     const slot = spellSlots.find(({ resource }) => resource.stateKey === spellChannel)
     if (!slot || slot.resource.current <= 0) return []
-    return contract.spells
+    return visibleSpells
       .map((spell) => spellCastForSlot(spell, slot.level, slot.resource.stateKey))
       .filter((item): item is SpellSlotCast => item !== null)
-  }, [cantrips, contract, spellChannel, spellSlots])
+  }, [cantrips, contract, spellChannel, spellSlots, visibleSpells])
 
   async function run(task: () => void | Promise<void>) { setBusy(true); setError(""); try { await task() } catch (reason) { setError(reason instanceof Error ? reason.message : "Не удалось выполнить действие.") } finally { setBusy(false) } }
   function chooseSides(value: number) { setDiceSides(clamp(value, 2, 1000)) }
@@ -217,7 +225,7 @@ export default function ChatActionSheet({ characterName, contract, loading = fal
   }
 
   const tabs: Array<{ key: Tab; label: string; count?: number }> = [
-    { key: "dice", label: "Кубы" }, { key: "attacks", label: "Атаки", count: model.attacks.length }, { key: "spells", label: "Магия", count: contract?.spells.length || 0 },
+    { key: "dice", label: "Кубы" }, { key: "attacks", label: "Атаки", count: model.attacks.length }, { key: "spells", label: "Магия", count: visibleSpells.length },
     { key: "class", label: "Класс", count: classCount }, { key: "unique", label: "Уникальное", count: uniqueCount },
   ]
 
@@ -250,7 +258,7 @@ export default function ChatActionSheet({ characterName, contract, loading = fal
       {tab !== "dice" && !loading && !contract && <div className="action-v2-empty"><span>◇</span><strong>Нужен персонаж</strong><p>Эта вкладка строится из Character Engine. Свободные кубы доступны во вкладке «Кубы».</p></div>}
       {!loading && contract && tab === "attacks" && <>{model.attacks.length ? <div className="action-v2-list action-v2-list--cards">{model.attacks.map((action) => <button disabled={busy || !action.available} type="button" key={`${action.key}:${action.variantKey}`} onClick={() => void run(() => onAction(action))}><i>⚔</i><span><strong>{action.label || action.key}</strong><small>{actionSummary(action, resources, labels)}</small></span><em>›</em></button>)}</div> : <div className="action-v2-empty"><span>⚔</span><strong>Нет обычных атак</strong><p>Оружейные атаки появятся здесь, а классовые и особые способности останутся в своих вкладках.</p></div>}</>}
       {!loading && contract && tab === "spells" && <>
-        {!contract.spells.length ? <div className="action-v2-empty"><span>✧</span><strong>Нет доступной магии</strong><p>Заклинания собираются Character Engine из всех источников.</p></div> : !spellChannel ? <div className="action-spell-picker">
+        {!visibleSpells.length ? <div className="action-v2-empty"><span>✧</span><strong>Нет доступной магии</strong><p>Заклинания собираются Character Engine из всех доступных игроку источников.</p></div> : !spellChannel ? <div className="action-spell-picker">
           <header><small>Шаг 1</small><strong>Выбери ячейку</strong><p>Покажем только те заклинания, которые Character Engine реально может прочитать именно этой ячейкой.</p></header>
           <div className="action-spell-slots">
             {cantrips.length > 0 && <button className="action-spell-slot action-spell-slot--cantrip" type="button" onClick={() => setSpellChannel("cantrips")}><span className="action-spell-slot__level">∞</span><span className="action-spell-slot__copy"><strong>Заговоры</strong><small>Без расхода ячейки · {cantrips.length}</small></span><em>›</em></button>}
