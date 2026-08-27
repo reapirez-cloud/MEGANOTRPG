@@ -20,6 +20,7 @@ import {
   registeredCharacterInventory,
 } from "./characterMechanics.ts"
 import { registeredCharacterResourceState } from "./resourceRuntime.ts"
+import { characterSourceSuppressionContributions } from "./suppressionRuntime.ts"
 import { characterTemplateContributions } from "../rule-templates/registry.ts"
 import type { CharacterFeature, CharacterSheet, CharacterSpell, InventoryItem, SkillRank } from "../types/characterSheet.ts"
 
@@ -84,6 +85,11 @@ export function buildLegacyCharacterEngineInput(args: {
     const isCantrip = spell.spell_level === 0 || spell.cast_mode === "cantrip"; const options = isCantrip ? [] : slotOptions(spell.spell_level, slotLevels)
     contributions.push({ id: `legacy:spell:${spell.id}`, kind: "grant", operation: "GRANT", target: "spell", key: legacySpellKey(spell), variantKey: `legacy-${spell.id}`, payload: { spell: { name: spell.name, level: spell.spell_level, ...(spell.school.trim() ? { school: spell.school.trim() } : {}), ritual: spell.ritual }, preparation: { mode: "not_required" }, methods: [{ key: "legacy-cast", kind: "spellcasting", ...(spellcastingAbility ? { ability: spellcastingAbility } : {}), requiresPrepared: false, ...(isCantrip ? {} : { resourceOptions: options }) }] }, source: legacySource(`legacy-spell-source:${spell.id}`, spell.source || spell.name, "legacy_spell") })
   }
+
+  // GM OFF flags are controls, not mutations of class/item/feature data. They are
+  // appended last for readability; CE applies universal suppression before any
+  // resolver regardless of contribution order.
+  contributions.push(...characterSourceSuppressionContributions(character.id))
 
   return { base: { id: character.id, name: character.name, level: character.level, abilities: { strength: sheet.strength, dexterity: sheet.dexterity, constitution: sheet.constitution, intelligence: sheet.intelligence, wisdom: sheet.wisdom, charisma: sheet.charisma }, baseMaxHp: sheet.max_hp, baseSpeed: sheet.speed, skillProficiencies: skillRanks(sheet.skill_proficiencies), savingThrowProficiencies: savingThrowRanks(sheet.saving_throw_proficiencies) }, state: { currentHp: sheet.current_hp, tempHp: sheet.temp_hp, resources }, contributions }
 }
