@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 
 import { classReference, type ClassReferenceEntry } from "../../data/classReference"
+import { druidReference } from "../../data/classes/druidReference"
 import type { SpellClassKey } from "../../lib/spellCatalog"
 import SpellReference from "../characters/SpellReference"
 
@@ -51,6 +52,10 @@ const sections = [
     meta: "Каркас готов",
   },
 ]
+
+function classTagline(entry: ClassReferenceEntry) {
+  return entry.id === "druid" ? druidReference.tagline : entry.tagline
+}
 
 export default function ReferenceGuide({
   character,
@@ -107,6 +112,7 @@ export default function ReferenceGuide({
         : section === "bestiary"
           ? "Бестиарий"
           : "Болезни, безумия и дикая магия"
+  const isDruid = selectedClass?.id === "druid"
 
   return (
     <div className="reference-guide-overlay">
@@ -155,7 +161,7 @@ export default function ReferenceGuide({
           <main className="reference-guide-content reference-guide-content--list">
             <div className="reference-guide-section-note">
               <strong>Классы — самостоятельные справочные карточки</strong>
-              <p>У каждого класса уже есть стабильный ID. Позже карточка персонажа сможет открывать этот раздел сразу на нужном классе или подклассе.</p>
+              <p>Механика хранится отдельно от авторского текста. Рассказчик объясняет правила своими словами, но Character Engine получает только структурированные данные.</p>
             </div>
 
             <div className="reference-class-list">
@@ -172,8 +178,8 @@ export default function ReferenceGuide({
                       <strong>{entry.name}</strong>
                       <small>{entry.nameEn}</small>
                     </span>
-                    <span>{entry.tagline}</span>
-                    <em>{entry.subclasses.length} подклассов</em>
+                    <span>{classTagline(entry)}</span>
+                    <em>{entry.id === "druid" ? druidReference.rulesLabel : `${entry.subclasses.length} подклассов`}</em>
                   </span>
                   <span className="reference-guide-section__chevron">›</span>
                 </button>
@@ -189,14 +195,47 @@ export default function ReferenceGuide({
               <div>
                 <h3>{selectedClass.name}</h3>
                 <span>{selectedClass.nameEn}</span>
-                <p>{selectedClass.tagline}</p>
+                <p>{classTagline(selectedClass)}</p>
               </div>
             </div>
 
+            {isDruid && (
+              <div className="reference-class-rule-badges" aria-label="Редакция правил">
+                <span>{druidReference.sourceLabel}</span>
+                <strong>{druidReference.rulesLabel}</strong>
+              </div>
+            )}
+
             <section className="reference-class-description">
-              <span>Описание класса</span>
-              <p>{selectedClass.description}</p>
+              <span>{isDruid ? "Рейнар Восс" : "Описание класса"}</span>
+              <p>{isDruid ? druidReference.authorDescription : selectedClass.description}</p>
             </section>
+
+            {isDruid && (
+              <>
+                <section className="reference-class-mechanics surface">
+                  <span>Коротко о механике</span>
+                  <p>{druidReference.mechanicalSummary}</p>
+                  <small>{druidReference.wildShapePolicy}</small>
+                </section>
+                <section className="reference-voss-note surface">
+                  <span>Заметка Восса</span>
+                  <p>{druidReference.authorComment}</p>
+                </section>
+                <section className="reference-class-feature-section">
+                  <div className="reference-subclass-section__head"><span>Прогрессия класса</span><small>{druidReference.features.length}</small></div>
+                  <div className="reference-class-feature-list">
+                    {druidReference.features.map((feature) => (
+                      <article className="reference-class-feature surface" key={`${feature.level}:${feature.name}`}>
+                        <header><span>{feature.level} ур.</span><strong>{feature.name}</strong>{feature.revision && <em>{feature.revision}</em>}</header>
+                        <p>{feature.mechanics}</p>
+                        {feature.voss && <blockquote>{feature.voss}</blockquote>}
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              </>
+            )}
 
             <section className="reference-subclass-section">
               <div className="reference-subclass-section__head">
