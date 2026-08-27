@@ -26,6 +26,12 @@ export type StoredMechanicPresentation = {
 type StoredMechanicMeta = {
   activation?: MechanicActivation
   condition?: CharacterCondition
+  /**
+   * Stable parser-side source group. Mechanics sharing a sourceKey are one GM
+   * switchable feature (for example Wild Shape resource + action + rules).
+   * CE treats the resulting CharacterSource as provenance only.
+   */
+  sourceKey?: string
   /** Marks a mechanic as part of an item's curse. CE still resolves it normally; UI may hide it from players. */
   curseEffect?: boolean
 }
