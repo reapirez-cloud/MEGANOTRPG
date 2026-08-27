@@ -6,10 +6,11 @@ const meter = fs.readFileSync("src/components/characters/SpellSlotMeter.tsx", "u
 const styles = fs.readFileSync("src/spell-slot-clarity.css", "utf8")
 
 test("spell slot UI explains higher-level fallback", () => {
-  assert.match(meter, /Можно использовать ячейку выше уровнем/)
+  assert.match(meter, /Заклинание можно наложить ячейкой выше уровнем/)
   assert.match(meter, /спишется ближайшая доступная старшая/)
   assert.match(meter, /Ячейки закончились/)
-  assert.match(meter, /Можно потратить вместо/)
+  assert.match(meter, /Будет использована вместо/)
+  assert.match(meter, /nearestAvailable\?\.level === level/)
 })
 
 test("depleted spell slot rows are visually neutralized", () => {
