@@ -6,6 +6,7 @@ export type ChatRoom = {
   title: string
   category: RoomCategory
   position: number
+  avatar_url: string | null
   preview: string
   time: string
   last_message_id: number | null
@@ -21,6 +22,9 @@ export type ChatRoomMember = {
   updated_at?: string
 }
 
+export type ChatEventKind = "roll" | "action" | "spell"
+export type ChatEventPayload = Record<string, unknown>
+
 export type ChatMessage = {
   id: number
   room_id: string
@@ -34,4 +38,6 @@ export type ChatMessage = {
   edited_at: string | null
   attachment_url: string | null
   attachment_kind: "image" | null
+  event_kind: ChatEventKind | null
+  event_payload: ChatEventPayload | null
 }

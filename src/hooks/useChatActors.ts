@@ -1,0 +1,81 @@
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { useAuth } from "../context/AuthContext"
+import { useCharacters, type Character } from "../context/CharacterContext"
+import { supabase } from "../lib/supabase"
+
+export type ChatActor = {
+  key: string
+  characterId: string | null
+  label: string
+  avatar_url: string | null
+  character: Character | null
+  kind: "role" | "character"
+}
+
+export function useChatActors() {
+  const { user, profile } = useAuth()
+  const { campaignId, characters, activeCharacter, canManage, isOwner, isGm } = useCharacters()
+  const [boundIds, setBoundIds] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  const loadBindings = useCallback(async () => {
+    if (!campaignId || !canManage) { setBoundIds(new Set()); return }
+    setLoading(true)
+    const { data, error: e } = await supabase.from("chat_actor_bindings").select("character_id").eq("campaign_id", campaignId).eq("user_id", user.id)
+    setLoading(false)
+    if (e) { setError(e.message); return }
+    setBoundIds(new Set((data || []).map((row) => String(row.character_id))))
+  }, [campaignId, canManage, user.id])
+
+  useEffect(() => { void loadBindings() }, [loadBindings])
+
+  const roleActor = useMemo<ChatActor | null>(() => canManage ? {
+    key: "role", characterId: null,
+    label: isOwner ? `Владелец · ${profile.display_name}` : isGm ? `ГМ · ${profile.display_name}` : profile.display_name,
+    avatar_url: null, character: null, kind: "role",
+  } : null, [canManage, isGm, isOwner, profile.display_name])
+
+  const actors = useMemo(() => {
+    const list: ChatActor[] = []
+    if (roleActor) list.push(roleActor)
+    const allowed = new Set(boundIds)
+    if (activeCharacter) allowed.add(activeCharacter.id)
+    for (const character of characters) {
+      if (!allowed.has(character.id)) continue
+      list.push({ key: character.id, characterId: character.id, label: character.name, avatar_url: character.avatar_url, character, kind: "character" })
+    }
+    return list
+  }, [activeCharacter, boundIds, characters, roleActor])
+
+  const bindableCharacters = useMemo(() => characters.filter((character) =>
+    character.character_type === "npc" || character.assigned_user_id === user.id,
+  ), [characters, user.id])
+
+  const storageKey = `meganotrpg:v2:chat-actor:${campaignId}`
+  const [selectedKey, setSelectedKey] = useState(() => window.localStorage.getItem(storageKey) || "")
+  useEffect(() => {
+    const saved = window.localStorage.getItem(storageKey)
+    setSelectedKey(saved || (canManage ? "role" : activeCharacter?.id || ""))
+  }, [activeCharacter?.id, campaignId, canManage, storageKey])
+
+  const selected = actors.find((actor) => actor.key === selectedKey)
+    || actors.find((actor) => actor.characterId === activeCharacter?.id)
+    || actors[0]
+    || null
+
+  const selectActor = useCallback((actor: ChatActor) => {
+    setSelectedKey(actor.key)
+    window.localStorage.setItem(storageKey, actor.key)
+  }, [storageKey])
+
+  const setBinding = useCallback(async (characterId: string, enabled: boolean) => {
+    setError("")
+    const { error: e } = await supabase.rpc("set_chat_actor_binding", { p_character_id: characterId, p_enabled: enabled })
+    if (e) { setError(e.message); return { ok: false, error: e.message } }
+    await loadBindings()
+    return { ok: true }
+  }, [loadBindings])
+
+  return { actors, selected, selectActor, bindableCharacters, boundIds, setBinding, loading, error, reload: loadBindings }
+}
