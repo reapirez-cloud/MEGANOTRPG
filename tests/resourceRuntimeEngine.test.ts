@@ -15,7 +15,7 @@ const bundle: CharacterTemplateBundle = {
     choices: [],
     mechanics: [
       { id: "ki", type: "resource", key: "resource:ki", label: "Ци", max: { kind: "reference", key: "source.level" }, recharge: ["short_rest", "long_rest"], initial: "full" },
-      { id: "flurry", type: "action", key: "action:flurry", label: "Шквал ударов", economy: "bonus_action", resourceKey: "resource:ki", resourceCost: 1, damage: [] },
+      { id: "flurry", type: "action", key: "action:flurry", label: "Шквал ударов", economy: "bonus_action", resourceKey: "resource:ki", resourceCost: 1, damage: [{ key: "primary", damageType: "дробящий", count: 1, sides: 4 }] },
     ],
   },
   levels: [],
