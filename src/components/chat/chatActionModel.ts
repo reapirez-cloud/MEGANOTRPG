@@ -3,9 +3,9 @@ import type {
   ResolvedAction,
   ResolvedCharacterContract,
   ResolvedResource,
-  ResolvedSourceRef,
   ResolvedSpell,
 } from "../../character-engine/index.ts"
+import type { ResolvedSourceRef } from "../../character-engine/types.ts"
 
 export type ChatActionBucket = "attacks" | "class" | "unique"
 export type ChatSourceCategory = "class" | "unique" | "item" | "other"
