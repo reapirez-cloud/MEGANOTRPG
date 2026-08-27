@@ -1,0 +1,46 @@
+import { useCallback, useEffect, useState } from "react"
+import { supabase } from "../lib/supabase"
+import { clearCharacterTemplateBundles, registerCharacterTemplateBundles } from "../rule-templates/registry"
+import type { CharacterTemplateAssignment, CharacterTemplateBundle, RuleTemplate, RuleTemplateLevel } from "../rule-templates/types"
+
+export function useCharacterTemplateRegistry(characterId: string | null) {
+  const [bundles, setBundles] = useState<CharacterTemplateBundle[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [revision, setRevision] = useState(0)
+
+  const load = useCallback(async () => {
+    if (!characterId) { setBundles([]); setLoading(false); return }
+    setLoading(true); setError("")
+    const assignmentResult = await supabase.from("character_template_assignments").select("id,character_id,template_id,template_level,selected_choices,assigned_at,updated_at").eq("character_id", characterId).order("assigned_at")
+    if (assignmentResult.error) { setError(assignmentResult.error.message); setLoading(false); return }
+    const assignments = (assignmentResult.data || []) as CharacterTemplateAssignment[]
+    const ids = [...new Set(assignments.map((item) => item.template_id))]
+    if (!ids.length) {
+      registerCharacterTemplateBundles(characterId, [])
+      setBundles([]); setRevision((value) => value + 1); setLoading(false); return
+    }
+    const [templateResult, levelResult] = await Promise.all([
+      supabase.from("rule_templates").select("id,campaign_id,kind,slug,name,description,version,mechanics,choices,is_active,created_by,created_at,updated_at").in("id", ids),
+      supabase.from("rule_template_levels").select("id,template_id,level,mechanics,choices").in("template_id", ids).order("level"),
+    ])
+    const firstError = templateResult.error || levelResult.error
+    if (firstError) { setError(firstError.message); setLoading(false); return }
+    const templates = (templateResult.data || []) as RuleTemplate[]
+    const levels = (levelResult.data || []) as RuleTemplateLevel[]
+    const next = assignments.map((assignment) => {
+      const template = templates.find((item) => item.id === assignment.template_id)
+      if (!template) return null
+      return { assignment, template, levels: levels.filter((item) => item.template_id === template.id) }
+    }).filter((item): item is CharacterTemplateBundle => Boolean(item))
+    registerCharacterTemplateBundles(characterId, next)
+    setBundles(next); setRevision((value) => value + 1); setLoading(false)
+  }, [characterId])
+
+  useEffect(() => {
+    void load()
+    return () => { if (characterId) clearCharacterTemplateBundles(characterId) }
+  }, [characterId, load])
+
+  return { bundles, loading, error, revision, reload: load }
+}

@@ -19,6 +19,7 @@ import {
   inventoryMechanicContributions,
   registeredCharacterInventory,
 } from "./characterMechanics.ts"
+import { characterTemplateContributions } from "../rule-templates/registry.ts"
 import type { CharacterFeature, CharacterSheet, CharacterSpell, InventoryItem, SkillRank } from "../types/characterSheet.ts"
 
 export interface LegacyCharacterEngineView { input: CharacterEngineInput; contract: ResolvedCharacterContract; spellcastingAbility?: AbilityKey }
@@ -34,7 +35,10 @@ const ABILITY_ALIASES: Record<string, AbilityKey> = {
 function normalize(value: string): string { return value.trim().toLocaleLowerCase("ru-RU").replace(/[._-]+/g, " ").replace(/\s+/g, " ") }
 export function parseLegacySpellcastingAbility(value: string | null | undefined): AbilityKey | undefined { return value ? ABILITY_ALIASES[normalize(value)] : undefined }
 function legacySource(id: string, name: string, sourceType = "legacy"): CharacterSource { return { id, name, sourceType, visibility: "campaign" } }
-function setNumber(id: string, target: NumericContribution["target"], value: number, source: CharacterSource): NumericContribution { return { id, kind: "numeric", target, operation: "SET", value, source, priority: 100 } }
+// Legacy sheet values establish the authored baseline before modern sources.
+// Items/features/templates use the default priority and therefore modify this
+// baseline instead of being overwritten by it.
+function setNumber(id: string, target: NumericContribution["target"], value: number, source: CharacterSource): NumericContribution { return { id, kind: "numeric", target, operation: "SET", value, source, priority: -100 } }
 function splitReferenceText(value: string): string[] { return value.split(/[\n;,]+/).map((entry) => entry.trim()).filter(Boolean) }
 function addTextGrants(contributions: CharacterContribution[], target: "language" | "proficiency" | "sense", text: string, source: CharacterSource): void {
   splitReferenceText(text).forEach((label, index) => contributions.push({ id: `${source.id}:${target}:${index}`, kind: "grant", operation: "GRANT", target, key: label, ...(target === "proficiency" ? { payload: { rank: 1 } } : {}), source }))
@@ -79,7 +83,11 @@ export function buildLegacyCharacterEngineInput(args: {
     const source = legacySource(`legacy-feature:${feature.id}`, feature.name, "legacy_feature")
     contributions.push({ id: `legacy:feature:${feature.id}`, kind: "grant", operation: "GRANT", target: "feature", key: feature.id, payload: { label: feature.name, description: feature.description, kind: feature.kind, legacyFeatureId: feature.id }, source })
   }
-  contributions.push(...featureMechanicContributions(features), ...inventoryMechanicContributions(inventory))
+  contributions.push(
+    ...featureMechanicContributions(features),
+    ...inventoryMechanicContributions(inventory),
+    ...characterTemplateContributions(character.id, character.level),
+  )
 
   const slotLevels = configuredSlotLevels(sheet, spells); const resources: Record<string, ResourceState> = {}
   for (const level of slotLevels) {

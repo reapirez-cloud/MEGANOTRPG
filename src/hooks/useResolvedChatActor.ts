@@ -4,8 +4,10 @@ import type { Character } from "../context/CharacterContext"
 import { resolveLegacyCharacterEngineView } from "../lib/legacyCharacterEngineAdapter"
 import { supabase } from "../lib/supabase"
 import type { CharacterFeature, CharacterSheet, CharacterSpell, InventoryItem } from "../types/characterSheet"
+import { useCharacterTemplateRegistry } from "./useCharacterTemplateRegistry"
 
 export function useResolvedChatActor(character: Character | null) {
+  const templates = useCharacterTemplateRegistry(character?.id || null)
   const [contract, setContract] = useState<ResolvedCharacterContract | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -13,7 +15,8 @@ export function useResolvedChatActor(character: Character | null) {
   useEffect(() => {
     let cancelled = false
     if (!character) { setContract(null); setError(""); setLoading(false); return }
-    setLoading(true); setError("")
+    if (templates.loading) { setLoading(true); return }
+    setLoading(true); setError(templates.error || "")
     void Promise.all([
       supabase.from("character_sheets").select("*").eq("character_id", character.id).maybeSingle(),
       supabase.from("character_inventory_items").select("*").eq("character_id", character.id).order("sort_order", { ascending: true }),
@@ -40,7 +43,7 @@ export function useResolvedChatActor(character: Character | null) {
       setLoading(false)
     })
     return () => { cancelled = true }
-  }, [character])
+  }, [character, templates.error, templates.loading, templates.revision])
 
   return { contract, loading, error }
 }

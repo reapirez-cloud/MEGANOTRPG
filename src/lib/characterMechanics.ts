@@ -39,7 +39,7 @@ function sourceFor(id: string, name: string, sourceType: string): CharacterSourc
   return { id, name, sourceType, visibility: "campaign" }
 }
 
-function contributionForMechanic(mechanic: StoredMechanic, source: CharacterSource): CharacterContribution {
+export function contributionForStoredMechanic(mechanic: StoredMechanic, source: CharacterSource): CharacterContribution {
   const id = `${source.id}:mechanic:${mechanic.id}`
   if (mechanic.type === "numeric") return withCondition({ id, kind: "numeric", target: mechanic.target, operation: mechanic.operation, value: mechanic.value, source }, mechanic.condition)
   if (mechanic.type === "grant") return withCondition({ id, kind: "grant", operation: "GRANT", target: mechanic.target, key: mechanic.key, ...(mechanic.payload === undefined ? {} : { payload: mechanic.payload }), source }, mechanic.condition)
@@ -72,13 +72,17 @@ function contributionForMechanic(mechanic: StoredMechanic, source: CharacterSour
 
 function mechanicsArray(value: unknown): StoredMechanics { return Array.isArray(value) ? value as StoredMechanics : [] }
 
+export function storedMechanicContributions(mechanics: StoredMechanics, source: CharacterSource): CharacterContribution[] {
+  return mechanicsArray(mechanics).map((mechanic) => contributionForStoredMechanic(mechanic, source))
+}
+
 export function inventoryMechanicContributions(items: InventoryItem[]): CharacterContribution[] {
   const contributions: CharacterContribution[] = []
   for (const item of items) {
     const source = sourceFor(`item:${item.id}`, item.name, "inventory_item")
     for (const mechanic of mechanicsArray(item.mechanics)) {
       if (mechanic.activation === "equipped" && !item.equipped) continue
-      contributions.push(contributionForMechanic(mechanic, source))
+      contributions.push(contributionForStoredMechanic(mechanic, source))
     }
   }
   return contributions
@@ -88,7 +92,7 @@ export function featureMechanicContributions(features: CharacterFeature[]): Char
   const contributions: CharacterContribution[] = []
   for (const feature of features) {
     const source = sourceFor(`feature:${feature.id}`, feature.name, "character_feature")
-    for (const mechanic of mechanicsArray(feature.mechanics)) contributions.push(contributionForMechanic(mechanic, source))
+    for (const mechanic of mechanicsArray(feature.mechanics)) contributions.push(contributionForStoredMechanic(mechanic, source))
   }
   return contributions
 }
