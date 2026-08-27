@@ -14,8 +14,9 @@ test("non-equippable items cannot keep dead equipped-only effects", () => {
   assert.match(editor, /activation: "carried" as const/)
 })
 
-test("equipment-only effects remain intentionally inactive until equipped", () => {
-  assert.match(mechanics, /mechanic\.activation === "equipped" && !item\.equipped/)
+test("legacy non-equipment effects recover while equipment still requires equip", () => {
+  assert.match(mechanics, /mechanic\.activation === "equipped" && item\.category === "equipment"/)
+  assert.match(mechanics, /if \(requiresEquipped && !item\.equipped\) continue/)
   assert.match(editor, /эффектов пока не активны/)
   assert.match(inventory, /Неактивно: предмет нужно надеть/)
 })
