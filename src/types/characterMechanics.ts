@@ -14,6 +14,7 @@ import type {
 export type MechanicActivation = "carried" | "equipped"
 export type MechanicModuleTone = "neutral" | "violet" | "blue" | "cyan" | "green" | "amber" | "red"
 export type MechanicModuleDisplay = "counter" | "pips" | "bar"
+export type StoredGrantOperation = "GRANT" | "REPLACE"
 
 /** Presentation metadata is renderer-only. Character Engine never branches on it. */
 export type StoredMechanicPresentation = {
@@ -32,6 +33,12 @@ type StoredMechanicMeta = {
    * CE treats the resulting CharacterSource as provenance only.
    */
   sourceKey?: string
+  /** Stable mechanical variant used when a feature is upgraded/replaced. */
+  variantKey?: string
+  /** Higher priority wins when an unlocked class feature intentionally replaces an earlier definition. */
+  priority?: number
+  /** Class/subclass level upgrades use REPLACE instead of creating duplicate cards. */
+  grantOperation?: StoredGrantOperation
   /** Marks a mechanic as part of an item's curse. CE still resolves it normally; UI may hide it from players. */
   curseEffect?: boolean
 }
