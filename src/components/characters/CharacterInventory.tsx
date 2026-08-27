@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { categoryLabel, categoryOrder, equipmentSlots, slotLabel, slotOrder } from "../../lib/dndInventory"
-import { mechanicSummary } from "../../lib/characterMechanics"
+import { itemCurseInfo, mechanicSummary } from "../../lib/characterMechanics"
 import type { EquipmentSlot, InventoryCategory, InventoryItem } from "../../types/characterSheet"
 import CampaignImage from "../common/CampaignImage"
 import ContextActionSheet, { type ContextAction } from "../common/ContextActionSheet"
@@ -24,6 +24,15 @@ function ItemThumb({ item }: { item: InventoryItem }) {
   return <span className="inventory-v2-thumb">{item.image_url ? <CampaignImage value={item.image_url} alt="" /> : <span>◇</span>}</span>
 }
 
+function ItemBadges({ item }: { item: InventoryItem }) {
+  const curse = itemCurseInfo(item)
+  return <>{item.equipped && <i>Надето</i>}{curse.cursed && <i className="inventory-v2-curse-badge">☠ Проклято</i>}</>
+}
+
+function gameplayMechanics(item: InventoryItem) {
+  return (item.mechanics || []).filter((mechanic) => !(mechanic.type === "grant" && mechanic.target === "trait" && mechanic.key === "curse:item"))
+}
+
 export default function CharacterInventory(props: Props) {
   const { mode, items, canManage, canEquip, onCreate, onEdit, onDelete, onSetEquipped } = props
   const [query, setQuery] = useState("")
@@ -38,7 +47,7 @@ export default function CharacterInventory(props: Props) {
     const q = query.trim().toLocaleLowerCase("ru-RU")
     return [...items]
       .sort((a, b) => categoryOrder(a.category) - categoryOrder(b.category) || Number(b.equipped) - Number(a.equipped) || a.name.localeCompare(b.name, "ru"))
-      .filter((item) => !q || `${item.name} ${item.description}`.toLocaleLowerCase("ru-RU").includes(q))
+      .filter((item) => !q || `${item.name} ${item.description} ${itemCurseInfo(item).description}`.toLocaleLowerCase("ru-RU").includes(q))
   }, [items, query])
 
   async function toggleEquip(item: InventoryItem) {
@@ -72,12 +81,13 @@ export default function CharacterInventory(props: Props) {
       <section className="character-tab-section inventory-v2">
         <div className="inventory-v2-heading"><div><span>Сейчас на персонаже</span><h3>Экипировка</h3><p>Только занятые слоты и эффекты, которые реально работают.</p></div></div>
         <div className="equipment-v2-list">
-          {equipped.map((item) => (
-            <button {...bindLongPress(item)} style={{ touchAction: "pan-y" }} type="button" key={item.id} className="equipment-v2-row" onClick={() => setDetail(item)}>
+          {equipped.map((item) => {
+            const mechanics = gameplayMechanics(item)
+            return <button {...bindLongPress(item)} style={{ touchAction: "pan-y" }} type="button" key={item.id} className="equipment-v2-row" onClick={() => setDetail(item)}>
               <span className="equipment-v2-slot">{slotLabel(item.equipment_slot)}</span><ItemThumb item={item} />
-              <span className="equipment-v2-copy"><strong>{item.name}</strong><small>{item.mechanics?.length ? item.mechanics.slice(0, 2).map(mechanicSummary).join(" · ") : "Без механических эффектов"}</small></span><span className="equipment-v2-go">›</span>
+              <span className="equipment-v2-copy"><span><strong>{item.name}</strong><ItemBadges item={item} /></span><small>{mechanics.length ? mechanics.slice(0, 2).map(mechanicSummary).join(" · ") : "Без механических эффектов"}</small></span><span className="equipment-v2-go">›</span>
             </button>
-          ))}
+          })}
           {!equipped.length && <div className="v2-empty-state"><span>◇</span><strong>Ничего не надето</strong><p>Надень предмет из инвентаря — его механика сразу попадёт в Character Engine.</p></div>}
         </div>
         {empty.length > 0 && <div className="empty-slot-block"><button type="button" onClick={() => setShowEmptySlots((value) => !value)}><span>Свободные слоты</span><strong>{empty.length}</strong><em>{showEmptySlots ? "⌃" : "⌄"}</em></button>{showEmptySlots && <div className="empty-slot-grid">{empty.map((slot) => <span key={slot.value}>{slot.label}</span>)}</div>}</div>}
@@ -98,12 +108,13 @@ export default function CharacterInventory(props: Props) {
           const isCollapsed = collapsed.has(group.category)
           return <section className="inventory-v2-group" key={group.category}>
             <button className="inventory-v2-group-head" type="button" onClick={() => setCollapsed((current) => { const next = new Set(current); if (next.has(group.category)) next.delete(group.category); else next.add(group.category); return next })}><span>{categoryLabel(group.category)}</span><small>{group.items.length}</small><em>{isCollapsed ? "⌄" : "⌃"}</em></button>
-            {!isCollapsed && <div className="inventory-v2-list">{group.items.map((item) => (
-              <article {...bindLongPress(item)} style={{ touchAction: "pan-y" }} className="inventory-v2-row" key={item.id}>
-                <button type="button" className="inventory-v2-open" onClick={() => setDetail(item)}><ItemThumb item={item} /><span className="inventory-v2-copy"><span><strong>{item.name}</strong>{item.quantity > 1 && <em>×{item.quantity}</em>}{item.equipped && <i>Надето</i>}</span><small>{item.mechanics?.length ? item.mechanics.slice(0, 2).map(mechanicSummary).join(" · ") : item.description || "Без дополнительных эффектов"}</small></span><span className="inventory-v2-go">›</span></button>
+            {!isCollapsed && <div className="inventory-v2-list">{group.items.map((item) => {
+              const mechanics = gameplayMechanics(item)
+              return <article {...bindLongPress(item)} style={{ touchAction: "pan-y" }} className="inventory-v2-row" key={item.id}>
+                <button type="button" className="inventory-v2-open" onClick={() => setDetail(item)}><ItemThumb item={item} /><span className="inventory-v2-copy"><span><strong>{item.name}</strong>{item.quantity > 1 && <em>×{item.quantity}</em>}<ItemBadges item={item} /></span><small>{mechanics.length ? mechanics.slice(0, 2).map(mechanicSummary).join(" · ") : item.description || "Без дополнительных эффектов"}</small></span><span className="inventory-v2-go">›</span></button>
                 {canManage && <button className="inventory-v2-edit" type="button" onClick={() => onEdit(item)} aria-label="Редактировать">•••</button>}
               </article>
-            ))}</div>}
+            })}</div>}
           </section>
         })}
         {!groups.length && <div className="v2-empty-state"><span>◇</span><strong>{items.length ? "Ничего не найдено" : "Инвентарь пуст"}</strong><p>{items.length ? "Измени запрос поиска." : "Предметы появятся здесь, а их эффекты будут автоматически влиять на лист."}</p></div>}
@@ -116,11 +127,14 @@ export default function CharacterInventory(props: Props) {
 }
 
 function InventoryDetail({ item, canManage, canEquip, onClose, onEdit, onToggle }: { item: InventoryItem; canManage: boolean; canEquip: boolean; onClose: () => void; onEdit: () => void; onToggle: () => void }) {
+  const curse = itemCurseInfo(item)
+  const mechanics = gameplayMechanics(item)
   return <div className="sheet-backdrop" onMouseDown={onClose}><section className="bottom-sheet inventory-v2-detail" onMouseDown={(e) => e.stopPropagation()}>
-    <div className="sheet-handle" /><header className="v2-sheet-head"><div><span>{categoryLabel(item.category)}{item.equipment_slot ? ` · ${slotLabel(item.equipment_slot)}` : ""}</span><h3>{item.name}</h3><p>{item.equipped ? "Надето · активные эффекты учитываются" : "В инвентаре"}</p></div><button type="button" onClick={onClose}>×</button></header>
+    <div className="sheet-handle" /><header className="v2-sheet-head"><div><span>{categoryLabel(item.category)}{item.equipment_slot ? ` · ${slotLabel(item.equipment_slot)}` : ""}</span><h3>{item.name}</h3><p>{item.equipped ? "Надето · активные эффекты учитываются" : "В инвентаре"}</p>{curse.cursed && <b className="inventory-v2-curse-badge inventory-v2-curse-badge--detail">☠ Проклято</b>}</div><button type="button" onClick={onClose}>×</button></header>
     {item.image_url && <CampaignImage className="inventory-v2-detail-art" value={item.image_url} alt="" />}
     {item.description && <div className="inventory-v2-description"><span>Описание</span><p>{item.description}</p></div>}
-    <div className="inventory-v2-effects"><span>Механика</span>{item.mechanics?.length ? item.mechanics.map((mechanic) => <div key={mechanic.id}><i>✦</i><span><strong>{mechanicSummary(mechanic)}</strong><small>Источник: {item.name}</small></span></div>) : <p>Предмет пока не меняет механику персонажа.</p>}</div>
+    {curse.cursed && <div className="inventory-v2-curse"><span>Проклятие</span><p>{curse.description || "Предмет проклят. Подробности проклятия не указаны."}</p></div>}
+    <div className="inventory-v2-effects"><span>Механика</span>{mechanics.length ? mechanics.map((mechanic) => <div key={mechanic.id}><i>✦</i><span><strong>{mechanicSummary(mechanic)}</strong><small>{mechanic.activation === "equipped" && !item.equipped ? "Неактивно: предмет нужно надеть" : `Источник: ${item.name}`}</small></span></div>) : <p>Предмет пока не меняет механику персонажа.</p>}</div>
     <div className="v2-editor-actions">{canManage && <button type="button" className="v2-secondary-button" onClick={onEdit}>Редактировать</button>}{item.category === "equipment" && canEquip && <button type="button" className="v2-primary-button" onClick={onToggle}>{item.equipped ? "Снять" : "Надеть"}</button>}</div>
   </section></div>
 }
