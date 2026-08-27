@@ -21,6 +21,7 @@ function sumFormula(parts: FormulaExpression[]): FormulaExpression { if (!parts.
 function abilityModifierFormula(ability?: AbilityKey): FormulaExpression[] { return ability ? [reference(`abilities.${ability}.modifier`)] : [] }
 function actionDamageFormula(damage: StoredActionDamage): FormulaExpression | undefined { const parts = abilityModifierFormula(damage.ability); if (damage.flat) parts.push(literal(damage.flat)); return parts.length ? sumFormula(parts) : undefined }
 function withCondition<T extends CharacterContribution>(contribution: T, condition?: CharacterCondition): T { return condition ? { ...contribution, condition } : contribution }
+function withPriority<T extends CharacterContribution>(contribution: T, priority?: number): T { return priority === undefined ? contribution : { ...contribution, priority } }
 function sourceFor(id: string, name: string, sourceType: string, visibility: CharacterSource["visibility"] = "campaign", parentSourceId?: string): CharacterSource { return { id, name, sourceType, visibility, ...(parentSourceId ? { parentSourceId } : {}) } }
 function rechargeTriggers(value: ResourceRechargeTrigger | ResourceRechargeTrigger[]): ResourceRechargeTrigger[] { const triggers = Array.isArray(value) ? value : [value]; const unique = [...new Set(triggers)]; return unique.includes("never") ? ["never"] : unique.length ? unique : ["never"] }
 function presentationPayload(value?: StoredMechanicPresentation): GrantPayload | undefined {
@@ -35,15 +36,17 @@ function presentationPayload(value?: StoredMechanicPresentation): GrantPayload |
 
 export function contributionForStoredMechanic(mechanic: StoredMechanic, source: CharacterSource): CharacterContribution {
   const id = `${source.id}:mechanic:${mechanic.id}`
-  if (mechanic.type === "numeric") return withCondition({ id, kind: "numeric", target: mechanic.target, operation: mechanic.operation, value: mechanic.value, source }, mechanic.condition)
-  if (mechanic.type === "grant") return withCondition({ id, kind: "grant", operation: "GRANT", target: mechanic.target, key: mechanic.key, ...(mechanic.payload === undefined ? {} : { payload: mechanic.payload }), source }, mechanic.condition)
+  const operation = mechanic.grantOperation || "GRANT"
+  const variant = mechanic.variantKey ? { variantKey: mechanic.variantKey } : {}
+  if (mechanic.type === "numeric") return withPriority(withCondition({ id, kind: "numeric", target: mechanic.target, operation: mechanic.operation, value: mechanic.value, source }, mechanic.condition), mechanic.priority)
+  if (mechanic.type === "grant") return withPriority(withCondition({ id, kind: "grant", operation, target: mechanic.target, key: mechanic.key, ...variant, ...(mechanic.payload === undefined ? {} : { payload: mechanic.payload }), source }, mechanic.condition), mechanic.priority)
   if (mechanic.type === "resource") {
     const triggers = rechargeTriggers(mechanic.recharge)
     const recharge = mechanic.restore === "amount"
       ? { triggers, restore: "amount" as const, amount: Math.max(1, mechanic.restoreAmount || 1) }
       : { triggers, restore: "full" as const }
     const presentation = presentationPayload(mechanic.presentation)
-    return withCondition({ id, kind: "grant", operation: "GRANT", target: "resource", key: mechanic.key, payload: { max: mechanic.max, label: mechanic.label, initial: mechanic.initial ?? "full", recharge, ...(presentation ? { presentation } : {}) }, source }, mechanic.condition)
+    return withPriority(withCondition({ id, kind: "grant", operation, target: "resource", key: mechanic.key, ...variant, payload: { max: mechanic.max, label: mechanic.label, initial: mechanic.initial ?? "full", recharge, ...(presentation ? { presentation } : {}) }, source }, mechanic.condition), mechanic.priority)
   }
   if (mechanic.type === "action") {
     const attackParts = abilityModifierFormula(mechanic.attackAbility)
@@ -51,9 +54,9 @@ export function contributionForStoredMechanic(mechanic: StoredMechanic, source: 
     if (mechanic.attackFlat) attackParts.push(literal(mechanic.attackFlat))
     const damage = (mechanic.damage || []).map((entry) => { const modifier = actionDamageFormula(entry); return { key: entry.key, type: entry.damageType, dice: { count: entry.count, sides: entry.sides }, ...(modifier ? { modifier } : {}) } })
     const presentation = presentationPayload(mechanic.presentation)
-    return withCondition({ id, kind: "grant", operation: "GRANT", target: "action", key: mechanic.key, payload: { label: mechanic.label, economy: mechanic.economy, ...(mechanic.range ? { range: mechanic.range } : {}), ...(attackParts.length ? { attack: { bonus: sumFormula(attackParts), target: "armor_class" } } : {}), ...(damage.length ? { damage } : {}), ...(mechanic.resourceKey && mechanic.resourceCost ? { resourceCosts: [{ key: mechanic.resourceKey, amount: mechanic.resourceCost }] } : {}), tags: mechanic.tags || [], ...(presentation ? { presentation } : {}) }, source }, mechanic.condition)
+    return withPriority(withCondition({ id, kind: "grant", operation, target: "action", key: mechanic.key, ...variant, payload: { label: mechanic.label, economy: mechanic.economy, ...(mechanic.range ? { range: mechanic.range } : {}), ...(attackParts.length ? { attack: { bonus: sumFormula(attackParts), target: "armor_class" } } : {}), ...(damage.length ? { damage } : {}), ...(mechanic.resourceKey && mechanic.resourceCost ? { resourceCosts: [{ key: mechanic.resourceKey, amount: mechanic.resourceCost }] } : {}), tags: mechanic.tags || [], ...(presentation ? { presentation } : {}) }, source }, mechanic.condition), mechanic.priority)
   }
-  return withCondition({ id, kind: "grant", operation: "GRANT", target: "spell", key: mechanic.key, variantKey: `mechanic-${mechanic.id}`, payload: mechanic.payload, source }, mechanic.condition)
+  return withPriority(withCondition({ id, kind: "grant", operation, target: "spell", key: mechanic.key, variantKey: mechanic.variantKey || `mechanic-${mechanic.id}`, payload: mechanic.payload, source }, mechanic.condition), mechanic.priority)
 }
 
 function mechanicsArray(value: unknown): StoredMechanics { return Array.isArray(value) ? value as StoredMechanics : [] }
