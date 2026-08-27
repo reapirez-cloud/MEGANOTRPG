@@ -10,10 +10,6 @@ export function registeredCharacterTemplateBundles(characterId: string) { return
 
 function source(bundle: CharacterTemplateBundle, suffix = "base"): CharacterSource { return { id: `template:${bundle.template.kind}:${bundle.template.id}:v${bundle.template.version}:${suffix}`, name: bundle.template.name, sourceType: `${bundle.template.kind}_template`, visibility: "campaign" } }
 function normalizeSelected(value: string | string[] | undefined): string[] { if (Array.isArray(value)) return value.map((item) => item.trim()).filter(Boolean); return typeof value === "string" && value.trim() ? [value.trim()] : [] }
-function choiceContributions(bundle: CharacterTemplateBundle, definition: RuleChoiceDefinition): CharacterContribution[] {
-  const selected = normalizeSelected(bundle.assignment.selected_choices?.[definition.key]).slice(0, Math.max(1, definition.count || 1)); const src = source(bundle, `choice:${definition.key}`)
-  return selected.map((key, index) => ({ id: `${src.id}:${index}:${key}`, kind: "grant", operation: "GRANT", target: definition.target, key, ...(definition.target === "proficiency" ? { payload: { rank: 1 } } : {}), source: src }))
-}
 
 function substituteFormula(expression: FormulaExpression, sourceLevel: number): FormulaExpression {
   switch (expression.kind) {
@@ -34,6 +30,16 @@ function mechanicsAtSourceLevel(mechanics: StoredMechanics, sourceLevel: number)
   })
 }
 
+function choiceContributions(bundle: CharacterTemplateBundle, definition: RuleChoiceDefinition, sourceLevel: number): CharacterContribution[] {
+  const selected = normalizeSelected(bundle.assignment.selected_choices?.[definition.key]).slice(0, Math.max(1, definition.count || 1))
+  const src = source(bundle, `choice:${definition.key}`)
+  return selected.flatMap((key, index) => {
+    const base: CharacterContribution = { id: `${src.id}:${index}:${key}`, kind: "grant", operation: "GRANT", target: definition.target, key, ...(definition.target === "proficiency" ? { payload: { rank: 1 } } : {}), source: src }
+    const optionMechanics = mechanicsAtSourceLevel(definition.option_mechanics?.[key] || [], sourceLevel)
+    return [base, ...storedMechanicContributions(optionMechanics, { ...src, id: `${src.id}:option:${key}` })]
+  })
+}
+
 export function characterTemplateContributions(characterId: string, characterLevel: number): CharacterContribution[] {
   const result: CharacterContribution[] = []
   for (const bundle of registeredCharacterTemplateBundles(characterId)) {
@@ -41,9 +47,9 @@ export function characterTemplateContributions(characterId: string, characterLev
     result.push(...storedMechanicContributions(mechanicsAtSourceLevel(bundle.template.mechanics || [], effectiveLevel), source(bundle)))
     for (const level of bundle.levels.filter((entry) => entry.level <= effectiveLevel).sort((a, b) => a.level - b.level)) {
       result.push(...storedMechanicContributions(mechanicsAtSourceLevel(level.mechanics || [], effectiveLevel), source(bundle, `level:${level.level}`)))
-      for (const definition of level.choices || []) result.push(...choiceContributions(bundle, definition))
+      for (const definition of level.choices || []) result.push(...choiceContributions(bundle, definition, effectiveLevel))
     }
-    for (const definition of bundle.template.choices || []) result.push(...choiceContributions(bundle, definition))
+    for (const definition of bundle.template.choices || []) result.push(...choiceContributions(bundle, definition, effectiveLevel))
   }
   return result
 }
