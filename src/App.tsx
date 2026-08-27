@@ -12,6 +12,7 @@ import "./gm-workspace.css"
 import "./spell-reference.css"
 import "./reference-guide.css"
 import "./character-profile-v3.css"
+import "./ui-v2.css"
 
 import BottomNav from "./components/app/BottomNav"
 import NotificationsSheet from "./components/app/NotificationsSheet"
@@ -20,12 +21,7 @@ import AuthGate from "./components/auth/AuthGate"
 import ReferenceGuide from "./components/reference/ReferenceGuide"
 import { CharacterProvider, useCharacters } from "./context/CharacterContext"
 import { useNotifications } from "./hooks/useNotifications"
-import {
-  mainRouteHash,
-  parseAppRoute,
-  type AppRoute,
-} from "./lib/appRoute"
-
+import { mainRouteHash, parseAppRoute, type AppRoute } from "./lib/appRoute"
 import Art from "./pages/Art"
 import CharacterProfileV2 from "./pages/CharacterProfileV2"
 import Characters from "./pages/Characters"
@@ -35,27 +31,29 @@ import Feed from "./pages/Feed"
 import GmWorkspace from "./pages/GmWorkspace"
 import World from "./pages/World"
 
-function Workspace() {
-  const {
-    campaignId,
-    activeCharacter,
-    myCharacters,
-    isGm,
-    isOwner,
-    canManage,
-  } = useCharacters()
-  const notifications = useNotifications(campaignId)
-  const [route, setRoute] = useState<AppRoute>(() =>
-    parseAppRoute(window.location.hash),
+function ReferenceLaunch({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button className="spell-reference-launch" type="button" onClick={onOpen}>
+      <span className="spell-reference-launch__icon">⌘</span>
+      <span className="spell-reference-launch__copy">
+        <strong>Справочник</strong>
+        <small>Заклинания, классы, бестиарий и игровые таблицы</small>
+      </span>
+      <span className="spell-reference-launch__chevron">›</span>
+    </button>
   )
+}
+
+function Workspace() {
+  const { campaignId, activeCharacter, myCharacters, canManage } = useCharacters()
+  const notifications = useNotifications(campaignId)
+  const [route, setRoute] = useState<AppRoute>(() => parseAppRoute(window.location.hash))
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [referenceOpen, setReferenceOpen] = useState(false)
   const [characterRefreshKey, setCharacterRefreshKey] = useState(0)
 
   useEffect(() => {
-    if (!window.location.hash) {
-      window.history.replaceState(null, "", "#/feed")
-    }
+    if (!window.location.hash) window.history.replaceState(null, "", "#/feed")
     const update = () => setRoute(parseAppRoute(window.location.hash))
     window.addEventListener("hashchange", update)
     return () => window.removeEventListener("hashchange", update)
@@ -71,11 +69,7 @@ function Workspace() {
   const goBack = useCallback(() => {
     if (route.type === "chat") navigate("#/chats")
     else if (route.type === "gallery") navigate("#/feed")
-    else if (
-      route.type === "character" &&
-      route.from === "chat" &&
-      route.roomId
-    ) {
+    else if (route.type === "character" && route.from === "chat" && route.roomId) {
       navigate(`#/chat/${route.roomId}`)
     } else if (route.type === "character") {
       navigate(route.from === "chat" ? "#/chats" : mainRouteHash(route.from))
@@ -83,15 +77,14 @@ function Workspace() {
   }, [navigate, route])
 
   useEffect(() => {
-    const backButton = window.Telegram?.WebApp?.BackButton
-    if (!backButton) return
-    if (route.type === "main") {
-      backButton.hide()
-    } else {
-      backButton.show()
-      backButton.onClick(goBack)
+    const back = window.Telegram?.WebApp?.BackButton
+    if (!back) return
+    if (route.type === "main") back.hide()
+    else {
+      back.show()
+      back.onClick(goBack)
     }
-    return () => backButton.offClick(goBack)
+    return () => back.offClick(goBack)
   }, [goBack, route.type])
 
   const title = useMemo(() => {
@@ -100,10 +93,8 @@ function Workspace() {
     if (route.tab === "chats") return "Чаты"
     if (route.tab === "world") return "Мир"
     if (route.tab === "characters") return "Персонажи"
-    if (activeCharacter && (isOwner || !isGm)) return "Мой персонаж"
-    if (isGm || isOwner) return "Я — ГМ"
-    return "Мой персонаж"
-  }, [activeCharacter, isGm, isOwner, route])
+    return canManage ? "Управление" : "Мой персонаж"
+  }, [canManage, route])
 
   if (route.type === "chat") {
     return (
@@ -111,11 +102,7 @@ function Workspace() {
         <ChatRoom
           roomId={route.id}
           onBack={goBack}
-          onOpenCharacter={(characterId) =>
-            navigate(
-              `#/character/${characterId}?from=chat&room=${route.id}`,
-            )
-          }
+          onOpenCharacter={(id) => navigate(`#/character/${id}?from=chat&room=${route.id}`)}
         />
       </div>
     )
@@ -134,24 +121,17 @@ function Workspace() {
       <div className="app-shell">
         <div className="screen">
           <header className="screen-header">
-            <button
-              className="icon-button"
-              type="button"
-              onClick={goBack}
-              aria-label="Назад"
-            >
-              ←
-            </button>
+            <button className="icon-button" type="button" onClick={goBack} aria-label="Назад">←</button>
             <h1 className="screen-header__title">Арты и комиксы</h1>
             <span />
           </header>
-          <main className="app-content app-content--overlay">
-            <Art />
-          </main>
+          <main className="app-content app-content--overlay"><Art /></main>
         </div>
       </div>
     )
   }
+
+  const showReferenceLaunch = route.tab === "me" && (canManage || !activeCharacter)
 
   return (
     <div className="app-shell">
@@ -164,64 +144,44 @@ function Workspace() {
       <main className="app-content">
         {route.tab === "feed" && (
           <Feed
-            onOpenCharacter={(id) =>
-              navigate(`#/character/${id}?from=feed`)
-            }
+            onOpenCharacter={(id) => navigate(`#/character/${id}?from=feed`)}
             onOpenGallery={() => navigate("#/gallery")}
           />
         )}
-        {route.tab === "chats" && (
-          <Chats onOpenRoom={(id) => navigate(`#/chat/${id}`)} />
-        )}
+        {route.tab === "chats" && <Chats onOpenRoom={(id) => navigate(`#/chat/${id}`)} />}
         {route.tab === "world" && <World />}
         {route.tab === "characters" && (
-          <Characters
-            onOpenCharacter={(id) =>
-              navigate(`#/character/${id}?from=characters`)
-            }
+          <Characters onOpenCharacter={(id) => navigate(`#/character/${id}?from=characters`)} />
+        )}
+
+        {showReferenceLaunch && <ReferenceLaunch onOpen={() => setReferenceOpen(true)} />}
+
+        {route.tab === "me" && canManage && (
+          <GmWorkspace
+            onOpenCharacter={(id) => navigate(`#/character/${id}?from=me`)}
+            onOpenRoom={(id) => navigate(`#/chat/${id}`)}
           />
         )}
-        {route.tab === "me" && !(activeCharacter && (isOwner || !isGm)) && (
-          <button
-            className="spell-reference-launch"
-            type="button"
-            onClick={() => setReferenceOpen(true)}
-          >
-            <span className="spell-reference-launch__icon">⌘</span>
-            <span className="spell-reference-launch__copy">
-              <strong>Справочник</strong>
-              <small>Заклинания, классы, бестиарий и игровые таблицы</small>
-            </span>
-            <span className="spell-reference-launch__chevron">›</span>
-          </button>
+        {route.tab === "me" && !canManage && activeCharacter && (
+          <CharacterProfileV2
+            key={`${activeCharacter.id}:${characterRefreshKey}`}
+            characterId={activeCharacter.id}
+            onBack={() => navigate("#/feed")}
+            embedded
+          />
         )}
-        {route.tab === "me" &&
-          (activeCharacter && (isOwner || !isGm) ? (
-            <CharacterProfileV2
-              key={`${activeCharacter.id}:${characterRefreshKey}`}
-              characterId={activeCharacter.id}
-              onBack={() => navigate("#/feed")}
-              embedded
-            />
-          ) : isGm || isOwner ? (
-            <GmWorkspace
-              onOpenCharacter={(id) => navigate(`#/character/${id}?from=me`)}
-              onOpenRoom={(id) => navigate(`#/chat/${id}`)}
-            />
-          ) : (
-            <section className="me-empty surface">
-              <span>◇</span>
-              <h2>{myCharacters.length > 0 ? "Выбери активного персонажа" : "Персонаж ещё не назначен"}</h2>
-              <p>
-                {myCharacters.length > 0
-                  ? "На странице персонажей выбери героя — здесь откроется его дневник, лист, инвентарь и арты."
-                  : "ГМ или владелец выдаст тебе персонажа. После назначения здесь откроются дневник, арты, лист, инвентарь и заклинания."}
-              </p>
-              <button type="button" onClick={() => navigate("#/characters")}>
-                {myCharacters.length > 0 ? "Выбрать персонажа" : "Открыть персонажей"}
-              </button>
-            </section>
-          ))}
+        {route.tab === "me" && !canManage && !activeCharacter && (
+          <section className="me-empty surface">
+            <span>◇</span>
+            <h2>{myCharacters.length ? "Нет активного персонажа" : "Персонаж ещё не назначен"}</h2>
+            <p>
+              {myCharacters.length
+                ? "Активного героя выбирает ГМ в панели кампании."
+                : "ГМ выдаст тебе персонажа — создавать героев игрок сам не может."}
+            </p>
+            <button type="button" onClick={() => navigate("#/characters")}>Открыть персонажей</button>
+          </section>
+        )}
       </main>
 
       {notificationsOpen && (
@@ -234,7 +194,6 @@ function Workspace() {
           onOpenFeed={() => navigate("#/feed")}
         />
       )}
-
       {referenceOpen && (
         <ReferenceGuide
           character={activeCharacter ? {
@@ -251,7 +210,7 @@ function Workspace() {
       <BottomNav
         active={route.tab}
         onChange={(tab) => navigate(mainRouteHash(tab))}
-        meLabel={isGm && !isOwner ? "ГМ" : "Я"}
+        meLabel={canManage ? "Панель" : "Я"}
       />
     </div>
   )

@@ -1,0 +1,119 @@
+import type {
+  AbilityKey,
+  CharacterCondition,
+  CharacterContribution,
+  CharacterSource,
+  FormulaExpression,
+  GrantPayload,
+} from "../character-engine/index.ts"
+import type { CharacterFeature, InventoryItem } from "../types/characterSheet.ts"
+import type { StoredActionDamage, StoredMechanic, StoredMechanics } from "../types/characterMechanics.ts"
+
+const inventoryRegistry = new Map<string, InventoryItem[]>()
+
+export function registerCharacterInventory(characterId: string, items: InventoryItem[]) {
+  inventoryRegistry.set(characterId, items)
+}
+
+export function registeredCharacterInventory(characterId: string): InventoryItem[] {
+  return inventoryRegistry.get(characterId) || []
+}
+
+function literal(value: number): FormulaExpression { return { kind: "literal", value } }
+function reference(key: string): FormulaExpression { return { kind: "reference", key } }
+function sumFormula(parts: FormulaExpression[]): FormulaExpression {
+  if (!parts.length) return literal(0)
+  if (parts.length === 1) return parts[0]!
+  return { kind: "add", terms: parts }
+}
+function abilityModifierFormula(ability?: AbilityKey): FormulaExpression[] { return ability ? [reference(`abilities.${ability}.modifier`)] : [] }
+function actionDamageFormula(damage: StoredActionDamage): FormulaExpression | undefined {
+  const parts = abilityModifierFormula(damage.ability)
+  if (damage.flat) parts.push(literal(damage.flat))
+  return parts.length ? sumFormula(parts) : undefined
+}
+function withCondition<T extends CharacterContribution>(contribution: T, condition?: CharacterCondition): T {
+  return condition ? { ...contribution, condition } : contribution
+}
+function sourceFor(id: string, name: string, sourceType: string): CharacterSource {
+  return { id, name, sourceType, visibility: "campaign" }
+}
+
+function contributionForMechanic(mechanic: StoredMechanic, source: CharacterSource): CharacterContribution {
+  const id = `${source.id}:mechanic:${mechanic.id}`
+  if (mechanic.type === "numeric") return withCondition({ id, kind: "numeric", target: mechanic.target, operation: mechanic.operation, value: mechanic.value, source }, mechanic.condition)
+  if (mechanic.type === "grant") return withCondition({ id, kind: "grant", operation: "GRANT", target: mechanic.target, key: mechanic.key, ...(mechanic.payload === undefined ? {} : { payload: mechanic.payload }), source }, mechanic.condition)
+  if (mechanic.type === "resource") return withCondition({
+    id, kind: "grant", operation: "GRANT", target: "resource", key: mechanic.key,
+    payload: { max: mechanic.max, label: mechanic.label, initial: mechanic.initial ?? "full", recharge: { triggers: [mechanic.recharge], restore: "full" } }, source,
+  }, mechanic.condition)
+  if (mechanic.type === "action") {
+    const attackParts = abilityModifierFormula(mechanic.attackAbility)
+    if (mechanic.proficient) attackParts.push(reference("core.proficiencyBonus"))
+    if (mechanic.attackFlat) attackParts.push(literal(mechanic.attackFlat))
+    const damage = (mechanic.damage || []).map((entry) => {
+      const modifier = actionDamageFormula(entry)
+      return { key: entry.key, type: entry.damageType, dice: { count: entry.count, sides: entry.sides }, ...(modifier ? { modifier } : {}) }
+    })
+    return withCondition({
+      id, kind: "grant", operation: "GRANT", target: "action", key: mechanic.key,
+      payload: {
+        label: mechanic.label, economy: mechanic.economy,
+        ...(mechanic.range ? { range: mechanic.range } : {}),
+        ...(attackParts.length ? { attack: { bonus: sumFormula(attackParts), target: "armor_class" } } : {}),
+        damage,
+        ...(mechanic.resourceKey && mechanic.resourceCost ? { resourceCosts: [{ key: mechanic.resourceKey, amount: mechanic.resourceCost }] } : {}),
+        tags: mechanic.tags || [],
+      }, source,
+    }, mechanic.condition)
+  }
+  return withCondition({ id, kind: "grant", operation: "GRANT", target: "spell", key: mechanic.key, variantKey: `mechanic-${mechanic.id}`, payload: mechanic.payload, source }, mechanic.condition)
+}
+
+function mechanicsArray(value: unknown): StoredMechanics { return Array.isArray(value) ? value as StoredMechanics : [] }
+
+export function inventoryMechanicContributions(items: InventoryItem[]): CharacterContribution[] {
+  const contributions: CharacterContribution[] = []
+  for (const item of items) {
+    const source = sourceFor(`item:${item.id}`, item.name, "inventory_item")
+    for (const mechanic of mechanicsArray(item.mechanics)) {
+      if (mechanic.activation === "equipped" && !item.equipped) continue
+      contributions.push(contributionForMechanic(mechanic, source))
+    }
+  }
+  return contributions
+}
+
+export function featureMechanicContributions(features: CharacterFeature[]): CharacterContribution[] {
+  const contributions: CharacterContribution[] = []
+  for (const feature of features) {
+    const source = sourceFor(`feature:${feature.id}`, feature.name, "character_feature")
+    for (const mechanic of mechanicsArray(feature.mechanics)) contributions.push(contributionForMechanic(mechanic, source))
+  }
+  return contributions
+}
+
+const targetNames: Record<string, string> = {
+  "combat.ac": "КД", "combat.initiative": "инициатива", "combat.maxHp": "макс. HP", "combat.speed": "скорость", "core.proficiencyBonus": "мастерство",
+  "abilities.strength": "Сила", "abilities.dexterity": "Ловкость", "abilities.constitution": "Телосложение", "abilities.intelligence": "Интеллект", "abilities.wisdom": "Мудрость", "abilities.charisma": "Харизма",
+}
+function conditionLabel(condition?: CharacterCondition): string {
+  if (!condition || condition.kind === "always") return ""
+  if (condition.kind === "hp_below_percent") return `при HP < ${condition.percent}%`
+  return "при условии"
+}
+export function mechanicSummary(mechanic: StoredMechanic): string {
+  let result = "Эффект"
+  if (mechanic.type === "numeric") { const sign = mechanic.operation === "ADD" && mechanic.value >= 0 ? "+" : ""; result = `${targetNames[mechanic.target] || mechanic.target} ${sign}${mechanic.value}` }
+  else if (mechanic.type === "grant") { const nouns: Record<string, string> = { resistance: "Сопротивление", immunity: "Иммунитет", language: "Язык", proficiency: "Владение", sense: "Чувство", feature: "Особенность", trait: "Черта" }; result = `${nouns[mechanic.target] || mechanic.target}: ${mechanic.key}` }
+  else if (mechanic.type === "resource") result = `${mechanic.label}: ${mechanic.max}`
+  else if (mechanic.type === "action") result = `Действие: ${mechanic.label}`
+  else result = `Заклинание: ${mechanic.payload.spell.name}`
+  return [result, mechanic.activation === "equipped" ? "надето" : "", conditionLabel(mechanic.condition)].filter(Boolean).join(" · ")
+}
+
+export function mechanicPayloadLabel(payload?: GrantPayload): string {
+  if (typeof payload === "string") return payload
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) { const label = (payload as Record<string, unknown>).label; return typeof label === "string" ? label : "" }
+  return ""
+}
