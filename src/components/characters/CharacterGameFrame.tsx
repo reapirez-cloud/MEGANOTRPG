@@ -14,9 +14,10 @@ const assignmentKinds: RuleTemplateKind[] = ["race", "subrace", "class", "subcla
 const kindLabel: Record<RuleTemplateKind, string> = { race: "Раса", subrace: "Подраса", class: "Класс", subclass: "Подкласс" }
 
 function selectedValues(value: string | string[] | undefined) { if (Array.isArray(value)) return value; return value ? [value] : [] }
+function choiceOptionLabel(definition: RuleChoiceDefinition, option: string) { return definition.option_labels?.[option] || option }
 
 export default function CharacterGameFrame({ characterId, children }: Props) {
-  const { characters, campaignId, canManage, refresh } = useCharacters()
+  const { characters, campaignId, canManage, refresh, updateCharacter } = useCharacters()
   const character = characters.find((item) => item.id === characterId) || null
   const assigned = useCharacterTemplateRegistry(characterId)
   const runtime = useCharacterResourceStates(characterId)
@@ -73,11 +74,37 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
 
   async function assignTemplate() {
     if (!chosenTemplate || !character) return
+    const selectedLevel = chosenTemplate.kind === "class" ? Math.max(1, Math.min(30, templateLevel)) : null
     setSaving(true); setError("")
-    const { error: assignError } = await supabase.rpc("assign_character_template_v2", { p_character_id: characterId, p_template_id: chosenTemplate.id, p_template_level: chosenTemplate.kind === "class" ? Math.max(1, Math.min(30, templateLevel)) : null, p_selected_choices: selectedChoices })
+    const { error: assignError } = await supabase.rpc("assign_character_template_v2", { p_character_id: characterId, p_template_id: chosenTemplate.id, p_template_level: selectedLevel, p_selected_choices: selectedChoices })
+    if (assignError) { setSaving(false); setError(assignError.message); return }
+
+    if (chosenTemplate.kind === "class" && selectedLevel) {
+      const { error: profileError } = await supabase.rpc("apply_class_template_sheet_profile", { p_character_id: characterId, p_template_id: chosenTemplate.id, p_template_level: selectedLevel })
+      if (profileError) {
+        setSaving(false)
+        await assigned.reload()
+        setError(`Класс назначен, но профиль листа не применился: ${profileError.message}`)
+        return
+      }
+      if (!existingClasses.length && chosenTemplate.is_builtin) {
+        const labelResult = await updateCharacter(character.id, {
+          name: character.name,
+          character_class: chosenTemplate.name,
+          level: character.level,
+          bio: character.bio,
+          avatar_url: character.avatar_url,
+          assigned_user_id: character.assigned_user_id,
+          character_type: character.character_type,
+          visibility: character.visibility,
+        })
+        if (!labelResult.ok) setError(labelResult.error || "Класс назначен, но название класса в карточке не обновилось.")
+      }
+    }
+
     setSaving(false)
-    if (assignError) { setError(assignError.message); return }
-    setTemplateId(""); setSelectedChoices({}); await assigned.reload()
+    setTemplateId(""); setSelectedChoices({})
+    await Promise.all([assigned.reload(), refresh()])
   }
   async function removeAssignment(assignmentId: string) { setSaving(true); setError(""); const { error: removeError } = await supabase.from("character_template_assignments").delete().eq("id", assignmentId); setSaving(false); if (removeError) { setError(removeError.message); return }; await assigned.reload() }
   async function changeLife(next: LifeState) { setSaving(true); setError(""); const { error: stateError } = await supabase.rpc("set_character_life_state", { p_character_id: characterId, p_life_state: next }); setSaving(false); if (stateError) { setError(stateError.message); return }; await Promise.all([loadLife(), refresh()]) }
@@ -104,11 +131,11 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
 
       <section className="character-admin-section"><div className="character-admin-section__head"><div><small>Runtime</small><h3>Отдых и восстановление</h3></div><span className="life-pill">{runtime.rows.length} ресурсов</span></div><div className="resource-recovery-grid"><button type="button" disabled={saving} onClick={() => void recover("short_rest")}>◷ Короткий отдых</button><button type="button" disabled={saving} onClick={() => void recover("long_rest")}>☾ Долгий отдых</button><button type="button" disabled={saving} onClick={() => void recover("dawn")}>☀ Рассвет</button><button type="button" disabled={saving} onClick={() => void recover("manual")}>↻ Восстановить ручные</button></div><p>Восстанавливаются только ресурсы, у которых этот триггер указан в Character Engine. Долгий отдых также восстанавливает HP и ячейки заклинаний.</p></section>
 
-      <section className="character-admin-section"><div className="character-admin-section__head"><div><small>Character Engine</small><h3>Назначенные шаблоны</h3></div></div><div className="assigned-template-list">{assignedItems.map((bundle) => <div className="assigned-template" key={bundle.assignment.id}><span className="assigned-template__icon">{bundle.template.kind.includes("race") ? "◈" : "◇"}</span><span><small>{kindLabel[bundle.template.kind]}{bundle.assignment.template_level ? ` · ${bundle.assignment.template_level} ур.` : ""}</small><strong>{bundle.template.name}</strong></span><button type="button" disabled={saving} onClick={() => void removeAssignment(bundle.assignment.id)}>×</button></div>)}{!assignedItems.length && <div className="template-assignment-empty">Шаблоны ещё не назначены.</div>}</div></section>
+      <section className="character-admin-section"><div className="character-admin-section__head"><div><small>Character Engine</small><h3>Назначенные шаблоны</h3></div></div><div className="assigned-template-list">{assignedItems.map((bundle) => <div className="assigned-template" key={bundle.assignment.id}><span className="assigned-template__icon">{bundle.template.kind.includes("race") ? "◈" : "◇"}</span><span><small>{kindLabel[bundle.template.kind]}{bundle.assignment.template_level ? ` · ${bundle.assignment.template_level} ур.` : ""}{bundle.template.catalog_revision ? ` · ${bundle.template.catalog_revision}` : ""}</small><strong>{bundle.template.name}</strong></span><button type="button" disabled={saving} onClick={() => void removeAssignment(bundle.assignment.id)}>×</button></div>)}{!assignedItems.length && <div className="template-assignment-empty">Шаблоны ещё не назначены.</div>}</div></section>
 
-      <section className="character-admin-section"><div className="character-admin-section__head"><div><small>Добавить источник</small><h3>Раса, класс и специализация</h3></div></div><div className="template-kind-switch template-kind-switch--four">{assignmentKinds.map((entry) => <button type="button" key={entry} className={kind === entry ? "is-active" : ""} onClick={() => chooseKind(entry)}>{kindLabel[entry]}</button>)}</div><select className="app-select" value={templateId} onChange={(event) => chooseTemplate(event.target.value)}><option value="">Выберите шаблон</option>{templatesForKind.map((template) => <option key={template.id} value={template.id}>{template.name} · v{template.version}</option>)}</select>{kind === "class" && chosenTemplate && <label className="template-level-field"><span>Уровень в этом классе</span><input className="app-input" type="number" min="1" max="30" value={templateLevel} onChange={(event) => setTemplateLevel(Math.max(1, Math.min(30, Number(event.target.value) || 1)))}/></label>}
+      <section className="character-admin-section"><div className="character-admin-section__head"><div><small>Добавить источник</small><h3>Раса, класс и специализация</h3></div></div><div className="template-kind-switch template-kind-switch--four">{assignmentKinds.map((entry) => <button type="button" key={entry} className={kind === entry ? "is-active" : ""} onClick={() => chooseKind(entry)}>{kindLabel[entry]}</button>)}</div><select className="app-select" value={templateId} onChange={(event) => chooseTemplate(event.target.value)}><option value="">Выберите шаблон</option>{templatesForKind.map((template) => <option key={template.id} value={template.id}>{template.name} · {template.is_builtin ? template.source_label || "Встроенный" : `v${template.version}`}</option>)}</select>{kind === "class" && chosenTemplate && <label className="template-level-field"><span>Уровень в этом классе</span><input className="app-input" type="number" min="1" max="30" value={templateLevel} onChange={(event) => setTemplateLevel(Math.max(1, Math.min(30, Number(event.target.value) || 1)))}/></label>}
         {(kind === "subrace" && !existingRace) && <div className="template-assignment-empty">Сначала назначьте расу.</div>}{(kind === "subclass" && !existingClasses.length) && <div className="template-assignment-empty">Сначала назначьте класс и нужный уровень.</div>}
-        {choiceDefs.length > 0 && <div className="template-choice-fields">{choiceDefs.map((choice) => { const required = Math.max(1, choice.count || 1); const selected = selectedValues(selectedChoices[choice.key]); return <div className="template-choice-field" key={choice.key}><span>{choice.label}{required > 1 ? ` · ${selected.length}/${required}` : ""}</span>{required === 1 ? <select className="app-select" value={selected[0] || ""} onChange={(event) => toggleChoice(choice, event.target.value)}><option value="">Выберите</option>{choice.options.map((option) => <option key={option} value={option}>{option}</option>)}</select> : <div className="template-choice-chips">{choice.options.map((option) => <button type="button" key={option} className={selected.includes(option) ? "is-active" : ""} onClick={() => toggleChoice(choice, option)}>{selected.includes(option) ? "✓ " : ""}{option}</button>)}</div>}</div> })}</div>}
+        {choiceDefs.length > 0 && <div className="template-choice-fields">{choiceDefs.map((choice) => { const required = Math.max(1, choice.count || 1); const selected = selectedValues(selectedChoices[choice.key]); return <div className="template-choice-field" key={choice.key}><span>{choice.label}{required > 1 ? ` · ${selected.length}/${required}` : ""}</span>{required === 1 ? <select className="app-select" value={selected[0] || ""} onChange={(event) => toggleChoice(choice, event.target.value)}><option value="">Выберите</option>{choice.options.map((option) => <option key={option} value={option}>{choiceOptionLabel(choice, option)}</option>)}</select> : <div className="template-choice-chips">{choice.options.map((option) => <button type="button" key={option} className={selected.includes(option) ? "is-active" : ""} onClick={() => toggleChoice(choice, option)}>{selected.includes(option) ? "✓ " : ""}{choiceOptionLabel(choice, option)}</button>)}</div>}</div> })}</div>}
         <button className="template-assign-button" type="button" disabled={!chosenTemplate || saving || choiceDefs.some((choice) => !choiceComplete(choice))} onClick={() => void assignTemplate()}>{saving ? "Сохраняем…" : "Назначить шаблон"}</button>
       </section>
       {(error || assigned.error || rules.error || runtime.error) && <div className="sheet-error">{error || assigned.error || rules.error || runtime.error}</div>}
