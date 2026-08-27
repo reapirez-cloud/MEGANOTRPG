@@ -9,6 +9,7 @@ import ContextActionSheet, { type ContextAction } from "../components/common/Con
 import type { ChatRoom } from "../types/chat"
 import { useLongPressItem } from "../hooks/useLongPressItem"
 import { deleteCampaignMediaObject } from "../lib/mediaUpload"
+import { supabase } from "../lib/supabase"
 import "../game-story-v2.css"
 
 type Props = { onOpenRoom: (id: string) => void }
@@ -129,7 +130,25 @@ export default function Chats({ onOpenRoom }: Props) {
     setDeleteTarget(null)
   }
 
+  async function setCharacterLife(room: ChatRoom, next: "alive" | "dead") {
+    if (!room.character_id) return
+    setSaving(true)
+    setError("")
+    const { error: lifeError } = await supabase.rpc("set_character_life_state", {
+      p_character_id: room.character_id,
+      p_life_state: next,
+    })
+    setSaving(false)
+    setMenu(null)
+    if (lifeError) {
+      setError(lifeError.message)
+      return
+    }
+    await rooms.reload()
+  }
+
   function actions(room: ChatRoom): ContextAction[] {
+    const dead = room.character_life_state === "dead"
     return [
       {
         id: "open",
@@ -145,6 +164,16 @@ export default function Chats({ onOpenRoom }: Props) {
             detail: room.room_type === "character" ? "Чат остаётся закреплён за персонажем" : "Оформление комнаты",
             icon: "✎",
             onSelect: () => openEdit(room),
+          } satisfies ContextAction]
+        : []),
+      ...(canManage && room.room_type === "character" && room.character_id
+        ? [{
+            id: dead ? "revive" : "death",
+            label: dead ? "Вернуть персонажа" : "Отметить погибшим",
+            detail: dead ? "Снова открыть персональную игровую историю" : "Закрыть персональный чат для новых сообщений",
+            icon: dead ? "↺" : "†",
+            danger: !dead,
+            onSelect: () => setCharacterLife(room, dead ? "alive" : "dead"),
           } satisfies ContextAction]
         : []),
       ...(canManage && room.room_type === "scene"
