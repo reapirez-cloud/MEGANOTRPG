@@ -11,6 +11,7 @@ import "./social.css"
 import "./gm-workspace.css"
 import "./spell-reference.css"
 import "./reference-guide.css"
+import "./reference-druid.css"
 import "./character-profile-v3.css"
 import "./ui-v2.css"
 import "./game-context-v3.css"
@@ -45,7 +46,7 @@ function Workspace(){
   const{campaignId,activeCharacter,myCharacters,canManage}=useCharacters();const notifications=useNotifications(campaignId);const[route,setRoute]=useState<AppRoute>(()=>parseAppRoute(window.location.hash));const[notificationsOpen,setNotificationsOpen]=useState(false);const[referenceOpen,setReferenceOpen]=useState(false);const[characterRefreshKey,setCharacterRefreshKey]=useState(0)
   useEffect(()=>{if(!window.location.hash)window.history.replaceState(null,"","#/feed");const update=()=>setRoute(parseAppRoute(window.location.hash));window.addEventListener("hashchange",update);return()=>window.removeEventListener("hashchange",update)},[])
   const navigate=useCallback((hash:string,replace=false)=>{if(window.location.hash===hash)return;if(replace)window.history.replaceState(null,"",hash);else window.location.hash=hash;setRoute(parseAppRoute(hash))},[])
-  const goBack=useCallback(()=>{if(route.type==="chat")navigate("#/chats");else if(route.type==="gallery")navigate("#/feed");else if(route.type==="character"&&route.from==="chat"&&route.roomId)navigate(`#/chat/${route.roomId}`);else if(route.type==="character")navigate(route.from==="chat"?"#/chats":mainRouteHash(route.from))},[navigate,route])
+  const goBack=useCallback(()=>{if(route.type==="chat")navigate("#/chats");else if(route.type==="gallery")navigate("#/feed");else if(route.type==="character"&&route.from==="chat"&&route.roomId)navigate(`#/character/${route.roomId}`);else if(route.type==="character")navigate(route.from==="chat"?"#/chats":mainRouteHash(route.from))},[navigate,route])
   useEffect(()=>{const back=window.Telegram?.WebApp?.BackButton;if(!back)return;if(route.type==="main")back.hide();else{back.show();back.onClick(goBack)}return()=>back.offClick(goBack)},[goBack,route.type])
   const title=useMemo(()=>{if(route.type!=="main")return"";if(route.tab==="feed")return"Хроника";if(route.tab==="chats")return"Чаты";if(route.tab==="world")return"Мир";if(route.tab==="characters")return"Персонажи";return canManage?"Управление":"Мой персонаж"},[canManage,route])
   if(route.type==="chat")return <div className="app-shell"><ChatRoom roomId={route.id} onBack={goBack} onOpenCharacter={(id)=>navigate(`#/character/${id}?from=chat&room=${route.id}`)}/></div>
