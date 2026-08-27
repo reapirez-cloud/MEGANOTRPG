@@ -288,7 +288,7 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
       <button className="send-button" type="submit" disabled={!canSend || (!draft.trim() && !attachmentFile) || chat.sending || uploadingAttachment} aria-label="Отправить">➤</button>
     </form>}
 
-    {actionsOpen && <ChatActionSheet characterName={actors.selected?.character?.name || null} contract={resolved.contract} loading={resolved.loading} onClose={() => setActionsOpen(false)} onFreeRoll={freeRoll} onCheck={rollCheck} onAction={runAction} onSpell={castSpell} />}
+    {actionsOpen && <ChatActionSheet characterName={actors.selected?.character?.name || null} contract={resolved.contract} loading={resolved.loading} includePrivateSources={canManage} onClose={() => setActionsOpen(false)} onFreeRoll={freeRoll} onCheck={rollCheck} onAction={runAction} onSpell={castSpell} />}
     {actorOpen && <ChatActorPicker actors={actors.actors} selected={actors.selected} onSelect={actors.selectActor} onClose={() => setActorOpen(false)} />}
     {contextOpen && <ChatContextSheet roomId={roomId} onClose={() => setContextOpen(false)} onOpenCharacter={onOpenCharacter} onOpenSettings={() => { setContextOpen(false); setSettingsOpen(true) }} onChanged={() => void loadRoomAccess()} />}
     {settingsOpen && <ChatRoomSettings roomId={roomId} roomTitle={roomTitle} members={members} characters={characters} onClose={() => setSettingsOpen(false)} onSaved={(nextTitle) => { setRoomTitle(nextTitle); void loadRoomAccess() }} />}
