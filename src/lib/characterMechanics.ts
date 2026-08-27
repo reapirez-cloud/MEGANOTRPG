@@ -50,7 +50,14 @@ export function storedMechanicContributions(mechanics: StoredMechanics, source: 
 
 export function inventoryMechanicContributions(items: InventoryItem[]): CharacterContribution[] {
   const contributions: CharacterContribution[] = []
-  for (const item of items) { const source = sourceFor(`item:${item.id}`, item.name, "inventory_item"); for (const mechanic of mechanicsArray(item.mechanics)) { if (mechanic.activation === "equipped" && !item.equipped) continue; contributions.push(contributionForStoredMechanic(mechanic, source)) } }
+  for (const item of items) {
+    const source = sourceFor(`item:${item.id}`, item.name, "inventory_item")
+    for (const mechanic of mechanicsArray(item.mechanics)) {
+      const requiresEquipped = mechanic.activation === "equipped" && item.category === "equipment"
+      if (requiresEquipped && !item.equipped) continue
+      contributions.push(contributionForStoredMechanic(mechanic, source))
+    }
+  }
   return contributions
 }
 export function featureMechanicContributions(features: CharacterFeature[]): CharacterContribution[] {
