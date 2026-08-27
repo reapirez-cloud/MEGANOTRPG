@@ -97,7 +97,7 @@ begin
         'class_key',v_class->>'key','hit_die',(v_class->>'hitDie')::integer,
         'spellcasting_ability',v_class->'ability','spell_progression',v_class->'spell',
         'sheet_profile',jsonb_strip_nulls(jsonb_build_object(
-          'spellcasting_enabled',(v_class->>'spell') in ('full','half'),
+          'spellcasting_enabled',(v_class->>'spell') in ('full','half','pact'),
           'spellcasting_ability',v_class->'ability',
           'spell_list',v_class->>'key',
           'spell_slots_by_level',v_class->'slots'
