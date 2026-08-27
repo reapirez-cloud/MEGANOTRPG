@@ -23,12 +23,12 @@ function actionSummary(action: ResolvedAction) {
   const first=action.damage[0]
   if(first?.dice) parts.push(`${first.dice.count}d${first.dice.sides}${first.modifier.value?signed(first.modifier.value):""} ${first.type}`)
   if(action.resourceCosts.length) parts.push(action.available?"ресурс доступен":"нет ресурса")
-  return parts.join(" · ")||action.economy.replaceAll("_"," ")
+  return parts.join(" · ")||action.economy.split("_").join(" ")
 }
 
 export default function ChatActionSheet({ characterName, contract, loading=false, onClose, onCheck, onAction, onSpell }:Props) {
   const [tab,setTab]=useState<Tab>("checks"); const [busy,setBusy]=useState(false)
-  const skills=useMemo(()=>contract?Object.entries(contract.skills).map(([key,value])=>({key:key as SkillKey,...value})).sort((a,b)=>skillNames[a.key].localeCompare(skillNames[b.key],"ru")):[],[contract])
+  const skills=useMemo(()=>contract?Object.entries(contract.skills).map(([key,value])=>({...value,key:key as SkillKey})).sort((a,b)=>skillNames[a.key].localeCompare(skillNames[b.key],"ru")):[],[contract])
   async function run(task:()=>void|Promise<void>){setBusy(true);try{await task()}finally{setBusy(false)}}
   return <div className="chat-action-backdrop" onMouseDown={onClose}><section className="chat-action-flow chat-action-flow--v2" onMouseDown={(e)=>e.stopPropagation()}>
     <div className="chat-action-flow__handle" />
