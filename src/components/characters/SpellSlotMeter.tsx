@@ -40,7 +40,7 @@ export default function SpellSlotMeter({
         <div className="spell-slots-v3__guide">
           <span aria-hidden="true">↗</span>
           <p>
-            <strong>Можно использовать ячейку выше уровнем.</strong>
+            <strong>Заклинание можно наложить ячейкой выше уровнем.</strong>
             <small>Если ячейки нужного уровня закончились, спишется ближайшая доступная старшая.</small>
           </p>
         </div>
@@ -48,10 +48,16 @@ export default function SpellSlotMeter({
 
       {slots.map(({ resource, level, maximum, current }) => {
         const depleted = maximum > 0 && current === 0
-        const exhaustedLowerLevels = slots
-          .filter((slot) => slot.level < level && slot.maximum > 0 && slot.current === 0)
-          .map((slot) => slot.level)
-        const canReplaceLower = current > 0 && exhaustedLowerLevels.length > 0
+        const fallbackLevels = current > 0
+          ? slots
+              .filter((slot) => {
+                if (slot.level >= level || slot.maximum <= 0 || slot.current > 0) return false
+                const nearestAvailable = slots.find((candidate) => candidate.level > slot.level && candidate.current > 0)
+                return nearestAvailable?.level === level
+              })
+              .map((slot) => slot.level)
+          : []
+        const canReplaceLower = fallbackLevels.length > 0
         const classNames = [
           "spell-slots-v3__level",
           selectedLevel === level ? "spell-slots-v3__level--active" : "",
@@ -61,7 +67,7 @@ export default function SpellSlotMeter({
         const usageLabel = depleted
           ? "Ячейки закончились"
           : canReplaceLower
-            ? `Можно потратить вместо ${formatLevels(exhaustedLowerLevels)}`
+            ? `Будет использована вместо ${formatLevels(fallbackLevels)}`
             : "Доступны"
 
         return (
