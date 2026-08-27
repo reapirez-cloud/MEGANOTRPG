@@ -2,9 +2,38 @@ import { useMemo } from "react"
 import { useCharacters } from "../context/CharacterContext"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
 
-type Props={onOpenCharacter:(id:string)=>void}
-export default function Characters({onOpenCharacter}:Props){
-  const{characters,members}=useCharacters()
-  const active=useMemo(()=>members.map((member)=>{if(!member.active_character_id)return null;const character=characters.find((item)=>item.id===member.active_character_id);return character?{character,member}:null}).filter((entry):entry is NonNullable<typeof entry>=>Boolean(entry)),[characters,members])
-  return <div className="characters-v2"><header className="characters-v2-head"><span>Кампания</span><h2>Активные персонажи</h2><p>Только те герои, которые сейчас находятся в игре. Управление и архив перенесены в панель кампании.</p></header><div className="characters-v2-grid">{active.map(({character,member})=><button type="button" className="character-roster-card" key={character.id} onClick={()=>onOpenCharacter(character.id)}><CharacterAvatar character={character} size="large"/><span><strong>{character.name}</strong><small>{character.character_class} · {character.level} уровень</small><p>{character.bio||`Персонаж ${member.display_name}`}</p></span><em>›</em></button>)}{!active.length&&<div className="v2-empty-state"><span>◇</span><strong>Нет активных персонажей</strong><p>ГМ может активировать персонажа в панели управления кампанией.</p></div>}</div></div>
+type Props = { onOpenCharacter: (id: string) => void }
+
+function RosterCard({ character, note, onOpen }: { character: { id: string; name: string; avatar_url: string | null; character_class: string; level: number; bio: string }; note?: string; onOpen: () => void }) {
+  return <button type="button" className="character-roster-card" onClick={onOpen}><CharacterAvatar character={character} size="large"/><span><strong>{character.name}</strong><small>{character.character_class} · {character.level} уровень{note ? ` · ${note}` : ""}</small>{character.bio && <p>{character.bio}</p>}</span><em>›</em></button>
+}
+
+export default function Characters({ onOpenCharacter }: Props) {
+  const { characters, members, myCharacters, activeCharacter, canManage } = useCharacters()
+
+  const mine = useMemo(() => [...myCharacters].sort((a, b) => Number(b.id === activeCharacter?.id) - Number(a.id === activeCharacter?.id)), [activeCharacter?.id, myCharacters])
+  const otherPlayers = useMemo(() => members
+    .filter((member) => member.active_character_id && member.active_character_id !== activeCharacter?.id)
+    .map((member) => ({ member, character: characters.find((character) => character.id === member.active_character_id && character.character_type === "pc") }))
+    .filter((entry): entry is { member: (typeof members)[number]; character: (typeof characters)[number] } => Boolean(entry.character)), [activeCharacter?.id, characters, members])
+  const knownNpcs = useMemo(() => characters.filter((character) => character.character_type === "npc").sort((a, b) => a.name.localeCompare(b.name, "ru")), [characters])
+
+  return <div className="characters-v3">
+    <header className="characters-v3-head"><span>Персонажи</span><h2>Кого знает ваш герой</h2><p>Игровые персонажи видны всегда, NPC появляются здесь только после открытия. Неизвестные персонажи не раскрываются даже как скрытые карточки.</p></header>
+
+    <section className="roster-section roster-section--mine">
+      <div className="roster-section__head"><div><small>Мой персонаж</small><h3>{activeCharacter ? "Сейчас в игре" : "Назначенные герои"}</h3></div></div>
+      <div className="characters-v2-grid">{mine.map((character) => <RosterCard key={character.id} character={character} note={character.id === activeCharacter?.id ? "активный" : undefined} onOpen={() => onOpenCharacter(character.id)} />)}{!mine.length && <div className="v2-empty-state"><span>◇</span><strong>Персонаж ещё не назначен</strong><p>ГМ выдаст героя и сделает его активным.</p></div>}</div>
+    </section>
+
+    <section className="roster-section">
+      <div className="roster-section__head"><div><small>Другие персонажи игроков</small><h3>Активные герои</h3></div><span>{otherPlayers.length}</span></div>
+      <div className="characters-v2-grid">{otherPlayers.map(({ character, member }) => <RosterCard key={character.id} character={character} note={member.display_name} onOpen={() => onOpenCharacter(character.id)} />)}{!otherPlayers.length && <p className="roster-empty">Сейчас других активных героев нет.</p>}</div>
+    </section>
+
+    <section className="roster-section">
+      <div className="roster-section__head"><div><small>{canManage ? "NPC кампании" : "Известные мне"}</small><h3>{canManage ? "Персонажи мира" : "Встреченные персонажи"}</h3></div><span>{knownNpcs.length}</span></div>
+      <div className="characters-v2-grid">{knownNpcs.map((character) => <RosterCard key={character.id} character={character} onOpen={() => onOpenCharacter(character.id)} />)}{!knownNpcs.length && <div className="known-npc-empty"><span>◌</span><div><strong>Пока никого</strong><p>{canManage ? "Созданные NPC будут доступны в панели управления." : "NPC появится здесь после того, как ГМ действительно заговорит от его лица, либо если он отмечен как видимый всегда."}</p></div></div>}</div>
+    </section>
+  </div>
 }
