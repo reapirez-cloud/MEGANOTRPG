@@ -8,40 +8,85 @@ type Props = {
   onSelect?: (level: number) => void
 }
 
+type SlotState = {
+  resource: ResolvedResource
+  level: number
+  maximum: number
+  current: number
+}
+
+function formatLevels(levels: number[]) {
+  if (levels.length === 1) return `${levels[0]} ур.`
+  return levels.map((level) => `${level}`).join(", ") + " ур."
+}
+
 export default function SpellSlotMeter({
   resources,
   selectedLevel = null,
   compact = false,
   onSelect,
 }: Props) {
-  const slots = spellSlotResources(resources)
+  const slots: SlotState[] = spellSlotResources(resources).map(({ resource, level }) => {
+    const maximum = Math.max(0, Math.round(resource.max.value))
+    const current = Math.max(0, Math.min(maximum, Math.round(resource.current)))
+    return { resource, level, maximum, current }
+  })
+
   if (slots.length === 0) return null
 
   return (
     <div className={`spell-slots-v3 ${compact ? "spell-slots-v3--compact" : ""}`}>
-      {slots.map(({ resource, level }) => {
-        const maximum = Math.max(0, Math.round(resource.max.value))
-        const current = Math.max(0, Math.min(maximum, Math.round(resource.current)))
+      {!compact && (
+        <div className="spell-slots-v3__guide">
+          <span aria-hidden="true">↗</span>
+          <p>
+            <strong>Можно использовать ячейку выше уровнем.</strong>
+            <small>Если ячейки нужного уровня закончились, спишется ближайшая доступная старшая.</small>
+          </p>
+        </div>
+      )}
+
+      {slots.map(({ resource, level, maximum, current }) => {
+        const depleted = maximum > 0 && current === 0
+        const exhaustedLowerLevels = slots
+          .filter((slot) => slot.level < level && slot.maximum > 0 && slot.current === 0)
+          .map((slot) => slot.level)
+        const canReplaceLower = current > 0 && exhaustedLowerLevels.length > 0
+        const classNames = [
+          "spell-slots-v3__level",
+          selectedLevel === level ? "spell-slots-v3__level--active" : "",
+          depleted ? "spell-slots-v3__level--depleted" : "",
+          canReplaceLower ? "spell-slots-v3__level--fallback" : "",
+        ].filter(Boolean).join(" ")
+        const usageLabel = depleted
+          ? "Ячейки закончились"
+          : canReplaceLower
+            ? `Можно потратить вместо ${formatLevels(exhaustedLowerLevels)}`
+            : "Доступны"
+
         return (
           <button
-            className={selectedLevel === level ? "spell-slots-v3__level spell-slots-v3__level--active" : "spell-slots-v3__level"}
+            className={classNames}
             type="button"
             key={resource.stateKey}
             onClick={() => onSelect?.(level)}
             disabled={!onSelect}
-            aria-label={`${level} уровень: ${current} из ${maximum} ячеек`}
+            aria-label={`${level} уровень: ${current} из ${maximum} ячеек. ${usageLabel}`}
           >
             <span className="spell-slots-v3__label">
               <strong>{level}</strong>
               <small>ур.</small>
             </span>
-            <span className="spell-slots-v3__orbs" aria-hidden="true">
-              {Array.from({ length: maximum }, (_, index) => (
-                <i
-                  className={index < current ? "spell-slots-v3__orb spell-slots-v3__orb--lit" : "spell-slots-v3__orb"}
-                  key={index}
-                />
-              ))}
+            <span className="spell-slots-v3__body">
+              <span className="spell-slots-v3__orbs" aria-hidden="true">
+                {Array.from({ length: maximum }, (_, index) => (
+                  <i
+                    className={index < current ? "spell-slots-v3__orb spell-slots-v3__orb--lit" : "spell-slots-v3__orb"}
+                    key={index}
+                  />
+                ))}
+              </span>
+              <small className="spell-slots-v3__usage">{usageLabel}</small>
             </span>
             <span className="spell-slots-v3__count">{current}/{maximum}</span>
           </button>
