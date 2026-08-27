@@ -1,12 +1,18 @@
 export type RoomCategory = "game" | "flood"
+export type RoomType = "character" | "scene" | "flood"
 
 export type ChatRoom = {
   id: string
   slug: string
   title: string
   category: RoomCategory
+  room_type: RoomType
   position: number
   avatar_url: string | null
+  character_id: string | null
+  character_life_state: "alive" | "dead" | null
+  open_to_campaign: boolean
+  is_read_only: boolean
   preview: string
   time: string
   last_message_id: number | null

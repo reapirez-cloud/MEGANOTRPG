@@ -13,50 +13,357 @@ import ChatActionSheet from "../components/chat/ChatActionSheet"
 import ChatActorPicker from "../components/chat/ChatActorPicker"
 import ChatRoomSettings from "../components/chat/ChatRoomSettings"
 import ChatMessageActions from "../components/chat/ChatMessageActions"
-import type { ChatEventPayload, ChatMessage } from "../types/chat"
+import type { ChatEventPayload, ChatMessage, RoomType } from "../types/chat"
 import { uploadCampaignImage } from "../lib/mediaUpload"
 import CampaignImage from "../components/common/CampaignImage"
+import "../game-story-v2.css"
 
-type Props={roomId:string;onBack:()=>void;onOpenCharacter:(characterId:string)=>void}
-const formatTime=(value:string)=>new Intl.DateTimeFormat("ru-RU",{hour:"2-digit",minute:"2-digit"}).format(new Date(value))
-const numberValue=(value:unknown)=>typeof value==="number"?value:Number(value)||0
-const textValue=(value:unknown)=>typeof value==="string"?value:""
-function withinGroup(a:ChatMessage|undefined,b:ChatMessage){if(!a)return false;return a.user_id===b.user_id&&a.character_id===b.character_id&&a.author_name===b.author_name&&new Date(b.created_at).getTime()-new Date(a.created_at).getTime()<5*60*1000}
+type Props = { roomId: string; onBack: () => void; onOpenCharacter: (characterId: string) => void }
 
-function ChatEventCard({message}:{message:ChatMessage}){
-  const payload=(message.event_payload||{}) as ChatEventPayload;const label=textValue(payload.label)||"Игровое действие"
-  if(message.event_kind==="roll"){
-    const hasD20=Boolean(payload.rollD20);const d20=numberValue(payload.d20);const modifier=numberValue(payload.modifier);const total=numberValue(payload.total)
-    const effect=payload.effect&&typeof payload.effect==="object"&&!Array.isArray(payload.effect)?payload.effect as Record<string,unknown>:null
-    const rolls=effect&&Array.isArray(effect.rolls)?effect.rolls.map(numberValue):[]
-    return <div className="chat-event chat-event--roll"><span className="chat-event__icon">◈</span><div className="chat-event__copy"><small>{textValue(payload.kind)||"Бросок"}</small><strong>{label}</strong>{hasD20&&<span>d20 <b>{d20}</b> {modifier>=0?"+":"−"} {Math.abs(modifier)} <em>= {total}</em></span>}{effect&&<span>{numberValue(effect.count)}d{numberValue(effect.sides)} [{rolls.join(", ")}] {numberValue(effect.modifier)>=0?"+":"−"} {Math.abs(numberValue(effect.modifier))} <em>= {numberValue(effect.total)}</em></span>}</div></div>
-  }
-  return <div className={`chat-event chat-event--${message.event_kind}`}><span className="chat-event__icon">{message.event_kind==="spell"?"✧":"⚔"}</span><div className="chat-event__copy"><small>{message.event_kind==="spell"?"Заклинание":"Действие"}</small><strong>{label}</strong>{textValue(payload.detail)&&<span>{textValue(payload.detail)}</span>}</div></div>
+const formatTime = (value: string) => new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(value))
+const numberValue = (value: unknown) => typeof value === "number" ? value : Number(value) || 0
+const textValue = (value: unknown) => typeof value === "string" ? value : ""
+
+function withinGroup(a: ChatMessage | undefined, b: ChatMessage) {
+  if (!a) return false
+  return a.user_id === b.user_id
+    && a.character_id === b.character_id
+    && a.author_name === b.author_name
+    && new Date(b.created_at).getTime() - new Date(a.created_at).getTime() < 5 * 60 * 1000
 }
 
-export default function ChatRoom({roomId,onBack,onOpenCharacter}:Props){
-  const{user}=useAuth();const{characters,members,canManage,campaignId}=useCharacters();const actors=useChatActors();const resolved=useResolvedChatActor(actors.selected?.character||null)
-  const[roomTitle,setRoomTitle]=useState("Чат");const[roomCategory,setRoomCategory]=useState<"game"|"flood">("game");const[canWriteRoom,setCanWriteRoom]=useState(false);const[draft,setDraft]=useState("");const[actionsOpen,setActionsOpen]=useState(false);const[actorOpen,setActorOpen]=useState(false);const[settingsOpen,setSettingsOpen]=useState(false);const[selectedMessage,setSelectedMessage]=useState<ChatMessage|null>(null);const[attachmentFile,setAttachmentFile]=useState<File|null>(null);const[attachmentError,setAttachmentError]=useState("");const[uploadingAttachment,setUploadingAttachment]=useState(false);const[showNewMessages,setShowNewMessages]=useState(false)
-  const messageListRef=useRef<HTMLDivElement|null>(null);const attachmentRef=useRef<HTMLInputElement|null>(null);const nearBottomRef=useRef(true);const initialScrollDoneRef=useRef(false);const previousLastMessageIdRef=useRef<number|null>(null)
-  const chat=useChatMessages(roomId);const characterById=useMemo(()=>new Map(characters.map((c)=>[c.id,c])),[characters]);const bindMessageLongPress=useLongPressItem<ChatMessage>((message)=>setSelectedMessage(message))
-  useEffect(()=>{let cancelled=false;void (async()=>{const{data:room,error:e}=await supabase.from("chat_rooms").select("id,title,category").eq("id",roomId).maybeSingle();if(cancelled||e||!room)return;setRoomTitle(room.title);setRoomCategory(room.category==="flood"?"flood":"game");if(room.category==="flood"||canManage){setCanWriteRoom(true);return}const{data:access}=await supabase.from("chat_room_members").select("can_write").eq("room_id",roomId).eq("user_id",user.id).maybeSingle();if(!cancelled)setCanWriteRoom(Boolean(access?.can_write))})();return()=>{cancelled=true}},[canManage,roomId,user.id])
-  useEffect(()=>{initialScrollDoneRef.current=false;previousLastMessageIdRef.current=null;nearBottomRef.current=true;setShowNewMessages(false)},[roomId])
-  useEffect(()=>{if(chat.loading)return;const last=chat.messages[chat.messages.length-1]||null;const id=last?.id??null;if(!initialScrollDoneRef.current){initialScrollDoneRef.current=true;previousLastMessageIdRef.current=id;requestAnimationFrame(()=>{if(messageListRef.current)messageListRef.current.scrollTop=messageListRef.current.scrollHeight});if(id!=null)void chat.markRead(id);return}const previous=previousLastMessageIdRef.current;previousLastMessageIdRef.current=id;if(id==null||previous===id)return;const follow=nearBottomRef.current||last?.user_id===user.id;if(follow){setShowNewMessages(false);requestAnimationFrame(()=>{if(messageListRef.current)messageListRef.current.scrollTop=messageListRef.current.scrollHeight});void chat.markRead(id)}else setShowNewMessages(true)},[chat.loading,chat.markRead,chat.messages,user.id])
-  function onScroll(){const list=messageListRef.current;if(!list)return;const near=list.scrollHeight-list.scrollTop-list.clientHeight<120;nearBottomRef.current=near;if(near){setShowNewMessages(false);const id=chat.messages[chat.messages.length-1]?.id;if(id!=null)void chat.markRead(id)}}
-  async function loadOlder(){const list=messageListRef.current;const h=list?.scrollHeight||0;const t=list?.scrollTop||0;const count=await chat.loadOlder();if(!count||!list)return;requestAnimationFrame(()=>requestAnimationFrame(()=>{if(messageListRef.current)messageListRef.current.scrollTop=t+(messageListRef.current.scrollHeight-h)}))}
-  function jumpLatest(){if(messageListRef.current)messageListRef.current.scrollTop=messageListRef.current.scrollHeight;nearBottomRef.current=true;setShowNewMessages(false);const id=chat.messages[chat.messages.length-1]?.id;if(id!=null)void chat.markRead(id)}
-  const canSend=canWriteRoom&&Boolean(actors.selected)
-  async function submit(event:FormEvent){event.preventDefault();if(!canSend)return;setAttachmentError("");let url:string|null=null;if(attachmentFile){setUploadingAttachment(true);const upload=await uploadCampaignImage(attachmentFile,"chat",campaignId);setUploadingAttachment(false);if(!upload.ok){setAttachmentError(upload.error);return}url=upload.url}const sent=await chat.sendMessage(draft,url,actors.selected?.characterId||null);if(sent){setDraft("");setAttachmentFile(null)}}
-  async function rollCheck(label:string,modifier:number,kind:"ability"|"skill"|"save"){await chat.sendRoll({characterId:actors.selected?.characterId||null,label,modifier,kind,rollD20:true});setActionsOpen(false)}
-  async function runAction(action:ResolvedAction){const damage=action.damage[0];if(action.attack||damage?.dice){await chat.sendRoll({characterId:actors.selected?.characterId||null,label:action.label||action.key,kind:"action",modifier:action.attack?.bonus.value||0,rollD20:Boolean(action.attack),diceCount:damage?.dice?.count||0,diceSides:damage?.dice?.sides||0,diceModifier:damage?.modifier.value||0})}else await chat.sendEvent(actors.selected?.characterId||null,"action",action.label||action.key,{detail:action.economy});setActionsOpen(false)}
-  async function castSpell(spell:ResolvedSpell){const access=spell.accesses.find((a)=>a.available)||spell.accesses[0];const method=access?.methods.find((m)=>m.available)||access?.methods[0];const detail=[spell.identity.level?`${spell.identity.level} уровень`:"Кантрип",method?.attackBonus?`атака ${method.attackBonus.value>=0?"+":""}${method.attackBonus.value}`:"",method?.saveDc?`СЛ ${method.saveDc.value}`:""].filter(Boolean).join(" · ");await chat.sendEvent(actors.selected?.characterId||null,"spell",spell.identity.name,{detail,spellKey:spell.key});setActionsOpen(false)}
-  const realtimeLabel=chat.realtime==="live"?"онлайн":chat.realtime==="connecting"?"подключение":"офлайн"
-  return <div className="screen chat-v2-screen"><header className="screen-header chat-v11-header"><button className="icon-button" type="button" onClick={onBack} aria-label="Назад">‹</button><div className="room-heading"><h1 className="screen-header__title">{roomTitle}</h1><div className={`live-state live-state--${chat.realtime}`}><span/>{realtimeLabel}{roomCategory==="game"?" · игра":" · флуд"}</div></div>{canManage&&roomCategory==="game"?<button className="chat-settings-button" type="button" onClick={()=>setSettingsOpen(true)} aria-label="Настройки">•••</button>:<span/>}</header>
-    <div ref={messageListRef} className="message-list message-list--v2" onScroll={onScroll}>{chat.loading&&<div className="chat-state">Загружаем сообщения…</div>}{!chat.loading&&chat.hasOlder&&<button className="chat-load-older" type="button" onClick={()=>void loadOlder()} disabled={chat.loadingOlder}>{chat.loadingOlder?"Загружаем…":"Более ранние"}</button>}{!chat.loading&&!chat.messages.length&&<div className="chat-state">Здесь пока пусто.</div>}
-      {chat.messages.map((message,index)=>{const own=message.user_id===user.id;const grouped=withinGroup(chat.messages[index-1],message);const linked=message.character_id?characterById.get(message.character_id)||null:null;const avatar=linked||{name:message.author_name,avatar_url:message.author_avatar_url};return <div {...bindMessageLongPress(message)} className={`message-row message-row--v2 ${own?"message-row--self":""} ${grouped?"message-row--grouped":""}`} key={message.id} style={{touchAction:"pan-y"}}>{!own&&!grouped&&(linked?<button className="message-avatar-button" type="button" onClick={()=>onOpenCharacter(linked.id)}><CharacterAvatar character={avatar} size="small"/></button>:<CharacterAvatar character={avatar} size="small"/>)}{!own&&grouped&&<span className="message-avatar-spacer"/>}<article className={`message message-v2 ${own?"message--self":""}`}>{!grouped&&(linked?<button className="message-v2-author" type="button" onClick={()=>onOpenCharacter(linked.id)}>{message.author_name}</button>:<div className="message-v2-author">{message.author_name}</div>)}{message.attachment_url&&<CampaignImage className="message__attachment" value={message.attachment_url} alt="Вложение" loading="lazy"/>}{message.event_kind?<ChatEventCard message={message}/>:message.body&&<p className="message__text">{message.body}</p>}<div className="message__time">{formatTime(message.created_at)}{message.edited_at?" · изм.":""}</div></article>{own&&!grouped&&(linked?<button className="message-avatar-button" type="button" onClick={()=>onOpenCharacter(linked.id)}><CharacterAvatar character={avatar} size="small"/></button>:<CharacterAvatar character={avatar} size="small"/>)}{own&&grouped&&<span className="message-avatar-spacer"/>}</div>})}{chat.error&&<div className="chat-error">{chat.error}</div>}</div>
-    {showNewMessages&&<button className="chat-v2-new" type="button" onClick={jumpLatest}>Новые сообщения ↓</button>}
-    {attachmentFile&&<div className="chat-attachment-preview"><span>▧ {attachmentFile.name}</span><button type="button" onClick={()=>setAttachmentFile(null)}>Убрать</button></div>}{attachmentError&&<div className="chat-error chat-attachment-error">{attachmentError}</div>}
-    <form className="chat-v2-composer" onSubmit={submit}><button className="chat-v2-actor" type="button" onClick={()=>setActorOpen(true)} disabled={!actors.actors.length} aria-label="Выбрать личность"><CharacterAvatar character={actors.selected?.character||{name:actors.selected?.label||"?",avatar_url:actors.selected?.avatar_url||null}} size="small"/><span>⌄</span></button><button className="chat-v2-tool" type="button" onClick={()=>setActionsOpen(true)} disabled={!canWriteRoom} aria-label="Действия">＋</button><button className="chat-v2-tool" type="button" onClick={()=>attachmentRef.current?.click()} disabled={!canSend||uploadingAttachment} aria-label="Изображение">▧</button><input ref={attachmentRef} className="media-hidden-input" type="file" accept="image/*" onChange={(e)=>{setAttachmentFile(e.target.files?.[0]||null);e.currentTarget.value=""}}/><input className="composer__input" value={draft} onChange={(e)=>setDraft(e.target.value)} placeholder={actors.selected?`От лица ${actors.selected.label}…`:"Нет доступной личности"} maxLength={4000} disabled={!canSend}/><button className="send-button" type="submit" disabled={!canSend||(!draft.trim()&&!attachmentFile)||chat.sending||uploadingAttachment} aria-label="Отправить">➤</button></form>
-    {actionsOpen&&<ChatActionSheet characterName={actors.selected?.character?.name||null} contract={resolved.contract} loading={resolved.loading} onClose={()=>setActionsOpen(false)} onCheck={rollCheck} onAction={runAction} onSpell={castSpell}/>} {actorOpen&&<ChatActorPicker actors={actors.actors} selected={actors.selected} onSelect={actors.selectActor} onClose={()=>setActorOpen(false)}/>} {settingsOpen&&<ChatRoomSettings roomId={roomId} roomTitle={roomTitle} members={members} characters={characters} onClose={()=>setSettingsOpen(false)} onSaved={(title)=>setRoomTitle(title)}/>} {selectedMessage&&<ChatMessageActions message={selectedMessage} characterId={selectedMessage.character_id} own={selectedMessage.user_id===user.id} canManage={canManage} onOpenCharacter={onOpenCharacter} onClose={()=>setSelectedMessage(null)} onEdit={chat.editMessage} onDelete={chat.deleteMessage}/>} 
-  </div>
+function ChatEventCard({ message }: { message: ChatMessage }) {
+  const payload = (message.event_payload || {}) as ChatEventPayload
+  const label = textValue(payload.label) || "Игровое действие"
+
+  if (message.event_kind === "roll") {
+    const hasD20 = Boolean(payload.rollD20)
+    const d20 = numberValue(payload.d20)
+    const modifier = numberValue(payload.modifier)
+    const total = numberValue(payload.total)
+    const effect = payload.effect && typeof payload.effect === "object" && !Array.isArray(payload.effect)
+      ? payload.effect as Record<string, unknown>
+      : null
+    const rolls = effect && Array.isArray(effect.rolls) ? effect.rolls.map(numberValue) : []
+
+    return (
+      <div className="chat-event chat-event--roll">
+        <span className="chat-event__icon">◈</span>
+        <div className="chat-event__copy">
+          <small>{textValue(payload.kind) || "Бросок"}</small>
+          <strong>{label}</strong>
+          {hasD20 && <span>d20 <b>{d20}</b> {modifier >= 0 ? "+" : "−"} {Math.abs(modifier)} <em>= {total}</em></span>}
+          {effect && <span>{numberValue(effect.count)}d{numberValue(effect.sides)} [{rolls.join(", ")}] {numberValue(effect.modifier) >= 0 ? "+" : "−"} {Math.abs(numberValue(effect.modifier))} <em>= {numberValue(effect.total)}</em></span>}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`chat-event chat-event--${message.event_kind}`}>
+      <span className="chat-event__icon">{message.event_kind === "spell" ? "✧" : "⚔"}</span>
+      <div className="chat-event__copy">
+        <small>{message.event_kind === "spell" ? "Заклинание" : "Действие"}</small>
+        <strong>{label}</strong>
+        {textValue(payload.detail) && <span>{textValue(payload.detail)}</span>}
+      </div>
+    </div>
+  )
+}
+
+function roomTypeLabel(roomType: RoomType, readOnly: boolean) {
+  if (readOnly && roomType === "character") return "мёртв · только чтение"
+  if (readOnly) return "только чтение"
+  if (roomType === "character") return "персонаж"
+  if (roomType === "scene") return "сцена"
+  return "флуд"
+}
+
+export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
+  const { user } = useAuth()
+  const { characters, members, canManage, campaignId } = useCharacters()
+  const actors = useChatActors()
+  const resolved = useResolvedChatActor(actors.selected?.character || null)
+  const [roomTitle, setRoomTitle] = useState("Чат")
+  const [roomType, setRoomType] = useState<RoomType>("scene")
+  const [roomReadOnly, setRoomReadOnly] = useState(false)
+  const [canWriteRoom, setCanWriteRoom] = useState(false)
+  const [draft, setDraft] = useState("")
+  const [actionsOpen, setActionsOpen] = useState(false)
+  const [actorOpen, setActorOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(null)
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
+  const [attachmentError, setAttachmentError] = useState("")
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
+  const [showNewMessages, setShowNewMessages] = useState(false)
+  const messageListRef = useRef<HTMLDivElement | null>(null)
+  const attachmentRef = useRef<HTMLInputElement | null>(null)
+  const nearBottomRef = useRef(true)
+  const initialScrollDoneRef = useRef(false)
+  const previousLastMessageIdRef = useRef<number | null>(null)
+  const chat = useChatMessages(roomId)
+  const characterById = useMemo(() => new Map(characters.map((character) => [character.id, character])), [characters])
+  const bindMessageLongPress = useLongPressItem<ChatMessage>((message) => setSelectedMessage(message))
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const { data: room, error: roomError } = await supabase
+        .from("chat_rooms")
+        .select("id,title,category,room_type,character_id,open_to_campaign,is_read_only")
+        .eq("id", roomId)
+        .maybeSingle()
+
+      if (cancelled || roomError || !room) return
+
+      const nextType: RoomType = room.room_type === "character" || room.room_type === "flood" ? room.room_type : "scene"
+      const readOnly = Boolean(room.is_read_only)
+      setRoomTitle(room.title)
+      setRoomType(nextType)
+      setRoomReadOnly(readOnly)
+
+      if (readOnly) {
+        setCanWriteRoom(false)
+        return
+      }
+
+      if (nextType === "flood" || canManage || (nextType === "scene" && room.open_to_campaign)) {
+        setCanWriteRoom(true)
+        return
+      }
+
+      if (nextType === "character" && room.character_id) {
+        const character = characters.find((item) => item.id === room.character_id)
+        if (character?.assigned_user_id === user.id) {
+          setCanWriteRoom(true)
+          return
+        }
+      }
+
+      const { data: access } = await supabase
+        .from("chat_room_members")
+        .select("can_write")
+        .eq("room_id", roomId)
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (!cancelled) setCanWriteRoom(Boolean(access?.can_write))
+    })()
+
+    return () => { cancelled = true }
+  }, [canManage, characters, roomId, user.id])
+
+  useEffect(() => {
+    initialScrollDoneRef.current = false
+    previousLastMessageIdRef.current = null
+    nearBottomRef.current = true
+    setShowNewMessages(false)
+  }, [roomId])
+
+  useEffect(() => {
+    if (chat.loading) return
+    const last = chat.messages[chat.messages.length - 1] || null
+    const id = last?.id ?? null
+    if (!initialScrollDoneRef.current) {
+      initialScrollDoneRef.current = true
+      previousLastMessageIdRef.current = id
+      requestAnimationFrame(() => {
+        if (messageListRef.current) messageListRef.current.scrollTop = messageListRef.current.scrollHeight
+      })
+      if (id != null) void chat.markRead(id)
+      return
+    }
+
+    const previous = previousLastMessageIdRef.current
+    previousLastMessageIdRef.current = id
+    if (id == null || previous === id) return
+    const follow = nearBottomRef.current || last?.user_id === user.id
+    if (follow) {
+      setShowNewMessages(false)
+      requestAnimationFrame(() => {
+        if (messageListRef.current) messageListRef.current.scrollTop = messageListRef.current.scrollHeight
+      })
+      void chat.markRead(id)
+    } else {
+      setShowNewMessages(true)
+    }
+  }, [chat.loading, chat.markRead, chat.messages, user.id])
+
+  function onScroll() {
+    const list = messageListRef.current
+    if (!list) return
+    const near = list.scrollHeight - list.scrollTop - list.clientHeight < 120
+    nearBottomRef.current = near
+    if (near) {
+      setShowNewMessages(false)
+      const id = chat.messages[chat.messages.length - 1]?.id
+      if (id != null) void chat.markRead(id)
+    }
+  }
+
+  async function loadOlder() {
+    const list = messageListRef.current
+    const height = list?.scrollHeight || 0
+    const top = list?.scrollTop || 0
+    const count = await chat.loadOlder()
+    if (!count || !list) return
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (messageListRef.current) messageListRef.current.scrollTop = top + (messageListRef.current.scrollHeight - height)
+    }))
+  }
+
+  function jumpLatest() {
+    if (messageListRef.current) messageListRef.current.scrollTop = messageListRef.current.scrollHeight
+    nearBottomRef.current = true
+    setShowNewMessages(false)
+    const id = chat.messages[chat.messages.length - 1]?.id
+    if (id != null) void chat.markRead(id)
+  }
+
+  const canSend = canWriteRoom && !roomReadOnly && Boolean(actors.selected)
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    if (!canSend) return
+    setAttachmentError("")
+    let url: string | null = null
+    if (attachmentFile) {
+      setUploadingAttachment(true)
+      const upload = await uploadCampaignImage(attachmentFile, "chat", campaignId)
+      setUploadingAttachment(false)
+      if (!upload.ok) {
+        setAttachmentError(upload.error)
+        return
+      }
+      url = upload.url
+    }
+    const sent = await chat.sendMessage(draft, url, actors.selected?.characterId || null)
+    if (sent) {
+      setDraft("")
+      setAttachmentFile(null)
+    }
+  }
+
+  async function rollCheck(label: string, modifier: number, kind: "ability" | "skill" | "save") {
+    await chat.sendRoll({ characterId: actors.selected?.characterId || null, label, modifier, kind, rollD20: true })
+    setActionsOpen(false)
+  }
+
+  async function runAction(action: ResolvedAction) {
+    const damage = action.damage[0]
+    if (action.attack || damage?.dice) {
+      await chat.sendRoll({
+        characterId: actors.selected?.characterId || null,
+        label: action.label || action.key,
+        kind: "action",
+        modifier: action.attack?.bonus.value || 0,
+        rollD20: Boolean(action.attack),
+        diceCount: damage?.dice?.count || 0,
+        diceSides: damage?.dice?.sides || 0,
+        diceModifier: damage?.modifier.value || 0,
+      })
+    } else {
+      await chat.sendEvent(actors.selected?.characterId || null, "action", action.label || action.key, { detail: action.economy })
+    }
+    setActionsOpen(false)
+  }
+
+  async function castSpell(spell: ResolvedSpell) {
+    const access = spell.accesses.find((item) => item.available) || spell.accesses[0]
+    const method = access?.methods.find((item) => item.available) || access?.methods[0]
+    const detail = [
+      spell.identity.level ? `${spell.identity.level} уровень` : "Кантрип",
+      method?.attackBonus ? `атака ${method.attackBonus.value >= 0 ? "+" : ""}${method.attackBonus.value}` : "",
+      method?.saveDc ? `СЛ ${method.saveDc.value}` : "",
+    ].filter(Boolean).join(" · ")
+    await chat.sendEvent(actors.selected?.characterId || null, "spell", spell.identity.name, { detail, spellKey: spell.key })
+    setActionsOpen(false)
+  }
+
+  const realtimeLabel = chat.realtime === "live" ? "онлайн" : chat.realtime === "connecting" ? "подключение" : "офлайн"
+
+  return (
+    <div className="screen chat-v2-screen">
+      <header className="screen-header chat-v11-header">
+        <button className="icon-button" type="button" onClick={onBack} aria-label="Назад">‹</button>
+        <div className="room-heading">
+          <h1 className="screen-header__title">{roomTitle}</h1>
+          <div className={`live-state live-state--${chat.realtime}`}><span />{realtimeLabel} · {roomTypeLabel(roomType, roomReadOnly)}</div>
+        </div>
+        {canManage && roomType !== "flood"
+          ? <button className="chat-settings-button" type="button" onClick={() => setSettingsOpen(true)} aria-label="Настройки">•••</button>
+          : <span />}
+      </header>
+
+      {roomReadOnly && (
+        <div className="chat-closed-banner">
+          <span>†</span>
+          <div><strong>История завершена</strong><small>Персональный чат закрыт для новых сообщений и игровых действий.</small></div>
+        </div>
+      )}
+
+      <div ref={messageListRef} className="message-list message-list--v2" onScroll={onScroll}>
+        {chat.loading && <div className="chat-state">Загружаем сообщения…</div>}
+        {!chat.loading && chat.hasOlder && <button className="chat-load-older" type="button" onClick={() => void loadOlder()} disabled={chat.loadingOlder}>{chat.loadingOlder ? "Загружаем…" : "Более ранние"}</button>}
+        {!chat.loading && !chat.messages.length && <div className="chat-state">Здесь пока пусто.</div>}
+
+        {chat.messages.map((message, index) => {
+          const own = message.user_id === user.id
+          const grouped = withinGroup(chat.messages[index - 1], message)
+          const linked = message.character_id ? characterById.get(message.character_id) || null : null
+          const avatar = linked || { name: message.author_name, avatar_url: message.author_avatar_url }
+          return (
+            <div
+              {...bindMessageLongPress(message)}
+              className={`message-row message-row--v2 ${own ? "message-row--self" : ""} ${grouped ? "message-row--grouped" : ""}`}
+              key={message.id}
+              style={{ touchAction: "pan-y" }}
+            >
+              {!own && !grouped && (linked
+                ? <button className="message-avatar-button" type="button" onClick={() => onOpenCharacter(linked.id)}><CharacterAvatar character={avatar} size="small" /></button>
+                : <CharacterAvatar character={avatar} size="small" />)}
+              {!own && grouped && <span className="message-avatar-spacer" />}
+              <article className={`message message-v2 ${own ? "message--self" : ""}`}>
+                {!grouped && (linked
+                  ? <button className="message-v2-author" type="button" onClick={() => onOpenCharacter(linked.id)}>{message.author_name}</button>
+                  : <div className="message-v2-author">{message.author_name}</div>)}
+                {message.attachment_url && <CampaignImage className="message__attachment" value={message.attachment_url} alt="Вложение" loading="lazy" />}
+                {message.event_kind ? <ChatEventCard message={message} /> : message.body && <p className="message__text">{message.body}</p>}
+                <div className="message__time">{formatTime(message.created_at)}{message.edited_at ? " · изм." : ""}</div>
+              </article>
+              {own && !grouped && (linked
+                ? <button className="message-avatar-button" type="button" onClick={() => onOpenCharacter(linked.id)}><CharacterAvatar character={avatar} size="small" /></button>
+                : <CharacterAvatar character={avatar} size="small" />)}
+              {own && grouped && <span className="message-avatar-spacer" />}
+            </div>
+          )
+        })}
+        {chat.error && <div className="chat-error">{chat.error}</div>}
+      </div>
+
+      {showNewMessages && <button className="chat-v2-new" type="button" onClick={jumpLatest}>Новые сообщения ↓</button>}
+      {attachmentFile && <div className="chat-attachment-preview"><span>▧ {attachmentFile.name}</span><button type="button" onClick={() => setAttachmentFile(null)}>Убрать</button></div>}
+      {attachmentError && <div className="chat-error chat-attachment-error">{attachmentError}</div>}
+
+      {!roomReadOnly && (
+        <form className="chat-v2-composer" onSubmit={submit}>
+          <button className="chat-v2-actor" type="button" onClick={() => setActorOpen(true)} disabled={!actors.actors.length} aria-label="Выбрать личность">
+            <CharacterAvatar character={actors.selected?.character || { name: actors.selected?.label || "?", avatar_url: actors.selected?.avatar_url || null }} size="small" />
+            <span>⌄</span>
+          </button>
+          <button className="chat-v2-tool" type="button" onClick={() => setActionsOpen(true)} disabled={!canWriteRoom} aria-label="Действия">＋</button>
+          <button className="chat-v2-tool" type="button" onClick={() => attachmentRef.current?.click()} disabled={!canSend || uploadingAttachment} aria-label="Изображение">▧</button>
+          <input ref={attachmentRef} className="media-hidden-input" type="file" accept="image/*" onChange={(event) => { setAttachmentFile(event.target.files?.[0] || null); event.currentTarget.value = "" }} />
+          <input className="composer__input" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={actors.selected ? `От лица ${actors.selected.label}…` : "Нет доступной личности"} maxLength={4000} disabled={!canSend} />
+          <button className="send-button" type="submit" disabled={!canSend || (!draft.trim() && !attachmentFile) || chat.sending || uploadingAttachment} aria-label="Отправить">➤</button>
+        </form>
+      )}
+
+      {actionsOpen && <ChatActionSheet characterName={actors.selected?.character?.name || null} contract={resolved.contract} loading={resolved.loading} onClose={() => setActionsOpen(false)} onCheck={rollCheck} onAction={runAction} onSpell={castSpell} />}
+      {actorOpen && <ChatActorPicker actors={actors.actors} selected={actors.selected} onSelect={actors.selectActor} onClose={() => setActorOpen(false)} />}
+      {settingsOpen && <ChatRoomSettings roomId={roomId} roomTitle={roomTitle} members={members} characters={characters} onClose={() => setSettingsOpen(false)} onSaved={(nextTitle) => setRoomTitle(nextTitle)} />}
+      {selectedMessage && <ChatMessageActions message={selectedMessage} characterId={selectedMessage.character_id} own={selectedMessage.user_id === user.id} canManage={canManage} onOpenCharacter={onOpenCharacter} onClose={() => setSelectedMessage(null)} onEdit={chat.editMessage} onDelete={chat.deleteMessage} />}
+    </div>
+  )
 }
