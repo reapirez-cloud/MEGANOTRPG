@@ -1,5 +1,7 @@
 export type RoomCategory = "game" | "flood"
 export type RoomType = "character" | "scene" | "flood"
+export type RoomState = "open" | "gm_only" | "closed"
+export type SceneState = "active" | "closed"
 
 export type ChatRoom = {
   id: string
@@ -13,6 +15,13 @@ export type ChatRoom = {
   character_life_state: "alive" | "dead" | null
   open_to_campaign: boolean
   is_read_only: boolean
+  room_state: RoomState
+  campaign_can_write: boolean
+  location_id: string | null
+  campaign_day: number
+  day_period: "dawn" | "morning" | "day" | "late_day" | "evening" | "night" | "deep_night"
+  scene_state: SceneState
+  is_own_character_room: boolean
   preview: string
   time: string
   last_message_id: number | null

@@ -1,3 +1,6 @@
+export type VisibilityMode = "always" | "discover" | "private"
+export type WorldLifecycleState = "active" | "archived"
+
 export type WorldSection = {
   id: string
   campaign_id: string
@@ -26,6 +29,10 @@ export type LocationEntry = {
   description: string
   image_url: string | null
   sort_order: number
+  visibility_mode: VisibilityMode
+  lifecycle_state: WorldLifecycleState
+  created_by: string | null
+  archived_at: string | null
   created_at: string
   updated_at: string
 }
@@ -44,6 +51,8 @@ export type LocationLink = {
   target_location_id: string
   label: string
   sort_order: number
+  visibility_mode: VisibilityMode
+  created_by: string | null
 }
 
 export type AchievementEntry = {
