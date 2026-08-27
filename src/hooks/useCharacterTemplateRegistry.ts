@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { supabase } from "../lib/supabase.ts"
 import { clearCharacterTemplateBundles, registerCharacterTemplateBundles } from "../rule-templates/registry.ts"
 import type { CharacterTemplateAssignment, CharacterTemplateBundle, RuleTemplate, RuleTemplateLevel } from "../rule-templates/types.ts"
+import { useCharacterSourceSuppressions } from "./useCharacterSourceSuppressions.ts"
 
 const TEMPLATE_FIELDS = "id,campaign_id,kind,slug,name,description,version,mechanics,choices,parent_template_id,unlock_level,catalog_key,catalog_revision,source_kind,source_label,is_builtin,mechanical_summary,author_description,author_comment,rules_meta,is_active,created_by,created_at,updated_at"
 
@@ -10,6 +11,7 @@ export function useCharacterTemplateRegistry(characterId: string | null) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [revision, setRevision] = useState(0)
+  const suppressions = useCharacterSourceSuppressions(characterId)
 
   const load = useCallback(async () => {
     if (!characterId) { setBundles([]); setLoading(false); return }
@@ -44,5 +46,20 @@ export function useCharacterTemplateRegistry(characterId: string | null) {
     return () => { if (characterId) clearCharacterTemplateBundles(characterId) }
   }, [characterId, load])
 
-  return { bundles, loading, error, revision, reload: load }
+  // CharacterGameFrame keys its resolved child by this revision. When a GM
+  // flips a source OFF/ON, force the same CE consumers to rebuild from the
+  // changed suppression registry without teaching them about suppression UI.
+  useEffect(() => {
+    if (!characterId) return
+    setRevision((value) => value + 1)
+  }, [characterId, suppressions.revision])
+
+  return {
+    bundles,
+    loading: loading || suppressions.loading,
+    error: error || suppressions.error,
+    revision,
+    reload: load,
+    suppressions,
+  }
 }
