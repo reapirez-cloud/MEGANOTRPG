@@ -113,6 +113,7 @@ export default function ReferenceGuide({
           ? "Бестиарий"
           : "Болезни, безумия и дикая магия"
   const isDruid = selectedClass?.id === "druid"
+  const visibleSubclasses = isDruid ? druidReference.subclasses : selectedClass?.subclasses || []
 
   return (
     <div className="reference-guide-overlay">
@@ -179,7 +180,7 @@ export default function ReferenceGuide({
                       <small>{entry.nameEn}</small>
                     </span>
                     <span>{classTagline(entry)}</span>
-                    <em>{entry.id === "druid" ? druidReference.rulesLabel : `${entry.subclasses.length} подклассов`}</em>
+                    <em>{entry.id === "druid" ? `${druidReference.rulesLabel} · ${druidReference.subclasses.length} круга` : `${entry.subclasses.length} подклассов`}</em>
                   </span>
                   <span className="reference-guide-section__chevron">›</span>
                 </button>
@@ -240,13 +241,14 @@ export default function ReferenceGuide({
             <section className="reference-subclass-section">
               <div className="reference-subclass-section__head">
                 <span>Подклассы</span>
-                <small>{selectedClass.subclasses.length}</small>
+                <small>{visibleSubclasses.length}</small>
               </div>
               <div className="reference-subclass-list">
-                {selectedClass.subclasses.map((subclass) => (
+                {visibleSubclasses.map((subclass) => (
                   <article className="reference-subclass-card surface" key={subclass.id} id={`${selectedClass.id}:${subclass.id}`}>
                     <strong>{subclass.name}</strong>
-                    <p>{subclass.summary}</p>
+                    <p>{"mechanics" in subclass ? subclass.mechanics : subclass.summary}</p>
+                    {"voss" in subclass && <blockquote>{subclass.voss}</blockquote>}
                   </article>
                 ))}
               </div>
