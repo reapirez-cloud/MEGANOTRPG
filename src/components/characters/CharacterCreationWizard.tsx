@@ -46,7 +46,7 @@ type AutoState = {
 const stepCopy: Record<Step, { title: string; copy: string }> = {
   1: { title: "Кто это?", copy: "Имя, роль и несколько слов о персонаже. Остальное можно заполнить позже." },
   2: { title: "Характеристики", copy: "Шесть базовых значений. Старт — 10 во всём, без спрятанных бонусов." },
-  3: { title: "Боевая база", copy: "HP, КД и скорость. Производные значения Character Engine может держать автоматически." },
+  3: { title: "Боевая база", copy: "HP, КД и скорость. Производные значения приложение рассчитывает автоматически." },
   4: { title: "Владения", copy: "Отметь только то, чем персонаж действительно владеет. Ничего не выбрано — значит ничего нет." },
   5: { title: "Магия", copy: "Если магии нет — просто оставь выключенной. Если есть, настрой источник и ячейки." },
   6: { title: "Доступ", copy: "Кто владеет PC и кто вообще видит этого персонажа." },
@@ -345,10 +345,10 @@ export default function CharacterCreationWizard({ target, campaignId, members, u
       </section>}
 
       {step === 2 && <section className="creation-wizard__step character-wizard__step">
-        <div className="creation-wizard__intro"><span>02</span><div><strong>Характеристики</strong><small>По умолчанию все шесть = 10. Модификаторы посчитает Character Engine.</small></div></div>
+        <div className="creation-wizard__intro"><span>02</span><div><strong>Характеристики</strong><small>По умолчанию все шесть = 10. Модификаторы будут рассчитаны автоматически.</small></div></div>
         <div className="character-wizard__ability-head"><div><strong>База 10 × 6</strong><small>Меняй только то, что нужно.</small></div><button type="button" onClick={resetAbilities}>Сбросить к 10</button></div>
         <div className="character-wizard__abilities">{CHARACTER_WIZARD_ABILITIES.map(([key, label, short]) => { const value = sheet[key]; const modifier = Math.floor((value - 10) / 2); return <label key={key}><span><small>{short}</small><strong>{label}</strong></span><input type="number" min="1" max="30" value={value} onChange={(event) => setAbility(key, event.target.value)}/><em>{modifier >= 0 ? `+${modifier}` : modifier}</em></label> })}</div>
-        <div className="creation-default-note creation-default-note--neutral"><span>CE</span><p><strong>Никаких ручных модификаторов</strong><small>Из значения характеристики движок сам получает модификатор, проверки и связанные формулы.</small></p></div>
+        <div className="creation-default-note creation-default-note--neutral"><span>◇</span><p><strong>Никаких ручных модификаторов</strong><small>Из значения характеристики движок сам получает модификатор, проверки и связанные формулы.</small></p></div>
       </section>}
 
       {step === 3 && <section className="creation-wizard__step character-wizard__step">
@@ -371,10 +371,10 @@ export default function CharacterCreationWizard({ target, campaignId, members, u
       </section>}
 
       {step === 5 && <section className="creation-wizard__step character-wizard__step">
-        <div className="creation-wizard__intro"><span>05</span><div><strong>Магия</strong><small>Выключено по умолчанию. Предметы всё равно могут давать собственные заклинания через Character Engine.</small></div></div>
+        <div className="creation-wizard__intro"><span>05</span><div><strong>Магия</strong><small>Выключено по умолчанию. Предметы всё равно могут давать собственные заклинания.</small></div></div>
         <label className="v2-toggle-row creation-inline-toggle character-wizard__magic-toggle"><span><strong>Персонаж использует собственные заклинания</strong><small>Включай для классовой/врождённой магии персонажа. Магия предметов живёт отдельно.</small></span><input type="checkbox" checked={sheet.spellcasting_enabled} onChange={(event) => updateField("spellcasting_enabled", event.target.checked)}/></label>
         {!sheet.spellcasting_enabled ? <div className="character-wizard__empty-choice"><span>◇</span><strong>Магии нет — и это нормально</strong><p>Шаг закончен. Вкладка заклинаний не появится без реального источника.</p></div> : <>
-          <label><span className="field-label">Базовая характеристика</span><select className="app-select" value={sheet.spellcasting_ability || ""} onChange={(event) => updateField("spellcasting_ability", event.target.value || null)}><option value="">Выбери характеристику…</option>{CHARACTER_WIZARD_ABILITIES.map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select><small className="control-field-help">СЛ и бонус атаки не вводятся вручную: Character Engine вычислит их из характеристики и мастерства.</small></label>
+          <label><span className="field-label">Базовая характеристика</span><select className="app-select" value={sheet.spellcasting_ability || ""} onChange={(event) => updateField("spellcasting_ability", event.target.value || null)}><option value="">Выбери характеристику…</option>{CHARACTER_WIZARD_ABILITIES.map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select><small className="control-field-help">СЛ и бонус атаки вычисляются автоматически из характеристики и бонуса мастерства.</small></label>
           <div className="character-wizard__slot-head"><div><strong>Ячейки заклинаний</strong><small>Максимум по уровням. Потраченные ячейки приложение ведёт само.</small></div><button type="button" onClick={clearSpellSlots}>Очистить</button></div>
           <div className="character-wizard__slots">{Array.from({ length: 9 }, (_, index) => index + 1).map((slotLevel) => <label key={slotLevel}><span>{slotLevel}</span><input type="number" min="0" max="20" value={sheet.spell_slots?.[String(slotLevel)]?.max || 0} onChange={(event) => setSpellSlot(slotLevel, event.target.value)}/><small>ур.</small></label>)}</div>
           <div className="creation-default-note creation-default-note--neutral"><span>✧</span><p><strong>Сами заклинания добавляются из каталога</strong><small>После создания открой персонажа → Магия. Не нужно забивать названия руками в этот мастер.</small></p></div>
@@ -393,7 +393,7 @@ export default function CharacterCreationWizard({ target, campaignId, members, u
         <div className="character-wizard__review-hero"><CharacterAvatar character={{ name: name || "?", avatar_url: avatar || null }} size="large"/><div><small>{type === "npc" ? "NPC" : "PC"}{visibility === "private" ? " · Только я" : " · Кампания"}</small><strong>{name.trim() || "Без имени"}</strong><span>{role.trim() || (type === "npc" ? "NPC" : "Персонаж")} · {level} ур.</span>{sheet.race && <em>{sheet.race}</em>}</div></div>
         <div className="character-wizard__review-grid"><Review label="Характеристики" value={CHARACTER_WIZARD_ABILITIES.map(([key, , short]) => `${short} ${sheet[key]}`).join(" · ")}/><Review label="Бой" value={`КД ${sheet.armor_class} · HP ${sheet.current_hp}/${sheet.max_hp} · скорость ${sheet.speed} · инициатива ${sheet.initiative_bonus >= 0 ? "+" : ""}${sheet.initiative_bonus}`}/><Review label="Владения" value={`${saveSet.size} спасбросков · ${skillCount} навыков${expertCount ? ` · ${expertCount} экспертиз` : ""}`}/><Review label="Магия" value={sheet.spellcasting_enabled ? `${abilityLabel(sheet.spellcasting_ability)}${slotSummary ? ` · ${slotSummary}` : " · без ячеек"}` : "Выключена"}/><Review label="Доступ" value={type === "npc" ? `NPC · ${visibility === "private" ? "только я" : "кампания"}` : `${assignedMember ? `владелец: ${assignedMember.display_name}` : "без владельца"} · ${visibility === "private" ? "только я" : "кампания"}`}/></div>
         <div className="creation-default-note creation-default-note--neutral"><span>↳</span><p><strong>{editing ? `${changedCount} полей листа изменено в этом мастере` : changedCount ? `${changedCount} отклонений от базовых значений` : "Чистая базовая заготовка"}</strong><small>{editing ? "Нетронутые поля листа не перезаписываются." : "Если ничего не менять: 10×6, HP 1, КД 10, скорость 30, без владений и магии."}</small></p></div>
-        <div className="character-wizard__after"><strong>После сохранения</strong><span>Предметы → Инвентарь</span><span>Фиты и уникальные эффекты → Особенности</span><span>Заклинания → Магия</span><small>Все эти источники дальше общаются с Character Engine отдельно и не дублируются в мастере.</small></div>
+        <div className="character-wizard__after"><strong>После сохранения</strong><span>Предметы → Инвентарь</span><span>Фиты и уникальные эффекты → Особенности</span><span>Заклинания → Магия</span><small>Каждый раздел влияет на персонажа отдельно, поэтому дублировать эффекты здесь не нужно.</small></div>
       </section>}
 
       {error && <div className="auth-error">{error}</div>}

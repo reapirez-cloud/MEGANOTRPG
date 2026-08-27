@@ -58,7 +58,7 @@ const quickPresets: QuickPreset[] = [
     make: (activation) => withActivation({ id: makeId(), type: "numeric", target: "combat.ac", operation: "ADD", value: -1 }, activation),
   },
   {
-    id: "initiative-1", icon: "◇", title: "+1 к инициативе", detail: "Добавляется к итоговой инициативе CE.",
+    id: "initiative-1", icon: "◇", title: "+1 к инициативе", detail: "Добавляется к итоговой инициативе персонажа.",
     make: (activation) => withActivation({ id: makeId(), type: "numeric", target: "combat.initiative", operation: "ADD", value: 1 }, activation),
   },
   {
@@ -66,7 +66,7 @@ const quickPresets: QuickPreset[] = [
     make: (activation) => withActivation({ id: makeId(), type: "numeric", target: "combat.speed", operation: "ADD", value: 10 }, activation),
   },
   {
-    id: "hp-5", icon: "✚", title: "+5 максимум HP", detail: "Увеличивает максимум здоровья через CE.",
+    id: "hp-5", icon: "✚", title: "+5 максимум HP", detail: "Увеличивает итоговый максимум здоровья.",
     make: (activation) => withActivation({ id: makeId(), type: "numeric", target: "combat.maxHp", operation: "ADD", value: 5 }, activation),
   },
   {
@@ -183,7 +183,7 @@ export default function ItemMechanicPresets({ value, onChange, equippable = true
   }
 
   return <section className="item-mechanic-presets">
-    <header><div><span>Быстрые шаблоны</span><strong>Не надо знать Character Engine</strong><small>Выбери готовое — приложение само создаст правильную механику.</small></div></header>
+    <header><div><span>Быстрые шаблоны</span><strong>Готовые эффекты</strong><small>Выбери подходящий вариант — приложение само добавит его к предмету.</small></div></header>
 
     <div className="item-mechanic-activation"><span>Эффект работает</span>{equippable ? <div><button type="button" className={activation === "equipped" ? "is-active" : ""} onClick={() => setActivation("equipped")}>Когда надето</button><button type="button" className={activation === "carried" ? "is-active" : ""} onClick={() => setActivation("carried")}>Пока в инвентаре</button></div> : <small>Этот предмет нельзя надеть, поэтому его эффекты работают, пока он находится в инвентаре.</small>}</div>
 

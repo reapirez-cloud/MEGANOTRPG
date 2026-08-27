@@ -254,7 +254,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
               <div className="creation-curse-visibility">
                 <span>Что знает игрок</span>
                 <label className="v2-toggle-row creation-inline-toggle"><span><strong>Показывать игроку, что проклятие есть</strong><small>Выключено — игрок не увидит ни значок, ни статус «Проклято».</small></span><input type="checkbox" checked={showCurseToPlayer} onChange={(e) => changeCurseVisibility(e.target.checked)} /></label>
-                <label className="v2-toggle-row creation-inline-toggle"><span><strong>Показывать, что делает проклятие</strong><small>Выключено — описание и механика проклятия скрыты, но продолжают работать через CE.</small></span><input type="checkbox" checked={showCurseEffectToPlayer} disabled={!showCurseToPlayer} onChange={(e) => setShowCurseEffectToPlayer(e.target.checked)} /></label>
+                <label className="v2-toggle-row creation-inline-toggle"><span><strong>Показывать, что делает проклятие</strong><small>Выключено — описание и механика проклятия скрыты, но продолжают действовать.</small></span><input type="checkbox" checked={showCurseEffectToPlayer} disabled={!showCurseToPlayer} onChange={(e) => setShowCurseEffectToPlayer(e.target.checked)} /></label>
               </div>
             </>}
             {category === "equipment" && <label className="v2-toggle-row creation-inline-toggle"><span><strong>Надеть сразу</strong><small>Если выключено, эффекты с режимом «когда надето» пока не работают.</small></span><input type="checkbox" checked={equipped} onChange={(e) => setEquipped(e.target.checked)} /></label>}
@@ -271,8 +271,8 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
             <MechanicsBuilder value={mechanics} onChange={setMechanics} itemMode />
 
             {cursed && <section className="creation-curse-mechanics">
-              <div className="creation-wizard__intro"><span>☠</span><div><strong>Механика проклятия</strong><small>Добавляй сюда только то, что является частью проклятия. Эти эффекты CE применяет всегда, даже когда игроку они скрыты.</small></div></div>
-              <div className="creation-default-note creation-default-note--curse"><span>☠</span><p><strong>{curseMechanics.length ? `${curseMechanics.length} эффектов проклятия` : "Проклятие пока только нарративное"}</strong><small>{showCurseEffectToPlayer ? "Игрок увидит эту механику." : "Игрок эту механику не увидит, но Character Engine всё равно её применит."}</small></p></div>
+              <div className="creation-wizard__intro"><span>☠</span><div><strong>Механика проклятия</strong><small>Добавляй сюда только то, что является частью проклятия. Эти эффекты действуют всегда, даже когда скрыты от игрока.</small></div></div>
+              <div className="creation-default-note creation-default-note--curse"><span>☠</span><p><strong>{curseMechanics.length ? `${curseMechanics.length} эффектов проклятия` : "Проклятие пока только нарративное"}</strong><small>{showCurseEffectToPlayer ? "Игрок увидит эту механику." : "Игрок их не увидит, но они всё равно будут действовать."}</small></p></div>
               <MechanicsBuilder value={curseMechanics} onChange={setCurseMechanics} itemMode />
             </section>}
           </section>
@@ -288,7 +288,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
             <div className="creation-review-block"><span>Описание</span><p>{description.trim() || "Без описания."}</p></div>
             {cursed && <>
               <div className="creation-review-block creation-review-block--curse"><span>Проклятие</span><p>{curseDescription.trim() || "Предмет отмечен как проклятый, описание проклятия не задано."}</p></div>
-              <div className="creation-curse-preview"><strong>Видимость для игрока</strong><span>{showCurseToPlayer ? "✓ Видит, что предмет проклят" : "○ Не знает о проклятии"}</span><span>{showCurseToPlayer && showCurseEffectToPlayer ? "✓ Видит описание и эффекты" : "○ Не видит, что делает проклятие"}</span><small>Скрытие ничего не отключает в Character Engine.</small></div>
+              <div className="creation-curse-preview"><strong>Видимость для игрока</strong><span>{showCurseToPlayer ? "✓ Видит, что предмет проклят" : "○ Не знает о проклятии"}</span><span>{showCurseToPlayer && showCurseEffectToPlayer ? "✓ Видит описание и эффекты" : "○ Не видит, что делает проклятие"}</span><small>Скрытие не отключает действие проклятия.</small></div>
             </>}
             {category === "equipment" && !equipped && equippedOnlyCount > 0 && <div className="creation-default-note creation-default-note--warning"><span>!</span><p><strong>{equippedOnlyCount} эффектов пока не активны</strong><small>Они настроены как «когда надето». После создания предмет нужно надеть, либо поменять режим эффекта.</small></p></div>}
             <div className="creation-review-block"><span>Механика</span>{reviewMechanics.length ? <ul>{reviewMechanics.map((summary, index) => <li key={`${summary}:${index}`}>{summary}</li>)}{finalMechanics().length > reviewMechanics.length && <li>И ещё {finalMechanics().length - reviewMechanics.length}…</li>}</ul> : <p>Нет эффектов. Предмет не меняет характеристики и действия персонажа.</p>}</div>

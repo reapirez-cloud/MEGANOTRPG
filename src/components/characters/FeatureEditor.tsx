@@ -63,7 +63,7 @@ export default function FeatureEditor({ feature, onClose, onSave, onDelete }: Pr
       <form className="bottom-sheet v2-editor-sheet creation-wizard" onSubmit={submit} onMouseDown={(e) => e.stopPropagation()}>
         <div className="sheet-handle" />
         <header className="v2-sheet-head creation-wizard__head">
-          <div><span>{feature ? "Редактирование" : "Создание"} · шаг {step} из 3</span><h3>{feature ? "Особенность" : "Новая особенность"}</h3><p>{step === 1 ? "Сначала объясни, что это за штука." : step === 2 ? "Теперь только реальные эффекты Character Engine." : "Проверь, что игрок увидит и что движок применит."}</p></div>
+          <div><span>{feature ? "Редактирование" : "Создание"} · шаг {step} из 3</span><h3>{feature ? "Особенность" : "Новая особенность"}</h3><p>{step === 1 ? "Сначала объясни, что это за штука." : step === 2 ? "Теперь добавь реальные игровые эффекты." : "Проверь, что игрок увидит и как способность повлияет на персонажа."}</p></div>
           <button type="button" onClick={onClose}>×</button>
         </header>
         <div className="creation-wizard__progress">{[1, 2, 3].map((value) => <i key={value} className={value <= step ? "is-active" : ""} />)}</div>

@@ -531,7 +531,7 @@ export default function ResolvedCharacterSheet({
                 {typeof explanation.value === "number" ? signed(explanation.value) : String(explanation.value)}
               </div>
             )}
-            <p>Значение собрано Character Engine из базовых параметров и действующих особенностей.</p>
+            <p>Значение рассчитано из базовых параметров и всех действующих особенностей.</p>
             <div className="sheet-v3__explain-sources">
               <strong>Источники</strong>
               {[...collectSources(explanation.tree)].length

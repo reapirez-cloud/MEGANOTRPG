@@ -231,7 +231,7 @@ export default function ChatActionSheet({ characterName, contract, loading = fal
 
   return <div className="chat-action-backdrop" onMouseDown={onClose}><section className="chat-action-flow chat-action-flow--v3" onMouseDown={(event) => event.stopPropagation()}>
     <div className="chat-action-flow__handle" />
-    <header className="action-v2-head"><div><span>Игровое действие</span><strong>{characterName || "Свободный бросок"}</strong><small>{contract ? "Данные Character Engine" : "Кубы доступны без листа персонажа"}</small></div><button type="button" onClick={onClose}>×</button></header>
+    <header className="action-v2-head"><div><span>Игровое действие</span><strong>{characterName || "Свободный бросок"}</strong><small>{contract ? "Данные персонажа" : "Кубы доступны без листа персонажа"}</small></div><button type="button" onClick={onClose}>×</button></header>
     <nav className="action-v3-tabs" aria-label="Тип действия">{tabs.map((item) => <button key={item.key} className={tab === item.key ? "is-active" : ""} type="button" onClick={() => chooseTab(item.key)}><span>{item.label}</span>{Boolean(item.count) && <small>{item.count}</small>}</button>)}</nav>
     <div className="action-v2-body">
       {tab === "dice" && <>
@@ -255,11 +255,11 @@ export default function ChatActionSheet({ characterName, contract, loading = fal
       </>}
 
       {tab !== "dice" && loading && <div className="action-v2-empty"><span className="status-spinner"/><p>Собираем resolved-персонажа…</p></div>}
-      {tab !== "dice" && !loading && !contract && <div className="action-v2-empty"><span>◇</span><strong>Нужен персонаж</strong><p>Эта вкладка строится из Character Engine. Свободные кубы доступны во вкладке «Кубы».</p></div>}
+      {tab !== "dice" && !loading && !contract && <div className="action-v2-empty"><span>◇</span><strong>Нужен персонаж</strong><p>Эта вкладка использует его лист. Свободные кубы доступны во вкладке «Кубы».</p></div>}
       {!loading && contract && tab === "attacks" && <>{model.attacks.length ? <div className="action-v2-list action-v2-list--cards">{model.attacks.map((action) => <button disabled={busy || !action.available} type="button" key={`${action.key}:${action.variantKey}`} onClick={() => void run(() => onAction(action))}><i>⚔</i><span><strong>{action.label || action.key}</strong><small>{actionSummary(action, resources, labels)}</small></span><em>›</em></button>)}</div> : <div className="action-v2-empty"><span>⚔</span><strong>Нет обычных атак</strong><p>Оружейные атаки появятся здесь, а классовые и особые способности останутся в своих вкладках.</p></div>}</>}
       {!loading && contract && tab === "spells" && <>
-        {!visibleSpells.length ? <div className="action-v2-empty"><span>✧</span><strong>Нет доступной магии</strong><p>Заклинания собираются Character Engine из всех доступных игроку источников.</p></div> : !spellChannel ? <div className="action-spell-picker">
-          <header><small>Шаг 1</small><strong>Выбери ячейку</strong><p>Покажем только те заклинания, которые Character Engine реально может прочитать именно этой ячейкой.</p></header>
+        {!visibleSpells.length ? <div className="action-v2-empty"><span>✧</span><strong>Нет доступной магии</strong><p>У персонажа сейчас нет заклинаний, которые можно применить.</p></div> : !spellChannel ? <div className="action-spell-picker">
+          <header><small>Шаг 1</small><strong>Выбери ячейку</strong><p>Покажем только те заклинания, которые сейчас можно сотворить этой ячейкой.</p></header>
           <div className="action-spell-slots">
             {cantrips.length > 0 && <button className="action-spell-slot action-spell-slot--cantrip" type="button" onClick={() => setSpellChannel("cantrips")}><span className="action-spell-slot__level">∞</span><span className="action-spell-slot__copy"><strong>Заговоры</strong><small>Без расхода ячейки · {cantrips.length}</small></span><em>›</em></button>}
             {spellSlots.map(({ resource, level }) => {

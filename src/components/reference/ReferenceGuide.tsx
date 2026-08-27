@@ -162,7 +162,7 @@ export default function ReferenceGuide({
           <main className="reference-guide-content reference-guide-content--list">
             <div className="reference-guide-section-note">
               <strong>Классы — самостоятельные справочные карточки</strong>
-              <p>Механика хранится отдельно от авторского текста. Рассказчик объясняет правила своими словами, но Character Engine получает только структурированные данные.</p>
+              <p>В карточке сначала объясняется, как работает класс, а затем идут способности и специализации.</p>
             </div>
 
             <div className="reference-class-list">
@@ -180,7 +180,7 @@ export default function ReferenceGuide({
                       <small>{entry.nameEn}</small>
                     </span>
                     <span>{classTagline(entry)}</span>
-                    <em>{entry.id === "druid" ? `${druidReference.rulesLabel} · ${druidReference.subclasses.length} круга` : `${entry.subclasses.length} подклассов`}</em>
+                    <em>{entry.id === "druid" ? `${druidReference.subclasses.length} кругов` : `${entry.subclasses.length} подклассов`}</em>
                   </span>
                   <span className="reference-guide-section__chevron">›</span>
                 </button>
@@ -200,13 +200,6 @@ export default function ReferenceGuide({
               </div>
             </div>
 
-            {isDruid && (
-              <div className="reference-class-rule-badges" aria-label="Редакция правил">
-                <span>{druidReference.sourceLabel}</span>
-                <strong>{druidReference.rulesLabel}</strong>
-              </div>
-            )}
-
             <section className="reference-class-description">
               <span>{isDruid ? "Рейнар Восс" : "Описание класса"}</span>
               <p>{isDruid ? druidReference.authorDescription : selectedClass.description}</p>
@@ -217,7 +210,6 @@ export default function ReferenceGuide({
                 <section className="reference-class-mechanics surface">
                   <span>Коротко о механике</span>
                   <p>{druidReference.mechanicalSummary}</p>
-                  <small>{druidReference.wildShapePolicy}</small>
                 </section>
                 <section className="reference-voss-note surface">
                   <span>Заметка Восса</span>
@@ -228,7 +220,7 @@ export default function ReferenceGuide({
                   <div className="reference-class-feature-list">
                     {druidReference.features.map((feature) => (
                       <article className="reference-class-feature surface" key={`${feature.level}:${feature.name}`}>
-                        <header><span>{feature.level} ур.</span><strong>{feature.name}</strong>{feature.revision && <em>{feature.revision}</em>}</header>
+                        <header><span>{feature.level} ур.</span><strong>{feature.name}</strong></header>
                         <p>{feature.mechanics}</p>
                         {feature.voss && <blockquote>{feature.voss}</blockquote>}
                       </article>

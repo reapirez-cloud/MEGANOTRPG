@@ -91,7 +91,7 @@ function engineViewOrError(args: Parameters<typeof resolveLegacyCharacterEngineV
   } catch (error) {
     return {
       view: null,
-      error: error instanceof Error ? error.message : "Не удалось рассчитать лист Character Engine.",
+      error: error instanceof Error ? error.message : "Не удалось рассчитать лист персонажа.",
     }
   }
 }
@@ -421,7 +421,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
 
         {data.loading && <div className="center-state"><span className="status-spinner" /><span>Загружаем персонажа…</span></div>}
         {data.error && <div className="auth-error">{data.error}</div>}
-        {engine.error && <div className="auth-error">Character Engine: {engine.error}</div>}
+        {engine.error && <div className="auth-error">Ошибка расчёта: {engine.error}</div>}
 
         {!data.loading && tab === "sheet" && sheet && engine.view && (
           <ResolvedCharacterSheet

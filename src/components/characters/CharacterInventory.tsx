@@ -94,7 +94,7 @@ export default function CharacterInventory(props: Props) {
               <span className="equipment-v2-copy"><span><strong>{item.name}</strong><ItemBadges item={item} canManage={canManage} /></span><small>{mechanics.length ? mechanics.slice(0, 2).map(mechanicSummary).join(" · ") : "Без видимых механических эффектов"}</small></span><span className="equipment-v2-go">›</span>
             </button>
           })}
-          {!equipped.length && <div className="v2-empty-state"><span>◇</span><strong>Ничего не надето</strong><p>Надень предмет из инвентаря — его механика сразу попадёт в Character Engine.</p></div>}
+          {!equipped.length && <div className="v2-empty-state"><span>◇</span><strong>Ничего не надето</strong><p>Надень предмет из инвентаря — его эффекты сразу повлияют на персонажа.</p></div>}
         </div>
         {empty.length > 0 && <div className="empty-slot-block"><button type="button" onClick={() => setShowEmptySlots((value) => !value)}><span>Свободные слоты</span><strong>{empty.length}</strong><em>{showEmptySlots ? "⌃" : "⌄"}</em></button>{showEmptySlots && <div className="empty-slot-grid">{empty.map((slot) => <span key={slot.value}>{slot.label}</span>)}</div>}</div>}
         {error && <div className="auth-error">{error}</div>}
