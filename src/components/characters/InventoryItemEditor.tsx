@@ -59,6 +59,18 @@ function weaponBase(): StoredMechanic {
   }
 }
 
+function isCurseMarker(mechanic: StoredMechanic) {
+  return mechanic.type === "grant" && mechanic.target === "trait" && mechanic.key === "curse:item"
+}
+
+function curseText(mechanic: StoredMechanic | undefined) {
+  if (!mechanic || mechanic.type !== "grant") return ""
+  const payload = mechanic.payload
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return ""
+  const description = (payload as Record<string, unknown>).description
+  return typeof description === "string" ? description : ""
+}
+
 function presetForItem(item: InventoryItem | null): ItemPreset {
   if (!item) return "plain"
   if (item.category === "consumable") return "consumable"
@@ -70,6 +82,7 @@ function presetForItem(item: InventoryItem | null): ItemPreset {
 
 export default function InventoryItemEditor({ item, campaignId, onClose, onSave, onDelete }: Props) {
   const initialImageUrl = item?.image_url || ""
+  const existingCurse = item?.mechanics?.find(isCurseMarker)
   const [step, setStep] = useState<WizardStep>(1)
   const [preset, setPreset] = useState<ItemPreset>(() => presetForItem(item))
   const [name, setName] = useState(item?.name || "")
@@ -79,12 +92,37 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
   const [equipped, setEquipped] = useState(item?.equipped || false)
   const [imageUrl, setImageUrl] = useState(initialImageUrl)
   const [description, setDescription] = useState(item?.description || "")
-  const [mechanics, setMechanics] = useState<StoredMechanics>(item?.mechanics || [])
+  const [cursed, setCursed] = useState(Boolean(existingCurse))
+  const [curseDescription, setCurseDescription] = useState(curseText(existingCurse))
+  const [curseId] = useState(existingCurse?.id || makeId())
+  const [mechanics, setMechanics] = useState<StoredMechanics>((item?.mechanics || []).filter((mechanic) => !isCurseMarker(mechanic)))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
   const currentPreset = presets.find((candidate) => candidate.id === preset) || presets[0]
-  const reviewMechanics = useMemo(() => mechanics.slice(0, 4).map(mechanicSummary), [mechanics])
+
+  function finalMechanics(): StoredMechanics {
+    const normalized = mechanics.map((mechanic) =>
+      category !== "equipment" && mechanic.activation === "equipped"
+        ? { ...mechanic, activation: "carried" as const }
+        : mechanic,
+    )
+    if (!cursed) return normalized
+    return [
+      ...normalized,
+      {
+        id: curseId,
+        type: "grant",
+        target: "trait",
+        key: "curse:item",
+        payload: { label: "Проклято", description: curseDescription.trim() },
+        activation: "carried",
+      },
+    ]
+  }
+
+  const reviewMechanics = useMemo(() => finalMechanics().slice(0, 5).map(mechanicSummary), [mechanics, category, cursed, curseDescription, curseId])
+  const equippedOnlyCount = mechanics.filter((mechanic) => mechanic.activation === "equipped").length
 
   function choosePreset(next: ItemPreset) {
     const selected = presets.find((candidate) => candidate.id === next) || presets[0]
@@ -121,7 +159,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
       equipped: category === "equipment" ? equipped : false,
       image_url: imageUrl || null,
       description,
-      mechanics,
+      mechanics: finalMechanics(),
     })
     setSaving(false)
     if (!result.ok) { setError(result.error || "Не удалось сохранить предмет."); return }
@@ -182,7 +220,9 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
             <ImageUploadField value={imageUrl} onChange={setImageUrl} folder="items" campaignId={campaignId} label="Арт предмета" />
             <label className="field-label">Описание <small className="creation-optional">необязательно</small></label>
             <textarea className="app-textarea" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={3000} placeholder="Что увидит игрок, когда откроет предмет…" />
-            {category === "equipment" && <label className="v2-toggle-row creation-inline-toggle"><span><strong>Надеть сразу</strong><small>Если выключено, предмет просто попадёт в инвентарь.</small></span><input type="checkbox" checked={equipped} onChange={(e) => setEquipped(e.target.checked)} /></label>}
+            <label className="v2-toggle-row creation-inline-toggle creation-curse-toggle"><span><strong>☠ Проклято</strong><small>Отдельный статус предмета. Само проклятие может быть нарративным или иметь механику на следующем шаге.</small></span><input type="checkbox" checked={cursed} onChange={(e) => setCursed(e.target.checked)} /></label>
+            {cursed && <label><span className="field-label">Что делает проклятие</span><textarea className="app-textarea" value={curseDescription} onChange={(e) => setCurseDescription(e.target.value)} maxLength={2000} placeholder="Например: владелец слышит шёпот клинка и не может добровольно его выбросить…" /><small className="creation-curse-help">Если проклятие ещё и меняет цифры, добавь штраф или другой эффект на следующем шаге — он тоже пойдёт через Character Engine.</small></label>}
+            {category === "equipment" && <label className="v2-toggle-row creation-inline-toggle"><span><strong>Надеть сразу</strong><small>Если выключено, эффекты с режимом «когда надето» пока не работают.</small></span><input type="checkbox" checked={equipped} onChange={(e) => setEquipped(e.target.checked)} /></label>}
           </section>
         )}
 
@@ -190,8 +230,10 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
           <section className="creation-wizard__step">
             <div className="creation-wizard__intro"><span>03</span><div><strong>Что предмет делает?</strong><small>Этот шаг можно оставить пустым. Тогда предмет не влияет на Character Engine.</small></div></div>
             <div className="creation-default-note creation-default-note--neutral"><span>✦</span><p><strong>{mechanics.length ? `${mechanics.length} эффектов настроено` : "Без эффектов — это нормально"}</strong><small>Сначала выбери частый готовый эффект. Для редких правил ниже остаётся полный конструктор.</small></p></div>
-            <ItemMechanicPresets value={mechanics} onChange={setMechanics} />
+            <ItemMechanicPresets value={mechanics} onChange={setMechanics} equippable={category === "equipment"} />
+            {cursed && <div className="creation-default-note creation-default-note--curse"><span>☠</span><p><strong>Проклятие отмечено отдельно</strong><small>Для механического проклятия можно добавить ниже, например, «−1 к КД». Текст проклятия останется отдельным статусом предмета.</small></p></div>}
             <div className="creation-wizard__intro"><span>⚙</span><div><strong>Расширенная настройка</strong><small>Свои бонусы, произвольные теги, условия, атаки, ресурсы и нестандартные заклинания.</small></div></div>
+            {category !== "equipment" && <div className="creation-activation-note">Ненадеваемый предмет не может иметь мёртвый режим «когда надето»: при сохранении такие эффекты автоматически станут «пока в инвентаре».</div>}
             <MechanicsBuilder value={mechanics} onChange={setMechanics} itemMode />
           </section>
         )}
@@ -201,10 +243,12 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
             <div className="creation-wizard__intro"><span>04</span><div><strong>Проверка</strong><small>Никаких скрытых правил: здесь видно, что именно сохранится.</small></div></div>
             <div className="creation-review-card">
               <div className="creation-review-card__icon">{currentPreset.icon}</div>
-              <div><small>{currentPreset.title}</small><strong>{name.trim() || "Без названия"}</strong><span>{inventoryCategories.find((option) => option.value === category)?.label || category}{category === "equipment" ? ` · ${equipmentSlots.find((option) => option.value === equipmentSlot)?.label || equipmentSlot}` : ""} · ×{Math.max(0, Number.parseInt(quantity || "0", 10) || 0)}</span></div>
+              <div><small>{currentPreset.title}</small><strong>{name.trim() || "Без названия"}</strong><span>{inventoryCategories.find((option) => option.value === category)?.label || category}{category === "equipment" ? ` · ${equipmentSlots.find((option) => option.value === equipmentSlot)?.label || equipmentSlot}` : ""} · ×{Math.max(0, Number.parseInt(quantity || "0", 10) || 0)}</span>{cursed && <b className="creation-review-curse">☠ Проклято</b>}</div>
             </div>
             <div className="creation-review-block"><span>Описание</span><p>{description.trim() || "Без описания."}</p></div>
-            <div className="creation-review-block"><span>Механика</span>{reviewMechanics.length ? <ul>{reviewMechanics.map((summary) => <li key={summary}>{summary}</li>)}{mechanics.length > reviewMechanics.length && <li>И ещё {mechanics.length - reviewMechanics.length}…</li>}</ul> : <p>Нет эффектов. Предмет не меняет характеристики и действия персонажа.</p>}</div>
+            {cursed && <div className="creation-review-block creation-review-block--curse"><span>Проклятие</span><p>{curseDescription.trim() || "Предмет отмечен как проклятый, описание проклятия не задано."}</p></div>}
+            {category === "equipment" && !equipped && equippedOnlyCount > 0 && <div className="creation-default-note creation-default-note--warning"><span>!</span><p><strong>{equippedOnlyCount} эффектов пока не активны</strong><small>Они настроены как «когда надето». После создания предмет нужно надеть, либо поменять режим эффекта на «пока в инвентаре».</small></p></div>}
+            <div className="creation-review-block"><span>Механика</span>{reviewMechanics.length ? <ul>{reviewMechanics.map((summary, index) => <li key={`${summary}:${index}`}>{summary}</li>)}{finalMechanics().length > reviewMechanics.length && <li>И ещё {finalMechanics().length - reviewMechanics.length}…</li>}</ul> : <p>Нет эффектов. Предмет не меняет характеристики и действия персонажа.</p>}</div>
           </section>
         )}
 
