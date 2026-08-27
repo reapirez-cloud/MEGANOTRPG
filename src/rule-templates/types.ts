@@ -14,6 +14,11 @@ export type RuleChoiceDefinition = {
   option_labels?: Record<string, string>
   /** Extra CE mechanics applied only when this option is selected. */
   option_mechanics?: Record<string, StoredMechanics>
+  /**
+   * Mechanics unlocked later by the same persistent choice. This avoids asking
+   * for the same land/style/pact choice again every time it gains a new tier.
+   */
+  option_mechanics_by_level?: Record<string, Record<string, StoredMechanics>>
 }
 
 export type RuleTemplate = {
