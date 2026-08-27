@@ -19,7 +19,7 @@ test("inventory presets keep optional mechanics explicit", () => {
   assert.match(inventory, /Обычная вещь/)
   assert.match(inventory, /Оружие/)
   assert.match(inventory, /Артефакт/)
-  assert.match(inventory, /Без эффектов — это нормально/)
+  assert.match(inventory, /Обычных эффектов нет/)
   assert.match(inventory, /Атака оружием/)
   assert.match(inventory, /sides: 8/)
 })
