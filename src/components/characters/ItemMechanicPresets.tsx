@@ -8,6 +8,7 @@ import "./ItemMechanicPresets.css"
 type Props = {
   value: StoredMechanics
   onChange: (value: StoredMechanics) => void
+  equippable?: boolean
 }
 
 type Activation = "carried" | "equipped"
@@ -53,6 +54,10 @@ const quickPresets: QuickPreset[] = [
     make: (activation) => withActivation({ id: makeId(), type: "numeric", target: "combat.ac", operation: "ADD", value: 1 }, activation),
   },
   {
+    id: "ac-minus-1", icon: "▽", title: "−1 к КД", detail: "Готовый штраф, удобно для проклятий.",
+    make: (activation) => withActivation({ id: makeId(), type: "numeric", target: "combat.ac", operation: "ADD", value: -1 }, activation),
+  },
+  {
     id: "initiative-1", icon: "◇", title: "+1 к инициативе", detail: "Добавляется к итоговой инициативе CE.",
     make: (activation) => withActivation({ id: makeId(), type: "numeric", target: "combat.initiative", operation: "ADD", value: 1 }, activation),
   },
@@ -74,8 +79,8 @@ const quickPresets: QuickPreset[] = [
   },
 ]
 
-export default function ItemMechanicPresets({ value, onChange }: Props) {
-  const [activation, setActivation] = useState<Activation>("equipped")
+export default function ItemMechanicPresets({ value, onChange, equippable = true }: Props) {
+  const [activation, setActivation] = useState<Activation>(equippable ? "equipped" : "carried")
   const [abilityName, setAbilityName] = useState("Активировать предмет")
   const [abilityEconomy, setAbilityEconomy] = useState("action")
   const [spellOpen, setSpellOpen] = useState(false)
@@ -86,6 +91,10 @@ export default function ItemMechanicPresets({ value, onChange }: Props) {
   const [spellAbility, setSpellAbility] = useState<AbilityKey>("intelligence")
   const [spellPayment, setSpellPayment] = useState<SpellPayment>("free")
   const [spellResourceKey, setSpellResourceKey] = useState("")
+
+  useEffect(() => {
+    if (!equippable && activation !== "carried") setActivation("carried")
+  }, [activation, equippable])
 
   const resources = useMemo(
     () => value.filter((item): item is StoredResourceMechanic => item.type === "resource"),
@@ -120,7 +129,10 @@ export default function ItemMechanicPresets({ value, onChange }: Props) {
   }, [spellQuery, spells])
 
   function append(mechanic: StoredMechanic) {
-    onChange([...value, mechanic])
+    const safeMechanic = !equippable && mechanic.activation === "equipped"
+      ? { ...mechanic, activation: "carried" as const }
+      : mechanic
+    onChange([...value, safeMechanic])
   }
 
   function addResistance(key: string) {
@@ -173,7 +185,7 @@ export default function ItemMechanicPresets({ value, onChange }: Props) {
   return <section className="item-mechanic-presets">
     <header><div><span>Быстрые шаблоны</span><strong>Не надо знать Character Engine</strong><small>Выбери готовое — приложение само создаст правильную механику.</small></div></header>
 
-    <div className="item-mechanic-activation"><span>Эффект работает</span><div><button type="button" className={activation === "equipped" ? "is-active" : ""} onClick={() => setActivation("equipped")}>Когда надето</button><button type="button" className={activation === "carried" ? "is-active" : ""} onClick={() => setActivation("carried")}>Пока в инвентаре</button></div></div>
+    <div className="item-mechanic-activation"><span>Эффект работает</span>{equippable ? <div><button type="button" className={activation === "equipped" ? "is-active" : ""} onClick={() => setActivation("equipped")}>Когда надето</button><button type="button" className={activation === "carried" ? "is-active" : ""} onClick={() => setActivation("carried")}>Пока в инвентаре</button></div> : <small>Этот предмет нельзя надеть, поэтому его эффекты работают, пока он находится в инвентаре.</small>}</div>
 
     <div className="item-mechanic-preset-grid">
       {quickPresets.map((preset) => <button type="button" key={preset.id} onClick={() => append(preset.make(activation))}><span>{preset.icon}</span><strong>{preset.title}</strong><small>{preset.detail}</small><em>＋</em></button>)}
