@@ -49,9 +49,17 @@ export function chatSourceGroupId(source: CharacterSource): string {
   return templateRoot || source.id
 }
 
-function distinctSources(refs: ResolvedSourceRef[]): CharacterSource[] {
+function sourceVisible(source: CharacterSource, includePrivateSources: boolean) {
+  return includePrivateSources || source.visibility !== "private"
+}
+
+function visibleRefs(refs: ResolvedSourceRef[], includePrivateSources: boolean) {
+  return refs.filter((ref) => sourceVisible(ref.source, includePrivateSources))
+}
+
+function distinctSources(refs: ResolvedSourceRef[], includePrivateSources = true): CharacterSource[] {
   const map = new Map<string, CharacterSource>()
-  for (const ref of refs) map.set(chatSourceGroupId(ref.source), ref.source)
+  for (const ref of visibleRefs(refs, includePrivateSources)) map.set(chatSourceGroupId(ref.source), ref.source)
   return [...map.values()]
 }
 
@@ -59,10 +67,10 @@ function sourceRefsForSpell(spell: ResolvedSpell): ResolvedSourceRef[] {
   return spell.accesses.flatMap((access) => access.sources)
 }
 
-function resourceGroups(contract: ResolvedCharacterContract, category: "class" | "unique") {
+function resourceGroups(contract: ResolvedCharacterContract, category: "class" | "unique", includePrivateSources: boolean) {
   const ids = new Set<string>()
   for (const resource of contract.resources) {
-    for (const source of distinctSources(resource.sources)) {
+    for (const source of distinctSources(resource.sources, includePrivateSources)) {
       const sourceCategory = chatSourceCategory(source)
       if (category === "class" ? sourceCategory === "class" : sourceCategory === "unique" || sourceCategory === "item") ids.add(chatSourceGroupId(source))
     }
@@ -74,8 +82,8 @@ function actionHasMeaningfulAttack(action: ResolvedAction) {
   return Boolean(action.attack) || action.damage.some((entry) => Boolean(entry.dice))
 }
 
-export function classifyChatAction(action: ResolvedAction, uniqueResourceGroupIds: ReadonlySet<string>): ChatActionBucket {
-  const sources = distinctSources(action.sources)
+export function classifyChatAction(action: ResolvedAction, uniqueResourceGroupIds: ReadonlySet<string>, includePrivateSources = true): ChatActionBucket {
+  const sources = distinctSources(action.sources, includePrivateSources)
   const categories = new Set(sources.map(chatSourceCategory))
   if (categories.has("class")) return "class"
   if (categories.has("unique")) return "unique"
@@ -103,14 +111,14 @@ function addUnique<T>(items: T[], item: T, identity: (value: T) => string) {
   if (!items.some((existing) => identity(existing) === id)) items.push(item)
 }
 
-function addResourceToGroups(map: Map<string, ChatActionSourceGroup>, resource: ResolvedResource, categories: ChatSourceCategory[]) {
-  for (const source of distinctSources(resource.sources).filter((entry) => categories.includes(chatSourceCategory(entry)))) {
+function addResourceToGroups(map: Map<string, ChatActionSourceGroup>, resource: ResolvedResource, categories: ChatSourceCategory[], includePrivateSources: boolean) {
+  for (const source of distinctSources(resource.sources, includePrivateSources).filter((entry) => categories.includes(chatSourceCategory(entry)))) {
     addUnique(ensureGroup(map, source).resources, resource, (entry) => entry.stateKey)
   }
 }
 
-function addActionToGroups(map: Map<string, ChatActionSourceGroup>, action: ResolvedAction, categories: ChatSourceCategory[], fallback: ChatActionSourceGroup) {
-  const sources = distinctSources(action.sources).filter((entry) => categories.includes(chatSourceCategory(entry)))
+function addActionToGroups(map: Map<string, ChatActionSourceGroup>, action: ResolvedAction, categories: ChatSourceCategory[], fallback: ChatActionSourceGroup, includePrivateSources: boolean) {
+  const sources = distinctSources(action.sources, includePrivateSources).filter((entry) => categories.includes(chatSourceCategory(entry)))
   if (!sources.length) {
     addUnique(fallback.actions, action, (entry) => entry.stateKey)
     return
@@ -118,8 +126,8 @@ function addActionToGroups(map: Map<string, ChatActionSourceGroup>, action: Reso
   for (const source of sources) addUnique(ensureGroup(map, source).actions, action, (entry) => entry.stateKey)
 }
 
-function addSpellToGroups(map: Map<string, ChatActionSourceGroup>, spell: ResolvedSpell, categories: ChatSourceCategory[]) {
-  const sources = distinctSources(sourceRefsForSpell(spell)).filter((entry) => categories.includes(chatSourceCategory(entry)))
+function addSpellToGroups(map: Map<string, ChatActionSourceGroup>, spell: ResolvedSpell, categories: ChatSourceCategory[], includePrivateSources: boolean) {
+  const sources = distinctSources(sourceRefsForSpell(spell), includePrivateSources).filter((entry) => categories.includes(chatSourceCategory(entry)))
   for (const source of sources) addUnique(ensureGroup(map, source).spells, spell, (entry) => entry.key)
 }
 
@@ -129,7 +137,11 @@ function sortedGroups(map: Map<string, ChatActionSourceGroup>) {
     .sort((left, right) => left.name.localeCompare(right.name, "ru"))
 }
 
-export function buildChatActionModel(contract: ResolvedCharacterContract | null): ChatActionModel {
+function hasVisibleSources(refs: ResolvedSourceRef[], includePrivateSources: boolean) {
+  return includePrivateSources || refs.some((ref) => ref.source.visibility !== "private")
+}
+
+export function buildChatActionModel(contract: ResolvedCharacterContract | null, includePrivateSources = true): ChatActionModel {
   if (!contract) return { attacks: [], classGroups: [], uniqueGroups: [] }
 
   const classGroups = new Map<string, ChatActionSourceGroup>()
@@ -139,24 +151,28 @@ export function buildChatActionModel(contract: ResolvedCharacterContract | null)
   classGroups.set(classFallback.id, classFallback)
   uniqueGroups.set(uniqueFallback.id, uniqueFallback)
 
-  const uniqueResourceGroupIds = resourceGroups(contract, "unique")
+  const uniqueResourceGroupIds = resourceGroups(contract, "unique", includePrivateSources)
 
   for (const resource of contract.resources) {
-    addResourceToGroups(classGroups, resource, ["class"])
-    addResourceToGroups(uniqueGroups, resource, ["unique", "item"])
+    if (!hasVisibleSources(resource.sources, includePrivateSources)) continue
+    addResourceToGroups(classGroups, resource, ["class"], includePrivateSources)
+    addResourceToGroups(uniqueGroups, resource, ["unique", "item"], includePrivateSources)
   }
 
   const attacks: ResolvedAction[] = []
   for (const action of contract.actions) {
-    const bucket = classifyChatAction(action, uniqueResourceGroupIds)
+    if (!hasVisibleSources(action.sources, includePrivateSources)) continue
+    const bucket = classifyChatAction(action, uniqueResourceGroupIds, includePrivateSources)
     if (bucket === "attacks") attacks.push(action)
-    else if (bucket === "class") addActionToGroups(classGroups, action, ["class"], classFallback)
-    else addActionToGroups(uniqueGroups, action, ["unique", "item"], uniqueFallback)
+    else if (bucket === "class") addActionToGroups(classGroups, action, ["class"], classFallback, includePrivateSources)
+    else addActionToGroups(uniqueGroups, action, ["unique", "item"], uniqueFallback, includePrivateSources)
   }
 
   for (const spell of contract.spells) {
-    addSpellToGroups(classGroups, spell, ["class"])
-    addSpellToGroups(uniqueGroups, spell, ["unique", "item"])
+    const refs = sourceRefsForSpell(spell)
+    if (!hasVisibleSources(refs, includePrivateSources)) continue
+    addSpellToGroups(classGroups, spell, ["class"], includePrivateSources)
+    addSpellToGroups(uniqueGroups, spell, ["unique", "item"], includePrivateSources)
   }
 
   return {
