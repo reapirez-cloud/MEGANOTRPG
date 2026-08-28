@@ -8,8 +8,8 @@ import type {
   ResolvedSpellResourceOption,
 } from "../../character-engine/index.ts"
 import {
+  runResolvedTemplateResourceAction,
   spendResolvedClassSpellOption,
-  useResolvedTemplateResourceAction,
 } from "../../lib/classResourceRuntime.ts"
 import { registeredCharacterClassPackages } from "../../rule-templates/classPackages.ts"
 import { presentClassPackages, type PresentedClassSpell, type PresentedTemplateMechanics } from "../../rule-templates/classPresentation.ts"
@@ -298,11 +298,11 @@ export default function CharacterClassPanel({ characterId, contract, onOpenRefer
   const [busyId, setBusyId] = useState("")
   const [runtimeError, setRuntimeError] = useState("")
 
-  async function useAction(action: ResolvedAction, optionKey?: string) {
+  async function runAction(action: ResolvedAction, optionKey?: string) {
     if (busyId) return
     setBusyId(`action:${action.stateKey}`)
     setRuntimeError("")
-    const result = await useResolvedTemplateResourceAction(characterId, contract, action, optionKey)
+    const result = await runResolvedTemplateResourceAction(characterId, contract, action, optionKey)
     setBusyId("")
     if (!result.ok) setRuntimeError(result.error)
   }
@@ -331,8 +331,8 @@ export default function CharacterClassPanel({ characterId, contract, onOpenRefer
 
       {packages.map((entry) => (
         <div className="class-panel__package" key={entry.classMechanics.templateId}>
-          <TemplateBlock mechanics={entry.classMechanics} busyId={busyId} onUseAction={(action, option) => void useAction(action, option)} onSpendSpell={(spell, option) => void spendSpell(spell, option)} />
-          {entry.subclassMechanics && <TemplateBlock mechanics={entry.subclassMechanics} busyId={busyId} onUseAction={(action, option) => void useAction(action, option)} onSpendSpell={(spell, option) => void spendSpell(spell, option)} />}
+          <TemplateBlock mechanics={entry.classMechanics} busyId={busyId} onUseAction={(action, option) => void runAction(action, option)} onSpendSpell={(spell, option) => void spendSpell(spell, option)} />
+          {entry.subclassMechanics && <TemplateBlock mechanics={entry.subclassMechanics} busyId={busyId} onUseAction={(action, option) => void runAction(action, option)} onSpendSpell={(spell, option) => void spendSpell(spell, option)} />}
         </div>
       ))}
 
