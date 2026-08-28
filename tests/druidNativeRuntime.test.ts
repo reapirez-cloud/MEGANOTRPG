@@ -8,7 +8,6 @@ import {
   type CharacterSource,
 } from "../src/character-engine/index.ts"
 import { contributionForStoredMechanic } from "../src/lib/characterMechanics.ts"
-import { resolvedActionMechanicId } from "../src/lib/classResourceRuntime.ts"
 import type { StoredActionMechanic, StoredResourceMechanic } from "../src/types/characterMechanics.ts"
 
 const migration = fs.readFileSync(
@@ -18,6 +17,7 @@ const migration = fs.readFileSync(
 
 const notes = fs.readFileSync("src/rule-templates/CLASS_INTEGRATION_NOTES.md", "utf8")
 const resourceRuntime = fs.readFileSync("src/lib/resourceRuntime.ts", "utf8")
+const classRuntime = fs.readFileSync("src/lib/classResourceRuntime.ts", "utf8")
 const legacyAdapter = fs.readFileSync("src/lib/legacyCharacterEngineAdapter.ts", "utf8")
 
 const source: CharacterSource = {
@@ -69,7 +69,7 @@ test("Druid Wild Shape resolves as resource accounting, not simulated transforma
   assert.equal(wildShape.available, true)
   assert.equal(wildShape.resourceCosts[0]!.stateKey, "wild_shape")
   assert.equal(wildShape.effects.length, 0)
-  assert.equal(resolvedActionMechanicId(wildShape), "wild-shape-action")
+  assert.match(wildShape.sources[0]!.contributionId, /:mechanic:wild-shape-action$/)
 })
 
 test("final Druid migration removes fake GM runtime flags and keeps real resource conversions", () => {
@@ -92,6 +92,8 @@ test("resource runtime treats spell slots like normal CE resources", () => {
   assert.doesNotMatch(migration, /v_state_key ~ '\^spell_slot_/)
   assert.match(legacyAdapter, /parserOwnedSlotLevels/)
   assert.match(legacyAdapter, /if \(!resources\[key\]\) resources\[key\] = \{ current: Math\.max\(0, max - used\) \}/)
+  assert.match(classRuntime, /sync_character_resource_states/)
+  assert.match(classRuntime, /spend_character_resources/)
 })
 
 test("class integration standard forbids fake GM confirmation state", () => {
