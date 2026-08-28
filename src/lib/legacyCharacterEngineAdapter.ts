@@ -22,7 +22,7 @@ import {
 import { registeredCharacterResourceState } from "./resourceRuntime.ts"
 import { characterSourceSuppressionContributions } from "./suppressionRuntime.ts"
 import { characterTemplateContributions } from "../rule-templates/registry.ts"
-import type { CharacterFeature, CharacterSheet, CharacterSpell, InventoryItem, SkillRank } from "../types/characterSheet.ts"
+import type { CharacterFeature, CharacterSheet, CharacterSpell, InventoryItem } from "../types/characterSheet.ts"
 
 export interface LegacyCharacterEngineView { input: CharacterEngineInput; contract: ResolvedCharacterContract; spellcastingAbility?: AbilityKey }
 
@@ -46,7 +46,6 @@ function legacySpellKey(spell: CharacterSpell): string { const clean = spell.nam
 function configuredSlotLevels(sheet: CharacterSheet, spells: CharacterSpell[]): number[] { const levels = new Set<number>(); for (let level = 1; level <= 9; level += 1) if (Number(sheet.spell_slots?.[String(level)]?.max || 0) > 0) levels.add(level); for (const spell of spells) if (spell.spell_level > 0 && spell.cast_mode !== "cantrip") levels.add(spell.spell_level); return [...levels].sort((a, b) => a - b) }
 function slotResourceKey(level: number): string { return `spell_slot_${level}` }
 function slotOptions(spellLevel: number, slotLevels: number[]): SpellResourceOption[] { return slotLevels.filter((level) => level >= spellLevel).map((level) => ({ key: `slot-${level}`, castLevel: level, costs: [{ key: slotResourceKey(level), amount: 1 }] })) }
-function expectedPassivePerception(sheet: CharacterSheet, resolvedProficiency: number): number { const rank = Number((sheet.skill_proficiencies || {}).perception || 0) as SkillRank; return 10 + abilityModifier(sheet.wisdom) + resolvedProficiency * rank }
 
 export function buildLegacyCharacterEngineInput(args: {
   character: Pick<Character, "id" | "name" | "level">
@@ -62,12 +61,13 @@ export function buildLegacyCharacterEngineInput(args: {
   const contributions: CharacterContribution[] = []
   const standardProficiency = proficiencyBonusForLevel(character.level)
   if (sheet.proficiency_bonus !== standardProficiency) contributions.push(setNumber("legacy:proficiency-override", "core.proficiencyBonus", sheet.proficiency_bonus, sheetSource))
-  const resolvedProficiency = sheet.proficiency_bonus !== standardProficiency ? sheet.proficiency_bonus : standardProficiency
   contributions.push(setNumber("legacy:ac", "combat.ac", sheet.armor_class, sheetSource))
   const naturalInitiative = abilityModifier(sheet.dexterity)
   if (sheet.initiative_bonus !== naturalInitiative) contributions.push(setNumber("legacy:initiative-override", "combat.initiative", sheet.initiative_bonus, sheetSource))
-  const expectedPassive = expectedPassivePerception(sheet, resolvedProficiency)
-  if (sheet.passive_perception !== expectedPassive) contributions.push(setNumber("legacy:passive-perception-override", "passives.perception", sheet.passive_perception, sheetSource))
+  // passive_perception is a legacy cached/derived field. CE is the source of truth:
+  // passive = 10 + resolved Perception skill bonus. Feats/items/effects modify
+  // passives.perception or the skill through normal contributions instead of
+  // freezing an old sheet number here.
   addTextGrants(contributions, "language", sheet.languages, sheetSource); addTextGrants(contributions, "proficiency", sheet.proficiencies, sheetSource); addTextGrants(contributions, "sense", sheet.senses, sheetSource)
   for (const feature of features) { const source = legacySource(`legacy-feature:${feature.id}`, feature.name, "legacy_feature"); contributions.push({ id: `legacy:feature:${feature.id}`, kind: "grant", operation: "GRANT", target: "feature", key: feature.id, payload: { label: feature.name, description: feature.description, kind: feature.kind, legacyFeatureId: feature.id }, source }) }
 
