@@ -71,11 +71,11 @@ test("stored Druid action reaches CE with costs and mode effects", () => {
   assert.equal(wildShape.resourceCosts[0]!.stateKey, "wild_shape")
   assert.equal(wildShape.effects[0]!.kind, "state")
   assert.equal(wildShape.effects[1]!.kind, "semantic")
+  assert.equal(wildShape.effects[1]!.kind === "semantic" ? wildShape.effects[1]!.key : "", "transformation")
 
-  const result = executeAction(initial.state, wildShape)
-  assert.equal(result.state.resources?.wild_shape?.current, 1)
-  assert.equal(result.state.facts?.wild_shape_active, true)
-  assert.deepEqual(result.semanticEffects.map((effect) => effect.key), ["transformation"])
+  const nextState = executeAction(initial.state, wildShape)
+  assert.equal(nextState.resources?.wild_shape?.current, 1)
+  assert.equal(nextState.facts?.wild_shape_active, true)
 })
 
 test("Druid runtime migration declares native mode, conversions, and Beast Spells permission", () => {
