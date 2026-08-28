@@ -1,5 +1,5 @@
 import type { Character } from "../../context/CharacterContext"
-import { zonePathLabel, type NpcHabitatZone } from "../../hooks/useNpcZoneHabitats"
+import { zonePathLabel, type NpcHabitatZone } from "../../lib/npcZoneHabitats"
 import CharacterAvatar from "../characters/CharacterAvatar"
 
 type SharedProps = {
@@ -58,7 +58,7 @@ export function ZoneHabitatNpcsSheet({
       <div className="npc-habitat-list npc-habitat-list--characters">
         {npcs.map((npc) => {
           const selected = selectedIds.has(npc.id)
-          const busy = savingKey.endsWith(`:${npc.id}`) || savingKey.startsWith(`${npc.id}:`)
+          const busy = savingKey.startsWith(`${npc.id}:`)
           return <button type="button" className={selected ? "is-selected" : ""} key={npc.id} aria-pressed={selected} disabled={Boolean(savingKey)} onClick={() => onToggle(npc.id, !selected)}>
             <CharacterAvatar character={npc} size="small"/>
             <span><strong>{npc.name}</strong><small>{npc.character_class || "NPC"}</small></span>
