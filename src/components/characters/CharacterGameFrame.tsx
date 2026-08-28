@@ -37,7 +37,7 @@ function choiceOptionLabel(definition: RuleChoiceDefinition, option: string) {
 }
 
 export default function CharacterGameFrame({ characterId, children }: Props) {
-  const { characters, campaignId, canManage, refresh, updateCharacter } = useCharacters()
+  const { characters, campaignId, canManage, refresh } = useCharacters()
   const character = characters.find((item) => item.id === characterId) || null
   const assigned = useCharacterTemplateRegistry(characterId)
   const runtime = useCharacterResourceStates(characterId)
@@ -122,6 +122,28 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
       nodes: sourceResolution.sources.filter((node) => node.templateId === bundle.template.id && node.nodeKind !== "template"),
     })), [assigned.bundles, sourceResolution.sources])
 
+  const classBindings = useMemo(() => existingClasses.map((classBundle) => {
+    const level = classBundle.assignment.template_level || 1
+    const subclassBundle = existingSubclasses.find((bundle) => bundle.template.parent_template_id === classBundle.template.id) || null
+    const subclassUnlock = subclassBundle?.template.unlock_level || Math.min(
+      ...rules.templates
+        .filter((template) => template.kind === "subclass" && template.parent_template_id === classBundle.template.id)
+        .map((template) => template.unlock_level || 1),
+      Number.POSITIVE_INFINITY,
+    )
+    return {
+      classBundle,
+      subclassBundle,
+      level,
+      subclassUnlock: Number.isFinite(subclassUnlock) ? subclassUnlock : null,
+      subclassActive: Boolean(subclassBundle && level >= (subclassBundle.template.unlock_level || 1)),
+    }
+  }), [existingClasses, existingSubclasses, rules.templates])
+
+  const chosenSubclassParent = chosenTemplate?.kind === "subclass" && chosenTemplate.parent_template_id
+    ? existingClasses.find((bundle) => bundle.template.id === chosenTemplate.parent_template_id) || null
+    : null
+
   function chooseKind(next: RuleTemplateKind) {
     setKind(next)
     setTemplateId("")
@@ -137,6 +159,23 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
     if (next?.kind === "class") {
       setTemplateLevel(existing?.assignment.template_level || character?.level || 1)
     }
+  }
+
+  function beginClassBinding(bundle?: CharacterTemplateBundle | null) {
+    if (bundle) {
+      chooseTemplate(bundle.template.id)
+      return
+    }
+    chooseKind("class")
+    setTemplateLevel(1)
+  }
+
+  function beginSubclassBinding(bundle?: CharacterTemplateBundle | null) {
+    if (bundle) {
+      chooseTemplate(bundle.template.id)
+      return
+    }
+    chooseKind("subclass")
   }
 
   function toggleChoice(definition: RuleChoiceDefinition, option: string) {
@@ -187,22 +226,9 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
       })
       if (profileError) {
         setSaving(false)
-        await assigned.reload()
-        setError(`Класс назначен, но профиль листа не применился: ${profileError.message}`)
+        await Promise.all([assigned.reload(), refresh()])
+        setError(`Класс привязан к CE, но профиль листа не применился: ${profileError.message}`)
         return
-      }
-      if (!existingClasses.length && chosenTemplate.is_builtin) {
-        const labelResult = await updateCharacter(character.id, {
-          name: character.name,
-          character_class: chosenTemplate.name,
-          level: character.level,
-          bio: character.bio,
-          avatar_url: character.avatar_url,
-          assigned_user_id: character.assigned_user_id,
-          character_type: character.character_type,
-          visibility: character.visibility,
-        })
-        if (!labelResult.ok) setError(labelResult.error || "Класс назначен, но название класса в карточке не обновилось.")
       }
     }
 
@@ -215,16 +241,16 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
   async function removeAssignment(assignmentId: string) {
     setSaving(true)
     setError("")
-    const { error: removeError } = await supabase
-      .from("character_template_assignments")
-      .delete()
-      .eq("id", assignmentId)
+    const { error: removeError } = await supabase.rpc("remove_character_template_assignment_v2", {
+      p_character_id: characterId,
+      p_assignment_id: assignmentId,
+    })
     setSaving(false)
     if (removeError) {
       setError(removeError.message)
       return
     }
-    await assigned.reload()
+    await Promise.all([assigned.reload(), refresh()])
   }
 
   async function toggleSource(sourceId: string) {
@@ -283,7 +309,7 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
   const renderedChildren = isValidElement(children)
     ? cloneElement(children, { key: `${characterId}:${assigned.revision}:${runtime.revision}` })
     : children
-  const assignedItems = [existingRace, existingSubrace, ...existingClasses, ...existingSubclasses]
+  const ancestryItems = [existingRace, existingSubrace]
     .filter((item): item is CharacterTemplateBundle => Boolean(item))
 
   return <div className={`character-game-frame ${lifeState === "dead" ? "is-dead" : ""}`}>
@@ -338,21 +364,52 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
           <p>Каждый запас восстанавливается по правилам своей способности. Долгий отдых также возвращает HP и ячейки заклинаний.</p>
         </section>
 
-        <section className="character-admin-section">
-          <div className="character-admin-section__head"><div><small>Правила</small><h3>Назначенные шаблоны</h3></div></div>
+        <section className="character-admin-section class-binding-control">
+          <div className="character-admin-section__head">
+            <div><small>Character Engine</small><h3>Класс персонажа</h3></div>
+            <span className="life-pill">{character?.level || 1} общий ур.</span>
+          </div>
+          <p>Класс и подкласс — отдельные источники механик CE. Здесь они связаны визуально и общим уровнем родительского класса.</p>
+          <div className="class-binding-list">
+            {classBindings.map(({ classBundle, subclassBundle, level, subclassUnlock, subclassActive }) => <article className="class-binding-card" key={classBundle.assignment.id}>
+              <div className="class-binding-node class-binding-node--class">
+                <span className="class-binding-node__icon">◇</span>
+                <span className="class-binding-node__copy">
+                  <small>Класс · {level} ур. · CE подключён</small>
+                  <strong>{classBundle.template.name}</strong>
+                </span>
+                <button type="button" disabled={saving} onClick={() => beginClassBinding(classBundle)} aria-label={`Изменить ${classBundle.template.name}`}>✎</button>
+              </div>
+              <div className={`class-binding-node class-binding-node--subclass ${subclassBundle && !subclassActive ? "is-locked" : ""}`}>
+                <span className="class-binding-node__icon">✦</span>
+                <span className="class-binding-node__copy">
+                  <small>{subclassBundle ? subclassActive ? `Подкласс · ${level} ур. · CE подключён` : `Подкласс · ждёт ${subclassBundle.template.unlock_level || 1} ур.` : subclassUnlock ? level >= subclassUnlock ? "Подкласс · можно выбрать" : `Подкласс · откроется с ${subclassUnlock} ур.` : "Подкласс · доступных нет"}</small>
+                  <strong>{subclassBundle?.template.name || "Не выбран"}</strong>
+                </span>
+                {(subclassBundle || (subclassUnlock && level >= subclassUnlock)) && <button type="button" disabled={saving} onClick={() => beginSubclassBinding(subclassBundle)} aria-label={subclassBundle ? `Изменить ${subclassBundle.template.name}` : `Выбрать подкласс для ${classBundle.template.name}`}>{subclassBundle ? "✎" : "+"}</button>}
+              </div>
+            </article>)}
+            {!classBindings.length && <button type="button" className="class-binding-empty" onClick={() => beginClassBinding()}>
+              <span>◇</span><span><strong>Привязать класс к листу</strong><small>Уровень, способности и ресурсы пойдут в Character Engine</small></span><i>＋</i>
+            </button>}
+          </div>
+          {classBindings.length > 0 && <button type="button" className="class-binding-add" onClick={() => beginClassBinding()}>＋ Добавить ещё класс</button>}
+        </section>
+
+        {ancestryItems.length > 0 && <section className="character-admin-section">
+          <div className="character-admin-section__head"><div><small>Происхождение</small><h3>Раса и подраса</h3></div></div>
           <div className="assigned-template-list">
-            {assignedItems.map((bundle) => <div className="assigned-template assigned-template--editable" key={bundle.assignment.id}>
-              <span className="assigned-template__icon">{bundle.template.kind.includes("race") ? "◈" : "◇"}</span>
+            {ancestryItems.map((bundle) => <div className="assigned-template assigned-template--editable" key={bundle.assignment.id}>
+              <span className="assigned-template__icon">◈</span>
               <span>
-                <small>{kindLabel[bundle.template.kind]}{bundle.assignment.template_level ? ` · ${bundle.assignment.template_level} ур.` : ""}</small>
+                <small>{kindLabel[bundle.template.kind]}</small>
                 <strong>{bundle.template.name}</strong>
               </span>
               <button type="button" className="assigned-template__edit" disabled={saving} onClick={() => chooseTemplate(bundle.template.id)} aria-label={`Изменить ${bundle.template.name}`}>✎</button>
               <button type="button" disabled={saving} onClick={() => void removeAssignment(bundle.assignment.id)} aria-label={`Удалить ${bundle.template.name}`}>×</button>
             </div>)}
-            {!assignedItems.length && <div className="template-assignment-empty">Шаблоны ещё не назначены.</div>}
           </div>
-        </section>
+        </section>}
 
         {classMechanicGroups.length > 0 && <section className="character-admin-section class-mechanics-control">
           <div className="character-admin-section__head">
@@ -363,22 +420,26 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
           <div className="class-mechanics-groups">
             {classMechanicGroups.map(({ bundle, root, nodes }) => {
               const rootSuppressed = Boolean(root && assigned.suppressions.sourceIds.has(root.id))
-              return <details className={`class-mechanics-group ${rootSuppressed ? "is-suppressed" : ""}`} key={bundle.assignment.id}>
+              const effectiveLevel = bundle.template.kind === "class"
+                ? bundle.assignment.template_level || character?.level || 1
+                : classLevelByTemplate.get(bundle.template.parent_template_id || "") || character?.level || 1
+              const lockedByLevel = bundle.template.kind === "subclass" && effectiveLevel < (bundle.template.unlock_level || 1)
+              return <details className={`class-mechanics-group ${rootSuppressed ? "is-suppressed" : ""} ${lockedByLevel ? "is-level-locked" : ""}`} key={bundle.assignment.id}>
                 <summary>
                   <span className="class-mechanics-group__icon">{bundle.template.kind === "class" ? "◇" : "✦"}</span>
-                  <span><small>{kindLabel[bundle.template.kind]} · {bundle.template.kind === "class" ? bundle.assignment.template_level || character?.level || 1 : classLevelByTemplate.get(bundle.template.parent_template_id || "") || character?.level || 1} ур.</small><strong>{bundle.template.name}</strong></span>
+                  <span><small>{kindLabel[bundle.template.kind]} · {effectiveLevel} ур.{lockedByLevel ? ` · откроется с ${bundle.template.unlock_level || 1}` : ""}</small><strong>{bundle.template.name}</strong></span>
                   <span className="class-mechanics-group__count">{nodes.length}</span>
                 </summary>
                 <div className="class-mechanics-group__body">
                   {root && <div className="class-source-row class-source-row--root">
-                    <span><small>Вся ветка</small><strong>{bundle.template.name}</strong></span>
+                    <span><small>{lockedByLevel ? "Ветка ждёт уровень" : "Вся ветка"}</small><strong>{bundle.template.name}</strong></span>
                     <button
                       type="button"
                       className={rootSuppressed ? "is-off" : "is-on"}
-                      disabled={Boolean(suppressionSaving)}
+                      disabled={lockedByLevel || Boolean(suppressionSaving)}
                       aria-pressed={!rootSuppressed}
                       onClick={() => void toggleSource(root.id)}
-                    >{suppressionSaving === root.id ? "…" : rootSuppressed ? "Выкл" : "Вкл"}</button>
+                    >{lockedByLevel ? "Неактивен" : suppressionSaving === root.id ? "…" : rootSuppressed ? "Выкл" : "Вкл"}</button>
                   </div>}
                   <div className="class-source-list">
                     {nodes.map((node) => {
@@ -398,7 +459,7 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
                         >{suppressionSaving === node.id ? "…" : rootSuppressed ? "Ветка выкл" : ownSuppressed ? "Выкл" : "Вкл"}</button>
                       </div>
                     })}
-                    {!nodes.length && <div className="template-assignment-empty">У этого шаблона пока нет отдельных автоматических механик.</div>}
+                    {!nodes.length && <div className="template-assignment-empty">{lockedByLevel ? `Способности появятся в CE на ${bundle.template.unlock_level || 1} уровне родительского класса.` : "У этого шаблона пока нет отдельных автоматических механик."}</div>}
                   </div>
                 </div>
               </details>
@@ -406,21 +467,34 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
           </div>
         </section>}
 
-        <section className="character-admin-section">
-          <div className="character-admin-section__head"><div><small>Назначение</small><h3>Раса, класс и специализация</h3></div></div>
+        <section className="character-admin-section template-binding-editor">
+          <div className="character-admin-section__head"><div><small>Назначение</small><h3>{kind === "class" ? "Привязать класс к листу" : kind === "subclass" ? "Привязать подкласс" : "Раса, класс и специализация"}</h3></div></div>
           <div className="template-kind-switch template-kind-switch--four">
             {assignmentKinds.map((entry) => <button type="button" key={entry} className={kind === entry ? "is-active" : ""} onClick={() => chooseKind(entry)}>{kindLabel[entry]}</button>)}
           </div>
           <select className="app-select" value={templateId} onChange={(event) => chooseTemplate(event.target.value)}>
-            <option value="">Выберите шаблон</option>
-            {templatesForKind.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}
+            <option value="">{kind === "class" ? "Выберите класс" : kind === "subclass" ? "Выберите подкласс" : "Выберите шаблон"}</option>
+            {templatesForKind.map((template) => {
+              const parent = template.kind === "subclass" && template.parent_template_id
+                ? existingClasses.find((bundle) => bundle.template.id === template.parent_template_id)
+                : null
+              return <option key={template.id} value={template.id}>{parent ? `${parent.template.name} · ${template.name}` : template.name}</option>
+            })}
           </select>
-          {kind === "class" && chosenTemplate && <label className="template-level-field">
-            <span>Уровень в этом классе</span>
-            <input className="app-input" type="number" min="1" max="30" value={templateLevel} onChange={(event) => setTemplateLevel(Math.max(1, Math.min(30, Number(event.target.value) || 1)))}/>
-          </label>}
+          {kind === "class" && chosenTemplate && <div className="class-level-editor">
+            <span><strong>Уровень класса</strong><small>Этот уровень определяет способности класса и его подкласса. Общий уровень персонажа пересчитается автоматически.</small></span>
+            <div>
+              <button type="button" onClick={() => setTemplateLevel((value) => Math.max(1, value - 1))} aria-label="Уменьшить уровень">−</button>
+              <input className="app-input" type="number" min="1" max="30" value={templateLevel} onChange={(event) => setTemplateLevel(Math.max(1, Math.min(30, Number(event.target.value) || 1)))}/>
+              <button type="button" onClick={() => setTemplateLevel((value) => Math.min(30, value + 1))} aria-label="Увеличить уровень">＋</button>
+            </div>
+          </div>}
+          {kind === "subclass" && chosenSubclassParent && <div className="subclass-parent-link">
+            <span>◇</span><span><small>Родительский класс · уровень приходит отсюда</small><strong>{chosenSubclassParent.template.name} · {chosenSubclassParent.assignment.template_level || 1} ур.</strong></span><i>→</i><span className="subclass-parent-link__child">✦</span>
+          </div>}
           {(kind === "subrace" && !existingRace) && <div className="template-assignment-empty">Сначала назначьте расу.</div>}
-          {(kind === "subclass" && !existingClasses.length) && <div className="template-assignment-empty">Сначала назначьте класс и нужный уровень.</div>}
+          {(kind === "subclass" && !existingClasses.length) && <div className="template-assignment-empty">Сначала привяжите класс и задайте ему нужный уровень.</div>}
+          {(kind === "subclass" && existingClasses.length > 0 && templatesForKind.length === 0) && <div className="template-assignment-empty">У назначенных классов пока не достигнут уровень открытия подкласса.</div>}
           {choiceDefs.length > 0 && <div className="template-choice-fields">
             <div className="template-choice-note"><span>◇</span><p><strong>Выбор можно оставить на потом</strong><small>Нерешённый вариант ничего не выдаёт и не мешает назначить класс. Уже сделанный выбор сохраняется при повышении уровня.</small></p></div>
             {choiceDefs.map((choice) => {
@@ -438,7 +512,7 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
             })}
           </div>}
           <button className="template-assign-button" type="button" disabled={!chosenTemplate || saving} onClick={() => void assignTemplate()}>
-            {saving ? "Сохраняем…" : existingChosenBundle ? "Сохранить изменения" : "Назначить шаблон"}
+            {saving ? "Сохраняем…" : existingChosenBundle ? "Сохранить изменения" : kind === "class" ? "Привязать класс к листу CE" : kind === "subclass" ? "Привязать подкласс к классу" : "Назначить шаблон"}
           </button>
         </section>
 
