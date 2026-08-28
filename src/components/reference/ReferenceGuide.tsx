@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 
+import { useCharacters } from "../../context/CharacterContext"
 import { classReference, type ClassReferenceEntry } from "../../data/classReference"
 import { druidReference } from "../../data/classes/druidReference"
 import { useRuleTemplates } from "../../hooks/useRuleTemplates"
@@ -17,7 +18,7 @@ type CharacterTarget = {
 type ReferenceSection = "home" | "spells" | "classes" | "class-detail" | "subclass-detail" | "bestiary" | "chaos"
 
 type Props = {
-  campaignId: string
+  campaignId?: string
   character: CharacterTarget | null
   canManage: boolean
   onClose: () => void
@@ -42,34 +43,10 @@ type RuleFeatureView = {
 }
 
 const sections = [
-  {
-    id: "spells" as const,
-    icon: "✦",
-    title: "Заклинания",
-    copy: "Каталог заклинаний с поиском, фильтрами и подробными карточками.",
-    meta: "Готово",
-  },
-  {
-    id: "classes" as const,
-    icon: "◇",
-    title: "Классы",
-    copy: "Классы, прогрессия, подклассы и объяснения способностей.",
-    meta: `${classReference.length} классов`,
-  },
-  {
-    id: "bestiary" as const,
-    icon: "◉",
-    title: "Бестиарий",
-    copy: "Существа, противники и их справочные карточки будут жить отдельным разделом.",
-    meta: "Каркас готов",
-  },
-  {
-    id: "chaos" as const,
-    icon: "⌁",
-    title: "Болезни, безумия и дикая магия",
-    copy: "Таблицы и справочные эффекты, которые не относятся напрямую к заклинаниям или существам.",
-    meta: "Каркас готов",
-  },
+  { id: "spells" as const, icon: "✦", title: "Заклинания", copy: "Каталог заклинаний с поиском, фильтрами и подробными карточками.", meta: "Готово" },
+  { id: "classes" as const, icon: "◇", title: "Классы", copy: "Классы, прогрессия, подклассы и объяснения способностей.", meta: `${classReference.length} классов` },
+  { id: "bestiary" as const, icon: "◉", title: "Бестиарий", copy: "Существа, противники и их справочные карточки будут жить отдельным разделом.", meta: "Каркас готов" },
+  { id: "chaos" as const, icon: "⌁", title: "Болезни, безумия и дикая магия", copy: "Таблицы и справочные эффекты, которые не относятся напрямую к заклинаниям или существам.", meta: "Каркас готов" },
 ]
 
 const economyLabel: Record<string, string> = {
@@ -96,8 +73,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function payloadText(mechanic: StoredMechanic, key: "label" | "description") {
-  if (mechanic.type !== "grant" || !isRecord(mechanic.payload)) return ""
-  const value = mechanic.payload[key]
+  if (mechanic.type !== "grant") return ""
+  const payload: unknown = mechanic.payload
+  if (!isRecord(payload)) return ""
+  const value = payload[key]
   return typeof value === "string" ? value.trim() : ""
 }
 
@@ -108,6 +87,7 @@ function sourceKey(mechanic: StoredMechanic) {
 function mechanicName(mechanic: StoredMechanic) {
   if (mechanic.type === "resource" || mechanic.type === "action") return mechanic.label
   if (mechanic.type === "spell") return mechanic.payload.spell.name
+  if (mechanic.type === "numeric") return mechanic.label || mechanic.target
   return payloadText(mechanic, "label") || mechanic.label || mechanic.key
 }
 
@@ -126,8 +106,7 @@ function mechanicFacts(mechanics: StoredMechanic[]) {
     if (isSpellSlot(mechanic)) continue
     if (mechanic.type === "resource") {
       facts.push(`Запас «${mechanic.label}»: ${formatMax(mechanic)}.`)
-      const triggers = (Array.isArray(mechanic.recharge) ? mechanic.recharge : [mechanic.recharge])
-        .map((item) => rechargeLabel[item] || item)
+      const triggers = (Array.isArray(mechanic.recharge) ? mechanic.recharge : [mechanic.recharge]).map((item) => rechargeLabel[item] || item)
       if (triggers.length) facts.push(`Восстановление: ${triggers.join(" или ")}.`)
     } else if (mechanic.type === "action") {
       const economy = economyLabel[mechanic.economy] || mechanic.economy
@@ -185,32 +164,30 @@ function buildTemplateFeatures(template: RuleTemplate | undefined, levels: RuleT
       if (!mechanics.length || mechanics.every(isSpellSlot)) continue
       const description = featureDescription(mechanics)
       if (!description) continue
-      result.push({
-        level: row.level,
-        name: featureName(mechanics),
-        description,
-        facts: mechanicFacts(mechanics),
-      })
+      result.push({ level: row.level, name: featureName(mechanics), description, facts: mechanicFacts(mechanics) })
     }
   }
   return result
 }
 
+function lastSegment(value: string, separator: string) {
+  const parts = value.split(separator)
+  return parts[parts.length - 1] || value
+}
+
 function templateCatalogTail(template: RuleTemplate) {
   const key = template.catalog_key?.trim()
-  if (key) return key.split(":").at(-1) || template.slug
-  return template.slug.split("-").at(-1) || template.slug
+  if (key) return lastSegment(key, ":")
+  return lastSegment(template.slug, "-")
 }
 
 function staticSubclasses(entry: ClassReferenceEntry): ReferenceSubclassView[] {
-  if (entry.id === "druid") {
-    return druidReference.subclasses.map((item) => ({ id: item.id, name: item.name, summary: item.mechanics, voss: item.voss }))
-  }
+  if (entry.id === "druid") return druidReference.subclasses.map((item) => ({ id: item.id, name: item.name, summary: item.mechanics, voss: item.voss }))
   return entry.subclasses.map((item) => ({ id: item.id, name: item.name, summary: item.summary }))
 }
 
 export default function ReferenceGuide({
-  campaignId,
+  campaignId: campaignIdProp,
   character,
   canManage,
   onClose,
@@ -218,11 +195,10 @@ export default function ReferenceGuide({
   initialSection = "home",
   initialClassId = null,
 }: Props) {
+  const { campaignId: contextCampaignId } = useCharacters()
+  const campaignId = campaignIdProp || contextCampaignId
   const { templates, levels, loading: catalogLoading, error: catalogError } = useRuleTemplates(campaignId)
-  const initialClass = useMemo(
-    () => classReference.find((entry) => entry.id === initialClassId) || null,
-    [initialClassId],
-  )
+  const initialClass = useMemo(() => classReference.find((entry) => entry.id === initialClassId) || null, [initialClassId])
   const [section, setSection] = useState<ReferenceSection>(initialClass ? "class-detail" : initialSection)
   const [selectedClass, setSelectedClass] = useState<ClassReferenceEntry | null>(initialClass)
   const [selectedSubclass, setSelectedSubclass] = useState<ReferenceSubclassView | null>(null)
@@ -265,32 +241,13 @@ export default function ReferenceGuide({
   const subclassFeatures = useMemo(() => buildTemplateFeatures(selectedSubclassTemplate, levels), [selectedSubclassTemplate, levels])
 
   if (section === "spells") {
-    return (
-      <SpellReference
-        character={character}
-        canManage={canManage}
-        onClose={() => setSection("home")}
-        onCharacterChanged={onCharacterChanged}
-      />
-    )
+    return <SpellReference character={character} canManage={canManage} onClose={() => setSection("home")} onCharacterChanged={onCharacterChanged} />
   }
 
   function goBack() {
-    if (section === "home") {
-      onClose()
-      return
-    }
-    if (section === "subclass-detail") {
-      setSelectedSubclass(null)
-      setSection("class-detail")
-      return
-    }
-    if (section === "class-detail") {
-      setSelectedClass(null)
-      setSelectedSubclass(null)
-      setSection("classes")
-      return
-    }
+    if (section === "home") { onClose(); return }
+    if (section === "subclass-detail") { setSelectedSubclass(null); setSection("class-detail"); return }
+    if (section === "class-detail") { setSelectedClass(null); setSelectedSubclass(null); setSection("classes"); return }
     setSection("home")
   }
 
@@ -318,15 +275,9 @@ export default function ReferenceGuide({
             : "Болезни, безумия и дикая магия"
 
   const isDruid = selectedClass?.id === "druid"
-  const classSummary = isDruid
-    ? druidReference.mechanicalSummary
-    : classTemplate?.mechanical_summary?.trim() || selectedClass?.tagline || ""
-  const classNarration = isDruid
-    ? druidReference.authorDescription
-    : classTemplate?.author_description?.trim() || selectedClass?.description || ""
-  const classComment = isDruid
-    ? druidReference.authorComment
-    : classTemplate?.author_comment?.trim() || ""
+  const classSummary = isDruid ? druidReference.mechanicalSummary : classTemplate?.mechanical_summary?.trim() || selectedClass?.tagline || ""
+  const classNarration = isDruid ? druidReference.authorDescription : classTemplate?.author_description?.trim() || selectedClass?.description || ""
+  const classComment = isDruid ? druidReference.authorComment : classTemplate?.author_comment?.trim() || ""
   const subclassNarration = selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.voss || selectedSubclass?.summary || ""
   const subclassComment = selectedSubclassTemplate?.author_comment?.trim() || selectedSubclass?.voss || ""
 
@@ -335,10 +286,7 @@ export default function ReferenceGuide({
       <section className="reference-guide-page">
         <header className="reference-guide-header">
           <button className="icon-button" type="button" onClick={goBack} aria-label={section === "home" ? "Закрыть справочник" : "Назад"}>←</button>
-          <div>
-            <h2>{title}</h2>
-            {section === "home" && <p>Единая база правил и игровых материалов</p>}
-          </div>
+          <div><h2>{title}</h2>{section === "home" && <p>Единая база правил и игровых материалов</p>}</div>
           <span />
         </header>
 
@@ -346,20 +294,13 @@ export default function ReferenceGuide({
           <main className="reference-guide-content">
             <div className="reference-guide-intro surface">
               <span className="reference-guide-intro__mark">⌘</span>
-              <div>
-                <strong>Один справочник вместо отдельных баз</strong>
-                <p>Каждый тип материала живёт в своём разделе, но открывается из одного места.</p>
-              </div>
+              <div><strong>Один справочник вместо отдельных баз</strong><p>Каждый тип материала живёт в своём разделе, но открывается из одного места.</p></div>
             </div>
             <div className="reference-guide-grid">
               {sections.map((item) => (
                 <button className="reference-guide-section surface" type="button" key={item.id} onClick={() => setSection(item.id)}>
                   <span className="reference-guide-section__icon">{item.icon}</span>
-                  <span className="reference-guide-section__copy">
-                    <strong>{item.title}</strong>
-                    <small>{item.copy}</small>
-                    <em>{item.meta}</em>
-                  </span>
+                  <span className="reference-guide-section__copy"><strong>{item.title}</strong><small>{item.copy}</small><em>{item.meta}</em></span>
                   <span className="reference-guide-section__chevron">›</span>
                 </button>
               ))}
@@ -369,10 +310,7 @@ export default function ReferenceGuide({
 
         {section === "classes" && (
           <main className="reference-guide-content reference-guide-content--list">
-            <div className="reference-guide-section-note">
-              <strong>Класс → прогрессия → подкласс</strong>
-              <p>Открой класс, затем нужную специализацию. Внутри показываются реальные уровневые правила из каталога кампании.</p>
-            </div>
+            <div className="reference-guide-section-note"><strong>Класс → прогрессия → подкласс</strong><p>Открой класс, затем нужную специализацию. Внутри показываются реальные уровневые правила из каталога кампании.</p></div>
             {catalogLoading && <div className="reference-catalog-status">Загружаю правила кампании…</div>}
             {catalogError && <div className="reference-catalog-status is-error">Каталог временно недоступен: {catalogError}</div>}
             <div className="reference-class-list">
@@ -397,15 +335,8 @@ export default function ReferenceGuide({
               <span className="reference-class-hero__monogram">{selectedClass.name.slice(0, 1)}</span>
               <div><h3>{selectedClass.name}</h3><span>{selectedClass.nameEn}</span><p>{classTagline(selectedClass)}</p></div>
             </div>
-
-            <section className="reference-class-mechanics surface">
-              <span>Коротко о механике</span>
-              <p>{classSummary}</p>
-            </section>
-            <section className="reference-class-description">
-              <span>{classTemplate?.author_description?.trim() || isDruid ? "Рейнар Восс" : "Описание класса"}</span>
-              <p>{classNarration}</p>
-            </section>
+            <section className="reference-class-mechanics surface"><span>Коротко о механике</span><p>{classSummary}</p></section>
+            <section className="reference-class-description"><span>{classTemplate?.author_description?.trim() || isDruid ? "Рейнар Восс" : "Описание класса"}</span><p>{classNarration}</p></section>
             {classComment && <section className="reference-voss-note surface"><span>Заметка Восса</span><p>{classComment}</p></section>}
 
             <section className="reference-class-feature-section">
@@ -448,15 +379,8 @@ export default function ReferenceGuide({
               <span className="reference-class-hero__monogram">{selectedSubclass.name.slice(0, 1)}</span>
               <div><h3>{selectedSubclass.name}</h3><span>{selectedClass.name}</span><p>{selectedSubclass.summary}</p></div>
             </div>
-
-            <section className="reference-class-description">
-              <span>{selectedSubclassTemplate?.author_description?.trim() || selectedSubclass.voss ? "Рейнар Восс" : "Описание подкласса"}</span>
-              <p>{subclassNarration}</p>
-            </section>
-            {subclassComment && subclassComment !== subclassNarration && (
-              <section className="reference-voss-note surface"><span>Заметка Восса</span><p>{subclassComment}</p></section>
-            )}
-
+            <section className="reference-class-description"><span>{selectedSubclassTemplate?.author_description?.trim() || selectedSubclass.voss ? "Рейнар Восс" : "Описание подкласса"}</span><p>{subclassNarration}</p></section>
+            {subclassComment && subclassComment !== subclassNarration && <section className="reference-voss-note surface"><span>Заметка Восса</span><p>{subclassComment}</p></section>}
             <section className="reference-class-feature-section">
               <div className="reference-subclass-section__head"><span>Прогрессия подкласса</span><small>{subclassFeatures.length}</small></div>
               <div className="reference-class-feature-list">
@@ -466,11 +390,7 @@ export default function ReferenceGuide({
                     <p>{feature.description}</p>
                     {feature.facts.length ? <ul className="reference-rule-facts">{feature.facts.map((fact) => <li key={fact}>{fact}</li>)}</ul> : null}
                   </article>
-                )) : (
-                  <div className="reference-catalog-status">
-                    Для этой специализации пока есть справочное описание, но подробные уровневые карточки ещё не загружены.
-                  </div>
-                )}
+                )) : <div className="reference-catalog-status">Для этой специализации пока есть справочное описание, но подробные уровневые карточки ещё не загружены.</div>}
               </div>
             </section>
           </main>
