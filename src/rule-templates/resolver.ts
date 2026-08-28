@@ -183,6 +183,18 @@ function choiceContributions(
   })
 }
 
+function sourceLevelForBundle(
+  bundle: CharacterTemplateBundle,
+  characterLevel: number,
+  classLevels: ReadonlyMap<string, number>,
+): number {
+  if (bundle.template.kind === "subclass" && bundle.template.parent_template_id) {
+    const parentClassLevel = classLevels.get(bundle.template.parent_template_id)
+    if (parentClassLevel !== undefined) return Math.max(1, parentClassLevel)
+  }
+  return Math.max(1, bundle.assignment.template_level || characterLevel)
+}
+
 /**
  * Pure parser between rule-template data and Character Engine input.
  * It knows class/subclass levels and persistent choices, but never resolves HP,
@@ -191,9 +203,14 @@ function choiceContributions(
 export function resolveTemplateBundles(bundles: CharacterTemplateBundle[], characterLevel: number): TemplateSourceResolution {
   const contributions: CharacterContribution[] = []
   const nodes = new Map<string, TemplateSourceNode>()
+  const classLevels = new Map(
+    bundles
+      .filter((bundle) => bundle.template.kind === "class")
+      .map((bundle) => [bundle.template.id, Math.max(1, bundle.assignment.template_level || characterLevel)] as const),
+  )
 
   for (const bundle of bundles) {
-    const effectiveLevel = Math.max(1, bundle.assignment.template_level || characterLevel)
+    const effectiveLevel = sourceLevelForBundle(bundle, characterLevel, classLevels)
     const root = templateRootSource(bundle)
     upsertNode(nodes, {
       id: root.id,
