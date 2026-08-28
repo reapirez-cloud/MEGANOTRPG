@@ -1,5 +1,6 @@
 import type {
   AbilityKey,
+  ActionResourceCost,
   CharacterCondition,
   CharacterContribution,
   CharacterSource,
@@ -34,6 +35,12 @@ function presentationPayload(value?: StoredMechanicPresentation): GrantPayload |
   }
 }
 
+function actionCosts(mechanic: Extract<StoredMechanic, { type: "action" }>): ActionResourceCost[] | undefined {
+  if (mechanic.resourceCosts?.length) return mechanic.resourceCosts
+  if (mechanic.resourceKey && mechanic.resourceCost) return [{ key: mechanic.resourceKey, amount: mechanic.resourceCost }]
+  return undefined
+}
+
 export function contributionForStoredMechanic(mechanic: StoredMechanic, source: CharacterSource): CharacterContribution {
   const id = `${source.id}:mechanic:${mechanic.id}`
   const operation = mechanic.grantOperation || "GRANT"
@@ -52,9 +59,34 @@ export function contributionForStoredMechanic(mechanic: StoredMechanic, source: 
     const attackParts = abilityModifierFormula(mechanic.attackAbility)
     if (mechanic.proficient) attackParts.push(reference("core.proficiencyBonus"))
     if (mechanic.attackFlat) attackParts.push(literal(mechanic.attackFlat))
-    const damage = (mechanic.damage || []).map((entry) => { const modifier = actionDamageFormula(entry); return { key: entry.key, type: entry.damageType, dice: { count: entry.count, sides: entry.sides }, ...(modifier ? { modifier } : {}) } })
+    const damage = (mechanic.damage || []).map((entry) => {
+      const modifier = actionDamageFormula(entry)
+      return { key: entry.key, type: entry.damageType, dice: { count: entry.count, sides: entry.sides }, ...(modifier ? { modifier } : {}) }
+    })
+    const resourceCosts = actionCosts(mechanic)
     const presentation = presentationPayload(mechanic.presentation)
-    return withPriority(withCondition({ id, kind: "grant", operation, target: "action", key: mechanic.key, ...variant, payload: { label: mechanic.label, economy: mechanic.economy, ...(mechanic.range ? { range: mechanic.range } : {}), ...(attackParts.length ? { attack: { bonus: sumFormula(attackParts), target: "armor_class" } } : {}), ...(damage.length ? { damage } : {}), ...(mechanic.resourceKey && mechanic.resourceCost ? { resourceCosts: [{ key: mechanic.resourceKey, amount: mechanic.resourceCost }] } : {}), tags: mechanic.tags || [], ...(presentation ? { presentation } : {}) }, source }, mechanic.condition), mechanic.priority)
+    return withPriority(withCondition({
+      id,
+      kind: "grant",
+      operation,
+      target: "action",
+      key: mechanic.key,
+      ...variant,
+      payload: {
+        label: mechanic.label,
+        economy: mechanic.economy,
+        ...(mechanic.range ? { range: mechanic.range } : {}),
+        ...(attackParts.length ? { attack: { bonus: sumFormula(attackParts), target: "armor_class" } } : {}),
+        ...(damage.length ? { damage } : {}),
+        ...(resourceCosts?.length ? { resourceCosts } : {}),
+        ...(mechanic.costOptions?.length ? { costOptions: mechanic.costOptions } : {}),
+        ...(mechanic.requirements?.length ? { requirements: mechanic.requirements } : {}),
+        ...(mechanic.effects?.length ? { effects: mechanic.effects } : {}),
+        tags: mechanic.tags || [],
+        ...(presentation ? { presentation } : {}),
+      },
+      source,
+    }, mechanic.condition), mechanic.priority)
   }
   return withPriority(withCondition({ id, kind: "grant", operation, target: "spell", key: mechanic.key, variantKey: mechanic.variantKey || `mechanic-${mechanic.id}`, payload: mechanic.payload, source }, mechanic.condition), mechanic.priority)
 }
@@ -81,12 +113,7 @@ export function featureMechanicContributions(features: CharacterFeature[]): Char
   return contributions
 }
 
-export type ItemCurseInfo = {
-  cursed: boolean
-  description: string
-  showCurseToPlayer: boolean
-  showCurseEffectToPlayer: boolean
-}
+export type ItemCurseInfo = { cursed: boolean; description: string; showCurseToPlayer: boolean; showCurseEffectToPlayer: boolean }
 
 export function itemCurseInfo(item: Pick<InventoryItem, "mechanics">): ItemCurseInfo {
   const marker = mechanicsArray(item.mechanics).find((mechanic) => mechanic.type === "grant" && mechanic.target === "trait" && mechanic.key === "curse:item")
@@ -134,12 +161,15 @@ export function mechanicSummary(mechanic: StoredMechanic): string {
       const description = payload && typeof payload === "object" && !Array.isArray(payload) ? (payload as Record<string, unknown>).description : ""
       result = typeof description === "string" && description.trim() ? `Проклятие: ${description.trim()}` : "Проклято"
     } else {
-      const nouns: Record<string, string> = { resistance: "Сопротивление", immunity: "Иммунитет", language: "Язык", proficiency: "Владение", sense: "Чувство", feature: "Особенность", trait: "Черта" }
+      const nouns: Record<string, string> = { resistance: "Сопротивление", immunity: "Иммунитет", language: "Язык", proficiency: "Владение", sense: "Чувство", feature: "Особенность", trait: "Черта", value: "Значение", permission: "Разрешение" }
       result = `${nouns[mechanic.target] || mechanic.target}: ${mechanic.key}`
     }
   }
   else if (mechanic.type === "resource") result = `${mechanic.label}: ${formulaLabel(mechanic.max)}`
-  else if (mechanic.type === "action") result = `Действие: ${mechanic.label}${mechanic.resourceKey && mechanic.resourceCost ? ` · −${mechanic.resourceCost} ресурс` : ""}`
+  else if (mechanic.type === "action") {
+    const cost = mechanic.resourceCosts?.[0] || (mechanic.resourceKey && mechanic.resourceCost ? { key: mechanic.resourceKey, amount: mechanic.resourceCost } : null)
+    result = `Действие: ${mechanic.label}${cost ? ` · −${cost.amount} ${cost.key}` : ""}`
+  }
   else result = `Заклинание: ${mechanic.payload.spell.name}`
   return [result, mechanic.activation === "equipped" ? "надето" : "", conditionLabel(mechanic.condition)].filter(Boolean).join(" · ")
 }
