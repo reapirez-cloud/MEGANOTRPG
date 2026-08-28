@@ -214,6 +214,7 @@ export function resolveTemplateBundles(bundles: CharacterTemplateBundle[], chara
 
   for (const bundle of bundles) {
     const effectiveLevel = sourceLevelForBundle(bundle, characterLevel, classLevels)
+    const rootUnlockLevel = bundle.template.kind === "subclass" ? Math.max(1, bundle.template.unlock_level || 1) : 1
     const root = templateRootSource(bundle)
     upsertNode(nodes, {
       id: root.id,
@@ -222,9 +223,14 @@ export function resolveTemplateBundles(bundles: CharacterTemplateBundle[], chara
       nodeKind: "template",
       templateId: bundle.template.id,
       templateKind: bundle.template.kind,
-      unlockLevel: 1,
+      unlockLevel: rootUnlockLevel,
       mechanicIds: [],
     })
+
+    // A subclass is a child of the class assignment. Keeping the assignment is
+    // useful when a GM temporarily lowers the class level, but CE must emit none
+    // of its mechanics until the parent class reaches the subclass unlock level.
+    if (bundle.template.kind === "subclass" && effectiveLevel < rootUnlockLevel) continue
 
     contributions.push(...mechanicContributions(bundle, bundle.template.mechanics || [], effectiveLevel, 1, nodes))
     for (const definition of bundle.template.choices || []) contributions.push(...choiceContributions(bundle, definition, effectiveLevel, 1, nodes))
