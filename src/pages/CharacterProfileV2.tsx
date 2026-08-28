@@ -19,6 +19,7 @@ import type {
 } from "../types/characterSheet.ts"
 
 import ResolvedCharacterSheet from "../components/characters/ResolvedCharacterSheet.tsx"
+import CharacterClassPanel from "../components/characters/CharacterClassPanel.tsx"
 import CharacterSpellbook from "../components/characters/CharacterSpellbook.tsx"
 import CharacterInventory from "../components/characters/CharacterInventory.tsx"
 import CharacterSheetEditor from "../components/characters/CharacterSheetEditor.tsx"
@@ -33,7 +34,7 @@ import ContextActionSheet, { type ContextAction } from "../components/common/Con
 import { useLongPressItem } from "../hooks/useLongPressItem.ts"
 
 type Props = { characterId: string; onBack: () => void; embedded?: boolean }
-type Tab = "sheet" | "spells" | "inventory" | "diary" | "arts"
+type Tab = "sheet" | "class" | "spells" | "inventory" | "diary" | "arts"
 type InventoryMode = "inventory" | "equipment"
 type Editor =
   | { type: "avatar" }
@@ -399,8 +400,8 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
               {active && <span className="profile-v3__active">Активен</span>}
             </div>
             {member && <p>Игрок · {member.display_name}</p>}
-            <button className="profile-v3__class" type="button" onClick={() => setReference({ section: "classes", classId })}>
-              <span><strong>{currentCharacter.character_class || "Класс не указан"}</strong><small>{currentCharacter.level} уровень</small></span>
+            <button className="profile-v3__class" type="button" onClick={() => setTab("class")}>
+              <span><strong>{currentCharacter.character_class || "Класс не указан"}</strong><small>{currentCharacter.level} уровень · открыть класс</small></span>
               <i aria-hidden="true">›</i>
             </button>
             {currentCharacter.bio && <p className="profile-v3__bio">{currentCharacter.bio}</p>}
@@ -413,6 +414,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
 
         <nav className="profile-v3__tabs" aria-label="Разделы персонажа">
           <button className={tab === "sheet" ? "is-active" : ""} type="button" onClick={() => setTab("sheet")}><span aria-hidden="true">◈</span>Лист</button>
+          <button className={tab === "class" ? "is-active" : ""} type="button" onClick={() => setTab("class")}><span aria-hidden="true">◇</span>Класс</button>
           {(magicSectionVisible || canManage) && <button className={tab === "spells" ? "is-active" : ""} type="button" onClick={() => setTab("spells")}><span aria-hidden="true">✦</span>Магия</button>}
           <button className={tab === "inventory" ? "is-active" : ""} type="button" onClick={() => setTab("inventory")}><span aria-hidden="true">▣</span>Вещи</button>
           <button className={tab === "diary" ? "is-active" : ""} type="button" onClick={() => setTab("diary")}><span aria-hidden="true">≡</span>Дневник</button>
@@ -442,6 +444,14 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
               setSpellLevelFilter(level ?? null)
               setTab("spells")
             }}
+          />
+        )}
+
+        {!data.loading && tab === "class" && engine.view && (
+          <CharacterClassPanel
+            characterId={characterId}
+            contract={engine.view.contract}
+            onOpenReference={() => setReference({ section: "classes", classId })}
           />
         )}
 

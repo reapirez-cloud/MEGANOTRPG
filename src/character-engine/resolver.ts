@@ -13,6 +13,7 @@ import { abilityModifier, proficiencyBonusForLevel } from "./numeric.ts"
 import { resolveResources } from "./resources.ts"
 import { resolveSpells } from "./spells.ts"
 import { applySuppressions } from "./suppressions.ts"
+import { resolveValues } from "./values.ts"
 import {
   ABILITY_KEYS,
   PASSIVE_KEYS,
@@ -196,6 +197,20 @@ export function resolveCharacter(
     formulaContext[`abilities.${ability}.modifier`] = abilities[ability].modifier
   }
 
+  // Named scalar values are intentionally ruleset-agnostic. A parser can publish
+  // anything from a scaling die size to a cyberware rating and actions/resources
+  // may consume it through FormulaExpression references.
+  const values = resolveValues(
+    grants,
+    activeContributions,
+    state,
+    maxHp.value,
+    formulaContext,
+  )
+  for (const value of values) {
+    formulaContext[`values.${value.stateKey}`] = value.value.value
+  }
+
   const resources = resolveResources(
     grants,
     activeContributions,
@@ -302,6 +317,7 @@ export function resolveCharacter(
     },
     passives,
     spellcasting: { byAbility: spellcastingByAbility },
+    values,
     resources,
     actions,
     spells,

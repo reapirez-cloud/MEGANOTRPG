@@ -24,16 +24,19 @@ function grantLabel(contract: ResolvedCharacterContract, resource: ResolvedResou
   return resource.key.split(/[_-]+/g).map((part) => part ? `${part[0]!.toLocaleUpperCase("ru-RU")}${part.slice(1)}` : part).join(" ")
 }
 
+/**
+ * Persistent runtime state is shared by every CE resource, including spell slots.
+ * Definition/max/recharge come from the resolved contract; the database stores
+ * only the mutable current value plus snapshots needed for atomic operations.
+ */
 export function resourceSyncInputs(contract: ResolvedCharacterContract): ResourceSyncInput[] {
-  return contract.resources
-    .filter((resource) => !resource.stateKey.startsWith("spell_slot_"))
-    .map((resource) => ({
-      stateKey: resource.stateKey,
-      current: resource.current,
-      max: resource.max.value,
-      label: grantLabel(contract, resource),
-      recharge: resource.recharge,
-    }))
+  return contract.resources.map((resource) => ({
+    stateKey: resource.stateKey,
+    current: resource.current,
+    max: resource.max.value,
+    label: grantLabel(contract, resource),
+    recharge: resource.recharge,
+  }))
 }
 
 export function resourceCostInputs(contract: ResolvedCharacterContract, costs: Array<{ stateKey: string; amount: number; current: number; max: number }>): ResourceCostInput[] {

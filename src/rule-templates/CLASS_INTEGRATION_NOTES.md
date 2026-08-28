@@ -6,50 +6,38 @@
 
 ## Core rule
 
-Character Engine (CE) is the mechanical source of truth for character data. A class/subclass parser must emit structured contributions into CE. The UI reads the resolved contract; it must not re-parse class rules.
+Character Engine (CE) is the mechanical source of truth for character data. A class/subclass parser emits structured contributions into CE. The UI reads the resolved contract; it must not re-parse class rules.
 
-A class feature is not considered integrated merely because a `feature` card exists. It is integrated when:
+**CE is a calculator and resource ledger, not a virtual GM and not a world-state simulator.**
+
+A class feature is considered integrated when:
 
 1. the player-facing rule is precise;
-2. the rule reaches CE as structured data;
-3. any resource/action/spell/grant CE can actually represent is emitted natively;
-4. dependencies and upgrades are explicit rather than inferred from prose;
-5. GM suppression can remove the feature through a stable `sourceKey`.
+2. the rule reaches CE as structured data where CE has real character-side state to resolve;
+3. finite resources, spell costs, numeric bonuses, grants, persistent choices and other mechanically knowable values are native;
+4. dependencies and upgrades that depend on character-side state are explicit;
+5. GM suppression can remove the feature through a stable `sourceKey`;
+6. the UI never pretends CE verified fiction that CE cannot know.
 
-## Conditions: engine-enforced vs GM-enforced
+## What CE may enforce
 
-Do **not** build a world-state simulator just to decide whether a class button may be pressed.
-
-Split requirements into two categories.
-
-### 1. Engine-enforced requirements
-
-Use these only when CE can know the answer from the character contract/state itself.
+CE may disable/block or automatically resolve only facts it actually owns.
 
 Examples:
 - minimum class level;
 - a selected persistent option;
-- resource current value (`wild_shape >= 1`);
-- another owned class feature;
-- an active mode/state that MEGANOT explicitly tracks;
-- a spell slot of the required level;
+- resource current/max value (`wild_shape`, Ki/Focus, Rage, Superiority Dice, spell slots, charges);
+- another owned feature/grant;
+- a resource recharge limit represented by a real CE resource;
 - an upgrade replacing an earlier feature;
-- a subclass requiring its parent class.
+- a subclass requiring its parent class;
+- a persistent state only when MEGANOT explicitly stores that state as authoritative character data.
 
-CE may disable/block an action when an engine-enforced requirement is false.
+If a limit can be represented honestly as a resource, prefer a resource. Example: “once per long rest” can be a `1/1` resource with long-rest recharge.
 
-Recommended shape:
+## What CE must NOT enforce
 
-```ts
-requirements: [
-  { kind: "resource", key: "wild_shape", minimum: 1, enforcement: "engine" },
-  { kind: "feature", key: "subclass:druid:spores:symbiotic-entity", enforcement: "engine" },
-]
-```
-
-### 2. GM-enforced / narrative requirements
-
-Use this whenever the condition depends on the scene or fiction and CE cannot reliably know it.
+Do **not** create fake parser state, fake flags, or `GM-enforced` requirements for things the engine cannot observe.
 
 Examples:
 - target is standing in water;
@@ -60,71 +48,66 @@ Examples:
 - a suitable plant/tree is nearby;
 - the target is willing;
 - the beast was previously seen;
-- the terrain satisfies a feature;
+- a hit actually occurred;
+- a saving throw actually failed;
+- initiative has just been rolled unless the application has a real initiative event/state;
+- “once per turn” unless turns are explicitly tracked by the current gameplay runtime;
 - the GM decides a creature/object qualifies.
 
-**Important:** a GM-enforced requirement does NOT hide or disable the action. The player can use the button. The UI should show the condition, and the GM decides whether it was legal in the scene.
+Those are **execution rules**. Put them in the feature/action explanation so the player and GM know exactly what to do. They are not parser requirements and must not manufacture a fake `*_confirmed` or `*_available` fact merely to make a button look smart.
 
-Recommended shape:
+The parser may still expose the resource-side action. Example: an action can spend one Wild Shape use; the rule text explains what transformation occurs. CE does not need to simulate the beast form to account for the resource.
 
-```ts
-requirements: [
-  {
-    kind: "narrative",
-    text: "Цель находится в воде",
-    enforcement: "gm",
-  },
-]
-```
+## Resource-side actions
 
-If the player presses the action when the narrative condition is not satisfied, that is a table/GM ruling. Do not remove the class ability from CE just because MEGANOT cannot verify the fiction.
+For a deliberate class ability, emit an action when CE has something real to account for:
+
+- resource spending;
+- one of several alternative resource payments;
+- restoring/converting a resource;
+- attack/damage formulas that are directly rollable by the application;
+- other character-side values that the current runtime genuinely owns.
+
+The live character-sheet action path must be server-authoritative for resource mutations. Client-side `executeAction`/preview logic is not a substitute for persistent resource state.
+
+Semantic consequences that are not persisted by the current runtime stay in the rule description. Do not invent state merely so the parser can “execute” them.
 
 ## Rule payload standard
 
-For every meaningful class/subclass feature, store enough structured rule data that another consumer does not need to parse Russian prose.
+Store enough structured data for the portions the application can truthfully consume without parsing Russian prose.
 
 Where relevant, capture:
-- `activation` / action economy;
-- `cost` / resource consumption;
-- `requirements`;
-- `target` / range / area;
-- attack or saving throw;
-- damage/healing/temp HP dice and modifiers;
-- conditions applied/removed;
-- duration;
-- frequency / recharge;
+- activation / action economy;
+- resource cost and alternative payments;
+- target / range / area for display and roll tooling;
+- attack, save, damage/healing/temp-HP formulas where the runtime actually supports them;
+- duration for display;
+- finite uses / recharge;
 - scaling by class level, proficiency bonus, or ability modifier;
-- dependencies (`dependsOn`, active modes, selected choices);
+- persistent choices;
 - replacement/upgrade behavior;
-- GM-enforced narrative conditions.
+- resource-side dependencies.
 
-The prose is for humans. The structured mechanic is for CE and other consumers.
+Do not add structured “requirements” whose only consumer would be a human GM. The prose is the authoritative place for scene/fiction requirements.
 
-## Actions and passive features
+## Spells from classes/subclasses
 
-If a feature can be deliberately used in play, emit an `action` whenever the current generic CE action model can represent it.
+If a class/subclass automatically grants a spell at a level, emit a CE `spell` access from that source.
 
-If it consumes a finite pool, emit a `resource` under the same logical source.
-
-If it grants a spell, emit a CE `spell` with the real casting method and costs.
-
-If it grants resistance, immunity, proficiency, numeric bonuses, etc., emit the corresponding native grant/numeric contribution instead of only describing it in a feature card.
-
-The associated feature card may still exist for explanation, but it is never a substitute for native CE data.
+- unlock it from the source level, not total character level;
+- subclass level follows its parent class level;
+- use `always_prepared` when the rule says the spell is always prepared;
+- do not duplicate it into the character's manually learned spell collection;
+- the class tab may render the access under the class/subclass source;
+- casting still spends the real shared spell-slot resource (or another declared casting resource).
 
 ## Dependencies and upgrades
 
-Never encode dependencies only in prose such as "while X is active".
+Use structured dependencies only when they are based on authoritative CE character state.
 
-Examples:
-- `Spreading Spores` depends on `Symbiotic Entity`;
-- `Stormborn` depends on `Wrath of the Sea` being active;
-- `Full of Stars` depends on `Starry Form`;
-- a level-15 upgrade depends on the persistent choice made at level 7.
+For a true upgrade of the same mechanical identity, prefer replacement semantics (`REPLACE`) rather than granting two competing versions.
 
-Use stable keys and structured fields such as `dependsOn`, `requiresMode`, `requirements`, or choice-level mechanics.
-
-For a true upgrade of the same mechanical feature, prefer replacement semantics (`REPLACE`) rather than granting two competing versions.
+If a later feature changes the rule but the trigger remains scene-dependent, store the changed rule precisely in the feature description/payload without inventing an engine state.
 
 ## Persistent choices
 
@@ -140,9 +123,11 @@ A choice is selected once unless the rule explicitly allows changing it.
 Every independently suppressible feature needs a stable `sourceKey`.
 
 - related action/resource/spell/rule card should normally share the same `sourceKey`;
-- suppressing the source removes the entire mechanical package;
+- suppressing the source removes the complete mechanical package;
 - do not make UI-specific suppression hacks;
 - source hierarchy belongs to parser/CE read-model, not class-specific consumers.
+
+This is an administrative source switch, not “GM enforcement” of a scene condition.
 
 ## Player-facing explanations
 
@@ -151,15 +136,15 @@ Mechanical descriptions must answer, where applicable:
 **Trigger/condition → activation → cost → target → exact effect → numbers/dice → duration → limit/recharge.**
 
 Bad:
-- "расширяет возможности друида";
-- "усиливает лечение";
-- "развивает направление";
-- "становится эффективнее".
+- “расширяет возможности друида”;
+- “усиливает лечение”;
+- “развивает направление”;
+- “становится эффективнее”.
 
 Good:
-- "Когда заклинание 1+ уровня восстанавливает HP другому существу, друид восстанавливает себе 2 + уровень ячейки HP."
+- “Когда заклинание 1+ уровня восстанавливает HP другому существу, друид восстанавливает себе 2 + уровень ячейки HP.”
 
-Never use vague prose as a substitute for a rule.
+Never use vague prose as a substitute for a rule. Conversely, never use fake engine state as a substitute for a clear execution rule.
 
 ## Narrator / Reynar Voss
 
@@ -173,16 +158,15 @@ He may provide:
 
 He must never mention:
 - Character Engine / CE / runtime;
-- editions, revisions, 2014/2024;
-- compatibility or overrides;
-- "we use", "we changed", "our implementation";
+- editions, revisions, compatibility or overrides;
+- “we use”, “we changed”, “our implementation”;
 - why developers selected one rule version over another.
 
 Technical history stays in internal metadata/comments only.
 
 ## Druid project-specific rules
 
-These are internal implementation facts and must not leak into the UI/narrator text.
+These are internal implementation facts and must not leak into narrator text.
 
 - Base Druid follows the project's current base package.
 - Wild Shape uses the project's pinned beast-stat/HP model.
@@ -193,14 +177,15 @@ These are internal implementation facts and must not leak into the UI/narrator t
 - Do not use alternate usage scaling.
 - Druid subclass unlock is tied to Druid class level, not total character level.
 
-### Druid dependency examples
+### Druid resource examples
 
-- `Wild Resurgence`: CE handles spell-slot/Wild Shape resources; no world condition needed.
+- `Wild Shape`: CE spends `wild_shape`; transformation execution is explained, not simulated by fake parser state.
+- `Wild Companion`: CE spends either Wild Shape or a spell slot; familiar creation/existence is the rule execution.
+- `Wild Resurgence`: CE can perform slot ↔ Wild Shape conversion because both sides are resources. The once-per-long-rest reverse exchange is another `1/1` resource. “Once per turn” remains prose until turn tracking actually exists.
 - `Elemental Fury`: persistent choice at level 7; level 15 upgrades the selected branch automatically.
-- `Stormborn`: mechanical dependency on `Wrath of the Sea` active mode if that mode is tracked.
-- `Full of Stars`: mechanical dependency on `Starry Form` active mode if tracked.
-- `Spreading Spores`: dependency on `Symbiotic Entity`; scene placement details can remain GM-enforced.
-- Any rule such as "target is in water" or "corpse is nearby" stays visible and usable with `enforcement: "gm"` unless MEGANOT later gains reliable world-state tracking.
+- `Beast Spells`: explanation changes what is legal while transformed; do not invent `wild_shape_active` merely to gate the parser unless the application later owns authoritative transformation state.
+- `Archdruid`: CE may expose resource restoration/conversion actions. “When initiative is rolled” is a trigger explained to the player unless initiative events become authoritative runtime state.
+- Scene requirements such as “target is in water” or “corpse is nearby” stay in the explanation only.
 
 ## Definition of done for one class
 
@@ -209,17 +194,18 @@ Do not call a class finished until all of these are checked:
 1. base class levels 1–20 are accurate;
 2. every included subclass is accurate;
 3. no placeholder descriptions remain;
-4. active abilities have CE actions where representable;
-5. finite pools have CE resources;
-6. spells are CE spells, not prose-only grants;
+4. finite pools have CE resources;
+5. resource-side deliberate abilities have usable server-authoritative actions;
+6. spells are CE spell accesses, not prose-only grants;
 7. passive mechanical grants are native where representable;
-8. dependencies and upgrades are structured;
-9. narrative conditions are marked GM-enforced rather than blocking actions;
+8. resource dependencies and upgrades are structured;
+9. scene/fiction requirements are explained, not faked as parser state;
 10. persistent choices survive level changes and unlock later mechanics;
 11. subclass level follows parent class level;
 12. GM suppression removes the complete source package;
 13. parser → `ResolvedCharacterContract` tests verify representative low/mid/high levels;
-14. reference text and Voss commentary contain no implementation meta;
-15. CI is green.
+14. resource mutations persist and are shared by sheet/chat;
+15. reference text and Voss commentary contain no implementation meta;
+16. CI is green.
 
 If any item above fails, the class is still in progress.

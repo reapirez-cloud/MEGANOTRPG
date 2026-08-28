@@ -2,6 +2,7 @@ import { parseActionGrantPayload, ActionEngineError } from "./actions.ts"
 import { validateFormula } from "./formulas.ts"
 import { parseResourceGrantPayload, ResourceEngineError } from "./resources.ts"
 import { parseSpellGrantPayload, SpellEngineError } from "./spells.ts"
+import { parseValueGrantPayload, ValueEngineError } from "./values.ts"
 import {
   ABILITY_KEYS,
   type CharacterCondition,
@@ -213,6 +214,18 @@ export function validateCharacterEngineInput(input: CharacterEngineInput) {
           parseResourceGrantPayload(contribution.payload)
         } catch (error) {
           if (error instanceof ResourceEngineError) {
+            throw new CharacterEngineInputError(
+              `contribution.${contribution.id}.payload: ${error.message}`,
+            )
+          }
+          throw error
+        }
+      }
+      if (contribution.target === "value" && contribution.operation !== "SUPPRESS") {
+        try {
+          parseValueGrantPayload(contribution.payload)
+        } catch (error) {
+          if (error instanceof ValueEngineError) {
             throw new CharacterEngineInputError(
               `contribution.${contribution.id}.payload: ${error.message}`,
             )

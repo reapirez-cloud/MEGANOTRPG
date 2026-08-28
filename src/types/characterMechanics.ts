@@ -1,6 +1,10 @@
 import type {
   AbilityKey,
+  ActionCostOption,
+  ActionEffectDefinition,
   ActionRange,
+  ActionRequirementDefinition,
+  ActionResourceCost,
   CharacterCondition,
   FormulaExpression,
   GrantPayload,
@@ -27,19 +31,11 @@ export type StoredMechanicPresentation = {
 type StoredMechanicMeta = {
   activation?: MechanicActivation
   condition?: CharacterCondition
-  /**
-   * Stable parser-side source group. Mechanics sharing a sourceKey are one GM
-   * switchable feature (for example Wild Shape resource + action + rules).
-   * CE treats the resulting CharacterSource as provenance only.
-   */
+  /** Stable parser-side source group. Mechanics sharing a sourceKey are one switchable feature. */
   sourceKey?: string
-  /** Stable mechanical variant used when a feature is upgraded/replaced. */
   variantKey?: string
-  /** Higher priority wins when an unlocked class feature intentionally replaces an earlier definition. */
   priority?: number
-  /** Class/subclass level upgrades use REPLACE instead of creating duplicate cards. */
   grantOperation?: StoredGrantOperation
-  /** Marks a mechanic as part of an item's curse. CE still resolves it normally; UI may hide it from players. */
   curseEffect?: boolean
 }
 
@@ -67,7 +63,6 @@ export type StoredResourceMechanic = StoredMechanicMeta & {
   key: string
   label: string
   max: number | FormulaExpression
-  /** Old stored rows may contain one string; adapters normalize both shapes. */
   recharge: ResourceRechargeTrigger | ResourceRechargeTrigger[]
   restore?: "full" | "amount"
   restoreAmount?: number
@@ -79,8 +74,8 @@ export type StoredActionDamage = {
   key: string
   label?: string
   damageType: string
-  count: number
-  sides: number
+  count: number | FormulaExpression
+  sides: number | FormulaExpression
   ability?: AbilityKey
   flat?: number
 }
@@ -96,8 +91,14 @@ export type StoredActionMechanic = StoredMechanicMeta & {
   proficient?: boolean
   attackFlat?: number
   damage?: StoredActionDamage[]
+  /** Legacy single-cost fields kept for existing rows. */
   resourceKey?: string
   resourceCost?: number
+  /** Canonical CE-native mechanics for new class/item definitions. */
+  resourceCosts?: ActionResourceCost[]
+  costOptions?: ActionCostOption[]
+  requirements?: ActionRequirementDefinition[]
+  effects?: ActionEffectDefinition[]
   tags?: string[]
   presentation?: StoredMechanicPresentation
 }

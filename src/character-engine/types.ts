@@ -122,6 +122,7 @@ export type NumericTarget =
   | "combat.maxHp"
   | "combat.speed"
   | `resources.${string}.max`
+  | `values.${string}`
   | `actions.${string}.attackBonus`
   | `actions.${string}.damage.${string}.modifier`
   | `spells.${string}.access.${string}.method.${string}.attackBonus`
@@ -163,6 +164,14 @@ export interface FormulaContribution {
   priority?: number
 }
 
+export type MechanicalData =
+  | string
+  | number
+  | boolean
+  | null
+  | MechanicalData[]
+  | { [key: string]: MechanicalData }
+
 export type ResourceRechargeTrigger =
   | "short_rest"
   | "long_rest"
@@ -192,6 +201,12 @@ export interface ResourceGrantPayload {
   label?: string
 }
 
+/** Generic non-consumable scalar such as die size, reach tier or system-specific rating. */
+export interface ValueGrantPayload {
+  value: number | FormulaExpression
+  label?: string
+}
+
 export type ActionRange =
   | { kind: "self" }
   | { kind: "touch" }
@@ -209,16 +224,23 @@ export interface ActionAttackDefinition {
   criticalThreshold?: number
 }
 
+/** Fully resolved dice exposed to renderers/executors. */
 export interface ActionDice {
   count: number
   sides: number
+}
+
+/** Dice definition may reference any scalar present in FormulaContext. */
+export interface ActionDiceDefinition {
+  count: number | FormulaExpression
+  sides: number | FormulaExpression
 }
 
 export interface ActionDamageDefinition {
   /** Stable identity so external modifiers can target one damage component. */
   key: string
   type: string
-  dice?: ActionDice
+  dice?: ActionDiceDefinition
   /** Optional deterministic modifier added to the dice result. */
   modifier?: FormulaExpression
 }
@@ -228,6 +250,70 @@ export interface ActionResourceCost {
   variantKey?: string
   amount: number
 }
+
+/** One alternative payment path. Mandatory resourceCosts, when present, apply in addition. */
+export interface ActionCostOption {
+  key: string
+  costs: ActionResourceCost[]
+  label?: string
+}
+
+export type ActionRequirementEnforcement = "engine" | "gm"
+
+/** Generic action prerequisite; no class/ruleset names are interpreted by CE. */
+export type ActionRequirementDefinition =
+  | {
+      kind: "condition"
+      condition: CharacterCondition
+      enforcement?: ActionRequirementEnforcement
+      label?: string
+    }
+  | {
+      kind: "resource"
+      key: string
+      variantKey?: string
+      minimum: number
+      enforcement?: ActionRequirementEnforcement
+      label?: string
+    }
+  | {
+      kind: "grant"
+      target: GrantTarget
+      key: string
+      variantKey?: string
+      enforcement?: ActionRequirementEnforcement
+      label?: string
+    }
+
+/** State mutations provide a generic mode lifecycle: actions can activate/end any named state. */
+export type ActionStateEffectDefinition =
+  | { kind: "state"; key: string; operation: "SET"; value: StateFactValue }
+  | { kind: "state"; key: string; operation: "UNSET" }
+  | { kind: "state"; key: string; operation: "ADD" | "SUBTRACT"; value: number }
+
+/** Resource effects plus action costs are enough to express generic resource conversion. */
+export interface ActionResourceEffectDefinition {
+  kind: "resource"
+  key: string
+  variantKey?: string
+  operation: "RESTORE" | "SPEND" | "SET"
+  amount: number | FormulaExpression
+}
+
+/**
+ * Semantic effects are intentionally opaque to the CE kernel. A ruleset/chat executor
+ * may interpret keys such as save, healing, movement or status without class hardcoding.
+ */
+export interface ActionSemanticEffectDefinition {
+  kind: "semantic"
+  key: string
+  payload?: MechanicalData
+}
+
+export type ActionEffectDefinition =
+  | ActionStateEffectDefinition
+  | ActionResourceEffectDefinition
+  | ActionSemanticEffectDefinition
 
 /**
  * Generic action definition. Weapons, class abilities and custom attacks all use
@@ -240,7 +326,12 @@ export interface ActionGrantPayload {
   range?: ActionRange
   attack?: ActionAttackDefinition
   damage?: ActionDamageDefinition[]
+  /** Mandatory costs. */
   resourceCosts?: ActionResourceCost[]
+  /** Alternative payment paths; at least one must be affordable when present. */
+  costOptions?: ActionCostOption[]
+  requirements?: ActionRequirementDefinition[]
+  effects?: ActionEffectDefinition[]
   tags?: string[]
 }
 
@@ -299,12 +390,10 @@ export interface SpellGrantPayload {
 
 /** JSON-compatible mechanical data attached to a grant. */
 export type GrantPayload =
-  | string
-  | number
-  | boolean
-  | null
+  | MechanicalData
   | FormulaExpression
   | ResourceGrantPayload
+  | ValueGrantPayload
   | ActionGrantPayload
   | SpellGrantPayload
   | GrantPayload[]
@@ -322,6 +411,8 @@ export type GrantTarget =
   | "feature"
   | "trait"
   | "resource"
+  | "value"
+  | "permission"
   | "action"
   | "spell"
 
@@ -434,6 +525,15 @@ export interface ResolvedResource {
   sources: ResolvedSourceRef[]
 }
 
+export interface ResolvedValue {
+  key: string
+  variantKey: string
+  stateKey: string
+  label?: string
+  value: ResolvedNumber
+  sources: ResolvedSourceRef[]
+}
+
 export interface ResolvedActionAttack {
   formula: FormulaExpression
   bonus: ResolvedNumber
@@ -459,6 +559,34 @@ export interface ResolvedActionResourceCost {
   available: boolean
 }
 
+export interface ResolvedActionCostOption {
+  key: string
+  label?: string
+  costs: ResolvedActionResourceCost[]
+  available: boolean
+}
+
+export interface ResolvedActionRequirement {
+  kind: ActionRequirementDefinition["kind"]
+  enforcement: ActionRequirementEnforcement
+  label?: string
+  satisfied: boolean
+}
+
+export type ResolvedActionEffect =
+  | ActionStateEffectDefinition
+  | {
+      kind: "resource"
+      key: string
+      variantKey: string
+      stateKey: string
+      operation: ActionResourceEffectDefinition["operation"]
+      amount: number
+      current: number
+      max: number
+    }
+  | ActionSemanticEffectDefinition
+
 export interface ResolvedAction {
   key: string
   variantKey: string
@@ -469,8 +597,11 @@ export interface ResolvedAction {
   attack?: ResolvedActionAttack
   damage: ResolvedActionDamage[]
   resourceCosts: ResolvedActionResourceCost[]
+  costOptions: ResolvedActionCostOption[]
+  requirements: ResolvedActionRequirement[]
+  effects: ResolvedActionEffect[]
   tags: string[]
-  /** False only when a required resolved resource is missing/insufficient. */
+  /** False when an engine-enforced requirement/cost cannot currently be satisfied. */
   available: boolean
   sources: ResolvedSourceRef[]
 }
@@ -542,6 +673,8 @@ export interface ResolvedCharacter {
   spellcasting: {
     byAbility: Record<AbilityKey, { saveDc: number; attackBonus: number }>
   }
+  /** Generic non-consumable named scalar values used by formulas/actions. */
+  values: ResolvedValue[]
   /** Dynamic section: empty array means UI should render no resource block. */
   resources: ResolvedResource[]
   /** Dynamic section: empty array means UI should render no actions/attacks block. */
