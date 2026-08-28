@@ -47,6 +47,28 @@ test("legacy adapter routes sheet math through Character Engine and ignores stal
   assert.equal(view.contract.combat.initiative.value, -1)
 })
 
+test("passive perception is derived by CE instead of trusting the stale sheet cache", () => {
+  const view = resolveLegacyCharacterEngineView({
+    character: { id: "c1", name: "Vita", level: 4 },
+    sheet: sheet({
+      wisdom: 20,
+      passive_perception: 10,
+      skill_proficiencies: { perception: 1 },
+    }),
+    spells: [],
+    features: [],
+  })
+
+  assert.equal(view.contract.abilities.wisdom.modifier, 5)
+  assert.equal(view.contract.skills.perception.proficiencyRank, 1)
+  assert.equal(view.contract.skills.perception.bonus.value, 7)
+  assert.equal(view.contract.passives.perception.value, 17)
+  assert.equal(
+    view.input.contributions.some((entry) => entry.kind === "numeric" && entry.target === "passives.perception" && entry.operation === "SET"),
+    false,
+  )
+})
+
 test("legacy spell slots become resources and spell access is not a free cast", () => {
   const view = resolveLegacyCharacterEngineView({
     character: { id: "c1", name: "William", level: 4 },
