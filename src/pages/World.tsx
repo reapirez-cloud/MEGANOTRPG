@@ -4,10 +4,12 @@ import CharacterAvatar from "../components/characters/CharacterAvatar"
 import CampaignImage from "../components/common/CampaignImage"
 import ContextActionSheet from "../components/common/ContextActionSheet"
 import type { ContextAction } from "../components/common/ContextActionSheet"
+import { ZoneHabitatNpcsSheet } from "../components/world/NpcZoneHabitatSheet"
 import WorldEditor from "../components/world/WorldEditor"
 import type { WorldEditorMode } from "../components/world/WorldEditor"
 import { useCharacters } from "../context/CharacterContext"
 import { useLongPressItem } from "../hooks/useLongPressItem"
+import { useNpcZoneHabitats } from "../hooks/useNpcZoneHabitats"
 import { useWorldContent } from "../hooks/useWorldContent"
 import { useWorldState } from "../hooks/useWorldState"
 import { locationAncestorIds } from "../lib/worldHierarchy"
@@ -91,11 +93,13 @@ export default function World() {
   const context = useCharacters()
   const world = useWorldContent()
   const state = useWorldState()
+  const habitats = useNpcZoneHabitats()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editor, setEditor] = useState<WorldEditorMode>(null)
   const [menuTarget, setMenuTarget] = useState<MenuTarget | null>(null)
   const [visibilityTarget, setVisibilityTarget] = useState<LocationEntry | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const [habitatEditorOpen, setHabitatEditorOpen] = useState(false)
   const [expandedSections, setExpandedSections] = useState<Set<string>>(() => new Set())
   const [error, setError] = useState("")
 
@@ -196,9 +200,22 @@ export default function World() {
     () => selected ? state.scenes.filter((scene) => scene.location_id === selected.id && scene.scene_state === "active") : [],
     [selected, state.scenes],
   )
+  const habitatNpcIds = useMemo(
+    () => new Set(selected ? habitats.npcIdsForZone(selected.id) : []),
+    [habitats, selected],
+  )
+  const npcsUsuallyHere = useMemo(
+    () => context.characters.filter((character) => character.character_type === "npc" && habitatNpcIds.has(character.id)),
+    [context.characters, habitatNpcIds],
+  )
+  const availableNpcs = useMemo(
+    () => context.characters.filter((character) => character.character_type === "npc").sort((left, right) => left.name.localeCompare(right.name, "ru")),
+    [context.characters],
+  )
 
   function openLocation(location: LocationEntry) {
     setSelectedId(location.id)
+    setHabitatEditorOpen(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -236,6 +253,12 @@ export default function World() {
     if (!result.ok) setError(result.error || "Не удалось опубликовать изменение в Хронике.")
   }
 
+  async function toggleZoneNpc(npcId: string, attached: boolean) {
+    if (!selected) return
+    const result = await habitats.setAttached(npcId, selected.id, attached)
+    if (!result.ok) setError(result.error || "Не удалось изменить обитателей зоны.")
+  }
+
   async function confirmDelete() {
     if (!deleteTarget) return
     const table = deleteTarget.kind === "section" ? "location_sections" : "location_links"
@@ -256,6 +279,7 @@ export default function World() {
       { id: "edit", icon: "✎", label: "Редактировать", detail: "Превью, подробное описание и арт", onSelect: () => setEditor({ type: "location-edit", location }) },
       { id: "child", icon: "＋", label: "Добавить подзону", detail: "Создать вложенную область", onSelect: () => setEditor({ type: "location", parentId: location.id }) },
       { id: "section", icon: "≡", label: "Добавить раздел", detail: "Лор, детали или полезная информация", onSelect: () => setEditor({ type: "location-section", locationId: location.id }) },
+      { id: "npcs", icon: "♟", label: "Обитатели зоны", detail: "Кого обычно можно встретить здесь", onSelect: () => { setSelectedId(location.id); setHabitatEditorOpen(true) } },
       { id: "visibility", icon: "◉", label: "Видимость", detail: visibilityLabel[location.visibility_mode], onSelect: () => setVisibilityTarget(location) },
       { id: "publish", icon: "✦", label: "Опубликовать в Хронике", detail: "Сообщить о значимом изменении", onSelect: () => publishLocation(location) },
       { id: "archive", icon: "⌁", label: location.lifecycle_state === "archived" ? "Вернуть из архива" : "Архивировать", detail: "История и старые сцены сохранятся", danger: location.lifecycle_state !== "archived", onSelect: () => toggleArchive(location) },
@@ -287,7 +311,7 @@ export default function World() {
     { id: "private", icon: "◇", label: "Только я", detail: "Не раскрывается игрокам автоматически", onSelect: () => setVisibility(visibilityTarget, "private") },
   ] : []
 
-  if (world.loading || state.loading) {
+  if (world.loading || state.loading || habitats.loading) {
     return <div className="world-v2-loading"><span className="auth-spinner"/><p>Собираем известный мир…</p></div>
   }
 
@@ -354,6 +378,13 @@ export default function World() {
             <p className={selected.description ? "" : "is-empty"}>{selected.description || (context.canManage ? "Заполни историю, атмосферу, ориентиры и важные детали зоны." : "Подробности этой зоны пока не открыты.")}</p>
           </section>
 
+          {(npcsUsuallyHere.length > 0 || context.canManage) && (
+            <section className="world-habitat-section">
+              <div className="world-section-title world-habitat-head"><div><small>Обычно здесь</small><h3>Обитатели зоны</h3><p>Это привычные места NPC, а не их текущая позиция в сцене.</p></div>{context.canManage && <button type="button" onClick={() => setHabitatEditorOpen(true)}>＋ NPC</button>}</div>
+              {npcsUsuallyHere.length > 0 ? <div className="world-habitat-row">{npcsUsuallyHere.map((npc) => <button type="button" className="world-habitat-card" key={npc.id} onClick={() => { window.location.hash = `#/character/${npc.id}?from=world` }}><CharacterAvatar character={npc} size="small"/><span><strong>{npc.name}</strong><small>Обычно можно встретить здесь</small></span></button>)}</div> : <div className="world-habitat-empty">Никто пока не привязан к этой зоне как постоянный или частый обитатель.</div>}
+            </section>
+          )}
+
           {routeEntries.length > 0 && (
             <section className="world-route-section">
               <div className="world-section-title"><small>Дальше</small><h3>Подзоны и переходы</h3></div>
@@ -391,10 +422,11 @@ export default function World() {
         </>
       )}
 
-      {(error || world.error) && <div className="world-inline-error">{error || world.error}<button type="button" onClick={() => setError("")}>×</button></div>}
+      {(error || world.error || habitats.error) && <div className="world-inline-error">{error || world.error || habitats.error}<button type="button" onClick={() => setError("")}>×</button></div>}
 
       {menuTarget && <ContextActionSheet title={menuTitle} subtitle={menuSubtitle} actions={menuActions} onClose={() => setMenuTarget(null)}/>}
       {visibilityTarget && <ContextActionSheet title={visibilityTarget.name} subtitle="Кто видит эту зону" actions={visibilityActions} onClose={() => setVisibilityTarget(null)}/>}
+      {habitatEditorOpen && selected && <ZoneHabitatNpcsSheet zoneName={selected.name} npcs={availableNpcs} selectedIds={habitatNpcIds} savingKey={habitats.savingKey} onClose={() => setHabitatEditorOpen(false)} onToggle={(npcId, next) => { void toggleZoneNpc(npcId, next) }}/>} 
 
       {deleteTarget && <div className="sheet-backdrop" onMouseDown={() => setDeleteTarget(null)}><section className="bottom-sheet v2-confirm" role="dialog" aria-modal="true" aria-label="Подтверждение удаления" onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><span className="v2-confirm-icon">×</span><h3>{deleteTarget.kind === "section" ? `Удалить «${deleteTarget.item.title}»?` : `Удалить переход «${deleteTarget.item.label || "Без подписи"}»?`}</h3><p>{deleteTarget.kind === "section" ? "Раздел и его переходы будут удалены. Сами зоны останутся." : "Связанные зоны и их содержимое останутся на месте."}</p><div><button type="button" onClick={() => setDeleteTarget(null)}>Отмена</button><button className="is-danger" type="button" onClick={() => void confirmDelete()}>Удалить</button></div></section></div>}
 
