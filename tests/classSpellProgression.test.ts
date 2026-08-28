@@ -114,17 +114,21 @@ function resolveAtDruidLevel(level: number) {
   return resolveCharacterContract(input)
 }
 
+function spellNames(level: number): string[] {
+  return resolveAtDruidLevel(level).spells
+    .map((spell) => spell.identity.name)
+    .sort((left, right) => left.localeCompare(right, "ru"))
+}
+
 test("persistent subclass spell choice unlocks new class spells from parent class level", () => {
-  const level3 = resolveAtDruidLevel(3)
-  assert.deepEqual(level3.spells.map((spell) => spell.identity.name), ["Размытие"])
+  assert.deepEqual(spellNames(3), ["Размытие"])
+  assert.deepEqual(spellNames(5), ["Огненный шар", "Размытие"])
 
   const level5 = resolveAtDruidLevel(5)
-  assert.deepEqual(level5.spells.map((spell) => spell.identity.name), ["Огненный шар", "Размытие"])
   const fireball = level5.spells.find((spell) => spell.identity.name === "Огненный шар")
   assert.ok(fireball)
   assert.equal(fireball.accesses[0]!.preparationMode, "always_prepared")
   assert.equal(fireball.accesses[0]!.methods[0]!.resourceOptions[0]!.costs[0]!.stateKey, "spell_slot_3")
 
-  const level7 = resolveAtDruidLevel(7)
-  assert.deepEqual(level7.spells.map((spell) => spell.identity.name), ["Огненный шар", "Размытие", "Усыхание"])
+  assert.deepEqual(spellNames(7), ["Огненный шар", "Размытие", "Усыхание"])
 })
