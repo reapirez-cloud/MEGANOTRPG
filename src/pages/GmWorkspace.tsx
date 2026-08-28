@@ -4,11 +4,13 @@ import { useAuth } from "../context/AuthContext"
 import { useCharacters, type Character } from "../context/CharacterContext"
 import { useRooms } from "../hooks/useRooms"
 import { useChatActors } from "../hooks/useChatActors"
+import { useNpcZoneHabitats } from "../hooks/useNpcZoneHabitats"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
 import CharacterCreationWizard, { type CharacterWizardTarget } from "../components/characters/CharacterCreationWizard"
 import CampaignImage from "../components/common/CampaignImage"
 import ContextActionSheet from "../components/common/ContextActionSheet"
 import type { ContextAction } from "../components/common/ContextActionSheet"
+import { NpcHabitatZonesSheet } from "../components/world/NpcZoneHabitatSheet"
 import { useLongPressItem } from "../hooks/useLongPressItem"
 import { supabase } from "../lib/supabase"
 import { deleteCampaignMediaObject, uploadCampaignFile } from "../lib/mediaUpload"
@@ -35,6 +37,7 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
   const { campaignId, campaignTitle, characters, members, isOwner, refresh, createInvite, updateCharacter, deleteCharacter, setActiveForMember, setMemberRole } = useCharacters()
   const rooms = useRooms()
   const chatActors = useChatActors()
+  const habitats = useNpcZoneHabitats()
 
   const [tab, setTab] = useState<Tab>("characters")
   const [filter, setFilter] = useState<CharFilter>("all")
@@ -43,6 +46,7 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [deleteTarget, setDeleteTarget] = useState<Character | null>(null)
+  const [zoneNpcTarget, setZoneNpcTarget] = useState<Character | null>(null)
   const [invite, setInvite] = useState("")
   const [memberEdit, setMemberEdit] = useState<string | null>(null)
   const [memberRole, setMemberRoleValue] = useState<"gm" | "player">("player")
@@ -111,6 +115,11 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
     const active = activeIds.has(character.id)
     const result = await setActiveForMember(character.assigned_user_id, active ? null : character.id)
     if (!result.ok) setError(result.error || "Не удалось изменить активность.")
+  }
+
+  async function toggleNpcHabitat(npc: Character, zoneId: string, attached: boolean) {
+    const result = await habitats.setAttached(npc.id, zoneId, attached)
+    if (!result.ok) setError(result.error || "Не удалось изменить обычную зону NPC.")
   }
 
   async function makeInvite() {
@@ -222,7 +231,7 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
     <div className="control-center">
       <header className="control-center-head"><span>Управление кампанией</span><h2>{campaignTitle}</h2><p>Игровая витрина отдельно. Здесь — всё, что относится к управлению.</p></header>
       <nav className="control-tabs">{tabs.map(([id, label, count]) => <button type="button" className={tab === id ? "is-active" : ""} key={id} onClick={() => setTab(id)}><span>{label}</span><small>{count}</small></button>)}</nav>
-      {error && <div className="auth-error">{error}</div>}
+      {(error || habitats.error) && <div className="auth-error">{error || habitats.error}</div>}
 
       {tab === "characters" && <section className="control-section">
         <div className="control-toolbar"><label className="control-search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти персонажа"/></label><div className="control-create"><button type="button" onClick={() => createChar("pc")}>＋ PC</button><button type="button" onClick={() => createChar("npc")}>＋ NPC</button></div></div>
@@ -232,9 +241,10 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
           const active = activeIds.has(character.id)
           const bound = chatActors.boundIds.has(character.id)
           const bindable = chatActors.bindableCharacters.some((item) => item.id === character.id)
+          const habitatCount = character.character_type === "npc" ? habitats.zonesForNpc(character.id).length : 0
           return <article className="control-character-row" key={character.id}>
             <button className="control-character-main" type="button" onClick={() => onOpenCharacter(character.id)}><CharacterAvatar character={character} size="large"/><span><span className="control-character-name"><strong>{character.name}</strong>{active && <i>Активен</i>}{character.character_type === "npc" && <i>NPC</i>}{character.visibility === "private" && <i>Только я</i>}</span><small>{character.character_class} · {character.level} ур.{member ? ` · ${member.display_name}` : ""}</small><p>{character.bio || "Без описания"}</p></span><em>›</em></button>
-            <div className="control-character-actions">{character.character_type === "pc" && member && <button type="button" className={active ? "is-active" : ""} onClick={() => void toggleActive(character)}>{active ? "Убрать из активных" : "Сделать активным"}</button>}{bindable && <button type="button" className={bound ? "is-active" : ""} onClick={() => void chatActors.setBinding(character.id, !bound)}>{bound ? "✓ Личность чата" : "Говорить в чате"}</button>}<button type="button" onClick={() => editChar(character)}>Изменить</button><button className="is-danger" type="button" onClick={() => setDeleteTarget(character)}>Удалить</button></div>
+            <div className="control-character-actions">{character.character_type === "pc" && member && <button type="button" className={active ? "is-active" : ""} onClick={() => void toggleActive(character)}>{active ? "Убрать из активных" : "Сделать активным"}</button>}{character.character_type === "npc" && <button type="button" className="npc-zone-action" onClick={() => setZoneNpcTarget(character)}>Отправить в зону{habitatCount ? ` · ${habitatCount}` : ""}</button>}{bindable && <button type="button" className={bound ? "is-active" : ""} onClick={() => void chatActors.setBinding(character.id, !bound)}>{bound ? "✓ Личность чата" : "Говорить в чате"}</button>}<button type="button" onClick={() => editChar(character)}>Изменить</button><button className="is-danger" type="button" onClick={() => setDeleteTarget(character)}>Удалить</button></div>
           </article>
         })}{!visibleCharacters.length && <div className="v2-empty-state"><span>◇</span><strong>Ничего не найдено</strong><p>Измени фильтр или создай нового персонажа.</p></div>}</div>
       </section>}
@@ -247,6 +257,8 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
     </div>
 
     {editor && <CharacterCreationWizard target={editor} campaignId={campaignId} members={members} updateCharacter={updateCharacter} onClose={() => setEditor(null)} onSaved={async (characterId, openCharacter) => { await refresh(); setEditor(null); if (openCharacter) onOpenCharacter(characterId) }}/>} 
+
+    {zoneNpcTarget && <NpcHabitatZonesSheet npc={zoneNpcTarget} zones={habitats.activeZones} selectedIds={new Set(habitats.zonesForNpc(zoneNpcTarget.id))} savingKey={habitats.savingKey} onClose={() => setZoneNpcTarget(null)} onToggle={(zoneId, next) => { void toggleNpcHabitat(zoneNpcTarget, zoneId, next) }}/>} 
 
     {deleteTarget && <div className="sheet-backdrop" onMouseDown={() => setDeleteTarget(null)}><section className="bottom-sheet v2-confirm" onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><span className="v2-confirm-icon">×</span><h3>Удалить «{deleteTarget.name}»?</h3><p>Лист, инвентарь, дневник и связанные данные будут удалены.</p><div><button type="button" onClick={() => setDeleteTarget(null)}>Отмена</button><button className="is-danger" type="button" onClick={() => void removeCharacter()} disabled={saving}>Удалить</button></div></section></div>}
 
