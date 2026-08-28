@@ -3,6 +3,9 @@ import { contributionForStoredMechanic } from "../lib/characterMechanics.ts"
 import type { StoredMechanic, StoredMechanics } from "../types/characterMechanics.ts"
 import type { CharacterTemplateBundle, RuleChoiceDefinition, RuleTemplateKind } from "./types.ts"
 
+// INTERNAL: before adding or changing class/subclass mechanics, read ./CLASS_INTEGRATION_NOTES.md.
+// It defines CE-vs-GM condition enforcement, dependency rules, sourceKey policy, and the class definition-of-done.
+
 export type TemplateSourceNodeKind = "template" | "mechanic" | "choice"
 
 /** Read-model for GM/source UI. CE never branches on these labels. */
