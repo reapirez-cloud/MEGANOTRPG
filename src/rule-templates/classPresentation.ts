@@ -4,7 +4,6 @@ import type {
   ResolvedCharacterContract,
   ResolvedGrant,
   ResolvedResource,
-  ResolvedSourceRef,
   ResolvedSpell,
   ResolvedSpellAccess,
 } from "../character-engine/index.ts"
@@ -36,6 +35,8 @@ export type PresentedClassPackage = {
   subclassMechanics?: PresentedTemplateMechanics
 }
 
+type SourceCarrier = { source: CharacterSource }
+
 /** Renderer/read-model parsing only. CE never branches on this provenance. */
 export function templateRefFromSource(source: CharacterSource): TemplateSourceRef | null {
   const match = source.id.match(/^template:(class|subclass):([^:]+):v\d+/)
@@ -43,7 +44,7 @@ export function templateRefFromSource(source: CharacterSource): TemplateSourceRe
   return { kind: match[1] as TemplateSourceRef["kind"], templateId: match[2]! }
 }
 
-function matchesTemplate(sources: ResolvedSourceRef[], kind: TemplateSourceRef["kind"], templateId: string): boolean {
+function matchesTemplate(sources: SourceCarrier[], kind: TemplateSourceRef["kind"], templateId: string): boolean {
   return sources.some((entry) => {
     const ref = templateRefFromSource(entry.source)
     return ref?.kind === kind && ref.templateId === templateId
