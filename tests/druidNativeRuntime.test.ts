@@ -3,18 +3,22 @@ import fs from "node:fs"
 import test from "node:test"
 
 import {
-  executeAction,
   resolveCharacterContract,
   type CharacterEngineInput,
   type CharacterSource,
 } from "../src/character-engine/index.ts"
 import { contributionForStoredMechanic } from "../src/lib/characterMechanics.ts"
+import { resolvedActionMechanicId } from "../src/lib/classResourceRuntime.ts"
 import type { StoredActionMechanic, StoredResourceMechanic } from "../src/types/characterMechanics.ts"
 
 const migration = fs.readFileSync(
-  "supabase/migrations/20260828180500_druid_native_runtime_completion.sql",
+  "supabase/migrations/20260828184500_druid_resource_runtime_finalization.sql",
   "utf8",
 )
+
+const notes = fs.readFileSync("src/rule-templates/CLASS_INTEGRATION_NOTES.md", "utf8")
+const resourceRuntime = fs.readFileSync("src/lib/resourceRuntime.ts", "utf8")
+const legacyAdapter = fs.readFileSync("src/lib/legacyCharacterEngineAdapter.ts", "utf8")
 
 const source: CharacterSource = {
   id: "template:class:druid:v3:source:wild-shape",
@@ -38,10 +42,6 @@ const action: StoredActionMechanic = {
   label: "Дикая форма",
   economy: "action",
   resourceCosts: [{ key: "wild_shape", amount: 1 }],
-  effects: [
-    { kind: "state", key: "wild_shape_active", operation: "SET", value: true },
-    { kind: "semantic", key: "transformation", payload: { profile: "beast" } },
-  ],
 }
 
 function input(): CharacterEngineInput {
@@ -62,28 +62,40 @@ function input(): CharacterEngineInput {
   }
 }
 
-test("stored Druid action reaches CE with costs and mode effects", () => {
-  const initial = input()
-  const contract = resolveCharacterContract(initial)
+test("Druid Wild Shape resolves as resource accounting, not simulated transformation state", () => {
+  const contract = resolveCharacterContract(input())
   const wildShape = contract.actions.find((entry) => entry.key === "wild_shape")
   assert.ok(wildShape)
   assert.equal(wildShape.available, true)
   assert.equal(wildShape.resourceCosts[0]!.stateKey, "wild_shape")
-  assert.equal(wildShape.effects[0]!.kind, "state")
-  assert.equal(wildShape.effects[1]!.kind, "semantic")
-  assert.equal(wildShape.effects[1]!.kind === "semantic" ? wildShape.effects[1]!.key : "", "transformation")
-
-  const nextState = executeAction(initial.state, wildShape)
-  assert.equal(nextState.resources?.wild_shape?.current, 1)
-  assert.equal(nextState.facts?.wild_shape_active, true)
+  assert.equal(wildShape.effects.length, 0)
+  assert.equal(resolvedActionMechanicId(wildShape), "wild-shape-action")
 })
 
-test("Druid runtime migration declares native mode, conversions, and Beast Spells permission", () => {
-  assert.match(migration, /"key":"wild_shape_active","operation":"SET"/)
-  assert.match(migration, /"key":"wild_shape_active","operation":"UNSET"/)
-  assert.match(migration, /"costOptions"/)
-  assert.match(migration, /"operation":"RESTORE","amount":1/)
-  assert.match(migration, /"target":"permission"/)
-  assert.match(migration, /spellcasting:while_transformed/)
-  assert.match(migration, /class_spell_access_by_source/)
+test("final Druid migration removes fake GM runtime flags and keeps real resource conversions", () => {
+  assert.doesNotMatch(migration, /"enforcement":"gm"/)
+  assert.doesNotMatch(migration, /wild_shape_empty_confirmed/)
+  assert.doesNotMatch(migration, /wild_resurgence_slot_available/)
+  assert.doesNotMatch(migration, /"key":"wild_shape_active","operation":"SET"/)
+  assert.match(migration, /druid-wild-shape-end/)
+  assert.match(migration, /druid-wild-companion-action/)
+  assert.match(migration, /wild_resurgence_slot_exchange/)
+  assert.match(migration, /"maximum":0/)
+  assert.match(migration, /use_character_template_resource_action/)
+  assert.match(migration, /spend_character_resources/)
+  assert.match(migration, /class_spells_use_shared_slots/)
+})
+
+test("resource runtime treats spell slots like normal CE resources", () => {
+  assert.doesNotMatch(resourceRuntime, /filter\(\(resource\) => !resource\.stateKey\.startsWith\("spell_slot_"\)\)/)
+  assert.match(migration, /Spell slots and\n-- class pools are the same CE runtime primitive/)
+  assert.doesNotMatch(migration, /v_state_key ~ '\^spell_slot_/)
+  assert.match(legacyAdapter, /parserOwnedSlotLevels/)
+  assert.match(legacyAdapter, /if \(!resources\[key\]\) resources\[key\] = \{ current: Math\.max\(0, max - used\) \}/)
+})
+
+test("class integration standard forbids fake GM confirmation state", () => {
+  assert.match(notes, /CE is a calculator and resource ledger/)
+  assert.match(notes, /Do \*\*not\*\* create fake parser state/)
+  assert.match(notes, /scene\/fiction requirements are explained, not faked as parser state/)
 })
