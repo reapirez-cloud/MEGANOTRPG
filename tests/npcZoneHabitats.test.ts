@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 
-import { zonePathLabel, type NpcHabitatZone } from "../src/hooks/useNpcZoneHabitats.ts"
+import { zonePathLabel, type NpcHabitatZone } from "../src/lib/npcZoneHabitats.ts"
 
 const migration = fs.readFileSync("supabase/migrations/20260828123000_location_npc_habitats.sql", "utf8")
 const world = fs.readFileSync("src/pages/World.tsx", "utf8")
