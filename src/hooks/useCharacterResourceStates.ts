@@ -19,19 +19,22 @@ export function useCharacterResourceStates(characterId: string | null) {
   }, [characterId])
 
   useEffect(() => {
-    void load()
-    if (!characterId) return
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void load() })
+    if (!characterId) return () => { cancelled = true }
     let channel: RealtimeChannel | null = supabase.channel(`character-resources-${characterId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "character_resource_states", filter: `character_id=eq.${characterId}` }, () => void load())
       .subscribe()
-    return () => { if (channel) { void supabase.removeChannel(channel); channel = null } clearCharacterResourceState(characterId) }
+    return () => { cancelled = true; if (channel) { void supabase.removeChannel(channel); channel = null } clearCharacterResourceState(characterId) }
   }, [characterId, load])
 
   const state = useMemo(() => Object.fromEntries(rows.map((row) => [row.state_key, { current: row.current }])), [rows])
   useEffect(() => {
     if (!characterId) return
     registerCharacterResourceState(characterId, state)
-    setRevision((value) => value + 1)
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) setRevision((value) => value + 1) })
+    return () => { cancelled = true }
   }, [characterId, state])
 
   const sync = useCallback(async (resources: ResourceSyncInput[]) => {

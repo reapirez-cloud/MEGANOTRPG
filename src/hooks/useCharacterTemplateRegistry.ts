@@ -42,8 +42,9 @@ export function useCharacterTemplateRegistry(characterId: string | null) {
   }, [characterId])
 
   useEffect(() => {
-    void load()
-    return () => { if (characterId) clearCharacterTemplateBundles(characterId) }
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void load() })
+    return () => { cancelled = true; if (characterId) clearCharacterTemplateBundles(characterId) }
   }, [characterId, load])
 
   // CharacterGameFrame keys its resolved child by this revision. When a GM
@@ -51,7 +52,9 @@ export function useCharacterTemplateRegistry(characterId: string | null) {
   // changed suppression registry without teaching them about suppression UI.
   useEffect(() => {
     if (!characterId) return
-    setRevision((value) => value + 1)
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) setRevision((value) => value + 1) })
+    return () => { cancelled = true }
   }, [characterId, suppressions.revision])
 
   return {

@@ -12,7 +12,9 @@ export function useCampaignMedia(value: string | null | undefined) {
 
   useEffect(() => {
     let active = true
-    setUrl(isExternalMedia(value) ? value?.trim() || null : null)
+    queueMicrotask(() => {
+      if (active) setUrl(isExternalMedia(value) ? value?.trim() || null : null)
+    })
     void resolveCampaignMediaUrl(value).then((nextUrl) => {
       if (active) setUrl(nextUrl)
     })

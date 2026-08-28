@@ -79,8 +79,9 @@ export function useNotifications(campaignId: string) {
   }, [campaignId])
 
   useEffect(() => {
-    void load()
-    if (!campaignId) return
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void load() })
+    if (!campaignId) return () => { cancelled = true }
 
     let channel: RealtimeChannel | null = supabase
       .channel(`campaign-notifications-${campaignId}`)
@@ -122,6 +123,7 @@ export function useNotifications(campaignId: string) {
       .subscribe()
 
     return () => {
+      cancelled = true
       if (countRefreshTimerRef.current !== null) {
         window.clearTimeout(countRefreshTimerRef.current)
         countRefreshTimerRef.current = null

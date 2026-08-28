@@ -152,7 +152,7 @@ function fullBodyFile() {
   return new File([svg], "full-body.svg", { type: "image/svg+xml" })
 }
 
-function Preview() {
+export function Preview() {
   const [tab, setTab] = useState<"sheet" | "spells">("sheet")
   const [level, setLevel] = useState<number | null>(null)
   const [cropOpen, setCropOpen] = useState(false)

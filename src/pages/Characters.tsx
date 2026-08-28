@@ -16,11 +16,14 @@ export default function Characters({ onOpenCharacter }: Props) {
   const [life, setLife] = useState<LifeMap>({})
 
   useEffect(() => {
-    if (!characters.length) { setLife({}); return }
     let cancelled = false
-    void supabase.from("characters").select("id,life_state").in("id", characters.map((item) => item.id)).then(({ data }) => {
-      if (cancelled || !data) return
-      setLife(Object.fromEntries(data.map((row) => [row.id, row.life_state === "dead" ? "dead" : "alive"])) as LifeMap)
+    queueMicrotask(() => {
+      if (cancelled) return
+      if (!characters.length) { setLife({}); return }
+      void supabase.from("characters").select("id,life_state").in("id", characters.map((item) => item.id)).then(({ data }) => {
+        if (cancelled || !data) return
+        setLife(Object.fromEntries(data.map((row) => [row.id, row.life_state === "dead" ? "dead" : "alive"])) as LifeMap)
+      })
     })
     return () => { cancelled = true }
   }, [characters])

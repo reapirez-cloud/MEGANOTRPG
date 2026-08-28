@@ -520,6 +520,13 @@
   background: #33251c !important;
 }
 
+.control-folder-hint {
+  margin: -2px 2px 1px;
+  color: #77717d;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
 @media (max-width: 380px) {
   .gm-profile-card {
     grid-template-columns: auto minmax(0, 1fr);

@@ -30,7 +30,6 @@ import TopBar from "./components/app/TopBar"
 import AuthGate from "./components/auth/AuthGate"
 import CharacterGameFrame from "./components/characters/CharacterGameFrame"
 import ReferenceGuide from "./components/reference/ReferenceGuide"
-import RuleTemplateManager from "./components/rules/RuleTemplateManager"
 import { CharacterProvider, useCharacters } from "./context/CharacterContext"
 import { useNotifications } from "./hooks/useNotifications"
 import { mainRouteHash, parseAppRoute, type AppRoute } from "./lib/appRoute"
@@ -55,7 +54,7 @@ function Workspace(){
   if(route.type==="gallery")return <div className="app-shell"><div className="screen"><header className="screen-header"><button className="icon-button" type="button" onClick={goBack} aria-label="Назад">←</button><h1 className="screen-header__title">Арты и комиксы</h1><span/></header><main className="app-content app-content--overlay"><Art/></main></div></div>
   return <div className="app-shell"><TopBar title={title} unreadCount={notifications.unreadCount} onOpenReference={()=>setReferenceOpen(true)} onOpenNotifications={()=>setNotificationsOpen(true)}/><main className="app-content">
     {route.tab==="feed"&&<Feed onOpenCharacter={(id)=>navigate(`#/character/${id}?from=feed`)} onOpenGallery={()=>navigate("#/gallery")}/>} {route.tab==="chats"&&<Chats onOpenRoom={(id)=>navigate(`#/chat/${id}`)}/>} {route.tab==="world"&&<World/>} {route.tab==="characters"&&<Characters onOpenCharacter={(id)=>navigate(`#/character/${id}?from=characters`)}/>} 
-    {route.tab==="me"&&canManage&&<><GmWorkspace onOpenCharacter={(id)=>navigate(`#/character/${id}?from=me`)} onOpenRoom={(id)=>navigate(`#/chat/${id}`)}/><RuleTemplateManager/></>} 
+    {route.tab==="me"&&canManage&&<GmWorkspace onOpenCharacter={(id)=>navigate(`#/character/${id}?from=me`)} onOpenRoom={(id)=>navigate(`#/chat/${id}`)}/>}
     {route.tab==="me"&&!canManage&&activeCharacter&&<CharacterGameFrame characterId={activeCharacter.id}><CharacterProfileV2 key={`${activeCharacter.id}:${characterRefreshKey}`} characterId={activeCharacter.id} onBack={()=>navigate("#/feed")} embedded/></CharacterGameFrame>}
     {route.tab==="me"&&!canManage&&!activeCharacter&&<section className="me-empty surface"><span>◇</span><h2>{myCharacters.length?"Нет активного персонажа":"Персонаж ещё не назначен"}</h2><p>{myCharacters.length?"Активного героя выбирает ГМ в панели кампании.":"ГМ выдаст тебе персонажа — создавать героев игрок сам не может."}</p><button type="button" onClick={()=>navigate("#/characters")}>Открыть персонажей</button></section>}
   </main>

@@ -43,7 +43,11 @@ export function useWorldState(subjectCharacterId?: string | null) {
     setLoading(false)
   }, [campaignId])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void load() })
+    return () => { cancelled = true }
+  }, [load])
 
   useEffect(() => {
     if (!campaignId) return

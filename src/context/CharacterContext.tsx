@@ -255,7 +255,9 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   }, [user.id])
 
   useEffect(() => {
-    void load()
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void load() })
+    return () => { cancelled = true }
   }, [load])
 
   const myMember = useMemo(
@@ -645,6 +647,8 @@ function JoinCampaign({
   )
 }
 
+// The provider and its hook intentionally share this private context.
+// oxlint-disable-next-line react/only-export-components
 export function useCharacters() {
   const value = useContext(CharacterContext)
   if (!value) {

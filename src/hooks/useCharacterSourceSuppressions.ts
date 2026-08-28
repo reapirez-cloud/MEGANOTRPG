@@ -24,12 +24,14 @@ export function useCharacterSourceSuppressions(characterId: string | null) {
   }, [characterId])
 
   useEffect(() => {
-    void load()
-    if (!characterId) return
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void load() })
+    if (!characterId) return () => { cancelled = true }
     let channel: RealtimeChannel | null = supabase.channel(`character-suppressions-${characterId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "character_source_suppressions", filter: `character_id=eq.${characterId}` }, () => void load())
       .subscribe()
     return () => {
+      cancelled = true
       if (channel) { void supabase.removeChannel(channel); channel = null }
       clearCharacterSourceSuppressions(characterId)
     }
@@ -39,7 +41,9 @@ export function useCharacterSourceSuppressions(characterId: string | null) {
   useEffect(() => {
     if (!characterId) return
     registerCharacterSourceSuppressions(characterId, sourceIds)
-    setRevision((value) => value + 1)
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) setRevision((value) => value + 1) })
+    return () => { cancelled = true }
   }, [characterId, sourceIds])
 
   const setSuppressed = useCallback(async (sourceId: string, suppressed: boolean) => {

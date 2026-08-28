@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { FormEvent } from "react"
 import { useAuth } from "../context/AuthContext"
 import { useCharacters, type Character } from "../context/CharacterContext"
@@ -7,6 +7,9 @@ import { useChatActors } from "../hooks/useChatActors"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
 import CharacterCreationWizard, { type CharacterWizardTarget } from "../components/characters/CharacterCreationWizard"
 import CampaignImage from "../components/common/CampaignImage"
+import ContextActionSheet from "../components/common/ContextActionSheet"
+import type { ContextAction } from "../components/common/ContextActionSheet"
+import { useLongPressItem } from "../hooks/useLongPressItem"
 import { supabase } from "../lib/supabase"
 import { deleteCampaignMediaObject, uploadCampaignFile } from "../lib/mediaUpload"
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
@@ -49,6 +52,10 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
   const [noteOpen, setNoteOpen] = useState<FileRow | null | "new">(null)
   const [noteTitle, setNoteTitle] = useState("")
   const [noteBody, setNoteBody] = useState("")
+  const [folderEditor, setFolderEditor] = useState<FolderRow | "new" | null>(null)
+  const [folderName, setFolderName] = useState("")
+  const [folderMenu, setFolderMenu] = useState<FolderRow | null>(null)
+  const [folderDeleteTarget, setFolderDeleteTarget] = useState<FolderRow | null>(null)
   const uploadRef = useRef<HTMLInputElement | null>(null)
   const [roomCreate, setRoomCreate] = useState(false)
   const [roomTitle, setRoomTitle] = useState("")
@@ -64,7 +71,7 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
     return true
   }), [activeIds, characters, filter, query])
 
-  async function loadMaterials() {
+  const loadMaterials = useCallback(async () => {
     const [folderResult, fileResult] = await Promise.all([
       supabase.from("gm_workspace_folders").select("id,name,sort_order").eq("campaign_id", campaignId).eq("workspace_user_id", user.id).order("sort_order"),
       supabase.from("gm_workspace_files").select("id,folder_id,kind,title,body,file_url,original_name,mime_type,updated_at").eq("campaign_id", campaignId).eq("workspace_user_id", user.id).order("updated_at", { ascending: false }),
@@ -72,9 +79,17 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
     if (folderResult.error || fileResult.error) { setError((folderResult.error || fileResult.error)!.message); return }
     setFolders((folderResult.data || []) as FolderRow[])
     setFiles((fileResult.data || []) as FileRow[])
-  }
+  }, [campaignId, user.id])
 
-  useEffect(() => { if (tab === "materials") void loadMaterials() }, [tab, campaignId, user.id])
+  useEffect(() => {
+    if (tab !== "materials") return
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void loadMaterials() })
+    return () => { cancelled = true }
+  }, [loadMaterials, tab])
+
+  const openFolderMenu = useCallback((item: FolderRow) => setFolderMenu(item), [])
+  const bindFolderLongPress = useLongPressItem(openFolderMenu)
 
   const visibleFiles = folder === "all" ? files : folder === "root" ? files.filter((file) => !file.folder_id) : files.filter((file) => file.folder_id === folder)
 
@@ -150,12 +165,35 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
     await loadMaterials()
   }
 
-  async function newFolder() {
-    const value = window.prompt("Название папки")
-    if (!value?.trim()) return
-    const { error: folderError } = await supabase.from("gm_workspace_folders").insert({ campaign_id: campaignId, workspace_user_id: user.id, name: value.trim() })
-    if (folderError) setError(folderError.message)
-    else await loadMaterials()
+  function editFolder(target: FolderRow | "new") {
+    setFolderName(target === "new" ? "" : target.name)
+    setFolderEditor(target)
+    setError("")
+  }
+
+  async function saveFolder(event: FormEvent) {
+    event.preventDefault()
+    if (!folderEditor || !folderName.trim()) return
+    setSaving(true)
+    const query = folderEditor === "new"
+      ? supabase.from("gm_workspace_folders").insert({ campaign_id: campaignId, workspace_user_id: user.id, name: folderName.trim() })
+      : supabase.from("gm_workspace_folders").update({ name: folderName.trim() }).eq("id", folderEditor.id).eq("campaign_id", campaignId).eq("workspace_user_id", user.id)
+    const { error: folderError } = await query
+    setSaving(false)
+    if (folderError) { setError(folderError.message); return }
+    setFolderEditor(null)
+    await loadMaterials()
+  }
+
+  async function deleteFolder() {
+    if (!folderDeleteTarget) return
+    setSaving(true)
+    const { error: folderError } = await supabase.from("gm_workspace_folders").delete().eq("id", folderDeleteTarget.id).eq("campaign_id", campaignId).eq("workspace_user_id", user.id)
+    setSaving(false)
+    if (folderError) { setError(folderError.message); return }
+    if (folder === folderDeleteTarget.id) setFolder("root")
+    setFolderDeleteTarget(null)
+    await loadMaterials()
   }
 
   async function createRoom(event: FormEvent) {
@@ -173,6 +211,12 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
     ["chats", "Чаты", String(rooms.rooms.length)],
     ["materials", "Материалы", String(files.length)],
   ]
+
+  const folderActions: ContextAction[] = folderMenu ? [
+    { id: "open", icon: "▤", label: "Открыть папку", detail: "Показать её заметки и файлы", onSelect: () => setFolder(folderMenu.id) },
+    { id: "rename", icon: "✎", label: "Переименовать", detail: "Изменить название папки", onSelect: () => editFolder(folderMenu) },
+    { id: "delete", icon: "×", label: "Удалить папку", detail: "Материалы останутся без папки", danger: true, onSelect: () => setFolderDeleteTarget(folderMenu) },
+  ] : []
 
   return <>
     <div className="control-center">
@@ -199,7 +243,7 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
 
       {tab === "chats" && <section className="control-section"><div className="section-head"><div><h3 className="section-title">Чаты кампании</h3><p className="item-meta">Сцены, доступ и быстрый переход</p></div><button className="section-link" type="button" onClick={() => setRoomCreate(true)}>＋ Чат</button></div><div className="control-room-list">{rooms.rooms.map((room) => <button type="button" key={room.id} onClick={() => onOpenRoom(room.id)}><span className="control-room-art">{room.avatar_url ? <CampaignImage value={room.avatar_url} alt=""/> : <span>{room.title.slice(0, 1)}</span>}</span><span><strong>{room.title}</strong><small>{room.category === "flood" ? "Флуд" : "Игровая сцена"} · {room.preview}</small></span><em>›</em></button>)}</div></section>}
 
-      {tab === "materials" && <section className="control-section"><div className="section-head"><div><h3 className="section-title">Материалы</h3><p className="item-meta">Приватное рабочее пространство этого ГМа</p></div><div className="section-actions"><button className="section-link" type="button" onClick={() => void newFolder()}>＋ Папка</button><button className="section-link" type="button" onClick={() => { setNoteTitle(""); setNoteBody(""); setNoteOpen("new") }}>＋ Заметка</button><button className="section-link" type="button" onClick={() => uploadRef.current?.click()}>⇧ Файл</button></div></div><input ref={uploadRef} className="media-hidden-input" type="file" onChange={(event) => { void uploadFile(event.target.files?.[0] || null); event.currentTarget.value = "" }}/><div className="control-filter-rail"><button className={folder === "all" ? "is-active" : ""} type="button" onClick={() => setFolder("all")}>Все</button><button className={folder === "root" ? "is-active" : ""} type="button" onClick={() => setFolder("root")}>Без папки</button>{folders.map((item) => <button className={folder === item.id ? "is-active" : ""} type="button" key={item.id} onClick={() => setFolder(item.id)}>{item.name}</button>)}</div><div className="control-file-list">{visibleFiles.map((file) => <article key={file.id}><span className="control-file-icon">{file.kind === "note" ? "✎" : "▧"}</span><span><strong>{file.title}</strong><small>{new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(file.updated_at))}</small>{file.kind === "upload" && file.file_url && <MaterialLink value={file.file_url} label={file.original_name || "файл"}/>}</span><div>{file.kind === "note" && <button type="button" onClick={() => { setNoteTitle(file.title); setNoteBody(file.body); setNoteOpen(file) }}>Изменить</button>}<button className="is-danger" type="button" onClick={() => void deleteFile(file)}>Удалить</button></div></article>)}{!visibleFiles.length && <div className="v2-empty-state"><span>▤</span><strong>Материалов нет</strong><p>Заметки и файлы видишь только ты.</p></div>}</div></section>}
+      {tab === "materials" && <section className="control-section"><div className="section-head"><div><h3 className="section-title">Материалы</h3><p className="item-meta">Приватное рабочее пространство этого ГМа</p></div><div className="section-actions"><button className="section-link" type="button" onClick={() => editFolder("new")}>＋ Папка</button><button className="section-link" type="button" onClick={() => { setNoteTitle(""); setNoteBody(""); setNoteOpen("new") }}>＋ Заметка</button><button className="section-link" type="button" onClick={() => uploadRef.current?.click()}>⇧ Файл</button></div></div><input ref={uploadRef} className="media-hidden-input" type="file" onChange={(event) => { void uploadFile(event.target.files?.[0] || null); event.currentTarget.value = "" }}/><div className="control-filter-rail"><button className={folder === "all" ? "is-active" : ""} type="button" onClick={() => setFolder("all")}>Все</button><button className={folder === "root" ? "is-active" : ""} type="button" onClick={() => setFolder("root")}>Без папки</button>{folders.map((item) => <button className={folder === item.id ? "is-active" : ""} type="button" key={item.id} onClick={() => setFolder(item.id)} aria-label={`${item.name}. Удерживайте для действий`} {...bindFolderLongPress(item)}>{item.name}</button>)}</div>{folders.length > 0 && <p className="control-folder-hint">Удерживай папку, чтобы переименовать или удалить её.</p>}<div className="control-file-list">{visibleFiles.map((file) => <article key={file.id}><span className="control-file-icon">{file.kind === "note" ? "✎" : "▧"}</span><span><strong>{file.title}</strong><small>{new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(file.updated_at))}</small>{file.kind === "upload" && file.file_url && <MaterialLink value={file.file_url} label={file.original_name || "файл"}/>}</span><div>{file.kind === "note" && <button type="button" onClick={() => { setNoteTitle(file.title); setNoteBody(file.body); setNoteOpen(file) }}>Изменить</button>}<button className="is-danger" type="button" onClick={() => void deleteFile(file)}>Удалить</button></div></article>)}{!visibleFiles.length && <div className="v2-empty-state"><span>▤</span><strong>Материалов нет</strong><p>Заметки и файлы видишь только ты.</p></div>}</div></section>}
     </div>
 
     {editor && <CharacterCreationWizard target={editor} campaignId={campaignId} members={members} updateCharacter={updateCharacter} onClose={() => setEditor(null)} onSaved={async (characterId, openCharacter) => { await refresh(); setEditor(null); if (openCharacter) onOpenCharacter(characterId) }}/>} 
@@ -209,6 +253,12 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
     {memberEdit && <div className="sheet-backdrop" onMouseDown={() => setMemberEdit(null)}><section className="bottom-sheet v2-editor-sheet" onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Участник</span><h3>{members.find((member) => member.user_id === memberEdit)?.display_name}</h3><p>Роль управляет правами, но не тем, какого PC человек может иметь.</p></div><button type="button" onClick={() => setMemberEdit(null)}>×</button></header><section className="v2-form-section"><label className="field-label">Роль</label><select className="app-select" value={memberRole} disabled={!isOwner || members.find((member) => member.user_id === memberEdit)?.is_owner} onChange={(event) => setMemberRoleValue(event.target.value === "gm" ? "gm" : "player")}><option value="player">Игрок</option><option value="gm">ГМ</option></select><p className="control-field-help">Персонаж назначается в редакторе самого PC — туда можно выбрать любого участника, включая владельца и ГМа.</p></section>{isOwner && <button className="v2-primary-button v2-full-button" type="button" onClick={() => void saveMemberRole()}>Сохранить роль</button>}</section></div>}
 
     {noteOpen && <div className="sheet-backdrop" onMouseDown={() => setNoteOpen(null)}><form className="bottom-sheet v2-editor-sheet" onSubmit={saveNote} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Материалы</span><h3>{noteOpen === "new" ? "Новая заметка" : "Редактировать заметку"}</h3><p>Эту запись видишь только ты.</p></div><button type="button" onClick={() => setNoteOpen(null)}>×</button></header><section className="v2-form-section"><label className="field-label">Название</label><input className="app-input" value={noteTitle} onChange={(event) => setNoteTitle(event.target.value)} autoFocus/><label className="field-label">Текст</label><textarea className="app-textarea control-note-text" value={noteBody} onChange={(event) => setNoteBody(event.target.value)}/></section><button className="v2-primary-button v2-full-button" type="submit" disabled={saving || !noteTitle.trim()}>Сохранить</button></form></div>}
+
+    {folderEditor && <div className="sheet-backdrop" onMouseDown={() => setFolderEditor(null)}><form className="bottom-sheet v2-editor-sheet" onSubmit={saveFolder} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Материалы</span><h3>{folderEditor === "new" ? "Новая папка" : "Переименовать папку"}</h3><p>Папки видишь только ты.</p></div><button type="button" onClick={() => setFolderEditor(null)}>×</button></header><section className="v2-form-section"><label className="field-label" htmlFor="folder-name">Название</label><input id="folder-name" className="app-input" value={folderName} onChange={(event) => setFolderName(event.target.value)} maxLength={80} autoFocus/></section><button className="v2-primary-button v2-full-button" type="submit" disabled={saving || !folderName.trim()}>{saving ? "Сохраняем…" : "Сохранить"}</button></form></div>}
+
+    {folderMenu && <ContextActionSheet title={folderMenu.name} subtitle="Действия с папкой" actions={folderActions} onClose={() => setFolderMenu(null)}/>}
+
+    {folderDeleteTarget && <div className="sheet-backdrop" onMouseDown={() => setFolderDeleteTarget(null)}><section className="bottom-sheet v2-confirm" role="dialog" aria-modal="true" aria-label={`Удалить папку ${folderDeleteTarget.name}`} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><span className="v2-confirm-icon">×</span><h3>Удалить «{folderDeleteTarget.name}»?</h3><p>Заметки и файлы не пропадут — они перейдут в «Без папки».</p><div><button type="button" onClick={() => setFolderDeleteTarget(null)}>Отмена</button><button className="is-danger" type="button" onClick={() => void deleteFolder()} disabled={saving}>{saving ? "Удаляем…" : "Удалить"}</button></div></section></div>}
 
     {roomCreate && <div className="sheet-backdrop" onMouseDown={() => setRoomCreate(false)}><form className="bottom-sheet v2-editor-sheet" onSubmit={createRoom} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Чаты</span><h3>Новая игровая сцена</h3><p>Арт и доступ можно настроить после создания.</p></div><button type="button" onClick={() => setRoomCreate(false)}>×</button></header><section className="v2-form-section"><label className="field-label">Название</label><input className="app-input" value={roomTitle} onChange={(event) => setRoomTitle(event.target.value)} autoFocus/></section><button className="v2-primary-button v2-full-button" type="submit" disabled={!roomTitle.trim()}>Создать и открыть</button></form></div>}
   </>

@@ -96,8 +96,9 @@ export function useRooms() {
   }, [campaignId])
 
   useEffect(() => {
-    void loadRooms()
-    if (!campaignId) return
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void loadRooms() })
+    if (!campaignId) return () => { cancelled = true }
     let refreshTimer: number | null = null
     const refreshSoon = () => {
       if (refreshTimer !== null) window.clearTimeout(refreshTimer)
@@ -111,6 +112,7 @@ export function useRooms() {
       .on("postgres_changes", { event: "*", schema: "public", table: "scene_participants" }, refreshSoon)
       .subscribe()
     return () => {
+      cancelled = true
       if (refreshTimer !== null) window.clearTimeout(refreshTimer)
       if (channel) { void supabase.removeChannel(channel); channel = null }
     }

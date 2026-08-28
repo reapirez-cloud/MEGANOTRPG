@@ -73,7 +73,11 @@ export function useWorldContent() {
     setLoading(false)
   }, [campaignId])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void load() })
+    return () => { cancelled = true }
+  }, [load])
   useEffect(() => {
     if (!campaignId) return
     let timer: number | null = null

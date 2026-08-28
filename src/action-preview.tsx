@@ -105,7 +105,7 @@ const input: CharacterEngineInput = {
   contributions,
 }
 
-function Preview() {
+export function Preview() {
   const [open, setOpen] = useState(true)
   const [lastAction, setLastAction] = useState("Интерфейс открыт в демонстрационном режиме")
   const contract = useMemo(() => resolveCharacterContract(input), [])

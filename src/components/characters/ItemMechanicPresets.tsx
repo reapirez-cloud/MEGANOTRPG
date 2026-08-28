@@ -93,7 +93,10 @@ export default function ItemMechanicPresets({ value, onChange, equippable = true
   const [spellResourceKey, setSpellResourceKey] = useState("")
 
   useEffect(() => {
-    if (!equippable && activation !== "carried") setActivation("carried")
+    if (equippable || activation === "carried") return
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) setActivation("carried") })
+    return () => { cancelled = true }
   }, [activation, equippable])
 
   const resources = useMemo(
@@ -102,24 +105,27 @@ export default function ItemMechanicPresets({ value, onChange, equippable = true
   )
 
   useEffect(() => {
-    if (!spellOpen || spells.length || spellLoading) return
+    if (!spellOpen || spells.length) return
     let cancelled = false
-    setSpellLoading(true)
-    setSpellError("")
-    void supabase
-      .from("spell_catalog")
-      .select("id,slug,name_en,name_ru,spell_level,school,ritual")
-      .order("spell_level", { ascending: true })
-      .order("name_en", { ascending: true })
-      .limit(2000)
-      .then(({ data, error }) => {
-        if (cancelled) return
-        setSpellLoading(false)
-        if (error) { setSpellError(error.message); return }
-        setSpells((data || []) as CatalogRow[])
-      })
+    queueMicrotask(() => {
+      if (cancelled) return
+      setSpellLoading(true)
+      setSpellError("")
+      void supabase
+        .from("spell_catalog")
+        .select("id,slug,name_en,name_ru,spell_level,school,ritual")
+        .order("spell_level", { ascending: true })
+        .order("name_en", { ascending: true })
+        .limit(2000)
+        .then(({ data, error }) => {
+          if (cancelled) return
+          setSpellLoading(false)
+          if (error) { setSpellError(error.message); return }
+          setSpells((data || []) as CatalogRow[])
+        })
+    })
     return () => { cancelled = true }
-  }, [spellLoading, spellOpen, spells.length])
+  }, [spellOpen, spells.length])
 
   const visibleSpells = useMemo(() => {
     const needle = spellQuery.trim().toLocaleLowerCase("ru-RU")

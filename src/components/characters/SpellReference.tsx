@@ -78,6 +78,7 @@ export default function SpellReference({
   const [selected, setSelected] = useState<CatalogSpell | null>(null)
   const [adding, setAdding] = useState(false)
   const [actionError, setActionError] = useState("")
+  const characterId = character?.id || null
 
   useEffect(() => {
     let cancelled = false
@@ -94,19 +95,19 @@ export default function SpellReference({
         .order("name_en", { ascending: true })
         .limit(2000)
 
-      const sheetPromise = character
+      const sheetPromise = characterId
         ? supabase
             .from("character_sheets")
             .select("spellcasting_enabled, spell_slots")
-            .eq("character_id", character.id)
+            .eq("character_id", characterId)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null })
 
-      const learnedPromise = character
+      const learnedPromise = characterId
         ? supabase
             .from("character_spells")
             .select("catalog_spell_id")
-            .eq("character_id", character.id)
+            .eq("character_id", characterId)
             .not("catalog_spell_id", "is", null)
         : Promise.resolve({ data: [], error: null })
 
@@ -143,7 +144,7 @@ export default function SpellReference({
     return () => {
       cancelled = true
     }
-  }, [character?.id])
+  }, [characterId])
 
   const characterClass = useMemo(
     () => normalizeSpellClass(character?.character_class),

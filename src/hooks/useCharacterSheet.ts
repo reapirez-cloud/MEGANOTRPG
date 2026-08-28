@@ -18,8 +18,6 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
   const [posts, setPosts] = useState<DiaryPost[]>([]); const [comments, setComments] = useState<DiaryComment[]>([]); const [arts, setArts] = useState<CharacterArt[]>([])
   const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null)
 
-  function commitInventory(next: InventoryItem[]) { registerCharacterInventory(characterId, next); setInventory(next) }
-
   const load = useCallback(async () => {
     setLoading(true); setError(null)
     const [sheetResult, inventoryResult, spellsResult, spellOptionsResult, featuresResult, postsResult, artsResult] = await Promise.all([
@@ -53,7 +51,11 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
       supabase.from("character_spell_options").select("*").eq("character_id", characterId).order("spell_level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true }),
     ]); const e = a.error || b.error; if (e) return { ok: false, error: e.message }; setSpells((a.data || []) as CharacterSpell[]); setSpellOptions((b.data || []) as CharacterSpellOption[]); return { ok: true }
   }, [characterId])
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void load() })
+    return () => { cancelled = true }
+  }, [load])
 
   const updateSheet = useCallback(async (input: Partial<CharacterSheet>): Promise<Result> => {
     let updateError: { message: string } | null = null; const updatedAt = new Date().toISOString()

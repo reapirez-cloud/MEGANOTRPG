@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import type { FormEvent } from "react"
 import ImageUploadField from "../common/ImageUploadField"
 import ItemMechanicPresets from "./ItemMechanicPresets"
@@ -144,7 +144,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
     ]
   }
 
-  const reviewMechanics = useMemo(() => finalMechanics().slice(0, 7).map(mechanicSummary), [mechanics, curseMechanics, category, cursed, curseDescription, curseId, showCurseToPlayer, showCurseEffectToPlayer])
+  const reviewMechanics = finalMechanics().slice(0, 7).map(mechanicSummary)
   const equippedOnlyCount = [...mechanics, ...curseMechanics].filter((mechanic) => mechanic.activation === "equipped").length
 
   function choosePreset(next: ItemPreset) {

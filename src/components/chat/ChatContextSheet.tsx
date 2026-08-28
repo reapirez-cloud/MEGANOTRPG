@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useCharacters } from "../../context/CharacterContext"
 import { useWorldState } from "../../hooks/useWorldState"
 import { supabase } from "../../lib/supabase"
@@ -40,7 +40,7 @@ export default function ChatContextSheet({ roomId, onClose, onOpenCharacter, onO
   const subjectCharacterId = room?.room_type === "character" ? room.character_id : null
   const world = useWorldState(subjectCharacterId)
 
-  async function loadRoom() {
+  const loadRoom = useCallback(async () => {
     const { data, error: roomError } = await supabase.from("chat_rooms").select("id,title,room_type,character_id,location_id,campaign_day,day_period,room_state,scene_state,open_to_campaign,campaign_can_write,is_read_only").eq("id", roomId).maybeSingle()
     if (roomError || !data) { setError(roomError?.message || "Комната недоступна."); return }
     setRoom(data as RoomRow)
@@ -48,9 +48,13 @@ export default function ChatContextSheet({ roomId, onClose, onOpenCharacter, onO
       const { data: rows } = await supabase.from("scene_participants").select("character_id").eq("room_id", roomId)
       setParticipants((rows || []).map((row) => row.character_id))
     } else setParticipants([])
-  }
+  }, [roomId])
 
-  useEffect(() => { void loadRoom() }, [roomId])
+  useEffect(() => {
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void loadRoom() })
+    return () => { cancelled = true }
+  }, [loadRoom])
 
   const character = useMemo(() => room?.character_id ? characters.find((item) => item.id === room.character_id) || null : null, [characters, room])
   const sceneParticipants = useMemo(() => participants.map((id) => characters.find((item) => item.id === id)).filter(Boolean), [characters, participants])

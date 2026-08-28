@@ -219,11 +219,11 @@ function WorldEditorForm(
     currentMode.type === "world-section-edit" ? "Редактировать раздел" :
     currentMode.type === "article" ? "Новая запись" :
     currentMode.type === "article-edit" ? "Редактировать запись" :
-    currentMode.type === "location" ? (currentMode.parentId ? "Новая подлокация" : "Новая локация") :
-    currentMode.type === "location-edit" ? "Редактировать локацию" :
-    currentMode.type === "location-section" ? "Новый раздел локации" :
-    currentMode.type === "location-section-edit" ? "Редактировать раздел локации" :
-    currentMode.type === "location-link" ? "Переход к локации" :
+    currentMode.type === "location" ? (currentMode.parentId ? "Новая подзона" : "Новая зона") :
+    currentMode.type === "location-edit" ? "Редактировать зону" :
+    currentMode.type === "location-section" ? "Новый раздел зоны" :
+    currentMode.type === "location-section-edit" ? "Редактировать раздел зоны" :
+    currentMode.type === "location-link" ? "Переход к зоне" :
     currentMode.type === "location-link-edit" ? "Редактировать переход" :
     currentMode.type === "achievement" ? "Новое достижение" :
     currentMode.type === "achievement-edit" ? "Редактировать достижение" :
@@ -396,6 +396,9 @@ function WorldEditorForm(
     currentMode.type !== "location-link" &&
     currentMode.type !== "location-link-edit"
 
+  const isLocation =
+    currentMode.type === "location" || currentMode.type === "location-edit"
+
   return (
     <div className="sheet-backdrop" onMouseDown={props.onClose}>
       <form
@@ -529,16 +532,17 @@ function WorldEditorForm(
         {showSummary && (
           <>
             <label className="field-label" htmlFor="world-summary">
-              {currentMode.type === "campaign" ? "Описание на обложке" : "Короткое описание"}
+              {currentMode.type === "campaign" ? "Описание на обложке" : isLocation ? "Превью зоны" : "Короткое описание"}
             </label>
             <input
               id="world-summary"
               className="app-input"
               value={summary}
               onChange={(event) => setSummary(event.target.value)}
-              placeholder={currentMode.type === "campaign" ? "О чём эта кампания" : "Для карточки и списка"}
+              placeholder={currentMode.type === "campaign" ? "О чём эта кампания" : isLocation ? "Коротко: что это за место" : "Для карточки и списка"}
               maxLength={240}
             />
+            {isLocation && <p className="world-editor-help">Этот текст показывается на карточке зоны в общем обзоре.</p>}
           </>
         )}
 
@@ -548,7 +552,7 @@ function WorldEditorForm(
             onChange={setImageUrl}
             folder={currentMode.type === "campaign" ? "campaign-cover" : "locations"}
             campaignId={props.campaignId}
-            label={currentMode.type === "campaign" ? "Обложка мира" : "Арт локации"}
+            label={currentMode.type === "campaign" ? "Обложка мира" : "Арт зоны"}
             hint="Выбери изображение из галереи телефона или камеры."
           />
         )}
@@ -558,6 +562,8 @@ function WorldEditorForm(
             <label className="field-label" htmlFor="world-body">
               {currentMode.type === "campaign"
                 ? "Правила и вводная"
+                : isLocation
+                  ? "Подробное описание"
                 : currentMode.type === "world-section" ||
               currentMode.type === "world-section-edit"
                 ? "Описание раздела"
@@ -569,11 +575,13 @@ function WorldEditorForm(
             </label>
             <textarea
               id="world-body"
-              className="app-textarea world-editor-textarea"
+              className={`app-textarea world-editor-textarea ${isLocation ? "world-editor-textarea--location" : ""}`}
               value={body}
               onChange={(event) => setBody(event.target.value)}
+              placeholder={isLocation ? "История, атмосфера, ориентиры, жители, опасности и важные детали…" : undefined}
               maxLength={12000}
             />
+            {isLocation && <p className="world-editor-help">Подробный текст открывается уже внутри зоны и не перегружает общий список.</p>}
           </>
         )}
 

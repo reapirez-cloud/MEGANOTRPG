@@ -146,3 +146,15 @@
   font-size: 9px;
   font-weight: 750;
 }
+
+.world-editor-help {
+  margin: -8px 2px 10px;
+  color: #7f7c88;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.world-editor-textarea--location {
+  min-height: 230px;
+  line-height: 1.55;
+}

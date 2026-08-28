@@ -578,7 +578,7 @@ function explainNumberTree(
     })
   }
 
-  const skillMatch = target.match(/^skills\.([^\.]+)\.bonus$/)
+  const skillMatch = target.match(/^skills\.([^.]+)\.bonus$/)
   if (skillMatch) {
     const skill = skillMatch[1] as SkillKey
     const resolved = character.skills[skill]
@@ -595,7 +595,7 @@ function explainNumberTree(
     })
   }
 
-  const saveMatch = target.match(/^savingThrows\.([^\.]+)\.bonus$/)
+  const saveMatch = target.match(/^savingThrows\.([^.]+)\.bonus$/)
   if (saveMatch) {
     const ability = saveMatch[1] as AbilityKey
     const resolved = character.savingThrows[ability]

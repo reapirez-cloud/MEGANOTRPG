@@ -27,7 +27,11 @@ export function useRuleTemplates(campaignId: string, includeInactive = false) {
     setLoading(false)
   }, [campaignId, includeInactive])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void load() })
+    return () => { cancelled = true }
+  }, [load])
 
   const byKind = useMemo(() => ({
     race: templates.filter((item) => item.kind === "race"),

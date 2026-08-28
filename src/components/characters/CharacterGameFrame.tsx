@@ -1,4 +1,4 @@
-import { cloneElement, isValidElement, useEffect, useMemo, useState, type ReactNode } from "react"
+import { cloneElement, isValidElement, useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { useCharacters } from "../../context/CharacterContext"
 import { useCharacterResourceStates } from "../../hooks/useCharacterResourceStates"
 import { useCharacterTemplateRegistry } from "../../hooks/useCharacterTemplateRegistry"
@@ -53,7 +53,7 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
   const [suppressionSaving, setSuppressionSaving] = useState("")
   const [error, setError] = useState("")
 
-  async function loadLife() {
+  const loadLife = useCallback(async () => {
     const { data, error: lifeError } = await supabase
       .from("characters")
       .select("life_state,died_at")
@@ -62,9 +62,13 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
     if (lifeError || !data) return
     setLifeState(data.life_state === "dead" ? "dead" : "alive")
     setDiedAt(data.died_at || null)
-  }
+  }, [characterId])
 
-  useEffect(() => { void loadLife() }, [characterId])
+  useEffect(() => {
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void loadLife() })
+    return () => { cancelled = true }
+  }, [loadLife])
 
   const existingRace = assigned.bundles.find((item) => item.template.kind === "race") || null
   const existingSubrace = assigned.bundles.find((item) => item.template.kind === "subrace") || null

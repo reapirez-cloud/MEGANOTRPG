@@ -28,7 +28,11 @@ export function useChatActors() {
     setBoundIds(new Set((data || []).map((row) => String(row.character_id))))
   }, [campaignId, canManage, user.id])
 
-  useEffect(() => { void loadBindings() }, [loadBindings])
+  useEffect(() => {
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void loadBindings() })
+    return () => { cancelled = true }
+  }, [loadBindings])
 
   const roleActor = useMemo<ChatActor | null>(() => canManage ? {
     key: "role", characterId: null,
@@ -56,7 +60,11 @@ export function useChatActors() {
   const [selectedKey, setSelectedKey] = useState(() => window.localStorage.getItem(storageKey) || "")
   useEffect(() => {
     const saved = window.localStorage.getItem(storageKey)
-    setSelectedKey(saved || (canManage ? "role" : activeCharacter?.id || ""))
+    let cancelled = false
+    queueMicrotask(() => {
+      if (!cancelled) setSelectedKey(saved || (canManage ? "role" : activeCharacter?.id || ""))
+    })
+    return () => { cancelled = true }
   }, [activeCharacter?.id, campaignId, canManage, storageKey])
 
   const selected = actors.find((actor) => actor.key === selectedKey)

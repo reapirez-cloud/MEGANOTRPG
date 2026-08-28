@@ -11,14 +11,24 @@ import { useCharacterTemplateRegistry } from "./useCharacterTemplateRegistry.ts"
 
 export function useResolvedChatActor(character: Character | null) {
   const characterId = character?.id || null
-  const templates = useCharacterTemplateRegistry(characterId)
-  const runtime = useCharacterResourceStates(characterId)
+  const {
+    error: templateError,
+    loading: templateLoading,
+    revision: templateRevision,
+  } = useCharacterTemplateRegistry(characterId)
+  const {
+    error: resourceError,
+    loading: resourceLoading,
+    rows: resourceRows,
+    state: resourceState,
+    sync: syncResources,
+  } = useCharacterResourceStates(characterId)
   const [contract, setContract] = useState<ResolvedCharacterContract | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [revision, setRevision] = useState(0)
   const refresh = useCallback(() => setRevision((value) => value + 1), [])
-  const rowByKey = useMemo(() => new Map(runtime.rows.map((row) => [row.state_key, row])), [runtime.rows])
+  const rowByKey = useMemo(() => new Map(resourceRows.map((row) => [row.state_key, row])), [resourceRows])
 
   useEffect(() => {
     if (!characterId) return
@@ -30,34 +40,37 @@ export function useResolvedChatActor(character: Character | null) {
 
   useEffect(() => {
     let cancelled = false
-    if (!character) { setContract(null); setError(""); setLoading(false); return }
-    if (templates.loading || runtime.loading) { setLoading(true); return }
-    setLoading(true); setError(templates.error || runtime.error || "")
-    void Promise.all([
-      supabase.from("character_sheets").select("*").eq("character_id", character.id).maybeSingle(),
-      supabase.from("character_inventory_items").select("*").eq("character_id", character.id).order("sort_order", { ascending: true }),
-      supabase.from("character_spells").select("*").eq("character_id", character.id).order("spell_level", { ascending: true }),
-      supabase.from("character_features").select("*").eq("character_id", character.id).order("sort_order", { ascending: true }),
-    ]).then(async ([sheetResult, inventoryResult, spellsResult, featuresResult]) => {
+    queueMicrotask(() => {
       if (cancelled) return
-      const firstError = sheetResult.error || inventoryResult.error || spellsResult.error || featuresResult.error
-      if (firstError) { setError(firstError.message); setLoading(false); return }
-      const sheet = sheetResult.data as CharacterSheet | null
-      if (!sheet) { setContract(null); setLoading(false); return }
-      try {
-        const view = resolveLegacyCharacterEngineView({ character, sheet, inventory: (inventoryResult.data || []) as InventoryItem[], spells: (spellsResult.data || []) as CharacterSpell[], features: (featuresResult.data || []) as CharacterFeature[], resourceStates: runtime.state })
+      if (!character) { setContract(null); setError(""); setLoading(false); return }
+      if (templateLoading || resourceLoading) { setLoading(true); return }
+      setLoading(true); setError(templateError || resourceError || "")
+      void Promise.all([
+        supabase.from("character_sheets").select("*").eq("character_id", character.id).maybeSingle(),
+        supabase.from("character_inventory_items").select("*").eq("character_id", character.id).order("sort_order", { ascending: true }),
+        supabase.from("character_spells").select("*").eq("character_id", character.id).order("spell_level", { ascending: true }),
+        supabase.from("character_features").select("*").eq("character_id", character.id).order("sort_order", { ascending: true }),
+      ]).then(async ([sheetResult, inventoryResult, spellsResult, featuresResult]) => {
         if (cancelled) return
-        setContract(view.contract)
-        const desired = resourceSyncInputs(view.contract)
-        const needsSync = desired.some((item) => { const row = rowByKey.get(item.stateKey); return !row || row.max_snapshot !== item.max || row.label !== item.label || JSON.stringify(row.recharge) !== JSON.stringify(item.recharge) })
-        if (needsSync) { const result = await runtime.sync(desired); if (!result.ok && !cancelled) setError(result.error || "Не удалось синхронизировать ресурсы персонажа.") }
-      } catch (reason) {
-        if (!cancelled) setError(reason instanceof Error ? reason.message : "Не удалось рассчитать действия персонажа.")
-      }
-      if (!cancelled) setLoading(false)
+        const firstError = sheetResult.error || inventoryResult.error || spellsResult.error || featuresResult.error
+        if (firstError) { setError(firstError.message); setLoading(false); return }
+        const sheet = sheetResult.data as CharacterSheet | null
+        if (!sheet) { setContract(null); setLoading(false); return }
+        try {
+          const view = resolveLegacyCharacterEngineView({ character, sheet, inventory: (inventoryResult.data || []) as InventoryItem[], spells: (spellsResult.data || []) as CharacterSpell[], features: (featuresResult.data || []) as CharacterFeature[], resourceStates: resourceState })
+          if (cancelled) return
+          setContract(view.contract)
+          const desired = resourceSyncInputs(view.contract)
+          const needsSync = desired.some((item) => { const row = rowByKey.get(item.stateKey); return !row || row.max_snapshot !== item.max || row.label !== item.label || JSON.stringify(row.recharge) !== JSON.stringify(item.recharge) })
+          if (needsSync) { const result = await syncResources(desired); if (!result.ok && !cancelled) setError(result.error || "Не удалось синхронизировать ресурсы персонажа.") }
+        } catch (reason) {
+          if (!cancelled) setError(reason instanceof Error ? reason.message : "Не удалось рассчитать действия персонажа.")
+        }
+        if (!cancelled) setLoading(false)
+      })
     })
     return () => { cancelled = true }
-  }, [character, revision, rowByKey, runtime.error, runtime.loading, runtime.state, runtime.sync, templates.error, templates.loading, templates.revision])
+  }, [character, resourceError, resourceLoading, resourceState, revision, rowByKey, syncResources, templateError, templateLoading, templateRevision])
 
   return { contract, loading, error, refresh }
 }

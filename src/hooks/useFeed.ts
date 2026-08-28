@@ -134,8 +134,9 @@ export function useFeed(campaignId: string) {
   }, [fetchPage, hasMore, items, loadingMore])
 
   useEffect(() => {
-    void load()
-    if (!campaignId) return
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void load() })
+    if (!campaignId) return () => { cancelled = true }
 
     let channel: RealtimeChannel | null = supabase
       .channel(`campaign-feed-${campaignId}`)
@@ -179,6 +180,7 @@ export function useFeed(campaignId: string) {
       .subscribe()
 
     return () => {
+      cancelled = true
       if (channel) {
         void supabase.removeChannel(channel)
         channel = null

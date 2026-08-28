@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { FormEvent } from "react"
 import type { ResolvedAction, ResolvedSpell } from "../character-engine/index.ts"
 import { supabase } from "../lib/supabase"
@@ -84,6 +84,7 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
   const initialScrollDoneRef = useRef(false)
   const previousLastMessageIdRef = useRef<number | null>(null)
   const chat = useChatMessages(roomId)
+  const { loading: chatLoading, markRead: markChatRead, messages: chatMessages } = chat
   const characterById = useMemo(() => {
     const map = new Map<string, MessageCharacter>()
     for (const character of characters) map.set(character.id, character)
@@ -92,7 +93,7 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
   }, [characters, messageCharacters])
   const bindMessageLongPress = useLongPressItem<ChatMessage>((message) => setSelectedMessage(message))
 
-  async function loadRoomAccess() {
+  const loadRoomAccess = useCallback(async () => {
     const { data: room, error: roomError } = await supabase.from("chat_rooms").select("id,title,category,room_type,character_id,open_to_campaign,campaign_can_write,is_read_only,room_state").eq("id", roomId).maybeSingle()
     if (roomError || !room) return
     const nextType: RoomType = room.room_type === "character" || room.room_type === "flood" ? room.room_type : "scene"
@@ -110,12 +111,16 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
     }
     const { data: access } = await supabase.from("chat_room_members").select("can_write").eq("room_id", roomId).eq("user_id", user.id).maybeSingle()
     setCanWriteRoom(Boolean(access?.can_write))
-  }
-
-  useEffect(() => { let cancelled = false; void (async () => { if (!cancelled) await loadRoomAccess() })(); return () => { cancelled = true } }, [canManage, characters, roomId, user.id])
+  }, [canManage, characters, roomId, user.id])
 
   useEffect(() => {
-    const ids = [...new Set(chat.messages.map((message) => message.character_id).filter((id): id is string => Boolean(id)))].filter((id) => !characterById.has(id))
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) void loadRoomAccess() })
+    return () => { cancelled = true }
+  }, [loadRoomAccess])
+
+  useEffect(() => {
+    const ids = [...new Set(chatMessages.map((message) => message.character_id).filter((id): id is string => Boolean(id)))].filter((id) => !characterById.has(id))
     if (!ids.length) return
     let cancelled = false
     const timer = window.setTimeout(() => void (async () => {
@@ -129,18 +134,25 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
       void refreshCharacters()
     })(), 60)
     return () => { cancelled = true; window.clearTimeout(timer) }
-  }, [chat.messages, characterById, refreshCharacters])
-
-  useEffect(() => { initialScrollDoneRef.current = false; previousLastMessageIdRef.current = null; nearBottomRef.current = true; setShowNewMessages(false) }, [roomId])
+  }, [characterById, chatMessages, refreshCharacters])
 
   useEffect(() => {
-    if (chat.loading) return
-    const last = chat.messages[chat.messages.length - 1] || null
+    initialScrollDoneRef.current = false
+    previousLastMessageIdRef.current = null
+    nearBottomRef.current = true
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) setShowNewMessages(false) })
+    return () => { cancelled = true }
+  }, [roomId])
+
+  useEffect(() => {
+    if (chatLoading) return
+    const last = chatMessages[chatMessages.length - 1] || null
     const id = last?.id ?? null
     if (!initialScrollDoneRef.current) {
       initialScrollDoneRef.current = true; previousLastMessageIdRef.current = id
       requestAnimationFrame(() => { if (messageListRef.current) messageListRef.current.scrollTop = messageListRef.current.scrollHeight })
-      if (id != null) void chat.markRead(id)
+      if (id != null) void markChatRead(id)
       return
     }
     const previous = previousLastMessageIdRef.current
@@ -150,9 +162,9 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
     if (follow) {
       setShowNewMessages(false)
       requestAnimationFrame(() => { if (messageListRef.current) messageListRef.current.scrollTop = messageListRef.current.scrollHeight })
-      void chat.markRead(id)
+      void markChatRead(id)
     } else setShowNewMessages(true)
-  }, [chat.loading, chat.markRead, chat.messages, user.id])
+  }, [chatLoading, chatMessages, markChatRead, user.id])
 
   function onScroll() {
     const list = messageListRef.current
