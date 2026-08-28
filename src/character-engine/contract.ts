@@ -2,12 +2,14 @@ import { resolveCharacterInput } from "./resolver.ts"
 import { CHARACTER_ENGINE_VERSION } from "./version.ts"
 import type {
   CharacterEngineInput,
+  GrantPayload,
   GrantTarget,
   ResolvedAction,
   ResolvedCharacter,
   ResolvedGrant,
   ResolvedResource,
   ResolvedSpell,
+  ResolvedSourceRef,
 } from "./types.ts"
 
 export const RESOLVED_CHARACTER_CONTRACT_VERSION = 1 as const
@@ -38,6 +40,23 @@ export interface ResolvedCapabilities {
 }
 
 /**
+ * Explicit machine-readable rule carried by a resolved feature grant.
+ * `structured` means the source declares a semantic `mechanic.kind` contract.
+ * `summary` is the legacy catalog shape (dice/range/recharge hints only) and is
+ * intentionally distinguishable so consumers/audits never mistake it for a
+ * fully integrated rule.
+ */
+export interface ResolvedMechanicalRule {
+  key: string
+  variantKey: string
+  label?: string
+  description?: string
+  mechanic: GrantPayload
+  integration: "structured" | "summary"
+  sources: ResolvedSourceRef[]
+}
+
+/**
  * Stable renderer-facing contract for Character Engine v1.
  *
  * The fixed character skeleton is inherited from ResolvedCharacter. Dynamic
@@ -46,14 +65,16 @@ export interface ResolvedCapabilities {
  * wants the engine to decide which optional sections actually exist.
  *
  * `grants` remains available for provenance/advanced consumers. Ordinary sheets
- * should consume `capabilities`, `resources`, `actions` and `spells` instead of
- * re-filtering raw grants themselves.
+ * should consume `capabilities`, `rules`, `resources`, `actions` and `spells`
+ * instead of re-filtering raw grants themselves.
  */
 export interface ResolvedCharacterContract extends ResolvedCharacter {
   /** Semver of the standalone mechanics engine that produced this result. */
   engineVersion: typeof CHARACTER_ENGINE_VERSION
   contractVersion: typeof RESOLVED_CHARACTER_CONTRACT_VERSION
   capabilities: ResolvedCapabilities
+  /** Machine-readable passive/triggered rules. Never infer these from prose. */
+  rules: ResolvedMechanicalRule[]
 }
 
 const CAPABILITY_TARGET_TO_SECTION: Partial<Record<GrantTarget, ResolvedCapabilitySectionKey>> = {
@@ -78,6 +99,45 @@ const SECTION_TO_TARGET: Record<ResolvedCapabilitySectionKey, GrantTarget> = {
 
 function compareGrant(left: ResolvedGrant, right: ResolvedGrant): number {
   return left.key.localeCompare(right.key) || left.variantKey.localeCompare(right.variantKey)
+}
+
+function asPayloadRecord(payload: GrantPayload | undefined): Record<string, GrantPayload> | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null
+  return payload as Record<string, GrantPayload>
+}
+
+function payloadString(payload: Record<string, GrantPayload>, key: string): string | undefined {
+  const value = payload[key]
+  return typeof value === "string" && value.trim() ? value.trim() : undefined
+}
+
+function mechanicIntegration(mechanic: GrantPayload): ResolvedMechanicalRule["integration"] {
+  const object = asPayloadRecord(mechanic)
+  return object && typeof object.kind === "string" && object.kind.trim() ? "structured" : "summary"
+}
+
+/**
+ * Extracts explicit mechanical rule payloads from resolved features. The engine
+ * keeps legacy summary metadata visible, but labels it `summary` so it cannot be
+ * confused with a semantic rule contract.
+ */
+export function resolveMechanicalRules(grants: ResolvedGrant[]): ResolvedMechanicalRule[] {
+  return grants
+    .filter((grant) => grant.target === "feature" || grant.target === "trait")
+    .flatMap((grant) => {
+      const payload = asPayloadRecord(grant.payload)
+      if (!payload || payload.mechanic === undefined || payload.mechanic === null) return []
+      return [{
+        key: grant.key,
+        variantKey: grant.variantKey,
+        ...(payloadString(payload, "label") ? { label: payloadString(payload, "label") } : {}),
+        ...(payloadString(payload, "description") ? { description: payloadString(payload, "description") } : {}),
+        mechanic: payload.mechanic,
+        integration: mechanicIntegration(payload.mechanic),
+        sources: grant.sources,
+      } satisfies ResolvedMechanicalRule]
+    })
+    .sort((left, right) => left.key.localeCompare(right.key) || left.variantKey.localeCompare(right.variantKey))
 }
 
 export function resolveCapabilities(grants: ResolvedGrant[]): ResolvedCapabilities {
@@ -153,6 +213,7 @@ export function validateResolvedCharacterContract(contract: ResolvedCharacterCon
   assertUnique(contract.resources.map(resourceIdentity), "resources")
   assertUnique(contract.actions.map(actionIdentity), "actions")
   assertUnique(contract.spells.map(spellIdentity), "spells")
+  assertUnique(contract.rules.map((rule) => `${rule.key}:${rule.variantKey}`), "rules")
 
   for (const spell of contract.spells) {
     if (spell.accesses.length === 0) {
@@ -197,6 +258,7 @@ export function resolveCharacterContract(input: CharacterEngineInput): ResolvedC
     engineVersion: CHARACTER_ENGINE_VERSION,
     contractVersion: RESOLVED_CHARACTER_CONTRACT_VERSION,
     capabilities: resolveCapabilities(resolved.grants),
+    rules: resolveMechanicalRules(resolved.grants),
   }
   validateResolvedCharacterContract(contract)
   return contract
