@@ -32,7 +32,7 @@ async function syncResolvedResources(characterId: string, contract: ResolvedChar
  * The server re-reads the assigned template mechanic, so a client cannot submit
  * arbitrary restore effects. Scene/fiction consequences remain player/GM rules.
  */
-export async function useResolvedTemplateResourceAction(
+export async function runResolvedTemplateResourceAction(
   characterId: string,
   contract: ResolvedCharacterContract,
   action: ResolvedAction,
