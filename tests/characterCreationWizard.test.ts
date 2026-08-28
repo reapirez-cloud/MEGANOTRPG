@@ -67,8 +67,9 @@ test("wizard only persists sheet fields the GM actually changed", () => {
   assert.equal("spellcasting_enabled" in patch, false)
 })
 
-test("magic setup delegates derived spell math to Character Engine", () => {
+test("magic setup keeps derived spell math automatic without exposing engine internals", () => {
   assert.match(wizard, /СЛ и бонус атаки не вводятся вручную/)
-  assert.match(wizard, /Character Engine вычислит их/)
+  assert.match(wizard, /вычисляются из характеристики и бонуса мастерства/)
+  assert.doesNotMatch(wizard, /Character Engine вычислит их/)
   assert.match(wizard, /Сами заклинания добавляются из каталога/)
 })
