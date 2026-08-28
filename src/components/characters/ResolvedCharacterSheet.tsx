@@ -12,6 +12,7 @@ import {
   type SkillKey,
 } from "../../character-engine/index.ts"
 import { useLongPressItem } from "../../hooks/useLongPressItem.ts"
+import { registeredCharacterClassPackages } from "../../rule-templates/classPackages.ts"
 import type { CharacterFeature, CharacterSheet } from "../../types/characterSheet.ts"
 import ContextActionSheet, { type ContextAction } from "../common/ContextActionSheet.tsx"
 import SpellSlotMeter from "./SpellSlotMeter.tsx"
@@ -201,6 +202,7 @@ export default function ResolvedCharacterSheet({
     () => explain ? explainCharacter(input, explain.query) : null,
     [explain, input],
   )
+  const classPackages = registeredCharacterClassPackages(narrative.character_id)
   const visibleResources = contract.resources.filter(
     (resource) => resource.max.value > 0 && !/^spell_slot_\d+$/.test(resource.key),
   )
@@ -265,11 +267,44 @@ export default function ResolvedCharacterSheet({
       )}
 
       <section className="sheet-v3__identity">
-        <button type="button" onClick={onOpenClassReference} disabled={!onOpenClassReference}>
-          <span>Класс</span>
-          <strong>{characterClass || "Не указан"}</strong>
-          <small>{contract.level} уровень{onOpenClassReference ? " · открыть справочник" : ""}</small>
-        </button>
+        <div className="sheet-v3__class-package" aria-label="Класс и подкласс персонажа">
+          <div className="sheet-v3__class-package-head">
+            <span>Класс · Character Engine</span>
+            <small>{contract.level} общий уровень</small>
+          </div>
+          {classPackages.length ? classPackages.map((entry) => (
+            <button
+              className="sheet-v3__class-chain"
+              type="button"
+              key={entry.classTemplateId}
+              onClick={onOpenClassReference}
+              disabled={!onOpenClassReference}
+            >
+              <span className="sheet-v3__class-node sheet-v3__class-node--class">
+                <i aria-hidden="true">◇</i>
+                <span><small>Класс · {entry.level} ур.</small><strong>{entry.className}</strong></span>
+              </span>
+              <span className={`sheet-v3__class-node sheet-v3__class-node--subclass ${entry.subclassName && !entry.subclassActive ? "is-locked" : ""}`}>
+                <i aria-hidden="true">✦</i>
+                <span>
+                  <small>{entry.subclassName && !entry.subclassActive ? `Подкласс · с ${entry.subclassUnlockLevel || 1} ур.` : "Подкласс"}</small>
+                  <strong>{entry.subclassName || "Не выбран"}</strong>
+                </span>
+              </span>
+            </button>
+          )) : (
+            <button className="sheet-v3__class-chain sheet-v3__class-chain--legacy" type="button" onClick={onOpenClassReference} disabled={!onOpenClassReference}>
+              <span className="sheet-v3__class-node sheet-v3__class-node--class">
+                <i aria-hidden="true">◇</i>
+                <span><small>Класс · {contract.level} ур.</small><strong>{characterClass || "Не указан"}</strong></span>
+              </span>
+              <span className="sheet-v3__class-node sheet-v3__class-node--subclass">
+                <i aria-hidden="true">✦</i>
+                <span><small>Подкласс</small><strong>Не привязан</strong></span>
+              </span>
+            </button>
+          )}
+        </div>
         <div className="sheet-v3__identity-facts">
           {narrative.race && <div><span>Раса / вид</span><strong>{narrative.race}</strong></div>}
           {narrative.background && <div><span>Предыстория</span><strong>{narrative.background}</strong></div>}
