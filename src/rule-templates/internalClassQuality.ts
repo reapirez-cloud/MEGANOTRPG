@@ -57,19 +57,19 @@ type MechanicEntry = {
 }
 
 const VAGUE_RULE_PATTERNS = [
-  /что[- ]?то/i,
-  /что[- ]?нибудь/i,
-  /какие[- ]?то\s+(?:возможност|эффект|бонус|способност)/i,
-  /некоторые\s+(?:возможност|эффект|бонус|способност)/i,
-  /особым образом/i,
-  /по ситуации/i,
-  /при необходимости/i,
-  /в некоторых случаях/i,
-  /расширяет возможности/i,
-  /усиливает возможности/i,
-  /становится эффективнее/i,
-  /получает новые возможности/i,
-  /может применять (?:это|способность|эффект)\b(?![^.]{0,80}(?:действи|реакц|раз|фут|к\d|d\d|урон|леч|Сл|DC))/i,
+  /что[- ]?то/iu,
+  /что[- ]?нибудь/iu,
+  /какие[- ]?то\s+(?:возможност|эффект|бонус|способност)/iu,
+  /некоторые\s+(?:возможност|эффект|бонус|способност)/iu,
+  /особым образом/iu,
+  /по ситуации/iu,
+  /при необходимости/iu,
+  /в некоторых случаях/iu,
+  /расширяет возможности/iu,
+  /усиливает возможности/iu,
+  /становится эффективнее/iu,
+  /получает новые возможности/iu,
+  /может применять (?:это|способность|эффект)(?![а-яё])(?![^.]{0,80}(?:действи|реакц|раз|фут|к\d|d\d|урон|леч|Сл|DC))/iu,
 ]
 
 const PLACEHOLDER_PATTERNS = [
@@ -77,18 +77,18 @@ const PLACEHOLDER_PATTERNS = [
   /\bTBD\b/i,
   /\bFIXME\b/i,
   /placeholder/i,
-  /описание (?:позже|способности)/i,
-  /заглушк/i,
+  /описание (?:позже|способности)/iu,
+  /заглушк/iu,
 ]
 
 const IMPLEMENTATION_META_PATTERNS = [
   /Character Engine/i,
   /\bCE\b/,
   /runtime/i,
-  /парсер/i,
-  /миграци/i,
-  /реализаци/i,
-  /совместимост/i,
+  /парсер/iu,
+  /миграци/iu,
+  /реализаци/iu,
+  /совместимост/iu,
   /catalog[_ -]?revision/i,
   /sourceKey/i,
 ]
@@ -140,15 +140,17 @@ function allChoices(bundle: CharacterTemplateBundle): Array<{ choice: RuleChoice
   ]
 }
 
+/** Do not use JS \b/\w here: their word semantics are ASCII-biased and miss Cyrillic rules text. */
 function hasFiniteRestLimit(description: string): boolean {
   const lower = description.toLocaleLowerCase("ru")
-  const mentionsRest = /(?:коротк\w*|долг\w*)\s+отдых/.test(lower)
-  const mentionsFiniteUse = /\bиспользован\w*|\bзапас\w*|\bзаряд\w*|\bраз(?:а|)\b|\bвосстанавл\w*/.test(lower)
+  const mentionsRest = /(?:коротк|долг)[а-яё-]*\s+отдых/iu.test(lower)
+  const mentionsFiniteUse = /использован[а-яё-]*|запас[а-яё-]*|заряд[а-яё-]*|восстанавл[а-яё-]*|(?:^|[\s,.;:])раз(?:а)?(?=$|[\s,.;:])/iu.test(lower)
   return mentionsRest && mentionsFiniteUse
 }
 
+/** Same Cyrillic rule: explicit separators are safer than ASCII-style word boundaries. */
 function hasActionEconomy(description: string): boolean {
-  return /\b(?:действием|бонусным действием|реакцией|магическим действием)\b/i.test(description)
+  return /(?:^|[\s,.;:])(?:бонусным действием|магическим действием|действием|реакцией)(?=$|[\s,.;:])/iu.test(description)
 }
 
 function auditChoice(choice: RuleChoiceDefinition, path: string): ClassQualityIssue[] {
