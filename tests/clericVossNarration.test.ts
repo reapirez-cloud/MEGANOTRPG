@@ -10,6 +10,7 @@ import {
   getClericSubclassVossNarration,
   normalizeClericDomainId,
 } from "../src/data/classes/clericVossNarration.ts"
+import { clericVossNarrationRules } from "../src/data/classes/clericVossNarrationContract.ts"
 import {
   vossExplanationHasBoilerplate,
   vossExplanationHasRulesMeta,
@@ -18,6 +19,8 @@ import {
 
 const guide = fs.readFileSync("src/components/reference/ReferenceGuide.tsx", "utf8")
 const migration = fs.readFileSync("supabase/migrations/20260829233000_cleric_voss_narration_source.sql", "utf8")
+const spellAuthor = fs.readFileSync("src/data/spellReferenceAuthor.ts", "utf8")
+const sharedVoice = fs.readFileSync("src/data/vossVoice.ts", "utf8")
 
 function assertNarration(text: string, label: string) {
   assert.ok(text.trim().length >= 100, `${label}: authored narration is too thin`)
@@ -67,6 +70,15 @@ test("every Cleric card has unique in-world narration without rules vocabulary",
 
   assert.equal(all.length, 99)
   assert.equal(new Set(all).size, all.length, "Cleric Voss narration must not reuse one text across cards")
+})
+
+test("Cleric-only contract varies Voss attitude by domain instead of repeating one priest joke", () => {
+  assert.ok(clericVossNarrationRules.some((rule) => /нельзя повторять.*трус.*проповед.*чужой щит/iu.test(rule)))
+  assert.ok(clericVossNarrationRules.some((rule) => /Жизнь.*Могил.*Кузн.*Войн.*Бур.*Сумер.*Знани/iu.test(rule)))
+  assert.ok(clericVossNarrationRules.some((rule) => /домену и sourceKey/iu.test(rule)))
+
+  assert.doesNotMatch(sharedVoice, /Домен меняет угол рассказа\. Жизнь и Могила/)
+  assert.doesNotMatch(spellAuthor, /clericVossNarrationContract|clericVossNarrationRules/)
 })
 
 test("Cleric domain aliases normalize DB catalog tails without duplicating static domains", () => {
