@@ -97,7 +97,7 @@ test("persisted Protector key emits its actual CE proficiencies", () => {
 
 test("persisted Thaumaturge key reaches its structured rule instead of becoming inert", () => {
   const contract = contractFor(cleric("divine-order:thaumaturge"))
-  assert.ok(contract.mechanicalRules.some((rule) => rule.key === "class:cleric:divine-order:thaumaturge" && rule.integration === "structured"))
+  assert.ok(contract.rules.some((rule) => rule.key === "class:cleric:divine-order:thaumaturge" && rule.integration === "structured"))
 })
 
 test("forward migration repairs the historical prefixed choice keys without rewriting assignments", () => {
