@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react"
-import type { AbilityKey, CharacterCondition, FormulaExpression, NumericTarget, ResourceRechargeTrigger } from "../../character-engine/index.ts"
+import type { AbilityKey, CharacterCondition, FormulaExpression, NumericTarget } from "../../character-engine/index.ts"
 import { mechanicSummary } from "../../lib/characterMechanics.ts"
 import type { StoredMechanic, StoredMechanics, StoredResourceMechanic } from "../../types/characterMechanics.ts"
+import type { PersistentResourceRecoveryTrigger } from "../../types/characterResources.ts"
 
 type ResourceOption = { key: string; label: string }
 type Props = { value: StoredMechanics; onChange: (value: StoredMechanics) => void; itemMode?: boolean; templateMode?: boolean; resourceCatalog?: ResourceOption[] }
@@ -18,8 +19,8 @@ const abilities: Array<{ value: AbilityKey; label: string }> = [
   { value: "strength", label: "Сила" }, { value: "dexterity", label: "Ловкость" }, { value: "constitution", label: "Телосложение" }, { value: "intelligence", label: "Интеллект" }, { value: "wisdom", label: "Мудрость" }, { value: "charisma", label: "Харизма" },
 ]
 const damageTypes = ["рубящий", "колющий", "дробящий", "огонь", "холод", "молния", "кислота", "яд", "некротический", "излучение", "психический", "силовой", "гром"]
-const rechargeOptions: Array<{ value: ResourceRechargeTrigger; label: string }> = [
-  { value: "short_rest", label: "Короткий отдых" }, { value: "long_rest", label: "Долгий отдых" }, { value: "dawn", label: "Рассвет" }, { value: "manual", label: "Вручную" }, { value: "never", label: "Никогда" },
+const rechargeOptions: Array<{ value: PersistentResourceRecoveryTrigger; label: string }> = [
+  { value: "short_rest", label: "Короткий отдых" }, { value: "long_rest", label: "Долгий отдых" }, { value: "dawn", label: "Рассвет" },
 ]
 function makeId() { return typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `m-${Date.now()}-${Math.random().toString(36).slice(2)}` }
 function keyFromLabel(value: string) { const cleaned = value.trim().toLocaleLowerCase("ru-RU").replace(/[^a-zа-яё0-9]+/giu, "-").replace(/^-|-$/g, ""); return cleaned || makeId() }
@@ -31,7 +32,7 @@ export default function MechanicsBuilder({ value, onChange, itemMode = false, te
   const [conditionMode, setConditionMode] = useState<ConditionMode>("always"); const [hpPercent, setHpPercent] = useState("50")
   const [numericTarget, setNumericTarget] = useState<NumericTarget>("combat.ac"); const [numericValue, setNumericValue] = useState("1"); const [grantKey, setGrantKey] = useState("fire")
   const [resourceLabel, setResourceLabel] = useState("Заряды"); const [resourceMax, setResourceMax] = useState("3"); const [resourceMaxMode, setResourceMaxMode] = useState<ResourceMaxMode>("fixed"); const [resourceAbility, setResourceAbility] = useState<AbilityKey>("wisdom")
-  const [resourceRecharge, setResourceRecharge] = useState<ResourceRechargeTrigger[]>(["long_rest"]); const [resourceRestore, setResourceRestore] = useState<"full" | "amount">("full"); const [resourceRestoreAmount, setResourceRestoreAmount] = useState("1")
+  const [resourceRecharge, setResourceRecharge] = useState<PersistentResourceRecoveryTrigger[]>(["long_rest"]); const [resourceRestore, setResourceRestore] = useState<"full" | "amount">("full"); const [resourceRestoreAmount, setResourceRestoreAmount] = useState("1")
   const [actionLabel, setActionLabel] = useState("Новая атака"); const [actionEconomy, setActionEconomy] = useState("action"); const [attackAbility, setAttackAbility] = useState<AbilityKey>("strength"); const [proficient, setProficient] = useState(true); const [attackFlat, setAttackFlat] = useState("0")
   const [diceCount, setDiceCount] = useState("1"); const [diceSides, setDiceSides] = useState("8"); const [damageType, setDamageType] = useState("рубящий"); const [damageAbility, setDamageAbility] = useState<AbilityKey>("strength"); const [damageFlat, setDamageFlat] = useState("0"); const [actionResourceKey, setActionResourceKey] = useState(""); const [actionResourceCost, setActionResourceCost] = useState("1")
   const [spellName, setSpellName] = useState(""); const [spellLevel, setSpellLevel] = useState("0"); const [spellAbility, setSpellAbility] = useState<AbilityKey>("intelligence"); const [spellPayment, setSpellPayment] = useState<SpellPayment>("none"); const [spellResourceKey, setSpellResourceKey] = useState(""); const [spellResourceCost, setSpellResourceCost] = useState("1")
@@ -52,8 +53,12 @@ export default function MechanicsBuilder({ value, onChange, itemMode = false, te
     if (resourceMaxMode === "proficiency") return reference("core.proficiencyBonus")
     return reference(`abilities.${resourceAbility}.modifier`)
   }
-  function toggleRecharge(trigger: ResourceRechargeTrigger) {
-    setResourceRecharge((current) => { if (trigger === "never") return current.includes("never") ? ["long_rest"] : ["never"]; const withoutNever = current.filter((entry) => entry !== "never"); const next = withoutNever.includes(trigger) ? withoutNever.filter((entry) => entry !== trigger) : [...withoutNever, trigger]; return next.length ? next : ["never"] })
+  function toggleRecharge(trigger: PersistentResourceRecoveryTrigger) {
+    setResourceRecharge((current) => {
+      if (!current.includes(trigger)) return [...current, trigger]
+      const next = current.filter((entry) => entry !== trigger)
+      return next.length ? next : ["long_rest"]
+    })
   }
   function add() {
     const id = makeId(); const common = { id, ...(itemMode ? { activation } : {}), ...(condition ? { condition } : {}) }; let mechanic: StoredMechanic
