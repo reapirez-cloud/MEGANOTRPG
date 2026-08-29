@@ -1,7 +1,8 @@
 import type { SpellClassKey } from "../lib/spellCatalog"
+import { vossVoice, vossVoiceRules } from "./vossVoice"
 
 export const spellReferenceAuthor = {
-  name: "Рейнар Восс",
+  name: vossVoice.name,
   shortTitle: "бывший приключенец и составитель справочника",
   byline: "Записки Рейнара Восса",
   intro: "Бывший наёмник, проводник и полевой лекарь. Пережил достаточно походов с магами, чтобы считать магию полезным инструментом, а людей, уверенных в собственной магической гениальности, — основной причиной применения этого инструмента.",
@@ -110,10 +111,5 @@ export const spellAuthorAttitudes: SpellAuthorAttitude[] = [
   },
 ]
 
-export const spellAuthorVoiceRules = [
-  "Механика всегда отделена от шутки и остаётся однозначной.",
-  "Сарказм направлен на последствия применения, привычки приключенцев и классовые предубеждения автора.",
-  "Восс не хвалит прямо: уважение выражает через отсутствие оскорбления или неохотное признание пользы.",
-  "Чёрный юмор допустим, но не должен скрывать условия, цену компонентов, спасбросок, концентрацию или ограничения цели.",
-  "Повторяющиеся отношения к классам должны создавать ощущение одного и того же автора на протяжении всего справочника.",
-] as const
+/** Backward-compatible spell export; canonical rules live in vossVoice.ts. */
+export const spellAuthorVoiceRules = vossVoiceRules

@@ -31,6 +31,16 @@ These are project-state markers, not player rules.
 
 ---
 
+## Canonical Reynar Voss voice
+
+- `source: src/data/vossVoice.ts`
+- `scope: spells + classes + subclasses + future reference sections`
+- `contract: short in-world field note; sarcastic, ironic, cynical, black humor; sometimes harsh; never a second mechanics paragraph`
+- `hard_boundary: Voss must never introduce dice, DCs, ranges, costs, durations, levels or exceptions that are absent from the rule text, and must never mention Character Engine, runtime, parsers, migrations, implementation, UI, editions or project compatibility`
+- `renderer_rule: an openable ability card may obtain its Voss note from feature.payload.authorComment or, for source groups without a feature grant, from renderer-only mechanic.presentation.authorComment`
+
+---
+
 ## Fighter (`class:fighter`)
 
 **Overall project label:** `TEXT READY`  
@@ -39,11 +49,15 @@ These are project-state markers, not player rules.
 - `text_status: READY`
 - `mechanics_status: NOT_AUDITED`
 - `last_text_audit: 2026-08-29`
+- `last_voss_audit: 2026-08-29`
 - `reference_delivery: SYNCED_2026_08_29`
+- `voss_coverage_contract: every openable Fighter ability/source-group card has a separate Reynar Voss comment`
+- `voss_coverage_audit: 72/72 distinct Fighter feature sources explicitly mapped; 3/3 current non-feature source groups explicitly mapped; UI-equivalent target = 86/86 openable Fighter groups after production sync`
+- `canonical_voss_voice: src/data/vossVoice.ts`
 - `reference_ui: tappable full-rule cards; list cards are previews and open a dedicated full rule view`
-- `production_delivery_rule: the reference text sync migration may update presentation text and metadata only; it must not promote or rewrite choices/resources/actions/formulas/effects/CE dependencies`
+- `production_delivery_rule: reference text/comment sync may update presentation text and renderer-only metadata only; it must not promote or rewrite choices/resources/actions/formulas/effects/CE dependencies`
 - `text_scope: base Fighter levels 1–20 + every currently catalogued Fighter subclass + nested selectable rules (Arcane Shots, Battle Master maneuvers, Rune Knight runes) + Voss comments + GM-facing summaries/descriptions`
-- `text_definition_of_ready: a player/GM must be able to understand trigger/activation, cost, target, exact effect, numbers/dice/DC/range, duration and limits/recharge from the user-facing rule text whenever those parts apply; no "расширяет/усиливает возможности" placeholders`
+- `text_definition_of_ready: a player/GM must be able to understand trigger/activation, cost, target, exact effect, numbers/dice/DC/range, duration and limits/recharge from the user-facing rule text whenever those parts apply; no "расширяет/усиливает возможности" placeholders; every openable ability card also has a separate Voss note`
 - `next_required_audit: full Fighter mechanics/runtime audit`
 
 ### Fighter subclasses — text layer
@@ -65,13 +79,13 @@ These notes **do not reopen the text layer**. They are explicit reminders for th
 
 - Echo Knight: verify that `Unleash Incarnation / Воплощение ярости` survives the final migration stack as its own mechanical feature/resource/action. Its full rule is deliberately preserved in the final GM-facing level-3 text even if the mechanical audit later finds a structural omission.
 - Eldritch Knight: verify spell-slot/prepared-spell progression, multiclass slot interaction and replacement behavior against the Character Engine. The text pass only makes the intended progression explicit; it does not certify runtime accounting.
-- Psi Warrior: the human-facing level-3 reference explicitly documents Protective Field, Psionic Strike and Telekinetic Movement, but their resources/actions/recovery are **not** mechanically certified by this text audit.
+- Psi Warrior: the human-facing level-3 reference explicitly documents Protective Field, Psionic Strike and Telekinetic Movement, but their resources/actions/recovery are **not** mechanically certified by the text audit.
 - Production legacy structure: the live database may still have empty/legacy choice structures for nested selectable rules. The reference delivery sync intentionally does not mutate those structures; Arcane Shot options, Battle Master maneuvers and Rune Knight runes are therefore included in full human-readable reference text until the mechanics audit addresses structure separately.
 - All Fighter subclasses: finite resources, actions, formulas, replacement semantics, source suppression and runtime triggers remain outside this closure.
 
 ### What “READY” means here
 
-The green/ready mark is permitted **only for Fighter descriptions/reference copy**. Do not describe the Fighter package as mechanically complete until `mechanics_status` is separately changed to `READY` after a dedicated audit.
+The green/ready mark is permitted **only for Fighter descriptions/reference copy and Voss author comments**. Do not describe the Fighter package as mechanically complete until `mechanics_status` is separately changed to `READY` after a dedicated audit.
 
 ---
 
@@ -83,11 +97,15 @@ The green/ready mark is permitted **only for Fighter descriptions/reference copy
 - `text_status: READY`
 - `mechanics_status: NOT_AUDITED`
 - `last_text_audit: 2026-08-29`
+- `last_voss_audit: 2026-08-29`
 - `reference_delivery: SYNCED_2026_08_29`
-- `production_verification: 49/49 visible Druid feature grants have non-empty descriptions and Voss comments; 0 vague placeholder descriptions after the production sync`
+- `voss_coverage_contract: every openable Druid ability/source-group card has a separate Reynar Voss comment`
+- `voss_coverage_audit: 49/49 current feature-grant rows already carried comments; 20/20 non-feature source groups explicitly mapped; UI-equivalent target = 69/69 openable Druid groups after production sync`
+- `canonical_voss_voice: src/data/vossVoice.ts`
+- `static_reference_audit: every druidReference.features entry has a Voss note and is checked for developer-language leakage`
 - `text_scope: static base-class reference + all eight currently catalogued circles + spell lists + selectable/variant rule text + scaling + failure/success clauses + Voss comments + GM-facing summaries/descriptions`
-- `text_definition_of_ready: player/GM can resolve the human-facing rule from the reference text whenever trigger, action economy, cost, target/range, roll/save, exact effect, scaling, duration, ending condition and usage/recharge apply`
-- `known_boundary: this closure certifies presentation/reference text only; it does not certify Wild Shape runtime, subclass-level wiring, choices, resources, actions, formulas, source suppression, spell-slot accounting, summoned-creature runtime or other Character Engine behavior`
+- `text_definition_of_ready: player/GM can resolve the human-facing rule from the reference text whenever trigger, action economy, cost, target/range, roll/save, exact effect, scaling, duration, ending condition and usage/recharge apply; every openable ability card also has a separate Voss author comment`
+- `known_boundary: this closure certifies presentation/reference text and Voss coverage only; it does not certify Wild Shape runtime, subclass-level wiring, choices, resources, actions, formulas, source suppression, spell-slot accounting, summoned-creature runtime or other Character Engine behavior`
 - `next_required_audit: full Druid mechanics/runtime audit`
 
 ### Druid circles — text layer
@@ -117,7 +135,7 @@ These notes **do not reopen the text layer**. They are explicit targets for the 
 
 ### What “READY” means here
 
-The green/ready mark is permitted **only for Druid descriptions/reference copy**. Do not describe Druid gameplay mechanics as complete until `mechanics_status` is separately changed to `READY` after a dedicated audit.
+The green/ready mark is permitted **only for Druid descriptions/reference copy and Voss author comments**. Do not describe Druid gameplay mechanics as complete until `mechanics_status` is separately changed to `READY` after a dedicated audit.
 
 ---
 
