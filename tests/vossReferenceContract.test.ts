@@ -15,9 +15,13 @@ test("Voss package declares explanation -> rule -> comment and remains presentat
 })
 
 test("reference UI renders the three authoring layers in canonical order", () => {
-  const explanation = guide.indexOf("Восс объясняет")
-  const rule = guide.indexOf("Точное правило")
-  const comment = guide.indexOf("Комментарий Восса")
+  const start = guide.indexOf('className="reference-feature-detail-content"')
+  const end = guide.indexOf("</main>", start)
+  const detail = guide.slice(start, end)
+
+  const explanation = detail.indexOf("Восс объясняет")
+  const rule = detail.indexOf("Точное правило")
+  const comment = detail.indexOf("Комментарий Восса")
   assert.ok(explanation >= 0)
   assert.ok(rule > explanation)
   assert.ok(comment > rule)
