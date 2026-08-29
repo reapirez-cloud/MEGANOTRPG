@@ -73,6 +73,7 @@ test("canonical voice stays recognizably Voss rather than office prose", () => {
   assert.match(voice, /страхов/)
   assert.match(voice, /отдел кадров/)
   assert.match(voice, /Круг Луны/)
-  assert.match(voice, /Жрецов Восс считает трус/i)
+  assert.match(voice, /clericStance:.*чужой щит/i)
+  assert.match(voice, /Жизнь.*Могил.*Кузн.*Войн/i)
   assert.match(voice, /Воинов Восс любит/i)
 })
