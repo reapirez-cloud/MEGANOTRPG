@@ -129,6 +129,13 @@ test("vague or placeholder feature text is rejected", () => {
   assert.throws(() => assertClassPackageQuality([vague]), /quality gate failed/)
 })
 
+test("vague mechanical summaries are rejected before a class is called complete", () => {
+  const vagueSummary = bundle([])
+  vagueSummary.template.mechanical_summary = "Этот класс расширяет возможности персонажа особым образом и становится эффективнее."
+  const codes = auditClassPackageQuality([vagueSummary]).map((issue) => issue.code)
+  assert.ok(codes.includes("unclear_summary"))
+})
+
 test("finite rest-recharging abilities cannot hide behind prose-only accounting", () => {
   const incomplete = bundle([
     {
@@ -153,6 +160,48 @@ test("finite rest-recharging abilities cannot hide behind prose-only accounting"
   ])
   const codes = auditClassPackageQuality([incomplete]).map((issue) => issue.code)
   assert.ok(codes.includes("finite_use_without_resource"))
+})
+
+test("a finite deliberate action cannot have only a resource and prose", () => {
+  const incomplete = bundle([
+    {
+      id: "finite-feature",
+      type: "grant",
+      target: "feature",
+      key: "class:strict-test:finite",
+      sourceKey: "finite",
+      payload: {
+        label: "Точный рывок",
+        description: "Бонусным действием переместитесь на 30 футов. Использований: 1; запас полностью восстанавливается после долгого отдыха.",
+      },
+    },
+    {
+      id: "finite-resource",
+      type: "resource",
+      key: "finite_dash",
+      label: "Точный рывок",
+      max: 1,
+      recharge: "long_rest",
+      sourceKey: "finite",
+    },
+  ])
+  const codes = auditClassPackageQuality([incomplete]).map((issue) => issue.code)
+  assert.ok(codes.includes("finite_action_without_action"))
+})
+
+test("class actions cannot exist without a matching player-facing explanation", () => {
+  const unexplained = bundle([
+    {
+      id: "hidden-action",
+      type: "action",
+      key: "mystery_button",
+      label: "Непонятная кнопка",
+      economy: "action",
+      sourceKey: "mystery-button",
+    },
+  ])
+  const codes = auditClassPackageQuality([unexplained]).map((issue) => issue.code)
+  assert.ok(codes.includes("action_without_explanation"))
 })
 
 test("a precise feature with matching resource and action passes the internal audit", () => {
