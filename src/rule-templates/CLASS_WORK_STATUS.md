@@ -15,6 +15,12 @@ Allowed statuses:
 
 When class/subclass content changes, update this file in the same work session. **TEXT READY does not mean MECHANICS READY.**
 
+### Branch discipline
+
+- Active class/runtime cleanup is performed on `dev`.
+- Do not write class work directly to `main` unless an explicit merge/release step is requested.
+- A mechanics layer is not `READY` merely because it exists in Git: the target deployment/database state must be audited separately.
+
 ---
 
 ## Canonical Reynar Voss voice
@@ -46,7 +52,7 @@ For mechanics `READY`, the end-to-end path must be verified:
 4. `CharacterClassPanel` presents the resolved source without inventing mechanics from prose.
 5. Every Class-tab entry has a stable machine category from `ClassMechanicEntryType`; display text never determines sorting type.
 6. Resource-backed actions can persist their resource change through the class runtime RPC. Resource-less actions remain usable rules, but the UI must not show a fake state-changing button.
-7. Production Supabase must contain the same mechanical migration state as `main`. A Git-only implementation is not enough for `READY`.
+7. The deployed Supabase state must contain the same intended mechanical stack as the release target. Git-only implementation is not enough for `READY`.
 
 Current stable presentation categories:
 - `special_action`
@@ -73,10 +79,10 @@ Current stable presentation categories:
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
-- `current_main_runtime: substantial native runtime exists for base Fighter and subclasses through precision/completion/choice/Psi migrations and dedicated runtime tests`
+- `current_dev_runtime: substantial native runtime exists for base Fighter and subclasses through precision/completion/choice/Psi migrations and dedicated runtime tests`
 - `production_catalog_reset: APPLIED_2026_08_29`
 - `production_latest_observed_migration: 20260829184828_remove_legacy_builtin_classes`
-- `production_runtime: still not certified as equivalent to the current main mechanical stack; historical migration ordering drift remains`
+- `production_runtime: still not certified as equivalent to the current dev mechanical stack; historical migration ordering drift remains`
 
 ### Mechanics audit targets
 
@@ -91,7 +97,7 @@ Current stable presentation categories:
 - Samurai: Fighting Spirit uses and later action economy.
 - Champion/Banneret: passive/numeric and shared-resource riders must resolve as CE mechanics rather than prose only.
 
-Do not promote Fighter mechanics to `READY` until main and production pass the same audit.
+Do not promote Fighter mechanics to `READY` until dev and the intended deployed state pass the same audit.
 
 ---
 
@@ -104,10 +110,10 @@ Do not promote Fighter mechanics to `READY` until main and production pass the s
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
-- `current_main_runtime: native Druid runtime/resource completion migrations and dedicated runtime tests exist`
+- `current_dev_runtime: native Druid runtime/resource completion migrations and dedicated runtime tests exist`
 - `production_catalog_reset: APPLIED_2026_08_29`
 - `production_latest_observed_migration: 20260829184828_remove_legacy_builtin_classes`
-- `production_runtime: still not certified as equivalent to the current main mechanical stack; historical migration ordering drift remains`
+- `production_runtime: still not certified as equivalent to the current dev mechanical stack; historical migration ordering drift remains`
 
 ### Mechanics audit targets
 
@@ -123,7 +129,7 @@ Do not promote Fighter mechanics to `READY` until main and production pass the s
 - Dreams/Shepherd/Spores/Moon: finite pools, summoned/created creature hooks, reaction limits, temporary HP/aura behavior and subclass unlock compatibility.
 - Legacy 2/6/10/14 rows must remain gated by the actual parent subclass unlock until deliberately normalized.
 
-Do not promote Druid mechanics to `READY` until main and production pass the same audit.
+Do not promote Druid mechanics to `READY` until dev and the intended deployed state pass the same audit.
 
 ---
 
@@ -136,10 +142,10 @@ Do not promote Druid mechanics to `READY` until main and production pass the sam
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
-- `current_main_runtime: exact rules and spell/resource structure exist, but full fourteen-domain runtime coverage is not yet certified`
+- `current_dev_runtime: exact rules and spell/resource structure exist, but full fourteen-domain runtime coverage is not yet certified`
 - `production_catalog_reset: APPLIED_2026_08_29`
 - `production_latest_observed_migration: 20260829184828_remove_legacy_builtin_classes`
-- `production_runtime: still not certified as equivalent to the current main mechanical stack; historical migration ordering drift remains`
+- `production_runtime: still not certified as equivalent to the current dev mechanical stack; historical migration ordering drift remains`
 
 ### Mechanics audit targets
 
@@ -151,7 +157,7 @@ Do not promote Druid mechanics to `READY` until main and production pass the sam
 - Arcana/Death/Forge/Grave/Knowledge/Life/Light/Nature/Order/Peace/Tempest/Trickery/Twilight/War must each be audited source-group by source-group.
 - Legacy domain rows below class level 3 must be blocked by subclass unlock and must never grant early mechanics.
 
-Do not promote Cleric mechanics to `READY` until main and production pass the same audit.
+Do not promote Cleric mechanics to `READY` until dev and the intended deployed state pass the same audit.
 
 ---
 
@@ -179,6 +185,22 @@ Deletion is represented by the forward-only migration `20260829235500_remove_leg
 ### Historical custom test class
 
 `Жопка` is intentionally **untouched** by this reset. It is a non-builtin historical test/easter-egg class (`is_builtin=false`, no catalog key). Its future visibility/hiding behavior is a separate task and must not be changed as part of legacy builtin cleanup.
+
+---
+
+## Legacy bootstrap garbage audit
+
+**Dev status:** `GUARDED_PENDING_DEPLOYMENT`
+
+Live production inspection on 2026-08-29 found obsolete `campaigns` triggers capable of reinstalling the historical full class/subclass catalog and reapplying superseded Voss layers to newly created campaigns. The dev-only forward migration `20260830000500_retire_legacy_class_bootstrap_triggers.sql`:
+
+- removes duplicate standalone official class/subclass installer triggers;
+- retires the removed `Нюансы Восса` trigger;
+- retires the rejected mechanics-paraphrase Voss explanation trigger;
+- adds an assignment-safe final prune that keeps only builtin Fighter/Druid/Cleric;
+- does not touch custom/non-builtin classes, including `Жопка`.
+
+This guard is **not recorded as applied to production yet**. Do not claim the production bootstrap is clean until that deployment/database step is explicitly completed and re-audited.
 
 ---
 
