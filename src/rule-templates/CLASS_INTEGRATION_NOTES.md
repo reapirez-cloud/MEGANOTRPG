@@ -8,14 +8,27 @@
 
 This is not advisory documentation. Before a new class package is called finished, its package test **must** import and run `assertClassPackageQuality` from `./internalClassQuality.ts` against the class and every included subclass fixture.
 
-For every class/subclass catalog migration created after `20260829070000`, CI requires these headers:
+Every new class-related migration created from `20260830000000` onward must declare exactly one scope:
+
+```text
+-- CLASS_MIGRATION_SCOPE: mechanics|presentation|infrastructure
+```
+
+Use:
+- `mechanics` when the migration creates or changes CE-facing class/subclass mechanics, choices, resources, actions, spell access, numeric contributions or mechanical progression;
+- `presentation` when it changes only player-facing/reference/narrator copy while leaving mechanics intact;
+- `infrastructure` for catalog lifecycle, cleanup, bootstrap, trigger, assignment or migration-history plumbing that does not define a class mechanic.
+
+A `mechanics` migration must additionally include:
 
 ```text
 -- CLASS_INTEGRATION_STRICT: class:<stable-key>
 -- CLASS_PACKAGE_TEST: tests/<class>OfficialPack.test.ts
 ```
 
-The referenced test must:
+Do not force presentation or infrastructure migrations to pretend they are class packages merely because they touch `rule_templates`. Scope exists specifically to prevent that ambiguity.
+
+The referenced mechanics test must:
 - run `assertClassPackageQuality`;
 - pass the real package through `resolveTemplateBundles`;
 - reach `resolveCharacterContract`;
