@@ -310,7 +310,7 @@ export default function ReferenceGuide({
   const classSummary = isDruid ? druidReference.mechanicalSummary : classTemplate?.mechanical_summary?.trim() || selectedClass?.tagline || ""
   const classNarration = isDruid ? druidReference.authorDescription : classTemplate?.author_description?.trim() || selectedClass?.description || ""
   const classComment = isDruid ? druidReference.authorComment : classTemplate?.author_comment?.trim() || ""
-  const subclassNarration = selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.voss || selectedSubclass?.summary || ""
+  const subclassNarration = selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.summary || ""
   const subclassComment = selectedSubclassTemplate?.author_comment?.trim() || selectedSubclass?.voss || ""
 
   return (
@@ -368,7 +368,7 @@ export default function ReferenceGuide({
               <div><h3>{selectedClass.name}</h3><span>{selectedClass.nameEn}</span><p>{classTagline(selectedClass)}</p></div>
             </div>
             <section className="reference-class-mechanics surface"><span>Коротко о механике</span><p>{classSummary}</p></section>
-            <section className="reference-class-description"><span>{classTemplate?.author_description?.trim() || (isDruid ? "Рейнар Восс" : "Описание класса")}</span><p>{classNarration}</p></section>
+            <section className="reference-class-description"><span>Описание класса</span><p>{classNarration}</p></section>
             {classComment && <section className="reference-voss-note surface"><span>Заметка Восса</span><p>{classComment}</p></section>}
 
             <section className="reference-class-feature-section">
@@ -406,7 +406,7 @@ export default function ReferenceGuide({
               <span className="reference-class-hero__monogram">{selectedSubclass.name.slice(0, 1)}</span>
               <div><h3>{selectedSubclass.name}</h3><span>{selectedClass.name}</span><p>{selectedSubclass.summary}</p></div>
             </div>
-            <section className="reference-class-description"><span>{selectedSubclassTemplate?.author_description?.trim() || (selectedSubclass.voss ? "Рейнар Восс" : "Описание подкласса")}</span><p>{subclassNarration}</p></section>
+            <section className="reference-class-description"><span>Описание подкласса</span><p>{subclassNarration}</p></section>
             {subclassComment && subclassComment !== subclassNarration && <section className="reference-voss-note surface"><span>Заметка Восса</span><p>{subclassComment}</p></section>}
             <section className="reference-class-feature-section">
               <div className="reference-subclass-section__head"><span>Прогрессия подкласса</span><small>{subclassFeatures.length}</small></div>
