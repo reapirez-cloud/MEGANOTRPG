@@ -167,6 +167,48 @@ function explicitFeatureExplanation(mechanics: StoredMechanic[]) {
   return ""
 }
 
+function firstRuleSentence(description: string) {
+  const normalized = description.replace(/\\n/g, " ").replace(/\s+/g, " ").trim()
+  const match = normalized.match(/^(.+?[.!?])(?:\s|$)/)
+  return match?.[1]?.trim() || normalized
+}
+
+/**
+ * Last-resort clarity layer. Audited classes should provide authorExplanation in
+ * data, but a newly added source group must still render in the correct order
+ * instead of silently losing the explanation layer.
+ */
+function fallbackFeatureExplanation(mechanics: StoredMechanic[], description: string) {
+  const visible = mechanics.filter((mechanic) => !isSpellSlot(mechanic))
+  const spells = visible.filter((mechanic) => mechanic.type === "spell")
+  if (spells.length) {
+    const names = spells.map((mechanic) => mechanic.type === "spell" ? `«${mechanic.payload.spell.name}»` : "").filter(Boolean)
+    return `Эта способность добавляет ${names.length === 1 ? "заклинание" : "заклинания"} ${names.join(", ")}. Здесь запоминается сам доступ; точное действие каждого заклинания смотрите в его карточке.`
+  }
+
+  const resource = visible.find((mechanic) => mechanic.type === "resource")
+  if (resource?.type === "resource") {
+    return `Это запас применений «${resource.label}». Когда другое правило требует его потратить, уменьшается этот запас; карточка ниже показывает, сколько применений доступно и после какого отдыха они возвращаются.`
+  }
+
+  const action = visible.find((mechanic) => mechanic.type === "action")
+  if (action?.type === "action") {
+    const economy = economyLabel[action.economy] || action.economy
+    return `Это отдельное ${economy}: выбираете его тогда, когда хотите применить эту способность. Цель, цена и результат указаны в точном правиле ниже.`
+  }
+
+  const proficiencies = visible.filter((mechanic) => mechanic.type === "grant" && mechanic.target === "proficiency")
+  if (proficiencies.length === visible.length && proficiencies.length) {
+    return "Это постоянные владения. Получив их, вы просто учитываете их в подходящих проверках, спасбросках, оружии или доспехах; отдельная активация не нужна."
+  }
+
+  return firstRuleSentence(description)
+}
+
+function featureExplanation(mechanics: StoredMechanic[], description: string) {
+  return explicitFeatureExplanation(mechanics) || fallbackFeatureExplanation(mechanics, description)
+}
+
 function featureNuances(mechanics: StoredMechanic[]) {
   const nuances: string[] = []
   for (const mechanic of mechanics) {
@@ -220,7 +262,7 @@ function buildTemplateFeatures(template: RuleTemplate | undefined, levels: RuleT
       result.push({
         level,
         name: featureName(mechanics),
-        explanation: explicitFeatureExplanation(mechanics),
+        explanation: featureExplanation(mechanics, description),
         description,
         facts: mechanicFacts(mechanics),
         nuances: featureNuances(mechanics),
@@ -247,20 +289,7 @@ function staticSubclasses(entry: ClassReferenceEntry): ReferenceSubclassView[] {
   return entry.subclasses.map((item) => ({ id: item.id, name: item.name, summary: item.summary }))
 }
 
-function staticDruidFeatures(): RuleFeatureView[] {
-  return druidReference.features.map((feature) => ({
-    level: feature.level,
-    name: feature.name,
-    explanation: feature.explanation,
-    description: feature.mechanics,
-    facts: feature.details || [],
-    nuances: [],
-    voss: feature.voss,
-  }))
-}
-
 function FeatureCard({ feature, onOpen }: { feature: RuleFeatureView; onOpen: (feature: RuleFeatureView) => void }) {
-  const hasExplanation = Boolean(feature.explanation.trim())
   return (
     <button className="reference-class-feature reference-class-feature--button surface" type="button" onClick={() => onOpen(feature)}>
       <span className="reference-class-feature__head">
@@ -268,9 +297,9 @@ function FeatureCard({ feature, onOpen }: { feature: RuleFeatureView; onOpen: (f
         <strong>{feature.name}</strong>
         <em aria-hidden="true">›</em>
       </span>
-      {hasExplanation && <span className="reference-class-feature__eyebrow">Восс объясняет</span>}
-      {hasExplanation && <span className="reference-class-feature__preview">{feature.explanation}</span>}
-      <span className="reference-class-feature__open">{hasExplanation ? (feature.nuances.length ? "Объяснение → правило → нюансы → комментарий" : "Объяснение → правило → комментарий") : (feature.nuances.length ? "Правило → нюансы → комментарий" : "Правило → комментарий")}</span>
+      <span className="reference-class-feature__eyebrow">Восс объясняет</span>
+      <span className="reference-class-feature__preview">{feature.explanation}</span>
+      <span className="reference-class-feature__open">{feature.nuances.length ? "Объяснение → правило → нюансы → комментарий" : "Объяснение → правило → комментарий"}</span>
     </button>
   )
 }
@@ -369,11 +398,10 @@ export default function ReferenceGuide({
             : "Болезни, безумия и дикая магия"
 
   const isDruid = selectedClass?.id === "druid"
-  const classSummary = classTemplate?.mechanical_summary?.trim() || (isDruid ? druidReference.mechanicalSummary : selectedClass?.tagline || "")
-  const classExplanation = classTemplate?.author_description?.trim() || (isDruid ? druidReference.authorDescription : "")
-  const classDescription = classTemplate?.description?.trim() || (isDruid ? druidReference.description : selectedClass?.description || classSummary)
-  const classComment = classTemplate?.author_comment?.trim() || (isDruid ? druidReference.authorComment : "")
-  const displayedClassFeatures = classFeatures.length ? classFeatures : (isDruid ? staticDruidFeatures() : [])
+  const classSummary = isDruid ? druidReference.mechanicalSummary : classTemplate?.mechanical_summary?.trim() || selectedClass?.tagline || ""
+  const classExplanation = isDruid ? druidReference.authorDescription : classTemplate?.author_description?.trim() || selectedClass?.tagline || ""
+  const classDescription = classTemplate?.description?.trim() || selectedClass?.description || classSummary
+  const classComment = isDruid ? druidReference.authorComment : classTemplate?.author_comment?.trim() || ""
   const subclassExplanation = selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || selectedSubclass?.summary || ""
   const subclassDescription = selectedSubclassTemplate?.description?.trim() || selectedSubclass?.summary || ""
   const subclassSummary = selectedSubclassTemplate?.mechanical_summary?.trim() || selectedSubclass?.summary || ""
@@ -439,9 +467,15 @@ export default function ReferenceGuide({
             {classComment && <section className="reference-voss-note surface"><span>Комментарий Восса</span><p>{classComment}</p></section>}
 
             <section className="reference-class-feature-section">
-              <div className="reference-subclass-section__head"><span>Прогрессия класса</span><small>{displayedClassFeatures.length}</small></div>
+              <div className="reference-subclass-section__head"><span>Прогрессия класса</span><small>{isDruid ? druidReference.features.length : classFeatures.length}</small></div>
               <div className="reference-class-feature-list">
-                {displayedClassFeatures.length ? displayedClassFeatures.map((feature, index) => (
+                {isDruid ? druidReference.features.map((feature) => (
+                  <FeatureCard
+                    key={`${feature.level}:${feature.name}`}
+                    feature={{ level: feature.level, name: feature.name, explanation: feature.explanation, description: feature.mechanics, facts: feature.details || [], nuances: [], voss: feature.voss }}
+                    onOpen={setSelectedFeature}
+                  />
+                )) : classFeatures.length ? classFeatures.map((feature, index) => (
                   <FeatureCard key={`${feature.level}:${feature.name}:${index}`} feature={feature} onOpen={setSelectedFeature} />
                 )) : <div className="reference-catalog-status">Подробная прогрессия для этой карточки ещё не загружена.</div>}
               </div>
@@ -502,10 +536,10 @@ export default function ReferenceGuide({
               <span />
             </header>
             <main className="reference-feature-detail-content">
-              {selectedFeature.explanation && <section className="reference-voss-explanation surface">
+              <section className="reference-voss-explanation surface">
                 <span>Восс объясняет</span>
                 <p>{selectedFeature.explanation}</p>
-              </section>}
+              </section>
               <section className="reference-feature-detail-rule surface">
                 <span>Точное правило</span>
                 <p>{selectedFeature.description}</p>
