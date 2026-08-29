@@ -4,7 +4,7 @@ import { useCharacterResourceStates } from "../../hooks/useCharacterResourceStat
 import { useCharacterTemplateRegistry } from "../../hooks/useCharacterTemplateRegistry"
 import { useRuleTemplates } from "../../hooks/useRuleTemplates"
 import { supabase } from "../../lib/supabase"
-import { resolveTemplateBundles } from "../../rule-templates/resolver"
+import { choiceCountAtLevel, choiceOptionAvailableAtLevel, resolveTemplateBundles } from "../../rule-templates/resolver"
 import type { CharacterTemplateBundle, RuleChoiceDefinition, RuleTemplateKind } from "../../rule-templates/types"
 import "./CharacterGameFrame.css"
 
@@ -179,7 +179,7 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
   }
 
   function toggleChoice(definition: RuleChoiceDefinition, option: string) {
-    const required = Math.max(1, definition.count || 1)
+    const required = choiceCountAtLevel(definition, effectiveChoiceLevel)
     if (required === 1) {
       setSelectedChoices((current) => ({ ...current, [definition.key]: option }))
       return
@@ -498,16 +498,17 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
           {choiceDefs.length > 0 && <div className="template-choice-fields">
             <div className="template-choice-note"><span>◇</span><p><strong>Выбор можно оставить на потом</strong><small>Нерешённый вариант ничего не выдаёт и не мешает назначить класс. Уже сделанный выбор сохраняется при повышении уровня.</small></p></div>
             {choiceDefs.map((choice) => {
-              const required = Math.max(1, choice.count || 1)
+              const required = choiceCountAtLevel(choice, effectiveChoiceLevel)
               const selected = selectedValues(selectedChoices[choice.key])
+              const availableOptions = choice.options.filter((option) => choiceOptionAvailableAtLevel(choice, option, effectiveChoiceLevel))
               return <div className="template-choice-field" key={choice.key}>
                 <span>{choice.label}{required > 1 ? ` · ${selected.length}/${required}` : ""}</span>
                 {required === 1
                   ? <select className="app-select" value={selected[0] || ""} onChange={(event) => toggleChoice(choice, event.target.value)}>
                       <option value="">Не выбрано</option>
-                      {choice.options.map((option) => <option key={option} value={option}>{choiceOptionLabel(choice, option)}</option>)}
+                      {availableOptions.map((option) => <option key={option} value={option}>{choiceOptionLabel(choice, option)}</option>)}
                     </select>
-                  : <div className="template-choice-chips">{choice.options.map((option) => <button type="button" key={option} className={selected.includes(option) ? "is-active" : ""} onClick={() => toggleChoice(choice, option)}>{selected.includes(option) ? "✓ " : ""}{choiceOptionLabel(choice, option)}</button>)}</div>}
+                  : <div className="template-choice-chips">{availableOptions.map((option) => <button type="button" key={option} className={selected.includes(option) ? "is-active" : ""} onClick={() => toggleChoice(choice, option)}>{selected.includes(option) ? "✓ " : ""}{choiceOptionLabel(choice, option)}</button>)}</div>}
               </div>
             })}
           </div>}
