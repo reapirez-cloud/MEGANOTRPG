@@ -183,9 +183,98 @@ security definer
 set search_path = ''
 as $$
 declare
+  v_fighter uuid;
+  v_cleric uuid;
   v_banneret uuid;
 begin
-  -- One remaining Fighter card was still a pointer to unnamed subfeatures rather than a rule.
+  select id into v_fighter
+  from public.rule_templates
+  where campaign_id=p_campaign_id and is_active and catalog_key='class:fighter'
+  order by version desc limit 1;
+
+  select id into v_cleric
+  from public.rule_templates
+  where campaign_id=p_campaign_id and is_active and catalog_key='class:cleric'
+  order by version desc limit 1;
+
+  -- The class-progression rows must explain what the choice actually does rather than merely saying that a choice opens.
+  if v_fighter is not null then
+    update public.rule_template_levels
+    set mechanics=private.patch_feature_description_text(
+      mechanics,
+      'fighter-subclass',
+      'На 3 уровне выберите Воинский архетип. Вы сразу получаете способности 3 уровня выбранного подкласса. На 7, 10, 15 и 18 уровнях Воина тот же архетип даёт следующие способности; повторно выбирать подкласс не нужно, а точные правила каждой способности находятся в его прогрессии.'
+    )
+    where template_id=v_fighter and level=3;
+
+    update public.rule_template_levels
+    set mechanics=private.patch_feature_description_text(
+      mechanics,
+      'subclass',
+      'На этом уровне выбранный Воинский архетип даёт способность этого уровня. Используйте полное правило из прогрессии уже выбранного подкласса; новый архетип не выбирается.'
+    )
+    where template_id=v_fighter and level in (7,10,15,18);
+
+    update public.rule_template_levels
+    set mechanics=private.patch_feature_description_text(
+      mechanics,
+      'ability-score-improvement',
+      'Получите талант «Улучшение характеристик» или другой талант по выбору, требованиям которого соответствуете. Если выбран «Улучшение характеристик», увеличьте одну характеристику на 2 либо две характеристики на 1; этим талантом нельзя поднять характеристику выше 20. Воин получает эту возможность на 4, 6, 8, 12, 14 и 16 уровнях.'
+    )
+    where template_id=v_fighter and level in (4,6,8,12,14,16);
+
+    update public.rule_template_levels
+    set mechanics=private.patch_feature_description_text(
+      mechanics,
+      'epic-boon',
+      'На 19 уровне получите один талант категории «Эпический дар» или другой талант по выбору, требованиям которого соответствуете. Выбранный талант действует по собственному полному описанию и не расходует отдельный классовый ресурс.'
+    )
+    where template_id=v_fighter and level=19;
+  end if;
+
+  if v_cleric is not null then
+    update public.rule_template_levels
+    set mechanics=private.patch_feature_description_text(
+      mechanics,
+      'spellcasting',
+      'Мудрость — заклинательная характеристика Жреца; священный символ можно использовать как заклинательную фокусировку. На 1 уровне вы знаете 3 заговора, подготавливаете 4 заклинания Жреца 1 уровня и имеете 2 ячейки 1 уровня. Дальше число заговоров, подготовленных заклинаний и ячеек берётся из таблицы Жреца. Чтобы сотворить подготовленное заклинание 1 уровня или выше, потратьте ячейку подходящего уровня; все потраченные ячейки возвращаются после долгого отдыха. После каждого долгого отдыха можно заменить любое число подготовленных заклинаний другими заклинаниями Жреца тех уровней, для которых у вас есть ячейки.'
+    )
+    where template_id=v_cleric and level=1;
+
+    update public.rule_template_levels
+    set mechanics=private.patch_feature_description_text(
+      mechanics,
+      'cleric-subclass',
+      'На 3 уровне выберите домен Жреца. Вы сразу получаете способности 3 уровня выбранного домена. На 6 и 17 уровнях Жреца тот же домен даёт следующие способности; повторно выбирать домен не нужно, а точные правила каждой способности находятся в прогрессии подкласса.'
+    )
+    where template_id=v_cleric and level=3;
+
+    update public.rule_template_levels
+    set mechanics=private.patch_feature_description_text(
+      mechanics,
+      'subclass',
+      'На этом уровне выбранный домен даёт способность этого уровня. Используйте полное правило из прогрессии уже выбранного подкласса; новый домен не выбирается.'
+    )
+    where template_id=v_cleric and level in (6,17);
+
+    update public.rule_template_levels
+    set mechanics=private.patch_feature_description_text(
+      mechanics,
+      'ability-score-improvement',
+      'Получите талант «Улучшение характеристик» или другой талант по выбору, требованиям которого соответствуете. Если выбран «Улучшение характеристик», увеличьте одну характеристику на 2 либо две характеристики на 1; этим талантом нельзя поднять характеристику выше 20. Жрец получает эту возможность на 4, 8, 12 и 16 уровнях.'
+    )
+    where template_id=v_cleric and level in (4,8,12,16);
+
+    update public.rule_template_levels
+    set mechanics=private.patch_feature_description_text(
+      mechanics,
+      'epic-boon',
+      'На 19 уровне получите один талант категории «Эпический дар» или другой талант по выбору, требованиям которого соответствуете. Выбранный талант действует по собственному полному описанию и не расходует отдельный классовый ресурс.'
+    )
+    where template_id=v_cleric and level=19;
+  end if;
+
+  -- One remaining Fighter subclass card was still a pointer to unnamed subfeatures rather than a rule.
   select id into v_banneret
   from public.rule_templates
   where campaign_id=p_campaign_id
@@ -209,6 +298,11 @@ begin
   set mechanical_summary='Воин 2024: Второе дыхание лечит и восстанавливается частично или полностью после отдыха; Всплеск действий даёт дополнительное действие; Неукротимый позволяет перебросить проваленный спасбросок; Мастерство оружия и число атак растут с уровнем.',
       updated_at=now()
   where campaign_id=p_campaign_id and is_active and catalog_key='class:fighter';
+
+  update public.rule_templates
+  set mechanical_summary='Жрец 2024: подготовленный заклинатель на Мудрости. Заговоры, число подготовленных заклинаний и ячейки растут по таблице класса; Божественный канал имеет отдельный запас, а выбранный домен добавляет собственные способности и всегда подготовленные заклинания.',
+      updated_at=now()
+  where campaign_id=p_campaign_id and is_active and catalog_key='class:cleric';
 
   update public.rule_templates
   set mechanical_summary='Пси-воин: Кости пси-энергии усиливают защиту, урон и телекинез. Размер и число костей растут с уровнем Воина; после короткого отдыха возвращается 1 потраченная кость, после долгого — весь запас. Отдельные пси-способности указывают собственные бесплатные применения и способы повторного использования.',
