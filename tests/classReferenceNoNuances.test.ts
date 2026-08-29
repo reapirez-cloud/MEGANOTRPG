@@ -3,6 +3,7 @@ import fs from "node:fs"
 import test from "node:test"
 
 const guide = fs.readFileSync("src/components/reference/ReferenceGuide.tsx", "utf8")
+const voice = fs.readFileSync("src/data/vossVoice.ts", "utf8")
 const cleanup = fs.readFileSync("supabase/migrations/20260829204500_remove_class_reference_nuances.sql", "utf8")
 
 test("class and subclass reference no longer render or collect Voss nuances", () => {
@@ -18,6 +19,12 @@ test("class and subclass reference no longer render or collect Voss nuances", ()
 
   assert.match(guide, /Объяснение → правило → комментарий/)
   assert.equal(fs.existsSync("src/data/classes/druidNuances.ts"), false)
+})
+
+test("Voss author contract keeps only explanation rule and comment layers", () => {
+  assert.doesNotMatch(voice, /Нюансы Восса|authorNuances/)
+  assert.match(voice, /THREE separate narrative layers/)
+  assert.match(voice, /«Восс объясняет».+точное правило.+«Комментарий Восса»/)
 })
 
 test("database cleanup is restricted to class and subclass templates", () => {
