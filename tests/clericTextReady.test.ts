@@ -22,7 +22,7 @@ const domains = [
   "war-domain",
 ]
 
-test("Cleric closure is presentation-only and declares the correct work status", () => {
+test("Cleric closure is presentation-only and declares the correct historical work status", () => {
   assert.match(migration, /CLASS_INTEGRATION_STRICT: class:cleric/)
   assert.match(migration, /CLASS_PACKAGE_TEST: tests\/clericTextReady\.test\.ts/)
   assert.match(migration, /CLASS_WORK_STATUS: cleric:text=READY;mechanics=NOT_AUDITED/)
@@ -70,12 +70,12 @@ test("Cleric player text has an immersion regression gate", () => {
   assert.match(migration, /developer\/meta leaks/)
 })
 
-test("Cleric ledger records TEXT READY without claiming mechanics ready", () => {
+test("Cleric ledger keeps text READY while the mechanics audit remains open", () => {
   const cleric = ledger.split("## Cleric (`class:cleric`)")[1]?.split("\n---")[0] ?? ""
-  assert.match(cleric, /Overall project label:\*\* `TEXT READY`/)
-  assert.match(cleric, /text_status: READY/)
-  assert.match(cleric, /mechanics_status: NOT_AUDITED/)
-  assert.match(cleric, /14\/14/)
-  assert.match(cleric, /156\/156/)
-  assert.match(cleric, /next_required_audit: full Cleric mechanics\/runtime audit/)
+  assert.match(cleric, /\*\*Text:\*\* `READY`/)
+  assert.match(cleric, /\*\*Mechanics\/runtime:\*\* `IN_PROGRESS`/)
+  assert.match(cleric, /last_text_audit: 2026-08-29/)
+  assert.match(cleric, /last_mechanics_audit_started: 2026-08-29/)
+  assert.match(cleric, /fourteen-domain runtime coverage is not yet certified/i)
+  assert.match(cleric, /Do not promote Cleric mechanics to `READY`/)
 })
