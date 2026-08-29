@@ -6,15 +6,32 @@ const migration = fs.readFileSync("supabase/migrations/20260829162500_voss_refer
 const guide = fs.readFileSync("src/components/reference/ReferenceGuide.tsx", "utf8")
 const voice = fs.readFileSync("src/data/vossVoice.ts", "utf8")
 
-test("Voss package declares explanation -> rule -> comment and remains presentation-only", () => {
-  assert.match(migration, /CLASS_PACKAGE_TEST: tests\/vossReferenceContract\.test\.ts/)
-  assert.match(migration, /authorExplanation/)
-  assert.match(migration, /authorComment/)
-  assert.match(migration, /PRESENTATION ONLY/)
-  assert.doesNotMatch(migration, /jsonb_build_object\([^\n]*(?:resourceCosts|effects|requirements|max)/)
+test("Voss explanation is authored voice, never a generated mechanical paraphrase", () => {
+  assert.match(migration, /Восс объясняет.*authored narrator layer/i)
+  assert.match(migration, /Exact mechanics belong in mechanical_summary\/description/i)
+  assert.match(migration, /authorExplanation values authored by 20260829151113 are intentionally preserved/i)
+
+  assert.doesNotMatch(migration, /voss_plain_explanation/i)
+  assert.doesNotMatch(migration, /Это запас применений/)
+  assert.doesNotMatch(migration, /Это отдельное действие/)
+  assert.doesNotMatch(migration, /Это постоянное владение/)
+
+  assert.match(migration, /Воин — редкий случай/)
+  assert.match(migration, /Друид смотрит на человеческое тело/)
+  assert.match(migration, /Жрец договаривается с небесами/)
+  assert.match(migration, /Я потому и не глажу незнакомых медведей/)
 })
 
-test("reference UI renders the three authoring layers in canonical order", () => {
+test("all three audited class families receive explicit Voss-authored descriptions", () => {
+  assert.match(migration, /when 'class:fighter'/)
+  assert.match(migration, /when 'class:druid'/)
+  assert.match(migration, /when 'class:cleric'/)
+  assert.match(migration, /when 'subclass:fighter:/)
+  assert.match(migration, /when 'subclass:druid:/)
+  assert.match(migration, /when 'subclass:cleric:/)
+})
+
+test("reference UI renders explanation -> exact rule -> comment in canonical order", () => {
   const start = guide.indexOf('className="reference-feature-detail-content"')
   const end = guide.indexOf("</main>", start)
   const detail = guide.slice(start, end)
@@ -27,7 +44,7 @@ test("reference UI renders the three authoring layers in canonical order", () =>
   assert.ok(comment > rule)
 })
 
-test("canonical voice bans the modern office register", () => {
+test("canonical voice stays recognizably Voss rather than office prose", () => {
   assert.match(voice, /профсоюз/)
   assert.match(voice, /страхов/)
   assert.match(voice, /отдел кадров/)
