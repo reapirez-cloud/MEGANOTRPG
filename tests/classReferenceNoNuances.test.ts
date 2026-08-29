@@ -23,7 +23,10 @@ test("class and subclass reference no longer render or collect Voss nuances", ()
 
 test("Voss author contract keeps only explanation rule and comment layers", () => {
   assert.doesNotMatch(voice, /Нюансы Восса|authorNuances/)
-  assert.match(voice, /THREE separate narrative layers/)
+  assert.match(voice, /THREE separate layers/)
+  assert.match(voice, /authorExplanation/)
+  assert.match(voice, /exact rules\/mechanics text/)
+  assert.match(voice, /authorComment/)
   assert.match(voice, /«Восс объясняет».+точное правило.+«Комментарий Восса»/)
 })
 
