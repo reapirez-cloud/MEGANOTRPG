@@ -70,7 +70,7 @@ function clericBundle(order: "divine-order:protector" | "divine-order:thaumaturg
       source_kind: "official",
       source_label: "Official",
       is_builtin: true,
-      mechanical_summary: "Божественный сан",
+      mechanical_summary: "Жрец выбирает Божественный сан; Защитник получает боевые владения, а Чудотворец — дополнительный заговор Жреца и бонус Мудрости к указанным проверкам Интеллекта.",
       author_description: "",
       author_comment: "",
       rules_meta: {},
