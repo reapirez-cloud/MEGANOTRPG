@@ -4,6 +4,43 @@
 >
 > Read this before changing any class or subclass integration.
 
+## Mandatory quality gate for every next class
+
+This is not advisory documentation. Before a new class package is called finished, its package test **must** import and run `assertClassPackageQuality` from `./internalClassQuality.ts` against the class and every included subclass fixture.
+
+For every class/subclass catalog migration created after `20260829070000`, CI requires these headers:
+
+```text
+-- CLASS_INTEGRATION_STRICT: class:<stable-key>
+-- CLASS_PACKAGE_TEST: tests/<class>OfficialPack.test.ts
+```
+
+The referenced test must:
+- run `assertClassPackageQuality`;
+- pass the real package through `resolveTemplateBundles`;
+- reach `resolveCharacterContract`;
+- include representative low, mid and high level checks;
+- verify finite resource accounting and any persistent choices relevant to that class.
+
+A class is **not finished** while any rule is недосказан, ambiguous, placeholder-like, or only implied by prose. If implementation work reveals uncertainty, resolve it explicitly before merge; never hide uncertainty behind generic wording.
+
+For every player-facing feature, write every applicable part of this chain:
+
+**trigger/condition → activation → cost → target → exact effect → numbers/dice/DC/range → duration → limit/recharge.**
+
+If a part does not apply, omit it. If it does apply, it must be stated precisely.
+
+Forbidden substitutes for an actual rule include wording equivalent to:
+- “у вас что-то есть”;
+- “вы можете что-то применять”;
+- “расширяет возможности”;
+- “усиливает возможности”;
+- “становится эффективнее”;
+- “по ситуации” / “при необходимости” when the real trigger can be stated;
+- TODO/TBD/FIXME/placeholder text.
+
+`internalClassQuality.ts` is deliberately developer-only and CI-facing. Do not import it into player application code. Its purpose is to make the Fighter-grade implementation standard reusable for every later class: exact text, real resources, server-authoritative actions, stable `sourceKey`, persistent choices, parent-class level semantics, parser→CE tests, and no fake scene state.
+
 ## Core rule
 
 Character Engine (CE) is the mechanical source of truth for character data. A class/subclass parser emits structured contributions into CE. The UI reads the resolved contract; it must not re-parse class rules.
@@ -206,6 +243,8 @@ Do not call a class finished until all of these are checked:
 13. parser → `ResolvedCharacterContract` tests verify representative low/mid/high levels;
 14. resource mutations persist and are shared by sheet/chat;
 15. reference text and Voss commentary contain no implementation meta;
-16. CI is green.
+16. the package test passes `assertClassPackageQuality` with zero issues;
+17. every discovered ambiguity/nedosказанность is resolved explicitly;
+18. CI is green.
 
 If any item above fails, the class is still in progress.
