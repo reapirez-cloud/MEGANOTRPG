@@ -1,8 +1,11 @@
 import assert from "node:assert/strict"
+import fs from "node:fs"
 import test from "node:test"
 
 import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
 import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
+
+const gameFrame = fs.readFileSync("src/components/characters/CharacterGameFrame.tsx", "utf8")
 
 function bundle(order: string, extra = "spell:guidance"): CharacterTemplateBundle {
   return {
@@ -91,4 +94,11 @@ test("stale dependent selection may remain persisted but is inert until parent r
 
   const restored = resolveTemplateBundles([bundle("divine-order:thaumaturge")], 1)
   assert.ok(restored.sources.some((node) => node.choiceKey === "cleric-thaumaturge-cantrip" && node.optionKey === "spell:guidance"))
+})
+
+test("class binding UI uses the same dependent-choice gate and exposes no manual resource reset", () => {
+  assert.match(gameFrame, /choiceDefinitionAvailable\(definition, selectedChoices\)/)
+  assert.match(gameFrame, /visibleChoiceDefs\.map/)
+  assert.doesNotMatch(gameFrame, /RecoveryTrigger[^\n]*manual/)
+  assert.doesNotMatch(gameFrame, /Восстановить ручные/)
 })
