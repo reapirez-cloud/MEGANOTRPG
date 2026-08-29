@@ -3,60 +3,103 @@ import fs from "node:fs"
 import test from "node:test"
 
 import { druidReference } from "../src/data/classes/druidReference.ts"
-import { spellAuthorVoiceRules } from "../src/data/spellReferenceAuthor.ts"
-import { vossCommentHasDeveloperLeak, vossVoice, vossVoiceRules } from "../src/data/vossVoice.ts"
+import { spellAuthorAttitudes, spellAuthorVoiceRules } from "../src/data/spellReferenceAuthor.ts"
+import {
+  vossCommentHasDeveloperLeak,
+  vossTextHasModernRegister,
+  vossTextViolatesVoice,
+  vossVoice,
+  vossVoiceRules,
+} from "../src/data/vossVoice.ts"
 
-const migration = fs.readFileSync("supabase/migrations/20260829150000_fighter_druid_voss_coverage.sql", "utf8")
+const migration = fs.readFileSync("supabase/migrations/20260829162500_voss_reference_voice_contract.sql", "utf8")
 const referenceGuide = fs.readFileSync("src/components/reference/ReferenceGuide.tsx", "utf8")
 const mechanicTypes = fs.readFileSync("src/types/characterMechanics.ts", "utf8")
 
-test("Reynar Voss has one canonical voice contract for spells and class features", () => {
+test("Reynar Voss has one explicit adventurer voice and worldview", () => {
   assert.equal(vossVoice.name, "Рейнар Восс")
   assert.ok(vossVoice.traits.includes("саркастичный"))
   assert.ok(vossVoice.traits.includes("ироничный"))
   assert.ok(vossVoice.traits.includes("циничный"))
   assert.ok(vossVoice.traits.includes("чёрный юмор"))
+  assert.match(vossVoice.magicStance, /не уважает магию|опасн/i)
+  assert.match(vossVoice.mundaneStance, /немагическ|профессионал/i)
+  assert.match(vossVoice.clericStance, /трус|тыл/i)
+  assert.match(vossVoice.druidStance, /Круг Луны|рук/i)
+  assert.match(vossVoice.fighterStance, /Воинов Восс любит/i)
   assert.equal(spellAuthorVoiceRules, vossVoiceRules)
-  assert.ok(vossVoiceRules.some((rule) => /1–2|коротк/i.test(rule)))
-  assert.ok(vossVoiceRules.some((rule) => /не сообщает новые числа/i.test(rule)))
-  assert.ok(vossVoiceRules.some((rule) => /Character Engine/i.test(rule)))
 })
 
-test("developer language is rejected from Voss narrator copy", () => {
-  assert.equal(vossCommentHasDeveloperLeak("Могильщики любят стабильный рост показателей."), false)
-  assert.equal(vossCommentHasDeveloperLeak("В этой кампании мы используем другую реализацию."), true)
-  assert.equal(vossCommentHasDeveloperLeak("Character Engine спишет ресурс."), true)
+test("Voss contract fixes explanation -> exact rule -> personal comment order", () => {
+  assert.ok(vossVoiceRules.some((rule) => /сначала «Восс объясняет».*точное правило.*Комментарий Восса/i.test(rule)))
+  assert.ok(vossVoiceRules.some((rule) => /authorExplanation/i.test(rule)))
+  assert.ok(vossVoiceRules.some((rule) => /authorComment/i.test(rule)))
+
+  const explanationIndex = referenceGuide.indexOf("Восс объясняет")
+  const ruleIndex = referenceGuide.indexOf("Точное правило")
+  const commentIndex = referenceGuide.indexOf("Комментарий Восса")
+  assert.ok(explanationIndex >= 0)
+  assert.ok(ruleIndex > explanationIndex, "exact rule must render after Voss explanation")
+  assert.ok(commentIndex > ruleIndex, "Voss personal comment must render after the exact rule")
 })
 
-test("every static Druid class feature already carries a Voss note", () => {
+test("developer and modern office register are rejected from Voss copy", () => {
+  assert.equal(vossCommentHasDeveloperLeak("Могильщики любят, когда вы ошибаетесь."), false)
+  assert.equal(vossCommentHasDeveloperLeak("В этой кампании Character Engine спишет ресурс."), true)
+  assert.equal(vossTextHasModernRegister("Профсоюз требует страховку и отдел кадров."), true)
+  assert.equal(vossTextHasModernRegister("Если медведь смотрит слишком умно, не гладьте его."), false)
+  assert.equal(vossTextViolatesVoice("Юрист проверил лицензию."), true)
+})
+
+test("static Druid reference has separate plain explanations and clean Voss comments", () => {
   assert.ok(druidReference.features.length > 0)
   for (const feature of druidReference.features) {
-    assert.ok(feature.voss?.trim(), `Missing Voss note on Druid feature: ${feature.name}`)
-    assert.equal(vossCommentHasDeveloperLeak(feature.voss || ""), false, `Developer-language leak in Druid feature: ${feature.name}`)
+    assert.ok(feature.explanation.trim(), `Missing Voss explanation on Druid feature: ${feature.name}`)
+    assert.ok(feature.voss.trim(), `Missing Voss comment on Druid feature: ${feature.name}`)
+    assert.equal(vossTextViolatesVoice(feature.explanation), false, `Voice leak in Druid explanation: ${feature.name}`)
+    assert.equal(vossTextViolatesVoice(feature.voss), false, `Voice leak in Druid comment: ${feature.name}`)
   }
+
+  for (const subclass of druidReference.subclasses) {
+    assert.ok(subclass.explanation.trim(), `Missing Voss explanation on Druid subclass: ${subclass.name}`)
+    assert.ok(subclass.voss.trim(), `Missing Voss comment on Druid subclass: ${subclass.name}`)
+    assert.equal(vossTextViolatesVoice(subclass.explanation), false, `Voice leak in Druid subclass explanation: ${subclass.name}`)
+    assert.equal(vossTextViolatesVoice(subclass.voss), false, `Voice leak in Druid subclass comment: ${subclass.name}`)
+  }
+
+  const moon = druidReference.subclasses.find((entry) => entry.id === "moon")
+  assert.match(moon?.voss || "", /ест вашу руку.*Отдельную от вас/i)
 })
 
-test("reference cards can read narrator copy from any renderer-only mechanic group", () => {
+test("class attitude samples obey the same narrator register", () => {
+  for (const attitude of spellAuthorAttitudes) {
+    assert.equal(vossTextViolatesVoice(attitude.summary), false, `Voice leak in ${attitude.classKey} summary`)
+    assert.equal(vossTextViolatesVoice(attitude.sample), false, `Voice leak in ${attitude.classKey} sample`)
+  }
+  assert.match(spellAuthorAttitudes.find((item) => item.classKey === "fighter")?.summary || "", /оруж|оста/i)
+  assert.match(spellAuthorAttitudes.find((item) => item.classKey === "cleric")?.summary || "", /тыл|выход/i)
+  assert.match(spellAuthorAttitudes.find((item) => item.classKey === "druid")?.sample || "", /руку.*Отдельно/i)
+})
+
+test("renderer can read explanation and comment from feature payload or generic presentation", () => {
+  assert.match(mechanicTypes, /authorExplanation\?: string/)
   assert.match(mechanicTypes, /authorComment\?: string/)
-  assert.match(mechanicTypes, /Renderer-only metadata shared by every mechanic kind/)
+  assert.match(referenceGuide, /mechanic\.presentation\?\.authorExplanation\?\.trim\(\)/)
+  assert.match(referenceGuide, /payloadText\(mechanic, "authorExplanation"\)/)
   assert.match(referenceGuide, /mechanic\.presentation\?\.authorComment\?\.trim\(\)/)
   assert.match(referenceGuide, /payloadText\(mechanic, "authorComment"\)/)
 })
 
-test("Fighter and Druid Voss migration is presentation-only and self-gating", () => {
-  assert.match(migration, /CLASS_WORK_STATUS: fighter:text=READY;mechanics=NOT_AUDITED; druid:text=READY;mechanics=NOT_AUDITED/)
+test("Voss reference migration is presentation-only, recursive and self-gating", () => {
+  assert.match(migration, /CLASS_WORK_STATUS: fighter:text=READY;mechanics=NOT_AUDITED; druid:text=READY;mechanics=NOT_AUDITED; cleric:text=READY;mechanics=NOT_AUDITED/)
   assert.match(migration, /CLASS_STATUS_LEDGER: src\/rule-templates\/CLASS_WORK_STATUS\.md/)
   assert.match(migration, /PRESENTATION ONLY/)
-  assert.match(migration, /presentation,authorComment/)
-  assert.match(migration, /Voss coverage failed/)
-  assert.match(migration, /Voss voice failed/)
+  assert.match(migration, /authorExplanation/)
+  assert.match(migration, /authorComment/)
+  assert.match(migration, /voss_patch_node/)
+  assert.match(migration, /Voss voice contract failed/)
+  assert.match(migration, /Voss reference contract failed/)
 
-  assert.doesNotMatch(migration, /resourceCosts/)
-  assert.doesNotMatch(migration, /option_mechanics/)
-  assert.doesNotMatch(migration, /payload,mechanic/)
-  assert.doesNotMatch(migration, /grantOperation/)
-
-  const featureCommentBlock = migration.split("update public.rule_template_levels rtl")[0]
-  const fighterSourceComments = featureCommentBlock.match(/\('(?:class:fighter|subclass:fighter:[^']+)','[^']+','/g) || []
-  assert.equal(fighterSourceComments.length, 72, "every current Fighter feature source must get an explicit Voss comment")
+  assert.doesNotMatch(migration, /jsonb_build_object\([^\n]*(?:resourceCosts|effects|requirements|max)/)
+  assert.doesNotMatch(migration, /private\.(?:fighter|druid|cleric)_(?:resource|action|value)\s*\(/i)
 })
