@@ -10,6 +10,10 @@ export type RuleChoiceDefinition = {
   target: RuleChoiceTarget
   options: string[]
   count?: number
+  /** The number of persistent selections allowed once source.level reaches each threshold. */
+  count_by_level?: Record<string, number>
+  /** Minimum source.level for an option to be selectable/emitted. */
+  option_unlock_level?: Record<string, number>
   /** Human labels for mechanically stable option keys such as skill:nature. */
   option_labels?: Record<string, string>
   /** Extra CE mechanics applied only when this option is selected. */
