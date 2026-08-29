@@ -16,6 +16,10 @@ const resetSql = fs.readFileSync(
   "supabase/migrations/20260829235500_remove_legacy_builtin_classes.sql",
   "utf8",
 )
+const bootstrapGuardSql = fs.readFileSync(
+  "supabase/migrations/20260830000500_retire_legacy_class_bootstrap_triggers.sql",
+  "utf8",
+)
 
 function embeddedCatalog(sql: string) {
   const match = sql.match(/v_catalog jsonb := \$catalog\$(.*?)\$catalog\$::jsonb/s)
@@ -48,4 +52,15 @@ test("legacy reset deletes builtin leftovers without touching custom easter-egg 
   assert.match(resetSql, /'class:fighter', 'class:druid', 'class:cleric'/)
   assert.match(resetSql, /custom\/non-builtin templates are intentionally outside this cleanup/i)
   assert.match(resetSql, /Жопка/)
+})
+
+test("new campaigns cannot resurrect removed classes or rejected Voss layers", () => {
+  assert.match(bootstrapGuardSql, /drop trigger if exists campaigns_install_official_class_catalog/)
+  assert.match(bootstrapGuardSql, /drop trigger if exists campaigns_install_official_subclass_catalog/)
+  assert.match(bootstrapGuardSql, /drop trigger if exists zzzzzzzzzzzzz_campaigns_voss_subclass_nuances/)
+  assert.match(bootstrapGuardSql, /drop trigger if exists zzzzzzzzzzzzzz_campaigns_voss_spell_style_ability_explanations/)
+  assert.match(bootstrapGuardSql, /create trigger zzzzzzzzzzzzzzzzzzzz_campaigns_prune_removed_builtin_classes/)
+  assert.match(bootstrapGuardSql, /template\.is_builtin is true/)
+  assert.match(bootstrapGuardSql, /'class:fighter', 'class:druid', 'class:cleric'/)
+  assert.match(bootstrapGuardSql, /Жопка/)
 })
