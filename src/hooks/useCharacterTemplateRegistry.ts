@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react"
 import { supabase } from "../lib/supabase.ts"
-import { clearCharacterTemplateBundles, registerCharacterTemplateBundles } from "../rule-templates/registry.ts"
+import {
+  clearCharacterTemplateBundles,
+  registerCharacterTemplateBundles,
+  subscribeCharacterTemplateBundles,
+} from "../rule-templates/registry.ts"
 import type { CharacterTemplateAssignment, CharacterTemplateBundle, RuleTemplate, RuleTemplateLevel } from "../rule-templates/types.ts"
 import { useCharacterSourceSuppressions } from "./useCharacterSourceSuppressions.ts"
 
@@ -39,6 +43,14 @@ export function useCharacterTemplateRegistry(characterId: string | null) {
     }).filter((item): item is CharacterTemplateBundle => Boolean(item))
     registerCharacterTemplateBundles(characterId, next)
     setBundles(next); setRevision((value) => value + 1); setLoading(false)
+  }, [characterId])
+
+  useEffect(() => {
+    if (!characterId) return
+    return subscribeCharacterTemplateBundles(characterId, (next) => {
+      setBundles(next)
+      setRevision((value) => value + 1)
+    })
   }, [characterId])
 
   useEffect(() => {
