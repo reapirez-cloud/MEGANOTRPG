@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 
 import { useCharacters } from "../../context/CharacterContext"
 import { classReference, type ClassReferenceEntry } from "../../data/classReference"
+import { getDruidBaseFeatureNuances, getDruidSubclassFeatureNuances } from "../../data/classes/druidNuances"
 import { druidReference } from "../../data/classes/druidReference"
 import { useRuleTemplates } from "../../hooks/useRuleTemplates"
 import type { SpellClassKey } from "../../lib/spellCatalog"
@@ -366,7 +367,14 @@ export default function ReferenceGuide({
   }, [selectedClass, selectedSubclass, templates])
 
   const classFeatures = useMemo(() => buildTemplateFeatures(classTemplate, levels), [classTemplate, levels])
-  const subclassFeatures = useMemo(() => buildTemplateFeatures(selectedSubclassTemplate, levels), [selectedSubclassTemplate, levels])
+  const subclassFeatures = useMemo(() => {
+    const features = buildTemplateFeatures(selectedSubclassTemplate, levels)
+    if (selectedClass?.id !== "druid" || !selectedSubclass) return features
+    return features.map((feature) => {
+      const nuances = getDruidSubclassFeatureNuances(selectedSubclass.id, feature.name)
+      return nuances.length ? { ...feature, nuances } : feature
+    })
+  }, [selectedClass, selectedSubclass, selectedSubclassTemplate, levels])
 
   if (section === "spells") {
     return <SpellReference character={character} canManage={canManage} onClose={() => setSection("home")} onCharacterChanged={onCharacterChanged} />
@@ -480,7 +488,7 @@ export default function ReferenceGuide({
                 {isDruid ? druidReference.features.map((feature) => (
                   <FeatureCard
                     key={`${feature.level}:${feature.name}`}
-                    feature={{ level: feature.level, name: feature.name, explanation: feature.explanation, description: feature.mechanics, facts: feature.details || [], nuances: [], voss: feature.voss }}
+                    feature={{ level: feature.level, name: feature.name, explanation: feature.explanation, description: feature.mechanics, facts: feature.details || [], nuances: getDruidBaseFeatureNuances(feature.level, feature.name), voss: feature.voss }}
                     onOpen={setSelectedFeature}
                   />
                 )) : classFeatures.length ? classFeatures.map((feature, index) => (
