@@ -10,6 +10,7 @@ import type {
 } from "../character-engine/index.ts"
 import type { CharacterFeature, InventoryItem } from "../types/characterSheet.ts"
 import type { StoredActionDamage, StoredMechanic, StoredMechanics, StoredMechanicPresentation } from "../types/characterMechanics.ts"
+import { isPersistentResourceRecoveryTrigger } from "./persistentResourcePolicy.ts"
 
 const inventoryRegistry = new Map<string, InventoryItem[]>()
 
@@ -24,7 +25,13 @@ function actionDamageFormula(damage: StoredActionDamage): FormulaExpression | un
 function withCondition<T extends CharacterContribution>(contribution: T, condition?: CharacterCondition): T { return condition ? { ...contribution, condition } : contribution }
 function withPriority<T extends CharacterContribution>(contribution: T, priority?: number): T { return priority === undefined ? contribution : { ...contribution, priority } }
 function sourceFor(id: string, name: string, sourceType: string, visibility: CharacterSource["visibility"] = "campaign", parentSourceId?: string): CharacterSource { return { id, name, sourceType, visibility, ...(parentSourceId ? { parentSourceId } : {}) } }
-function rechargeTriggers(value: ResourceRechargeTrigger | ResourceRechargeTrigger[]): ResourceRechargeTrigger[] { const triggers = Array.isArray(value) ? value : [value]; const unique = [...new Set(triggers)]; return unique.includes("never") ? ["never"] : unique.length ? unique : ["never"] }
+function rechargeTriggers(value: ResourceRechargeTrigger | ResourceRechargeTrigger[]): ResourceRechargeTrigger[] {
+  const triggers = [...new Set(Array.isArray(value) ? value : [value])]
+  if (!triggers.length || triggers.some((trigger) => !isPersistentResourceRecoveryTrigger(trigger))) {
+    throw new Error("Persistent CE resources may recover only on short_rest, long_rest, or dawn")
+  }
+  return triggers
+}
 function presentationPayload(value?: StoredMechanicPresentation): GrantPayload | undefined {
   if (!value) return undefined
   return {
