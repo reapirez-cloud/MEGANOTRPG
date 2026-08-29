@@ -3,6 +3,12 @@ import { useMemo, useState } from "react"
 import { useCharacters } from "../../context/CharacterContext"
 import { classReference, type ClassReferenceEntry } from "../../data/classReference"
 import { druidReference } from "../../data/classes/druidReference"
+import {
+  druidClassVossNarration,
+  getDruidBaseVossNarration,
+  getDruidSubclassFeatureVossNarration,
+  getDruidSubclassVossNarration,
+} from "../../data/classes/druidVossNarration"
 import { useRuleTemplates } from "../../hooks/useRuleTemplates"
 import type { SpellClassKey } from "../../lib/spellCatalog"
 import type { RuleTemplate, RuleTemplateLevel } from "../../rule-templates/types"
@@ -262,7 +268,13 @@ function templateCatalogTail(template: RuleTemplate) {
 }
 
 function staticSubclasses(entry: ClassReferenceEntry): ReferenceSubclassView[] {
-  if (entry.id === "druid") return druidReference.subclasses.map((item) => ({ id: item.id, name: item.name, summary: item.mechanics, explanation: item.explanation, voss: item.voss }))
+  if (entry.id === "druid") return druidReference.subclasses.map((item) => ({
+    id: item.id,
+    name: item.name,
+    summary: item.mechanics,
+    explanation: getDruidSubclassVossNarration(item.id) || item.explanation,
+    voss: item.voss,
+  }))
   return entry.subclasses.map((item) => ({ id: item.id, name: item.name, summary: item.summary }))
 }
 
@@ -317,11 +329,12 @@ export default function ReferenceGuide({
     const dbViews = db.map((template) => {
       const id = templateCatalogTail(template)
       const old = fallbackById.get(id)
+      const storedExplanation = template.author_description?.trim() || old?.explanation
       return {
         id,
         name: template.name || old?.name || id,
         summary: template.mechanical_summary?.trim() || template.description?.trim() || old?.summary || "Специализация класса.",
-        explanation: template.author_description?.trim() || old?.explanation,
+        explanation: selectedClass.id === "druid" ? getDruidSubclassVossNarration(id) || storedExplanation : storedExplanation,
         voss: template.author_comment?.trim() || old?.voss,
         templateId: template.id,
       } satisfies ReferenceSubclassView
@@ -343,7 +356,14 @@ export default function ReferenceGuide({
   }, [selectedClass, selectedSubclass, templates])
 
   const classFeatures = useMemo(() => buildTemplateFeatures(classTemplate, levels), [classTemplate, levels])
-  const subclassFeatures = useMemo(() => buildTemplateFeatures(selectedSubclassTemplate, levels), [selectedSubclassTemplate, levels])
+  const subclassFeatures = useMemo(() => {
+    const features = buildTemplateFeatures(selectedSubclassTemplate, levels)
+    if (selectedClass?.id !== "druid" || !selectedSubclass) return features
+    return features.map((feature) => ({
+      ...feature,
+      explanation: getDruidSubclassFeatureVossNarration(selectedSubclass.id, feature.name) || feature.explanation,
+    }))
+  }, [selectedClass, selectedSubclass, selectedSubclassTemplate, levels])
 
   if (section === "spells") {
     return <SpellReference character={character} canManage={canManage} onClose={() => setSection("home")} onCharacterChanged={onCharacterChanged} />
@@ -384,10 +404,12 @@ export default function ReferenceGuide({
 
   const isDruid = selectedClass?.id === "druid"
   const classSummary = isDruid ? druidReference.mechanicalSummary : classTemplate?.mechanical_summary?.trim() || selectedClass?.tagline || ""
-  const classExplanation = isDruid ? druidReference.authorDescription : classTemplate?.author_description?.trim() || selectedClass?.tagline || ""
+  const classExplanation = isDruid ? druidClassVossNarration : classTemplate?.author_description?.trim() || selectedClass?.tagline || ""
   const classDescription = classTemplate?.description?.trim() || selectedClass?.description || classSummary
   const classComment = isDruid ? druidReference.authorComment : classTemplate?.author_comment?.trim() || ""
-  const subclassExplanation = selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || selectedSubclass?.summary || ""
+  const subclassExplanation = isDruid && selectedSubclass
+    ? getDruidSubclassVossNarration(selectedSubclass.id) || selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || selectedSubclass?.summary || ""
+    : selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || selectedSubclass?.summary || ""
   const subclassDescription = selectedSubclassTemplate?.description?.trim() || selectedSubclass?.summary || ""
   const subclassSummary = selectedSubclassTemplate?.mechanical_summary?.trim() || selectedSubclass?.summary || ""
   const subclassComment = selectedSubclassTemplate?.author_comment?.trim() || selectedSubclass?.voss || ""
@@ -457,7 +479,14 @@ export default function ReferenceGuide({
                 {isDruid ? druidReference.features.map((feature) => (
                   <FeatureCard
                     key={`${feature.level}:${feature.name}`}
-                    feature={{ level: feature.level, name: feature.name, explanation: feature.explanation, description: feature.mechanics, facts: feature.details || [], voss: feature.voss }}
+                    feature={{
+                      level: feature.level,
+                      name: feature.name,
+                      explanation: getDruidBaseVossNarration(feature.level, feature.name) || feature.explanation,
+                      description: feature.mechanics,
+                      facts: feature.details || [],
+                      voss: feature.voss,
+                    }}
                     onOpen={setSelectedFeature}
                   />
                 )) : classFeatures.length ? classFeatures.map((feature, index) => (
