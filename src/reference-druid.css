@@ -26,6 +26,7 @@
 }
 
 .reference-class-mechanics,
+.reference-voss-explanation,
 .reference-voss-note {
   margin-top: 10px;
   padding: 13px 14px;
@@ -33,6 +34,7 @@
 }
 
 .reference-class-mechanics > span,
+.reference-voss-explanation > span,
 .reference-voss-note > span {
   color: #8d8992;
   font-size: 9px;
@@ -42,6 +44,7 @@
 }
 
 .reference-class-mechanics p,
+.reference-voss-explanation p,
 .reference-voss-note p {
   margin: 6px 0 0;
   font-size: 12px;
@@ -58,6 +61,21 @@
   line-height: 1.45;
 }
 
+/* Voss explanation is the readable bridge into the rule, not the joke. */
+.reference-voss-explanation {
+  border-color: rgba(127, 151, 184, .15);
+  background: linear-gradient(145deg, rgba(63, 79, 102, .12), rgba(255, 255, 255, .018));
+}
+
+.reference-voss-explanation > span {
+  color: #9caec5;
+}
+
+.reference-voss-explanation p {
+  color: #d3d8df;
+}
+
+/* Voss comment is deliberately warmer and visually separate from rules. */
 .reference-voss-note {
   border-color: rgba(188, 150, 90, .13);
   background: linear-gradient(145deg, rgba(105, 73, 35, .09), rgba(255, 255, 255, .018));
