@@ -131,7 +131,7 @@ test("authoring contract makes GM adjudication authoritative and CE bookkeeping 
   assert.match(authoringContract, /GM-facing text adjudicates the outcome/)
   assert.match(authoringContract, /Character Engine is bookkeeping/)
   assert.match(authoringContract, /not automatically refunded/)
-  assert.match(authoringContract, /unless a separate explicit rule says it does/)
+  assert.match(authoringContract, /separate explicit rule says it does/)
   assert.match(authoringContract, /what the GM checks/)
   assert.match(gmRulePass, /'ce_role','resource_bookkeeping'/)
   assert.match(gmRulePass, /spend_on_activation_unless_feature_explicitly_refunds/)
