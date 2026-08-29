@@ -41,6 +41,15 @@ function normalizeSelected(value: string | string[] | undefined): string[] {
   return typeof value === "string" && value.trim() ? [value.trim()] : []
 }
 
+export function choiceDefinitionAvailable(
+  definition: RuleChoiceDefinition,
+  selectedChoices: Record<string, string | string[]> | null | undefined,
+): boolean {
+  const requirement = definition.requires_choice
+  if (!requirement) return true
+  return normalizeSelected(selectedChoices?.[requirement.key]).includes(requirement.option)
+}
+
 export function choiceCountAtLevel(definition: RuleChoiceDefinition, sourceLevel: number): number {
   const base = Math.max(1, definition.count || 1)
   return Object.entries(definition.count_by_level || {})
@@ -149,6 +158,8 @@ function choiceContributions(
   unlockLevel: number,
   nodes: Map<string, TemplateSourceNode>,
 ): CharacterContribution[] {
+  if (!choiceDefinitionAvailable(definition, bundle.assignment.selected_choices)) return []
+
   const selected = normalizeSelected(bundle.assignment.selected_choices?.[definition.key])
     .filter((key) => definition.options.includes(key) && choiceOptionAvailableAtLevel(definition, key, sourceLevel))
     .slice(0, choiceCountAtLevel(definition, sourceLevel))
