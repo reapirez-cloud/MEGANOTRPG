@@ -77,12 +77,47 @@ The green/ready mark is permitted **only for Fighter descriptions/reference copy
 
 ## Druid (`class:druid`)
 
-- `text_status: IN_PROGRESS`
+**Overall project label:** `TEXT READY`  
+**Gameplay mechanics/runtime label:** `NOT_AUDITED`
+
+- `text_status: READY`
 - `mechanics_status: NOT_AUDITED`
-- `text_scope_in_progress: static base-class reference + all eight catalogued circles + selectable/variant rule text + Voss comments + GM-facing summaries/descriptions`
-- `audit_started: 2026-08-29`
-- `known_boundary: this pass may rewrite presentation copy only; it must not silently move subclass levels, alter Wild Shape runtime, choices, resources, actions, formulas, source suppression, spell-slot accounting or CE dependencies`
-- `next_required_audit: finish Druid text closure, then run a separate Druid mechanics/runtime audit`
+- `last_text_audit: 2026-08-29`
+- `reference_delivery: SYNCED_2026_08_29`
+- `production_verification: 49/49 visible Druid feature grants have non-empty descriptions and Voss comments; 0 vague placeholder descriptions after the production sync`
+- `text_scope: static base-class reference + all eight currently catalogued circles + spell lists + selectable/variant rule text + scaling + failure/success clauses + Voss comments + GM-facing summaries/descriptions`
+- `text_definition_of_ready: player/GM can resolve the human-facing rule from the reference text whenever trigger, action economy, cost, target/range, roll/save, exact effect, scaling, duration, ending condition and usage/recharge apply`
+- `known_boundary: this closure certifies presentation/reference text only; it does not certify Wild Shape runtime, subclass-level wiring, choices, resources, actions, formulas, source suppression, spell-slot accounting, summoned-creature runtime or other Character Engine behavior`
+- `next_required_audit: full Druid mechanics/runtime audit`
+
+### Druid circles — text layer
+
+- Circle of Dreams — `READY`
+- Circle of the Land — `READY`
+- Circle of the Moon — `READY`
+- Circle of the Sea — `READY`
+- Circle of the Shepherd — `READY`
+- Circle of Spores — `READY`
+- Circle of Stars — `READY`
+- Circle of Wildfire — `READY`
+
+### Known mechanics-only follow-up
+
+These notes **do not reopen the text layer**. They are explicit targets for the later mechanics audit:
+
+- Legacy subclass progression: Dreams, Spores, Shepherd and Wildfire still have legacy feature rows beginning at Druid level 2 while the base class currently unlocks its subclass at Druid level 3. Resolve the 2/6/10/14 versus 3/6/10/14 compatibility deliberately in mechanics; do not infer a level move from the text closure.
+- Wild Shape: verify the project-pinned 2014 model end to end — exactly 2 uses, full short/long-rest recovery, beast HP and physical statistics, excess-damage carryover, form duration, equipment handling and retained-feature legality. Do not accidentally add the 2024 temporary-HP model.
+- Circle of the Moon: verify Character Engine does **not** add the 2024 `3 × Druid level` temporary HP on top of the project beast-HP model; the human rule deliberately excludes it.
+- Circle of the Land: verify Land’s Aid structured scaling matches the text contract `2d6 → 3d6 → 4d6`, and verify the daily land choice drives both always-prepared spells and Nature’s Ward resistance.
+- Circle of Stars: verify Star Map free casts, Starry Form mode selection/switching, Cosmic Omen state and reaction uses against runtime resource/action semantics.
+- Circle of the Sea: verify Wrath of the Sea targeting, successful-save zero effect, emanation radius upgrades, Stormborn benefits and Oceanic Gift ownership when the aura is placed on an ally.
+- Circle of Wildfire: verify the Wildfire Spirit stat block, initiative/control, Flame Seed, Fiery Teleportation, lifetime and later spirit-dependent features as actual runtime behavior.
+- Circle of Shepherd and Circle of Spores: verify summoned/created creature hooks, reaction limits, temporary HP, aura healing, corpse eligibility and duration handling; the text is authoritative for the intended human rule, not proof that CE currently enforces it.
+- Base Druid: verify spell-slot and prepared-spell accounting, Primal Order choice, Elemental Fury persistent branch and level-15 upgrade, Wild Resurgence conversions, Beast Spells legality and Archdruid initiative/conversion rules.
+
+### What “READY” means here
+
+The green/ready mark is permitted **only for Druid descriptions/reference copy**. Do not describe Druid gameplay mechanics as complete until `mechanics_status` is separately changed to `READY` after a dedicated audit.
 
 ---
 
