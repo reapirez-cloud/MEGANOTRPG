@@ -105,7 +105,7 @@ function input(): CharacterEngineInput {
         operation: "GRANT",
         target: "proficiency",
         key: "armor:medium",
-        payload: { label: "Средняя броня" },
+        payload: { rank: 1, label: "Средняя броня" },
         source: druid,
       },
       {
