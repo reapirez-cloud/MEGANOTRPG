@@ -56,6 +56,15 @@ test("live Druid text remediation is presentation-only and blocks the regression
   assert.match(fixMigration, /Druid player text immersion failed/)
   assert.match(fixMigration, /subclass:druid:moon/)
 
-  assert.doesNotMatch(fixMigration, /эта кампания|в этой кампании|2024 поверх|модель 2014|проектной Дикой|проектная Дикая/i)
+  // The migration may name forbidden phrases inside its SQL guard. What matters is that
+  // the values it writes into player-facing fields are direct game rules.
+  const writtenPlayerCopy = [
+    ...fixMigration.matchAll(/(?:mechanical_summary|author_description|author_comment)\s*=\s*'([^']*)'/g),
+    ...fixMigration.matchAll(/to_jsonb\('([^']*)'::text\)/g),
+  ].map((match) => match[1])
+
+  assert.ok(writtenPlayerCopy.length >= 7)
+  for (const text of writtenPlayerCopy) assert.doesNotMatch(text, PLAYER_META)
+
   assert.doesNotMatch(fixMigration, /resourceCosts|grantOperation|payload,mechanic|option_mechanics/)
 })
