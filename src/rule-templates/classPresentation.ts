@@ -189,7 +189,7 @@ function templateMechanics(
         sourceKind: kind,
         templateId,
         label: grantLabel(feature),
-        integration: rule?.integration || "display",
+        integration: rule?.integration ?? "display",
       }
     }),
     ...capabilityEntries(proficiencies, "proficiency", kind, templateId),
