@@ -44,9 +44,67 @@
   align-self: center;
 }
 
+.reference-class-feature--button {
+  width: 100%;
+  display: block;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.reference-class-feature__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.reference-class-feature__head > span:first-child {
+  padding: 3px 6px;
+  border-radius: 7px;
+  background: rgba(91, 163, 112, .1);
+  color: #8fcca1;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.reference-class-feature__head strong {
+  min-width: 0;
+  font-size: 12px;
+}
+
+.reference-class-feature__head em {
+  color: #77717c;
+  font-size: 18px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.reference-class-feature__preview {
+  display: -webkit-box;
+  margin-top: 7px;
+  overflow: hidden;
+  color: #b8b5bd;
+  font-size: 11px;
+  line-height: 1.47;
+  white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.reference-class-feature__open {
+  display: block;
+  margin-top: 8px;
+  color: #8fcca1;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .01em;
+}
+
 .reference-subclass-card:active,
 .reference-class-card:active,
-.reference-guide-section:active {
+.reference-guide-section:active,
+.reference-class-feature--button:active {
   background: rgba(255,255,255,.075);
 }
 
@@ -83,10 +141,98 @@
   margin-top: 9px;
 }
 
+.reference-feature-detail-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 142;
+  background: #0c0c0f;
+  color: var(--text, #f4f4f5);
+}
+
+.reference-feature-detail-page {
+  width: min(100%, 720px);
+  height: 100dvh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: #0c0c0f;
+}
+
+.reference-feature-detail-header {
+  min-height: 66px;
+  padding: max(10px, env(safe-area-inset-top)) 14px 8px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+
+.reference-feature-detail-header > div {
+  min-width: 0;
+  text-align: center;
+}
+
+.reference-feature-detail-header > div > span {
+  display: block;
+  margin-bottom: 2px;
+  color: #8fcca1;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.reference-feature-detail-header h2 {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 17px;
+}
+
+.reference-feature-detail-content {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
+}
+
+.reference-feature-detail-rule {
+  padding: 16px 15px;
+  border: 1px solid rgba(255,255,255,.065);
+}
+
+.reference-feature-detail-rule > span,
+.reference-feature-detail-facts > span {
+  color: #8d8992;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.reference-feature-detail-rule p {
+  margin: 8px 0 0;
+  color: #d1ced5;
+  font-size: 13px;
+  line-height: 1.62;
+  white-space: pre-line;
+}
+
+.reference-feature-detail-facts {
+  margin-top: 14px;
+  padding: 0 2px;
+}
+
+.reference-feature-detail-facts .reference-rule-facts {
+  margin-top: 8px;
+}
+
 @media (hover: hover) {
   .reference-subclass-card:hover,
   .reference-class-card:hover,
-  .reference-guide-section:hover {
+  .reference-guide-section:hover,
+  .reference-class-feature--button:hover {
     border-color: rgba(255,255,255,.11);
     background: rgba(255,255,255,.055);
   }
