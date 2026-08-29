@@ -159,14 +159,13 @@ where rt.id = rtl.template_id
   and rt.is_active
   and (rt.catalog_key = 'class:druid' or rt.catalog_key like 'subclass:druid:%');
 
--- Guard: this pass is narration only. Druid Voss explanations may mention the
--- fictional world, wounds, weather, beasts and death, but not tabletop numbers
--- or action-economy language that belongs in the exact rule below.
+-- Guard only the narration cards authored by this pass. Older unrelated Druid
+-- presentation rows may still exist, but they are outside this targeted rewrite.
 do $$
 declare v_bad integer;
 begin
   with authored as (
-    select m->'payload'->>'authorExplanation' as text
+    select private.druid_voss_in_world_explanation(rt.catalog_key, rtl.level, m->'payload'->>'label') as text
     from public.rule_templates rt
     join public.rule_template_levels rtl on rtl.template_id = rt.id
     cross join lateral jsonb_array_elements(coalesce(rtl.mechanics, '[]'::jsonb)) m
@@ -174,7 +173,7 @@ begin
       and (rt.catalog_key = 'class:druid' or rt.catalog_key like 'subclass:druid:%')
       and m->>'type' = 'grant'
       and m->>'target' = 'feature'
-      and nullif(btrim(m->'payload'->>'authorExplanation'), '') is not null
+      and private.druid_voss_in_world_explanation(rt.catalog_key, rtl.level, m->'payload'->>'label') is not null
   )
   select count(*) into v_bad
   from authored
