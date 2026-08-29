@@ -25,9 +25,9 @@ test("subclasses are navigable detail pages with real level progression", () => 
 })
 
 test("Druid resource exchanges are explicit instead of relying on vague prose", () => {
-  assert.match(druid, /ячейку ЛЮБОГО уровня/)
-  assert.match(druid, /всё равно даёт ровно 1 использование Дикой формы/)
-  assert.match(druid, /1 использование Дикой формы → восстановить 1 ячейку именно 1 уровня/)
+  assert.match(druid, /ячейку(?: заклинаний)? ЛЮБОГО уровня/)
+  assert.match(druid, /ячейка 1, 3 или 9 уровня всё равно возвращает только 1 использование Дикой формы/)
+  assert.match(druid, /потратьте 1 использование Дикой формы и восстановите одну потраченную ячейку именно 1 уровня/)
   assert.match(druid, /1 форма → ячейка 2 уровня; 2 формы → одна ячейка 4 уровня/)
   assert.match(clarity, /уровень ячейки не влияет на обмен/i)
 })

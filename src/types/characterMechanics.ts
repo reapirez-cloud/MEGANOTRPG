@@ -26,7 +26,9 @@ export type StoredMechanicPresentation = {
   icon?: string
   display?: MechanicModuleDisplay
   priority?: number
-  /** Optional narrator copy for a source group that has no feature grant. */
+  /** Plain-language Voss explanation shown BEFORE the authoritative rule. */
+  authorExplanation?: string
+  /** Personal Voss field remark shown AFTER the authoritative rule. */
   authorComment?: string
 }
 

@@ -31,6 +31,7 @@ type ReferenceSubclassView = {
   id: string
   name: string
   summary: string
+  explanation?: string
   voss?: string
   templateId?: string
 }
@@ -38,6 +39,7 @@ type ReferenceSubclassView = {
 type RuleFeatureView = {
   level: number
   name: string
+  explanation: string
   description: string
   facts: string[]
   voss?: string
@@ -73,7 +75,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value)
 }
 
-function payloadText(mechanic: StoredMechanic, key: "label" | "description" | "authorComment") {
+function payloadText(mechanic: StoredMechanic, key: "label" | "description" | "authorExplanation" | "authorComment") {
   if (mechanic.type !== "grant") return ""
   const payload: unknown = mechanic.payload
   if (!isRecord(payload)) return ""
@@ -141,6 +143,62 @@ function featureDescription(mechanics: StoredMechanic[]) {
   return mechanicName(primary)
 }
 
+function explicitFeatureExplanation(mechanics: StoredMechanic[]) {
+  for (const mechanic of mechanics) {
+    if (mechanic.type === "grant" && mechanic.target === "feature") {
+      const explanation = payloadText(mechanic, "authorExplanation")
+      if (explanation) return explanation
+    }
+  }
+  for (const mechanic of mechanics) {
+    const explanation = mechanic.presentation?.authorExplanation?.trim()
+    if (explanation) return explanation
+  }
+  return ""
+}
+
+function firstRuleSentence(description: string) {
+  const normalized = description.replace(/\\n/g, " ").replace(/\s+/g, " ").trim()
+  const match = normalized.match(/^(.+?[.!?])(?:\s|$)/)
+  return match?.[1]?.trim() || normalized
+}
+
+/**
+ * Last-resort clarity layer. Audited classes should provide authorExplanation in
+ * data, but a newly added source group must still render in the correct order
+ * instead of silently losing the explanation layer.
+ */
+function fallbackFeatureExplanation(mechanics: StoredMechanic[], description: string) {
+  const visible = mechanics.filter((mechanic) => !isSpellSlot(mechanic))
+  const spells = visible.filter((mechanic) => mechanic.type === "spell")
+  if (spells.length) {
+    const names = spells.map((mechanic) => mechanic.type === "spell" ? `«${mechanic.payload.spell.name}»` : "").filter(Boolean)
+    return `Эта способность добавляет ${names.length === 1 ? "заклинание" : "заклинания"} ${names.join(", ")}. Здесь запоминается сам доступ; точное действие каждого заклинания смотрите в его карточке.`
+  }
+
+  const resource = visible.find((mechanic) => mechanic.type === "resource")
+  if (resource?.type === "resource") {
+    return `Это запас применений «${resource.label}». Когда другое правило требует его потратить, уменьшается этот запас; карточка ниже показывает, сколько применений доступно и после какого отдыха они возвращаются.`
+  }
+
+  const action = visible.find((mechanic) => mechanic.type === "action")
+  if (action?.type === "action") {
+    const economy = economyLabel[action.economy] || action.economy
+    return `Это отдельное ${economy}: выбираете его тогда, когда хотите применить эту способность. Цель, цена и результат указаны в точном правиле ниже.`
+  }
+
+  const proficiencies = visible.filter((mechanic) => mechanic.type === "grant" && mechanic.target === "proficiency")
+  if (proficiencies.length === visible.length && proficiencies.length) {
+    return "Это постоянные владения. Получив их, вы просто учитываете их в подходящих проверках, спасбросках, оружии или доспехах; отдельная активация не нужна."
+  }
+
+  return firstRuleSentence(description)
+}
+
+function featureExplanation(mechanics: StoredMechanic[], description: string) {
+  return explicitFeatureExplanation(mechanics) || fallbackFeatureExplanation(mechanics, description)
+}
+
 function featureVoss(mechanics: StoredMechanic[]) {
   for (const mechanic of mechanics) {
     if (mechanic.type !== "grant" || mechanic.target !== "feature") continue
@@ -178,7 +236,15 @@ function buildTemplateFeatures(template: RuleTemplate | undefined, levels: RuleT
       if (!mechanics.length || mechanics.every(isSpellSlot)) continue
       const description = featureDescription(mechanics)
       if (!description) continue
-      result.push({ level: row.level, name: featureName(mechanics), description, facts: mechanicFacts(mechanics), voss: featureVoss(mechanics) || undefined })
+      const level = template.kind === "subclass" ? Math.max(row.level, template.unlock_level || 1) : row.level
+      result.push({
+        level,
+        name: featureName(mechanics),
+        explanation: featureExplanation(mechanics, description),
+        description,
+        facts: mechanicFacts(mechanics),
+        voss: featureVoss(mechanics) || undefined,
+      })
     }
   }
   return result
@@ -196,7 +262,7 @@ function templateCatalogTail(template: RuleTemplate) {
 }
 
 function staticSubclasses(entry: ClassReferenceEntry): ReferenceSubclassView[] {
-  if (entry.id === "druid") return druidReference.subclasses.map((item) => ({ id: item.id, name: item.name, summary: item.mechanics, voss: item.voss }))
+  if (entry.id === "druid") return druidReference.subclasses.map((item) => ({ id: item.id, name: item.name, summary: item.mechanics, explanation: item.explanation, voss: item.voss }))
   return entry.subclasses.map((item) => ({ id: item.id, name: item.name, summary: item.summary }))
 }
 
@@ -208,8 +274,8 @@ function FeatureCard({ feature, onOpen }: { feature: RuleFeatureView; onOpen: (f
         <strong>{feature.name}</strong>
         <em aria-hidden="true">›</em>
       </span>
-      <span className="reference-class-feature__preview">{feature.description}</span>
-      <span className="reference-class-feature__open">Открыть полное правило</span>
+      <span className="reference-class-feature__preview">{feature.explanation}</span>
+      <span className="reference-class-feature__open">Объяснение → правило → комментарий</span>
     </button>
   )
 }
@@ -254,6 +320,7 @@ export default function ReferenceGuide({
         id,
         name: template.name || old?.name || id,
         summary: template.mechanical_summary?.trim() || template.description?.trim() || old?.summary || "Специализация класса.",
+        explanation: template.author_description?.trim() || old?.explanation,
         voss: template.author_comment?.trim() || old?.voss,
         templateId: template.id,
       } satisfies ReferenceSubclassView
@@ -308,9 +375,12 @@ export default function ReferenceGuide({
 
   const isDruid = selectedClass?.id === "druid"
   const classSummary = isDruid ? druidReference.mechanicalSummary : classTemplate?.mechanical_summary?.trim() || selectedClass?.tagline || ""
-  const classNarration = isDruid ? druidReference.authorDescription : classTemplate?.author_description?.trim() || selectedClass?.description || ""
+  const classExplanation = isDruid ? druidReference.authorDescription : classTemplate?.author_description?.trim() || selectedClass?.tagline || ""
+  const classDescription = classTemplate?.description?.trim() || selectedClass?.description || classSummary
   const classComment = isDruid ? druidReference.authorComment : classTemplate?.author_comment?.trim() || ""
-  const subclassNarration = selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.summary || ""
+  const subclassExplanation = selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || selectedSubclass?.summary || ""
+  const subclassDescription = selectedSubclassTemplate?.description?.trim() || selectedSubclass?.summary || ""
+  const subclassSummary = selectedSubclassTemplate?.mechanical_summary?.trim() || selectedSubclass?.summary || ""
   const subclassComment = selectedSubclassTemplate?.author_comment?.trim() || selectedSubclass?.voss || ""
 
   return (
@@ -367,9 +437,10 @@ export default function ReferenceGuide({
               <span className="reference-class-hero__monogram">{selectedClass.name.slice(0, 1)}</span>
               <div><h3>{selectedClass.name}</h3><span>{selectedClass.nameEn}</span><p>{classTagline(selectedClass)}</p></div>
             </div>
-            <section className="reference-class-mechanics surface"><span>Коротко о механике</span><p>{classSummary}</p></section>
-            <section className="reference-class-description"><span>Описание класса</span><p>{classNarration}</p></section>
-            {classComment && <section className="reference-voss-note surface"><span>Заметка Восса</span><p>{classComment}</p></section>}
+            {classExplanation && <section className="reference-voss-explanation surface"><span>Восс объясняет</span><p>{classExplanation}</p></section>}
+            <section className="reference-class-description"><span>Описание класса</span><p>{classDescription}</p></section>
+            <section className="reference-class-mechanics surface"><span>Коротко о правилах</span><p>{classSummary}</p></section>
+            {classComment && <section className="reference-voss-note surface"><span>Комментарий Восса</span><p>{classComment}</p></section>}
 
             <section className="reference-class-feature-section">
               <div className="reference-subclass-section__head"><span>Прогрессия класса</span><small>{isDruid ? druidReference.features.length : classFeatures.length}</small></div>
@@ -377,7 +448,7 @@ export default function ReferenceGuide({
                 {isDruid ? druidReference.features.map((feature) => (
                   <FeatureCard
                     key={`${feature.level}:${feature.name}`}
-                    feature={{ level: feature.level, name: feature.name, description: feature.mechanics, facts: feature.details || [], voss: feature.voss }}
+                    feature={{ level: feature.level, name: feature.name, explanation: feature.explanation, description: feature.mechanics, facts: feature.details || [], voss: feature.voss }}
                     onOpen={setSelectedFeature}
                   />
                 )) : classFeatures.length ? classFeatures.map((feature, index) => (
@@ -391,7 +462,7 @@ export default function ReferenceGuide({
               <div className="reference-subclass-list">
                 {visibleSubclasses.map((subclass) => (
                   <button className="reference-subclass-card surface" type="button" key={subclass.id} onClick={() => openSubclass(subclass)}>
-                    <span className="reference-subclass-card__copy"><strong>{subclass.name}</strong><p>{subclass.summary}</p></span>
+                    <span className="reference-subclass-card__copy"><strong>{subclass.name}</strong><p>{subclass.explanation || subclass.summary}</p></span>
                     <span className="reference-guide-section__chevron">›</span>
                   </button>
                 ))}
@@ -406,8 +477,10 @@ export default function ReferenceGuide({
               <span className="reference-class-hero__monogram">{selectedSubclass.name.slice(0, 1)}</span>
               <div><h3>{selectedSubclass.name}</h3><span>{selectedClass.name}</span><p>{selectedSubclass.summary}</p></div>
             </div>
-            <section className="reference-class-description"><span>Описание подкласса</span><p>{subclassNarration}</p></section>
-            {subclassComment && subclassComment !== subclassNarration && <section className="reference-voss-note surface"><span>Заметка Восса</span><p>{subclassComment}</p></section>}
+            {subclassExplanation && <section className="reference-voss-explanation surface"><span>Восс объясняет</span><p>{subclassExplanation}</p></section>}
+            {subclassDescription && <section className="reference-class-description"><span>Описание подкласса</span><p>{subclassDescription}</p></section>}
+            {subclassSummary && subclassSummary !== subclassDescription && <section className="reference-class-mechanics surface"><span>Коротко о правилах</span><p>{subclassSummary}</p></section>}
+            {subclassComment && <section className="reference-voss-note surface"><span>Комментарий Восса</span><p>{subclassComment}</p></section>}
             <section className="reference-class-feature-section">
               <div className="reference-subclass-section__head"><span>Прогрессия подкласса</span><small>{subclassFeatures.length}</small></div>
               <div className="reference-class-feature-list">
@@ -439,8 +512,12 @@ export default function ReferenceGuide({
               <span />
             </header>
             <main className="reference-feature-detail-content">
+              <section className="reference-voss-explanation surface">
+                <span>Восс объясняет</span>
+                <p>{selectedFeature.explanation}</p>
+              </section>
               <section className="reference-feature-detail-rule surface">
-                <span>Полное правило</span>
+                <span>Точное правило</span>
                 <p>{selectedFeature.description}</p>
               </section>
               {selectedFeature.facts.length ? (
@@ -449,7 +526,7 @@ export default function ReferenceGuide({
                   <ul className="reference-rule-facts">{selectedFeature.facts.map((fact) => <li key={fact}>{fact}</li>)}</ul>
                 </section>
               ) : null}
-              {selectedFeature.voss && <section className="reference-voss-note surface"><span>Заметка Восса</span><p>{selectedFeature.voss}</p></section>}
+              {selectedFeature.voss && <section className="reference-voss-note surface"><span>Комментарий Восса</span><p>{selectedFeature.voss}</p></section>}
             </main>
           </div>
         </section>

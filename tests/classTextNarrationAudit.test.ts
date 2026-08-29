@@ -148,15 +148,24 @@ test("Voss voice is explicit and feature comments are attached at every feature 
   assert.match(gmRulePass, /'feature_author','Рейнар Восс'/)
   assert.match(gmRulePass, /'циничный','саркастичный','чёрный юмор'/)
   assert.match(authoringContract, /Рейнар Восс/)
-  assert.match(authoringContract, /цинич/i)
+  assert.match(authoringContract, /цинич|цинизм/i)
   assert.match(authoringContract, /саркаст/i)
   assert.match(authoringContract, /ч[её]рн/i)
 })
 
-test("generic class and subclass feature cards render the separate Voss comment", () => {
+test("generic class and subclass cards render explanation, exact rule and separate Voss comment", () => {
+  assert.match(referenceGuide, /authorExplanation/)
   assert.match(referenceGuide, /authorComment/)
-  const featureVossUses = referenceGuide.match(/feature\.voss/g) || []
-  assert.ok(featureVossUses.length >= 3, "Druid, generic class, and generic subclass cards should all render feature.voss")
+  assert.match(referenceGuide, /payloadText\(mechanic, "authorExplanation"\)/)
+  assert.match(referenceGuide, /payloadText\(mechanic, "authorComment"\)/)
+
+  const start = referenceGuide.indexOf('className="reference-feature-detail-content"')
+  const end = referenceGuide.indexOf("</main>", start)
+  const detail = referenceGuide.slice(start, end)
+  const explanationIndex = detail.indexOf("Восс объясняет")
+  const ruleIndex = detail.indexOf("Точное правило")
+  const commentIndex = detail.indexOf("Комментарий Восса")
+  assert.ok(explanationIndex >= 0 && ruleIndex > explanationIndex && commentIndex > ruleIndex)
 })
 
 test("the audited text shape still passes the strict class gate and reaches the real resolver and CE", () => {
