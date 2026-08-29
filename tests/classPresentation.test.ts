@@ -57,6 +57,7 @@ function spell(id: string, key: string, name: string, level: number, source: Cha
 }
 
 function input(): CharacterEngineInput {
+  const wildShapeSource: CharacterSource = { ...druid, id: "template:class:druid-template:v4:source:wild-shape", name: "Дикая форма" }
   return {
     base: {
       id: "pc",
@@ -74,7 +75,21 @@ function input(): CharacterEngineInput {
     contributions: [
       resource("slot-1", "spell_slot_1", 4, druid),
       resource("slot-3", "spell_slot_3", 2, druid),
-      resource("wild-shape", "wild_shape", 2, { ...druid, id: "template:class:druid-template:v4:source:wild-shape", name: "Дикая форма" }),
+      resource("wild-shape", "wild_shape", 2, wildShapeSource),
+      {
+        id: "wild-shape-feature",
+        kind: "grant",
+        operation: "GRANT",
+        target: "feature",
+        key: "wild_shape_feature",
+        variantKey: "wild_shape_feature",
+        payload: {
+          label: "Дикая форма",
+          description: "Меняет форму по правилу способности.",
+          mechanic: { kind: "transformation", formSource: "beast" },
+        },
+        source: wildShapeSource,
+      },
       {
         id: "wild-shape-action",
         kind: "grant",
@@ -82,7 +97,25 @@ function input(): CharacterEngineInput {
         target: "action",
         key: "wild_shape",
         payload: { label: "Дикая форма", economy: "action", resourceCosts: [{ key: "wild_shape", amount: 1 }] },
-        source: { ...druid, id: "template:class:druid-template:v4:source:wild-shape", name: "Дикая форма" },
+        source: wildShapeSource,
+      },
+      {
+        id: "medium-armor",
+        kind: "grant",
+        operation: "GRANT",
+        target: "proficiency",
+        key: "armor:medium",
+        payload: { label: "Средняя броня" },
+        source: druid,
+      },
+      {
+        id: "land-resistance",
+        kind: "grant",
+        operation: "GRANT",
+        target: "resistance",
+        key: "fire",
+        payload: { label: "Огонь" },
+        source: land,
       },
       spell("speak", "spell:speak-with-animals", "Разговор с животными", 1, druid),
       spell("plant", "spell:plant-growth", "Рост растений", 3, land),
@@ -116,4 +149,31 @@ test("class presentation keeps class/subclass mechanics separate and excludes it
   assert.equal(classBlock.spells[0]!.access.methods[0]!.resourceOptions[0]!.costs[0]!.stateKey, "spell_slot_1")
   assert.equal(contract.spells.some((entry) => entry.identity.name === "Огненный снаряд"), true)
   assert.equal(classBlock.spells.some((entry) => entry.spell.identity.name === "Огненный снаряд"), false)
+})
+
+test("Class tab read model exposes stable machine types from CE rather than display labels", () => {
+  const contract = resolveCharacterContract(input())
+  const presented = presentClassPackages(contract, [{
+    classTemplateId: "druid-template",
+    className: "Друид",
+    level: 5,
+    subclassTemplateId: "land-template",
+    subclassName: "Круг Земли",
+    subclassUnlockLevel: 3,
+    subclassActive: true,
+  }])
+
+  const classBlock = presented[0]!.classMechanics
+  const subclassBlock = presented[0]!.subclassMechanics!
+
+  assert.ok(classBlock.entries.some((entry) => entry.type === "special_action" && entry.label === "Дикая форма" && entry.integration === "runtime"))
+  assert.ok(classBlock.entries.some((entry) => entry.type === "class_spell" && entry.label === "Разговор с животными" && entry.sourceKind === "class"))
+  assert.ok(subclassBlock.entries.some((entry) => entry.type === "class_spell" && entry.label === "Рост растений" && entry.sourceKind === "subclass"))
+  assert.ok(classBlock.entries.some((entry) => entry.type === "resource" && entry.integration === "runtime"))
+  assert.ok(classBlock.entries.some((entry) => entry.type === "passive_rule" && entry.label === "Дикая форма" && entry.integration === "structured"))
+  assert.ok(classBlock.entries.some((entry) => entry.type === "proficiency" && entry.label === "Средняя броня"))
+  assert.ok(subclassBlock.entries.some((entry) => entry.type === "resistance" && entry.label === "Огонь"))
+
+  assert.deepEqual(classBlock.proficiencies.map((entry) => entry.key), ["armor:medium"])
+  assert.deepEqual(subclassBlock.resistances.map((entry) => entry.key), ["fire"])
 })
