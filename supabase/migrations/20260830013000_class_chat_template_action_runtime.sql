@@ -1,7 +1,7 @@
 -- CLASS_MIGRATION_SCOPE: infrastructure
 -- Class/subclass chat actions use the same server-authoritative template runtime
--- that owns resource mutations. The mechanic execution and chat message/roll are
--- intentionally in one PostgreSQL transaction: either both happen or neither.
+-- that owns resource mutations. The mechanic execution and chat message/roll intentionally
+-- run in the same PostgreSQL transaction: either both happen or neither.
 
 begin;
 
