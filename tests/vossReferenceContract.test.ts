@@ -31,6 +31,22 @@ test("all three audited class families receive explicit Voss-authored descriptio
   assert.match(migration, /when 'subclass:cleric:/)
 })
 
+test("renderer never fabricates dry prose under the Voss label", () => {
+  assert.doesNotMatch(guide, /fallbackFeatureExplanation/)
+  assert.doesNotMatch(guide, /Это запас применений/)
+  assert.doesNotMatch(guide, /Это отдельное действие/)
+  assert.doesNotMatch(guide, /Это постоянные владения/)
+  assert.match(guide, /explanation: explicitFeatureExplanation\(mechanics\)/)
+  assert.match(guide, /selectedFeature\.explanation && <section className="reference-voss-explanation surface">/)
+})
+
+test("Druid uses the live campaign catalog first and keeps static copy only as fallback", () => {
+  assert.match(guide, /classExplanation = classTemplate\?\.author_description\?\.trim\(\) \|\| \(isDruid \? druidReference\.authorDescription : ""\)/)
+  assert.match(guide, /classComment = classTemplate\?\.author_comment\?\.trim\(\) \|\| \(isDruid \? druidReference\.authorComment : ""\)/)
+  assert.match(guide, /displayedClassFeatures = classFeatures\.length \? classFeatures : \(isDruid \? staticDruidFeatures\(\) : \[\]\)/)
+  assert.doesNotMatch(guide, /isDruid \? druidReference\.features\.map/)
+})
+
 test("reference UI renders explanation -> exact rule -> comment in canonical order", () => {
   const start = guide.indexOf('className="reference-feature-detail-content"')
   const end = guide.indexOf("</main>", start)
