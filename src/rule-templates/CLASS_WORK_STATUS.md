@@ -33,35 +33,36 @@ These are project-state markers, not player rules.
 
 ## Fighter (`class:fighter`)
 
-**Overall project label:** `TEXT READY`  
+**Overall project label:** `TEXT IN_PROGRESS`  
 **Gameplay mechanics/runtime label:** `NOT_AUDITED`
 
-- `text_status: READY`
+- `text_status: IN_PROGRESS`
 - `mechanics_status: NOT_AUDITED`
 - `last_text_audit: 2026-08-29`
 - `reference_delivery: SYNCED_2026_08_29`
+- `reopened_for: complete Reynar Voss author-comment coverage for every openable Fighter ability card; mechanics/rules text remain outside this pass`
 - `reference_ui: tappable full-rule cards; list cards are previews and open a dedicated full rule view`
 - `production_delivery_rule: the reference text sync migration may update presentation text and metadata only; it must not promote or rewrite choices/resources/actions/formulas/effects/CE dependencies`
 - `text_scope: base Fighter levels 1–20 + every currently catalogued Fighter subclass + nested selectable rules (Arcane Shots, Battle Master maneuvers, Rune Knight runes) + Voss comments + GM-facing summaries/descriptions`
 - `text_definition_of_ready: a player/GM must be able to understand trigger/activation, cost, target, exact effect, numbers/dice/DC/range, duration and limits/recharge from the user-facing rule text whenever those parts apply; no "расширяет/усиливает возможности" placeholders`
-- `next_required_audit: full Fighter mechanics/runtime audit`
+- `next_required_audit: finish Voss coverage audit, then full Fighter mechanics/runtime audit`
 
 ### Fighter subclasses — text layer
 
-- Arcane Archer — `READY`
-- Battle Master — `READY`
-- Cavalier — `READY`
-- Champion — `READY`
-- Echo Knight — `READY`
-- Eldritch Knight — `READY`
-- Psi Warrior — `READY`
-- Banneret — `READY`
-- Rune Knight — `READY`
-- Samurai — `READY`
+- Arcane Archer — `IN_PROGRESS` (Voss coverage only)
+- Battle Master — `IN_PROGRESS` (Voss coverage only)
+- Cavalier — `IN_PROGRESS` (Voss coverage only)
+- Champion — `IN_PROGRESS` (Voss coverage only)
+- Echo Knight — `IN_PROGRESS` (Voss coverage only)
+- Eldritch Knight — `IN_PROGRESS` (Voss coverage only)
+- Psi Warrior — `IN_PROGRESS` (Voss coverage only)
+- Banneret — `IN_PROGRESS` (Voss coverage only)
+- Rune Knight — `IN_PROGRESS` (Voss coverage only)
+- Samurai — `IN_PROGRESS` (Voss coverage only)
 
 ### Known mechanics-only follow-up
 
-These notes **do not reopen the text layer**. They are explicit reminders for the later mechanics audit:
+These notes **do not reopen the text layer beyond the explicit Voss pass**. They are explicit reminders for the later mechanics audit:
 
 - Echo Knight: verify that `Unleash Incarnation / Воплощение ярости` survives the final migration stack as its own mechanical feature/resource/action. Its full rule is deliberately preserved in the final GM-facing level-3 text even if the mechanical audit later finds a structural omission.
 - Eldritch Knight: verify spell-slot/prepared-spell progression, multiclass slot interaction and replacement behavior against the Character Engine. The text pass only makes the intended progression explicit; it does not certify runtime accounting.
@@ -77,33 +78,34 @@ The green/ready mark is permitted **only for Fighter descriptions/reference copy
 
 ## Druid (`class:druid`)
 
-**Overall project label:** `TEXT READY`  
+**Overall project label:** `TEXT IN_PROGRESS`  
 **Gameplay mechanics/runtime label:** `NOT_AUDITED`
 
-- `text_status: READY`
+- `text_status: IN_PROGRESS`
 - `mechanics_status: NOT_AUDITED`
 - `last_text_audit: 2026-08-29`
 - `reference_delivery: SYNCED_2026_08_29`
-- `production_verification: 49/49 visible Druid feature grants have non-empty descriptions and Voss comments; 0 vague placeholder descriptions after the production sync`
+- `reopened_for: complete Reynar Voss author-comment coverage for every openable Druid ability card, including spell-only/source-key groups that previously rendered without a feature grant`
+- `production_verification_before_reopen: 49/49 visible Druid feature grants had non-empty descriptions and Voss comments; UI grouping still exposed 20 openable cards without a Voss comment`
 - `text_scope: static base-class reference + all eight currently catalogued circles + spell lists + selectable/variant rule text + scaling + failure/success clauses + Voss comments + GM-facing summaries/descriptions`
-- `text_definition_of_ready: player/GM can resolve the human-facing rule from the reference text whenever trigger, action economy, cost, target/range, roll/save, exact effect, scaling, duration, ending condition and usage/recharge apply`
+- `text_definition_of_ready: player/GM can resolve the human-facing rule from the reference text whenever trigger, action economy, cost, target/range, roll/save, exact effect, scaling, duration, ending condition and usage/recharge apply; every openable ability card also has a separate Voss author comment`
 - `known_boundary: this closure certifies presentation/reference text only; it does not certify Wild Shape runtime, subclass-level wiring, choices, resources, actions, formulas, source suppression, spell-slot accounting, summoned-creature runtime or other Character Engine behavior`
-- `next_required_audit: full Druid mechanics/runtime audit`
+- `next_required_audit: finish Voss coverage audit, then full Druid mechanics/runtime audit`
 
 ### Druid circles — text layer
 
-- Circle of Dreams — `READY`
-- Circle of the Land — `READY`
-- Circle of the Moon — `READY`
-- Circle of the Sea — `READY`
-- Circle of the Shepherd — `READY`
-- Circle of Spores — `READY`
-- Circle of Stars — `READY`
-- Circle of Wildfire — `READY`
+- Circle of Dreams — `IN_PROGRESS` (Voss coverage only)
+- Circle of the Land — `IN_PROGRESS` (Voss coverage only)
+- Circle of the Moon — `IN_PROGRESS` (Voss coverage only)
+- Circle of the Sea — `IN_PROGRESS` (Voss coverage only)
+- Circle of the Shepherd — `IN_PROGRESS` (Voss coverage only)
+- Circle of Spores — `IN_PROGRESS` (Voss coverage only)
+- Circle of Stars — `IN_PROGRESS` (Voss coverage only)
+- Circle of Wildfire — `IN_PROGRESS` (Voss coverage only)
 
 ### Known mechanics-only follow-up
 
-These notes **do not reopen the text layer**. They are explicit targets for the later mechanics audit:
+These notes **do not reopen the text layer beyond the explicit Voss pass**. They are explicit targets for the later mechanics audit:
 
 - Legacy subclass progression: Dreams, Spores, Shepherd and Wildfire still have legacy feature rows beginning at Druid level 2 while the base class currently unlocks its subclass at Druid level 3. Resolve the 2/6/10/14 versus 3/6/10/14 compatibility deliberately in mechanics; do not infer a level move from the text closure.
 - Wild Shape: verify the project-pinned 2014 model end to end — exactly 2 uses, full short/long-rest recovery, beast HP and physical statistics, excess-damage carryover, form duration, equipment handling and retained-feature legality. Do not accidentally add the 2024 temporary-HP model.
