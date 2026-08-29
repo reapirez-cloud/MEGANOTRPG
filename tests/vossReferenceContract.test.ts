@@ -37,13 +37,14 @@ test("audited feature cards carry authored explanations before renderer fallback
   assert.match(abilityMigration, /authorExplanation/)
   assert.match(abilityMigration, /Есть обычные молитвы/)
   assert.match(abilityMigration, /Когда человеческое тело перестаёт подходить задаче/)
-  assert.match(abilityMigration, /Воин обычно решает проблему оружием/)
+  assert.match(abilityMigration, /Получили по рёбрам, отдышались и решили, что умирать сегодня неудобно/)
+  assert.match(abilityMigration, /Когда одного действия не хватило, воин просто делает ещё одно прямо сейчас/)
   assert.match(guide, /return explicitFeatureExplanation\(mechanics\) \|\| fallbackFeatureExplanation\(mechanics, description\)/)
 })
 
 test("static Druid reference uses Voss voice rather than rule paraphrase", () => {
   assert.match(druid, /После отдыха друид решает, какую часть природы сегодня держать наготове/)
-  assert.match(druid, /Если самому превращаться неудобно/)
+  assert.match(druid, /Не хочется самому лезть в тёмную дыру/)
   assert.match(druid, /Медведь, который рычит/)
   assert.match(druid, /Друидам я не доверяю/)
 })
