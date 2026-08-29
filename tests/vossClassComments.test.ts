@@ -6,6 +6,7 @@ import { druidReference } from "../src/data/classes/druidReference.ts"
 import { spellAuthorAttitudes, spellAuthorVoiceRules } from "../src/data/spellReferenceAuthor.ts"
 import {
   vossCommentHasDeveloperLeak,
+  vossExplanationHasRulesMeta,
   vossTextHasModernRegister,
   vossTextViolatesVoice,
   vossVoice,
@@ -30,10 +31,12 @@ test("Reynar Voss has one explicit adventurer voice and worldview", () => {
   assert.equal(spellAuthorVoiceRules, vossVoiceRules)
 })
 
-test("Voss contract fixes explanation -> exact rule -> personal comment order", () => {
-  assert.ok(vossVoiceRules.some((rule) => /сначала «Восс объясняет».*точное правило.*Комментарий Восса/i.test(rule)))
+test("Voss contract fixes authored explanation -> exact rule -> personal comment order", () => {
+  assert.ok(vossVoiceRules.some((rule) => /«Восс объясняет».*точное правило.*Комментарий Восса/i.test(rule)))
   assert.ok(vossVoiceRules.some((rule) => /authorExplanation/i.test(rule)))
   assert.ok(vossVoiceRules.some((rule) => /authorComment/i.test(rule)))
+  assert.ok(vossVoiceRules.some((rule) => /НЕ объясняет механику простыми словами/i.test(rule)))
+  assert.ok(vossVoiceRules.some((rule) => /Запрещён шаблон.*пересказать эффект.*шутк/i.test(rule)))
 
   const start = referenceGuide.indexOf('className="reference-feature-detail-content"')
   const end = referenceGuide.indexOf("</main>", start)
@@ -46,12 +49,14 @@ test("Voss contract fixes explanation -> exact rule -> personal comment order", 
   assert.ok(commentIndex > ruleIndex, "Voss personal comment must render after the exact rule")
 })
 
-test("developer and modern office register are rejected from Voss copy", () => {
+test("developer, tabletop-meta and modern office register are rejected from Voss copy", () => {
   assert.equal(vossCommentHasDeveloperLeak("Могильщики любят, когда вы ошибаетесь."), false)
   assert.equal(vossCommentHasDeveloperLeak("В этой кампании Character Engine спишет ресурс."), true)
   assert.equal(vossTextHasModernRegister("Профсоюз требует страховку и отдел кадров."), true)
   assert.equal(vossTextHasModernRegister("Если медведь смотрит слишком умно, не гладьте его."), false)
   assert.equal(vossTextViolatesVoice("Юрист проверил лицензию."), true)
+  assert.equal(vossExplanationHasRulesMeta("Потратьте 1к8 и добавьте модификатор к спасброску."), true)
+  assert.equal(vossExplanationHasRulesMeta("Старый воин видит ошибку раньше, чем враг понимает, что её совершил."), false)
 })
 
 test("static Druid reference has separate plain explanations and clean Voss comments", () => {
@@ -91,6 +96,7 @@ test("renderer can read explanation and comment from feature payload or generic 
   assert.match(referenceGuide, /payloadText\(mechanic, "authorExplanation"\)/)
   assert.match(referenceGuide, /mechanic\.presentation\?\.authorComment\?\.trim\(\)/)
   assert.match(referenceGuide, /payloadText\(mechanic, "authorComment"\)/)
+  assert.match(referenceGuide, /function fallbackFeatureExplanation\(\)\s*\{\s*return ""/)
 })
 
 test("Voss reference migration is presentation-only, authored and regression-gated", () => {
