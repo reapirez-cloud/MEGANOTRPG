@@ -1,5 +1,6 @@
 begin;
 
+-- CLASS_INTEGRATION_STRICT: class:cleric
 -- CLASS_INTEGRATION_STRICT: subclass:cleric:life-domain
 -- CLASS_PACKAGE_TEST: tests/classTextNarrationAudit.test.ts
 -- Presentation-only continuation of the class text audit. No structured mechanics are changed.
@@ -10,7 +11,27 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_cleric uuid;
 begin
+  select id into v_cleric
+  from public.rule_templates
+  where campaign_id=p_campaign_id
+    and is_active
+    and catalog_key='class:cleric'
+  order by version desc
+  limit 1;
+
+  if v_cleric is not null then
+    update public.rule_template_levels
+    set mechanics=private.patch_feature_description_text(
+      mechanics,
+      'spellcasting',
+      'Мудрость — заклинательная характеристика Жреца; священный символ можно использовать как заклинательную фокусировку. На 1 уровне вы знаете 3 заговора, подготавливаете 4 заклинания Жреца 1 уровня и имеете 2 ячейки 1 уровня. Дальше число заговоров, подготовленных заклинаний и ячеек берётся из таблицы Жреца. Чтобы сотворить подготовленное заклинание 1 уровня или выше, потратьте ячейку, уровень которой не ниже уровня заклинания. Все потраченные ячейки возвращаются после долгого отдыха. После каждого долгого отдыха можно заменить любое число подготовленных заклинаний другими заклинаниями Жреца тех уровней, для которых у вас есть ячейки.'
+    )
+    where template_id=v_cleric and level=1;
+  end if;
+
   update public.rule_templates t
   set mechanics=private.audit_feature_mechanics_text(t.mechanics),
       choices=private.audit_feature_choices_text(t.choices),
