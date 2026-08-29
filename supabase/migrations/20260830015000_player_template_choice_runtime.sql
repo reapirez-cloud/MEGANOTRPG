@@ -74,21 +74,19 @@ begin
     v_source_level:=greatest(1,coalesce(v_assignment.template_level,v_character.level,1));
   end if;
 
-  select c.choice into v_choice
-  from jsonb_array_elements(coalesce(v_template.choices,'[]'::jsonb)) c(choice)
-  where c.choice->>'key'=p_choice_key
-  limit 1;
-
-  if v_choice is null then
-    select c.choice into v_choice
+  select q.choice into v_choice
+  from (
+    select 0 as level,c.choice
+    from jsonb_array_elements(coalesce(v_template.choices,'[]'::jsonb)) c(choice)
+    union all
+    select l.level,c.choice
     from public.rule_template_levels l
     cross join lateral jsonb_array_elements(coalesce(l.choices,'[]'::jsonb)) c(choice)
-    where l.template_id=v_template.id
-      and l.level<=v_source_level
-      and c.choice->>'key'=p_choice_key
-    order by l.level desc
-    limit 1;
-  end if;
+    where l.template_id=v_template.id and l.level<=v_source_level
+  ) q
+  where q.choice->>'key'=p_choice_key
+  order by q.level desc
+  limit 1;
 
   if v_choice is null then raise exception 'Choice is not unlocked for this source level'; end if;
   if coalesce(v_choice->>'selection_mode','manager')<>'player_once' then
