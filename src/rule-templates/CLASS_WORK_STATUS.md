@@ -75,6 +75,17 @@ The green/ready mark is permitted **only for Fighter descriptions/reference copy
 
 ---
 
+## Druid (`class:druid`)
+
+- `text_status: IN_PROGRESS`
+- `mechanics_status: NOT_AUDITED`
+- `text_scope_in_progress: static base-class reference + all eight catalogued circles + selectable/variant rule text + Voss comments + GM-facing summaries/descriptions`
+- `audit_started: 2026-08-29`
+- `known_boundary: this pass may rewrite presentation copy only; it must not silently move subclass levels, alter Wild Shape runtime, choices, resources, actions, formulas, source suppression, spell-slot accounting or CE dependencies`
+- `next_required_audit: finish Druid text closure, then run a separate Druid mechanics/runtime audit`
+
+---
+
 ## Cleric (`class:cleric`)
 
 - `text_status: IN_PROGRESS`
