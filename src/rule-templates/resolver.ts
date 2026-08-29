@@ -41,6 +41,18 @@ function normalizeSelected(value: string | string[] | undefined): string[] {
   return typeof value === "string" && value.trim() ? [value.trim()] : []
 }
 
+export function choiceCountAtLevel(definition: RuleChoiceDefinition, sourceLevel: number): number {
+  const base = Math.max(1, definition.count || 1)
+  return Object.entries(definition.count_by_level || {})
+    .filter(([level]) => Number(level) <= sourceLevel)
+    .sort(([left], [right]) => Number(left) - Number(right))
+    .reduce((count, [, next]) => Math.max(1, Number(next) || count), base)
+}
+
+export function choiceOptionAvailableAtLevel(definition: RuleChoiceDefinition, option: string, sourceLevel: number): boolean {
+  return sourceLevel >= Math.max(1, Number(definition.option_unlock_level?.[option] || 1))
+}
+
 function substituteFormula(expression: FormulaExpression, sourceLevel: number): FormulaExpression {
   switch (expression.kind) {
     case "reference": return expression.key === "source.level" ? { kind: "literal", value: sourceLevel } : expression
@@ -137,7 +149,9 @@ function choiceContributions(
   unlockLevel: number,
   nodes: Map<string, TemplateSourceNode>,
 ): CharacterContribution[] {
-  const selected = normalizeSelected(bundle.assignment.selected_choices?.[definition.key]).slice(0, Math.max(1, definition.count || 1))
+  const selected = normalizeSelected(bundle.assignment.selected_choices?.[definition.key])
+    .filter((key) => definition.options.includes(key) && choiceOptionAvailableAtLevel(definition, key, sourceLevel))
+    .slice(0, choiceCountAtLevel(definition, sourceLevel))
   const root = templateRootSource(bundle)
 
   return selected.flatMap((key, index) => {
@@ -157,7 +171,7 @@ function choiceContributions(
       nodeKind: "choice",
       templateId: bundle.template.id,
       templateKind: bundle.template.kind,
-      unlockLevel,
+      unlockLevel: Math.max(unlockLevel, Number(definition.option_unlock_level?.[key] || unlockLevel)),
       mechanicIds: [],
       choiceKey: definition.key,
       optionKey: key,
