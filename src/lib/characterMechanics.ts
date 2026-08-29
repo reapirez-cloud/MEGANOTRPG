@@ -53,7 +53,23 @@ export function contributionForStoredMechanic(mechanic: StoredMechanic, source: 
       ? { triggers, restore: "amount" as const, amount: Math.max(1, mechanic.restoreAmount || 1) }
       : { triggers, restore: "full" as const }
     const presentation = presentationPayload(mechanic.presentation)
-    return withPriority(withCondition({ id, kind: "grant", operation, target: "resource", key: mechanic.key, ...variant, payload: { max: mechanic.max, label: mechanic.label, initial: mechanic.initial ?? "full", recharge, ...(presentation ? { presentation } : {}) }, source }, mechanic.condition), mechanic.priority)
+    return withPriority(withCondition({
+      id,
+      kind: "grant",
+      operation,
+      target: "resource",
+      key: mechanic.key,
+      ...variant,
+      payload: {
+        max: mechanic.max,
+        label: mechanic.label,
+        initial: mechanic.initial ?? "full",
+        recharge,
+        ...(mechanic.recoveryRules?.length ? { recoveryRules: mechanic.recoveryRules } : {}),
+        ...(presentation ? { presentation } : {}),
+      },
+      source,
+    }, mechanic.condition), mechanic.priority)
   }
   if (mechanic.type === "action") {
     const attackParts = abilityModifierFormula(mechanic.attackAbility)
