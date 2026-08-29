@@ -35,13 +35,15 @@ These are project-state markers, not player rules.
 
 - `source: src/data/vossVoice.ts`
 - `scope: spells + classes + subclasses + future reference sections`
-- `user_order: authorExplanation ("Восс объясняет") -> exact neutral rule -> authorComment ("Комментарий Восса")`
+- `base_user_order: authorExplanation ("Восс объясняет") -> exact neutral rule -> authorComment ("Комментарий Восса")`
+- `subclass_ability_order: authorExplanation ("Восс объясняет") -> exact neutral rule -> authorNuances ("Нюансы Восса") -> authorComment ("Комментарий Восса")`
 - `explanation_contract: Voss explains how to use the rule in plain in-world language for a reader who did not understand the exact rule; explanation never replaces the exact rule and never invents hidden mechanics`
-- `comment_contract: short in-world field note after the rule; sarcastic, ironic, cynical, black humor; sometimes harsh; never a second mechanics paragraph`
+- `nuance_contract: subclass ability nuances collect common table misreadings and edge interpretations; each point explains what does NOT follow from the exact wording, may use Voss sarcasm, and never creates a new mechanic, target, trigger, resource, number or permission`
+- `comment_contract: short in-world field note after the rule/nuances; sarcastic, ironic, cynical, black humor; sometimes harsh; never a second mechanics paragraph`
 - `worldview: distrusts magic as dangerous and needlessly complicated; respects practical nonmagical skill; likes Fighters; considers Clerics cowardly rear-line preachers; distrusts Druids and especially Circle of the Moon`
 - `register_boundary: no modern office/legal/commercial/game-development register — no unions, insurance, licenses, HR, accounting, marketing, managers, office jokes, modern build/buff/statblock slang, Character Engine, runtime, parser, migrations, UI, editions or project history`
 - `hard_boundary: Voss must never introduce dice, DCs, ranges, costs, durations, levels or exceptions that are absent from the exact rule text`
-- `renderer_rule: an openable ability card reads authorExplanation/authorComment from feature payload; source groups without a feature grant use renderer-only mechanic.presentation fields`
+- `renderer_rule: an openable ability card reads authorExplanation/authorComment and, for subclass abilities, authorNuances from feature payload; source groups without a feature grant use renderer-only mechanic.presentation fields`
 
 ---
 
@@ -56,14 +58,16 @@ These are project-state markers, not player rules.
 - `last_voss_audit: 2026-08-29`
 - `reference_delivery: LIVE_SYNCED_2026_08_29`
 - `production_migration: 20260829135656_fighter_cleric_voss_live_sync`
-- `narration_contract: every rendered Fighter mechanic node now has authorExplanation -> exact rule -> authorComment; openable feature cards use the same order`
+- `subclass_nuance_delivery: LIVE_SYNCED_2026_08_29 via 20260829142821_subclass_voss_nuances`
+- `subclass_nuance_audit: 57/57 current Fighter archetype source groups carry one or more authorNuances; missing=0`
+- `narration_contract: every rendered Fighter mechanic node has authorExplanation -> exact rule -> authorComment; Fighter subclass abilities additionally render authorNuances between the rule and final comment`
 - `production_coverage_audit: 242/242 current Fighter + archetype mechanic nodes have authorExplanation and authorComment; missing_explanation=0; missing_comment=0; banned_modern_register=0`
 - `voss_coverage_contract: every openable Fighter ability/source-group card has a separate Reynar Voss comment`
 - `voss_coverage_audit: base Fighter and all ten current archetypes are live-synced; repeated generic archetype comments were replaced with archetype-specific narrator copy`
 - `canonical_voss_voice: src/data/vossVoice.ts`
-- `reference_ui: tappable full-rule cards; list cards are previews and open a dedicated full rule view`
-- `production_delivery_rule: reference text/comment sync may update presentation text and renderer-only metadata only; it must not promote or rewrite exact rule descriptions/choices/resources/actions/formulas/effects/CE dependencies`
-- `text_scope: base Fighter levels 1–20 + every currently catalogued Fighter subclass + nested selectable rules (Arcane Shots, Battle Master maneuvers, Rune Knight runes) + Voss explanations/comments + GM-facing summaries/descriptions`
+- `reference_ui: tappable full-rule cards; list preview visibly labels "Восс объясняет"; subclass detail order is Voss explanation -> exact rule/facts -> Voss nuances -> Voss comment`
+- `production_delivery_rule: reference narrator sync may update presentation text and renderer-only metadata only; it must not promote or rewrite exact rule descriptions/choices/resources/actions/formulas/effects/CE dependencies`
+- `text_scope: base Fighter levels 1–20 + every currently catalogued Fighter subclass + nested selectable rules (Arcane Shots, Battle Master maneuvers, Rune Knight runes) + Voss explanations/nuances/comments + GM-facing summaries/descriptions`
 - `text_definition_of_ready: a player/GM must be able to understand trigger/activation, cost, target, exact effect, numbers/dice/DC/range, duration and limits/recharge from the user-facing rule text whenever those parts apply; no "расширяет/усиливает возможности" placeholders; every openable ability card also has separate explanation and Voss note`
 - `next_required_audit: full Fighter mechanics/runtime audit`
 
@@ -107,15 +111,17 @@ The green/ready mark is permitted **only for Fighter descriptions/reference copy
 - `last_voss_audit: 2026-08-29`
 - `reference_delivery: LIVE_SYNCED_2026_08_29`
 - `production_migration: 20260829133921_druid_voss_live_sync`
-- `narration_contract: every rendered Druid mechanic node now has authorExplanation -> exact rule -> authorComment; openable feature cards use the same order`
+- `subclass_nuance_delivery: LIVE_SYNCED_2026_08_29 via 20260829142821_subclass_voss_nuances`
+- `subclass_nuance_audit: 38/38 current Druid Circle source groups carry one or more authorNuances; missing=0`
+- `narration_contract: every rendered Druid mechanic node has authorExplanation -> exact rule -> authorComment; Circle abilities additionally render authorNuances between the rule and final comment`
 - `production_coverage_audit: 239/239 current Druid + Circle mechanic nodes have authorExplanation and authorComment; missing_explanation=0; missing_comment=0; banned_modern_register=0`
 - `player_text_immersion_audit: READY_2026_08_29 — active player-facing Druid and Circle copy states only game rules; edition/source/project/runtime comparison language is forbidden and regression-tested`
 - `canonical_voss_voice: src/data/vossVoice.ts`
-- `circle_of_moon_voice_checkpoint: live template comment explicitly frames Moon Druids as deceptively cuddly and dangerous — "через минуту он ест вашу руку. Отдельную от вас"`
-- `reference_ui: tappable full-rule cards; preview -> full detail; full detail order is Voss explanation -> exact rule/facts -> Voss comment`
+- `circle_of_moon_voice_checkpoint: live template comment explicitly frames Moon Druids as deceptively cuddly and dangerous — "через минуту он ест вашу руку. Отдельно от вас"`
+- `reference_ui: tappable full-rule cards; preview -> full detail; Circle detail order is Voss explanation -> exact rule/facts -> Voss nuances -> Voss comment`
 - `production_delivery_rule: Druid live sync is presentation-only; it may update narrator/reference text and renderer-only metadata but must not promote or rewrite choices/resources/actions/formulas/effects/CE dependencies`
 - `static_reference_audit: every druidReference.features entry has a plain explanation and Voss note; all player-visible static Druid strings are checked for developer/source-edition/modern-office leakage`
-- `text_scope: static base-class reference + all eight currently catalogued circles + spell lists + selectable/variant rule text + scaling + failure/success clauses + Voss explanations/comments + GM-facing summaries/descriptions`
+- `text_scope: static base-class reference + all eight currently catalogued circles + spell lists + selectable/variant rule text + scaling + failure/success clauses + Voss explanations/nuances/comments + GM-facing summaries/descriptions`
 - `text_definition_of_ready: player/GM can resolve the human-facing rule from the reference text whenever trigger, action economy, cost, target/range, roll/save, exact effect, scaling, duration, ending condition and usage/recharge apply`
 - `known_boundary: this closure certifies presentation/reference text and narrator coverage only; it does not certify Wild Shape runtime, subclass-level wiring, choices, resources, actions, formulas, source suppression, spell-slot accounting, summoned-creature runtime or other Character Engine behavior`
 - `next_required_audit: full Druid mechanics/runtime audit`
@@ -162,17 +168,19 @@ The green/ready mark is permitted **only for Druid descriptions/reference copy a
 - `last_voss_audit: 2026-08-29`
 - `reference_delivery: LIVE_SYNCED_2026_08_29`
 - `production_migration: 20260829135656_fighter_cleric_voss_live_sync`
-- `narration_contract: every rendered Cleric mechanic node now has authorExplanation -> exact rule -> authorComment; openable feature cards use the same order`
+- `subclass_nuance_delivery: LIVE_SYNCED_2026_08_29 via 20260829142821_subclass_voss_nuances`
+- `subclass_nuance_audit: 81/81 current Cleric Domain source groups carry one or more authorNuances; missing=0`
+- `narration_contract: every rendered Cleric mechanic node has authorExplanation -> exact rule -> authorComment; Domain abilities additionally render authorNuances between the rule and final comment`
 - `production_coverage_audit: 744/744 current Cleric + Domain mechanic nodes have authorExplanation and authorComment; missing_explanation=0; missing_comment=0; banned_modern_register=0`
-- `text_scope: base Cleric levels 1–20 + all 14 catalogued domains + domain spell groups + Divine Order and Blessed Strikes nested choices + scaling/failure/success clauses + Voss explanations/comments + class/domain summaries and descriptions`
+- `text_scope: base Cleric levels 1–20 + all 14 catalogued domains + domain spell groups + Divine Order and Blessed Strikes nested choices + scaling/failure/success clauses + Voss explanations/nuances/comments + class/domain summaries and descriptions`
 - `domain_text_audit: 14/14 domains included in the final closure and live narration sync`
 - `feature_text_audit: closure gate requires 84/84 feature grants including the base hit-die card to have explicit non-placeholder descriptions`
 - `voss_coverage_contract: every openable Cleric ability/source-group card has a separate Reynar Voss explanation and comment`
 - `voss_coverage_audit: 156/156 current openable Cleric source groups remain covered; live recursive node audit additionally verifies 744/744 mechanic nodes`
 - `canonical_voss_voice: src/data/vossVoice.ts`
-- `reference_ui: tappable full-rule cards; preview -> full detail; full detail order is Voss explanation -> exact rule/facts -> Voss comment`
-- `player_text_immersion_audit: class/domain summaries, explanations and Voss notes reject implementation, project, edition and modern office/legal/commercial language`
-- `production_delivery_rule: the live Cleric narration sync is presentation-only; it may update author explanations/comments and renderer-only presentation metadata, but must not rewrite exact rule descriptions/resources/actions/formulas/effects/costs/choices/spell access/CE dependencies`
+- `reference_ui: tappable full-rule cards; list preview visibly labels "Восс объясняет"; Domain detail order is Voss explanation -> exact rule/facts -> Voss nuances -> Voss comment`
+- `player_text_immersion_audit: class/domain summaries, explanations, nuances and Voss notes reject implementation, project, edition and modern office/legal/commercial language`
+- `production_delivery_rule: live Cleric narration sync is presentation-only; it may update author explanations/nuances/comments and renderer-only presentation metadata, but must not rewrite exact rule descriptions/resources/actions/formulas/effects/costs/choices/spell access/CE dependencies`
 - `known_boundary: this closure certifies human-readable reference text only; structured spell slots, Channel Divinity accounting, domain actions/resources, choice persistence, source suppression and all other runtime behavior remain unaudited`
 - `next_required_audit: full Cleric mechanics/runtime audit`
 

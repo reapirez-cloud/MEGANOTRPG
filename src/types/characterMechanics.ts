@@ -28,7 +28,9 @@ export type StoredMechanicPresentation = {
   priority?: number
   /** Plain-language Voss explanation shown BEFORE the authoritative rule. */
   authorExplanation?: string
-  /** Personal Voss field remark shown AFTER the authoritative rule. */
+  /** Common subclass misreadings shown AFTER the exact rule; never executable mechanics. */
+  authorNuances?: string[]
+  /** Personal Voss field remark shown AFTER the authoritative rule and nuances. */
   authorComment?: string
 }
 

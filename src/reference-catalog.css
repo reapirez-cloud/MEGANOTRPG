@@ -80,9 +80,19 @@
   line-height: 1;
 }
 
+.reference-class-feature__eyebrow {
+  display: block;
+  margin-top: 9px;
+  color: #9eb4cb;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
 .reference-class-feature__preview {
   display: -webkit-box;
-  margin-top: 7px;
+  margin-top: 4px;
   overflow: hidden;
   color: #b8b5bd;
   font-size: 11px;
@@ -226,6 +236,46 @@
 
 .reference-feature-detail-facts .reference-rule-facts {
   margin-top: 8px;
+}
+
+.reference-voss-nuances {
+  margin-top: 14px;
+  padding: 14px 15px;
+  border: 1px solid rgba(201, 151, 76, .17);
+  background: linear-gradient(180deg, rgba(107, 77, 32, .09), rgba(45, 35, 21, .055));
+}
+
+.reference-voss-nuances > span {
+  display: block;
+  color: #c7a86f;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.reference-voss-nuances ul {
+  display: grid;
+  gap: 8px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reference-voss-nuances li {
+  position: relative;
+  margin: 0;
+  padding-left: 17px;
+  color: #d1c7b5;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.reference-voss-nuances li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: #b99155;
 }
 
 @media (hover: hover) {
