@@ -26,6 +26,8 @@ export type StoredMechanicPresentation = {
   icon?: string
   display?: MechanicModuleDisplay
   priority?: number
+  /** Optional narrator copy for a source group that has no feature grant. */
+  authorComment?: string
 }
 
 type StoredMechanicMeta = {
@@ -37,6 +39,8 @@ type StoredMechanicMeta = {
   priority?: number
   grantOperation?: StoredGrantOperation
   curseEffect?: boolean
+  /** Renderer-only metadata shared by every mechanic kind. */
+  presentation?: StoredMechanicPresentation
 }
 
 export type StoredNumericMechanic = StoredMechanicMeta & {
@@ -67,7 +71,6 @@ export type StoredResourceMechanic = StoredMechanicMeta & {
   restore?: "full" | "amount"
   restoreAmount?: number
   initial?: "full" | "empty" | number
-  presentation?: StoredMechanicPresentation
 }
 
 export type StoredActionDamage = {
@@ -100,7 +103,6 @@ export type StoredActionMechanic = StoredMechanicMeta & {
   requirements?: ActionRequirementDefinition[]
   effects?: ActionEffectDefinition[]
   tags?: string[]
-  presentation?: StoredMechanicPresentation
 }
 
 export type StoredSpellMechanic = StoredMechanicMeta & {
