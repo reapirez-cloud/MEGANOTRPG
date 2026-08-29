@@ -181,11 +181,11 @@ function templateMechanics(
       label: spell.identity.name,
       integration: "runtime" as const,
     })),
-    ...features.map((feature) => {
+    ...features.map<PresentedClassMechanicEntry>((feature) => {
       const rule = matchingRule(rules, feature)
       return {
         id: `feature:${feature.key}:${feature.variantKey}`,
-        type: rule?.integration === "structured" ? "passive_rule" as const : "reference_rule" as const,
+        type: rule?.integration === "structured" ? "passive_rule" : "reference_rule",
         sourceKind: kind,
         templateId,
         label: grantLabel(feature),
