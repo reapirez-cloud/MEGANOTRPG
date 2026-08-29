@@ -93,15 +93,18 @@ test("renderer can read explanation and comment from feature payload or generic 
   assert.match(referenceGuide, /payloadText\(mechanic, "authorComment"\)/)
 })
 
-test("Voss reference migration is presentation-only, recursive and self-gating", () => {
+test("Voss reference migration is presentation-only, authored and regression-gated", () => {
   assert.match(migration, /CLASS_WORK_STATUS: fighter:text=READY;mechanics=NOT_AUDITED; druid:text=READY;mechanics=NOT_AUDITED; cleric:text=READY;mechanics=NOT_AUDITED/)
   assert.match(migration, /CLASS_STATUS_LEDGER: src\/rule-templates\/CLASS_WORK_STATUS\.md/)
   assert.match(migration, /PRESENTATION ONLY/)
   assert.match(migration, /authorExplanation/)
   assert.match(migration, /authorComment/)
-  assert.match(migration, /voss_patch_node/)
-  assert.match(migration, /Voss voice contract failed/)
-  assert.match(migration, /Voss reference contract failed/)
+  assert.match(migration, /authorExplanation values authored by 20260829151113 are intentionally preserved/)
+  assert.match(migration, /Воин — редкий случай/)
+  assert.match(migration, /Друид смотрит на человеческое тело/)
+  assert.match(migration, /Жрец договаривается с небесами/)
+  assert.doesNotMatch(migration, /voss_plain_explanation/i)
+  assert.doesNotMatch(migration, /Это запас применений|Это отдельное действие|Это постоянное владение/)
 
   assert.doesNotMatch(migration, /jsonb_build_object\([^\n]*(?:resourceCosts|effects|requirements|max)/)
   assert.doesNotMatch(migration, /private\.(?:fighter|druid|cleric)_(?:resource|action|value)\s*\(/i)
