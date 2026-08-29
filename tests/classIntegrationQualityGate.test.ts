@@ -270,7 +270,10 @@ test("every future class catalog migration must opt into the strict gate and poi
     assert.match(packageTest, /resolveTemplateBundles/, `${testPath} must exercise the real class parser`)
     assert.match(packageTest, /resolveCharacterContract/, `${testPath} must reach the resolved CE contract`)
 
-    assert.doesNotMatch(sql, /что[- ]?то|что[- ]?нибудь|расширяет возможности|усиливает возможности|становится эффективнее|TODO|TBD|FIXME/i, `${name} contains vague or placeholder class text`)
+    // Raw migrations may contain natural narrator phrases such as «что-то» or
+    // «что-нибудь». The semantic package audit above owns ambiguity detection;
+    // this source-level guard is only for unmistakable placeholder boilerplate.
+    assert.doesNotMatch(sql, /расширяет возможности|усиливает возможности|становится эффективнее|TODO|TBD|FIXME/i, `${name} contains vague or placeholder class text`)
     assert.doesNotMatch(sql, /["']enforcement["']\s*[:,]\s*["']gm["']|_confirmed\b|_available\b/i, `${name} invents fake GM/runtime state`)
   }
 })
