@@ -5,6 +5,8 @@ import { resolveCharacterContract, type CharacterContribution, type CharacterEng
 import { buildChatActionModel } from "../src/components/chat/chatActionModel.ts"
 
 const classSource = { id: "template:class:monk:v1:base", name: "Монах", sourceType: "class_template" }
+const subclassSource = { id: "template:subclass:cleric-life:v1:base", name: "Домен жизни", sourceType: "subclass_template" }
+const clericSource = { id: "template:class:cleric:v1:base", name: "Жрец", sourceType: "class_template" }
 const staffSource = { id: "item:fire-staff", name: "Посох Огня", sourceType: "inventory_item" }
 const swordSource = { id: "item:sword", name: "Меч", sourceType: "inventory_item" }
 
@@ -23,6 +25,45 @@ function contract() {
     contributions,
   }
   return resolveCharacterContract(input)
+}
+
+function subclassSpellContract() {
+  const contributions: CharacterContribution[] = [
+    {
+      id: "cleric-slot-2",
+      kind: "grant",
+      operation: "GRANT",
+      target: "resource",
+      key: "spell_slot_2",
+      payload: { max: 3, label: "Ячейки 2 уровня", recharge: { triggers: ["long_rest"], restore: "full" } },
+      source: clericSource,
+    },
+    {
+      id: "life-domain-aid",
+      kind: "grant",
+      operation: "GRANT",
+      target: "spell",
+      key: "spell:aid",
+      variantKey: "life-domain:aid",
+      payload: {
+        spell: { name: "Подмога", level: 2, school: "Abjuration" },
+        preparation: { mode: "always_prepared" },
+        methods: [{
+          key: "life-domain-access",
+          kind: "class_spell",
+          ability: "wisdom",
+          requiresPrepared: false,
+          resourceOptions: [{ key: "slot-2", castLevel: 2, costs: [{ key: "spell_slot_2", amount: 1 }] }],
+        }],
+      },
+      source: subclassSource,
+    },
+  ]
+  return resolveCharacterContract({
+    base: { id: "cleric", name: "Жрец", level: 5, abilities: { strength: 10, dexterity: 10, constitution: 14, intelligence: 10, wisdom: 18, charisma: 10 }, baseMaxHp: 30, baseSpeed: 30 },
+    state: { currentHp: 30, tempHp: 0, resources: { spell_slot_2: { current: 2 } } },
+    contributions,
+  })
 }
 
 test("chat action model separates ordinary attacks from class and unique source groups", () => {
@@ -49,4 +90,20 @@ test("powered item actions stay unique while an ordinary weapon stays in attacks
   assert.equal(staff?.resources[0]?.max.value, 10)
   assert.equal(staff?.actions[0]?.available, true)
   assert.equal(model.attacks.some((action) => action.key === "fire-wave"), false)
+})
+
+test("subclass spell access stays in the Class chat bucket and spends ordinary class slots", () => {
+  const resolved = subclassSpellContract()
+  const model = buildChatActionModel(resolved)
+  const domain = model.classGroups.find((group) => group.name === "Домен жизни")
+  const spell = domain?.spells.find((entry) => entry.key === "spell:aid")
+  const option = spell?.accesses[0]?.methods[0]?.resourceOptions[0]
+
+  assert.ok(domain)
+  assert.ok(spell)
+  assert.equal(model.uniqueGroups.some((group) => group.spells.some((entry) => entry.key === "spell:aid")), false)
+  assert.equal(spell?.accesses[0]?.sources[0]?.source.sourceType, "subclass_template")
+  assert.equal(spell?.accesses[0]?.methods[0]?.kind, "class_spell")
+  assert.equal(option?.costs[0]?.stateKey, "spell_slot_2")
+  assert.equal(option?.costs[0]?.amount, 1)
 })
