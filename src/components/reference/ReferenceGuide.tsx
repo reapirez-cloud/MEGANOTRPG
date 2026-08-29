@@ -9,6 +9,12 @@ import {
   getDruidSubclassFeatureVossNarration,
   getDruidSubclassVossNarration,
 } from "../../data/classes/druidVossNarration"
+import {
+  fighterClassVossNarration,
+  getFighterBaseVossNarration,
+  getFighterSubclassFeatureVossNarration,
+  getFighterSubclassVossNarration,
+} from "../../data/classes/fighterVossNarration"
 import { useRuleTemplates } from "../../hooks/useRuleTemplates"
 import type { SpellClassKey } from "../../lib/spellCatalog"
 import type { RuleTemplate, RuleTemplateLevel } from "../../rule-templates/types"
@@ -275,6 +281,12 @@ function staticSubclasses(entry: ClassReferenceEntry): ReferenceSubclassView[] {
     explanation: getDruidSubclassVossNarration(item.id) || item.explanation,
     voss: item.voss,
   }))
+  if (entry.id === "fighter") return entry.subclasses.map((item) => ({
+    id: item.id,
+    name: item.name,
+    summary: item.summary,
+    explanation: getFighterSubclassVossNarration(item.id) || undefined,
+  }))
   return entry.subclasses.map((item) => ({ id: item.id, name: item.name, summary: item.summary }))
 }
 
@@ -330,11 +342,16 @@ export default function ReferenceGuide({
       const id = templateCatalogTail(template)
       const old = fallbackById.get(id)
       const storedExplanation = template.author_description?.trim() || old?.explanation
+      const authoredExplanation = selectedClass.id === "druid"
+        ? getDruidSubclassVossNarration(id)
+        : selectedClass.id === "fighter"
+          ? getFighterSubclassVossNarration(id)
+          : ""
       return {
         id,
         name: template.name || old?.name || id,
         summary: template.mechanical_summary?.trim() || template.description?.trim() || old?.summary || "Специализация класса.",
-        explanation: selectedClass.id === "druid" ? getDruidSubclassVossNarration(id) || storedExplanation : storedExplanation,
+        explanation: authoredExplanation || storedExplanation,
         voss: template.author_comment?.trim() || old?.voss,
         templateId: template.id,
       } satisfies ReferenceSubclassView
@@ -355,14 +372,31 @@ export default function ReferenceGuide({
     return templates.find((item) => item.kind === "subclass" && item.catalog_key === `subclass:${selectedClass.id}:${selectedSubclass.id}`)
   }, [selectedClass, selectedSubclass, templates])
 
-  const classFeatures = useMemo(() => buildTemplateFeatures(classTemplate, levels), [classTemplate, levels])
-  const subclassFeatures = useMemo(() => {
-    const features = buildTemplateFeatures(selectedSubclassTemplate, levels)
-    if (selectedClass?.id !== "druid" || !selectedSubclass) return features
+  const classFeatures = useMemo(() => {
+    const features = buildTemplateFeatures(classTemplate, levels)
+    if (selectedClass?.id !== "fighter") return features
     return features.map((feature) => ({
       ...feature,
-      explanation: getDruidSubclassFeatureVossNarration(selectedSubclass.id, feature.name) || feature.explanation,
+      explanation: getFighterBaseVossNarration(feature.level, feature.name) || feature.explanation,
     }))
+  }, [classTemplate, levels, selectedClass])
+
+  const subclassFeatures = useMemo(() => {
+    const features = buildTemplateFeatures(selectedSubclassTemplate, levels)
+    if (!selectedSubclass) return features
+    if (selectedClass?.id === "druid") {
+      return features.map((feature) => ({
+        ...feature,
+        explanation: getDruidSubclassFeatureVossNarration(selectedSubclass.id, feature.name) || feature.explanation,
+      }))
+    }
+    if (selectedClass?.id === "fighter") {
+      return features.map((feature) => ({
+        ...feature,
+        explanation: getFighterSubclassFeatureVossNarration(selectedSubclass.id, feature.level, feature.name) || feature.explanation,
+      }))
+    }
+    return features
   }, [selectedClass, selectedSubclass, selectedSubclassTemplate, levels])
 
   if (section === "spells") {
@@ -403,13 +437,22 @@ export default function ReferenceGuide({
             : "Болезни, безумия и дикая магия"
 
   const isDruid = selectedClass?.id === "druid"
+  const isFighter = selectedClass?.id === "fighter"
   const classSummary = isDruid ? druidReference.mechanicalSummary : classTemplate?.mechanical_summary?.trim() || selectedClass?.tagline || ""
-  const classExplanation = isDruid ? druidClassVossNarration : classTemplate?.author_description?.trim() || selectedClass?.tagline || ""
+  const classExplanation = isDruid
+    ? druidClassVossNarration
+    : isFighter
+      ? fighterClassVossNarration
+      : classTemplate?.author_description?.trim() || selectedClass?.tagline || ""
   const classDescription = classTemplate?.description?.trim() || selectedClass?.description || classSummary
   const classComment = isDruid ? druidReference.authorComment : classTemplate?.author_comment?.trim() || ""
-  const subclassExplanation = isDruid && selectedSubclass
-    ? getDruidSubclassVossNarration(selectedSubclass.id) || selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || selectedSubclass?.summary || ""
-    : selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || selectedSubclass?.summary || ""
+  const subclassExplanation = selectedSubclass
+    ? isDruid
+      ? getDruidSubclassVossNarration(selectedSubclass.id) || selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || selectedSubclass?.summary || ""
+      : isFighter
+        ? getFighterSubclassVossNarration(selectedSubclass.id) || selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || selectedSubclass?.summary || ""
+        : selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || selectedSubclass?.summary || ""
+    : ""
   const subclassDescription = selectedSubclassTemplate?.description?.trim() || selectedSubclass?.summary || ""
   const subclassSummary = selectedSubclassTemplate?.mechanical_summary?.trim() || selectedSubclass?.summary || ""
   const subclassComment = selectedSubclassTemplate?.author_comment?.trim() || selectedSubclass?.voss || ""
