@@ -337,7 +337,7 @@ export default function ReferenceGuide({
 
     const fallbackById = new Map(fallback.map((item) => [item.id, item]))
     const order = new Map(fallback.map((item, index) => [item.id, index]))
-    return db.map((template) => {
+    const dbViews = db.map((template) => {
       const id = templateCatalogTail(template)
       const old = fallbackById.get(id)
       return {
@@ -348,7 +348,15 @@ export default function ReferenceGuide({
         voss: template.author_comment?.trim() || old?.voss,
         templateId: template.id,
       } satisfies ReferenceSubclassView
-    }).sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999) || a.name.localeCompare(b.name, "ru"))
+    })
+
+    const dbById = new Map(dbViews.map((item) => [item.id, item]))
+    const merged = fallback.map((item) => dbById.get(item.id) || item)
+    for (const item of dbViews) {
+      if (!fallbackById.has(item.id)) merged.push(item)
+    }
+
+    return merged.sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999) || a.name.localeCompare(b.name, "ru"))
   }, [classTemplate, selectedClass, templates])
 
   const selectedSubclassTemplate = useMemo(() => {
