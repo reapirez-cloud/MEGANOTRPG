@@ -1,10 +1,16 @@
 INTERNAL DEVELOPER POINTER — NOT PLAYER CONTENT
 
-Before implementing or completing any class/subclass:
-1. Read CLASS_INTEGRATION_NOTES.md.
-2. Use internalClassQuality.ts.
-3. The package test must run assertClassPackageQuality.
-4. Resolve every ambiguity; never replace missing rules with vague prose.
-5. Future class migrations must declare CLASS_INTEGRATION_STRICT and CLASS_PACKAGE_TEST headers.
+Before implementing, auditing, reopening, or completing any class/subclass:
+1. Read CLASS_WORK_STATUS.md FIRST. It is the canonical work checkpoint.
+2. Read CLASS_INTEGRATION_NOTES.md.
+3. If the layer you touch was READY, mark it IN_PROGRESS while it is reopened.
+4. Use internalClassQuality.ts.
+5. The package test must run assertClassPackageQuality.
+6. Resolve every ambiguity; never replace missing rules with vague prose.
+7. Future class migrations must declare CLASS_INTEGRATION_STRICT and CLASS_PACKAGE_TEST headers.
+8. Update CLASS_WORK_STATUS.md before finishing the work: what changed, what is closed, what remains, and what must be audited next.
 
-This file must never be imported or rendered by the application.
+TEXT READY and MECHANICS READY are independent statuses. Never infer one from the other.
+A class/subclass task is not complete if its status ledger entry is stale.
+
+This file and CLASS_WORK_STATUS.md must never be imported or rendered by the application.

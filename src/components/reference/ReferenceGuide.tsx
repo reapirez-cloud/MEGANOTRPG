@@ -40,6 +40,7 @@ type RuleFeatureView = {
   name: string
   description: string
   facts: string[]
+  voss?: string
 }
 
 const sections = [
@@ -72,7 +73,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value)
 }
 
-function payloadText(mechanic: StoredMechanic, key: "label" | "description") {
+function payloadText(mechanic: StoredMechanic, key: "label" | "description" | "authorComment") {
   if (mechanic.type !== "grant") return ""
   const payload: unknown = mechanic.payload
   if (!isRecord(payload)) return ""
@@ -140,6 +141,15 @@ function featureDescription(mechanics: StoredMechanic[]) {
   return mechanicName(primary)
 }
 
+function featureVoss(mechanics: StoredMechanic[]) {
+  for (const mechanic of mechanics) {
+    if (mechanic.type !== "grant" || mechanic.target !== "feature") continue
+    const comment = payloadText(mechanic, "authorComment")
+    if (comment) return comment
+  }
+  return ""
+}
+
 function featureName(mechanics: StoredMechanic[]) {
   const featureGrant = mechanics.find((mechanic) => mechanic.type === "grant" && mechanic.target === "feature")
   if (featureGrant) return mechanicName(featureGrant)
@@ -164,7 +174,7 @@ function buildTemplateFeatures(template: RuleTemplate | undefined, levels: RuleT
       if (!mechanics.length || mechanics.every(isSpellSlot)) continue
       const description = featureDescription(mechanics)
       if (!description) continue
-      result.push({ level: row.level, name: featureName(mechanics), description, facts: mechanicFacts(mechanics) })
+      result.push({ level: row.level, name: featureName(mechanics), description, facts: mechanicFacts(mechanics), voss: featureVoss(mechanics) || undefined })
     }
   }
   return result
@@ -354,6 +364,7 @@ export default function ReferenceGuide({
                     <header><span>{feature.level} ур.</span><strong>{feature.name}</strong></header>
                     <p>{feature.description}</p>
                     {feature.facts.length ? <ul className="reference-rule-facts">{feature.facts.map((fact) => <li key={fact}>{fact}</li>)}</ul> : null}
+                    {feature.voss && <blockquote>{feature.voss}</blockquote>}
                   </article>
                 )) : <div className="reference-catalog-status">Подробная прогрессия для этой карточки ещё не загружена.</div>}
               </div>
@@ -389,6 +400,7 @@ export default function ReferenceGuide({
                     <header><span>{feature.level} ур.</span><strong>{feature.name}</strong></header>
                     <p>{feature.description}</p>
                     {feature.facts.length ? <ul className="reference-rule-facts">{feature.facts.map((fact) => <li key={fact}>{fact}</li>)}</ul> : null}
+                    {feature.voss && <blockquote>{feature.voss}</blockquote>}
                   </article>
                 )) : <div className="reference-catalog-status">Для этой специализации пока есть справочное описание, но подробные уровневые карточки ещё не загружены.</div>}
               </div>
