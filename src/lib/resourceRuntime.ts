@@ -1,5 +1,6 @@
 import type { GrantPayload, ResolvedCharacterContract, ResolvedResource, ResourceState } from "../character-engine/index.ts"
 import type { PersistedResourceRecharge, ResourceCostInput, ResourceRecoveryStep, ResourceSyncInput } from "../types/characterResources.ts"
+import { assertPersistentResourceRecharge, isPersistentResourceRecoveryTrigger } from "./persistentResourcePolicy.ts"
 
 const runtimeRegistry = new Map<string, Record<string, ResourceState>>()
 
@@ -30,32 +31,38 @@ function grantLabel(contract: ResolvedCharacterContract, resource: ResolvedResou
   return resource.key.split(/[_-]+/g).map((part) => part ? `${part[0]!.toLocaleUpperCase("ru-RU")}${part.slice(1)}` : part).join(" ")
 }
 
-function recoveryStep(value: unknown): ResourceRecoveryStep | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+function recoveryStep(value: unknown, stateKey: string): ResourceRecoveryStep {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${stateKey}: recovery rule must be an object`)
+  }
   const record = value as Record<string, unknown>
-  if (!['short_rest','long_rest','dawn','manual'].includes(String(record.trigger))) return null
-  if (record.restore === "full") {
-    return { trigger: record.trigger as ResourceRecoveryStep["trigger"], restore: "full" }
+  const trigger = String(record.trigger || "")
+  if (!isPersistentResourceRecoveryTrigger(trigger)) {
+    throw new Error(`${stateKey}: CE does not persist manual/turn/state-based counters`)
   }
+  if (record.restore === "full") return { trigger, restore: "full" }
   if (record.restore === "amount" && typeof record.amount === "number" && Number.isFinite(record.amount) && record.amount > 0) {
-    return { trigger: record.trigger as ResourceRecoveryStep["trigger"], restore: "amount", amount: record.amount }
+    return { trigger, restore: "amount", amount: record.amount }
   }
-  return null
+  throw new Error(`${stateKey}: invalid recovery rule`)
 }
 
-function persistedRecharge(contract: ResolvedCharacterContract, resource: ResolvedResource): PersistedResourceRecharge {
+export function persistedResourceRecharge(
+  contract: ResolvedCharacterContract,
+  resource: ResolvedResource,
+): PersistedResourceRecharge {
   const raw = grantPayload(contract, resource)?.recoveryRules
-  if (Array.isArray(raw)) {
-    const rules = raw.map(recoveryStep).filter((entry): entry is ResourceRecoveryStep => entry !== null)
-    if (rules.length) return { rules }
-  }
-  return resource.recharge
+  const recharge: PersistedResourceRecharge = Array.isArray(raw)
+    ? { rules: raw.map((entry) => recoveryStep(entry, resource.stateKey)) }
+    : resource.recharge
+  assertPersistentResourceRecharge(recharge, resource.stateKey)
+  return recharge
 }
 
 /**
- * Persistent runtime state is shared by every CE resource, including spell slots.
- * Definition/max/recharge come from the resolved contract; the database stores
- * only the mutable current value plus snapshots needed for atomic operations.
+ * Persistent runtime state is shared by every finite CE ledger, including spell slots.
+ * Only short-rest, long-rest, and dawn recovery are legal persistent triggers.
+ * Turn/round/state/scene limits remain rules for the GM layer and never become counters.
  */
 export function resourceSyncInputs(contract: ResolvedCharacterContract): ResourceSyncInput[] {
   return contract.resources.map((resource) => ({
@@ -63,7 +70,7 @@ export function resourceSyncInputs(contract: ResolvedCharacterContract): Resourc
     current: resource.current,
     max: resource.max.value,
     label: grantLabel(contract, resource),
-    recharge: persistedRecharge(contract, resource),
+    recharge: persistedResourceRecharge(contract, resource),
   }))
 }
 
@@ -71,13 +78,14 @@ export function resourceCostInputs(contract: ResolvedCharacterContract, costs: A
   const byStateKey = new Map(contract.resources.map((resource) => [resource.stateKey, resource]))
   return costs.map((cost) => {
     const resource = byStateKey.get(cost.stateKey)
+    if (!resource) throw new Error(`Resource cost references unresolved CE ledger: ${cost.stateKey}`)
     return {
       stateKey: cost.stateKey,
       amount: cost.amount,
       current: cost.current,
       max: cost.max,
-      label: resource ? grantLabel(contract, resource) : cost.stateKey,
-      recharge: resource ? persistedRecharge(contract, resource) : { triggers: ["never"], restore: "full" },
+      label: grantLabel(contract, resource),
+      recharge: persistedResourceRecharge(contract, resource),
     }
   })
 }
