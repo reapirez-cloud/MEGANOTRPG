@@ -54,14 +54,17 @@ These are project-state markers, not player rules.
 - `mechanics_status: NOT_AUDITED`
 - `last_text_audit: 2026-08-29`
 - `last_voss_audit: 2026-08-29`
-- `reference_delivery: SYNCED_2026_08_29`
+- `reference_delivery: LIVE_SYNCED_2026_08_29`
+- `production_migration: 20260829135656_fighter_cleric_voss_live_sync`
+- `narration_contract: every rendered Fighter mechanic node now has authorExplanation -> exact rule -> authorComment; openable feature cards use the same order`
+- `production_coverage_audit: 242/242 current Fighter + archetype mechanic nodes have authorExplanation and authorComment; missing_explanation=0; missing_comment=0; banned_modern_register=0`
 - `voss_coverage_contract: every openable Fighter ability/source-group card has a separate Reynar Voss comment`
-- `voss_coverage_audit: 72/72 distinct Fighter feature sources explicitly mapped; 3/3 current non-feature source groups explicitly mapped; UI-equivalent target = 86/86 openable Fighter groups after production sync`
+- `voss_coverage_audit: base Fighter and all ten current archetypes are live-synced; repeated generic archetype comments were replaced with archetype-specific narrator copy`
 - `canonical_voss_voice: src/data/vossVoice.ts`
 - `reference_ui: tappable full-rule cards; list cards are previews and open a dedicated full rule view`
-- `production_delivery_rule: reference text/comment sync may update presentation text and renderer-only metadata only; it must not promote or rewrite choices/resources/actions/formulas/effects/CE dependencies`
-- `text_scope: base Fighter levels 1–20 + every currently catalogued Fighter subclass + nested selectable rules (Arcane Shots, Battle Master maneuvers, Rune Knight runes) + Voss comments + GM-facing summaries/descriptions`
-- `text_definition_of_ready: a player/GM must be able to understand trigger/activation, cost, target, exact effect, numbers/dice/DC/range, duration and limits/recharge from the user-facing rule text whenever those parts apply; no "расширяет/усиливает возможности" placeholders; every openable ability card also has a separate Voss note`
+- `production_delivery_rule: reference text/comment sync may update presentation text and renderer-only metadata only; it must not promote or rewrite exact rule descriptions/choices/resources/actions/formulas/effects/CE dependencies`
+- `text_scope: base Fighter levels 1–20 + every currently catalogued Fighter subclass + nested selectable rules (Arcane Shots, Battle Master maneuvers, Rune Knight runes) + Voss explanations/comments + GM-facing summaries/descriptions`
+- `text_definition_of_ready: a player/GM must be able to understand trigger/activation, cost, target, exact effect, numbers/dice/DC/range, duration and limits/recharge from the user-facing rule text whenever those parts apply; no "расширяет/усиливает возможности" placeholders; every openable ability card also has separate explanation and Voss note`
 - `next_required_audit: full Fighter mechanics/runtime audit`
 
 ### Fighter subclasses — text layer
@@ -89,7 +92,7 @@ These notes **do not reopen the text layer**. They are explicit reminders for th
 
 ### What “READY” means here
 
-The green/ready mark is permitted **only for Fighter descriptions/reference copy and Voss author comments**. Do not describe the Fighter package as mechanically complete until `mechanics_status` is separately changed to `READY` after a dedicated audit.
+The green/ready mark is permitted **only for Fighter descriptions/reference copy and Voss author layers**. Do not describe the Fighter package as mechanically complete until `mechanics_status` is separately changed to `READY` after a dedicated audit.
 
 ---
 
@@ -157,14 +160,18 @@ The green/ready mark is permitted **only for Druid descriptions/reference copy a
 - `mechanics_status: NOT_AUDITED`
 - `last_text_audit: 2026-08-29`
 - `last_voss_audit: 2026-08-29`
-- `reference_delivery: PENDING_PRODUCTION_VERIFICATION`
-- `text_scope: base Cleric levels 1–20 + all 14 catalogued domains + domain spell groups + Divine Order and Blessed Strikes nested choices + scaling/failure/success clauses + Voss comments + class/domain summaries and descriptions`
-- `domain_text_audit: 14/14 domains included in the final closure`
+- `reference_delivery: LIVE_SYNCED_2026_08_29`
+- `production_migration: 20260829135656_fighter_cleric_voss_live_sync`
+- `narration_contract: every rendered Cleric mechanic node now has authorExplanation -> exact rule -> authorComment; openable feature cards use the same order`
+- `production_coverage_audit: 744/744 current Cleric + Domain mechanic nodes have authorExplanation and authorComment; missing_explanation=0; missing_comment=0; banned_modern_register=0`
+- `text_scope: base Cleric levels 1–20 + all 14 catalogued domains + domain spell groups + Divine Order and Blessed Strikes nested choices + scaling/failure/success clauses + Voss explanations/comments + class/domain summaries and descriptions`
+- `domain_text_audit: 14/14 domains included in the final closure and live narration sync`
 - `feature_text_audit: closure gate requires 84/84 feature grants including the base hit-die card to have explicit non-placeholder descriptions`
-- `voss_coverage_contract: every openable Cleric ability/source-group card has a separate Reynar Voss comment; the closure gate requires 156/156 current openable groups`
+- `voss_coverage_contract: every openable Cleric ability/source-group card has a separate Reynar Voss explanation and comment`
 - `canonical_voss_voice: src/data/vossVoice.ts`
-- `player_text_immersion_audit: class/domain summaries, rules and Voss notes reject implementation, project, edition and compatibility language`
-- `production_delivery_rule: the final Cleric migration is presentation-only; it may update labels/descriptions/author comments and renderer-only presentation metadata, but must not rewrite resources/actions/formulas/effects/costs/choices/spell access/CE dependencies`
+- `reference_ui: tappable full-rule cards; preview -> full detail; full detail order is Voss explanation -> exact rule/facts -> Voss comment`
+- `player_text_immersion_audit: class/domain summaries, explanations and Voss notes reject implementation, project, edition and modern office/legal/commercial language`
+- `production_delivery_rule: the live Cleric narration sync is presentation-only; it may update author explanations/comments and renderer-only presentation metadata, but must not rewrite exact rule descriptions/resources/actions/formulas/effects/costs/choices/spell access/CE dependencies`
 - `known_boundary: this closure certifies human-readable reference text only; structured spell slots, Channel Divinity accounting, domain actions/resources, choice persistence, source suppression and all other runtime behavior remain unaudited`
 - `next_required_audit: full Cleric mechanics/runtime audit`
 
@@ -198,7 +205,7 @@ These notes **do not reopen the text layer** and must not leak into player-facin
 
 ### What “READY” means here
 
-The green/ready mark is permitted **only for Cleric descriptions/reference copy and Reynar Voss author comments**. Do not describe Cleric gameplay mechanics as complete until `mechanics_status` is separately changed to `READY` after a dedicated mechanics/runtime audit.
+The green/ready mark is permitted **only for Cleric descriptions/reference copy and Reynar Voss author layers**. Do not describe Cleric gameplay mechanics as complete until `mechanics_status` is separately changed to `READY` after a dedicated mechanics/runtime audit.
 
 ---
 
