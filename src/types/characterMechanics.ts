@@ -11,10 +11,9 @@ import type {
   GrantTarget,
   NumericOperation,
   NumericTarget,
-  ResourceRechargeTrigger,
   SpellGrantPayload,
 } from "../character-engine/index.ts"
-import type { ResourceRecoveryStep } from "./characterResources.ts"
+import type { PersistentResourceRecoveryTrigger, ResourceRecoveryStep } from "./characterResources.ts"
 
 export type MechanicActivation = "carried" | "equipped"
 export type MechanicModuleTone = "neutral" | "violet" | "blue" | "cyan" | "green" | "amber" | "red"
@@ -72,16 +71,12 @@ export type StoredResourceMechanic = StoredMechanicMeta & {
   key: string
   label: string
   max: number | FormulaExpression
-  recharge: ResourceRechargeTrigger | ResourceRechargeTrigger[]
+  /** Persistent CE counters recover only on rest or dawn. */
+  recharge: PersistentResourceRecoveryTrigger | PersistentResourceRecoveryTrigger[]
+  /** Optional mixed schedule, e.g. +1 on short rest and full on long rest. */
+  recoveryRules?: ResourceRecoveryStep[]
   restore?: "full" | "amount"
   restoreAmount?: number
-  /**
-   * Optional richer persistence schedule for resources that recover differently
-   * on different triggers (for example +1 on a short rest, full on a long rest).
-   * CE still receives the ordinary recharge rule for display/resolution; the
-   * runtime ledger persists these rules verbatim and applies the matching step.
-   */
-  recoveryRules?: ResourceRecoveryStep[]
   initial?: "full" | "empty" | number
 }
 
@@ -120,6 +115,7 @@ export type StoredActionMechanic = StoredMechanicMeta & {
 export type StoredSpellMechanic = StoredMechanicMeta & {
   id: string
   type: "spell"
+  /** Canonical key is spell:<spell_catalog.slug>. */
   key: string
   payload: SpellGrantPayload
 }
