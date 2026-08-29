@@ -2,6 +2,13 @@ import { useMemo, useState } from "react"
 
 import { useCharacters } from "../../context/CharacterContext"
 import { classReference, type ClassReferenceEntry } from "../../data/classReference"
+import {
+  clericClassVossNarration,
+  getClericBaseVossNarration,
+  getClericSubclassFeatureVossNarration,
+  getClericSubclassVossNarration,
+  normalizeClericDomainId,
+} from "../../data/classes/clericVossNarration"
 import { druidReference } from "../../data/classes/druidReference"
 import {
   druidClassVossNarration,
@@ -50,6 +57,7 @@ type ReferenceSubclassView = {
 
 type RuleFeatureView = {
   level: number
+  sourceKey: string
   name: string
   explanation: string
   description: string
@@ -215,13 +223,14 @@ function buildTemplateFeatures(template: RuleTemplate | undefined, levels: RuleT
       const key = sourceKey(mechanic)
       groups.set(key, [...(groups.get(key) || []), mechanic])
     }
-    for (const mechanics of groups.values()) {
+    for (const [groupSourceKey, mechanics] of groups.entries()) {
       if (!mechanics.length || mechanics.every(isSpellSlot)) continue
       const description = featureDescription(mechanics)
       if (!description) continue
       const level = template.kind === "subclass" ? Math.max(row.level, template.unlock_level || 1) : row.level
       result.push({
         level,
+        sourceKey: groupSourceKey,
         name: featureName(mechanics),
         explanation: featureExplanation(mechanics, description),
         description,
@@ -257,6 +266,12 @@ function staticSubclasses(entry: ClassReferenceEntry): ReferenceSubclassView[] {
     name: item.name,
     summary: item.summary,
     explanation: getFighterSubclassVossNarration(item.id) || undefined,
+  }))
+  if (entry.id === "cleric") return entry.subclasses.map((item) => ({
+    id: item.id,
+    name: item.name,
+    summary: item.summary,
+    explanation: getClericSubclassVossNarration(item.id) || undefined,
   }))
   return entry.subclasses.map((item) => ({ id: item.id, name: item.name, summary: item.summary }))
 }
@@ -316,14 +331,17 @@ export default function ReferenceGuide({
     const fallbackById = new Map(fallback.map((item) => [item.id, item]))
     const order = new Map(fallback.map((item, index) => [item.id, index]))
     const dbViews = db.map((template) => {
-      const id = templateCatalogTail(template)
+      const rawId = templateCatalogTail(template)
+      const id = selectedClass.id === "cleric" ? normalizeClericDomainId(rawId) : rawId
       const old = fallbackById.get(id)
       const storedExplanation = template.author_description?.trim() || old?.explanation
       const authoredExplanation = selectedClass.id === "druid"
         ? getDruidSubclassVossNarration(id)
         : selectedClass.id === "fighter"
           ? getFighterSubclassVossNarration(id)
-          : ""
+          : selectedClass.id === "cleric"
+            ? getClericSubclassVossNarration(id)
+            : ""
       return {
         id,
         name: template.name || old?.name || id,
@@ -351,11 +369,19 @@ export default function ReferenceGuide({
 
   const classFeatures = useMemo(() => {
     const features = buildTemplateFeatures(classTemplate, levels)
-    if (selectedClass?.id !== "fighter") return features
-    return features.map((feature) => ({
-      ...feature,
-      explanation: getFighterBaseVossNarration(feature.level, feature.name) || feature.explanation,
-    }))
+    if (selectedClass?.id === "fighter") {
+      return features.map((feature) => ({
+        ...feature,
+        explanation: getFighterBaseVossNarration(feature.level, feature.name) || feature.explanation,
+      }))
+    }
+    if (selectedClass?.id === "cleric") {
+      return features.map((feature) => ({
+        ...feature,
+        explanation: getClericBaseVossNarration(feature.level, feature.sourceKey) || feature.explanation,
+      }))
+    }
+    return features
   }, [classTemplate, levels, selectedClass])
 
   const subclassFeatures = useMemo(() => {
@@ -371,6 +397,12 @@ export default function ReferenceGuide({
       return features.map((feature) => ({
         ...feature,
         explanation: getFighterSubclassFeatureVossNarration(selectedSubclass.id, feature.level, feature.name) || feature.explanation,
+      }))
+    }
+    if (selectedClass?.id === "cleric") {
+      return features.map((feature) => ({
+        ...feature,
+        explanation: getClericSubclassFeatureVossNarration(selectedSubclass.id, feature.sourceKey) || feature.explanation,
       }))
     }
     return features
@@ -415,12 +447,15 @@ export default function ReferenceGuide({
 
   const isDruid = selectedClass?.id === "druid"
   const isFighter = selectedClass?.id === "fighter"
+  const isCleric = selectedClass?.id === "cleric"
   const classSummary = isDruid ? druidReference.mechanicalSummary : classTemplate?.mechanical_summary?.trim() || selectedClass?.tagline || ""
   const classExplanation = isDruid
     ? druidClassVossNarration
     : isFighter
       ? fighterClassVossNarration
-      : classTemplate?.author_description?.trim() || ""
+      : isCleric
+        ? clericClassVossNarration
+        : classTemplate?.author_description?.trim() || ""
   const classDescription = classTemplate?.description?.trim() || selectedClass?.description || classSummary
   const classComment = isDruid ? druidReference.authorComment : classTemplate?.author_comment?.trim() || ""
   const subclassExplanation = selectedSubclass
@@ -428,7 +463,9 @@ export default function ReferenceGuide({
       ? getDruidSubclassVossNarration(selectedSubclass.id) || selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || ""
       : isFighter
         ? getFighterSubclassVossNarration(selectedSubclass.id) || selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || ""
-        : selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || ""
+        : isCleric
+          ? getClericSubclassVossNarration(selectedSubclass.id) || selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || ""
+          : selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || ""
     : ""
   const subclassDescription = selectedSubclassTemplate?.description?.trim() || selectedSubclass?.summary || ""
   const subclassSummary = selectedSubclassTemplate?.mechanical_summary?.trim() || selectedSubclass?.summary || ""
@@ -501,6 +538,7 @@ export default function ReferenceGuide({
                     key={`${feature.level}:${feature.name}`}
                     feature={{
                       level: feature.level,
+                      sourceKey: feature.name,
                       name: feature.name,
                       explanation: getDruidBaseVossNarration(feature.level, feature.name) || feature.explanation,
                       description: feature.mechanics,
@@ -510,7 +548,7 @@ export default function ReferenceGuide({
                     onOpen={setSelectedFeature}
                   />
                 )) : classFeatures.length ? classFeatures.map((feature, index) => (
-                  <FeatureCard key={`${feature.level}:${feature.name}:${index}`} feature={feature} onOpen={setSelectedFeature} />
+                  <FeatureCard key={`${feature.level}:${feature.sourceKey}:${index}`} feature={feature} onOpen={setSelectedFeature} />
                 )) : <div className="reference-catalog-status">Подробная прогрессия для этой карточки ещё не загружена.</div>}
               </div>
             </section>
@@ -543,7 +581,7 @@ export default function ReferenceGuide({
               <div className="reference-subclass-section__head"><span>Прогрессия подкласса</span><small>{subclassFeatures.length}</small></div>
               <div className="reference-class-feature-list">
                 {subclassFeatures.length ? subclassFeatures.map((feature, index) => (
-                  <FeatureCard key={`${feature.level}:${feature.name}:${index}`} feature={feature} onOpen={setSelectedFeature} />
+                  <FeatureCard key={`${feature.level}:${feature.sourceKey}:${index}`} feature={feature} onOpen={setSelectedFeature} />
                 )) : <div className="reference-catalog-status">Для этой специализации пока есть справочное описание, но подробные уровневые карточки ещё не загружены.</div>}
               </div>
             </section>
