@@ -1,5 +1,8 @@
 begin;
 
+-- CLASS_INTEGRATION_STRICT: class:fighter
+-- CLASS_INTEGRATION_STRICT: class:cleric
+-- CLASS_PACKAGE_TEST: tests/classTextNarrationAudit.test.ts
 -- Presentation-only quality gate. No Character Engine state is changed here.
 create or replace function private.assert_fighter_cleric_gm_rule_text(p_campaign_id uuid)
 returns void
