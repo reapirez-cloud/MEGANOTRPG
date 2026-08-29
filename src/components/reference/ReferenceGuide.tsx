@@ -420,15 +420,15 @@ export default function ReferenceGuide({
     ? druidClassVossNarration
     : isFighter
       ? fighterClassVossNarration
-      : classTemplate?.author_description?.trim() || selectedClass?.tagline || ""
+      : classTemplate?.author_description?.trim() || ""
   const classDescription = classTemplate?.description?.trim() || selectedClass?.description || classSummary
   const classComment = isDruid ? druidReference.authorComment : classTemplate?.author_comment?.trim() || ""
   const subclassExplanation = selectedSubclass
     ? isDruid
-      ? getDruidSubclassVossNarration(selectedSubclass.id) || selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || selectedSubclass?.summary || ""
+      ? getDruidSubclassVossNarration(selectedSubclass.id) || selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || ""
       : isFighter
-        ? getFighterSubclassVossNarration(selectedSubclass.id) || selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || selectedSubclass?.summary || ""
-        : selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || selectedSubclass?.summary || ""
+        ? getFighterSubclassVossNarration(selectedSubclass.id) || selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || ""
+        : selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || ""
     : ""
   const subclassDescription = selectedSubclassTemplate?.description?.trim() || selectedSubclass?.summary || ""
   const subclassSummary = selectedSubclassTemplate?.mechanical_summary?.trim() || selectedSubclass?.summary || ""
