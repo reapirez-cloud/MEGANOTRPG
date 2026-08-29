@@ -7,11 +7,40 @@ import type {
   ResolvedSpell,
   ResolvedSpellAccess,
 } from "../character-engine/index.ts"
+import type { ResolvedMechanicalRule } from "../character-engine/contract.ts"
 import type { CharacterClassPackage } from "./classPackages.ts"
 
 export type TemplateSourceRef = {
   kind: "class" | "subclass"
   templateId: string
+}
+
+/**
+ * Stable machine type for entries shown on the Class tab.
+ * Do not derive this from a translated label: future sorting/filtering depends
+ * on CE output, so renaming a feature must never change its category.
+ */
+export type ClassMechanicEntryType =
+  | "special_action"
+  | "class_spell"
+  | "resource"
+  | "passive_rule"
+  | "reference_rule"
+  | "proficiency"
+  | "resistance"
+  | "immunity"
+  | "sense"
+  | "language"
+
+export type ClassMechanicIntegration = "runtime" | "structured" | "summary" | "display"
+
+export type PresentedClassMechanicEntry = {
+  id: string
+  type: ClassMechanicEntryType
+  sourceKind: TemplateSourceRef["kind"]
+  templateId: string
+  label: string
+  integration: ClassMechanicIntegration
 }
 
 export type PresentedClassSpell = {
@@ -25,9 +54,17 @@ export type PresentedTemplateMechanics = {
   name: string
   level: number
   features: ResolvedGrant[]
+  proficiencies: ResolvedGrant[]
+  resistances: ResolvedGrant[]
+  immunities: ResolvedGrant[]
+  senses: ResolvedGrant[]
+  languages: ResolvedGrant[]
+  rules: ResolvedMechanicalRule[]
   resources: ResolvedResource[]
   actions: ResolvedAction[]
   spells: PresentedClassSpell[]
+  /** Unified machine-readable index used by future sorting/filtering. */
+  entries: PresentedClassMechanicEntry[]
 }
 
 export type PresentedClassPackage = {
@@ -51,6 +88,44 @@ function matchesTemplate(sources: SourceCarrier[], kind: TemplateSourceRef["kind
   })
 }
 
+function payloadRecord(grant: ResolvedGrant): Record<string, unknown> | null {
+  return grant.payload && typeof grant.payload === "object" && !Array.isArray(grant.payload)
+    ? grant.payload as Record<string, unknown>
+    : null
+}
+
+function grantLabel(grant: ResolvedGrant): string {
+  const payload = payloadRecord(grant)
+  return typeof payload?.label === "string" && payload.label.trim() ? payload.label.trim() : grant.key
+}
+
+function resourceLabel(resource: ResolvedResource): string {
+  return resource.sources[0]?.source.name || resource.key
+}
+
+function matchingRule(
+  rules: ResolvedMechanicalRule[],
+  grant: ResolvedGrant,
+): ResolvedMechanicalRule | undefined {
+  return rules.find((rule) => rule.key === grant.key && rule.variantKey === grant.variantKey)
+}
+
+function capabilityEntries(
+  grants: ResolvedGrant[],
+  type: Extract<ClassMechanicEntryType, "proficiency" | "resistance" | "immunity" | "sense" | "language">,
+  kind: TemplateSourceRef["kind"],
+  templateId: string,
+): PresentedClassMechanicEntry[] {
+  return grants.map((grant) => ({
+    id: `${type}:${grant.key}:${grant.variantKey}`,
+    type,
+    sourceKind: kind,
+    templateId,
+    label: grantLabel(grant),
+    integration: "structured",
+  }))
+}
+
 function templateMechanics(
   contract: ResolvedCharacterContract,
   templateId: string,
@@ -60,6 +135,17 @@ function templateMechanics(
 ): PresentedTemplateMechanics {
   const features = [...contract.capabilities.features, ...contract.capabilities.traits]
     .filter((entry) => matchesTemplate(entry.sources, kind, templateId))
+  const proficiencies = contract.capabilities.proficiencies
+    .filter((entry) => matchesTemplate(entry.sources, kind, templateId))
+  const resistances = contract.capabilities.resistances
+    .filter((entry) => matchesTemplate(entry.sources, kind, templateId))
+  const immunities = contract.capabilities.immunities
+    .filter((entry) => matchesTemplate(entry.sources, kind, templateId))
+  const senses = contract.capabilities.senses
+    .filter((entry) => matchesTemplate(entry.sources, kind, templateId))
+  const languages = contract.capabilities.languages
+    .filter((entry) => matchesTemplate(entry.sources, kind, templateId))
+  const rules = contract.rules.filter((entry) => matchesTemplate(entry.sources, kind, templateId))
   const resources = contract.resources.filter((entry) =>
     !/^spell_slot_\d+$/.test(entry.key) && matchesTemplate(entry.sources, kind, templateId),
   )
@@ -70,7 +156,66 @@ function templateMechanics(
       .map((access) => ({ spell, access })),
   )
 
-  return { templateId, kind, name, level, features, resources, actions, spells }
+  const entries: PresentedClassMechanicEntry[] = [
+    ...resources.map((resource) => ({
+      id: `resource:${resource.stateKey}`,
+      type: "resource" as const,
+      sourceKind: kind,
+      templateId,
+      label: resourceLabel(resource),
+      integration: "runtime" as const,
+    })),
+    ...actions.map((action) => ({
+      id: `action:${action.stateKey}`,
+      type: "special_action" as const,
+      sourceKind: kind,
+      templateId,
+      label: action.label || action.key,
+      integration: "runtime" as const,
+    })),
+    ...spells.map(({ spell, access }) => ({
+      id: `spell:${spell.key}:${access.key}`,
+      type: "class_spell" as const,
+      sourceKind: kind,
+      templateId,
+      label: spell.identity.name,
+      integration: "runtime" as const,
+    })),
+    ...features.map((feature) => {
+      const rule = matchingRule(rules, feature)
+      return {
+        id: `feature:${feature.key}:${feature.variantKey}`,
+        type: rule?.integration === "structured" ? "passive_rule" as const : "reference_rule" as const,
+        sourceKind: kind,
+        templateId,
+        label: grantLabel(feature),
+        integration: rule?.integration || "display",
+      }
+    }),
+    ...capabilityEntries(proficiencies, "proficiency", kind, templateId),
+    ...capabilityEntries(resistances, "resistance", kind, templateId),
+    ...capabilityEntries(immunities, "immunity", kind, templateId),
+    ...capabilityEntries(senses, "sense", kind, templateId),
+    ...capabilityEntries(languages, "language", kind, templateId),
+  ]
+
+  return {
+    templateId,
+    kind,
+    name,
+    level,
+    features,
+    proficiencies,
+    resistances,
+    immunities,
+    senses,
+    languages,
+    rules,
+    resources,
+    actions,
+    spells,
+    entries,
+  }
 }
 
 export function presentClassPackages(
