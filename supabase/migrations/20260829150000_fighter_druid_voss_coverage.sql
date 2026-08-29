@@ -108,9 +108,7 @@ insert into voss_feature_comments (catalog_key, source_key, comment) values
   ('subclass:druid:stars','starry-form','Созвездия наконец нашли практическое применение. Астрологи будут оскорблены, что для этого понадобился друид.');
 
 update public.rule_template_levels rtl
-set mechanics = patched.mechanics
-from public.rule_templates rt
-cross join lateral (
+set mechanics = (
   select coalesce(
     jsonb_agg(
       case
@@ -126,12 +124,13 @@ cross join lateral (
       order by ord
     ),
     '[]'::jsonb
-  ) as mechanics
+  )
   from jsonb_array_elements(coalesce(rtl.mechanics, '[]'::jsonb)) with ordinality as items(mechanic, ord)
   left join voss_feature_comments vc
     on vc.catalog_key = rt.catalog_key
    and vc.source_key = coalesce(nullif(mechanic->>'sourceKey',''), mechanic->>'id')
-) patched
+)
+from public.rule_templates rt
 where rtl.template_id = rt.id
   and rt.is_active
   and (
@@ -180,9 +179,7 @@ insert into voss_group_comments (catalog_key, level, source_key, comment) values
   ('subclass:druid:sea',9,'sea-spells','Либо зовёт стихию, либо просит чудовище постоять спокойно. Оба варианта звучат как начало отчёта о потерях.');
 
 update public.rule_template_levels rtl
-set mechanics = patched.mechanics
-from public.rule_templates rt
-cross join lateral (
+set mechanics = (
   select coalesce(
     jsonb_agg(
       case
@@ -196,13 +193,14 @@ cross join lateral (
       order by ord
     ),
     '[]'::jsonb
-  ) as mechanics
+  )
   from jsonb_array_elements(coalesce(rtl.mechanics, '[]'::jsonb)) with ordinality as items(mechanic, ord)
   left join voss_group_comments gc
     on gc.catalog_key = rt.catalog_key
    and gc.level = rtl.level
    and gc.source_key = coalesce(nullif(mechanic->>'sourceKey',''), mechanic->>'id')
-) patched
+)
+from public.rule_templates rt
 where rtl.template_id = rt.id
   and rt.is_active
   and (
