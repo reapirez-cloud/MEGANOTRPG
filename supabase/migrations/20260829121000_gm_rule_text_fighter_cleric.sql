@@ -2,6 +2,7 @@ begin;
 
 -- CLASS_INTEGRATION_STRICT: class:fighter
 -- CLASS_INTEGRATION_STRICT: class:cleric
+-- CLASS_PACKAGE_TEST: tests/classTextNarrationAudit.test.ts
 -- Text-only GM adjudication pass. This migration changes payload.description only.
 -- It intentionally does not alter resources, actions, formulas, effects, costs, grants or CE availability.
 
