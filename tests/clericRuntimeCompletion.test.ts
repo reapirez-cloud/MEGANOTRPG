@@ -173,7 +173,7 @@ test("Channel Divinity persists one short-rest use and full long-rest recovery",
   const contract = resolveCharacterContract(engineInput(parsed.contributions))
   const channel = contract.resources.find((resource) => resource.key === "channel_divinity")
   assert.ok(channel)
-  assert.equal(channel.max, 3)
+  assert.equal(channel.max.value, 3)
 
   const sync = resourceSyncInputs(contract).find((resource) => resource.stateKey === "channel_divinity")
   assert.ok(sync)
@@ -193,7 +193,7 @@ test("War Domain reaches parser, CE and Class tab with real finite resources and
 
   const warPriest = contract.resources.find((resource) => resource.key === "war_priest")
   assert.ok(warPriest)
-  assert.equal(warPriest.max, 4)
+  assert.equal(warPriest.max.value, 4)
   assert.ok(contract.actions.some((action) => action.key === "war_guided_strike" && action.resourceCosts.some((cost) => cost.stateKey === "channel_divinity" && cost.amount === 1)))
   assert.ok(contract.actions.some((action) => action.key === "war_priest" && action.resourceCosts.some((cost) => cost.stateKey === "war_priest" && cost.amount === 1)))
 
