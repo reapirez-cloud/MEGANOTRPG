@@ -99,10 +99,11 @@ The green/ready mark is permitted **only for Fighter descriptions/reference copy
 - `last_text_audit: 2026-08-29`
 - `last_voss_audit: 2026-08-29`
 - `reference_delivery: SYNCED_2026_08_29`
+- `player_text_immersion_audit: READY_2026_08_29 — active player-facing Druid and Circle of the Moon copy states only game rules; edition/source/project/runtime comparison language is forbidden and regression-tested`
 - `voss_coverage_contract: every openable Druid ability/source-group card has a separate Reynar Voss comment`
 - `voss_coverage_audit: 49/49 current feature-grant rows already carried comments; 20/20 non-feature source groups explicitly mapped; UI-equivalent target = 69/69 openable Druid groups after production sync`
 - `canonical_voss_voice: src/data/vossVoice.ts`
-- `static_reference_audit: every druidReference.features entry has a Voss note and is checked for developer-language leakage`
+- `static_reference_audit: every druidReference.features entry has a Voss note; all player-visible static Druid strings are checked for developer/source-edition leakage`
 - `text_scope: static base-class reference + all eight currently catalogued circles + spell lists + selectable/variant rule text + scaling + failure/success clauses + Voss comments + GM-facing summaries/descriptions`
 - `text_definition_of_ready: player/GM can resolve the human-facing rule from the reference text whenever trigger, action economy, cost, target/range, roll/save, exact effect, scaling, duration, ending condition and usage/recharge apply; every openable ability card also has a separate Voss author comment`
 - `known_boundary: this closure certifies presentation/reference text and Voss coverage only; it does not certify Wild Shape runtime, subclass-level wiring, choices, resources, actions, formulas, source suppression, spell-slot accounting, summoned-creature runtime or other Character Engine behavior`
@@ -121,11 +122,11 @@ The green/ready mark is permitted **only for Fighter descriptions/reference copy
 
 ### Known mechanics-only follow-up
 
-These notes **do not reopen the text layer**. They are explicit targets for the later mechanics audit:
+These notes **do not reopen the text layer**. They are explicit targets for the later mechanics audit. Edition/source compatibility notes belong here only and must never be copied into player-facing descriptions:
 
 - Legacy subclass progression: Dreams, Spores, Shepherd and Wildfire still have legacy feature rows beginning at Druid level 2 while the base class currently unlocks its subclass at Druid level 3. Resolve the 2/6/10/14 versus 3/6/10/14 compatibility deliberately in mechanics; do not infer a level move from the text closure.
 - Wild Shape: verify the project-pinned 2014 model end to end — exactly 2 uses, full short/long-rest recovery, beast HP and physical statistics, excess-damage carryover, form duration, equipment handling and retained-feature legality. Do not accidentally add the 2024 temporary-HP model.
-- Circle of the Moon: verify Character Engine does **not** add the 2024 `3 × Druid level` temporary HP on top of the project beast-HP model; the human rule deliberately excludes it.
+- Circle of the Moon: verify Character Engine does **not** add the 2024 `3 × Druid level` temporary HP on top of the project beast-HP model. The active player rule states only the resulting mechanic and contains no edition comparison.
 - Circle of the Land: verify Land’s Aid structured scaling matches the text contract `2d6 → 3d6 → 4d6`, and verify the daily land choice drives both always-prepared spells and Nature’s Ward resistance.
 - Circle of Stars: verify Star Map free casts, Starry Form mode selection/switching, Cosmic Omen state and reaction uses against runtime resource/action semantics.
 - Circle of the Sea: verify Wrath of the Sea targeting, successful-save zero effect, emanation radius upgrades, Stormborn benefits and Oceanic Gift ownership when the aura is placed on an ally.
