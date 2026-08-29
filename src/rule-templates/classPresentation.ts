@@ -74,6 +74,72 @@ export type PresentedClassPackage = {
 
 type SourceCarrier = { source: CharacterSource }
 
+const abilityLabels: Record<string, string> = {
+  strength: "Сила",
+  dexterity: "Ловкость",
+  constitution: "Телосложение",
+  intelligence: "Интеллект",
+  wisdom: "Мудрость",
+  charisma: "Харизма",
+}
+
+const skillLabels: Record<string, string> = {
+  acrobatics: "Акробатика",
+  animal_handling: "Уход за животными",
+  arcana: "Магия",
+  athletics: "Атлетика",
+  deception: "Обман",
+  history: "История",
+  insight: "Проницательность",
+  intimidation: "Запугивание",
+  investigation: "Расследование",
+  medicine: "Медицина",
+  nature: "Природа",
+  perception: "Восприятие",
+  performance: "Выступление",
+  persuasion: "Убеждение",
+  religion: "Религия",
+  sleight_of_hand: "Ловкость рук",
+  stealth: "Скрытность",
+  survival: "Выживание",
+}
+
+const capabilityLabels: Record<string, string> = {
+  "armor:light": "Лёгкая броня",
+  "armor:medium": "Средняя броня",
+  "armor:heavy": "Тяжёлая броня",
+  "armor:shield": "Щиты",
+  "weapon:simple": "Простое оружие",
+  "weapon:martial": "Воинское оружие",
+  fire: "Огонь",
+  cold: "Холод",
+  lightning: "Молния",
+  thunder: "Гром",
+  acid: "Кислота",
+  poison: "Яд",
+  psychic: "Психический урон",
+  necrotic: "Некротический урон",
+  radiant: "Излучение",
+  force: "Силовой урон",
+  bludgeoning: "Дробящий урон",
+  piercing: "Колющий урон",
+  slashing: "Рубящий урон",
+  darkvision: "Тёмное зрение",
+  blindsight: "Слепое зрение",
+  tremorsense: "Чувство вибрации",
+  truesight: "Истинное зрение",
+  common: "Общий",
+  draconic: "Драконий",
+  dwarvish: "Дварфский",
+  elvish: "Эльфийский",
+  giant: "Великаний",
+  gnomish: "Гномий",
+  goblin: "Гоблинский",
+  halfling: "Полуросликов",
+  infernal: "Инфернальный",
+  orc: "Орочий",
+}
+
 /** Renderer/read-model parsing only. CE never branches on this provenance. */
 export function templateRefFromSource(source: CharacterSource): TemplateSourceRef | null {
   const match = source.id.match(/^template:(class|subclass):([^:]+):v\d+/)
@@ -94,9 +160,34 @@ function payloadRecord(grant: ResolvedGrant): Record<string, unknown> | null {
     : null
 }
 
+function titleCaseKey(value: string): string {
+  const clean = value.replace(/[_-]+/g, " ").trim()
+  return clean ? clean.charAt(0).toLocaleUpperCase("ru-RU") + clean.slice(1) : value
+}
+
+function structuredGrantLabel(grant: ResolvedGrant): string {
+  const direct = capabilityLabels[grant.key]
+  if (direct) return direct
+
+  if (grant.key.startsWith("skill:")) {
+    const key = grant.key.slice("skill:".length)
+    return skillLabels[key] || titleCaseKey(key)
+  }
+
+  if (grant.key.startsWith("savingThrow:")) {
+    const key = grant.key.slice("savingThrow:".length)
+    return `Спасброски: ${abilityLabels[key] || titleCaseKey(key)}`
+  }
+
+  const [, tail] = grant.key.split(":", 2)
+  return capabilityLabels[tail || ""] || titleCaseKey(tail || grant.key)
+}
+
 function grantLabel(grant: ResolvedGrant): string {
   const payload = payloadRecord(grant)
-  return typeof payload?.label === "string" && payload.label.trim() ? payload.label.trim() : grant.key
+  return typeof payload?.label === "string" && payload.label.trim()
+    ? payload.label.trim()
+    : structuredGrantLabel(grant)
 }
 
 function resourceLabel(resource: ResolvedResource): string {
