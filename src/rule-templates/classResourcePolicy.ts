@@ -4,15 +4,17 @@ import type { CharacterTemplateBundle, RuleChoiceDefinition } from "./types.ts"
 /**
  * INTERNAL DEVELOPER POLICY — NEVER IMPORT INTO PLAYER UI.
  *
- * Class/subclass resource accounting is deliberately narrower than the global
- * resource engine. The global engine may support dawn/manual/never for items,
- * effects, or custom systems. Official class packages may persist only explicit
- * finite pools whose rules restore them on a short rest and/or long rest.
+ * Official class/subclass packages may persist only explicit finite pools whose
+ * rules restore them on a short rest, long rest, and/or dawn. Manual/never and
+ * turn/round/combat/state cadence are not persistent Character Engine ledgers.
  *
  * Action economy and encounter cadence are not resources. A reaction, once per
  * turn/round/combat, initiative/start-of-combat trigger, etc. stays unlimited
  * from CE's resource perspective unless the same rule separately defines a
- * finite short/long-rest pool. The GM tracks that cadence.
+ * finite rest/dawn-recovering pool. The GM tracks that cadence.
+ *
+ * The legacy policy version/header name is retained for migration compatibility;
+ * its authoritative semantics include dawn from this revision onward.
  */
 export const CLASS_RESOURCE_POLICY_VERSION = "2026-08-29-short-long-rest-v1" as const
 
@@ -29,7 +31,7 @@ export type ClassResourcePolicyIssue = {
 
 type MechanicEntry = { mechanic: StoredMechanic; path: string }
 
-const ALLOWED_CLASS_RECOVERY = new Set(["short_rest", "long_rest"])
+const ALLOWED_CLASS_RECOVERY = new Set(["short_rest", "long_rest", "dawn"])
 
 function mechanicsFromChoice(choice: RuleChoiceDefinition, path: string): MechanicEntry[] {
   const entries: MechanicEntry[] = []
@@ -76,15 +78,15 @@ function resourceRecoveryTriggers(mechanic: StoredMechanic): string[] {
   return [...new Set([...recharge, ...rules].filter(Boolean))]
 }
 
-function mentionsRestPool(text: string): boolean {
+function mentionsPersistentRecoveryPool(text: string): boolean {
   const lower = text.toLocaleLowerCase("ru")
-  const rest = /(?:коротк|долг)[а-яё-]*\s+отдых/iu.test(lower)
+  const recovery = /(?:коротк|долг)[а-яё-]*\s+отдых|рассвет/iu.test(lower)
   const pool = /использован|запас|заряд|восстанавл|восстанов|количеств[а-яё-]*\s+использован/iu.test(lower)
-  return rest && pool
+  return recovery && pool
 }
 
 function mentionsGmCadence(text: string): boolean {
-  return /(?:один\s+)?раз\s+(?:за|на)\s+(?:ход|раунд|бой)|в\s+начале\s+(?:боя|сражения)|при\s+(?:броске\s+)?инициатив|кажд(?:ый|ом)\s+(?:свой\s+)?ход/iu.test(text)
+  return /(?:один\s+)?раз\s+(?:за|на)\s+(?:свой\s+)?(?:ход|раунд|бой)|в\s+начале\s+(?:боя|сражения)|при\s+(?:броске\s+)?инициатив|кажд(?:ый|ом)\s+(?:свой\s+)?ход/iu.test(text)
 }
 
 export function auditClassResourcePolicy(bundle: CharacterTemplateBundle): ClassResourcePolicyIssue[] {
@@ -108,24 +110,24 @@ export function auditClassResourcePolicy(bundle: CharacterTemplateBundle): Class
       issues.push({
         code: "class_resource_without_rest_recovery",
         path: issuePath,
-        message: "Class/subclass resources must restore on short rest and/or long rest.",
+        message: "Class/subclass resources must restore on short rest, long rest, and/or dawn.",
       })
     }
     if (forbidden.length > 0) {
       issues.push({
         code: "class_resource_has_forbidden_recovery",
         path: issuePath,
-        message: `Class/subclass resources may not use non-rest recovery triggers: ${forbidden.join(", ")}.`,
+        message: `Class/subclass resources may not use non-persistent recovery triggers: ${forbidden.join(", ")}.`,
       })
     }
 
     const sourceKey = sourceKeyOf(mechanic)
     const descriptions = sourceKey ? descriptionsBySource.get(sourceKey) || [] : []
-    if (descriptions.some(mentionsGmCadence) && !descriptions.some(mentionsRestPool)) {
+    if (descriptions.some(mentionsGmCadence) && !descriptions.some(mentionsPersistentRecoveryPool)) {
       issues.push({
         code: "gm_cadence_counter_forbidden",
         path: issuePath,
-        message: "Reaction/turn/round/combat cadence is GM-tracked and may not be represented as a persistent CE counter without a separate rest-recharging pool.",
+        message: "Reaction/turn/round/combat cadence is GM-tracked and may not be represented as a persistent CE counter without a separate rest/dawn-recovering pool.",
       })
     }
   }
