@@ -142,10 +142,55 @@ The green/ready mark is permitted **only for Druid descriptions/reference copy a
 
 ## Cleric (`class:cleric`)
 
-- `text_status: IN_PROGRESS`
+**Overall project label:** `TEXT READY`  
+**Gameplay mechanics/runtime label:** `NOT_AUDITED`
+
+- `text_status: READY`
 - `mechanics_status: NOT_AUDITED`
-- `note: extensive GM-facing text exists, but this ledger has not yet recorded a dedicated final closure pass equivalent to Fighter`
-- `next_required_audit: finish/confirm Cleric text closure, then audit mechanics separately`
+- `last_text_audit: 2026-08-29`
+- `last_voss_audit: 2026-08-29`
+- `reference_delivery: PENDING_PRODUCTION_VERIFICATION`
+- `text_scope: base Cleric levels 1–20 + all 14 catalogued domains + domain spell groups + Divine Order and Blessed Strikes nested choices + scaling/failure/success clauses + Voss comments + class/domain summaries and descriptions`
+- `domain_text_audit: 14/14 domains included in the final closure`
+- `feature_text_audit: closure gate requires 84/84 feature grants including the base hit-die card to have explicit non-placeholder descriptions`
+- `voss_coverage_contract: every openable Cleric ability/source-group card has a separate Reynar Voss comment; the closure gate requires 156/156 current openable groups`
+- `canonical_voss_voice: src/data/vossVoice.ts`
+- `player_text_immersion_audit: class/domain summaries, rules and Voss notes reject implementation, project, edition and compatibility language`
+- `production_delivery_rule: the final Cleric migration is presentation-only; it may update labels/descriptions/author comments and renderer-only presentation metadata, but must not rewrite resources/actions/formulas/effects/costs/choices/spell access/CE dependencies`
+- `known_boundary: this closure certifies human-readable reference text only; structured spell slots, Channel Divinity accounting, domain actions/resources, choice persistence, source suppression and all other runtime behavior remain unaudited`
+- `next_required_audit: full Cleric mechanics/runtime audit`
+
+### Cleric domains — text layer
+
+- Arcana Domain — `READY`
+- Death Domain — `READY`
+- Forge Domain — `READY`
+- Grave Domain — `READY`
+- Knowledge Domain — `READY`
+- Life Domain — `READY`
+- Light Domain — `READY`
+- Nature Domain — `READY`
+- Order Domain — `READY`
+- Peace Domain — `READY`
+- Tempest Domain — `READY`
+- Trickery Domain — `READY`
+- Twilight Domain — `READY`
+- War Domain — `READY`
+
+### Known mechanics-only follow-up
+
+These notes **do not reopen the text layer** and must not leak into player-facing rules:
+
+- Legacy domain rows: Arcana, Death, Forge, Nature, Order, Peace, Tempest and Twilight still contain some source rows numbered 1/2 while the parent subclass unlock is level 3. The parser/runtime audit must verify that the parent unlock gate prevents early mechanics; do not silently move structured rows during a text pass.
+- Base Cleric: verify cantrip/prepared-spell/slot progression, long-rest preparation, Divine Order persistence, Channel Divinity maximum/recovery, Divine Spark scaling, Turn Undead/Sear Undead, Blessed Strikes branch persistence and Divine Intervention recovery in Character Engine.
+- Nested choices: verify Divine Order and Blessed Strikes selections persist, unlock at the correct class level and apply only their selected mechanics; Voss coverage in the text closure is not proof of choice runtime correctness.
+- Domain spell groups: verify always-prepared access, spell-class identity, slot spending and multiclass interaction separately. The reference text treats the lists as human-readable domain spell grants only.
+- Domain finite-use features: verify all Wisdom/PB-scaled pools, reactions, rest recovery, spell-slot conversions and Channel Divinity costs as structured runtime resources/actions.
+- Legacy early-level domains: text rules describe the abilities themselves; the later mechanics audit must decide whether the stored 1/2 row numbering should be normalized structurally or left behind the level-3 parent gate.
+
+### What “READY” means here
+
+The green/ready mark is permitted **only for Cleric descriptions/reference copy and Reynar Voss author comments**. Do not describe Cleric gameplay mechanics as complete until `mechanics_status` is separately changed to `READY` after a dedicated mechanics/runtime audit.
 
 ---
 
