@@ -39,6 +39,9 @@ These are project-state markers, not player rules.
 - `text_status: READY`
 - `mechanics_status: NOT_AUDITED`
 - `last_text_audit: 2026-08-29`
+- `reference_delivery: SYNCED_2026_08_29`
+- `reference_ui: tappable full-rule cards; list cards are previews and open a dedicated full rule view`
+- `production_delivery_rule: the reference text sync migration may update presentation text and metadata only; it must not promote or rewrite choices/resources/actions/formulas/effects/CE dependencies`
 - `text_scope: base Fighter levels 1–20 + every currently catalogued Fighter subclass + nested selectable rules (Arcane Shots, Battle Master maneuvers, Rune Knight runes) + Voss comments + GM-facing summaries/descriptions`
 - `text_definition_of_ready: a player/GM must be able to understand trigger/activation, cost, target, exact effect, numbers/dice/DC/range, duration and limits/recharge from the user-facing rule text whenever those parts apply; no "расширяет/усиливает возможности" placeholders`
 - `next_required_audit: full Fighter mechanics/runtime audit`
@@ -62,7 +65,8 @@ These notes **do not reopen the text layer**. They are explicit reminders for th
 
 - Echo Knight: verify that `Unleash Incarnation / Воплощение ярости` survives the final migration stack as its own mechanical feature/resource/action. Its full rule is deliberately preserved in the final GM-facing level-3 text even if the mechanical audit later finds a structural omission.
 - Eldritch Knight: verify spell-slot/prepared-spell progression, multiclass slot interaction and replacement behavior against the Character Engine. The text pass only makes the intended progression explicit; it does not certify runtime accounting.
-- Psi Warrior: separate feature cards for Protective Field, Psionic Strike and Telekinetic Movement exist in the current migration stack, but their resources/actions/recovery were **not** mechanically certified by this text audit.
+- Psi Warrior: the human-facing level-3 reference explicitly documents Protective Field, Psionic Strike and Telekinetic Movement, but their resources/actions/recovery are **not** mechanically certified by this text audit.
+- Production legacy structure: the live database may still have empty/legacy choice structures for nested selectable rules. The reference delivery sync intentionally does not mutate those structures; Arcane Shot options, Battle Master maneuvers and Rune Knight runes are therefore included in full human-readable reference text until the mechanics audit addresses structure separately.
 - All Fighter subclasses: finite resources, actions, formulas, replacement semantics, source suppression and runtime triggers remain outside this closure.
 
 ### What “READY” means here
