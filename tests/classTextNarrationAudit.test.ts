@@ -153,10 +153,15 @@ test("Voss voice is explicit and feature comments are attached at every feature 
   assert.match(authoringContract, /ч[её]рн/i)
 })
 
-test("generic class and subclass feature cards render the separate Voss comment", () => {
+test("generic class and subclass cards render explanation, exact rule and separate Voss comment", () => {
+  assert.match(referenceGuide, /authorExplanation/)
   assert.match(referenceGuide, /authorComment/)
-  const featureVossUses = referenceGuide.match(/feature\.voss/g) || []
-  assert.ok(featureVossUses.length >= 3, "Druid, generic class, and generic subclass cards should all render feature.voss")
+  assert.match(referenceGuide, /payloadText\(mechanic, "authorExplanation"\)/)
+  assert.match(referenceGuide, /payloadText\(mechanic, "authorComment"\)/)
+  const explanationIndex = referenceGuide.indexOf("Восс объясняет")
+  const ruleIndex = referenceGuide.indexOf("Точное правило")
+  const commentIndex = referenceGuide.indexOf("Комментарий Восса")
+  assert.ok(explanationIndex >= 0 && ruleIndex > explanationIndex && commentIndex > ruleIndex)
 })
 
 test("the audited text shape still passes the strict class gate and reaches the real resolver and CE", () => {
