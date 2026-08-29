@@ -147,6 +147,10 @@ function featureVoss(mechanics: StoredMechanic[]) {
     const comment = payloadText(mechanic, "authorComment")
     if (comment) return comment
   }
+  for (const mechanic of mechanics) {
+    const comment = mechanic.presentation?.authorComment?.trim()
+    if (comment) return comment
+  }
   return ""
 }
 
