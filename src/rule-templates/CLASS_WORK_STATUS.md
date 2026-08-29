@@ -35,9 +35,13 @@ These are project-state markers, not player rules.
 
 - `source: src/data/vossVoice.ts`
 - `scope: spells + classes + subclasses + future reference sections`
-- `contract: short in-world field note; sarcastic, ironic, cynical, black humor; sometimes harsh; never a second mechanics paragraph`
-- `hard_boundary: Voss must never introduce dice, DCs, ranges, costs, durations, levels or exceptions that are absent from the rule text, and must never mention Character Engine, runtime, parsers, migrations, implementation, UI, editions or project compatibility`
-- `renderer_rule: an openable ability card may obtain its Voss note from feature.payload.authorComment or, for source groups without a feature grant, from renderer-only mechanic.presentation.authorComment`
+- `user_order: authorExplanation ("Восс объясняет") -> exact neutral rule -> authorComment ("Комментарий Восса")`
+- `explanation_contract: Voss explains how to use the rule in plain in-world language for a reader who did not understand the exact rule; explanation never replaces the exact rule and never invents hidden mechanics`
+- `comment_contract: short in-world field note after the rule; sarcastic, ironic, cynical, black humor; sometimes harsh; never a second mechanics paragraph`
+- `worldview: distrusts magic as dangerous and needlessly complicated; respects practical nonmagical skill; likes Fighters; considers Clerics cowardly rear-line preachers; distrusts Druids and especially Circle of the Moon`
+- `register_boundary: no modern office/legal/commercial/game-development register — no unions, insurance, licenses, HR, accounting, marketing, managers, office jokes, modern build/buff/statblock slang, Character Engine, runtime, parser, migrations, UI, editions or project history`
+- `hard_boundary: Voss must never introduce dice, DCs, ranges, costs, durations, levels or exceptions that are absent from the exact rule text`
+- `renderer_rule: an openable ability card reads authorExplanation/authorComment from feature payload; source groups without a feature grant use renderer-only mechanic.presentation fields`
 
 ---
 
@@ -98,15 +102,19 @@ The green/ready mark is permitted **only for Fighter descriptions/reference copy
 - `mechanics_status: NOT_AUDITED`
 - `last_text_audit: 2026-08-29`
 - `last_voss_audit: 2026-08-29`
-- `reference_delivery: SYNCED_2026_08_29`
-- `player_text_immersion_audit: READY_2026_08_29 — active player-facing Druid and Circle of the Moon copy states only game rules; edition/source/project/runtime comparison language is forbidden and regression-tested`
-- `voss_coverage_contract: every openable Druid ability/source-group card has a separate Reynar Voss comment`
-- `voss_coverage_audit: 49/49 current feature-grant rows already carried comments; 20/20 non-feature source groups explicitly mapped; UI-equivalent target = 69/69 openable Druid groups after production sync`
+- `reference_delivery: LIVE_SYNCED_2026_08_29`
+- `production_migration: 20260829133921_druid_voss_live_sync`
+- `narration_contract: every rendered Druid mechanic node now has authorExplanation -> exact rule -> authorComment; openable feature cards use the same order`
+- `production_coverage_audit: 239/239 current Druid + Circle mechanic nodes have authorExplanation and authorComment; missing_explanation=0; missing_comment=0; banned_modern_register=0`
+- `player_text_immersion_audit: READY_2026_08_29 — active player-facing Druid and Circle copy states only game rules; edition/source/project/runtime comparison language is forbidden and regression-tested`
 - `canonical_voss_voice: src/data/vossVoice.ts`
-- `static_reference_audit: every druidReference.features entry has a Voss note; all player-visible static Druid strings are checked for developer/source-edition leakage`
-- `text_scope: static base-class reference + all eight currently catalogued circles + spell lists + selectable/variant rule text + scaling + failure/success clauses + Voss comments + GM-facing summaries/descriptions`
-- `text_definition_of_ready: player/GM can resolve the human-facing rule from the reference text whenever trigger, action economy, cost, target/range, roll/save, exact effect, scaling, duration, ending condition and usage/recharge apply; every openable ability card also has a separate Voss author comment`
-- `known_boundary: this closure certifies presentation/reference text and Voss coverage only; it does not certify Wild Shape runtime, subclass-level wiring, choices, resources, actions, formulas, source suppression, spell-slot accounting, summoned-creature runtime or other Character Engine behavior`
+- `circle_of_moon_voice_checkpoint: live template comment explicitly frames Moon Druids as deceptively cuddly and dangerous — "через минуту он ест вашу руку. Отдельную от вас"`
+- `reference_ui: tappable full-rule cards; preview -> full detail; full detail order is Voss explanation -> exact rule/facts -> Voss comment`
+- `production_delivery_rule: Druid live sync is presentation-only; it may update narrator/reference text and renderer-only metadata but must not promote or rewrite choices/resources/actions/formulas/effects/CE dependencies`
+- `static_reference_audit: every druidReference.features entry has a plain explanation and Voss note; all player-visible static Druid strings are checked for developer/source-edition/modern-office leakage`
+- `text_scope: static base-class reference + all eight currently catalogued circles + spell lists + selectable/variant rule text + scaling + failure/success clauses + Voss explanations/comments + GM-facing summaries/descriptions`
+- `text_definition_of_ready: player/GM can resolve the human-facing rule from the reference text whenever trigger, action economy, cost, target/range, roll/save, exact effect, scaling, duration, ending condition and usage/recharge apply`
+- `known_boundary: this closure certifies presentation/reference text and narrator coverage only; it does not certify Wild Shape runtime, subclass-level wiring, choices, resources, actions, formulas, source suppression, spell-slot accounting, summoned-creature runtime or other Character Engine behavior`
 - `next_required_audit: full Druid mechanics/runtime audit`
 
 ### Druid circles — text layer
@@ -136,7 +144,7 @@ These notes **do not reopen the text layer**. They are explicit targets for the 
 
 ### What “READY” means here
 
-The green/ready mark is permitted **only for Druid descriptions/reference copy and Voss author comments**. Do not describe Druid gameplay mechanics as complete until `mechanics_status` is separately changed to `READY` after a dedicated audit.
+The green/ready mark is permitted **only for Druid descriptions/reference copy and Reynar Voss author layers**. Do not describe Druid gameplay mechanics as complete until `mechanics_status` is separately changed to `READY` after a dedicated audit.
 
 ---
 
