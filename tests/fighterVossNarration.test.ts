@@ -18,6 +18,7 @@ import {
 
 const guide = fs.readFileSync("src/components/reference/ReferenceGuide.tsx", "utf8")
 const voiceSource = fs.readFileSync("src/data/vossVoice.ts", "utf8")
+const migration = fs.readFileSync("supabase/migrations/20260829223000_fighter_voss_narration_source.sql", "utf8")
 
 const baseFeatures: Array<[number, string]> = [
   [1, "Боевой стиль"],
@@ -152,4 +153,20 @@ test("ReferenceGuide overrides stored Fighter paraphrases with the authored narr
   assert.match(guide, /getFighterBaseVossNarration\(feature\.level, feature\.name\)/)
   assert.match(guide, /getFighterSubclassVossNarration\(id\)/)
   assert.match(guide, /getFighterSubclassFeatureVossNarration\(selectedSubclass\.id, feature\.level, feature\.name\)/)
+  assert.match(guide, /function fallbackFeatureExplanation\(\)\s*\{\s*return ""/)
+})
+
+test("database cleanup removes legacy Fighter paraphrases without touching exact mechanics", () => {
+  assert.match(migration, /PRESENTATION ONLY/)
+  assert.match(migration, /src\/data\/classes\/fighterVossNarration\.ts/)
+  assert.match(migration, /never_derive_from_mechanics/)
+  assert.match(migration, /#- '\{payload,authorExplanation\}'/)
+  assert.match(migration, /#- '\{presentation,authorExplanation\}'/)
+  assert.match(migration, /rt\.mechanics/)
+  assert.match(migration, /rtl\.mechanics/)
+  assert.match(migration, /class:fighter/)
+  assert.match(migration, /subclass:fighter:%/)
+  assert.doesNotMatch(migration, /\{payload,description\}/)
+  assert.doesNotMatch(migration, /\{payload,authorComment\}/)
+  assert.doesNotMatch(migration, /spell_catalog|spell_reference/)
 })
