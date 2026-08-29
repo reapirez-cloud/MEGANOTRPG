@@ -117,6 +117,8 @@ export type StoredSpellMechanic = StoredMechanicMeta & {
   type: "spell"
   /** Canonical key is spell:<spell_catalog.slug>. */
   key: string
+  /** Stable relational identity used to link this access back to spell_catalog. */
+  catalogSlug?: string
   payload: SpellGrantPayload
 }
 
