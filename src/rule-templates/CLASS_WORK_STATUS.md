@@ -74,9 +74,9 @@ Current stable presentation categories:
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
 - `current_main_runtime: substantial native runtime exists for base Fighter and subclasses through precision/completion/choice/Psi migrations and dedicated runtime tests`
-- `production_runtime: NOT_SYNCED with current main mechanical migration stack as of 2026-08-29 audit`
-- `production_latest_observed_migration: 20260829151113_voss_spell_style_ability_explanations`
-- `mechanics_status_reason: production catalog still exposes multiple Fighter archetype source groups as feature text without the later native action/resource/choice rows present in main`
+- `production_catalog_reset: APPLIED_2026_08_29`
+- `production_latest_observed_migration: 20260829184828_remove_legacy_builtin_classes`
+- `production_runtime: still not certified as equivalent to the current main mechanical stack; historical migration ordering drift remains`
 
 ### Mechanics audit targets
 
@@ -91,7 +91,7 @@ Current stable presentation categories:
 - Samurai: Fighting Spirit uses and later action economy.
 - Champion/Banneret: passive/numeric and shared-resource riders must resolve as CE mechanics rather than prose only.
 
-Do not promote Fighter mechanics to `READY` until both main and production pass the same audit.
+Do not promote Fighter mechanics to `READY` until main and production pass the same audit.
 
 ---
 
@@ -105,9 +105,9 @@ Do not promote Fighter mechanics to `READY` until both main and production pass 
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
 - `current_main_runtime: native Druid runtime/resource completion migrations and dedicated runtime tests exist`
-- `production_runtime: NOT_SYNCED with current main mechanical migration stack as of 2026-08-29 audit`
-- `production_latest_observed_migration: 20260829151113_voss_spell_style_ability_explanations`
-- `mechanics_status_reason: live catalog still contains composite/text-only Circle abilities that must be distinguished from child actions and from genuinely missing runtime rows`
+- `production_catalog_reset: APPLIED_2026_08_29`
+- `production_latest_observed_migration: 20260829184828_remove_legacy_builtin_classes`
+- `production_runtime: still not certified as equivalent to the current main mechanical stack; historical migration ordering drift remains`
 
 ### Mechanics audit targets
 
@@ -123,7 +123,7 @@ Do not promote Fighter mechanics to `READY` until both main and production pass 
 - Dreams/Shepherd/Spores/Moon: finite pools, summoned/created creature hooks, reaction limits, temporary HP/aura behavior and subclass unlock compatibility.
 - Legacy 2/6/10/14 rows must remain gated by the actual parent subclass unlock until deliberately normalized.
 
-Do not promote Druid mechanics to `READY` until both main and production pass the same audit.
+Do not promote Druid mechanics to `READY` until main and production pass the same audit.
 
 ---
 
@@ -137,9 +137,9 @@ Do not promote Druid mechanics to `READY` until both main and production pass th
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
 - `current_main_runtime: exact rules and spell/resource structure exist, but full fourteen-domain runtime coverage is not yet certified`
-- `production_runtime: NOT_SYNCED with current main class migration stack as of 2026-08-29 audit`
-- `production_latest_observed_migration: 20260829151113_voss_spell_style_ability_explanations`
-- `mechanics_status_reason: live Cleric/domain catalog still has many active composite abilities represented only by feature text, and several finite-use actions do not yet prove a canonical CE resource pool`
+- `production_catalog_reset: APPLIED_2026_08_29`
+- `production_latest_observed_migration: 20260829184828_remove_legacy_builtin_classes`
+- `production_runtime: still not certified as equivalent to the current main mechanical stack; historical migration ordering drift remains`
 
 ### Mechanics audit targets
 
@@ -151,10 +151,37 @@ Do not promote Druid mechanics to `READY` until both main and production pass th
 - Arcana/Death/Forge/Grave/Knowledge/Life/Light/Nature/Order/Peace/Tempest/Trickery/Twilight/War must each be audited source-group by source-group.
 - Legacy domain rows below class level 3 must be blocked by subclass unlock and must never grant early mechanics.
 
-Do not promote Cleric mechanics to `READY` until both main and production pass the same audit.
+Do not promote Cleric mechanics to `READY` until main and production pass the same audit.
 
 ---
 
-## Other classes
+## Legacy builtin catalog reset
 
-No mechanics completion claim is inherited from the generic catalog. Add an explicit section when a class-specific audit begins. Absence from this ledger means no `READY` claim may be inferred.
+**Status:** `REMOVED_2026_08_29`
+
+The previous generic implementations of these builtin classes and all of their attached subclasses were deliberately deleted from the live catalog and are not considered reusable implementation state:
+
+- Artificer
+- Bard
+- Barbarian
+- Warlock
+- Wizard
+- Monk
+- Paladin
+- Rogue
+- Ranger
+- Sorcerer
+
+Reason: the old packages mixed useful fragments with generated summaries, vague descriptions and incomplete CE integration. Future work on these classes starts from a clean package and may consult historical migrations only as reference; it must not inherit a completion claim from the removed catalog.
+
+Deletion is represented by the forward-only migration `20260829235500_remove_legacy_builtin_classes.sql`. The production application of that cleanup is recorded as `20260829184828_remove_legacy_builtin_classes`.
+
+### Historical custom test class
+
+`Жопка` is intentionally **untouched** by this reset. It is a non-builtin historical test/easter-egg class (`is_builtin=false`, no catalog key). Its future visibility/hiding behavior is a separate task and must not be changed as part of legacy builtin cleanup.
+
+---
+
+## Future classes
+
+Every removed builtin class is `NOT_STARTED` for the new architecture until its clean rebuild begins. New implementation must follow `CLASS_INTEGRATION_NOTES.md`, use stable source keys/types, reach CE end-to-end, and pass a package-specific quality/runtime audit before becoming visible as a finished class.
