@@ -196,6 +196,20 @@ function staticSubclasses(entry: ClassReferenceEntry): ReferenceSubclassView[] {
   return entry.subclasses.map((item) => ({ id: item.id, name: item.name, summary: item.summary }))
 }
 
+function FeatureCard({ feature, onOpen }: { feature: RuleFeatureView; onOpen: (feature: RuleFeatureView) => void }) {
+  return (
+    <button className="reference-class-feature reference-class-feature--button surface" type="button" onClick={() => onOpen(feature)}>
+      <span className="reference-class-feature__head">
+        <span>{feature.level} ур.</span>
+        <strong>{feature.name}</strong>
+        <em aria-hidden="true">›</em>
+      </span>
+      <span className="reference-class-feature__preview">{feature.description}</span>
+      <span className="reference-class-feature__open">Открыть полное правило</span>
+    </button>
+  )
+}
+
 export default function ReferenceGuide({
   campaignId: campaignIdProp,
   character,
@@ -212,6 +226,7 @@ export default function ReferenceGuide({
   const [section, setSection] = useState<ReferenceSection>(initialClass ? "class-detail" : initialSection)
   const [selectedClass, setSelectedClass] = useState<ClassReferenceEntry | null>(initialClass)
   const [selectedSubclass, setSelectedSubclass] = useState<ReferenceSubclassView | null>(null)
+  const [selectedFeature, setSelectedFeature] = useState<RuleFeatureView | null>(null)
 
   const classTemplate = useMemo(() => {
     if (!selectedClass) return undefined
@@ -255,6 +270,7 @@ export default function ReferenceGuide({
   }
 
   function goBack() {
+    if (selectedFeature) { setSelectedFeature(null); return }
     if (section === "home") { onClose(); return }
     if (section === "subclass-detail") { setSelectedSubclass(null); setSection("class-detail"); return }
     if (section === "class-detail") { setSelectedClass(null); setSelectedSubclass(null); setSection("classes"); return }
@@ -262,12 +278,14 @@ export default function ReferenceGuide({
   }
 
   function openClass(entry: ClassReferenceEntry) {
+    setSelectedFeature(null)
     setSelectedClass(entry)
     setSelectedSubclass(null)
     setSection("class-detail")
   }
 
   function openSubclass(subclass: ReferenceSubclassView) {
+    setSelectedFeature(null)
     setSelectedSubclass(subclass)
     setSection("subclass-detail")
   }
@@ -346,26 +364,20 @@ export default function ReferenceGuide({
               <div><h3>{selectedClass.name}</h3><span>{selectedClass.nameEn}</span><p>{classTagline(selectedClass)}</p></div>
             </div>
             <section className="reference-class-mechanics surface"><span>Коротко о механике</span><p>{classSummary}</p></section>
-            <section className="reference-class-description"><span>{classTemplate?.author_description?.trim() || isDruid ? "Рейнар Восс" : "Описание класса"}</span><p>{classNarration}</p></section>
+            <section className="reference-class-description"><span>{classTemplate?.author_description?.trim() || (isDruid ? "Рейнар Восс" : "Описание класса")}</span><p>{classNarration}</p></section>
             {classComment && <section className="reference-voss-note surface"><span>Заметка Восса</span><p>{classComment}</p></section>}
 
             <section className="reference-class-feature-section">
               <div className="reference-subclass-section__head"><span>Прогрессия класса</span><small>{isDruid ? druidReference.features.length : classFeatures.length}</small></div>
               <div className="reference-class-feature-list">
                 {isDruid ? druidReference.features.map((feature) => (
-                  <article className="reference-class-feature surface" key={`${feature.level}:${feature.name}`}>
-                    <header><span>{feature.level} ур.</span><strong>{feature.name}</strong></header>
-                    <p>{feature.mechanics}</p>
-                    {feature.details?.length ? <ul className="reference-rule-facts">{feature.details.map((fact) => <li key={fact}>{fact}</li>)}</ul> : null}
-                    {feature.voss && <blockquote>{feature.voss}</blockquote>}
-                  </article>
+                  <FeatureCard
+                    key={`${feature.level}:${feature.name}`}
+                    feature={{ level: feature.level, name: feature.name, description: feature.mechanics, facts: feature.details || [], voss: feature.voss }}
+                    onOpen={setSelectedFeature}
+                  />
                 )) : classFeatures.length ? classFeatures.map((feature, index) => (
-                  <article className="reference-class-feature surface" key={`${feature.level}:${feature.name}:${index}`}>
-                    <header><span>{feature.level} ур.</span><strong>{feature.name}</strong></header>
-                    <p>{feature.description}</p>
-                    {feature.facts.length ? <ul className="reference-rule-facts">{feature.facts.map((fact) => <li key={fact}>{fact}</li>)}</ul> : null}
-                    {feature.voss && <blockquote>{feature.voss}</blockquote>}
-                  </article>
+                  <FeatureCard key={`${feature.level}:${feature.name}:${index}`} feature={feature} onOpen={setSelectedFeature} />
                 )) : <div className="reference-catalog-status">Подробная прогрессия для этой карточки ещё не загружена.</div>}
               </div>
             </section>
@@ -390,18 +402,13 @@ export default function ReferenceGuide({
               <span className="reference-class-hero__monogram">{selectedSubclass.name.slice(0, 1)}</span>
               <div><h3>{selectedSubclass.name}</h3><span>{selectedClass.name}</span><p>{selectedSubclass.summary}</p></div>
             </div>
-            <section className="reference-class-description"><span>{selectedSubclassTemplate?.author_description?.trim() || selectedSubclass.voss ? "Рейнар Восс" : "Описание подкласса"}</span><p>{subclassNarration}</p></section>
+            <section className="reference-class-description"><span>{selectedSubclassTemplate?.author_description?.trim() || (selectedSubclass.voss ? "Рейнар Восс" : "Описание подкласса")}</span><p>{subclassNarration}</p></section>
             {subclassComment && subclassComment !== subclassNarration && <section className="reference-voss-note surface"><span>Заметка Восса</span><p>{subclassComment}</p></section>}
             <section className="reference-class-feature-section">
               <div className="reference-subclass-section__head"><span>Прогрессия подкласса</span><small>{subclassFeatures.length}</small></div>
               <div className="reference-class-feature-list">
                 {subclassFeatures.length ? subclassFeatures.map((feature, index) => (
-                  <article className="reference-class-feature surface" key={`${feature.level}:${feature.name}:${index}`}>
-                    <header><span>{feature.level} ур.</span><strong>{feature.name}</strong></header>
-                    <p>{feature.description}</p>
-                    {feature.facts.length ? <ul className="reference-rule-facts">{feature.facts.map((fact) => <li key={fact}>{fact}</li>)}</ul> : null}
-                    {feature.voss && <blockquote>{feature.voss}</blockquote>}
-                  </article>
+                  <FeatureCard key={`${feature.level}:${feature.name}:${index}`} feature={feature} onOpen={setSelectedFeature} />
                 )) : <div className="reference-catalog-status">Для этой специализации пока есть справочное описание, но подробные уровневые карточки ещё не загружены.</div>}
               </div>
             </section>
@@ -418,6 +425,31 @@ export default function ReferenceGuide({
           </main>
         )}
       </section>
+
+      {selectedFeature && (
+        <section className="reference-feature-detail-overlay" role="dialog" aria-modal="true" aria-label={`Правило: ${selectedFeature.name}`}>
+          <div className="reference-feature-detail-page">
+            <header className="reference-feature-detail-header">
+              <button className="icon-button" type="button" onClick={() => setSelectedFeature(null)} aria-label="Назад к списку способностей">←</button>
+              <div><span>{selectedFeature.level} уровень</span><h2>{selectedFeature.name}</h2></div>
+              <span />
+            </header>
+            <main className="reference-feature-detail-content">
+              <section className="reference-feature-detail-rule surface">
+                <span>Полное правило</span>
+                <p>{selectedFeature.description}</p>
+              </section>
+              {selectedFeature.facts.length ? (
+                <section className="reference-feature-detail-facts">
+                  <span>Механические данные</span>
+                  <ul className="reference-rule-facts">{selectedFeature.facts.map((fact) => <li key={fact}>{fact}</li>)}</ul>
+                </section>
+              ) : null}
+              {selectedFeature.voss && <section className="reference-voss-note surface"><span>Заметка Восса</span><p>{selectedFeature.voss}</p></section>}
+            </main>
+          </div>
+        </section>
+      )}
     </div>
   )
 }
