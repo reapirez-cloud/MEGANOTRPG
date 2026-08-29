@@ -1,3 +1,8 @@
+-- CLASS_INTEGRATION_STRICT: class:fighter
+-- CLASS_PACKAGE_TEST: tests/classTextNarrationAudit.test.ts
+-- CLASS_WORK_STATUS: fighter:text=READY;mechanics=NOT_AUDITED; druid:text=READY;mechanics=NOT_AUDITED; cleric:text=READY;mechanics=NOT_AUDITED
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
+-- PRESENTATION ONLY: Voss-authored reference copy. No CE resources/actions/values are changed here.
 -- "Восс объясняет" is an authored narrator layer, not a mechanical-summary layer.
 -- Exact mechanics belong in mechanical_summary/description and the "Точное правило" UI.
 -- Feature authorExplanation values authored by 20260829151113 are intentionally preserved.
