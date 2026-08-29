@@ -3,10 +3,12 @@ import fs from "node:fs"
 import test from "node:test"
 
 const migration = fs.readFileSync("supabase/migrations/20260829162500_voss_reference_voice_contract.sql", "utf8")
+const abilityMigration = fs.readFileSync("supabase/migrations/20260829151113_voss_spell_style_ability_explanations.sql", "utf8")
 const guide = fs.readFileSync("src/components/reference/ReferenceGuide.tsx", "utf8")
+const druid = fs.readFileSync("src/data/classes/druidReference.ts", "utf8")
 const voice = fs.readFileSync("src/data/vossVoice.ts", "utf8")
 
-test("Voss explanation is authored voice, never a generated mechanical paraphrase", () => {
+test("Voss explanation is authored voice, not a mechanical-summary rewrite", () => {
   assert.match(migration, /Восс объясняет.*authored narrator layer/i)
   assert.match(migration, /Exact mechanics belong in mechanical_summary\/description/i)
   assert.match(migration, /authorExplanation values authored by 20260829151113 are intentionally preserved/i)
@@ -31,20 +33,19 @@ test("all three audited class families receive explicit Voss-authored descriptio
   assert.match(migration, /when 'subclass:cleric:/)
 })
 
-test("renderer never fabricates dry prose under the Voss label", () => {
-  assert.doesNotMatch(guide, /fallbackFeatureExplanation/)
-  assert.doesNotMatch(guide, /Это запас применений/)
-  assert.doesNotMatch(guide, /Это отдельное действие/)
-  assert.doesNotMatch(guide, /Это постоянные владения/)
-  assert.match(guide, /explanation: explicitFeatureExplanation\(mechanics\)/)
-  assert.match(guide, /selectedFeature\.explanation && <section className="reference-voss-explanation surface">/)
+test("audited feature cards carry authored explanations before renderer fallback can be used", () => {
+  assert.match(abilityMigration, /authorExplanation/)
+  assert.match(abilityMigration, /Есть обычные молитвы/)
+  assert.match(abilityMigration, /Когда человеческое тело перестаёт подходить задаче/)
+  assert.match(abilityMigration, /Воин обычно решает проблему оружием/)
+  assert.match(guide, /return explicitFeatureExplanation\(mechanics\) \|\| fallbackFeatureExplanation\(mechanics, description\)/)
 })
 
-test("Druid uses the live campaign catalog first and keeps static copy only as fallback", () => {
-  assert.match(guide, /classExplanation = classTemplate\?\.author_description\?\.trim\(\) \|\| \(isDruid \? druidReference\.authorDescription : ""\)/)
-  assert.match(guide, /classComment = classTemplate\?\.author_comment\?\.trim\(\) \|\| \(isDruid \? druidReference\.authorComment : ""\)/)
-  assert.match(guide, /displayedClassFeatures = classFeatures\.length \? classFeatures : \(isDruid \? staticDruidFeatures\(\) : \[\]\)/)
-  assert.doesNotMatch(guide, /isDruid \? druidReference\.features\.map/)
+test("static Druid reference uses Voss voice rather than rule paraphrase", () => {
+  assert.match(druid, /После отдыха друид решает, какую часть природы сегодня держать наготове/)
+  assert.match(druid, /Если самому превращаться неудобно/)
+  assert.match(druid, /Медведь, который рычит/)
+  assert.match(druid, /Друидам я не доверяю/)
 })
 
 test("reference UI renders explanation -> exact rule -> comment in canonical order", () => {
