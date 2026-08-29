@@ -4,6 +4,13 @@ export type RuleTemplateKind = "race" | "subrace" | "class" | "subclass"
 export type RuleChoiceTarget = "language" | "proficiency" | "sense" | "trait"
 export type RuleTemplateSourceKind = "official" | "third_party" | "custom"
 
+export type RuleChoiceRequirement = {
+  /** Another persistent choice in the same assignment. */
+  key: string
+  /** This choice is active only while the parent choice contains this option. */
+  option: string
+}
+
 export type RuleChoiceDefinition = {
   key: string
   label: string
@@ -16,6 +23,8 @@ export type RuleChoiceDefinition = {
   option_unlock_level?: Record<string, number>
   /** Human labels for mechanically stable option keys such as skill:nature. */
   option_labels?: Record<string, string>
+  /** Optional dependency on another persistent choice in this template assignment. */
+  requires_choice?: RuleChoiceRequirement
   /** Extra CE mechanics applied only when this option is selected. */
   option_mechanics?: Record<string, StoredMechanics>
   /**
