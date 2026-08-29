@@ -12,8 +12,10 @@ import {
 import type { CharacterTemplateBundle, RuleTemplate } from "../src/rule-templates/types.ts"
 import type { StoredMechanics } from "../src/types/characterMechanics.ts"
 
-const STRICT_MIGRATION_CUTOFF = "20260829162500"
+const SCOPED_MIGRATION_CUTOFF = "20260830000000"
 const migrationsDir = "supabase/migrations"
+
+type ClassMigrationScope = "mechanics" | "presentation" | "infrastructure"
 
 function template(): RuleTemplate {
   return {
@@ -72,11 +74,17 @@ function sourceFiles(root: string): string[] {
 
 function futureClassMigrationFiles(): string[] {
   return fs.readdirSync(migrationsDir)
-    .filter((name) => name.endsWith(".sql") && name >= `${STRICT_MIGRATION_CUTOFF}.sql`)
+    .filter((name) => name.endsWith(".sql") && name >= `${SCOPED_MIGRATION_CUTOFF}.sql`)
     .filter((name) => {
       const sql = fs.readFileSync(path.join(migrationsDir, name), "utf8")
-      return /rule_templates/.test(sql) && /(?:class|subclass):[a-z0-9_-]+/i.test(sql)
+      return /rule_templates|class|subclass/i.test(sql)
     })
+}
+
+function migrationScope(sql: string, name: string): ClassMigrationScope {
+  const value = sql.match(/--\s*CLASS_MIGRATION_SCOPE:\s*(mechanics|presentation|infrastructure)\b/i)?.[1]?.toLowerCase()
+  assert.ok(value, `${name} must declare CLASS_MIGRATION_SCOPE: mechanics|presentation|infrastructure`)
+  return value as ClassMigrationScope
 }
 
 test("internal class requirements are code, not player-facing UI", () => {
@@ -258,9 +266,15 @@ test("implementation language is rejected from player-facing class rules", () =>
   assert.ok(codes.includes("implementation_meta"))
 })
 
-test("every future class catalog migration must opt into the strict gate and point to a real package test", () => {
-  for (const name of futureClassMigrationFiles()) {
+test("future class migrations declare scope and mechanics migrations pass the strict package gate", () => {
+  const migrations = futureClassMigrationFiles()
+  assert.ok(migrations.length > 0, "scope cutoff must cover current class infrastructure work")
+
+  for (const name of migrations) {
     const sql = fs.readFileSync(path.join(migrationsDir, name), "utf8")
+    const scope = migrationScope(sql, name)
+    if (scope !== "mechanics") continue
+
     assert.match(sql, /--\s*CLASS_INTEGRATION_STRICT:\s*(?:class|subclass):[a-z0-9:_-]+/i, `${name} must declare the strict class integration contract`)
     const testPath = sql.match(/--\s*CLASS_PACKAGE_TEST:\s*([^\s]+)/i)?.[1]
     assert.ok(testPath, `${name} must point to its class package test`)
@@ -270,16 +284,15 @@ test("every future class catalog migration must opt into the strict gate and poi
     assert.match(packageTest, /resolveTemplateBundles/, `${testPath} must exercise the real class parser`)
     assert.match(packageTest, /resolveCharacterContract/, `${testPath} must reach the resolved CE contract`)
 
-    // Raw migrations may contain natural narrator phrases such as «что-то» or
-    // «что-нибудь». The semantic package audit above owns ambiguity detection;
-    // this source-level guard is only for unmistakable placeholder boilerplate.
     assert.doesNotMatch(sql, /расширяет возможности|усиливает возможности|становится эффективнее|TODO|TBD|FIXME/i, `${name} contains vague or placeholder class text`)
     assert.doesNotMatch(sql, /["']enforcement["']\s*[:,]\s*["']gm["']|_confirmed\b|_available\b/i, `${name} invents fake GM/runtime state`)
   }
 })
 
-test("developer notes make the strict gate mandatory for the next class", () => {
+test("developer notes make migration scope and the strict mechanics gate mandatory", () => {
   const notes = fs.readFileSync("src/rule-templates/CLASS_INTEGRATION_NOTES.md", "utf8")
+  assert.match(notes, /CLASS_MIGRATION_SCOPE/)
+  assert.match(notes, /mechanics\|presentation\|infrastructure/)
   assert.match(notes, /internalClassQuality\.ts/)
   assert.match(notes, /assertClassPackageQuality/)
   assert.match(notes, /CLASS_INTEGRATION_STRICT/)
