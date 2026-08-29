@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 begin;
 
 -- Historical class/subclass catalog installers remain in migration history because
