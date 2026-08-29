@@ -2,231 +2,159 @@
 
 > **REQUIRED MAINTENANCE FILE — developer/agent only. Never render or import this file into player UI.**
 >
-> This file is the canonical checkpoint for class/subclass work. Any task that changes, audits, reopens, or closes a class/subclass layer MUST update this ledger in the same work session/commit series. Do not infer completion from migration names, old chat context, CI, or comments elsewhere.
+> This is the canonical checkpoint for class/subclass work. A text pass and a mechanics/runtime pass are separate closures. Never infer one from the other.
 
-## Mandatory update rule
-
-Before touching a class or subclass:
-1. Read this file and `CLASS_INTEGRATION_NOTES.md`.
-2. Mark the layer being changed `IN_PROGRESS` if a previously closed layer is reopened.
-3. Do the work.
-4. Update this file before finishing: what changed, what is closed, what remains, and which layer must be audited next.
-5. Never promote one layer because another layer is ready. **TEXT READY does not mean MECHANICS READY.**
+## Status rules
 
 Allowed statuses:
 - `NOT_STARTED` — work has not begun.
-- `IN_PROGRESS` — currently being built/audited or reopened by new work.
-- `READY` — the declared layer was explicitly audited and has no known text blockers in its declared scope.
-- `BLOCKED` — known blocker prevents closure; record it below.
-- `NOT_AUDITED` — implementation may exist, but this layer has not been formally checked and must not be called ready.
+- `NOT_AUDITED` — implementation may exist, but no formal audit has started.
+- `IN_PROGRESS` — layer is currently being built/audited or has known blockers.
+- `READY` — the declared layer was explicitly audited with no known blockers in scope.
+- `BLOCKED` — work cannot proceed until an external blocker is resolved.
 
-When a future migration touches class/subclass content, add/update an internal header similar to:
-
-```text
--- CLASS_WORK_STATUS: fighter:text=READY;mechanics=NOT_AUDITED
--- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
-```
-
-These are project-state markers, not player rules.
+When class/subclass content changes, update this file in the same work session. **TEXT READY does not mean MECHANICS READY.**
 
 ---
 
 ## Canonical Reynar Voss voice
 
 - `source: src/data/vossVoice.ts`
-- `scope: spells + classes + subclasses + future reference sections`
-- `base_user_order: authorExplanation ("Восс объясняет") -> exact neutral rule -> authorComment ("Комментарий Восса")`
-- `subclass_ability_order: authorExplanation ("Восс объясняет") -> exact neutral rule -> authorNuances ("Нюансы Восса") -> authorComment ("Комментарий Восса")`
-- `explanation_voice_reference: spell_catalog.author_description — class/subclass authorExplanation must use the same concise, practical, in-world Voss voice as spell explanations`
-- `explanation_contract: first explain what the ability lets the player do or when it matters, then optionally one dry field analogy/joke; do not duplicate every number because the exact rule is rendered immediately below`
-- `explanation_forbidden_boilerplate: no "Это постоянное владение", "Это отдельная активация", "Эта часть класса или подкласса", "смотрите точное правило/карточку", "здесь учитывается" or equivalent renderer/database instructions`
-- `nuance_contract: subclass ability nuances collect common table misreadings and edge interpretations; each point explains what does NOT follow from the exact wording, may use Voss sarcasm, and never creates a new mechanic, target, trigger, resource, number or permission`
-- `comment_contract: short in-world field note after the rule/nuances; sarcastic, ironic, cynical, black humor; sometimes harsh; never a second mechanics paragraph`
-- `worldview: distrusts magic as dangerous and needlessly complicated; respects practical nonmagical skill; likes Fighters; considers Clerics cowardly rear-line preachers; distrusts Druids and especially Circle of the Moon`
-- `register_boundary: no modern office/legal/commercial/game-development register — no unions, insurance, licenses, HR, accounting, marketing, managers, office jokes, modern build/buff/statblock slang, Character Engine, runtime, parser, migrations, UI, editions or project history`
-- `hard_boundary: Voss must never introduce dice, DCs, ranges, costs, durations, levels or exceptions that are absent from the exact rule text`
-- `renderer_rule: an openable ability card reads authorExplanation/authorComment and, for subclass abilities, authorNuances from feature payload; source groups without a feature grant use renderer-only mechanic.presentation fields`
+- `class_card_order: authorExplanation ("Восс объясняет") -> exact neutral rule -> authorComment ("Комментарий Восса")`
+- `authorExplanation: in-world Voss observation/story; never a simplified mechanics paragraph`
+- `authorComment: short personal Voss note after the exact rule; never a second rule block`
+- `class_nuances: REMOVED — classes and subclasses do not render or store a separate "Нюансы Восса" layer`
+- `exact_rule_boundary: all triggers, costs, targets, dice, ranges, durations, limits and adjudication belong to the exact rule, not narrator copy`
+- `spell_boundary: class/subclass cleanup must not silently rewrite spell reference data or spell-specific authoring behavior`
+
+---
+
+## Mechanics/runtime audit contract
+
+A class or subclass mechanic is not considered integrated merely because a feature description exists.
+
+For mechanics `READY`, the end-to-end path must be verified:
+
+1. `rule_templates / rule_template_levels / persistent choices` grant the mechanic at the correct effective class level.
+2. `characterTemplateContributions()` emits native `CharacterContribution` entries.
+3. Character Engine resolves them into the correct contract section:
+   - active ability -> `ResolvedAction`;
+   - finite pool -> `ResolvedResource`;
+   - class/subclass spell -> `ResolvedSpellAccess`;
+   - passive/triggered behavior -> native numeric/capability contribution or `ResolvedMechanicalRule.integration === "structured"`;
+   - proficiency/resistance/immunity/sense/language -> corresponding CE capability.
+4. `CharacterClassPanel` presents the resolved source without inventing mechanics from prose.
+5. Every Class-tab entry has a stable machine category from `ClassMechanicEntryType`; display text never determines sorting type.
+6. Resource-backed actions can persist their resource change through the class runtime RPC. Resource-less actions remain usable rules, but the UI must not show a fake state-changing button.
+7. Production Supabase must contain the same mechanical migration state as `main`. A Git-only implementation is not enough for `READY`.
+
+Current stable presentation categories:
+- `special_action`
+- `class_spell`
+- `resource`
+- `passive_rule`
+- `reference_rule`
+- `proficiency`
+- `resistance`
+- `immunity`
+- `sense`
+- `language`
+
+`reference_rule` is intentionally not proof of mechanical integration. It means the class tab can show the rule, but CE has no fully structured passive contract for that feature itself.
 
 ---
 
 ## Fighter (`class:fighter`)
 
-**Overall project label:** `TEXT READY`  
-**Gameplay mechanics/runtime label:** `NOT_AUDITED`
+**Text:** `READY`  
+**Mechanics/runtime:** `IN_PROGRESS`
 
-- `text_status: READY`
-- `mechanics_status: NOT_AUDITED`
 - `last_text_audit: 2026-08-29`
-- `last_voss_audit: 2026-08-29`
-- `reference_delivery: LIVE_SYNCED_2026_08_29`
-- `production_migration: 20260829135656_fighter_cleric_voss_live_sync`
-- `ability_explanation_delivery: LIVE_SYNCED_2026_08_29 via 20260829151113_voss_spell_style_ability_explanations`
-- `ability_explanation_audit: 82/82 current Fighter + archetype source groups have spell-style Voss explanations; old renderer/database boilerplate=0`
-- `subclass_nuance_delivery: LIVE_SYNCED_2026_08_29 via 20260829142821_subclass_voss_nuances`
-- `subclass_nuance_audit: 57/57 current Fighter archetype source groups carry one or more authorNuances; missing=0`
-- `narration_contract: every rendered Fighter mechanic node has authorExplanation -> exact rule -> authorComment; Fighter subclass abilities additionally render authorNuances between the rule and final comment`
-- `production_coverage_audit: 242/242 current Fighter + archetype mechanic nodes have authorExplanation and authorComment; missing_explanation=0; missing_comment=0; banned_modern_register=0`
-- `voss_coverage_contract: every openable Fighter ability/source-group card has a separate Reynar Voss comment`
-- `voss_coverage_audit: base Fighter and all ten current archetypes are live-synced; repeated generic archetype comments were replaced with archetype-specific narrator copy`
-- `canonical_voss_voice: src/data/vossVoice.ts`
-- `reference_ui: tappable full-rule cards; list preview visibly labels "Восс объясняет"; subclass detail order is Voss explanation -> exact rule/facts -> Voss nuances -> Voss comment`
-- `production_delivery_rule: reference narrator sync may update presentation text and renderer-only metadata only; it must not promote or rewrite exact rule descriptions/choices/resources/actions/formulas/effects/CE dependencies`
-- `text_scope: base Fighter levels 1–20 + every currently catalogued Fighter subclass + nested selectable rules (Arcane Shots, Battle Master maneuvers, Rune Knight runes) + Voss explanations/nuances/comments + GM-facing summaries/descriptions`
-- `text_definition_of_ready: a player/GM must be able to understand trigger/activation, cost, target, exact effect, numbers/dice/DC/range, duration and limits/recharge from the user-facing rule text whenever those parts apply; no "расширяет/усиливает возможности" placeholders; every openable ability card also has separate explanation and Voss note`
-- `next_required_audit: full Fighter mechanics/runtime audit`
+- `last_mechanics_audit_started: 2026-08-29`
+- `class_tab_source: resolved CE contract through classPresentation.ts`
+- `class_tab_type_contract: ENABLED_2026_08_29`
+- `current_main_runtime: substantial native runtime exists for base Fighter and subclasses through precision/completion/choice/Psi migrations and dedicated runtime tests`
+- `production_runtime: NOT_SYNCED with current main mechanical migration stack as of 2026-08-29 audit`
+- `production_latest_observed_migration: 20260829151113_voss_spell_style_ability_explanations`
+- `mechanics_status_reason: production catalog still exposes multiple Fighter archetype source groups as feature text without the later native action/resource/choice rows present in main`
 
-### Fighter subclasses — text layer
+### Mechanics audit targets
 
-- Arcane Archer — `READY`
-- Battle Master — `READY`
-- Cavalier — `READY`
-- Champion — `READY`
-- Echo Knight — `READY`
-- Eldritch Knight — `READY`
-- Psi Warrior — `READY`
-- Banneret — `READY`
-- Rune Knight — `READY`
-- Samurai — `READY`
+- Base Fighter: Second Wind, Action Surge, Tactical Mind, Tactical Shift, Indomitable, weapon mastery branches, Extra Attack scaling and ASI/feat choices.
+- Arcane Archer: Arcane Shot choice options and shared use pool.
+- Battle Master: superiority dice, maneuver selection, maneuver actions/effects and recovery.
+- Cavalier: mark/protection/reaction behavior and finite uses where applicable.
+- Echo Knight: echo creation/state, Unleash Incarnation and echo-dependent actions.
+- Eldritch Knight: class spell access, preparation/replacement and shared slot accounting.
+- Psi Warrior: Psionic Energy pool plus Protective Field, Psionic Strike, Telekinetic Movement and later actions.
+- Rune Knight: rune choices, activations, Giant's Might resources and scaling.
+- Samurai: Fighting Spirit uses and later action economy.
+- Champion/Banneret: passive/numeric and shared-resource riders must resolve as CE mechanics rather than prose only.
 
-### Known mechanics-only follow-up
-
-These notes **do not reopen the text layer**. They are explicit reminders for the later mechanics audit:
-
-- Echo Knight: verify that `Unleash Incarnation / Воплощение ярости` survives the final migration stack as its own mechanical feature/resource/action. Its full rule is deliberately preserved in the final GM-facing level-3 text even if the mechanical audit later finds a structural omission.
-- Eldritch Knight: verify spell-slot/prepared-spell progression, multiclass slot interaction and replacement behavior against the Character Engine. The text pass only makes the intended progression explicit; it does not certify runtime accounting.
-- Psi Warrior: the human-facing level-3 reference explicitly documents Protective Field, Psionic Strike and Telekinetic Movement, but their resources/actions/recovery are **not** mechanically certified by the text audit.
-- Production legacy structure: the live database may still have empty/legacy choice structures for nested selectable rules. The reference delivery sync intentionally does not mutate those structures; Arcane Shot options, Battle Master maneuvers and Rune Knight runes are therefore included in full human-readable reference text until the mechanics audit addresses structure separately.
-- All Fighter subclasses: finite resources, actions, formulas, replacement semantics, source suppression and runtime triggers remain outside this closure.
-
-### What “READY” means here
-
-The green/ready mark is permitted **only for Fighter descriptions/reference copy and Voss author layers**. Do not describe the Fighter package as mechanically complete until `mechanics_status` is separately changed to `READY` after a dedicated audit.
+Do not promote Fighter mechanics to `READY` until both main and production pass the same audit.
 
 ---
 
 ## Druid (`class:druid`)
 
-**Overall project label:** `TEXT READY`  
-**Gameplay mechanics/runtime label:** `NOT_AUDITED`
+**Text:** `READY`  
+**Mechanics/runtime:** `IN_PROGRESS`
 
-- `text_status: READY`
-- `mechanics_status: NOT_AUDITED`
 - `last_text_audit: 2026-08-29`
-- `last_voss_audit: 2026-08-29`
-- `reference_delivery: LIVE_SYNCED_2026_08_29`
-- `production_migration: 20260829133921_druid_voss_live_sync`
-- `ability_explanation_delivery: LIVE_SYNCED_2026_08_29 via 20260829151113_voss_spell_style_ability_explanations`
-- `ability_explanation_audit: 59/59 current Druid + Circle source groups have spell-style Voss explanations; old renderer/database boilerplate=0`
-- `static_explanation_fallback: src/data/classes/druidReference.ts synced to the same spell-style Voss explanation voice`
-- `subclass_nuance_delivery: LIVE_SYNCED_2026_08_29 via 20260829142821_subclass_voss_nuances`
-- `subclass_nuance_audit: 38/38 current Druid Circle source groups carry one or more authorNuances; missing=0`
-- `narration_contract: every rendered Druid mechanic node has authorExplanation -> exact rule -> authorComment; Circle abilities additionally render authorNuances between the rule and final comment`
-- `production_coverage_audit: 239/239 current Druid + Circle mechanic nodes have authorExplanation and authorComment; missing_explanation=0; missing_comment=0; banned_modern_register=0`
-- `player_text_immersion_audit: READY_2026_08_29 — active player-facing Druid and Circle copy states only game rules; edition/source/project/runtime comparison language is forbidden and regression-tested`
-- `canonical_voss_voice: src/data/vossVoice.ts`
-- `circle_of_moon_voice_checkpoint: live template comment explicitly frames Moon Druids as deceptively cuddly and dangerous — "через минуту он ест вашу руку. Отдельно от вас"`
-- `reference_ui: tappable full-rule cards; preview -> full detail; Circle detail order is Voss explanation -> exact rule/facts -> Voss nuances -> Voss comment`
-- `production_delivery_rule: Druid live sync is presentation-only; it may update narrator/reference text and renderer-only metadata but must not promote or rewrite choices/resources/actions/formulas/effects/CE dependencies`
-- `static_reference_audit: every druidReference.features entry has a spell-style Voss explanation and separate Voss note; all player-visible static Druid strings are checked for developer/source-edition/modern-office leakage`
-- `text_scope: static base-class reference + all eight currently catalogued circles + spell lists + selectable/variant rule text + scaling + failure/success clauses + Voss explanations/nuances/comments + GM-facing summaries/descriptions`
-- `text_definition_of_ready: player/GM can resolve the human-facing rule from the reference text whenever trigger, action economy, cost, target/range, roll/save, exact effect, scaling, duration, ending condition and usage/recharge apply`
-- `known_boundary: this closure certifies presentation/reference text and narrator coverage only; it does not certify Wild Shape runtime, subclass-level wiring, choices, resources, actions, formulas, source suppression, spell-slot accounting, summoned-creature runtime or other Character Engine behavior`
-- `next_required_audit: full Druid mechanics/runtime audit`
+- `last_mechanics_audit_started: 2026-08-29`
+- `class_tab_source: resolved CE contract through classPresentation.ts`
+- `class_tab_type_contract: ENABLED_2026_08_29`
+- `current_main_runtime: native Druid runtime/resource completion migrations and dedicated runtime tests exist`
+- `production_runtime: NOT_SYNCED with current main mechanical migration stack as of 2026-08-29 audit`
+- `production_latest_observed_migration: 20260829151113_voss_spell_style_ability_explanations`
+- `mechanics_status_reason: live catalog still contains composite/text-only Circle abilities that must be distinguished from child actions and from genuinely missing runtime rows`
 
-### Druid circles — text layer
+### Mechanics audit targets
 
-- Circle of Dreams — `READY`
-- Circle of the Land — `READY`
-- Circle of the Moon — `READY`
-- Circle of the Sea — `READY`
-- Circle of the Shepherd — `READY`
-- Circle of Spores — `READY`
-- Circle of Stars — `READY`
-- Circle of Wildfire — `READY`
+- Wild Shape: pool, recovery, transformation state, beast HP/stat replacement, overflow damage, duration, equipment and retained features.
+- Wild Companion: alternative cost through Wild Shape or spell slot and class-tab action visibility.
+- Spellcasting/preparation and class spell access.
+- Primal Order, Elemental Fury and persistent branch choices.
+- Wild Resurgence and Archdruid resource conversions.
+- Circle of Land: daily land choice, always-prepared spells, Land's Aid and Nature's Ward.
+- Circle of Stars: Star Map, Starry Form, Cosmic Omen and mode/resource state.
+- Circle of Sea: Wrath of the Sea, aura ownership/radius and later upgrades.
+- Circle of Wildfire: spirit creation/control/stat block and spirit-dependent actions.
+- Dreams/Shepherd/Spores/Moon: finite pools, summoned/created creature hooks, reaction limits, temporary HP/aura behavior and subclass unlock compatibility.
+- Legacy 2/6/10/14 rows must remain gated by the actual parent subclass unlock until deliberately normalized.
 
-### Known mechanics-only follow-up
-
-These notes **do not reopen the text layer**. They are explicit targets for the later mechanics audit. Edition/source compatibility notes belong here only and must never be copied into player-facing descriptions:
-
-- Legacy subclass progression: Dreams, Spores, Shepherd and Wildfire still have legacy feature rows beginning at Druid level 2 while the base class currently unlocks its subclass at Druid level 3. Resolve the 2/6/10/14 versus 3/6/10/14 compatibility deliberately in mechanics; do not infer a level move from the text closure.
-- Wild Shape: verify the project-pinned 2014 model end to end — exactly 2 uses, full short/long-rest recovery, beast HP and physical statistics, excess-damage carryover, form duration, equipment handling and retained-feature legality. Do not accidentally add the 2024 temporary-HP model.
-- Circle of the Moon: verify Character Engine does **not** add the 2024 `3 × Druid level` temporary HP on top of the project beast-HP model. The active player rule states only the resulting mechanic and contains no edition comparison.
-- Circle of the Land: verify Land’s Aid structured scaling matches the text contract `2d6 → 3d6 → 4d6`, and verify the daily land choice drives both always-prepared spells and Nature’s Ward resistance.
-- Circle of Stars: verify Star Map free casts, Starry Form mode selection/switching, Cosmic Omen state and reaction uses against runtime resource/action semantics.
-- Circle of the Sea: verify Wrath of the Sea targeting, successful-save zero effect, emanation radius upgrades, Stormborn benefits and Oceanic Gift ownership when the aura is placed on an ally.
-- Circle of Wildfire: verify the Wildfire Spirit stat block, initiative/control, Flame Seed, Fiery Teleportation, lifetime and later spirit-dependent features as actual runtime behavior.
-- Circle of Shepherd and Circle of Spores: verify summoned/created creature hooks, reaction limits, temporary HP, aura healing, corpse eligibility and duration handling; the text is authoritative for the intended human rule, not proof that CE currently enforces it.
-- Base Druid: verify spell-slot and prepared-spell accounting, Primal Order choice, Elemental Fury persistent branch and level-15 upgrade, Wild Resurgence conversions, Beast Spells legality and Archdruid initiative/conversion rules.
-
-### What “READY” means here
-
-The green/ready mark is permitted **only for Druid descriptions/reference copy and Reynar Voss author layers**. Do not describe Druid gameplay mechanics as complete until `mechanics_status` is separately changed to `READY` after a dedicated audit.
+Do not promote Druid mechanics to `READY` until both main and production pass the same audit.
 
 ---
 
 ## Cleric (`class:cleric`)
 
-**Overall project label:** `TEXT READY`  
-**Gameplay mechanics/runtime label:** `NOT_AUDITED`
+**Text:** `READY`  
+**Mechanics/runtime:** `IN_PROGRESS`
 
-- `text_status: READY`
-- `mechanics_status: NOT_AUDITED`
 - `last_text_audit: 2026-08-29`
-- `last_voss_audit: 2026-08-29`
-- `reference_delivery: LIVE_SYNCED_2026_08_29`
-- `production_migration: 20260829135656_fighter_cleric_voss_live_sync`
-- `ability_explanation_delivery: LIVE_SYNCED_2026_08_29 via 20260829151113_voss_spell_style_ability_explanations`
-- `ability_explanation_audit: 100/100 current Cleric + Domain source groups have spell-style Voss explanations; old renderer/database boilerplate=0`
-- `subclass_nuance_delivery: LIVE_SYNCED_2026_08_29 via 20260829142821_subclass_voss_nuances`
-- `subclass_nuance_audit: 81/81 current Cleric Domain source groups carry one or more authorNuances; missing=0`
-- `narration_contract: every rendered Cleric mechanic node has authorExplanation -> exact rule -> authorComment; Domain abilities additionally render authorNuances between the rule and final comment`
-- `production_coverage_audit: 744/744 current Cleric + Domain mechanic nodes have authorExplanation and authorComment; missing_explanation=0; missing_comment=0; banned_modern_register=0`
-- `text_scope: base Cleric levels 1–20 + all 14 catalogued domains + domain spell groups + Divine Order and Blessed Strikes nested choices + scaling/failure/success clauses + Voss explanations/nuances/comments + class/domain summaries and descriptions`
-- `domain_text_audit: 14/14 domains included in the final closure and live narration sync`
-- `feature_text_audit: closure gate requires 84/84 feature grants including the base hit-die card to have explicit non-placeholder descriptions`
-- `voss_coverage_contract: every openable Cleric ability/source-group card has a separate Reynar Voss explanation and comment`
-- `voss_coverage_audit: 156/156 current openable Cleric source groups remain covered; live recursive node audit additionally verifies 744/744 mechanic nodes`
-- `canonical_voss_voice: src/data/vossVoice.ts`
-- `reference_ui: tappable full-rule cards; list preview visibly labels "Восс объясняет"; Domain detail order is Voss explanation -> exact rule/facts -> Voss nuances -> Voss comment`
-- `player_text_immersion_audit: class/domain summaries, explanations, nuances and Voss notes reject implementation, project, edition and modern office/legal/commercial language`
-- `production_delivery_rule: live Cleric narration sync is presentation-only; it may update author explanations/nuances/comments and renderer-only presentation metadata, but must not rewrite exact rule descriptions/resources/actions/formulas/effects/costs/choices/spell access/CE dependencies`
-- `known_boundary: this closure certifies human-readable reference text only; structured spell slots, Channel Divinity accounting, domain actions/resources, choice persistence, source suppression and all other runtime behavior remain unaudited`
-- `next_required_audit: full Cleric mechanics/runtime audit`
+- `last_mechanics_audit_started: 2026-08-29`
+- `class_tab_source: resolved CE contract through classPresentation.ts`
+- `class_tab_type_contract: ENABLED_2026_08_29`
+- `current_main_runtime: exact rules and spell/resource structure exist, but full fourteen-domain runtime coverage is not yet certified`
+- `production_runtime: NOT_SYNCED with current main class migration stack as of 2026-08-29 audit`
+- `production_latest_observed_migration: 20260829151113_voss_spell_style_ability_explanations`
+- `mechanics_status_reason: live Cleric/domain catalog still has many active composite abilities represented only by feature text, and several finite-use actions do not yet prove a canonical CE resource pool`
 
-### Cleric domains — text layer
+### Mechanics audit targets
 
-- Arcana Domain — `READY`
-- Death Domain — `READY`
-- Forge Domain — `READY`
-- Grave Domain — `READY`
-- Knowledge Domain — `READY`
-- Life Domain — `READY`
-- Light Domain — `READY`
-- Nature Domain — `READY`
-- Order Domain — `READY`
-- Peace Domain — `READY`
-- Tempest Domain — `READY`
-- Trickery Domain — `READY`
-- Twilight Domain — `READY`
-- War Domain — `READY`
+- Base Cleric: cantrips/prepared spells/slots, Divine Order choice, Channel Divinity pool/recovery, Divine Spark, Turn/Sear Undead, Blessed Strikes persistent branch, Divine Intervention recovery.
+- Domain spell groups: always-prepared source identity and shared slot spending.
+- Nested Divine Order/Blessed Strikes choices: persistence and level gating.
+- Every Wisdom/PB-scaled finite pool and reaction must have a real CE resource when uses are finite.
+- Every Channel Divinity domain action must consume the shared canonical Channel Divinity resource.
+- Arcana/Death/Forge/Grave/Knowledge/Life/Light/Nature/Order/Peace/Tempest/Trickery/Twilight/War must each be audited source-group by source-group.
+- Legacy domain rows below class level 3 must be blocked by subclass unlock and must never grant early mechanics.
 
-### Known mechanics-only follow-up
-
-These notes **do not reopen the text layer** and must not leak into player-facing rules:
-
-- Legacy domain rows: Arcana, Death, Forge, Nature, Order, Peace, Tempest and Twilight still contain some source rows numbered 1/2 while the parent subclass unlock is level 3. The parser/runtime audit must verify that the parent unlock gate prevents early mechanics; do not silently move structured rows during a text pass.
-- Base Cleric: verify cantrip/prepared-spell/slot progression, long-rest preparation, Divine Order persistence, Channel Divinity maximum/recovery, Divine Spark scaling, Turn Undead/Sear Undead, Blessed Strikes branch persistence and Divine Intervention recovery in Character Engine.
-- Nested choices: verify Divine Order and Blessed Strikes selections persist, unlock at the correct class level and apply only their selected mechanics; Voss coverage in the text closure is not proof of choice runtime correctness.
-- Domain spell groups: verify always-prepared access, spell-class identity, slot spending and multiclass interaction separately. The reference text treats the lists as human-readable domain spell grants only.
-- Domain finite-use features: verify all Wisdom/PB-scaled pools, reactions, rest recovery, spell-slot conversions and Channel Divinity costs as structured runtime resources/actions.
-- Legacy early-level domains: text rules describe the abilities themselves; the later mechanics audit must decide whether the stored 1/2 row numbering should be normalized structurally or left behind the level-3 parent gate.
-
-### What “READY” means here
-
-The green/ready mark is permitted **only for Cleric descriptions/reference copy and Reynar Voss author layers**. Do not describe Cleric gameplay mechanics as complete until `mechanics_status` is separately changed to `READY` after a dedicated mechanics/runtime audit.
+Do not promote Cleric mechanics to `READY` until both main and production pass the same audit.
 
 ---
 
 ## Other classes
 
-Add an explicit section when work begins. Absence from this ledger means **no completion claim may be inferred**.
+No mechanics completion claim is inherited from the generic catalog. Add an explicit section when a class-specific audit begins. Absence from this ledger means no `READY` claim may be inferred.
