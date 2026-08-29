@@ -2,7 +2,6 @@ import { useMemo, useState } from "react"
 
 import { useCharacters } from "../../context/CharacterContext"
 import { classReference, type ClassReferenceEntry } from "../../data/classReference"
-import { getDruidBaseFeatureNuances, getDruidSubclassFeatureNuances } from "../../data/classes/druidNuances"
 import { druidReference } from "../../data/classes/druidReference"
 import { useRuleTemplates } from "../../hooks/useRuleTemplates"
 import type { SpellClassKey } from "../../lib/spellCatalog"
@@ -43,7 +42,6 @@ type RuleFeatureView = {
   explanation: string
   description: string
   facts: string[]
-  nuances: string[]
   voss?: string
 }
 
@@ -83,15 +81,6 @@ function payloadText(mechanic: StoredMechanic, key: "label" | "description" | "a
   if (!isRecord(payload)) return ""
   const value = payload[key]
   return typeof value === "string" ? value.trim() : ""
-}
-
-function payloadStringList(mechanic: StoredMechanic, key: "authorNuances") {
-  if (mechanic.type !== "grant") return []
-  const payload: unknown = mechanic.payload
-  if (!isRecord(payload)) return []
-  const value = payload[key]
-  if (!Array.isArray(value)) return []
-  return value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean)
 }
 
 function sourceKey(mechanic: StoredMechanic) {
@@ -210,18 +199,6 @@ function featureExplanation(mechanics: StoredMechanic[], description: string) {
   return explicitFeatureExplanation(mechanics) || fallbackFeatureExplanation(mechanics, description)
 }
 
-function featureNuances(mechanics: StoredMechanic[]) {
-  const nuances: string[] = []
-  for (const mechanic of mechanics) {
-    if (mechanic.type === "grant" && mechanic.target === "feature") nuances.push(...payloadStringList(mechanic, "authorNuances"))
-  }
-  for (const mechanic of mechanics) {
-    const values = mechanic.presentation?.authorNuances || []
-    nuances.push(...values.map((item) => item.trim()).filter(Boolean))
-  }
-  return [...new Set(nuances)]
-}
-
 function featureVoss(mechanics: StoredMechanic[]) {
   for (const mechanic of mechanics) {
     if (mechanic.type !== "grant" || mechanic.target !== "feature") continue
@@ -266,7 +243,6 @@ function buildTemplateFeatures(template: RuleTemplate | undefined, levels: RuleT
         explanation: featureExplanation(mechanics, description),
         description,
         facts: mechanicFacts(mechanics),
-        nuances: featureNuances(mechanics),
         voss: featureVoss(mechanics) || undefined,
       })
     }
@@ -300,7 +276,7 @@ function FeatureCard({ feature, onOpen }: { feature: RuleFeatureView; onOpen: (f
       </span>
       <span className="reference-class-feature__eyebrow">Восс объясняет</span>
       <span className="reference-class-feature__preview">{feature.explanation}</span>
-      <span className="reference-class-feature__open">{feature.nuances.length ? "Объяснение → правило → нюансы → комментарий" : "Объяснение → правило → комментарий"}</span>
+      <span className="reference-class-feature__open">Объяснение → правило → комментарий</span>
     </button>
   )
 }
@@ -367,14 +343,7 @@ export default function ReferenceGuide({
   }, [selectedClass, selectedSubclass, templates])
 
   const classFeatures = useMemo(() => buildTemplateFeatures(classTemplate, levels), [classTemplate, levels])
-  const subclassFeatures = useMemo(() => {
-    const features = buildTemplateFeatures(selectedSubclassTemplate, levels)
-    if (selectedClass?.id !== "druid" || !selectedSubclass) return features
-    return features.map((feature) => {
-      const nuances = getDruidSubclassFeatureNuances(selectedSubclass.id, feature.name)
-      return nuances.length ? { ...feature, nuances } : feature
-    })
-  }, [selectedClass, selectedSubclass, selectedSubclassTemplate, levels])
+  const subclassFeatures = useMemo(() => buildTemplateFeatures(selectedSubclassTemplate, levels), [selectedSubclassTemplate, levels])
 
   if (section === "spells") {
     return <SpellReference character={character} canManage={canManage} onClose={() => setSection("home")} onCharacterChanged={onCharacterChanged} />
@@ -488,7 +457,7 @@ export default function ReferenceGuide({
                 {isDruid ? druidReference.features.map((feature) => (
                   <FeatureCard
                     key={`${feature.level}:${feature.name}`}
-                    feature={{ level: feature.level, name: feature.name, explanation: feature.explanation, description: feature.mechanics, facts: feature.details || [], nuances: getDruidBaseFeatureNuances(feature.level, feature.name), voss: feature.voss }}
+                    feature={{ level: feature.level, name: feature.name, explanation: feature.explanation, description: feature.mechanics, facts: feature.details || [], voss: feature.voss }}
                     onOpen={setSelectedFeature}
                   />
                 )) : classFeatures.length ? classFeatures.map((feature, index) => (
@@ -564,12 +533,6 @@ export default function ReferenceGuide({
                 <section className="reference-feature-detail-facts">
                   <span>Механические данные</span>
                   <ul className="reference-rule-facts">{selectedFeature.facts.map((fact) => <li key={fact}>{fact}</li>)}</ul>
-                </section>
-              ) : null}
-              {selectedFeature.nuances.length ? (
-                <section className="reference-voss-nuances surface">
-                  <span>Нюансы Восса</span>
-                  <ul>{selectedFeature.nuances.map((nuance) => <li key={nuance}>{nuance}</li>)}</ul>
                 </section>
               ) : null}
               {selectedFeature.voss && <section className="reference-voss-note surface"><span>Комментарий Восса</span><p>{selectedFeature.voss}</p></section>}
