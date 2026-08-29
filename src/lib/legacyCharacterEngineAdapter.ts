@@ -76,15 +76,22 @@ export function buildLegacyCharacterEngineInput(args: {
   const parserOwnedSlots = new Set(templateContributions
     .filter((entry) => entry.kind === "grant" && entry.target === "resource" && /^spell_slot_[1-9]$/.test(entry.key))
     .map((entry) => entry.kind === "grant" ? entry.key : ""))
+  const parserOwnedSlotLevels = [...parserOwnedSlots]
+    .map((key) => Number(key.match(/^spell_slot_([1-9])$/)?.[1] || 0))
+    .filter((level) => level > 0)
 
   const resources: Record<string, ResourceState> = { ...registeredCharacterResourceState(character.id), ...(args.resourceStates || {}) }
-  const slotLevels = configuredSlotLevels(sheet, spells)
+  const slotLevels = [...new Set([...configuredSlotLevels(sheet, spells), ...parserOwnedSlotLevels])].sort((a, b) => a - b)
   for (const level of slotLevels) {
     const slot = sheet.spell_slots?.[String(level)]; const max = Math.max(0, Number(slot?.max || 0)); const used = Math.max(0, Number(slot?.used || 0)); const key = slotResourceKey(level)
-    // New class templates own slot capacity. The legacy sheet only supplies the
-    // mutable spent/remaining state while old characters keep their legacy grant.
-    if (!parserOwnedSlots.has(key)) contributions.push({ id: `legacy:resource:${key}`, kind: "grant", operation: "GRANT", target: "resource", key, payload: { max, initial: "full", label: `Ячейки ${level} уровня`, recharge: { triggers: ["long_rest"], restore: "full" } }, source: sheetSource })
-    resources[key] = { current: Math.max(0, max - used) }
+    if (!parserOwnedSlots.has(key)) {
+      // Legacy characters keep the old sheet as their slot definition/fallback.
+      contributions.push({ id: `legacy:resource:${key}`, kind: "grant", operation: "GRANT", target: "resource", key, payload: { max, initial: "full", label: `Ячейки ${level} уровня`, recharge: { triggers: ["long_rest"], restore: "full" } }, source: sheetSource })
+      // Once a generic runtime row exists it wins; otherwise seed from legacy used/max.
+      if (!resources[key]) resources[key] = { current: Math.max(0, max - used) }
+    }
+    // Parser-owned slot capacity and initial value come entirely from CE. Never
+    // overwrite their current value with stale character_sheets.spell_slots.
   }
 
   const spellcastingAbility = parseLegacySpellcastingAbility(sheet.spellcasting_ability)
