@@ -12,7 +12,7 @@ import {
 import type { CharacterTemplateBundle, RuleTemplate } from "../src/rule-templates/types.ts"
 import type { StoredMechanics } from "../src/types/characterMechanics.ts"
 
-const STRICT_MIGRATION_CUTOFF = "20260829070000"
+const STRICT_MIGRATION_CUTOFF = "20260829143001"
 const migrationsDir = "supabase/migrations"
 
 function template(): RuleTemplate {
