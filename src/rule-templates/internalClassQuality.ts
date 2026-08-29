@@ -37,7 +37,9 @@ export type ClassQualityIssueCode =
   | "vague_description"
   | "placeholder_description"
   | "implementation_meta"
+  | "unclear_summary"
   | "missing_source_key"
+  | "action_without_explanation"
   | "finite_use_without_resource"
   | "finite_action_without_action"
   | "invalid_choice"
@@ -198,6 +200,15 @@ export function auditClassBundleQuality(bundle: CharacterTemplateBundle): ClassQ
   if (bundle.template.kind !== "class" && bundle.template.kind !== "subclass") return []
 
   const issues: ClassQualityIssue[] = []
+  const summary = bundle.template.mechanical_summary?.trim() || ""
+  if (summary.length < 45 || VAGUE_RULE_PATTERNS.some((pattern) => pattern.test(summary)) || PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(summary))) {
+    issues.push({
+      code: "unclear_summary",
+      path: `template:${bundle.template.catalog_key || bundle.template.id}.mechanical_summary`,
+      message: "Class/subclass mechanical_summary must state a concrete play identity and may not be vague or placeholder text.",
+    })
+  }
+
   const entries = collectMechanics(bundle)
   const bySource = new Map<string, StoredMechanic[]>()
   for (const { mechanic } of entries) {
@@ -206,6 +217,18 @@ export function auditClassBundleQuality(bundle: CharacterTemplateBundle): ClassQ
     const current = bySource.get(sourceKey) || []
     current.push(mechanic)
     bySource.set(sourceKey, current)
+  }
+
+  for (const [sourceKey, sourceMechanics] of bySource) {
+    if (!sourceMechanics.some((item) => item.type === "action")) continue
+    const descriptions = sourceMechanics.map(featureDescription).filter((value): value is string => value !== undefined)
+    if (!descriptions.some((description) => description.length >= 45)) {
+      issues.push({
+        code: "action_without_explanation",
+        path: `source:${sourceKey}`,
+        message: "Every class/subclass action needs a precise player-facing feature explanation under the same sourceKey.",
+      })
+    }
   }
 
   for (const entry of entries) {
