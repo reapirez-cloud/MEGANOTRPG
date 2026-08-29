@@ -106,10 +106,10 @@ test("Battle Master keeps superiority pool and die size as separate identities",
 })
 
 test("persistent subclass choices expand with Fighter level", () => {
-  assert.match(completionMigration, /battle_master_maneuvers[\s\S]*count_by_level[^\n]*\\"7\\":5[^\n]*\\"10\\":7[^\n]*\\"15\\":9/)
-  assert.match(completionMigration, /arcane_shot_options[\s\S]*count_by_level[^\n]*\\"7\\":3[^\n]*\\"10\\":4[^\n]*\\"15\\":5[^\n]*\\"18\\":6/)
-  assert.match(completionMigration, /rune_knight_runes[\s\S]*count_by_level[^\n]*\\"7\\":3[^\n]*\\"10\\":4[^\n]*\\"15\\":5/)
-  assert.match(completionMigration, /option_unlock_level[^\n]*\\"hill\\":7[^\n]*\\"storm\\":7/)
+  assert.match(completionMigration, /"key":"battle_master_maneuvers"[\s\S]*?"count_by_level":\{"7":5,"10":7,"15":9\}/)
+  assert.match(completionMigration, /"key":"arcane_shot_options"[\s\S]*?"count_by_level":\{"7":3,"10":4,"15":5,"18":6\}/)
+  assert.match(completionMigration, /"key":"rune_knight_runes"[\s\S]*?"count_by_level":\{"7":3,"10":4,"15":5\}/)
+  assert.match(completionMigration, /"option_unlock_level":\{"hill":7,"storm":7\}/)
 })
 
 test("generic choice helpers enforce level-scaled count and option unlocks", () => {
@@ -222,7 +222,7 @@ test("Russian Fighter cards use audited project terminology", () => {
 })
 
 test("finite subclass mechanics use resources rather than fake GM scene flags", () => {
-  const combined = `${completionMigration}\n${psiRuntimeMigration}`
+  const combined = `${baseMigration}\n${completionMigration}\n${psiRuntimeMigration}`
   for (const key of [
     "arcane_shot",
     "warding_maneuver",
@@ -235,14 +235,14 @@ test("finite subclass mechanics use resources rather than fake GM scene flags", 
     "strength_before_death",
   ]) assert.match(combined, new RegExp(key))
 
-  assert.doesNotMatch(combined, /\"enforcement\"\s*:\s*\"gm\"/)
+  assert.doesNotMatch(combined, /"enforcement"\s*:\s*"gm"/)
   assert.doesNotMatch(combined, /_confirmed/)
   assert.match(combined, /no_fake_scene_state/)
 })
 
 test("Banneret reuses Fighter resources rather than duplicating them", () => {
-  assert.match(completionMigration, /Групповое восстановление[\s\S]*Второе дыхание/)
-  assert.match(completionMigration, /Воодушевляющий всплеск[\s\S]*Всплеск действий/)
-  assert.match(completionMigration, /Общая стойкость[\s\S]*Неукротим/)
-  assert.doesNotMatch(completionMigration, /banneret_(second_wind|action_surge|indomitable)/)
+  assert.match(baseMigration, /Групповое восстановление[\s\S]*то же Второе дыхание/)
+  assert.match(baseMigration, /Воодушевляющий всплеск[\s\S]*ресурс базового класса/)
+  assert.match(baseMigration, /Общая стойкость[\s\S]*ресурс Неукротимого/)
+  assert.doesNotMatch(`${baseMigration}\n${completionMigration}`, /banneret_(second_wind|action_surge|indomitable)/)
 })
