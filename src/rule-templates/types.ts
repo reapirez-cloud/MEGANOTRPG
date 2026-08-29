@@ -3,6 +3,7 @@ import type { StoredMechanics } from "../types/characterMechanics.ts"
 export type RuleTemplateKind = "race" | "subrace" | "class" | "subclass"
 export type RuleChoiceTarget = "language" | "proficiency" | "sense" | "trait"
 export type RuleTemplateSourceKind = "official" | "third_party" | "custom"
+export type RuleChoiceSelectionMode = "manager" | "player_once"
 
 export type RuleChoiceRequirement = {
   /** Another persistent choice in the same assignment. */
@@ -25,6 +26,12 @@ export type RuleChoiceDefinition = {
   option_labels?: Record<string, string>
   /** Optional dependency on another persistent choice in this template assignment. */
   requires_choice?: RuleChoiceRequirement
+  /**
+   * Who resolves this choice. Existing definitions default to manager.
+   * player_once choices are offered to the assigned player and become append-only
+   * after confirmation; a later count increase may request only the new slots.
+   */
+  selection_mode?: RuleChoiceSelectionMode
   /** Extra CE mechanics applied only when this option is selected. */
   option_mechanics?: Record<string, StoredMechanics>
   /**
