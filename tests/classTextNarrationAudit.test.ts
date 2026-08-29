@@ -9,6 +9,7 @@ import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
 
 const migration = fs.readFileSync("supabase/migrations/20260829114500_class_text_voss_audit.sql", "utf8")
 const clericFollowup = fs.readFileSync("supabase/migrations/20260829115000_cleric_subclass_text_voss_audit.sql", "utf8")
+const gmRulePass = fs.readFileSync("supabase/migrations/20260829121000_gm_rule_text_fighter_cleric.sql", "utf8")
 const referenceGuide = fs.readFileSync("src/components/reference/ReferenceGuide.tsx", "utf8")
 const authoringContract = fs.readFileSync("docs/REFERENCE_AUTHORING.md", "utf8")
 
@@ -94,9 +95,11 @@ function auditedBundle(): CharacterTemplateBundle {
 test("text audit is presentation-only and does not rewrite structured class mechanics", () => {
   assert.match(migration, /Text-only audit/)
   assert.match(clericFollowup, /Presentation-only continuation/)
+  assert.match(gmRulePass, /Text-only GM adjudication pass/)
   assert.match(migration, /\{payload,authorComment\}/)
   assert.match(migration, /\{payload,description\}/)
-  for (const source of [migration, clericFollowup]) {
+  assert.match(gmRulePass, /\{payload,description\}/)
+  for (const source of [migration, clericFollowup, gmRulePass]) {
     assert.doesNotMatch(source, /jsonb_set\([^\n]*\{payload,mechanic\}/)
     assert.doesNotMatch(source, /jsonb_set\([^\n]*\{resourceCosts\}/)
     assert.doesNotMatch(source, /jsonb_set\([^\n]*\{effects\}/)
@@ -105,16 +108,33 @@ test("text audit is presentation-only and does not rewrite structured class mech
 })
 
 test("rules-facing text rejects placeholder language and spells out the audited choices", () => {
-  for (const source of [migration, clericFollowup]) {
+  for (const source of [migration, clericFollowup, gmRulePass]) {
     assert.doesNotMatch(source, /расширяет возможности/iu)
     assert.doesNotMatch(source, /усиливает возможности/iu)
     assert.doesNotMatch(source, /становится эффективнее/iu)
+    assert.doesNotMatch(source, /развивает направление/iu)
   }
   assert.match(migration, /Если выбран «Улучшение характеристик», увеличьте одну характеристику на 2 либо две характеристики на 1/)
   assert.match(migration, /На 3 уровне выберите Воинский архетип/)
   assert.match(migration, /На 3 уровне выберите домен Жреца/)
   assert.match(migration, /Посланник рыцарства даёт три эффекта/)
   assert.match(clericFollowup, /уровень которой не ниже уровня заклинания/)
+  assert.match(gmRulePass, /провалили проверку характеристики/)
+  assert.match(gmRulePass, /применение Второго дыхания по этому правилу не расходуется/)
+  assert.match(gmRulePass, /Божественная искра/)
+  assert.match(gmRulePass, /Изгнание нежити/)
+  assert.match(gmRulePass, /subclass:cleric:grave-domain/)
+  assert.match(gmRulePass, /subclass:cleric:knowledge-domain/)
+})
+
+test("authoring contract makes GM adjudication authoritative and CE bookkeeping explicit", () => {
+  assert.match(authoringContract, /GM-facing text adjudicates the outcome/)
+  assert.match(authoringContract, /Character Engine is bookkeeping/)
+  assert.match(authoringContract, /not automatically refunded/)
+  assert.match(authoringContract, /unless a separate explicit rule says it does/)
+  assert.match(authoringContract, /what the GM checks/)
+  assert.match(gmRulePass, /'ce_role','resource_bookkeeping'/)
+  assert.match(gmRulePass, /spend_on_activation_unless_feature_explicitly_refunds/)
 })
 
 test("Voss voice is explicit and feature comments are attached at every feature layer", () => {
@@ -125,6 +145,8 @@ test("Voss voice is explicit and feature comments are attached at every feature 
   assert.match(migration, /audit_feature_mechanics_text\(l\.mechanics\)/)
   assert.match(migration, /audit_feature_choices_text\(l\.choices\)/)
   assert.match(clericFollowup, /subclass:cleric:%/)
+  assert.match(gmRulePass, /'feature_author','Рейнар Восс'/)
+  assert.match(gmRulePass, /'циничный','саркастичный','чёрный юмор'/)
   assert.match(authoringContract, /Рейнар Восс/)
   assert.match(authoringContract, /цинич/i)
   assert.match(authoringContract, /саркаст/i)
