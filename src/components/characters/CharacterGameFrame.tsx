@@ -4,14 +4,14 @@ import { useCharacterResourceStates } from "../../hooks/useCharacterResourceStat
 import { useCharacterTemplateRegistry } from "../../hooks/useCharacterTemplateRegistry"
 import { useRuleTemplates } from "../../hooks/useRuleTemplates"
 import { supabase } from "../../lib/supabase"
-import { choiceCountAtLevel, choiceOptionAvailableAtLevel, resolveTemplateBundles } from "../../rule-templates/resolver"
+import { choiceCountAtLevel, choiceDefinitionAvailable, choiceOptionAvailableAtLevel, resolveTemplateBundles } from "../../rule-templates/resolver"
 import type { CharacterTemplateBundle, RuleChoiceDefinition, RuleTemplateKind } from "../../rule-templates/types"
 import "./CharacterGameFrame.css"
 
 type Props = { characterId: string; children: ReactNode }
 type LifeState = "alive" | "dead"
 type SelectedChoices = Record<string, string | string[]>
-type RecoveryTrigger = "short_rest" | "long_rest" | "dawn" | "manual"
+type RecoveryTrigger = "short_rest" | "long_rest" | "dawn"
 
 const assignmentKinds: RuleTemplateKind[] = ["race", "subrace", "class", "subclass"]
 const kindLabel: Record<RuleTemplateKind, string> = {
@@ -108,6 +108,11 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
     }
     return result
   }, [chosenTemplate, effectiveChoiceLevel, rules.levels])
+
+  const visibleChoiceDefs = useMemo(
+    () => choiceDefs.filter((definition) => choiceDefinitionAvailable(definition, selectedChoices)),
+    [choiceDefs, selectedChoices],
+  )
 
   const sourceResolution = useMemo(
     () => resolveTemplateBundles(assigned.bundles, character?.level || 1),
@@ -359,7 +364,6 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
             <button type="button" disabled={saving} onClick={() => void recover("short_rest")}>◷ Короткий отдых</button>
             <button type="button" disabled={saving} onClick={() => void recover("long_rest")}>☾ Долгий отдых</button>
             <button type="button" disabled={saving} onClick={() => void recover("dawn")}>☀ Рассвет</button>
-            <button type="button" disabled={saving} onClick={() => void recover("manual")}>↻ Восстановить ручные</button>
           </div>
           <p>Каждый запас восстанавливается по правилам своей способности. Долгий отдых также возвращает HP и ячейки заклинаний.</p>
         </section>
@@ -495,9 +499,9 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
           {(kind === "subrace" && !existingRace) && <div className="template-assignment-empty">Сначала назначьте расу.</div>}
           {(kind === "subclass" && !existingClasses.length) && <div className="template-assignment-empty">Сначала привяжите класс и задайте ему нужный уровень.</div>}
           {(kind === "subclass" && existingClasses.length > 0 && templatesForKind.length === 0) && <div className="template-assignment-empty">У назначенных классов пока не достигнут уровень открытия подкласса.</div>}
-          {choiceDefs.length > 0 && <div className="template-choice-fields">
+          {visibleChoiceDefs.length > 0 && <div className="template-choice-fields">
             <div className="template-choice-note"><span>◇</span><p><strong>Выбор можно оставить на потом</strong><small>Нерешённый вариант ничего не выдаёт и не мешает назначить класс. Уже сделанный выбор сохраняется при повышении уровня.</small></p></div>
-            {choiceDefs.map((choice) => {
+            {visibleChoiceDefs.map((choice) => {
               const required = choiceCountAtLevel(choice, effectiveChoiceLevel)
               const selected = selectedValues(selectedChoices[choice.key])
               const availableOptions = choice.options.filter((option) => choiceOptionAvailableAtLevel(choice, option, effectiveChoiceLevel))
