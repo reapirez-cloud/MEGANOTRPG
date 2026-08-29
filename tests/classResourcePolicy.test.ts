@@ -74,12 +74,14 @@ test("class resource policy is a versioned developer contract", () => {
   assert.equal(CLASS_RESOURCE_POLICY_VERSION, "2026-08-29-short-long-rest-v1")
 })
 
-test("short-rest, long-rest and mixed short/long pools are valid resources", () => {
+test("short-rest, long-rest, dawn and mixed recovery pools are valid resources", () => {
   const packageBundle = bundle([
     feature("short-pool", "Использований: 2. Весь запас восстанавливается после короткого отдыха."),
     { id: "short", type: "resource", key: "short_pool", label: "Short", max: 2, recharge: "short_rest", sourceKey: "short-pool" },
     feature("long-pool", "Использований: 3. Весь запас восстанавливается после долгого отдыха."),
     { id: "long", type: "resource", key: "long_pool", label: "Long", max: 3, recharge: "long_rest", sourceKey: "long-pool" },
+    feature("dawn-pool", "Использований: 1. Использование восстанавливается на рассвете."),
+    { id: "dawn", type: "resource", key: "dawn_pool", label: "Dawn", max: 1, recharge: "dawn", sourceKey: "dawn-pool" },
     feature("mixed-pool", "Есть общий запас. После короткого отдыха возвращается 1 использование, после долгого — весь запас."),
     {
       id: "mixed",
@@ -98,11 +100,12 @@ test("short-rest, long-rest and mixed short/long pools are valid resources", () 
   assert.doesNotThrow(() => assertClassResourcePolicy([packageBundle]))
 })
 
-test("dawn, manual and never are forbidden for official class counters", () => {
-  for (const recharge of ["dawn", "manual", "never"] as const) {
+test("manual and never are forbidden for official class counters", () => {
+  for (const recharge of ["manual", "never"] as const) {
+    const invalidResource = { id: `bad-${recharge}`, type: "resource", key: `bad_${recharge}`, label: recharge, max: 1, recharge, sourceKey: `bad-${recharge}` } as never
     const packageBundle = bundle([
       feature(`bad-${recharge}`, "У способности есть отдельный счётчик применений."),
-      { id: `bad-${recharge}`, type: "resource", key: `bad_${recharge}`, label: recharge, max: 1, recharge, sourceKey: `bad-${recharge}` },
+      invalidResource,
     ])
     const codes = auditClassPackageResourcePolicy([packageBundle]).map((issue) => issue.code)
     assert.ok(codes.includes("class_resource_without_rest_recovery"))
@@ -110,7 +113,7 @@ test("dawn, manual and never are forbidden for official class counters", () => {
   }
 })
 
-test("reaction and once-per-turn cadence stay unlimited when no rest pool exists", () => {
+test("reaction and once-per-turn cadence stay unlimited when no recovery pool exists", () => {
   const packageBundle = bundle([
     feature("reaction", "Когда враг попадает по союзнику, можете реакцией применить эту способность. За частотой реакций следит обычное правило боя."),
     { id: "reaction-action", type: "action", key: "reaction_action", label: "Реакция", economy: "reaction", sourceKey: "reaction" },
@@ -121,9 +124,10 @@ test("reaction and once-per-turn cadence stay unlimited when no rest pool exists
 })
 
 test("a fake once-per-turn counter is rejected", () => {
+  const invalidCounter = { id: "fake-turn-resource", type: "resource", key: "fake_turn", label: "Раз за ход", max: 1, recharge: "manual", sourceKey: "fake-turn" } as never
   const packageBundle = bundle([
     feature("fake-turn", "Один раз за свой ход после попадания можете применить этот эффект. Отдельного восстановления после отдыха у него нет."),
-    { id: "fake-turn-resource", type: "resource", key: "fake_turn", label: "Раз за ход", max: 1, recharge: "manual", sourceKey: "fake-turn" },
+    invalidCounter,
   ])
   const codes = auditClassPackageResourcePolicy([packageBundle]).map((issue) => issue.code)
   assert.ok(codes.includes("gm_cadence_counter_forbidden"))
