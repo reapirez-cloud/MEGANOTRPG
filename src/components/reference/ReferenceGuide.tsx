@@ -169,46 +169,17 @@ function explicitFeatureExplanation(mechanics: StoredMechanic[]) {
   return ""
 }
 
-function firstRuleSentence(description: string) {
-  const normalized = description.replace(/\\n/g, " ").replace(/\s+/g, " ").trim()
-  const match = normalized.match(/^(.+?[.!?])(?:\s|$)/)
-  return match?.[1]?.trim() || normalized
-}
-
 /**
- * Last-resort clarity layer. Audited classes should provide authorExplanation in
- * data, but a newly added source group must still render in the correct order
- * instead of silently losing the explanation layer.
+ * Missing authored narration must stay missing. Never manufacture a Voss layer
+ * from an action, resource, spell list or first sentence of the exact rule: a
+ * mechanical paraphrase under Voss's name is worse than showing no narration.
  */
-function fallbackFeatureExplanation(mechanics: StoredMechanic[], description: string) {
-  const visible = mechanics.filter((mechanic) => !isSpellSlot(mechanic))
-  const spells = visible.filter((mechanic) => mechanic.type === "spell")
-  if (spells.length) {
-    const names = spells.map((mechanic) => mechanic.type === "spell" ? `«${mechanic.payload.spell.name}»` : "").filter(Boolean)
-    return `Эта способность добавляет ${names.length === 1 ? "заклинание" : "заклинания"} ${names.join(", ")}. Здесь запоминается сам доступ; точное действие каждого заклинания смотрите в его карточке.`
-  }
-
-  const resource = visible.find((mechanic) => mechanic.type === "resource")
-  if (resource?.type === "resource") {
-    return `Это запас применений «${resource.label}». Когда другое правило требует его потратить, уменьшается этот запас; карточка ниже показывает, сколько применений доступно и после какого отдыха они возвращаются.`
-  }
-
-  const action = visible.find((mechanic) => mechanic.type === "action")
-  if (action?.type === "action") {
-    const economy = economyLabel[action.economy] || action.economy
-    return `Это отдельное ${economy}: выбираете его тогда, когда хотите применить эту способность. Цель, цена и результат указаны в точном правиле ниже.`
-  }
-
-  const proficiencies = visible.filter((mechanic) => mechanic.type === "grant" && mechanic.target === "proficiency")
-  if (proficiencies.length === visible.length && proficiencies.length) {
-    return "Это постоянные владения. Получив их, вы просто учитываете их в подходящих проверках, спасбросках, оружии или доспехах; отдельная активация не нужна."
-  }
-
-  return firstRuleSentence(description)
+function fallbackFeatureExplanation() {
+  return ""
 }
 
-function featureExplanation(mechanics: StoredMechanic[], description: string) {
-  return explicitFeatureExplanation(mechanics) || fallbackFeatureExplanation(mechanics, description)
+function featureExplanation(mechanics: StoredMechanic[], _description: string) {
+  return explicitFeatureExplanation(mechanics) || fallbackFeatureExplanation()
 }
 
 function featureVoss(mechanics: StoredMechanic[]) {
@@ -298,9 +269,15 @@ function FeatureCard({ feature, onOpen }: { feature: RuleFeatureView; onOpen: (f
         <strong>{feature.name}</strong>
         <em aria-hidden="true">›</em>
       </span>
-      <span className="reference-class-feature__eyebrow">Восс объясняет</span>
-      <span className="reference-class-feature__preview">{feature.explanation}</span>
-      <span className="reference-class-feature__open">Объяснение → правило → комментарий</span>
+      {feature.explanation ? (
+        <>
+          <span className="reference-class-feature__eyebrow">Восс объясняет</span>
+          <span className="reference-class-feature__preview">{feature.explanation}</span>
+          <span className="reference-class-feature__open">Объяснение → правило → комментарий</span>
+        </>
+      ) : (
+        <span className="reference-class-feature__open">Точное правило → комментарий</span>
+      )}
     </button>
   )
 }
@@ -593,10 +570,12 @@ export default function ReferenceGuide({
               <span />
             </header>
             <main className="reference-feature-detail-content">
-              <section className="reference-voss-explanation surface">
-                <span>Восс объясняет</span>
-                <p>{selectedFeature.explanation}</p>
-              </section>
+              {selectedFeature.explanation && (
+                <section className="reference-voss-explanation surface">
+                  <span>Восс объясняет</span>
+                  <p>{selectedFeature.explanation}</p>
+                </section>
+              )}
               <section className="reference-feature-detail-rule surface">
                 <span>Точное правило</span>
                 <p>{selectedFeature.description}</p>
