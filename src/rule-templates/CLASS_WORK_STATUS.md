@@ -168,6 +168,7 @@ The green/ready mark is permitted **only for Druid descriptions/reference copy a
 - `domain_text_audit: 14/14 domains included in the final closure and live narration sync`
 - `feature_text_audit: closure gate requires 84/84 feature grants including the base hit-die card to have explicit non-placeholder descriptions`
 - `voss_coverage_contract: every openable Cleric ability/source-group card has a separate Reynar Voss explanation and comment`
+- `voss_coverage_audit: 156/156 current openable Cleric source groups remain covered; live recursive node audit additionally verifies 744/744 mechanic nodes`
 - `canonical_voss_voice: src/data/vossVoice.ts`
 - `reference_ui: tappable full-rule cards; preview -> full detail; full detail order is Voss explanation -> exact rule/facts -> Voss comment`
 - `player_text_immersion_audit: class/domain summaries, explanations and Voss notes reject implementation, project, edition and modern office/legal/commercial language`
