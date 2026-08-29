@@ -33,13 +33,17 @@ test("all three audited class families receive explicit Voss-authored descriptio
   assert.match(migration, /when 'subclass:cleric:/)
 })
 
-test("audited feature cards carry authored explanations before renderer fallback can be used", () => {
+test("old authored feature rows remain historical data, but renderer never manufactures Voss from mechanics", () => {
   assert.match(abilityMigration, /authorExplanation/)
   assert.match(abilityMigration, /Есть обычные молитвы/)
   assert.match(abilityMigration, /Когда человеческое тело перестаёт подходить задаче/)
   assert.match(abilityMigration, /Получили по рёбрам, отдышались и решили, что умирать сегодня неудобно/)
   assert.match(abilityMigration, /Когда одного действия не хватило, воин просто делает ещё одно прямо сейчас/)
-  assert.match(guide, /return explicitFeatureExplanation\(mechanics\) \|\| fallbackFeatureExplanation\(mechanics, description\)/)
+
+  assert.match(guide, /function fallbackFeatureExplanation\(\)\s*\{\s*return ""/)
+  assert.match(guide, /return explicitFeatureExplanation\(mechanics\) \|\| fallbackFeatureExplanation\(\)/)
+  assert.doesNotMatch(guide, /function fallbackFeatureExplanation[\s\S]*?Это запас применений/)
+  assert.doesNotMatch(guide, /function fallbackFeatureExplanation[\s\S]*?Это отдельное .*действие/)
 })
 
 test("static Druid reference uses Voss voice rather than rule paraphrase", () => {
@@ -50,7 +54,7 @@ test("static Druid reference uses Voss voice rather than rule paraphrase", () =>
   assert.doesNotMatch(druid, /Это запас применений|Это отдельное действие|расширяет возможности/i)
 })
 
-test("reference UI renders explanation -> exact rule -> comment in canonical order", () => {
+test("reference UI renders authored explanation -> exact rule -> comment in canonical order when narration exists", () => {
   const start = guide.indexOf('className="reference-feature-detail-content"')
   const end = guide.indexOf("</main>", start)
   const detail = guide.slice(start, end)
@@ -61,6 +65,7 @@ test("reference UI renders explanation -> exact rule -> comment in canonical ord
   assert.ok(explanation >= 0)
   assert.ok(rule > explanation)
   assert.ok(comment > rule)
+  assert.match(detail, /selectedFeature\.explanation &&/)
 })
 
 test("canonical voice stays recognizably Voss rather than office prose", () => {
