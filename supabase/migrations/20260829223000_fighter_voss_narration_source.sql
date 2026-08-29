@@ -57,16 +57,26 @@ where rt.id = rtl.template_id
   and rt.is_active
   and (rt.catalog_key = 'class:fighter' or rt.catalog_key like 'subclass:fighter:%');
 
--- Guard the migration contract itself: no Fighter feature row may retain the
--- legacy explanation field after this cleanup. This intentionally does not
--- require an explanation in DB because the authored source is the code registry.
+-- Guard both template-level and progression-level feature rows. Missing DB
+-- narration is intentional: the authoritative authored source is the code
+-- registry, while the database keeps exact rules and comments.
 do $$
 declare v_remaining integer;
 begin
   with fighter_features as (
     select m
     from public.rule_templates rt
-    left join public.rule_template_levels rtl on rtl.template_id = rt.id
+    cross join lateral jsonb_array_elements(coalesce(rt.mechanics, '[]'::jsonb)) m
+    where rt.is_active
+      and (rt.catalog_key = 'class:fighter' or rt.catalog_key like 'subclass:fighter:%')
+      and m->>'type' = 'grant'
+      and m->>'target' = 'feature'
+
+    union all
+
+    select m
+    from public.rule_templates rt
+    join public.rule_template_levels rtl on rtl.template_id = rt.id
     cross join lateral jsonb_array_elements(coalesce(rtl.mechanics, '[]'::jsonb)) m
     where rt.is_active
       and (rt.catalog_key = 'class:fighter' or rt.catalog_key like 'subclass:fighter:%')
