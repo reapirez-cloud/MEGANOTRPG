@@ -8,8 +8,10 @@ import ImageUploadField from "../components/common/ImageUploadField"
 import ContextActionSheet, { type ContextAction } from "../components/common/ContextActionSheet"
 import type { ChatRoom } from "../types/chat"
 import { useLongPressItem } from "../hooks/useLongPressItem"
+import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { deleteCampaignMediaObject } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
+import { oracle } from "../oracle-engine/runtime.ts"
 import "../game-story-v2.css"
 import "../chats-v3.css"
 
@@ -168,15 +170,38 @@ export default function Chats({ onOpenRoom }: Props) {
     if (!room.character_id) return
     setSaving(true)
     setError("")
-    const { error: lifeError } = await supabase.rpc("set_character_life_state", {
-      p_character_id: room.character_id,
-      p_life_state: next,
-    })
-    setSaving(false)
-    if (lifeError) {
-      setError(lifeError.message)
+
+    if (!campaignId) {
+      setSaving(false)
+      setError("Кампания ещё не загружена.")
       return
     }
+
+    const { data: authData, error: authError } = await supabase.auth.getUser()
+    if (authError || !authData.user) {
+      setSaving(false)
+      setError(authError?.message || "Нужна авторизация.")
+      return
+    }
+
+    try {
+      await oracle.characters.setLifeState(
+        createEngineCommandContext({
+          campaignId,
+          requestedBy: authData.user.id,
+          authority: "gm",
+          actorCharacterId: room.character_id,
+        }),
+        room.character_id,
+        next,
+      )
+    } catch (reason) {
+      setSaving(false)
+      setError(reason instanceof Error ? reason.message : "Не удалось изменить состояние персонажа.")
+      return
+    }
+
+    setSaving(false)
     await rooms.reload()
     if (next === "dead") setPersonalView("closed")
   }
