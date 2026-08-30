@@ -98,6 +98,18 @@ export class OracleEngine {
         ...(options.maxHp !== undefined ? { maxHp: options.maxHp } : {}),
         ...(options.tempHp !== undefined ? { tempHp: options.tempHp } : {}),
       })),
+      assignTemplate: (context, characterId, input) => direct(context, () => dependencies.shapoklyak.execute({
+        kind: "entity.assign_template",
+        context,
+        characterId,
+        input,
+      })),
+      removeTemplateAssignment: (context, characterId, assignmentId) => direct(context, () => dependencies.shapoklyak.execute({
+        kind: "entity.remove_template_assignment",
+        context,
+        characterId,
+        assignmentId,
+      })),
     }
 
     this.inventory = {
