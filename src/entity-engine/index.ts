@@ -4,6 +4,7 @@ export { SupabaseShapoklyakStorage } from "./supabase.ts"
 export type {
   CharacterEntity,
   CharacterEntityInput,
+  CharacterTemplateAssignmentInput,
   EntityKind,
   EntityLifeState,
   EntityMutation,
@@ -12,4 +13,3 @@ export type {
   ShapoklyakCommand,
   ShapoklyakStorage,
 } from "./types.ts"
-
