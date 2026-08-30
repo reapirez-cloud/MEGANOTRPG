@@ -20,11 +20,25 @@ import {
   registeredCharacterInventory,
 } from "./characterMechanics.ts"
 import { registeredCharacterResourceState } from "./resourceRuntime.ts"
-import { characterSourceSuppressionContributions } from "./suppressionRuntime.ts"
+import {
+  characterSourceSuppressionContributions,
+  sourceSuppressionContributions,
+} from "./suppressionRuntime.ts"
 import { characterTemplateContributions } from "../rule-templates/registry.ts"
+import { resolveTemplateBundles } from "../rule-templates/resolver.ts"
+import type { CharacterTemplateBundle } from "../rule-templates/types.ts"
 import type { CharacterFeature, CharacterSheet, CharacterSpell, InventoryItem } from "../types/characterSheet.ts"
 
+// Integration boundary: keep this adapter aligned with docs/CHARACTER_ENGINE_CONTRACT.md
+// and src/rule-templates/CLASS_INTEGRATION_NOTES.md. CE itself stays persistence/UI agnostic.
 export interface LegacyCharacterEngineView { input: CharacterEngineInput; contract: ResolvedCharacterContract; spellcastingAbility?: AbilityKey }
+
+export type CharacterEngineIntegrationSnapshot = {
+  inventory?: InventoryItem[]
+  resourceStates?: Record<string, ResourceState>
+  templateBundles?: CharacterTemplateBundle[]
+  suppressedSourceIds?: Iterable<string>
+}
 
 const ABILITY_ALIASES: Record<string, AbilityKey> = {
   strength: "strength", str: "strength", сила: "strength", сил: "strength",
@@ -52,9 +66,7 @@ export function buildLegacyCharacterEngineInput(args: {
   sheet: CharacterSheet
   spells: CharacterSpell[]
   features: CharacterFeature[]
-  inventory?: InventoryItem[]
-  resourceStates?: Record<string, ResourceState>
-}): CharacterEngineInput {
+} & CharacterEngineIntegrationSnapshot): CharacterEngineInput {
   const { character, sheet, spells, features } = args
   const inventory = args.inventory ?? registeredCharacterInventory(character.id)
   const sheetSource = legacySource("legacy-sheet", "Базовый лист персонажа", "legacy_sheet")
@@ -71,7 +83,11 @@ export function buildLegacyCharacterEngineInput(args: {
   addTextGrants(contributions, "language", sheet.languages, sheetSource); addTextGrants(contributions, "proficiency", sheet.proficiencies, sheetSource); addTextGrants(contributions, "sense", sheet.senses, sheetSource)
   for (const feature of features) { const source = legacySource(`legacy-feature:${feature.id}`, feature.name, "legacy_feature"); contributions.push({ id: `legacy:feature:${feature.id}`, kind: "grant", operation: "GRANT", target: "feature", key: feature.id, payload: { label: feature.name, description: feature.description, kind: feature.kind, legacyFeatureId: feature.id }, source }) }
 
-  const templateContributions = characterTemplateContributions(character.id, character.level)
+  // Prefer the integration snapshot loaded by the consumer. Registry fallback is
+  // transitional only; it exists for old sheet callers while they are migrated.
+  const templateContributions = args.templateBundles !== undefined
+    ? resolveTemplateBundles(args.templateBundles, character.level).contributions
+    : characterTemplateContributions(character.id, character.level)
   contributions.push(...featureMechanicContributions(features), ...inventoryMechanicContributions(inventory), ...templateContributions)
   const parserOwnedSlots = new Set(templateContributions
     .filter((entry) => entry.kind === "grant" && entry.target === "resource" && /^spell_slot_[1-9]$/.test(entry.key))
@@ -80,7 +96,9 @@ export function buildLegacyCharacterEngineInput(args: {
     .map((key) => Number(key.match(/^spell_slot_([1-9])$/)?.[1] || 0))
     .filter((level) => level > 0)
 
-  const resources: Record<string, ResourceState> = { ...registeredCharacterResourceState(character.id), ...(args.resourceStates || {}) }
+  const resources: Record<string, ResourceState> = args.resourceStates !== undefined
+    ? { ...args.resourceStates }
+    : { ...registeredCharacterResourceState(character.id) }
   const slotLevels = [...new Set([...configuredSlotLevels(sheet, spells), ...parserOwnedSlotLevels])].sort((a, b) => a - b)
   for (const level of slotLevels) {
     const slot = sheet.spell_slots?.[String(level)]; const max = Math.max(0, Number(slot?.max || 0)); const used = Math.max(0, Number(slot?.used || 0)); const key = slotResourceKey(level)
@@ -100,10 +118,13 @@ export function buildLegacyCharacterEngineInput(args: {
     contributions.push({ id: `legacy:spell:${spell.id}`, kind: "grant", operation: "GRANT", target: "spell", key: legacySpellKey(spell), variantKey: `legacy-${spell.id}`, payload: { spell: { name: spell.name, level: spell.spell_level, ...(spell.school.trim() ? { school: spell.school.trim() } : {}), ritual: spell.ritual }, preparation: { mode: "not_required" }, methods: [{ key: "legacy-cast", kind: "spellcasting", ...(spellcastingAbility ? { ability: spellcastingAbility } : {}), requiresPrepared: false, ...(isCantrip ? {} : { resourceOptions: options }) }] }, source: legacySource(`legacy-spell-source:${spell.id}`, spell.source || spell.name, "legacy_spell") })
   }
 
-  // GM OFF flags are controls, not mutations of class/item/feature data. They are
-  // appended last for readability; CE applies universal suppression before any
-  // resolver regardless of contribution order.
-  contributions.push(...characterSourceSuppressionContributions(character.id))
+  // GM OFF flags are controls, not mutations of class/item/feature data. Prefer
+  // the caller's loaded snapshot so CE resolution cannot depend on registry order.
+  contributions.push(...(
+    args.suppressedSourceIds !== undefined
+      ? sourceSuppressionContributions(character.id, args.suppressedSourceIds)
+      : characterSourceSuppressionContributions(character.id)
+  ))
 
   return { base: { id: character.id, name: character.name, level: character.level, abilities: { strength: sheet.strength, dexterity: sheet.dexterity, constitution: sheet.constitution, intelligence: sheet.intelligence, wisdom: sheet.wisdom, charisma: sheet.charisma }, baseMaxHp: sheet.max_hp, baseSpeed: sheet.speed, skillProficiencies: skillRanks(sheet.skill_proficiencies), savingThrowProficiencies: savingThrowRanks(sheet.saving_throw_proficiencies) }, state: { currentHp: sheet.current_hp, tempHp: sheet.temp_hp, resources }, contributions }
 }
@@ -113,9 +134,7 @@ export function resolveLegacyCharacterEngineView(args: {
   sheet: CharacterSheet
   spells: CharacterSpell[]
   features: CharacterFeature[]
-  inventory?: InventoryItem[]
-  resourceStates?: Record<string, ResourceState>
-}): LegacyCharacterEngineView {
+} & CharacterEngineIntegrationSnapshot): LegacyCharacterEngineView {
   const input = buildLegacyCharacterEngineInput(args); const spellcastingAbility = parseLegacySpellcastingAbility(args.sheet.spellcasting_ability)
   return { input, contract: resolveCharacterContract(input), ...(spellcastingAbility ? { spellcastingAbility } : {}) }
 }
