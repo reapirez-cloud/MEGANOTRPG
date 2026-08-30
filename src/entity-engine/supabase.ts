@@ -92,14 +92,52 @@ export class SupabaseShapoklyakStorage implements ShapoklyakStorage {
       return { kind: command.kind, characterIds: [command.characterId], before, after: await this.getEntity(command.characterId), requiresResolution: false }
     }
 
-    const { error } = await this.client.rpc("set_character_hp_v1", {
-      p_character_id: command.characterId,
-      p_current_hp: command.currentHp,
-      p_max_hp: command.maxHp ?? null,
-      p_temp_hp: command.tempHp ?? null,
-      p_command_id: command.context.commandId,
-    })
-    if (error) fail(error, "Could not set character HP")
-    return { kind: command.kind, characterIds: [command.characterId], before, after: before, details: { currentHp: command.currentHp, maxHp: command.maxHp, tempHp: command.tempHp }, requiresResolution: true }
+    if (command.kind === "entity.assign_template") {
+      const { data, error } = await this.client.rpc("set_character_template_assignment_owner_v1", {
+        p_character_id: command.characterId,
+        p_template_id: command.input.templateId,
+        p_template_level: command.input.templateLevel,
+        p_selected_choices: command.input.selectedChoices,
+      })
+      if (error) fail(error, "Could not assign character template")
+      return {
+        kind: command.kind,
+        characterIds: [command.characterId],
+        before,
+        after: await this.getEntity(command.characterId),
+        details: { assignmentId: String(data), templateId: command.input.templateId, templateLevel: command.input.templateLevel },
+        requiresResolution: true,
+      }
+    }
+
+    if (command.kind === "entity.remove_template_assignment") {
+      const { error } = await this.client.rpc("remove_character_template_assignment_owner_v1", {
+        p_character_id: command.characterId,
+        p_assignment_id: command.assignmentId,
+      })
+      if (error) fail(error, "Could not remove character template assignment")
+      return {
+        kind: command.kind,
+        characterIds: [command.characterId],
+        before,
+        after: await this.getEntity(command.characterId),
+        details: { assignmentId: command.assignmentId },
+        requiresResolution: true,
+      }
+    }
+
+    if (command.kind === "entity.set_hp") {
+      const { error } = await this.client.rpc("set_character_hp_v1", {
+        p_character_id: command.characterId,
+        p_current_hp: command.currentHp,
+        p_max_hp: command.maxHp ?? null,
+        p_temp_hp: command.tempHp ?? null,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not set character HP")
+      return { kind: command.kind, characterIds: [command.characterId], before, after: before, details: { currentHp: command.currentHp, maxHp: command.maxHp, tempHp: command.tempHp }, requiresResolution: true }
+    }
+
+    throw new EngineCommandError("entity.unsupported_command", "Unsupported Shapoklyak command")
   }
 }
