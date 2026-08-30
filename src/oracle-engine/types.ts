@@ -1,6 +1,7 @@
 import type { EngineCommandContext, EngineCommandResult } from "../engine-contracts/index.ts"
 import type {
   CharacterEntityInput,
+  CharacterTemplateAssignmentInput,
   EntityLifeState,
   EntityMutation,
   EntityVisibilityMode,
@@ -38,6 +39,8 @@ export type OracleCharacterCommands = {
   setVisibility(context: OracleContext, characterId: string, visibilityMode: EntityVisibilityMode): OracleEntityResult
   revealNpc(context: OracleContext, viewerCharacterId: string, npcCharacterId: string, discovered?: boolean): OracleEntityResult
   setHp(context: OracleContext, characterId: string, currentHp: number, options?: { maxHp?: number; tempHp?: number }): OracleEntityResult
+  assignTemplate(context: OracleContext, characterId: string, input: CharacterTemplateAssignmentInput): OracleEntityResult
+  removeTemplateAssignment(context: OracleContext, characterId: string, assignmentId: string): OracleEntityResult
 }
 
 export type OracleInventoryCommands = {
