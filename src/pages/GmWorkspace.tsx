@@ -43,6 +43,8 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
   const [filter, setFilter] = useState<CharFilter>("all")
   const [query, setQuery] = useState("")
   const [editor, setEditor] = useState<CharacterWizardTarget | null>(null)
+  const [assignmentTarget, setAssignmentTarget] = useState<Character | null>(null)
+  const [assignmentUserId, setAssignmentUserId] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [deleteTarget, setDeleteTarget] = useState<Character | null>(null)
@@ -99,6 +101,56 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
 
   function createChar(kind: "pc" | "npc") { setError(""); setEditor({ mode: "create", type: kind }) }
   function editChar(character: Character) { setError(""); setEditor({ mode: "edit", character }) }
+  function openAssignment(character: Character) {
+    if (character.character_type !== "pc") return
+    setError("")
+    setAssignmentTarget(character)
+    setAssignmentUserId(character.assigned_user_id || "")
+  }
+
+  async function saveAssignment(event: FormEvent) {
+    event.preventDefault()
+    if (!assignmentTarget) return
+
+    const nextUserId = assignmentUserId || null
+    const previousUserId = assignmentTarget.assigned_user_id
+    if (nextUserId === previousUserId) { setAssignmentTarget(null); return }
+
+    const previousMember = previousUserId ? members.find((member) => member.user_id === previousUserId) : null
+    const previousWasActive = previousMember?.active_character_id === assignmentTarget.id
+    setSaving(true)
+    setError("")
+
+    if (previousWasActive && previousUserId) {
+      const clearActive = await setActiveForMember(previousUserId, null)
+      if (!clearActive.ok) {
+        setSaving(false)
+        setError(clearActive.error || "Не удалось снять прежнего активного персонажа.")
+        return
+      }
+    }
+
+    const result = await updateCharacter(assignmentTarget.id, {
+      name: assignmentTarget.name,
+      character_class: assignmentTarget.character_class,
+      level: assignmentTarget.level,
+      bio: assignmentTarget.bio,
+      avatar_url: assignmentTarget.avatar_url,
+      assigned_user_id: nextUserId,
+      character_type: "pc",
+      visibility: assignmentTarget.visibility,
+    })
+
+    if (!result.ok) {
+      if (previousWasActive && previousUserId) void setActiveForMember(previousUserId, assignmentTarget.id)
+      setSaving(false)
+      setError(result.error || "Не удалось назначить персонажа игроку.")
+      return
+    }
+
+    setSaving(false)
+    setAssignmentTarget(null)
+  }
 
   async function removeCharacter() {
     if (!deleteTarget) return
@@ -243,13 +295,13 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
           const bindable = chatActors.bindableCharacters.some((item) => item.id === character.id)
           const habitatCount = character.character_type === "npc" ? habitats.zonesForNpc(character.id).length : 0
           return <article className="control-character-row" key={character.id}>
-            <button className="control-character-main" type="button" onClick={() => onOpenCharacter(character.id)}><CharacterAvatar character={character} size="large"/><span><span className="control-character-name"><strong>{character.name}</strong>{active && <i>Активен</i>}{character.character_type === "npc" && <i>NPC</i>}{character.visibility === "private" && <i>Только я</i>}</span><small>{character.character_class} · {character.level} ур.{member ? ` · ${member.display_name}` : ""}</small><p>{character.bio || "Без описания"}</p></span><em>›</em></button>
-            <div className="control-character-actions">{character.character_type === "pc" && member && <button type="button" className={active ? "is-active" : ""} onClick={() => void toggleActive(character)}>{active ? "Убрать из активных" : "Сделать активным"}</button>}{character.character_type === "npc" && <button type="button" className="npc-zone-action" onClick={() => setZoneNpcTarget(character)}>Отправить в зону{habitatCount ? ` · ${habitatCount}` : ""}</button>}{bindable && <button type="button" className={bound ? "is-active" : ""} onClick={() => void chatActors.setBinding(character.id, !bound)}>{bound ? "✓ Личность чата" : "Говорить в чате"}</button>}<button type="button" onClick={() => editChar(character)}>Изменить</button><button className="is-danger" type="button" onClick={() => setDeleteTarget(character)}>Удалить</button></div>
+            <button className="control-character-main" type="button" onClick={() => onOpenCharacter(character.id)}><CharacterAvatar character={character} size="large"/><span><span className="control-character-name"><strong>{character.name}</strong>{active && <i>Активен</i>}{character.character_type === "npc" && <i>NPC</i>}{character.visibility === "private" && <i>Только я</i>}</span><small>{character.character_class} · {character.level} ур.{member ? ` · ${member.display_name}` : character.character_type === "pc" ? " · не назначен" : ""}</small><p>{character.bio || "Без описания"}</p></span><em>›</em></button>
+            <div className="control-character-actions">{character.character_type === "pc" && <button type="button" className={!member ? "is-active" : ""} onClick={() => openAssignment(character)}>{member ? "Сменить игрока" : "Назначить игрока"}</button>}{character.character_type === "pc" && member && <button type="button" className={active ? "is-active" : ""} onClick={() => void toggleActive(character)}>{active ? "Убрать из активных" : "Сделать активным"}</button>}{character.character_type === "npc" && <button type="button" className="npc-zone-action" onClick={() => setZoneNpcTarget(character)}>Отправить в зону{habitatCount ? ` · ${habitatCount}` : ""}</button>}{bindable && <button type="button" className={bound ? "is-active" : ""} onClick={() => void chatActors.setBinding(character.id, !bound)}>{bound ? "✓ Личность чата" : "Говорить в чате"}</button>}<button type="button" onClick={() => editChar(character)}>Изменить</button><button className="is-danger" type="button" onClick={() => setDeleteTarget(character)}>Удалить</button></div>
           </article>
         })}{!visibleCharacters.length && <div className="v2-empty-state"><span>◇</span><strong>Ничего не найдено</strong><p>Измени фильтр или создай нового персонажа.</p></div>}</div>
       </section>}
 
-      {tab === "members" && <section className="control-section"><div className="section-head"><div><h3 className="section-title">Участники</h3><p className="item-meta">Роль аккаунта и персонаж — независимые вещи</p></div><button className="section-link" type="button" onClick={() => void makeInvite()}>＋ Приглашение</button></div>{invite && <button className="control-invite" type="button" onClick={() => navigator.clipboard?.writeText(invite)}><span>Код приглашения</span><strong>{invite}</strong><small>Нажми, чтобы скопировать</small></button>}<div className="control-member-list">{members.map((member) => { const active = member.active_character_id ? characters.find((character) => character.id === member.active_character_id) : null; return <button type="button" key={member.user_id} onClick={() => openMember(member.user_id)}><span className="control-member-avatar">{member.display_name.slice(0, 1).toUpperCase()}</span><span><strong>{member.display_name}</strong><small>{member.is_owner ? "Владелец" : member.role === "gm" ? "ГМ" : "Игрок"}{active ? ` · играет ${active.name}` : " · без активного PC"}</small>{member.telegram_username && <em>@{member.telegram_username}</em>}</span><i>›</i></button> })}</div></section>}
+      {tab === "members" && <section className="control-section"><div className="section-head"><div><h3 className="section-title">Участники</h3><p className="item-meta">Роль аккаунта и персонаж — независимые вещи</p></div><button className="section-link" type="button" onClick={() => void makeInvite()}>＋ Приглашение</button></div>{invite && <button className="control-invite" type="button" onClick={() => navigator.clipboard?.writeText(invite)}><span>Код приглашения</span><strong>{invite}</strong><small>Нажми, чтобы скопировать</small></button>}<div className="control-member-list">{members.map((member) => { const active = member.active_character_id ? characters.find((character) => character.id === member.active_character_id) : null; const assignedCount = characters.filter((character) => character.character_type === "pc" && character.assigned_user_id === member.user_id).length; return <button type="button" key={member.user_id} onClick={() => openMember(member.user_id)}><span className="control-member-avatar">{member.display_name.slice(0, 1).toUpperCase()}</span><span><strong>{member.display_name}</strong><small>{member.is_owner ? "Владелец" : member.role === "gm" ? "ГМ" : "Игрок"}{assignedCount ? ` · PC: ${assignedCount}` : " · без PC"}{active ? ` · играет ${active.name}` : ""}</small>{member.telegram_username && <em>@{member.telegram_username}</em>}</span><i>›</i></button> })}</div></section>}
 
       {tab === "chats" && <section className="control-section"><div className="section-head"><div><h3 className="section-title">Чаты кампании</h3><p className="item-meta">Сцены, доступ и быстрый переход</p></div><button className="section-link" type="button" onClick={() => setRoomCreate(true)}>＋ Чат</button></div><div className="control-room-list">{rooms.rooms.map((room) => <button type="button" key={room.id} onClick={() => onOpenRoom(room.id)}><span className="control-room-art">{room.avatar_url ? <CampaignImage value={room.avatar_url} alt=""/> : <span>{room.title.slice(0, 1)}</span>}</span><span><strong>{room.title}</strong><small>{room.category === "flood" ? "Флуд" : "Игровая сцена"} · {room.preview}</small></span><em>›</em></button>)}</div></section>}
 
@@ -258,11 +310,13 @@ export default function GmWorkspace({ onOpenCharacter, onOpenRoom }: Props) {
 
     {editor && <CharacterCreationWizard target={editor} campaignId={campaignId} members={members} updateCharacter={updateCharacter} onClose={() => setEditor(null)} onSaved={async (characterId, openCharacter) => { await refresh(); setEditor(null); if (openCharacter) onOpenCharacter(characterId) }}/>} 
 
+    {assignmentTarget && <div className="sheet-backdrop" onMouseDown={() => { if (!saving) setAssignmentTarget(null) }}><form className="bottom-sheet v2-editor-sheet" onSubmit={saveAssignment} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Доступ к PC</span><h3>{assignmentTarget.name}</h3><p>Выбери участника, которому принадлежит этот персонаж. Активный PC выбирается отдельно.</p></div><button type="button" onClick={() => setAssignmentTarget(null)} disabled={saving}>×</button></header><section className="v2-form-section"><label className="field-label" htmlFor="character-assignment-player">Игрок</label><select id="character-assignment-player" className="app-select" value={assignmentUserId} onChange={(event) => setAssignmentUserId(event.target.value)} disabled={saving}><option value="">Никому</option>{members.map((member) => <option key={member.user_id} value={member.user_id}>{member.display_name}{member.telegram_username ? ` · @${member.telegram_username}` : member.is_owner ? " · владелец" : member.role === "gm" ? " · ГМ" : ""}</option>)}</select><p className="control-field-help">Назначение даёт участнику доступ к PC. Если персонаж был активным у прежнего игрока, этот активный выбор будет снят перед передачей.</p></section><button className="v2-primary-button v2-full-button" type="submit" disabled={saving || assignmentUserId === (assignmentTarget.assigned_user_id || "")}>{saving ? "Назначаем…" : assignmentUserId ? "Сохранить назначение" : "Снять назначение"}</button></form></div>}
+
     {zoneNpcTarget && <NpcHabitatZonesSheet npc={zoneNpcTarget} zones={habitats.activeZones} selectedIds={new Set(habitats.zonesForNpc(zoneNpcTarget.id))} savingKey={habitats.savingKey} onClose={() => setZoneNpcTarget(null)} onToggle={(zoneId, next) => { void toggleNpcHabitat(zoneNpcTarget, zoneId, next) }}/>} 
 
     {deleteTarget && <div className="sheet-backdrop" onMouseDown={() => setDeleteTarget(null)}><section className="bottom-sheet v2-confirm" onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><span className="v2-confirm-icon">×</span><h3>Удалить «{deleteTarget.name}»?</h3><p>Лист, инвентарь, дневник и связанные данные будут удалены.</p><div><button type="button" onClick={() => setDeleteTarget(null)}>Отмена</button><button className="is-danger" type="button" onClick={() => void removeCharacter()} disabled={saving}>Удалить</button></div></section></div>}
 
-    {memberEdit && <div className="sheet-backdrop" onMouseDown={() => setMemberEdit(null)}><section className="bottom-sheet v2-editor-sheet" onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Участник</span><h3>{members.find((member) => member.user_id === memberEdit)?.display_name}</h3><p>Роль управляет правами, но не тем, какого PC человек может иметь.</p></div><button type="button" onClick={() => setMemberEdit(null)}>×</button></header><section className="v2-form-section"><label className="field-label">Роль</label><select className="app-select" value={memberRole} disabled={!isOwner || members.find((member) => member.user_id === memberEdit)?.is_owner} onChange={(event) => setMemberRoleValue(event.target.value === "gm" ? "gm" : "player")}><option value="player">Игрок</option><option value="gm">ГМ</option></select><p className="control-field-help">Персонаж назначается в редакторе самого PC — туда можно выбрать любого участника, включая владельца и ГМа.</p></section>{isOwner && <button className="v2-primary-button v2-full-button" type="button" onClick={() => void saveMemberRole()}>Сохранить роль</button>}</section></div>}
+    {memberEdit && <div className="sheet-backdrop" onMouseDown={() => setMemberEdit(null)}><section className="bottom-sheet v2-editor-sheet" onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Участник</span><h3>{members.find((member) => member.user_id === memberEdit)?.display_name}</h3><p>Роль управляет правами, но не тем, какого PC человек может иметь.</p></div><button type="button" onClick={() => setMemberEdit(null)}>×</button></header><section className="v2-form-section"><label className="field-label">Роль</label><select className="app-select" value={memberRole} disabled={!isOwner || members.find((member) => member.user_id === memberEdit)?.is_owner} onChange={(event) => setMemberRoleValue(event.target.value === "gm" ? "gm" : "player")}><option value="player">Игрок</option><option value="gm">ГМ</option></select><p className="control-field-help">PC назначается кнопкой «Назначить игрока» прямо на карточке персонажа. Полный редактор тоже сохраняет эту настройку.</p></section>{isOwner && <button className="v2-primary-button v2-full-button" type="button" onClick={() => void saveMemberRole()}>Сохранить роль</button>}</section></div>}
 
     {noteOpen && <div className="sheet-backdrop" onMouseDown={() => setNoteOpen(null)}><form className="bottom-sheet v2-editor-sheet" onSubmit={saveNote} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Материалы</span><h3>{noteOpen === "new" ? "Новая заметка" : "Редактировать заметку"}</h3><p>Эту запись видишь только ты.</p></div><button type="button" onClick={() => setNoteOpen(null)}>×</button></header><section className="v2-form-section"><label className="field-label">Название</label><input className="app-input" value={noteTitle} onChange={(event) => setNoteTitle(event.target.value)} autoFocus/><label className="field-label">Текст</label><textarea className="app-textarea control-note-text" value={noteBody} onChange={(event) => setNoteBody(event.target.value)}/></section><button className="v2-primary-button v2-full-button" type="submit" disabled={saving || !noteTitle.trim()}>Сохранить</button></form></div>}
 
