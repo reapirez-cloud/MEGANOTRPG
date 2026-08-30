@@ -3,6 +3,7 @@ import fs from "node:fs"
 import test from "node:test"
 
 const sql = fs.readFileSync("supabase/migrations/20260830013000_class_chat_template_action_runtime.sql", "utf8")
+const receiptSql = fs.readFileSync("supabase/migrations/20260830155543_gena_template_command_receipts.sql", "utf8")
 const chatHook = fs.readFileSync("src/hooks/useChatMessages.ts", "utf8")
 const genaGateway = fs.readFileSync("src/game-engine/supabase.ts", "utf8")
 const chatRoom = fs.readFileSync("src/pages/ChatRoom.tsx", "utf8")
@@ -35,11 +36,17 @@ test("class chat wrapper delegates spending exactly once", () => {
   assert.match(sql, /same PostgreSQL transaction/i)
 })
 
-test("Gena gateway owns both authoritative template RPCs and the chat hook delegates", () => {
-  assert.match(genaGateway, /send_chat_template_action_v1/)
-  assert.match(genaGateway, /send_chat_template_roll_v1/)
+test("Gena gateway owns receipt-aware authoritative template RPCs and the chat hook delegates", () => {
+  assert.match(genaGateway, /send_chat_template_action_v2/)
+  assert.match(genaGateway, /send_chat_template_roll_v2/)
+  assert.doesNotMatch(genaGateway, /send_chat_template_action_v1/)
+  assert.doesNotMatch(genaGateway, /send_chat_template_roll_v1/)
+  assert.match(genaGateway, /p_command_id:\s*commandId/)
   assert.match(genaGateway, /p_mechanic_id:\s*command\.mechanicId/)
   assert.match(genaGateway, /p_option_key:\s*command\.optionKey \?\? null/)
+  assert.match(receiptSql, /send_chat_template_action_v2/)
+  assert.match(receiptSql, /send_chat_template_roll_v2/)
+  assert.match(receiptSql, /engine_command_receipts/)
   assert.match(chatHook, /genaSession\.sendTemplateAction/)
   assert.match(chatHook, /genaSession\.sendTemplateRoll/)
 })
