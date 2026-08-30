@@ -9,6 +9,7 @@ import { formatCampaignTime } from "../../world-state/time"
 import type { DayPeriod } from "../../world-state/types"
 import CharacterAvatar from "../characters/CharacterAvatar"
 import WorldPositionSheet from "../world/WorldPositionSheet"
+import "./ChatContextSheet.css"
 
 type RoomRow = {
   id: string
