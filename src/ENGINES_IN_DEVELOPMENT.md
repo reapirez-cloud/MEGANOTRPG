@@ -1,26 +1,27 @@
-# Engines in development
+# Named engine architecture marker
 
 > **ARCHITECTURE MARKER FOR CODE/AI AUDITS**
 >
-> These engine boundaries are intentional and are currently **IN DEVELOPMENT**.
-> Read `../docs/ENGINE_ROADMAP.md`, `../docs/ENGINE_CONTRACTS.md` and `../docs/ORACLE_ENGINE_CONTRACT.md` before refactoring gameplay state, GM controls, classes, rolls, inventory, character/NPC persistence, world locations, maps, time or quest-journal behavior.
+> Status: **CLOSURE CANDIDATE — ACTIVE ON `dev`**.
+>
+> The historical filename remains for discoverability. Read `../docs/ENGINE_ROADMAP.md`, `../docs/ENGINE_CONTRACTS.md`, `../docs/ENGINE_CLOSURE_DEFINITION.md` and `../docs/ORACLE_ENGINE_CONTRACT.md` before refactoring gameplay state, GM controls, classes, rolls, inventory, character/NPC persistence, world locations, maps or time.
 
-Named engines / control planes:
+## Named engines / control planes
 
 - **CE — Character Engine**: deterministic character resolution from an explicit input snapshot. CE owns calculation only: no canonical storage, queries, persistence mutations, polling or announcements.
-- **GENA — Game State / Session Engine**: the central session orchestrator and gameplay bookkeeper. It records gameplay declarations and routes cross-domain play mutations to the owning engine. Its explicit foundation now coexists with older chat/runtime/RPC pieces that are being consolidated.
-- **ORACLE — GM Control Engine**: the GM's imperative hands. The GM sees the world through GM Cabinet and changes it through Oracle. Oracle does not own state, does not decide what gameplay rules allow, and MUST NOT call or depend on GENA. Each Oracle method is wired directly to the domain owner that must make the GM's declared reality canonical.
-- **TOBIK — Roll Engine**: shared authoritative dice engine. GENA requests a roll; Tobik returns the structured dice result; GENA records/presents it. Tobik does not decide scene legality, hits, damage application or HP mutations.
-- **CHEBURASHKA — Inventory Engine**: dedicated inventory/item ownership and persistent item-state engine. It owns the warehouse: items, stacks, charges, equipment and transfers. It exposes only mechanically relevant item projections and directly requests a fresh resolution after mutation. Never pass the full backpack into CE.
-- **SHAPOKLYAK — PC/NPC Creation & Storage Engine**: separate engine for creation, identity, storage, assignment, visibility, discovery, placement and lifecycle of PC/NPC entities. Shapoklyak owns the existence and canonical identity/state of character entities; CE only resolves a supplied character snapshot.
-- **LARISA — Location / World + Campaign Time Engine**: separate engine for persistent worlds/zones/locations/maps, discovery/visibility, placement relationships, world topology and descriptive campaign chronology. Larisa may store world/chat time plus per-scene/per-character timeline stage, but time does not automatically trigger mechanics.
-- **CHASOVOY — Reference / Definition Engine**: owns authored definitions such as classes, subclasses, spells, item definitions, feats and conditions. Runtime ownership of a concrete character or inventory instance remains with the appropriate domain engine.
+- **GENA — Game State / Session Engine**: normal gameplay/session orchestrator and command-correlation boundary. It records gameplay declarations and invokes authoritative owner/storage boundaries. It does not own character/inventory/world/definition state and is not the GM control plane.
+- **ORACLE — GM Control Engine**: the GM's imperative hands. `GM Cabinet → Oracle → explicit owner`. Oracle stores nothing, does not decide gameplay legality and MUST NOT call/depend on GENA.
+- **TOBIK — Roll Engine**: shared authoritative dice planning/resolution facade. GENA requests/records normal gameplay rolls; Tobik never applies HP or decides scene legality.
+- **CHEBURASHKA — Inventory Engine**: concrete inventory/item-instance owner. It owns quantities, equipment, charges and transfers, exposes mechanically relevant projection and directly requests character resolution after mechanical mutation.
+- **SHAPOKLYAK — PC/NPC Character Owner**: owns character/NPC existence, identity, assignment, lifecycle, visibility and canonical character mechanics/runtime state including explicit HP, template assignments, suppressions, character spells/features and persistent resources.
+- **LARISA — Location / World Engine**: owns persistent world topology, sections/links, discovery, placement, scenes, descriptive chronology and NPC habitats. Time has no automatic mechanical consequences.
+- **CHASOVOY — Reference / Definition Engine**: owns reusable class/subclass/spell/item/feat/condition definitions and revisions. Concrete character/item state stays with its runtime owner.
 
-Not every feature needs an engine. **Quest Journal is intentionally a lightweight product module, not an engine**: GM-authored campaign quests and player-authored personal reminders/freeform tasks may coexist without becoming a rules authority.
+Not every feature needs an engine. **Quest Journal remains a lightweight product module**, not a rules authority.
 
-## Critical engine communication boundary
+## Critical command boundary
 
-**Engines communicate through explicit contracts/state, never through one another's UI.**
+Engines communicate through explicit contracts/state, never through another engine's UI.
 
 Bad:
 
@@ -31,37 +32,111 @@ Chat UI → Sheet UI → Inventory UI → CE
 Normal gameplay:
 
 ```text
-Player / gameplay UI → GENA → owning domain engine → canonical state → projections/snapshot → CE → presentation UI
+Player / gameplay UI
+→ GENA
+→ authoritative owner/storage boundary
+→ canonical state
+→ invalidation when mechanical
+→ Character Runtime Resolver
+→ CE
+→ shared presentation
 ```
+
+Explicitly permitted player-owned operations may use a narrow owner facade directly when no gameplay orchestration is needed. Server-side ownership checks are still mandatory.
 
 GM authority:
 
 ```text
-GM → GM Cabinet → Oracle → explicit owning domain engine → canonical state → projections/snapshot → CE / presentation
+GM
+→ GM Cabinet
+→ Oracle
+→ Shapoklyak / Cheburashka / Larisa / Chasovoy
+→ canonical state
+→ invalidation/read model
 ```
 
-Oracle and GENA are parallel entry points. **Never insert GENA between Oracle and the owning engine.** Oracle is not a second gameplay orchestrator: the GM has already decided what is true. The owner still enforces technical/domain integrity, persists the change and publishes its canonical event.
+Oracle and GENA are parallel entry points. **Never insert GENA between Oracle and the owner.**
 
-Cross-domain play mutations should normally be orchestrated by GENA, while each specialized engine remains authoritative for its own state.
+## Critical character runtime boundary
 
-Example: when a grenade is used during normal gameplay, GENA tells Cheburashka that the item was used. Cheburashka decrements/removes it and directly requests fresh character resolution. The resolver obtains fresh projections and invokes CE. CE never stores or reports inventory drift, and GENA never edits inventory tables.
+There is one application Character Runtime Resolver. Sheet, Chat and Revolver consume its resolved snapshot/contract.
 
-Example: when the GM declares that four grenades exploded inside a backpack and are now gone, GM Cabinet calls `oracle.inventory.consume/remove`, and Oracle calls Cheburashka directly. It does not ask GENA whether that outcome follows gameplay rules.
+`useResolvedChatActor` is only a compatibility alias of `useResolvedCharacterRuntime`; it is not another character assembler.
 
-Example: when a roll is needed, GENA requests it from Tobik. Tobik returns the dice result; GENA records it. Do not implement separate source-specific randomness in class/item UI paths.
+Character-affecting owner mutations request resolution directly. Chasovoy definition mutations publish definition events that runtime infrastructure converts to campaign-level invalidation because Chasovoy deliberately does not know concrete usages.
 
-## Critical gameplay boundary
+Supabase Realtime is a cross-client refresh hint, not canonical engine transport.
 
-**The GM is the final scene rules engine and an authoritative source of canonical facts.**
+## GM scene authority
 
-The application may account for explicit machine-owned state (charges, costs, recharge, choices, preparation, levels, ownership) but should not become a tactical referee for transient scene facts such as action economy, positions, targets, range, line of sight, whether an Echo is present, aura membership, or whether a declared action makes sense.
+The GM is the final scene rules engine and authoritative source of canonical facts.
 
-Example: a player can spend an Echo-related charge while no Echo is present. GENA records/spends what the player declared; the GM decides that the action does nothing.
+The application may account for explicit machine-owned state such as charges, costs, recharge, choices, preparation, levels, ownership and persistent resources. It must not invent tactical truth for transient facts it was never told, such as action economy, target validity, range, line of sight, aura membership or whether a declared action makes sense.
 
-The GM may establish persistent truth through Oracle: reveal an NPC through Shapoklyak, reveal/discover a location through Larisa, move a PC/NPC, edit stats/features/assignments, set campaign/world time, set HP, change inventory or author campaign definitions through Chasovoy.
+**HP is GM-authoritative.** Attacks, damage/healing rolls, spells and item actions do not automatically mutate HP. GM HP correction is a normal path:
 
-**HP is GM-authoritative.** Attacks, damage rolls, healing rolls, spells and item actions must not automatically mutate HP. The GM may run combat entirely in their head and update HP afterward. Absence of automatic combat HP application is intentional and must not be reported as a mechanics defect.
+```text
+GM Cabinet → Oracle → Shapoklyak → canonical HP → character invalidation → resolver → CE
+```
 
-**Larisa time is descriptive by default.** Advancing a clock/date must not itself restore resources, expire effects, apply damage, move NPCs or mutate CE. It exists to preserve chronology and help the GM understand which stage/time each character occupies.
+**Larisa time is descriptive by default.** Advancing date/time does not itself restore resources, expire effects, apply damage or move NPCs.
 
-Do not report absence of scene simulation as a class-mechanics bug. Do report missing/wrong bookkeeping, persistence, refresh cadence, resource mutation, stored choices, wrong domain ownership, UI-mediated engine communication, duplicated roll logic, or failure to rebuild CE after a canonical mutation.
+## Definition versus instance
+
+```text
+Chasovoy: Ash Blade definition D1
+Cheburashka: inventory instance I73 → D1, equipped=true, charges=2
+
+Chasovoy: Fighter definition F1
+Shapoklyak: character C9 assignment → F1 at canonical class level
+```
+
+Do not copy reusable definitions into owner state. Do not move concrete runtime state into Chasovoy.
+
+## Gameplay examples
+
+Normal player consumable:
+
+```text
+Player uses grenade
+→ GENA correlates gameplay command
+→ Cheburashka consumes/removes item instance
+→ Cheburashka requests fresh character resolution
+→ resolver rereads projections
+→ CE resolves
+```
+
+GM destroys four grenades directly:
+
+```text
+GM Cabinet
+→ Oracle inventory command
+→ Cheburashka removes/changes instances
+→ Cheburashka requests resolution
+```
+
+Class/template action retry:
+
+```text
+GENA commandId
+→ receipt-aware authoritative RPC
+→ transaction lock
+→ validate/spend once
+→ message/roll
+→ engine_command_receipts
+```
+
+Old template-v1/internal spend RPCs are not client API. Legacy Shapoklyak assignment helpers are sealed behind the owner facade.
+
+## Extension law
+
+For every new canonical write:
+
+1. identify the owner;
+2. add/reuse the owner command/server boundary;
+3. expose GM writes through Oracle;
+4. route normal gameplay through GENA when orchestration/history is needed;
+5. preserve idempotent `commandId` correlation when retry could duplicate a mutation;
+6. invalidate shared character runtime after mechanical owner commits;
+7. render the shared resolved contract rather than creating a new local truth;
+8. add a regression test for the ownership path.
