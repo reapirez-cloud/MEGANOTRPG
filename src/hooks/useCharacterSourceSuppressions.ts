@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { createEngineCommandContext } from "../engine-contracts/index.ts"
-import { registerCharacterSourceSuppressions } from "../lib/suppressionRuntime.ts"
 import { supabase } from "../lib/supabase.ts"
 import { oracle } from "../oracle-engine/runtime.ts"
 import type { CharacterSourceSuppressionRow } from "../types/characterSuppressions.ts"
@@ -44,12 +43,10 @@ export function useCharacterSourceSuppressions(characterId: string | null) {
 
   const sourceIds = useMemo(() => new Set(rows.map((row) => row.source_id)), [rows])
   useEffect(() => {
-    if (!characterId) return
-    registerCharacterSourceSuppressions(characterId, sourceIds)
     let cancelled = false
     queueMicrotask(() => { if (!cancelled) setRevision((value) => value + 1) })
     return () => { cancelled = true }
-  }, [characterId, sourceIds])
+  }, [sourceIds])
 
   const setSuppressed = useCallback(async (sourceId: string, suppressed: boolean) => {
     if (!characterId || !sourceId.trim()) return { ok: false as const, error: "Источник не указан." }
