@@ -126,6 +126,23 @@ export class SupabaseShapoklyakStorage implements ShapoklyakStorage {
       }
     }
 
+    if (command.kind === "entity.set_source_suppressed") {
+      const { error } = await this.client.rpc("set_character_source_suppressed", {
+        p_character_id: command.characterId,
+        p_source_id: command.sourceId,
+        p_suppressed: command.suppressed,
+      })
+      if (error) fail(error, "Could not change character source suppression")
+      return {
+        kind: command.kind,
+        characterIds: [command.characterId],
+        before,
+        after: before,
+        details: { sourceId: command.sourceId, suppressed: command.suppressed },
+        requiresResolution: true,
+      }
+    }
+
     if (command.kind === "entity.set_hp") {
       const { error } = await this.client.rpc("set_character_hp_v1", {
         p_character_id: command.characterId,
