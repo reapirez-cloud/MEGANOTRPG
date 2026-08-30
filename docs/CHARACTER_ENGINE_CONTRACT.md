@@ -1,6 +1,6 @@
 # Character Engine Integration Contract
 
-> Status: **CLOSURE CANDIDATE — ACTIVE ON `dev`**
+> Status: **CLOSED — STABLE BOUNDARY ON `dev`**
 
 This document defines the application boundary between the pure Character Engine (CE), canonical owners, the shared Character Runtime Resolver and character presentation surfaces.
 
