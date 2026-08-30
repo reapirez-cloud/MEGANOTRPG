@@ -51,9 +51,14 @@ test("GM zone manager stays text-first and mutates locations through the existin
   assert.match(zoneManager, /world\.createLocation/)
   assert.match(zoneManager, /world\.updateLocation/)
   assert.match(zoneManager, /world\.setLocationArchived/)
+  assert.match(zoneManager, /world\.deleteWorldItem\("locations", zone\.id\)/)
+  assert.match(zoneManager, /descendantCount/)
+  assert.match(zoneManager, /Удалить навсегда/)
+  assert.match(zoneManager, /Это действие нельзя отменить/)
   assert.match(zoneManager, /image_url: null/)
   assert.doesNotMatch(zoneManager, /CampaignImage/)
   assert.doesNotMatch(zoneManager, /<img/)
+  assert.doesNotMatch(zoneManager, /from\("locations"\)/)
 })
 
 test("private GM materials keep one compact add entry instead of stacked creation panels", () => {
