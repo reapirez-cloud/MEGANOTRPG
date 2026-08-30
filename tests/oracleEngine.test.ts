@@ -67,10 +67,10 @@ test("Oracle turns GM declarations into direct owner commands without Gena", asy
   assert.equal(calls.every(({ command }) => command.context === gm), true)
 })
 
-test("Oracle rejects non-GM authority before touching a domain owner", async () => {
+test("Oracle rejects non-GM authority before touching a domain owner", () => {
   const { oracle, calls } = recordingOracle()
 
-  await assert.rejects(
+  assert.throws(
     () => oracle.characters.setHp(context("player"), "hero-1", 1),
     /Oracle only accepts GM or system authority/,
   )
