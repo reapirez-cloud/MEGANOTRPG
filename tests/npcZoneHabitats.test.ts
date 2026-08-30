@@ -35,7 +35,8 @@ test("habitat mutation is limited to NPCs and campaign managers", () => {
 })
 
 test("GM can attach NPCs from both NPC and zone surfaces through Oracle and Larisa", () => {
-  assert.match(workspace, /Отправить в зону/)
+  assert.match(workspace, /label: "Обычные зоны"/)
+  assert.match(workspace, /setZoneNpcTarget\(characterMenu\)/)
   assert.match(workspace, /NpcHabitatZonesSheet/)
   assert.match(world, /Обитатели зоны/)
   assert.match(world, /Обычно здесь/)
