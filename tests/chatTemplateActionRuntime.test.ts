@@ -3,6 +3,8 @@ import fs from "node:fs"
 import test from "node:test"
 
 const sql = fs.readFileSync("supabase/migrations/20260830013000_class_chat_template_action_runtime.sql", "utf8")
+const chatHook = fs.readFileSync("src/hooks/useChatMessages.ts", "utf8")
+const chatRoom = fs.readFileSync("src/pages/ChatRoom.tsx", "utf8")
 
 function indexOfOrFail(value: string) {
   const index = sql.indexOf(value)
@@ -30,4 +32,19 @@ test("class chat wrapper delegates spending exactly once", () => {
   const occurrences = [...sql.matchAll(/private\.consume_character_resource_costs/g)]
   assert.equal(occurrences.length, 0, "wrapper must not duplicate the canonical template action spender")
   assert.match(sql, /same PostgreSQL transaction/i)
+})
+
+test("chat hook exposes both authoritative template RPCs", () => {
+  assert.match(chatHook, /send_chat_template_action_v1/)
+  assert.match(chatHook, /send_chat_template_roll_v1/)
+  assert.match(chatHook, /p_mechanic_id:\s*request\.mechanicId/)
+  assert.match(chatHook, /p_option_key:\s*request\.optionKey \?\? null/)
+})
+
+test("ChatRoom routes CE template actions through template RPCs instead of client resource costs", () => {
+  assert.match(chatRoom, /templateMechanicIdForChatAction\(action\)/)
+  assert.match(chatRoom, /chat\.sendTemplateRoll/)
+  assert.match(chatRoom, /chat\.sendTemplateAction/)
+  const templateBranch = chatRoom.slice(chatRoom.indexOf("if (mechanicId)"), chatRoom.indexOf("const contract = resolved.contract"))
+  assert.doesNotMatch(templateBranch, /resourceCostInputs/)
 })
