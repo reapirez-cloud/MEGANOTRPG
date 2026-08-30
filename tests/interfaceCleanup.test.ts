@@ -12,6 +12,16 @@ test("GM workspace no longer mounts the obsolete rule-template manager", () => {
   assert.match(app, /canManage&&<GmWorkspace/)
 })
 
+test("GM can assign and reassign a PC directly from its workspace card", () => {
+  assert.match(workspace, /Назначить игрока/)
+  assert.match(workspace, /Сменить игрока/)
+  assert.match(workspace, /id="character-assignment-player"/)
+  assert.match(workspace, /assigned_user_id: nextUserId/)
+  assert.match(workspace, /updateCharacter\(assignmentTarget\.id/)
+  assert.match(workspace, /setActiveForMember\(previousUserId, null\)/)
+  assert.doesNotMatch(workspace, /from\("characters"\).*assigned_user_id/s)
+})
+
 test("private material folders have unified long-press rename and safe delete actions", () => {
   assert.match(workspace, /useLongPressItem/)
   assert.match(workspace, /ContextActionSheet/)
