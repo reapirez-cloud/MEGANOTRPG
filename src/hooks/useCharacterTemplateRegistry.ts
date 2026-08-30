@@ -3,13 +3,18 @@ import { supabase } from "../lib/supabase.ts"
 import {
   clearCharacterTemplateBundles,
   registerCharacterTemplateBundles,
-  subscribeCharacterTemplateBundles,
 } from "../rule-templates/registry.ts"
 import type { CharacterTemplateAssignment, CharacterTemplateBundle, RuleTemplate, RuleTemplateLevel } from "../rule-templates/types.ts"
 import { useCharacterSourceSuppressions } from "./useCharacterSourceSuppressions.ts"
 
 const TEMPLATE_FIELDS = "id,campaign_id,kind,slug,name,description,version,mechanics,choices,parent_template_id,unlock_level,catalog_key,catalog_revision,source_kind,source_label,is_builtin,mechanical_summary,author_description,author_comment,rules_meta,is_active,created_by,created_at,updated_at"
 
+/**
+ * The mounted character runtime is the single loader/owner for this character's
+ * template bundles. The global registry remains only as a compatibility read
+ * model for CharacterTemplateChoices and other legacy readers; this hook never
+ * subscribes to its own writes.
+ */
 export function useCharacterTemplateRegistry(characterId: string | null) {
   const [bundles, setBundles] = useState<CharacterTemplateBundle[]>([])
   const [loading, setLoading] = useState(false)
@@ -18,7 +23,7 @@ export function useCharacterTemplateRegistry(characterId: string | null) {
   const suppressions = useCharacterSourceSuppressions(characterId)
 
   const load = useCallback(async () => {
-    if (!characterId) { setBundles([]); setLoading(false); return }
+    if (!characterId) { setBundles([]); setLoading(false); setError(""); return }
     setLoading(true); setError("")
     const assignmentResult = await supabase.from("character_template_assignments").select("id,character_id,template_id,template_level,selected_choices,assigned_at,updated_at").eq("character_id", characterId).order("assigned_at")
     if (assignmentResult.error) { setError(assignmentResult.error.message); setLoading(false); return }
@@ -46,22 +51,11 @@ export function useCharacterTemplateRegistry(characterId: string | null) {
   }, [characterId])
 
   useEffect(() => {
-    if (!characterId) return
-    return subscribeCharacterTemplateBundles(characterId, (next) => {
-      setBundles(next)
-      setRevision((value) => value + 1)
-    })
-  }, [characterId])
-
-  useEffect(() => {
     let cancelled = false
     queueMicrotask(() => { if (!cancelled) void load() })
     return () => { cancelled = true; if (characterId) clearCharacterTemplateBundles(characterId) }
   }, [characterId, load])
 
-  // CharacterGameFrame keys its resolved child by this revision. When a GM
-  // flips a source OFF/ON, force the same CE consumers to rebuild from the
-  // changed suppression registry without teaching them about suppression UI.
   useEffect(() => {
     if (!characterId) return
     let cancelled = false
