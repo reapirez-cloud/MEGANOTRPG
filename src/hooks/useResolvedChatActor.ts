@@ -110,6 +110,7 @@ export function useResolvedChatActor(character: Character | null) {
     if (!characterId) return
     let channel: RealtimeChannel | null = supabase.channel(`character-sheet-runtime-${characterId}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "character_sheets", filter: `character_id=eq.${characterId}` }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "character_spells", filter: `character_id=eq.${characterId}` }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "character_preparation_sessions", filter: `character_id=eq.${characterId}` }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "character_preparation_records", filter: `character_id=eq.${characterId}` }, refresh)
       .subscribe()
