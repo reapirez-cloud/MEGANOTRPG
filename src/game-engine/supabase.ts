@@ -27,6 +27,8 @@ export type GenaTemplateActionCommand = {
   optionKey?: string
   label: string
   payload?: ChatEventPayload
+  /** Stable retry key for one declared gameplay intention. */
+  commandId?: string
 }
 
 export type GenaTemplateRollCommand = GenaTemplateActionCommand & {
@@ -46,6 +48,8 @@ export type GenaTemplateSpellCommand = {
   optionKey?: string
   label: string
   payload?: ChatEventPayload
+  /** Stable retry key for one declared gameplay intention. */
+  commandId?: string
 }
 
 export type GenaInventoryUseCommand = GenaChatRollCommand & {
@@ -152,7 +156,8 @@ export class SupabaseGenaSessionGateway {
   }
 
   async sendTemplateRoll(command: GenaTemplateRollCommand): Promise<number> {
-    const { data, error } = await this.client.rpc("send_chat_template_roll_v1", {
+    const commandId = command.commandId ?? createEngineCommandId()
+    const { data, error } = await this.client.rpc("send_chat_template_roll_v2", {
       p_room_id: command.roomId,
       p_character_id: command.characterId,
       p_mechanic_id: command.mechanicId,
@@ -164,28 +169,32 @@ export class SupabaseGenaSessionGateway {
       p_dice_count: command.diceCount ?? 0,
       p_dice_sides: command.diceSides ?? 0,
       p_dice_modifier: command.diceModifier ?? 0,
+      p_command_id: commandId,
     })
     const id = resultId(data, error)
-    await this.invalidate(command.characterId, "template.roll")
+    await this.invalidate(command.characterId, "template.roll", commandId)
     return id
   }
 
   async sendTemplateAction(command: GenaTemplateActionCommand): Promise<number> {
-    const { data, error } = await this.client.rpc("send_chat_template_action_v1", {
+    const commandId = command.commandId ?? createEngineCommandId()
+    const { data, error } = await this.client.rpc("send_chat_template_action_v2", {
       p_room_id: command.roomId,
       p_character_id: command.characterId,
       p_mechanic_id: command.mechanicId,
       p_option_key: command.optionKey ?? null,
       p_label: command.label,
       p_payload: command.payload ?? {},
+      p_command_id: commandId,
     })
     const id = resultId(data, error)
-    await this.invalidate(command.characterId, "template.action")
+    await this.invalidate(command.characterId, "template.action", commandId)
     return id
   }
 
   async sendTemplateSpell(command: GenaTemplateSpellCommand): Promise<number> {
-    const { data, error } = await this.client.rpc("send_chat_template_spell_v1", {
+    const commandId = command.commandId ?? createEngineCommandId()
+    const { data, error } = await this.client.rpc("send_chat_template_spell_v2", {
       p_room_id: command.roomId,
       p_character_id: command.characterId,
       p_mechanic_id: command.mechanicId,
@@ -193,9 +202,10 @@ export class SupabaseGenaSessionGateway {
       p_option_key: command.optionKey ?? null,
       p_label: command.label,
       p_payload: command.payload ?? {},
+      p_command_id: commandId,
     })
     const id = resultId(data, error)
-    await this.invalidate(command.characterId, "template.spell")
+    await this.invalidate(command.characterId, "template.spell", commandId)
     return id
   }
 
