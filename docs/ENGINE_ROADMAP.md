@@ -158,7 +158,7 @@ GM speaks/acts as NPC toward Vasya
     ↓
 GENA receives an explicit GM command/event
     ↓
-PC/NPC Engine: reveal/mark NPC known to Vasya
+SHAPOKLYAK: reveal/mark NPC known to Vasya
     ↓
 canonical entity visibility changes
 ```
@@ -168,7 +168,7 @@ GM declares Vasya reached the guard warehouse
     ↓
 GENA
     ↓
-Location Engine: reveal/discover warehouse for Vasya
+LARISA: reveal/discover warehouse for Vasya
     ↓
 canonical location visibility changes
 ```
@@ -178,7 +178,7 @@ GM moves a character to a location
     ↓
 GENA
     ↓
-PC/NPC + Location engine contract updates canonical placement
+SHAPOKLYAK + LARISA engine contract updates canonical placement
 ```
 
 ```text
@@ -253,7 +253,7 @@ Not every stored item belongs in CE. Cheburashka may keep arbitrary non-mechanic
 Cheburashka must NOT:
 - decide scene legality;
 - become the Character Engine;
-- become the PC/NPC storage engine;
+- become Shapoklyak;
 - own location/world topology;
 - wait for CE to tell it an item was consumed;
 - require an inventory UI component to communicate mutations to another engine.
@@ -268,14 +268,13 @@ CE consumes the item contribution/state snapshot; CE does not query Cheburashka 
 
 ---
 
-## PC/NPC Creation & Storage Engine — NAME TBD
+## SHAPOKLYAK — PC/NPC Creation & Storage Engine
 
 **Status:** PLANNED
-**Naming:** choose a name from the Cheburashka cartoon universe later. Do not invent/rename it during automated audits.
 
 Responsibility: creation, identity, persistence and lifecycle of player characters and NPCs as entities.
 
-This engine should own concepts such as:
+Shapoklyak should own concepts such as:
 - creating characters/NPCs under role/permission rules;
 - entity identity and canonical records;
 - active/inactive/archive lifecycle;
@@ -283,25 +282,24 @@ This engine should own concepts such as:
 - GM/private visibility metadata;
 - per-player discovery/visibility where the product requires it;
 - character-to-campaign membership;
-- persistent placement/location references where coordinated with the Location Engine;
+- persistent placement/location references where coordinated with Larisa;
 - stable entity references used by chat, sheets, inventory and world systems.
 
-GENA may instruct this engine that an explicit play/GM event changes entity visibility, knowledge, placement or lifecycle. The engine owns the mutation; GENA owns the orchestration/event history.
+GENA may instruct Shapoklyak that an explicit play/GM event changes entity visibility, knowledge, placement or lifecycle. Shapoklyak owns the mutation; GENA owns the orchestration/event history.
 
-It must remain separate from CE: CE calculates a character from supplied data; this engine owns the existence and storage of the character entity itself.
+Shapoklyak must remain separate from CE: CE calculates a character from supplied data; Shapoklyak owns the existence and storage of the character entity itself.
 
-It must also remain separate from Cheburashka: a character can own inventory, but character identity/lifecycle is not inventory state.
+Shapoklyak must also remain separate from Cheburashka: a character can own inventory, but character identity/lifecycle is not inventory state.
 
 ---
 
-## Location / World Engine — NAME TBD
+## LARISA — Location / World Engine
 
 **Status:** PLANNED
-**Naming:** choose a name from the Cheburashka cartoon universe later. Do not invent/rename it during automated audits.
 
 Responsibility: persistent world locations and their relationships.
 
-Expected ownership:
+Larisa should own:
 - worlds/regions/zones/locations;
 - hierarchical containment and links between places;
 - maps and map references;
@@ -311,9 +309,9 @@ Expected ownership:
 - persistent associations of NPCs, encounters, notes or other entities with places;
 - stable location identifiers for chat/scenes and future map tooling.
 
-GENA may instruct the Location Engine that a GM-authoritative or explicit play event reveals/discovers a location or moves an entity. The Location Engine owns world/location state; GENA records and coordinates the event.
+GENA may instruct Larisa that a GM-authoritative or explicit play event reveals/discovers a location or moves an entity. Larisa owns world/location state; GENA records and coordinates the event.
 
-This engine should not attempt to run tactical scene rules. It stores and resolves world/location structure; the GM still adjudicates what happens there.
+Larisa should not attempt to run tactical scene rules. It stores and resolves world/location structure; the GM still adjudicates what happens there.
 
 ---
 
@@ -343,7 +341,7 @@ GM: add/edit a stat, feature, class assignment or other supported character fact
 ```text
 GM: this NPC spoke to Vasya; reveal them
 → GENA event
-→ PC/NPC Engine visibility mutation
+→ SHAPOKLYAK visibility mutation
 → UI renders newly visible NPC
 ```
 
@@ -360,8 +358,8 @@ When auditing mechanics or architecture, an AI agent MUST distinguish:
 3. **Scene legality** — GM-owned and NOT a required automation target.
 4. **Combat HP outcome** — GM-owned. Do not report absence of automatic damage/healing application as a defect.
 5. **Inventory ownership/state** — Cheburashka responsibility, not CE/GENA UI ad-hoc logic.
-6. **PC/NPC identity/lifecycle/visibility** — dedicated entity engine responsibility.
-7. **World/location persistence/discovery** — dedicated location engine responsibility.
+6. **PC/NPC identity/lifecycle/visibility** — Shapoklyak responsibility.
+7. **World/location persistence/discovery** — Larisa responsibility.
 8. **Engine communication** — verify domain engines use explicit contracts/state rather than reading or mutating one another's UI components.
 
 Do not report missing scene simulation as a class-mechanics defect. Report defects when machine-owned bookkeeping is wrong or absent: missing resource counters, wrong costs, wrong recharge, missing persistent/rest-refresh choices, missing canonical state mutation, missing CE refresh after mutation, duplicate/erased actions, incorrect class/subclass level ownership, cross-engine mutation performed by the wrong owner, or UI being used as canonical inter-engine transport.
