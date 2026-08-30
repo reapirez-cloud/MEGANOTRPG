@@ -1,8 +1,8 @@
 # Engine Runtime Integration
 
-> Status: **ACTIVE ON `dev`**
+> Status: **CLOSURE CANDIDATE — ACTIVE ON `dev`**
 >
-> This document describes how the named engines exchange runtime signals without collapsing their ownership boundaries.
+> This document describes the production runtime graph after the named-engine integration was consolidated.
 
 ## One graph, two command paths
 
@@ -11,13 +11,11 @@ NORMAL GAMEPLAY
 Player / gameplay UI
         |
         v
-      GENA ----------------------> TOBIK
+      GENA ----------------------> TOBIK / authoritative Roll Engine
         |
-        +--------> SHAPOKLYAK
-        +--------> CHEBURASHKA
-        +--------> LARISA
+        +--------> explicit owner/storage boundary
 
-GM REALITY OVERRIDE
+GM REALITY CHANGE
 GM Cabinet
     |
     v
@@ -28,11 +26,11 @@ GM Cabinet
     +--------> CHASOVOY
 ```
 
-Oracle is not a Gena facade and Gena is not in the Oracle path. Oracle directly addresses the owner selected by its explicit method. Gena remains the gameplay/session orchestrator.
+Oracle is not a GENA facade and GENA is not in the Oracle path. GENA is the normal gameplay/session orchestrator. Oracle is the GM's imperative control plane.
 
 ## Shared nervous system
 
-Domain engines do not import one another just to announce changes. Production runtimes publish their existing `EngineEvent` contracts into one ephemeral `EngineEventBus`.
+Domain runtimes publish their existing `EngineEvent` contracts into one ephemeral `EngineEventBus`.
 
 ```text
 SHAPOKLYAK ----+
@@ -42,11 +40,11 @@ CHASOVOY ------+
 GENA -----------+
 ```
 
-The bus is intentionally **not canonical storage, not durable history and not a transaction log**. It only distributes already-produced engine events inside the running application. Durable chat/session history and transactional mutations stay in their existing server/database paths.
+The event bus is **not canonical storage, durable history or a transaction log**. Durable state remains in owner persistence/server boundaries. The bus only distributes already-produced engine events inside the running application.
 
-Consumers may subscribe globally, by engine, or by campaign. This removes the need for React components to act as an engine-to-engine message bus.
+This removes the old pattern where mounted React components had to act as an engine-to-engine message bus.
 
-## Character Engine invalidation
+## Character invalidation
 
 CE remains pure and has no outbound arrows.
 
@@ -54,12 +52,12 @@ Character-affecting owners request recalculation after committing canonical stat
 
 ```text
 SHAPOKLYAK ----> CharacterResolutionBus(character) ----+
-CHEBURASHKA ---> CharacterResolutionBus(character) ----+--> fresh snapshot assembly --> CE
+CHEBURASHKA ---> CharacterResolutionBus(character) ----+--> Character Runtime Resolver --> CE
 ```
 
-Larisa does not request CE resolution by default because world position and descriptive time are not character mechanics by themselves.
+Larisa does not invalidate CE by default because descriptive location/time state is not itself character mechanics.
 
-Chasovoy is different. A reusable definition can be referenced by many characters, but Chasovoy must not know those usages. Therefore its definition event is bridged conservatively to campaign-level invalidation:
+Chasovoy definition changes are campaign-scoped because Chasovoy deliberately does not know which concrete characters use a definition:
 
 ```text
 CHASOVOY
@@ -70,17 +68,48 @@ CHASOVOY
       CharacterResolutionBus(campaign)
                 |
                 v
-      mounted character resolvers rebuild fresh snapshots
+      mounted character resolvers reread fresh owner state/definitions
 ```
 
-This keeps reference ownership in Chasovoy and reference-usage knowledge outside Chasovoy.
+## The single Character Runtime Resolver
+
+`src/engine-runtime/characterRuntimeResolver.ts` is the application read-model assembly boundary for character mechanics.
+
+It obtains fresh canonical inputs/projections, invokes the Character Engine adapter once and returns one snapshot containing the resolved contract plus the canonical CE input needed by presentation/explanation surfaces.
+
+`useResolvedCharacterRuntime` is the shared React adapter over that resolver. `useResolvedChatActor` is only a backward-compatible alias of the same hook.
+
+Therefore:
+
+- Character Sheet consumes the shared runtime snapshot;
+- Chat consumes the shared runtime snapshot;
+- the Chat action/revolver sheet receives the same resolved contract;
+- no UI surface independently invokes CE to create a competing character.
+
+The resolver has finite failure behavior. Missing or hung owner reads end as an explicit error/stale state rather than indefinite loading.
+
+## Cross-client refresh
+
+The shared React adapter listens to the in-process resolution bus and to Supabase Realtime where persisted changes may originate from another client.
+
+Realtime is a **transport-level invalidation hint only**:
+
+```text
+Realtime event
+→ “persisted truth may have changed”
+→ reread owners/projections
+→ Character Runtime Resolver
+→ CE
+```
+
+Realtime does not become an owner, command bus or source of canonical values.
 
 ## Composition root
 
-`src/engine-runtime/runtime.ts` exposes the already-composed runtime graph:
+`src/engine-runtime/runtime.ts` exposes the composed runtime graph:
 
 - CE resolver;
-- Gena and its durable session gateway;
+- GENA and its durable session gateway;
 - Tobik;
 - Cheburashka;
 - Shapoklyak;
@@ -89,27 +118,42 @@ This keeps reference ownership in Chasovoy and reference-usage knowledge outside
 - Oracle;
 - shared event and character-resolution signals.
 
-The composition root is **not another engine**. It stores nothing, decides nothing and routes nothing. Its purpose is to stop application adapters from rebuilding the engine graph independently.
+The composition root is **not another engine**. It stores nothing, decides nothing and owns no canonical fact. Its job is to stop application adapters from rebuilding the graph independently.
 
-## Ownership laws that remain unchanged
+## Durable command boundaries
 
-1. Oracle never calls Gena.
-2. Gena handles normal gameplay intentions and may call domain owners.
-3. Oracle handles GM reality overrides and calls domain owners directly.
-4. Domain engines mutate only their own canonical state.
-5. CE receives an explicit fresh snapshot and never performs I/O.
-6. Tobik resolves requested dice; it does not mutate HP or decide scene legality.
-7. Larisa world/time signals do not trigger mechanics unless a future explicit projection is introduced.
-8. Chasovoy owns definitions, not which concrete character currently uses them.
-9. EngineEventBus and CharacterResolutionBus are ephemeral signals, never canonical storage.
+Normal gameplay operations that could be duplicated by retry keep a stable command correlation key through the server boundary.
 
-## Remaining migration boundary
+Class/template action, roll and spell execution use receipt-aware GENA RPCs:
 
-The named-engine runtime is now connected, but some older product adapters still source canonical inputs through legacy tables/hooks:
+```text
+commandId
+→ advisory transaction lock
+→ authoritative validation/spend
+→ message/roll result
+→ engine_command_receipts
+```
 
-- `rule_templates` / character template assignment hooks;
-- `character_resource_states` runtime hooks;
-- preparation/spell legacy tables;
-- the current chat character resolver still assembles part of the CE snapshot inside `useResolvedChatActor`.
+A retry with the same command fingerprint returns the original result and does not spend twice. Old template-v1/internal spend helpers are not executable by authenticated clients.
 
-These are migration seams, not reasons to let engines import one another. The next consolidation step is to move fresh character snapshot assembly behind a runtime/read-model service so Sheet, Chat and Revolver consume the same resolved contract. Until that migration is complete, legacy adapters must listen to the shared resolution signals and rebuild from fresh data rather than cache a second truth.
+Similarly, GM class/template assignment reaches the Shapoklyak owner facade through Oracle. Legacy assignment helper RPCs are sealed from direct authenticated execution.
+
+## Runtime ownership laws
+
+1. Oracle never calls GENA.
+2. GENA handles normal gameplay intentions; it does not own the domain state it changes.
+3. Oracle handles GM reality changes and calls owners directly.
+4. Domain owners mutate only their canonical domain state.
+5. CE receives an explicit fresh snapshot and performs no I/O.
+6. Tobik/the authoritative Roll Engine resolves requested dice and never applies HP/scene legality.
+7. Larisa world/time state has no automatic character mechanics consequences by default.
+8. Chasovoy owns reusable definitions, not concrete usages.
+9. EngineEventBus and CharacterResolutionBus are ephemeral signals, never storage.
+10. Supabase Realtime is refresh transport, never canonical engine communication.
+11. Sheet, Chat and Revolver consume one shared resolved character runtime.
+
+## Integration closure
+
+The earlier runtime migration seam is closed for the current engine foundation: shared character snapshot assembly is behind the Character Runtime Resolver, GM canonical writes have Oracle owner paths, normal gameplay GENA paths use authoritative server boundaries, and mechanical owner mutations are covered by invalidation regression tests.
+
+Future product work may add new owner commands/projections, but it must extend this graph rather than create a second runtime or another canonical path.
