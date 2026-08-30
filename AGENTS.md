@@ -1,0 +1,63 @@
+# MEGANOTRPG agent instructions
+
+These instructions are for coding agents and developers working in this repository. They are part of the repository contract, not player-facing documentation.
+
+## Branch discipline
+
+- Active class / Character Engine work is done on `dev`.
+- Do not write class/runtime work directly to `main` and do not merge `dev` to `main` unless the user explicitly requests the release/merge.
+
+## Character Engine boundary
+
+Character Engine (CE) is the mechanical source of truth for character-side state. UI must consume resolved CE data instead of re-parsing rule prose.
+
+CE is a calculator/resource ledger, not a virtual GM or world-state simulator. Never invent authoritative state for scene facts the application does not actually track (weather, line of sight, whether a hit occurred, whether a corpse is nearby, once-per-turn without real turn tracking, and similar fiction/runtime facts).
+
+## Generic mechanics before source-specific mechanics
+
+Before adding a class, subclass, race, feat, item, or other source-specific subsystem, check whether the behavior belongs in a generic CE primitive.
+
+Do not create a second choice runtime for feats, a class-specific resource engine, or UI-only mechanical truth when the same behavior can be represented through shared rule-template / CE infrastructure.
+
+If a needed generic primitive does not exist, add the primitive first, document it beside the implementation, and then bind sources to it.
+
+## Persistent choices
+
+The canonical persistent choice runtime is `RuleChoiceDefinition.selection_mode = "player_once"` plus `resolveTemplateChoiceStates()` and the server RPC `commit_character_template_choice_v1`.
+
+- `player_once` is opt-in. Existing choices remain manager-owned unless explicitly migrated.
+- Player confirmation is explicit; selecting an option in UI must not silently lock it.
+- Confirmed player selections are append-only. A later `count_by_level` increase may open only the missing slots; previous selections remain fixed.
+- `requires_choice`, option unlock levels, counts, source levels and option membership are server-validated.
+- GM/admin correction is an explicit administrative override, not ordinary player respec.
+- Future feats and other sources with “choose one / choose N” clauses must reuse this runtime rather than inventing another selection system.
+
+Before changing choices, read `src/rule-templates/AGENTS.md` and `src/rule-templates/CHOICE_RUNTIME.md`.
+
+## Generic primitives still expected before large feat expansion
+
+When a rule requires one of these behaviors, implement it generically rather than hardcoding the first feat/class that needs it:
+
+1. **Dynamic option providers** — options derived from resolved CE state/catalog data, e.g. “choose a skill you are proficient in” or a spell from a specific list.
+2. **Structured prerequisites** — character-owned requirements such as level, ability score, proficiency, spellcasting, an owned feature/source, or another feat. Scene/fiction requirements remain prose.
+3. **Uniqueness / exclusion constraints** — “cannot choose an option already owned”, mutually exclusive selections, repeatable-vs-nonrepeatable sources, and cross-source duplicate policy.
+4. **Allocation choices** — bounded numeric allocation such as `+2 to one ability` or `+1/+1 to two different abilities`, without enumerating fake combination options.
+5. **Explicit change policy** — permanent, GM-only correction, or a real rule-defined respec cadence. Do not make choices freely mutable just because UI can edit JSON.
+6. **Multi-stage dependent choices** — later selections may depend on earlier selections while using the same generic choice state/runtime.
+7. **Feat source integration** — feats should become first-class CE/template sources and emit the same native contributions as classes/subclasses; do not model them as unrelated ad-hoc UI features.
+
+Do not prebuild speculative mechanics that no rule needs yet. Add these primitives when the first real rule requires them, but add them generically at that time.
+
+## Class/subclass work
+
+Before changing class/subclass mechanics or presentation, read:
+
+- `src/rule-templates/AGENTS.md`
+- `src/rule-templates/CLASS_INTEGRATION_NOTES.md`
+- `src/rule-templates/CLASS_WORK_STATUS.md`
+
+Class mechanics are not READY merely because code exists. Follow the package quality gate, source-level semantics, server-authoritative resource mutation rules, and deployed-state verification defined there.
+
+## Keep instructions discoverable
+
+Architecture rules that materially affect future implementation should be recorded in repository instruction/docs adjacent to the relevant code, not only in chat, commit messages, or a temporary plan. Keep short pointer comments in central implementation files so an agent opening the code is directed to the full contract.
