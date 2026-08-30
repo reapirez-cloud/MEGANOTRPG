@@ -16,21 +16,28 @@ test("World exposes a top-level LORE and MAP switch without replacing existing l
   assert.match(world, /Подробное описание/)
 })
 
-test("map derives arrows from authored location links and parent-child topology", () => {
+test("map keeps hierarchy vertical while authored links remain explicit arrows", () => {
   assert.match(map, /sectionLocation/)
   assert.match(map, /for \(const link of links\)/)
   assert.match(map, /link\.target_location_id/)
-  assert.match(map, /child\.parent_location_id/)
-  assert.match(map, /label: "Подзона"/)
+  assert.match(map, /childrenByParent/)
+  assert.match(map, /walk\(child, \[\.\.\.ancestors, location\]\)/)
+  assert.match(map, /world-map-parentage/)
+  assert.match(map, /ancestors\.map\(\(ancestor\) => ancestor\.name\)\.join\(" › "\)/)
   assert.match(map, /world-map-route__arrow">→/)
   assert.match(map, /onOpen\(route\.target\)/)
+  assert.doesNotMatch(map, /kind: "child"/)
+  assert.doesNotMatch(map, /label: "Подзона"/)
 })
 
-test("map stays mobile-first with narrow location panels and optional previews", () => {
+test("map stays mobile-first with narrow location panels, ancestry and optional previews", () => {
   assert.match(map, /location\.image_url \? <CampaignImage/)
-  assert.match(styles, /grid-template-columns: minmax\(0, 168px\) minmax\(0, 1fr\)/)
+  assert.match(styles, /\.world-map-node\.is-nested/)
+  assert.match(styles, /margin-left: calc\(var\(--map-depth\) \* 12px\)/)
+  assert.match(styles, /\.world-map-parentage/)
+  assert.match(styles, /\.world-map-routes__rail/)
   assert.match(styles, /overflow-x: auto/)
   assert.match(styles, /world-map-card__image/)
-  assert.match(styles, /world-map-route--child/)
+  assert.doesNotMatch(styles, /world-map-route--child/)
   assert.doesNotMatch(map, /canvas/i)
 })
