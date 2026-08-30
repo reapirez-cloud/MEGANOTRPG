@@ -235,14 +235,15 @@ export class SupabaseShapoklyakStorage implements ShapoklyakStorage {
     }
 
     if (command.kind === "entity.recover_resources") {
-      const { error } = await this.client.rpc("recover_character_resources", { p_character_id: command.characterId, p_trigger: command.trigger })
-      if (error) fail(error, "Could not recover character resources")
       if (command.trigger === "long_rest") {
-        const { error: restError } = await this.client.rpc("grant_character_long_rest", { p_character_id: command.characterId })
-        if (restError) fail(restError, "Could not grant long rest")
+        const { error } = await this.client.rpc("grant_character_long_rest", { p_character_id: command.characterId })
+        if (error) fail(error, "Could not grant long rest")
       } else if (command.trigger === "short_rest") {
-        const { error: restError } = await this.client.rpc("grant_character_short_rest", { p_character_id: command.characterId })
-        if (restError) fail(restError, "Could not grant short rest")
+        const { error } = await this.client.rpc("grant_character_short_rest", { p_character_id: command.characterId })
+        if (error) fail(error, "Could not grant short rest")
+      } else {
+        const { error } = await this.client.rpc("recover_character_resources", { p_character_id: command.characterId, p_trigger: command.trigger })
+        if (error) fail(error, "Could not recover character resources")
       }
       return { kind: command.kind, characterIds: [command.characterId], before, after: before, details: { trigger: command.trigger }, requiresResolution: true }
     }
