@@ -1,4 +1,9 @@
-import type { ResourceState, ResolvedCharacterContract } from "../character-engine/index.ts"
+import type {
+  AbilityKey,
+  CharacterEngineInput,
+  ResourceState,
+  ResolvedCharacterContract,
+} from "../character-engine/index.ts"
 import type { Character } from "../context/CharacterContext.tsx"
 import type { InventoryMechanicalProjection } from "../inventory-engine/index.ts"
 import {
@@ -52,11 +57,18 @@ export type CharacterRuntimeResolveInput = {
   suppressedSourceIds: Iterable<string>
 }
 
+/**
+ * The single resolved representation consumed by every gameplay surface.
+ * `input` is exposed only for CE explanation APIs; consumers must never resolve
+ * a second contract from it.
+ */
 export type CharacterRuntimeSnapshot = {
   characterId: string
   campaignId: string
   resolvedAt: string
+  input: CharacterEngineInput
   contract: ResolvedCharacterContract
+  spellcastingAbility?: AbilityKey
   preparation: CharacterPreparationModel
   resourceSyncInputs: ResourceSyncInput[]
   warnings: string[]
@@ -236,9 +248,9 @@ export class CharacterRuntimeResolver {
       ...preparation.suppressedSourceIds,
     ])
 
-    let contract: ResolvedCharacterContract
+    let resolvedView
     try {
-      contract = resolveLegacyCharacterEngineView({
+      resolvedView = resolveLegacyCharacterEngineView({
         character: input.character,
         sheet: core.sheet,
         inventoryContributions: core.inventoryProjection.contributions,
@@ -247,7 +259,7 @@ export class CharacterRuntimeResolver {
         resourceStates: input.resourceState,
         templateBundles: input.templateBundles,
         suppressedSourceIds: effectiveSuppressions,
-      }).contract
+      })
     } catch (reason) {
       throw new CharacterRuntimeResolveError(
         "resolve_failed",
@@ -261,7 +273,7 @@ export class CharacterRuntimeResolver {
         .filter((id): id is string => Boolean(id)),
     )]
     const catalogSlugs = [...new Set(
-      contract.spells
+      resolvedView.contract.spells
         .map((spell) => catalogSlugFromResolvedKey(spell.key))
         .filter((slug): slug is string => Boolean(slug)),
     )]
@@ -276,13 +288,15 @@ export class CharacterRuntimeResolver {
       }
     }
 
-    const routedContract = withCatalogDamageRouting(contract, core.spells, catalog.rows)
+    const routedContract = withCatalogDamageRouting(resolvedView.contract, core.spells, catalog.rows)
 
     return {
       characterId: input.character.id,
       campaignId: input.character.campaign_id,
       resolvedAt: new Date().toISOString(),
+      input: resolvedView.input,
       contract: routedContract,
+      ...(resolvedView.spellcastingAbility ? { spellcastingAbility: resolvedView.spellcastingAbility } : {}),
       preparation,
       resourceSyncInputs: resourceSyncInputs(routedContract),
       warnings: catalog.warnings,
