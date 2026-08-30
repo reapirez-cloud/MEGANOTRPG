@@ -12,17 +12,14 @@ import type {
 import SpellSlotMeter from "./SpellSlotMeter.tsx"
 import { spellSlotResources } from "./spellSlots.ts"
 
-type SpellMode = "prepared" | "known" | "available"
-type SelectedSpell =
-  | { kind: "known"; spell: CharacterSpell }
-  | { kind: "available"; spell: CharacterSpellOption }
-  | null
+type SpellMode = "prepared" | "known"
 
 type Props = {
   sheet: CharacterSheet
   contract: ResolvedCharacterContract
   spellcastingAbility?: AbilityKey
   spells: CharacterSpell[]
+  /** Legacy catalog-option projection. Kept in the prop contract during migration, never authored here. */
   options: CharacterSpellOption[]
   canManage: boolean
   canChooseSpells: boolean
@@ -34,6 +31,7 @@ type Props = {
   onEditResources: () => void
   onEnableMagic: () => void
   onDisableMagic: () => void
+  /** Legacy callbacks stay accepted so old profile shells remain source-compatible. */
   onAddOption: () => void
   onEditOption: (option: CharacterSpellOption) => void
   onLearn: (option: CharacterSpellOption) => void
@@ -59,39 +57,36 @@ function levelName(level: number) {
   return level === 0 ? "Заговор" : `${level} уровень`
 }
 
-function spellMeta(spell: CharacterSpell | CharacterSpellOption) {
+function spellMeta(spell: CharacterSpell) {
   return [spell.school, spell.casting_time, spell.spell_range]
     .filter(Boolean)
     .join(" · ") || "Параметры не указаны"
 }
 
-export default function CharacterSpellbook({
-  sheet,
-  contract,
-  spellcastingAbility,
-  spells,
-  options,
-  canManage,
-  canChooseSpells,
-  selectedLevel,
-  actionId,
-  error,
-  onSelectedLevelChange,
-  onOpenReference,
-  onEditResources,
-  onEnableMagic,
-  onDisableMagic,
-  onAddOption,
-  onEditOption,
-  onLearn,
-  onTogglePrepared,
-  onForget,
-  onEditSpell,
-}: Props) {
+export default function CharacterSpellbook(props: Props) {
+  const {
+    sheet,
+    contract,
+    spellcastingAbility,
+    spells,
+    canManage,
+    canChooseSpells,
+    selectedLevel,
+    actionId,
+    error,
+    onSelectedLevelChange,
+    onOpenReference,
+    onEditResources,
+    onEnableMagic,
+    onDisableMagic,
+    onTogglePrepared,
+    onForget,
+  } = props
+
   const [mode, setMode] = useState<SpellMode>(
     spells.some((spell) => spell.prepared) ? "prepared" : "known",
   )
-  const [selectedSpell, setSelectedSpell] = useState<SelectedSpell>(null)
+  const [selectedSpell, setSelectedSpell] = useState<CharacterSpell | null>(null)
 
   const magic = spellcastingAbility
     ? contract.spellcasting.byAbility[spellcastingAbility]
@@ -100,17 +95,13 @@ export default function CharacterSpellbook({
   const levels = useMemo(() => {
     const values = new Set<number>()
     for (const spell of spells) values.add(spell.spell_level)
-    for (const option of options) values.add(option.spell_level)
     for (const slot of spellSlotResources(contract.resources)) values.add(slot.level)
     return [...values].sort((left, right) => left - right)
-  }, [contract.resources, options, spells])
+  }, [contract.resources, spells])
 
   const visibleSpells = spells.filter((spell) =>
     (mode !== "prepared" || spell.prepared) &&
     (selectedLevel === null || spell.spell_level === selectedLevel),
-  )
-  const visibleOptions = options.filter((option) =>
-    selectedLevel === null || option.spell_level === selectedLevel,
   )
 
   if (!sheet.spellcasting_enabled) {
@@ -132,7 +123,7 @@ export default function CharacterSpellbook({
         <div className="spellbook-v3__hero-copy">
           <span>Книга заклинаний</span>
           <h3>{preparedCount} подготовлено · {spells.length} изучено</h3>
-          <p>Выбирай заклинания явно — подготовка больше не спрятана в долгом нажатии.</p>
+          <p>Заклинания персонажа всегда ссылаются на общий каталог. Здесь меняется только его личный выбор и подготовка.</p>
         </div>
         <button className="spellbook-v3__reference" type="button" onClick={onOpenReference}>
           <span aria-hidden="true">⌘</span>
@@ -163,7 +154,6 @@ export default function CharacterSpellbook({
       <div className="spellbook-v3__mode" role="tablist" aria-label="Раздел заклинаний">
         <button type="button" role="tab" aria-selected={mode === "prepared"} className={mode === "prepared" ? "is-active" : ""} onClick={() => setMode("prepared")}>Подготовлено <span>{preparedCount}</span></button>
         <button type="button" role="tab" aria-selected={mode === "known"} className={mode === "known" ? "is-active" : ""} onClick={() => setMode("known")}>Изучено <span>{spells.length}</span></button>
-        <button type="button" role="tab" aria-selected={mode === "available"} className={mode === "available" ? "is-active" : ""} onClick={() => setMode("available")}>Доступно <span>{options.length}</span></button>
       </div>
 
       <div className="spellbook-v3__levels" aria-label="Фильтр по уровню">
@@ -177,76 +167,53 @@ export default function CharacterSpellbook({
 
       {error && <div className="auth-error">{error}</div>}
 
-      {mode !== "available" ? (
-        <div className="spellbook-v3__list">
-          {visibleSpells.map((spell) => (
-            <article className="spellbook-v3__spell" key={spell.id}>
-              <button className="spellbook-v3__spell-main" type="button" onClick={() => setSelectedSpell({ kind: "known", spell })}>
-                <span className="spellbook-v3__level-rune">{spell.spell_level === 0 ? "∞" : spell.spell_level}</span>
-                <span className="spellbook-v3__spell-copy">
-                  <strong>{spell.name}</strong>
-                  <small>{spellMeta(spell)}</small>
-                </span>
-                <span className="spellbook-v3__chevron" aria-hidden="true">›</span>
-              </button>
-              <div className="spellbook-v3__spell-actions">
-                {canChooseSpells ? (
-                  <button
-                    type="button"
-                    className={spell.prepared ? "spellbook-v3__prepare is-prepared" : "spellbook-v3__prepare"}
-                    aria-pressed={spell.prepared}
-                    disabled={actionId === `prepare:${spell.id}`}
-                    onClick={() => onTogglePrepared(spell)}
-                  >
-                    <span aria-hidden="true">{spell.prepared ? "◆" : "◇"}</span>
-                    {spell.prepared ? "Подготовлено" : "Подготовить"}
-                  </button>
-                ) : spell.prepared ? (
-                  <span className="spellbook-v3__prepared-label">◆ Подготовлено</span>
-                ) : <span />}
-                {canManage && <button className="spellbook-v3__edit" type="button" onClick={() => onEditSpell(spell)}>Изменить</button>}
-              </div>
-            </article>
-          ))}
-          {visibleSpells.length === 0 && (
-            <div className="spellbook-v3__empty-list">
-              <strong>{mode === "prepared" ? "Нет подготовленных заклинаний" : "Список пуст"}</strong>
-              <span>{selectedLevel === null ? "Выбери другой раздел." : "На этом уровне ничего не найдено."}</span>
+      <div className="spellbook-v3__list">
+        {visibleSpells.map((spell) => (
+          <article className="spellbook-v3__spell" key={spell.id}>
+            <button className="spellbook-v3__spell-main" type="button" onClick={() => setSelectedSpell(spell)}>
+              <span className="spellbook-v3__level-rune">{spell.spell_level === 0 ? "∞" : spell.spell_level}</span>
+              <span className="spellbook-v3__spell-copy">
+                <strong>{spell.name}</strong>
+                <small>{spellMeta(spell)}</small>
+              </span>
+              <span className="spellbook-v3__chevron" aria-hidden="true">›</span>
+            </button>
+            <div className="spellbook-v3__spell-actions">
+              {canChooseSpells ? (
+                <button
+                  type="button"
+                  className={spell.prepared ? "spellbook-v3__prepare is-prepared" : "spellbook-v3__prepare"}
+                  aria-pressed={spell.prepared}
+                  disabled={actionId === `prepare:${spell.id}`}
+                  onClick={() => onTogglePrepared(spell)}
+                >
+                  <span aria-hidden="true">{spell.prepared ? "◆" : "◇"}</span>
+                  {spell.prepared ? "Подготовлено" : "Подготовить"}
+                </button>
+              ) : spell.prepared ? (
+                <span className="spellbook-v3__prepared-label">◆ Подготовлено</span>
+              ) : <span />}
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="spellbook-v3__list">
-          {canManage && (
-            <button className="spellbook-v3__add-option" type="button" onClick={onAddOption}>+ Добавить доступное заклинание</button>
-          )}
-          {visibleOptions.map((option) => (
-            <article className="spellbook-v3__spell spellbook-v3__spell--option" key={option.id}>
-              <button className="spellbook-v3__spell-main" type="button" onClick={() => setSelectedSpell({ kind: "available", spell: option })}>
-                <span className="spellbook-v3__level-rune">{option.spell_level === 0 ? "∞" : option.spell_level}</span>
-                <span className="spellbook-v3__spell-copy"><strong>{option.name}</strong><small>{spellMeta(option)}</small></span>
-                <span className="spellbook-v3__chevron" aria-hidden="true">›</span>
-              </button>
-              <div className="spellbook-v3__spell-actions">
-                {canChooseSpells ? (
-                  <button className="spellbook-v3__learn" type="button" disabled={actionId === `learn:${option.id}`} onClick={() => onLearn(option)}>
-                    {actionId === `learn:${option.id}` ? "Добавляем…" : "+ Изучить"}
-                  </button>
-                ) : <span className="spellbook-v3__locked">Выбор закрыт</span>}
-                {canManage && <button className="spellbook-v3__edit" type="button" onClick={() => onEditOption(option)}>Изменить</button>}
-              </div>
-            </article>
-          ))}
-          {visibleOptions.length === 0 && <div className="spellbook-v3__empty-list"><strong>Нет доступных заклинаний</strong><span>ГМ может пополнить список.</span></div>}
-        </div>
-      )}
+          </article>
+        ))}
+        {visibleSpells.length === 0 && (
+          <div className="spellbook-v3__empty-list">
+            <strong>{mode === "prepared" ? "Нет подготовленных заклинаний" : "Список пуст"}</strong>
+            <span>{selectedLevel === null ? "Добавить заклинание можно только из Справочника." : "На этом уровне ничего не найдено."}</span>
+          </div>
+        )}
+      </div>
+
+      <button className="spellbook-v3__add-option" type="button" onClick={onOpenReference}>
+        + Добавить из Справочника
+      </button>
 
       {!canManage && (
         <div className="spellbook-v3__access-note">
           <span className={sheet.spell_change_unlocked ? "is-open" : ""} aria-hidden="true" />
           <div>
             <strong>{sheet.spell_change_unlocked ? "Смена заклинаний открыта" : "Смена заклинаний закрыта"}</strong>
-            <p>{sheet.spell_change_unlocked ? "Можно менять подготовку и изучать доступные заклинания." : "Заклинания можно просматривать, но изменять выбор пока нельзя."}</p>
+            <p>{sheet.spell_change_unlocked ? "Можно менять подготовку и добавлять разрешённые заклинания из каталога." : "Заклинания можно просматривать, но изменять выбор пока нельзя."}</p>
           </div>
         </div>
       )}
@@ -261,35 +228,32 @@ export default function CharacterSpellbook({
             <div className="sheet-handle" />
             <header className="spell-detail-v3__head">
               <div>
-                <span>{levelName(selectedSpell.spell.spell_level)}</span>
-                <h3>{selectedSpell.spell.name}</h3>
+                <span>{levelName(selectedSpell.spell_level)}</span>
+                <h3>{selectedSpell.name}</h3>
               </div>
               <button type="button" onClick={() => setSelectedSpell(null)} aria-label="Закрыть">×</button>
             </header>
             <div className="spell-detail-v3__facts">
-              {selectedSpell.spell.school && <div><span>Школа</span><strong>{selectedSpell.spell.school}</strong></div>}
-              {selectedSpell.spell.casting_time && <div><span>Накладывание</span><strong>{selectedSpell.spell.casting_time}</strong></div>}
-              {selectedSpell.spell.spell_range && <div><span>Дистанция</span><strong>{selectedSpell.spell.spell_range}</strong></div>}
-              {selectedSpell.spell.duration && <div><span>Длительность</span><strong>{selectedSpell.spell.duration}</strong></div>}
+              {selectedSpell.school && <div><span>Школа</span><strong>{selectedSpell.school}</strong></div>}
+              {selectedSpell.casting_time && <div><span>Накладывание</span><strong>{selectedSpell.casting_time}</strong></div>}
+              {selectedSpell.spell_range && <div><span>Дистанция</span><strong>{selectedSpell.spell_range}</strong></div>}
+              {selectedSpell.duration && <div><span>Длительность</span><strong>{selectedSpell.duration}</strong></div>}
             </div>
             <div className="spell-detail-v3__tags">
-              {selectedSpell.spell.concentration && <span>Концентрация</span>}
-              {selectedSpell.spell.ritual && <span>Ритуал</span>}
-              {selectedSpell.spell.components && <span>{selectedSpell.spell.components}</span>}
+              {selectedSpell.concentration && <span>Концентрация</span>}
+              {selectedSpell.ritual && <span>Ритуал</span>}
+              {selectedSpell.components && <span>{selectedSpell.components}</span>}
             </div>
-            {selectedSpell.spell.description ? <p>{selectedSpell.spell.description}</p> : <p className="spell-detail-v3__muted">Описание пока не добавлено.</p>}
-            {selectedSpell.spell.source && <small>Источник: {selectedSpell.spell.source}</small>}
+            {selectedSpell.description ? <p>{selectedSpell.description}</p> : <p className="spell-detail-v3__muted">Описание приходит из общего каталога.</p>}
+            {selectedSpell.source && <small>Источник: {selectedSpell.source}</small>}
             <div className="spell-detail-v3__actions">
-              {selectedSpell.kind === "known" && canChooseSpells && (
-                <button type="button" className="spell-detail-v3__primary" onClick={() => onTogglePrepared(selectedSpell.spell)}>
-                  {selectedSpell.spell.prepared ? "Убрать подготовку" : "Подготовить"}
+              {canChooseSpells && (
+                <button type="button" className="spell-detail-v3__primary" onClick={() => onTogglePrepared(selectedSpell)}>
+                  {selectedSpell.prepared ? "Убрать подготовку" : "Подготовить"}
                 </button>
               )}
-              {selectedSpell.kind === "available" && canChooseSpells && (
-                <button type="button" className="spell-detail-v3__primary" onClick={() => onLearn(selectedSpell.spell)}>Изучить</button>
-              )}
-              {selectedSpell.kind === "known" && canChooseSpells && (
-                <button type="button" className="spell-detail-v3__danger" onClick={() => onForget(selectedSpell.spell)}>Убрать из изученных</button>
+              {canChooseSpells && (
+                <button type="button" className="spell-detail-v3__danger" onClick={() => onForget(selectedSpell)}>Убрать из изученных</button>
               )}
             </div>
           </article>
