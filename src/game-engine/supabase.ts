@@ -75,8 +75,8 @@ function resultId(data: unknown, error: { message: string } | null): number {
 /**
  * Server gameplay gateway.
  *
- * Server RPCs own transaction boundaries. The gateway is still GENA's gameplay
- * path: UI never decides how a rest mutates HP, resources or preparation state.
+ * Server RPCs own transaction boundaries. The gateway is GENA's normal
+ * gameplay path: the UI never decides validation, roll or resource spending.
  */
 export class SupabaseGenaSessionGateway {
   private readonly client: SupabaseClient
@@ -85,6 +85,16 @@ export class SupabaseGenaSessionGateway {
   constructor(client: SupabaseClient, resolutionRequester?: CharacterResolutionRequester) {
     this.client = client
     this.resolutionRequester = resolutionRequester
+  }
+
+  private async invalidate(characterId: string | null, reason: string, commandId = createEngineCommandId()) {
+    if (!characterId) return
+    await this.resolutionRequester?.requestCharacterResolution({
+      characterId,
+      source: "gena",
+      reason,
+      commandId,
+    })
   }
 
   async recoverCharacter(command: GenaCharacterRecoveryCommand): Promise<void> {
@@ -99,13 +109,7 @@ export class SupabaseGenaSessionGateway {
           })
 
     if (result.error) throw new EngineCommandError("gena.recovery", result.error.message)
-
-    await this.resolutionRequester?.requestCharacterResolution({
-      characterId: command.characterId,
-      source: "gena",
-      reason: `character.recovery.${command.trigger}`,
-      commandId,
-    })
+    await this.invalidate(command.characterId, `character.recovery.${command.trigger}`, commandId)
   }
 
   async sendRoll(command: GenaChatRollCommand): Promise<number> {
@@ -121,7 +125,9 @@ export class SupabaseGenaSessionGateway {
       p_dice_modifier: command.diceModifier ?? 0,
       p_resource_costs: command.resourceCosts ?? [],
     })
-    return resultId(data, error)
+    const id = resultId(data, error)
+    if (command.resourceCosts?.length) await this.invalidate(command.characterId, "chat.roll.resource_spend")
+    return id
   }
 
   async sendEvent(command: {
@@ -140,7 +146,9 @@ export class SupabaseGenaSessionGateway {
       p_payload: command.payload ?? {},
       p_resource_costs: command.resourceCosts ?? [],
     })
-    return resultId(data, error)
+    const id = resultId(data, error)
+    if (command.resourceCosts?.length) await this.invalidate(command.characterId, "chat.event.resource_spend")
+    return id
   }
 
   async sendTemplateRoll(command: GenaTemplateRollCommand): Promise<number> {
@@ -157,7 +165,9 @@ export class SupabaseGenaSessionGateway {
       p_dice_sides: command.diceSides ?? 0,
       p_dice_modifier: command.diceModifier ?? 0,
     })
-    return resultId(data, error)
+    const id = resultId(data, error)
+    await this.invalidate(command.characterId, "template.roll")
+    return id
   }
 
   async sendTemplateAction(command: GenaTemplateActionCommand): Promise<number> {
@@ -169,7 +179,9 @@ export class SupabaseGenaSessionGateway {
       p_label: command.label,
       p_payload: command.payload ?? {},
     })
-    return resultId(data, error)
+    const id = resultId(data, error)
+    await this.invalidate(command.characterId, "template.action")
+    return id
   }
 
   async sendTemplateSpell(command: GenaTemplateSpellCommand): Promise<number> {
@@ -182,7 +194,9 @@ export class SupabaseGenaSessionGateway {
       p_label: command.label,
       p_payload: command.payload ?? {},
     })
-    return resultId(data, error)
+    const id = resultId(data, error)
+    await this.invalidate(command.characterId, "template.spell")
+    return id
   }
 
   async useInventoryItem(command: GenaInventoryUseCommand): Promise<number> {
@@ -214,6 +228,8 @@ export class SupabaseGenaSessionGateway {
       p_command_id: commandId,
     }
     const { data, error } = await this.client.rpc(rpc, args)
-    return resultId(data, error)
+    const id = resultId(data, error)
+    await this.invalidate(command.characterId, "inventory.use", commandId)
+    return id
   }
 }
