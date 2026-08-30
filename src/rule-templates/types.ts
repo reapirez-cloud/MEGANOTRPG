@@ -1,3 +1,5 @@
+// INTERNAL AI/DEV CONTRACT: before changing template/choice semantics, read ./AGENTS.md.
+// Do not add source-specific choice runtimes for feats/classes; extend the generic CE contract first.
 import type { StoredMechanics } from "../types/characterMechanics.ts"
 
 export type RuleTemplateKind = "race" | "subrace" | "class" | "subclass"
