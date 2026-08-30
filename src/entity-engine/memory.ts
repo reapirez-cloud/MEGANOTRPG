@@ -9,6 +9,7 @@ export class MemoryShapoklyakStorage implements ShapoklyakStorage {
   private readonly discoveries = new Set<string>()
   private readonly hp = new Map<string, { currentHp: number; maxHp?: number; tempHp?: number }>()
   private readonly templateAssignments = new Map<string, { characterId: string; templateId: string; templateLevel: number | null; selectedChoices: Record<string, unknown> }>()
+  private readonly sourceSuppressions = new Set<string>()
 
   constructor(initial: readonly CharacterEntity[] = []) {
     for (const entity of initial) this.entities.set(entity.id, copy(entity))
@@ -72,6 +73,9 @@ export class MemoryShapoklyakStorage implements ShapoklyakStorage {
       for (const [assignmentId, assignment] of this.templateAssignments) {
         if (assignment.characterId === characterId) this.templateAssignments.delete(assignmentId)
       }
+      for (const key of this.sourceSuppressions) {
+        if (key.startsWith(`${characterId}:`)) this.sourceSuppressions.delete(key)
+      }
       return { kind: command.kind, characterIds: [characterId], before, after: null, requiresResolution: true }
     }
 
@@ -109,6 +113,19 @@ export class MemoryShapoklyakStorage implements ShapoklyakStorage {
         before,
         after: before,
         details: { assignmentId: command.assignmentId },
+        requiresResolution: true,
+      }
+    }
+
+    if (command.kind === "entity.set_source_suppressed") {
+      const key = `${characterId}:${command.sourceId}`
+      if (command.suppressed) this.sourceSuppressions.add(key); else this.sourceSuppressions.delete(key)
+      return {
+        kind: command.kind,
+        characterIds: [characterId],
+        before,
+        after: before,
+        details: { sourceId: command.sourceId, suppressed: command.suppressed },
         requiresResolution: true,
       }
     }
