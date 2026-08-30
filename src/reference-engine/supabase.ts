@@ -47,7 +47,11 @@ function merge(row: Row, revision: Row): ChasovoyDefinition {
 }
 
 export class SupabaseChasovoyStorage implements ChasovoyStorage {
-  constructor(private readonly client: SupabaseClient) {}
+  private readonly client: SupabaseClient
+
+  constructor(client: SupabaseClient) {
+    this.client = client
+  }
 
   private async hydrate(row: Row, revision?: number | null): Promise<ChasovoyDefinition | null> {
     const target = revision ?? Number(row.current_revision || 1)
