@@ -77,10 +77,13 @@ function eventFor(command: ChasovoyCommand, mutation: ChasovoyMutation): EngineE
 }
 
 export class ChasovoyEngine {
-  constructor(
-    private readonly storage: ChasovoyStorage,
-    private readonly dependencies: ChasovoyDependencies = {},
-  ) {}
+  private readonly storage: ChasovoyStorage
+  private readonly dependencies: ChasovoyDependencies
+
+  constructor(storage: ChasovoyStorage, dependencies: ChasovoyDependencies = {}) {
+    this.storage = storage
+    this.dependencies = dependencies
+  }
 
   getDefinition(ref: ChasovoyDefinitionRef) {
     if (!ref.id) throw new EngineCommandError("definition.id_required", "Definition id is required")
