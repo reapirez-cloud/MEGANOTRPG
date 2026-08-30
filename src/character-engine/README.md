@@ -2,6 +2,8 @@
 
 Character Engine is a standalone deterministic mechanics layer.
 
+> **AI / integration note:** before changing CE integrations, Chat, Character Sheet, Inventory/equipment, classes, spells, resources, or GM-granted mechanics, read the repository root `AGENTS.md` and `docs/CHARACTER_ENGINE_CONTRACT.md`. The latter defines the application-level ownership, synchronization, equipment, chat-classification, and resource-flow invariants that consumers of this engine must follow.
+
 ## Boundary
 
 Canonical input:
