@@ -5,6 +5,8 @@ export type {
   LarisaCommand,
   LarisaSnapshot,
   LarisaStorage,
+  LocationCreateInput,
+  LocationUpdateInput,
   SceneParticipant,
   WorldMutation,
 } from "./types.ts"
