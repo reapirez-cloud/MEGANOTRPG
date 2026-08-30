@@ -1,4 +1,4 @@
-import { engineEventBus } from "../engine-runtime/runtimeSignals.ts"
+import { characterResolutionBus, engineEventBus } from "../engine-runtime/runtimeSignals.ts"
 import { shapoklyak } from "../entity-engine/runtime.ts"
 import { cheburashka } from "../inventory-engine/runtime.ts"
 import { larisa } from "../location-engine/runtime.ts"
@@ -16,5 +16,5 @@ export const gena = new GenaEngine({
   eventPublisher: engineEventBus,
 })
 
-/** Server-transaction gateway for durable chat/history commands. */
-export const genaSession = new SupabaseGenaSessionGateway(supabase)
+/** Server-transaction gameplay gateway for durable actions and recovery. */
+export const genaSession = new SupabaseGenaSessionGateway(supabase, characterResolutionBus)
