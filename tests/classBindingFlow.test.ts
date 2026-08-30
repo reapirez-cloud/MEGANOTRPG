@@ -103,6 +103,7 @@ test("subclass inherits parent class level instead of stored subclass or total c
 
 const frame = fs.readFileSync("src/components/characters/CharacterGameFrame.tsx", "utf8")
 const sheet = fs.readFileSync("src/components/characters/ResolvedCharacterSheet.tsx", "utf8")
+const classPanel = fs.readFileSync("src/components/characters/CharacterClassPanelBase.tsx", "utf8")
 const migration = fs.readFileSync("supabase/migrations/20260828043000_character_class_binding_sync.sql", "utf8")
 
 test("GM UI exposes explicit class binding and linked subclass controls", () => {
@@ -118,11 +119,16 @@ test("GM UI exposes explicit class binding and linked subclass controls", () => 
   assert.doesNotMatch(frame, /updateCharacter\(/)
 })
 
-test("resolved CE sheet renders class and subclass as one visual package", () => {
+test("resolved CE sheet keeps class and subclass linked without duplicating their full panels in overview", () => {
   assert.match(sheet, /registeredCharacterClassPackages/)
-  assert.match(sheet, /sheet-v3__class-node--class/)
-  assert.match(sheet, /sheet-v3__class-node--subclass/)
-  assert.match(sheet, /общий уровень/)
+  assert.match(sheet, /classLabel/)
+  assert.match(sheet, /subclassLabel/)
+  assert.match(sheet, /Способности класса/)
+  assert.match(sheet, /Способности подкласса/)
+  assert.doesNotMatch(sheet, /sheet-v3__class-node--class/)
+  assert.doesNotMatch(sheet, /sheet-v3__class-node--subclass/)
+  assert.match(classPanel, /class-panel__source--\$\{mechanics\.kind\}/)
+  assert.match(classPanel, /mechanics\.kind === "class" \? "Класс" : "Подкласс"/)
 })
 
 test("database binding synchronizes total class level and subclass lifecycle", () => {
