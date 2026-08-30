@@ -1,20 +1,20 @@
 # CHASOVOY — Reference / Canonical Definition Engine
 
-> Status: **ACTIVE FOUNDATION / IN DEVELOPMENT on `dev`**
+> Status: **CLOSURE CANDIDATE — ACTIVE ON `dev`**
 
 ## One sentence
 
-**Chasovoy answers “what is this?” and never “what does Vasya currently have?”**
+**Chasovoy answers “what is this reusable game concept?” and never “what does this concrete character/item currently have?”**
 
-Chasovoy is the single ownership boundary for reusable canonical game definitions. Other engines may hold references and runtime state, but they must not create private copies of a definition for convenience.
+Chasovoy is the single ownership boundary for reusable canonical definitions. Other engines store stable references and the concrete runtime state they own; they must not create private definition copies for convenience.
 
 ## Owns
 
 - class and subclass definitions;
 - race/species/background definitions;
 - spell definitions and spell reference metadata;
-- item definitions, including GM-created items;
-- feat, feature and condition definitions;
+- item definitions, including GM-created reusable items;
+- feat, reusable feature and condition definitions;
 - reusable rules/reference definitions;
 - stable identity (`id`, `kind`, `scope`, `slug`);
 - definition revision history;
@@ -23,78 +23,115 @@ Chasovoy is the single ownership boundary for reusable canonical game definition
 
 ## Does not own
 
-Chasovoy has no character runtime state. In particular it does **not** own or track:
+Chasovoy has no concrete character or inventory-instance runtime state. It does **not** own:
 
-- character ids or character identity;
+- character identity/assignment/lifecycle;
 - whether a character knows/prepared a spell;
-- character class level or current class resources;
-- item ownership, quantity, equipment state or current charges;
-- current HP;
-- current conditions on a character;
+- character class assignment/level on a concrete character;
+- current character resources or HP;
+- current character suppressions/features/state;
+- item ownership, quantity, equipment or current charges;
 - location, scene or campaign chronology.
 
-Those facts belong to Shapoklyak, Gena, Cheburashka or Larisa as appropriate.
+Those facts belong to Shapoklyak, Cheburashka or Larisa. GENA may orchestrate a normal gameplay command that changes such state, but orchestration never transfers ownership to GENA.
 
-## Definition versus instance
+## Definition versus instance/state
 
 ```text
 CHASOVOY
-item definition: Ash Blade
-id = D1
-mechanics = +1 attack, fire resistance condition, active action
+item definition D1: Ash Blade
+mechanics = +1 attack, conditional fire resistance, active action
 
 CHEBURASHKA
 inventory instance I73
-owner = character C9
+holder = character C9
 definition = D1
 quantity = 1
 equipped = true
 charges = 2
 ```
 
-Giving an Ash Blade to a character does not create another Ash Blade definition. It creates another runtime instance referencing D1.
+Giving an Ash Blade to a character does not create another Ash Blade definition. It creates another concrete instance referencing D1.
 
-The same rule applies to spells/classes/features. A character spell row is not a second Fireball definition; it is runtime ownership/preparation state referencing the canonical spell definition.
+Likewise:
+
+```text
+CHASOVOY
+class definition F1: Fighter
+
+SHAPOKLYAK
+character C9 has template/class assignment → F1 at its canonical character class level
+```
+
+A character spell/access row is not a second Fireball definition. It is character state referencing a canonical spell definition.
 
 ## Canonical identity and deduplication
 
-A definition identity is stable across revisions. `id`, `kind`, `scope` and `slug` are identity; authored mechanics/text are revision content.
+Definition identity is stable across revisions. `id`, `kind`, `scope` and `slug` define identity; authored mechanics/text are revision content.
 
 Canonical uniqueness:
 
-- system definition: `(kind, slug)` is unique globally;
-- campaign definition: `(campaign_id, kind, slug)` is unique in that campaign.
+- system definition: `(kind, slug)` unique globally;
+- campaign definition: `(campaign_id, kind, slug)` unique in that campaign.
 
-A deliberate fork/variant receives a new id and slug. A revision keeps the same id and increments `revision`.
+A deliberate fork/variant receives a new id/slug. A revision keeps the same id and advances revision history.
 
 ## Scopes
 
-- `system`: built-in/global content. Ordinary GMs cannot mutate it.
+- `system`: built-in/global content; ordinary campaign GMs cannot mutate it.
 - `campaign`: GM-authored content belonging to one campaign.
 
-Visibility is independent from scope: a campaign definition may be campaign-visible or GM-only.
+Visibility is independent from scope: campaign definitions may still be GM-only.
 
-## Communication
+## Command path
 
-Reference authoring UI may call Chasovoy directly because authoring a definition is not a gameplay mutation. Gameplay engines/query assemblers ask Chasovoy for definitions by stable reference.
-
-Chasovoy publishes `definition.*` events when definitions change. It deliberately does not request character resolution itself because it does not know which characters reference the changed definition. Gena/runtime resolver may map the changed definition to affected runtime aggregates and invalidate them.
+GM definition mutations are game-authoritative writes and therefore use the GM control plane:
 
 ```text
-GM creates item
-→ CHASOVOY definition.create
-→ canonical item definition exists
+GM Cabinet
+→ Oracle
+→ Chasovoy
+→ canonical definition/revision
+```
 
-GM gives item to Vasya
-→ GENA
-→ CHASOVOY getDefinition(definitionId): “this is the item”
-→ CHEBURASHKA creates/owns the inventory instance
-→ runtime resolver gets item definition from CHASOVOY + instance state from CHEBURASHKA
-→ CE calculates mechanical result
+Oracle stores nothing and does not modify definition content itself; Chasovoy remains the owner.
+
+Read/reference UI may query Chasovoy's read contract directly. Reading a definition does not require Oracle or GENA.
+
+Normal player gameplay never authors definitions. GENA may read/resolve a stable definition reference as part of gameplay execution, but it does not mutate Chasovoy definitions.
+
+## Definition invalidation
+
+Chasovoy publishes `definition.*` events after canonical definition mutation. It deliberately does not request a specific character resolution itself because it does not know which concrete characters reference that definition.
+
+Runtime infrastructure bridges definition changes to campaign-level invalidation:
+
+```text
+Chasovoy definition event
+→ EngineEventBus
+→ CharacterResolutionBus(campaign)
+→ mounted Character Runtime Resolvers reread fresh definitions/state
+→ CE
+```
+
+This preserves the ownership boundary: Chasovoy owns definitions; runtime composition owns usage mapping; CE owns calculation only.
+
+## Canonical GM item flow
+
+```text
+GM authors Ash Blade
+→ GM Cabinet → Oracle → Chasovoy definition.create
+→ definition D1 exists
+
+GM gives Ash Blade to Vasya
+→ GM Cabinet → Oracle → Cheburashka inventory.create(instance → D1)
+→ Cheburashka owns the instance and requests character resolution
+→ resolver reads D1 from Chasovoy + instance state from Cheburashka + character state from Shapoklyak
+→ CE resolves
 ```
 
 ## Migration rule
 
-Existing `spell_catalog`, `rule_templates` and inline item mechanics are legacy storage surfaces. They must be moved behind Chasovoy adapters/migrations rather than copied into a second competing catalog. During transition, an adapter may expose an existing canonical row through the Chasovoy API, but presentation code must progressively stop querying those tables directly.
+Historical `spell_catalog`, `rule_templates` and inline item mechanics may remain physical storage/adapters while the product migrates, but they must not become competing definition owners. New reusable definition behavior must be exposed through the Chasovoy contract rather than creating another catalog.
 
-New reusable GM-authored items/features/spells/classes must target Chasovoy definitions rather than inventing another standalone catalog.
+Presentation code should consume reference/definition contracts and resolved runtime data rather than manufacturing mechanics from prose.
