@@ -460,3 +460,143 @@
     min-width: 58px;
   }
 }
+
+/* The characteristics rail must remain one full-width page at a time.
+   Without an explicit flex-basis mobile WebView can shrink several pages
+   into the same row, which makes labels and saving throws collide. */
+.sheet-v4__abilities .sheet-v3__ability-rail {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-flow: row nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.sheet-v4__abilities .sheet-v3__ability-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.sheet-v4__abilities .sheet-v3__ability-page {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.sheet-v4__abilities .sheet-v3__ability-score,
+.sheet-v4__abilities .sheet-v3__skill-column,
+.sheet-v4__abilities .sheet-v3__ability-score > div,
+.sheet-v4__abilities .sheet-v3__ability-score > div > button,
+.sheet-v4__abilities .sheet-v3__skill-column button,
+.sheet-v4__abilities .sheet-v3__skill-column button > span {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.sheet-v4__abilities .sheet-v3__ability-score > div > button {
+  width: 100%;
+}
+
+@media (max-width: 620px) {
+  .sheet-v4__abilities .sheet-v3__ability-tabs {
+    margin-inline: 10px;
+  }
+
+  .sheet-v4__abilities .sheet-v3__ability-page {
+    padding-inline: 10px;
+  }
+
+  .sheet-v4__abilities .sheet-v3__ability-score {
+    min-height: 0;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sheet-v4__abilities .sheet-v3__ability-score > button {
+    width: 76px;
+    min-width: 76px;
+    border-radius: 20px;
+  }
+
+  .sheet-v4__abilities .sheet-v3__ability-score > div {
+    min-height: 0;
+    gap: 8px;
+  }
+
+  .sheet-v4__abilities .sheet-v3__ability-score > div > span {
+    font-size: 13px;
+    line-height: 1.2;
+  }
+
+  .sheet-v4__abilities .sheet-v3__ability-score > div > button {
+    min-height: 42px;
+    padding-inline: 9px;
+    grid-template-columns: 12px minmax(0, 1fr) auto;
+    gap: 6px;
+    font-size: 9px;
+  }
+
+  .sheet-v4__abilities .sheet-v3__skill-column {
+    min-height: 0;
+  }
+
+  .sheet-v4__abilities .sheet-v3__skill-column button {
+    min-height: 50px;
+    padding: 8px 10px;
+    grid-template-columns: 14px minmax(0, 1fr) auto;
+    gap: 7px;
+  }
+
+  .sheet-v4__abilities .sheet-v3__skill-column button > span {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .sheet-v4__abilities .sheet-v3__skill-column button strong {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  .sheet-v4__abilities .sheet-v3__skill-column button b {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 420px) {
+  .sheet-v4__abilities .sheet-v3__ability-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .sheet-v4__abilities .sheet-v3__ability-tabs button {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 350px) {
+  .sheet-v4__abilities .sheet-v3__ability-score {
+    grid-template-columns: 70px minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .sheet-v4__abilities .sheet-v3__ability-score > button {
+    width: 70px;
+    min-width: 70px;
+  }
+}
