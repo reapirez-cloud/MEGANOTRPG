@@ -87,3 +87,21 @@ test("template gameplay receipt migration locks retries and fingerprints the com
   assert.match(migration, /grant execute on function public\.send_chat_template_roll_v2/)
   assert.match(migration, /grant execute on function public\.send_chat_template_spell_v2/)
 })
+
+test("authenticated clients cannot bypass receipt-aware GENA template RPCs", () => {
+  const migration = fs.readFileSync("supabase/migrations/20260830160402_harden_gena_template_runtime.sql", "utf8")
+
+  assert.match(migration, /revoke execute on function public\.use_character_template_resource_action\(uuid,text,text\) from authenticated/)
+  assert.match(migration, /revoke execute on function public\.use_character_template_spell_v1\(uuid,text,text,text\) from authenticated/)
+  assert.match(migration, /revoke execute on function public\.send_chat_template_action_v1\(uuid,uuid,text,text,text,jsonb\) from authenticated/)
+  assert.match(migration, /revoke execute on function public\.send_chat_template_roll_v1\(uuid,uuid,text,text,text,text,integer,boolean,integer,integer,integer\) from authenticated/)
+  assert.match(migration, /revoke execute on function public\.send_chat_template_spell_v1\(uuid,uuid,text,text,text,text,jsonb\) from authenticated/)
+
+  assert.match(migration, /grant execute on function public\.send_chat_template_action_v2\(uuid,uuid,text,text,text,jsonb,uuid\) to authenticated/)
+  assert.match(migration, /grant execute on function public\.send_chat_template_roll_v2\(uuid,uuid,text,text,text,text,integer,boolean,integer,integer,integer,uuid\) to authenticated/)
+  assert.match(migration, /grant execute on function public\.send_chat_template_spell_v2\(uuid,uuid,text,text,text,text,jsonb,uuid\) to authenticated/)
+
+  assert.match(migration, /engine_command_receipts_created_by_idx/)
+  assert.match(migration, /private\.can_view_location\(location_id, \(select auth\.uid\(\)\)\)/)
+  assert.match(migration, /private\.can_view_character\(npc_character_id, \(select auth\.uid\(\)\)\)/)
+})
