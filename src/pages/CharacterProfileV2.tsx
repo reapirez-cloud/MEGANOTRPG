@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext.tsx"
 import { useCharacters } from "../context/CharacterContext.tsx"
 import { useCharacterSheet } from "../hooks/useCharacterSheet.ts"
 import { resolveLegacyCharacterEngineView, type LegacyCharacterEngineView } from "../lib/legacyCharacterEngineAdapter.ts"
+import { createInventoryMechanicalProjection } from "../inventory-engine/index.ts"
 import { uploadCampaignImage } from "../lib/mediaUpload.ts"
 import { classReference } from "../data/classReference.ts"
 import type { SpellClassKey } from "../lib/spellCatalog.ts"
@@ -168,7 +169,13 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
   const classId = classReferenceId(currentCharacter.character_class)
 
   const engine = sheet
-    ? engineViewOrError({ character: currentCharacter, sheet, spells: data.spells, features: data.features })
+    ? engineViewOrError({
+        character: currentCharacter,
+        sheet,
+        spells: data.spells,
+        features: data.features,
+        inventoryContributions: createInventoryMechanicalProjection(characterId, data.inventory).contributions,
+      })
     : { view: null, error: "" }
 
   const learnedNames = new Set(data.spells.map((spell) => spell.name.trim().toLocaleLowerCase("ru-RU")))

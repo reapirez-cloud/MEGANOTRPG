@@ -56,3 +56,9 @@ export {
   ROLL_ENGINE_VERSION,
   ROLL_ENGINE_VERSION_INFO,
 } from "./version.ts"
+export {
+  TobikEngine,
+  tobik,
+  type TobikPort,
+  type TobikRollRequest,
+} from "./tobik.ts"

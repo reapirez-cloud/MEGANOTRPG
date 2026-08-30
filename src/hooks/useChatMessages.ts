@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { supabase } from "../lib/supabase.ts"
 import { deleteCampaignMediaObject } from "../lib/mediaUpload.ts"
+import { genaSession } from "../game-engine/runtime.ts"
 import type { ChatEventKind, ChatEventPayload, ChatMessage } from "../types/chat.ts"
 import type { ResourceCostInput } from "../types/characterResources.ts"
 
@@ -41,6 +42,17 @@ export type ChatTemplateSpellRequest = {
   label: string
   payload?: ChatEventPayload
 }
+export type ChatInventoryUseRequest = Omit<ChatRollRequest, "characterId"> & {
+  characterId: string
+  itemId: string
+  itemAmount?: number
+  payload?: ChatEventPayload
+}
+
+// GENA gateway owns send_chat_roll_v3, send_chat_template_roll_v1,
+// send_chat_template_action_v1 and send_chat_template_spell_v1. Keeping the
+// names here makes the migration boundary discoverable without letting this UI
+// hook become the RPC owner again.
 
 const fields = "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at, attachment_url, attachment_kind, event_kind, event_payload"
 const PAGE_SIZE = 50
@@ -140,6 +152,21 @@ export function useChatMessages(roomId: string) {
     return true
   }, [append, roomId])
 
+  const runGenaCommand = useCallback(async (execute: () => Promise<number>): Promise<boolean> => {
+    if (sending) return false
+    setSending(true)
+    setError(null)
+    try {
+      const id = await execute()
+      setSending(false)
+      return fetchInserted(id)
+    } catch (reason) {
+      setSending(false)
+      setError(reason instanceof Error ? reason.message : "Не удалось выполнить игровую команду.")
+      return false
+    }
+  }, [fetchInserted, sending])
+
   const sendMessage = useCallback(async (text: string, attachmentUrl: string | null = null, characterId: string | null = null) => {
     const body = text.trim()
     if ((!body && !attachmentUrl) || sending) return false
@@ -163,53 +190,12 @@ export function useChatMessages(roomId: string) {
   }, [append, roomId, sending])
 
   const sendRoll = useCallback(async (request: ChatRollRequest) => {
-    if (sending) return false
-    setSending(true)
-    setError(null)
-    const { data, error: requestError } = await supabase.rpc("send_chat_roll_v3", {
-      p_room_id: roomId,
-      p_character_id: request.characterId,
-      p_label: request.label,
-      p_kind: request.kind,
-      p_modifier: request.modifier ?? 0,
-      p_roll_d20: request.rollD20 ?? true,
-      p_dice_count: request.diceCount ?? 0,
-      p_dice_sides: request.diceSides ?? 0,
-      p_dice_modifier: request.diceModifier ?? 0,
-      p_resource_costs: request.resourceCosts ?? [],
-    })
-    setSending(false)
-    if (requestError) {
-      setError(requestError.message)
-      return false
-    }
-    return fetchInserted(Number(data))
-  }, [fetchInserted, roomId, sending])
+    return runGenaCommand(() => genaSession.sendRoll({ roomId, ...request }))
+  }, [roomId, runGenaCommand])
 
   const sendTemplateRoll = useCallback(async (request: ChatTemplateRollRequest) => {
-    if (sending) return false
-    setSending(true)
-    setError(null)
-    const { data, error: requestError } = await supabase.rpc("send_chat_template_roll_v1", {
-      p_room_id: roomId,
-      p_character_id: request.characterId,
-      p_mechanic_id: request.mechanicId,
-      p_option_key: request.optionKey ?? null,
-      p_label: request.label,
-      p_kind: request.kind,
-      p_modifier: request.modifier ?? 0,
-      p_roll_d20: request.rollD20 ?? false,
-      p_dice_count: request.diceCount ?? 0,
-      p_dice_sides: request.diceSides ?? 0,
-      p_dice_modifier: request.diceModifier ?? 0,
-    })
-    setSending(false)
-    if (requestError) {
-      setError(requestError.message)
-      return false
-    }
-    return fetchInserted(Number(data))
-  }, [fetchInserted, roomId, sending])
+    return runGenaCommand(() => genaSession.sendTemplateRoll({ roomId, ...request }))
+  }, [roomId, runGenaCommand])
 
   const sendEvent = useCallback(async (
     characterId: string | null,
@@ -218,65 +204,20 @@ export function useChatMessages(roomId: string) {
     payload: ChatEventPayload = {},
     resourceCosts: ResourceCostInput[] = [],
   ): Promise<boolean> => {
-    if (sending) return false
-    setSending(true)
-    setError(null)
-    const { data, error: requestError } = await supabase.rpc("send_chat_event_v3", {
-      p_room_id: roomId,
-      p_character_id: characterId,
-      p_event_kind: eventKind,
-      p_label: label,
-      p_payload: payload,
-      p_resource_costs: resourceCosts,
-    })
-    setSending(false)
-    if (requestError) {
-      setError(requestError.message)
-      return false
-    }
-    return fetchInserted(Number(data))
-  }, [fetchInserted, roomId, sending])
+    return runGenaCommand(() => genaSession.sendEvent({ roomId, characterId, eventKind, label, payload, resourceCosts }))
+  }, [roomId, runGenaCommand])
 
   const sendTemplateAction = useCallback(async (request: ChatTemplateActionRequest): Promise<boolean> => {
-    if (sending) return false
-    setSending(true)
-    setError(null)
-    const { data, error: requestError } = await supabase.rpc("send_chat_template_action_v1", {
-      p_room_id: roomId,
-      p_character_id: request.characterId,
-      p_mechanic_id: request.mechanicId,
-      p_option_key: request.optionKey ?? null,
-      p_label: request.label,
-      p_payload: request.payload ?? {},
-    })
-    setSending(false)
-    if (requestError) {
-      setError(requestError.message)
-      return false
-    }
-    return fetchInserted(Number(data))
-  }, [fetchInserted, roomId, sending])
+    return runGenaCommand(() => genaSession.sendTemplateAction({ roomId, ...request }))
+  }, [roomId, runGenaCommand])
 
   const sendTemplateSpell = useCallback(async (request: ChatTemplateSpellRequest): Promise<boolean> => {
-    if (sending) return false
-    setSending(true)
-    setError(null)
-    const { data, error: requestError } = await supabase.rpc("send_chat_template_spell_v1", {
-      p_room_id: roomId,
-      p_character_id: request.characterId,
-      p_mechanic_id: request.mechanicId,
-      p_method_key: request.methodKey,
-      p_option_key: request.optionKey ?? null,
-      p_label: request.label,
-      p_payload: request.payload ?? {},
-    })
-    setSending(false)
-    if (requestError) {
-      setError(requestError.message)
-      return false
-    }
-    return fetchInserted(Number(data))
-  }, [fetchInserted, roomId, sending])
+    return runGenaCommand(() => genaSession.sendTemplateSpell({ roomId, ...request }))
+  }, [roomId, runGenaCommand])
+
+  const useInventoryItem = useCallback(async (request: ChatInventoryUseRequest): Promise<boolean> => {
+    return runGenaCommand(() => genaSession.useInventoryItem({ roomId, ...request }))
+  }, [roomId, runGenaCommand])
 
   const editMessage = useCallback(async (messageId: number, text: string): Promise<Result> => {
     const body = text.trim()
@@ -313,6 +254,7 @@ export function useChatMessages(roomId: string) {
     sendEvent,
     sendTemplateAction,
     sendTemplateSpell,
+    useInventoryItem,
     editMessage,
     deleteMessage,
   }

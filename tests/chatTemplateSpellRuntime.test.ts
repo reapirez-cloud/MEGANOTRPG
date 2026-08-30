@@ -4,6 +4,7 @@ import test from "node:test"
 
 const sql = fs.readFileSync("supabase/migrations/20260830020000_class_chat_template_spell_runtime.sql", "utf8")
 const chatHook = fs.readFileSync("src/hooks/useChatMessages.ts", "utf8")
+const genaGateway = fs.readFileSync("src/game-engine/supabase.ts", "utf8")
 const chatRoom = fs.readFileSync("src/pages/ChatRoom.tsx", "utf8")
 
 function before(value: string, left: string, right: string) {
@@ -37,9 +38,10 @@ test("template spell chat wrapper validates and spends before posting", () => {
   assert.match(wrapper, /'\[\]'::jsonb/)
 })
 
-test("chat hook and ChatRoom use authoritative class spell RPC", () => {
-  assert.match(chatHook, /send_chat_template_spell_v1/)
-  assert.match(chatHook, /p_method_key:\s*request\.methodKey/)
+test("Gena gateway and ChatRoom use authoritative class spell RPC", () => {
+  assert.match(genaGateway, /send_chat_template_spell_v1/)
+  assert.match(genaGateway, /p_method_key:\s*command\.methodKey/)
+  assert.match(chatHook, /genaSession\.sendTemplateSpell/)
   assert.match(chatRoom, /templateMechanicIdForSpellAccess\(access\)/)
   assert.match(chatRoom, /chat\.sendTemplateSpell/)
 })

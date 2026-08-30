@@ -3,6 +3,7 @@ import type { FormEvent } from "react"
 import type { ResolvedAction, ResolvedSpell } from "../character-engine/index.ts"
 import { supabase } from "../lib/supabase"
 import { resourceCostInputs } from "../lib/resourceRuntime"
+import { inventoryItemIdFromSourceId } from "../inventory-engine/index.ts"
 import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
 import { useChatMessages } from "../hooks/useChatMessages"
@@ -260,6 +261,36 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
           })
         : await chat.sendTemplateAction({ ...common, payload: { detail: action.economy } })
       if (sent) { resolved.refresh(); setActionsOpen(false) }
+      return
+    }
+
+    const inventoryItemId = action.sources
+      .filter((ref) => ref.source.sourceType === "inventory_item")
+      .map((ref) => inventoryItemIdFromSourceId(ref.source.id))
+      .find((itemId): itemId is string => Boolean(itemId))
+
+    // Item provenance is an engine contract, not a label heuristic. Gena
+    // records the declaration, Cheburashka owns the atomic item mutation and
+    // signals a fresh CE resolution after its warehouse state has changed.
+    if (inventoryItemId) {
+      const contract = resolved.contract
+      const costs = contract ? resourceCostInputs(contract, action.resourceCosts) : []
+      const sent = await chat.useInventoryItem({
+        characterId,
+        itemId: inventoryItemId,
+        label: action.label || action.key,
+        kind: "action",
+        modifier: action.attack?.bonus.value || 0,
+        rollD20: Boolean(action.attack),
+        diceCount: damage?.dice?.count || 0,
+        diceSides: damage?.dice?.sides || 0,
+        diceModifier: damage?.modifier.value || 0,
+        resourceCosts: costs,
+        payload: { detail: action.economy },
+      })
+      // Cheburashka's persistence bridge emits the resolution request after the
+      // committed item mutation. The chat UI only closes its own sheet.
+      if (sent) setActionsOpen(false)
       return
     }
 

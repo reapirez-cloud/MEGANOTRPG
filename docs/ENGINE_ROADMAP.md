@@ -68,7 +68,7 @@ Rules:
 2. Cross-domain **play mutations** should normally be coordinated by GENA so the action can be recorded, correlated and propagated consistently.
 3. Engines may expose explicit read/projection contracts to other engines or to the snapshot builder. They must not depend on another engine's UI.
 4. CE remains passive: it receives an explicit snapshot and returns a resolved contract. It never announces changes to other engines.
-5. After a domain mutation, GENA coordinates a fresh snapshot/re-resolution instead of waiting for CE to discover anything.
+5. After a character-affecting domain mutation, the owning engine directly requests a fresh snapshot/re-resolution instead of waiting for CE, GENA or a UI to discover drift. GENA may await/record the result, but is not a courier for another engine's storage rows.
 6. UI sends intentions/commands and renders results. UI-local state is never canonical inter-engine transport.
 
 Example — consumable grenade:
@@ -82,16 +82,16 @@ CHEBURASHKA.consumeItem(instanceId)
         ↓
 Cheburashka decrements quantity/charge or removes the item
         ↓
-GENA rebuilds the character snapshot
+CHEBURASHKA directly requests character resolution
         ↓
-Cheburashka contributes the remaining mechanical inventory projection
+the assembler fetches fresh owner projections; Cheburashka contributes only the remaining mechanical inventory projection
         ↓
 CE resolves the new character contract
         ↓
 Chat / Revolver / Sheet render the result
 ```
 
-GENA does not delete the inventory row itself. CE does not tell Cheburashka that an item disappeared. Cheburashka owns the inventory mutation; GENA owns orchestration of what happened during play.
+GENA does not delete the inventory row itself. CE does not tell Cheburashka that an item disappeared. Cheburashka owns the inventory mutation and its resolution signal; GENA owns orchestration/history of what happened during play.
 
 ---
 
@@ -128,7 +128,7 @@ The sheet is a renderer/management surface over canonical state and resolved CE 
 
 ## GENA — Game State / Session Engine
 
-**Status:** IN DEVELOPMENT — currently exists as distributed runtime pieces and should be consolidated deliberately.
+**Status:** ACTIVE FOUNDATION / IN DEVELOPMENT — explicit command facade exists while legacy runtime pieces are being consolidated deliberately.
 
 Responsibility: answer **“What happened during play, what state changed, which domain engine must handle it, and what must now be shown to the player/GM?”**
 
@@ -189,7 +189,7 @@ GENA
     ↓
 CHEBURASHKA mutates item state
     ↓
-GENA rebuilds snapshot
+CHEBURASHKA requests fresh character resolution
     ↓
 CE resolves again
 ```
@@ -273,7 +273,7 @@ Existing server roll paths such as chat/template roll RPCs are part of the emerg
 
 ## CHEBURASHKA — Inventory Engine
 
-**Status:** PLANNED / IN DEVELOPMENT DESIGN
+**Status:** ACTIVE FOUNDATION / IN DEVELOPMENT
 
 Responsibility: inventory ownership, storage and item-state workflows.
 
@@ -289,7 +289,8 @@ Expected responsibility boundary:
 - item-granted effects and mechanical contributions;
 - item charges/durability/other explicit persistent item state when authored;
 - exposing deterministic item contributions/state to CE snapshot construction;
-- receiving gameplay mutations through GENA when an item is used during play.
+- receiving gameplay mutations through GENA when an item is used during play;
+- directly requesting a fresh character resolution after its canonical state commits.
 
 Not every stored item belongs in CE. Cheburashka may keep arbitrary non-mechanical inventory such as a bottle of beer, rope or junk entirely inside inventory state. Only mechanically relevant equipment/effects/actions/resources need to contribute to the CE snapshot.
 
@@ -304,7 +305,11 @@ Cheburashka must NOT:
 Architecture direction:
 
 ```text
-Inventory mutation during play → GENA → Cheburashka persistence/state → fresh snapshot → CE
+Inventory mutation during play → GENA → Cheburashka persistence/state
+                                      ↓
+                         direct resolution request
+                                      ↓
+                         fresh projections → CE
 ```
 
 CE consumes the item contribution/state snapshot; CE does not query Cheburashka directly and does not mutate inventory.
@@ -313,7 +318,7 @@ CE consumes the item contribution/state snapshot; CE does not query Cheburashka 
 
 ## SHAPOKLYAK — PC/NPC Creation & Storage Engine
 
-**Status:** PLANNED
+**Status:** ACTIVE FOUNDATION / IN DEVELOPMENT
 
 Responsibility: creation, identity, persistence and lifecycle of player characters and NPCs as entities.
 
@@ -338,7 +343,7 @@ Shapoklyak must also remain separate from Cheburashka: a character can own inven
 
 ## LARISA — Location / World + Campaign Time Engine
 
-**Status:** PLANNED
+**Status:** ACTIVE FOUNDATION / IN DEVELOPMENT
 
 Responsibility: persistent world locations, their relationships, and descriptive campaign chronology.
 
@@ -383,14 +388,14 @@ GENA may later attach/link game events to journal entries as convenience, but th
 
 GM edits are a normal first-class input path, not an exceptional maintenance backdoor.
 
-When the GM says a canonical fact changed, the owning engine should accept/validate the command according to permissions, persist it, and let GENA propagate the resulting state change.
+When the GM says a canonical fact changed, GENA should validate/route the intention and the owning engine should persist it according to permissions. A character-affecting owner directly requests fresh resolution; GENA records and coordinates the gameplay fact.
 
 Examples:
 
 ```text
 GM: set HP to 17
-→ owning character state path persists 17
-→ GENA observes/coordinates refresh
+→ SHAPOKLYAK persists 17
+→ SHAPOKLYAK requests refresh directly
 → fresh snapshot → CE
 → sheet/chat show 17
 ```
@@ -398,7 +403,7 @@ GM: set HP to 17
 ```text
 GM: add/edit a stat, feature, class assignment or other supported character fact
 → owning domain persists canonical edit
-→ GENA rebuilds/propagates state
+→ owning domain engine requests fresh resolution
 → CE resolves from the new snapshot
 ```
 
@@ -426,7 +431,7 @@ When auditing mechanics or architecture, an AI agent MUST distinguish:
 7. **PC/NPC identity/lifecycle/visibility** — Shapoklyak responsibility.
 8. **World/location/time persistence/discovery** — Larisa responsibility. Time is descriptive unless explicitly promoted to mechanics later.
 9. **Quest journal** — a lightweight GM/player writing feature, not a mechanics engine.
-10. **Engine communication** — verify domain engines use explicit contracts/state rather than reading or mutating one another's UI components.
+10. **Engine communication** — verify domain engines use explicit contracts/state rather than reading or mutating one another's UI components. Use `ENGINE_CONTRACTS.md` as the command/storage matrix.
 
 Do not report missing scene simulation as a class-mechanics defect. Report defects when machine-owned bookkeeping is wrong or absent: missing resource counters, wrong costs, wrong recharge, missing persistent/rest-refresh choices, missing canonical state mutation, missing CE refresh after mutation, duplicate/erased actions, incorrect class/subclass level ownership, cross-engine mutation performed by the wrong owner, or UI being used as canonical inter-engine transport.
 

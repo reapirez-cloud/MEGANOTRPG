@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import type { ResolvedCharacterContract } from "../character-engine/index.ts"
 import type { Character } from "../context/CharacterContext.tsx"
+import { characterResolutionBus } from "../engine-runtime/characterResolutionBus.ts"
+import { cheburashka, watchCheburashkaCharacter } from "../inventory-engine/runtime.ts"
+import type { InventoryMechanicalProjection } from "../inventory-engine/index.ts"
 import {
   buildCharacterPreparationModel,
   type CharacterPreparationModel,
@@ -11,7 +14,7 @@ import {
 import { resolveLegacyCharacterEngineView } from "../lib/legacyCharacterEngineAdapter.ts"
 import { resourceSyncInputs } from "../lib/resourceRuntime.ts"
 import { supabase } from "../lib/supabase.ts"
-import type { CharacterFeature, CharacterSheet, CharacterSpell, InventoryItem } from "../types/characterSheet.ts"
+import type { CharacterFeature, CharacterSheet, CharacterSpell } from "../types/characterSheet.ts"
 import { useCharacterResourceStates } from "./useCharacterResourceStates.ts"
 import { useCharacterTemplateRegistry } from "./useCharacterTemplateRegistry.ts"
 
@@ -25,6 +28,17 @@ type SpellCatalogRoutingRow = {
 type RoutedSpellIdentity = { dealsDamage?: boolean }
 
 const EMPTY_PREPARATION: CharacterPreparationModel = { session: null, tasks: [], suppressedSourceIds: [] }
+
+async function loadInventoryProjection(characterId: string): Promise<{
+  data: InventoryMechanicalProjection | null
+  error: { message: string } | null
+}> {
+  try {
+    return { data: await cheburashka.mechanicalProjection(characterId), error: null }
+  } catch (reason) {
+    return { data: null, error: { message: reason instanceof Error ? reason.message : "Не удалось получить проекцию инвентаря." } }
+  }
+}
 
 function rollRecipeDealsDamage(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(rollRecipeDealsDamage)
@@ -108,6 +122,16 @@ export function useResolvedChatActor(character: Character | null) {
 
   useEffect(() => {
     if (!characterId) return
+    return characterResolutionBus.subscribe(characterId, refresh)
+  }, [characterId, refresh])
+
+  useEffect(() => {
+    if (!characterId) return
+    return watchCheburashkaCharacter(characterId)
+  }, [characterId])
+
+  useEffect(() => {
+    if (!characterId) return
     let channel: RealtimeChannel | null = supabase.channel(`character-sheet-runtime-${characterId}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "character_sheets", filter: `character_id=eq.${characterId}` }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "character_spells", filter: `character_id=eq.${characterId}` }, refresh)
@@ -126,7 +150,7 @@ export function useResolvedChatActor(character: Character | null) {
       setLoading(true); setError(templateError || resourceError || "")
       void Promise.all([
         supabase.from("character_sheets").select("*").eq("character_id", character.id).maybeSingle(),
-        supabase.from("character_inventory_items").select("*").eq("character_id", character.id).order("sort_order", { ascending: true }),
+        loadInventoryProjection(character.id),
         supabase.from("character_spells").select("*").eq("character_id", character.id).order("spell_level", { ascending: true }),
         supabase.from("character_features").select("*").eq("character_id", character.id).order("sort_order", { ascending: true }),
         supabase.from("character_preparation_sessions").select("*").eq("character_id", character.id).maybeSingle(),
@@ -150,7 +174,7 @@ export function useResolvedChatActor(character: Character | null) {
           const view = resolveLegacyCharacterEngineView({
             character,
             sheet,
-            inventory: (inventoryResult.data || []) as InventoryItem[],
+            inventoryContributions: inventoryResult.data?.contributions ?? [],
             spells: characterSpells,
             features: (featuresResult.data || []) as CharacterFeature[],
             resourceStates: resourceState,

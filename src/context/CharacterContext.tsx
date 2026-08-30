@@ -8,24 +8,13 @@ import {
 } from "react"
 import type { ReactNode } from "react"
 
+import { createEngineCommandContext } from "../engine-contracts/index.ts"
+import { shapoklyak } from "../entity-engine/runtime.ts"
+import type { CharacterEntity } from "../entity-engine/index.ts"
 import { supabase } from "../lib/supabase"
 import { useAuth } from "./AuthContext"
 
-export type Character = {
-  id: string
-  campaign_id: string
-  assigned_user_id: string | null
-  name: string
-  character_class: string
-  level: number
-  bio: string
-  avatar_url: string | null
-  character_type: "pc" | "npc"
-  visibility: "campaign" | "private"
-  created_by: string | null
-  created_at: string
-  updated_at: string
-}
+export type Character = CharacterEntity
 
 export type CampaignMember = {
   campaign_id: string
@@ -380,32 +369,32 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const { error: insertError } = await supabase.rpc(
-        "create_campaign_character",
-        {
-          p_campaign_id: campaignId,
-          p_name: input.name.trim(),
-          p_character_class: input.character_class.trim() || "Персонаж",
-          p_level: input.level,
-          p_bio: input.bio.trim(),
-          p_avatar_url: input.avatar_url?.trim() || null,
-          p_assigned_user_id: input.assigned_user_id,
-          p_character_type: input.character_type || "pc",
-          p_visibility: input.visibility || "campaign",
-        },
-      )
-
-      if (insertError) {
+      try {
+        await shapoklyak.execute({
+          kind: "entity.create",
+          context: createEngineCommandContext({ campaignId, requestedBy: user.id, authority: "gm" }),
+          input: {
+            name: input.name.trim(),
+            character_class: input.character_class.trim() || "Персонаж",
+            level: input.level,
+            bio: input.bio.trim(),
+            avatar_url: input.avatar_url?.trim() || null,
+            assigned_user_id: input.assigned_user_id,
+            character_type: input.character_type || "pc",
+            visibility: input.visibility || "campaign",
+          },
+        })
+      } catch (reason) {
         return {
           ok: false,
-          error: insertError.message || "Не удалось создать персонажа.",
+          error: reason instanceof Error ? reason.message : "Не удалось создать персонажа.",
         }
       }
 
       await load()
       return { ok: true }
     },
-    [campaignId, canManage, load],
+    [campaignId, canManage, load, user.id],
   )
 
   const updateCharacter = useCallback(
@@ -413,26 +402,27 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       const character = characters.find((item) => item.id === characterId)
       if (!character) return { ok: false, error: "Персонаж не найден." }
 
-      const { error: updateError } = await supabase.rpc(
-        "update_campaign_character",
-        {
-          p_character_id: characterId,
-          p_name: input.name.trim(),
-          p_character_class: input.character_class.trim() || "Персонаж",
-          p_level: input.level,
-          p_bio: input.bio.trim(),
-          p_avatar_url: input.avatar_url?.trim() || null,
-          p_assigned_user_id: input.assigned_user_id,
-          p_character_type: input.character_type || character.character_type,
-          p_visibility: input.visibility || character.visibility,
-        },
-      )
-
-      if (updateError) return { ok: false, error: updateError.message }
+      try {
+        await shapoklyak.execute({
+          kind: "entity.update",
+          context: createEngineCommandContext({ campaignId: character.campaign_id, requestedBy: user.id, authority: canManage ? "gm" : "player", actorCharacterId: characterId }),
+          characterId,
+          input: {
+            name: input.name.trim(),
+            character_class: input.character_class.trim() || "Персонаж",
+            level: input.level,
+            bio: input.bio.trim(),
+            avatar_url: input.avatar_url?.trim() || null,
+            assigned_user_id: input.assigned_user_id,
+            character_type: input.character_type || character.character_type,
+            visibility: input.visibility || character.visibility,
+          },
+        })
+      } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось обновить персонажа." } }
       await load()
       return { ok: true }
     },
-    [characters, load],
+    [canManage, characters, load, user.id],
   )
 
   const updateOwnCharacterAvatar = useCallback(
@@ -457,12 +447,11 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
 
   const deleteCharacter = useCallback(
     async (characterId: string): Promise<Result> => {
-      const { error: deleteError } = await supabase.rpc(
-        "delete_campaign_character",
-        { p_character_id: characterId },
-      )
-
-      if (deleteError) return { ok: false, error: deleteError.message }
+      const character = characters.find((item) => item.id === characterId)
+      if (!character) return { ok: false, error: "Персонаж не найден." }
+      try {
+        await shapoklyak.execute({ kind: "entity.delete", context: createEngineCommandContext({ campaignId: character.campaign_id, requestedBy: user.id, authority: "gm" }), characterId })
+      } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось удалить персонажа." } }
       setCharacters((current) => current.filter((character) => character.id !== characterId))
       setMembers((current) =>
         current.map((member) =>
@@ -473,7 +462,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       )
       return { ok: true }
     },
-    [],
+    [characters, user.id],
   )
 
   const setActiveForMember = useCallback(
@@ -499,16 +488,9 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const { error: updateError } = await supabase.rpc(
-        "set_campaign_active_character",
-        {
-          p_campaign_id: campaignId,
-          p_user_id: userId,
-          p_character_id: characterId,
-        },
-      )
-
-      if (updateError) return { ok: false, error: updateError.message }
+      try {
+        await shapoklyak.execute({ kind: "entity.set_active", context: createEngineCommandContext({ campaignId, requestedBy: user.id, authority: canManage ? "gm" : "player", actorCharacterId: characterId }), userId, characterId })
+      } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось выбрать активного персонажа." } }
       setMembers((current) =>
         current.map((member) =>
           member.user_id === userId
@@ -518,7 +500,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       )
       return { ok: true }
     },
-    [campaignId, characters],
+    [campaignId, canManage, characters, user.id],
   )
 
   if (loading) {

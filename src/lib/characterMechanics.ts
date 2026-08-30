@@ -12,11 +12,6 @@ import type { CharacterFeature, InventoryItem } from "../types/characterSheet.ts
 import type { StoredActionDamage, StoredMechanic, StoredMechanics, StoredMechanicPresentation } from "../types/characterMechanics.ts"
 import { isPersistentResourceRecoveryTrigger } from "./persistentResourcePolicy.ts"
 
-const inventoryRegistry = new Map<string, InventoryItem[]>()
-
-export function registerCharacterInventory(characterId: string, items: InventoryItem[]) { inventoryRegistry.set(characterId, items) }
-export function registeredCharacterInventory(characterId: string): InventoryItem[] { return inventoryRegistry.get(characterId) || [] }
-
 function literal(value: number): FormulaExpression { return { kind: "literal", value } }
 function reference(key: string): FormulaExpression { return { kind: "reference", key } }
 function sumFormula(parts: FormulaExpression[]): FormulaExpression { if (!parts.length) return literal(0); if (parts.length === 1) return parts[0]!; return { kind: "add", terms: parts } }

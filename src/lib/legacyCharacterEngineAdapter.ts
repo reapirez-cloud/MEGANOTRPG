@@ -16,8 +16,6 @@ import {
 import type { Character } from "../context/CharacterContext.tsx"
 import {
   featureMechanicContributions,
-  inventoryMechanicContributions,
-  registeredCharacterInventory,
 } from "./characterMechanics.ts"
 import { registeredCharacterResourceState } from "./resourceRuntime.ts"
 import {
@@ -27,14 +25,15 @@ import {
 import { characterTemplateContributions } from "../rule-templates/registry.ts"
 import { resolveTemplateBundles } from "../rule-templates/resolver.ts"
 import type { CharacterTemplateBundle } from "../rule-templates/types.ts"
-import type { CharacterFeature, CharacterSheet, CharacterSpell, InventoryItem } from "../types/characterSheet.ts"
+import type { CharacterFeature, CharacterSheet, CharacterSpell } from "../types/characterSheet.ts"
 
 // Integration boundary: keep this adapter aligned with docs/CHARACTER_ENGINE_CONTRACT.md
 // and src/rule-templates/CLASS_INTEGRATION_NOTES.md. CE itself stays persistence/UI agnostic.
 export interface LegacyCharacterEngineView { input: CharacterEngineInput; contract: ResolvedCharacterContract; spellcastingAbility?: AbilityKey }
 
 export type CharacterEngineIntegrationSnapshot = {
-  inventory?: InventoryItem[]
+  /** Cheburashka contract: CE sees projections, never the backpack. */
+  inventoryContributions?: CharacterContribution[]
   resourceStates?: Record<string, ResourceState>
   templateBundles?: CharacterTemplateBundle[]
   suppressedSourceIds?: Iterable<string>
@@ -68,7 +67,6 @@ export function buildLegacyCharacterEngineInput(args: {
   features: CharacterFeature[]
 } & CharacterEngineIntegrationSnapshot): CharacterEngineInput {
   const { character, sheet, spells, features } = args
-  const inventory = args.inventory ?? registeredCharacterInventory(character.id)
   const sheetSource = legacySource("legacy-sheet", "Базовый лист персонажа", "legacy_sheet")
   const contributions: CharacterContribution[] = []
   const standardProficiency = proficiencyBonusForLevel(character.level)
@@ -88,7 +86,8 @@ export function buildLegacyCharacterEngineInput(args: {
   const templateContributions = args.templateBundles !== undefined
     ? resolveTemplateBundles(args.templateBundles, character.level).contributions
     : characterTemplateContributions(character.id, character.level)
-  contributions.push(...featureMechanicContributions(features), ...inventoryMechanicContributions(inventory), ...templateContributions)
+  const inventoryContributions = args.inventoryContributions ?? []
+  contributions.push(...featureMechanicContributions(features), ...inventoryContributions, ...templateContributions)
   const parserOwnedSlots = new Set(templateContributions
     .filter((entry) => entry.kind === "grant" && entry.target === "resource" && /^spell_slot_[1-9]$/.test(entry.key))
     .map((entry) => entry.kind === "grant" ? entry.key : ""))

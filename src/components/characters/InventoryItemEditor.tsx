@@ -188,6 +188,12 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
       image_url: imageUrl || null,
       description,
       mechanics: finalMechanics(),
+      // Charge semantics are Cheburashka state. Until the editor exposes them,
+      // an ordinary description/mechanics edit must preserve them losslessly.
+      ...(item?.usage_mode ? { usage_mode: item.usage_mode } : {}),
+      ...(item?.charges_current !== undefined ? { charges_current: item.charges_current } : {}),
+      ...(item?.charges_max !== undefined ? { charges_max: item.charges_max } : {}),
+      ...(item?.item_state ? { item_state: item.item_state } : {}),
     })
     setSaving(false)
     if (!result.ok) { setError(result.error || "Не удалось сохранить предмет."); return }

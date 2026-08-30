@@ -9,6 +9,7 @@ import type { InventoryItem } from "../src/types/characterSheet.ts"
 const editor = fs.readFileSync("src/components/characters/InventoryItemEditor.tsx", "utf8")
 const inventory = fs.readFileSync("src/components/characters/CharacterInventory.tsx", "utf8")
 const chat = fs.readFileSync("src/components/chat/ChatActionSheet.tsx", "utf8")
+const chatModel = fs.readFileSync("src/components/chat/chatActionModel.ts", "utf8")
 const room = fs.readFileSync("src/pages/ChatRoom.tsx", "utf8")
 
 test("curse editor exposes two independent player disclosure controls", () => {
@@ -59,6 +60,7 @@ test("player inventory and chat filter hidden curse disclosure while managers ca
   assert.match(inventory, /curse\.showCurseToPlayer/)
   assert.match(inventory, /curse\.showCurseEffectToPlayer/)
   assert.match(chat, /includePrivateSources/)
-  assert.match(chat, /spellVisibleToViewer/)
+  assert.match(chatModel, /visibleSpell/)
+  assert.match(chatModel, /source\.visibility !== "private"/)
   assert.match(room, /includePrivateSources=\{canManage\}/)
 })

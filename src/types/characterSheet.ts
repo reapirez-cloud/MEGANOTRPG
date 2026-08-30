@@ -3,6 +3,7 @@ import type { StoredMechanics } from "./characterMechanics"
 export type SkillRank = 0 | 1 | 2
 export type InventoryCategory = "equipment" | "consumable" | "tool" | "book" | "trinket" | "quest" | "material" | "currency" | "container" | "other"
 export type EquipmentSlot = "main_hand" | "off_hand" | "two_hands" | "head" | "neck" | "shoulders" | "chest" | "hands" | "wrists" | "waist" | "legs" | "feet" | "back" | "ring_left" | "ring_right" | "ammo" | "other"
+export type ItemUsageMode = "none" | "quantity" | "charges"
 export type SpellSlotState = { max: number; used: number }
 
 export type CharacterSheet = {
@@ -23,6 +24,9 @@ export type InventoryItem = {
   id: string; character_id: string; name: string; quantity: number; weight: number | null; equipped: boolean
   category: InventoryCategory; equipment_slot: EquipmentSlot | null; image_url: string | null; description: string
   mechanics?: StoredMechanics
+  /** Cheburashka-owned persistent use state. Older rows are normalized by its adapter. */
+  usage_mode?: ItemUsageMode; charges_current?: number | null; charges_max?: number | null
+  item_state?: Record<string, unknown>; version?: number
   sort_order: number; created_at: string; updated_at: string
 }
 
@@ -46,6 +50,8 @@ export type CharacterArt = { id: string; campaign_id: string; uploaded_by: strin
 export type InventoryInput = {
   name: string; quantity: number; weight: number | null; equipped: boolean; category: InventoryCategory
   equipment_slot: EquipmentSlot | null; image_url: string | null; description: string; mechanics?: StoredMechanics
+  usage_mode?: ItemUsageMode; charges_current?: number | null; charges_max?: number | null
+  item_state?: Record<string, unknown>
 }
 export type SpellInput = {
   name: string; spell_level: number; school: string; casting_time: string; spell_range: string; duration: string

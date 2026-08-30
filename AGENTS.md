@@ -17,15 +17,18 @@ This branch rule has priority over older task-specific habits or prior requests 
 
 ## Named engine architecture — read before audits
 
-Before auditing or changing chat gameplay, classes, resources, rests, preparation, inventory, character/NPC storage, sheets, world data, locations or maps, read `docs/ENGINE_ROADMAP.md`.
+Before auditing or changing chat gameplay, classes, resources, rests, preparation, inventory, character/NPC storage, sheets, world data, locations or maps, read `docs/ENGINE_ROADMAP.md` and `docs/ENGINE_CONTRACTS.md`.
 
 The roadmap is an **IN DEVELOPMENT architecture contract** and defines the intended engine boundaries:
 
-- **CE — Character Engine:** deterministic character calculator; answers what the supplied character snapshot resolves to. CE does not query chat/DB or mutate game state.
-- **GENA — Game State / Session Engine:** emerging gameplay coordinator/bookkeeper; records what players/GM declared, owns game-event/state mutation flows, resource spending/recharge, rests, post-rest preparation, stored choices/results, and rebuilds a fresh CE input after canonical state changes.
-- **CHEBURASHKA — Inventory Engine:** planned dedicated inventory/item-state engine. Do not bury inventory ownership/state logic inside CE or chat UI.
-- **PC/NPC Creation & Storage Engine — name TBD:** planned dedicated entity/lifecycle engine for player characters and NPCs. The final name must come from the Cheburashka cartoon universe; automated agents must not invent it.
-- **Location / World Engine — name TBD:** planned dedicated world/location engine. The final name must come from the Cheburashka cartoon universe; automated agents must not invent it.
+- **CE — Character Engine:** pure deterministic character calculator. CE owns algorithms and one transient resolved result, but stores no canonical data and performs no I/O.
+- **GENA — Game State / Session Engine:** central gameplay coordinator/bookkeeper; records what players/GM declared and routes mutations to their owning engines.
+- **CHEBURASHKA — Inventory Engine:** owns all inventory persistence/state and exposes only a mechanical projection to fresh CE input assembly. It directly requests resolution after its own mutation.
+- **SHAPOKLYAK — PC/NPC Creation & Storage Engine:** owns entity identity, lifecycle, assignment, visibility and GM-authoritative character facts such as explicit HP.
+- **LARISA — Location / World + Campaign Time Engine:** owns locations, discovery, placement, scenes and descriptive chronology. Time has no automatic mechanical consequences.
+- **TOBIK — Roll Engine:** owns shared dice planning/resolution and returns structured results to Gena; it never applies HP or judges the scene.
+
+Active class / Character Engine work is done on `dev` unless the user explicitly authorizes promotion to `main`.
 
 **The GM is the final scene rules engine.** Application engines help with bookkeeping and explicit machine-owned state; they do not enforce transient scene legality such as turn economy, target validity, range, line of sight, Echo position/presence, aura membership, or whether a declared action makes tactical/narrative sense. Do not report missing scene simulation as a mechanics defect unless the application explicitly owns that state.
 
@@ -48,9 +51,9 @@ Also read `src/character-engine/README.md` before modifying the engine itself.
 
 ## Character Engine boundary
 
-Character Engine (CE) is the mechanical source of truth for character-side state. UI must consume resolved CE data instead of re-parsing rule prose.
+Character Engine (CE) is the calculation source of truth for a supplied character snapshot. Canonical state remains in its owning engines; UI must consume resolved CE data instead of re-parsing rule prose.
 
-CE is a calculator/resource ledger, not a virtual GM or world-state simulator. Never invent authoritative state for scene facts the application does not actually track (weather, line of sight, whether a hit occurred, whether a corpse is nearby, once-per-turn without real turn tracking, and similar fiction/runtime facts).
+CE is a calculator, not a persistent resource ledger, virtual GM or world-state simulator. It may resolve resource values supplied in one snapshot, while GENA owns their canonical ledger. Never invent authoritative state for scene facts the application does not actually track (weather, line of sight, whether a hit occurred, whether a corpse is nearby, once-per-turn without real turn tracking, and similar fiction/runtime facts).
 
 ## Generic mechanics before source-specific mechanics
 

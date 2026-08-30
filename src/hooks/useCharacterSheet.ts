@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react"
 import { supabase } from "../lib/supabase"
 import { deleteCampaignMediaObject } from "../lib/mediaUpload"
-import { registerCharacterInventory } from "../lib/characterMechanics"
+import { createEngineCommandContext } from "../engine-contracts/index.ts"
+import { cheburashka } from "../inventory-engine/runtime.ts"
 import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
 import type { CharacterFeature, CharacterArt, CharacterSheet, CharacterSpell, CharacterSpellOption, DiaryComment, DiaryPost, FeatureInput, InventoryInput, InventoryItem, SpellInput } from "../types/characterSheet"
@@ -10,6 +11,14 @@ type Result = { ok: boolean; error?: string }
 const sortInventory = (items: InventoryItem[]) => [...items].sort((a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at))
 const sortSpells = <T extends CharacterSpell>(items: T[]) => [...items].sort((a, b) => a.spell_level - b.spell_level || a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ru"))
 const sortFeatures = (items: CharacterFeature[]) => [...items].sort((a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at))
+
+async function loadInventory(characterId: string): Promise<{ data: InventoryItem[]; error: { message: string } | null }> {
+  try {
+    return { data: await cheburashka.listCharacterItems(characterId), error: null }
+  } catch (reason) {
+    return { data: [], error: { message: reason instanceof Error ? reason.message : "Не удалось загрузить инвентарь." } }
+  }
+}
 
 export function useCharacterSheet(characterId: string, campaignId: string) {
   const { user } = useAuth(); const { canManage } = useCharacters()
@@ -22,7 +31,7 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
     setLoading(true); setError(null)
     const [sheetResult, inventoryResult, spellsResult, spellOptionsResult, featuresResult, postsResult, artsResult] = await Promise.all([
       supabase.from("character_sheets").select("*").eq("character_id", characterId).maybeSingle(),
-      supabase.from("character_inventory_items").select("*").eq("character_id", characterId).order("sort_order", { ascending: true }).order("created_at", { ascending: true }),
+      loadInventory(characterId),
       supabase.from("character_spells").select("*").eq("character_id", characterId).order("spell_level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true }),
       supabase.from("character_spell_options").select("*").eq("character_id", characterId).order("spell_level", { ascending: true }).order("sort_order", { ascending: true }).order("name", { ascending: true }),
       supabase.from("character_features").select("*").eq("character_id", characterId).order("sort_order", { ascending: true }).order("created_at", { ascending: true }),
@@ -36,14 +45,18 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
       const { data: rows, error: commentsError } = await supabase.from("character_diary_comments").select("*").in("post_id", nextPosts.map((post) => post.id)).order("created_at", { ascending: true })
       if (commentsError) { setError(commentsError.message); setLoading(false); return }; nextComments = (rows || []) as DiaryComment[]
     }
-    const nextInventory = (inventoryResult.data || []) as InventoryItem[]; registerCharacterInventory(characterId, nextInventory); setInventory(nextInventory)
+    const nextInventory = (inventoryResult.data || []) as InventoryItem[]; setInventory(nextInventory)
     setSheet((sheetResult.data || null) as CharacterSheet | null); setSpells((spellsResult.data || []) as CharacterSpell[]); setSpellOptions((spellOptionsResult.data || []) as CharacterSpellOption[])
     setFeatures((featuresResult.data || []) as CharacterFeature[]); setPosts(nextPosts); setComments(nextComments); setArts((artsResult.data || []) as CharacterArt[]); setLoading(false)
   }, [characterId])
 
   const reloadInventory = useCallback(async (): Promise<Result> => {
-    const { data, error: e } = await supabase.from("character_inventory_items").select("*").eq("character_id", characterId).order("sort_order", { ascending: true }).order("created_at", { ascending: true })
-    if (e) return { ok: false, error: e.message }; const next = (data || []) as InventoryItem[]; registerCharacterInventory(characterId, next); setInventory(next); return { ok: true }
+    try {
+      setInventory(await cheburashka.listCharacterItems(characterId))
+      return { ok: true }
+    } catch (reason) {
+      return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось загрузить инвентарь." }
+    }
   }, [characterId])
   const reloadSpellCollections = useCallback(async (): Promise<Result> => {
     const [a, b] = await Promise.all([
@@ -72,20 +85,34 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
   }, [canManage, characterId, sheet])
 
   const addInventoryItem = useCallback(async (input: InventoryInput): Promise<Result> => {
-    const { data, error: e } = await supabase.from("character_inventory_items").insert({ character_id: characterId, name: input.name.trim(), quantity: input.quantity, weight: input.weight, equipped: input.category === "equipment" ? input.equipped : false, category: input.category, equipment_slot: input.category === "equipment" ? input.equipment_slot : null, image_url: input.image_url?.trim() || null, description: input.description.trim(), mechanics: input.mechanics || [] }).select("*").single()
-    if (e) return { ok: false, error: e.message }; const row = data as InventoryItem; setInventory((current) => { const next = sortInventory([...current, row]); registerCharacterInventory(characterId, next); return next }); return { ok: true }
-  }, [characterId])
+    try {
+      const result = await cheburashka.execute({ kind: "inventory.create", context: createEngineCommandContext({ campaignId, requestedBy: user.id, authority: canManage ? "gm" : "player", actorCharacterId: characterId }), characterId, input })
+      const row = result.value.after
+      if (row) setInventory((current) => sortInventory([...current, row]))
+      return { ok: true }
+    } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось создать предмет." } }
+  }, [campaignId, canManage, characterId, user.id])
   const updateInventoryItem = useCallback(async (itemId: string, input: InventoryInput): Promise<Result> => {
-    const { data, error: e } = await supabase.from("character_inventory_items").update({ name: input.name.trim(), quantity: input.quantity, weight: input.weight, equipped: input.category === "equipment" ? input.equipped : false, category: input.category, equipment_slot: input.category === "equipment" ? input.equipment_slot : null, image_url: input.image_url?.trim() || null, description: input.description.trim(), mechanics: input.mechanics || [], updated_at: new Date().toISOString() }).eq("id", itemId).eq("character_id", characterId).select("*").single()
-    if (e) return { ok: false, error: e.message }; const row = data as InventoryItem; setInventory((current) => { const next = sortInventory(current.map((x) => x.id === itemId ? row : x)); registerCharacterInventory(characterId, next); return next }); return { ok: true }
-  }, [characterId])
+    try {
+      const result = await cheburashka.execute({ kind: "inventory.update", context: createEngineCommandContext({ campaignId, requestedBy: user.id, authority: canManage ? "gm" : "player", actorCharacterId: characterId }), characterId, itemId, input })
+      const row = result.value.after
+      if (row) setInventory((current) => sortInventory(current.map((item) => item.id === itemId ? row : item)))
+      return { ok: true }
+    } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось обновить предмет." } }
+  }, [campaignId, canManage, characterId, user.id])
   const deleteInventoryItem = useCallback(async (itemId: string): Promise<Result> => {
-    const { error: e } = await supabase.from("character_inventory_items").delete().eq("id", itemId).eq("character_id", characterId); if (e) return { ok: false, error: e.message }
-    setInventory((current) => { const next = current.filter((x) => x.id !== itemId); registerCharacterInventory(characterId, next); return next }); return { ok: true }
-  }, [characterId])
+    try {
+      await cheburashka.execute({ kind: "inventory.remove", context: createEngineCommandContext({ campaignId, requestedBy: user.id, authority: canManage ? "gm" : "player", actorCharacterId: characterId }), characterId, itemId })
+      setInventory((current) => current.filter((item) => item.id !== itemId))
+      return { ok: true }
+    } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось удалить предмет." } }
+  }, [campaignId, canManage, characterId, user.id])
   const setInventoryEquipped = useCallback(async (itemId: string, equipped: boolean, equipmentSlot: InventoryItem["equipment_slot"]): Promise<Result> => {
-    const { error: e } = await supabase.rpc("set_character_inventory_equipped", { p_item_id: itemId, p_equipped: equipped, p_equipment_slot: equipmentSlot }); return e ? { ok: false, error: e.message } : reloadInventory()
-  }, [reloadInventory])
+    try {
+      await cheburashka.execute({ kind: "inventory.set_equipped", context: createEngineCommandContext({ campaignId, requestedBy: user.id, authority: canManage ? "gm" : "player", actorCharacterId: characterId }), characterId, itemId, equipped, equipmentSlot })
+      return reloadInventory()
+    } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось изменить экипировку." } }
+  }, [campaignId, canManage, characterId, reloadInventory, user.id])
 
   const setSpellcastingEnabled = useCallback(async (enabled: boolean): Promise<Result> => { const { error: e } = await supabase.rpc("set_character_spellcasting_enabled", { p_character_id: characterId, p_enabled: enabled }); if (e) return { ok: false, error: e.message }; setSheet((c) => c ? { ...c, spellcasting_enabled: enabled, updated_at: new Date().toISOString() } : c); return { ok: true } }, [characterId])
   const addSpell = useCallback(async (input: SpellInput): Promise<Result> => { const { data, error: e } = await supabase.from("character_spells").insert({ character_id: characterId, ...input }).select("*").single(); if (e) return { ok: false, error: e.message }; setSpells((c) => sortSpells([...c, data as CharacterSpell])); return { ok: true } }, [characterId])
