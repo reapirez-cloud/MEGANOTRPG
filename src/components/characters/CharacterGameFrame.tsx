@@ -1,9 +1,8 @@
-import { cloneElement, isValidElement, useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { useAuth } from "../../context/AuthContext"
 import { useCharacters } from "../../context/CharacterContext"
 import { createEngineCommandContext } from "../../engine-contracts/index.ts"
-import { useCharacterResourceStates } from "../../hooks/useCharacterResourceStates"
-import { useCharacterTemplateRegistry } from "../../hooks/useCharacterTemplateRegistry"
+import { CharacterRuntimeProvider, useResolvedCharacterRuntime } from "../../hooks/useResolvedCharacterRuntime"
 import { useRuleTemplates } from "../../hooks/useRuleTemplates"
 import { supabase } from "../../lib/supabase"
 import { oracle } from "../../oracle-engine/runtime.ts"
@@ -47,8 +46,9 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
   const { user } = useAuth()
   const { characters, campaignId, canManage, refresh } = useCharacters()
   const character = characters.find((item) => item.id === characterId) || null
-  const assigned = useCharacterTemplateRegistry(characterId)
-  const runtime = useCharacterResourceStates(characterId)
+  const sharedRuntime = useResolvedCharacterRuntime(character)
+  const assigned = sharedRuntime.templates
+  const runtime = sharedRuntime.resources
   const rules = useRuleTemplates(campaignId)
   const [lifeState, setLifeState] = useState<LifeState>("alive")
   const [diedAt, setDiedAt] = useState<string | null>(null)
@@ -334,14 +334,11 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
     ]),
   ].filter(Boolean).join(" · "), [existingClasses, existingRace, existingSubclasses, existingSubrace])
 
-  const renderedChildren = isValidElement(children)
-    ? cloneElement(children, { key: `${characterId}:${assigned.revision}:${runtime.revision}` })
-    : children
   const ancestryItems = [existingRace, existingSubrace]
     .filter((item): item is CharacterTemplateBundle => Boolean(item))
 
-  return <div className={`character-game-frame ${lifeState === "dead" ? "is-dead" : ""}`}>
-    {renderedChildren}
+  return <CharacterRuntimeProvider value={sharedRuntime}><div className={`character-game-frame ${lifeState === "dead" ? "is-dead" : ""}`}>
+    {children}
     {lifeState === "dead" && <div className="character-death-ribbon">
       <span>†</span>
       <div>
@@ -547,5 +544,5 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
         {(error || assigned.error || rules.error || runtime.error) && <div className="sheet-error">{error || assigned.error || rules.error || runtime.error}</div>}
       </section>
     </div>}
-  </div>
+  </div></CharacterRuntimeProvider>
 }
