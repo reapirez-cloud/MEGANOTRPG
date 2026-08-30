@@ -12,10 +12,12 @@ import { useCharacterTemplateRegistry } from "./useCharacterTemplateRegistry.ts"
 export function useResolvedChatActor(character: Character | null) {
   const characterId = character?.id || null
   const {
+    bundles: templateBundles,
     error: templateError,
     loading: templateLoading,
-    revision: templateRevision,
+    suppressions,
   } = useCharacterTemplateRegistry(characterId)
+  const suppressedSourceIds = suppressions.sourceIds
   const {
     error: resourceError,
     loading: resourceLoading,
@@ -57,7 +59,16 @@ export function useResolvedChatActor(character: Character | null) {
         const sheet = sheetResult.data as CharacterSheet | null
         if (!sheet) { setContract(null); setLoading(false); return }
         try {
-          const view = resolveLegacyCharacterEngineView({ character, sheet, inventory: (inventoryResult.data || []) as InventoryItem[], spells: (spellsResult.data || []) as CharacterSpell[], features: (featuresResult.data || []) as CharacterFeature[], resourceStates: resourceState })
+          const view = resolveLegacyCharacterEngineView({
+            character,
+            sheet,
+            inventory: (inventoryResult.data || []) as InventoryItem[],
+            spells: (spellsResult.data || []) as CharacterSpell[],
+            features: (featuresResult.data || []) as CharacterFeature[],
+            resourceStates: resourceState,
+            templateBundles,
+            suppressedSourceIds,
+          })
           if (cancelled) return
           setContract(view.contract)
           const desired = resourceSyncInputs(view.contract)
@@ -70,7 +81,7 @@ export function useResolvedChatActor(character: Character | null) {
       })
     })
     return () => { cancelled = true }
-  }, [character, resourceError, resourceLoading, resourceState, revision, rowByKey, syncResources, templateError, templateLoading, templateRevision])
+  }, [character, resourceError, resourceLoading, resourceState, revision, rowByKey, suppressedSourceIds, syncResources, templateBundles, templateError, templateLoading])
 
   return { contract, loading, error, refresh }
 }
