@@ -4,7 +4,9 @@
 
 ## One sentence
 
-**Chasovoy answers “what is this reusable game concept?” and never “what does this concrete character/item currently have?”**
+**Chasovoy answers “what is this reusable game concept?” and never “what does Vasya currently have?”**
+
+The concrete wording is intentional: “what does Vasya currently have?” is a character/runtime question, not a reusable-definition question.
 
 Chasovoy is the single ownership boundary for reusable canonical definitions. Other engines store stable references and the concrete runtime state they own; they must not create private definition copies for convenience.
 
