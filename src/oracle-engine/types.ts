@@ -16,13 +16,7 @@ import type {
 import type { EquipmentSlot, InventoryInput } from "../types/characterSheet.ts"
 import type { DayPeriod } from "../world-state/types.ts"
 
-/**
- * Oracle is the GM's imperative control plane.
- *
- * It does not decide which gameplay rule should run and it does not delegate
- * through Gena. Every method has one explicit domain owner and speaks to that
- * owner directly.
- */
+/** Oracle is the GM's imperative control plane. Every method targets one explicit owner directly. */
 export type OracleContext = EngineCommandContext
 
 export type OracleEntityResult = Promise<EngineCommandResult<EntityMutation>>
@@ -41,6 +35,7 @@ export type OracleCharacterCommands = {
   setHp(context: OracleContext, characterId: string, currentHp: number, options?: { maxHp?: number; tempHp?: number }): OracleEntityResult
   assignTemplate(context: OracleContext, characterId: string, input: CharacterTemplateAssignmentInput): OracleEntityResult
   removeTemplateAssignment(context: OracleContext, characterId: string, assignmentId: string): OracleEntityResult
+  setSourceSuppressed(context: OracleContext, characterId: string, sourceId: string, suppressed: boolean): OracleEntityResult
 }
 
 export type OracleInventoryCommands = {
