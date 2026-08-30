@@ -32,13 +32,20 @@ test("text sheet editor omits tabletop-only character fields", async () => {
   assert.match(source, /История персонажа/)
 })
 
-test("inventory no longer exposes weight in the text UI", async () => {
+test("inventory uses currency summary and drill-down folders", async () => {
   const editor = await readFile(inventoryEditorPath, "utf8")
   const view = await readFile(inventoryViewPath, "utf8")
 
-  assert.doesNotMatch(editor, />Вес</)
-  assert.doesNotMatch(view, />Вес</)
-  assert.doesNotMatch(view, /item\.weight/)
+  assert.match(view, /Золото/)
+  assert.match(view, /Серебро/)
+  assert.match(view, /Медь/)
+  assert.match(view, /inventory-rpg__folder/)
+  assert.match(view, /equipmentSlots\.map/)
+  assert.match(view, /openSlot/)
+  assert.match(view, /openCategory/)
+  assert.doesNotMatch(view, /<small>Позиций<\/small>/)
+  assert.doesNotMatch(view, /counts\.units/)
+  assert.doesNotMatch(view, /counts\.equipped/)
   assert.match(editor, /weight: item\?\.weight \?\? null/)
 })
 
