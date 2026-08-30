@@ -1,9 +1,13 @@
 import { cloneElement, isValidElement, useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useAuth } from "../../context/AuthContext"
 import { useCharacters } from "../../context/CharacterContext"
+import { createEngineCommandContext } from "../../engine-contracts/index.ts"
+import { genaSession } from "../../game-engine/runtime.ts"
 import { useCharacterResourceStates } from "../../hooks/useCharacterResourceStates"
 import { useCharacterTemplateRegistry } from "../../hooks/useCharacterTemplateRegistry"
 import { useRuleTemplates } from "../../hooks/useRuleTemplates"
 import { supabase } from "../../lib/supabase"
+import { oracle } from "../../oracle-engine/runtime.ts"
 import { choiceCountAtLevel, choiceDefinitionAvailable, choiceOptionAvailableAtLevel, resolveTemplateBundles } from "../../rule-templates/resolver"
 import type { CharacterTemplateBundle, RuleChoiceDefinition, RuleTemplateKind } from "../../rule-templates/types"
 import "./CharacterGameFrame.css"
@@ -36,7 +40,12 @@ function choiceOptionLabel(definition: RuleChoiceDefinition, option: string) {
   return definition.option_labels?.[option] || option
 }
 
+function errorMessage(reason: unknown, fallback: string) {
+  return reason instanceof Error && reason.message ? reason.message : fallback
+}
+
 export default function CharacterGameFrame({ characterId, children }: Props) {
+  const { user } = useAuth()
   const { characters, campaignId, canManage, refresh } = useCharacters()
   const character = characters.find((item) => item.id === characterId) || null
   const assigned = useCharacterTemplateRegistry(characterId)
@@ -269,35 +278,40 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
   }
 
   async function changeLife(next: LifeState) {
+    if (!canManage || !campaignId) return
     setSaving(true)
     setError("")
-    const { error: stateError } = await supabase.rpc("set_character_life_state", {
-      p_character_id: characterId,
-      p_life_state: next,
-    })
-    setSaving(false)
-    if (stateError) {
-      setError(stateError.message)
-      return
+    try {
+      await oracle.characters.setLifeState(
+        createEngineCommandContext({
+          campaignId,
+          requestedBy: user.id,
+          authority: "gm",
+          actorCharacterId: characterId,
+        }),
+        characterId,
+        next,
+      )
+      await Promise.all([loadLife(), refresh()])
+    } catch (reason) {
+      setError(errorMessage(reason, "Oracle не смог изменить состояние персонажа."))
+    } finally {
+      setSaving(false)
     }
-    await Promise.all([loadLife(), refresh()])
   }
 
   async function recover(trigger: RecoveryTrigger) {
+    if (!canManage) return
     setSaving(true)
     setError("")
-    const request = trigger === "short_rest"
-      ? supabase.rpc("grant_character_short_rest", { p_character_id: characterId })
-      : trigger === "long_rest"
-        ? supabase.rpc("grant_character_long_rest", { p_character_id: characterId })
-        : supabase.rpc("recover_character_resources", { p_character_id: characterId, p_trigger: trigger })
-    const { error: recoveryError } = await request
-    setSaving(false)
-    if (recoveryError) {
-      setError(recoveryError.message)
-      return
+    try {
+      await genaSession.recoverCharacter({ characterId, trigger })
+      await runtime.reload()
+    } catch (reason) {
+      setError(errorMessage(reason, "GENA не смогла выполнить восстановление персонажа."))
+    } finally {
+      setSaving(false)
     }
-    await runtime.reload()
   }
 
   const assignedSummary = useMemo(() => [
