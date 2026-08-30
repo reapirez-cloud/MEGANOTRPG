@@ -2,10 +2,12 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 
-import type { EngineEvent } from "../src/engine-contracts/index.ts"
+import { createEngineCommandContext, type CharacterResolutionRequest, type EngineEvent } from "../src/engine-contracts/index.ts"
 import { CharacterResolutionBus } from "../src/engine-runtime/characterResolutionBus.ts"
 import { EngineEventBus } from "../src/engine-runtime/engineEventBus.ts"
 import { wireEngineRuntimeSignals } from "../src/engine-runtime/runtimeSignals.ts"
+import { CheburashkaEngine, MemoryCheburashkaStorage } from "../src/inventory-engine/index.ts"
+import type { InventoryItem } from "../src/types/characterSheet.ts"
 
 function event(overrides: Partial<EngineEvent> = {}): EngineEvent {
   return {
@@ -85,6 +87,70 @@ test("Chasovoy definition events invalidate campaign resolvers without knowing c
     reason: "definition.revise",
     commandId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   }])
+})
+
+test("Cheburashka removal drops the mechanical projection and requests a fresh character resolve", async () => {
+  const item: InventoryItem = {
+    id: "item-shield",
+    character_id: "hero-1",
+    name: "Тестовый щит",
+    quantity: 1,
+    weight: 6,
+    equipped: true,
+    category: "equipment",
+    equipment_slot: "off_hand",
+    image_url: null,
+    description: "",
+    mechanics: [{
+      id: "shield-ac",
+      type: "numeric",
+      activation: "equipped",
+      target: "combat.ac",
+      operation: "ADD",
+      value: 2,
+    }],
+    usage_mode: "none",
+    charges_current: null,
+    charges_max: null,
+    item_state: {},
+    version: 1,
+    sort_order: 0,
+    created_at: "2026-08-30T20:00:00.000Z",
+    updated_at: "2026-08-30T20:00:00.000Z",
+  }
+  const storage = new MemoryCheburashkaStorage([item])
+  const requests: CharacterResolutionRequest[] = []
+  const cheburashka = new CheburashkaEngine(storage, {
+    resolutionRequester: { requestCharacterResolution: (request) => { requests.push(request) } },
+  })
+
+  const before = await cheburashka.mechanicalProjection("hero-1")
+  assert.equal(before.contributions.length, 1)
+  assert.deepEqual(before.activeItemIds, ["item-shield"])
+
+  const context = createEngineCommandContext({
+    campaignId: "campaign-1",
+    requestedBy: "gm-1",
+    authority: "gm",
+    actorCharacterId: "hero-1",
+    occurredAt: "2026-08-30T20:01:00.000Z",
+  })
+  const removed = await cheburashka.execute({
+    kind: "inventory.remove",
+    context,
+    characterId: "hero-1",
+    itemId: "item-shield",
+  })
+
+  assert.deepEqual(removed.effects.resolveCharacterIds, ["hero-1"])
+  assert.equal(requests.at(-1)?.source, "cheburashka")
+  assert.equal(requests.at(-1)?.reason, "inventory.remove")
+  assert.equal(requests.at(-1)?.commandId, context.commandId)
+
+  const after = await cheburashka.mechanicalProjection("hero-1")
+  assert.equal(after.contributions.length, 0)
+  assert.deepEqual(after.activeItemIds, [])
+  assert.notEqual(after.revision, before.revision)
 })
 
 test("production runtime graph shares signals without cross-importing domain engines", () => {
