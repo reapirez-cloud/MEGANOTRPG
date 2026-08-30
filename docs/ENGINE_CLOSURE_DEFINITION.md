@@ -1,5 +1,7 @@
 # MEGANOTRPG engine closure gate
 
+> Status: **CLOSED — STABLE BOUNDARY ON `dev`**
+
 ## State
 
 **CLOSED — STABLE BOUNDARY ON `dev`.**
