@@ -9,6 +9,7 @@ import ContextActionSheet from "../components/common/ContextActionSheet"
 import type { ContextAction } from "../components/common/ContextActionSheet"
 import { NpcHabitatZonesSheet } from "../components/world/NpcZoneHabitatSheet"
 import GmItemLibrary from "../components/gm/GmItemLibrary"
+import GmMembersPanel from "../components/gm/GmMembersPanel"
 import GmZoneManager from "../components/gm/GmZoneManager"
 import { useLongPressItem } from "../hooks/useLongPressItem"
 import { supabase } from "../lib/supabase"
@@ -16,7 +17,7 @@ import { deleteCampaignMediaObject, uploadCampaignFile } from "../lib/mediaUploa
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
 
 type Props = { onOpenCharacter: (id: string) => void; onOpenRoom: (id: string) => void }
-type Tab = "characters" | "items" | "zones" | "materials"
+type Tab = "characters" | "members" | "items" | "zones" | "materials"
 type CharacterKind = "pc" | "npc"
 type FileRow = { id: string; folder_id: string | null; kind: "note" | "upload"; title: string; body: string; file_url: string | null; original_name: string | null; mime_type: string | null; updated_at: string }
 type FolderRow = { id: string; name: string; sort_order: number }
@@ -260,6 +261,7 @@ export default function GmWorkspace({ onOpenCharacter }: Props) {
 
   const tabs: Array<[Tab, string]> = [
     ["characters", "Персонажи"],
+    ["members", "Участники"],
     ["items", "Предметы"],
     ["zones", "Зоны"],
     ["materials", "Материалы"],
@@ -269,7 +271,7 @@ export default function GmWorkspace({ onOpenCharacter }: Props) {
     <div className="gm-cabinet">
       <header className="gm-cabinet-head"><span>Кабинет ГМ</span><h2>{campaignTitle}</h2></header>
 
-      <nav className="gm-primary-nav" role="tablist" aria-label="Разделы кабинета ГМ">
+      <nav className="gm-primary-nav gm-primary-nav--five" role="tablist" aria-label="Разделы кабинета ГМ">
         {tabs.map(([id, label]) => <button type="button" role="tab" aria-selected={tab === id} className={tab === id ? "is-active" : ""} key={id} onClick={() => { setTab(id); setError("") }}>{label}</button>)}
       </nav>
 
@@ -307,6 +309,7 @@ export default function GmWorkspace({ onOpenCharacter }: Props) {
         </div>
       </section>}
 
+      {tab === "members" && <GmMembersPanel/>}
       {tab === "items" && <GmItemLibrary/>}
       {tab === "zones" && <GmZoneManager/>}
 
