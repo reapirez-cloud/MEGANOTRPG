@@ -71,7 +71,7 @@ CE stores nothing between calls. The Character Runtime Resolver obtains fresh ow
 | identity, level, base abilities, explicit HP | Shapoklyak | base/state projection required for arithmetic |
 | persistent resources, spell/preparation state, template assignments/suppressions | Shapoklyak | explicit current character mechanics/runtime state |
 | class/subclass/spell/feat/item definitions | Chasovoy | canonical definitions converted to contributions |
-| item ownership/equipment/current instance state | Cheburashka | mechanically relevant inventory projection, never the full backpack |
+| item ownership/equipment/current instance state | Cheburashka | mechanically relevant inventory projection — never the backpack itself |
 | locations/time | Larisa | nothing by default; only a deliberately introduced projection |
 | dice result | Tobik through GENA | never character canonical state merely because a roll happened |
 
