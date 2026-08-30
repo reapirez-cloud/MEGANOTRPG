@@ -53,6 +53,7 @@ export type ShapoklyakCommand =
   | { kind: "entity.set_hp"; context: EngineCommandContext; characterId: string; currentHp: number; maxHp?: number; tempHp?: number }
   | { kind: "entity.assign_template"; context: EngineCommandContext; characterId: string; input: CharacterTemplateAssignmentInput }
   | { kind: "entity.remove_template_assignment"; context: EngineCommandContext; characterId: string; assignmentId: string }
+  | { kind: "entity.set_source_suppressed"; context: EngineCommandContext; characterId: string; sourceId: string; suppressed: boolean }
 
 export type EntityMutation = {
   kind: ShapoklyakCommand["kind"]
