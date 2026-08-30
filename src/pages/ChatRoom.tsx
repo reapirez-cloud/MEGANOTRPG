@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
 import { useChatMessages } from "../hooks/useChatMessages"
 import { useChatActors } from "../hooks/useChatActors"
+import { useChatPreparation } from "../hooks/useChatPreparation"
 import { useResolvedChatActor } from "../hooks/useResolvedChatActor"
 import { useLongPressItem } from "../hooks/useLongPressItem"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
@@ -16,6 +17,7 @@ import ChatActorPicker from "../components/chat/ChatActorPicker"
 import ChatRoomSettings from "../components/chat/ChatRoomSettings"
 import ChatMessageActions from "../components/chat/ChatMessageActions"
 import ChatContextSheet from "../components/chat/ChatContextSheet"
+import ChatPreparationCard from "../components/chat/ChatPreparationCard"
 import {
   templateMechanicIdForChatAction,
   templateMechanicIdForSpellAccess,
@@ -68,6 +70,10 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
   const { characters, members, canManage, campaignId, refresh: refreshCharacters } = useCharacters()
   const actors = useChatActors()
   const resolved = useResolvedChatActor(actors.selected?.character || null)
+  const preparation = useChatPreparation(actors.selected?.character || null)
+  const preparationGeneration = preparation.model.session?.is_open && preparation.model.tasks.length
+    ? preparation.model.session.generation
+    : null
   const [roomTitle, setRoomTitle] = useState("Чат")
   const [roomType, setRoomType] = useState<RoomType>("scene")
   const [roomState, setRoomState] = useState<RoomState>("open")
@@ -98,6 +104,14 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
     return map
   }, [characters, messageCharacters])
   const bindMessageLongPress = useLongPressItem<ChatMessage>((message) => setSelectedMessage(message))
+
+  useEffect(() => {
+    if (preparationGeneration == null) return
+    requestAnimationFrame(() => {
+      const list = messageListRef.current
+      if (list) list.scrollTop = list.scrollHeight
+    })
+  }, [preparationGeneration])
 
   const loadRoomAccess = useCallback(async () => {
     const { data: room, error: roomError } = await supabase.from("chat_rooms").select("id,title,category,room_type,character_id,open_to_campaign,campaign_can_write,is_read_only,room_state").eq("id", roomId).maybeSingle()
@@ -367,6 +381,14 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
           {own && grouped && <span className="message-avatar-spacer" />}
         </div>
       })}
+      {actors.selected?.characterId && <ChatPreparationCard
+        roomId={roomId}
+        characterId={actors.selected.characterId}
+        model={preparation.model}
+        spells={preparation.spells}
+        onChanged={() => { preparation.refresh(); resolved.refresh() }}
+      />}
+      {preparation.error && <div className="chat-error">Подготовка: {preparation.error}</div>}
       {chat.error && <div className="chat-error">{chat.error}</div>}
     </div>
 
