@@ -58,8 +58,8 @@ export default function ChatContextSheet({ roomId, onClose, onOpenCharacter, onO
 
   const character = useMemo(() => room?.character_id ? characters.find((item) => item.id === room.character_id) || null : null, [characters, room])
   const sceneParticipants = useMemo(() => participants.map((id) => characters.find((item) => item.id === id)).filter(Boolean), [characters, participants])
-  const scenePosition = room ? { location_id: room.location_id, campaign_day: room.campaign_day || 1, day_period: room.day_period || "day" as DayPeriod } : null
-  const contextPosition = room?.room_type === "character" ? world.currentState : scenePosition
+  const roomPosition = room ? { location_id: room.location_id, campaign_day: room.campaign_day || 1, day_period: room.day_period || "day" as DayPeriod } : null
+  const contextPosition = room?.room_type === "character" ? (world.currentState || roomPosition) : roomPosition
   const contextLocation = world.locations.find((location) => location.id === contextPosition?.location_id) || null
 
   async function setRoomState(state: "open" | "gm_only" | "closed") {
@@ -113,8 +113,11 @@ export default function ChatContextSheet({ roomId, onClose, onOpenCharacter, onO
           )}
 
           <div className="context-grid">
-            <button type="button" className="context-row" onClick={() => { if (contextLocation) window.location.hash = "#/world" }}><span className="context-row__icon">◈</span><span><small>Локация</small><strong>{contextLocation?.name || "Не задана"}</strong></span><b>›</b></button>
-            <button type="button" className="context-row" onClick={() => canManage && setEditingPosition(true)}><span className="context-row__icon">◷</span><span><small>Время</small><strong>{contextPosition ? formatCampaignTime(contextPosition) : "Не задано"}</strong></span>{canManage && <b>›</b>}</button>
+            <button type="button" className="context-row" onClick={() => {
+              if (canManage && room.room_type !== "flood") { setEditingPosition(true); return }
+              if (contextLocation) window.location.hash = "#/world"
+            }}><span className="context-row__icon">◈</span><span><small>Локация</small><strong>{contextLocation?.name || "Не задана"}</strong></span>{(canManage || contextLocation) && <b>›</b>}</button>
+            <button type="button" className="context-row" onClick={() => canManage && room.room_type !== "flood" && setEditingPosition(true)}><span className="context-row__icon">◷</span><span><small>Время</small><strong>{contextPosition ? formatCampaignTime(contextPosition) : "Не задано"}</strong></span>{canManage && room.room_type !== "flood" && <b>›</b>}</button>
           </div>
 
           {room.room_type === "character" && world.activeScenes.length > 0 && <section className="context-section"><h3>Сейчас здесь</h3>{world.activeScenes.map((scene) => <button key={scene.room_id} type="button" className="context-scene" onClick={() => { window.location.hash = `#/chat/${scene.room_id}` }}><span>✦</span><div><small>Активная сцена</small><strong>{scene.title}</strong></div><b>›</b></button>)}</section>}
@@ -125,13 +128,24 @@ export default function ChatContextSheet({ roomId, onClose, onOpenCharacter, onO
 
           <section className="context-section context-room-state"><div><small>Состояние комнаты</small><strong>{stateLabel}</strong><em>{accessLabel}</em></div>{canManage && <button type="button" onClick={onOpenSettings}>Управление</button>}</section>
 
-          {canManage && room.room_type !== "flood" && <section className="gm-context-actions"><h3>Быстрые действия ГМ</h3><div className="gm-context-actions__grid"><button type="button" onClick={() => setEditingPosition(true)}>◈ Изменить позицию</button>{room.room_type === "scene" && <button type="button" disabled={busy} onClick={() => void syncParticipants()}>⇄ Синхронизировать</button>}<button type="button" className={room.open_to_campaign && room.campaign_can_write ? "is-active" : ""} aria-pressed={room.open_to_campaign && room.campaign_can_write} disabled={busy} onClick={() => void setAccess(true, true)}>Читать и писать всем</button><button type="button" disabled={busy} onClick={() => void setRoomState("gm_only")}>Только ГМ пишет</button><button type="button" className={room.open_to_campaign && !room.campaign_can_write ? "is-active" : ""} aria-pressed={room.open_to_campaign && !room.campaign_can_write} disabled={busy} onClick={() => void setAccess(true, false)}>Читать всем</button><button type="button" className={!room.open_to_campaign ? "is-active is-danger" : "is-danger"} aria-pressed={!room.open_to_campaign} disabled={busy} onClick={() => void setAccess(false, false)}>Скрыть от игроков</button><button type="button" disabled={busy} className="is-danger" onClick={() => void setRoomState("closed")}>Закрыть чат</button></div></section>}
+          {canManage && room.room_type !== "flood" && <section className="gm-context-actions"><h3>Быстрые действия ГМ</h3><div className="gm-context-actions__grid"><button type="button" onClick={() => setEditingPosition(true)}>◈ {room.room_type === "character" ? "Отправить в зону" : "Изменить позицию"}</button>{room.room_type === "scene" && <button type="button" disabled={busy} onClick={() => void syncParticipants()}>⇄ Синхронизировать</button>}<button type="button" className={room.open_to_campaign && room.campaign_can_write ? "is-active" : ""} aria-pressed={room.open_to_campaign && room.campaign_can_write} disabled={busy} onClick={() => void setAccess(true, true)}>Читать и писать всем</button><button type="button" disabled={busy} onClick={() => void setRoomState("gm_only")}>Только ГМ пишет</button><button type="button" className={room.open_to_campaign && !room.campaign_can_write ? "is-active" : ""} aria-pressed={room.open_to_campaign && !room.campaign_can_write} disabled={busy} onClick={() => void setAccess(true, false)}>Читать всем</button><button type="button" className={!room.open_to_campaign ? "is-active is-danger" : "is-danger"} aria-pressed={!room.open_to_campaign} disabled={busy} onClick={() => void setAccess(false, false)}>Скрыть от игроков</button><button type="button" disabled={busy} className="is-danger" onClick={() => void setRoomState("closed")}>Закрыть чат</button></div></section>}
 
           {error && <div className="sheet-error">{error}</div>}
         </section>
       </div>
 
-      {editingPosition && contextPosition && <WorldPositionSheet title={room.room_type === "character" ? character?.name || room.title : room.title} position={contextPosition} locations={world.locations} onClose={() => setEditingPosition(false)} onSave={async (locationId, campaignDay, dayPeriod) => { const result = await savePosition(locationId, campaignDay, dayPeriod); if (result.ok) { await loadRoom(); onChanged?.() } return result }} />}
+      {editingPosition && contextPosition && <WorldPositionSheet
+        title={room.room_type === "character" ? character?.name || room.title : room.title}
+        position={contextPosition}
+        locations={world.locations}
+        intent={room.room_type === "character" ? "move-character" : "edit-position"}
+        onClose={() => setEditingPosition(false)}
+        onSave={async (locationId, campaignDay, dayPeriod) => {
+          const result = await savePosition(locationId, campaignDay, dayPeriod)
+          if (result.ok) { await loadRoom(); onChanged?.() }
+          return result
+        }}
+      />}
     </>
   )
 }
