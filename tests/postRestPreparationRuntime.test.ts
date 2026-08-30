@@ -10,7 +10,10 @@ import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
 
 const runtimeSql = fs.readFileSync("supabase/migrations/20260830022000_post_rest_preparation_runtime.sql", "utf8")
 const classSql = fs.readFileSync("supabase/migrations/20260830023000_long_rest_choice_and_druid_preparation.sql", "utf8")
+const spellPreparationSql = fs.readFileSync("supabase/migrations/20260830024000_chat_spell_preparation_commit.sql", "utf8")
 const card = fs.readFileSync("src/components/chat/ChatPreparationCard.tsx", "utf8")
+const preparationHook = fs.readFileSync("src/hooks/useChatPreparation.ts", "utf8")
+const resolvedChatActor = fs.readFileSync("src/hooks/useResolvedChatActor.ts", "utf8")
 
 function starsBundle(): CharacterTemplateBundle {
   return {
@@ -165,7 +168,9 @@ test("CE read model suppresses both daily actions before roll and only the wrong
     "template:subclass:template-stars:v1:source:cosmic-omen-weal",
     "template:subclass:template-stars:v1:source:cosmic-omen-woe",
   ])
-  assert.equal(before.tasks.some((task) => task.kind === "spells"), true)
+  const spellBefore = before.tasks.find((task) => task.kind === "spells")
+  assert.equal(spellBefore?.kind, "spells")
+  if (spellBefore?.kind === "spells") assert.equal(spellBefore.record, null)
   assert.equal(before.tasks.some((task) => task.kind === "roll" && task.key === "cosmic-omen-sign"), true)
 
   const after = buildCharacterPreparationModel(bundles, 6, session, [{
@@ -176,10 +181,46 @@ test("CE read model suppresses both daily actions before roll and only the wrong
     task_key: "cosmic-omen-sign",
     input_value: 4,
     resolved_value: "weal",
+  }, {
+    id: "record-spells",
+    character_id: "character-1",
+    generation: 2,
+    assignment_id: "assignment-druid",
+    task_key: "spells:template-druid",
+    input_value: 3,
+    resolved_value: ["spell-1", "spell-2", "spell-3"],
   }])
   assert.deepEqual(after.suppressedSourceIds, [
     "template:subclass:template-stars:v1:source:cosmic-omen-woe",
   ])
+  const spellAfter = after.tasks.find((task) => task.kind === "spells")
+  assert.equal(spellAfter?.kind, "spells")
+  if (spellAfter?.kind === "spells") assert.equal(spellAfter.record?.input_value, 3)
+})
+
+test("chat owns atomic personal spell preparation and persists Ready state", () => {
+  assert.match(spellPreparationSql, /commit_character_spell_preparation_v1/)
+  assert.match(spellPreparationSql, /not v_session\.is_open/)
+  assert.match(spellPreparationSql, /s\.spell_level>0/)
+  assert.match(spellPreparationSql, /s\.cast_mode='slot'/)
+  assert.match(spellPreparationSql, /set prepared=\(s\.id=any\(v_ids\)\)/)
+  assert.match(spellPreparationSql, /on conflict \(character_id,generation,assignment_id,task_key\) do update/)
+  assert.match(spellPreparationSql, /v_task_key:='spells:' \|\| v_template\.id::text/)
+})
+
+test("spell preparation is performed inside chat instead of redirecting to the sheet", () => {
+  assert.match(card, /commit_character_spell_preparation_v1/)
+  assert.match(card, /p_prepared_spell_ids: draft/)
+  assert.match(card, />Готово</)
+  assert.doesNotMatch(card, /Открыть заклинания персонажа/)
+})
+
+test("spell changes refresh both preparation UI and the explicit CE input bridge", () => {
+  assert.match(preparationHook, /table: "character_spells"/)
+  assert.match(preparationHook, /select\("id,name,spell_level,prepared,cast_mode"\)/)
+  assert.match(resolvedChatActor, /table: "character_spells"/)
+  assert.match(resolvedChatActor, /resolveLegacyCharacterEngineView\(\{/)
+  assert.match(resolvedChatActor, /spells: characterSpells/)
 })
 
 test("chat preparation card warns that text closes the window while rolls do not", () => {
