@@ -129,6 +129,57 @@ export interface RollContext {
 }
 
 /**
+ * Deterministic, fully resolved roll instructions. All formulas/scaling are
+ * already evaluated, but no random die has been rolled yet. The chat server can
+ * safely own randomness while the Roll Engine remains the only rules compiler.
+ */
+export type RollResolutionPlan =
+  | { kind: "attack"; bonus: number; target?: string }
+  | {
+      kind: "save"
+      ability: SaveAbility
+      dc: number
+      onSuccess: "none" | "half" | "full" | "custom"
+    }
+  | { kind: "automatic" }
+  | { kind: "none" }
+
+export interface RollEffectPlan {
+  key: string
+  kind: RollEffectDefinition["kind"]
+  dice: DiceDefinition
+  modifier: number
+  damageType?: string
+  label?: string
+}
+
+export interface RollInstancePlan {
+  index: number
+  resolution: RollResolutionPlan
+  effects: RollEffectPlan[]
+}
+
+export interface RollSequencePlan {
+  key: string
+  instances: RollInstancePlan[]
+}
+
+export type RollExecutionPlan =
+  | {
+      kind: "link"
+      recipeKey: string
+      name: string
+    }
+  | {
+      kind: "roll"
+      recipeKey: string
+      name: string
+      spellLevel?: number
+      castLevel?: number
+      sequences: RollSequencePlan[]
+    }
+
+/**
  * Canonical transparent dice result. `rolls` contains every raw die face in
  * order; consumers never need to reconstruct hidden dice from `total`.
  */
