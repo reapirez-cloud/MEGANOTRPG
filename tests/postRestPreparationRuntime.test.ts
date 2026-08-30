@@ -211,7 +211,7 @@ test("chat owns atomic personal spell preparation and persists Ready state", () 
 test("spell preparation is performed inside chat instead of redirecting to the sheet", () => {
   assert.match(card, /commit_character_spell_preparation_v1/)
   assert.match(card, /p_prepared_spell_ids: draft/)
-  assert.match(card, />Готово</)
+  assert.match(card, /"Готово"/)
   assert.doesNotMatch(card, /Открыть заклинания персонажа/)
 })
 
