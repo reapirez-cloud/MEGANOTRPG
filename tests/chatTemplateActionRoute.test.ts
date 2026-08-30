@@ -1,9 +1,10 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import type { ResolvedAction } from "../src/character-engine/index.ts"
+import type { ResolvedAction, ResolvedSpellAccess } from "../src/character-engine/index.ts"
 import {
   templateMechanicIdForChatAction,
+  templateMechanicIdForSpellAccess,
   templatePaymentOptionKeyForChatAction,
 } from "../src/components/chat/chatTemplateActionRoute.ts"
 
@@ -33,11 +34,39 @@ function action(overrides: Partial<ResolvedAction> = {}): ResolvedAction {
   }
 }
 
+function spellAccess(): ResolvedSpellAccess {
+  return {
+    key: "land-arid:fireball",
+    preparationMode: "always_prepared",
+    prepared: true,
+    methods: [{
+      key: "subclass_spell",
+      kind: "subclass_spell",
+      requiresPrepared: false,
+      resourceOptions: [],
+      available: true,
+    }],
+    available: true,
+    sources: [{
+      contributionId: "template:subclass:land:v1:choice:druid-land-type:land:arid:mechanic:land-arid-l5-1",
+      source: {
+        id: "template:subclass:land:v1:choice:druid-land-type:land:arid",
+        name: "Тип земли: Засушливая",
+        sourceType: "subclass_template",
+      },
+    }],
+  }
+}
+
 test("class action routes back to the exact authored mechanic id", () => {
   assert.equal(
     templateMechanicIdForChatAction(action()),
     "fighter-second-wind-action",
   )
+})
+
+test("subclass spell access routes back to the exact authored mechanic id", () => {
+  assert.equal(templateMechanicIdForSpellAccess(spellAccess()), "land-arid-l5-1")
 })
 
 test("non-template action never guesses a template mechanic from its label or key", () => {
