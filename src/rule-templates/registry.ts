@@ -10,9 +10,22 @@ function notify(characterId: string) {
   for (const listener of listeners.get(characterId) || []) listener(bundles)
 }
 
+function stableJson(value: unknown): string {
+  if (value === null || value === undefined) return JSON.stringify(value)
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>
+    return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(",")}}`
+  }
+  return JSON.stringify(value)
+}
+
 export function registerCharacterTemplateBundles(characterId: string, bundles: CharacterTemplateBundle[]) {
+  const current = registry.get(characterId)
+  if (current && stableJson(current) === stableJson(bundles)) return false
   registry.set(characterId, bundles)
   notify(characterId)
+  return true
 }
 
 export function clearCharacterTemplateBundles(characterId: string) {
