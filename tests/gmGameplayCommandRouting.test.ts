@@ -22,7 +22,7 @@ function resolutionRecorder(requests: CharacterResolutionRequest[]): CharacterRe
   }
 }
 
-test("Gena owns short rest, long rest and dawn server recovery then invalidates CE read model", async () => {
+test("Gena owns normal-play short rest, long rest and dawn recovery then invalidates CE read model", async () => {
   const calls: Array<{ name: string; args: Record<string, unknown> }> = []
   const resolutions: CharacterResolutionRequest[] = []
   const gateway = new SupabaseGenaSessionGateway(fakeClient(calls), resolutionRecorder(resolutions))
@@ -48,14 +48,15 @@ test("Gena owns short rest, long rest and dawn server recovery then invalidates 
   ])
 })
 
-test("GM character frame routes will through Oracle and gameplay recovery through Gena", () => {
+test("GM character frame routes imperative character changes and recovery through Oracle", () => {
   const frame = fs.readFileSync("src/components/characters/CharacterGameFrame.tsx", "utf8")
 
   assert.match(frame, /oracle\.characters\.setLifeState/)
+  assert.match(frame, /oracle\.characters\.recover/)
   assert.match(frame, /createEngineCommandContext\(\{/)
   assert.match(frame, /authority: "gm"/)
-  assert.match(frame, /genaSession\.recoverCharacter\(\{ characterId, trigger \}\)/)
 
+  assert.doesNotMatch(frame, /genaSession/)
   assert.doesNotMatch(frame, /supabase\.rpc\("set_character_life_state"/)
   assert.doesNotMatch(frame, /supabase\.rpc\("grant_character_short_rest"/)
   assert.doesNotMatch(frame, /supabase\.rpc\("grant_character_long_rest"/)
