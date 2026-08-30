@@ -10,6 +10,7 @@ import { useChatMessages } from "../hooks/useChatMessages"
 import { useChatActors } from "../hooks/useChatActors"
 import { useChatPreparation } from "../hooks/useChatPreparation"
 import { useResolvedChatActor } from "../hooks/useResolvedChatActor"
+import { useResolvedCharacterRuntime } from "../hooks/useResolvedCharacterRuntime"
 import { useLongPressItem } from "../hooks/useLongPressItem"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
 import ChatActionSheet, { type FreeDiceRequest } from "../components/chat/ChatActionSheet"
@@ -18,6 +19,7 @@ import ChatRoomSettings from "../components/chat/ChatRoomSettings"
 import ChatMessageActions from "../components/chat/ChatMessageActions"
 import ChatContextSheet from "../components/chat/ChatContextSheet"
 import ChatPreparationCard from "../components/chat/ChatPreparationCard"
+import ChatSpellDetailSheet from "../components/chat/ChatSpellDetailSheet"
 import {
   templateMechanicIdForChatAction,
   templateMechanicIdForSpellAccess,
@@ -30,6 +32,7 @@ import "../game-story-v2.css"
 
 type Props = { roomId: string; onBack: () => void; onOpenCharacter: (characterId: string) => void }
 type MessageCharacter = { id: string; name: string; avatar_url: string | null }
+type SpellEventTarget = { spellKey: string; label: string }
 
 const formatTime = (value: string) => new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(value))
 const numberValue = (value: unknown) => typeof value === "number" ? value : Number(value) || 0
@@ -40,7 +43,7 @@ function withinGroup(a: ChatMessage | undefined, b: ChatMessage) {
   return a.user_id === b.user_id && a.character_id === b.character_id && a.author_name === b.author_name && new Date(b.created_at).getTime() - new Date(a.created_at).getTime() < 5 * 60 * 1000
 }
 
-function ChatEventCard({ message }: { message: ChatMessage }) {
+function ChatEventCard({ message, onOpenSpell }: { message: ChatMessage; onOpenSpell: (target: SpellEventTarget) => void }) {
   const payload = (message.event_payload || {}) as ChatEventPayload
   const label = textValue(payload.label) || "Игровое действие"
   if (message.event_kind === "roll") {
@@ -52,7 +55,10 @@ function ChatEventCard({ message }: { message: ChatMessage }) {
     const rolls = effect && Array.isArray(effect.rolls) ? effect.rolls.map(numberValue) : []
     return <div className="chat-event chat-event--roll"><span className="chat-event__icon">◈</span><div className="chat-event__copy"><small>{textValue(payload.kind) || "Бросок"}</small><strong>{label}</strong>{hasD20 && <span>d20 <b>{d20}</b> {modifier >= 0 ? "+" : "−"} {Math.abs(modifier)} <em>= {total}</em></span>}{effect && <span>{numberValue(effect.count)}d{numberValue(effect.sides)} [{rolls.join(", ")}] {numberValue(effect.modifier) >= 0 ? "+" : "−"} {Math.abs(numberValue(effect.modifier))} <em>= {numberValue(effect.total)}</em></span>}</div></div>
   }
-  return <div className={`chat-event chat-event--${message.event_kind}`}><span className="chat-event__icon">{message.event_kind === "spell" ? "✧" : "⚔"}</span><div className="chat-event__copy"><small>{message.event_kind === "spell" ? "Заклинание" : "Действие"}</small><strong>{label}</strong>{textValue(payload.detail) && <span>{textValue(payload.detail)}</span>}</div></div>
+  if (message.event_kind === "spell") {
+    return <button type="button" className="chat-event chat-event--spell chat-event--interactive" onClick={() => onOpenSpell({ spellKey: textValue(payload.spellKey), label })}><span className="chat-event__icon">✧</span><div className="chat-event__copy"><small>Заклинание</small><strong>{label}</strong>{textValue(payload.detail) && <span>{textValue(payload.detail)}</span>}</div></button>
+  }
+  return <div className={`chat-event chat-event--${message.event_kind}`}><span className="chat-event__icon">⚔</span><div className="chat-event__copy"><small>Действие</small><strong>{label}</strong>{textValue(payload.detail) && <span>{textValue(payload.detail)}</span>}</div></div>
 }
 
 function roomTypeLabel(roomType: RoomType, readOnly: boolean, roomState: RoomState) {
@@ -70,14 +76,12 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
   const { characters, members, canManage, campaignId, refresh: refreshCharacters } = useCharacters()
   const actors = useChatActors()
   const resolved = useResolvedChatActor(actors.selected?.character || null)
-  const preparation = useChatPreparation(actors.selected?.character || null)
-  const preparationGeneration = preparation.model.session?.is_open && preparation.model.tasks.length
-    ? preparation.model.session.generation
-    : null
   const [roomTitle, setRoomTitle] = useState("Чат")
   const [roomType, setRoomType] = useState<RoomType>("scene")
   const [roomState, setRoomState] = useState<RoomState>("open")
   const [roomReadOnly, setRoomReadOnly] = useState(false)
+  const [roomCharacterId, setRoomCharacterId] = useState<string | null>(null)
+  const [roomAccessLoaded, setRoomAccessLoaded] = useState(false)
   const [canWriteRoom, setCanWriteRoom] = useState(false)
   const [draft, setDraft] = useState("")
   const [actionsOpen, setActionsOpen] = useState(false)
@@ -85,6 +89,7 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [contextOpen, setContextOpen] = useState(false)
   const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(null)
+  const [selectedSpellEvent, setSelectedSpellEvent] = useState<SpellEventTarget | null>(null)
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
   const [attachmentError, setAttachmentError] = useState("")
   const [uploadingAttachment, setUploadingAttachment] = useState(false)
@@ -103,6 +108,23 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
     for (const character of messageCharacters) map.set(character.id, character)
     return map
   }, [characters, messageCharacters])
+  const roomCharacter = useMemo(
+    () => roomCharacterId ? characters.find((character) => character.id === roomCharacterId) || null : null,
+    [characters, roomCharacterId],
+  )
+  const preparationCharacter = useMemo(() => {
+    if (!roomAccessLoaded) return null
+    if (roomType === "character") return roomCharacter
+    return actors.selected?.character || null
+  }, [actors.selected?.character, roomAccessLoaded, roomCharacter, roomType])
+  const preparationRuntimeCharacter = preparationCharacter && preparationCharacter.id !== actors.selected?.characterId
+    ? preparationCharacter
+    : null
+  const preparationRuntime = useResolvedCharacterRuntime(preparationRuntimeCharacter)
+  const preparation = useChatPreparation(preparationCharacter)
+  const preparationGeneration = preparation.model.session?.is_open && preparation.model.tasks.length
+    ? preparation.model.session.generation
+    : null
   const bindMessageLongPress = useLongPressItem<ChatMessage>((message) => setSelectedMessage(message))
 
   useEffect(() => {
@@ -119,7 +141,12 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
     const nextType: RoomType = room.room_type === "character" || room.room_type === "flood" ? room.room_type : "scene"
     const nextState: RoomState = room.room_state === "closed" || room.room_state === "gm_only" ? room.room_state : "open"
     const hardReadOnly = Boolean(room.is_read_only)
-    setRoomTitle(room.title); setRoomType(nextType); setRoomState(nextState); setRoomReadOnly(hardReadOnly)
+    setRoomTitle(room.title)
+    setRoomType(nextType)
+    setRoomState(nextState)
+    setRoomReadOnly(hardReadOnly)
+    setRoomCharacterId(room.character_id || null)
+    setRoomAccessLoaded(true)
     if (hardReadOnly || nextState === "closed") { setCanWriteRoom(false); return }
     if (canManage) { setCanWriteRoom(true); return }
     if (nextState === "gm_only") { setCanWriteRoom(false); return }
@@ -161,7 +188,13 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
     previousLastMessageIdRef.current = null
     nearBottomRef.current = true
     let cancelled = false
-    queueMicrotask(() => { if (!cancelled) setShowNewMessages(false) })
+    queueMicrotask(() => {
+      if (cancelled) return
+      setShowNewMessages(false)
+      setRoomAccessLoaded(false)
+      setRoomCharacterId(null)
+      setSelectedSpellEvent(null)
+    })
     return () => { cancelled = true }
   }, [roomId])
 
@@ -208,6 +241,12 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
     nearBottomRef.current = true; setShowNewMessages(false)
     const id = chat.messages[chat.messages.length - 1]?.id
     if (id != null) void chat.markRead(id)
+  }
+
+  function refreshRecoveredCharacter(characterId: string) {
+    if (preparationCharacter?.id === characterId) preparation.refresh()
+    if (preparationRuntimeCharacter?.id === characterId) preparationRuntime.refresh()
+    if (actors.selected?.characterId === characterId) resolved.refresh()
   }
 
   const canSend = canWriteRoom && !roomReadOnly && roomState !== "closed" && Boolean(actors.selected)
@@ -283,9 +322,6 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
       .map((ref) => inventoryItemIdFromSourceId(ref.source.id))
       .find((itemId): itemId is string => Boolean(itemId))
 
-    // Item provenance is an engine contract, not a label heuristic. Gena
-    // records the declaration, Cheburashka owns the atomic item mutation and
-    // signals a fresh CE resolution after its warehouse state has changed.
     if (inventoryItemId) {
       const contract = resolved.contract
       const costs = contract ? resourceCostInputs(contract, action.resourceCosts) : []
@@ -302,8 +338,6 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
         resourceCosts: costs,
         payload: { detail: action.economy },
       })
-      // Cheburashka's persistence bridge emits the resolution request after the
-      // committed item mutation. The chat UI only closes its own sheet.
       if (sent) setActionsOpen(false)
       return
     }
@@ -374,19 +408,23 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
           <article className={`message message-v2 ${own ? "message--self" : ""}`}>
             {!grouped && (linked ? <button className="message-v2-author" type="button" onClick={() => onOpenCharacter(linked.id)}>{message.author_name}</button> : <div className="message-v2-author">{message.author_name}</div>)}
             {message.attachment_url && <CampaignImage className="message__attachment" value={message.attachment_url} alt="Вложение" loading="lazy" />}
-            {message.event_kind ? <ChatEventCard message={message} /> : message.body && <p className="message__text">{message.body}</p>}
+            {message.event_kind ? <ChatEventCard message={message} onOpenSpell={setSelectedSpellEvent} /> : message.body && <p className="message__text">{message.body}</p>}
             <div className="message__time">{formatTime(message.created_at)}{message.edited_at ? " · изм." : ""}</div>
           </article>
           {own && !grouped && (linked ? <button className="message-avatar-button" type="button" onClick={() => onOpenCharacter(linked.id)}><CharacterAvatar character={avatar} size="small" /></button> : <CharacterAvatar character={avatar} size="small" />)}
           {own && grouped && <span className="message-avatar-spacer" />}
         </div>
       })}
-      {actors.selected?.characterId && <ChatPreparationCard
+      {preparationCharacter && <ChatPreparationCard
         roomId={roomId}
-        characterId={actors.selected.characterId}
+        characterId={preparationCharacter.id}
         model={preparation.model}
         spells={preparation.spells}
-        onChanged={() => { preparation.refresh(); resolved.refresh() }}
+        onChanged={() => {
+          preparation.refresh()
+          if (preparationRuntimeCharacter?.id === preparationCharacter.id) preparationRuntime.refresh()
+          if (actors.selected?.characterId === preparationCharacter.id) resolved.refresh()
+        }}
       />}
       {preparation.error && <div className="chat-error">Подготовка: {preparation.error}</div>}
       {chat.error && <div className="chat-error">{chat.error}</div>}
@@ -407,8 +445,9 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
 
     {actionsOpen && <ChatActionSheet characterName={actors.selected?.character?.name || null} contract={resolved.contract} loading={resolved.loading} includePrivateSources={canManage} onClose={() => setActionsOpen(false)} onFreeRoll={freeRoll} onCheck={rollCheck} onAction={runAction} onSpell={castSpell} />}
     {actorOpen && <ChatActorPicker actors={actors.actors} selected={actors.selected} onSelect={actors.selectActor} onClose={() => setActorOpen(false)} />}
-    {contextOpen && <ChatContextSheet roomId={roomId} onClose={() => setContextOpen(false)} onOpenCharacter={onOpenCharacter} onOpenSettings={() => { setContextOpen(false); setSettingsOpen(true) }} onChanged={() => void loadRoomAccess()} />}
+    {contextOpen && <ChatContextSheet roomId={roomId} selectedCharacterId={actors.selected?.characterId || null} onRecovery={refreshRecoveredCharacter} onClose={() => setContextOpen(false)} onOpenCharacter={onOpenCharacter} onOpenSettings={() => { setContextOpen(false); setSettingsOpen(true) }} onChanged={() => void loadRoomAccess()} />}
     {settingsOpen && <ChatRoomSettings roomId={roomId} roomTitle={roomTitle} members={members} characters={characters} onClose={() => setSettingsOpen(false)} onSaved={(nextTitle) => { setRoomTitle(nextTitle); void loadRoomAccess() }} />}
     {selectedMessage && <ChatMessageActions message={selectedMessage} characterId={selectedMessage.character_id} own={selectedMessage.user_id === user.id} canManage={canManage} onOpenCharacter={onOpenCharacter} onClose={() => setSelectedMessage(null)} onEdit={chat.editMessage} onDelete={chat.deleteMessage} />}
+    {selectedSpellEvent && <ChatSpellDetailSheet spellKey={selectedSpellEvent.spellKey} label={selectedSpellEvent.label} onClose={() => setSelectedSpellEvent(null)} />}
   </div>
 }
