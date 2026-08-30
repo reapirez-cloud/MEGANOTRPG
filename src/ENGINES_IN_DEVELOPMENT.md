@@ -10,8 +10,8 @@ Named engines:
 - **CE — Character Engine**: deterministic character resolution from an explicit input snapshot. CE is passive: it does not query other engines, does not mutate persistence and does not announce changes.
 - **GENA — Game State / Session Engine**: the central session orchestrator and gameplay bookkeeper. It records player/GM declarations, routes cross-domain play mutations to the owning engine, coordinates resource spending/recharge, rests, preparation, stored choices/results, visibility/discovery consequences and rebuilds a fresh CE input after canonical state changes. GENA is currently distributed across chat/runtime/RPC pieces and is planned to become an explicit engine boundary.
 - **CHEBURASHKA — Inventory Engine**: dedicated inventory/item ownership and persistent item-state engine. It owns the warehouse: items, stacks, charges, equipment and transfers. It exposes only mechanically relevant item projections to CE snapshot construction. Planned/in development; do not grow inventory logic ad hoc inside CE or chat UI.
-- **PC/NPC Creation & Storage Engine — NAME TBD**: separate engine for creation, identity, storage, assignment, visibility, discovery and lifecycle of PC/NPC entities. Name will later be chosen from the Cheburashka cartoon universe. AI agents must not invent the final name.
-- **Location / World Engine — NAME TBD**: separate engine for persistent worlds/zones/locations/maps, discovery/visibility and their relationships. Name will later be chosen from the Cheburashka cartoon universe. AI agents must not invent the final name.
+- **SHAPOKLYAK — PC/NPC Creation & Storage Engine**: separate engine for creation, identity, storage, assignment, visibility, discovery, placement and lifecycle of PC/NPC entities. Shapoklyak owns the existence and canonical identity/state of character entities; CE only resolves a supplied character snapshot.
+- **LARISA — Location / World Engine**: separate engine for persistent worlds/zones/locations/maps, discovery/visibility, placement relationships and world topology. Larisa owns location state; GENA orchestrates play events that reveal, discover or move entities through that world.
 
 ## Critical engine communication boundary
 
@@ -41,7 +41,7 @@ The application may account for explicit machine-owned state (charges, costs, re
 
 Example: a player can spend an Echo-related charge while no Echo is present. GENA records/spends what the player declared; the GM decides that the action does nothing.
 
-The GM may directly establish persistent truth: reveal an NPC, reveal/discover a location, move a PC/NPC, edit stats/features/assignments, or set HP.
+The GM may directly establish persistent truth: reveal an NPC through Shapoklyak, reveal/discover a location through Larisa, move a PC/NPC, edit stats/features/assignments, or set HP.
 
 **HP is GM-authoritative.** Attacks, damage rolls, healing rolls, spells and item actions must not automatically mutate HP. The GM may run combat entirely in their head and update HP afterward. Absence of automatic combat HP application is intentional and must not be reported as a mechanics defect.
 
