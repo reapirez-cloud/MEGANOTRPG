@@ -9,7 +9,11 @@ import type {
   EntityVisibilityMode,
 } from "../entity-engine/index.ts"
 import type { InventoryMutation } from "../inventory-engine/index.ts"
-import type { WorldMutation } from "../location-engine/index.ts"
+import type {
+  LocationCreateInput,
+  LocationUpdateInput,
+  WorldMutation,
+} from "../location-engine/index.ts"
 import type {
   ChasovoyCreateInput,
   ChasovoyMutation,
@@ -72,6 +76,19 @@ export type OracleWorldCommands = {
   setScenePosition(context: OracleContext, roomId: string, locationId: string | null, campaignDay: number, dayPeriod: DayPeriod): OracleWorldResult
   setSceneParticipants(context: OracleContext, roomId: string, characterIds: string[]): OracleWorldResult
   syncSceneParticipants(context: OracleContext, roomId: string, options: { syncLocation: boolean; syncTime: boolean }): OracleWorldResult
+  createLocation(context: OracleContext, input: LocationCreateInput): OracleWorldResult
+  updateLocation(context: OracleContext, locationId: string, input: LocationUpdateInput): OracleWorldResult
+  setLocationVisibility(context: OracleContext, locationId: string, visibilityMode: LocationCreateInput["visibilityMode"]): OracleWorldResult
+  setLocationArchived(context: OracleContext, locationId: string, archived: boolean): OracleWorldResult
+  deleteLocation(context: OracleContext, locationId: string): OracleWorldResult
+  publishLocationEvent(context: OracleContext, locationId: string, event: "opened" | "updated" | "destroyed"): OracleWorldResult
+  createLocationSection(context: OracleContext, locationId: string, title: string, body: string): OracleWorldResult
+  updateLocationSection(context: OracleContext, sectionId: string, title: string, body: string): OracleWorldResult
+  deleteLocationSection(context: OracleContext, sectionId: string): OracleWorldResult
+  createLocationLink(context: OracleContext, sectionId: string, targetLocationId: string, label: string, visibilityMode: LocationCreateInput["visibilityMode"]): OracleWorldResult
+  updateLocationLink(context: OracleContext, linkId: string, targetLocationId: string, label: string, visibilityMode?: LocationCreateInput["visibilityMode"]): OracleWorldResult
+  deleteLocationLink(context: OracleContext, linkId: string): OracleWorldResult
+  setNpcHabitat(context: OracleContext, npcCharacterId: string, locationId: string, attached: boolean): OracleWorldResult
 }
 
 export type OracleDefinitionCommands = {
