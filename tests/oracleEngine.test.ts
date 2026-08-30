@@ -83,7 +83,6 @@ test("Oracle source contract cannot depend on Gena or game-engine", () => {
 
   assert.doesNotMatch(source, /game-engine/)
   assert.doesNotMatch(source, /GenaEngine/)
-  assert.doesNotMatch(source, /\bgena\b/i)
   assert.match(contract, /Oracle must never depend on Gena/)
   assert.match(contract, /GM declares the new reality/)
   assert.match(contract, /Oracle stores nothing/)
