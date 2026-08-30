@@ -14,7 +14,7 @@ GM
 └─ changes through Oracle
       ├─ Shapoklyak — characters/entities
       ├─ Cheburashka — inventory instances
-      ├─ Larisa — runtime world state
+      ├─ Larisa — runtime world state and topology
       └─ Chasovoy — definitions/reference content
 ```
 
@@ -26,14 +26,14 @@ Examples:
 
 - "The character now has 3 HP" → Oracle calls Shapoklyak directly.
 - "Those grenades are gone from the backpack" → Oracle calls Cheburashka directly.
-- "This location is discovered" → Oracle calls Larisa directly.
+- "This location is destroyed" → Oracle calls Larisa directly.
 - "This custom item definition now exists" → Oracle calls Chasovoy directly.
 
 Oracle does not ask Gena whether the change is legal under gameplay rules.
 
 ## Oracle is not Gena
 
-Gena handles gameplay execution and orchestration: what happens when the game system resolves a normal action.
+Gena handles gameplay execution and orchestration: what happens when the game system resolves a normal player action.
 
 Oracle handles GM authority: what is true now because the GM said so.
 
@@ -51,6 +51,8 @@ player/gameplay UI               GM Cabinet
  domain engines                  domain engines
 ```
 
+A normal player rest may therefore run through Gena. A GM pressing "grant long rest" or forcing a resource recovery runs through Oracle → Shapoklyak. Same canonical state, different authority path.
+
 ## Direct-owner rule
 
 Every Oracle method has one explicit domain owner. Oracle does not dynamically choose an engine at runtime.
@@ -59,8 +61,11 @@ Examples:
 
 ```text
 oracle.characters.setHp(...)       → Shapoklyak
+oracle.characters.recover(...)     → Shapoklyak
 oracle.inventory.remove(...)       → Cheburashka
 oracle.world.moveCharacter(...)    → Larisa
+oracle.world.createLocation(...)   → Larisa
+oracle.world.setNpcHabitat(...)    → Larisa
 oracle.definitions.create(...)     → Chasovoy
 ```
 
@@ -92,21 +97,22 @@ This is a domain integrity failure, not a gameplay-rule veto.
 Oracle stores nothing.
 
 - Character/entity canonical state → Shapoklyak.
+- Character sheet mechanics, template assignments, suppressions, spells/features and persistent resource state → Shapoklyak.
 - Inventory item instances/equipment/runtime → Cheburashka.
-- Runtime world positions/discovery/scenes → Larisa.
-- Class/subclass/item/spell/feat/etc. definitions → Chasovoy.
+- Runtime world positions/discovery/scenes, location topology, sections/links and NPC habitats → Larisa.
+- Class/subclass/item/spell/feat/etc. reusable definitions → Chasovoy.
 - Derived mechanics → Character Engine, recomputed from canonical inputs.
 
 ## Current surface
 
-The initial Oracle surface exposes all currently existing direct GM mutations from those owners:
+The Oracle surface exposes the current GM mutation capabilities of all four owners:
 
-- characters: create, update, delete, active assignment, life state, visibility, NPC reveal, HP;
-- inventory: create, update, remove, equip, consume, transfer;
-- world: discovery, character position, scene position, participants, participant sync;
-- definitions: create, revise, archive.
+- characters: create, update, delete, active assignment, avatar, life state, visibility, NPC reveal, HP, sheet mechanics, spellcasting access, spell/options/features, resources, recovery, template assignment/removal and source suppression;
+- inventory: create, update, remove, equip, consume and transfer;
+- world: discovery, character position, scene position, participants/sync, location CRUD/visibility/archive/events, location section CRUD, location link CRUD and NPC habitat attachment;
+- definitions: create, revise and archive.
 
-Oracle intentionally does not fake capabilities that the owner does not yet expose. For example, creating/editing map zones themselves belongs to Larisa, but Larisa currently exposes runtime location state rather than location-definition CRUD. That capability must be added to Larisa first and then exposed directly by Oracle.
+A new GM mutation is not added directly to React first. Its owner gets the command and persistence boundary first; Oracle then exposes that owner command to the GM Cabinet.
 
 ## GM Cabinet rule
 
