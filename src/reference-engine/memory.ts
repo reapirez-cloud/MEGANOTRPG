@@ -17,7 +17,9 @@ type StoredDefinition = {
 }
 
 function current(stored: StoredDefinition, revision?: number | null): ChasovoyDefinition | null {
-  const row = revision == null ? stored.revisions.at(-1) : stored.revisions.find((entry) => entry.revision === revision)
+  const row = revision == null
+    ? stored.revisions[stored.revisions.length - 1]
+    : stored.revisions.find((entry) => entry.revision === revision)
   return row ? copy({ ...stored.identity, ...row }) : null
 }
 
@@ -162,7 +164,7 @@ export class MemoryChasovoyStorage implements ChasovoyStorage {
     const stored = this.definitions.get(definitionId)
     if (!stored) throw new EngineCommandError("definition.not_found", "Definition was not found")
     stored.identity.status = "archived"
-    const latest = stored.revisions.at(-1)
+    const latest = stored.revisions[stored.revisions.length - 1]
     if (latest) latest.updatedAt = context.occurredAt
     return current(stored)!
   }
