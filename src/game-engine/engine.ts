@@ -1,29 +1,18 @@
 import {
   EMPTY_ENGINE_EFFECTS,
-  EngineCommandError,
   mergeEngineEffects,
   type EngineCommandResult,
   type EngineEvent,
   type EngineEventPublisher,
 } from "../engine-contracts/index.ts"
-import type { ShapoklyakEngine } from "../entity-engine/index.ts"
 import type { CheburashkaEngine } from "../inventory-engine/index.ts"
-import type { LarisaEngine } from "../location-engine/index.ts"
 import type { TobikPort } from "../roll-engine/index.ts"
 import type { GenaCommand, GenaCommandResult, GenaDelegatedValue } from "./types.ts"
 
 export type GenaDependencies = {
   cheburashka: Pick<CheburashkaEngine, "execute">
-  shapoklyak: Pick<ShapoklyakEngine, "execute" | "getEntity">
-  larisa: Pick<LarisaEngine, "execute">
   tobik: TobikPort
   eventPublisher?: EngineEventPublisher
-}
-
-function requireGm(command: GenaCommand): void {
-  if (command.context.authority !== "gm" && command.context.authority !== "system") {
-    throw new EngineCommandError("gena.gm_required", `${command.kind} requires GM authority`)
-  }
 }
 
 function sessionEvent(command: GenaCommand, delegatedTo: GenaDelegatedValue["engine"]): EngineEvent {
@@ -74,68 +63,6 @@ export class GenaEngine {
         amount: command.amount,
       })
       delegated = { value: { engine: "cheburashka", mutation: result.value }, events: result.events, effects: result.effects }
-    } else if (command.kind === "entity.reveal_npc") {
-      requireGm(command)
-      const result = await this.dependencies.shapoklyak.execute({
-        kind: "entity.reveal_npc",
-        context: command.context,
-        viewerCharacterId: command.viewerCharacterId,
-        npcCharacterId: command.npcCharacterId,
-        discovered: command.discovered ?? true,
-      })
-      delegated = { value: { engine: "shapoklyak", mutation: result.value }, events: result.events, effects: result.effects }
-    } else if (command.kind === "world.discover_location") {
-      requireGm(command)
-      const result = await this.dependencies.larisa.execute({
-        kind: "world.discover_location",
-        context: command.context,
-        characterId: command.characterId,
-        locationId: command.locationId,
-        discovered: command.discovered ?? true,
-      })
-      delegated = { value: { engine: "larisa", mutation: result.value }, events: result.events, effects: result.effects }
-    } else if (command.kind === "world.move_character") {
-      requireGm(command)
-      const entity = await this.dependencies.shapoklyak.getEntity(command.characterId)
-      if (!entity || entity.campaign_id !== command.context.campaignId) {
-        throw new EngineCommandError("gena.character_unavailable", "Character is unavailable in this campaign")
-      }
-      const result = await this.dependencies.larisa.execute({
-        kind: "world.set_character_position",
-        context: command.context,
-        characterId: command.characterId,
-        locationId: command.locationId,
-        campaignDay: command.campaignDay,
-        dayPeriod: command.dayPeriod,
-      })
-      delegated = { value: { engine: "larisa", mutation: result.value }, events: result.events, effects: result.effects }
-    } else if (command.kind === "world.set_scene_position") {
-      requireGm(command)
-      const result = await this.dependencies.larisa.execute(command)
-      delegated = { value: { engine: "larisa", mutation: result.value }, events: result.events, effects: result.effects }
-    } else if (command.kind === "world.set_scene_participants") {
-      requireGm(command)
-      for (const characterId of command.characterIds) {
-        const entity = await this.dependencies.shapoklyak.getEntity(characterId)
-        if (!entity || entity.campaign_id !== command.context.campaignId) throw new EngineCommandError("gena.character_unavailable", "Scene participant is unavailable in this campaign")
-      }
-      const result = await this.dependencies.larisa.execute(command)
-      delegated = { value: { engine: "larisa", mutation: result.value }, events: result.events, effects: result.effects }
-    } else if (command.kind === "world.sync_scene_participants") {
-      requireGm(command)
-      const result = await this.dependencies.larisa.execute(command)
-      delegated = { value: { engine: "larisa", mutation: result.value }, events: result.events, effects: result.effects }
-    } else if (command.kind === "character.set_hp") {
-      requireGm(command)
-      const result = await this.dependencies.shapoklyak.execute({
-        kind: "entity.set_hp",
-        context: command.context,
-        characterId: command.characterId,
-        currentHp: command.currentHp,
-        ...(command.maxHp !== undefined ? { maxHp: command.maxHp } : {}),
-        ...(command.tempHp !== undefined ? { tempHp: command.tempHp } : {}),
-      })
-      delegated = { value: { engine: "shapoklyak", mutation: result.value }, events: result.events, effects: result.effects }
     } else {
       const roll = this.dependencies.tobik.execute(command.request)
       const tobikEvent: EngineEvent = {
@@ -155,7 +82,7 @@ export class GenaEngine {
 
     const genaEvent = sessionEvent(command, delegated.value.engine)
     const events = [...delegated.events, genaEvent]
-    // The owning domain engine already published its own event. Gena publishes
+    // The owning domain engine already published its own event. GENA publishes
     // only the session-level orchestration event and returns both for correlation.
     await this.dependencies.eventPublisher?.publishEngineEvents([genaEvent])
     return {
