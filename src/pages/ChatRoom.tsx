@@ -15,6 +15,10 @@ import ChatActorPicker from "../components/chat/ChatActorPicker"
 import ChatRoomSettings from "../components/chat/ChatRoomSettings"
 import ChatMessageActions from "../components/chat/ChatMessageActions"
 import ChatContextSheet from "../components/chat/ChatContextSheet"
+import {
+  templateMechanicIdForChatAction,
+  templatePaymentOptionKeyForChatAction,
+} from "../components/chat/chatTemplateActionRoute.ts"
 import type { ChatEventPayload, ChatMessage, RoomState, RoomType } from "../types/chat"
 import { uploadCampaignImage } from "../lib/mediaUpload"
 import CampaignImage from "../components/common/CampaignImage"
@@ -229,12 +233,40 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
   }
 
   async function runAction(action: ResolvedAction) {
-    const contract = resolved.contract
+    const characterId = actors.selected?.characterId || null
+    if (!characterId) throw new Error("Для классового действия нужен выбранный персонаж.")
+
     const damage = action.damage[0]
+    const mechanicId = templateMechanicIdForChatAction(action)
+    if (mechanicId) {
+      const optionKey = templatePaymentOptionKeyForChatAction(action)
+      if (optionKey === null) throw new Error("У действия несколько способов оплаты. Сначала нужно выбрать расход ресурса.")
+      const common = {
+        characterId,
+        mechanicId,
+        ...(optionKey ? { optionKey } : {}),
+        label: action.label || action.key,
+      }
+      const sent = action.attack || damage?.dice
+        ? await chat.sendTemplateRoll({
+            ...common,
+            kind: "action",
+            modifier: action.attack?.bonus.value || 0,
+            rollD20: Boolean(action.attack),
+            diceCount: damage?.dice?.count || 0,
+            diceSides: damage?.dice?.sides || 0,
+            diceModifier: damage?.modifier.value || 0,
+          })
+        : await chat.sendTemplateAction({ ...common, payload: { detail: action.economy } })
+      if (sent) { resolved.refresh(); setActionsOpen(false) }
+      return
+    }
+
+    const contract = resolved.contract
     const costs = contract ? resourceCostInputs(contract, action.resourceCosts) : []
     const sent = action.attack || damage?.dice
-      ? await chat.sendRoll({ characterId: actors.selected?.characterId || null, label: action.label || action.key, kind: "action", modifier: action.attack?.bonus.value || 0, rollD20: Boolean(action.attack), diceCount: damage?.dice?.count || 0, diceSides: damage?.dice?.sides || 0, diceModifier: damage?.modifier.value || 0, resourceCosts: costs })
-      : await chat.sendEvent(actors.selected?.characterId || null, "action", action.label || action.key, { detail: action.economy }, costs)
+      ? await chat.sendRoll({ characterId, label: action.label || action.key, kind: "action", modifier: action.attack?.bonus.value || 0, rollD20: Boolean(action.attack), diceCount: damage?.dice?.count || 0, diceSides: damage?.dice?.sides || 0, diceModifier: damage?.modifier.value || 0, resourceCosts: costs })
+      : await chat.sendEvent(characterId, "action", action.label || action.key, { detail: action.economy }, costs)
     if (sent) { resolved.refresh(); setActionsOpen(false) }
   }
 
