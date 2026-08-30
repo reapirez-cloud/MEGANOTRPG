@@ -31,7 +31,10 @@ export type InventoryItem = {
 }
 
 export type CharacterSpell = {
-  id: string; character_id: string; catalog_spell_id: string; name: string; spell_level: number; school: string; casting_time: string
+  id: string; character_id: string
+  /** Canonical spell_catalog identity. Database migration makes this non-null; optionality only keeps pre-migration preview fixtures compatible. */
+  catalog_spell_id?: string | null
+  name: string; spell_level: number; school: string; casting_time: string
   spell_range: string; duration: string; components: string; concentration: boolean; ritual: boolean; prepared: boolean
   cast_mode: "cantrip" | "slot"; slot_level: number | null; description: string; source: string
   sort_order: number; created_at: string; updated_at: string
