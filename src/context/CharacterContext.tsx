@@ -12,6 +12,7 @@ import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { shapoklyak } from "../entity-engine/runtime.ts"
 import type { CharacterEntity } from "../entity-engine/index.ts"
 import { supabase } from "../lib/supabase"
+import { oracle } from "../oracle-engine/runtime.ts"
 import { useAuth } from "./AuthContext"
 
 export type Character = CharacterEntity
@@ -280,6 +281,12 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
   const isGm = myMember?.role === "gm"
   const isOwner = myMember?.is_owner === true
   const canManage = isGm || isOwner
+  const gmContext = useCallback((targetCampaignId = campaignId) => createEngineCommandContext({
+    campaignId: targetCampaignId,
+    requestedBy: user.id,
+    authority: "gm",
+  }), [campaignId, user.id])
+
   const joinCampaign = useCallback(
     async (code: string): Promise<Result> => {
       const cleaned = code.trim()
@@ -358,149 +365,156 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
 
   const createCharacter = useCallback(
     async (input: CharacterInput): Promise<Result> => {
-      if (!campaignId) {
-        return { ok: false, error: "Кампания ещё не загружена." }
-      }
-
-      if (!canManage) {
-        return {
-          ok: false,
-          error: "Персонажей создаёт и назначает ГМ или владелец.",
-        }
-      }
+      if (!campaignId) return { ok: false, error: "Кампания ещё не загружена." }
+      if (!canManage) return { ok: false, error: "Персонажей создаёт и назначает ГМ или владелец." }
 
       try {
-        await shapoklyak.execute({
-          kind: "entity.create",
-          context: createEngineCommandContext({ campaignId, requestedBy: user.id, authority: "gm" }),
-          input: {
-            name: input.name.trim(),
-            character_class: input.character_class.trim() || "Персонаж",
-            level: input.level,
-            bio: input.bio.trim(),
-            avatar_url: input.avatar_url?.trim() || null,
-            assigned_user_id: input.assigned_user_id,
-            character_type: input.character_type || "pc",
-            visibility: input.visibility || "campaign",
-          },
+        await oracle.characters.create(gmContext(), {
+          name: input.name.trim(),
+          character_class: input.character_class.trim() || "Персонаж",
+          level: input.level,
+          bio: input.bio.trim(),
+          avatar_url: input.avatar_url?.trim() || null,
+          assigned_user_id: input.assigned_user_id,
+          character_type: input.character_type || "pc",
+          visibility: input.visibility || "campaign",
         })
       } catch (reason) {
-        return {
-          ok: false,
-          error: reason instanceof Error ? reason.message : "Не удалось создать персонажа.",
-        }
+        return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось создать персонажа." }
       }
 
       await load()
       return { ok: true }
     },
-    [campaignId, canManage, load, user.id],
+    [campaignId, canManage, gmContext, load],
   )
 
   const updateCharacter = useCallback(
     async (characterId: string, input: CharacterInput): Promise<Result> => {
+      if (!canManage) return { ok: false, error: "Полное состояние персонажа изменяет только ГМ или владелец." }
       const character = characters.find((item) => item.id === characterId)
       if (!character) return { ok: false, error: "Персонаж не найден." }
 
       try {
-        await shapoklyak.execute({
-          kind: "entity.update",
-          context: createEngineCommandContext({ campaignId: character.campaign_id, requestedBy: user.id, authority: canManage ? "gm" : "player", actorCharacterId: characterId }),
-          characterId,
-          input: {
-            name: input.name.trim(),
-            character_class: input.character_class.trim() || "Персонаж",
-            level: input.level,
-            bio: input.bio.trim(),
-            avatar_url: input.avatar_url?.trim() || null,
-            assigned_user_id: input.assigned_user_id,
-            character_type: input.character_type || character.character_type,
-            visibility: input.visibility || character.visibility,
-          },
+        await oracle.characters.update(gmContext(character.campaign_id), characterId, {
+          name: input.name.trim(),
+          character_class: input.character_class.trim() || "Персонаж",
+          level: input.level,
+          bio: input.bio.trim(),
+          avatar_url: input.avatar_url?.trim() || null,
+          assigned_user_id: input.assigned_user_id,
+          character_type: input.character_type || character.character_type,
+          visibility: input.visibility || character.visibility,
         })
-      } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось обновить персонажа." } }
+      } catch (reason) {
+        return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось обновить персонажа." }
+      }
       await load()
       return { ok: true }
     },
-    [canManage, characters, load, user.id],
+    [canManage, characters, gmContext, load],
   )
 
   const updateOwnCharacterAvatar = useCallback(
     async (characterId: string, avatarUrl: string): Promise<Result> => {
-      const { error: avatarError } = await supabase.rpc("set_my_character_avatar", {
-        p_character_id: characterId,
-        p_avatar_url: avatarUrl,
-      })
+      const character = characters.find((item) => item.id === characterId)
+      if (!character) return { ok: false, error: "Персонаж не найден." }
+      const cleaned = avatarUrl.trim() || null
 
-      if (avatarError) return { ok: false, error: avatarError.message }
-      setCharacters((current) =>
-        current.map((character) =>
-          character.id === characterId
-            ? { ...character, avatar_url: avatarUrl, updated_at: new Date().toISOString() }
-            : character,
-        ),
-      )
+      try {
+        if (canManage) {
+          await oracle.characters.setAvatar(gmContext(character.campaign_id), characterId, cleaned)
+        } else {
+          if (character.assigned_user_id !== user.id || character.character_type !== "pc") {
+            return { ok: false, error: "Можно менять портрет только своего выданного персонажа." }
+          }
+          await shapoklyak.execute({
+            kind: "entity.set_avatar",
+            context: createEngineCommandContext({
+              campaignId: character.campaign_id,
+              requestedBy: user.id,
+              authority: "player",
+              actorCharacterId: characterId,
+            }),
+            characterId,
+            avatarUrl: cleaned,
+          })
+        }
+      } catch (reason) {
+        return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось сохранить портрет." }
+      }
+
+      setCharacters((current) => current.map((item) => item.id === characterId
+        ? { ...item, avatar_url: cleaned, updated_at: new Date().toISOString() }
+        : item))
       return { ok: true }
     },
-    [],
+    [canManage, characters, gmContext, user.id],
   )
 
   const deleteCharacter = useCallback(
     async (characterId: string): Promise<Result> => {
+      if (!canManage) return { ok: false, error: "Удалять персонажей может только ГМ или владелец." }
       const character = characters.find((item) => item.id === characterId)
       if (!character) return { ok: false, error: "Персонаж не найден." }
       try {
-        await shapoklyak.execute({ kind: "entity.delete", context: createEngineCommandContext({ campaignId: character.campaign_id, requestedBy: user.id, authority: "gm" }), characterId })
-      } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось удалить персонажа." } }
-      setCharacters((current) => current.filter((character) => character.id !== characterId))
-      setMembers((current) =>
-        current.map((member) =>
-          member.active_character_id === characterId
-            ? { ...member, active_character_id: null }
-            : member,
-        ),
-      )
+        await oracle.characters.delete(gmContext(character.campaign_id), characterId)
+      } catch (reason) {
+        return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось удалить персонажа." }
+      }
+      setCharacters((current) => current.filter((item) => item.id !== characterId))
+      setMembers((current) => current.map((member) => member.active_character_id === characterId
+        ? { ...member, active_character_id: null }
+        : member))
       return { ok: true }
     },
-    [characters, user.id],
+    [canManage, characters, gmContext],
   )
 
   const setActiveForMember = useCallback(
     async (userId: string, characterId: string | null): Promise<Result> => {
-      if (!campaignId) {
-        return { ok: false, error: "Кампания ещё не загружена." }
-      }
+      if (!campaignId) return { ok: false, error: "Кампания ещё не загружена." }
 
       const character = characterId
-        ? characters.find(
-            (item) =>
-              item.id === characterId &&
-              item.assigned_user_id === userId &&
-              item.campaign_id === campaignId &&
-              item.character_type === "pc",
-          )
+        ? characters.find((item) =>
+            item.id === characterId &&
+            item.assigned_user_id === userId &&
+            item.campaign_id === campaignId &&
+            item.character_type === "pc")
         : null
 
       if (characterId && !character) {
-        return {
-          ok: false,
-          error: "Сначала прикрепи этого персонажа к выбранному игроку.",
-        }
+        return { ok: false, error: "Сначала прикрепи этого персонажа к выбранному игроку." }
+      }
+      if (!canManage && userId !== user.id) {
+        return { ok: false, error: "Игрок может менять только своего активного персонажа." }
       }
 
       try {
-        await shapoklyak.execute({ kind: "entity.set_active", context: createEngineCommandContext({ campaignId, requestedBy: user.id, authority: canManage ? "gm" : "player", actorCharacterId: characterId }), userId, characterId })
-      } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось выбрать активного персонажа." } }
-      setMembers((current) =>
-        current.map((member) =>
-          member.user_id === userId
-            ? { ...member, active_character_id: characterId }
-            : member,
-        ),
-      )
+        if (canManage) {
+          await oracle.characters.setActive(gmContext(), userId, characterId)
+        } else {
+          await shapoklyak.execute({
+            kind: "entity.set_active",
+            context: createEngineCommandContext({
+              campaignId,
+              requestedBy: user.id,
+              authority: "player",
+              actorCharacterId: characterId,
+            }),
+            userId,
+            characterId,
+          })
+        }
+      } catch (reason) {
+        return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось выбрать активного персонажа." }
+      }
+      setMembers((current) => current.map((member) => member.user_id === userId
+        ? { ...member, active_character_id: characterId }
+        : member))
       return { ok: true }
     },
-    [campaignId, canManage, characters, user.id],
+    [campaignId, canManage, characters, gmContext, user.id],
   )
 
   if (loading) {
