@@ -1,0 +1,100 @@
+import assert from "node:assert/strict"
+import fs from "node:fs"
+import test from "node:test"
+
+import { createEngineCommandContext, type CharacterResolutionRequest } from "../src/engine-contracts/index.ts"
+import { MemoryShapoklyakStorage, ShapoklyakEngine, type CharacterEntity } from "../src/entity-engine/index.ts"
+
+const now = "2026-08-30T20:00:00.000Z"
+const hero: CharacterEntity = {
+  id: "hero-closure",
+  campaign_id: "campaign-closure",
+  assigned_user_id: "player-1",
+  name: "Герой",
+  character_class: "",
+  level: 1,
+  bio: "",
+  avatar_url: null,
+  character_type: "pc",
+  visibility: "campaign",
+  visibility_mode: "always",
+  life_state: "alive",
+  died_at: null,
+  created_by: "gm-1",
+  created_at: now,
+  updated_at: now,
+}
+
+function context(authority: "player" | "gm") {
+  return createEngineCommandContext({
+    campaignId: hero.campaign_id,
+    requestedBy: authority === "gm" ? "gm-1" : "player-1",
+    authority,
+    actorCharacterId: hero.id,
+    occurredAt: now,
+  })
+}
+
+test("Shapoklyak owns template assignment and requests a fresh character resolution", async () => {
+  const requests: CharacterResolutionRequest[] = []
+  const engine = new ShapoklyakEngine(new MemoryShapoklyakStorage([hero]), {
+    resolutionRequester: { requestCharacterResolution: (request) => { requests.push(request) } },
+  })
+
+  await assert.rejects(() => engine.execute({
+    kind: "entity.assign_template",
+    context: context("player"),
+    characterId: hero.id,
+    input: { templateId: "fighter-template", templateLevel: 5, selectedChoices: {} },
+  }), /Only GM authority/)
+
+  const assigned = await engine.execute({
+    kind: "entity.assign_template",
+    context: context("gm"),
+    characterId: hero.id,
+    input: { templateId: "fighter-template", templateLevel: 5, selectedChoices: { style: "defense" } },
+  })
+
+  assert.equal(assigned.value.kind, "entity.assign_template")
+  assert.deepEqual(assigned.effects.resolveCharacterIds, [hero.id])
+  assert.equal(requests.at(-1)?.reason, "entity.assign_template")
+
+  const assignmentId = String(assigned.value.details?.assignmentId)
+  const removed = await engine.execute({
+    kind: "entity.remove_template_assignment",
+    context: context("gm"),
+    characterId: hero.id,
+    assignmentId,
+  })
+  assert.equal(removed.value.kind, "entity.remove_template_assignment")
+  assert.equal(requests.at(-1)?.reason, "entity.remove_template_assignment")
+})
+
+test("GM template UI cannot bypass Oracle and atomic owner RPC is the persistence boundary", () => {
+  const frame = fs.readFileSync("src/components/characters/CharacterGameFrame.tsx", "utf8")
+  const oracle = fs.readFileSync("src/oracle-engine/engine.ts", "utf8")
+  const storage = fs.readFileSync("src/entity-engine/supabase.ts", "utf8")
+  const migration = fs.readFileSync("supabase/migrations/20260830050000_shapoklyak_template_assignment_owner.sql", "utf8")
+
+  assert.match(frame, /oracle\.characters\.assignTemplate/)
+  assert.match(frame, /oracle\.characters\.removeTemplateAssignment/)
+  assert.doesNotMatch(frame, /assign_character_template_v2/)
+  assert.doesNotMatch(frame, /apply_class_template_sheet_profile/)
+  assert.doesNotMatch(frame, /remove_character_template_assignment_v2/)
+
+  assert.match(oracle, /entity\.assign_template/)
+  assert.match(oracle, /entity\.remove_template_assignment/)
+  assert.match(storage, /set_character_template_assignment_owner_v1/)
+  assert.match(storage, /remove_character_template_assignment_owner_v1/)
+  assert.match(migration, /set_character_template_assignment_owner_v1/)
+  assert.match(migration, /assign_character_template_v2/)
+  assert.match(migration, /apply_class_template_sheet_profile/)
+})
+
+test("engine closure contract is explicit", () => {
+  const closure = fs.readFileSync("docs/ENGINE_CLOSURE_DEFINITION.md", "utf8")
+  assert.match(closure, /WORKING/)
+  assert.match(closure, /Build, Lint and Tests/)
+  assert.match(closure, /Oracle must never depend on GENA/)
+  assert.match(closure, /indefinite loading/)
+})
