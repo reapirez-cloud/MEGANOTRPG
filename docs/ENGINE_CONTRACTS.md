@@ -1,6 +1,6 @@
 # Named Engine Contracts
 
-> Status: **CLOSURE CANDIDATE — ACTIVE ON `dev`**
+> Status: **CLOSED — STABLE BOUNDARY ON `dev`**
 >
 > Read this document together with `ENGINE_ROADMAP.md`, `CHARACTER_ENGINE_CONTRACT.md`, `CHASOVOY_ENGINE_CONTRACT.md` and `ORACLE_ENGINE_CONTRACT.md` before changing gameplay commands, GM controls, character resolution, inventory, definitions, entities, rolls, locations or chat action execution.
 
