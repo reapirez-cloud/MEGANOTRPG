@@ -35,7 +35,7 @@ function context(authority: "player" | "gm") {
   })
 }
 
-test("Shapoklyak owns template assignment and requests a fresh character resolution", async () => {
+test("Shapoklyak owns template assignment, suppression and fresh character resolution", async () => {
   const requests: CharacterResolutionRequest[] = []
   const engine = new ShapoklyakEngine(new MemoryShapoklyakStorage([hero]), {
     resolutionRequester: { requestCharacterResolution: (request) => { requests.push(request) } },
@@ -58,6 +58,17 @@ test("Shapoklyak owns template assignment and requests a fresh character resolut
   assert.equal(assigned.value.kind, "entity.assign_template")
   assert.deepEqual(assigned.effects.resolveCharacterIds, [hero.id])
   assert.equal(requests.at(-1)?.reason, "entity.assign_template")
+
+  const suppressed = await engine.execute({
+    kind: "entity.set_source_suppressed",
+    context: context("gm"),
+    characterId: hero.id,
+    sourceId: "template:fighter-template",
+    suppressed: true,
+  })
+  assert.deepEqual(suppressed.effects.resolveCharacterIds, [hero.id])
+  assert.equal(suppressed.value.details?.suppressed, true)
+  assert.equal(requests.at(-1)?.reason, "entity.set_source_suppressed")
 
   const assignmentId = String(assigned.value.details?.assignmentId)
   const removed = await engine.execute({
@@ -89,6 +100,34 @@ test("GM template UI cannot bypass Oracle and atomic owner RPC is the persistenc
   assert.match(migration, /set_character_template_assignment_owner_v1/)
   assert.match(migration, /assign_character_template_v2/)
   assert.match(migration, /apply_class_template_sheet_profile/)
+})
+
+test("legacy template helpers are sealed behind the Shapoklyak owner facade", () => {
+  const migration = fs.readFileSync("supabase/migrations/20260830160706_seal_shapoklyak_template_helpers.sql", "utf8")
+
+  assert.match(migration, /revoke execute on function public\.assign_character_template\(uuid,uuid,integer,jsonb\) from authenticated/)
+  assert.match(migration, /revoke execute on function public\.assign_character_template_v2\(uuid,uuid,integer,jsonb\) from authenticated/)
+  assert.match(migration, /revoke execute on function public\.apply_class_template_sheet_profile\(uuid,uuid,integer\) from authenticated/)
+  assert.match(migration, /revoke execute on function public\.remove_character_template_assignment_v2\(uuid,uuid\) from authenticated/)
+  assert.match(migration, /grant execute on function public\.set_character_template_assignment_owner_v1\(uuid,uuid,integer,jsonb\) to authenticated/)
+  assert.match(migration, /grant execute on function public\.remove_character_template_assignment_owner_v1\(uuid,uuid\) to authenticated/)
+})
+
+test("Sheet Chat and action revolver consume one shared resolved character runtime", () => {
+  const profile = fs.readFileSync("src/pages/CharacterProfileV2.tsx", "utf8")
+  const chatAlias = fs.readFileSync("src/hooks/useResolvedChatActor.ts", "utf8")
+  const chatRoom = fs.readFileSync("src/pages/ChatRoom.tsx", "utf8")
+  const actionSheet = fs.readFileSync("src/components/chat/ChatActionSheet.tsx", "utf8")
+  const runtimeResolver = fs.readFileSync("src/engine-runtime/characterRuntimeResolver.ts", "utf8")
+
+  assert.match(profile, /useResolvedCharacterRuntime/)
+  assert.doesNotMatch(profile, /resolveLegacyCharacterEngineView/)
+  assert.match(chatAlias, /useResolvedCharacterRuntime as useResolvedChatActor/)
+  assert.match(chatRoom, /useResolvedChatActor/)
+  assert.match(chatRoom, /contract=\{resolved\.contract\}/)
+  assert.doesNotMatch(actionSheet, /resolveLegacyCharacterEngineView/)
+  assert.doesNotMatch(actionSheet, /useResolvedCharacterRuntime/)
+  assert.match(runtimeResolver, /resolveLegacyCharacterEngineView/)
 })
 
 test("engine closure contract is explicit", () => {
