@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
+import { useAuth } from "../context/AuthContext.tsx"
+import { useCharacters } from "../context/CharacterContext.tsx"
+import { createEngineCommandContext } from "../engine-contracts/index.ts"
+import { shapoklyak } from "../entity-engine/runtime.ts"
 import { clearCharacterResourceState, registerCharacterResourceState } from "../lib/resourceRuntime.ts"
 import { supabase } from "../lib/supabase.ts"
+import { oracle } from "../oracle-engine/runtime.ts"
 import type { CharacterResourceStateRow, ResourceSyncInput } from "../types/characterResources.ts"
 
 export function useCharacterResourceStates(characterId: string | null) {
+  const { user } = useAuth()
+  const { campaignId, canManage } = useCharacters()
   const [rows, setRows] = useState<CharacterResourceStateRow[]>([])
   const [loading, setLoading] = useState(Boolean(characterId))
   const [error, setError] = useState("")
@@ -39,10 +46,21 @@ export function useCharacterResourceStates(characterId: string | null) {
 
   const sync = useCallback(async (resources: ResourceSyncInput[]) => {
     if (!characterId || !resources.length) return { ok: true as const }
-    const { error: syncError } = await supabase.rpc("sync_character_resource_states", { p_character_id: characterId, p_resources: resources })
-    if (syncError) return { ok: false as const, error: syncError.message }
-    await load(); return { ok: true as const }
-  }, [characterId, load])
+    const context = createEngineCommandContext({
+      campaignId,
+      requestedBy: user.id,
+      authority: canManage ? "gm" : "player",
+      actorCharacterId: characterId,
+    })
+    try {
+      if (canManage) await oracle.characters.syncResources(context, characterId, resources)
+      else await shapoklyak.execute({ kind: "entity.sync_resources", context, characterId, resources })
+      await load()
+      return { ok: true as const }
+    } catch (reason) {
+      return { ok: false as const, error: reason instanceof Error ? reason.message : "Не удалось синхронизировать persistent-ресурсы." }
+    }
+  }, [campaignId, canManage, characterId, load, user.id])
 
   return { rows, state, loading, error, revision, reload: load, sync }
 }
