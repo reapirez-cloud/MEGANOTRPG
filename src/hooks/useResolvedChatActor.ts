@@ -9,6 +9,71 @@ import type { CharacterFeature, CharacterSheet, CharacterSpell, InventoryItem } 
 import { useCharacterResourceStates } from "./useCharacterResourceStates.ts"
 import { useCharacterTemplateRegistry } from "./useCharacterTemplateRegistry.ts"
 
+type CharacterSpellCatalogLink = CharacterSpell & { catalog_spell_id?: string | null }
+type SpellCatalogRoutingRow = {
+  id: string
+  slug: string
+  damage: string | null
+  roll_recipe: unknown
+}
+type RoutedSpellIdentity = { dealsDamage?: boolean }
+
+function rollRecipeDealsDamage(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(rollRecipeDealsDamage)
+  if (!value || typeof value !== "object") return false
+  const record = value as Record<string, unknown>
+  if (record.kind === "damage") return true
+  return Object.values(record).some(rollRecipeDealsDamage)
+}
+
+function catalogDealsDamage(row: Pick<SpellCatalogRoutingRow, "damage" | "roll_recipe"> | undefined): boolean {
+  if (!row) return false
+  if (typeof row.damage === "string" && row.damage.trim()) return true
+  return rollRecipeDealsDamage(row.roll_recipe)
+}
+
+function catalogSlugFromResolvedKey(key: string): string | null {
+  if (!key.startsWith("spell:")) return null
+  const slug = key.slice("spell:".length).trim()
+  return slug && /^[a-z0-9-]+$/i.test(slug) ? slug : null
+}
+
+function withCatalogDamageRouting(
+  contract: ResolvedCharacterContract,
+  characterSpells: CharacterSpellCatalogLink[],
+  catalogRows: SpellCatalogRoutingRow[],
+): ResolvedCharacterContract {
+  const catalogById = new Map(catalogRows.map((row) => [row.id, row]))
+  const catalogBySlug = new Map(catalogRows.map((row) => [row.slug, row]))
+  const damageSpellKeys = new Set<string>()
+
+  for (const characterSpell of characterSpells) {
+    if (!characterSpell.catalog_spell_id || !catalogDealsDamage(catalogById.get(characterSpell.catalog_spell_id))) continue
+    const accessKey = `legacy-${characterSpell.id}`
+    const resolved = contract.spells.find((spell) => spell.accesses.some((access) => access.key === accessKey))
+    if (resolved) damageSpellKeys.add(resolved.key)
+  }
+
+  for (const spell of contract.spells) {
+    const slug = catalogSlugFromResolvedKey(spell.key)
+    if (slug && catalogDealsDamage(catalogBySlug.get(slug))) damageSpellKeys.add(spell.key)
+  }
+
+  const spells = contract.spells.map((spell) => ({
+    ...spell,
+    identity: {
+      ...spell.identity,
+      dealsDamage: damageSpellKeys.has(spell.key),
+    },
+  }))
+
+  return { ...contract, spells }
+}
+
+function routedIdentity(spell: ResolvedCharacterContract["spells"][number]): RoutedSpellIdentity {
+  return spell.identity as typeof spell.identity & RoutedSpellIdentity
+}
+
 export function useResolvedChatActor(character: Character | null) {
   const characterId = character?.id || null
   const {
@@ -59,19 +124,44 @@ export function useResolvedChatActor(character: Character | null) {
         const sheet = sheetResult.data as CharacterSheet | null
         if (!sheet) { setContract(null); setLoading(false); return }
         try {
+          const characterSpells = (spellsResult.data || []) as CharacterSpellCatalogLink[]
           const view = resolveLegacyCharacterEngineView({
             character,
             sheet,
             inventory: (inventoryResult.data || []) as InventoryItem[],
-            spells: (spellsResult.data || []) as CharacterSpell[],
+            spells: characterSpells,
             features: (featuresResult.data || []) as CharacterFeature[],
             resourceStates: resourceState,
             templateBundles,
             suppressedSourceIds,
           })
           if (cancelled) return
-          setContract(view.contract)
-          const desired = resourceSyncInputs(view.contract)
+
+          const catalogIds = [...new Set(characterSpells.map((spell) => spell.catalog_spell_id).filter((id): id is string => Boolean(id)))]
+          const catalogSlugs = [...new Set(view.contract.spells.map((spell) => catalogSlugFromResolvedKey(spell.key)).filter((slug): slug is string => Boolean(slug)))]
+          const catalogQueries = await Promise.all([
+            catalogIds.length
+              ? supabase.from("spell_catalog").select("id, slug, damage, roll_recipe").in("id", catalogIds)
+              : Promise.resolve({ data: [], error: null }),
+            catalogSlugs.length
+              ? supabase.from("spell_catalog").select("id, slug, damage, roll_recipe").in("slug", catalogSlugs)
+              : Promise.resolve({ data: [], error: null }),
+          ])
+          if (cancelled) return
+          const catalogError = catalogQueries[0].error || catalogQueries[1].error
+          if (catalogError) setError(catalogError.message)
+          const catalogRows = [
+            ...((catalogQueries[0].data || []) as SpellCatalogRoutingRow[]),
+            ...((catalogQueries[1].data || []) as SpellCatalogRoutingRow[]),
+          ]
+          const routedContract = withCatalogDamageRouting(view.contract, characterSpells, catalogRows)
+          setContract(routedContract)
+
+          // Keep the routing metadata renderer-only. This guard makes accidental
+          // CE branching on dealsDamage obvious during future refactors.
+          for (const spell of routedContract.spells) void routedIdentity(spell).dealsDamage
+
+          const desired = resourceSyncInputs(routedContract)
           const needsSync = desired.some((item) => { const row = rowByKey.get(item.stateKey); return !row || row.max_snapshot !== item.max || row.label !== item.label || JSON.stringify(row.recharge) !== JSON.stringify(item.recharge) })
           if (needsSync) { const result = await syncResources(desired); if (!result.ok && !cancelled) setError(result.error || "Не удалось синхронизировать ресурсы персонажа.") }
         } catch (reason) {
