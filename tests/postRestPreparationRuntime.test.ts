@@ -1,7 +1,11 @@
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
+import { resolveCharacterContract, type CharacterEngineInput } from "../src/character-engine/index.ts"
 import { buildCharacterPreparationModel } from "../src/lib/characterPreparation.ts"
+import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
+import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
+import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
 import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
 
 const runtimeSql = fs.readFileSync("supabase/migrations/20260830022000_post_rest_preparation_runtime.sql", "utf8")
@@ -25,12 +29,13 @@ function starsBundle(): CharacterTemplateBundle {
       kind: "subclass",
       slug: "druid-circle-stars",
       name: "Круг Звёзд",
-      description: "",
+      description: "Круг Звёзд использует карту звёзд, Звёздную форму и ежедневно определяемое Космическое знамение.",
       version: 1,
       mechanics: [],
       choices: [],
       parent_template_id: "template-druid",
       unlock_level: 3,
+      mechanical_summary: "Круг Звёзд получает отдельные звёздные формы и после долгого отдыха определяет одно Космическое знамение на новый игровой день.",
       rules_meta: {
         post_rest_preparations: [{
           key: "cosmic-omen-sign",
@@ -67,10 +72,11 @@ function druidBundle(): CharacterTemplateBundle {
       kind: "class",
       slug: "druid",
       name: "Друид",
-      description: "",
+      description: "Друид подготавливает заклинания после отдыха и использует классовые ресурсы и формы через общий лист персонажа.",
       version: 1,
       mechanics: [],
       choices: [],
+      mechanical_summary: "Друид подготавливает доступные заклинания после долгого отдыха, использует формы и классовые ресурсы с восстановлением по их собственным правилам.",
       rules_meta: { spell_preparation_refresh: "long_rest" },
       is_active: true,
       created_by: null,
@@ -78,6 +84,21 @@ function druidBundle(): CharacterTemplateBundle {
       updated_at: "2026-08-30T00:00:00Z",
     },
     levels: [],
+  }
+}
+
+function engineInput(contributions: CharacterEngineInput["contributions"]): CharacterEngineInput {
+  return {
+    base: {
+      id: "character-1",
+      name: "Друид",
+      level: 6,
+      abilities: { strength: 10, dexterity: 12, constitution: 14, intelligence: 10, wisdom: 18, charisma: 10 },
+      baseMaxHp: 42,
+      baseSpeed: 30,
+    },
+    state: { currentHp: 42, tempHp: 0, resources: {} },
+    contributions,
   }
 }
 
@@ -119,6 +140,15 @@ test("Cosmic Omen records parity and server-gates the sibling action", () => {
   assert.match(classSql, /This action is not available for the current daily preparation/)
 })
 
+test("post-rest class package still passes quality/resource gates and reaches CE", () => {
+  const packages = [druidBundle(), starsBundle()]
+  assert.doesNotThrow(() => assertClassPackageQuality(packages))
+  assert.doesNotThrow(() => assertClassResourcePolicy(packages))
+  const parsed = resolveTemplateBundles(packages, 6)
+  const contract = resolveCharacterContract(engineInput(parsed.contributions))
+  assert.equal(contract.level, 6)
+})
+
 test("CE read model suppresses both daily actions before roll and only the wrong sibling after it", () => {
   const session = {
     character_id: "character-1",
@@ -155,5 +185,5 @@ test("CE read model suppresses both daily actions before roll and only the wrong
 test("chat preparation card warns that text closes the window while rolls do not", () => {
   assert.match(card, /Первый отправленный текст закроет это окно/)
   assert.match(card, /Броски, способности и заклинания окно не закрывают/)
-  assert.match(card, /Бросить \{notation\} и записать/)
+  assert.match(card, /Бросить \$\{notation\} и записать/)
 })
