@@ -6,6 +6,7 @@ export type RuleTemplateKind = "race" | "subrace" | "class" | "subclass"
 export type RuleChoiceTarget = "language" | "proficiency" | "sense" | "trait"
 export type RuleTemplateSourceKind = "official" | "third_party" | "custom"
 export type RuleChoiceSelectionMode = "manager" | "player_once"
+export type RuleChoiceRefreshPolicy = "long_rest"
 
 export type RuleChoiceRequirement = {
   /** Another persistent choice in the same assignment. */
@@ -34,6 +35,12 @@ export type RuleChoiceDefinition = {
    * after confirmation; a later count increase may request only the new slots.
    */
   selection_mode?: RuleChoiceSelectionMode
+  /**
+   * Explicit exception to player_once immutability. A long_rest choice may be
+   * fully replaced only while the server-authoritative post-rest preparation
+   * session is open. Ordinary player chat closes that session.
+   */
+  refresh?: RuleChoiceRefreshPolicy
   /** Extra CE mechanics applied only when this option is selected. */
   option_mechanics?: Record<string, StoredMechanics>
   /**
