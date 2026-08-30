@@ -6,6 +6,7 @@ import { larisa } from "../location-engine/runtime.ts"
 import { oracle } from "../oracle-engine/runtime.ts"
 import { chasovoy } from "../reference-engine/runtime.ts"
 import { tobik } from "../roll-engine/index.ts"
+import { characterRuntimeResolver } from "./characterRuntime.ts"
 import { characterResolutionBus, engineEventBus } from "./runtimeSignals.ts"
 
 /**
@@ -17,6 +18,7 @@ import { characterResolutionBus, engineEventBus } from "./runtimeSignals.ts"
  */
 export const engineRuntime = Object.freeze({
   ce: Object.freeze({ resolve: resolveCharacterContract }),
+  characterRuntime: characterRuntimeResolver,
   gena,
   genaSession,
   tobik,
