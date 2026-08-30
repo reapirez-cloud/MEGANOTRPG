@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { clearCharacterSourceSuppressions } from "../lib/suppressionRuntime.ts"
 import { supabase } from "../lib/supabase.ts"
 import {
   clearCharacterTemplateBundles,
@@ -80,7 +81,10 @@ export function useCharacterTemplateRegistry(characterId: string | null) {
       cancelled = true
       loadTokenRef.current += 1
       activeLoadRef.current = null
-      if (characterId) clearCharacterTemplateBundles(characterId)
+      if (characterId) {
+        clearCharacterTemplateBundles(characterId)
+        clearCharacterSourceSuppressions(characterId)
+      }
     }
   }, [characterId, load])
 
