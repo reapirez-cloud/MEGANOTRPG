@@ -85,6 +85,19 @@ export class OracleEngine {
       setScenePosition: (context, roomId, locationId, campaignDay, dayPeriod) => direct(context, () => dependencies.larisa.execute({ kind: "world.set_scene_position", context, roomId, locationId, campaignDay, dayPeriod })),
       setSceneParticipants: (context, roomId, characterIds) => direct(context, () => dependencies.larisa.execute({ kind: "world.set_scene_participants", context, roomId, characterIds })),
       syncSceneParticipants: (context, roomId, options) => direct(context, () => dependencies.larisa.execute({ kind: "world.sync_scene_participants", context, roomId, syncLocation: options.syncLocation, syncTime: options.syncTime })),
+      createLocation: (context, input) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_create", context, input })),
+      updateLocation: (context, locationId, input) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_update", context, locationId, input })),
+      setLocationVisibility: (context, locationId, visibilityMode) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_set_visibility", context, locationId, visibilityMode })),
+      setLocationArchived: (context, locationId, archived) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_set_archived", context, locationId, archived })),
+      deleteLocation: (context, locationId) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_delete", context, locationId })),
+      publishLocationEvent: (context, locationId, event) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_publish_event", context, locationId, event })),
+      createLocationSection: (context, locationId, title, body) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_section_create", context, locationId, title, body })),
+      updateLocationSection: (context, sectionId, title, body) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_section_update", context, sectionId, title, body })),
+      deleteLocationSection: (context, sectionId) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_section_delete", context, sectionId })),
+      createLocationLink: (context, sectionId, targetLocationId, label, visibilityMode) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_link_create", context, sectionId, targetLocationId, label, visibilityMode })),
+      updateLocationLink: (context, linkId, targetLocationId, label, visibilityMode) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_link_update", context, linkId, targetLocationId, label, ...(visibilityMode !== undefined ? { visibilityMode } : {}) })),
+      deleteLocationLink: (context, linkId) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_link_delete", context, linkId })),
+      setNpcHabitat: (context, npcCharacterId, locationId, attached) => direct(context, () => dependencies.larisa.execute({ kind: "world.npc_habitat_set", context, npcCharacterId, locationId, attached })),
     }
 
     this.definitions = {
