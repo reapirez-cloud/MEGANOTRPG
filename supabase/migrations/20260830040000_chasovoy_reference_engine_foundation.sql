@@ -1,3 +1,5 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
+-- Chasovoy is reference-engine infrastructure; this migration does not change class mechanics.
 begin;
 
 create table if not exists public.reference_definitions (
