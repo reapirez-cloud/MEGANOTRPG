@@ -182,12 +182,14 @@ export function withCharacterRuntimeDeadline<T>(
  * legacy adapter, and returns one immutable view for Chat/Sheet/Revolver.
  */
 export class CharacterRuntimeResolver {
+  private readonly source: CharacterRuntimeDataSource
   private readonly timeoutMs: number
 
   constructor(
-    private readonly source: CharacterRuntimeDataSource,
+    source: CharacterRuntimeDataSource,
     options: { timeoutMs?: number } = {},
   ) {
+    this.source = source
     this.timeoutMs = options.timeoutMs ?? DEFAULT_CHARACTER_RUNTIME_TIMEOUT_MS
   }
 
