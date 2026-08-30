@@ -1,0 +1,462 @@
+/* Character sheet v4 — mobile-first hierarchy: essentials, abilities, then focused sections. */
+
+.character-profile-v2 .profile-v3__hero {
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(24, 22, 30, .98), rgba(14, 14, 18, .98));
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .2);
+}
+
+.character-profile-v2 .profile-v3__portrait {
+  width: 92px;
+  border-radius: 21px;
+}
+
+.character-profile-v2 .profile-v3__class {
+  display: none;
+}
+
+.character-profile-v2 .profile-v3__identity > p {
+  margin-top: 5px;
+}
+
+.character-profile-v2 .profile-v3__bio {
+  margin-top: 9px !important;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 11px;
+}
+
+.character-profile-v2 .profile-v3__reference {
+  min-width: 48px;
+  width: 48px;
+  min-height: 48px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 15px;
+}
+
+.character-profile-v2 .profile-v3__reference > span:first-child {
+  width: 32px;
+  height: 32px;
+  flex-basis: 32px;
+}
+
+.character-profile-v2 .profile-v3__reference > span:last-child {
+  display: none;
+}
+
+.character-profile-v2 .profile-v3__tabs {
+  margin: 8px 0 12px;
+  padding: 4px;
+  border-radius: 15px;
+  background: rgba(12, 12, 15, .88);
+}
+
+.character-profile-v2 .profile-v3__tabs button {
+  min-width: 64px;
+  min-height: 39px;
+  padding: 4px 8px;
+  gap: 2px;
+  border-radius: 11px;
+  font-size: 9px;
+}
+
+.character-profile-v2 .profile-v3__tabs button > span {
+  font-size: 12px;
+}
+
+.sheet-v4 {
+  gap: 10px;
+}
+
+.sheet-v4 .sheet-v3__admin {
+  margin-bottom: 1px;
+}
+
+.sheet-v4__combat {
+  grid-template-columns: 1.34fr repeat(5, minmax(78px, 1fr));
+  gap: 6px;
+}
+
+.sheet-v4__combat button {
+  min-height: 84px;
+  border-radius: 17px;
+}
+
+.sheet-v4__combat button strong {
+  font-size: 23px;
+}
+
+.sheet-v4__abilities {
+  border-radius: 20px;
+}
+
+.sheet-v4__abilities .sheet-v3__ability-page {
+  align-items: stretch;
+}
+
+.sheet-v4__abilities .sheet-v3__ability-score,
+.sheet-v4__abilities .sheet-v3__skill-column {
+  min-height: 232px;
+  height: 100%;
+}
+
+.sheet-v4__abilities .sheet-v3__ability-score {
+  align-items: stretch;
+}
+
+.sheet-v4__abilities .sheet-v3__ability-score > div {
+  align-content: center;
+}
+
+.sheet-v4__abilities .sheet-v3__skill-column {
+  display: grid;
+  align-content: start;
+}
+
+.sheet-v4__directory {
+  overflow: hidden;
+  border: 1px solid var(--profile-line);
+  border-radius: 20px;
+  background: var(--profile-card);
+}
+
+.sheet-v4__directory > header {
+  padding: 15px 15px 12px;
+}
+
+.sheet-v4__directory > header small,
+.sheet-v4__focus-head small {
+  display: block;
+  margin-bottom: 4px;
+  color: #79727f;
+  font-size: 8px;
+  font-weight: 780;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.sheet-v4__directory > header h3,
+.sheet-v4__focus-head h3 {
+  margin: 0;
+  color: #f1eef4;
+  font-size: 16px;
+  letter-spacing: -.02em;
+}
+
+.sheet-v4__directory > header p,
+.sheet-v4__focus-head p {
+  margin: 5px 0 0;
+  color: #77717d;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.sheet-v4__directory-list {
+  border-top: 1px solid var(--profile-line);
+}
+
+.sheet-v4__directory-list > button {
+  width: 100%;
+  min-height: 64px;
+  padding: 9px 12px;
+  border: 0;
+  border-top: 1px solid var(--profile-line);
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  transition: background .15s ease, transform .15s ease;
+}
+
+.sheet-v4__directory-list > button:first-child {
+  border-top: 0;
+}
+
+.sheet-v4__directory-list > button:active {
+  background: rgba(255, 255, 255, .025);
+  transform: scale(.995);
+}
+
+.sheet-v4__directory-list > button:disabled {
+  opacity: .55;
+}
+
+.sheet-v4__directory-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(167, 139, 250, .12);
+  border-radius: 13px;
+  background: rgba(139, 92, 246, .075);
+  color: #b9a4ea;
+  font-size: 14px;
+}
+
+.sheet-v4__directory-list > button > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.sheet-v4__directory-list > button small {
+  color: #746e79;
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.sheet-v4__directory-list > button strong {
+  overflow: hidden;
+  color: #ece9ef;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-v4__directory-list > button em {
+  overflow: hidden;
+  color: #77717d;
+  font-size: 9px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-v4__directory-list > button > b {
+  color: #5d5762;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.sheet-v4__focus {
+  overflow: hidden;
+  border: 1px solid var(--profile-line);
+  border-radius: 20px;
+  background: var(--profile-card);
+  scroll-margin-top: 72px;
+}
+
+.sheet-v4__focus-head {
+  min-height: 78px;
+  padding: 13px 14px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  border-bottom: 1px solid var(--profile-line);
+}
+
+.sheet-v4__focus-head > button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--profile-line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .03);
+  color: #c3bdc9;
+  font-size: 17px;
+}
+
+.sheet-v4__focus-list {
+  border-top: 0 !important;
+}
+
+.sheet-v4__focus-add {
+  width: calc(100% - 24px);
+  min-height: 42px;
+  margin: 11px 12px;
+  border: 1px solid rgba(167, 139, 250, .18);
+  border-radius: 13px;
+  background: rgba(139, 92, 246, .08);
+  color: #cdbfff;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.sheet-v4__feature-list {
+  border-top: 1px solid var(--profile-line);
+}
+
+.sheet-v4__empty {
+  padding: 24px 16px;
+  color: #77717d;
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.sheet-v4__group {
+  border-bottom: 1px solid var(--profile-line);
+}
+
+.sheet-v4__group:last-child {
+  border-bottom: 0;
+}
+
+.sheet-v4__identity-list {
+  display: grid;
+}
+
+.sheet-v4__identity-list > div {
+  min-height: 64px;
+  padding: 12px 15px;
+  border-top: 1px solid var(--profile-line);
+  display: grid;
+  align-content: center;
+  gap: 4px;
+}
+
+.sheet-v4__identity-list > div:first-child {
+  border-top: 0;
+}
+
+.sheet-v4__identity-list span {
+  color: #77717d;
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.sheet-v4__identity-list strong {
+  color: #eeeaf1;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.sheet-v4__story-list {
+  padding-top: 12px;
+}
+
+@media (max-width: 620px) {
+  .character-profile-v2 .profile-v3 {
+    padding: 9px 11px 112px;
+  }
+
+  .character-profile-v2 .profile-v3__hero {
+    grid-template-columns: 78px minmax(0, 1fr) 42px;
+    gap: 11px;
+    padding: 12px;
+    border-radius: 19px;
+  }
+
+  .character-profile-v2 .profile-v3__portrait {
+    width: 78px;
+    border-radius: 18px;
+  }
+
+  .character-profile-v2 .profile-v3__portrait > span {
+    font-size: 31px;
+  }
+
+  .character-profile-v2 .profile-v3__portrait > i {
+    right: 5px;
+    bottom: 5px;
+    width: 26px;
+    height: 26px;
+    border-radius: 9px;
+    font-size: 10px;
+  }
+
+  .character-profile-v2 .profile-v3__name-row h2 {
+    font-size: 20px;
+  }
+
+  .character-profile-v2 .profile-v3__active {
+    padding: 4px 6px;
+    font-size: 7px;
+  }
+
+  .character-profile-v2 .profile-v3__reference {
+    width: 42px;
+    min-width: 42px;
+    min-height: 42px;
+    border-radius: 13px;
+  }
+
+  .character-profile-v2 .profile-v3__reference > span:first-child {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+    font-size: 13px;
+  }
+
+  .sheet-v4__combat {
+    grid-template-columns: 112px repeat(5, 78px);
+  }
+
+  .sheet-v4__combat button {
+    min-width: 78px;
+    min-height: 80px;
+    padding: 9px 6px;
+  }
+
+  .sheet-v4__combat .sheet-v3__vital {
+    min-width: 112px;
+  }
+
+  .sheet-v4__abilities .sheet-v3__ability-page {
+    min-height: 0;
+    padding-inline: 10px;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .sheet-v4__abilities .sheet-v3__ability-score,
+  .sheet-v4__abilities .sheet-v3__skill-column {
+    min-height: 0;
+  }
+
+  .sheet-v4__abilities .sheet-v3__ability-score {
+    min-height: 116px;
+    align-items: center;
+  }
+
+  .sheet-v4__abilities .sheet-v3__ability-score > div {
+    min-height: 84px;
+    align-content: center;
+  }
+
+  .sheet-v4__abilities .sheet-v3__skill-column {
+    min-height: 144px;
+    grid-auto-rows: minmax(48px, auto);
+  }
+
+  .sheet-v4__directory > header p {
+    max-width: 34ch;
+  }
+
+  .sheet-v4__story-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 370px) {
+  .character-profile-v2 .profile-v3__hero {
+    grid-template-columns: 68px minmax(0, 1fr) 38px;
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .character-profile-v2 .profile-v3__portrait {
+    width: 68px;
+  }
+
+  .character-profile-v2 .profile-v3__bio {
+    display: none;
+  }
+
+  .character-profile-v2 .profile-v3__tabs button {
+    min-width: 58px;
+  }
+}
