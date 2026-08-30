@@ -1,4 +1,9 @@
 -- CLASS_MIGRATION_SCOPE: mechanics
+-- CLASS_INTEGRATION_STRICT: subclass:druid:stars
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
+-- CLASS_PACKAGE_TEST: tests/postRestPreparationRuntime.test.ts
+-- CLASS_WORK_STATUS: druid:text=READY;mechanics=IN_PROGRESS
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 -- GENA v2 is the live idempotent chat path. Daily preparation gates must run
 -- before a new resource spend while receipt replays remain valid and idempotent.
 
