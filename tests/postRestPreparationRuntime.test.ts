@@ -13,7 +13,9 @@ const classSql = fs.readFileSync("supabase/migrations/20260830023000_long_rest_c
 const spellPreparationSql = fs.readFileSync("supabase/migrations/20260830024000_chat_spell_preparation_commit.sql", "utf8")
 const card = fs.readFileSync("src/components/chat/ChatPreparationCard.tsx", "utf8")
 const preparationHook = fs.readFileSync("src/hooks/useChatPreparation.ts", "utf8")
-const resolvedChatActor = fs.readFileSync("src/hooks/useResolvedChatActor.ts", "utf8")
+const resolvedCharacterRuntime = fs.readFileSync("src/hooks/useResolvedCharacterRuntime.ts", "utf8")
+const characterRuntimeResolver = fs.readFileSync("src/engine-runtime/characterRuntimeResolver.ts", "utf8")
+const characterRuntimeSource = fs.readFileSync("src/engine-runtime/supabaseCharacterRuntimeSource.ts", "utf8")
 
 function starsBundle(): CharacterTemplateBundle {
   return {
@@ -215,12 +217,13 @@ test("spell preparation is performed inside chat instead of redirecting to the s
   assert.doesNotMatch(card, /Открыть заклинания персонажа/)
 })
 
-test("spell changes refresh both preparation UI and the explicit CE input bridge", () => {
+test("spell changes refresh both preparation UI and the shared CE runtime bridge", () => {
   assert.match(preparationHook, /table: "character_spells"/)
   assert.match(preparationHook, /select\("id,name,spell_level,prepared,cast_mode"\)/)
-  assert.match(resolvedChatActor, /table: "character_spells"/)
-  assert.match(resolvedChatActor, /resolveLegacyCharacterEngineView\(\{/)
-  assert.match(resolvedChatActor, /spells: characterSpells/)
+  assert.match(resolvedCharacterRuntime, /table: "character_spells"/)
+  assert.match(characterRuntimeSource, /from\("character_spells"\)/)
+  assert.match(characterRuntimeResolver, /resolveLegacyCharacterEngineView\(\{/)
+  assert.match(characterRuntimeResolver, /spells: core\.spells/)
 })
 
 test("chat preparation card warns that text closes the window while rolls do not", () => {
