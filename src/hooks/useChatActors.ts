@@ -46,14 +46,24 @@ export function useChatActors() {
   const actors = useMemo(() => {
     const list: ChatActor[] = []
     if (roleActor) list.push(roleActor)
-    const allowed = new Set(boundIds)
-    if (activeCharacter) allowed.add(activeCharacter.id)
+
     for (const character of characters) {
-      if (!allowed.has(character.id)) continue
-      list.push({ key: character.id, characterId: character.id, label: character.name, avatar_url: character.avatar_url, character, kind: "character" })
+      const ownPc = character.character_type === "pc" && character.assigned_user_id === user.id
+      const availableToGm = canManage && (character.character_type === "npc" || ownPc)
+      const availableToPlayer = !canManage && ownPc
+      if (!availableToGm && !availableToPlayer) continue
+
+      list.push({
+        key: character.id,
+        characterId: character.id,
+        label: character.name,
+        avatar_url: character.avatar_url,
+        character,
+        kind: "character",
+      })
     }
     return list
-  }, [activeCharacter, boundIds, characters, roleActor])
+  }, [canManage, characters, roleActor, user.id])
 
   const bindableCharacters = useMemo(() => characters.filter((character) =>
     character.character_type === "npc" || character.assigned_user_id === user.id,
@@ -89,6 +99,7 @@ export function useChatActors() {
 
   const selected = actors.find((actor) => actor.key === selectedKey)
     || actors.find((actor) => actor.characterId === activeCharacter?.id)
+    || actors.find((actor) => actor.kind === "role")
     || actors[0]
     || null
 
@@ -103,7 +114,8 @@ export function useChatActors() {
   const setBinding = useCallback(async (characterId: string, enabled: boolean) => {
     setError("")
     const { error: e } = await supabase.rpc("set_chat_actor_binding", { p_character_id: characterId, p_enabled: enabled })
-    if (e) { setError(e.message); return { ok: false, error: e.message } }
+    if (e) { setError(e.message); return { ok: false, error: e.message }
+    }
     await loadBindings()
     return { ok: true }
   }, [loadBindings])
