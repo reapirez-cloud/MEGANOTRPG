@@ -12,6 +12,34 @@ export type ShapoklyakDependencies = {
   resolutionRequester?: CharacterResolutionRequester
 }
 
+const PLAYER_NARRATIVE_FIELDS = new Set([
+  "race",
+  "background",
+  "alignment",
+  "proficiencies",
+  "languages",
+  "senses",
+  "personality_traits",
+  "ideals",
+  "bonds",
+  "flaws",
+  "backstory",
+  "notes",
+])
+
+function isGmAuthority(command: ShapoklyakCommand) {
+  return command.context.authority === "gm" || command.context.authority === "system"
+}
+
+function requireGm(command: ShapoklyakCommand, message = "Only GM authority can establish canonical character state") {
+  if (!isGmAuthority(command)) throw new EngineCommandError("entity.gm_required", message)
+}
+
+function characterIdForOwnership(command: ShapoklyakCommand): string | null {
+  if ("characterId" in command && typeof command.characterId === "string") return command.characterId
+  return null
+}
+
 export class ShapoklyakEngine {
   private readonly storage: ShapoklyakStorage
   private readonly dependencies: ShapoklyakDependencies
@@ -34,11 +62,76 @@ export class ShapoklyakEngine {
     return this.storage.getEntity(characterId)
   }
 
-  async execute(command: ShapoklyakCommand): Promise<EngineCommandResult<EntityMutation>> {
-    if (command.kind === "entity.set_hp") {
-      if (command.context.authority !== "gm" && command.context.authority !== "system") {
-        throw new EngineCommandError("entity.gm_required", "Only GM authority can establish HP")
+  private async assertPlayerOwnsCharacter(command: ShapoklyakCommand, characterId: string) {
+    const entity = await this.storage.getEntity(characterId)
+    if (!entity || entity.campaign_id !== command.context.campaignId) {
+      throw new EngineCommandError("entity.not_found", "Character was not found in this campaign")
+    }
+    if (entity.assigned_user_id !== command.context.requestedBy || entity.character_type !== "pc") {
+      throw new EngineCommandError("entity.player_forbidden", "Player authority is limited to the assigned player character")
+    }
+  }
+
+  private async assertAuthority(command: ShapoklyakCommand) {
+    const gmOnly = new Set<ShapoklyakCommand["kind"]>([
+      "entity.create",
+      "entity.update",
+      "entity.delete",
+      "entity.set_life_state",
+      "entity.set_visibility",
+      "entity.reveal_npc",
+      "entity.set_hp",
+      "entity.set_spellcasting_enabled",
+      "entity.create_spell",
+      "entity.update_spell",
+      "entity.create_spell_option",
+      "entity.update_spell_option",
+      "entity.delete_spell_option",
+      "entity.create_feature",
+      "entity.update_feature",
+      "entity.delete_feature",
+      "entity.recover_resources",
+      "entity.assign_template",
+      "entity.remove_template_assignment",
+      "entity.set_source_suppressed",
+    ])
+
+    if (gmOnly.has(command.kind)) {
+      requireGm(command)
+      return
+    }
+
+    if (command.context.authority !== "player") return
+
+    if (command.kind === "entity.set_active") {
+      if (command.userId !== command.context.requestedBy) {
+        throw new EngineCommandError("entity.player_forbidden", "Player can only choose their own active character")
       }
+      if (command.characterId) await this.assertPlayerOwnsCharacter(command, command.characterId)
+      return
+    }
+
+    const characterId = characterIdForOwnership(command)
+    if (!characterId) {
+      throw new EngineCommandError("entity.player_forbidden", "This player command requires an owned character")
+    }
+    await this.assertPlayerOwnsCharacter(command, characterId)
+
+    if (command.kind === "entity.update_sheet") {
+      const forbidden = Object.keys(command.input).filter((key) => !PLAYER_NARRATIVE_FIELDS.has(key))
+      if (forbidden.length) {
+        throw new EngineCommandError(
+          "entity.player_sheet_forbidden",
+          `Player cannot edit mechanical sheet fields: ${forbidden.join(", ")}`,
+        )
+      }
+    }
+  }
+
+  async execute(command: ShapoklyakCommand): Promise<EngineCommandResult<EntityMutation>> {
+    await this.assertAuthority(command)
+
+    if (command.kind === "entity.set_hp") {
       for (const [label, value] of Object.entries({ currentHp: command.currentHp, maxHp: command.maxHp, tempHp: command.tempHp })) {
         if (value !== undefined && (!Number.isInteger(value) || value < 0)) {
           throw new EngineCommandError("entity.invalid_hp", `${label} must be an integer >= 0`)
@@ -47,9 +140,6 @@ export class ShapoklyakEngine {
     }
 
     if (command.kind === "entity.assign_template" || command.kind === "entity.remove_template_assignment") {
-      if (command.context.authority !== "gm" && command.context.authority !== "system") {
-        throw new EngineCommandError("entity.gm_required", "Only GM authority can change character template assignments")
-      }
       if (command.kind === "entity.assign_template") {
         if (!command.input.templateId) throw new EngineCommandError("entity.template_required", "Template id is required")
         if (command.input.templateLevel !== null && (!Number.isInteger(command.input.templateLevel) || command.input.templateLevel < 1 || command.input.templateLevel > 30)) {
@@ -61,13 +151,14 @@ export class ShapoklyakEngine {
     }
 
     if (command.kind === "entity.set_source_suppressed") {
-      if (command.context.authority !== "gm" && command.context.authority !== "system") {
-        throw new EngineCommandError("entity.gm_required", "Only GM authority can suppress character sources")
-      }
       const sourceId = command.sourceId.trim()
       if (!sourceId || sourceId.length > 512) {
         throw new EngineCommandError("entity.invalid_source_id", "Source id must contain between 1 and 512 characters")
       }
+    }
+
+    if (command.kind === "entity.recover_resources" && !["short_rest", "long_rest", "dawn"].includes(command.trigger)) {
+      throw new EngineCommandError("entity.invalid_recovery", "Unsupported recovery trigger")
     }
 
     const mutation = await this.storage.execute(command)
