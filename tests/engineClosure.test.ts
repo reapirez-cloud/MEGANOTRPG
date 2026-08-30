@@ -137,3 +137,21 @@ test("engine closure contract is explicit", () => {
   assert.match(closure, /Oracle must never depend on GENA/)
   assert.match(closure, /indefinite loading/)
 })
+
+test("canonical engine documents stay marked as closed stable boundaries", () => {
+  const canonicalContracts = [
+    "docs/ENGINE_CLOSURE_DEFINITION.md",
+    "docs/ENGINE_ROADMAP.md",
+    "docs/ENGINE_CONTRACTS.md",
+    "docs/ENGINE_RUNTIME_INTEGRATION.md",
+    "docs/CHARACTER_ENGINE_CONTRACT.md",
+    "docs/CHASOVOY_ENGINE_CONTRACT.md",
+    "docs/ORACLE_ENGINE_CONTRACT.md",
+  ]
+
+  for (const path of canonicalContracts) {
+    const contract = fs.readFileSync(path, "utf8")
+    assert.match(contract, /Status: \*\*CLOSED — STABLE BOUNDARY ON `dev`\*\*/, path)
+    assert.doesNotMatch(contract, /CLOSURE CANDIDATE/, path)
+  }
+})
