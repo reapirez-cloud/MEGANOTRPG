@@ -9,6 +9,7 @@
 export type EngineName =
   | "ce"
   | "gena"
+  | "oracle"
   | "tobik"
   | "cheburashka"
   | "shapoklyak"
@@ -57,9 +58,16 @@ export type EngineCommandResult<T> = {
   effects: EngineEffects
 }
 
+/**
+ * Engines/control planes allowed to request a fresh character read model.
+ * CE cannot invalidate itself, Oracle delegates invalidation to the owner, and
+ * Tobik never mutates character state merely because dice were rolled.
+ */
+export type CharacterResolutionSource = Exclude<EngineName, "ce" | "oracle" | "tobik">
+
 export type CharacterResolutionRequest = {
   characterId: string
-  source: Exclude<EngineName, "ce">
+  source: CharacterResolutionSource
   reason: string
   commandId: string
 }
