@@ -211,7 +211,7 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
   }
 
   async function assignTemplate() {
-    if (!chosenTemplate || !character) return
+    if (!chosenTemplate || !character || !campaignId || !canManage) return
     const selectedLevel = chosenTemplate.kind === "class" ? Math.max(1, Math.min(30, templateLevel)) : null
     const nextChoices = {
       ...cloneChoices(existingChosenBundle?.assignment.selected_choices),
@@ -220,51 +220,52 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
 
     setSaving(true)
     setError("")
-    const { error: assignError } = await supabase.rpc("assign_character_template_v2", {
-      p_character_id: characterId,
-      p_template_id: chosenTemplate.id,
-      p_template_level: selectedLevel,
-      p_selected_choices: nextChoices,
-    })
-    if (assignError) {
+    try {
+      await oracle.characters.assignTemplate(
+        createEngineCommandContext({
+          campaignId,
+          requestedBy: user.id,
+          authority: "gm",
+          actorCharacterId: characterId,
+        }),
+        characterId,
+        {
+          templateId: chosenTemplate.id,
+          templateLevel: selectedLevel,
+          selectedChoices: nextChoices,
+        },
+      )
+      setTemplateId("")
+      setSelectedChoices({})
+      await Promise.all([assigned.reload(), refresh()])
+    } catch (reason) {
+      setError(errorMessage(reason, "Oracle не смог назначить шаблон персонажу."))
+    } finally {
       setSaving(false)
-      setError(assignError.message)
-      return
     }
-
-    if (chosenTemplate.kind === "class" && selectedLevel) {
-      const { error: profileError } = await supabase.rpc("apply_class_template_sheet_profile", {
-        p_character_id: characterId,
-        p_template_id: chosenTemplate.id,
-        p_template_level: selectedLevel,
-      })
-      if (profileError) {
-        setSaving(false)
-        await Promise.all([assigned.reload(), refresh()])
-        setError(`Класс привязан к CE, но профиль листа не применился: ${profileError.message}`)
-        return
-      }
-    }
-
-    setSaving(false)
-    setTemplateId("")
-    setSelectedChoices({})
-    await Promise.all([assigned.reload(), refresh()])
   }
 
   async function removeAssignment(assignmentId: string) {
+    if (!campaignId || !canManage) return
     setSaving(true)
     setError("")
-    const { error: removeError } = await supabase.rpc("remove_character_template_assignment_v2", {
-      p_character_id: characterId,
-      p_assignment_id: assignmentId,
-    })
-    setSaving(false)
-    if (removeError) {
-      setError(removeError.message)
-      return
+    try {
+      await oracle.characters.removeTemplateAssignment(
+        createEngineCommandContext({
+          campaignId,
+          requestedBy: user.id,
+          authority: "gm",
+          actorCharacterId: characterId,
+        }),
+        characterId,
+        assignmentId,
+      )
+      await Promise.all([assigned.reload(), refresh()])
+    } catch (reason) {
+      setError(errorMessage(reason, "Oracle не смог снять шаблон с персонажа."))
+    } finally {
+      setSaving(false)
     }
-    await Promise.all([assigned.reload(), refresh()])
   }
 
   async function toggleSource(sourceId: string) {
