@@ -46,6 +46,20 @@ export class ShapoklyakEngine {
       }
     }
 
+    if (command.kind === "entity.assign_template" || command.kind === "entity.remove_template_assignment") {
+      if (command.context.authority !== "gm" && command.context.authority !== "system") {
+        throw new EngineCommandError("entity.gm_required", "Only GM authority can change character template assignments")
+      }
+      if (command.kind === "entity.assign_template") {
+        if (!command.input.templateId) throw new EngineCommandError("entity.template_required", "Template id is required")
+        if (command.input.templateLevel !== null && (!Number.isInteger(command.input.templateLevel) || command.input.templateLevel < 1 || command.input.templateLevel > 30)) {
+          throw new EngineCommandError("entity.invalid_template_level", "Template level must be null or an integer from 1 to 30")
+        }
+      } else if (!command.assignmentId) {
+        throw new EngineCommandError("entity.assignment_required", "Template assignment id is required")
+      }
+    }
+
     const mutation = await this.storage.execute(command)
     const aggregateId = mutation.characterIds[0] || command.context.campaignId
     const event: EngineEvent = {
