@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react"
 
-import { supabase } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
+import { createEngineCommandContext } from "../engine-contracts/index.ts"
+import { supabase } from "../lib/supabase"
+import { oracle } from "../oracle-engine/runtime.ts"
 import type {
   AchievementEntry,
   CampaignUpdate,
@@ -22,9 +24,13 @@ function makeSlug(title: string) {
   return `${base || "section"}-${Date.now().toString(36)}`
 }
 
+function errorMessage(reason: unknown, fallback: string): string {
+  return reason instanceof Error ? reason.message : fallback
+}
+
 export function useWorldContent() {
   const { user } = useAuth()
-  const { campaignId } = useCharacters()
+  const { campaignId, canManage } = useCharacters()
   const [sections, setSections] = useState<WorldSection[]>([])
   const [articles, setArticles] = useState<WorldArticle[]>([])
   const [locations, setLocations] = useState<LocationEntry[]>([])
@@ -92,6 +98,9 @@ export function useWorldContent() {
     return () => { if (timer !== null) window.clearTimeout(timer); void supabase.removeChannel(channel) }
   }, [campaignId, load])
 
+  const gmContext = useCallback(() => createEngineCommandContext({ campaignId, requestedBy: user.id, authority: "gm" }), [campaignId, user.id])
+  const rejectTopologyWrite = useCallback((): Result | null => canManage ? null : { ok: false, error: "Только ГМ может менять структуру мира." }, [canManage])
+
   const createWorldSection = useCallback(async (title: string, description: string): Promise<Result> => {
     const { error } = await supabase.from("world_sections").insert({ campaign_id: campaignId, slug: makeSlug(title), title: title.trim(), description: description.trim() })
     if (error) return { ok: false, error: error.message }; await load(); return { ok: true }
@@ -113,53 +122,83 @@ export function useWorldContent() {
   }, [load])
 
   const createLocation = useCallback(async (input: { parent_location_id: string | null; name: string; summary: string; description: string; image_url: string | null; visibility_mode?: VisibilityMode }): Promise<Result> => {
-    const { error } = await supabase.from("locations").insert({ campaign_id: campaignId, parent_location_id: input.parent_location_id, name: input.name.trim(), summary: input.summary.trim(), description: input.description.trim(), image_url: input.image_url?.trim() || null, visibility_mode: input.visibility_mode || "discover", created_by: user.id })
-    if (error) return { ok: false, error: error.message }; await load(); return { ok: true }
-  }, [campaignId, load, user.id])
+    const rejected = rejectTopologyWrite(); if (rejected) return rejected
+    try {
+      await oracle.world.createLocation(gmContext(), {
+        parentLocationId: input.parent_location_id,
+        name: input.name.trim(),
+        summary: input.summary.trim(),
+        description: input.description.trim(),
+        imageUrl: input.image_url?.trim() || null,
+        visibilityMode: input.visibility_mode || "discover",
+      })
+    } catch (reason) { return { ok: false, error: errorMessage(reason, "Не удалось создать локацию.") } }
+    await load(); return { ok: true }
+  }, [gmContext, load, rejectTopologyWrite])
 
   const updateLocation = useCallback(async (locationId: string, input: { name: string; summary: string; description: string; image_url: string | null; visibility_mode?: VisibilityMode }): Promise<Result> => {
-    const payload: Record<string, unknown> = { name: input.name.trim(), summary: input.summary.trim(), description: input.description.trim(), image_url: input.image_url?.trim() || null, updated_at: new Date().toISOString() }
-    if (input.visibility_mode) payload.visibility_mode = input.visibility_mode
-    const { error } = await supabase.from("locations").update(payload).eq("id", locationId)
-    if (error) return { ok: false, error: error.message }; await load(); return { ok: true }
-  }, [load])
+    const rejected = rejectTopologyWrite(); if (rejected) return rejected
+    const current = locations.find((location) => location.id === locationId)
+    try {
+      await oracle.world.updateLocation(gmContext(), locationId, {
+        name: input.name.trim(),
+        summary: input.summary.trim(),
+        description: input.description.trim(),
+        imageUrl: input.image_url?.trim() || null,
+        visibilityMode: input.visibility_mode || current?.visibility_mode || "discover",
+      })
+    } catch (reason) { return { ok: false, error: errorMessage(reason, "Не удалось обновить локацию.") } }
+    await load(); return { ok: true }
+  }, [gmContext, load, locations, rejectTopologyWrite])
 
   const setLocationVisibility = useCallback(async (locationId: string, visibilityMode: VisibilityMode): Promise<Result> => {
-    const { error } = await supabase.from("locations").update({ visibility_mode: visibilityMode, updated_at: new Date().toISOString() }).eq("id", locationId)
-    if (error) return { ok: false, error: error.message }; await load(); return { ok: true }
-  }, [load])
+    const rejected = rejectTopologyWrite(); if (rejected) return rejected
+    try { await oracle.world.setLocationVisibility(gmContext(), locationId, visibilityMode) }
+    catch (reason) { return { ok: false, error: errorMessage(reason, "Не удалось изменить видимость локации.") } }
+    await load(); return { ok: true }
+  }, [gmContext, load, rejectTopologyWrite])
 
   const setLocationArchived = useCallback(async (locationId: string, archived: boolean): Promise<Result> => {
-    const { error } = await supabase.from("locations").update({ lifecycle_state: archived ? "archived" : "active", archived_at: archived ? new Date().toISOString() : null, updated_at: new Date().toISOString() }).eq("id", locationId)
-    if (error) return { ok: false, error: error.message }; await load(); return { ok: true }
-  }, [load])
+    const rejected = rejectTopologyWrite(); if (rejected) return rejected
+    try { await oracle.world.setLocationArchived(gmContext(), locationId, archived) }
+    catch (reason) { return { ok: false, error: errorMessage(reason, "Не удалось изменить состояние локации.") } }
+    await load(); return { ok: true }
+  }, [gmContext, load, rejectTopologyWrite])
 
   const publishLocationEvent = useCallback(async (locationId: string, event: "opened" | "updated" | "destroyed" = "updated"): Promise<Result> => {
-    const { error } = await supabase.rpc("publish_location_chronicle_event", { p_location_id: locationId, p_event: event })
-    return error ? { ok: false, error: error.message } : { ok: true }
-  }, [])
+    const rejected = rejectTopologyWrite(); if (rejected) return rejected
+    try { await oracle.world.publishLocationEvent(gmContext(), locationId, event) }
+    catch (reason) { return { ok: false, error: errorMessage(reason, "Не удалось опубликовать событие локации.") } }
+    return { ok: true }
+  }, [gmContext, rejectTopologyWrite])
 
   const createLocationSection = useCallback(async (locationId: string, title: string, body: string): Promise<Result> => {
-    const { error } = await supabase.from("location_sections").insert({ location_id: locationId, title: title.trim(), body: body.trim() })
-    if (error) return { ok: false, error: error.message }; await load(); return { ok: true }
-  }, [load])
+    const rejected = rejectTopologyWrite(); if (rejected) return rejected
+    try { await oracle.world.createLocationSection(gmContext(), locationId, title.trim(), body.trim()) }
+    catch (reason) { return { ok: false, error: errorMessage(reason, "Не удалось создать секцию локации.") } }
+    await load(); return { ok: true }
+  }, [gmContext, load, rejectTopologyWrite])
 
   const updateLocationSection = useCallback(async (sectionId: string, title: string, body: string): Promise<Result> => {
-    const { error } = await supabase.from("location_sections").update({ title: title.trim(), body: body.trim() }).eq("id", sectionId)
-    if (error) return { ok: false, error: error.message }; await load(); return { ok: true }
-  }, [load])
+    const rejected = rejectTopologyWrite(); if (rejected) return rejected
+    try { await oracle.world.updateLocationSection(gmContext(), sectionId, title.trim(), body.trim()) }
+    catch (reason) { return { ok: false, error: errorMessage(reason, "Не удалось обновить секцию локации.") } }
+    await load(); return { ok: true }
+  }, [gmContext, load, rejectTopologyWrite])
 
   const createLocationLink = useCallback(async (sectionId: string, targetLocationId: string, label: string, visibilityMode: VisibilityMode = "discover"): Promise<Result> => {
-    const { error } = await supabase.from("location_links").insert({ section_id: sectionId, target_location_id: targetLocationId, label: label.trim(), visibility_mode: visibilityMode, created_by: user.id })
-    if (error) return { ok: false, error: error.message }; await load(); return { ok: true }
-  }, [load, user.id])
+    const rejected = rejectTopologyWrite(); if (rejected) return rejected
+    try { await oracle.world.createLocationLink(gmContext(), sectionId, targetLocationId, label.trim(), visibilityMode) }
+    catch (reason) { return { ok: false, error: errorMessage(reason, "Не удалось создать связь локаций.") } }
+    await load(); return { ok: true }
+  }, [gmContext, load, rejectTopologyWrite])
 
   const updateLocationLink = useCallback(async (linkId: string, targetLocationId: string, label: string, visibilityMode?: VisibilityMode): Promise<Result> => {
-    const payload: Record<string, unknown> = { target_location_id: targetLocationId, label: label.trim() }
-    if (visibilityMode) payload.visibility_mode = visibilityMode
-    const { error } = await supabase.from("location_links").update(payload).eq("id", linkId)
-    if (error) return { ok: false, error: error.message }; await load(); return { ok: true }
-  }, [load])
+    const rejected = rejectTopologyWrite(); if (rejected) return rejected
+    try { await oracle.world.updateLocationLink(gmContext(), linkId, targetLocationId, label.trim(), visibilityMode) }
+    catch (reason) { return { ok: false, error: errorMessage(reason, "Не удалось обновить связь локаций.") } }
+    await load(); return { ok: true }
+  }, [gmContext, load, rejectTopologyWrite])
 
   const createAchievement = useCallback(async (input: { character_id: string | null; title: string; description: string; icon: string }): Promise<Result> => {
     const { error } = await supabase.from("achievements").insert({ campaign_id: campaignId, character_id: input.character_id, title: input.title.trim(), description: input.description.trim(), icon: input.icon.trim() || "★" })
@@ -182,9 +221,18 @@ export function useWorldContent() {
   }, [load])
 
   const deleteWorldItem = useCallback(async (table: WorldTable, id: string): Promise<Result> => {
+    if (table === "locations" || table === "location_sections" || table === "location_links") {
+      const rejected = rejectTopologyWrite(); if (rejected) return rejected
+      try {
+        if (table === "locations") await oracle.world.deleteLocation(gmContext(), id)
+        else if (table === "location_sections") await oracle.world.deleteLocationSection(gmContext(), id)
+        else await oracle.world.deleteLocationLink(gmContext(), id)
+      } catch (reason) { return { ok: false, error: errorMessage(reason, "Не удалось удалить элемент мира.") } }
+      await load(); return { ok: true }
+    }
     const { error: deleteError } = await supabase.from(table).delete().eq("id", id)
     if (deleteError) return { ok: false, error: deleteError.message }; await load(); return { ok: true }
-  }, [load])
+  }, [gmContext, load, rejectTopologyWrite])
 
   return { sections, articles, locations, locationSections, locationLinks, achievements, updates, loading, error, reload: load, createWorldSection, updateWorldSection, createWorldArticle, updateWorldArticle, createLocation, updateLocation, setLocationVisibility, setLocationArchived, publishLocationEvent, createLocationSection, updateLocationSection, createLocationLink, updateLocationLink, createAchievement, updateAchievement, createUpdate, updateUpdate, deleteWorldItem }
 }
