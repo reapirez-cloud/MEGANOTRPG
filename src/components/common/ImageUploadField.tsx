@@ -6,6 +6,7 @@ import {
 } from "../../lib/mediaUpload"
 import CampaignImage from "./CampaignImage"
 import SquareImageCropper from "./SquareImageCropper"
+import WideImageCropper from "./WideImageCropper"
 
 type Props = {
   value: string
@@ -14,7 +15,7 @@ type Props = {
   campaignId: string
   label?: string
   hint?: string
-  crop?: "square"
+  crop?: "square" | "wide"
 }
 
 export default function ImageUploadField({
@@ -30,6 +31,7 @@ export default function ImageUploadField({
   const [error, setError] = useState("")
   const [cropFile, setCropFile] = useState<File | null>(null)
   const pendingUploadRef = useRef<string | null>(null)
+  const cropMode = crop ?? (folder === "chat-previews" ? "wide" : undefined)
 
   async function replacePending(nextValue: string) {
     const previousPending = pendingUploadRef.current
@@ -56,7 +58,7 @@ export default function ImageUploadField({
 
   function choose(file: File | null) {
     if (!file) return
-    if (crop === "square") {
+    if (cropMode) {
       setCropFile(file)
       return
     }
@@ -80,25 +82,32 @@ export default function ImageUploadField({
     onChange(nextValue)
   }
 
+  const previewClass = cropMode === "square"
+    ? "image-upload-preview image-upload-preview--square"
+    : cropMode === "wide"
+      ? "image-upload-preview image-upload-preview--wide"
+      : "image-upload-preview"
+
+  const finishCrop = (croppedFile: File) => {
+    setCropFile(null)
+    void upload(croppedFile)
+  }
+
   return (
     <div className="image-upload-field">
       <div className="image-upload-field__head">
         <label className="field-label">{label}</label>
-        <small>{hint}</small>
+        <small>{cropMode === "wide" ? "Выбери изображение и настрой, какая часть попадёт в широкое превью." : hint}</small>
       </div>
 
       {value && (
-        <div className={`image-upload-preview ${crop === "square" ? "image-upload-preview--square" : ""}`}>
+        <div className={previewClass}>
           <CampaignImage value={value} alt="" />
         </div>
       )}
 
       <div className="image-upload-actions">
-        <label
-          className={`media-file-button ${
-            uploading ? "media-file-button--disabled" : ""
-          }`}
-        >
+        <label className={`media-file-button ${uploading ? "media-file-button--disabled" : ""}`}>
           <input
             type="file"
             accept="image/*"
@@ -109,46 +118,26 @@ export default function ImageUploadField({
               choose(file)
             }}
           />
-          {uploading
-            ? "Загружаем…"
-            : value
-              ? "Заменить с телефона"
-              : "Выбрать с телефона"}
+          {uploading ? "Загружаем…" : value ? "Заменить с телефона" : "Выбрать с телефона"}
         </label>
 
         {value && (
-          <button
-            className="media-clear-button"
-            type="button"
-            onClick={() => void clearValue()}
-            disabled={uploading}
-          >
-            Убрать
-          </button>
+          <button className="media-clear-button" type="button" onClick={() => void clearValue()} disabled={uploading}>Убрать</button>
         )}
       </div>
 
       <details className="media-url-details">
         <summary>Или вставить ссылку</summary>
-        <input
-          className="app-input"
-          value={value}
-          onChange={(event) => void setManualValue(event.target.value)}
-          placeholder="https://..."
-        />
+        <input className="app-input" value={value} onChange={(event) => void setManualValue(event.target.value)} placeholder="https://..." />
       </details>
 
       {error && <div className="auth-error">{error}</div>}
 
-      {cropFile && (
-        <SquareImageCropper
-          file={cropFile}
-          onCancel={() => setCropFile(null)}
-          onConfirm={(croppedFile) => {
-            setCropFile(null)
-            void upload(croppedFile)
-          }}
-        />
+      {cropFile && cropMode === "square" && (
+        <SquareImageCropper file={cropFile} onCancel={() => setCropFile(null)} onConfirm={finishCrop} />
+      )}
+      {cropFile && cropMode === "wide" && (
+        <WideImageCropper file={cropFile} onCancel={() => setCropFile(null)} onConfirm={finishCrop} />
       )}
     </div>
   )
