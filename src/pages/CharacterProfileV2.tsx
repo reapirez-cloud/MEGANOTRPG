@@ -4,8 +4,7 @@ import type { FormEvent } from "react"
 import { useAuth } from "../context/AuthContext.tsx"
 import { useCharacters } from "../context/CharacterContext.tsx"
 import { useCharacterSheet } from "../hooks/useCharacterSheet.ts"
-import { resolveLegacyCharacterEngineView, type LegacyCharacterEngineView } from "../lib/legacyCharacterEngineAdapter.ts"
-import { createInventoryMechanicalProjection } from "../inventory-engine/index.ts"
+import { useResolvedCharacterRuntime } from "../hooks/useResolvedCharacterRuntime.ts"
 import { uploadCampaignImage } from "../lib/mediaUpload.ts"
 import { classReference } from "../data/classReference.ts"
 import type { SpellClassKey } from "../lib/spellCatalog.ts"
@@ -84,20 +83,6 @@ function formatTime(value: string): string {
   }).format(new Date(value))
 }
 
-function engineViewOrError(args: Parameters<typeof resolveLegacyCharacterEngineView>[0]): {
-  view: LegacyCharacterEngineView | null
-  error: string
-} {
-  try {
-    return { view: resolveLegacyCharacterEngineView(args), error: "" }
-  } catch (error) {
-    return {
-      view: null,
-      error: error instanceof Error ? error.message : "Не удалось рассчитать лист персонажа.",
-    }
-  }
-}
-
 export default function CharacterProfileV2({ characterId, onBack, embedded = false }: Props) {
   const { user } = useAuth()
   const {
@@ -110,6 +95,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
   } = useCharacters()
   const data = useCharacterSheet(characterId, campaignId)
   const character = characters.find((item) => item.id === characterId) ?? null
+  const runtime = useResolvedCharacterRuntime(character)
 
   const [tab, setTab] = useState<Tab>("sheet")
   const [inventoryMode, setInventoryMode] = useState<InventoryMode>("inventory")
@@ -161,22 +147,14 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
   const isAssignedPlayer = currentCharacter.assigned_user_id === user.id
   const canEditAvatar = canManage || isAssignedPlayer
   const sheet = data.sheet
+  const resolved = runtime.snapshot
+  const runtimeBlocking = runtime.loading && !resolved
   const canChooseSpells = canManage || Boolean(
     isAssignedPlayer && sheet?.spellcasting_enabled && sheet.spell_change_unlocked,
   )
   const canUseInventory = canManage || isAssignedPlayer
   const canWriteDiary = canManage || isAssignedPlayer
   const classId = classReferenceId(currentCharacter.character_class)
-
-  const engine = sheet
-    ? engineViewOrError({
-        character: currentCharacter,
-        sheet,
-        spells: data.spells,
-        features: data.features,
-        inventoryContributions: createInventoryMechanicalProjection(characterId, data.inventory).contributions,
-      })
-    : { view: null, error: "" }
 
   const learnedNames = new Set(data.spells.map((spell) => spell.name.trim().toLocaleLowerCase("ru-RU")))
   const availableOptions = data.spellOptions.filter((option) =>
@@ -186,9 +164,9 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
   // Transitional visibility until class/species adapters become the source of spell access.
   // Once they do, contract.spells/methods alone will decide whether this panel exists.
   const magicSectionVisible = Boolean(
-    engine.view && (
-      engine.view.contract.spells.length > 0 ||
-      engine.view.spellcastingAbility ||
+    resolved && (
+      resolved.contract.spells.length > 0 ||
+      resolved.spellcastingAbility ||
       sheet?.spellcasting_enabled ||
       data.spellOptions.length > 0
     ),
@@ -428,17 +406,17 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
           <button className={tab === "arts" ? "is-active" : ""} type="button" onClick={() => setTab("arts")}><span aria-hidden="true">◇</span>Арты</button>
         </nav>
 
-        {data.loading && <div className="center-state"><span className="status-spinner" /><span>Загружаем персонажа…</span></div>}
+        {(data.loading || runtimeBlocking) && <div className="center-state"><span className="status-spinner" /><span>Загружаем персонажа…</span></div>}
         {data.error && <div className="auth-error">{data.error}</div>}
-        {engine.error && <div className="auth-error">Ошибка расчёта: {engine.error}</div>}
+        {runtime.error && <div className="auth-error">Ошибка расчёта: {runtime.error}</div>}
 
-        {!data.loading && tab === "sheet" && sheet && engine.view && (
+        {!data.loading && !runtimeBlocking && tab === "sheet" && sheet && resolved && (
           <ResolvedCharacterSheet
-            input={engine.view.input}
-            contract={engine.view.contract}
+            input={resolved.input}
+            contract={resolved.contract}
             narrative={sheet}
             characterClass={currentCharacter.character_class}
-            spellcastingAbility={engine.view.spellcastingAbility}
+            spellcastingAbility={resolved.spellcastingAbility}
             canManage={canManage}
             features={data.features}
             onEditSheet={() => setEditor({ type: "sheet" })}
@@ -454,19 +432,19 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
           />
         )}
 
-        {!data.loading && tab === "class" && engine.view && (
+        {!data.loading && !runtimeBlocking && tab === "class" && resolved && (
           <CharacterClassPanel
             characterId={characterId}
-            contract={engine.view.contract}
+            contract={resolved.contract}
             onOpenReference={() => setReference({ section: "classes", classId })}
           />
         )}
 
-        {!data.loading && tab === "spells" && sheet && engine.view && (
+        {!data.loading && !runtimeBlocking && tab === "spells" && sheet && resolved && (
           <CharacterSpellbook
             sheet={sheet}
-            contract={engine.view.contract}
-            spellcastingAbility={engine.view.spellcastingAbility}
+            contract={resolved.contract}
+            spellcastingAbility={resolved.spellcastingAbility}
             spells={data.spells}
             options={visibleOptions}
             canManage={canManage}
