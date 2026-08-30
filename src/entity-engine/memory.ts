@@ -8,6 +8,7 @@ export class MemoryShapoklyakStorage implements ShapoklyakStorage {
   private readonly activeByUser = new Map<string, string | null>()
   private readonly discoveries = new Set<string>()
   private readonly hp = new Map<string, { currentHp: number; maxHp?: number; tempHp?: number }>()
+  private readonly templateAssignments = new Map<string, { characterId: string; templateId: string; templateLevel: number | null; selectedChoices: Record<string, unknown> }>()
 
   constructor(initial: readonly CharacterEntity[] = []) {
     for (const entity of initial) this.entities.set(entity.id, copy(entity))
@@ -68,6 +69,9 @@ export class MemoryShapoklyakStorage implements ShapoklyakStorage {
     if (command.kind === "entity.delete") {
       this.entities.delete(characterId)
       this.hp.delete(characterId)
+      for (const [assignmentId, assignment] of this.templateAssignments) {
+        if (assignment.characterId === characterId) this.templateAssignments.delete(assignmentId)
+      }
       return { kind: command.kind, characterIds: [characterId], before, after: null, requiresResolution: true }
     }
 
@@ -76,16 +80,50 @@ export class MemoryShapoklyakStorage implements ShapoklyakStorage {
       return { kind: command.kind, characterIds: [characterId], before, after: before, details: this.hp.get(characterId), requiresResolution: true }
     }
 
+    if (command.kind === "entity.assign_template") {
+      const existing = [...this.templateAssignments.entries()].find(([, assignment]) => assignment.characterId === characterId && assignment.templateId === command.input.templateId)
+      const assignmentId = existing?.[0] || `assignment-${command.context.commandId}`
+      this.templateAssignments.set(assignmentId, {
+        characterId,
+        templateId: command.input.templateId,
+        templateLevel: command.input.templateLevel,
+        selectedChoices: copy(command.input.selectedChoices),
+      })
+      return {
+        kind: command.kind,
+        characterIds: [characterId],
+        before,
+        after: before,
+        details: { assignmentId, templateId: command.input.templateId, templateLevel: command.input.templateLevel },
+        requiresResolution: true,
+      }
+    }
+
+    if (command.kind === "entity.remove_template_assignment") {
+      const assignment = this.templateAssignments.get(command.assignmentId)
+      if (assignment && assignment.characterId !== characterId) throw new EngineCommandError("entity.assignment_mismatch", "Template assignment belongs to another character")
+      this.templateAssignments.delete(command.assignmentId)
+      return {
+        kind: command.kind,
+        characterIds: [characterId],
+        before,
+        after: before,
+        details: { assignmentId: command.assignmentId },
+        requiresResolution: true,
+      }
+    }
+
     let after: CharacterEntity
     if (command.kind === "entity.update") {
       after = { ...before, ...command.input, assigned_user_id: command.input.character_type === "npc" ? null : command.input.assigned_user_id, updated_at: command.context.occurredAt }
     } else if (command.kind === "entity.set_life_state") {
       after = { ...before, life_state: command.lifeState, died_at: command.lifeState === "dead" ? command.context.occurredAt : null, updated_at: command.context.occurredAt }
-    } else {
+    } else if (command.kind === "entity.set_visibility") {
       after = { ...before, visibility_mode: command.visibilityMode, visibility: command.visibilityMode === "private" ? "private" : "campaign", updated_at: command.context.occurredAt }
+    } else {
+      throw new EngineCommandError("entity.unsupported_command", `Unsupported Shapoklyak command: ${command satisfies never}`)
     }
     this.entities.set(characterId, after)
     return { kind: command.kind, characterIds: [characterId], before, after: copy(after), requiresResolution: command.kind !== "entity.set_visibility" }
   }
 }
-
