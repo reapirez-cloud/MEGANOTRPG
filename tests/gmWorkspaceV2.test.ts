@@ -3,21 +3,37 @@ import fs from "node:fs"
 import test from "node:test"
 
 const workspace = fs.readFileSync("src/pages/GmWorkspace.tsx", "utf8")
+const membersPanel = fs.readFileSync("src/components/gm/GmMembersPanel.tsx", "utf8")
 const itemLibrary = fs.readFileSync("src/components/gm/GmItemLibrary.tsx", "utf8")
 const zoneManager = fs.readFileSync("src/components/gm/GmZoneManager.tsx", "utf8")
 const styles = fs.readFileSync("src/gm-workspace.css", "utf8")
+const memberStyles = fs.readFileSync("src/gm-members.css", "utf8")
 
-test("mobile GM cabinet exposes four focused work sections without a duplicate chat workspace", () => {
+test("mobile GM cabinet exposes five focused work sections without a duplicate chat workspace", () => {
   assert.match(workspace, /\["characters", "Персонажи"\]/)
+  assert.match(workspace, /\["members", "Участники"\]/)
   assert.match(workspace, /\["items", "Предметы"\]/)
   assert.match(workspace, /\["zones", "Зоны"\]/)
   assert.match(workspace, /\["materials", "Материалы"\]/)
   assert.match(workspace, /<span>PC<\/span>/)
   assert.match(workspace, /<span>NPC<\/span>/)
+  assert.match(workspace, /<GmMembersPanel\/>/)
   assert.doesNotMatch(workspace, /useRooms/)
   assert.doesNotMatch(workspace, /Чаты кампании/)
   assert.match(styles, /\.gm-primary-nav/)
-  assert.match(styles, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/)
+  assert.match(memberStyles, /\.gm-primary-nav--five/)
+  assert.match(memberStyles, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/)
+})
+
+test("participant sheet lets owner change roles and managers assign or transfer PC without bypassing character owner path", () => {
+  assert.match(membersPanel, /isOwner/)
+  assert.match(membersPanel, /setMemberRole/)
+  assert.match(membersPanel, /updateCharacter\(character\.id/)
+  assert.match(membersPanel, /assigned_user_id: nextUserId/)
+  assert.match(membersPanel, /setActiveForMember\(previousUserId, null\)/)
+  assert.match(membersPanel, /Передать/)
+  assert.match(membersPanel, /Активировать/)
+  assert.doesNotMatch(membersPanel, /from\("characters"\)/)
 })
 
 test("GM item library authors reusable item definitions and gives runtime instances through Oracle", () => {
