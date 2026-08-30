@@ -4,33 +4,72 @@ These instructions are for coding agents and developers working in this reposito
 
 ## Branch discipline — mandatory for all work
 
-- **All active development starts and stays on `dev` by default.** This applies to every subsystem, not only classes or Character Engine work.
+- **All active development starts and stays on `dev` by default.** This applies to every subsystem.
 - Do not implement, patch, refactor, document, or otherwise write active development changes directly to `main`.
-- Do not merge, copy, cherry-pick, or otherwise promote `dev` changes to `main` unless the user explicitly asks for that promotion in the current conversation.
+- Do not merge, copy, cherry-pick or promote `dev` changes to `main` unless the user explicitly asks for that promotion in the current conversation.
 - A request to implement/fix/change something is **not** permission to update `main`.
 - A request such as “залей в main”, “слей в main”, “перенеси в main”, or another unambiguous release instruction is required before touching `main`.
-- When the user asks to inspect, audit, discuss, or implement without explicitly authorizing `main`, work against `dev` and leave `main` unchanged.
-- After implementation, report that the work is in `dev` and wait for the user's explicit decision about promotion to `main`.
-- Repository instruction/documentation changes follow the same rule: update them in `dev` first unless the user explicitly authorizes a `main` update.
+- When the user asks to inspect, audit, discuss or implement without explicitly authorizing `main`, work against `dev` and leave `main` unchanged.
+- Repository instruction/documentation changes follow the same rule.
 
 This branch rule has priority over older task-specific habits or prior requests to push directly to `main`.
 
-## Named engine architecture — read before audits
-
-Before auditing or changing chat gameplay, classes, resources, rests, preparation, inventory, character/NPC storage, sheets, world data, locations or maps, read `docs/ENGINE_ROADMAP.md` and `docs/ENGINE_CONTRACTS.md`.
-
-The roadmap is an **IN DEVELOPMENT architecture contract** and defines the intended engine boundaries:
-
-- **CE — Character Engine:** pure deterministic character calculator. CE owns algorithms and one transient resolved result, but stores no canonical data and performs no I/O.
-- **GENA — Game State / Session Engine:** central gameplay coordinator/bookkeeper; records what players/GM declared and routes mutations to their owning engines.
-- **CHEBURASHKA — Inventory Engine:** owns all inventory persistence/state and exposes only a mechanical projection to fresh CE input assembly. It directly requests resolution after its own mutation.
-- **SHAPOKLYAK — PC/NPC Creation & Storage Engine:** owns entity identity, lifecycle, assignment, visibility and GM-authoritative character facts such as explicit HP.
-- **LARISA — Location / World + Campaign Time Engine:** owns locations, discovery, placement, scenes and descriptive chronology. Time has no automatic mechanical consequences.
-- **TOBIK — Roll Engine:** owns shared dice planning/resolution and returns structured results to Gena; it never applies HP or judges the scene.
-
 Active class / Character Engine work is done on `dev` unless the user explicitly authorizes promotion to `main`.
 
-**The GM is the final scene rules engine.** Application engines help with bookkeeping and explicit machine-owned state; they do not enforce transient scene legality such as turn economy, target validity, range, line of sight, Echo position/presence, aura membership, or whether a declared action makes tactical/narrative sense. Do not report missing scene simulation as a mechanics defect unless the application explicitly owns that state.
+## Named engine architecture — read before audits
+
+Before auditing or changing gameplay, classes, resources, rests, preparation, inventory, character/NPC storage, sheets, world data, locations or maps, read:
+
+- `docs/ENGINE_ROADMAP.md`
+- `docs/ENGINE_CONTRACTS.md`
+- `docs/ENGINE_CLOSURE_DEFINITION.md`
+- `docs/ORACLE_ENGINE_CONTRACT.md`
+
+The named-engine ownership boundaries are intentional:
+
+- **CE — Character Engine:** pure deterministic `base + state + contributions -> resolved` calculator. No persistence or I/O.
+- **GENA — Game State / Session Engine:** normal player gameplay/session orchestrator and command-correlation boundary. GENA does not own character, inventory, world or definition state and is not the GM control plane.
+- **ORACLE — GM Control Engine:** imperative GM hands. `GM Cabinet -> Oracle -> explicit owner`. Oracle stores nothing and MUST NOT call GENA.
+- **CHEBURASHKA — Inventory Engine:** owns concrete inventory instances/state and exposes only a mechanical projection to character resolution.
+- **SHAPOKLYAK — PC/NPC Character Owner:** owns entity identity, lifecycle, assignment, visibility and canonical character mechanics/runtime state such as explicit HP, template assignments, suppressions, character spells/features and persistent character resources.
+- **LARISA — Location / World Engine:** owns world topology, sections/links, discovery, placement, scenes, chronology and NPC habitats. Time has no automatic mechanical consequences.
+- **CHASOVOY — Reference / Definition Engine:** owns reusable class/subclass/spell/item/feat/condition definitions and revisions. Concrete instances/state remain with their runtime owner.
+- **TOBIK — Roll Engine:** owns authoritative dice planning/resolution and returns structured results; it never applies HP or judges the scene.
+
+### Mandatory command-path split
+
+Normal gameplay:
+
+```text
+Player / gameplay UI -> GENA -> authoritative owner/storage boundary -> canonical state
+```
+
+Explicitly permitted self-owned player operations may call a narrow owner facade directly when no gameplay/session orchestration is needed; server-side assignment/permission checks remain mandatory.
+
+GM canonical writes:
+
+```text
+GM -> GM Cabinet -> Oracle -> explicit owner -> canonical state
+```
+
+**Never route a GM reality mutation through GENA. Never let React write canonical gameplay state directly because a button is hidden.**
+
+### Mandatory character-resolution path
+
+Character-affecting owner commit:
+
+```text
+owner canonical state
+-> CharacterResolutionBus / cross-client refresh hint
+-> one Character Runtime Resolver
+-> CE
+-> one ResolvedCharacterContract
+-> Sheet / Chat / Revolver
+```
+
+Do not create a second CE assembly path in a UI surface. `useResolvedChatActor` is a compatibility alias of the shared runtime, not a second resolver. Supabase Realtime is refresh transport, not canonical engine communication.
+
+**The GM is the final scene rules engine.** Application engines handle bookkeeping and explicit machine-owned state; they do not enforce transient scene legality such as turn economy, target validity, range, line of sight, Echo position/presence, aura membership, or whether a declared action makes tactical/narrative sense. Do not report missing scene simulation as a mechanics defect unless the application explicitly owns that state.
 
 For class audits, focus on machine-owned correctness: resource counts/costs/recharge, stored choices and refresh cadence, preparation results, class/subclass ownership and level semantics, canonical mutations, action/resource survival through migrations, and fresh CE reconstruction after mutations.
 
@@ -47,17 +86,19 @@ If a task affects any of the following, read `docs/CHARACTER_ENGINE_CONTRACT.md`
 - resources, rests, HP, saves, skills or derived stats
 - GM-granted character features/effects
 
-Also read `src/character-engine/README.md` before modifying the engine itself.
+Also read `src/character-engine/README.md` before modifying the pure engine itself.
 
 ## Character Engine boundary
 
-Character Engine (CE) is the calculation source of truth for a supplied character snapshot. Canonical state remains in its owning engines; UI must consume resolved CE data instead of re-parsing rule prose.
+Character Engine (CE) is the calculation source of truth for one supplied character snapshot. Canonical state remains in its owning engines; UI consumes resolved CE data instead of re-parsing rule prose.
 
-CE is a calculator, not a persistent resource ledger, virtual GM or world-state simulator. It may resolve resource values supplied in one snapshot, while GENA owns their canonical ledger. Never invent authoritative state for scene facts the application does not actually track (weather, line of sight, whether a hit occurred, whether a corpse is nearby, once-per-turn without real turn tracking, and similar fiction/runtime facts).
+CE is a calculator, not a persistent resource ledger, virtual GM or world-state simulator. Persistent character mechanics/runtime facts belong to Shapoklyak; inventory-instance facts belong to Cheburashka; reusable definitions belong to Chasovoy; world facts belong to Larisa. GENA may orchestrate normal gameplay commands that change those facts but does not become their owner.
+
+Never invent authoritative state for scene facts the application does not track (weather, line of sight, whether a hit occurred, whether a corpse is nearby, once-per-turn without real turn tracking, and similar fiction/runtime facts).
 
 ## Generic mechanics before source-specific mechanics
 
-Before adding a class, subclass, race, feat, item, or other source-specific subsystem, check whether the behavior belongs in a generic CE primitive.
+Before adding a class, subclass, race, feat, item or other source-specific subsystem, check whether the behavior belongs in a generic CE/template/runtime primitive.
 
 Do not create a second choice runtime for feats, a class-specific resource engine, or UI-only mechanical truth when the same behavior can be represented through shared rule-template / CE infrastructure.
 
@@ -100,6 +141,19 @@ Before changing class/subclass mechanics or presentation, read:
 
 Class mechanics are not READY merely because code exists. Follow the package quality gate, source-level semantics, server-authoritative resource mutation rules, and deployed-state verification defined there.
 
+## New canonical mutation checklist
+
+Before adding a write path:
+
+1. identify the canonical owner;
+2. add or reuse the owner command/server boundary;
+3. for GM writes, expose it through Oracle rather than calling Supabase from GM React;
+4. for normal gameplay, route through GENA when correlation/history is needed;
+5. preserve a stable `commandId` when retries could duplicate mutation/resource spending;
+6. request fresh character resolution after a mechanical owner commit;
+7. verify reload reconstructs the same canonical result;
+8. add a regression test that prevents the old bypass from returning.
+
 ## Keep instructions discoverable
 
-Architecture rules that materially affect future implementation should be recorded in repository instruction/docs adjacent to the relevant code, not only in chat, commit messages, or a temporary plan. Keep short pointer comments in central implementation files so an agent opening the code is directed to the full contract.
+Architecture rules that materially affect future implementation must live in repository instructions/docs adjacent to the relevant code, not only in chat, commit messages or temporary plans. Keep short pointer comments in central implementation files so an agent opening the code is directed to the full contract.
