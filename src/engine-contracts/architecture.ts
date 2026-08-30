@@ -211,13 +211,15 @@ export function validateEngineArchitecture(): string[] {
   if (ENGINE_ARCHITECTURE.ce.commands.length > 0 || ENGINE_ARCHITECTURE.ce.publishes.length > 0) {
     errors.push("ce: pure Character Engine must have no outbound arrows")
   }
-  if (ENGINE_ARCHITECTURE.oracle.commands.includes("gena")) {
+  const oracleCommands: readonly EngineName[] = ENGINE_ARCHITECTURE.oracle.commands
+  if (oracleCommands.includes("gena")) {
     errors.push("oracle: GM control plane must never call GENA")
   }
   if (ENGINE_ARCHITECTURE.oracle.publishes.length > 0) {
     errors.push("oracle: owner engines publish canonical events; Oracle must not duplicate them")
   }
-  if (ENGINE_ARCHITECTURE.tobik.publishes.includes("character-resolution")) {
+  const tobikSignals: readonly EngineSignal[] = ENGINE_ARCHITECTURE.tobik.publishes
+  if (tobikSignals.includes("character-resolution")) {
     errors.push("tobik: rolling dice must never invalidate character state by itself")
   }
 
