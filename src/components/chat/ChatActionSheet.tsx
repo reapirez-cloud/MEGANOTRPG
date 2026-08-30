@@ -89,12 +89,6 @@ function spellSummary(spell: ResolvedSpell) {
   return [spell.identity.level === 0 ? "Кантрип" : `${spell.identity.level} уровень`, spell.identity.school || "", sources.slice(0, 2).join(" · ")].filter(Boolean).join(" · ")
 }
 
-function spellVisibleToViewer(spell: ResolvedSpell, includePrivateSources: boolean) {
-  if (includePrivateSources) return true
-  const refs = spell.accesses.flatMap((access) => access.sources)
-  return refs.some((ref) => ref.source.visibility !== "private")
-}
-
 function cantripCast(spell: ResolvedSpell): SpellSlotCast | null {
   if (spell.identity.level !== 0) return null
   for (const access of spell.accesses) {
@@ -199,7 +193,7 @@ export default function ChatActionSheet({ characterName, contract, loading = fal
   const classCount = model.classGroups.reduce((sum, group) => sum + group.actions.length + group.spells.length, 0)
   const uniqueCount = model.uniqueGroups.reduce((sum, group) => sum + group.actions.length + group.spells.length, 0)
   const spellSlots = useMemo(() => spellSlotResources(contract?.resources || []), [contract])
-  const visibleSpells = useMemo(() => (contract?.spells || []).filter((spell) => spellVisibleToViewer(spell, includePrivateSources)), [contract, includePrivateSources])
+  const visibleSpells = model.spells
   const cantrips = useMemo(() => visibleSpells.map(cantripCast).filter((item): item is SpellSlotCast => item !== null), [visibleSpells])
   const selectedSlot = spellChannel && spellChannel !== "cantrips"
     ? spellSlots.find(({ resource }) => resource.stateKey === spellChannel) || null
@@ -225,7 +219,7 @@ export default function ChatActionSheet({ characterName, contract, loading = fal
   }
 
   const tabs: Array<{ key: Tab; label: string; count?: number }> = [
-    { key: "dice", label: "Кубы" }, { key: "attacks", label: "Атаки", count: model.attacks.length }, { key: "spells", label: "Магия", count: visibleSpells.length },
+    { key: "dice", label: "Кубы" }, { key: "attacks", label: "Атаки", count: model.attacks.length + model.attackSpells.length }, { key: "spells", label: "Магия", count: visibleSpells.length },
     { key: "class", label: "Класс", count: classCount }, { key: "unique", label: "Уникальное", count: uniqueCount },
   ]
 
@@ -256,9 +250,12 @@ export default function ChatActionSheet({ characterName, contract, loading = fal
 
       {tab !== "dice" && loading && <div className="action-v2-empty"><span className="status-spinner"/><p>Собираем resolved-персонажа…</p></div>}
       {tab !== "dice" && !loading && !contract && <div className="action-v2-empty"><span>◇</span><strong>Нужен персонаж</strong><p>Эта вкладка использует его лист. Свободные кубы доступны во вкладке «Кубы».</p></div>}
-      {!loading && contract && tab === "attacks" && <>{model.attacks.length ? <div className="action-v2-list action-v2-list--cards">{model.attacks.map((action) => <button disabled={busy || !action.available} type="button" key={`${action.key}:${action.variantKey}`} onClick={() => void run(() => onAction(action))}><i>⚔</i><span><strong>{action.label || action.key}</strong><small>{actionSummary(action, resources, labels)}</small></span><em>›</em></button>)}</div> : <div className="action-v2-empty"><span>⚔</span><strong>Нет обычных атак</strong><p>Оружейные атаки появятся здесь, а классовые и особые способности останутся в своих вкладках.</p></div>}</>}
+      {!loading && contract && tab === "attacks" && <>{model.attacks.length || model.attackSpells.length ? <div className="action-v2-list action-v2-list--cards">
+        {model.attacks.map((action) => <button disabled={busy || !action.available} type="button" key={`${action.key}:${action.variantKey}`} onClick={() => void run(() => onAction(action))}><i>⚔</i><span><strong>{action.label || action.key}</strong><small>{actionSummary(action, resources, labels)}</small></span><em>›</em></button>)}
+        {model.attackSpells.map((spell) => <button disabled={busy || !spell.available} type="button" key={`attack-spell:${spell.key}`} onClick={() => void run(() => onSpell(spell))}><i>✦</i><span><strong>{spell.identity.name}</strong><small>{spellSummary(spell)}</small></span><em>›</em></button>)}
+      </div> : <div className="action-v2-empty"><span>⚔</span><strong>Нет атак</strong><p>Здесь появятся обычные атаки и любые доступные заклинания, которые наносят урон.</p></div>}</>}
       {!loading && contract && tab === "spells" && <>
-        {!visibleSpells.length ? <div className="action-v2-empty"><span>✧</span><strong>Нет доступной магии</strong><p>У персонажа сейчас нет заклинаний, которые можно применить.</p></div> : !spellChannel ? <div className="action-spell-picker">
+        {!visibleSpells.length ? <div className="action-v2-empty"><span>✧</span><strong>Нет доступной магии</strong><p>Здесь показываются только заклинания и заговоры, которые персонаж изучил или подготовил сам.</p></div> : !spellChannel ? <div className="action-spell-picker">
           <header><small>Шаг 1</small><strong>Выбери ячейку</strong><p>Покажем только те заклинания, которые сейчас можно сотворить этой ячейкой.</p></header>
           <div className="action-spell-slots">
             {cantrips.length > 0 && <button className="action-spell-slot action-spell-slot--cantrip" type="button" onClick={() => setSpellChannel("cantrips")}><span className="action-spell-slot__level">∞</span><span className="action-spell-slot__copy"><strong>Заговоры</strong><small>Без расхода ячейки · {cantrips.length}</small></span><em>›</em></button>}
@@ -278,7 +275,7 @@ export default function ChatActionSheet({ characterName, contract, loading = fal
           {selectedSpellCasts.length ? <div className="action-v2-list action-v2-list--cards">{selectedSpellCasts.map((selection) => <button disabled={busy} type="button" key={`${selection.spell.key}:${selection.accessKey}:${selection.methodKey}:${selection.optionKey || "free"}`} onClick={() => void run(() => onSpell(preferSpellCast(selection)))}><i>✧</i><span><strong>{selection.spell.identity.name}</strong><small>{spellSummary(selection.spell)}</small></span><em>›</em></button>)}</div> : <div className="action-v2-empty action-v2-empty--compact"><span>✧</span><strong>Этой ячейкой нечего читать</strong><p>Для выбранного уровня нет доступного варианта каста. Вернись к ячейкам и выбери другую.</p></div>}
         </div>}
       </>}
-      {!loading && contract && tab === "class" && <>{model.classGroups.length ? <div className="action-source-stack">{model.classGroups.map((group) => <SourceGroup key={group.id} group={group} kind="class" resources={resources} labels={labels} busy={busy} onAction={(action) => void run(() => onAction(action))} onSpell={(spell) => void run(() => onSpell(spell))}/>)}</div> : <div className="action-v2-empty"><span>◇</span><strong>Нет классовых действий</strong><p>Ресурсы и способности класса/подкласса появятся здесь автоматически из HE.</p></div>}</>}
+      {!loading && contract && tab === "class" && <>{model.classGroups.length ? <div className="action-source-stack">{model.classGroups.map((group) => <SourceGroup key={group.id} group={group} kind="class" resources={resources} labels={labels} busy={busy} onAction={(action) => void run(() => onAction(action))} onSpell={(spell) => void run(() => onSpell(spell))}/>)}</div> : <div className="action-v2-empty"><span>◇</span><strong>Нет классовых действий</strong><p>Ресурсы, способности и выданные классом/подклассом заклинания появятся здесь автоматически из CE.</p></div>}</>}
       {!loading && contract && tab === "unique" && <>{model.uniqueGroups.length ? <div className="action-source-stack">{model.uniqueGroups.map((group) => <SourceGroup key={group.id} group={group} kind="unique" resources={resources} labels={labels} busy={busy} onAction={(action) => void run(() => onAction(action))} onSpell={(spell) => void run(() => onSpell(spell))}/>)}</div> : <div className="action-v2-empty"><span>✦</span><strong>Нет уникальных способностей</strong><p>Артефакты, фиты, расовые и сюжетные способности будут собраны здесь по источнику.</p></div>}</>}
       {error && <div className="action-v3-error">{error}</div>}
     </div>
