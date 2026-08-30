@@ -37,7 +37,7 @@ import { mainRouteHash, parseAppRoute, type AppRoute } from "./lib/appRoute"
 import Art from "./pages/Art"
 import CharacterProfileV2 from "./pages/CharacterProfileV2"
 import Characters from "./pages/Characters"
-import PreparedChatRoom from "./pages/PreparedChatRoom"
+import ChatRoom from "./pages/ChatRoom"
 import Chats from "./pages/Chats"
 import Feed from "./pages/Feed"
 import GmWorkspace from "./pages/GmWorkspace"
@@ -50,7 +50,7 @@ function Workspace(){
   const goBack=useCallback(()=>{if(route.type==="chat")navigate("#/chats");else if(route.type==="gallery")navigate("#/feed");else if(route.type==="character"&&route.from==="chat"&&route.roomId)navigate(`#/chat/${route.roomId}`);else if(route.type==="character")navigate(route.from==="chat"?"#/chats":mainRouteHash(route.from))},[navigate,route])
   useEffect(()=>{const back=window.Telegram?.WebApp?.BackButton;if(!back)return;if(route.type==="main")back.hide();else{back.show();back.onClick(goBack)}return()=>back.offClick(goBack)},[goBack,route.type])
   const title=useMemo(()=>{if(route.type!=="main")return"";if(route.tab==="feed")return"Хроника";if(route.tab==="chats")return"Чаты";if(route.tab==="world")return"Мир";if(route.tab==="characters")return"Персонажи";return canManage?"Управление":"Мой персонаж"},[canManage,route])
-  if(route.type==="chat")return <div className="app-shell"><PreparedChatRoom roomId={route.id} onBack={goBack} onOpenCharacter={(id)=>navigate(`#/character/${id}?from=chat&room=${route.id}`)}/></div>
+  if(route.type==="chat")return <div className="app-shell"><ChatRoom roomId={route.id} onBack={goBack} onOpenCharacter={(id)=>navigate(`#/character/${id}?from=chat&room=${route.id}`)}/></div>
   if(route.type==="character")return <div className="app-shell"><CharacterGameFrame characterId={route.id}><CharacterProfileV2 characterId={route.id} onBack={goBack}/></CharacterGameFrame></div>
   if(route.type==="gallery")return <div className="app-shell"><div className="screen"><header className="screen-header"><button className="icon-button" type="button" onClick={goBack} aria-label="Назад">←</button><h1 className="screen-header__title">Арты и комиксы</h1><span/></header><main className="app-content app-content--overlay"><Art/></main></div></div>
   return <div className="app-shell"><TopBar title={title} unreadCount={notifications.unreadCount} onOpenReference={()=>setReferenceOpen(true)} onOpenNotifications={()=>setNotificationsOpen(true)}/><main className="app-content">
