@@ -60,6 +60,16 @@ export class ShapoklyakEngine {
       }
     }
 
+    if (command.kind === "entity.set_source_suppressed") {
+      if (command.context.authority !== "gm" && command.context.authority !== "system") {
+        throw new EngineCommandError("entity.gm_required", "Only GM authority can suppress character sources")
+      }
+      const sourceId = command.sourceId.trim()
+      if (!sourceId || sourceId.length > 512) {
+        throw new EngineCommandError("entity.invalid_source_id", "Source id must contain between 1 and 512 characters")
+      }
+    }
+
     const mutation = await this.storage.execute(command)
     const aggregateId = mutation.characterIds[0] || command.context.campaignId
     const event: EngineEvent = {
