@@ -1,14 +1,29 @@
-import type { ResolvedAction } from "../../character-engine/index.ts"
+import type {
+  CharacterSource,
+  ResolvedAction,
+  ResolvedSourceRef,
+  ResolvedSpellAccess,
+} from "../../character-engine/index.ts"
 
 const TEMPLATE_SOURCE_TYPES = new Set(["class_template", "subclass_template"])
 const MECHANIC_MARKER = ":mechanic:"
 
-function isTemplateActionSource(action: ResolvedAction, index: number) {
-  const source = action.sources[index]?.source
+function isTemplateSource(source: CharacterSource | undefined) {
   if (!source) return false
   return TEMPLATE_SOURCE_TYPES.has(source.sourceType || "")
     || source.id.startsWith("template:class:")
     || source.id.startsWith("template:subclass:")
+}
+
+function mechanicIdFromTemplateRefs(refs: ResolvedSourceRef[]): string | null {
+  for (const ref of refs) {
+    if (!isTemplateSource(ref.source)) continue
+    const markerIndex = ref.contributionId.lastIndexOf(MECHANIC_MARKER)
+    if (markerIndex < 0) continue
+    const mechanicId = ref.contributionId.slice(markerIndex + MECHANIC_MARKER.length).trim()
+    if (mechanicId) return mechanicId
+  }
+  return null
 }
 
 /**
@@ -16,15 +31,12 @@ function isTemplateActionSource(action: ResolvedAction, index: number) {
  * The id comes from CE provenance; labels and display keys are never used as guesses.
  */
 export function templateMechanicIdForChatAction(action: ResolvedAction): string | null {
-  for (let index = 0; index < action.sources.length; index += 1) {
-    if (!isTemplateActionSource(action, index)) continue
-    const contributionId = action.sources[index]?.contributionId || ""
-    const markerIndex = contributionId.lastIndexOf(MECHANIC_MARKER)
-    if (markerIndex < 0) continue
-    const mechanicId = contributionId.slice(markerIndex + MECHANIC_MARKER.length).trim()
-    if (mechanicId) return mechanicId
-  }
-  return null
+  return mechanicIdFromTemplateRefs(action.sources)
+}
+
+/** Same provenance rule for one concrete resolved spell access. */
+export function templateMechanicIdForSpellAccess(access: ResolvedSpellAccess): string | null {
+  return mechanicIdFromTemplateRefs(access.sources)
 }
 
 /**
