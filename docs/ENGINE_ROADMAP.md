@@ -1,6 +1,6 @@
 # MEGANOTRPG Engine Roadmap
 
-> Status: **CLOSURE CANDIDATE — ACTIVE ON `dev`**
+> Status: **CLOSED — STABLE BOUNDARY ON `dev`**
 > Audience: humans and AI agents auditing or extending MEGANOTRPG.
 > Branch rule: active development belongs on `dev` until the user explicitly authorizes promotion to `main`.
 
