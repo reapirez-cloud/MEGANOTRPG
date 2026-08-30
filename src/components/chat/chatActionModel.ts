@@ -4,6 +4,7 @@ import type {
   ResolvedCharacterContract,
   ResolvedResource,
   ResolvedSpell,
+  ResolvedSpellAccess,
 } from "../../character-engine/index.ts"
 import type { ResolvedSourceRef } from "../../character-engine/types.ts"
 
@@ -21,11 +22,14 @@ export type ChatActionSourceGroup = {
 
 export type ChatActionModel = {
   attacks: ResolvedAction[]
+  attackSpells: ResolvedSpell[]
+  spells: ResolvedSpell[]
   classGroups: ChatActionSourceGroup[]
   uniqueGroups: ChatActionSourceGroup[]
 }
 
 const CLASS_SOURCE_TYPES = new Set(["class_template", "subclass_template"])
+const SELF_SPELL_SOURCE_TYPES = new Set(["legacy_spell", "character_spell", "learned_spell", "spellbook"])
 const UNIQUE_SOURCE_TYPES = new Set([
   "character_feature",
   "legacy_feature",
@@ -35,6 +39,8 @@ const UNIQUE_SOURCE_TYPES = new Set([
   "feat",
   "trait",
 ])
+
+type RoutedSpellIdentity = ResolvedSpell["identity"] & { dealsDamage?: boolean }
 
 export function chatSourceCategory(source: CharacterSource): ChatSourceCategory {
   const type = source.sourceType || ""
@@ -82,6 +88,34 @@ function actionHasMeaningfulAttack(action: ResolvedAction) {
   return Boolean(action.attack) || action.damage.some((entry) => Boolean(entry.dice))
 }
 
+function spellDealsDamage(spell: ResolvedSpell) {
+  return Boolean((spell.identity as RoutedSpellIdentity).dealsDamage)
+}
+
+function accessIsSelfSpell(access: ResolvedSpellAccess, includePrivateSources: boolean) {
+  return distinctSources(access.sources, includePrivateSources).some((source) =>
+    SELF_SPELL_SOURCE_TYPES.has(source.sourceType || "") || source.id.startsWith("legacy-spell-source:"),
+  )
+}
+
+function spellWithAccesses(spell: ResolvedSpell, accesses: ResolvedSpellAccess[]): ResolvedSpell {
+  return {
+    ...spell,
+    accesses,
+    available: accesses.some((access) => access.available),
+  }
+}
+
+function visibleSpell(spell: ResolvedSpell, includePrivateSources: boolean): ResolvedSpell | null {
+  const accesses = spell.accesses.filter((access) => visibleRefs(access.sources, includePrivateSources).length > 0)
+  return accesses.length ? spellWithAccesses(spell, accesses) : null
+}
+
+function selfSpell(spell: ResolvedSpell, includePrivateSources: boolean): ResolvedSpell | null {
+  const accesses = spell.accesses.filter((access) => accessIsSelfSpell(access, includePrivateSources))
+  return accesses.length ? spellWithAccesses(spell, accesses) : null
+}
+
 export function classifyChatAction(action: ResolvedAction, uniqueResourceGroupIds: ReadonlySet<string>, includePrivateSources = true): ChatActionBucket {
   const sources = distinctSources(action.sources, includePrivateSources)
   const categories = new Set(sources.map(chatSourceCategory))
@@ -111,6 +145,18 @@ function addUnique<T>(items: T[], item: T, identity: (value: T) => string) {
   if (!items.some((existing) => identity(existing) === id)) items.push(item)
 }
 
+function addOrMergeSpell(items: ResolvedSpell[], spell: ResolvedSpell) {
+  const existing = items.find((entry) => entry.key === spell.key)
+  if (!existing) {
+    items.push(spell)
+    return
+  }
+  const accessKeys = new Set(existing.accesses.map((access) => access.key))
+  const accesses = [...existing.accesses, ...spell.accesses.filter((access) => !accessKeys.has(access.key))]
+  const index = items.indexOf(existing)
+  items[index] = spellWithAccesses(existing, accesses)
+}
+
 function addResourceToGroups(map: Map<string, ChatActionSourceGroup>, resource: ResolvedResource, categories: ChatSourceCategory[], includePrivateSources: boolean) {
   for (const source of distinctSources(resource.sources, includePrivateSources).filter((entry) => categories.includes(chatSourceCategory(entry)))) {
     addUnique(ensureGroup(map, source).resources, resource, (entry) => entry.stateKey)
@@ -127,13 +173,31 @@ function addActionToGroups(map: Map<string, ChatActionSourceGroup>, action: Reso
 }
 
 function addSpellToGroups(map: Map<string, ChatActionSourceGroup>, spell: ResolvedSpell, categories: ChatSourceCategory[], includePrivateSources: boolean) {
-  const sources = distinctSources(sourceRefsForSpell(spell), includePrivateSources).filter((entry) => categories.includes(chatSourceCategory(entry)))
-  for (const source of sources) addUnique(ensureGroup(map, source).spells, spell, (entry) => entry.key)
+  const grouped = new Map<string, { source: CharacterSource; accesses: ResolvedSpellAccess[] }>()
+  for (const access of spell.accesses) {
+    const sources = distinctSources(access.sources, includePrivateSources).filter((entry) => categories.includes(chatSourceCategory(entry)))
+    for (const source of sources) {
+      const id = chatSourceGroupId(source)
+      const current = grouped.get(id) || { source, accesses: [] }
+      if (!current.accesses.some((entry) => entry.key === access.key)) current.accesses.push(access)
+      grouped.set(id, current)
+    }
+  }
+  for (const { source, accesses } of grouped.values()) {
+    addOrMergeSpell(ensureGroup(map, source).spells, spellWithAccesses(spell, accesses))
+  }
+}
+
+function sortSpells(spells: ResolvedSpell[]) {
+  return spells.slice().sort((left, right) =>
+    left.identity.level - right.identity.level || left.identity.name.localeCompare(right.identity.name, "ru"),
+  )
 }
 
 function sortedGroups(map: Map<string, ChatActionSourceGroup>) {
   return [...map.values()]
     .filter((group) => group.resources.length || group.actions.length || group.spells.length)
+    .map((group) => ({ ...group, spells: sortSpells(group.spells) }))
     .sort((left, right) => left.name.localeCompare(right.name, "ru"))
 }
 
@@ -142,7 +206,7 @@ function hasVisibleSources(refs: ResolvedSourceRef[], includePrivateSources: boo
 }
 
 export function buildChatActionModel(contract: ResolvedCharacterContract | null, includePrivateSources = true): ChatActionModel {
-  if (!contract) return { attacks: [], classGroups: [], uniqueGroups: [] }
+  if (!contract) return { attacks: [], attackSpells: [], spells: [], classGroups: [], uniqueGroups: [] }
 
   const classGroups = new Map<string, ChatActionSourceGroup>()
   const uniqueGroups = new Map<string, ChatActionSourceGroup>()
@@ -168,15 +232,22 @@ export function buildChatActionModel(contract: ResolvedCharacterContract | null,
     else addActionToGroups(uniqueGroups, action, ["unique", "item"], uniqueFallback, includePrivateSources)
   }
 
+  const attackSpells: ResolvedSpell[] = []
+  const spells: ResolvedSpell[] = []
   for (const spell of contract.spells) {
-    const refs = sourceRefsForSpell(spell)
-    if (!hasVisibleSources(refs, includePrivateSources)) continue
-    addSpellToGroups(classGroups, spell, ["class"], includePrivateSources)
-    addSpellToGroups(uniqueGroups, spell, ["unique", "item"], includePrivateSources)
+    const visible = visibleSpell(spell, includePrivateSources)
+    if (!visible) continue
+    if (spellDealsDamage(visible)) attackSpells.push(visible)
+    const self = selfSpell(visible, includePrivateSources)
+    if (self) spells.push(self)
+    addSpellToGroups(classGroups, visible, ["class"], includePrivateSources)
+    addSpellToGroups(uniqueGroups, visible, ["unique", "item"], includePrivateSources)
   }
 
   return {
     attacks: attacks.slice().sort((a, b) => (a.label || a.key).localeCompare(b.label || b.key, "ru")),
+    attackSpells: sortSpells(attackSpells),
+    spells: sortSpells(spells),
     classGroups: sortedGroups(classGroups),
     uniqueGroups: sortedGroups(uniqueGroups),
   }
