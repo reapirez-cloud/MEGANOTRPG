@@ -31,6 +31,7 @@ type PreparationBase = {
 
 export type SpellPreparationTask = PreparationBase & {
   kind: "spells"
+  record: CharacterPreparationRecord | null
 }
 
 export type ChoicePreparationTask = PreparationBase & {
@@ -132,13 +133,15 @@ export function buildCharacterPreparationModel(
     const meta = record(bundle.template.rules_meta) || {}
 
     if (session?.is_open && text(meta.spell_preparation_refresh) === "long_rest") {
+      const key = `spells:${bundle.template.id}`
       tasks.push({
         kind: "spells",
         assignmentId: bundle.assignment.id,
         templateId: bundle.template.id,
         sourceName: bundle.template.name,
-        key: `spells:${bundle.template.id}`,
+        key,
         label: `${bundle.template.name}: подготовка заклинаний`,
+        record: currentRecords.get(`${bundle.assignment.id}:${key}`) || null,
       })
     }
 
