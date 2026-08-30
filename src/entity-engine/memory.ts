@@ -79,6 +79,12 @@ export class MemoryShapoklyakStorage implements ShapoklyakStorage {
       return { kind: command.kind, characterIds: [characterId], before, after: null, requiresResolution: true }
     }
 
+    if (command.kind === "entity.set_avatar") {
+      const after = { ...before, avatar_url: command.avatarUrl, updated_at: command.context.occurredAt }
+      this.entities.set(characterId, after)
+      return { kind: command.kind, characterIds: [characterId], before, after: copy(after), requiresResolution: false }
+    }
+
     if (command.kind === "entity.set_hp") {
       this.hp.set(characterId, { currentHp: command.currentHp, ...(command.maxHp !== undefined ? { maxHp: command.maxHp } : {}), ...(command.tempHp !== undefined ? { tempHp: command.tempHp } : {}) })
       return { kind: command.kind, characterIds: [characterId], before, after: before, details: this.hp.get(characterId), requiresResolution: true }
@@ -128,6 +134,40 @@ export class MemoryShapoklyakStorage implements ShapoklyakStorage {
         details: { sourceId: command.sourceId, suppressed: command.suppressed },
         requiresResolution: true,
       }
+    }
+
+    if (command.kind === "entity.update_sheet") {
+      return { kind: command.kind, characterIds: [characterId], before, after: before, details: { fields: Object.keys(command.input) }, requiresResolution: true }
+    }
+    if (command.kind === "entity.set_spellcasting_enabled") {
+      return { kind: command.kind, characterIds: [characterId], before, after: before, details: { enabled: command.enabled }, requiresResolution: true }
+    }
+    if (command.kind === "entity.create_spell" || command.kind === "entity.create_spell_option" || command.kind === "entity.create_feature") {
+      return { kind: command.kind, characterIds: [characterId], before, after: before, details: { created: true }, requiresResolution: true }
+    }
+    if (command.kind === "entity.update_spell") {
+      return { kind: command.kind, characterIds: [characterId], before, after: before, details: { spellId: command.spellId }, requiresResolution: true }
+    }
+    if (command.kind === "entity.delete_spell") {
+      return { kind: command.kind, characterIds: [characterId], before, after: before, details: { spellId: command.spellId }, requiresResolution: true }
+    }
+    if (command.kind === "entity.update_spell_option" || command.kind === "entity.delete_spell_option") {
+      return { kind: command.kind, characterIds: [characterId], before, after: before, details: { optionId: command.optionId }, requiresResolution: true }
+    }
+    if (command.kind === "entity.learn_spell") {
+      return { kind: command.kind, characterIds: [characterId], before, after: before, details: { optionId: command.optionId }, requiresResolution: true }
+    }
+    if (command.kind === "entity.set_spell_prepared") {
+      return { kind: command.kind, characterIds: [characterId], before, after: before, details: { spellId: command.spellId, prepared: command.prepared }, requiresResolution: true }
+    }
+    if (command.kind === "entity.update_feature" || command.kind === "entity.delete_feature") {
+      return { kind: command.kind, characterIds: [characterId], before, after: before, details: { featureId: command.featureId }, requiresResolution: true }
+    }
+    if (command.kind === "entity.sync_resources") {
+      return { kind: command.kind, characterIds: [characterId], before, after: before, details: { count: command.resources.length }, requiresResolution: true }
+    }
+    if (command.kind === "entity.recover_resources") {
+      return { kind: command.kind, characterIds: [characterId], before, after: before, details: { trigger: command.trigger }, requiresResolution: true }
     }
 
     let after: CharacterEntity
