@@ -11,19 +11,44 @@ import { useLongPressItem } from "../hooks/useLongPressItem"
 import { deleteCampaignMediaObject } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
 import "../game-story-v2.css"
+import "../chats-v3.css"
 
 type Props = { onOpenRoom: (id: string) => void }
 type Editor = { mode: "create" } | { mode: "edit"; room: ChatRoom } | null
+type ChatSection = "home" | "personal" | "scenes"
+type ArchiveView = "active" | "closed"
 
 function roomLabel(room: ChatRoom) {
-  if (room.room_type === "character") return "Персональная история"
-  if (room.room_type === "scene") return "Общая сцена"
+  if (room.room_type === "character") return room.character_life_state === "dead" || room.room_state === "closed" ? "Закрытая история" : "Личная история"
+  if (room.room_type === "scene") return room.scene_state === "closed" || room.room_state === "closed" ? "Закрытая сцена" : "Сцена"
   return "Флуд"
+}
+
+function periodLabel(value: ChatRoom["day_period"]) {
+  const labels: Record<ChatRoom["day_period"], string> = {
+    dawn: "рассвет",
+    morning: "утро",
+    day: "день",
+    late_day: "после полудня",
+    evening: "вечер",
+    night: "ночь",
+    deep_night: "глубокая ночь",
+  }
+  return labels[value]
+}
+
+function roomClosed(room: ChatRoom) {
+  if (room.room_type === "character") return room.character_life_state === "dead" || room.room_state === "closed"
+  if (room.room_type === "scene") return room.scene_state === "closed" || room.room_state === "closed"
+  return false
 }
 
 export default function Chats({ onOpenRoom }: Props) {
   const { canManage, campaignId, characters } = useCharacters()
   const rooms = useRooms()
+  const [section, setSection] = useState<ChatSection>("home")
+  const [personalView, setPersonalView] = useState<ArchiveView>("active")
+  const [sceneView, setSceneView] = useState<ArchiveView>("active")
   const [editor, setEditor] = useState<Editor>(null)
   const [title, setTitle] = useState("")
   const [preview, setPreview] = useState("")
@@ -41,6 +66,13 @@ export default function Chats({ onOpenRoom }: Props) {
   const flood = rooms.rooms.filter((room) => room.room_type === "flood")
   const personal = rooms.rooms.filter((room) => room.room_type === "character")
   const scenes = rooms.rooms.filter((room) => room.room_type === "scene")
+  const personalActive = personal.filter((room) => !roomClosed(room))
+  const personalClosed = personal.filter(roomClosed)
+  const scenesActive = scenes.filter((room) => !roomClosed(room))
+  const scenesClosed = scenes.filter(roomClosed)
+
+  const personalUnread = personalActive.reduce((sum, room) => sum + room.unread_count, 0)
+  const sceneUnread = scenesActive.reduce((sum, room) => sum + room.unread_count, 0)
 
   function openCreate() {
     setTitle("")
@@ -92,6 +124,8 @@ export default function Chats({ onOpenRoom }: Props) {
       }
       setSaving(false)
       setEditor(null)
+      setSection("scenes")
+      setSceneView("active")
       onOpenRoom(result.id)
       return
     }
@@ -139,21 +173,35 @@ export default function Chats({ onOpenRoom }: Props) {
       p_life_state: next,
     })
     setSaving(false)
-    setMenu(null)
     if (lifeError) {
       setError(lifeError.message)
       return
     }
     await rooms.reload()
+    if (next === "dead") setPersonalView("closed")
+  }
+
+  async function toggleSceneClosed(room: ChatRoom) {
+    const closed = roomClosed(room)
+    setSaving(true)
+    setError("")
+    const result = await rooms.setRoomState(room.id, closed ? "open" : "closed")
+    setSaving(false)
+    if (!result.ok) {
+      setError(result.error || "Не удалось изменить состояние сцены.")
+      return
+    }
+    setSceneView(closed ? "active" : "closed")
   }
 
   function actions(room: ChatRoom): ContextAction[] {
     const dead = room.character_life_state === "dead"
+    const closedScene = room.room_type === "scene" && roomClosed(room)
     return [
       {
         id: "open",
         label: "Открыть",
-        detail: room.is_read_only ? "История доступна только для чтения" : "Перейти в чат",
+        detail: roomClosed(room) ? "Открыть сохранённую историю" : "Перейти в чат",
         icon: "↗",
         onSelect: () => onOpenRoom(room.id),
       },
@@ -161,7 +209,7 @@ export default function Chats({ onOpenRoom }: Props) {
         ? [{
             id: "edit",
             label: room.room_type === "scene" ? "Настроить сцену" : "Изменить превью",
-            detail: room.room_type === "character" ? "Чат остаётся закреплён за персонажем" : "Оформление комнаты",
+            detail: room.room_type === "character" ? "История остаётся закреплена за персонажем" : "Название и оформление комнаты",
             icon: "✎",
             onSelect: () => openEdit(room),
           } satisfies ContextAction]
@@ -170,7 +218,7 @@ export default function Chats({ onOpenRoom }: Props) {
         ? [{
             id: dead ? "revive" : "death",
             label: dead ? "Вернуть персонажа" : "Отметить погибшим",
-            detail: dead ? "Снова открыть персональную игровую историю" : "Закрыть персональный чат для новых сообщений",
+            detail: dead ? "Вернуть историю в список живых" : "Перенести историю в закрытые и запретить новые сообщения",
             icon: dead ? "↺" : "†",
             danger: !dead,
             onSelect: () => setCharacterLife(room, dead ? "alive" : "dead"),
@@ -178,9 +226,18 @@ export default function Chats({ onOpenRoom }: Props) {
         : []),
       ...(canManage && room.room_type === "scene"
         ? [{
+            id: closedScene ? "reopen" : "close",
+            label: closedScene ? "Вернуть сцену" : "Закрыть сцену",
+            detail: closedScene ? "Снова разрешить игру в сцене" : "Сохранить историю и перенести её в закрытые сцены",
+            icon: closedScene ? "↺" : "□",
+            onSelect: () => toggleSceneClosed(room),
+          } satisfies ContextAction]
+        : []),
+      ...(canManage && room.room_type === "scene"
+        ? [{
             id: "delete",
             label: "Удалить сцену",
-            detail: "Сообщения и вложения будут удалены",
+            detail: "Сообщения и вложения будут удалены без восстановления",
             icon: "×",
             danger: true,
             onSelect: () => setDeleteTarget(room),
@@ -189,51 +246,57 @@ export default function Chats({ onOpenRoom }: Props) {
     ]
   }
 
-  function cinematicRoom(room: ChatRoom) {
-    const character = room.character_id ? characterMap.get(room.character_id) : null
-    const dead = room.room_type === "character" && room.character_life_state === "dead"
+  function roomMeta(room: ChatRoom) {
+    if (room.room_type === "character" && room.character_id) {
+      const character = characterMap.get(room.character_id)
+      if (character) return `${character.character_class || "Без класса"} · ${character.level} ур.`
+      return "Персональная история"
+    }
+    if (room.room_type === "scene") return `День ${room.campaign_day} · ${periodLabel(room.day_period)}`
+    return "Общий разговор кампании"
+  }
+
+  function roomRow(room: ChatRoom) {
+    const closed = roomClosed(room)
     return (
       <article
+        className={`chat-v3__room ${closed ? "is-closed" : ""}`}
+        key={room.id}
         {...bind(room)}
         style={{ touchAction: "pan-y" }}
-        className={`game-room-card ${dead ? "game-room-card--dead" : ""}`}
-        key={room.id}
       >
-        <button type="button" className="game-room-card__open" onClick={() => onOpenRoom(room.id)}>
-          {room.avatar_url
-            ? <CampaignImage className="game-room-card__art" value={room.avatar_url} alt="" />
-            : <div className="game-room-card__fallback">{room.room_type === "character" ? "◇" : "✦"}</div>}
-          <span className="game-room-card__shade" />
-          <span className="game-room-card__content">
-            <span className="game-room-card__meta">
-              <small>{roomLabel(room)}</small>
-              {dead && <em>Мёртв</em>}
-              {!dead && room.is_read_only && <em>Только чтение</em>}
-              {canManage && room.room_type !== "flood" && <em className={room.open_to_campaign ? "is-public" : "is-private"}>{room.open_to_campaign ? (room.campaign_can_write ? "Всем: запись" : "Всем: чтение") : "Скрыт"}</em>}
-            </span>
-            <strong>{room.title}</strong>
-            {character && <small className="game-room-card__character">{character.character_class} · {character.level} ур.</small>}
-            <span className="game-room-card__preview">{room.preview || "Пока без сообщений"}</span>
+        <button className="chat-v3__room-open" type="button" onClick={() => onOpenRoom(room.id)}>
+          <span className="chat-v3__avatar">
+            {room.avatar_url
+              ? <CampaignImage value={room.avatar_url} alt="" />
+              : <span aria-hidden="true">{room.room_type === "flood" ? "◌" : room.room_type === "character" ? "◇" : "✦"}</span>}
           </span>
-          <span className="game-room-card__side">
+          <span className="chat-v3__copy">
+            <span className="chat-v3__title-line">
+              <strong>{room.title}</strong>
+              {closed && <em className="chat-v3__badge is-closed">Закрыто</em>}
+              {!closed && room.room_state === "gm_only" && <em className="chat-v3__badge">Только ГМ</em>}
+            </span>
+            <span className="chat-v3__meta">{roomMeta(room)}</span>
+            <span className="chat-v3__preview">{room.preview || "Пока без сообщений"}</span>
+          </span>
+          <span className="chat-v3__side">
             <time>{room.time}</time>
             {room.unread_count > 0 && <b>{room.unread_count > 99 ? "99+" : room.unread_count}</b>}
           </span>
         </button>
-        {canManage && (
-          <button className="game-room-card__menu" type="button" onClick={() => setMenu(room)} aria-label="Действия">
-            •••
-          </button>
+        {canManage && room.room_type !== "flood" && (
+          <button className="chat-v3__menu" type="button" onClick={() => setMenu(room)} aria-label={`Действия: ${room.title}`}>•••</button>
         )}
       </article>
     )
   }
 
-  function cinematicList(items: ChatRoom[], empty: string) {
+  function roomList(items: ChatRoom[], empty: string) {
     return (
-      <div className="game-room-grid">
-        {items.map(cinematicRoom)}
-        {!items.length && <div className="game-room-empty">{empty}</div>}
+      <div className="chat-v3__room-list">
+        {items.map(roomRow)}
+        {!items.length && <div className="chat-v3__empty">{empty}</div>}
       </div>
     )
   }
@@ -244,38 +307,69 @@ export default function Chats({ onOpenRoom }: Props) {
 
   return (
     <>
-      <div className="chats-game page-stack">
+      <div className="chats-v3">
         {(error || rooms.error) && <div className="auth-error">{error || rooms.error}</div>}
 
-        {flood.length > 0 && (
-          <section className="chat-flood-section">
-            <div className="game-section-head">
-              <div><span>Общение</span><h3>Флуд</h3></div>
-            </div>
-            {flood.map((room) => (
-              <button key={room.id} className="flood-room-row" type="button" onClick={() => onOpenRoom(room.id)}>
-                <span className="flood-room-row__icon">◌</span>
-                <span><strong>{room.title}</strong><small>{room.preview}</small></span>
-                {room.unread_count > 0 && <b>{room.unread_count > 99 ? "99+" : room.unread_count}</b>}
+        {section === "home" && (
+          <>
+            <section className="chat-v3__surface">
+              <header className="chat-v3__section-head">
+                <div><span className="chat-v3__eyebrow">Общение</span><h3>Флуд</h3><p>Весь общий разговор кампании — без игровых архивов вперемешку.</p></div>
+                <span className="chat-v3__count">{flood.length}</span>
+              </header>
+              {roomList(flood, "Флуд-чат пока не создан.")}
+            </section>
+
+            <nav className="chat-v3__directory" aria-label="Игровые чаты">
+              <button type="button" onClick={() => { setSection("personal"); setPersonalView("active") }}>
+                <span className="chat-v3__directory-icon">◇</span>
+                <span className="chat-v3__directory-copy"><small>Персонажи</small><strong>Личные истории</strong><em>Живые персонажи отдельно от завершённых историй</em></span>
+                <span className="chat-v3__directory-stats"><b>{personalActive.length}</b><span>{personalClosed.length} закрыто{personalUnread > 0 ? ` · ${personalUnread} новых` : ""}</span></span>
+                <span className="chat-v3__directory-chevron">›</span>
               </button>
-            ))}
+              <button type="button" onClick={() => { setSection("scenes"); setSceneView("active") }}>
+                <span className="chat-v3__directory-icon">✦</span>
+                <span className="chat-v3__directory-copy"><small>Игра</small><strong>Сцены</strong><em>Текущие сцены и отдельный архив завершённых</em></span>
+                <span className="chat-v3__directory-stats"><b>{scenesActive.length}</b><span>{scenesClosed.length} закрыто{sceneUnread > 0 ? ` · ${sceneUnread} новых` : ""}</span></span>
+                <span className="chat-v3__directory-chevron">›</span>
+              </button>
+            </nav>
+          </>
+        )}
+
+        {section === "personal" && (
+          <section className="chat-v3__focus">
+            <header className="chat-v3__focus-head">
+              <button className="chat-v3__back" type="button" onClick={() => setSection("home")} aria-label="Назад">←</button>
+              <div><span className="chat-v3__eyebrow">Персонажи</span><h3>Личные истории</h3><p>У каждого персонажа своя непрерывная история.</p></div>
+              <span className="chat-v3__count">{personal.length}</span>
+            </header>
+            <nav className="chat-v3__tabs" aria-label="Личные истории">
+              <button className={personalView === "active" ? "is-active" : ""} type="button" onClick={() => setPersonalView("active")}>Личные истории <span>{personalActive.length}</span></button>
+              <button className={personalView === "closed" ? "is-active" : ""} type="button" onClick={() => setPersonalView("closed")}>Закрытые истории <span>{personalClosed.length}</span></button>
+            </nav>
+            {personalView === "active"
+              ? roomList(personalActive, "У живых персонажей пока нет личных историй.")
+              : roomList(personalClosed, "Закрытых историй пока нет.")}
           </section>
         )}
 
-        <section>
-          <div className="game-section-head">
-            <div><span>Игра</span><h3>Персонажи</h3><p>Каждый чат принадлежит конкретному персонажу.</p></div>
-          </div>
-          {cinematicList(personal, "Персональные чаты появятся вместе с PC.")}
-        </section>
-
-        <section>
-          <div className="game-section-head">
-            <div><span>Игра</span><h3>Сцены</h3><p>Общие события, куда могут входить несколько персонажей.</p></div>
-            {canManage && <button type="button" onClick={openCreate}>＋ Сцена</button>}
-          </div>
-          {cinematicList(scenes, "Общих сцен пока нет.")}
-        </section>
+        {section === "scenes" && (
+          <section className="chat-v3__focus">
+            <header className="chat-v3__focus-head">
+              <button className="chat-v3__back" type="button" onClick={() => setSection("home")} aria-label="Назад">←</button>
+              <div><span className="chat-v3__eyebrow">Игра</span><h3>Сцены</h3><p>Активная игра отдельно от законченных эпизодов.</p></div>
+              {canManage ? <button className="chat-v3__add" type="button" onClick={openCreate}>＋ Сцена</button> : <span className="chat-v3__count">{scenes.length}</span>}
+            </header>
+            <nav className="chat-v3__tabs" aria-label="Сцены">
+              <button className={sceneView === "active" ? "is-active" : ""} type="button" onClick={() => setSceneView("active")}>Сцены <span>{scenesActive.length}</span></button>
+              <button className={sceneView === "closed" ? "is-active" : ""} type="button" onClick={() => setSceneView("closed")}>Закрытые сцены <span>{scenesClosed.length}</span></button>
+            </nav>
+            {sceneView === "active"
+              ? roomList(scenesActive, "Активных сцен пока нет.")
+              : roomList(scenesClosed, "Закрытых сцен пока нет.")}
+          </section>
+        )}
       </div>
 
       {editor && (
@@ -286,7 +380,7 @@ export default function Chats({ onOpenRoom }: Props) {
               <div>
                 <span>{editor.mode === "create" ? "Общая игровая сцена" : roomLabel(editor.room)}</span>
                 <h3>{editor.mode === "create" ? "Новая сцена" : editor.room.title}</h3>
-                <p>Картинка становится широким превью комнаты. Затемнение накладывается автоматически, чтобы текст всегда читался.</p>
+                <p>Превью помогает быстро узнать сцену в списке. История и состояние комнаты от оформления не зависят.</p>
               </div>
               <button type="button" onClick={() => void closeEditor()}>×</button>
             </header>
@@ -304,7 +398,7 @@ export default function Chats({ onOpenRoom }: Props) {
                 folder="chat-previews"
                 campaignId={campaignId}
                 label="Превью чата"
-                hint="Лучше широкое изображение: персонаж, место или арт сцены"
+                hint="Персонаж, место или арт сцены — в списке изображение будет аккуратно обрезано"
               />
             </section>
 
@@ -324,7 +418,7 @@ export default function Chats({ onOpenRoom }: Props) {
             <div className="sheet-handle" />
             <span className="v2-confirm-icon">×</span>
             <h3>Удалить сцену «{deleteTarget.title}»?</h3>
-            <p>Сцена, сообщения и вложения исчезнут без восстановления.</p>
+            <p>Сцена, сообщения и вложения исчезнут без восстановления. Если нужно просто убрать её из активной игры — закрой сцену вместо удаления.</p>
             <div>
               <button type="button" onClick={() => setDeleteTarget(null)}>Отмена</button>
               <button type="button" className="is-danger" disabled={saving} onClick={() => void remove(deleteTarget)}>
