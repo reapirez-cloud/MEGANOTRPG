@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import { resolveLegacyCharacterEngineView } from "../src/lib/legacyCharacterEngineAdapter.ts"
-import type { CharacterSheet, CharacterSpell } from "../src/types/characterSheet.ts"
+import type { CharacterFeature, CharacterSheet, CharacterSpell } from "../src/types/characterSheet.ts"
 
 function sheet(overrides: Partial<CharacterSheet> = {}): CharacterSheet {
   return {
@@ -28,6 +28,15 @@ function spell(overrides: Partial<CharacterSpell> = {}): CharacterSpell {
     school: "Evocation", casting_time: "1 action", spell_range: "120 ft", duration: "Instant",
     components: "V, S", concentration: false, ritual: false, prepared: true,
     cast_mode: "slot", slot_level: 1, description: "", source: "Cleric", sort_order: 0,
+    created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+    ...overrides,
+  }
+}
+
+function feature(overrides: Partial<CharacterFeature> = {}): CharacterFeature {
+  return {
+    id: "f1", character_id: "c1", kind: "feature", name: "Field Test",
+    description: "Visible unless its source is suppressed.", sort_order: 0,
     created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
     ...overrides,
   }
@@ -96,4 +105,30 @@ test("a slot spell with no configured capacity remains unavailable instead of be
   assert.equal(method.resourceOptions.length, 1)
   assert.equal(method.resourceOptions[0]!.available, false)
   assert.equal(method.available, false)
+})
+
+test("explicit integration snapshot feeds CE without registry ordering", () => {
+  const visible = resolveLegacyCharacterEngineView({
+    character: { id: "c1", name: "Snapshot", level: 4 },
+    sheet: sheet({ spellcasting_enabled: false, spell_slots: {} }),
+    spells: [],
+    features: [feature()],
+    inventory: [],
+    resourceStates: {},
+    templateBundles: [],
+    suppressedSourceIds: new Set<string>(),
+  })
+  assert.equal(visible.contract.capabilities.features.some((entry) => entry.key === "f1"), true)
+
+  const suppressed = resolveLegacyCharacterEngineView({
+    character: { id: "c1", name: "Snapshot", level: 4 },
+    sheet: sheet({ spellcasting_enabled: false, spell_slots: {} }),
+    spells: [],
+    features: [feature()],
+    inventory: [],
+    resourceStates: {},
+    templateBundles: [],
+    suppressedSourceIds: new Set(["legacy-feature:f1"]),
+  })
+  assert.equal(suppressed.contract.capabilities.features.some((entry) => entry.key === "f1"), false)
 })
