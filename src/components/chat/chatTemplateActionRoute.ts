@@ -1,9 +1,9 @@
 import type {
   CharacterSource,
   ResolvedAction,
-  ResolvedSourceRef,
   ResolvedSpellAccess,
 } from "../../character-engine/index.ts"
+import type { ResolvedSourceRef } from "../../character-engine/types.ts"
 
 const TEMPLATE_SOURCE_TYPES = new Set(["class_template", "subclass_template"])
 const MECHANIC_MARKER = ":mechanic:"
