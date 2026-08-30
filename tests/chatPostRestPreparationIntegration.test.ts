@@ -15,13 +15,16 @@ test("CE runtime reads the server-authoritative post-rest state instead of inven
   assert.match(runtimeSource, /preparationRecords: \(preparationRecordsResult\.data \|\| \[\]\)/)
 })
 
-test("main chat mounts long-rest preparation for the selected character and refreshes CE after a choice", () => {
-  assert.match(chatRoom, /useChatPreparation\(actors\.selected\?\.character \|\| null\)/)
+test("personal chat mounts long-rest preparation for its room character instead of the current speaker", () => {
+  assert.match(chatRoom, /if \(roomType === "character"\) return roomCharacter/)
+  assert.match(chatRoom, /return actors\.selected\?\.character \|\| null/)
+  assert.match(chatRoom, /useChatPreparation\(preparationCharacter\)/)
   assert.match(chatRoom, /<ChatPreparationCard/)
-  assert.match(chatRoom, /characterId=\{actors\.selected\.characterId\}/)
+  assert.match(chatRoom, /characterId=\{preparationCharacter\.id\}/)
   assert.match(chatRoom, /model=\{preparation\.model\}/)
   assert.match(chatRoom, /spells=\{preparation\.spells\}/)
-  assert.match(chatRoom, /preparation\.refresh\(\); resolved\.refresh\(\)/)
+  assert.match(chatRoom, /preparationRuntime\.refresh\(\)/)
+  assert.match(chatRoom, /resolved\.refresh\(\)/)
   assert.match(chatRoom, /preparationGeneration/)
 })
 
