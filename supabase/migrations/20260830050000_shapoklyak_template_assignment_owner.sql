@@ -1,3 +1,5 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
+-- Character assignment ownership only; class mechanics and presentation content are unchanged.
 begin;
 
 -- Concrete template assignments belong to the character/entity owner (Shapoklyak).
