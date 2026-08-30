@@ -66,6 +66,12 @@ function isGm(command: CheburashkaCommand) {
   return command.context.authority === "gm" || command.context.authority === "system"
 }
 
+function playerSourceCharacterId(command: CheburashkaCommand): string | null {
+  if (command.kind === "inventory.transfer") return command.fromCharacterId
+  if ("characterId" in command) return command.characterId
+  return null
+}
+
 export class CheburashkaEngine {
   private readonly storage: CheburashkaStorage
   private readonly dependencies: CheburashkaDependencies
@@ -92,6 +98,27 @@ export class CheburashkaEngine {
     return createInventoryMechanicalProjection(characterId, await this.listCharacterItems(characterId))
   }
 
+  private async assertPlayerItemAccess(command: CheburashkaCommand): Promise<void> {
+    if (command.context.authority !== "player") return
+
+    const sourceCharacterId = playerSourceCharacterId(command)
+    if (!sourceCharacterId || command.context.actorCharacterId !== sourceCharacterId) {
+      throw new EngineCommandError(
+        "inventory.player_forbidden",
+        "Player inventory commands are limited to the active actor character",
+      )
+    }
+
+    if (!("itemId" in command) || typeof command.itemId !== "string") return
+    const item = await this.storage.getItem(command.itemId)
+    if (!item || item.character_id !== sourceCharacterId) {
+      throw new EngineCommandError(
+        "inventory.player_forbidden",
+        "Player can only mutate an inventory item held by the active actor character",
+      )
+    }
+  }
+
   async execute(command: CheburashkaCommand): Promise<EngineCommandResult<InventoryMutation>> {
     if (["inventory.create", "inventory.update", "inventory.remove"].includes(command.kind) && !isGm(command)) {
       throw new EngineCommandError("inventory.gm_required", "Only GM authority can establish inventory contents")
@@ -103,12 +130,7 @@ export class CheburashkaEngine {
       }
     }
 
-    if (command.context.authority === "player" && command.kind === "inventory.set_equipped") {
-      const item = await this.storage.getItem(command.itemId)
-      if (!item || item.character_id !== command.characterId) {
-        throw new EngineCommandError("inventory.player_forbidden", "Player can equip only an item owned by the selected character")
-      }
-    }
+    await this.assertPlayerItemAccess(command)
 
     const mutation = await this.storage.execute(command)
     const requiresResolution = changed(mutation)
