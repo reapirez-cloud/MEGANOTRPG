@@ -1,5 +1,7 @@
 # Oracle Engine Contract
 
+> Status: **CLOSED — STABLE BOUNDARY ON `dev`**
+
 ## Purpose
 
 Oracle is the GM's imperative control plane: the GM sees the world through the GM Cabinet and changes it through Oracle.
