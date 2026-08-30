@@ -3,6 +3,7 @@ import fs from "node:fs"
 import test from "node:test"
 
 const sql = fs.readFileSync("supabase/migrations/20260830020000_class_chat_template_spell_runtime.sql", "utf8")
+const receiptSql = fs.readFileSync("supabase/migrations/20260830155543_gena_template_command_receipts.sql", "utf8")
 const chatHook = fs.readFileSync("src/hooks/useChatMessages.ts", "utf8")
 const genaGateway = fs.readFileSync("src/game-engine/supabase.ts", "utf8")
 const chatRoom = fs.readFileSync("src/pages/ChatRoom.tsx", "utf8")
@@ -38,9 +39,13 @@ test("template spell chat wrapper validates and spends before posting", () => {
   assert.match(wrapper, /'\[\]'::jsonb/)
 })
 
-test("Gena gateway and ChatRoom use authoritative class spell RPC", () => {
-  assert.match(genaGateway, /send_chat_template_spell_v1/)
+test("Gena gateway and ChatRoom use receipt-aware authoritative class spell RPC", () => {
+  assert.match(genaGateway, /send_chat_template_spell_v2/)
+  assert.doesNotMatch(genaGateway, /send_chat_template_spell_v1/)
+  assert.match(genaGateway, /p_command_id:\s*commandId/)
   assert.match(genaGateway, /p_method_key:\s*command\.methodKey/)
+  assert.match(receiptSql, /send_chat_template_spell_v2/)
+  assert.match(receiptSql, /engine_command_receipts/)
   assert.match(chatHook, /genaSession\.sendTemplateSpell/)
   assert.match(chatRoom, /templateMechanicIdForSpellAccess\(access\)/)
   assert.match(chatRoom, /chat\.sendTemplateSpell/)
