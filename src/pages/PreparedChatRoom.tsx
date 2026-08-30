@@ -22,7 +22,7 @@ export default function PreparedChatRoom(props: Props) {
         roomId={props.roomId}
         characterId={character.id}
         model={preparation.model}
-        onOpenCharacter={() => props.onOpenCharacter(character.id)}
+        spells={preparation.spells}
         onChanged={preparation.refresh}
       />
       {preparation.error && <div className="prepared-chat-room__error">{preparation.error}</div>}
