@@ -24,12 +24,16 @@ function controlSource(characterId: string): CharacterSource {
 }
 
 /**
- * Converts persistent GM OFF flags into CE-native universal suppressions.
- * These controls are deliberately separate from parsed class mechanics.
+ * Converts an explicit persistent GM OFF snapshot into CE-native universal
+ * suppressions. Application integrations should prefer this pure path so a CE
+ * result never depends on some unrelated hook having populated the registry.
  */
-export function characterSourceSuppressionContributions(characterId: string): CharacterContribution[] {
+export function sourceSuppressionContributions(
+  characterId: string,
+  sourceIds: Iterable<string>,
+): CharacterContribution[] {
   const source = controlSource(characterId)
-  return [...registeredCharacterSourceSuppressions(characterId)]
+  return [...sourceIds]
     .sort()
     .map((sourceId): SuppressionContribution => ({
       id: `${source.id}:${sourceId}`,
@@ -38,4 +42,12 @@ export function characterSourceSuppressionContributions(characterId: string): Ch
       selector: { kind: "source", sourceId, includeDescendants: true },
       source,
     }))
+}
+
+/**
+ * Legacy registry-backed bridge. New integrations should pass their loaded
+ * suppression snapshot to sourceSuppressionContributions() explicitly.
+ */
+export function characterSourceSuppressionContributions(characterId: string): CharacterContribution[] {
+  return sourceSuppressionContributions(characterId, registeredCharacterSourceSuppressions(characterId))
 }
