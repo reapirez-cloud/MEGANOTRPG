@@ -110,7 +110,11 @@ test("GM UI exposes explicit class binding and linked subclass controls", () => 
   assert.match(frame, /class-binding-node--class/)
   assert.match(frame, /class-binding-node--subclass/)
   assert.match(frame, /Родительский класс · уровень приходит отсюда/)
-  assert.match(frame, /remove_character_template_assignment_v2/)
+  assert.match(frame, /oracle\.characters\.assignTemplate/)
+  assert.match(frame, /oracle\.characters\.removeTemplateAssignment/)
+  assert.doesNotMatch(frame, /assign_character_template_v2/)
+  assert.doesNotMatch(frame, /apply_class_template_sheet_profile/)
+  assert.doesNotMatch(frame, /remove_character_template_assignment_v2/)
   assert.doesNotMatch(frame, /updateCharacter\(/)
 })
 
