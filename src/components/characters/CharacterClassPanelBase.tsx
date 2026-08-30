@@ -7,6 +7,9 @@ import type {
   ResolvedResource,
   ResolvedSpellResourceOption,
 } from "../../character-engine/index.ts"
+import { useCharacters } from "../../context/CharacterContext.tsx"
+import { useCharacterSourceSuppressions } from "../../hooks/useCharacterSourceSuppressions.ts"
+import { useLongPressItem } from "../../hooks/useLongPressItem.ts"
 import {
   runResolvedTemplateResourceAction,
   spendResolvedClassSpellOption,
@@ -18,6 +21,11 @@ import {
   type PresentedClassSpell,
   type PresentedTemplateMechanics,
 } from "../../rule-templates/classPresentation.ts"
+import {
+  characterTemplateSourceResolution,
+} from "../../rule-templates/registry.ts"
+import type { TemplateSourceNode } from "../../rule-templates/resolver.ts"
+import ContextActionSheet, { type ContextAction } from "../common/ContextActionSheet.tsx"
 import "./CharacterClassPanel.css"
 
 type Props = {
@@ -37,6 +45,17 @@ type SpellCardProps = {
   sourceKind: "class" | "subclass"
   busy: boolean
   onSpend: (option: ResolvedSpellResourceOption) => void
+}
+
+type SourceRef = { source: { id: string; name?: string } }
+
+type MechanicMenuTarget = {
+  sourceId: string | null
+  label: string
+  type: string
+  description: string
+  sourceLabel: string
+  suppressed: boolean
 }
 
 const mechanicTypeLabel: Record<ClassMechanicEntryType, string> = {
@@ -245,19 +264,74 @@ function capabilityGroups(mechanics: PresentedTemplateMechanics) {
   ].filter((group) => group.values.length > 0)
 }
 
+function sourceIdFrom(
+  mechanics: PresentedTemplateMechanics,
+  sources: SourceRef[],
+  nodes: ReadonlyMap<string, TemplateSourceNode>,
+): string | null {
+  const prefix = `template:${mechanics.kind}:${mechanics.templateId}:`
+  return sources.find((entry) => entry.source.id.startsWith(prefix) && nodes.has(entry.source.id))?.source.id
+    || sources.find((entry) => nodes.has(entry.source.id))?.source.id
+    || null
+}
+
+function targetFromSources(
+  mechanics: PresentedTemplateMechanics,
+  sources: SourceRef[],
+  nodes: ReadonlyMap<string, TemplateSourceNode>,
+  suppressedIds: ReadonlySet<string>,
+  label: string,
+  type: string,
+  description: string,
+): MechanicMenuTarget {
+  const sourceId = sourceIdFrom(mechanics, sources, nodes)
+  const sourceLabel = sourceId ? nodes.get(sourceId)?.name || sources.find((entry) => entry.source.id === sourceId)?.source.name || "Классовая способность" : "Классовая способность"
+  return {
+    sourceId,
+    label,
+    type,
+    description,
+    sourceLabel,
+    suppressed: Boolean(sourceId && suppressedIds.has(sourceId)),
+  }
+}
+
+function disabledTarget(node: TemplateSourceNode): MechanicMenuTarget {
+  return {
+    sourceId: node.id,
+    label: node.name,
+    type: node.nodeKind === "template" ? (node.templateKind === "class" ? "Класс" : "Подкласс") : "Классовая способность",
+    description: node.nodeKind === "template"
+      ? "Весь источник отключён ведущим. Character Engine не применяет его механику и дочерние способности."
+      : `Способность ${node.unlockLevel > 1 ? `${node.unlockLevel} уровня` : "класса"} отключена ведущим. Character Engine полностью исключает её источник из расчёта персонажа.`,
+    sourceLabel: node.name,
+    suppressed: true,
+  }
+}
+
 function TemplateBlock({
   mechanics,
   busyId,
+  nodes,
+  suppressedIds,
+  disabledNodes,
+  onMenu,
   onUseAction,
   onSpendSpell,
 }: {
   mechanics: PresentedTemplateMechanics
   busyId: string
+  nodes: ReadonlyMap<string, TemplateSourceNode>
+  suppressedIds: ReadonlySet<string>
+  disabledNodes: TemplateSourceNode[]
+  onMenu: (target: MechanicMenuTarget) => void
   onUseAction: (action: ResolvedAction, optionKey?: string) => void
   onSpendSpell: (entry: PresentedClassSpell, option: ResolvedSpellResourceOption) => void
 }) {
   const capabilities = capabilityGroups(mechanics)
-  const hasContent = mechanics.entries.length > 0
+  const bindMenu = useLongPressItem<MechanicMenuTarget>(onMenu)
+  const hasContent = mechanics.entries.length > 0 || disabledNodes.length > 0
+
   return (
     <section className={`class-panel__source class-panel__source--${mechanics.kind}`}>
       <header className="class-panel__source-head">
@@ -274,13 +348,19 @@ function TemplateBlock({
         <div className="class-panel__group">
           <div className="class-panel__group-title"><span>Ресурсы</span><small>{mechanics.resources.length}</small></div>
           <div className="class-panel__resources">
-            {mechanics.resources.map((resource) => (
-              <div className="class-panel__resource" key={resource.stateKey}>
-                <small className="class-panel__type">Ресурс</small>
-                <span>{resourceLabel(resource)}</span>
-                <strong>{resource.current}<em> / {resource.max.value}</em></strong>
-              </div>
-            ))}
+            {mechanics.resources.map((resource) => {
+              const label = resourceLabel(resource)
+              const target = targetFromSources(mechanics, resource.sources, nodes, suppressedIds, label, "Ресурс", `Сейчас: ${resource.current} из ${resource.max.value}. Источник ресурса участвует в расчёте Character Engine.`)
+              return (
+                <div className="class-panel__pressable" key={resource.stateKey} {...bindMenu(target)}>
+                  <div className="class-panel__resource">
+                    <small className="class-panel__type">Ресурс</small>
+                    <span>{label}</span>
+                    <strong>{resource.current}<em> / {resource.max.value}</em></strong>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -288,16 +368,21 @@ function TemplateBlock({
       {mechanics.actions.length > 0 && (
         <div className="class-panel__group">
           <div className="class-panel__group-title"><span>Особые действия</span><small>{mechanics.actions.length}</small></div>
-          <p className="class-panel__hint">CE определяет экономику действия и доступность. Если у способности есть конечный ресурс, кнопка «Использовать» списывает его; условия сцены и внешний эффект разрешаются по точному правилу.</p>
           <div className="class-panel__stack">
-            {mechanics.actions.map((action) => (
-              <ClassActionCard
-                key={action.stateKey}
-                action={action}
-                busy={busyId === `action:${action.stateKey}`}
-                onUse={onUseAction}
-              />
-            ))}
+            {mechanics.actions.map((action) => {
+              const cost = actionCost(action)
+              const label = action.label || action.key
+              const target = targetFromSources(mechanics, action.sources, nodes, suppressedIds, label, "Особое действие", `${economyLabel(action.economy)}${cost ? ` · ${cost}` : ""}. ${action.available ? "Сейчас доступно." : "Сейчас условия или ресурс не позволяют использовать действие."}`)
+              return (
+                <div className="class-panel__pressable" key={action.stateKey} {...bindMenu(target)}>
+                  <ClassActionCard
+                    action={action}
+                    busy={busyId === `action:${action.stateKey}`}
+                    onUse={onUseAction}
+                  />
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -307,17 +392,28 @@ function TemplateBlock({
           <div className="class-panel__group-title">
             <span>{mechanics.kind === "class" ? "Заклинания класса" : "Заклинания подкласса"}</span><small>{mechanics.spells.length}</small>
           </div>
-          <p className="class-panel__hint">Это доступ, выданный именно классом или подклассом. Он приходит автоматически с уровнем источника и не смешивается с вручную изученными заклинаниями.</p>
           <div className="class-panel__stack">
-            {mechanics.spells.map((entry) => (
-              <ClassSpellCard
-                key={`${entry.spell.key}:${entry.access.key}`}
-                entry={entry}
-                sourceKind={mechanics.kind}
-                busy={busyId === `spell:${entry.spell.key}:${entry.access.key}`}
-                onSpend={(option) => onSpendSpell(entry, option)}
-              />
-            ))}
+            {mechanics.spells.map((entry) => {
+              const target = targetFromSources(
+                mechanics,
+                entry.access.sources,
+                nodes,
+                suppressedIds,
+                entry.spell.identity.name,
+                mechanics.kind === "class" ? "Заклинание класса" : "Заклинание подкласса",
+                `${entry.spell.identity.level === 0 ? "Заговор" : `${entry.spell.identity.level} уровень`}. Доступ выдан именно этим ${mechanics.kind === "class" ? "классом" : "подклассом"}.`,
+              )
+              return (
+                <div className="class-panel__pressable" key={`${entry.spell.key}:${entry.access.key}`} {...bindMenu(target)}>
+                  <ClassSpellCard
+                    entry={entry}
+                    sourceKind={mechanics.kind}
+                    busy={busyId === `spell:${entry.spell.key}:${entry.access.key}`}
+                    onSpend={(option) => onSpendSpell(entry, option)}
+                  />
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -326,14 +422,19 @@ function TemplateBlock({
         <div className="class-panel__group">
           <div className="class-panel__group-title"><span>Постоянные эффекты и владения</span><small>{capabilities.reduce((sum, group) => sum + group.values.length, 0)}</small></div>
           <div className="class-panel__features">
-            {capabilities.flatMap((group) => group.values.map((grant) => (
-              <article key={`${group.type}:${grant.key}:${grant.variantKey}`}>
-                <span className="class-panel__type">{mechanicTypeLabel[group.type]}</span>
-                <strong>{grantLabel(grant)}</strong>
-                {grantDescription(grant) && <p>{grantDescription(grant)}</p>}
-                <small>{group.label} · CE</small>
-              </article>
-            )))}
+            {capabilities.flatMap((group) => group.values.map((grant) => {
+              const label = grantLabel(grant)
+              const description = grantDescription(grant) || `${group.label}. Постоянная механика Character Engine.`
+              const target = targetFromSources(mechanics, grant.sources, nodes, suppressedIds, label, mechanicTypeLabel[group.type], description)
+              return (
+                <article className="class-panel__pressable-card" key={`${group.type}:${grant.key}:${grant.variantKey}`} {...bindMenu(target)}>
+                  <span className="class-panel__type">{mechanicTypeLabel[group.type]}</span>
+                  <strong>{label}</strong>
+                  {grantDescription(grant) && <p>{grantDescription(grant)}</p>}
+                  <small>{group.label} · CE</small>
+                </article>
+              )
+            }))}
           </div>
         </div>
       )}
@@ -344,12 +445,34 @@ function TemplateBlock({
           <div className="class-panel__features">
             {mechanics.features.map((feature) => {
               const type = featureType(mechanics, feature)
+              const label = grantLabel(feature)
+              const description = grantDescription(feature) || featureIntegration(mechanics, feature)
+              const target = targetFromSources(mechanics, feature.sources, nodes, suppressedIds, label, mechanicTypeLabel[type], description)
               return (
-                <article key={`${feature.target}:${feature.key}:${feature.variantKey}`}>
+                <article className="class-panel__pressable-card" key={`${feature.target}:${feature.key}:${feature.variantKey}`} {...bindMenu(target)}>
                   <span className={`class-panel__type ${type === "reference_rule" ? "is-reference" : ""}`}>{mechanicTypeLabel[type]}</span>
-                  <strong>{grantLabel(feature)}</strong>
+                  <strong>{label}</strong>
                   {grantDescription(feature) && <p>{grantDescription(feature)}</p>}
                   <small>{featureIntegration(mechanics, feature)} · {feature.sources[0]?.source.name || "Классовая механика"}</small>
+                </article>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {disabledNodes.length > 0 && (
+        <div className="class-panel__group class-panel__group--disabled">
+          <div className="class-panel__group-title"><span>Отключено ведущим</span><small>{disabledNodes.length}</small></div>
+          <p className="class-panel__hint">Эти источники не попадают в расчёт CE и не показываются игроку среди активных умений. Удерживай карточку, чтобы вернуть способность.</p>
+          <div className="class-panel__disabled-list">
+            {disabledNodes.map((node) => {
+              const target = disabledTarget(node)
+              return (
+                <article className="class-panel__disabled-card" key={node.id} {...bindMenu(target)}>
+                  <span className="class-panel__disabled-icon" aria-hidden="true">⊘</span>
+                  <span><small>{node.nodeKind === "template" ? "Источник целиком" : `Открывается с ${node.unlockLevel} ур.`}</small><strong>{node.name}</strong></span>
+                  <b>Заглушено</b>
                 </article>
               )
             })}
@@ -361,9 +484,19 @@ function TemplateBlock({
 }
 
 export default function CharacterClassPanel({ characterId, contract, onOpenReference }: Props) {
+  const { canManage } = useCharacters()
+  const suppressions = useCharacterSourceSuppressions(characterId)
   const packages = presentClassPackages(contract, registeredCharacterClassPackages(characterId))
+  const sourceResolution = characterTemplateSourceResolution(characterId, contract.level)
+  const sourceNodes = useMemo(
+    () => new Map(sourceResolution.sources.map((node) => [node.id, node])),
+    [sourceResolution.sources],
+  )
   const [busyId, setBusyId] = useState("")
   const [runtimeError, setRuntimeError] = useState("")
+  const [menuTarget, setMenuTarget] = useState<MechanicMenuTarget | null>(null)
+  const [inspectTarget, setInspectTarget] = useState<MechanicMenuTarget | null>(null)
+  const [suppressionBusy, setSuppressionBusy] = useState("")
 
   async function runAction(action: ResolvedAction, optionKey?: string) {
     if (busyId) return
@@ -383,27 +516,117 @@ export default function CharacterClassPanel({ characterId, contract, onOpenRefer
     if (!result.ok) setRuntimeError(result.error)
   }
 
+  async function setSourceSuppressed(target: MechanicMenuTarget, suppressed: boolean) {
+    if (!target.sourceId || suppressionBusy) return
+    setSuppressionBusy(target.sourceId)
+    setRuntimeError("")
+    const result = await suppressions.setSuppressed(target.sourceId, suppressed)
+    setSuppressionBusy("")
+    if (!result.ok) setRuntimeError(result.error || "Не удалось изменить состояние способности.")
+  }
+
+  function menuActions(target: MechanicMenuTarget): ContextAction[] {
+    return [
+      {
+        id: "view",
+        label: "Просмотр",
+        detail: "Описание и состояние механики",
+        icon: "⌕",
+        onSelect: () => setInspectTarget(target),
+      },
+      ...(canManage && target.sourceId
+        ? [{
+            id: target.suppressed ? "enable" : "disable",
+            label: target.suppressed ? "Включить" : "Выключить (заглушить)",
+            detail: target.suppressed
+              ? "Вернуть источник в расчёт Character Engine"
+              : "CE перестанет учитывать всю механику этого источника",
+            icon: target.suppressed ? "↺" : "⊘",
+            danger: !target.suppressed,
+            disabled: suppressionBusy === target.sourceId,
+            onSelect: () => setSourceSuppressed(target, !target.suppressed),
+          } satisfies ContextAction]
+        : []),
+    ]
+  }
+
+  function disabledFor(mechanics: PresentedTemplateMechanics): TemplateSourceNode[] {
+    if (!canManage) return []
+    return sourceResolution.sources.filter((node) =>
+      node.templateKind === mechanics.kind &&
+      node.templateId === mechanics.templateId &&
+      suppressions.sourceIds.has(node.id),
+    )
+  }
+
   return (
     <section className="character-tab-section class-panel">
       <header className="class-panel__hero">
         <div>
           <span>Character Engine</span>
           <h2>Класс персонажа</h2>
-          <p>Активные правила текущего уровня. Каждая запись имеет машинный тип: особое действие, заклинание класса, ресурс, пассивная механика или постоянный эффект.</p>
+          <p>Активные правила текущего уровня. Удерживай карточку способности для просмотра{canManage ? " или временного отключения её источника" : ""}.</p>
         </div>
         {onOpenReference && <button type="button" onClick={onOpenReference}>Справочник <span>›</span></button>}
       </header>
 
-      {runtimeError && <div className="auth-error class-panel__error">{runtimeError}</div>}
+      {(runtimeError || suppressions.error) && <div className="auth-error class-panel__error">{runtimeError || suppressions.error}</div>}
 
       {packages.map((entry) => (
         <div className="class-panel__package" key={entry.classMechanics.templateId}>
-          <TemplateBlock mechanics={entry.classMechanics} busyId={busyId} onUseAction={(action, option) => void runAction(action, option)} onSpendSpell={(spell, option) => void spendSpell(spell, option)} />
-          {entry.subclassMechanics && <TemplateBlock mechanics={entry.subclassMechanics} busyId={busyId} onUseAction={(action, option) => void runAction(action, option)} onSpendSpell={(spell, option) => void spendSpell(spell, option)} />}
+          <TemplateBlock
+            mechanics={entry.classMechanics}
+            busyId={busyId}
+            nodes={sourceNodes}
+            suppressedIds={suppressions.sourceIds}
+            disabledNodes={disabledFor(entry.classMechanics)}
+            onMenu={setMenuTarget}
+            onUseAction={(action, option) => void runAction(action, option)}
+            onSpendSpell={(spell, option) => void spendSpell(spell, option)}
+          />
+          {entry.subclassMechanics && (
+            <TemplateBlock
+              mechanics={entry.subclassMechanics}
+              busyId={busyId}
+              nodes={sourceNodes}
+              suppressedIds={suppressions.sourceIds}
+              disabledNodes={disabledFor(entry.subclassMechanics)}
+              onMenu={setMenuTarget}
+              onUseAction={(action, option) => void runAction(action, option)}
+              onSpendSpell={(spell, option) => void spendSpell(spell, option)}
+            />
+          )}
         </div>
       ))}
 
       {packages.length === 0 && <div className="class-panel__empty class-panel__empty--large">Класс ещё не привязан к Character Engine.</div>}
+
+      {menuTarget && (
+        <ContextActionSheet
+          title={menuTarget.label}
+          subtitle={`${menuTarget.type} · ${menuTarget.suppressed ? "отключено ведущим" : "активно"}`}
+          actions={menuActions(menuTarget)}
+          onClose={() => setMenuTarget(null)}
+        />
+      )}
+
+      {inspectTarget && (
+        <div className="sheet-backdrop" onMouseDown={() => setInspectTarget(null)}>
+          <section className="bottom-sheet class-panel__inspect" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="sheet-handle" />
+            <header>
+              <div><small>{inspectTarget.type}</small><h3>{inspectTarget.label}</h3></div>
+              <button type="button" onClick={() => setInspectTarget(null)} aria-label="Закрыть">×</button>
+            </header>
+            <p>{inspectTarget.description || "Для этой механики нет отдельного текстового описания."}</p>
+            <div className={`class-panel__inspect-state ${inspectTarget.suppressed ? "is-suppressed" : ""}`}>
+              <span>{inspectTarget.suppressed ? "⊘" : "◆"}</span>
+              <div><small>Источник</small><strong>{inspectTarget.sourceLabel}</strong><p>{inspectTarget.suppressed ? "Не участвует в расчёте Character Engine." : "Участвует в расчёте Character Engine."}</p></div>
+            </div>
+            {onOpenReference && <button className="class-panel__inspect-reference" type="button" onClick={() => { setInspectTarget(null); onOpenReference() }}>Открыть справочник</button>}
+          </section>
+        </div>
+      )}
     </section>
   )
 }
