@@ -12,6 +12,9 @@ export type ChatActor = {
   kind: "role" | "character"
 }
 
+type ChatActorSelectionDetail = { storageKey: string; selectedKey: string }
+const CHAT_ACTOR_SELECTION_EVENT = "meganotrpg:chat-actor-selection"
+
 export function useChatActors() {
   const { user, profile } = useAuth()
   const { campaignId, characters, activeCharacter, canManage, isOwner, isGm } = useCharacters()
@@ -67,6 +70,23 @@ export function useChatActors() {
     return () => { cancelled = true }
   }, [activeCharacter?.id, campaignId, canManage, storageKey])
 
+  useEffect(() => {
+    const onSelection = (event: Event) => {
+      const detail = (event as CustomEvent<ChatActorSelectionDetail>).detail
+      if (!detail || detail.storageKey !== storageKey) return
+      setSelectedKey(detail.selectedKey)
+    }
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === storageKey) setSelectedKey(event.newValue || "")
+    }
+    window.addEventListener(CHAT_ACTOR_SELECTION_EVENT, onSelection)
+    window.addEventListener("storage", onStorage)
+    return () => {
+      window.removeEventListener(CHAT_ACTOR_SELECTION_EVENT, onSelection)
+      window.removeEventListener("storage", onStorage)
+    }
+  }, [storageKey])
+
   const selected = actors.find((actor) => actor.key === selectedKey)
     || actors.find((actor) => actor.characterId === activeCharacter?.id)
     || actors[0]
@@ -75,6 +95,9 @@ export function useChatActors() {
   const selectActor = useCallback((actor: ChatActor) => {
     setSelectedKey(actor.key)
     window.localStorage.setItem(storageKey, actor.key)
+    window.dispatchEvent(new CustomEvent<ChatActorSelectionDetail>(CHAT_ACTOR_SELECTION_EVENT, {
+      detail: { storageKey, selectedKey: actor.key },
+    }))
   }, [storageKey])
 
   const setBinding = useCallback(async (characterId: string, enabled: boolean) => {
