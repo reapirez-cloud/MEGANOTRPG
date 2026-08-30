@@ -1,9 +1,11 @@
 import type { EngineCommandContext, EngineCommandResult } from "../engine-contracts/index.ts"
 import type {
   CharacterEntityInput,
+  CharacterSheetPatch,
   CharacterTemplateAssignmentInput,
   EntityLifeState,
   EntityMutation,
+  EntityRecoveryTrigger,
   EntityVisibilityMode,
 } from "../entity-engine/index.ts"
 import type { InventoryMutation } from "../inventory-engine/index.ts"
@@ -13,7 +15,8 @@ import type {
   ChasovoyMutation,
   ChasovoyRevisionInput,
 } from "../reference-engine/index.ts"
-import type { EquipmentSlot, InventoryInput } from "../types/characterSheet.ts"
+import type { ResourceSyncInput } from "../types/characterResources.ts"
+import type { EquipmentSlot, FeatureInput, InventoryInput, SpellInput } from "../types/characterSheet.ts"
 import type { DayPeriod } from "../world-state/types.ts"
 
 /** Oracle is the GM's imperative control plane. Every method targets one explicit owner directly. */
@@ -29,10 +32,26 @@ export type OracleCharacterCommands = {
   update(context: OracleContext, characterId: string, input: CharacterEntityInput): OracleEntityResult
   delete(context: OracleContext, characterId: string): OracleEntityResult
   setActive(context: OracleContext, userId: string, characterId: string | null): OracleEntityResult
+  setAvatar(context: OracleContext, characterId: string, avatarUrl: string | null): OracleEntityResult
   setLifeState(context: OracleContext, characterId: string, lifeState: EntityLifeState): OracleEntityResult
   setVisibility(context: OracleContext, characterId: string, visibilityMode: EntityVisibilityMode): OracleEntityResult
   revealNpc(context: OracleContext, viewerCharacterId: string, npcCharacterId: string, discovered?: boolean): OracleEntityResult
   setHp(context: OracleContext, characterId: string, currentHp: number, options?: { maxHp?: number; tempHp?: number }): OracleEntityResult
+  updateSheet(context: OracleContext, characterId: string, input: CharacterSheetPatch): OracleEntityResult
+  setSpellcastingEnabled(context: OracleContext, characterId: string, enabled: boolean): OracleEntityResult
+  createSpell(context: OracleContext, characterId: string, input: SpellInput): OracleEntityResult
+  updateSpell(context: OracleContext, characterId: string, spellId: string, input: SpellInput): OracleEntityResult
+  deleteSpell(context: OracleContext, characterId: string, spellId: string): OracleEntityResult
+  createSpellOption(context: OracleContext, characterId: string, input: SpellInput): OracleEntityResult
+  updateSpellOption(context: OracleContext, characterId: string, optionId: string, input: SpellInput): OracleEntityResult
+  deleteSpellOption(context: OracleContext, characterId: string, optionId: string): OracleEntityResult
+  learnSpell(context: OracleContext, characterId: string, optionId: string): OracleEntityResult
+  setSpellPrepared(context: OracleContext, characterId: string, spellId: string, prepared: boolean): OracleEntityResult
+  createFeature(context: OracleContext, characterId: string, input: FeatureInput): OracleEntityResult
+  updateFeature(context: OracleContext, characterId: string, featureId: string, input: FeatureInput): OracleEntityResult
+  deleteFeature(context: OracleContext, characterId: string, featureId: string): OracleEntityResult
+  syncResources(context: OracleContext, characterId: string, resources: ResourceSyncInput[]): OracleEntityResult
+  recover(context: OracleContext, characterId: string, trigger: EntityRecoveryTrigger): OracleEntityResult
   assignTemplate(context: OracleContext, characterId: string, input: CharacterTemplateAssignmentInput): OracleEntityResult
   removeTemplateAssignment(context: OracleContext, characterId: string, assignmentId: string): OracleEntityResult
   setSourceSuppressed(context: OracleContext, characterId: string, sourceId: string, suppressed: boolean): OracleEntityResult
