@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
 import { createEngineCommandContext } from "../engine-contracts/index.ts"
-import { gena } from "../game-engine/runtime.ts"
 import { larisa } from "../location-engine/runtime.ts"
 import { supabase } from "../lib/supabase"
+import { oracle } from "../oracle-engine/runtime.ts"
 import { resolveNearbyCharacters, resolveOtherTimeCharacters, resolveScenesAtPosition } from "../world-state/resolver.ts"
 import type { CharacterWorldState, DayPeriod, LocationSummary, SceneWorldState } from "../world-state/types.ts"
 
@@ -63,38 +63,46 @@ export function useWorldState(subjectCharacterId?: string | null) {
   const nearby = useMemo(() => subjectId ? resolveNearbyCharacters(subjectId, states, presenceCharacters) : [], [presenceCharacters, states, subjectId])
   const otherTimes = useMemo(() => subjectId ? resolveOtherTimeCharacters(subjectId, states, presenceCharacters) : [], [presenceCharacters, states, subjectId])
   const activeScenes = useMemo(() => resolveScenesAtPosition(currentState, scenes), [currentState, scenes])
+  const gmContext = useCallback((roomId?: string) => createEngineCommandContext({
+    campaignId,
+    requestedBy: user.id,
+    authority: "gm",
+    ...(roomId ? { roomId } : {}),
+  }), [campaignId, user.id])
 
   const setCharacterPosition = useCallback(async (characterId: string, locationId: string | null, campaignDay: number, dayPeriod: DayPeriod) => {
     if (!canManage) return { ok: false, error: "Только ГМ может менять позицию." }
     try {
-      await gena.execute({ kind: "world.move_character", context: createEngineCommandContext({ campaignId, requestedBy: user.id, authority: "gm", actorCharacterId: characterId }), characterId, locationId, campaignDay, dayPeriod })
+      await oracle.world.moveCharacter(gmContext(), characterId, locationId, campaignDay, dayPeriod)
     } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось переместить персонажа." } }
     await load(); return { ok: true }
-  }, [campaignId, canManage, load, user.id])
+  }, [canManage, gmContext, load])
 
   const setScenePosition = useCallback(async (roomId: string, locationId: string | null, campaignDay: number, dayPeriod: DayPeriod) => {
+    if (!canManage) return { ok: false, error: "Только ГМ может менять позицию сцены." }
     try {
-      await gena.execute({ kind: "world.set_scene_position", context: createEngineCommandContext({ campaignId, requestedBy: user.id, authority: canManage ? "gm" : "player", roomId }), roomId, locationId, campaignDay, dayPeriod })
+      await oracle.world.setScenePosition(gmContext(roomId), roomId, locationId, campaignDay, dayPeriod)
     } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось изменить сцену." } }
     await load(); return { ok: true }
-  }, [campaignId, canManage, load, user.id])
+  }, [canManage, gmContext, load])
 
   const setParticipants = useCallback(async (roomId: string, characterIds: string[]) => {
+    if (!canManage) return { ok: false, error: "Только ГМ может менять участников сцены." }
     try {
-      await gena.execute({ kind: "world.set_scene_participants", context: createEngineCommandContext({ campaignId, requestedBy: user.id, authority: canManage ? "gm" : "player", roomId }), roomId, characterIds })
+      await oracle.world.setSceneParticipants(gmContext(roomId), roomId, characterIds)
     } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось изменить участников сцены." } }
     await load(); return { ok: true }
-  }, [campaignId, canManage, load, user.id])
+  }, [canManage, gmContext, load])
 
   const syncScene = useCallback(async (roomId: string, syncLocation = true, syncTime = true) => {
+    if (!canManage) return { ok: false, error: "Только ГМ может синхронизировать сцену.", count: 0 }
     let count = 0
     try {
-      const result = await gena.execute({ kind: "world.sync_scene_participants", context: createEngineCommandContext({ campaignId, requestedBy: user.id, authority: canManage ? "gm" : "player", roomId }), roomId, syncLocation, syncTime })
-      if (result.value.engine !== "larisa") throw new Error("Лариса не подтвердила синхронизацию сцены.")
-      count = Number(result.value.mutation.details.count || 0)
+      const result = await oracle.world.syncSceneParticipants(gmContext(roomId), roomId, { syncLocation, syncTime })
+      count = Number(result.value.details.count || 0)
     } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : "Не удалось синхронизировать сцену.", count: 0 } }
     await load(); return { ok: true, count }
-  }, [campaignId, canManage, load, user.id])
+  }, [canManage, gmContext, load])
 
   return { loading, error, states, locations, scenes, sceneParticipants, currentState, currentLocation, nearby, otherTimes, activeScenes, refresh: load, setCharacterPosition, setScenePosition, setParticipants, syncScene }
 }
