@@ -2,11 +2,12 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 
-import { createEngineCommandContext, type CharacterResolutionRequest } from "../src/engine-contracts/index.ts"
+import { EMPTY_ENGINE_EFFECTS, createEngineCommandContext, type CharacterResolutionRequest } from "../src/engine-contracts/index.ts"
 import { MemoryShapoklyakStorage, ShapoklyakEngine, type CharacterEntity } from "../src/entity-engine/index.ts"
 import { GenaEngine, MemoryEngineEventPublisher } from "../src/game-engine/index.ts"
 import { CheburashkaEngine, MemoryCheburashkaStorage } from "../src/inventory-engine/index.ts"
 import { LarisaEngine, MemoryLarisaStorage } from "../src/location-engine/index.ts"
+import { OracleEngine, type OracleDependencies } from "../src/oracle-engine/index.ts"
 import { TobikEngine, type RollRecipe } from "../src/roll-engine/index.ts"
 import type { InventoryItem } from "../src/types/characterSheet.ts"
 
@@ -43,6 +44,25 @@ function context(authority: "player" | "gm" = "player", commandId = crypto.rando
     occurredAt: now,
     roomId: "room-1",
   })
+}
+
+function noOpOwner() {
+  return {
+    execute: async (command: Record<string, unknown>) => ({
+      value: { kind: command.kind },
+      events: [],
+      effects: EMPTY_ENGINE_EFFECTS,
+    }),
+  }
+}
+
+function oracleWith(input: Partial<OracleDependencies>) {
+  return new OracleEngine({
+    shapoklyak: input.shapoklyak || noOpOwner(),
+    cheburashka: input.cheburashka || noOpOwner(),
+    larisa: input.larisa || noOpOwner(),
+    chasovoy: input.chasovoy || noOpOwner(),
+  } as OracleDependencies)
 }
 
 function inventoryItem(input: Partial<InventoryItem> & Pick<InventoryItem, "id" | "name">): InventoryItem {
@@ -93,9 +113,7 @@ test("Gena delegates grenade use; Cheburashka owns deletion and directly request
     eventPublisher,
     resolutionRequester: { requestCharacterResolution: (request) => { resolutionRequests.push(request) } },
   })
-  const shapoklyak = new ShapoklyakEngine(new MemoryShapoklyakStorage([hero]))
-  const larisa = new LarisaEngine(new MemoryLarisaStorage(), eventPublisher)
-  const gena = new GenaEngine({ cheburashka, shapoklyak, larisa, tobik: new TobikEngine(), eventPublisher })
+  const gena = new GenaEngine({ cheburashka, tobik: new TobikEngine(), eventPublisher })
 
   const before = await cheburashka.mechanicalProjection(characterId)
   assert.deepEqual(before.activeItemIds, [grenade.id])
@@ -167,14 +185,16 @@ test("item charges remain Cheburashka state and only the projection crosses into
   assert.equal(depletedProjection.contributions[0]?.kind, "numeric")
 })
 
-test("rolls never apply HP; only an explicit GM command reaches Shapoklyak", async () => {
+test("rolls never apply HP; only Oracle can deliver the GM HP declaration to Shapoklyak", async () => {
   const resolutionRequests: CharacterResolutionRequest[] = []
   const shapoklyak = new ShapoklyakEngine(new MemoryShapoklyakStorage([hero]), {
     resolutionRequester: { requestCharacterResolution: (request) => { resolutionRequests.push(request) } },
   })
-  const cheburashka = new CheburashkaEngine(new MemoryCheburashkaStorage())
-  const larisa = new LarisaEngine(new MemoryLarisaStorage())
-  const gena = new GenaEngine({ cheburashka, shapoklyak, larisa, tobik: new TobikEngine() })
+  const gena = new GenaEngine({
+    cheburashka: new CheburashkaEngine(new MemoryCheburashkaStorage()),
+    tobik: new TobikEngine(),
+  })
+  const oracle = oracleWith({ shapoklyak })
   const damageRoll: RollRecipe = {
     key: "damage",
     name: "Урон",
@@ -196,12 +216,10 @@ test("rolls never apply HP; only an explicit GM command reaches Shapoklyak", asy
   assert.deepEqual(roll.effects.resolveCharacterIds, [])
   assert.deepEqual(resolutionRequests, [])
 
-  await assert.rejects(() => gena.execute({
-    kind: "character.set_hp",
-    context: context("player"),
-    characterId,
-    currentHp: 7,
-  }), /requires GM authority/)
+  assert.throws(
+    () => oracle.characters.setHp(context("player"), characterId, 7),
+    /Oracle only accepts GM or system authority/,
+  )
 
   await assert.rejects(() => shapoklyak.execute({
     kind: "entity.set_hp",
@@ -210,19 +228,14 @@ test("rolls never apply HP; only an explicit GM command reaches Shapoklyak", asy
     currentHp: 7,
   }), /Only GM authority/)
 
-  await gena.execute({
-    kind: "character.set_hp",
-    context: context("gm"),
-    characterId,
-    currentHp: 7,
-  })
+  await oracle.characters.setHp(context("gm"), characterId, 7)
   assert.deepEqual(resolutionRequests.map(({ source, reason }) => ({ source, reason })), [{
     source: "shapoklyak",
     reason: "entity.set_hp",
   }])
 })
 
-test("Larisa stores descriptive position/time without creating CE effects", async () => {
+test("Larisa stores descriptive position/time through Oracle without creating CE effects", async () => {
   const storage = new MemoryLarisaStorage({
     characterStates: [],
     locations: [{ id: "warehouse", name: "Склад стражи", parent_location_id: null, image_url: null, visibility_mode: "discover", lifecycle_state: "active" }],
@@ -230,22 +243,10 @@ test("Larisa stores descriptive position/time without creating CE effects", asyn
     sceneParticipants: [],
   })
   const larisa = new LarisaEngine(storage)
-  const gena = new GenaEngine({
-    cheburashka: new CheburashkaEngine(new MemoryCheburashkaStorage()),
-    shapoklyak: new ShapoklyakEngine(new MemoryShapoklyakStorage([hero])),
-    larisa,
-    tobik: new TobikEngine(),
-  })
-  const result = await gena.execute({
-    kind: "world.move_character",
-    context: context("gm"),
-    characterId,
-    locationId: "warehouse",
-    campaignDay: 12,
-    dayPeriod: "evening",
-  })
+  const oracle = oracleWith({ larisa })
+  const result = await oracle.world.moveCharacter(context("gm"), characterId, "warehouse", 12, "evening")
 
-  assert.equal(result.value.engine, "larisa")
+  assert.equal(result.value.kind, "world.set_character_position")
   assert.deepEqual(result.effects.resolveCharacterIds, [])
   const state = (await larisa.loadCampaignSnapshot(campaignId)).characterStates[0]
   assert.equal(state?.location_id, "warehouse")
