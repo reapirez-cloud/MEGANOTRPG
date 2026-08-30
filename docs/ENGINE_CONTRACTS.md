@@ -129,7 +129,7 @@ Tobik/the authoritative Roll Engine owns requested randomness and structured rol
 3. GM-authoritative mutations enter through Oracle and go directly to the explicit owner.
 4. Oracle never dynamically guesses a destination from a generic command; its method defines the owner.
 5. An engine does not make another engine's tables its own storage. Cross-domain reads use explicit projections/contracts.
-6. After a character-affecting canonical commit, the owner requests character resolution directly.
+6. After a character-affecting canonical commit, the **owning engine calls the resolution requester directly**. It does not wait for CE, GENA or a UI surface to discover drift.
 7. Chasovoy definition mutations use campaign-level invalidation because Chasovoy deliberately does not know concrete usages.
 8. CE has no outbound arrows: no callbacks, polling, events or persistence.
 9. One user intention keeps the same `commandId` through authoritative execution/invalidation where idempotency matters.
