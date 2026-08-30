@@ -54,6 +54,35 @@ GM -> GM Cabinet -> Oracle -> explicit owner -> canonical state
 
 **Never route a GM reality mutation through GENA. Never let React write canonical gameplay state directly because a button is hidden.**
 
+### Account role and authority model — do not collapse these concepts
+
+Campaign membership has two independent dimensions:
+
+- `role` is the member's ordinary campaign role: `player` or `gm`;
+- `is_owner` is the campaign owner/admin authority flag.
+
+**Owner/admin is not a third mutually exclusive role.** A member may be `role = "player"` and `is_owner = true` at the same time. That person must be able to own/activate/play an assigned PC exactly like a player while also having manager authority equivalent to a GM for campaign administration and GM control surfaces.
+
+The application permission invariant is:
+
+```text
+isGm = member.role === "gm"
+isOwner = member.is_owner === true
+canManage = isGm || isOwner
+```
+
+The server invariant is the same: campaign-management permission is granted when `is_owner = true OR role = 'gm'`.
+
+Do not:
+
+- turn owner/admin into an exclusive `admin` role that erases player identity;
+- assume a manager cannot have an assigned or active PC;
+- gate GM-management UI only on `isGm` when `canManage` is the intended permission;
+- use character assignment to infer account authority;
+- use account role to infer which PC a member may own.
+
+Only owner/admin may change another member's campaign role. Being a GM does not automatically make someone the owner. Private `Только я` data must continue to respect its separate creator/visibility rules even between managers.
+
 ### Mandatory character-resolution path
 
 Character-affecting owner commit:
