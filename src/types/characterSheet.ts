@@ -31,7 +31,7 @@ export type InventoryItem = {
 }
 
 export type CharacterSpell = {
-  id: string; character_id: string; name: string; spell_level: number; school: string; casting_time: string
+  id: string; character_id: string; catalog_spell_id: string; name: string; spell_level: number; school: string; casting_time: string
   spell_range: string; duration: string; components: string; concentration: boolean; ritual: boolean; prepared: boolean
   cast_mode: "cantrip" | "slot"; slot_level: number | null; description: string; source: string
   sort_order: number; created_at: string; updated_at: string
