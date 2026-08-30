@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import type { Character } from "../context/CharacterContext.tsx"
 import {
@@ -11,6 +11,7 @@ import { characterResolutionBus } from "../engine-runtime/characterResolutionBus
 import { watchCheburashkaCharacter } from "../inventory-engine/runtime.ts"
 import type { CharacterPreparationModel } from "../lib/characterPreparation.ts"
 import { supabase } from "../lib/supabase.ts"
+import type { ResourceSyncInput } from "../types/characterResources.ts"
 import { useCharacterResourceStates } from "./useCharacterResourceStates.ts"
 import { useCharacterTemplateRegistry } from "./useCharacterTemplateRegistry.ts"
 
@@ -22,31 +23,53 @@ const EMPTY_PREPARATION: CharacterPreparationModel = {
   suppressedSourceIds: [],
 }
 
+function stableJson(value: unknown): string {
+  if (value === null || value === undefined) return JSON.stringify(value)
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>
+    return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(",")}}`
+  }
+  return JSON.stringify(value)
+}
+
+function resourceSyncKey(resources: ResourceSyncInput[]) {
+  return stableJson(resources.map((item) => ({
+    stateKey: item.stateKey,
+    max: item.max,
+    label: item.label,
+    recharge: item.recharge,
+  })))
+}
+
 /**
- * Shared React adapter over CharacterRuntimeResolver.
- *
- * The hook owns subscriptions and presentation state only. It never assembles
- * CE input itself, so Chat/Sheet/Revolver can consume the same runtime snapshot.
+ * Owns the actual character source loaders and resolver lifecycle.
+ * Presentation consumers should call useResolvedCharacterRuntime(), which
+ * reuses the nearest CharacterRuntimeProvider instead of creating another
+ * template/resource loader tree.
  */
-export function useResolvedCharacterRuntime(character: Character | null) {
+function useOwnedResolvedCharacterRuntime(character: Character | null) {
   const characterId = character?.id || null
+  const templates = useCharacterTemplateRegistry(characterId)
+  const resources = useCharacterResourceStates(characterId)
   const {
     bundles: templateBundles,
     error: templateError,
     loading: templateLoading,
     reload: reloadTemplates,
     suppressions,
-  } = useCharacterTemplateRegistry(characterId)
+  } = templates
   const {
     error: resourceError,
     loading: resourceLoading,
     rows: resourceRows,
     state: resourceState,
     sync: syncResources,
-  } = useCharacterResourceStates(characterId)
+  } = resources
 
   const [snapshot, setSnapshot] = useState<CharacterRuntimeSnapshot | null>(null)
   const snapshotRef = useRef<CharacterRuntimeSnapshot | null>(null)
+  const resourceSyncInFlightRef = useRef<string | null>(null)
   const [status, setStatus] = useState<CharacterRuntimeStatus>(characterId ? "loading" : "idle")
   const [error, setError] = useState("")
   const [errorCode, setErrorCode] = useState<CharacterRuntimeResolveErrorCode | null>(null)
@@ -65,6 +88,7 @@ export function useResolvedCharacterRuntime(character: Character | null) {
 
   useEffect(() => {
     snapshotRef.current = null
+    resourceSyncInFlightRef.current = null
     setSnapshot(null)
     setError("")
     setErrorCode(null)
@@ -156,11 +180,16 @@ export function useResolvedCharacterRuntime(character: Character | null) {
         return !row ||
           row.max_snapshot !== item.max ||
           row.label !== item.label ||
-          JSON.stringify(row.recharge) !== JSON.stringify(item.recharge)
+          stableJson(row.recharge) !== stableJson(item.recharge)
       })
 
       if (!needsSync) return
+
+      const syncKey = resourceSyncKey(next.resourceSyncInputs)
+      if (resourceSyncInFlightRef.current === syncKey) return
+      resourceSyncInFlightRef.current = syncKey
       const result = await syncResources(next.resourceSyncInputs)
+      if (resourceSyncInFlightRef.current === syncKey) resourceSyncInFlightRef.current = null
       if (cancelled || result.ok) return
       setWarnings((current) => [...new Set([
         ...current,
@@ -200,5 +229,28 @@ export function useResolvedCharacterRuntime(character: Character | null) {
     errorCode,
     warnings,
     refresh,
+    templates,
+    resources,
   }
+}
+
+export type ResolvedCharacterRuntime = ReturnType<typeof useOwnedResolvedCharacterRuntime>
+
+const CharacterRuntimeContext = createContext<ResolvedCharacterRuntime | null>(null)
+
+export function CharacterRuntimeProvider({ value, children }: { value: ResolvedCharacterRuntime; children: ReactNode }) {
+  return createElement(CharacterRuntimeContext.Provider, { value }, children)
+}
+
+/**
+ * Shared React adapter over CharacterRuntimeResolver.
+ *
+ * Frame/route owns the runtime once. Nested Sheet/Class/Profile consumers reuse
+ * that exact instance. Outside a provider the hook remains a valid standalone
+ * owner for Chat and other routes that mount their own character runtime.
+ */
+export function useResolvedCharacterRuntime(character: Character | null) {
+  const shared = useContext(CharacterRuntimeContext)
+  const owned = useOwnedResolvedCharacterRuntime(shared ? null : character)
+  return shared || owned
 }
