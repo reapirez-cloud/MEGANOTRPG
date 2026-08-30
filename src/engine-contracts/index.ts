@@ -6,6 +6,7 @@ export {
   mergeEngineEffects,
   type CharacterResolutionRequest,
   type CharacterResolutionRequester,
+  type CharacterResolutionSource,
   type CommandAuthority,
   type EngineCommandContext,
   type EngineCommandResult,
@@ -15,3 +16,13 @@ export {
   type EngineEventVisibility,
   type EngineName,
 } from "./types.ts"
+
+export {
+  ENGINE_ARCHITECTURE,
+  assertEngineArchitecture,
+  validateEngineArchitecture,
+  type EngineArchitectureEntry,
+  type EnginePersistenceMode,
+  type EngineRole,
+  type EngineSignal,
+} from "./architecture.ts"
