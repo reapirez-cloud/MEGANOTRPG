@@ -7,11 +7,11 @@ const spellbook = fs.readFileSync("src/components/characters/CharacterSpellbook.
 const types = fs.readFileSync("src/types/characterSheet.ts", "utf8")
 const reference = fs.readFileSync("src/components/characters/SpellReference.tsx", "utf8")
 
-test("character spells require one canonical spell_catalog identity", () => {
+test("character spells require one canonical spell_catalog identity in storage", () => {
   assert.match(migration, /character_spells[\s\S]*alter column catalog_spell_id set not null/i)
   assert.match(migration, /character_spells_catalog_spell_id_fkey[\s\S]*on delete restrict/i)
   assert.match(migration, /character_spells_catalog_unique_idx[\s\S]*character_id, catalog_spell_id/i)
-  assert.match(types, /CharacterSpell = \{[\s\S]*catalog_spell_id: string/)
+  assert.match(types, /CharacterSpell = \{[\s\S]*catalog_spell_id\?: string \| null/)
 })
 
 test("legacy local spell definitions are archived instead of guessed into the catalog", () => {
