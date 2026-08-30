@@ -35,6 +35,13 @@ export type CharacterEntityInput = {
   visibility: EntityVisibility
 }
 
+/** Concrete assignment of a Chasovoy definition to one character. */
+export type CharacterTemplateAssignmentInput = {
+  templateId: string
+  templateLevel: number | null
+  selectedChoices: Record<string, unknown>
+}
+
 export type ShapoklyakCommand =
   | { kind: "entity.create"; context: EngineCommandContext; input: CharacterEntityInput }
   | { kind: "entity.update"; context: EngineCommandContext; characterId: string; input: CharacterEntityInput }
@@ -44,6 +51,8 @@ export type ShapoklyakCommand =
   | { kind: "entity.set_visibility"; context: EngineCommandContext; characterId: string; visibilityMode: EntityVisibilityMode }
   | { kind: "entity.reveal_npc"; context: EngineCommandContext; viewerCharacterId: string; npcCharacterId: string; discovered: boolean }
   | { kind: "entity.set_hp"; context: EngineCommandContext; characterId: string; currentHp: number; maxHp?: number; tempHp?: number }
+  | { kind: "entity.assign_template"; context: EngineCommandContext; characterId: string; input: CharacterTemplateAssignmentInput }
+  | { kind: "entity.remove_template_assignment"; context: EngineCommandContext; characterId: string; assignmentId: string }
 
 export type EntityMutation = {
   kind: ShapoklyakCommand["kind"]
@@ -59,4 +68,3 @@ export interface ShapoklyakStorage {
   getEntity(characterId: string): Promise<CharacterEntity | null>
   execute(command: ShapoklyakCommand): Promise<EntityMutation>
 }
-
