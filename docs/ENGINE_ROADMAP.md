@@ -146,6 +146,7 @@ GENA should own or coordinate:
 - GM-authoritative commands/overrides and their audit trail;
 - cross-engine consequences of play events;
 - visibility/discovery consequences when explicitly declared by the GM;
+- requesting dice resolution from TOBIK and recording the returned result;
 - triggering/rebuilding a fresh runtime snapshot after mutations;
 - passing that snapshot into CE;
 - presenting CE/domain results back through chat/revolver/sheets;
@@ -193,10 +194,21 @@ GENA rebuilds snapshot
 CE resolves again
 ```
 
+```text
+Player/GM requests a roll
+    ↓
+GENA
+    ↓
+TOBIK resolves the requested dice expression/plan
+    ↓
+GENA records the structured result in the game event/history
+```
+
 GENA must NOT:
 - become a tactical scene simulator;
 - enforce action economy, positioning, targets, range, line of sight or narrative legality;
 - calculate/apply combat HP damage or healing on its own;
+- invent dice results instead of using TOBIK for canonical rolls;
 - ask CE to mutate anything;
 - make CE query chat;
 - read another engine's UI as canonical state;
@@ -225,6 +237,37 @@ GENA/UI presents chat + revolver + sheet/world/entity state
 ```
 
 “Done” for a preparation task belongs to GENA/preparation runtime, not CE.
+
+---
+
+## TOBIK — Roll Engine
+
+**Status:** ACTIVE / IN DEVELOPMENT
+
+Responsibility: authoritative dice generation and structured roll resolution.
+
+Tobik should own:
+- canonical random die results requested by gameplay/runtime;
+- d20 rolls and arbitrary NdS dice;
+- modifiers and structured roll plans/recipes;
+- advantage/disadvantage or other generic dice primitives when represented explicitly;
+- returning enough structured detail for chat/history to show how a result was obtained.
+
+Desired flow:
+
+```text
+GENA requests roll → TOBIK resolves dice → structured result → GENA records/presents result
+```
+
+Tobik must NOT:
+- decide whether a roll was allowed by the scene;
+- decide whether an attack hit unless an explicit future contract asks only for arithmetic comparison supplied by the GM/runtime;
+- apply damage/healing/HP changes;
+- spend class/item resources;
+- mutate inventory, characters or locations;
+- become the session orchestrator.
+
+Existing server roll paths such as chat/template roll RPCs are part of the emerging Tobik boundary and should be consolidated rather than duplicated by source-specific random logic.
 
 ---
 
@@ -293,11 +336,11 @@ Shapoklyak must also remain separate from Cheburashka: a character can own inven
 
 ---
 
-## LARISA — Location / World Engine
+## LARISA — Location / World + Campaign Time Engine
 
 **Status:** PLANNED
 
-Responsibility: persistent world locations and their relationships.
+Responsibility: persistent world locations, their relationships, and descriptive campaign chronology.
 
 Larisa should own:
 - worlds/regions/zones/locations;
@@ -307,11 +350,32 @@ Larisa should own:
 - per-player/per-character discovery and visibility where required;
 - location visibility/private GM information;
 - persistent associations of NPCs, encounters, notes or other entities with places;
-- stable location identifiers for chat/scenes and future map tooling.
+- stable location identifiers for chat/scenes and future map tooling;
+- campaign/world date and time already surfaced in chat;
+- per-scene and, where needed, per-character timeline position/stage so the GM can understand when each character currently is;
+- GM-authored movement/advancement of world time and chronology markers.
 
-GENA may instruct Larisa that a GM-authoritative or explicit play event reveals/discovers a location or moves an entity. Larisa owns world/location state; GENA records and coordinates the event.
+GENA may instruct Larisa that a GM-authoritative or explicit play event reveals/discovers a location, moves an entity, or advances/sets the current campaign time. Larisa owns world/location/time state; GENA records and coordinates the event.
 
-Larisa should not attempt to run tactical scene rules. It stores and resolves world/location structure; the GM still adjudicates what happens there.
+**Larisa time is descriptive bookkeeping, not a rules engine.** Time must not automatically expire effects, restore resources, trigger rests, move NPCs, apply damage, or alter CE merely because a timestamp advanced. It exists to preserve chronology and help understand the stage of each character. Any gameplay consequence of time still comes from an explicit GM/player/runtime command.
+
+Larisa should not attempt to run tactical scene rules. It stores and resolves world/location/chronology structure; the GM still adjudicates what happens there.
+
+---
+
+## Quest Journal — product module, NOT an engine
+
+**Status:** PLANNED / UX FEATURE
+
+The quest journal does not need an engine boundary because it is primarily freeform campaign organization rather than a rules/state-resolution system.
+
+It should support two independent authoring scopes:
+- **GM quests** — campaign-facing quest/task entries written and maintained by the GM, with whatever visibility the GM chooses;
+- **player personal tasks** — freeform reminders/notes a player writes for themselves so they do not forget goals or errands.
+
+Useful fields may include title, freeform body, status, optional links to NPCs/locations and visibility, but the journal should remain lightweight. A quest entry does not automatically mutate CE, resources, locations, inventory or characters merely because its status changed.
+
+GENA may later attach/link game events to journal entries as convenience, but the journal is not a rules authority and does not need to become another cartoon-named engine.
 
 ---
 
@@ -355,12 +419,14 @@ When auditing mechanics or architecture, an AI agent MUST distinguish:
 
 1. **CE calculation correctness** — does the resolved character contain the correct abilities/resources/accesses from the supplied snapshot?
 2. **GENA orchestration/bookkeeping correctness** — does using/resting/preparing/choosing or an explicit GM command reach the correct owning engine, mutate the correct persistent state, create appropriate history where required, and cause a fresh CE input/projection to be built?
-3. **Scene legality** — GM-owned and NOT a required automation target.
-4. **Combat HP outcome** — GM-owned. Do not report absence of automatic damage/healing application as a defect.
-5. **Inventory ownership/state** — Cheburashka responsibility, not CE/GENA UI ad-hoc logic.
-6. **PC/NPC identity/lifecycle/visibility** — Shapoklyak responsibility.
-7. **World/location persistence/discovery** — Larisa responsibility.
-8. **Engine communication** — verify domain engines use explicit contracts/state rather than reading or mutating one another's UI components.
+3. **TOBIK roll correctness** — are authoritative random results produced by the shared roll engine/path and returned as structured results instead of source-specific random hacks?
+4. **Scene legality** — GM-owned and NOT a required automation target.
+5. **Combat HP outcome** — GM-owned. Do not report absence of automatic damage/healing application as a defect.
+6. **Inventory ownership/state** — Cheburashka responsibility, not CE/GENA UI ad-hoc logic.
+7. **PC/NPC identity/lifecycle/visibility** — Shapoklyak responsibility.
+8. **World/location/time persistence/discovery** — Larisa responsibility. Time is descriptive unless explicitly promoted to mechanics later.
+9. **Quest journal** — a lightweight GM/player writing feature, not a mechanics engine.
+10. **Engine communication** — verify domain engines use explicit contracts/state rather than reading or mutating one another's UI components.
 
 Do not report missing scene simulation as a class-mechanics defect. Report defects when machine-owned bookkeeping is wrong or absent: missing resource counters, wrong costs, wrong recharge, missing persistent/rest-refresh choices, missing canonical state mutation, missing CE refresh after mutation, duplicate/erased actions, incorrect class/subclass level ownership, cross-engine mutation performed by the wrong owner, or UI being used as canonical inter-engine transport.
 
