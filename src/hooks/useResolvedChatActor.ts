@@ -2,6 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import type { ResolvedCharacterContract } from "../character-engine/index.ts"
 import type { Character } from "../context/CharacterContext.tsx"
+import {
+  buildCharacterPreparationModel,
+  type CharacterPreparationModel,
+  type CharacterPreparationRecord,
+  type CharacterPreparationSession,
+} from "../lib/characterPreparation.ts"
 import { resolveLegacyCharacterEngineView } from "../lib/legacyCharacterEngineAdapter.ts"
 import { resourceSyncInputs } from "../lib/resourceRuntime.ts"
 import { supabase } from "../lib/supabase.ts"
@@ -17,6 +23,8 @@ type SpellCatalogRoutingRow = {
   roll_recipe: unknown
 }
 type RoutedSpellIdentity = { dealsDamage?: boolean }
+
+const EMPTY_PREPARATION: CharacterPreparationModel = { session: null, tasks: [], suppressedSourceIds: [] }
 
 function rollRecipeDealsDamage(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(rollRecipeDealsDamage)
@@ -91,6 +99,7 @@ export function useResolvedChatActor(character: Character | null) {
     sync: syncResources,
   } = useCharacterResourceStates(characterId)
   const [contract, setContract] = useState<ResolvedCharacterContract | null>(null)
+  const [preparation, setPreparation] = useState<CharacterPreparationModel>(EMPTY_PREPARATION)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [revision, setRevision] = useState(0)
@@ -101,6 +110,8 @@ export function useResolvedChatActor(character: Character | null) {
     if (!characterId) return
     let channel: RealtimeChannel | null = supabase.channel(`character-sheet-runtime-${characterId}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "character_sheets", filter: `character_id=eq.${characterId}` }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "character_preparation_sessions", filter: `character_id=eq.${characterId}` }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "character_preparation_records", filter: `character_id=eq.${characterId}` }, refresh)
       .subscribe()
     return () => { if (channel) { void supabase.removeChannel(channel); channel = null } }
   }, [characterId, refresh])
@@ -109,7 +120,7 @@ export function useResolvedChatActor(character: Character | null) {
     let cancelled = false
     queueMicrotask(() => {
       if (cancelled) return
-      if (!character) { setContract(null); setError(""); setLoading(false); return }
+      if (!character) { setContract(null); setPreparation(EMPTY_PREPARATION); setError(""); setLoading(false); return }
       if (templateLoading || resourceLoading) { setLoading(true); return }
       setLoading(true); setError(templateError || resourceError || "")
       void Promise.all([
@@ -117,14 +128,24 @@ export function useResolvedChatActor(character: Character | null) {
         supabase.from("character_inventory_items").select("*").eq("character_id", character.id).order("sort_order", { ascending: true }),
         supabase.from("character_spells").select("*").eq("character_id", character.id).order("spell_level", { ascending: true }),
         supabase.from("character_features").select("*").eq("character_id", character.id).order("sort_order", { ascending: true }),
-      ]).then(async ([sheetResult, inventoryResult, spellsResult, featuresResult]) => {
+        supabase.from("character_preparation_sessions").select("*").eq("character_id", character.id).maybeSingle(),
+        supabase.from("character_preparation_records").select("*").eq("character_id", character.id).order("generation", { ascending: false }).limit(100),
+      ]).then(async ([sheetResult, inventoryResult, spellsResult, featuresResult, preparationResult, preparationRecordsResult]) => {
         if (cancelled) return
-        const firstError = sheetResult.error || inventoryResult.error || spellsResult.error || featuresResult.error
+        const firstError = sheetResult.error || inventoryResult.error || spellsResult.error || featuresResult.error || preparationResult.error || preparationRecordsResult.error
         if (firstError) { setError(firstError.message); setLoading(false); return }
         const sheet = sheetResult.data as CharacterSheet | null
-        if (!sheet) { setContract(null); setLoading(false); return }
+        if (!sheet) { setContract(null); setPreparation(EMPTY_PREPARATION); setLoading(false); return }
         try {
           const characterSpells = (spellsResult.data || []) as CharacterSpellCatalogLink[]
+          const preparationModel = buildCharacterPreparationModel(
+            templateBundles,
+            Math.max(1, character.level || 1),
+            preparationResult.data as CharacterPreparationSession | null,
+            (preparationRecordsResult.data || []) as CharacterPreparationRecord[],
+          )
+          setPreparation(preparationModel)
+          const effectiveSuppressions = new Set([...suppressedSourceIds, ...preparationModel.suppressedSourceIds])
           const view = resolveLegacyCharacterEngineView({
             character,
             sheet,
@@ -133,7 +154,7 @@ export function useResolvedChatActor(character: Character | null) {
             features: (featuresResult.data || []) as CharacterFeature[],
             resourceStates: resourceState,
             templateBundles,
-            suppressedSourceIds,
+            suppressedSourceIds: effectiveSuppressions,
           })
           if (cancelled) return
 
@@ -173,5 +194,5 @@ export function useResolvedChatActor(character: Character | null) {
     return () => { cancelled = true }
   }, [character, resourceError, resourceLoading, resourceState, revision, rowByKey, suppressedSourceIds, syncResources, templateBundles, templateError, templateLoading])
 
-  return { contract, loading, error, refresh }
+  return { contract, preparation, loading, error, refresh }
 }
