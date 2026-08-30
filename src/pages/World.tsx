@@ -7,6 +7,7 @@ import type { ContextAction } from "../components/common/ContextActionSheet"
 import { ZoneHabitatNpcsSheet } from "../components/world/NpcZoneHabitatSheet"
 import WorldEditor from "../components/world/WorldEditor"
 import type { WorldEditorMode } from "../components/world/WorldEditor"
+import WorldMapView from "../components/world/WorldMapView"
 import { useCharacters } from "../context/CharacterContext"
 import { useLongPressItem } from "../hooks/useLongPressItem"
 import { useNpcZoneHabitats } from "../hooks/useNpcZoneHabitats"
@@ -94,6 +95,7 @@ export default function World() {
   const world = useWorldContent()
   const state = useWorldState()
   const habitats = useNpcZoneHabitats()
+  const [viewMode, setViewMode] = useState<"lore" | "map">("lore")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editor, setEditor] = useState<WorldEditorMode>(null)
   const [menuTarget, setMenuTarget] = useState<MenuTarget | null>(null)
@@ -219,6 +221,11 @@ export default function World() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  function openLocationFromMap(location: LocationEntry) {
+    setViewMode("lore")
+    openLocation(location)
+  }
+
   function toggleSection(sectionId: string) {
     setExpandedSections((current) => {
       const next = new Set(current)
@@ -317,7 +324,21 @@ export default function World() {
 
   return (
     <div className="world-v2">
-      {!selected ? (
+      <nav className="world-mode-nav" role="tablist" aria-label="Представление мира">
+        <button type="button" role="tab" aria-selected={viewMode === "lore"} className={viewMode === "lore" ? "is-active" : ""} onClick={() => setViewMode("lore")}>ЛОР</button>
+        <button type="button" role="tab" aria-selected={viewMode === "map"} className={viewMode === "map" ? "is-active" : ""} onClick={() => setViewMode("map")}>КАРТА</button>
+      </nav>
+
+      {viewMode === "map" ? (
+        <WorldMapView
+          locations={world.locations}
+          sections={world.locationSections}
+          links={world.locationLinks}
+          currentLocationId={state.currentLocation?.id || null}
+          canManage={context.canManage}
+          onOpen={openLocationFromMap}
+        />
+      ) : !selected ? (
         <>
           <header className="world-v2-top">
             <div><span>Мир кампании</span><h2>{context.campaignTitle}</h2><p>{context.activeCharacter ? `Мир глазами ${context.activeCharacter.name}` : "Зоны, места и связи кампании"}</p></div>
