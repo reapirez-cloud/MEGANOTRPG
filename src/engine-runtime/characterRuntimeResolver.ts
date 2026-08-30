@@ -98,6 +98,7 @@ function reasonMessage(reason: unknown, fallback: string) {
   return reason instanceof Error && reason.message ? reason.message : fallback
 }
 
+/** Only Roll Engine effect semantics decide whether a spell belongs to Attack. */
 function rollRecipeDealsDamage(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(rollRecipeDealsDamage)
   if (!value || typeof value !== "object") return false
@@ -106,10 +107,8 @@ function rollRecipeDealsDamage(value: unknown): boolean {
   return Object.values(record).some(rollRecipeDealsDamage)
 }
 
-function catalogDealsDamage(row: Pick<SpellCatalogRoutingRow, "damage" | "roll_recipe"> | undefined): boolean {
-  if (!row) return false
-  if (typeof row.damage === "string" && row.damage.trim()) return true
-  return rollRecipeDealsDamage(row.roll_recipe)
+function catalogDealsDamage(row: Pick<SpellCatalogRoutingRow, "roll_recipe"> | undefined): boolean {
+  return Boolean(row && rollRecipeDealsDamage(row.roll_recipe))
 }
 
 function catalogSlugFromResolvedKey(key: string): string | null {

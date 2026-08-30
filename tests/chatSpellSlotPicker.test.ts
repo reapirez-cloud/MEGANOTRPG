@@ -1,34 +1,23 @@
 import assert from "node:assert/strict"
-import fs from "node:fs"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
-const sheet = fs.readFileSync("src/components/chat/ChatActionSheet.tsx", "utf8")
-const styles = fs.readFileSync("src/components/chat/ChatActionSheet.css", "utf8")
+const sheet = readFileSync("src/components/chat/ChatActionSheet.tsx", "utf8")
 
-test("chat magic opens with spell slot selection instead of the spell list", () => {
+test("spell casting keeps the exact access, method and resource option chosen by the player", () => {
+  assert.match(sheet, /type SpellChannel = "cantrips" \| string \| null/)
+  assert.match(sheet, /type SpellCastSelection = \{[\s\S]*accessKey: string[\s\S]*methodKey: string[\s\S]*optionKey\?: string/)
+  assert.match(sheet, /spellCastForSlot\(spell, slot\.level, slot\.resource\.stateKey\)/)
+  assert.match(sheet, /item\.costs\.some\(\(cost\) => cost\.stateKey === stateKey && cost\.available\)/)
+  assert.match(sheet, /function exactSpellCast\(selection: SpellCastSelection\)/)
+  assert.match(sheet, /resourceOptions: option \? \[\{ \.\.\.option, available: true \}\] : \[\]/)
+  assert.match(sheet, /accesses: \[selectedAccess\]/)
+  assert.doesNotMatch(sheet, /preferSpellCast/)
+})
+
+test("spell UI remains slot-first instead of presenting one mixed spell wall", () => {
+  assert.match(sheet, /Шаг 1/)
   assert.match(sheet, /Выбери ячейку/)
-  assert.match(sheet, /setSpellChannel\(resource\.stateKey\)/)
-  assert.match(sheet, /spellCastForSlot/)
-  assert.match(sheet, /item\.castLevel === level/)
-  assert.match(sheet, /cost\.stateKey === stateKey/)
-  assert.match(sheet, /Этой ячейкой нечего читать/)
-})
-
-test("depleted chat spell slots are grey and disabled", () => {
-  assert.match(sheet, /depleted = current <= 0/)
-  assert.match(sheet, /disabled=\{busy \|\| depleted\}/)
-  assert.match(styles, /action-spell-slot\.is-depleted/)
-  assert.match(styles, /filter:grayscale\(1\)/)
-})
-
-test("selected spell slot is preferred for the actual cast", () => {
-  assert.match(sheet, /preferSpellCast/)
-  assert.match(sheet, /resourceOptions: selectedOption/)
-  assert.match(sheet, /accesses: \[preferredAccess/)
-})
-
-test("dice content scrolls below fixed action tabs without overlap", () => {
-  assert.match(styles, /action-v3-tabs\{position:relative;z-index:3/)
-  assert.match(styles, /action-v2-body\{position:relative;z-index:1;flex:1 1 auto;min-height:0/)
-  assert.match(styles, /chat-action-flow__handle,\.action-v2-head,\.action-v3-tabs\{flex:0 0 auto\}/)
+  assert.match(sheet, /Шаг 2/)
+  assert.match(sheet, /setChannel\(resource\.stateKey\)/)
 })

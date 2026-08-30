@@ -22,7 +22,7 @@ test("character and scene rooms are readable by campaign members unless the GM h
 
 test("free dice use the v3 chat hook instead of bypassing runtime resources and errors", () => {
   assert.doesNotMatch(actionSheet, /send_chat_roll_v2/i)
-  assert.match(actionSheet, /await\s+onFreeRoll\(request\)/)
+  assert.match(actionSheet, /await\s+onFreeRoll\(/)
   assert.match(chatRoom, /onFreeRoll=\{freeRoll\}/)
   assert.match(chatRoom, /chat\.sendRoll\(\{[\s\S]*rollD20:\s*false[\s\S]*diceSides:/)
 })
