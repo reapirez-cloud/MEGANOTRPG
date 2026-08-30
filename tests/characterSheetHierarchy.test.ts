@@ -7,6 +7,8 @@ const sheetBridge = fs.readFileSync("src/components/characters/ResolvedCharacter
 const classPanel = fs.readFileSync("src/components/characters/CharacterClassPanel.tsx", "utf8")
 const profile = fs.readFileSync("src/pages/CharacterProfileV2.tsx", "utf8")
 const styles = fs.readFileSync("src/character-profile-v4.css", "utf8")
+const suppressions = fs.readFileSync("src/hooks/useCharacterSourceSuppressions.ts", "utf8")
+const templateRegistry = fs.readFileSync("src/hooks/useCharacterTemplateRegistry.ts", "utf8")
 
 test("character sheet opens with essentials then abilities then a section directory", () => {
   const combat = sheetBase.indexOf('className="sheet-v3__combat sheet-v4__combat"')
@@ -41,15 +43,23 @@ test("class and subclass directory entries open runtime mechanics instead of the
   assert.match(profile, /<CharacterClassPanel/)
 })
 
+test("class tab subscribers cannot collide with the character runtime suppression owner", () => {
+  assert.match(suppressions, /character-suppressions-\$\{characterId\}-\$\{subscriberIdRef\.current\}/)
+  assert.doesNotMatch(suppressions, /clearCharacterSourceSuppressions/)
+  assert.match(templateRegistry, /clearCharacterSourceSuppressions\(characterId\)/)
+})
+
 test("profile hero no longer visually duplicates the class beside the portrait", () => {
   assert.match(profile, /profile-v3__class/)
   assert.match(styles, /\.character-profile-v2 \.profile-v3__class \{\s*display: none;/)
   assert.match(styles, /\.profile-v3__hero/)
 })
 
-test("mobile ability panels use stable aligned heights", () => {
+test("mobile ability panels stay adaptive instead of depending on one magic pixel height", () => {
   assert.match(styles, /\.sheet-v4__abilities \.sheet-v3__ability-score/)
   assert.match(styles, /\.sheet-v4__abilities \.sheet-v3__skill-column/)
-  assert.match(styles, /min-height: 144px/)
-  assert.match(styles, /align-content: center/)
+  assert.match(styles, /min-height:\s*0/)
+  assert.match(styles, /height:\s*auto/)
+  assert.match(styles, /align-items:\s*start/)
+  assert.doesNotMatch(styles, /min-height:\s*144px/)
 })
