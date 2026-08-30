@@ -2,14 +2,15 @@
 
 > Status: **IN DEVELOPMENT — RUNTIME FOUNDATION ACTIVE ON `dev`**
 >
-> Read this document together with `ENGINE_ROADMAP.md` and `CHASOVOY_ENGINE_CONTRACT.md` before changing gameplay commands, character resolution, inventory, reference definitions, entities, rolls, locations or chat action execution.
+> Read this document together with `ENGINE_ROADMAP.md`, `CHASOVOY_ENGINE_CONTRACT.md` and `ORACLE_ENGINE_CONTRACT.md` before changing gameplay commands, GM controls, character resolution, inventory, reference definitions, entities, rolls, locations or chat action execution.
 
 ## One owner for every canonical fact
 
-| Engine | Owns and persists | Does not own |
+| Engine / control plane | Owns and persists | Does not own |
 |---|---|---|
 | **CHASOVOY** | reusable canonical definitions: classes, subclasses, spells, items, feats/features, conditions and reference data; stable ids/slugs, scopes and revisions | character ownership/state, quantities, current charges, preparation, HP, locations, runtime resources |
-| **GENA** | session declarations/history, gameplay command routing, character resource ledger, rests, preparation, stored session choices/results, command correlation | definitions, inventory rows, entity identity, world topology, dice algorithms, CE calculations, scene rulings |
+| **GENA** | session declarations/history, gameplay command routing, character resource ledger, rests, preparation, stored session choices/results, command correlation | GM authority, definitions, inventory rows, entity identity, world topology, dice algorithms, CE calculations, scene rulings |
+| **ORACLE** | no canonical persistence; imperative GM control surface that directly calls the explicit owner of the fact the GM changed | gameplay orchestration, rule legality, domain storage, derived CE totals, another copy of domain events |
 | **CE** | no canonical persistence; deterministic calculation and one transient resolved contract from explicit input | definitions storage, inventory, characters, HP persistence, resources, chat, rolls, locations, time, commands |
 | **CHEBURASHKA** | item instances, holders, quantities, charges, equipment state, transfers and arbitrary per-instance state | item definitions, character identity, HP, world placement, scene rulings, resolved totals |
 | **SHAPOKLYAK** | PC/NPC existence, identity, type, assignment, visibility/discovery, lifecycle and canonical base character facts including explicit GM HP | definitions, inventory, locations/topology, dice, derived CE totals, session history |
@@ -48,6 +49,8 @@ CE stores nothing between calls. A character resolution assembler obtains fresh 
 | locations/time | Larisa | nothing by default; only a deliberately introduced projection |
 | dice result | Tobik through Gena | never canonical character storage merely because a roll happened |
 
+Oracle is not a CE input owner. It changes canonical facts through their owners; the normal owner-driven resolution path then rebuilds CE where necessary.
+
 A beer bottle with no mechanics remains inventory state plus its definition reference. A protection ring may contribute AC while equipped. Current charges remain Cheburashka state; the meaning of the item belongs to Chasovoy.
 
 ## Engine surfaces
@@ -67,13 +70,28 @@ Queries:
 Rules:
 - no character/runtime ownership;
 - no direct CE-resolution request after a definition edit;
-- publishes definition events so Gena/resolver can determine affected references;
+- publishes definition events so resolver/runtime can determine affected references;
 - system definitions require system authority; campaign definitions are GM-authored;
 - identity is stable, revision content is versioned.
 
-### Gena — central session orchestrator
+### Gena — central gameplay/session orchestrator
 
-Routes gameplay intentions to the owning domain engine, owns history/correlation and runtime resources/preparation. It never becomes the catalog or rules-reference database.
+Routes normal gameplay intentions to the owning domain engine, owns history/correlation and runtime resources/preparation. It never becomes the catalog, GM control plane or rules-reference database.
+
+### Oracle — GM imperative control plane
+
+The GM sees through GM Cabinet and changes the world through Oracle. Oracle stores nothing and does not ask gameplay rules for permission.
+
+Every Oracle method has one predetermined owner:
+
+```text
+oracle.characters.*  → Shapoklyak
+oracle.inventory.*   → Cheburashka
+oracle.world.*       → Larisa
+oracle.definitions.* → Chasovoy
+```
+
+Oracle MUST NOT call Gena. The owner still validates technical/domain integrity, persists the canonical change, emits its own event and requests CE resolution when appropriate.
 
 ### CE — pure character calculator
 
@@ -97,24 +115,28 @@ Owns structured dice resolution for a requested roll. It never applies HP or dec
 
 ## Communication rules
 
-1. UI calls engine command/query contracts and renders canonical/resolved state. UI is never an engine-to-engine bridge.
-2. Gena coordinates play intentions that cross history and another domain; the specialized owner still mutates its own state.
-3. An engine never reads or writes another engine's tables. It uses that engine's contract/projection.
-4. After a character-affecting runtime commit, the owning engine calls the resolution requester directly. The resolver fetches fresh runtime projections and Chasovoy definitions, then calls CE.
-5. A Chasovoy definition mutation is different: Chasovoy does not know character usages, so it emits a definition event and the resolver/runtime maps references to affected aggregates.
-6. CE never calls back, polls, publishes changes or owns snapshot sources.
-7. Commands that are one gameplay fact share correlation/idempotency context.
-8. Raw UI realtime subscriptions are refresh fallbacks, not canonical engine communication.
+1. UI calls engine/control contracts and renders canonical/resolved state. UI is never an engine-to-engine bridge.
+2. Normal gameplay enters through Gena when orchestration/history is needed; the specialized owner still mutates its own state.
+3. GM-authoritative mutations enter through Oracle and go directly to the explicit specialized owner. Never insert Gena between Oracle and that owner.
+4. Oracle does not dynamically route by inspecting a generic command. Its public method already defines the destination owner.
+5. An engine never reads or writes another engine's tables. It uses that engine's contract/projection.
+6. After a character-affecting runtime commit, the owning engine calls the resolution requester directly. The resolver fetches fresh runtime projections and Chasovoy definitions, then calls CE.
+7. A Chasovoy definition mutation is different: Chasovoy does not know character usages, so it emits a definition event and the resolver/runtime maps references to affected aggregates.
+8. CE never calls back, polls, publishes changes or owns snapshot sources.
+9. Commands that are one user intention keep correlation/idempotency context (`commandId`) through the owner call.
+10. Raw UI realtime subscriptions are refresh fallbacks, not canonical engine communication.
 
 ## Canonical item sequence
 
 ```text
 GM authors Ash Blade
+→ GM Cabinet calls Oracle
+→ Oracle calls Chasovoy directly
 → Chasovoy persists definition D1
 
 GM gives Ash Blade to Vasya
-→ Gena validates/orchestrates
-→ Chasovoy resolves D1
+→ GM Cabinet calls Oracle
+→ Oracle calls Cheburashka directly
 → Cheburashka creates inventory instance I1 → D1
 → Cheburashka requests character resolution
 → resolver gets Shapoklyak state + Gena runtime + Cheburashka instance projection + Chasovoy definitions
@@ -124,17 +146,22 @@ GM gives Ash Blade to Vasya
 
 If I1 reaches zero quantity, Cheburashka removes the instance. D1 remains in Chasovoy because deleting a possession is not deleting the concept of the item.
 
+A normal player/gameplay action involving the same item may instead enter through Gena. That does not change ownership: Cheburashka still owns the inventory instance.
+
 ## GM authority and HP
 
 Damage/healing rolls are declarations/results only. Neither Gena nor Tobik nor CE infers target HP mutation.
 
 ```text
-GM: character.set_hp
-→ Gena verifies GM authority
+GM: "Now this character has 3 HP"
+→ GM Cabinet calls oracle.characters.setHp
+→ Oracle calls Shapoklyak directly
 → Shapoklyak persists HP
 → Shapoklyak requests fresh character resolution
 → resolver fetches fresh owner state and Chasovoy definitions
 → CE recalculates
 ```
+
+Oracle does not calculate whether 3 HP follows from damage, armor, resistance or action economy. The GM has already declared the resulting canonical fact.
 
 The GM remains the final scene authority.
