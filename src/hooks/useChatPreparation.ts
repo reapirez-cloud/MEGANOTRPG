@@ -12,11 +12,20 @@ import {
   subscribeCharacterTemplateBundles,
 } from "../rule-templates/registry.ts"
 
+export type ChatPreparationSpell = {
+  id: string
+  name: string
+  spell_level: number
+  prepared: boolean
+  cast_mode: string
+}
+
 export function useChatPreparation(character: Character | null) {
   const characterId = character?.id || null
   const [bundleRevision, setBundleRevision] = useState(0)
   const [session, setSession] = useState<CharacterPreparationSession | null>(null)
   const [records, setRecords] = useState<CharacterPreparationRecord[]>([])
+  const [spells, setSpells] = useState<ChatPreparationSpell[]>([])
   const [revision, setRevision] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -32,6 +41,7 @@ export function useChatPreparation(character: Character | null) {
     let channel: RealtimeChannel | null = supabase.channel(`chat-preparation-${characterId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "character_preparation_sessions", filter: `character_id=eq.${characterId}` }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "character_preparation_records", filter: `character_id=eq.${characterId}` }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "character_spells", filter: `character_id=eq.${characterId}` }, refresh)
       .subscribe()
     return () => { if (channel) { void supabase.removeChannel(channel); channel = null } }
   }, [characterId, refresh])
@@ -40,18 +50,20 @@ export function useChatPreparation(character: Character | null) {
     let cancelled = false
     queueMicrotask(() => {
       if (cancelled) return
-      if (!characterId) { setSession(null); setRecords([]); setError(""); setLoading(false); return }
+      if (!characterId) { setSession(null); setRecords([]); setSpells([]); setError(""); setLoading(false); return }
       setLoading(true); setError("")
       void Promise.all([
         supabase.from("character_preparation_sessions").select("*").eq("character_id", characterId).maybeSingle(),
         supabase.from("character_preparation_records").select("*").eq("character_id", characterId).order("generation", { ascending: false }).limit(100),
-      ]).then(([sessionResult, recordsResult]) => {
+        supabase.from("character_spells").select("id,name,spell_level,prepared,cast_mode").eq("character_id", characterId).gt("spell_level", 0).eq("cast_mode", "slot").order("spell_level", { ascending: true }).order("name", { ascending: true }),
+      ]).then(([sessionResult, recordsResult, spellsResult]) => {
         if (cancelled) return
-        const firstError = sessionResult.error || recordsResult.error
+        const firstError = sessionResult.error || recordsResult.error || spellsResult.error
         if (firstError) setError(firstError.message)
         else {
           setSession(sessionResult.data as CharacterPreparationSession | null)
           setRecords((recordsResult.data || []) as CharacterPreparationRecord[])
+          setSpells((spellsResult.data || []) as ChatPreparationSpell[])
         }
         setLoading(false)
       })
@@ -66,5 +78,5 @@ export function useChatPreparation(character: Character | null) {
     records,
   ), [bundleRevision, character?.level, characterId, records, session])
 
-  return { model, loading, error, refresh }
+  return { model, spells, loading, error, refresh }
 }
