@@ -2,7 +2,6 @@ import { cloneElement, isValidElement, useCallback, useEffect, useMemo, useState
 import { useAuth } from "../../context/AuthContext"
 import { useCharacters } from "../../context/CharacterContext"
 import { createEngineCommandContext } from "../../engine-contracts/index.ts"
-import { genaSession } from "../../game-engine/runtime.ts"
 import { useCharacterResourceStates } from "../../hooks/useCharacterResourceStates"
 import { useCharacterTemplateRegistry } from "../../hooks/useCharacterTemplateRegistry"
 import { useRuleTemplates } from "../../hooks/useRuleTemplates"
@@ -302,14 +301,23 @@ export default function CharacterGameFrame({ characterId, children }: Props) {
   }
 
   async function recover(trigger: RecoveryTrigger) {
-    if (!canManage) return
+    if (!canManage || !campaignId) return
     setSaving(true)
     setError("")
     try {
-      await genaSession.recoverCharacter({ characterId, trigger })
+      await oracle.characters.recover(
+        createEngineCommandContext({
+          campaignId,
+          requestedBy: user.id,
+          authority: "gm",
+          actorCharacterId: characterId,
+        }),
+        characterId,
+        trigger,
+      )
       await runtime.reload()
     } catch (reason) {
-      setError(errorMessage(reason, "GENA не смогла выполнить восстановление персонажа."))
+      setError(errorMessage(reason, "Oracle не смог выполнить восстановление персонажа."))
     } finally {
       setSaving(false)
     }
