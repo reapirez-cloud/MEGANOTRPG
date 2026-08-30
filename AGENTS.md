@@ -15,6 +15,21 @@ These instructions are for coding agents and developers working in this reposito
 
 This branch rule has priority over older task-specific habits or prior requests to push directly to `main`.
 
+## Before touching character mechanics
+
+If a task affects any of the following, read `docs/CHARACTER_ENGINE_CONTRACT.md` first:
+
+- `src/character-engine/**`
+- character sheet / character profile
+- chat actions or chat character data
+- inventory, equipment, item actions or item effects
+- classes / subclasses / class features
+- spells / spell slots / casting
+- resources, rests, HP, saves, skills or derived stats
+- GM-granted character features/effects
+
+Also read `src/character-engine/README.md` before modifying the engine itself.
+
 ## Character Engine boundary
 
 Character Engine (CE) is the mechanical source of truth for character-side state. UI must consume resolved CE data instead of re-parsing rule prose.
