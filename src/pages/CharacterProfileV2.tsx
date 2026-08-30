@@ -148,7 +148,6 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
   const canEditAvatar = canManage || isAssignedPlayer
   const sheet = data.sheet
   const resolved = runtime.snapshot
-  const runtimeBlocking = runtime.loading && !resolved
   const canChooseSpells = canManage || Boolean(
     isAssignedPlayer && sheet?.spellcasting_enabled && sheet.spell_change_unlocked,
   )
@@ -358,6 +357,16 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
   }
 
   const fullName = member ? `${currentCharacter.name} (${member.display_name})` : currentCharacter.name
+  const runtimeTab = tab === "sheet" || tab === "class" || tab === "spells"
+  const runtimePanelState = !resolved
+    ? <div className="center-state">
+        {runtime.error
+          ? <><span>CE не смог собрать персонажа: {runtime.error}</span><button className="section-link" type="button" onClick={runtime.refresh}>Повторить</button></>
+          : <><span className="status-spinner" /><span>Собираем механику персонажа…</span></>}
+      </div>
+    : runtime.error
+      ? <div className="auth-error">CE показывает последний доступный расчёт: {runtime.error} <button className="section-link" type="button" onClick={runtime.refresh}>Повторить</button></div>
+      : null
 
   return (
     <div className={`screen character-profile-screen character-profile-v2 ${embedded ? "character-profile-screen--embedded" : ""}`}>
@@ -406,11 +415,11 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
           <button className={tab === "arts" ? "is-active" : ""} type="button" onClick={() => setTab("arts")}><span aria-hidden="true">◇</span>Арты</button>
         </nav>
 
-        {(data.loading || runtimeBlocking) && <div className="center-state"><span className="status-spinner" /><span>Загружаем персонажа…</span></div>}
+        {data.loading && <div className="center-state"><span className="status-spinner" /><span>Загружаем данные персонажа…</span></div>}
         {data.error && <div className="auth-error">{data.error}</div>}
-        {runtime.error && <div className="auth-error">Ошибка расчёта: {runtime.error}</div>}
+        {!data.loading && runtimeTab && runtimePanelState}
 
-        {!data.loading && !runtimeBlocking && tab === "sheet" && sheet && resolved && (
+        {!data.loading && tab === "sheet" && sheet && resolved && (
           <ResolvedCharacterSheet
             input={resolved.input}
             contract={resolved.contract}
@@ -432,7 +441,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
           />
         )}
 
-        {!data.loading && !runtimeBlocking && tab === "class" && resolved && (
+        {!data.loading && tab === "class" && resolved && (
           <CharacterClassPanel
             characterId={characterId}
             contract={resolved.contract}
@@ -440,7 +449,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
           />
         )}
 
-        {!data.loading && !runtimeBlocking && tab === "spells" && sheet && resolved && (
+        {!data.loading && tab === "spells" && sheet && resolved && (
           <CharacterSpellbook
             sheet={sheet}
             contract={resolved.contract}
