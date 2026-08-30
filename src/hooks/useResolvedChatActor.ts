@@ -126,6 +126,11 @@ export function useResolvedChatActor(character: Character | null) {
   }, [characterId, refresh])
 
   useEffect(() => {
+    if (!character?.campaign_id) return
+    return characterResolutionBus.subscribeCampaign(character.campaign_id, refresh)
+  }, [character?.campaign_id, refresh])
+
+  useEffect(() => {
     if (!characterId) return
     return watchCheburashkaCharacter(characterId)
   }, [characterId])
