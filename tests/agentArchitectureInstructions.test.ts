@@ -7,6 +7,8 @@ const ruleTemplates = fs.readFileSync("src/rule-templates/AGENTS.md", "utf8")
 const choiceRuntime = fs.readFileSync("src/rule-templates/CHOICE_RUNTIME.md", "utf8")
 const typesSource = fs.readFileSync("src/rule-templates/types.ts", "utf8")
 const resolverSource = fs.readFileSync("src/rule-templates/resolver.ts", "utf8")
+const characterContext = fs.readFileSync("src/context/CharacterContext.tsx", "utf8")
+const appSource = fs.readFileSync("src/App.tsx", "utf8")
 
 test("repository keeps AI/developer architecture instructions discoverable from code", () => {
   assert.match(root, /Active class \/ Character Engine work is done on `dev`/)
@@ -29,4 +31,19 @@ test("repository keeps AI/developer architecture instructions discoverable from 
   assert.match(typesSource, /read \.\/AGENTS\.md/)
   assert.match(resolverSource, /read \.\/CLASS_INTEGRATION_NOTES\.md/)
   assert.match(choiceRuntime, /before changing this runtime, read `\.\/AGENTS\.md`/)
+})
+
+test("owner admin remains a player-capable identity with GM-equivalent management authority", () => {
+  assert.match(root, /Owner\/admin is not a third mutually exclusive role/)
+  assert.match(root, /role = "player".*is_owner = true/s)
+  assert.match(root, /canManage = isGm \|\| isOwner/)
+  assert.match(root, /must be able to own\/activate\/play an assigned PC exactly like a player/i)
+  assert.match(root, /gate GM-management UI only on `isGm` when `canManage` is the intended permission/)
+
+  assert.match(characterContext, /const isGm=myMember\?\.role==="gm"/)
+  assert.match(characterContext, /const isOwner=myMember\?\.is_owner===true/)
+  assert.match(characterContext, /const canManage=isGm\|\|isOwner/)
+  assert.match(characterContext, /character\.assigned_user_id===user\.id&&character\.character_type==="pc"/)
+  assert.match(appSource, /route\.tab==="me"&&canManage&&<GmWorkspace/)
+  assert.doesNotMatch(appSource, /route\.tab==="me"&&isGm&&<GmWorkspace/)
 })
