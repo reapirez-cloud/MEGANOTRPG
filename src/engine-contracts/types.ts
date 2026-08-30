@@ -13,6 +13,7 @@ export type EngineName =
   | "cheburashka"
   | "shapoklyak"
   | "larisa"
+  | "chasovoy"
 
 export type CommandAuthority = "player" | "gm" | "system"
 export type EngineEventVisibility = "campaign" | "actor" | "gm"
@@ -33,7 +34,7 @@ export type EngineEvent<TPayload extends Record<string, unknown> = Record<string
   engine: EngineName
   kind: string
   campaignId: string
-  aggregateType: "session" | "character" | "inventory" | "item" | "location" | "scene" | "roll"
+  aggregateType: "session" | "character" | "inventory" | "item" | "location" | "scene" | "roll" | "definition"
   aggregateId: string
   occurredAt: string
   visibility: EngineEventVisibility

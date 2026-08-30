@@ -2,248 +2,139 @@
 
 > Status: **IN DEVELOPMENT — RUNTIME FOUNDATION ACTIVE ON `dev`**
 >
-> This is the operational companion to `ENGINE_ROADMAP.md`. Read both before
-> changing gameplay commands, character resolution, inventory, entities, rolls,
-> locations, world time, rests, preparation or chat action execution.
+> Read this document together with `ENGINE_ROADMAP.md` and `CHASOVOY_ENGINE_CONTRACT.md` before changing gameplay commands, character resolution, inventory, reference definitions, entities, rolls, locations or chat action execution.
 
 ## One owner for every canonical fact
 
 | Engine | Owns and persists | Does not own |
 |---|---|---|
-| **GENA** | session declarations/history, gameplay command routing, character resource ledger, rests, preparation, stored session choices/results, command correlation | inventory rows, entity identity, world topology, dice algorithms, CE calculations, scene rulings |
-| **CE** | no canonical persistence; only deterministic calculation code and the transient resolved contract returned for one explicit input | inventory, characters, HP persistence, resources, chat, rolls, locations, time, commands |
-| **CHEBURASHKA** | item instances, containers/holders, quantities, charges, equipment state, transfers, arbitrary item state and item mechanical definitions attached to instances | character identity, HP, world placement, scene rulings, resolved character totals |
-| **SHAPOKLYAK** | PC/NPC existence, identity, type, assignment, visibility/discovery, lifecycle and canonical base character facts including explicit GM HP | inventory, locations/topology, dice, derived CE totals, session history |
-| **LARISA** | locations/world hierarchy, links/maps, discoveries, character and scene placement, scene participants, descriptive campaign/scene/character chronology | character mechanics, resource recharge, effect expiry, inventory, HP, scene rulings |
-| **TOBIK** | dice parsing/planning and one requested random resolution in memory | durable history, resources, HP, inventory, hit/miss decisions, scene legality |
+| **CHASOVOY** | reusable canonical definitions: classes, subclasses, spells, items, feats/features, conditions and reference data; stable ids/slugs, scopes and revisions | character ownership/state, quantities, current charges, preparation, HP, locations, runtime resources |
+| **GENA** | session declarations/history, gameplay command routing, character resource ledger, rests, preparation, stored session choices/results, command correlation | definitions, inventory rows, entity identity, world topology, dice algorithms, CE calculations, scene rulings |
+| **CE** | no canonical persistence; deterministic calculation and one transient resolved contract from explicit input | definitions storage, inventory, characters, HP persistence, resources, chat, rolls, locations, time, commands |
+| **CHEBURASHKA** | item instances, holders, quantities, charges, equipment state, transfers and arbitrary per-instance state | item definitions, character identity, HP, world placement, scene rulings, resolved totals |
+| **SHAPOKLYAK** | PC/NPC existence, identity, type, assignment, visibility/discovery, lifecycle and canonical base character facts including explicit GM HP | definitions, inventory, locations/topology, dice, derived CE totals, session history |
+| **LARISA** | locations/world hierarchy, links/maps, discoveries, character and scene placement, scene participants, descriptive chronology | definitions, character mechanics, resource recharge, effect expiry, inventory, HP, scene rulings |
+| **TOBIK** | dice parsing/planning and one requested random resolution in memory | definitions, durable history, resources, HP, inventory, hit/miss decisions, scene legality |
 
-`engine_command_receipts` is shared command infrastructure for idempotency, not
-a UI-facing domain model. Tobik's durable result belongs to Gena's event/history;
-Tobik itself does not become another result database.
+`engine_command_receipts` is shared infrastructure for idempotency, not a domain owner.
+
+## Definition law
+
+A reusable game concept has one canonical definition in Chasovoy. Other engines store a stable definition reference plus only the runtime state they own.
+
+Examples:
+
+```text
+Chasovoy: Fireball definition
+Gena/runtime: whether a character knows/prepared it and slot/resource state
+
+Chasovoy: Ash Blade definition
+Cheburashka: which character owns an instance, quantity, equipped state, current charges
+```
+
+Creating or giving another instance never creates another definition. A deliberate variant/fork receives a new canonical id. Editing a definition creates a new revision under the same identity.
 
 ## CE input ownership
 
-CE stores nothing between calls. A character resolution assembler obtains fresh
-projections from the owners and creates one `CharacterEngineInput`:
+CE stores nothing between calls. A character resolution assembler obtains fresh projections from owners and definitions from Chasovoy, then creates one `CharacterEngineInput`.
 
-| Input part | Canonical owner | What CE receives |
+| Input part | Canonical owner | CE receives |
 |---|---|---|
-| identity, level, base abilities, explicit HP | Shapoklyak | base/state projection needed for arithmetic |
-| class resources, spell slots, stored choices, preparation | Gena runtime | explicit resource/state and authored contributions |
-| equipment, item effects and item actions | Cheburashka | `InventoryMechanicalProjection.contributions`, never the backpack |
-| locations and time | Larisa | nothing by default; only a future explicit mechanical projection if the product deliberately introduces one |
-| dice result | Tobik through Gena | never part of canonical character storage merely because a roll happened |
+| identity, level, base abilities, explicit HP | Shapoklyak | base/state projection required for arithmetic |
+| class resources, spell slots, stored choices, preparation | Gena runtime | explicit runtime state |
+| class/subclass/spell/feat definitions | Chasovoy | resolved canonical definitions/contributions |
+| item definition/mechanics | Chasovoy | definition resolved for referenced items |
+| item ownership/equipment/current state | Cheburashka | `InventoryMechanicalProjection` assembled from definition + instance state, never the backpack |
+| locations/time | Larisa | nothing by default; only a deliberately introduced projection |
+| dice result | Tobik through Gena | never canonical character storage merely because a roll happened |
 
-A beer bottle with no mechanics stays only in Cheburashka. A protection ring can
-produce an AC contribution. A grenade can produce an action while it exists. The
-full rows, quantities, charges and item notes are never CE-owned state.
+A beer bottle with no mechanics remains inventory state plus its definition reference. A protection ring may contribute AC while equipped. Current charges remain Cheburashka state; the meaning of the item belongs to Chasovoy.
 
-When a charged item reaches zero, Cheburashka's projection removes its use
-actions/spells while preserving unrelated passive effects. CE therefore sees
-exactly the capabilities it must calculate, not the charge ledger itself.
+## Engine surfaces
 
-## Shared command envelope and result
+### Chasovoy — canonical definition guard
 
-Every cross-engine command uses an explicit context:
+Commands:
+- `definition.create`
+- `definition.revise`
+- `definition.archive`
 
-```ts
-type EngineCommandContext = {
-  commandId: string       // stable idempotency + correlation id
-  campaignId: string
-  requestedBy: string
-  authority: "player" | "gm" | "system"
-  occurredAt: string
-  actorCharacterId?: string | null
-  roomId?: string | null
-}
-```
+Queries:
+- `getDefinition({ id, revision? })`
+- `getBySlug(...)`
+- `listDefinitions(...)`
 
-An owning engine returns the mutated value plus durable/observable events and
-explicit affected ids. A character-affecting owner directly requests a fresh
-resolution after its commit. The request is an invalidation signal only; it does
-not carry canonical rows and CE does not cache them.
-
-```ts
-type EngineCommandResult<T> = {
-  value: T
-  events: EngineEvent[]
-  effects: {
-    characterIds: string[]
-    itemIds: string[]
-    locationIds: string[]
-    sceneIds: string[]
-    resolveCharacterIds: string[]
-  }
-}
-```
-
-## Engine command and query surface
+Rules:
+- no character/runtime ownership;
+- no direct CE-resolution request after a definition edit;
+- publishes definition events so Gena/resolver can determine affected references;
+- system definitions require system authority; campaign definitions are GM-authored;
+- identity is stable, revision content is versioned.
 
 ### Gena — central session orchestrator
 
-Commands:
-
-- `session.declare`
-- `inventory.use`, `inventory.transfer` → Cheburashka
-- `entity.reveal_npc`, `character.set_hp` → Shapoklyak
-- `world.discover_location`, `world.move_character`
-- `world.set_scene_position`, `world.set_scene_participants` → Larisa
-- `world.sync_scene_participants` → Larisa
-- `roll.request` → Tobik
-- existing resource spend/recharge, rest, preparation and template action/spell commands
-
-Abilities:
-
-- accepts player/GM intentions;
-- verifies command authority and coordinates multi-engine work;
-- records what was declared and which owner changed state;
-- keeps mutation and related chat history atomic where required;
-- never substitutes its judgement for the GM's scene ruling.
+Routes gameplay intentions to the owning domain engine, owns history/correlation and runtime resources/preparation. It never becomes the catalog or rules-reference database.
 
 ### CE — pure character calculator
 
-Queries:
+Resolves a supplied explicit snapshot. It performs no I/O, sends no commands and persists nothing.
 
-- `resolveCharacterContract(input)`
-- explanation/trace functions over that same explicit input/contract
+### Cheburashka — inventory instance engine
 
-Abilities:
+Commands include create/update/remove/equip/consume/transfer. It owns instance state, not reusable item definitions. A character-affecting instance mutation requests fresh character resolution.
 
-- combines formulas, grants, suppressions, actions, resources and provenance;
-- returns resolved stats/actions/spells/resources;
-- performs no I/O, sends no commands and persists nothing.
+### Shapoklyak — PC/NPC entity engine
 
-### Cheburashka — inventory warehouse and porter
+Owns who exists, assignment/lifecycle/visibility and GM-authoritative base facts/HP.
 
-Commands:
+### Larisa — world/location engine
 
-- `inventory.create`, `inventory.update`, `inventory.remove`
-- `inventory.set_equipped`
-- `inventory.consume` — applies `none`, `quantity` or `charges` usage semantics
-- `inventory.transfer`
+Owns world hierarchy, placement, discovery, scenes and descriptive time. Time alone never causes CE/resource/HP effects.
 
-Queries/projections:
+### Tobik — roll engine
 
-- `getItem`, `listCharacterItems`
-- `mechanicalProjection(characterId)`
-
-Abilities:
-
-- atomically changes the item aggregate it owns;
-- emits item/inventory events;
-- directly requests fresh CE resolution for every affected character;
-- hides irrelevant warehouse data from CE.
-
-### Shapoklyak — PC/NPC creation and storage
-
-Commands:
-
-- `entity.create`, `entity.update`, `entity.delete`
-- `entity.set_active`, `entity.set_life_state`, `entity.set_visibility`
-- `entity.reveal_npc`
-- `entity.set_hp` — GM-authoritative only through Gena
-
-Queries:
-
-- `getEntity`, `listCampaignEntities`
-- future explicit base-character projection for the resolution assembler
-
-Abilities:
-
-- owns who exists and their stable identity/lifecycle;
-- validates PC/NPC and campaign relationships;
-- signals character resolution when base mechanics/HP changed.
-
-### Larisa — world, locations and descriptive time
-
-Commands:
-
-- `world.discover_location`
-- `world.set_character_position`
-- `world.set_scene_position`
-- `world.set_scene_participants`
-- `world.sync_scene_participants`
-
-Queries:
-
-- `loadCampaignSnapshot`
-
-Abilities:
-
-- owns where and when entities/scenes are recorded;
-- stores discovery and chronology;
-- does not trigger CE, rests, recharge, expiry, damage or NPC movement merely
-  because time changed.
-
-### Tobik — rolls
-
-Commands/queries:
-
-- `compileRollPlan(request)`
-- `execute(request)` / `executeRollPlan(plan)`
-
-Abilities:
-
-- resolves d20 and arbitrary dice plans with structured output;
-- returns the result to Gena for durable history;
-- never applies the result to HP and never decides whether an attack hit.
+Owns structured dice resolution for a requested roll. It never applies HP or decides scene legality.
 
 ## Communication rules
 
-1. UI calls a command/query contract and renders returned/canonical state. It is
-   never a message bus between engines.
-2. Gena is the entry point for a play intention spanning history and another
-   domain. The domain owner still performs its own mutation.
-3. An engine never reads or writes another engine's tables. It uses that engine's
-   command/query/projection contract.
-4. After a character-affecting commit, the owning engine calls the resolution
-   requester directly. The resolver fetches all fresh projections and calls CE.
-5. CE never calls back, polls, publishes changes or owns the snapshot sources.
-6. Commands that must be one gameplay fact share a transaction and `commandId`.
-7. Raw UI realtime subscriptions are refresh fallbacks, not canonical engine
-   communication. An engine-owned persistence adapter may translate its own
-   committed table change into the same explicit resolution signal; this is how
-   Cheburashka observes an atomic server-side Gena + inventory transaction.
+1. UI calls engine command/query contracts and renders canonical/resolved state. UI is never an engine-to-engine bridge.
+2. Gena coordinates play intentions that cross history and another domain; the specialized owner still mutates its own state.
+3. An engine never reads or writes another engine's tables. It uses that engine's contract/projection.
+4. After a character-affecting runtime commit, the owning engine calls the resolution requester directly. The resolver fetches fresh runtime projections and Chasovoy definitions, then calls CE.
+5. A Chasovoy definition mutation is different: Chasovoy does not know character usages, so it emits a definition event and the resolver/runtime maps references to affected aggregates.
+6. CE never calls back, polls, publishes changes or owns snapshot sources.
+7. Commands that are one gameplay fact share correlation/idempotency context.
+8. Raw UI realtime subscriptions are refresh fallbacks, not canonical engine communication.
 
-## Canonical grenade sequence
+## Canonical item sequence
 
-```mermaid
-sequenceDiagram
-    participant G as Gena
-    participant C as Cheburashka
-    participant R as Resolution assembler
-    participant E as CE
-    participant U as UI
-    G->>C: inventory.consume(itemId, amount)
-    C->>C: decrement charge/quantity or delete
-    C-->>R: requestCharacterResolution(characterId)
-    R->>C: mechanicalProjection(characterId)
-    C-->>R: only relevant item contributions
-    R->>E: resolve(fresh snapshot)
-    E-->>R: resolved contract
-    G-->>U: recorded action/result
-    R-->>U: refreshed contract
+```text
+GM authors Ash Blade
+→ Chasovoy persists definition D1
+
+GM gives Ash Blade to Vasya
+→ Gena validates/orchestrates
+→ Chasovoy resolves D1
+→ Cheburashka creates inventory instance I1 → D1
+→ Cheburashka requests character resolution
+→ resolver gets Shapoklyak state + Gena runtime + Cheburashka instance projection + Chasovoy definitions
+→ CE resolves
+→ Sheet / Chat / Revolver render the same contract
 ```
 
-If the grenade reaches zero, Cheburashka removes it. The next projection contains
-no grenade action, so CE naturally stops returning that action. Gena did not
-delete an inventory row; CE did not store or detect inventory drift; no sheet UI
-transported the change.
+If I1 reaches zero quantity, Cheburashka removes the instance. D1 remains in Chasovoy because deleting a possession is not deleting the concept of the item.
 
 ## GM authority and HP
 
-Damage/healing rolls are declarations/results only. Neither Gena nor Tobik nor CE
-infers a target HP mutation. The canonical flow is explicit:
+Damage/healing rolls are declarations/results only. Neither Gena nor Tobik nor CE infers target HP mutation.
 
 ```text
-GM command: character.set_hp
+GM: character.set_hp
 → Gena verifies GM authority
 → Shapoklyak persists HP
 → Shapoklyak requests fresh character resolution
-→ assembler fetches current owner projections
+→ resolver fetches fresh owner state and Chasovoy definitions
 → CE recalculates
 ```
 
-The same principle applies to explicit GM NPC reveal, location discovery and
-movement commands. Gena coordinates; Shapoklyak/Larisa own their facts; the GM
-owns the scene truth.
+The GM remains the final scene authority.
