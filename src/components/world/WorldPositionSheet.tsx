@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import { DAY_PERIODS, formatCampaignTime, shiftWorldTime } from "../../world-state/time"
 import type { DayPeriod, LocationSummary, WorldPosition } from "../../world-state/types"
 
-type WorldPositionIntent = "edit-position" | "move-character"
+type WorldPositionIntent = "edit-position" | "move-character" | "edit-location" | "edit-time"
 
 type Props = {
   title: string
@@ -21,6 +21,10 @@ export default function WorldPositionSheet({ title, position, locations, intent 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const movingCharacter = intent === "move-character"
+  const editingLocationOnly = intent === "edit-location"
+  const editingTimeOnly = intent === "edit-time"
+  const showLocation = !editingTimeOnly
+  const showTime = !movingCharacter && !editingLocationOnly
   const shown = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("ru-RU")
     return locations.filter((location) => location.lifecycle_state === "active" && (!q || location.name.toLocaleLowerCase("ru-RU").includes(q))).slice(0, 40)
@@ -38,26 +42,42 @@ export default function WorldPositionSheet({ title, position, locations, intent 
     if (movingCharacter && (!selectedLocation || !destinationChanged)) return
     setSaving(true); setError("")
     const result = await onSave(
-      locationId,
-      movingCharacter ? position.campaign_day : Math.max(1, campaignDay),
-      movingCharacter ? position.day_period : dayPeriod,
+      editingTimeOnly ? position.location_id : locationId,
+      movingCharacter || editingLocationOnly ? position.campaign_day : Math.max(1, campaignDay),
+      movingCharacter || editingLocationOnly ? position.day_period : dayPeriod,
     )
     setSaving(false)
     if (!result.ok) { setError(result.error || "Не удалось сохранить позицию."); return }
     onClose()
   }
 
+  const heading = movingCharacter
+    ? "Отправить персонажа"
+    : editingTimeOnly
+      ? "День и время"
+      : editingLocationOnly
+        ? "Локация"
+        : "Позиция в мире"
+
+  const saveLabel = movingCharacter
+    ? "Отправить сюда"
+    : editingTimeOnly
+      ? "Сохранить время"
+      : editingLocationOnly
+        ? "Сохранить локацию"
+        : "Сохранить"
+
   return (
     <div className="soft-sheet-backdrop" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose() }}>
       <section className="soft-sheet world-position-sheet" role="dialog" aria-modal="true" aria-label={title}>
         <div className="soft-sheet__handle" />
-        <header className="soft-sheet__header"><div><small>{movingCharacter ? "Отправить персонажа" : "Позиция в мире"}</small><h2>{title}</h2></div><button type="button" className="soft-sheet__close" onClick={onClose}>×</button></header>
+        <header className="soft-sheet__header"><div><small>{heading}</small><h2>{title}</h2></div><button type="button" className="soft-sheet__close" onClick={onClose}>×</button></header>
 
         <div className="position-summary">
-          <span>◈</span><div><small>Сейчас</small><strong>{originalLocation?.name || "Локация не задана"}</strong><p>{formatCampaignTime(position)}</p></div>
+          <span>{editingTimeOnly ? "◷" : "◈"}</span><div><small>Сейчас</small><strong>{editingTimeOnly ? formatCampaignTime(position) : originalLocation?.name || "Локация не задана"}</strong>{!editingTimeOnly && <p>{formatCampaignTime(position)}</p>}</div>
         </div>
 
-        <div className="sheet-section">
+        {showLocation && <div className="sheet-section">
           <div className="sheet-section__head"><span>{movingCharacter ? "Куда отправить" : "Локация"}</span>{!movingCharacter && <button type="button" onClick={() => setLocationId(null)}>Не задана</button>}</div>
           <input className="app-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по миру…" />
           <div className="position-location-list">
@@ -82,13 +102,13 @@ export default function WorldPositionSheet({ title, position, locations, intent 
               </button>
             })}
           </div>
-        </div>
+        </div>}
 
         {movingCharacter && selectedLocation && destinationChanged && <div className="position-summary">
           <span>⇢</span><div><small>Новая зона</small><strong>{selectedLocation.name}</strong><p>Время персонажа останется без изменений.</p></div>
         </div>}
 
-        {!movingCharacter && <div className="sheet-section">
+        {showTime && <div className="sheet-section">
           <div className="sheet-section__head"><span>Время кампании</span><span className="sheet-section__muted">без календарной даты</span></div>
           <div className="campaign-day-control"><button type="button" onClick={() => setCampaignDay((day) => Math.max(1, day - 1))}>−</button><label><small>День кампании</small><input type="number" min="1" value={campaignDay} onChange={(event) => setCampaignDay(Math.max(1, Number(event.target.value) || 1))} /></label><button type="button" onClick={() => setCampaignDay((day) => day + 1)}>＋</button></div>
           <div className="period-stepper"><button type="button" onClick={() => movePeriod(-1)}>‹</button><div><small>Период</small><strong>{DAY_PERIODS.find((period) => period.value === dayPeriod)?.label}</strong></div><button type="button" onClick={() => movePeriod(1)}>›</button></div>
@@ -98,7 +118,7 @@ export default function WorldPositionSheet({ title, position, locations, intent 
         {error && <div className="sheet-error">{error}</div>}
         <footer className="soft-sheet__footer">
           <button type="button" className="sheet-secondary" onClick={onClose}>Отмена</button>
-          {(!movingCharacter || (selectedLocation && destinationChanged)) && <button type="button" className="sheet-primary" disabled={saving} onClick={() => void save()}>{saving ? movingCharacter ? "Отправляем…" : "Сохраняем…" : movingCharacter ? "Отправить сюда" : "Сохранить"}</button>}
+          {(!movingCharacter || (selectedLocation && destinationChanged)) && <button type="button" className="sheet-primary" disabled={saving} onClick={() => void save()}>{saving ? "Сохраняем…" : saveLabel}</button>}
         </footer>
       </section>
     </div>
