@@ -1,5 +1,7 @@
 # Persistent Character Choices
 
+> **AI/developer instruction:** before changing this runtime, read `./AGENTS.md`. Do not create source-specific choice engines for feats/classes; extend the generic CE choice contract when a real rule needs a new primitive.
+
 `RuleChoiceDefinition.selection_mode = "player_once"` turns an ordinary template choice into a player-facing Character Engine decision.
 
 ## Contract
@@ -24,3 +26,5 @@
 Spell options should use stable catalog identities such as `spell:guidance` and their mechanics should grant the canonical `class_spell` access. The choice runtime stores only the selected stable keys; CE continues to resolve the actual mechanics from the source definition.
 
 The same choice contract is intentionally source-agnostic. When feats become CE sources, their "choose from" clauses should use this runtime rather than inventing a second selection system.
+
+The next generic primitives are tracked in `./AGENTS.md`: dynamic option providers, structured CE-owned prerequisites, uniqueness/exclusion constraints, bounded numeric allocations, explicit respec/change policy, multi-stage dependent choices, and first-class feat source integration. Implement each when a real rule first needs it, but implement it generically rather than inside one feat/class.
