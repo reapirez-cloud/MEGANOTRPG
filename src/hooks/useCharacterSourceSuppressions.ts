@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
+import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { clearCharacterSourceSuppressions, registerCharacterSourceSuppressions } from "../lib/suppressionRuntime.ts"
 import { supabase } from "../lib/supabase.ts"
+import { oracle } from "../oracle-engine/runtime.ts"
 import type { CharacterSourceSuppressionRow } from "../types/characterSuppressions.ts"
 
 export function useCharacterSourceSuppressions(characterId: string | null) {
@@ -48,12 +50,30 @@ export function useCharacterSourceSuppressions(characterId: string | null) {
 
   const setSuppressed = useCallback(async (sourceId: string, suppressed: boolean) => {
     if (!characterId || !sourceId.trim()) return { ok: false as const, error: "Источник не указан." }
-    const { error: rpcError } = await supabase.rpc("set_character_source_suppressed", {
-      p_character_id: characterId,
-      p_source_id: sourceId,
-      p_suppressed: suppressed,
-    })
-    if (rpcError) return { ok: false as const, error: rpcError.message }
+
+    const [{ data: authData, error: authError }, { data: character, error: characterError }] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.from("characters").select("campaign_id").eq("id", characterId).maybeSingle(),
+    ])
+    if (authError || !authData.user) return { ok: false as const, error: authError?.message || "Нужна авторизация." }
+    if (characterError || !character?.campaign_id) return { ok: false as const, error: characterError?.message || "Кампания персонажа не найдена." }
+
+    try {
+      await oracle.characters.setSourceSuppressed(
+        createEngineCommandContext({
+          campaignId: String(character.campaign_id),
+          requestedBy: authData.user.id,
+          authority: "gm",
+          actorCharacterId: characterId,
+        }),
+        characterId,
+        sourceId,
+        suppressed,
+      )
+    } catch (reason) {
+      return { ok: false as const, error: reason instanceof Error ? reason.message : "Oracle не смог изменить источник персонажа." }
+    }
+
     await load()
     return { ok: true as const }
   }, [characterId, load])
