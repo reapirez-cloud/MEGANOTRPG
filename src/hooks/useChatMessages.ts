@@ -33,6 +33,14 @@ export type ChatTemplateRollRequest = ChatTemplateActionRequest & {
   diceSides?: number
   diceModifier?: number
 }
+export type ChatTemplateSpellRequest = {
+  characterId: string
+  mechanicId: string
+  methodKey: string
+  optionKey?: string
+  label: string
+  payload?: ChatEventPayload
+}
 
 const fields = "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at, attachment_url, attachment_kind, event_kind, event_payload"
 const PAGE_SIZE = 50
@@ -249,6 +257,27 @@ export function useChatMessages(roomId: string) {
     return fetchInserted(Number(data))
   }, [fetchInserted, roomId, sending])
 
+  const sendTemplateSpell = useCallback(async (request: ChatTemplateSpellRequest): Promise<boolean> => {
+    if (sending) return false
+    setSending(true)
+    setError(null)
+    const { data, error: requestError } = await supabase.rpc("send_chat_template_spell_v1", {
+      p_room_id: roomId,
+      p_character_id: request.characterId,
+      p_mechanic_id: request.mechanicId,
+      p_method_key: request.methodKey,
+      p_option_key: request.optionKey ?? null,
+      p_label: request.label,
+      p_payload: request.payload ?? {},
+    })
+    setSending(false)
+    if (requestError) {
+      setError(requestError.message)
+      return false
+    }
+    return fetchInserted(Number(data))
+  }, [fetchInserted, roomId, sending])
+
   const editMessage = useCallback(async (messageId: number, text: string): Promise<Result> => {
     const body = text.trim()
     if (!body) return { ok: false, error: "Сообщение не может быть пустым." }
@@ -283,6 +312,7 @@ export function useChatMessages(roomId: string) {
     sendTemplateRoll,
     sendEvent,
     sendTemplateAction,
+    sendTemplateSpell,
     editMessage,
     deleteMessage,
   }
