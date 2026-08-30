@@ -17,6 +17,7 @@ import ChatMessageActions from "../components/chat/ChatMessageActions"
 import ChatContextSheet from "../components/chat/ChatContextSheet"
 import {
   templateMechanicIdForChatAction,
+  templateMechanicIdForSpellAccess,
   templatePaymentOptionKeyForChatAction,
 } from "../components/chat/chatTemplateActionRoute.ts"
 import type { ChatEventPayload, ChatMessage, RoomState, RoomType } from "../types/chat"
@@ -271,13 +272,32 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
   }
 
   async function castSpell(spell: ResolvedSpell) {
-    const contract = resolved.contract
+    const characterId = actors.selected?.characterId || null
+    if (!characterId) throw new Error("Для заклинания нужен выбранный персонаж.")
+
     const access = spell.accesses.find((item) => item.available) || spell.accesses[0]
     const method = access?.methods.find((item) => item.available) || access?.methods[0]
     const option = method?.resourceOptions.find((item) => item.available) || method?.resourceOptions[0]
+    if (!access || !method) throw new Error("У заклинания нет доступного способа сотворения.")
+
+    const detail = [spell.identity.level ? `${spell.identity.level} уровень` : "Кантрип", option?.castLevel && option.castLevel !== spell.identity.level ? `ячейка ${option.castLevel} ур.` : "", method.attackBonus ? `атака ${method.attackBonus.value >= 0 ? "+" : ""}${method.attackBonus.value}` : "", method.saveDc ? `СЛ ${method.saveDc.value}` : ""].filter(Boolean).join(" · ")
+    const mechanicId = templateMechanicIdForSpellAccess(access)
+    if (mechanicId) {
+      const sent = await chat.sendTemplateSpell({
+        characterId,
+        mechanicId,
+        methodKey: method.key,
+        ...(option ? { optionKey: option.key } : {}),
+        label: spell.identity.name,
+        payload: { detail, spellKey: spell.key },
+      })
+      if (sent) { resolved.refresh(); setActionsOpen(false) }
+      return
+    }
+
+    const contract = resolved.contract
     const costs = contract && option ? resourceCostInputs(contract, option.costs) : []
-    const detail = [spell.identity.level ? `${spell.identity.level} уровень` : "Кантрип", option?.castLevel && option.castLevel !== spell.identity.level ? `ячейка ${option.castLevel} ур.` : "", method?.attackBonus ? `атака ${method.attackBonus.value >= 0 ? "+" : ""}${method.attackBonus.value}` : "", method?.saveDc ? `СЛ ${method.saveDc.value}` : ""].filter(Boolean).join(" · ")
-    const sent = await chat.sendEvent(actors.selected?.characterId || null, "spell", spell.identity.name, { detail, spellKey: spell.key }, costs)
+    const sent = await chat.sendEvent(characterId, "spell", spell.identity.name, { detail, spellKey: spell.key }, costs)
     if (sent) { resolved.refresh(); setActionsOpen(false) }
   }
 
