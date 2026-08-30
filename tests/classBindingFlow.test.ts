@@ -102,7 +102,8 @@ test("subclass inherits parent class level instead of stored subclass or total c
 })
 
 const frame = fs.readFileSync("src/components/characters/CharacterGameFrame.tsx", "utf8")
-const sheet = fs.readFileSync("src/components/characters/ResolvedCharacterSheet.tsx", "utf8")
+const sheet = fs.readFileSync("src/components/characters/ResolvedCharacterSheetBase.tsx", "utf8")
+const sheetNavigation = fs.readFileSync("src/components/characters/ResolvedCharacterSheet.tsx", "utf8")
 const classPanel = fs.readFileSync("src/components/characters/CharacterClassPanelBase.tsx", "utf8")
 const migration = fs.readFileSync("supabase/migrations/20260828043000_character_class_binding_sync.sql", "utf8")
 
@@ -127,6 +128,8 @@ test("resolved CE sheet keeps class and subclass linked without duplicating thei
   assert.match(sheet, /Способности подкласса/)
   assert.doesNotMatch(sheet, /sheet-v3__class-node--class/)
   assert.doesNotMatch(sheet, /sheet-v3__class-node--subclass/)
+  assert.match(sheetNavigation, /meganotrpg\.character-class-focus/)
+  assert.match(sheetNavigation, /\.profile-v3__class/)
   assert.match(classPanel, /class-panel__source--\$\{mechanics\.kind\}/)
   assert.match(classPanel, /mechanics\.kind === "class" \? "Класс" : "Подкласс"/)
 })
