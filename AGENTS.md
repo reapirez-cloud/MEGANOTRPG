@@ -2,10 +2,18 @@
 
 These instructions are for coding agents and developers working in this repository. They are part of the repository contract, not player-facing documentation.
 
-## Branch discipline
+## Branch discipline — mandatory for all work
 
-- Active class / Character Engine work is done on `dev`.
-- Do not write class/runtime work directly to `main` and do not merge `dev` to `main` unless the user explicitly requests the release/merge.
+- **All active development starts and stays on `dev` by default.** This applies to every subsystem, not only classes or Character Engine work.
+- Do not implement, patch, refactor, document, or otherwise write active development changes directly to `main`.
+- Do not merge, copy, cherry-pick, or otherwise promote `dev` changes to `main` unless the user explicitly asks for that promotion in the current conversation.
+- A request to implement/fix/change something is **not** permission to update `main`.
+- A request such as “залей в main”, “слей в main”, “перенеси в main”, or another unambiguous release instruction is required before touching `main`.
+- When the user asks to inspect, audit, discuss, or implement without explicitly authorizing `main`, work against `dev` and leave `main` unchanged.
+- After implementation, report that the work is in `dev` and wait for the user's explicit decision about promotion to `main`.
+- Repository instruction/documentation changes follow the same rule: update them in `dev` first unless the user explicitly authorizes a `main` update.
+
+This branch rule has priority over older task-specific habits or prior requests to push directly to `main`.
 
 ## Character Engine boundary
 
