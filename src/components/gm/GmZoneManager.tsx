@@ -53,6 +53,26 @@ function flattenZones(locations: LocationEntry[]): FlatZone[] {
   return result
 }
 
+function descendantCount(locations: LocationEntry[], zoneId: string): number {
+  const childrenByParent = new Map<string, string[]>()
+  for (const location of locations) {
+    if (!location.parent_location_id) continue
+    const children = childrenByParent.get(location.parent_location_id) || []
+    children.push(location.id)
+    childrenByParent.set(location.parent_location_id, children)
+  }
+
+  const visited = new Set<string>()
+  const stack = [...(childrenByParent.get(zoneId) || [])]
+  while (stack.length) {
+    const id = stack.pop()
+    if (!id || visited.has(id)) continue
+    visited.add(id)
+    stack.push(...(childrenByParent.get(id) || []))
+  }
+  return visited.size
+}
+
 export default function GmZoneManager({ onError }: Props) {
   const world = useWorldContent()
   const [scope, setScope] = useState<ZoneScope>("active")
@@ -73,6 +93,7 @@ export default function GmZoneManager({ onError }: Props) {
     const needle = query.trim().toLocaleLowerCase("ru-RU")
     return flattenZones(scopedLocations).filter(({ zone, path }) => !needle || `${path} ${zone.summary} ${zone.description}`.toLocaleLowerCase("ru-RU").includes(needle))
   }, [query, scopedLocations])
+  const nestedCount = menuTarget ? descendantCount(world.locations, menuTarget.id) : 0
 
   function reportError(message: string) {
     setLocalError(message)
@@ -134,11 +155,38 @@ export default function GmZoneManager({ onError }: Props) {
     if (!result.ok) reportError(result.error || "Не удалось изменить состояние зоны.")
   }
 
+  async function deleteZone(zone: LocationEntry) {
+    const children = descendantCount(world.locations, zone.id)
+    const warning = children
+      ? `Удалить «${zone.name}» и все вложенные зоны (${children})? Это действие нельзя отменить.`
+      : `Удалить «${zone.name}» навсегда? Это действие нельзя отменить.`
+    if (!window.confirm(warning)) return
+
+    setSaving(true)
+    setLocalError("")
+    const result = await world.deleteWorldItem("locations", zone.id)
+    setSaving(false)
+    if (!result.ok) {
+      reportError(result.error || "Не удалось удалить зону.")
+      return
+    }
+    if (editor !== "new" && editor?.id === zone.id) setEditor(null)
+    setMenuTarget(null)
+  }
+
   const menuActions: ContextAction[] = menuTarget ? [
     { id: "edit", icon: "✎", label: "Редактировать", detail: "Название, описание и видимость", onSelect: () => openEditor(menuTarget) },
     menuTarget.lifecycle_state === "archived"
       ? { id: "restore", icon: "↥", label: "Вернуть зону", detail: "Снова показать её в активной структуре", onSelect: () => void toggleArchive(menuTarget) }
-      : { id: "archive", icon: "×", label: "В архив", detail: "Убрать из рабочей структуры без удаления", danger: true, onSelect: () => void toggleArchive(menuTarget) },
+      : { id: "archive", icon: "⌁", label: "В архив", detail: "Убрать из рабочей структуры без удаления", onSelect: () => void toggleArchive(menuTarget) },
+    {
+      id: "delete",
+      icon: "×",
+      label: "Удалить навсегда",
+      detail: nestedCount ? `Удалится и всё внутри · ${nestedCount} зон` : "Без возможности восстановления",
+      danger: true,
+      onSelect: () => void deleteZone(menuTarget),
+    },
   ] : []
 
   return <section className="gm-section" aria-label="Зоны мира">
