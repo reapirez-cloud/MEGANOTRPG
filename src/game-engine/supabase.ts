@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { createEngineCommandId, EngineCommandError } from "../engine-contracts/index.ts"
+import {
+  createEngineCommandId,
+  EngineCommandError,
+  type CharacterResolutionRequester,
+} from "../engine-contracts/index.ts"
 import type { ChatEventKind, ChatEventPayload } from "../types/chat.ts"
 import type { ResourceCostInput } from "../types/characterResources.ts"
 
@@ -53,6 +57,14 @@ export type GenaInventoryUseCommand = GenaChatRollCommand & {
   commandId?: string
 }
 
+export type GenaRecoveryTrigger = "short_rest" | "long_rest" | "dawn"
+export type GenaCharacterRecoveryCommand = {
+  characterId: string
+  trigger: GenaRecoveryTrigger
+  /** Stable correlation key for runtime invalidation and future durable audit. */
+  commandId?: string
+}
+
 function resultId(data: unknown, error: { message: string } | null): number {
   if (error) throw new EngineCommandError("gena.persistence", error.message)
   const id = Number(data)
@@ -60,11 +72,41 @@ function resultId(data: unknown, error: { message: string } | null): number {
   return id
 }
 
-/** Server command gateway. Mutations and their durable chat event share one RPC transaction. */
+/**
+ * Server gameplay gateway.
+ *
+ * Server RPCs own transaction boundaries. The gateway is still GENA's gameplay
+ * path: UI never decides how a rest mutates HP, resources or preparation state.
+ */
 export class SupabaseGenaSessionGateway {
   private readonly client: SupabaseClient
+  private readonly resolutionRequester?: CharacterResolutionRequester
 
-  constructor(client: SupabaseClient) { this.client = client }
+  constructor(client: SupabaseClient, resolutionRequester?: CharacterResolutionRequester) {
+    this.client = client
+    this.resolutionRequester = resolutionRequester
+  }
+
+  async recoverCharacter(command: GenaCharacterRecoveryCommand): Promise<void> {
+    const commandId = command.commandId ?? createEngineCommandId()
+    const result = command.trigger === "short_rest"
+      ? await this.client.rpc("grant_character_short_rest", { p_character_id: command.characterId })
+      : command.trigger === "long_rest"
+        ? await this.client.rpc("grant_character_long_rest", { p_character_id: command.characterId })
+        : await this.client.rpc("recover_character_resources", {
+            p_character_id: command.characterId,
+            p_trigger: "dawn",
+          })
+
+    if (result.error) throw new EngineCommandError("gena.recovery", result.error.message)
+
+    await this.resolutionRequester?.requestCharacterResolution({
+      characterId: command.characterId,
+      source: "gena",
+      reason: `character.recovery.${command.trigger}`,
+      commandId,
+    })
+  }
 
   async sendRoll(command: GenaChatRollCommand): Promise<number> {
     const { data, error } = await this.client.rpc("send_chat_roll_v3", {
