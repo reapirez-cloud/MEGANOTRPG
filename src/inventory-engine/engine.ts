@@ -62,6 +62,10 @@ function effectsFor(mutation: InventoryMutation, requiresResolution: boolean): E
   }
 }
 
+function isGm(command: CheburashkaCommand) {
+  return command.context.authority === "gm" || command.context.authority === "system"
+}
+
 export class CheburashkaEngine {
   private readonly storage: CheburashkaStorage
   private readonly dependencies: CheburashkaDependencies
@@ -89,9 +93,20 @@ export class CheburashkaEngine {
   }
 
   async execute(command: CheburashkaCommand): Promise<EngineCommandResult<InventoryMutation>> {
+    if (["inventory.create", "inventory.update", "inventory.remove"].includes(command.kind) && !isGm(command)) {
+      throw new EngineCommandError("inventory.gm_required", "Only GM authority can establish inventory contents")
+    }
+
     if (command.kind === "inventory.consume" || command.kind === "inventory.transfer") {
       if (!Number.isInteger(command.amount) || command.amount < 1) {
         throw new EngineCommandError("inventory.invalid_amount", "Inventory amount must be an integer >= 1")
+      }
+    }
+
+    if (command.context.authority === "player" && command.kind === "inventory.set_equipped") {
+      const item = await this.storage.getItem(command.itemId)
+      if (!item || item.character_id !== command.characterId) {
+        throw new EngineCommandError("inventory.player_forbidden", "Player can equip only an item owned by the selected character")
       }
     }
 
