@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { clearCharacterSourceSuppressions } from "../lib/suppressionRuntime.ts"
+import { clearCharacterSourceSuppressions, registerCharacterSourceSuppressions } from "../lib/suppressionRuntime.ts"
 import { supabase } from "../lib/supabase.ts"
 import {
   clearCharacterTemplateBundles,
@@ -12,9 +12,9 @@ const TEMPLATE_FIELDS = "id,campaign_id,kind,slug,name,description,version,mecha
 
 /**
  * The mounted character runtime is the single loader/owner for this character's
- * template bundles. The global registry remains only as a compatibility read
- * model for CharacterTemplateChoices and other legacy readers; this hook never
- * subscribes to its own writes.
+ * template bundles and the shared suppression snapshot. Transient UI readers
+ * may subscribe to the same database rows, but they do not publish or clear
+ * shared CE registry state.
  */
 export function useCharacterTemplateRegistry(characterId: string | null) {
   const [bundles, setBundles] = useState<CharacterTemplateBundle[]>([])
@@ -89,11 +89,12 @@ export function useCharacterTemplateRegistry(characterId: string | null) {
   }, [characterId, load])
 
   useEffect(() => {
-    if (!characterId) return
+    if (!characterId || suppressions.loading) return
+    registerCharacterSourceSuppressions(characterId, suppressions.sourceIds)
     let cancelled = false
     queueMicrotask(() => { if (!cancelled) setRevision((value) => value + 1) })
     return () => { cancelled = true }
-  }, [characterId, suppressions.revision])
+  }, [characterId, suppressions.loading, suppressions.sourceIds])
 
   return {
     bundles,
