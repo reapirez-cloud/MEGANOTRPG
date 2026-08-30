@@ -1,6 +1,9 @@
 -- CLASS_MIGRATION_SCOPE: mechanics
 -- CLASS_INTEGRATION_STRICT: class:druid,class:cleric
 -- CLASS_PACKAGE_TEST: tests/postRestPreparationRuntime.test.ts
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
+-- CLASS_WORK_STATUS: druid:text=READY;mechanics=IN_PROGRESS; cleric:text=READY;mechanics=IN_PROGRESS
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 -- Generic rest-refresh choices plus concrete authored policies for the finished
 -- Druid/Cleric packages. No source-specific CE branch is introduced.
 
