@@ -74,6 +74,8 @@ class FakeElement extends FakeNode {
   removeAttribute(name: string) { this.attributes.delete(name) }
 }
 
+class FakeIFrameElement extends FakeElement {}
+
 class FakeText extends FakeNode {
   nodeValue: string
   constructor(value: string, ownerDocument: FakeDocument) {
@@ -101,7 +103,11 @@ class FakeDocument extends FakeNode {
     this.appendChild(this.documentElement)
   }
 
-  createElement(tagName: string) { return new FakeElement(tagName, this) }
+  createElement(tagName: string) {
+    return tagName.toLowerCase() === "iframe"
+      ? new FakeIFrameElement(tagName, this)
+      : new FakeElement(tagName, this)
+  }
   createElementNS(_namespace: string, tagName: string) { return new FakeElement(tagName, this) }
   createTextNode(value: string) { return new FakeText(value, this) }
 }
@@ -165,9 +171,11 @@ test("real React lifecycle: registry invalidation rerenders Frame without remoun
   const previousDocument = Reflect.get(globalThis, "document")
   const previousWindow = Reflect.get(globalThis, "window")
   const previousAct = Reflect.get(globalThis, "IS_REACT_ACT_ENVIRONMENT")
+  const previousIFrameElement = Reflect.get(globalThis, "HTMLIFrameElement")
   Reflect.set(globalThis, "document", document)
   Reflect.set(globalThis, "window", globalThis)
   Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true)
+  Reflect.set(globalThis, "HTMLIFrameElement", FakeIFrameElement)
 
   const characterId = "hero-react-lifecycle"
   clearCharacterTemplateBundles(characterId)
@@ -217,6 +225,8 @@ test("real React lifecycle: registry invalidation rerenders Frame without remoun
     else Reflect.set(globalThis, "window", previousWindow)
     if (previousAct === undefined) Reflect.deleteProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT")
     else Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", previousAct)
+    if (previousIFrameElement === undefined) Reflect.deleteProperty(globalThis, "HTMLIFrameElement")
+    else Reflect.set(globalThis, "HTMLIFrameElement", previousIFrameElement)
   }
 
   assert.equal(unmounts, 1, "profile unmounts exactly once when the whole root is intentionally destroyed")
