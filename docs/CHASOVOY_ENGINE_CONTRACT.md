@@ -1,6 +1,6 @@
 # CHASOVOY — Reference / Canonical Definition Engine
 
-> Status: **CLOSURE CANDIDATE — ACTIVE ON `dev`**
+> Status: **CLOSED — STABLE BOUNDARY ON `dev`**
 
 ## One sentence
 
