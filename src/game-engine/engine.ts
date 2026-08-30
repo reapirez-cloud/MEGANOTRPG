@@ -1,5 +1,6 @@
 import {
   EMPTY_ENGINE_EFFECTS,
+  EngineCommandError,
   mergeEngineEffects,
   type EngineCommandResult,
   type EngineEvent,
@@ -24,7 +25,7 @@ function sessionEvent(command: GenaCommand, delegatedTo: GenaDelegatedValue["eng
     aggregateType: "session",
     aggregateId: command.context.roomId || command.context.campaignId,
     occurredAt: command.context.occurredAt,
-    visibility: command.context.authority === "gm" ? "gm" : "campaign",
+    visibility: "campaign",
     actorCharacterId: command.context.actorCharacterId,
     payload: { commandKind: command.kind, delegatedTo },
   }
@@ -36,6 +37,13 @@ export class GenaEngine {
   constructor(dependencies: GenaDependencies) { this.dependencies = dependencies }
 
   async execute(command: GenaCommand): Promise<GenaCommandResult> {
+    if (command.context.authority === "gm") {
+      throw new EngineCommandError(
+        "gena.gm_forbidden",
+        "GM imperative commands must use Oracle instead of GENA",
+      )
+    }
+
     let delegated: EngineCommandResult<GenaDelegatedValue>
 
     if (command.kind === "session.declare") {
