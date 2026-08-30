@@ -132,7 +132,7 @@ test("Sheet Chat and action revolver consume one shared resolved character runti
 
 test("engine closure contract is explicit", () => {
   const closure = fs.readFileSync("docs/ENGINE_CLOSURE_DEFINITION.md", "utf8")
-  assert.match(closure, /WORKING/)
+  assert.match(closure, /CLOSED/)
   assert.match(closure, /Build, Lint and Tests/)
   assert.match(closure, /Oracle must never depend on GENA/)
   assert.match(closure, /indefinite loading/)
