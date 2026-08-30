@@ -3,7 +3,6 @@ import test from "node:test"
 import React, { act, useEffect, useState, type ReactNode } from "react"
 import { createRoot } from "react-dom/client"
 
-import { CharacterRuntimeProvider, type ResolvedCharacterRuntime } from "../src/hooks/useResolvedCharacterRuntime.ts"
 import {
   clearCharacterTemplateBundles,
   registerCharacterTemplateBundles,
@@ -148,21 +147,6 @@ function bundle(): CharacterTemplateBundle {
   }
 }
 
-const runtimeValue = {
-  snapshot: null,
-  contract: null,
-  preparation: { session: null, tasks: [], suppressedSourceIds: [] },
-  status: "ready",
-  loading: false,
-  stale: false,
-  error: "",
-  errorCode: null,
-  warnings: [],
-  refresh: () => undefined,
-  templates: {},
-  resources: {},
-} as unknown as ResolvedCharacterRuntime
-
 function FrameLifecycleHarness({ characterId, children }: { characterId: string; children: ReactNode }) {
   const [, setAssignedRevision] = useState(0)
   useEffect(() => subscribeCharacterTemplateBundles(characterId, () => {
@@ -170,8 +154,10 @@ function FrameLifecycleHarness({ characterId, children }: { characterId: string;
   }), [characterId])
 
   // This is the fixed CharacterGameFrame identity rule: invalidation rerenders
-  // the frame, but children are not cloned with a revision-derived key.
-  return React.createElement(CharacterRuntimeProvider, { value: runtimeValue }, children)
+  // the frame, but children are not cloned with a revision-derived key. Keep
+  // this harness independent from app .tsx modules because the repository test
+  // command intentionally uses Node's native TypeScript runner.
+  return React.createElement(React.Fragment, null, children)
 }
 
 test("real React lifecycle: registry invalidation rerenders Frame without remounting Profile", async () => {
