@@ -8,6 +8,7 @@ const migration = fs.readFileSync("supabase/migrations/20260828123000_location_n
 const world = fs.readFileSync("src/pages/World.tsx", "utf8")
 const workspace = fs.readFileSync("src/pages/GmWorkspace.tsx", "utf8")
 const hook = fs.readFileSync("src/hooks/useNpcZoneHabitats.ts", "utf8")
+const larisaStorage = fs.readFileSync("src/location-engine/supabase.ts", "utf8")
 
 function functionBody(sql: string, name: string): string {
   const start = sql.indexOf(`create or replace function public.${name}`)
@@ -33,13 +34,15 @@ test("habitat mutation is limited to NPCs and campaign managers", () => {
   assert.match(body, /private\.can_manage_character/)
 })
 
-test("GM can attach NPCs from both NPC and zone surfaces", () => {
+test("GM can attach NPCs from both NPC and zone surfaces through Oracle and Larisa", () => {
   assert.match(workspace, /Отправить в зону/)
   assert.match(workspace, /NpcHabitatZonesSheet/)
   assert.match(world, /Обитатели зоны/)
   assert.match(world, /Обычно здесь/)
   assert.match(world, /ZoneHabitatNpcsSheet/)
-  assert.match(hook, /set_npc_zone_habitat/)
+  assert.match(hook, /oracle\.world\.setNpcHabitat/)
+  assert.doesNotMatch(hook, /rpc\("set_npc_zone_habitat"/)
+  assert.match(larisaStorage, /rpc\("set_npc_zone_habitat"/)
 })
 
 test("usual inhabitants stay visually separate from live presence", () => {
