@@ -1,6 +1,6 @@
 # Engine Runtime Integration
 
-> Status: **CLOSURE CANDIDATE — ACTIVE ON `dev`**
+> Status: **CLOSED — STABLE BOUNDARY ON `dev`**
 >
 > This document describes the production runtime graph after the named-engine integration was consolidated.
 
