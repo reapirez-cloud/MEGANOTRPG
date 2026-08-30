@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useAuth } from "../context/AuthContext"
 import { useCharacters } from "../context/CharacterContext"
+import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import type { NpcHabitatZone } from "../lib/npcZoneHabitats"
 import { supabase } from "../lib/supabase"
+import { oracle } from "../oracle-engine/runtime.ts"
 
 export type NpcZoneHabitat = {
   location_id: string
@@ -11,7 +14,8 @@ export type NpcZoneHabitat = {
 }
 
 export function useNpcZoneHabitats() {
-  const { campaignId } = useCharacters()
+  const { user } = useAuth()
+  const { campaignId, canManage } = useCharacters()
   const [links, setLinks] = useState<NpcZoneHabitat[]>([])
   const [zones, setZones] = useState<NpcHabitatZone[]>([])
   const [loading, setLoading] = useState(true)
@@ -83,19 +87,27 @@ export function useNpcZoneHabitats() {
   )
 
   const setAttached = useCallback(async (npcCharacterId: string, locationId: string, attached: boolean) => {
+    if (!canManage) return { ok: false, error: "Только ГМ может менять зоны присутствия NPC." }
     const key = `${npcCharacterId}:${locationId}`
     setSavingKey(key)
     setError("")
-    const { error: rpcError } = await supabase.rpc("set_npc_zone_habitat", {
-      p_npc_character_id: npcCharacterId,
-      p_location_id: locationId,
-      p_attached: attached,
-    })
+    try {
+      await oracle.world.setNpcHabitat(
+        createEngineCommandContext({ campaignId, requestedBy: user.id, authority: "gm", actorCharacterId: npcCharacterId }),
+        npcCharacterId,
+        locationId,
+        attached,
+      )
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Не удалось изменить зону присутствия NPC."
+      setSavingKey("")
+      setError(message)
+      return { ok: false, error: message }
+    }
     setSavingKey("")
-    if (rpcError) return { ok: false, error: rpcError.message }
     await load()
     return { ok: true }
-  }, [load])
+  }, [campaignId, canManage, load, user.id])
 
   return {
     links,
