@@ -28,6 +28,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added **Фирменные заклинания / Signature Spells** selections: two level-3 book-backed spells remain always prepared and each has its own free cast that recharges after a Short or Long Rest.
 - GENA no longer counts Spell Mastery or Signature Spells against the ordinary prepared-spell quota.
 - GENA now surfaces the Wizard cantrip replacement right as an informational post-rest notice. Cantrip changes, Scholar Expertise, ASI and Epic Boon sheet decisions deliberately use the normal player → GM sheet-edit path instead of class-specific mini-engines.
+- Prepared the Wizard subclass foundation without exposing empty/incomplete subclass cards to players; individual subclasses become visible only when their actual package is implemented.
 
 ### Runtime and rules changes
 
@@ -46,6 +47,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - CE runtime now projects held Wizard spellbook membership through read-only persistence queries rather than routing a source-loader read through a class-specific RPC.
 - Manual Wizard choices that do not need deterministic bookkeeping are recorded as `gena_notice_then_gm_sheet_edit` / normal GM sheet edits rather than receiving bespoke choice state.
 - Continued generic template-choice runtime cleanup and class-work ledger updates required by the current class rebuild.
+- Added Wizard subclass **Wave 0** structural contract: exactly 13 supported stable catalog identities, a common `class:wizard` parent, subclass unlock at Wizard level 3, and the normalized 3/6/10/14 feature schedule used by the 2024 base class.
+- Reserved stable visual identities for all 13 Wizard subclasses and added a structural package validator that rejects the wrong parent, an early unlock, unsupported catalog identities, or feature rows outside 3/6/10/14.
+- PHB 2024 Evoker, Diviner, Illusionist and Abjurer are the canonical identities for those four schools; duplicate 2014 variants are not introduced. Older supported schools/supplements retain their rule package but enter through the Wizard 2024 compatibility schedule.
+- Wave 0 deliberately reuses the generic rule-template resolver for parent-class effective level and CE emission; it does not introduce a Wizard-specific subclass engine, turn tracker, scene state or bespoke choice runtime.
 
 ### Repository / release process
 
@@ -65,14 +70,15 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added resource-policy metadata to every Wizard completion mechanics migration so the repository-wide class resource-policy gate audits the whole slice.
 - Updated official class catalog coverage for the rebuilt Wizard catalog entry.
 - Added `patchJournalContract` regression coverage so the repository cannot silently lose the patch-journal lifecycle contract.
-- Wizard dev runtime closure reached a fully green CI on run **#1152** before this journal update.
+- Added `wizardSubclassWave0` regression coverage for all 13 stable identities, PHB 2024 replacement policy, Wizard parent linkage, level-3 unlock, 3/6/10/14 feature rows and parent-Wizard-level multiclass gating.
+- Wizard dev runtime closure reached a fully green CI on run **#1152** before the subclass Wave 0 work; Wave 0 receives its own current-head CI check before completion is claimed.
 
 ### Known incomplete work
 
 - The **Wizard 2024 base-class runtime has no known implementation blocker on `dev`** in the current subclass-free scope.
-- Overall Wizard mechanics remain **IN_PROGRESS** only because the intended deployed Supabase state has not yet been applied and certified against the current `dev` stack; Git-only closure is not production certification.
+- Overall Wizard mechanics remain **IN_PROGRESS** because the intended deployed Supabase state has not yet been applied/certified and actual subclass content is still being built; Git-only closure is not production certification.
 - Found-spell/scroll transcription, Scholar Expertise, cantrip replacement, ASI and Epic Boon use the agreed GM-adjudicated/normal-sheet path by design and are not missing Wizard-specific automation.
-- Wizard subclasses remain intentionally outside this patch scope.
+- Wizard subclass **Wave 0 infrastructure is complete on `dev`**, but no empty placeholder subclass is installed. Wave 1 begins the real subclass packages, starting with Evoker.
 
 ---
 
@@ -84,4 +90,4 @@ _No patches have been closed through this journal yet._
 
 ## Journal rules
 
-The executable agent rule lives in `/AGENTS.md`. In short: work on `dev` belongs to the Active patch; an explicit user command to promote to `main` closes that patch; after successful promotion, `dev` immediately opens the next empty Active patch.
+The executable agent rule lives in `/AGENTS.md`. In short: work on `dev` belongs to the Active patch; an explicit user command to promote to `main` closes that patch; after successful promotion, `dev` immediately opens the next empty Active patch based on the new `main` SHA.
