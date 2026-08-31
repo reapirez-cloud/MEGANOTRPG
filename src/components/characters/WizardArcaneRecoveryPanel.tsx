@@ -3,6 +3,8 @@ import type { RealtimeChannel } from "@supabase/supabase-js"
 import type { ResolvedCharacterContract } from "../../character-engine/index.ts"
 import { useAuth } from "../../context/AuthContext.tsx"
 import { useCharacters } from "../../context/CharacterContext.tsx"
+import { createEngineCommandContext } from "../../engine-contracts/index.ts"
+import { oracle } from "../../oracle-engine/runtime.ts"
 import { supabase } from "../../lib/supabase.ts"
 import { useWizardArcaneRecovery, type SpellSlotRecoverySelection } from "../../lib/wizardArcaneRecovery.ts"
 import SpellSlotRecoveryPicker from "./SpellSlotRecoveryPicker.tsx"
@@ -17,7 +19,7 @@ type Props = {
 
 export default function WizardArcaneRecoveryPanel({ characterId, assignmentId, wizardLevel, contract }: Props) {
   const { user } = useAuth()
-  const { characters } = useCharacters()
+  const { characters, campaignId, canManage } = useCharacters()
   const character = characters.find((entry) => entry.id === characterId)
   const isAssignedPlayer = Boolean(character?.assigned_user_id && character.assigned_user_id === user.id)
   const resource = contract.resources.find((entry) => entry.stateKey === "wizard_arcane_recovery")
@@ -26,7 +28,18 @@ export default function WizardArcaneRecoveryPanel({ characterId, assignmentId, w
   const [loadingRest, setLoadingRest] = useState(true)
   const [selection, setSelection] = useState<SpellSlotRecoverySelection>({})
   const [busy, setBusy] = useState(false)
+  const [restBusy, setRestBusy] = useState(false)
   const [error, setError] = useState("")
+
+  async function loadRestState() {
+    const { data, error: readError } = await supabase
+      .from("character_short_rest_sessions")
+      .select("is_open")
+      .eq("character_id", characterId)
+      .maybeSingle()
+    if (!readError) setShortRestOpen(Boolean(data?.is_open))
+    setLoadingRest(false)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -56,6 +69,25 @@ export default function WizardArcaneRecoveryPanel({ characterId, assignmentId, w
   const available = Number(resource?.current || 0) > 0
   const canSubmit = isAssignedPlayer && shortRestOpen && available && selectedLevels > 0 && selectedLevels <= budget && !busy
 
+  async function grantShortRest() {
+    if (!canManage || restBusy) return
+    setRestBusy(true)
+    setError("")
+    try {
+      await oracle.characters.recover(createEngineCommandContext({
+        campaignId,
+        requestedBy: user.id,
+        authority: "gm",
+        actorCharacterId: characterId,
+      }), characterId, "short_rest")
+      await loadRestState()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Не удалось завершить короткий отдых.")
+    } finally {
+      setRestBusy(false)
+    }
+  }
+
   async function recover() {
     if (!canSubmit) return
     setBusy(true)
@@ -76,6 +108,10 @@ export default function WizardArcaneRecoveryPanel({ characterId, assignmentId, w
     </header>
     <p>После короткого отдыха восстанови потраченные ячейки суммарным уровнем не больше <b>{budget}</b>. Ячейки 6 уровня и выше восстановить нельзя.</p>
 
+    {canManage && !shortRestOpen && <button type="button" className="wizard-arcane-recovery__rest" disabled={restBusy} onClick={() => void grantShortRest()}>
+      {restBusy ? "Завершаем отдых…" : "ГМ · Завершить короткий отдых"}
+    </button>}
+
     {loadingRest ? <div className="wizard-arcane-recovery__notice">Проверяем состояние короткого отдыха…</div>
       : !shortRestOpen ? <div className="wizard-arcane-recovery__notice">Доступ откроется, когда ГМ завершит персонажу короткий отдых.</div>
       : !available ? <div className="wizard-arcane-recovery__notice">Магическое восстановление уже использовано. Вернётся после долгого отдыха.</div>
@@ -86,7 +122,7 @@ export default function WizardArcaneRecoveryPanel({ characterId, assignmentId, w
           value={selection}
           disabled={!isAssignedPlayer || busy}
           onChange={setSelection}
-        />}
+        />
     }
 
     {shortRestOpen && available && <button type="button" className="wizard-arcane-recovery__commit" disabled={!canSubmit} onClick={() => void recover()}>
