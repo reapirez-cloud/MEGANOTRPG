@@ -164,22 +164,26 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 ## Wizard (`class:wizard`)
 
 **Text:** `READY`  
-**Mechanics/runtime:** `NOT_STARTED`
+**Mechanics/runtime:** `IN_PROGRESS`
 
 - `last_text_audit: 2026-08-31`
-- `last_mechanics_audit_started: not_started`
+- `last_mechanics_audit_started: 2026-08-31`
 - `rules_revision: Player's Handbook 2024 base class`
 - `subclasses: NOT_INCLUDED`
 - `current_dev_text: clean Russian base-class package with exact rules and separately authored Voss narration for every openable feature card`
-- `current_dev_runtime: intentionally absent; no legacy Wizard runtime is inherited from the removed generic catalog`
+- `current_dev_runtime: physical spellbook and book-gated preparation are implemented; parser-owned full-caster slot resources, core saving throws/weapon proficiency, authoritative Short Rest window and Arcane Recovery runtime/UI are now implemented in dev`
+- `spellbook_regression: tests/wizardSpellbookRuntime.test.ts`
+- `arcane_recovery_regression: tests/wizardArcaneRecoveryRuntime.test.ts`
+- `production_runtime: NOT_DEPLOYED_OR_CERTIFIED`
 - `catalog_bootstrap: dev migration preserves class:wizard and installs the clean base class for new campaigns`
 
 ### Mechanics audit targets
 
-- Spellbook as authoritative owned-spell state: starting six level-1 spells, +2 spells per Wizard level, copying, replacement and backup behavior.
-- Prepared Wizard spells must be selected only from the actual spellbook and obey the fixed 2024 prepared-spell progression.
-- Long-rest cantrip replacement and full prepared-list replacement need authoritative choice/preparation paths.
-- Arcane Recovery must restore eligible shared spell-slot resources with the level-sum cap, level-5 ceiling and once-per-long-rest usage.
+- Spellbook as authoritative owned-spell state: physical item identity and spellbook-backed preparation are implemented; starting six level-1 spells, automatic +2 spells per Wizard level, copying costs/time, replacement and backup behavior still need explicit runtime policy where the app owns it.
+- Prepared Wizard spells are selected only from the actual spellbook and obey the fixed 2024 prepared-spell progression; deployment/state audit remains pending.
+- Full-caster spell-slot capacity is emitted as native CE resources through the shared parser-owned slot primitive; casting/access and level progression still need full end-to-end Wizard audit.
+- Long-rest cantrip replacement and cantrip progression still need authoritative choice/preparation paths.
+- Arcane Recovery: implemented in dev with one long-rest resource, GM-authoritative Short Rest window, `ceil(Wizard level / 2)` weighted recovery budget, level-5 ceiling, spent-slot validation and shared `spell_slot_N` persistence. Deployment audit remains pending.
 - Scholar requires a dynamic option provider restricted to eligible skills the character already has proficiency in, then grants Expertise.
 - Memorize Spell must replace one prepared level-1+ Wizard spell with another eligible spell from the actual spellbook after a Short Rest.
 - Spell Mastery needs two spellbook-backed persistent selections with level/casting-time filters, always-prepared access, free lowest-level casting and one-per-long-rest replacement.
@@ -187,7 +191,7 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 - ASI and Epic Boon must use the future generic feat/allocation contract rather than a Wizard-specific choice engine.
 - Subclass selection and levels 3/6/10/14 remain outside this base-class task until Wizard subclasses receive their own package.
 
-Do not promote Wizard mechanics to `IN_PROGRESS` until the mechanics pass actually begins, and do not promote it to `READY` until spellbook/preparation state is authoritative end-to-end.
+Do not promote Wizard mechanics to `READY` until the remaining class features, casting/preparation surfaces and intended deployed state pass the same end-to-end audit.
 
 ---
 
