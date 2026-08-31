@@ -6,7 +6,7 @@ import { useCharacters } from "../../context/CharacterContext.tsx"
 import { createEngineCommandContext } from "../../engine-contracts/index.ts"
 import { oracle } from "../../oracle-engine/runtime.ts"
 import { supabase } from "../../lib/supabase.ts"
-import { useWizardArcaneRecovery, type SpellSlotRecoverySelection } from "../../lib/wizardArcaneRecovery.ts"
+import { runWizardArcaneRecovery, type SpellSlotRecoverySelection } from "../../lib/wizardArcaneRecovery.ts"
 import SpellSlotRecoveryPicker from "./SpellSlotRecoveryPicker.tsx"
 import "./WizardArcaneRecoveryPanel.css"
 
@@ -92,7 +92,7 @@ export default function WizardArcaneRecoveryPanel({ characterId, assignmentId, w
     if (!canSubmit) return
     setBusy(true)
     setError("")
-    const result = await useWizardArcaneRecovery(characterId, assignmentId, contract, selection)
+    const result = await runWizardArcaneRecovery(characterId, assignmentId, contract, selection)
     setBusy(false)
     if (!result.ok) {
       setError(result.error)
@@ -122,7 +122,7 @@ export default function WizardArcaneRecoveryPanel({ characterId, assignmentId, w
           value={selection}
           disabled={!isAssignedPlayer || busy}
           onChange={setSelection}
-        />
+        />}
     }
 
     {shortRestOpen && available && <button type="button" className="wizard-arcane-recovery__commit" disabled={!canSubmit} onClick={() => void recover()}>
