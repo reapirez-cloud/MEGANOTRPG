@@ -35,12 +35,6 @@ function outcomeLabel(value: unknown) {
   return "Записано"
 }
 
-function sameSelection(left: string[], right: string[]) {
-  if (left.length !== right.length) return false
-  const wanted = new Set(right)
-  return left.every((value) => wanted.has(value))
-}
-
 function SpellTask({ characterId, task, spells, onChanged }: {
   characterId: string
   task: SpellPreparationTask
@@ -248,7 +242,7 @@ function RollTask({ roomId, characterId, task, onChanged }: {
     <div className="rest-prep-task__head"><span>◈</span><div><small>{task.sourceName} · {notation}</small><strong>{task.label}</strong></div>{task.record && <b className="rest-prep-task__done">Зафиксировано</b>}</div>
     {task.record
       ? <div className="rest-prep-record"><span>Записано</span><strong>{task.record.input_value}</strong><em>→ {outcomeLabel(task.record.resolved_value)}</em></div>
-      : <button className="rest-prep-roll" type="button" disabled={busy} onClick={() => void roll()}>{busy ? "Бросаем…" : `Бросить ${notation} и зафиксировать`}</button>}
+      : <button className="rest-prep-roll" type="button" disabled={busy} onClick={() => void roll()}>{busy ? "Бросаем…" : `Бросить ${notation} и записать`}</button>}
     {error && <div className="rest-prep-error">{error}</div>}
   </section>
 }
@@ -270,7 +264,7 @@ export default function ChatPreparationCard({ roomId, characterId, model, spells
       <div><small>Долгий отдых завершён</small><strong>Гена ждёт решения владельца</strong></div>
       <b>до первой реплики</b>
     </header>
-    <p className="rest-prep-card__warning">Каждая кнопка <strong>«Готово» фиксирует конкретный выбор до следующего долгого отдыха.</strong> Первый обычный текст закрывает незавершённое окно: подготовленные заклинания и постоянные выборы сохраняют прошлое значение, а обязательные случайные результаты Гена определяет сама. ГМ меняет персонажа только через административный лист, не через это окно.</p>
+    <p className="rest-prep-card__warning"><strong>Каждая кнопка «Готово» фиксирует конкретный выбор до следующего долгого отдыха.</strong> Первый отправленный текст закроет это окно до следующего долгого отдыха. Броски, способности и заклинания окно не закрывают. Если задача осталась незавершённой, подготовленные заклинания и постоянные выборы сохраняют прошлое значение, а обязательные случайные результаты Гена определяет сама. ГМ меняет персонажа только через административный лист, не через это окно.</p>
 
     {spellTasks.map((task) => <SpellTask characterId={characterId} task={task} spells={spells} onChanged={onChanged} key={`${task.assignmentId}:${task.key}`} />)}
     {choiceTasks.map((task) => <ChoiceTask characterId={characterId} task={task} onChanged={onChanged} key={`${task.assignmentId}:${task.key}`} />)}
