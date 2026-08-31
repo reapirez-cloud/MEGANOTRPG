@@ -39,6 +39,8 @@ export type CharacterSpell = {
   name: string; spell_level: number; school: string; casting_time: string
   spell_range: string; duration: string; components: string; concentration: boolean; ritual: boolean; prepared: boolean
   cast_mode: "cantrip" | "slot"; slot_level: number | null; description: string; source: string
+  /** Wizard 2024 durable selections. Missing values mean false for pre-migration fixtures. */
+  wizard_spell_mastery?: boolean; wizard_signature_spell?: boolean
   sort_order: number; created_at: string; updated_at: string
 }
 export type CharacterSpellOption = CharacterSpell & { granted_by: string | null }
