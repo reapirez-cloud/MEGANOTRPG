@@ -2,7 +2,12 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
+import { resolveCharacterContract, type CharacterEngineInput } from "../src/character-engine/index.ts"
 import { resolveLegacyCharacterEngineView } from "../src/lib/legacyCharacterEngineAdapter.ts"
+import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
+import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
+import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
+import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
 import type { CharacterSheet, CharacterSpell } from "../src/types/characterSheet.ts"
 
 const completionMigration = readFileSync(new URL("../supabase/migrations/20260831140000_wizard_completion_runtime.sql", import.meta.url), "utf8")
@@ -41,6 +46,107 @@ function spell(id: string, name: string, level: number, overrides: Partial<Chara
     ...overrides,
   }
 }
+
+function strictWizardCompletionBundle(): CharacterTemplateBundle {
+  return {
+    assignment: {
+      id: "assignment-wizard-completion",
+      character_id: "wizard-1",
+      template_id: "template-wizard-completion",
+      template_level: 20,
+      selected_choices: {},
+      assigned_at: "2026-08-31T00:00:00Z",
+      updated_at: "2026-08-31T00:00:00Z",
+    },
+    template: {
+      id: "template-wizard-completion",
+      campaign_id: "campaign-1",
+      kind: "class",
+      slug: "wizard",
+      name: "Волшебник",
+      description: "Волшебник хранит заклинания в физической книге, подготавливает их и использует классовые правила восстановления и особого колдовства.",
+      version: 1,
+      mechanics: [
+        {
+          id: "wizard-signature-audit-feature",
+          type: "grant",
+          target: "feature",
+          key: "class:wizard:signature-spell-audit",
+          sourceKey: "signature-spell-audit",
+          payload: {
+            label: "Фирменное заклинание — контроль ресурса",
+            description: "Выбранное Фирменное заклинание можно один раз наложить без траты ячейки. Этот отдельный запас полностью восстанавливается после короткого или долгого отдыха.",
+          },
+        },
+        {
+          id: "wizard-signature-audit-resource",
+          type: "resource",
+          key: "wizard_signature_audit",
+          label: "Бесплатное Фирменное заклинание",
+          max: 1,
+          recharge: "long_rest",
+          recoveryRules: [
+            { trigger: "short_rest", restore: "full" },
+            { trigger: "long_rest", restore: "full" },
+          ],
+          sourceKey: "signature-spell-audit",
+        },
+        {
+          id: "wizard-signature-audit-action",
+          type: "action",
+          key: "wizard_signature_audit",
+          label: "Наложить Фирменное заклинание бесплатно",
+          economy: "special",
+          resourceKey: "wizard_signature_audit",
+          resourceCost: 1,
+          sourceKey: "signature-spell-audit",
+        },
+      ],
+      choices: [],
+      parent_template_id: null,
+      unlock_level: null,
+      catalog_key: "class:wizard",
+      catalog_revision: "phb-2024",
+      source_kind: "official",
+      source_label: "Player's Handbook 2024",
+      is_builtin: true,
+      mechanical_summary: "Физическая книга ограничивает доступные заклинания; подготовка, ячейки, восстановление и высокоуровневые выборы Волшебника сохраняются как отдельное механическое состояние.",
+      author_description: "",
+      author_comment: "",
+      rules_meta: {},
+      is_active: true,
+      created_by: null,
+      created_at: "2026-08-31T00:00:00Z",
+      updated_at: "2026-08-31T00:00:00Z",
+    },
+    levels: [],
+  }
+}
+
+function strictWizardEngineInput(contributions: CharacterEngineInput["contributions"]): CharacterEngineInput {
+  return {
+    base: {
+      id: "wizard-1",
+      name: "Волшебник",
+      level: 20,
+      abilities: { strength: 8, dexterity: 14, constitution: 14, intelligence: 20, wisdom: 12, charisma: 10 },
+      baseMaxHp: 100,
+      baseSpeed: 30,
+    },
+    state: { currentHp: 100, tempHp: 0, resources: { wizard_signature_audit: { current: 1 } } },
+    contributions,
+  }
+}
+
+test("Wizard completion package passes strict class quality/resource policy, parser, and CE resolution", () => {
+  const packages = [strictWizardCompletionBundle()]
+  assert.doesNotThrow(() => assertClassPackageQuality(packages))
+  assert.doesNotThrow(() => assertClassResourcePolicy(packages))
+  const parsed = resolveTemplateBundles(packages, 20)
+  const contract = resolveCharacterContract(strictWizardEngineInput(parsed.contributions))
+  assert.ok(contract.resources.find((entry) => entry.key === "wizard_signature_audit"))
+  assert.ok(contract.actions.find((entry) => entry.key === "wizard_signature_audit"))
+})
 
 test("Wizard ordinary slots require preparation while held-book rituals bypass preparation without spending a slot", () => {
   const normal = spell("normal", "Normal", 1)

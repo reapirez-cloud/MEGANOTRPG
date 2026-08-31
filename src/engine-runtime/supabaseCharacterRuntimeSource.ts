@@ -14,15 +14,51 @@ import type {
 } from "../lib/characterPreparation.ts"
 import type { CharacterFeature, CharacterSheet } from "../types/characterSheet.ts"
 
-function wizardSpellbookCatalogIds(value: unknown): string[] {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return []
-  const spells = (value as Record<string, unknown>).spells
-  if (!Array.isArray(spells)) return []
-  return [...new Set(spells.map((entry) => {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return ""
-    const id = (entry as Record<string, unknown>).spellCatalogId
-    return typeof id === "string" ? id : ""
-  }).filter(Boolean))]
+type WizardBookInventoryRow = {
+  id: string
+  definition_id: string | null
+  item_state: unknown
+}
+
+type WizardBookDefinitionRow = {
+  id: string
+  kind: string | null
+  slug: string | null
+}
+
+type WizardSpellbookEntryRow = {
+  spell_catalog_id: string
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+}
+
+/**
+ * Read-only equivalent of private.is_wizard_spellbook_item for the CE source adapter.
+ * Inventory quantity/category are filtered in SQL; the remaining identity check is
+ * either the durable item_state marker or the canonical reference-definition slug.
+ */
+function wizardSpellbookItemIds(
+  inventoryRows: WizardBookInventoryRow[],
+  definitionRows: WizardBookDefinitionRow[],
+): string[] {
+  const canonicalDefinitions = new Set(
+    definitionRows
+      .filter((row) => row.kind === "item" && row.slug === "wizard-spellbook")
+      .map((row) => row.id),
+  )
+
+  return inventoryRows
+    .filter((row) => {
+      const state = asRecord(row.item_state)
+      return state?.class_item === "wizard_spellbook" || (
+        typeof row.definition_id === "string" && canonicalDefinitions.has(row.definition_id)
+      )
+    })
+    .map((row) => row.id)
 }
 
 /** Production read adapter. It translates persistence into resolver inputs only. */
@@ -35,7 +71,7 @@ export class SupabaseCharacterRuntimeDataSource implements CharacterRuntimeDataS
       featuresResult,
       preparationResult,
       preparationRecordsResult,
-      wizardSpellbookResult,
+      wizardBookInventoryResult,
     ] = await Promise.all([
       supabase.from("character_sheets").select("*").eq("character_id", characterId).maybeSingle(),
       cheburashka.mechanicalProjection(characterId),
@@ -43,7 +79,12 @@ export class SupabaseCharacterRuntimeDataSource implements CharacterRuntimeDataS
       supabase.from("character_features").select("*").eq("character_id", characterId).order("sort_order", { ascending: true }),
       supabase.from("character_preparation_sessions").select("*").eq("character_id", characterId).maybeSingle(),
       supabase.from("character_preparation_records").select("*").eq("character_id", characterId).order("generation", { ascending: false }).limit(100),
-      supabase.rpc("get_character_wizard_spellbook_v1", { p_character_id: characterId }),
+      supabase
+        .from("character_inventory_items")
+        .select("id,definition_id,item_state")
+        .eq("character_id", characterId)
+        .eq("category", "book")
+        .gt("quantity", 0),
     ])
 
     const firstError =
@@ -52,8 +93,40 @@ export class SupabaseCharacterRuntimeDataSource implements CharacterRuntimeDataS
       featuresResult.error ||
       preparationResult.error ||
       preparationRecordsResult.error ||
-      wizardSpellbookResult.error
+      wizardBookInventoryResult.error
     if (firstError) throw new Error(firstError.message)
+
+    const wizardBookInventory = (wizardBookInventoryResult.data || []) as WizardBookInventoryRow[]
+    const definitionIds = [...new Set(
+      wizardBookInventory
+        .map((row) => row.definition_id)
+        .filter((id): id is string => typeof id === "string" && Boolean(id)),
+    )]
+
+    let wizardBookDefinitions: WizardBookDefinitionRow[] = []
+    if (definitionIds.length) {
+      const definitionResult = await supabase
+        .from("reference_definitions")
+        .select("id,kind,slug")
+        .in("id", definitionIds)
+      if (definitionResult.error) throw new Error(definitionResult.error.message)
+      wizardBookDefinitions = (definitionResult.data || []) as WizardBookDefinitionRow[]
+    }
+
+    const wizardBookIds = wizardSpellbookItemIds(wizardBookInventory, wizardBookDefinitions)
+    let wizardSpellbookCatalogIds: string[] = []
+    if (wizardBookIds.length) {
+      const entryResult = await supabase
+        .from("wizard_spellbook_entries")
+        .select("spell_catalog_id")
+        .in("spellbook_item_id", wizardBookIds)
+      if (entryResult.error) throw new Error(entryResult.error.message)
+      wizardSpellbookCatalogIds = [...new Set(
+        ((entryResult.data || []) as WizardSpellbookEntryRow[])
+          .map((entry) => entry.spell_catalog_id)
+          .filter(Boolean),
+      )]
+    }
 
     return {
       sheet: sheetResult.data as CharacterSheet | null,
@@ -62,7 +135,7 @@ export class SupabaseCharacterRuntimeDataSource implements CharacterRuntimeDataS
       features: (featuresResult.data || []) as CharacterFeature[],
       preparationSession: preparationResult.data as CharacterPreparationSession | null,
       preparationRecords: (preparationRecordsResult.data || []) as CharacterPreparationRecord[],
-      wizardSpellbookCatalogIds: wizardSpellbookCatalogIds(wizardSpellbookResult.data),
+      wizardSpellbookCatalogIds,
     }
   }
 
