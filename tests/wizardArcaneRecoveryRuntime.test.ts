@@ -139,7 +139,7 @@ test("Wizard wrapper proves class, short-rest timing, level budget, level-five c
 test("Arcane Recovery UI allocates real spent slots and GM opens the generic short-rest window through Oracle", () => {
   assert.match(panel, /oracle\.characters\.recover/)
   assert.match(panel, /"short_rest"/)
-  assert.match(panel, /useWizardArcaneRecovery/)
+  assert.match(panel, /runWizardArcaneRecovery/)
   assert.match(panel, /Math\.ceil\(Math\.max\(1, wizardLevel\) \/ 2\)/)
   assert.match(picker, /\^spell_slot_\(\[1-9\]\)\$/)
   assert.match(picker, /spentBudget \+ level > budget/)
