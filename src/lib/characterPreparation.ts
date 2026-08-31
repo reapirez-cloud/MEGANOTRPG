@@ -25,19 +25,23 @@ type PreparationBase = {
   assignmentId: string
   templateId: string
   sourceName: string
+  sourceLevel: number
   key: string
   label: string
 }
 
 export type SpellPreparationTask = PreparationBase & {
   kind: "spells"
+  required: number | null
   record: CharacterPreparationRecord | null
 }
 
 export type ChoicePreparationTask = PreparationBase & {
   kind: "choice"
   definition: RuleChoiceDefinition
+  required: number
   selected: string[]
+  record: CharacterPreparationRecord | null
 }
 
 export type RollPreparationTask = PreparationBase & {
@@ -72,6 +76,39 @@ function integer(value: unknown, fallback: number) {
 
 function selectedValues(value: string | string[] | undefined): string[] {
   return (Array.isArray(value) ? value : value ? [value] : []).map((item) => item.trim()).filter(Boolean)
+}
+
+function levelScaledValue(value: unknown, effectiveLevel: number): number | null {
+  const values = record(value)
+  if (!values) return null
+  let threshold = -1
+  let resolved: number | null = null
+  for (const [rawLevel, rawValue] of Object.entries(values)) {
+    const level = Number(rawLevel)
+    const amount = Number(rawValue)
+    if (!Number.isInteger(level) || !Number.isInteger(amount) || level > effectiveLevel || level < threshold) continue
+    threshold = level
+    resolved = amount
+  }
+  return resolved
+}
+
+export function choiceRequiredCount(definition: RuleChoiceDefinition, effectiveLevel: number) {
+  let required = Math.max(1, integer(definition.count, 1))
+  const scaled = definition.count_by_level || {}
+  for (const [rawLevel, rawCount] of Object.entries(scaled)) {
+    const level = Number(rawLevel)
+    const count = Number(rawCount)
+    if (!Number.isInteger(level) || !Number.isInteger(count) || level > effectiveLevel) continue
+    required = Math.max(required, Math.max(1, count))
+  }
+  return required
+}
+
+function preparedSpellLimit(meta: JsonRecord, effectiveLevel: number): number | null {
+  const profile = record(meta.sheet_profile)
+  const limit = levelScaledValue(profile?.prepared_spells_by_level, effectiveLevel)
+  return limit === null ? null : Math.max(0, limit)
 }
 
 function sourceLevel(
@@ -139,8 +176,10 @@ export function buildCharacterPreparationModel(
         assignmentId: bundle.assignment.id,
         templateId: bundle.template.id,
         sourceName: bundle.template.name,
+        sourceLevel: effectiveLevel,
         key,
         label: `${bundle.template.name}: подготовка заклинаний`,
+        required: preparedSpellLimit(meta, effectiveLevel),
         record: currentRecords.get(`${bundle.assignment.id}:${key}`) || null,
       })
     }
@@ -148,15 +187,19 @@ export function buildCharacterPreparationModel(
     for (const definition of unlockedChoices(bundle, effectiveLevel)) {
       const fallbackRefresh = text(meta.choice_refresh) === "long_rest" && text(meta.persistent_choice) === definition.key
       if (!session?.is_open || (definition.refresh !== "long_rest" && !fallbackRefresh)) continue
+      const recordKey = `choice:${definition.key}`
       tasks.push({
         kind: "choice",
         assignmentId: bundle.assignment.id,
         templateId: bundle.template.id,
         sourceName: bundle.template.name,
+        sourceLevel: effectiveLevel,
         key: definition.key,
         label: definition.label,
         definition,
+        required: choiceRequiredCount(definition, effectiveLevel),
         selected: selectedValues(bundle.assignment.selected_choices?.[definition.key]),
+        record: currentRecords.get(`${bundle.assignment.id}:${recordKey}`) || null,
       })
     }
 
@@ -184,6 +227,7 @@ export function buildCharacterPreparationModel(
         assignmentId: bundle.assignment.id,
         templateId: bundle.template.id,
         sourceName: bundle.template.name,
+        sourceLevel: effectiveLevel,
         key: taskKey,
         label: text(definition.label) || taskKey,
         count: Math.max(1, integer(input.count, 1)),
