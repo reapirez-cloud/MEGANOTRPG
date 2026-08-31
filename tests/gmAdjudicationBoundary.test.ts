@@ -45,11 +45,13 @@ test("manual GM transactions are an intentional completed execution path", () =>
   assert.match(boundary, /does\s+\*\*not\*\*\s+need a special "transcribe scroll" workflow/i)
 })
 
-test("Wizard audit no longer treats scroll transcription automation as a blocker", () => {
+test("Wizard audit keeps transcription and simple sheet choices on the GM boundary", () => {
   const status = fs.readFileSync(statusPath, "utf8")
   const wizard = status.slice(status.indexOf("## Wizard (`class:wizard`)"), status.indexOf("## Legacy builtin catalog reset"))
-  assert.match(wizard, /FOUND_SPELL_TRANSCRIPTION_IS_MANUAL_BY_DESIGN/)
+  assert.match(wizard, /FOUND_SPELL_TRANSCRIPTION.*MANUAL_BY_DESIGN/)
   assert.match(wizard, /Found-spell\/scroll transcription.*GM-adjudicated by design/is)
-  assert.match(wizard, /not missing Wizard runtime mechanics/i)
+  assert.match(wizard, /Scholar uses the agreed informational path.*ordinary sheet editor/is)
+  assert.match(wizard, /No dynamic Wizard option provider or feature-specific RPC is required/i)
+  assert.match(wizard, /lack of Wizard-specific automation is not a base-class runtime blocker/i)
   assert.match(wizard, /Action\/Bonus Action\/Reaction legality.*GM-adjudicated/is)
 })
