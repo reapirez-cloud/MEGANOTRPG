@@ -18,6 +18,8 @@ function normalizeItem(value: unknown): InventoryItem {
   const mode = row.usage_mode ?? (row.category === "consumable" ? "quantity" : "none")
   return {
     ...row,
+    definition_id: row.definition_id ?? null,
+    definition_revision: row.definition_revision ?? null,
     usage_mode: mode,
     charges_current: row.charges_current ?? null,
     charges_max: row.charges_max ?? null,
@@ -39,6 +41,8 @@ function persistencePayload(input: InventoryInput): JsonRecord {
     equipment_slot: input.category === "equipment" ? input.equipment_slot : null,
     image_url: input.image_url?.trim() || null,
     description: input.description.trim(),
+    definition_id: input.definition_id ?? null,
+    definition_revision: input.definition_revision ?? null,
     mechanics: input.mechanics ?? [],
     usage_mode: mode,
     charges_current: current,
