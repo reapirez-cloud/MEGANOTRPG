@@ -4,6 +4,7 @@ import { registeredCharacterClassPackages } from "../../rule-templates/classPack
 import CharacterClassPanelBase from "./CharacterClassPanelBase.tsx"
 import CharacterTemplateChoices from "./CharacterTemplateChoices.tsx"
 import WizardArcaneRecoveryPanel from "./WizardArcaneRecoveryPanel.tsx"
+import WizardCompletionPanel from "./WizardCompletionPanel.tsx"
 import WizardSpellbookPanel from "./WizardSpellbookPanel.tsx"
 import "./CharacterClassFocus.css"
 import "./WizardSpellbookProgression.css"
@@ -49,7 +50,10 @@ export default function CharacterClassPanel(props: Props) {
       <button type="button" className={focus === "subclass" ? "is-active" : ""} onClick={() => choose("subclass")}>Подкласс</button>
       {hasWizard && <button type="button" className={focus === "spellbook" ? "is-active" : ""} onClick={() => choose("spellbook")}>Моя книга</button>}
     </nav>
-    {focus === "spellbook" && hasWizard ? <WizardSpellbookPanel characterId={props.characterId} /> : <>
+    {focus === "spellbook" && hasWizard ? <>
+      <WizardSpellbookPanel characterId={props.characterId} />
+      <WizardCompletionPanel characterId={props.characterId} />
+    </> : <>
       <CharacterTemplateChoices characterId={props.characterId} />
       {wizardPackage && focus !== "subclass" && <WizardArcaneRecoveryPanel
         characterId={props.characterId}
