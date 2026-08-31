@@ -52,7 +52,12 @@ export type RollPreparationTask = PreparationBase & {
   record: CharacterPreparationRecord | null
 }
 
-export type CharacterPreparationTask = SpellPreparationTask | ChoicePreparationTask | RollPreparationTask
+export type NoticePreparationTask = PreparationBase & {
+  kind: "notice"
+  body: string
+}
+
+export type CharacterPreparationTask = SpellPreparationTask | ChoicePreparationTask | RollPreparationTask | NoticePreparationTask
 
 export type CharacterPreparationModel = {
   session: CharacterPreparationSession | null
@@ -228,7 +233,23 @@ export function buildCharacterPreparationModel(
         }
       }
 
-      if (!session?.is_open || !input || text(input.kind) !== "roll") continue
+      if (!session?.is_open || !input) continue
+      if (text(input.kind) === "notice") {
+        const body = text(input.body)
+        if (!body) continue
+        tasks.push({
+          kind: "notice",
+          assignmentId: bundle.assignment.id,
+          templateId: bundle.template.id,
+          sourceName: bundle.template.name,
+          sourceLevel: effectiveLevel,
+          key: taskKey,
+          label: text(definition.label) || taskKey,
+          body,
+        })
+        continue
+      }
+      if (text(input.kind) !== "roll") continue
       tasks.push({
         kind: "roll",
         assignmentId: bundle.assignment.id,
