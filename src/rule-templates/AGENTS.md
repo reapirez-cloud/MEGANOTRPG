@@ -2,13 +2,30 @@
 
 This file applies to `src/rule-templates/**` and to work that changes class/subclass/feat choice behavior. Read it before editing the resolver, choice state, template types, class packages, or related migrations.
 
-Also read `CLASS_INTEGRATION_NOTES.md`. For persistent choices, read `CHOICE_RUNTIME.md`.
+Also read `CLASS_INTEGRATION_NOTES.md` and `GM_ADJUDICATION_BOUNDARY.md`. For persistent choices, read `CHOICE_RUNTIME.md`.
 
 ## Do not fork the architecture per source
 
 Classes, subclasses, future feats, races and other rule sources should converge on the same CE primitives. A new source type may add provenance/lifecycle semantics, but it must not receive a parallel choice engine, resource engine, spell engine or rules parser merely because it is a different source category.
 
 If a real rule exposes a missing capability, extend the generic type/resolver/server contract first. Then express the class/feat through that capability.
+
+## Do not automate the GM
+
+The default boundary is mandatory and lives in `GM_ADJUDICATION_BOUNDARY.md`.
+
+Short version:
+
+- CE/Gena owns durable authoritative character state and deterministic bookkeeping;
+- the human GM owns scene legality, action economy and narrative transactions;
+- `action`, `bonus_action`, `reaction`, `once per turn`, attack-count legality and similar turn cadence do not justify a turn tracker or runtime blocker by themselves;
+- if an action has no separate finite resource, the player may invoke/send it repeatedly and the GM adjudicates which attempts are legal;
+- if an action also spends a real finite resource, CE enforces the resource but still does not need to enforce the turn's action economy;
+- narrative transactions such as copying a found Wizard spell/scroll, paying gold, consuming the scroll and spending in-world time are GM-adjudicated by default; the GM uses normal tools to mutate the durable result such as inventory, currency or spellbook state;
+- exact rules text remains mandatory even when execution is GM-adjudicated;
+- lack of bespoke automation for a GM-adjudicated rule is **not** a mechanics gap.
+
+Never create source-specific combat tracking, fake scene flags, transaction mini-systems, or automatic inventory/currency flows merely to make a class feature look more automatic.
 
 ## Persistent choice contract
 
