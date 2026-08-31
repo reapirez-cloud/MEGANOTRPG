@@ -104,7 +104,7 @@ test("Wizard Arcane Recovery package passes strict quality, parser, CE and resou
   const resource = contract.resources.find((entry) => entry.stateKey === "wizard_arcane_recovery")
   assert.equal(resource?.current, 1)
   assert.equal(resource?.max.value, 1)
-  assert.ok(contract.mechanicalRules.some((entry) => entry.key === "class:wizard:arcane-recovery"))
+  assert.ok(contract.grants.some((entry) => entry.target === "feature" && entry.key === "class:wizard:arcane-recovery"))
 })
 
 test("full-caster slot capacity is parser-owned and uses the shared resource ledger", () => {
