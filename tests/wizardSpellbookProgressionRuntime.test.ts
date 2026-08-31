@@ -87,7 +87,7 @@ test("Wizard spellbook progression package reaches strict parser and CE gates", 
   assert.doesNotThrow(() => assertClassResourcePolicy(packages))
   const parsed = resolveTemplateBundles(packages, 5)
   const contract = resolveCharacterContract(engineInput(parsed.contributions))
-  assert.ok(contract.mechanicalRules.some((entry) => entry.key === "class:wizard:spellbook-progression"))
+  assert.ok(contract.grants.some((entry) => entry.target === "feature" && entry.key === "class:wizard:spellbook-progression"))
 })
 
 test("progression ledger separates class entitlements from physical book pages", () => {
