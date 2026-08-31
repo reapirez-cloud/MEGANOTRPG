@@ -2,6 +2,7 @@ import { registeredCharacterTemplateBundles } from "./registry.ts"
 
 export type CharacterClassPackage = {
   classTemplateId: string
+  classCatalogKey?: string | null
   className: string
   level: number
   subclassTemplateId?: string
@@ -27,6 +28,7 @@ export function registeredCharacterClassPackages(characterId: string): Character
     const subclassUnlockLevel = subclassBundle ? Math.max(1, subclassBundle.template.unlock_level || 1) : undefined
     return {
       classTemplateId: classBundle.template.id,
+      classCatalogKey: classBundle.template.catalog_key,
       className: classBundle.template.name,
       level,
       ...(subclassBundle ? {
