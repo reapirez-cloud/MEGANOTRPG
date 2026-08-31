@@ -3,6 +3,7 @@ import type { ResolvedCharacterContract } from "../../character-engine/index.ts"
 import { registeredCharacterClassPackages } from "../../rule-templates/classPackages.ts"
 import CharacterClassPanelBase from "./CharacterClassPanelBase.tsx"
 import CharacterTemplateChoices from "./CharacterTemplateChoices.tsx"
+import WizardArcaneRecoveryPanel from "./WizardArcaneRecoveryPanel.tsx"
 import WizardSpellbookPanel from "./WizardSpellbookPanel.tsx"
 import "./CharacterClassFocus.css"
 
@@ -23,8 +24,9 @@ function initialFocus(): Focus {
 
 export default function CharacterClassPanel(props: Props) {
   const [focus, setFocus] = useState<Focus>(initialFocus)
-  const hasWizard = registeredCharacterClassPackages(props.characterId)
-    .some((entry) => entry.classCatalogKey === "class:wizard")
+  const wizardPackage = registeredCharacterClassPackages(props.characterId)
+    .find((entry) => entry.classCatalogKey === "class:wizard")
+  const hasWizard = Boolean(wizardPackage)
 
   useEffect(() => () => {
     window.sessionStorage.removeItem(FOCUS_KEY)
@@ -48,6 +50,12 @@ export default function CharacterClassPanel(props: Props) {
     </nav>
     {focus === "spellbook" && hasWizard ? <WizardSpellbookPanel characterId={props.characterId} /> : <>
       <CharacterTemplateChoices characterId={props.characterId} />
+      {wizardPackage && focus !== "subclass" && <WizardArcaneRecoveryPanel
+        characterId={props.characterId}
+        assignmentId={wizardPackage.classAssignmentId}
+        wizardLevel={wizardPackage.level}
+        contract={props.contract}
+      />}
       <CharacterClassPanelBase {...props} />
     </>}
   </div>
