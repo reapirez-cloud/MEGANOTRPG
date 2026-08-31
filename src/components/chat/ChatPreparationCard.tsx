@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import type {
   CharacterPreparationModel,
   ChoicePreparationTask,
+  NoticePreparationTask,
   RollPreparationTask,
   SpellPreparationTask,
 } from "../../lib/characterPreparation.ts"
@@ -247,6 +248,17 @@ function RollTask({ roomId, characterId, task, onChanged }: {
   </section>
 }
 
+function NoticeTask({ task }: { task: NoticePreparationTask }) {
+  return <section className="rest-prep-task rest-prep-task--notice">
+    <div className="rest-prep-task__head">
+      <span>ⓘ</span>
+      <div><small>{task.sourceName}</small><strong>{task.label}</strong></div>
+      <b className="rest-prep-task__done">Решает ГМ</b>
+    </div>
+    <div className="rest-prep-empty">{task.body}</div>
+  </section>
+}
+
 export default function ChatPreparationCard({ roomId, characterId, model, spells, onChanged }: Props) {
   const { user } = useAuth()
   const { characters } = useCharacters()
@@ -257,6 +269,7 @@ export default function ChatPreparationCard({ roomId, characterId, model, spells
   const spellTasks = model.tasks.filter((task): task is SpellPreparationTask => task.kind === "spells")
   const choiceTasks = model.tasks.filter((task): task is ChoicePreparationTask => task.kind === "choice")
   const rollTasks = model.tasks.filter((task): task is RollPreparationTask => task.kind === "roll")
+  const noticeTasks = model.tasks.filter((task): task is NoticePreparationTask => task.kind === "notice")
 
   return <aside className="rest-prep-card">
     <header className="rest-prep-card__header">
@@ -264,10 +277,11 @@ export default function ChatPreparationCard({ roomId, characterId, model, spells
       <div><small>Долгий отдых завершён</small><strong>Гена ждёт решения владельца</strong></div>
       <b>до первой реплики</b>
     </header>
-    <p className="rest-prep-card__warning"><strong>Каждая кнопка «Готово» фиксирует конкретный выбор до следующего долгого отдыха.</strong> Первый отправленный текст закроет это окно до следующего долгого отдыха. Броски, способности и заклинания окно не закрывают. Если задача осталась незавершённой, подготовленные заклинания и постоянные выборы сохраняют прошлое значение, а обязательные случайные результаты Гена определяет сама. ГМ меняет персонажа только через административный лист, не через это окно.</p>
+    <p className="rest-prep-card__warning"><strong>Каждая кнопка «Готово» фиксирует конкретный выбор до следующего долгого отдыха.</strong> Первый отправленный текст закроет это окно до следующего долгого отдыха. Броски, способности и заклинания окно не закрывают. Если задача осталась незавершённой, подготовленные заклинания и постоянные выборы сохраняют прошлое значение, а обязательные случайные результаты Гена определяет сама. Информационные решения с пометкой «Решает ГМ» игрок сообщает мастеру, а ГМ применяет их через административный лист.</p>
 
     {spellTasks.map((task) => <SpellTask characterId={characterId} task={task} spells={spells} onChanged={onChanged} key={`${task.assignmentId}:${task.key}`} />)}
     {choiceTasks.map((task) => <ChoiceTask characterId={characterId} task={task} onChanged={onChanged} key={`${task.assignmentId}:${task.key}`} />)}
     {rollTasks.map((task) => <RollTask roomId={roomId} characterId={characterId} task={task} onChanged={onChanged} key={`${task.assignmentId}:${task.key}`} />)}
+    {noticeTasks.map((task) => <NoticeTask task={task} key={`${task.assignmentId}:${task.key}`} />)}
   </aside>
 }
