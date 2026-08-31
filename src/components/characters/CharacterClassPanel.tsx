@@ -6,6 +6,7 @@ import CharacterTemplateChoices from "./CharacterTemplateChoices.tsx"
 import WizardArcaneRecoveryPanel from "./WizardArcaneRecoveryPanel.tsx"
 import WizardSpellbookPanel from "./WizardSpellbookPanel.tsx"
 import "./CharacterClassFocus.css"
+import "./WizardSpellbookProgression.css"
 
 type Props = {
   characterId: string
