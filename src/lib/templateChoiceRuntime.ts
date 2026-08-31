@@ -10,6 +10,8 @@ type ChoiceCommitResult = {
   updated_at?: string
 }
 
+type ChoiceRpcName = "commit_character_template_choice_v1" | "gena_commit_character_template_choice_v1"
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value)
 }
@@ -23,18 +25,27 @@ function parseResult(value: unknown): ChoiceCommitResult | null {
   }
 }
 
-export async function commitCharacterTemplateChoice(
+async function commitChoice(
+  rpc: ChoiceRpcName,
   characterId: string,
   assignmentId: string,
   choiceKey: string,
   selectedOptions: string[],
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const normalized = [...new Set(selectedOptions.map((item) => item.trim()).filter(Boolean))]
-  const { data, error } = await supabase.rpc("commit_character_template_choice_v1", {
-    p_assignment_id: assignmentId,
-    p_choice_key: choiceKey,
-    p_selected_options: normalized,
-  })
+  const args = rpc === "gena_commit_character_template_choice_v1"
+    ? {
+        p_character_id: characterId,
+        p_assignment_id: assignmentId,
+        p_choice_key: choiceKey,
+        p_selected_options: normalized,
+      }
+    : {
+        p_assignment_id: assignmentId,
+        p_choice_key: choiceKey,
+        p_selected_options: normalized,
+      }
+  const { data, error } = await supabase.rpc(rpc, args)
   if (error) return { ok: false, error: error.message }
 
   const result = parseResult(data)
@@ -54,4 +65,22 @@ export async function commitCharacterTemplateChoice(
   )
   registerCharacterTemplateBundles(characterId, next)
   return { ok: true }
+}
+
+export async function commitCharacterTemplateChoice(
+  characterId: string,
+  assignmentId: string,
+  choiceKey: string,
+  selectedOptions: string[],
+) {
+  return commitChoice("commit_character_template_choice_v1", characterId, assignmentId, choiceKey, selectedOptions)
+}
+
+export async function commitGenaCharacterTemplateChoice(
+  characterId: string,
+  assignmentId: string,
+  choiceKey: string,
+  selectedOptions: string[],
+) {
+  return commitChoice("gena_commit_character_template_choice_v1", characterId, assignmentId, choiceKey, selectedOptions)
 }
