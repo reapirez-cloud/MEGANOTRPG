@@ -17,6 +17,10 @@ export type WizardSpellbookSpell = {
   level: number
   school: string
   ritual: boolean
+  castingTime: string
+  prepared: boolean
+  spellMastery: boolean
+  signatureSpell: boolean
 }
 
 export type WizardSpellbookState = {
@@ -103,6 +107,10 @@ export function normalizeWizardSpellbookState(value: unknown): WizardSpellbookSt
     level: nullableInteger(spell.level) ?? 0,
     school: text(spell.school),
     ritual: spell.ritual === true,
+    castingTime: text(spell.castingTime),
+    prepared: spell.prepared === true,
+    spellMastery: spell.spellMastery === true,
+    signatureSpell: spell.signatureSpell === true,
   })).filter((spell) => Boolean(spell.bookItemId && spell.spellCatalogId)) : []
   return {
     hasBook: root.hasBook === true && books.length > 0,
@@ -195,6 +203,36 @@ export async function chooseWizardSpellbookProgressionSpell(
     p_wizard_level: sourceLevel,
     p_spell_catalog_id: spellCatalogId,
     p_spellbook_item_id: spellbookItemId || null,
+  })
+  if (error) throw error
+  return record(data)
+}
+
+export async function memorizeWizardSpell(characterId: string, forgetCharacterSpellId: string, prepareCharacterSpellId: string) {
+  const { data, error } = await supabase.rpc("memorize_character_wizard_spell_v1", {
+    p_character_id: characterId,
+    p_forget_character_spell_id: forgetCharacterSpellId,
+    p_prepare_character_spell_id: prepareCharacterSpellId,
+  })
+  if (error) throw error
+  return record(data)
+}
+
+export async function setWizardSpellMastery(characterId: string, level1CharacterSpellId: string, level2CharacterSpellId: string) {
+  const { data, error } = await supabase.rpc("set_character_wizard_spell_mastery_v1", {
+    p_character_id: characterId,
+    p_level1_character_spell_id: level1CharacterSpellId,
+    p_level2_character_spell_id: level2CharacterSpellId,
+  })
+  if (error) throw error
+  return record(data)
+}
+
+export async function setWizardSignatureSpells(characterId: string, firstCharacterSpellId: string, secondCharacterSpellId: string) {
+  const { data, error } = await supabase.rpc("set_character_wizard_signature_spells_v1", {
+    p_character_id: characterId,
+    p_first_character_spell_id: firstCharacterSpellId,
+    p_second_character_spell_id: secondCharacterSpellId,
   })
   if (error) throw error
   return record(data)
