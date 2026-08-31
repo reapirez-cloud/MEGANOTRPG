@@ -32,6 +32,7 @@ type PreparationBase = {
 
 export type SpellPreparationTask = PreparationBase & {
   kind: "spells"
+  classKey: string
   required: number | null
   record: CharacterPreparationRecord | null
 }
@@ -141,6 +142,11 @@ function preparationDefinitions(bundle: CharacterTemplateBundle): JsonRecord[] {
   return Array.isArray(definitions) ? definitions.map(record).filter((item): item is JsonRecord => item !== null) : []
 }
 
+function templateClassKey(bundle: CharacterTemplateBundle) {
+  const key = bundle.template.catalog_key?.trim() || ""
+  return bundle.template.kind === "class" && key.startsWith("class:") ? key.slice("class:".length) : ""
+}
+
 export function buildCharacterPreparationModel(
   bundles: CharacterTemplateBundle[],
   characterLevel: number,
@@ -173,6 +179,7 @@ export function buildCharacterPreparationModel(
       const key = `spells:${bundle.template.id}`
       tasks.push({
         kind: "spells",
+        classKey: templateClassKey(bundle),
         assignmentId: bundle.assignment.id,
         templateId: bundle.template.id,
         sourceName: bundle.template.name,
