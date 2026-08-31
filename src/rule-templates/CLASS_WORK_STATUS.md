@@ -178,7 +178,11 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 - `last_mechanics_audit_started: 2026-08-31`
 - `last_dev_runtime_audit: 2026-08-31`
 - `rules_revision: Player's Handbook 2024 base class`
-- `subclasses: NOT_INCLUDED`
+- `subclasses: WAVE_0_CONTRACT_READY_CONTENT_NOT_INCLUDED`
+- `subclass_wave_0: READY_2026_08_31`
+- `subclass_supported_count: 13`
+- `subclass_contract: src/rule-templates/wizardSubclasses.ts`
+- `subclass_contract_regression: tests/wizardSubclassWave0.test.ts`
 - `dev_base_class_runtime: READY_PENDING_TARGET_DEPLOYMENT`
 - `dev_ci: GREEN_RUN_1152`
 - `current_dev_text: clean Russian base-class package with exact rules and separately authored Voss narration for every openable feature card`
@@ -206,13 +210,24 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 - ASI and Epic Boon do not receive a Wizard-specific picker. They use the generic feat/allocation contract when available or the normal GM sheet-edit path; lack of Wizard-specific automation is not a base-class runtime blocker.
 - Found-spell/scroll transcription, its gold/time procedure, consuming/removing the source, replacement of a lost book and backup-book narrative handling are **GM-adjudicated by design**. The GM uses normal inventory/currency/spellbook tools and CE/Gena stores the durable result.
 - Action/Bonus Action/Reaction legality and per-turn cadence inside Wizard rules remain GM-adjudicated under `GM_ADJUDICATION_BOUNDARY.md`; CE exposes real resources/access but does not create a turn tracker.
-- Subclass selection and levels 3/6/10/14 remain outside this base-class task until Wizard subclasses receive their own package.
+- The rebuilt base class remains independent of subclass content; Wizard subclass infrastructure and package gates are tracked separately below.
+
+### Wizard subclass Wave 0
+
+- Wave 0 defines exactly thirteen supported Wizard subclass identities in `wizardSubclasses.ts`; it does **not** install empty or unfinished subclass rows into the player-visible catalog.
+- Every future Wizard subclass package must attach to the active `class:wizard` template, use subclass unlock level 3, and place its compatibility feature rows only at Wizard levels 3/6/10/14.
+- The generic template resolver remains authoritative for effective subclass level. A stale/high subclass assignment or high total character level cannot unlock subclass mechanics before the parent Wizard reaches the required level.
+- The four PHB 2024 identities (Evoker, Diviner, Illusionist, Abjurer) replace their same-school 2014 variants rather than creating duplicate subclasses.
+- Older supported schools and supplement subclasses keep their original rules package but use the Wizard 2024 compatibility schedule: a former level-2 subclass entry feature is exposed at Wizard level 3; later 6/10/14 rows retain their levels.
+- Stable catalog keys and visual keys are reserved for all thirteen packages so later migrations/UI do not infer identity from translated display names.
+- No Wizard-specific subclass engine, turn tracker, scene-state machine, or bespoke choice runtime was added. Each subclass feature still follows the normal CE-owned vs GM-adjudicated boundary.
+- Regression `tests/wizardSubclassWave0.test.ts` guards identity uniqueness, PHB replacement policy, parent linkage, unlock level, allowed feature levels and multiclass/effective-level gating.
 
 ### Remaining certification blocker
 
 - Apply the intended `dev` migration stack to the target Supabase deployment and re-audit the deployed database/runtime against the same Wizard regressions and integration contract.
 
-Do not promote Wizard mechanics to `READY` until the target deployed state is applied and audited. There are no known `dev` base-class runtime blockers in the current subclass-free scope.
+Do not promote Wizard mechanics to `READY` until the target deployed state is applied and audited. There are no known `dev` base-class runtime blockers; subclass content begins with Wave 1 and is not yet claimed complete.
 
 ---
 
