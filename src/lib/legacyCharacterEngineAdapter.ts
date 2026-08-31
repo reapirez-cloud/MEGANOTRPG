@@ -38,6 +38,8 @@ export type CharacterEngineIntegrationSnapshot = {
   resourceStates?: Record<string, ResourceState>
   templateBundles?: CharacterTemplateBundle[]
   suppressedSourceIds?: Iterable<string>
+  /** Current physical Wizard-book membership, resolved by the application read adapter. */
+  wizardSpellbookCatalogIds?: Iterable<string>
 }
 
 const ABILITY_ALIASES: Record<string, AbilityKey> = {
@@ -114,6 +116,7 @@ export function buildLegacyCharacterEngineInput(args: {
   }
 
   const spellcastingAbility = parseLegacySpellcastingAbility(sheet.spellcasting_ability)
+  const wizardSpellbookCatalogIds = new Set(args.wizardSpellbookCatalogIds ?? [])
   if (sheet.spellcasting_enabled) for (const spell of spells) {
     const isCantrip = spell.spell_level === 0 || spell.cast_mode === "cantrip"
     const alwaysPrepared = Boolean(spell.wizard_spell_mastery || spell.wizard_signature_spell)
@@ -127,13 +130,24 @@ export function buildLegacyCharacterEngineInput(args: {
       ...(isCantrip ? {} : { resourceOptions: options }),
     }]
 
+    // Ritual Adept is book access, not prepared-spell access. The physical-book
+    // projection is loaded outside CE; losing the book therefore removes this
+    // no-slot method on the next resolved snapshot without mutating spell rows.
+    if (!isCantrip && spell.ritual && spell.catalog_spell_id && wizardSpellbookCatalogIds.has(spell.catalog_spell_id)) {
+      methods.push({
+        key: "wizard-ritual",
+        kind: "ritual",
+        ...(spellcastingAbility ? { ability: spellcastingAbility } : {}),
+        requiresPrepared: false,
+      })
+    }
+
     if (spell.wizard_spell_mastery) {
       methods.push({
         key: "wizard-spell-mastery",
         kind: "spell_mastery",
         ...(spellcastingAbility ? { ability: spellcastingAbility } : {}),
         requiresPrepared: true,
-        resourceOptions: [{ key: "mastery-free", castLevel: spell.spell_level, costs: [] }],
       })
     }
 
