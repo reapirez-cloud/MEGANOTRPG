@@ -38,11 +38,11 @@ test("manual GM transactions are an intentional completed execution path", () =>
     "deduct currency",
     "remove/consume the scroll",
     "add the resulting spell",
-    "does not need a special \"transcribe scroll\" workflow",
     "not a missing runtime mechanic",
   ]) {
     assert.match(boundary, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"))
   }
+  assert.match(boundary, /does\s+\*\*not\*\*\s+need a special "transcribe scroll" workflow/i)
 })
 
 test("Wizard audit no longer treats scroll transcription automation as a blocker", () => {
