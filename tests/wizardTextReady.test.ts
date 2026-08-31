@@ -105,12 +105,15 @@ test("Wizard catalog lifecycle survives the legacy builtin prune without revivin
   assert.doesNotMatch(bootstrap, /class:(?:artificer|bard|barbarian|warlock|monk|paladin|rogue|ranger|sorcerer)'/)
 })
 
-test("Wizard ledger marks text ready without pretending mechanics exist", () => {
+test("Wizard ledger keeps text ready while mechanics advance honestly", () => {
   const wizard = wizardLedgerBlock()
   assert.match(wizard, /\*\*Text:\*\* `READY`/)
-  assert.match(wizard, /\*\*Mechanics\/runtime:\*\* `NOT_STARTED`/)
+  assert.match(wizard, /\*\*Mechanics\/runtime:\*\* `IN_PROGRESS`/)
   assert.match(wizard, /last_text_audit: 2026-08-31/)
+  assert.match(wizard, /last_mechanics_audit_started: 2026-08-31/)
   assert.match(wizard, /subclasses: NOT_INCLUDED/)
-  assert.match(wizard, /no legacy Wizard runtime is inherited/i)
+  assert.match(wizard, /physical spellbook and book-gated preparation are implemented/i)
   assert.match(wizard, /Spellbook as authoritative owned-spell state/)
+  assert.match(wizard, /Arcane Recovery: implemented in dev/i)
+  assert.doesNotMatch(wizard, /\*\*Mechanics\/runtime:\*\* `READY`/)
 })
