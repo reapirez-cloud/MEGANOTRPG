@@ -27,11 +27,19 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added Wizard spellbook runtime storage/RPCs and spellbook-aware preparation validation.
 - Continued generic template-choice runtime cleanup and class-work ledger updates required by the current class rebuild.
 
+### Repository / release process
+
+- Added this persistent patch journal as the canonical ledger for everything accumulated on `dev` before release.
+- Root `AGENTS.md` now requires every coding agent to update the Active patch as part of task completion.
+- An explicit user command to promote to `main` now formally closes the current patch; after successful promotion, `dev` must open a new empty Active patch based on the new `main` SHA.
+- Released patch history is immutable: later fixes belong to the next patch instead of being backdated into an already shipped release.
+
 ### Tests / verification added in this patch
 
 - Added GENA preparation authority regression coverage.
 - Added Wizard text-ready coverage.
 - Updated official class catalog coverage for the rebuilt Wizard catalog entry.
+- Added `patchJournalContract` regression coverage so the repository cannot silently lose the patch-journal lifecycle contract.
 
 ### Known incomplete work
 
