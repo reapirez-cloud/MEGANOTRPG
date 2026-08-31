@@ -5,6 +5,7 @@ import {
   buildCharacterPreparationModel,
   type CharacterPreparationRecord,
   type CharacterPreparationSession,
+  type SpellPreparationTask,
 } from "../lib/characterPreparation.ts"
 import { supabase } from "../lib/supabase.ts"
 import { loadWizardSpellbook, type WizardSpellbookState } from "../lib/wizardSpellbook.ts"
@@ -94,18 +95,20 @@ export function useChatPreparation(character: Character | null) {
     records,
   ), [bundleRevision, character?.level, characterId, records, session])
 
-  const hasWizardPreparation = model.tasks.some((task) => task.kind === "spells" && task.classKey === "wizard")
+  const wizardTask = model.tasks.find((task): task is SpellPreparationTask => task.kind === "spells" && task.classKey === "wizard") || null
   const preparationSpells = useMemo(() => {
-    if (!hasWizardPreparation) return spells
+    if (!wizardTask) return spells
     if (!wizardSpellbook.hasBook) return []
     const allowed = new Set(wizardSpellbook.spells.map((spell) => spell.spellCatalogId))
     const maxLevel = wizardSpellbook.maxSpellLevel ?? 0
     return spells.filter((spell) => allowed.has(spell.catalog_spell_id) && spell.spell_level <= maxLevel)
-  }, [hasWizardPreparation, spells, wizardSpellbook])
+  }, [spells, wizardSpellbook, wizardTask])
 
-  const wizardBookError = hasWizardPreparation && !wizardSpellbook.hasBook
+  const wizardBookError = wizardTask && !wizardSpellbook.hasBook
     ? "Книга заклинаний Волшебника не найдена в инвентаре. Текущая подготовка сохраняется, но изменить её до появления книги нельзя."
-    : ""
+    : wizardTask?.required !== null && wizardTask?.required !== undefined && preparationSpells.length < wizardTask.required
+      ? `В книге доступно ${preparationSpells.length} заклинаний, а для полной подготовки нужно ${wizardTask.required}. Гена не будет дополнять список догадками.`
+      : ""
 
   return { model, spells: preparationSpells, wizardSpellbook, loading, error: error || wizardBookError, refresh }
 }
