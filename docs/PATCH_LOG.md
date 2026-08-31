@@ -18,9 +18,16 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - A Wizard without a spellbook cannot change daily spell preparation. Previously prepared spells are not erased merely because the book is absent.
 - GM/admin can add Wizard spells to a concrete spellbook through **«Выдать закл»**; the player sees only spells actually written in owned spellbooks.
 - GENA daily preparation for Wizard is restricted to spells contained in an owned spellbook, with server-side validation rather than UI-only filtering.
-- Began the Wizard mechanics pass: Wizard spell-slot capacity is now class/level driven instead of relying on manually authored sheet slot maxima.
+- Wizard spell-slot capacity is class/level driven instead of relying on manually authored sheet slot maxima.
 - Added a real **Магическое восстановление / Arcane Recovery** interaction. After a GM-granted Short Rest, the assigned player chooses actually expended spell slots to recover; the combined recovered slot levels are limited to `ceil(Wizard level / 2)` and no slot above level 5 is eligible.
 - Added an explicit GM **Short Rest** control to the Wizard class surface so Arcane Recovery can be resolved through normal gameplay UI rather than a hidden/admin-only RPC.
+- Ordinary Wizard slot casting now requires the spell to be prepared.
+- **Знаток ритуалов / Ritual Adept** now exposes a no-slot ritual casting method only for ritual spells that are actually written in a physical spellbook currently held by the character.
+- Added **Запоминание заклинания / Memorize Spell** to «Моя книга»: after an authoritative Short Rest the assigned player can replace one eligible prepared Wizard spell with another eligible spell from the held book.
+- Added **Мастерство заклинаний / Spell Mastery** selections with the correct level/casting-time filters, always-prepared state, true no-resource lowest-level casts and only one mastered-spell replacement after each Long Rest.
+- Added **Фирменные заклинания / Signature Spells** selections: two level-3 book-backed spells remain always prepared and each has its own free cast that recharges after a Short or Long Rest.
+- GENA no longer counts Spell Mastery or Signature Spells against the ordinary prepared-spell quota.
+- GENA now surfaces the Wizard cantrip replacement right as an informational post-rest notice. Cantrip changes, Scholar Expertise, ASI and Epic Boon sheet decisions deliberately use the normal player → GM sheet-edit path instead of class-specific mini-engines.
 
 ### Runtime and rules changes
 
@@ -28,11 +35,16 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Extended character-preparation metadata with stable class catalog identity so class-specific availability rules do not depend on localized display names.
 - Extended inventory persistence with stable Chasovoy definition identity (`definition_id` + revision) for concrete item instances.
 - Added Wizard spellbook runtime storage/RPCs and spellbook-aware preparation validation.
+- Added authoritative Wizard spellbook progression: six level-1 spells at Wizard level 1 and two additional eligible Wizard spells for every later Wizard level.
 - Added a reusable full-caster spell-slot mechanic that emits canonical `spell_slot_N` CE resources and leaves mutable current values in the shared character resource ledger.
 - Added Wizard core mechanical grants for Intelligence/Wisdom saving throws, simple weapons, class skill selection and the one-use-per-Long-Rest Arcane Recovery resource.
-- Added the missing authoritative Short Rest server seam: `grant_character_short_rest` now performs normal `short_rest` resource recovery and opens a short-rest resolution window; ordinary assigned-player speech closes that window and Long Rest closes any stale one.
+- Added the missing authoritative Short Rest server seam: `grant_character_short_rest` performs normal `short_rest` resource recovery and opens a short-rest resolution window; ordinary assigned-player speech closes that window and Long Rest closes any stale one.
 - Added a generic spell-slot restoration primitive that validates weighted recovery budgets, maximum slot level and actually expended slots against `character_resource_states` before mutating canonical slot state.
 - Arcane Recovery uses a narrow Wizard server wrapper that verifies the active Wizard assignment, the Short Rest window, Wizard level and the real once-per-Long-Rest resource before restoring slots.
+- Added durable Memorize Spell, Spell Mastery and Signature Spells state with server-side eligibility validation against the held physical spellbook.
+- Spell Mastery uses a genuinely resource-free CE casting method; Signature Spells use separate CE resources with `short_rest` + `long_rest` recovery.
+- CE runtime now projects held Wizard spellbook membership through read-only persistence queries rather than routing a source-loader read through a class-specific RPC.
+- Manual Wizard choices that do not need deterministic bookkeeping are recorded as `gena_notice_then_gm_sheet_edit` / normal GM sheet edits rather than receiving bespoke choice state.
 - Continued generic template-choice runtime cleanup and class-work ledger updates required by the current class rebuild.
 
 ### Repository / release process
@@ -47,15 +59,19 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added GENA preparation authority regression coverage.
 - Added Wizard text-ready coverage.
 - Added dedicated Wizard spellbook runtime regression coverage for physical item identity, GM spell authoring, book-gated GENA preparation and the «Моя книга» UI path.
+- Added dedicated Wizard spellbook progression regression coverage for six starting spells, +2 per Wizard level and held-book grant validation.
 - Added dedicated Wizard Arcane Recovery regression coverage for CE resource resolution, parser-owned full-caster slots, authoritative Short Rest, weighted slot restoration and Oracle/UI wiring.
+- Added `wizardCompletionRuntime` coverage for prepared ordinary casts, held-book rituals, Memorize Spell, Spell Mastery, Signature Spells, GENA/manual-choice boundaries and shared strict class quality/resource/parser/CE gates.
+- Added resource-policy metadata to every Wizard completion mechanics migration so the repository-wide class resource-policy gate audits the whole slice.
 - Updated official class catalog coverage for the rebuilt Wizard catalog entry.
 - Added `patchJournalContract` regression coverage so the repository cannot silently lose the patch-journal lifecycle contract.
+- Wizard dev runtime closure reached a fully green CI on run **#1152** before this journal update.
 
 ### Known incomplete work
 
-- Wizard mechanics remain **IN_PROGRESS**; this patch does not claim full Wizard runtime closure.
-- The spellbook/preparation and Arcane Recovery slices now have dedicated regression coverage, but neither is certified in the deployed production database yet.
-- Wizard cantrip progression/replacement, full casting/access closure, Scholar, Memorize Spell, Spell Mastery, Signature Spells, ASI/Epic Boon integration and the remaining upper-level mechanics still need implementation/audit.
+- The **Wizard 2024 base-class runtime has no known implementation blocker on `dev`** in the current subclass-free scope.
+- Overall Wizard mechanics remain **IN_PROGRESS** only because the intended deployed Supabase state has not yet been applied and certified against the current `dev` stack; Git-only closure is not production certification.
+- Found-spell/scroll transcription, Scholar Expertise, cantrip replacement, ASI and Epic Boon use the agreed GM-adjudicated/normal-sheet path by design and are not missing Wizard-specific automation.
 - Wizard subclasses remain intentionally outside this patch scope.
 
 ---
