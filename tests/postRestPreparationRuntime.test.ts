@@ -219,7 +219,7 @@ test("spell preparation is performed inside chat instead of redirecting to the s
 
 test("spell changes refresh both preparation UI and the shared CE runtime bridge", () => {
   assert.match(preparationHook, /table: "character_spells"/)
-  assert.match(preparationHook, /select\("id,catalog_spell_id,name,spell_level,prepared,cast_mode"\)/)
+  assert.match(preparationHook, /select\("id,catalog_spell_id,name,spell_level,prepared,cast_mode,wizard_spell_mastery,wizard_signature_spell"\)/)
   assert.match(resolvedCharacterRuntime, /table: "character_spells"/)
   assert.match(characterRuntimeSource, /from\("character_spells"\)/)
   assert.match(characterRuntimeResolver, /resolveLegacyCharacterEngineView\(\{/)
