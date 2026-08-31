@@ -59,17 +59,27 @@
   line-height: 1.45;
 }
 
+.wizard-arcane-recovery__rest,
 .wizard-arcane-recovery__commit {
   min-height: 42px;
-  border: 1px solid rgba(167, 139, 250, 0.24);
   border-radius: 13px;
-  background: rgba(139, 92, 246, 0.16);
   color: var(--text, #f5f5f5);
   font: inherit;
   font-size: 12px;
   font-weight: 700;
 }
 
+.wizard-arcane-recovery__rest {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.wizard-arcane-recovery__commit {
+  border: 1px solid rgba(167, 139, 250, 0.24);
+  background: rgba(139, 92, 246, 0.16);
+}
+
+.wizard-arcane-recovery__rest:disabled,
 .wizard-arcane-recovery__commit:disabled {
   opacity: .38;
 }
