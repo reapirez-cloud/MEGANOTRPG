@@ -33,6 +33,8 @@ export type CharacterRuntimeCoreData = {
   features: CharacterFeature[]
   preparationSession: CharacterPreparationSession | null
   preparationRecords: CharacterPreparationRecord[]
+  /** Current catalog identities available from physical Wizard spellbooks in inventory. */
+  wizardSpellbookCatalogIds: string[]
 }
 
 export type CharacterRuntimeCatalogQuery = {
@@ -258,6 +260,7 @@ export class CharacterRuntimeResolver {
         resourceStates: input.resourceState,
         templateBundles: input.templateBundles,
         suppressedSourceIds: effectiveSuppressions,
+        wizardSpellbookCatalogIds: core.wizardSpellbookCatalogIds,
       })
     } catch (reason) {
       throw new CharacterRuntimeResolveError(

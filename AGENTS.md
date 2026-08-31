@@ -16,6 +16,24 @@ This branch rule has priority over older task-specific habits or prior requests 
 
 Active class / Character Engine work is done on `dev` unless the user explicitly authorizes promotion to `main`.
 
+## Patch journal — mandatory release ledger
+
+`docs/PATCH_LOG.md` is the canonical journal for the patch currently accumulating on `dev`.
+
+Every coding agent MUST follow this lifecycle:
+
+1. **Any user-requested implementation on `dev` belongs to the current Active patch.** Before finishing the task, update `docs/PATCH_LOG.md` in the same work unit with the meaningful player-facing, runtime, architecture, migration, test, or bug-fix changes that were actually made.
+2. Keep the journal concise and outcome-oriented. Group related commits into one patch note instead of dumping commit messages. Do not record plans or claims that are not implemented.
+3. If a task is audit/read-only and changes no repository state, it does not need a patch-log entry.
+4. Before an explicit promotion to `main`, compare `main...dev` and reconcile the Active patch against the real diff so the journal does not omit work accumulated by earlier agents or conversations.
+5. An explicit user instruction to promote/merge/push to `main` means **the current patch is finished**. Before promotion, mark the Active patch `RELEASED`, record the release date and the target `main` commit/release identity when known, and move its notes under `Released patches`.
+6. Promote only the closed patch to `main` under the branch-discipline rules above.
+7. **After successful promotion**, return to `dev` and immediately create the next empty `Active patch` section with status `OPEN`, a new patch id/date, and the new `main` base SHA. New development must never be appended to the patch that was just released.
+8. If promotion fails, do not open a new patch. Keep the current patch open/releasable and record the failure only if it materially affects release state.
+9. Never rewrite released patch history to make later work appear as if it shipped earlier. Corrections after release belong to the next Active patch.
+
+The patch journal is part of task completion, not optional documentation. A code change on `dev` that should be user-visible in release history is incomplete until the Active patch reflects it.
+
 ## Named engine architecture — read before audits
 
 Before auditing or changing gameplay, classes, resources, rests, preparation, inventory, character/NPC storage, sheets, world data, locations or maps, read:

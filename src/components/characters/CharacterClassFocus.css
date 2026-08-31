@@ -9,6 +9,10 @@
   background: rgba(255, 255, 255, 0.035);
 }
 
+.character-class-focus--has-wizard .character-class-focus__switch {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .character-class-focus__switch button {
   min-height: 36px;
   border: 0;
@@ -28,4 +32,10 @@
 .character-class-focus--class .class-panel__source--subclass,
 .character-class-focus--subclass .class-panel__source--class {
   display: none;
+}
+
+@media (max-width: 430px) {
+  .character-class-focus--has-wizard .character-class-focus__switch {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

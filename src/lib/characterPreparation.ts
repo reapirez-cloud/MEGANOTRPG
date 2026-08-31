@@ -25,19 +25,24 @@ type PreparationBase = {
   assignmentId: string
   templateId: string
   sourceName: string
+  sourceLevel: number
   key: string
   label: string
 }
 
 export type SpellPreparationTask = PreparationBase & {
   kind: "spells"
+  classKey: string
+  required: number | null
   record: CharacterPreparationRecord | null
 }
 
 export type ChoicePreparationTask = PreparationBase & {
   kind: "choice"
   definition: RuleChoiceDefinition
+  required: number
   selected: string[]
+  record: CharacterPreparationRecord | null
 }
 
 export type RollPreparationTask = PreparationBase & {
@@ -47,7 +52,12 @@ export type RollPreparationTask = PreparationBase & {
   record: CharacterPreparationRecord | null
 }
 
-export type CharacterPreparationTask = SpellPreparationTask | ChoicePreparationTask | RollPreparationTask
+export type NoticePreparationTask = PreparationBase & {
+  kind: "notice"
+  body: string
+}
+
+export type CharacterPreparationTask = SpellPreparationTask | ChoicePreparationTask | RollPreparationTask | NoticePreparationTask
 
 export type CharacterPreparationModel = {
   session: CharacterPreparationSession | null
@@ -72,6 +82,39 @@ function integer(value: unknown, fallback: number) {
 
 function selectedValues(value: string | string[] | undefined): string[] {
   return (Array.isArray(value) ? value : value ? [value] : []).map((item) => item.trim()).filter(Boolean)
+}
+
+function levelScaledValue(value: unknown, effectiveLevel: number): number | null {
+  const values = record(value)
+  if (!values) return null
+  let threshold = -1
+  let resolved: number | null = null
+  for (const [rawLevel, rawValue] of Object.entries(values)) {
+    const level = Number(rawLevel)
+    const amount = Number(rawValue)
+    if (!Number.isInteger(level) || !Number.isInteger(amount) || level > effectiveLevel || level < threshold) continue
+    threshold = level
+    resolved = amount
+  }
+  return resolved
+}
+
+export function choiceRequiredCount(definition: RuleChoiceDefinition, effectiveLevel: number) {
+  let required = Math.max(1, integer(definition.count, 1))
+  const scaled = definition.count_by_level || {}
+  for (const [rawLevel, rawCount] of Object.entries(scaled)) {
+    const level = Number(rawLevel)
+    const count = Number(rawCount)
+    if (!Number.isInteger(level) || !Number.isInteger(count) || level > effectiveLevel) continue
+    required = Math.max(required, Math.max(1, count))
+  }
+  return required
+}
+
+function preparedSpellLimit(meta: JsonRecord, effectiveLevel: number): number | null {
+  const profile = record(meta.sheet_profile)
+  const limit = levelScaledValue(profile?.prepared_spells_by_level, effectiveLevel)
+  return limit === null ? null : Math.max(0, limit)
 }
 
 function sourceLevel(
@@ -102,6 +145,11 @@ function rootSourceId(bundle: CharacterTemplateBundle) {
 function preparationDefinitions(bundle: CharacterTemplateBundle): JsonRecord[] {
   const definitions = record(bundle.template.rules_meta)?.post_rest_preparations
   return Array.isArray(definitions) ? definitions.map(record).filter((item): item is JsonRecord => item !== null) : []
+}
+
+function templateClassKey(bundle: CharacterTemplateBundle) {
+  const key = bundle.template.catalog_key?.trim() || ""
+  return bundle.template.kind === "class" && key.startsWith("class:") ? key.slice("class:".length) : ""
 }
 
 export function buildCharacterPreparationModel(
@@ -136,11 +184,14 @@ export function buildCharacterPreparationModel(
       const key = `spells:${bundle.template.id}`
       tasks.push({
         kind: "spells",
+        classKey: templateClassKey(bundle),
         assignmentId: bundle.assignment.id,
         templateId: bundle.template.id,
         sourceName: bundle.template.name,
+        sourceLevel: effectiveLevel,
         key,
         label: `${bundle.template.name}: подготовка заклинаний`,
+        required: preparedSpellLimit(meta, effectiveLevel),
         record: currentRecords.get(`${bundle.assignment.id}:${key}`) || null,
       })
     }
@@ -148,15 +199,19 @@ export function buildCharacterPreparationModel(
     for (const definition of unlockedChoices(bundle, effectiveLevel)) {
       const fallbackRefresh = text(meta.choice_refresh) === "long_rest" && text(meta.persistent_choice) === definition.key
       if (!session?.is_open || (definition.refresh !== "long_rest" && !fallbackRefresh)) continue
+      const recordKey = `choice:${definition.key}`
       tasks.push({
         kind: "choice",
         assignmentId: bundle.assignment.id,
         templateId: bundle.template.id,
         sourceName: bundle.template.name,
+        sourceLevel: effectiveLevel,
         key: definition.key,
         label: definition.label,
         definition,
+        required: choiceRequiredCount(definition, effectiveLevel),
         selected: selectedValues(bundle.assignment.selected_choices?.[definition.key]),
+        record: currentRecords.get(`${bundle.assignment.id}:${recordKey}`) || null,
       })
     }
 
@@ -178,12 +233,29 @@ export function buildCharacterPreparationModel(
         }
       }
 
-      if (!session?.is_open || !input || text(input.kind) !== "roll") continue
+      if (!session?.is_open || !input) continue
+      if (text(input.kind) === "notice") {
+        const body = text(input.body)
+        if (!body) continue
+        tasks.push({
+          kind: "notice",
+          assignmentId: bundle.assignment.id,
+          templateId: bundle.template.id,
+          sourceName: bundle.template.name,
+          sourceLevel: effectiveLevel,
+          key: taskKey,
+          label: text(definition.label) || taskKey,
+          body,
+        })
+        continue
+      }
+      if (text(input.kind) !== "roll") continue
       tasks.push({
         kind: "roll",
         assignmentId: bundle.assignment.id,
         templateId: bundle.template.id,
         sourceName: bundle.template.name,
+        sourceLevel: effectiveLevel,
         key: taskKey,
         label: text(definition.label) || taskKey,
         count: Math.max(1, integer(input.count, 1)),

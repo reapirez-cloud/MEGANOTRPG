@@ -23,6 +23,8 @@ export type CharacterSheet = {
 export type InventoryItem = {
   id: string; character_id: string; name: string; quantity: number; weight: number | null; equipped: boolean
   category: InventoryCategory; equipment_slot: EquipmentSlot | null; image_url: string | null; description: string
+  /** Stable Chasovoy definition identity when this is an issued catalog item. */
+  definition_id?: string | null; definition_revision?: number | null
   mechanics?: StoredMechanics
   /** Cheburashka-owned persistent use state. Older rows are normalized by its adapter. */
   usage_mode?: ItemUsageMode; charges_current?: number | null; charges_max?: number | null
@@ -37,6 +39,8 @@ export type CharacterSpell = {
   name: string; spell_level: number; school: string; casting_time: string
   spell_range: string; duration: string; components: string; concentration: boolean; ritual: boolean; prepared: boolean
   cast_mode: "cantrip" | "slot"; slot_level: number | null; description: string; source: string
+  /** Wizard 2024 durable selections. Missing values mean false for pre-migration fixtures. */
+  wizard_spell_mastery?: boolean; wizard_signature_spell?: boolean
   sort_order: number; created_at: string; updated_at: string
 }
 export type CharacterSpellOption = CharacterSpell & { granted_by: string | null }
@@ -52,7 +56,10 @@ export type CharacterArt = { id: string; campaign_id: string; uploaded_by: strin
 
 export type InventoryInput = {
   name: string; quantity: number; weight: number | null; equipped: boolean; category: InventoryCategory
-  equipment_slot: EquipmentSlot | null; image_url: string | null; description: string; mechanics?: StoredMechanics
+  equipment_slot: EquipmentSlot | null; image_url: string | null; description: string
+  /** Keep the issued instance linked to the exact Chasovoy definition revision. */
+  definition_id?: string | null; definition_revision?: number | null
+  mechanics?: StoredMechanics
   usage_mode?: ItemUsageMode; charges_current?: number | null; charges_max?: number | null
   item_state?: Record<string, unknown>
 }

@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState } from "react"
 import type {
   CharacterPreparationModel,
   ChoicePreparationTask,
+  NoticePreparationTask,
   RollPreparationTask,
   SpellPreparationTask,
 } from "../../lib/characterPreparation.ts"
 import { supabase } from "../../lib/supabase.ts"
-import { commitCharacterTemplateChoice } from "../../lib/templateChoiceRuntime.ts"
+import { commitGenaCharacterTemplateChoice } from "../../lib/templateChoiceRuntime.ts"
+import { useAuth } from "../../context/AuthContext.tsx"
+import { useCharacters } from "../../context/CharacterContext.tsx"
 import "./ChatPreparationCard.css"
 
 type ChatPreparationSpell = {
@@ -33,12 +36,6 @@ function outcomeLabel(value: unknown) {
   return "Записано"
 }
 
-function sameSelection(left: string[], right: string[]) {
-  if (left.length !== right.length) return false
-  const wanted = new Set(right)
-  return left.every((value) => wanted.has(value))
-}
-
 function SpellTask({ characterId, task, spells, onChanged }: {
   characterId: string
   task: SpellPreparationTask
@@ -51,12 +48,20 @@ function SpellTask({ characterId, task, spells, onChanged }: {
   )
   const [draft, setDraft] = useState<string[]>(canonical)
   const [busy, setBusy] = useState(false)
+  const [committed, setCommitted] = useState(Boolean(task.record))
   const [error, setError] = useState("")
+  const required = task.required
+  const locked = committed || Boolean(task.record)
+  const valid = required !== null && draft.length === required
 
   useEffect(() => {
-    setDraft(canonical)
+    if (!locked) setDraft(canonical)
     setError("")
-  }, [canonical])
+  }, [canonical, locked])
+
+  useEffect(() => {
+    setCommitted(Boolean(task.record))
+  }, [task.record])
 
   const levels = useMemo(() => {
     const grouped = new Map<number, ChatPreparationSpell[]>()
@@ -67,35 +72,41 @@ function SpellTask({ characterId, task, spells, onChanged }: {
     }
     return [...grouped.entries()].sort(([left], [right]) => left - right)
   }, [spells])
-  const dirty = !sameSelection(draft, canonical)
 
   function toggle(id: string) {
-    if (busy) return
+    if (busy || locked) return
     setError("")
-    setDraft((current) => current.includes(id)
-      ? current.filter((value) => value !== id)
-      : [...current, id])
+    setDraft((current) => {
+      if (current.includes(id)) return current.filter((value) => value !== id)
+      if (required !== null && current.length >= required) return current
+      return [...current, id]
+    })
   }
 
   async function save() {
-    if (busy) return
+    if (busy || locked || !valid) return
     setBusy(true); setError("")
-    const { error: rpcError } = await supabase.rpc("commit_character_spell_preparation_v1", {
+    const { error: rpcError } = await supabase.rpc("gena_commit_character_spell_preparation_v1", {
       p_character_id: characterId,
       p_assignment_id: task.assignmentId,
       p_prepared_spell_ids: draft,
     })
     setBusy(false)
     if (rpcError) { setError(rpcError.message); return }
+    setCommitted(true)
     onChanged()
   }
 
-  return <section className="rest-prep-task">
+  return <section className={locked ? "rest-prep-task is-locked" : "rest-prep-task"}>
     <div className="rest-prep-task__head">
       <span>✧</span>
       <div><small>{task.sourceName}</small><strong>Подготовить заклинания</strong></div>
-      {task.record && <b className="rest-prep-task__done">Готово · {task.record.input_value}</b>}
+      {locked && <b className="rest-prep-task__done">Зафиксировано · {draft.length}</b>}
     </div>
+
+    {required === null && (
+      <div className="rest-prep-error">Класс не описал точную квоту подготовленных заклинаний для {task.sourceLevel} уровня. Гена не позволит сохранить догадку.</div>
+    )}
 
     {spells.length === 0 ? (
       <div className="rest-prep-empty">Нет личных заклинаний 1–9 уровня, которые требуют ежедневной подготовки.</div>
@@ -106,10 +117,11 @@ function SpellTask({ characterId, task, spells, onChanged }: {
           <div className="rest-prep-spell-list">
             {entries.map((spell) => {
               const selected = draft.includes(spell.id)
+              const atLimit = !selected && required !== null && draft.length >= required
               return <button
                 type="button"
                 className={selected ? "rest-prep-spell is-selected" : "rest-prep-spell"}
-                disabled={busy}
+                disabled={busy || locked || atLimit}
                 key={spell.id}
                 onClick={() => toggle(spell.id)}
               >
@@ -123,11 +135,11 @@ function SpellTask({ characterId, task, spells, onChanged }: {
     )}
 
     <div className="rest-prep-spell-summary">
-      <span>Выбрано <strong>{draft.length}</strong></span>
-      <small>Заговоры и всегда подготовленные заклинания класса сюда не входят.</small>
+      <span>Выбрано <strong>{draft.length}{required !== null ? ` / ${required}` : ""}</strong></span>
+      <small>{required !== null ? `Нужно выбрать ровно ${required}. ` : ""}Заговоры и всегда подготовленные заклинания класса в эту квоту не входят.</small>
     </div>
-    <button className="rest-prep-confirm" type="button" disabled={busy || Boolean(task.record && !dirty)} onClick={() => void save()}>
-      {busy ? "Сохраняем…" : task.record ? dirty ? "Обновить подготовку" : "Готово" : "Готово"}
+    <button className="rest-prep-confirm" type="button" disabled={busy || locked || !valid} onClick={() => void save()}>
+      {busy ? "Сохраняем…" : locked ? "Зафиксировано" : "Готово"}
     </button>
     {error && <div className="rest-prep-error">{error}</div>}
   </section>
@@ -138,15 +150,21 @@ function ChoiceTask({ characterId, task, onChanged }: {
   task: ChoicePreparationTask
   onChanged: () => void
 }) {
-  const required = Math.max(1, Number(task.definition.count || 1))
+  const required = task.required
   const [draft, setDraft] = useState<string[]>(task.selected.slice(0, required))
   const [busy, setBusy] = useState(false)
+  const [committed, setCommitted] = useState(Boolean(task.record))
   const [error, setError] = useState("")
+  const locked = committed || Boolean(task.record)
 
   useEffect(() => {
-    setDraft(task.selected.slice(0, required))
+    if (!locked) setDraft(task.selected.slice(0, required))
     setError("")
-  }, [required, task.selected])
+  }, [locked, required, task.selected])
+
+  useEffect(() => {
+    setCommitted(Boolean(task.record))
+  }, [task.record])
 
   const options = useMemo(() => task.definition.options.map((key) => ({
     key,
@@ -154,7 +172,7 @@ function ChoiceTask({ characterId, task, onChanged }: {
   })), [task.definition])
 
   function toggle(key: string) {
-    if (busy) return
+    if (busy || locked) return
     setError("")
     setDraft((current) => {
       if (current.includes(key)) return current.filter((item) => item !== key)
@@ -165,23 +183,33 @@ function ChoiceTask({ characterId, task, onChanged }: {
   }
 
   async function save() {
-    if (busy || draft.length !== required) return
+    if (busy || locked || draft.length !== required) return
     setBusy(true); setError("")
-    const result = await commitCharacterTemplateChoice(characterId, task.assignmentId, task.key, draft)
+    const result = await commitGenaCharacterTemplateChoice(characterId, task.assignmentId, task.key, draft)
     setBusy(false)
     if (!result.ok) { setError(result.error); return }
+    setCommitted(true)
     onChanged()
   }
 
-  return <section className="rest-prep-task">
-    <div className="rest-prep-task__head"><span>◇</span><div><small>{task.sourceName}</small><strong>{task.label}</strong></div></div>
+  return <section className={locked ? "rest-prep-task is-locked" : "rest-prep-task"}>
+    <div className="rest-prep-task__head">
+      <span>◇</span>
+      <div><small>{task.sourceName}</small><strong>{task.label}</strong></div>
+      {locked && <b className="rest-prep-task__done">Зафиксировано</b>}
+    </div>
     <div className="rest-prep-options">
       {options.map((option) => {
         const selected = draft.includes(option.key)
-        return <button type="button" className={selected ? "is-selected" : ""} disabled={busy} key={option.key} onClick={() => toggle(option.key)}><i>{selected ? "✓" : ""}</i><span>{option.label}</span></button>
+        const atLimit = !selected && required > 1 && draft.length >= required
+        return <button type="button" className={selected ? "is-selected" : ""} disabled={busy || locked || atLimit} key={option.key} onClick={() => toggle(option.key)}><i>{selected ? "✓" : ""}</i><span>{option.label}</span></button>
       })}
     </div>
-    <button className="rest-prep-confirm" type="button" disabled={busy || draft.length !== required} onClick={() => void save()}>{busy ? "Сохраняем…" : task.selected.length ? "Сменить на этот отдых" : "Зафиксировать выбор"}</button>
+    <div className="rest-prep-spell-summary">
+      <span>Выбрано <strong>{draft.length} / {required}</strong></span>
+      <small>После «Готово» этот выбор нельзя менять до следующего долгого отдыха.</small>
+    </div>
+    <button className="rest-prep-confirm" type="button" disabled={busy || locked || draft.length !== required} onClick={() => void save()}>{busy ? "Сохраняем…" : locked ? "Зафиксировано" : "Готово"}</button>
     {error && <div className="rest-prep-error">{error}</div>}
   </section>
 }
@@ -199,7 +227,7 @@ function RollTask({ roomId, characterId, task, onChanged }: {
   async function roll() {
     if (busy || task.record) return
     setBusy(true); setError("")
-    const { error: rpcError } = await supabase.rpc("send_chat_preparation_roll_v1", {
+    const { error: rpcError } = await supabase.rpc("gena_send_chat_preparation_roll_v1", {
       p_room_id: roomId,
       p_character_id: characterId,
       p_assignment_id: task.assignmentId,
@@ -211,8 +239,8 @@ function RollTask({ roomId, characterId, task, onChanged }: {
     onChanged()
   }
 
-  return <section className="rest-prep-task">
-    <div className="rest-prep-task__head"><span>◈</span><div><small>{task.sourceName} · {notation}</small><strong>{task.label}</strong></div></div>
+  return <section className={task.record ? "rest-prep-task is-locked" : "rest-prep-task"}>
+    <div className="rest-prep-task__head"><span>◈</span><div><small>{task.sourceName} · {notation}</small><strong>{task.label}</strong></div>{task.record && <b className="rest-prep-task__done">Зафиксировано</b>}</div>
     {task.record
       ? <div className="rest-prep-record"><span>Записано</span><strong>{task.record.input_value}</strong><em>→ {outcomeLabel(task.record.resolved_value)}</em></div>
       : <button className="rest-prep-roll" type="button" disabled={busy} onClick={() => void roll()}>{busy ? "Бросаем…" : `Бросить ${notation} и записать`}</button>}
@@ -220,22 +248,40 @@ function RollTask({ roomId, characterId, task, onChanged }: {
   </section>
 }
 
+function NoticeTask({ task }: { task: NoticePreparationTask }) {
+  return <section className="rest-prep-task rest-prep-task--notice">
+    <div className="rest-prep-task__head">
+      <span>ⓘ</span>
+      <div><small>{task.sourceName}</small><strong>{task.label}</strong></div>
+      <b className="rest-prep-task__done">Решает ГМ</b>
+    </div>
+    <div className="rest-prep-empty">{task.body}</div>
+  </section>
+}
+
 export default function ChatPreparationCard({ roomId, characterId, model, spells, onChanged }: Props) {
-  if (!model.session?.is_open || model.tasks.length === 0) return null
+  const { user } = useAuth()
+  const { characters } = useCharacters()
+  const character = characters.find((entry) => entry.id === characterId)
+  const isOwner = Boolean(character?.assigned_user_id && character.assigned_user_id === user.id)
+
+  if (!isOwner || !model.session?.is_open || model.tasks.length === 0) return null
   const spellTasks = model.tasks.filter((task): task is SpellPreparationTask => task.kind === "spells")
   const choiceTasks = model.tasks.filter((task): task is ChoicePreparationTask => task.kind === "choice")
   const rollTasks = model.tasks.filter((task): task is RollPreparationTask => task.kind === "roll")
+  const noticeTasks = model.tasks.filter((task): task is NoticePreparationTask => task.kind === "notice")
 
   return <aside className="rest-prep-card">
     <header className="rest-prep-card__header">
       <span className="rest-prep-card__icon">☾</span>
-      <div><small>Долгий отдых завершён</small><strong>Подготовка разблокирована</strong></div>
+      <div><small>Долгий отдых завершён</small><strong>Гена ждёт решения владельца</strong></div>
       <b>до первой реплики</b>
     </header>
-    <p className="rest-prep-card__warning">Заверши подготовку до первого обычного сообщения от персонажа. <strong>Первый отправленный текст закроет это окно до следующего долгого отдыха.</strong> Броски, способности и заклинания окно не закрывают.</p>
+    <p className="rest-prep-card__warning"><strong>Каждая кнопка «Готово» фиксирует конкретный выбор до следующего долгого отдыха.</strong> Первый отправленный текст закроет это окно до следующего долгого отдыха. Броски, способности и заклинания окно не закрывают. Если задача осталась незавершённой, подготовленные заклинания и постоянные выборы сохраняют прошлое значение, а обязательные случайные результаты Гена определяет сама. Информационные решения с пометкой «Решает ГМ» игрок сообщает мастеру, а ГМ применяет их через административный лист.</p>
 
     {spellTasks.map((task) => <SpellTask characterId={characterId} task={task} spells={spells} onChanged={onChanged} key={`${task.assignmentId}:${task.key}`} />)}
     {choiceTasks.map((task) => <ChoiceTask characterId={characterId} task={task} onChanged={onChanged} key={`${task.assignmentId}:${task.key}`} />)}
     {rollTasks.map((task) => <RollTask roomId={roomId} characterId={characterId} task={task} onChanged={onChanged} key={`${task.assignmentId}:${task.key}`} />)}
+    {noticeTasks.map((task) => <NoticeTask task={task} key={`${task.assignmentId}:${task.key}`} />)}
   </aside>
 }

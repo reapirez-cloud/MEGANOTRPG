@@ -11,6 +11,7 @@ import {
   type ResolvedCharacterContract,
   type ResourceState,
   type SkillKey,
+  type SpellCastingMethodDefinition,
   type SpellResourceOption,
 } from "../character-engine/index.ts"
 import type { Character } from "../context/CharacterContext.tsx"
@@ -37,6 +38,8 @@ export type CharacterEngineIntegrationSnapshot = {
   resourceStates?: Record<string, ResourceState>
   templateBundles?: CharacterTemplateBundle[]
   suppressedSourceIds?: Iterable<string>
+  /** Current physical Wizard-book membership, resolved by the application read adapter. */
+  wizardSpellbookCatalogIds?: Iterable<string>
 }
 
 const ABILITY_ALIASES: Record<string, AbilityKey> = {
@@ -59,6 +62,7 @@ function legacySpellKey(spell: CharacterSpell): string { const clean = spell.nam
 function configuredSlotLevels(sheet: CharacterSheet, spells: CharacterSpell[]): number[] { const levels = new Set<number>(); for (let level = 1; level <= 9; level += 1) if (Number(sheet.spell_slots?.[String(level)]?.max || 0) > 0) levels.add(level); for (const spell of spells) if (spell.spell_level > 0 && spell.cast_mode !== "cantrip") levels.add(spell.spell_level); return [...levels].sort((a, b) => a - b) }
 function slotResourceKey(level: number): string { return `spell_slot_${level}` }
 function slotOptions(spellLevel: number, slotLevels: number[]): SpellResourceOption[] { return slotLevels.filter((level) => level >= spellLevel).map((level) => ({ key: `slot-${level}`, castLevel: level, costs: [{ key: slotResourceKey(level), amount: 1 }] })) }
+function wizardSignatureResourceKey(spell: CharacterSpell): string { return `wizard_signature_${spell.id}` }
 
 export function buildLegacyCharacterEngineInput(args: {
   character: Pick<Character, "id" | "name" | "level">
@@ -112,9 +116,84 @@ export function buildLegacyCharacterEngineInput(args: {
   }
 
   const spellcastingAbility = parseLegacySpellcastingAbility(sheet.spellcasting_ability)
+  const wizardSpellbookCatalogIds = new Set(args.wizardSpellbookCatalogIds ?? [])
   if (sheet.spellcasting_enabled) for (const spell of spells) {
-    const isCantrip = spell.spell_level === 0 || spell.cast_mode === "cantrip"; const options = isCantrip ? [] : slotOptions(spell.spell_level, slotLevels)
-    contributions.push({ id: `legacy:spell:${spell.id}`, kind: "grant", operation: "GRANT", target: "spell", key: legacySpellKey(spell), variantKey: `legacy-${spell.id}`, payload: { spell: { name: spell.name, level: spell.spell_level, ...(spell.school.trim() ? { school: spell.school.trim() } : {}), ritual: spell.ritual }, preparation: { mode: "not_required" }, methods: [{ key: "legacy-cast", kind: "spellcasting", ...(spellcastingAbility ? { ability: spellcastingAbility } : {}), requiresPrepared: false, ...(isCantrip ? {} : { resourceOptions: options }) }] }, source: legacySource(`legacy-spell-source:${spell.id}`, spell.source || spell.name, "legacy_spell") })
+    const isCantrip = spell.spell_level === 0 || spell.cast_mode === "cantrip"
+    const alwaysPrepared = Boolean(spell.wizard_spell_mastery || spell.wizard_signature_spell)
+    const options = isCantrip ? [] : slotOptions(spell.spell_level, slotLevels)
+    const source = legacySource(`legacy-spell-source:${spell.id}`, spell.source || spell.name, "legacy_spell")
+    const methods: SpellCastingMethodDefinition[] = [{
+      key: "legacy-cast",
+      kind: "spellcasting",
+      ...(spellcastingAbility ? { ability: spellcastingAbility } : {}),
+      requiresPrepared: !isCantrip,
+      ...(isCantrip ? {} : { resourceOptions: options }),
+    }]
+
+    // Ritual Adept is book access, not prepared-spell access. The physical-book
+    // projection is loaded outside CE; losing the book therefore removes this
+    // no-slot method on the next resolved snapshot without mutating spell rows.
+    if (!isCantrip && spell.ritual && spell.catalog_spell_id && wizardSpellbookCatalogIds.has(spell.catalog_spell_id)) {
+      methods.push({
+        key: "wizard-ritual",
+        kind: "ritual",
+        ...(spellcastingAbility ? { ability: spellcastingAbility } : {}),
+        requiresPrepared: false,
+      })
+    }
+
+    if (spell.wizard_spell_mastery) {
+      methods.push({
+        key: "wizard-spell-mastery",
+        kind: "spell_mastery",
+        ...(spellcastingAbility ? { ability: spellcastingAbility } : {}),
+        requiresPrepared: true,
+      })
+    }
+
+    if (spell.wizard_signature_spell) {
+      const resourceKey = wizardSignatureResourceKey(spell)
+      contributions.push({
+        id: `legacy:wizard-signature-resource:${spell.id}`,
+        kind: "grant",
+        operation: "GRANT",
+        target: "resource",
+        key: resourceKey,
+        payload: {
+          max: 1,
+          initial: "full",
+          label: `Фирменное заклинание: ${spell.name}`,
+          recharge: { triggers: ["short_rest", "long_rest"], restore: "full" },
+        },
+        source,
+      })
+      methods.push({
+        key: "wizard-signature-free",
+        kind: "signature_spell",
+        ...(spellcastingAbility ? { ability: spellcastingAbility } : {}),
+        requiresPrepared: true,
+        resourceOptions: [{ key: "signature-free", castLevel: spell.spell_level, costs: [{ key: resourceKey, amount: 1 }] }],
+      })
+    }
+
+    contributions.push({
+      id: `legacy:spell:${spell.id}`,
+      kind: "grant",
+      operation: "GRANT",
+      target: "spell",
+      key: legacySpellKey(spell),
+      variantKey: `legacy-${spell.id}`,
+      payload: {
+        spell: { name: spell.name, level: spell.spell_level, ...(spell.school.trim() ? { school: spell.school.trim() } : {}), ritual: spell.ritual },
+        preparation: isCantrip
+          ? { mode: "not_required" }
+          : alwaysPrepared
+            ? { mode: "always_prepared" }
+            : { mode: "prepared", defaultPrepared: spell.prepared },
+        methods,
+      },
+      source,
+    })
   }
 
   // GM OFF flags are controls, not mutations of class/item/feature data. Prefer
