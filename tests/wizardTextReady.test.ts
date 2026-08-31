@@ -3,118 +3,90 @@ import fs from "node:fs"
 import test from "node:test"
 
 import {
-  classReference,
-  type ReferenceClass,
-  type ReferenceFeature,
-} from "../src/data/classReference.ts"
-import {
   vossExplanationHasBoilerplate,
   vossExplanationHasRulesMeta,
   vossTextHasModernRegister,
 } from "../src/data/vossVoice.ts"
 
 const migration = fs.readFileSync("supabase/migrations/20260831100000_wizard_2024_text_pack.sql", "utf8")
-const bootstrap = fs.readFileSync("supabase/migrations/20260831102000_guard_current_class_catalog_bootstrap.sql", "utf8")
+const bootstrap = fs.readFileSync("supabase/migrations/20260831100100_wizard_catalog_bootstrap.sql", "utf8")
+const reference = fs.readFileSync("src/data/classReference.ts", "utf8")
 const ledger = fs.readFileSync("src/rule-templates/CLASS_WORK_STATUS.md", "utf8")
 
-function allWizardFeatures(wizard: ReferenceClass): ReferenceFeature[] {
-  return wizard.levels.flatMap((entry) => entry.features)
+const baseFeatures = [
+  "Заклинания",
+  "Знаток ритуалов",
+  "Магическое восстановление",
+  "Учёный",
+  "Улучшение характеристик",
+  "Запоминание заклинания",
+  "Мастерство заклинаний",
+  "Эпический дар",
+  "Фирменные заклинания",
+]
+
+function wizardReferenceBlock() {
+  return reference.split('id: "wizard"')[1]?.split("\n  },")[0] ?? ""
 }
 
-function wizardLedgerBlock(): string {
-  const start = ledger.indexOf("## Wizard (`class:wizard`)")
-  assert.notEqual(start, -1)
-  const end = ledger.indexOf("\n---", start)
-  assert.notEqual(end, -1)
-  return ledger.slice(start, end)
+function wizardLedgerBlock() {
+  return ledger.split("## Wizard (`class:wizard`)")[1]?.split("\n---")[0] ?? ""
 }
 
 test("Wizard 2024 text package explicitly stops before runtime mechanics", () => {
-  assert.match(migration, /CLASS_MIGRATION_SCOPE: class_text/)
-  assert.match(migration, /CLASS_WORK_LEDGER: src\/rule-templates\/CLASS_WORK_STATUS\.md/)
-  assert.match(migration, /presentation-only/i)
-  assert.doesNotMatch(migration, /insert into public\.rule_template_levels/i)
-  assert.doesNotMatch(migration, /insert into public\.character_resource_states/i)
+  assert.match(migration, /CLASS_MIGRATION_SCOPE: presentation/)
+  assert.match(migration, /CLASS_WORK_STATUS: wizard:text=READY;mechanics=NOT_STARTED/)
+  assert.match(migration, /CLASS_STATUS_LEDGER: src\/rule-templates\/CLASS_WORK_STATUS\.md/)
+  assert.match(migration, /spellbook_runtime_required_before_mechanics_ready/)
+  assert.match(migration, /Wizard text pass must not smuggle runtime mechanics into presentation scope/)
+  assert.doesNotMatch(migration, /'type'\s*,\s*'(?:action|resource|spell|numeric)'/)
+  assert.doesNotMatch(migration, /subclass:wizard:/)
 })
 
 test("Wizard reference exposes the rebuilt base class and no subclasses", () => {
-  const wizard = classReference.find((entry) => entry.catalogKey === "class:wizard")
-  assert.ok(wizard)
-  assert.equal(wizard.subclasses.length, 0)
-  assert.equal(wizard.levels[0]?.level, 1)
-  assert.equal(wizard.levels.at(-1)?.level, 20)
+  const wizard = wizardReferenceBlock()
+  assert.match(wizard, /name: "Волшебник"/)
+  assert.match(wizard, /nameEn: "Wizard"/)
+  assert.match(wizard, /книг(?:а|ой) заклинаний/i)
+  assert.match(wizard, /subclasses: \[\]/)
 })
 
 test("Wizard exact text covers every base feature present in this subclass-free pass", () => {
-  const wizard = classReference.find((entry) => entry.catalogKey === "class:wizard")
-  assert.ok(wizard)
-  const features = allWizardFeatures(wizard)
-  const names = features.map((entry) => entry.name)
-
-  for (const expected of [
-    "Заклинания",
-    "Знаток ритуалов",
-    "Магическое восстановление",
-    "Учёный",
-    "Запоминание заклинания",
-    "Мастерство заклинаний",
-    "Фирменные заклинания",
-  ]) {
-    assert.equal(names.includes(expected), true, `missing Wizard feature: ${expected}`)
-  }
-
-  for (const feature of features) {
-    assert.equal(feature.description.trim().length > 80, true, `Wizard rule too short: ${feature.name}`)
-    assert.equal(feature.authorExplanation?.trim().length ? true : false, true, `missing Voss explanation: ${feature.name}`)
-    assert.equal(feature.authorComment?.trim().length ? true : false, true, `missing Voss comment: ${feature.name}`)
-  }
+  for (const feature of baseFeatures) assert.match(migration, new RegExp(feature), `missing ${feature}`)
+  assert.match(migration, /v_feature_count <> 12/)
+  assert.match(migration, /wizard-asi-l4/)
+  assert.match(migration, /wizard-asi-l8/)
+  assert.match(migration, /wizard-asi-l12/)
+  assert.match(migration, /wizard-asi-l16/)
 })
 
 test("Wizard Spellcasting is self-contained instead of pointing at an unseen table", () => {
-  const wizard = classReference.find((entry) => entry.catalogKey === "class:wizard")
-  assert.ok(wizard)
-  const spellcasting = allWizardFeatures(wizard).find((entry) => entry.name === "Заклинания")
-  assert.ok(spellcasting)
-
-  assert.match(spellcasting.description, /6 заклинаний 1-го уровня/i)
-  assert.match(spellcasting.description, /ещё 2 заклинания/i)
-  assert.match(spellcasting.description, /3\/4\/4\/4\/5\/5\/6\/6\/7\/7\/8\/8\/9\/9\/10\/10\/11\/11\/12\/13/i)
-  assert.match(spellcasting.description, /Интеллект/i)
-  assert.match(spellcasting.description, /Книга заклинаний/i)
+  assert.match(migration, /Сл спасброска от ваших заклинаний Волшебника = 8 \+ бонус мастерства \+ модификатор Интеллекта/)
+  assert.match(migration, /Число подготовленных заклинаний Волшебника по уровням 1–20: 4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 18, 19, 21, 22, 23, 24, 25/)
+  assert.match(migration, /20 — 4\/3\/3\/3\/3\/2\/2\/1\/1/)
+  assert.match(migration, /На 1 уровне запишите в книгу 6 заклинаний Волшебника 1 уровня/)
+  assert.match(migration, /получаете новый уровень Волшебника, бесплатно добавьте в книгу ещё 2 заклинания/)
+  assert.match(migration, /2 часа работы и 50 зм/)
+  assert.match(migration, /1 час и 10 зм/)
+  assert.match(migration, /Все потраченные ячейки восстанавливаются после долгого отдыха/)
 })
 
 test("Wizard high-level rules keep the important 2024 eligibility and recharge limits", () => {
-  const wizard = classReference.find((entry) => entry.catalogKey === "class:wizard")
-  assert.ok(wizard)
-  const features = allWizardFeatures(wizard)
-  const mastery = features.find((entry) => entry.name === "Мастерство заклинаний")
-  const signatures = features.find((entry) => entry.name === "Фирменные заклинания")
-  const recovery = features.find((entry) => entry.name === "Магическое восстановление")
-  assert.ok(mastery)
-  assert.ok(signatures)
-  assert.ok(recovery)
-
-  assert.match(mastery.description, /1-го уровня/i)
-  assert.match(mastery.description, /2-го уровня/i)
-  assert.match(mastery.description, /Время накладывания.*Действие/i)
-  assert.match(mastery.description, /без траты ячейки/i)
-  assert.match(mastery.description, /одн(?:о|о из).*после.*длительного отдыха/i)
-  assert.match(signatures.description, /два заклинания 3-го уровня/i)
-  assert.match(signatures.description, /по одному разу/i)
-  assert.match(signatures.description, /короткого или длительного отдыха/i)
-  assert.match(recovery.description, /округлённой вверх/i)
-  assert.match(recovery.description, /не выше 5-го уровня/i)
+  assert.match(migration, /сумма уровней восстановленных ячеек не может превышать половину вашего уровня Волшебника с округлением вверх/i)
+  assert.match(migration, /ни одна восстановленная ячейка не может быть 6 уровня или выше/i)
+  assert.match(migration, /оба выбранных заклинания должны иметь время накладывания «Действие»/i)
+  assert.match(migration, /после каждого долгого отдыха можно заменить одно из двух выбранных заклинаний/i)
+  assert.match(migration, /каждое из двух заклинаний можно один раз наложить как заклинание 3 уровня без траты ячейки/i)
+  assert.match(migration, /бесплатное использование каждого заклинания восстанавливается отдельно после короткого или долгого отдыха/i)
 })
 
 test("every Wizard feature card has genuinely authored in-world Voss narration", () => {
-  const wizard = classReference.find((entry) => entry.catalogKey === "class:wizard")
-  assert.ok(wizard)
+  const narrations = [...migration.matchAll(/\$voss\$([\s\S]*?)\$voss\$/g)].map((match) => match[1].trim())
+  assert.equal(narrations.length, 12)
+  assert.equal(new Set(narrations).size, narrations.length, "Wizard Voss narration must be unique per feature card")
 
-  const narrations = [wizard.authorExplanation, ...allWizardFeatures(wizard).map((entry) => entry.authorExplanation)]
-    .filter((entry): entry is string => Boolean(entry?.trim()))
-
-  assert.equal(narrations.length, allWizardFeatures(wizard).length + 1)
   for (const [index, narration] of narrations.entries()) {
+    assert.ok(narration.length >= 180, `Wizard Voss narration ${index + 1} is too thin`)
     assert.equal(vossExplanationHasRulesMeta(narration), false, `Wizard Voss narration ${index + 1} leaked mechanics`)
     assert.equal(vossExplanationHasBoilerplate(narration), false, `Wizard Voss narration ${index + 1} leaked boilerplate`)
     assert.equal(vossTextHasModernRegister(narration), false, `Wizard Voss narration ${index + 1} leaked modern register`)
