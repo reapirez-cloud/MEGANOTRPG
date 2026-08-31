@@ -123,7 +123,6 @@ export default function WizardArcaneRecoveryPanel({ characterId, assignmentId, w
           disabled={!isAssignedPlayer || busy}
           onChange={setSelection}
         />}
-    }
 
     {shortRestOpen && available && <button type="button" className="wizard-arcane-recovery__commit" disabled={!canSubmit} onClick={() => void recover()}>
       {busy ? "Восстанавливаем…" : isAssignedPlayer ? "Восстановить выбранные ячейки" : "Решение принимает владелец персонажа"}
