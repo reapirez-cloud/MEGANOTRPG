@@ -161,6 +161,36 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 
 ---
 
+## Wizard (`class:wizard`)
+
+**Text:** `READY`  
+**Mechanics/runtime:** `NOT_STARTED`
+
+- `last_text_audit: 2026-08-31`
+- `last_mechanics_audit_started: not_started`
+- `rules_revision: Player's Handbook 2024 base class`
+- `subclasses: NOT_INCLUDED`
+- `current_dev_text: clean Russian base-class package with exact rules and separately authored Voss narration for every openable feature card`
+- `current_dev_runtime: intentionally absent; no legacy Wizard runtime is inherited from the removed generic catalog`
+- `catalog_bootstrap: dev migration preserves class:wizard and installs the clean base class for new campaigns`
+
+### Mechanics audit targets
+
+- Spellbook as authoritative owned-spell state: starting six level-1 spells, +2 spells per Wizard level, copying, replacement and backup behavior.
+- Prepared Wizard spells must be selected only from the actual spellbook and obey the fixed 2024 prepared-spell progression.
+- Long-rest cantrip replacement and full prepared-list replacement need authoritative choice/preparation paths.
+- Arcane Recovery must restore eligible shared spell-slot resources with the level-sum cap, level-5 ceiling and once-per-long-rest usage.
+- Scholar requires a dynamic option provider restricted to eligible skills the character already has proficiency in, then grants Expertise.
+- Memorize Spell must replace one prepared level-1+ Wizard spell with another eligible spell from the actual spellbook after a Short Rest.
+- Spell Mastery needs two spellbook-backed persistent selections with level/casting-time filters, always-prepared access, free lowest-level casting and one-per-long-rest replacement.
+- Signature Spells need two level-3 spellbook-backed selections, always-prepared access and separate free-cast recovery after Short or Long Rest.
+- ASI and Epic Boon must use the future generic feat/allocation contract rather than a Wizard-specific choice engine.
+- Subclass selection and levels 3/6/10/14 remain outside this base-class task until Wizard subclasses receive their own package.
+
+Do not promote Wizard mechanics to `IN_PROGRESS` until the mechanics pass actually begins, and do not promote it to `READY` until spellbook/preparation state is authoritative end-to-end.
+
+---
+
 ## Legacy builtin catalog reset
 
 **Status:** `REMOVED_2026_08_29`
@@ -182,6 +212,8 @@ Reason: the old packages mixed useful fragments with generated summaries, vague 
 
 Deletion is represented by the forward-only migration `20260829235500_remove_legacy_builtin_classes.sql`. The production application of that cleanup is recorded as `20260829184828_remove_legacy_builtin_classes`.
 
+Wizard is listed above because that reset is a historical event. Its old generic package remains retired; the clean 2024 base-class text package introduced on 2026-08-31 is a new source and does not revive the removed implementation.
+
 ### Historical custom test class
 
 `Жопка` is intentionally **untouched** by this reset. It is a non-builtin historical test/easter-egg class (`is_builtin=false`, no catalog key). Its future visibility/hiding behavior is a separate task and must not be changed as part of legacy builtin cleanup.
@@ -192,13 +224,14 @@ Deletion is represented by the forward-only migration `20260829235500_remove_leg
 
 **Dev status:** `GUARDED_PENDING_DEPLOYMENT`
 
-Live production inspection on 2026-08-29 found obsolete `campaigns` triggers capable of reinstalling the historical full class/subclass catalog and reapplying superseded Voss layers to newly created campaigns. The dev-only forward migration `20260830000500_retire_legacy_class_bootstrap_triggers.sql`:
+Live production inspection on 2026-08-29 found obsolete `campaigns` triggers capable of reinstalling the historical full class/subclass catalog and reapplying superseded Voss layers to newly created campaigns. The dev-only forward migrations now:
 
-- removes duplicate standalone official class/subclass installer triggers;
-- retires the removed `Нюансы Восса` trigger;
-- retires the rejected mechanics-paraphrase Voss explanation trigger;
-- adds an assignment-safe final prune that keeps only builtin Fighter/Druid/Cleric;
-- does not touch custom/non-builtin classes, including `Жопка`.
+- remove duplicate standalone official class/subclass installer triggers;
+- retire the removed `Нюансы Восса` trigger;
+- retire the rejected mechanics-paraphrase Voss explanation trigger;
+- add an assignment-safe final prune that keeps rebuilt builtin Fighter/Druid/Cleric/Wizard;
+- install the clean Wizard 2024 base-class text package after the historical seed and before the final prune;
+- do not touch custom/non-builtin classes, including `Жопка`.
 
 This guard is **not recorded as applied to production yet**. Do not claim the production bootstrap is clean until that deployment/database step is explicitly completed and re-audited.
 
@@ -206,4 +239,4 @@ This guard is **not recorded as applied to production yet**. Do not claim the pr
 
 ## Future classes
 
-Every removed builtin class is `NOT_STARTED` for the new architecture until its clean rebuild begins. New implementation must follow `CLASS_INTEGRATION_NOTES.md`, use stable source keys/types, reach CE end-to-end, and pass a package-specific quality/runtime audit before becoming visible as a finished class.
+Removed builtin classes without their own rebuilt section remain `NOT_STARTED` for the new architecture. New implementation must follow `CLASS_INTEGRATION_NOTES.md`, use stable source keys/types, reach CE end-to-end, and pass a package-specific quality/runtime audit before becoming visible as a finished class.
