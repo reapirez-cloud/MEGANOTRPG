@@ -75,7 +75,7 @@ export function useChatPreparation(character: Character | null) {
         if (firstError) setError(firstError.message)
         else {
           setSession(sessionResult.data as CharacterPreparationSession | null)
-          setRecords((recordsResult.data || []) as ChatPreparationSpell[])
+          setRecords((recordsResult.data || []) as CharacterPreparationRecord[])
           setSpells((spellsResult.data || []) as ChatPreparationSpell[])
           setWizardSpellbook(spellbook)
         }
