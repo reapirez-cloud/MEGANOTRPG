@@ -39,19 +39,21 @@ When class/subclass content changes, update this file in the same work session. 
 
 A class or subclass mechanic is not considered integrated merely because a feature description exists.
 
+`GM_ADJUDICATION_BOUNDARY.md` is part of this contract. A precise rule can be mechanically complete with GM-adjudicated execution when the app does not own the required scene/action/transaction state. Do not treat missing bespoke automation for such a rule as a mechanics blocker.
+
 For mechanics `READY`, the end-to-end path must be verified:
 
 1. `rule_templates / rule_template_levels / persistent choices` grant the mechanic at the correct effective class level.
 2. `characterTemplateContributions()` emits native `CharacterContribution` entries.
 3. Character Engine resolves them into the correct contract section:
-   - active ability -> `ResolvedAction`;
+   - active ability -> `ResolvedAction` when the app has an actionable/rollable surface to expose;
    - finite pool -> `ResolvedResource`;
    - class/subclass spell -> `ResolvedSpellAccess`;
-   - passive/triggered behavior -> native numeric/capability contribution or `ResolvedMechanicalRule.integration === "structured"`;
+   - passive/triggered behavior -> native numeric/capability contribution or `ResolvedMechanicalRule.integration === "structured"` when CE owns the relevant character-side fact;
    - proficiency/resistance/immunity/sense/language -> corresponding CE capability.
 4. `CharacterClassPanel` presents the resolved source without inventing mechanics from prose.
 5. Every Class-tab entry has a stable machine category from `ClassMechanicEntryType`; display text never determines sorting type.
-6. Resource-backed actions can persist their resource change through the class runtime RPC. Resource-less actions remain usable rules, but the UI must not show a fake state-changing button.
+6. Resource-backed actions can persist their resource change through the class runtime RPC. Resource-less actions may remain repeatedly invokable; Action/Bonus Action/Reaction and per-turn legality are adjudicated by the GM unless a separate authoritative runtime exists.
 7. The deployed Supabase state must contain the same intended mechanical stack as the release target. Git-only implementation is not enough for `READY`.
 
 Current stable presentation categories:
@@ -97,6 +99,8 @@ Current stable presentation categories:
 - Samurai: Fighting Spirit uses and later action economy.
 - Champion/Banneret: passive/numeric and shared-resource riders must resolve as CE mechanics rather than prose only.
 
+Action/Bonus Action/Reaction availability, per-turn attack counts and other turn-economy legality in Fighter features are GM-adjudicated under `GM_ADJUDICATION_BOUNDARY.md`; they are not reasons to add a turn tracker.
+
 Do not promote Fighter mechanics to `READY` until dev and the intended deployed state pass the same audit.
 
 ---
@@ -129,6 +133,8 @@ Do not promote Fighter mechanics to `READY` until dev and the intended deployed 
 - Dreams/Shepherd/Spores/Moon: finite pools, summoned/created creature hooks, reaction limits, temporary HP/aura behavior and subclass unlock compatibility.
 - Legacy 2/6/10/14 rows must remain gated by the actual parent subclass unlock until deliberately normalized.
 
+Scene legality, reaction/action availability and `once per turn` execution remain GM-adjudicated unless the application later gains an explicit authoritative turn/runtime system.
+
 Do not promote Druid mechanics to `READY` until dev and the intended deployed state pass the same audit.
 
 ---
@@ -157,6 +163,8 @@ Do not promote Druid mechanics to `READY` until dev and the intended deployed st
 - Arcana/Death/Forge/Grave/Knowledge/Life/Light/Nature/Order/Peace/Tempest/Trickery/Twilight/War must each be audited source-group by source-group.
 - Legacy domain rows below class level 3 must be blocked by subclass unlock and must never grant early mechanics.
 
+Reaction/action availability and scene-trigger validity remain GM-adjudicated; CE owns the finite pools and durable character-side results it can actually know.
+
 Do not promote Cleric mechanics to `READY` until dev and the intended deployed state pass the same audit.
 
 ---
@@ -176,22 +184,25 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 - `arcane_recovery_regression: tests/wizardArcaneRecoveryRuntime.test.ts`
 - `production_runtime: NOT_DEPLOYED_OR_CERTIFIED`
 - `catalog_bootstrap: dev migration preserves class:wizard and installs the clean base class for new campaigns`
+- `gm_adjudication_policy: FOUND_SPELL_TRANSCRIPTION_IS_MANUAL_BY_DESIGN`
 
 ### Mechanics audit targets
 
-- Spellbook as authoritative owned-spell state: physical item identity and spellbook-backed preparation are implemented; starting six level-1 spells, automatic +2 spells per Wizard level, copying costs/time, replacement and backup behavior still need explicit runtime policy where the app owns it.
+- Spellbook as authoritative owned-spell state: physical item identity and spellbook-backed preparation are implemented; starting six level-1 spells and automatic +2 spells per Wizard level belong to CE because they are deterministic class progression.
+- Found-spell/scroll transcription, its gold/time procedure, consuming/removing the scroll/source, replacement of a lost book and backup-book narrative handling are **GM-adjudicated by design**. The GM uses normal inventory/currency/spellbook tools and Gena stores the durable result. These are not missing Wizard runtime mechanics and must not receive a bespoke transcription workflow unless the project explicitly changes this policy later.
 - Prepared Wizard spells are selected only from the actual spellbook and obey the fixed 2024 prepared-spell progression; deployment/state audit remains pending.
 - Full-caster spell-slot capacity is emitted as native CE resources through the shared parser-owned slot primitive; casting/access and level progression still need full end-to-end Wizard audit.
-- Long-rest cantrip replacement and cantrip progression still need authoritative choice/preparation paths.
+- Long-rest cantrip replacement and cantrip progression still need authoritative choice/preparation paths because they directly mutate durable character spell state.
 - Arcane Recovery: implemented in dev with one long-rest resource, GM-authoritative Short Rest window, `ceil(Wizard level / 2)` weighted recovery budget, level-5 ceiling, spent-slot validation and shared `spell_slot_N` persistence. Deployment audit remains pending.
 - Scholar requires a dynamic option provider restricted to eligible skills the character already has proficiency in, then grants Expertise.
 - Memorize Spell must replace one prepared level-1+ Wizard spell with another eligible spell from the actual spellbook after a Short Rest.
 - Spell Mastery needs two spellbook-backed persistent selections with level/casting-time filters, always-prepared access, free lowest-level casting and one-per-long-rest replacement.
 - Signature Spells need two level-3 spellbook-backed selections, always-prepared access and separate free-cast recovery after Short or Long Rest.
 - ASI and Epic Boon must use the future generic feat/allocation contract rather than a Wizard-specific choice engine.
+- Action/Bonus Action/Reaction legality and per-turn cadence inside Wizard rules are GM-adjudicated under `GM_ADJUDICATION_BOUNDARY.md`; CE may expose the action/roll/resource but does not police the turn.
 - Subclass selection and levels 3/6/10/14 remain outside this base-class task until Wizard subclasses receive their own package.
 
-Do not promote Wizard mechanics to `READY` until the remaining class features, casting/preparation surfaces and intended deployed state pass the same end-to-end audit.
+Do not promote Wizard mechanics to `READY` until the remaining CE-owned/hybrid class features, casting/preparation surfaces and intended deployed state pass the same end-to-end audit. GM-adjudicated execution is not a blocker by itself.
 
 ---
 
@@ -243,4 +254,4 @@ This guard is **not recorded as applied to production yet**. Do not claim the pr
 
 ## Future classes
 
-Removed builtin classes without their own rebuilt section remain `NOT_STARTED` for the new architecture. New implementation must follow `CLASS_INTEGRATION_NOTES.md`, use stable source keys/types, reach CE end-to-end, and pass a package-specific quality/runtime audit before becoming visible as a finished class.
+Removed builtin classes without their own rebuilt section remain `NOT_STARTED` for the new architecture. New implementation must follow `CLASS_INTEGRATION_NOTES.md`, `GM_ADJUDICATION_BOUNDARY.md`, use stable source keys/types, reach CE end-to-end for CE-owned/hybrid state, and pass a package-specific quality/runtime audit before becoming visible as a finished class.
