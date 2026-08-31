@@ -23,6 +23,8 @@ export type CharacterSheet = {
 export type InventoryItem = {
   id: string; character_id: string; name: string; quantity: number; weight: number | null; equipped: boolean
   category: InventoryCategory; equipment_slot: EquipmentSlot | null; image_url: string | null; description: string
+  /** Stable Chasovoy definition identity when this is an issued catalog item. */
+  definition_id?: string | null; definition_revision?: number | null
   mechanics?: StoredMechanics
   /** Cheburashka-owned persistent use state. Older rows are normalized by its adapter. */
   usage_mode?: ItemUsageMode; charges_current?: number | null; charges_max?: number | null
@@ -52,7 +54,10 @@ export type CharacterArt = { id: string; campaign_id: string; uploaded_by: strin
 
 export type InventoryInput = {
   name: string; quantity: number; weight: number | null; equipped: boolean; category: InventoryCategory
-  equipment_slot: EquipmentSlot | null; image_url: string | null; description: string; mechanics?: StoredMechanics
+  equipment_slot: EquipmentSlot | null; image_url: string | null; description: string
+  /** Keep the issued instance linked to the exact Chasovoy definition revision. */
+  definition_id?: string | null; definition_revision?: number | null
+  mechanics?: StoredMechanics
   usage_mode?: ItemUsageMode; charges_current?: number | null; charges_max?: number | null
   item_state?: Record<string, unknown>
 }
