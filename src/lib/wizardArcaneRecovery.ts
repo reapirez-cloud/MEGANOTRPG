@@ -6,7 +6,7 @@ export type WizardArcaneRecoveryResult = { ok: true } | { ok: false; error: stri
 
 export type SpellSlotRecoverySelection = Record<number, number>
 
-export async function useWizardArcaneRecovery(
+export async function runWizardArcaneRecovery(
   characterId: string,
   assignmentId: string,
   contract: ResolvedCharacterContract,
