@@ -2,9 +2,10 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 
-import { resolveCharacterContract, type CharacterEngineInput, type CharacterSource } from "../src/character-engine/index.ts"
-import { contributionForStoredMechanic } from "../src/lib/characterMechanics.ts"
+import { resolveCharacterContract, type CharacterEngineInput } from "../src/character-engine/index.ts"
 import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
+import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
+import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
 import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
 import type { StoredResourceMechanic } from "../src/types/characterMechanics.ts"
 
@@ -21,12 +22,6 @@ function section(start: string, end: string) {
   assert.ok(from >= 0, `missing section ${start}`)
   const to = migration.indexOf(end, from + start.length)
   return migration.slice(from, to >= 0 ? to : undefined)
-}
-
-const source: CharacterSource = {
-  id: "template:class:wizard:v1:source:arcane-recovery",
-  name: "Магическое восстановление",
-  sourceType: "class_template",
 }
 
 const arcaneResource: StoredResourceMechanic = {
@@ -56,11 +51,25 @@ function wizardBundle(): CharacterTemplateBundle {
       kind: "class",
       slug: "wizard-core",
       name: "Волшебник",
-      description: "Волшебник",
+      description: "Волшебник изучает заклинания через книгу и восстанавливает часть потраченной магической энергии после отдыха.",
       version: 1,
-      mechanics: [arcaneResource],
+      mechanics: [
+        {
+          id: "wizard-arcane-recovery-feature",
+          type: "grant",
+          target: "feature",
+          key: "class:wizard:arcane-recovery",
+          sourceKey: "arcane-recovery",
+          payload: {
+            label: "Магическое восстановление",
+            description: "После завершённого короткого отдыха один раз до следующего долгого отдыха восстановите потраченные ячейки суммарным уровнем не выше половины уровня Волшебника с округлением вверх; ячейки 6 уровня и выше недоступны.",
+            mechanic: { kind: "spell_slot_recovery", budget: "ceil(source.level/2)", maximumSlotLevel: 5 },
+          },
+        },
+        arcaneResource,
+      ],
       choices: [],
-      mechanical_summary: "Arcane Recovery uses one long-rest pool.",
+      mechanical_summary: "Волшебник использует полный набор ячеек заклинаний и один раз между долгими отдыхами возвращает ограниченную комбинацию потраченных ячеек после короткого отдыха.",
       rules_meta: { mechanics_status: "IN_PROGRESS", parser_owns_spell_slots: true },
       is_active: true,
       created_by: null,
@@ -71,9 +80,8 @@ function wizardBundle(): CharacterTemplateBundle {
   }
 }
 
-test("Wizard Arcane Recovery is a real long-rest resource in CE", () => {
-  assert.doesNotThrow(() => assertClassResourcePolicy([wizardBundle()]))
-  const input: CharacterEngineInput = {
+function engineInput(contributions: CharacterEngineInput["contributions"]): CharacterEngineInput {
+  return {
     base: {
       id: "wizard-character",
       name: "Волшебник",
@@ -83,12 +91,20 @@ test("Wizard Arcane Recovery is a real long-rest resource in CE", () => {
       baseSpeed: 30,
     },
     state: { currentHp: 38, tempHp: 0, resources: { wizard_arcane_recovery: { current: 1 } } },
-    contributions: [contributionForStoredMechanic(arcaneResource, source)],
+    contributions,
   }
-  const contract = resolveCharacterContract(input)
+}
+
+test("Wizard Arcane Recovery package passes strict quality, parser, CE and resource gates", () => {
+  const packages = [wizardBundle()]
+  assert.doesNotThrow(() => assertClassPackageQuality(packages))
+  assert.doesNotThrow(() => assertClassResourcePolicy(packages))
+  const parsed = resolveTemplateBundles(packages, 7)
+  const contract = resolveCharacterContract(engineInput(parsed.contributions))
   const resource = contract.resources.find((entry) => entry.stateKey === "wizard_arcane_recovery")
   assert.equal(resource?.current, 1)
   assert.equal(resource?.max.value, 1)
+  assert.ok(contract.mechanicalRules.some((entry) => entry.key === "class:wizard:arcane-recovery"))
 })
 
 test("full-caster slot capacity is parser-owned and uses the shared resource ledger", () => {
