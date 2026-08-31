@@ -27,6 +27,21 @@ export type WizardSpellbookState = {
   spells: WizardSpellbookSpell[]
 }
 
+export type WizardSpellbookProgressionLevel = {
+  sourceLevel: number
+  quota: number
+  used: number
+  remaining: number
+  maxSpellLevel: number
+}
+
+export type WizardSpellbookProgressionState = {
+  wizardLevel: number | null
+  nextSourceLevel: number | null
+  totalRemaining: number
+  levels: WizardSpellbookProgressionLevel[]
+}
+
 export type WizardSpellbookOption = {
   id: string
   name: string
@@ -44,6 +59,13 @@ const EMPTY: WizardSpellbookState = {
   spells: [],
 }
 
+const EMPTY_PROGRESSION: WizardSpellbookProgressionState = {
+  wizardLevel: null,
+  nextSourceLevel: null,
+  totalRemaining: 0,
+  levels: [],
+}
+
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
 }
@@ -58,6 +80,7 @@ function nullableText(value: unknown) {
 }
 
 function nullableInteger(value: unknown) {
+  if (value === null || value === undefined || value === "") return null
   const parsed = Number(value)
   return Number.isInteger(parsed) ? parsed : null
 }
@@ -90,11 +113,35 @@ export function normalizeWizardSpellbookState(value: unknown): WizardSpellbookSt
   }
 }
 
+export function normalizeWizardSpellbookProgression(value: unknown): WizardSpellbookProgressionState {
+  const root = record(value)
+  const levels = Array.isArray(root.levels) ? root.levels.map(record).map((entry) => ({
+    sourceLevel: nullableInteger(entry.sourceLevel) ?? 0,
+    quota: Math.max(0, nullableInteger(entry.quota) ?? 0),
+    used: Math.max(0, nullableInteger(entry.used) ?? 0),
+    remaining: Math.max(0, nullableInteger(entry.remaining) ?? 0),
+    maxSpellLevel: Math.max(0, nullableInteger(entry.maxSpellLevel) ?? 0),
+  })).filter((entry) => entry.sourceLevel > 0) : []
+  return {
+    wizardLevel: nullableInteger(root.wizardLevel),
+    nextSourceLevel: nullableInteger(root.nextSourceLevel),
+    totalRemaining: Math.max(0, nullableInteger(root.totalRemaining) ?? 0),
+    levels,
+  }
+}
+
 export async function loadWizardSpellbook(characterId: string): Promise<WizardSpellbookState> {
   if (!characterId) return EMPTY
   const { data, error } = await supabase.rpc("get_character_wizard_spellbook_v1", { p_character_id: characterId })
   if (error) throw error
   return normalizeWizardSpellbookState(data)
+}
+
+export async function loadWizardSpellbookProgression(characterId: string): Promise<WizardSpellbookProgressionState> {
+  if (!characterId) return EMPTY_PROGRESSION
+  const { data, error } = await supabase.rpc("get_character_wizard_spellbook_progression_v1", { p_character_id: characterId })
+  if (error) throw error
+  return normalizeWizardSpellbookProgression(data)
 }
 
 export async function loadWizardSpellbookOptions(maxSpellLevel: number): Promise<WizardSpellbookOption[]> {
@@ -135,4 +182,20 @@ export async function grantWizardSpellbookSpell(characterId: string, spellCatalo
   })
   if (error) throw error
   return String(data || "")
+}
+
+export async function chooseWizardSpellbookProgressionSpell(
+  characterId: string,
+  sourceLevel: number,
+  spellCatalogId: string,
+  spellbookItemId?: string | null,
+) {
+  const { data, error } = await supabase.rpc("choose_character_wizard_spellbook_progression_v1", {
+    p_character_id: characterId,
+    p_wizard_level: sourceLevel,
+    p_spell_catalog_id: spellCatalogId,
+    p_spellbook_item_id: spellbookItemId || null,
+  })
+  if (error) throw error
+  return record(data)
 }
