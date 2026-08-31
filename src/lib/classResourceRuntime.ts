@@ -17,7 +17,15 @@ export function resolvedActionMechanicId(action: ResolvedAction): string {
   return ""
 }
 
-async function syncResolvedResources(characterId: string, contract: ResolvedCharacterContract): Promise<ClassRuntimeResult> {
+/**
+ * Synchronize CE's resolved resource definitions/current snapshot into the one
+ * persistent resource ledger before a narrow server-authoritative class action.
+ * Reusable class runtimes may call this; they must never invent a second ledger.
+ */
+export async function syncResolvedCharacterResources(
+  characterId: string,
+  contract: ResolvedCharacterContract,
+): Promise<ClassRuntimeResult> {
   const resources = resourceSyncInputs(contract)
   if (!resources.length) return { ok: true }
   const { error } = await supabase.rpc("sync_character_resource_states", {
@@ -40,7 +48,7 @@ export async function runResolvedTemplateResourceAction(
 ): Promise<ClassRuntimeResult> {
   const mechanicId = resolvedActionMechanicId(action)
   if (!mechanicId) return { ok: false, error: "Не удалось определить механику классового действия." }
-  const synced = await syncResolvedResources(characterId, contract)
+  const synced = await syncResolvedCharacterResources(characterId, contract)
   if (!synced.ok) return synced
   const { error } = await supabase.rpc("use_character_template_resource_action", {
     p_character_id: characterId,
@@ -56,7 +64,7 @@ export async function spendResolvedClassSpellOption(
   contract: ResolvedCharacterContract,
   option: ResolvedSpellResourceOption,
 ): Promise<ClassRuntimeResult> {
-  const synced = await syncResolvedResources(characterId, contract)
+  const synced = await syncResolvedCharacterResources(characterId, contract)
   if (!synced.ok) return synced
   const costs = resourceCostInputs(contract, option.costs)
   const { error } = await supabase.rpc("spend_character_resources", {
