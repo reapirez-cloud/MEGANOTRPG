@@ -72,6 +72,7 @@ export function useChatPreparation(character: Character | null) {
         if (firstError) setError(firstError.message)
         else {
           setSession(sessionResult.data as CharacterPreparationSession | null)
+          setRecords((recordsResult.data || []) as ChatPreparationSpell[] as unknown as CharacterPreparationRecord[])
           setRecords((recordsResult.data || []) as CharacterPreparationRecord[])
           setSpells((spellsResult.data || []) as ChatPreparationSpell[])
           setWizardSpellbook(spellbook)
@@ -94,5 +95,18 @@ export function useChatPreparation(character: Character | null) {
     records,
   ), [bundleRevision, character?.level, characterId, records, session])
 
-  return { model, spells, wizardSpellbook, loading, error, refresh }
+  const hasWizardPreparation = model.tasks.some((task) => task.kind === "spells" && task.classKey === "wizard")
+  const preparationSpells = useMemo(() => {
+    if (!hasWizardPreparation) return spells
+    if (!wizardSpellbook.hasBook) return []
+    const allowed = new Set(wizardSpellbook.spells.map((spell) => spell.spellCatalogId))
+    const maxLevel = wizardSpellbook.maxSpellLevel ?? 0
+    return spells.filter((spell) => allowed.has(spell.catalog_spell_id) && spell.spell_level <= maxLevel)
+  }, [hasWizardPreparation, spells, wizardSpellbook])
+
+  const wizardBookError = hasWizardPreparation && !wizardSpellbook.hasBook
+    ? "Книга заклинаний Волшебника не найдена в инвентаре. Текущая подготовка сохраняется, но изменить её до появления книги нельзя."
+    : ""
+
+  return { model, spells: preparationSpells, wizardSpellbook, loading, error: error || wizardBookError, refresh }
 }
