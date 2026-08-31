@@ -11,6 +11,7 @@ const migration = fs.readFileSync(
 )
 const panel = fs.readFileSync("src/components/characters/WizardSpellbookPanel.tsx", "utf8")
 const preparationHook = fs.readFileSync("src/hooks/useChatPreparation.ts", "utf8")
+const runtime = fs.readFileSync("src/lib/wizardSpellbook.ts", "utf8")
 
 function wizardBundle(): CharacterTemplateBundle {
   return {
@@ -53,11 +54,11 @@ test("Wizard spellbook runtime remains a real inventory-instance dependency", ()
 })
 
 test("GM authors concrete book contents from the canonical Wizard catalog", () => {
-  assert.match(migration, /gm_add_wizard_spellbook_spell/)
-  assert.match(migration, /gm_remove_wizard_spellbook_spell/)
+  assert.match(migration, /grant_character_wizard_spellbook_spell_v1/)
   assert.match(migration, /private\.can_manage_character/)
-  assert.match(migration, /class_key = 'wizard'/)
-  assert.match(migration, /wizard_max_spell_level_for_character/)
+  assert.match(migration, /class_link\.class_key='wizard'/)
+  assert.match(migration, /character_wizard_max_spell_level/)
+  assert.match(migration, /Cantrips are not written into the Wizard spellbook/)
   assert.match(migration, /insert into public\.character_spells\(character_id,catalog_spell_id,prepared\)/)
 })
 
@@ -71,14 +72,16 @@ test("GENA cannot prepare Wizard spells without the physical book or outside its
 test("Wizard class UI exposes My Book and manager grant flow", () => {
   assert.match(panel, /Моя книга/)
   assert.match(panel, /Выдать закл/)
-  assert.match(panel, /listWizardSpellbooks/)
-  assert.match(panel, /listWizardSpellbookCandidates/)
-  assert.match(panel, /gmAddWizardSpellbookSpell/)
+  assert.match(panel, /loadWizardSpellbook/)
+  assert.match(panel, /loadWizardSpellbookOptions/)
+  assert.match(panel, /grantWizardSpellbookSpell/)
+  assert.match(runtime, /get_character_wizard_spellbook_v1/)
+  assert.match(runtime, /grant_character_wizard_spellbook_spell_v1/)
 })
 
 test("chat preparation reads the server-owned spellbook availability", () => {
-  assert.match(preparationHook, /listWizardSpellbookEntries/)
-  assert.match(preparationHook, /catalog_spell_id/)
+  assert.match(preparationHook, /loadWizardSpellbook/)
+  assert.match(preparationHook, /characterSpellId/)
   assert.match(preparationHook, /catalogKey/)
 })
 
