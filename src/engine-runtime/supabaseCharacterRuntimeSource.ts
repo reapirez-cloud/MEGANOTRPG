@@ -14,6 +14,17 @@ import type {
 } from "../lib/characterPreparation.ts"
 import type { CharacterFeature, CharacterSheet } from "../types/characterSheet.ts"
 
+function wizardSpellbookCatalogIds(value: unknown): string[] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return []
+  const spells = (value as Record<string, unknown>).spells
+  if (!Array.isArray(spells)) return []
+  return [...new Set(spells.map((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return ""
+    const id = (entry as Record<string, unknown>).spellCatalogId
+    return typeof id === "string" ? id : ""
+  }).filter(Boolean))]
+}
+
 /** Production read adapter. It translates persistence into resolver inputs only. */
 export class SupabaseCharacterRuntimeDataSource implements CharacterRuntimeDataSource {
   async loadCore(characterId: string): Promise<CharacterRuntimeCoreData> {
@@ -24,6 +35,7 @@ export class SupabaseCharacterRuntimeDataSource implements CharacterRuntimeDataS
       featuresResult,
       preparationResult,
       preparationRecordsResult,
+      wizardSpellbookResult,
     ] = await Promise.all([
       supabase.from("character_sheets").select("*").eq("character_id", characterId).maybeSingle(),
       cheburashka.mechanicalProjection(characterId),
@@ -31,6 +43,7 @@ export class SupabaseCharacterRuntimeDataSource implements CharacterRuntimeDataS
       supabase.from("character_features").select("*").eq("character_id", characterId).order("sort_order", { ascending: true }),
       supabase.from("character_preparation_sessions").select("*").eq("character_id", characterId).maybeSingle(),
       supabase.from("character_preparation_records").select("*").eq("character_id", characterId).order("generation", { ascending: false }).limit(100),
+      supabase.rpc("get_character_wizard_spellbook_v1", { p_character_id: characterId }),
     ])
 
     const firstError =
@@ -38,7 +51,8 @@ export class SupabaseCharacterRuntimeDataSource implements CharacterRuntimeDataS
       spellsResult.error ||
       featuresResult.error ||
       preparationResult.error ||
-      preparationRecordsResult.error
+      preparationRecordsResult.error ||
+      wizardSpellbookResult.error
     if (firstError) throw new Error(firstError.message)
 
     return {
@@ -48,6 +62,7 @@ export class SupabaseCharacterRuntimeDataSource implements CharacterRuntimeDataS
       features: (featuresResult.data || []) as CharacterFeature[],
       preparationSession: preparationResult.data as CharacterPreparationSession | null,
       preparationRecords: (preparationRecordsResult.data || []) as CharacterPreparationRecord[],
+      wizardSpellbookCatalogIds: wizardSpellbookCatalogIds(wizardSpellbookResult.data),
     }
   }
 
