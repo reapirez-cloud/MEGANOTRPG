@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react"
 import type { ResolvedCharacterContract } from "../../character-engine/index.ts"
+import { registeredCharacterClassPackages } from "../../rule-templates/classPackages.ts"
 import CharacterClassPanelBase from "./CharacterClassPanelBase.tsx"
 import CharacterTemplateChoices from "./CharacterTemplateChoices.tsx"
+import WizardSpellbookPanel from "./WizardSpellbookPanel.tsx"
 import "./CharacterClassFocus.css"
 
 type Props = {
@@ -9,30 +11,44 @@ type Props = {
   contract: ResolvedCharacterContract
   onOpenReference?: () => void
 }
-type Focus = "all" | "class" | "subclass"
+type Focus = "all" | "class" | "subclass" | "spellbook"
 
 const FOCUS_KEY = "meganotrpg.character-class-focus"
 
 function initialFocus(): Focus {
   if (typeof window === "undefined") return "all"
   const value = window.sessionStorage.getItem(FOCUS_KEY)
-  return value === "class" || value === "subclass" ? value : "all"
+  return value === "class" || value === "subclass" || value === "spellbook" ? value : "all"
 }
 
 export default function CharacterClassPanel(props: Props) {
   const [focus, setFocus] = useState<Focus>(initialFocus)
+  const hasWizard = registeredCharacterClassPackages(props.characterId)
+    .some((entry) => entry.classCatalogKey === "class:wizard")
 
   useEffect(() => () => {
     window.sessionStorage.removeItem(FOCUS_KEY)
   }, [])
 
-  return <div className={`character-class-focus character-class-focus--${focus}`}>
+  useEffect(() => {
+    if (focus === "spellbook" && !hasWizard) setFocus("all")
+  }, [focus, hasWizard])
+
+  function choose(next: Focus) {
+    setFocus(next)
+    window.sessionStorage.setItem(FOCUS_KEY, next)
+  }
+
+  return <div className={`character-class-focus character-class-focus--${focus}${hasWizard ? " character-class-focus--has-wizard" : ""}`}>
     <nav className="character-class-focus__switch" aria-label="Механики класса">
-      <button type="button" className={focus === "all" ? "is-active" : ""} onClick={() => setFocus("all")}>Все</button>
-      <button type="button" className={focus === "class" ? "is-active" : ""} onClick={() => setFocus("class")}>Класс</button>
-      <button type="button" className={focus === "subclass" ? "is-active" : ""} onClick={() => setFocus("subclass")}>Подкласс</button>
+      <button type="button" className={focus === "all" ? "is-active" : ""} onClick={() => choose("all")}>Все</button>
+      <button type="button" className={focus === "class" ? "is-active" : ""} onClick={() => choose("class")}>Класс</button>
+      <button type="button" className={focus === "subclass" ? "is-active" : ""} onClick={() => choose("subclass")}>Подкласс</button>
+      {hasWizard && <button type="button" className={focus === "spellbook" ? "is-active" : ""} onClick={() => choose("spellbook")}>Моя книга</button>}
     </nav>
-    <CharacterTemplateChoices characterId={props.characterId} />
-    <CharacterClassPanelBase {...props} />
+    {focus === "spellbook" && hasWizard ? <WizardSpellbookPanel characterId={props.characterId} /> : <>
+      <CharacterTemplateChoices characterId={props.characterId} />
+      <CharacterClassPanelBase {...props} />
+    </>}
   </div>
 }
