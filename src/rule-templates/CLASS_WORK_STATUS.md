@@ -176,33 +176,43 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 
 - `last_text_audit: 2026-08-31`
 - `last_mechanics_audit_started: 2026-08-31`
+- `last_dev_runtime_audit: 2026-08-31`
 - `rules_revision: Player's Handbook 2024 base class`
 - `subclasses: NOT_INCLUDED`
+- `dev_base_class_runtime: READY_PENDING_TARGET_DEPLOYMENT`
+- `dev_ci: GREEN_RUN_1152`
 - `current_dev_text: clean Russian base-class package with exact rules and separately authored Voss narration for every openable feature card`
-- `current_dev_runtime: physical spellbook and book-gated preparation are implemented; parser-owned full-caster slot resources, core saving throws/weapon proficiency, authoritative Short Rest window and Arcane Recovery runtime/UI are now implemented in dev`
+- `current_dev_runtime: physical spellbook and book-gated preparation are implemented; authoritative spellbook progression, parser-owned full-caster slots, prepared-cast enforcement, Ritual Adept, Arcane Recovery, Memorize Spell, Spell Mastery, Signature Spells and the agreed Gena/manual-choice boundaries are implemented and regression-gated in dev`
 - `spellbook_regression: tests/wizardSpellbookRuntime.test.ts`
+- `spellbook_progression_regression: tests/wizardSpellbookProgressionRuntime.test.ts`
 - `arcane_recovery_regression: tests/wizardArcaneRecoveryRuntime.test.ts`
+- `completion_regression: tests/wizardCompletionRuntime.test.ts`
 - `production_runtime: NOT_DEPLOYED_OR_CERTIFIED`
 - `catalog_bootstrap: dev migration preserves class:wizard and installs the clean base class for new campaigns`
-- `gm_adjudication_policy: FOUND_SPELL_TRANSCRIPTION_IS_MANUAL_BY_DESIGN`
+- `gm_adjudication_policy: FOUND_SPELL_TRANSCRIPTION_AND_SIMPLE_SHEET_CHOICES_ARE_MANUAL_BY_DESIGN`
 
-### Mechanics audit targets
+### Dev base-class closure
 
-- Spellbook as authoritative owned-spell state: physical item identity and spellbook-backed preparation are implemented; starting six level-1 spells and automatic +2 spells per Wizard level belong to CE because they are deterministic class progression.
-- Found-spell/scroll transcription, its gold/time procedure, consuming/removing the scroll/source, replacement of a lost book and backup-book narrative handling are **GM-adjudicated by design**. The GM uses normal inventory/currency/spellbook tools and Gena stores the durable result. These are not missing Wizard runtime mechanics and must not receive a bespoke transcription workflow unless the project explicitly changes this policy later.
-- Prepared Wizard spells are selected only from the actual spellbook and obey the fixed 2024 prepared-spell progression; deployment/state audit remains pending.
-- Full-caster spell-slot capacity is emitted as native CE resources through the shared parser-owned slot primitive; casting/access and level progression still need full end-to-end Wizard audit.
-- Long-rest cantrip replacement and cantrip progression still need authoritative choice/preparation paths because they directly mutate durable character spell state.
-- Arcane Recovery: implemented in dev with one long-rest resource, GM-authoritative Short Rest window, `ceil(Wizard level / 2)` weighted recovery budget, level-5 ceiling, spent-slot validation and shared `spell_slot_N` persistence. Deployment audit remains pending.
-- Scholar requires a dynamic option provider restricted to eligible skills the character already has proficiency in, then grants Expertise.
-- Memorize Spell must replace one prepared level-1+ Wizard spell with another eligible spell from the actual spellbook after a Short Rest.
-- Spell Mastery needs two spellbook-backed persistent selections with level/casting-time filters, always-prepared access, free lowest-level casting and one-per-long-rest replacement.
-- Signature Spells need two level-3 spellbook-backed selections, always-prepared access and separate free-cast recovery after Short or Long Rest.
-- ASI and Epic Boon must use the future generic feat/allocation contract rather than a Wizard-specific choice engine.
-- Action/Bonus Action/Reaction legality and per-turn cadence inside Wizard rules are GM-adjudicated under `GM_ADJUDICATION_BOUNDARY.md`; CE may expose the action/roll/resource but does not police the turn.
+- Spellbook as authoritative owned-spell state: physical item identity, held-book access, six starting level-1 spells and two additional eligible Wizard spells per later Wizard level are implemented and regression-gated.
+- Prepared Wizard spells are selected only from the actual held spellbook and obey the fixed 2024 prepared-spell progression. Spell Mastery and Signature Spells remain always prepared and are excluded from the ordinary Gena preparation quota.
+- Full-caster spell-slot capacity is emitted as native CE resources through the shared parser-owned slot primitive. Ordinary Wizard slot casting now requires preparation and uses the canonical slot-resource path.
+- Ritual Adept is implemented in dev: an eligible ritual in the currently held physical Wizard spellbook exposes a no-preparation, no-slot ritual method; losing access to that book removes the ritual access from the next CE snapshot.
+- Arcane Recovery: implemented in dev with one long-rest resource, GM-authoritative Short Rest window, `ceil(Wizard level / 2)` weighted recovery budget, level-5 ceiling, spent-slot validation and shared `spell_slot_N` persistence.
+- Memorize Spell is implemented in dev through the authoritative Short Rest window and can replace one eligible prepared level-1+ Wizard spell with another eligible spell from the actual held spellbook.
+- Spell Mastery is implemented in dev with one level-1 and one level-2 held-book selection, Action casting-time validation, always-prepared access, true no-resource lowest-level casting and at most one mastered-spell replacement after each Long Rest.
+- Signature Spells are implemented in dev with two level-3 held-book selections, always-prepared access, separate free-cast resources and independent Short/Long Rest recovery. Player replacement after the initial selection is not allowed.
+- Long-rest cantrip replacement and cantrip progression use the agreed Gena notice → player tells GM → normal sheet edit path. This durable result is stored in the ordinary character spell state; no Wizard-specific choice engine is required.
+- Scholar uses the agreed informational path: Gena tells the player that Scholar is available; the player chooses an eligible already-proficient skill and asks the GM to raise it to Expertise through the ordinary sheet editor. No dynamic Wizard option provider or feature-specific RPC is required.
+- ASI and Epic Boon do not receive a Wizard-specific picker. They use the generic feat/allocation contract when available or the normal GM sheet-edit path; lack of Wizard-specific automation is not a base-class runtime blocker.
+- Found-spell/scroll transcription, its gold/time procedure, consuming/removing the source, replacement of a lost book and backup-book narrative handling are **GM-adjudicated by design**. The GM uses normal inventory/currency/spellbook tools and CE/Gena stores the durable result.
+- Action/Bonus Action/Reaction legality and per-turn cadence inside Wizard rules remain GM-adjudicated under `GM_ADJUDICATION_BOUNDARY.md`; CE exposes real resources/access but does not create a turn tracker.
 - Subclass selection and levels 3/6/10/14 remain outside this base-class task until Wizard subclasses receive their own package.
 
-Do not promote Wizard mechanics to `READY` until the remaining CE-owned/hybrid class features, casting/preparation surfaces and intended deployed state pass the same end-to-end audit. GM-adjudicated execution is not a blocker by itself.
+### Remaining certification blocker
+
+- Apply the intended `dev` migration stack to the target Supabase deployment and re-audit the deployed database/runtime against the same Wizard regressions and integration contract.
+
+Do not promote Wizard mechanics to `READY` until the target deployed state is applied and audited. There are no known `dev` base-class runtime blockers in the current subclass-free scope.
 
 ---
 
