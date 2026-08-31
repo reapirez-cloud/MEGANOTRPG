@@ -12,6 +12,9 @@ const migration = fs.readFileSync(
   "supabase/migrations/20260831120000_wizard_arcane_recovery_runtime.sql",
   "utf8",
 )
+const panel = fs.readFileSync("src/components/characters/WizardArcaneRecoveryPanel.tsx", "utf8")
+const picker = fs.readFileSync("src/components/characters/SpellSlotRecoveryPicker.tsx", "utf8")
+const runtime = fs.readFileSync("src/lib/wizardArcaneRecovery.ts", "utf8")
 
 function section(start: string, end: string) {
   const from = migration.indexOf(start)
@@ -128,7 +131,18 @@ test("Wizard wrapper proves class, short-rest timing, level budget, level-five c
   assert.match(arcane, /catalog_key='class:wizard'/)
   assert.match(arcane, /is_character_short_rest_open/)
   assert.match(arcane, /v_budget:=\(v_level\+1\)\/2/)
-  assert.match(arcane, /p_recovery,'\{\}'::jsonb\),v_budget,5,auth\.uid\(\)/)
+  assert.match(arcane, /coalesce\(p_recovery,'\{\}'::jsonb\),v_budget,5,auth\.uid\(\)/)
   assert.match(arcane, /state_key='wizard_arcane_recovery'/)
   assert.match(arcane, /current=current-1/)
+})
+
+test("Arcane Recovery UI allocates real spent slots and GM opens the generic short-rest window through Oracle", () => {
+  assert.match(panel, /oracle\.characters\.recover/)
+  assert.match(panel, /"short_rest"/)
+  assert.match(panel, /useWizardArcaneRecovery/)
+  assert.match(panel, /Math\.ceil\(Math\.max\(1, wizardLevel\) \/ 2\)/)
+  assert.match(picker, /\^spell_slot_\(\[1-9\]\)\$/)
+  assert.match(picker, /spentBudget \+ level > budget/)
+  assert.match(runtime, /syncResolvedCharacterResources/)
+  assert.match(runtime, /use_wizard_arcane_recovery_v1/)
 })
