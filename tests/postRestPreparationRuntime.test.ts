@@ -11,6 +11,7 @@ import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
 const runtimeSql = fs.readFileSync("supabase/migrations/20260830022000_post_rest_preparation_runtime.sql", "utf8")
 const classSql = fs.readFileSync("supabase/migrations/20260830023000_long_rest_choice_and_druid_preparation.sql", "utf8")
 const spellPreparationSql = fs.readFileSync("supabase/migrations/20260830024000_chat_spell_preparation_commit.sql", "utf8")
+const anyMessageClosure = fs.readFileSync("supabase/migrations/20260901090500_wizard_rest_any_message_closure.sql", "utf8")
 const card = fs.readFileSync("src/components/chat/ChatPreparationCard.tsx", "utf8")
 const preparationHook = fs.readFileSync("src/hooks/useChatPreparation.ts", "utf8")
 const resolvedCharacterRuntime = fs.readFileSync("src/hooks/useResolvedCharacterRuntime.ts", "utf8")
@@ -114,13 +115,15 @@ test("long rest opens one server-authoritative preparation generation", () => {
   assert.match(runtimeSql, /perform public\.recover_character_resources\(p_character_id,'long_rest'\)/)
 })
 
-test("only ordinary assigned-player text closes preparation", () => {
+test("forward rest closure makes any assigned-player message end preparation", () => {
   assert.match(runtimeSql, /new\.event_kind is not null/)
   assert.match(runtimeSql, /nullif\(btrim\(coalesce\(new\.body,''\)\),''\) is null/)
-  assert.match(runtimeSql, /c\.assigned_user_id=new\.user_id/)
-  assert.match(runtimeSql, /c\.character_type='pc'/)
-  assert.match(runtimeSql, /closed_by_message_id=new\.id/)
-  assert.match(runtimeSql, /spell_change_unlocked=false/)
+  assert.match(anyMessageClosure, /c\.assigned_user_id=new\.user_id/)
+  assert.match(anyMessageClosure, /c\.character_type='pc'/)
+  assert.match(anyMessageClosure, /closed_by_message_id=new\.id/)
+  assert.match(anyMessageClosure, /after insert on public\.chat_messages/)
+  assert.doesNotMatch(anyMessageClosure, /event_kind is not null/)
+  assert.doesNotMatch(anyMessageClosure, /btrim\(coalesce\(new\.body/)
 })
 
 test("daily roll results are one record per long rest and can explicitly feed resources", () => {
@@ -226,8 +229,9 @@ test("spell changes refresh both preparation UI and the shared CE runtime bridge
   assert.match(characterRuntimeResolver, /spells: core\.spells/)
 })
 
-test("chat preparation card warns that text closes the window while rolls do not", () => {
-  assert.match(card, /Первый отправленный текст закроет это окно/)
-  assert.match(card, /Броски, способности и заклинания окно не закрывают/)
+test("chat preparation card warns that the first message closes the window", () => {
+  assert.match(card, /Первое сообщение персонажа закрывает оставшиеся окна выбора/)
+  assert.match(card, /Ресурсы отдыха уже восстановлены/)
   assert.match(card, /Бросить \$\{notation\} и записать/)
+  assert.doesNotMatch(card, /Броски, способности и заклинания окно не закрывают/)
 })
