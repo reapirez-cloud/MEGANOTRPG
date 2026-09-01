@@ -25,12 +25,23 @@ export type ChatPreparationSpell = {
   wizard_signature_spell: boolean
 }
 
+export type ChatShortRestSession = {
+  generation: number
+  is_open: boolean
+}
+
+export type ChatWizardRestIdentity = {
+  assignmentId: string
+  level: number
+}
+
 const EMPTY_WIZARD_BOOK: WizardSpellbookState = { hasBook: false, wizardLevel: null, maxSpellLevel: null, books: [], spells: [] }
 
 export function useChatPreparation(character: Character | null) {
   const characterId = character?.id || null
   const [bundleRevision, setBundleRevision] = useState(0)
   const [session, setSession] = useState<CharacterPreparationSession | null>(null)
+  const [shortRestSession, setShortRestSession] = useState<ChatShortRestSession | null>(null)
   const [records, setRecords] = useState<CharacterPreparationRecord[]>([])
   const [spells, setSpells] = useState<ChatPreparationSpell[]>([])
   const [wizardSpellbook, setWizardSpellbook] = useState<WizardSpellbookState>(EMPTY_WIZARD_BOOK)
@@ -48,8 +59,10 @@ export function useChatPreparation(character: Character | null) {
     if (!characterId) return
     let channel: RealtimeChannel | null = supabase.channel(`chat-preparation-${characterId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "character_preparation_sessions", filter: `character_id=eq.${characterId}` }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "character_short_rest_sessions", filter: `character_id=eq.${characterId}` }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "character_preparation_records", filter: `character_id=eq.${characterId}` }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "character_spells", filter: `character_id=eq.${characterId}` }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "character_resource_states", filter: `character_id=eq.${characterId}` }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "character_inventory_items", filter: `character_id=eq.${characterId}` }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "wizard_spellbook_entries" }, refresh)
       .subscribe()
@@ -61,20 +74,22 @@ export function useChatPreparation(character: Character | null) {
     queueMicrotask(() => {
       if (cancelled) return
       if (!characterId) {
-        setSession(null); setRecords([]); setSpells([]); setWizardSpellbook(EMPTY_WIZARD_BOOK); setError(""); setLoading(false); return
+        setSession(null); setShortRestSession(null); setRecords([]); setSpells([]); setWizardSpellbook(EMPTY_WIZARD_BOOK); setError(""); setLoading(false); return
       }
       setLoading(true); setError("")
       void Promise.all([
         supabase.from("character_preparation_sessions").select("*").eq("character_id", characterId).maybeSingle(),
+        supabase.from("character_short_rest_sessions").select("generation,is_open").eq("character_id", characterId).maybeSingle(),
         supabase.from("character_preparation_records").select("*").eq("character_id", characterId).order("generation", { ascending: false }).limit(100),
         supabase.from("character_spells").select("id,catalog_spell_id,name,spell_level,prepared,cast_mode,wizard_spell_mastery,wizard_signature_spell").eq("character_id", characterId).gt("spell_level", 0).eq("cast_mode", "slot").order("spell_level", { ascending: true }).order("name", { ascending: true }),
         loadWizardSpellbook(characterId),
-      ]).then(([sessionResult, recordsResult, spellsResult, spellbook]) => {
+      ]).then(([sessionResult, shortRestResult, recordsResult, spellsResult, spellbook]) => {
         if (cancelled) return
-        const firstError = sessionResult.error || recordsResult.error || spellsResult.error
+        const firstError = sessionResult.error || shortRestResult.error || recordsResult.error || spellsResult.error
         if (firstError) setError(firstError.message)
         else {
           setSession(sessionResult.data as CharacterPreparationSession | null)
+          setShortRestSession(shortRestResult.data as ChatShortRestSession | null)
           setRecords((recordsResult.data || []) as CharacterPreparationRecord[])
           setSpells((spellsResult.data || []) as ChatPreparationSpell[])
           setWizardSpellbook(spellbook)
@@ -90,12 +105,32 @@ export function useChatPreparation(character: Character | null) {
     return () => { cancelled = true }
   }, [characterId, revision])
 
-  const model = useMemo(() => buildCharacterPreparationModel(
-    characterId ? registeredCharacterTemplateBundles(characterId) : [],
+  const bundles = useMemo(
+    () => characterId ? registeredCharacterTemplateBundles(characterId) : [],
+    [bundleRevision, characterId],
+  )
+
+  const baseModel = useMemo(() => buildCharacterPreparationModel(
+    bundles,
     Math.max(1, character?.level || 1),
     session,
     records,
-  ), [bundleRevision, character?.level, characterId, records, session])
+  ), [bundles, character?.level, records, session])
+
+  const wizard = useMemo<ChatWizardRestIdentity | null>(() => {
+    const bundle = bundles.find((entry) => entry.template.kind === "class" && entry.template.catalog_key === "class:wizard")
+    if (!bundle) return null
+    return {
+      assignmentId: bundle.assignment.id,
+      level: Math.max(1, bundle.assignment.template_level || character?.level || 1),
+    }
+  }, [bundles, character?.level])
+
+  const model = useMemo(() => ({
+    ...baseModel,
+    shortRestSession,
+    wizard,
+  }), [baseModel, shortRestSession, wizard])
 
   const wizardTask = model.tasks.find((task): task is SpellPreparationTask => task.kind === "spells" && task.classKey === "wizard") || null
   const preparationSpells = useMemo(() => {
