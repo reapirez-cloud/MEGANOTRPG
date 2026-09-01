@@ -77,7 +77,8 @@ Current stable presentation categories:
 **Text:** `READY`  
 **Mechanics/runtime:** `IN_PROGRESS`
 
-- `last_text_audit: 2026-08-29`
+- `last_text_audit: 2026-09-01`
+- `voss_class_subclass_voice_pass: GRIMDARK_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
@@ -110,7 +111,8 @@ Do not promote Fighter mechanics to `READY` until dev and the intended deployed 
 **Text:** `READY`  
 **Mechanics/runtime:** `IN_PROGRESS`
 
-- `last_text_audit: 2026-08-29`
+- `last_text_audit: 2026-09-01`
+- `voss_class_subclass_voice_pass: GRIMDARK_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
@@ -144,7 +146,8 @@ Do not promote Druid mechanics to `READY` until dev and the intended deployed st
 **Text:** `READY`  
 **Mechanics/runtime:** `IN_PROGRESS`
 
-- `last_text_audit: 2026-08-29`
+- `last_text_audit: 2026-09-01`
+- `voss_class_subclass_voice_pass: GRIMDARK_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`

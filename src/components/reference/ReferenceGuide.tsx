@@ -3,22 +3,28 @@ import { useMemo, useState } from "react"
 import { useCharacters } from "../../context/CharacterContext"
 import { classReference, type ClassReferenceEntry } from "../../data/classReference"
 import {
+  clericClassVossComment,
   clericClassVossNarration,
   getClericBaseVossNarration,
+  getClericSubclassVossComment,
   getClericSubclassFeatureVossNarration,
   getClericSubclassVossNarration,
   normalizeClericDomainId,
 } from "../../data/classes/clericVossNarration"
 import { druidReference } from "../../data/classes/druidReference"
 import {
+  druidClassVossComment,
   druidClassVossNarration,
   getDruidBaseVossNarration,
+  getDruidSubclassVossComment,
   getDruidSubclassFeatureVossNarration,
   getDruidSubclassVossNarration,
 } from "../../data/classes/druidVossNarration"
 import {
+  fighterClassVossComment,
   fighterClassVossNarration,
   getFighterBaseVossNarration,
+  getFighterSubclassVossComment,
   getFighterSubclassFeatureVossNarration,
   getFighterSubclassVossNarration,
 } from "../../data/classes/fighterVossNarration"
@@ -259,19 +265,21 @@ function staticSubclasses(entry: ClassReferenceEntry): ReferenceSubclassView[] {
     name: item.name,
     summary: item.mechanics,
     explanation: getDruidSubclassVossNarration(item.id) || item.explanation,
-    voss: item.voss,
+    voss: getDruidSubclassVossComment(item.id) || item.voss,
   }))
   if (entry.id === "fighter") return entry.subclasses.map((item) => ({
     id: item.id,
     name: item.name,
     summary: item.summary,
     explanation: getFighterSubclassVossNarration(item.id) || undefined,
+    voss: getFighterSubclassVossComment(item.id) || undefined,
   }))
   if (entry.id === "cleric") return entry.subclasses.map((item) => ({
     id: item.id,
     name: item.name,
     summary: item.summary,
     explanation: getClericSubclassVossNarration(item.id) || undefined,
+    voss: getClericSubclassVossComment(item.id) || undefined,
   }))
   return entry.subclasses.map((item) => ({ id: item.id, name: item.name, summary: item.summary }))
 }
@@ -342,12 +350,19 @@ export default function ReferenceGuide({
           : selectedClass.id === "cleric"
             ? getClericSubclassVossNarration(id)
             : ""
+      const authoredComment = selectedClass.id === "druid"
+        ? getDruidSubclassVossComment(id)
+        : selectedClass.id === "fighter"
+          ? getFighterSubclassVossComment(id)
+          : selectedClass.id === "cleric"
+            ? getClericSubclassVossComment(id)
+            : ""
       return {
         id,
         name: template.name || old?.name || id,
         summary: template.mechanical_summary?.trim() || template.description?.trim() || old?.summary || "Специализация класса.",
         explanation: authoredExplanation || storedExplanation,
-        voss: template.author_comment?.trim() || old?.voss,
+        voss: authoredComment || template.author_comment?.trim() || old?.voss,
         templateId: template.id,
       } satisfies ReferenceSubclassView
     })
@@ -457,7 +472,13 @@ export default function ReferenceGuide({
         ? clericClassVossNarration
         : classTemplate?.author_description?.trim() || ""
   const classDescription = classTemplate?.description?.trim() || selectedClass?.description || classSummary
-  const classComment = isDruid ? druidReference.authorComment : classTemplate?.author_comment?.trim() || ""
+  const classComment = isDruid
+    ? druidClassVossComment
+    : isFighter
+      ? fighterClassVossComment
+      : isCleric
+        ? clericClassVossComment
+        : classTemplate?.author_comment?.trim() || ""
   const subclassExplanation = selectedSubclass
     ? isDruid
       ? getDruidSubclassVossNarration(selectedSubclass.id) || selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || ""
@@ -469,7 +490,7 @@ export default function ReferenceGuide({
     : ""
   const subclassDescription = selectedSubclassTemplate?.description?.trim() || selectedSubclass?.summary || ""
   const subclassSummary = selectedSubclassTemplate?.mechanical_summary?.trim() || selectedSubclass?.summary || ""
-  const subclassComment = selectedSubclassTemplate?.author_comment?.trim() || selectedSubclass?.voss || ""
+  const subclassComment = selectedSubclass?.voss || selectedSubclassTemplate?.author_comment?.trim() || ""
 
   return (
     <div className="reference-guide-overlay">

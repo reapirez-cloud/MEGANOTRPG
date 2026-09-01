@@ -8,6 +8,7 @@ import {
   vossCommentHasDeveloperLeak,
   vossExplanationHasRulesMeta,
   vossTextHasModernRegister,
+  vossTextHasAbusiveRegister,
   vossTextViolatesVoice,
   vossVoice,
   vossVoiceRules,
@@ -27,7 +28,7 @@ test("Reynar Voss has one explicit adventurer voice and worldview", () => {
   assert.match(vossVoice.mundaneStance, /немагическ|профессионал/i)
   assert.match(vossVoice.clericStance, /чужой щит/i)
   assert.match(vossVoice.clericStance, /Жизнь.*Могил.*Кузн.*Войн/i)
-  assert.match(vossVoice.druidStance, /Круг Луны|рук/i)
+  assert.match(vossVoice.druidStance, /Круг Луны.*теплот|умил/i)
   assert.match(vossVoice.fighterStance, /Воинов Восс любит/i)
   assert.equal(spellAuthorVoiceRules, vossVoiceRules)
 })
@@ -55,6 +56,8 @@ test("developer, tabletop-meta and modern office register are rejected from Voss
   assert.equal(vossCommentHasDeveloperLeak("В этой кампании Character Engine спишет ресурс."), true)
   assert.equal(vossTextHasModernRegister("Профсоюз требует страховку и отдел кадров."), true)
   assert.equal(vossTextHasModernRegister("Если медведь смотрит слишком умно, не гладьте его."), false)
+  assert.equal(vossTextHasAbusiveRegister("Эти мрази снова пришли."), true)
+  assert.equal(vossTextHasAbusiveRegister("Смерть снова пришла первой."), false)
   assert.equal(vossTextViolatesVoice("Юрист проверил лицензию."), true)
   assert.equal(vossExplanationHasRulesMeta("Потратьте 1к8 и добавьте модификатор к спасброску."), true)
   assert.equal(vossExplanationHasRulesMeta("Старый воин видит ошибку раньше, чем враг понимает, что её совершил."), false)
@@ -77,7 +80,7 @@ test("static Druid reference has separate plain explanations and clean Voss comm
   }
 
   const moon = druidReference.subclasses.find((entry) => entry.id === "moon")
-  assert.match(moon?.voss || "", /ест вашу руку.*Отдельную от вас/i)
+  assert.match(moon?.voss || "", /плащ.*дружба|пальцы/i)
 })
 
 test("class attitude samples obey the same narrator register", () => {
@@ -87,7 +90,7 @@ test("class attitude samples obey the same narrator register", () => {
   }
   assert.match(spellAuthorAttitudes.find((item) => item.classKey === "fighter")?.summary || "", /оруж|оста/i)
   assert.match(spellAuthorAttitudes.find((item) => item.classKey === "cleric")?.summary || "", /тыл|выход/i)
-  assert.match(spellAuthorAttitudes.find((item) => item.classKey === "druid")?.sample || "", /руку.*Отдельно/i)
+  assert.match(spellAuthorAttitudes.find((item) => item.classKey === "druid")?.sample || "", /плащ.*умиление|кисть/i)
 })
 
 test("renderer can read explanation and comment from feature payload or generic presentation", () => {

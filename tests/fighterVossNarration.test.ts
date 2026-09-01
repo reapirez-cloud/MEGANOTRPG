@@ -3,8 +3,10 @@ import fs from "node:fs"
 import test from "node:test"
 
 import {
+  fighterClassVossComment,
   fighterClassVossNarration,
   getFighterBaseVossNarration,
+  getFighterSubclassVossComment,
   getFighterSubclassFeatureVossNarration,
   getFighterSubclassVossNarration,
 } from "../src/data/classes/fighterVossNarration.ts"
@@ -135,6 +137,7 @@ test("all ten Fighter archetypes and every supported archetype feature have uniq
     const intro = getFighterSubclassVossNarration(subclassId)
     assert.ok(intro, `${subclassId} is missing subclass narration`)
     assertNarration(intro, `subclass:${subclassId}`)
+    assert.ok(getFighterSubclassVossComment(subclassId), `${subclassId} is missing a Voss comment`)
     all.push(intro)
 
     for (const [level, name] of subclassFeatures[subclassId]) {
@@ -146,6 +149,11 @@ test("all ten Fighter archetypes and every supported archetype feature have uniq
   }
 
   assert.equal(new Set(all).size, all.length, "Fighter subclass narration must not reuse one text across different cards")
+})
+
+test("Fighter class comment preserves grimdark black humor without profanity", () => {
+  assert.match(fighterClassVossComment, /смерт|бой/i)
+  assert.doesNotMatch(fighterClassVossComment, /мраз|идиот|дебил|мудак/i)
 })
 
 test("ReferenceGuide overrides stored Fighter paraphrases with the authored narration registry", () => {
