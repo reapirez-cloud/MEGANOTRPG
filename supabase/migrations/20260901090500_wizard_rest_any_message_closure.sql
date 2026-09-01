@@ -18,6 +18,8 @@ language plpgsql
 security definer
 set search_path = ''
 as $function$
+declare
+  v_closed_preparation boolean := false;
 begin
   if new.character_id is null or new.user_id is null then return new; end if;
   if not exists(
@@ -34,6 +36,13 @@ begin
   update public.character_preparation_sessions
   set is_open=false,closed_at=now(),closed_by_message_id=new.id,updated_at=now()
   where character_id=new.character_id and is_open=true;
+  v_closed_preparation:=found;
+
+  if v_closed_preparation then
+    update public.character_sheets
+    set spell_change_unlocked=false,updated_at=now()
+    where character_id=new.character_id;
+  end if;
 
   return new;
 end;
@@ -41,6 +50,11 @@ $function$;
 
 revoke all on function private.close_character_rest_windows_from_chat() from public,anon,authenticated;
 
+-- Retire both historical text-only closures. Keeping them active would leave two
+-- competing definitions of when the rest phase ends and could preserve stale
+-- legacy spell_change_unlocked state for non-text messages.
+drop trigger if exists close_character_preparation_on_player_text on public.chat_messages;
+drop trigger if exists close_character_short_rest_on_player_text on public.chat_messages;
 drop trigger if exists close_character_rest_windows_on_player_text on public.chat_messages;
 drop trigger if exists close_character_rest_windows_on_player_message on public.chat_messages;
 create trigger close_character_rest_windows_on_player_message
