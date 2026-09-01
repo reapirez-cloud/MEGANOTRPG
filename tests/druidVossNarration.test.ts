@@ -4,8 +4,10 @@ import test from "node:test"
 
 import { druidReference } from "../src/data/classes/druidReference.ts"
 import {
+  druidClassVossComment,
   druidClassVossNarration,
   getDruidBaseVossNarration,
+  getDruidSubclassVossComment,
   getDruidSubclassFeatureVossNarration,
   getDruidSubclassVossNarration,
 } from "../src/data/classes/druidVossNarration.ts"
@@ -46,6 +48,7 @@ test("all eight Druid circles and every supported circle feature have authored n
     const text = getDruidSubclassVossNarration(subclass.id)
     assert.ok(text, `${subclass.id} is missing subclass narration`)
     assertNarrative(text, subclass.name)
+    assert.ok(getDruidSubclassVossComment(subclass.id), `${subclass.id} is missing a Voss comment`)
     all.push(text)
   }
 
@@ -67,6 +70,14 @@ test("catalog aliases resolve to the same authored circle voice", () => {
   assert.equal(getDruidSubclassVossNarration("circle-of-spores"), getDruidSubclassVossNarration("spores"))
   assert.equal(getDruidSubclassVossNarration("circle-of-the-shepherd"), getDruidSubclassVossNarration("shepherd"))
   assert.equal(getDruidSubclassVossNarration("circle-of-wildfire"), getDruidSubclassVossNarration("wildfire"))
+  assert.equal(getDruidSubclassVossComment("circle-of-the-land"), getDruidSubclassVossComment("land"))
+})
+
+test("Druid class and Circle of the Moon keep grimdark warmth without treating the druid as a monster", () => {
+  assert.match(druidClassVossComment, /рана|медвед/i)
+  assert.match(getDruidSubclassVossNarration("moon"), /бережнее|умиление/i)
+  assert.match(getDruidSubclassVossComment("moon"), /плащ|дружб/i)
+  assert.doesNotMatch(getDruidSubclassVossNarration("moon"), /двулич|чудовищ|монстр/i)
 })
 
 test("ReferenceGuide overrides old Druid rule-paraphrase explanations with authored narration", () => {

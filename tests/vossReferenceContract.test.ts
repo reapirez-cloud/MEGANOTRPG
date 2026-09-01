@@ -50,7 +50,7 @@ test("static Druid reference uses Voss voice rather than rule paraphrase", () =>
   assert.match(druid, /После отдыха друид решает, какую часть природы сегодня держать наготове/)
   assert.match(druid, /Когда человеческое тело перестаёт подходить задаче/)
   assert.match(druid, /Не хочется самому лезть в тёмную дыру/)
-  assert.match(druid, /Друидам я не доверяю/)
+  assert.match(druid, /Друид может залечить рану, накормить отряд и стать медведем/)
   assert.doesNotMatch(druid, /Это запас применений|Это отдельное действие|расширяет возможности/i)
 })
 

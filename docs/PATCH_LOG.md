@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Rewrote the class and subclass-level **«Восс объясняет»** and **«Комментарий Восса»** copy for Fighter, Druid and Cleric into a harsher grimdark register built on black humor, loss and exhausted hope, without profanity or direct insults. Circle of the Moon now keeps its danger while drawing genuine warmth and affection from Voss instead of being framed as a disguised monster.
 - Added the rebuilt **Wizard / Волшебник** class to the current class catalog, with authored 2024 class text and the new class bootstrap path.
 - Added a dedicated Wizard **«Моя книга»** class panel.
 - Added the physical **Wizard spellbook** as a real inventory item/runtime dependency rather than a boolean character flag.

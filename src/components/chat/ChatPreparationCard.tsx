@@ -10,6 +10,7 @@ import { supabase } from "../../lib/supabase.ts"
 import { commitGenaCharacterTemplateChoice } from "../../lib/templateChoiceRuntime.ts"
 import { useAuth } from "../../context/AuthContext.tsx"
 import { useCharacters } from "../../context/CharacterContext.tsx"
+import ChatWizardRestChoices from "./ChatWizardRestChoices.tsx"
 import "./ChatPreparationCard.css"
 
 type ChatPreparationSpell = {
@@ -20,10 +21,17 @@ type ChatPreparationSpell = {
   cast_mode: string
 }
 
+type RestSession = { generation: number; is_open: boolean }
+type WizardRestIdentity = { assignmentId: string; level: number }
+type GenaPreparationModel = CharacterPreparationModel & {
+  shortRestSession?: RestSession | null
+  wizard?: WizardRestIdentity | null
+}
+
 type Props = {
   roomId: string
   characterId: string
-  model: CharacterPreparationModel
+  model: GenaPreparationModel
   spells: ChatPreparationSpell[]
   onChanged: () => void
 }
@@ -264,24 +272,37 @@ export default function ChatPreparationCard({ roomId, characterId, model, spells
   const { characters } = useCharacters()
   const character = characters.find((entry) => entry.id === characterId)
   const isOwner = Boolean(character?.assigned_user_id && character.assigned_user_id === user.id)
+  const longRestOpen = Boolean(model.session?.is_open)
+  const shortRestOpen = Boolean(model.shortRestSession?.is_open)
+  const wizardRestOpen = Boolean(model.wizard && (longRestOpen || shortRestOpen))
+  const genericLongRestOpen = longRestOpen && model.tasks.length > 0
 
-  if (!isOwner || !model.session?.is_open || model.tasks.length === 0) return null
+  if (!isOwner || (!genericLongRestOpen && !wizardRestOpen)) return null
   const spellTasks = model.tasks.filter((task): task is SpellPreparationTask => task.kind === "spells")
   const choiceTasks = model.tasks.filter((task): task is ChoicePreparationTask => task.kind === "choice")
   const rollTasks = model.tasks.filter((task): task is RollPreparationTask => task.kind === "roll")
-  const noticeTasks = model.tasks.filter((task): task is NoticePreparationTask => task.kind === "notice")
+  const noticeTasks = model.tasks.filter((task): task is NoticePreparationTask => task.kind === "notice" && task.key !== "wizard-cantrip-replacement-notice")
+  const restLabel = shortRestOpen && longRestOpen ? "Отдых завершён" : shortRestOpen ? "Короткий отдых завершён" : "Долгий отдых завершён"
 
   return <aside className="rest-prep-card">
     <header className="rest-prep-card__header">
       <span className="rest-prep-card__icon">☾</span>
-      <div><small>Долгий отдых завершён</small><strong>Гена ждёт решения владельца</strong></div>
-      <b>до первой реплики</b>
+      <div><small>{restLabel}</small><strong>Гена ждёт решения владельца</strong></div>
+      <b>до первого сообщения</b>
     </header>
-    <p className="rest-prep-card__warning"><strong>Каждая кнопка «Готово» фиксирует конкретный выбор до следующего долгого отдыха.</strong> Первый отправленный текст закроет это окно до следующего долгого отдыха. Броски, способности и заклинания окно не закрывают. Если задача осталась незавершённой, подготовленные заклинания и постоянные выборы сохраняют прошлое значение, а обязательные случайные результаты Гена определяет сама. Информационные решения с пометкой «Решает ГМ» игрок сообщает мастеру, а ГМ применяет их через административный лист.</p>
+    <p className="rest-prep-card__warning"><strong>Ресурсы отдыха уже восстановлены в момент, когда ГМ выдал отдых.</strong> Кнопки ниже только фиксируют доступные после отдыха решения и сами не отправляют сообщения. Первое сообщение персонажа закрывает оставшиеся окна выбора; всё уже сохранённое остаётся сохранённым. Если необязательный выбор пропущен, сохраняется прежнее состояние.</p>
 
-    {spellTasks.map((task) => <SpellTask characterId={characterId} task={task} spells={spells} onChanged={onChanged} key={`${task.assignmentId}:${task.key}`} />)}
-    {choiceTasks.map((task) => <ChoiceTask characterId={characterId} task={task} onChanged={onChanged} key={`${task.assignmentId}:${task.key}`} />)}
-    {rollTasks.map((task) => <RollTask roomId={roomId} characterId={characterId} task={task} onChanged={onChanged} key={`${task.assignmentId}:${task.key}`} />)}
-    {noticeTasks.map((task) => <NoticeTask task={task} key={`${task.assignmentId}:${task.key}`} />)}
+    {longRestOpen && spellTasks.map((task) => <SpellTask characterId={characterId} task={task} spells={spells} onChanged={onChanged} key={`${task.assignmentId}:${task.key}`} />)}
+    {longRestOpen && choiceTasks.map((task) => <ChoiceTask characterId={characterId} task={task} onChanged={onChanged} key={`${task.assignmentId}:${task.key}`} />)}
+    {longRestOpen && rollTasks.map((task) => <RollTask roomId={roomId} characterId={characterId} task={task} onChanged={onChanged} key={`${task.assignmentId}:${task.key}`} />)}
+    {longRestOpen && noticeTasks.map((task) => <NoticeTask task={task} key={`${task.assignmentId}:${task.key}`} />)}
+
+    {model.wizard && <ChatWizardRestChoices
+      characterId={characterId}
+      wizard={model.wizard}
+      shortRest={shortRestOpen && model.shortRestSession ? model.shortRestSession : null}
+      longRest={longRestOpen && model.session ? { generation: model.session.generation, is_open: true } : null}
+      onChanged={onChanged}
+    />}
   </aside>
 }

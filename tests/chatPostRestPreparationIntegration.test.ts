@@ -7,6 +7,8 @@ const preparationCard = fs.readFileSync("src/components/chat/ChatPreparationCard
 const preparationHook = fs.readFileSync("src/hooks/useChatPreparation.ts", "utf8")
 const runtimeSource = fs.readFileSync("src/engine-runtime/supabaseCharacterRuntimeSource.ts", "utf8")
 const genaPreparationSql = fs.readFileSync("supabase/migrations/20260830185520_guard_gena_v2_daily_preparation.sql", "utf8")
+const anyMessageClosure = fs.readFileSync("supabase/migrations/20260901090500_wizard_rest_any_message_closure.sql", "utf8")
+const wizardChoices = fs.readFileSync("src/components/chat/ChatWizardRestChoices.tsx", "utf8")
 
 test("CE runtime reads the server-authoritative post-rest state instead of inventing preparation locally", () => {
   assert.match(runtimeSource, /from\("character_preparation_sessions"\)/)
@@ -28,13 +30,18 @@ test("personal chat mounts long-rest preparation for its room character instead 
   assert.match(chatRoom, /preparationGeneration/)
 })
 
-test("chat preparation stays realtime and closes only through the server-authored session", () => {
+test("chat preparation stays realtime and the first assigned-player message closes the server-authored rest windows", () => {
   assert.match(preparationHook, /table: "character_preparation_sessions"/)
+  assert.match(preparationHook, /table: "character_short_rest_sessions"/)
   assert.match(preparationHook, /table: "character_preparation_records"/)
   assert.match(preparationHook, /table: "character_spells"/)
-  assert.match(preparationCard, /model\.session\?\.is_open/)
-  assert.match(preparationCard, /Первый отправленный текст закроет это окно/)
-  assert.match(preparationCard, /Броски, способности и заклинания окно не закрывают/)
+  assert.match(preparationCard, /Первое сообщение персонажа закрывает оставшиеся окна выбора/)
+  assert.match(anyMessageClosure, /after insert on public\.chat_messages/)
+  assert.doesNotMatch(anyMessageClosure, /event_kind is not null/)
+  assert.doesNotMatch(anyMessageClosure, /btrim\(coalesce\(new\.body/)
+  assert.match(anyMessageClosure, /update public\.character_short_rest_sessions/)
+  assert.match(anyMessageClosure, /update public\.character_preparation_sessions/)
+  assert.doesNotMatch(wizardChoices, /chat_messages/)
 })
 
 test("GENA v2 preserves receipt replay and gates new daily class or subclass actions before spending resources", () => {

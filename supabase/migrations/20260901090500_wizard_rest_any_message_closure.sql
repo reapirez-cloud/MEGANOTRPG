@@ -1,0 +1,70 @@
+-- CLASS_MIGRATION_SCOPE: mechanics
+-- CLASS_INTEGRATION_STRICT: class:wizard
+-- CLASS_PACKAGE_TEST: tests/wizardBaseClosure.test.ts
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
+-- CLASS_WORK_STATUS: wizard:text=READY;mechanics=IN_PROGRESS
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
+--
+-- Product rule: once a rest choice window is open, the assigned player's first
+-- chat message for that PC ends the post-rest phase. This includes text,
+-- attachments and mechanical event messages. Rest-choice RPCs do not insert
+-- chat_messages and therefore do not close their own window.
+
+begin;
+
+create or replace function private.close_character_rest_windows_from_chat()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_closed_preparation boolean := false;
+begin
+  if new.character_id is null or new.user_id is null then return new; end if;
+  if not exists(
+    select 1 from public.characters c
+    where c.id=new.character_id
+      and c.character_type='pc'
+      and c.assigned_user_id=new.user_id
+  ) then return new; end if;
+
+  update public.character_short_rest_sessions
+  set is_open=false,closed_at=now(),updated_at=now()
+  where character_id=new.character_id and is_open=true;
+
+  update public.character_preparation_sessions
+  set is_open=false,closed_at=now(),closed_by_message_id=new.id,updated_at=now()
+  where character_id=new.character_id and is_open=true;
+  v_closed_preparation:=found;
+
+  if v_closed_preparation then
+    update public.character_sheets
+    set spell_change_unlocked=false,updated_at=now()
+    where character_id=new.character_id;
+  end if;
+
+  return new;
+end;
+$function$;
+
+revoke all on function private.close_character_rest_windows_from_chat() from public,anon,authenticated;
+
+-- Retire both historical text-only closures. Keeping them active would leave two
+-- competing definitions of when the rest phase ends and could preserve stale
+-- legacy spell_change_unlocked state for non-text messages.
+drop trigger if exists close_character_preparation_on_player_text on public.chat_messages;
+drop trigger if exists close_character_short_rest_on_player_text on public.chat_messages;
+drop trigger if exists close_character_rest_windows_on_player_text on public.chat_messages;
+drop trigger if exists close_character_rest_windows_on_player_message on public.chat_messages;
+create trigger close_character_rest_windows_on_player_message
+after insert on public.chat_messages
+for each row execute function private.close_character_rest_windows_from_chat();
+
+update public.rule_templates
+set rules_meta=coalesce(rules_meta,'{}'::jsonb)
+  || jsonb_build_object('gena_rest_window_policy','first_assigned_player_message_closes_all_post_rest_choices'),
+    updated_at=now()
+where is_active=true and catalog_key='class:wizard';
+
+commit;
