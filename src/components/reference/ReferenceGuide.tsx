@@ -28,6 +28,12 @@ import {
   getFighterSubclassFeatureVossNarration,
   getFighterSubclassVossNarration,
 } from "../../data/classes/fighterVossNarration"
+import {
+  getWizardBaseVossComment,
+  getWizardBaseVossNarration,
+  wizardClassVossComment,
+  wizardClassVossNarration,
+} from "../../data/classes/wizardVossNarration"
 import { useRuleTemplates } from "../../hooks/useRuleTemplates"
 import type { SpellClassKey } from "../../lib/spellCatalog"
 import type { RuleTemplate, RuleTemplateLevel } from "../../rule-templates/types"
@@ -396,6 +402,13 @@ export default function ReferenceGuide({
         explanation: getClericBaseVossNarration(feature.level, feature.sourceKey) || feature.explanation,
       }))
     }
+    if (selectedClass?.id === "wizard") {
+      return features.map((feature) => ({
+        ...feature,
+        explanation: getWizardBaseVossNarration(feature.level, feature.sourceKey) || feature.explanation,
+        voss: getWizardBaseVossComment(feature.level, feature.sourceKey) || feature.voss,
+      }))
+    }
     return features
   }, [classTemplate, levels, selectedClass])
 
@@ -463,6 +476,7 @@ export default function ReferenceGuide({
   const isDruid = selectedClass?.id === "druid"
   const isFighter = selectedClass?.id === "fighter"
   const isCleric = selectedClass?.id === "cleric"
+  const isWizard = selectedClass?.id === "wizard"
   const classSummary = isDruid ? druidReference.mechanicalSummary : classTemplate?.mechanical_summary?.trim() || selectedClass?.tagline || ""
   const classExplanation = isDruid
     ? druidClassVossNarration
@@ -470,7 +484,9 @@ export default function ReferenceGuide({
       ? fighterClassVossNarration
       : isCleric
         ? clericClassVossNarration
-        : classTemplate?.author_description?.trim() || ""
+        : isWizard
+          ? wizardClassVossNarration
+          : classTemplate?.author_description?.trim() || ""
   const classDescription = classTemplate?.description?.trim() || selectedClass?.description || classSummary
   const classComment = isDruid
     ? druidClassVossComment
@@ -478,7 +494,9 @@ export default function ReferenceGuide({
       ? fighterClassVossComment
       : isCleric
         ? clericClassVossComment
-        : classTemplate?.author_comment?.trim() || ""
+        : isWizard
+          ? wizardClassVossComment
+          : classTemplate?.author_comment?.trim() || ""
   const subclassExplanation = selectedSubclass
     ? isDruid
       ? getDruidSubclassVossNarration(selectedSubclass.id) || selectedSubclassTemplate?.author_description?.trim() || selectedSubclass?.explanation || ""

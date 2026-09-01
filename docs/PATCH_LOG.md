@@ -2,16 +2,20 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-08-31-A
+## Released patches
 
-**Status:** OPEN  
-**Branch:** `dev`  
-**Base main:** `a098751cabf5b8934494ac4725849b3781308a9b`  
+### Patch — 2026-08-31-A
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
+**Base main:** `a098751cabf5b8934494ac4725849b3781308a9b`
 **Started:** 2026-08-31
+**Released:** 2026-09-01
+**Release identity:** `main / 2026-09-01-A`
 
 ### Player-facing changes
 
-- Rewrote the class and subclass-level **«Восс объясняет»** and **«Комментарий Восса»** copy for Fighter, Druid and Cleric into a harsher grimdark register built on black humor, loss and exhausted hope, without profanity or direct insults. Circle of the Moon now keeps its danger while drawing genuine warmth and affection from Voss instead of being framed as a disguised monster.
+- Rewrote the complete authored Voss layer for every openable base-class and feature card of Fighter, Druid, Cleric and the rebuilt subclass-free Wizard, plus all 10 Fighter archetypes, 8 Druid circles, 14 Cleric domains and their feature cards. The new register uses concrete bodily consequences, black humor and exhausted hope without profanity or direct insults; Circle of the Moon remains a dangerous but warmly regarded protector rather than a disguised monster.
 - Added the rebuilt **Wizard / Волшебник** class to the current class catalog, with authored 2024 class text and the new class bootstrap path.
 - Added a dedicated Wizard **«Моя книга»** class panel.
 - Added the physical **Wizard spellbook** as a real inventory item/runtime dependency rather than a boolean character flag.
@@ -72,6 +76,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Updated official class catalog coverage for the rebuilt Wizard catalog entry.
 - Added `patchJournalContract` regression coverage so the repository cannot silently lose the patch-journal lifecycle contract.
 - Added `wizardSubclassWave0` regression coverage for all 13 stable identities, PHB 2024 replacement policy, Wizard parent linkage, level-3 unlock, 3/6/10/14 feature rows and parent-Wizard-level multiclass gating.
+- Added a dedicated Wizard Voss narration registry/coverage test and recalibrated the shared voice contract around concrete consequences, despairing black humor and explicit profanity/insult exclusion.
 - Wizard dev runtime closure reached a fully green CI on run **#1152** before the subclass Wave 0 work; Wave 0 receives its own current-head CI check before completion is claimed.
 
 ### Known incomplete work
@@ -80,12 +85,6 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Overall Wizard mechanics remain **IN_PROGRESS** because the intended deployed Supabase state has not yet been applied/certified and actual subclass content is still being built; Git-only closure is not production certification.
 - Found-spell/scroll transcription, Scholar Expertise, cantrip replacement, ASI and Epic Boon use the agreed GM-adjudicated/normal-sheet path by design and are not missing Wizard-specific automation.
 - Wizard subclass **Wave 0 infrastructure is complete on `dev`**, but no empty placeholder subclass is installed. Wave 1 begins the real subclass packages, starting with Evoker.
-
----
-
-## Released patches
-
-_No patches have been closed through this journal yet._
 
 ---
 

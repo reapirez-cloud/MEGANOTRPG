@@ -78,7 +78,7 @@ Current stable presentation categories:
 **Mechanics/runtime:** `IN_PROGRESS`
 
 - `last_text_audit: 2026-09-01`
-- `voss_class_subclass_voice_pass: GRIMDARK_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
+- `voss_class_subclass_feature_voice_pass: CONCRETE_GRIMDARK_BLACK_HUMOR_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
@@ -112,7 +112,7 @@ Do not promote Fighter mechanics to `READY` until dev and the intended deployed 
 **Mechanics/runtime:** `IN_PROGRESS`
 
 - `last_text_audit: 2026-09-01`
-- `voss_class_subclass_voice_pass: GRIMDARK_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
+- `voss_class_subclass_feature_voice_pass: CONCRETE_GRIMDARK_BLACK_HUMOR_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
@@ -147,7 +147,7 @@ Do not promote Druid mechanics to `READY` until dev and the intended deployed st
 **Mechanics/runtime:** `IN_PROGRESS`
 
 - `last_text_audit: 2026-09-01`
-- `voss_class_subclass_voice_pass: GRIMDARK_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
+- `voss_class_subclass_feature_voice_pass: CONCRETE_GRIMDARK_BLACK_HUMOR_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
@@ -177,7 +177,8 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 **Text:** `READY`  
 **Mechanics/runtime:** `IN_PROGRESS`
 
-- `last_text_audit: 2026-08-31`
+- `last_text_audit: 2026-09-01`
+- `voss_base_class_feature_voice_pass: CONCRETE_GRIMDARK_BLACK_HUMOR_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
 - `last_mechanics_audit_started: 2026-08-31`
 - `last_dev_runtime_audit: 2026-09-01`
 - `rules_revision: Player's Handbook 2024 base class`
@@ -188,7 +189,7 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 - `subclass_contract_regression: tests/wizardSubclassWave0.test.ts`
 - `dev_base_class_runtime: READY_PENDING_TARGET_DEPLOYMENT`
 - `dev_ci: GREEN_RUN_1176`
-- `current_dev_text: clean Russian base-class package with exact rules and separately authored Voss narration for every openable feature card`
+- `current_dev_text: clean Russian base-class package with exact rules and a concrete grimdark Voss narration/comment overlay for every openable base feature card; unfinished Wizard subclasses remain absent`
 - `current_dev_runtime: physical spellbook, book-gated preparation, authoritative spellbook progression, parser-owned full-caster slots, prepared-cast enforcement, Ritual Adept, Arcane Recovery, Memorize Spell, long-rest cantrip replacement, Spell Mastery, Signature Spells and Gena short/long-rest choice surfaces are implemented and regression-gated in dev`
 - `starting_equipment_policy: NONE_CLASS_AUTHORED_GM_PROVIDES_GEAR`
 - `gena_rest_window_policy: FIRST_ASSIGNED_PLAYER_MESSAGE_OF_ANY_KIND_CLOSES_OPEN_POST_REST_WINDOWS`
