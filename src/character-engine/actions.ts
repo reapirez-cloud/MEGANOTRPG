@@ -208,7 +208,9 @@ function parseCostOptions(value: unknown): ActionCostOption[] {
 }
 
 function parseFactValue(value: unknown, field: string): StateFactValue {
-  if (value === null || typeof value === "string" || typeof value === "boolean") return value
+  if (value === null) return null
+  if (typeof value === "string") return value
+  if (typeof value === "boolean") return value
   if (typeof value === "number" && Number.isFinite(value)) return value
   throw new ActionEngineError(`${field} must be a finite number, string, boolean or null`)
 }

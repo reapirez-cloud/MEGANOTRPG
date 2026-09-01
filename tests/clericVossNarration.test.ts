@@ -3,11 +3,9 @@ import fs from "node:fs"
 import test from "node:test"
 
 import {
-  clericClassVossComment,
   clericClassVossNarration,
   clericVossNarrationCoverage,
   getClericBaseVossNarration,
-  getClericSubclassVossComment,
   getClericSubclassFeatureVossNarration,
   getClericSubclassVossNarration,
   normalizeClericDomainId,
@@ -59,7 +57,6 @@ test("every Cleric card has unique in-world narration without rules vocabulary",
     const intro = getClericSubclassVossNarration(subclassId)
     assert.ok(intro, `missing Cleric domain narration for ${subclassId}`)
     assertNarration(intro, `subclass:cleric:${subclassId}`)
-    assert.ok(getClericSubclassVossComment(subclassId), `missing Cleric domain comment for ${subclassId}`)
     all.push(intro)
 
     const sourceKeys = clericVossNarrationCoverage.subclassFeatures[subclassId] || []
@@ -73,11 +70,6 @@ test("every Cleric card has unique in-world narration without rules vocabulary",
 
   assert.equal(all.length, 99)
   assert.equal(new Set(all).size, all.length, "Cleric Voss narration must not reuse one text across cards")
-})
-
-test("Cleric class comment keeps the new despairing black-humor register", () => {
-  assert.match(clericClassVossComment, /смерт|жить/i)
-  assert.doesNotMatch(clericClassVossComment, /мраз|идиот|дебил|мудак/i)
 })
 
 test("Cleric-only contract varies Voss attitude by domain instead of repeating one priest joke", () => {

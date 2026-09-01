@@ -77,8 +77,7 @@ Current stable presentation categories:
 **Text:** `READY`  
 **Mechanics/runtime:** `IN_PROGRESS`
 
-- `last_text_audit: 2026-09-01`
-- `voss_class_subclass_feature_voice_pass: CONCRETE_GRIMDARK_BLACK_HUMOR_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
+- `last_text_audit: 2026-08-29`
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
@@ -111,8 +110,7 @@ Do not promote Fighter mechanics to `READY` until dev and the intended deployed 
 **Text:** `READY`  
 **Mechanics/runtime:** `IN_PROGRESS`
 
-- `last_text_audit: 2026-09-01`
-- `voss_class_subclass_feature_voice_pass: CONCRETE_GRIMDARK_BLACK_HUMOR_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
+- `last_text_audit: 2026-08-29`
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
@@ -146,8 +144,7 @@ Do not promote Druid mechanics to `READY` until dev and the intended deployed st
 **Text:** `READY`  
 **Mechanics/runtime:** `IN_PROGRESS`
 
-- `last_text_audit: 2026-09-01`
-- `voss_class_subclass_feature_voice_pass: CONCRETE_GRIMDARK_BLACK_HUMOR_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
+- `last_text_audit: 2026-08-29`
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
@@ -177,10 +174,9 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 **Text:** `READY`  
 **Mechanics/runtime:** `IN_PROGRESS`
 
-- `last_text_audit: 2026-09-01`
-- `voss_base_class_feature_voice_pass: CONCRETE_GRIMDARK_BLACK_HUMOR_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
+- `last_text_audit: 2026-08-31`
 - `last_mechanics_audit_started: 2026-08-31`
-- `last_dev_runtime_audit: 2026-09-01`
+- `last_dev_runtime_audit: 2026-08-31`
 - `rules_revision: Player's Handbook 2024 base class`
 - `subclasses: WAVE_0_CONTRACT_READY_CONTENT_NOT_INCLUDED`
 - `subclass_wave_0: READY_2026_08_31`
@@ -188,37 +184,31 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 - `subclass_contract: src/rule-templates/wizardSubclasses.ts`
 - `subclass_contract_regression: tests/wizardSubclassWave0.test.ts`
 - `dev_base_class_runtime: READY_PENDING_TARGET_DEPLOYMENT`
-- `dev_ci: GREEN_RUN_1176`
-- `current_dev_text: clean Russian base-class package with exact rules and a concrete grimdark Voss narration/comment overlay for every openable base feature card; unfinished Wizard subclasses remain absent`
-- `current_dev_runtime: physical spellbook, book-gated preparation, authoritative spellbook progression, parser-owned full-caster slots, prepared-cast enforcement, Ritual Adept, Arcane Recovery, Memorize Spell, long-rest cantrip replacement, Spell Mastery, Signature Spells and Gena short/long-rest choice surfaces are implemented and regression-gated in dev`
-- `starting_equipment_policy: NONE_CLASS_AUTHORED_GM_PROVIDES_GEAR`
-- `gena_rest_window_policy: FIRST_ASSIGNED_PLAYER_MESSAGE_OF_ANY_KIND_CLOSES_OPEN_POST_REST_WINDOWS`
+- `dev_ci: GREEN_RUN_1152`
+- `current_dev_text: clean Russian base-class package with exact rules and separately authored Voss narration for every openable feature card`
+- `current_dev_runtime: physical spellbook and book-gated preparation are implemented; authoritative spellbook progression, parser-owned full-caster slots, prepared-cast enforcement, Ritual Adept, Arcane Recovery, Memorize Spell, Spell Mastery, Signature Spells and the agreed Gena/manual-choice boundaries are implemented and regression-gated in dev`
 - `spellbook_regression: tests/wizardSpellbookRuntime.test.ts`
 - `spellbook_progression_regression: tests/wizardSpellbookProgressionRuntime.test.ts`
 - `arcane_recovery_regression: tests/wizardArcaneRecoveryRuntime.test.ts`
 - `completion_regression: tests/wizardCompletionRuntime.test.ts`
-- `base_closure_regression: tests/wizardBaseClosure.test.ts`
 - `production_runtime: NOT_DEPLOYED_OR_CERTIFIED`
 - `catalog_bootstrap: dev migration preserves class:wizard and installs the clean base class for new campaigns`
 - `gm_adjudication_policy: FOUND_SPELL_TRANSCRIPTION_AND_SIMPLE_SHEET_CHOICES_ARE_MANUAL_BY_DESIGN`
 
 ### Dev base-class closure
 
-- Spellbook as authoritative owned-spell state: physical item identity, held-book access, six starting level-1 spells and two additional eligible Wizard spells per later Wizard level are implemented and regression-gated. Class-authored starting equipment is intentionally empty; the GM supplies all gear.
+- Spellbook as authoritative owned-spell state: physical item identity, held-book access, six starting level-1 spells and two additional eligible Wizard spells per later Wizard level are implemented and regression-gated.
 - Prepared Wizard spells are selected only from the actual held spellbook and obey the fixed 2024 prepared-spell progression. Spell Mastery and Signature Spells remain always prepared and are excluded from the ordinary Gena preparation quota.
 - Full-caster spell-slot capacity is emitted as native CE resources through the shared parser-owned slot primitive. Ordinary Wizard slot casting now requires preparation and uses the canonical slot-resource path.
 - Ritual Adept is implemented in dev: an eligible ritual in the currently held physical Wizard spellbook exposes a no-preparation, no-slot ritual method; losing access to that book removes the ritual access from the next CE snapshot.
-- Rest resources recover immediately when the GM grants the corresponding rest. Gena then exposes the available post-rest decisions; Wizard-specific rest-choice RPCs persist state directly and do not insert chat messages.
-- The assigned player's first chat message for that PC, regardless of body/event kind, closes both open Short Rest and Long Rest post-rest choice windows. Choices already saved remain saved; optional choices not taken before the message are skipped for that rest generation.
-- Arcane Recovery is implemented with one long-rest resource, GM-authoritative Short Rest window, `ceil(Wizard level / 2)` weighted recovery budget, level-5 ceiling, spent-slot validation and shared `spell_slot_N` persistence. Its recovery allocation is exposed in Gena during the Short Rest window.
-- Memorize Spell is implemented through the authoritative Short Rest window and can replace one eligible prepared level-1+ Wizard spell with another eligible spell from the actual held spellbook; the choice is exposed directly in Gena.
-- Long-rest cantrip replacement is a real once-per-long-rest server transaction exposed in Gena. The level-based cantrip-count progression itself remains ordinary sheet/class progression and does not require a Wizard-specific picker.
-- Spell Mastery is implemented with one level-1 and one level-2 held-book selection, Action casting-time validation, always-prepared access, true no-resource lowest-level casting and at most one mastered-spell replacement after each Long Rest. The rest-window replacement is exposed in Gena.
-- Signature Spells are implemented with two level-3 held-book selections, always-prepared access, separate free-cast resources and independent Short/Long Rest recovery. Player replacement after the initial selection is not allowed; an uninitialized level-20 choice is exposed in Gena.
+- Arcane Recovery: implemented in dev with one long-rest resource, GM-authoritative Short Rest window, `ceil(Wizard level / 2)` weighted recovery budget, level-5 ceiling, spent-slot validation and shared `spell_slot_N` persistence.
+- Memorize Spell is implemented in dev through the authoritative Short Rest window and can replace one eligible prepared level-1+ Wizard spell with another eligible spell from the actual held spellbook.
+- Spell Mastery is implemented in dev with one level-1 and one level-2 held-book selection, Action casting-time validation, always-prepared access, true no-resource lowest-level casting and at most one mastered-spell replacement after each Long Rest.
+- Signature Spells are implemented in dev with two level-3 held-book selections, always-prepared access, separate free-cast resources and independent Short/Long Rest recovery. Player replacement after the initial selection is not allowed.
+- Long-rest cantrip replacement and cantrip progression use the agreed Gena notice → player tells GM → normal sheet edit path. This durable result is stored in the ordinary character spell state; no Wizard-specific choice engine is required.
 - Scholar uses the agreed informational path: Gena tells the player that Scholar is available; the player chooses an eligible already-proficient skill and asks the GM to raise it to Expertise through the ordinary sheet editor. No dynamic Wizard option provider or feature-specific RPC is required.
 - ASI and Epic Boon do not receive a Wizard-specific picker. They use the generic feat/allocation contract when available or the normal GM sheet-edit path; lack of Wizard-specific automation is not a base-class runtime blocker.
 - Found-spell/scroll transcription, its gold/time procedure, consuming/removing the source, replacement of a lost book and backup-book narrative handling are **GM-adjudicated by design**. The GM uses normal inventory/currency/spellbook tools and CE/Gena stores the durable result.
-- Multi-book progression UI now mirrors the server rule: a level-progression spell already written in any held Wizard spellbook is not offered again, while the GM's direct per-book grant flow may still target another book where appropriate.
 - Action/Bonus Action/Reaction legality and per-turn cadence inside Wizard rules remain GM-adjudicated under `GM_ADJUDICATION_BOUNDARY.md`; CE exposes real resources/access but does not create a turn tracker.
 - The rebuilt base class remains independent of subclass content; Wizard subclass infrastructure and package gates are tracked separately below.
 

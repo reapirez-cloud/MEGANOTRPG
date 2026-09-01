@@ -107,18 +107,17 @@ export function parseResourceGrantPayload(payload: GrantPayload | undefined): Re
     throw new ResourceEngineError("resource max must be a number or formula")
   }
 
-  const initial = object.initial
-  if (
-    initial !== undefined &&
-    initial !== "full" &&
-    initial !== "empty" &&
-    (typeof initial !== "number" || !Number.isFinite(initial) || initial < 0)
-  ) {
+  let initial: "full" | "empty" | number | undefined = undefined
+  if (object.initial === "full" || object.initial === "empty") {
+    initial = object.initial
+  } else if (typeof object.initial === "number" && Number.isFinite(object.initial) && object.initial >= 0) {
+    initial = object.initial
+  } else if (object.initial !== undefined) {
     throw new ResourceEngineError("resource initial must be 'full', 'empty', or a finite number >= 0")
   }
 
-  const label = object.label
-  if (label !== undefined && (typeof label !== "string" || !label.trim())) {
+  const label = typeof object.label === "string" && object.label.trim() ? object.label.trim() : undefined
+  if (object.label !== undefined && label === undefined) {
     throw new ResourceEngineError("resource label must be a non-empty string")
   }
 

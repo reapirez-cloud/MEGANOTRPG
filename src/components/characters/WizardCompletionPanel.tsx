@@ -194,7 +194,7 @@ export default function WizardCompletionPanel({ characterId }: Props) {
     <article className="wizard-completion__card wizard-completion__card--manual">
       <div className="wizard-completion__title"><span>GM</span><div><strong>Ручные решения класса</strong><small>без отдельного мини-движка</small></div></div>
       <ul>
-        <li><strong>Заговоры:</strong> известно {knownCantrips}; уровневое увеличение числа заговоров остаётся обычной частью листа, а замену одного известного заговора после Долгого отдыха игрок фиксирует прямо во всплывающем окне Гены.</li>
+        <li><strong>Заговоры:</strong> известно {knownCantrips}; после каждого Долгого отдыха Гена напоминает, что можно заменить один заговор. Выбор применяет ГМ обычным листом.</li>
         {level >= 2 && <li><strong>Учёный:</strong> выбери один навык из списка способности, которым персонаж уже владеет. ГМ повышает его до Экспертизы.</li>}
         {level >= 4 && <li><strong>Увеличение характеристик / черты:</strong> уровни 4, 8, 12 и 16 используют общий путь листа/черт, а не Wizard-only picker.</li>}
         {level >= 19 && <li><strong>Эпический дар:</strong> применяется общим контрактом черт или ГМ через лист; отдельной системы Волшебника для него нет.</li>}

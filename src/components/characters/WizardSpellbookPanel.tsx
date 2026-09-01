@@ -129,12 +129,10 @@ export default function WizardSpellbookPanel({ characterId }: Props) {
   }, [state.spells])
 
   const pickerOptions = useMemo(() => {
-    const unavailable = pickerMode === "progression"
-      ? new Set(state.spells.map((spell) => spell.spellCatalogId))
-      : new Set(state.spells.filter((spell) => spell.bookItemId === targetBookId).map((spell) => spell.spellCatalogId))
+    const inTargetBook = new Set(state.spells.filter((spell) => spell.bookItemId === targetBookId).map((spell) => spell.spellCatalogId))
     const needle = query.trim().toLocaleLowerCase("ru-RU")
-    return options.filter((option) => !unavailable.has(option.id) && (!needle || `${option.name} ${option.nameEn} ${option.school}`.toLocaleLowerCase("ru-RU").includes(needle)))
-  }, [options, pickerMode, query, state.spells, targetBookId])
+    return options.filter((option) => !inTargetBook.has(option.id) && (!needle || `${option.name} ${option.nameEn} ${option.school}`.toLocaleLowerCase("ru-RU").includes(needle)))
+  }, [options, query, state.spells, targetBookId])
 
   if (loading && !state.hasBook && !state.spells.length) {
     return <section className="wizard-book wizard-book--loading"><span>▤</span><strong>Открываем книгу…</strong></section>
