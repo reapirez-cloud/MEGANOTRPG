@@ -113,7 +113,7 @@ _No changes recorded._
 - The **Wizard 2024 base-class runtime has no known implementation blocker on `dev`** in the current subclass-free scope.
 - Overall Wizard mechanics remain **IN_PROGRESS** because the intended deployed Supabase state has not yet been applied/certified and actual subclass content is still being built; Git-only closure is not production certification.
 - Found-spell/scroll transcription, Scholar Expertise, cantrip replacement, ASI and Epic Boon use the agreed GM-adjudicated/normal-sheet path by design and are not missing Wizard-specific automation.
-- Wizard subclass **Wave 0 infrastructure is complete on `dev`**, but no empty placeholder subclass is installed. Wave 1 begins the real subclass packages, starting with Evoker.
+- Wizard subclass **Wave 0 infrastructure is complete on `dev`**, but no empty placeholder subclass is installed.
 
 ---
 
