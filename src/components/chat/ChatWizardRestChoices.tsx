@@ -35,6 +35,10 @@ function uniqueBookSpells(spells: WizardSpellbookSpell[]) {
   return [...result.values()]
 }
 
+function slotLevel(stateKey: string) {
+  return Number(stateKey.match(/([1-9])$/)?.[1] || 0)
+}
+
 function message(reason: unknown, fallback: string) {
   return reason instanceof Error ? reason.message : fallback
 }
@@ -179,7 +183,7 @@ export default function ChatWizardRestChoices({ characterId, wizard, shortRest, 
   const arcaneBudget = Math.ceil(Math.max(1, wizard.level) / 2)
   const slotRows = resources
     .filter((entry) => /^spell_slot_[1-5]$/.test(entry.state_key) && entry.current < entry.max_snapshot)
-    .sort((left, right) => Number(left.state_key.split("_").at(-1)) - Number(right.state_key.split("_").at(-1)))
+    .sort((left, right) => slotLevel(left.state_key) - slotLevel(right.state_key))
   const recoveryCost = Object.entries(recovery).reduce((sum, [level, amount]) => sum + Number(level) * amount, 0)
 
   function changeRecovery(level: number, delta: number, maxRecoverable: number) {
@@ -206,7 +210,7 @@ export default function ChatWizardRestChoices({ characterId, wizard, shortRest, 
           : slotRows.length === 0
             ? <div className="rest-prep-empty">Потраченных ячеек 1–5 уровня нет. Выбор можно просто пропустить.</div>
             : <div className="rest-prep-spell-levels">{slotRows.map((slot) => {
-              const level = Number(slot.state_key.split("_").at(-1))
+              const level = slotLevel(slot.state_key)
               const maxRecoverable = Math.max(0, slot.max_snapshot - slot.current)
               const amount = Number(recovery[String(level)] || 0)
               return <div className="rest-prep-spell-summary" key={slot.state_key}>
