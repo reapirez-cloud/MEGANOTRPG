@@ -1,5 +1,5 @@
 # one-shot importer
-name: Import Gemini snapshot
+name: Import Gemini updates
 
 on:
   push:
@@ -20,20 +20,46 @@ jobs:
           fetch-depth: 0
           path: target
 
-      - name: Checkout Gemini snapshot
+      - name: Checkout Gemini history
         uses: actions/checkout@v4
         with:
           repository: reapirez-cloud/Meganot-gemini
-          ref: c0ad0e309e051378336f58217cae8ae79cf71057
+          ref: 035fbbf9dbeeaa9a2a91d9a68757dd9fc789cadb
+          fetch-depth: 0
           path: source
 
-      - name: Replace project with Gemini snapshot
+      - name: Import validation and error handling
         shell: bash
         run: |
-          rsync -a --delete \
-            --exclude='.git/' \
-            --exclude='.github/workflows/' \
-            source/MEGANOTRPG-main/ target/
+          git -C source diff \
+            c0ad0e309e051378336f58217cae8ae79cf71057 \
+            a75084b424e2dcc76f339b517d528da8d8bd9cd8 \
+            -- MEGANOTRPG-main \
+            ':(exclude)MEGANOTRPG-main/src/data/classes/clericVossNarration.ts' \
+            ':(exclude)MEGANOTRPG-main/src/data/classes/druidVossNarration.ts' \
+            ':(exclude)MEGANOTRPG-main/src/data/classes/fighterVossNarration.ts' \
+            | git -C target apply -p2
+
+          git -C target config user.name "github-actions[bot]"
+          git -C target config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C target add -A
+          git -C target commit \
+            -m "refactor: import Gemini validation and error handling" \
+            -m "Imported from Gemini commit a75084b while preserving newer Voss translations on main."
+
+      - name: Import Tailwind and styling update
+        shell: bash
+        run: |
+          git -C source diff \
+            a75084b424e2dcc76f339b517d528da8d8bd9cd8 \
+            035fbbf9dbeeaa9a2a91d9a68757dd9fc789cadb \
+            -- MEGANOTRPG-main \
+            | git -C target apply -p2
+
+          git -C target add -A
+          git -C target commit \
+            -m "feat: import Gemini Tailwind and styling update" \
+            -m "Imported from Gemini commit 035fbbf."
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -54,21 +80,11 @@ jobs:
         working-directory: target
         run: npm run build
 
-      - name: Run tests and record known stale expectations
+      - name: Run tests and record stale expectations
         working-directory: target
         continue-on-error: true
         run: npm test
 
-      - name: Commit Gemini snapshot to main
+      - name: Push imported commits to main
         working-directory: target
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "No project differences to import."
-            exit 0
-          fi
-          git commit -m "import: replace project with Gemini snapshot c0ad0e3"
-          git push origin HEAD:main
+        run: git push origin HEAD:main
