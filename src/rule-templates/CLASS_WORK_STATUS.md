@@ -256,14 +256,18 @@ There are no known Wizard implementation or deployment blockers in the declared 
 
 - `authoring_started: 2026-09-03`
 - `authoring_source: src/data/classes/monkReferenceDraft.ts`
-- `current_dev_text: base Monk Voss narration is authored around Brother Korn of the Silent Stone; class and feature stories/comments are stored as an authoring-only draft`
+- `subclass_authoring_source: src/data/classes/monkSubclassReferenceDraft.ts`
+- `current_dev_text: base Monk Voss narration follows Brother Korn of the Silent Stone; first subclass authoring wave adds Brother Anselm / Open Hand, Brother Cassian / Shadow and Uncle Bartosz / Drunken Master, with preview stories, feature stories and separate Voss comments`
 - `exact_rules: INTENTIONALLY_EMPTY_PENDING_MECHANICS_PASS`
 - `runtime_visibility: NOT_ACTIVE`
 - `class_reference_visibility: NOT_ACTIVE`
-- `subclasses: NOT_STARTED`
-- `mechanics_policy: Gemini copy is literary source only; exact 2024 rules and CE/runtime package will be authored and audited separately before activation`
+- `subclasses: IN_PROGRESS_3_AUTHORED_OF_10_USER_PLANNED`
+- `authored_subclasses: open-hand, shadow, drunken-master`
+- `queued_subclasses: elements, mercy, kensei, ascendant-dragon, astral-self, sun-soul, long-death`
+- `source_policy: subclass source labels copied from the user are planning hints only and must be independently verified during the mechanics pass`
+- `mechanics_policy: Gemini copy is literary source only; exact 2024/legacy rules, level schedule, CE resources/actions/choices and runtime package will be authored and audited separately before activation`
 
-The draft must not be imported into `classReference`, Chasovoy runtime templates or Character Class UI until exact Monk rules, resources/actions/choices and package-quality tests are complete enough for the intended activation step.
+The drafts must not be imported into `classReference`, Chasovoy runtime templates or Character Class UI until exact Monk rules, resources/actions/choices and package-quality tests are complete enough for the intended activation step.
 
 ---
 
