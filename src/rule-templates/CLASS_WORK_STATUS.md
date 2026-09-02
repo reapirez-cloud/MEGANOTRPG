@@ -111,8 +111,9 @@ Do not promote Fighter mechanics to `READY` until dev and the intended deployed 
 **Text:** `READY`  
 **Mechanics/runtime:** `IN_PROGRESS`
 
-- `last_text_audit: 2026-09-01`
-- `voss_class_subclass_feature_voice_pass: CONCRETE_GRIMDARK_BLACK_HUMOR_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
+- `last_text_audit: 2026-09-02`
+- `voss_class_subclass_feature_voice_pass: BATTLEFIELD_DUALITY_DRUID_HORROR_CANON_2026_09_02`
+- `current_dev_text: canonical Voss battlefield narration rewritten for base Druid, all eight circles and their feature cards; exact rules unchanged`
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
