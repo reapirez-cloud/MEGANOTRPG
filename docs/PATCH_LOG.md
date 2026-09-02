@@ -2,12 +2,15 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-02-C
+## Released patches
 
-**Status:** OPEN
-**Branch:** `dev`
-**Base main:** `a9f02222e4fa70a0bfa541fd2fa0e9711e458fb2`
+### Patch — 2026-09-02-C
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
+**Base main:** `a37d9900c9a753c9c10bd7ca4f8c0d97f168e0ee`
 **Started:** 2026-09-02
+**Released:** 2026-09-02
 
 ### Player-facing changes
 
@@ -77,7 +80,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Repository / release process
 
-- Work remains on `dev`; no promotion to `main` was performed without an explicit release request.
+- Promotion to `main` was explicitly authorized on 2026-09-02; this patch is closed for release.
 
 ### Tests / verification added in this patch
 
@@ -115,8 +118,6 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - The repository still has 10 stale Voss/text-contract assertions that must be reconciled with the already-authored class narration before the full CI suite can return green.
 
 ---
-
-## Released patches
 
 ### Patch — 2026-09-02-B
 
