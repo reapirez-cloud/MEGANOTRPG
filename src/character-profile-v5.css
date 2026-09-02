@@ -1,4 +1,4 @@
-/* Character profile v5 — Stage 1 foundation + navigator.
+/* Character profile v5 — Stage 1 foundation/navigation + Stage 2 content composition.
  * This layer is intentionally presentation-only. Existing Sheet/Class/Spells/Inventory runtime remains unchanged.
  */
 
@@ -52,7 +52,7 @@
   --character-icon-medium: 20px;
   --character-icon-large: 24px;
 
-  /* Bridge the existing v3 surfaces onto the v5 semantic foundation. */
+  /* Bridge the existing v3/v4 surfaces onto the v5 semantic foundation. */
   --profile-accent: var(--character-accent);
   --profile-accent-strong: #8667bc;
   --profile-accent-wash: var(--character-accent-soft);
@@ -71,30 +71,172 @@
   padding-top: var(--character-space-3);
 }
 
-/* Stage 1 deliberately calms the old hero instead of redesigning its content. */
+/* -------------------------------------------------------------------------- */
+/* Character identity                                                         */
+/* -------------------------------------------------------------------------- */
+
 .character-profile-v2 .profile-v3__hero {
+  grid-template-columns: 88px minmax(0, 1fr);
+  grid-template-areas:
+    "portrait identity"
+    "reference reference";
+  gap: 12px 14px;
+  padding: 14px;
   border-color: var(--character-line);
-  background: var(--character-surface-raised);
+  border-radius: var(--character-radius-large);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(157, 131, 206, .08), transparent 42%),
+    var(--character-surface-raised);
   box-shadow: 0 14px 40px rgba(0, 0, 0, .22);
 }
 
 .character-profile-v2 .profile-v3__hero::before {
-  background: linear-gradient(110deg, rgba(255, 255, 255, .028), transparent 38%);
+  background: linear-gradient(110deg, rgba(255, 255, 255, .022), transparent 38%);
 }
 
 .character-profile-v2 .profile-v3__portrait {
+  grid-area: portrait;
+  width: 88px;
   border-color: var(--character-line-strong);
+  border-radius: 20px;
   background: #1b1720;
 }
 
-.character-profile-v2 .profile-v3__class,
-.character-profile-v2 .profile-v3__reference {
-  border-color: var(--character-line);
+.character-profile-v2 .profile-v3__identity {
+  grid-area: identity;
+  min-width: 0;
+  align-content: start;
+  gap: 6px;
+}
+
+.character-profile-v2 .profile-v3__name-row > div > span {
+  color: var(--character-text-muted);
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: .1em;
+}
+
+.character-profile-v2 .profile-v3__identity h2 {
+  margin-top: 2px;
+  color: var(--character-text-primary);
+  font-size: clamp(21px, 6vw, 28px);
+  font-weight: 770;
+  letter-spacing: -.035em;
+  line-height: 1.02;
+}
+
+.character-profile-v2 .profile-v3__active {
+  border-color: rgba(121, 201, 164, .18);
+  color: var(--character-positive);
+  background: rgba(121, 201, 164, .075);
+}
+
+.character-profile-v2 .profile-v3__identity > p {
+  margin-top: 2px;
+  color: var(--character-text-muted);
+}
+
+.character-profile-v2 .profile-v3__class {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 34px;
+  margin-top: 3px;
+  padding: 6px 8px 6px 10px;
+  border: 1px solid var(--character-line);
+  border-radius: var(--character-radius-small);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--character-text-secondary);
   background: var(--character-surface-soft);
+  text-align: left;
   transition:
     border-color var(--character-motion-fast) var(--character-ease-standard),
     background var(--character-motion-fast) var(--character-ease-standard),
     transform var(--character-motion-fast) var(--character-ease-standard);
+}
+
+.character-profile-v2 .profile-v3__class > span {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.character-profile-v2 .profile-v3__class strong {
+  overflow: hidden;
+  color: var(--character-text-primary);
+  font-size: 11px;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-profile-v2 .profile-v3__class small {
+  overflow: hidden;
+  color: var(--character-text-muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-profile-v2 .profile-v3__class i {
+  color: var(--character-accent);
+  font-size: 16px;
+  font-style: normal;
+}
+
+.character-profile-v2 .profile-v3__bio {
+  margin-top: 4px !important;
+  color: var(--character-text-secondary);
+  line-height: 1.45;
+}
+
+.character-profile-v2 .profile-v3__reference {
+  grid-area: reference;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 7px 10px;
+  border: 1px solid var(--character-line);
+  border-radius: var(--character-radius-small);
+  display: flex;
+  justify-content: flex-start;
+  gap: 9px;
+  color: var(--character-text-primary);
+  background: rgba(157, 131, 206, .055);
+  transition:
+    border-color var(--character-motion-fast) var(--character-ease-standard),
+    background var(--character-motion-fast) var(--character-ease-standard),
+    transform var(--character-motion-fast) var(--character-ease-standard);
+}
+
+.character-profile-v2 .profile-v3__reference > span:first-child {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  color: var(--character-accent);
+  background: var(--character-accent-soft);
+}
+
+.character-profile-v2 .profile-v3__reference > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.character-profile-v2 .profile-v3__reference strong {
+  font-size: 11px;
+}
+
+.character-profile-v2 .profile-v3__reference small {
+  color: var(--character-text-muted);
+  font-size: 8px;
+}
+
+.character-profile-v2 .profile-v3__class:hover,
+.character-profile-v2 .profile-v3__reference:hover {
+  border-color: rgba(157, 131, 206, .22);
+  background: rgba(157, 131, 206, .085);
 }
 
 .character-profile-v2 .profile-v3__class:active,
@@ -103,7 +245,10 @@
   transform: scale(.992);
 }
 
-/* Character Navigator: one stable control replaces the horizontal tab rail. */
+/* -------------------------------------------------------------------------- */
+/* Character Navigator — Stage 1                                              */
+/* -------------------------------------------------------------------------- */
+
 .character-navigator-v5 {
   position: sticky;
   top: var(--character-space-2);
@@ -198,7 +343,392 @@
   line-height: 1;
 }
 
-/* Keep the Stage 1 navigation sheet visually tied to the character shell. */
+/* -------------------------------------------------------------------------- */
+/* Sheet overview — Stage 2                                                   */
+/* -------------------------------------------------------------------------- */
+
+.character-profile-v2 .sheet-v5 {
+  gap: var(--character-space-3);
+}
+
+.character-profile-v2 .sheet-v5 .sheet-v3__admin {
+  margin-bottom: 0;
+  padding: 3px;
+  border: 1px solid var(--character-line);
+  border-radius: var(--character-radius-small);
+  background: var(--character-surface-soft);
+}
+
+.character-profile-v2 .sheet-v5 .sheet-v3__admin button {
+  min-height: 34px;
+  border-radius: 8px;
+  color: var(--character-text-secondary);
+  background: transparent;
+}
+
+.character-profile-v2 .sheet-v5__combat {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--character-space-2);
+}
+
+.character-profile-v2 .sheet-v5__health,
+.character-profile-v2 .sheet-v5__combat .sheet-v3__vital {
+  min-height: 92px;
+  padding: 14px;
+  grid-column: auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label value"
+    "track track";
+  align-items: end;
+  gap: 12px 16px;
+  border: 1px solid rgba(217, 120, 130, .18);
+  border-radius: var(--character-radius-medium);
+  background:
+    radial-gradient(circle at 100% 100%, rgba(217, 120, 130, .11), transparent 50%),
+    var(--character-surface-raised);
+}
+
+.character-profile-v2 .sheet-v5__health-heading {
+  grid-area: label;
+  min-width: 0;
+  display: grid;
+  align-self: center;
+  gap: 4px;
+}
+
+.character-profile-v2 .sheet-v5__health-heading > span {
+  color: var(--character-health);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.character-profile-v2 .sheet-v5__health-heading > small {
+  overflow: hidden;
+  color: var(--character-text-muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-profile-v2 .sheet-v5__health > strong,
+.character-profile-v2 .sheet-v5__combat .sheet-v3__vital > strong {
+  grid-area: value;
+  justify-self: end;
+  align-self: center;
+  color: var(--character-text-primary);
+  font-size: clamp(27px, 8vw, 34px);
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.04em;
+}
+
+.character-profile-v2 .sheet-v5__health > strong em {
+  color: var(--character-text-muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.character-profile-v2 .sheet-v5__health-track {
+  grid-area: track;
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .065);
+}
+
+.character-profile-v2 .sheet-v5__health-track > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--character-health);
+  transition: width var(--character-motion-normal) var(--character-ease-standard);
+}
+
+.character-profile-v2 .sheet-v5__core-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--character-space-2);
+}
+
+.character-profile-v2 .sheet-v5__core-grid > button {
+  min-width: 0;
+  min-height: 70px;
+  padding: 10px;
+  grid-column: span 2;
+  border: 1px solid var(--character-line);
+  border-radius: var(--character-radius-small);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 5px;
+  color: var(--character-text-primary);
+  background: var(--character-surface-raised);
+  text-align: left;
+}
+
+.character-profile-v2 .sheet-v5__core-grid > button:nth-child(4),
+.character-profile-v2 .sheet-v5__core-grid > button:nth-child(5) {
+  grid-column: span 3;
+}
+
+.character-profile-v2 .sheet-v5__core-grid > button > span {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--character-text-muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .065em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.character-profile-v2 .sheet-v5__core-grid > button > strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--character-text-primary);
+  font-size: 23px;
+  font-weight: 740;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.035em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-profile-v2 .sheet-v5__core-grid > button > small {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--character-text-faint);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Abilities and skills — Stage 2                                             */
+/* -------------------------------------------------------------------------- */
+
+.character-profile-v2 .sheet-v5__abilities {
+  border: 1px solid var(--character-line);
+  border-radius: var(--character-radius-medium);
+  background: var(--character-surface-raised);
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__section-heading {
+  padding: 14px 14px 10px;
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__section-heading > div > span {
+  color: var(--character-text-muted);
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__section-heading h3 {
+  color: var(--character-text-primary);
+  font-size: 16px;
+  letter-spacing: -.015em;
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-tabs {
+  margin: 0 12px 10px;
+  padding: 0;
+  gap: 2px;
+  border: 0;
+  border-bottom: 1px solid var(--character-line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-tabs button {
+  min-height: 34px;
+  border-radius: 8px 8px 0 0;
+  color: var(--character-text-muted);
+  background: transparent;
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-tabs button.is-active {
+  color: var(--character-text-primary);
+  background: var(--character-accent-soft);
+  box-shadow: inset 0 -2px 0 var(--character-accent);
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-page {
+  padding: 0 12px 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--character-space-2);
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-score {
+  padding: 9px;
+  grid-template-columns: 64px minmax(0, 1fr);
+  border-color: var(--character-line);
+  border-radius: var(--character-radius-small);
+  background: var(--character-surface-soft);
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-score > button {
+  width: 64px;
+  min-width: 64px;
+  height: 64px;
+  min-height: 64px;
+  border-color: var(--character-line);
+  border-radius: 16px;
+  background: rgba(157, 131, 206, .075);
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-score > button strong {
+  color: var(--character-text-primary);
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-score > div > span {
+  color: var(--character-text-primary);
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-score > div > button,
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__skill-column {
+  border-color: var(--character-line);
+  background: rgba(255, 255, 255, .018);
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__skill-column {
+  border-radius: var(--character-radius-small);
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__skill-column > button {
+  min-height: 42px;
+}
+
+.character-profile-v2 .sheet-v5__ability-position {
+  min-height: 19px;
+  padding: 0 12px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.character-profile-v2 .sheet-v5__ability-position > i {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  display: block;
+  background: var(--character-text-faint);
+  transition:
+    width var(--character-motion-fast) var(--character-ease-standard),
+    background var(--character-motion-fast) var(--character-ease-standard);
+}
+
+.character-profile-v2 .sheet-v5__ability-position > i.is-active {
+  width: 14px;
+  background: var(--character-accent);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Section directory + focused sections — Stage 2                             */
+/* -------------------------------------------------------------------------- */
+
+.character-profile-v2 .sheet-v5__directory {
+  overflow: hidden;
+  border: 1px solid var(--character-line);
+  border-radius: var(--character-radius-medium);
+  background: var(--character-surface-raised);
+}
+
+.character-profile-v2 .sheet-v5__directory > header {
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--character-line);
+}
+
+.character-profile-v2 .sheet-v5__directory > header small {
+  color: var(--character-text-muted);
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.character-profile-v2 .sheet-v5__directory > header h3 {
+  margin-top: 2px;
+  color: var(--character-text-primary);
+  font-size: 16px;
+  letter-spacing: -.015em;
+}
+
+.character-profile-v2 .sheet-v5__directory > header p {
+  display: none;
+}
+
+.character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list {
+  padding: 5px 8px 8px;
+  gap: 0;
+}
+
+.character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list > button {
+  min-height: 61px;
+  padding: 8px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--character-line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list > button:last-child {
+  border-bottom: 0;
+}
+
+.character-profile-v2 .sheet-v5__directory .sheet-v4__directory-icon {
+  border-color: var(--character-line);
+  color: var(--character-accent);
+  background: var(--character-accent-soft);
+}
+
+.character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list strong {
+  color: var(--character-text-primary);
+}
+
+.character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list small,
+.character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list em {
+  color: var(--character-text-muted);
+}
+
+.character-profile-v2 .sheet-v5 .sheet-v4__focus {
+  border: 1px solid var(--character-line);
+  border-radius: var(--character-radius-medium);
+  background: var(--character-surface-raised);
+}
+
+.character-profile-v2 .sheet-v5 .sheet-v4__focus-head {
+  border-color: var(--character-line);
+  background: transparent;
+}
+
+.character-profile-v2 .sheet-v5 .sheet-v4__focus-head > button,
+.character-profile-v2 .sheet-v5 .sheet-v4__focus-add {
+  border-color: var(--character-line);
+  color: var(--character-text-secondary);
+  background: var(--character-surface-soft);
+}
+
+.character-profile-v2 .sheet-v5 .sheet-v4__focus-head small,
+.character-profile-v2 .sheet-v5 .sheet-v4__focus-head p {
+  color: var(--character-text-muted);
+}
+
+.character-profile-v2 .sheet-v5 .sheet-v4__focus-head h3 {
+  color: var(--character-text-primary);
+}
+
+/* Keep action sheets visually tied to the character shell. */
 .character-profile-v2 .context-action-sheet {
   border-color: var(--character-line-strong);
   border-radius: var(--character-radius-sheet) var(--character-radius-sheet) 0 0;
@@ -214,11 +744,32 @@
   color: var(--character-accent);
 }
 
-/* Stage 1 removes explanatory UI copy that tells the player how to browse a UI
- * whose structure is already self-evident. Content/mechanics remain untouched.
- */
+/* The interface should not explain how to browse controls that are already visible. */
 .character-profile-v2 .inventory-rpg__hero-copy > p {
   display: none;
+}
+
+@media (min-width: 600px) {
+  .character-profile-v2 .profile-v3__hero {
+    grid-template-columns: 96px minmax(0, 1fr) auto;
+    grid-template-areas: "portrait identity reference";
+    align-items: stretch;
+  }
+
+  .character-profile-v2 .profile-v3__portrait {
+    width: 96px;
+  }
+
+  .character-profile-v2 .profile-v3__reference {
+    width: auto;
+    min-width: 132px;
+    align-self: stretch;
+    justify-content: center;
+  }
+
+  .character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-page {
+    grid-template-columns: minmax(220px, .8fr) minmax(0, 1.2fr);
+  }
 }
 
 @media (min-width: 720px) {
@@ -226,9 +777,50 @@
     width: min(100%, 520px);
     margin-inline: auto;
   }
+
+  .character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list {
+    padding: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list > button,
+  .character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list > button:last-child {
+    min-height: 72px;
+    padding: 9px;
+    border: 1px solid var(--character-line);
+    border-radius: var(--character-radius-small);
+    background: var(--character-surface-soft);
+  }
 }
 
 @media (max-width: 430px) {
+  .character-profile-v2 .profile-v3__hero {
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 10px 12px;
+    padding: 12px;
+    border-radius: 20px;
+  }
+
+  .character-profile-v2 .profile-v3__portrait {
+    width: 76px;
+    border-radius: 17px;
+  }
+
+  .character-profile-v2 .profile-v3__identity h2 {
+    font-size: 21px;
+  }
+
+  .character-profile-v2 .profile-v3__active {
+    padding-inline: 6px;
+    font-size: 7px;
+  }
+
+  .character-profile-v2 .profile-v3__class {
+    max-width: 100%;
+  }
+
   .character-navigator-v5 {
     top: 6px;
     min-height: 54px;
@@ -240,6 +832,25 @@
 
   .character-navigator-v5__current strong {
     font-size: 13px;
+  }
+
+  .character-profile-v2 .sheet-v5__health,
+  .character-profile-v2 .sheet-v5__combat .sheet-v3__vital {
+    min-height: 86px;
+    padding: 12px;
+  }
+
+  .character-profile-v2 .sheet-v5__core-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .character-profile-v2 .sheet-v5__core-grid > button,
+  .character-profile-v2 .sheet-v5__core-grid > button:nth-child(4) {
+    grid-column: auto;
+  }
+
+  .character-profile-v2 .sheet-v5__core-grid > button:nth-child(5) {
+    grid-column: 1 / -1;
   }
 }
 
