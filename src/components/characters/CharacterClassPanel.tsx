@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { ResolvedCharacterContract } from "../../character-engine/index.ts"
 import { registeredCharacterClassPackages } from "../../rule-templates/classPackages.ts"
 import CharacterClassPanelBase from "./CharacterClassPanelBase.tsx"
+import CharacterFocusShell from "./CharacterFocusShell.tsx"
+import CharacterSectionHeader from "./CharacterSectionHeader.tsx"
 import CharacterTemplateChoices from "./CharacterTemplateChoices.tsx"
 import WizardArcaneRecoveryPanel from "./WizardArcaneRecoveryPanel.tsx"
 import WizardCompletionPanel from "./WizardCompletionPanel.tsx"
@@ -13,6 +15,8 @@ type Props = {
   characterId: string
   contract: ResolvedCharacterContract
   onOpenReference?: () => void
+  onFocusChange?: (focused: boolean) => void
+  focusResetKey?: number
 }
 type Focus = "all" | "class" | "subclass" | "spellbook"
 
@@ -25,43 +29,146 @@ function initialFocus(): Focus {
 }
 
 export default function CharacterClassPanel(props: Props) {
-  const [focus, setFocus] = useState<Focus>(initialFocus)
-  const wizardPackage = registeredCharacterClassPackages(props.characterId)
-    .find((entry) => entry.classCatalogKey === "class:wizard")
+  const { onFocusChange, focusResetKey = 0 } = props
+  const packages = registeredCharacterClassPackages(props.characterId)
+  const wizardPackage = packages.find((entry) => entry.classCatalogKey === "class:wizard")
   const hasWizard = Boolean(wizardPackage)
+  const hasSubclass = packages.some((entry) => entry.subclassTemplateId)
+  const [focus, setFocus] = useState<Focus>(initialFocus)
+
+  const classNames = useMemo(() => packages.map((entry) => entry.className).join(" · ") || "Класс не привязан", [packages])
+  const subclassNames = useMemo(
+    () => packages.flatMap((entry) => entry.subclassName ? [entry.subclassName] : []).join(" · ") || "Подкласс не выбран",
+    [packages],
+  )
 
   useEffect(() => () => {
     window.sessionStorage.removeItem(FOCUS_KEY)
-  }, [])
+    onFocusChange?.(false)
+  }, [onFocusChange])
 
   useEffect(() => {
-    if (focus === "spellbook" && !hasWizard) setFocus("all")
-  }, [focus, hasWizard])
+    if (focus === "spellbook" && !hasWizard) {
+      setFocus("all")
+      onFocusChange?.(false)
+    }
+    if (focus === "subclass" && !hasSubclass) {
+      setFocus("all")
+      onFocusChange?.(false)
+    }
+  }, [focus, hasSubclass, hasWizard, onFocusChange])
+
+  useEffect(() => {
+    setFocus("all")
+    window.sessionStorage.removeItem(FOCUS_KEY)
+    onFocusChange?.(false)
+  }, [focusResetKey, onFocusChange])
 
   function choose(next: Focus) {
     setFocus(next)
-    window.sessionStorage.setItem(FOCUS_KEY, next)
+    onFocusChange?.(next !== "all")
+    if (next === "all") window.sessionStorage.removeItem(FOCUS_KEY)
+    else window.sessionStorage.setItem(FOCUS_KEY, next)
   }
 
-  return <div className={`character-class-focus character-class-focus--${focus}${hasWizard ? " character-class-focus--has-wizard" : ""}`}>
-    <nav className="character-class-focus__switch" aria-label="Механики класса">
-      <button type="button" className={focus === "all" ? "is-active" : ""} onClick={() => choose("all")}>Все</button>
-      <button type="button" className={focus === "class" ? "is-active" : ""} onClick={() => choose("class")}>Класс</button>
-      <button type="button" className={focus === "subclass" ? "is-active" : ""} onClick={() => choose("subclass")}>Подкласс</button>
-      {hasWizard && <button type="button" className={focus === "spellbook" ? "is-active" : ""} onClick={() => choose("spellbook")}>Моя книга</button>}
-    </nav>
-    {focus === "spellbook" && hasWizard ? <>
-      <WizardSpellbookPanel characterId={props.characterId} />
-      <WizardCompletionPanel characterId={props.characterId} />
-    </> : <>
+  const referenceAction = props.onOpenReference
+    ? <button className="character-specialized-v5__action" type="button" onClick={props.onOpenReference}>Справочник</button>
+    : undefined
+
+  if (focus === "class") {
+    return (
+      <div className="character-class-focus character-class-focus-v5 character-specialized-v5 character-class-focus--class">
+        <CharacterFocusShell
+          eyebrow="Класс персонажа"
+          title={classNames}
+          detail="Активные способности, ресурсы и постоянные эффекты текущего уровня."
+          onBack={() => choose("all")}
+          backLabel="Класс"
+          action={referenceAction}
+        >
+          <CharacterTemplateChoices characterId={props.characterId} />
+          {wizardPackage && <WizardArcaneRecoveryPanel
+            characterId={props.characterId}
+            assignmentId={wizardPackage.classAssignmentId}
+            wizardLevel={wizardPackage.level}
+            contract={props.contract}
+          />}
+          <CharacterClassPanelBase {...props} showHero={false} sourceFocus="class" />
+        </CharacterFocusShell>
+      </div>
+    )
+  }
+
+  if (focus === "subclass") {
+    return (
+      <div className="character-class-focus character-class-focus-v5 character-specialized-v5 character-class-focus--subclass">
+        <CharacterFocusShell
+          eyebrow="Подкласс персонажа"
+          title={subclassNames}
+          detail="Отдельная ветка механик подкласса, связанная с уровнем родительского класса."
+          onBack={() => choose("all")}
+          backLabel="Класс"
+          action={referenceAction}
+        >
+          <CharacterTemplateChoices characterId={props.characterId} />
+          <CharacterClassPanelBase {...props} showHero={false} sourceFocus="subclass" />
+        </CharacterFocusShell>
+      </div>
+    )
+  }
+
+  if (focus === "spellbook" && hasWizard) {
+    return (
+      <div className="character-class-focus character-class-focus-v5 character-specialized-v5 character-class-focus--spellbook character-class-focus--has-wizard">
+        <CharacterFocusShell
+          eyebrow="Волшебник"
+          title="Моя книга"
+          detail="Физическая книга волшебника, её записанные заклинания и постоянные решения класса."
+          onBack={() => choose("all")}
+          backLabel="Класс"
+          action={referenceAction}
+        >
+          <WizardSpellbookPanel characterId={props.characterId} />
+          <WizardCompletionPanel characterId={props.characterId} />
+        </CharacterFocusShell>
+      </div>
+    )
+  }
+
+  return (
+    <section className={`character-class-focus character-class-focus-v5 character-specialized-v5${hasWizard ? " character-class-focus--has-wizard" : ""}`}>
+      <CharacterSectionHeader
+        eyebrow="Механики персонажа"
+        title="Класс"
+        detail="Класс и подкласс остаются связанными, но открываются как отдельные источники способностей."
+        icon="◇"
+        meta={<>
+          {packages.map((entry) => <span key={entry.classAssignmentId}>{entry.level} ур. · {entry.className}</span>)}
+        </>}
+        action={referenceAction}
+      />
+
       <CharacterTemplateChoices characterId={props.characterId} />
-      {wizardPackage && focus !== "subclass" && <WizardArcaneRecoveryPanel
-        characterId={props.characterId}
-        assignmentId={wizardPackage.classAssignmentId}
-        wizardLevel={wizardPackage.level}
-        contract={props.contract}
-      />}
-      <CharacterClassPanelBase {...props} />
-    </>}
-  </div>
+
+      <nav className="character-specialized-v5__directory" aria-label="Разделы класса">
+        <button className="character-specialized-v5__directory-button" type="button" onClick={() => choose("class")}>
+          <span className="character-specialized-v5__directory-icon" aria-hidden="true">◇</span>
+          <span className="character-specialized-v5__directory-copy"><strong>Класс</strong><small>{classNames}</small></span>
+          <span className="character-specialized-v5__directory-tail"><span>{packages.length}</span><b>›</b></span>
+        </button>
+
+        {hasSubclass && <button className="character-specialized-v5__directory-button" type="button" onClick={() => choose("subclass")}>
+          <span className="character-specialized-v5__directory-icon" aria-hidden="true">✦</span>
+          <span className="character-specialized-v5__directory-copy"><strong>Подкласс</strong><small>{subclassNames}</small></span>
+          <span className="character-specialized-v5__directory-tail"><span>{packages.filter((entry) => entry.subclassTemplateId).length}</span><b>›</b></span>
+        </button>}
+
+        {hasWizard && <button className="character-specialized-v5__directory-button" type="button" onClick={() => choose("spellbook")}>
+          <span className="character-specialized-v5__directory-icon" aria-hidden="true">▤</span>
+          <span className="character-specialized-v5__directory-copy"><strong>Моя книга</strong><small>Книга заклинаний и решения Волшебника</small></span>
+          <span className="character-specialized-v5__directory-tail"><b>›</b></span>
+        </button>}
+      </nav>
+    </section>
+  )
 }
