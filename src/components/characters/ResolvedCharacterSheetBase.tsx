@@ -15,6 +15,8 @@ import { useLongPressItem } from "../../hooks/useLongPressItem.ts"
 import { registeredCharacterClassPackages } from "../../rule-templates/classPackages.ts"
 import type { CharacterFeature, CharacterSheet } from "../../types/characterSheet.ts"
 import ContextActionSheet, { type ContextAction } from "../common/ContextActionSheet.tsx"
+import CharacterDetailSheet from "./CharacterDetailSheet.tsx"
+import CharacterFocusShell from "./CharacterFocusShell.tsx"
 import { spellSlotResources } from "./spellSlots.ts"
 import "../../character-profile-v4.css"
 
@@ -133,13 +135,6 @@ function SectionHeading({ eyebrow, title, count, action }: { eyebrow: string; ti
   return <div className="sheet-v3__section-heading"><div><span>{eyebrow}</span><h3>{title}</h3></div>{action ?? (count !== undefined ? <small>{count}</small> : null)}</div>
 }
 
-function FocusHeader({ title, detail, onBack }: { title: string; detail: string; onBack: () => void }) {
-  return <header className="sheet-v4__focus-head">
-    <button type="button" onClick={onBack} aria-label="Назад к листу">←</button>
-    <div><small>Раздел листа</small><h3>{title}</h3><p>{detail}</p></div>
-  </header>
-}
-
 type Props = {
   input: CharacterEngineInput
   contract: ResolvedCharacterContract
@@ -216,7 +211,7 @@ export default function ResolvedCharacterSheet({
 
   function openSection(next: SheetSection) {
     setSection(next)
-    window.requestAnimationFrame(() => document.querySelector(".sheet-v4__focus-head")?.scrollIntoView({ behavior: "smooth", block: "start" }))
+    window.requestAnimationFrame(() => document.querySelector(".character-focus-v5")?.scrollIntoView({ behavior: "smooth", block: "start" }))
   }
 
   function backToOverview() {
@@ -306,29 +301,59 @@ export default function ResolvedCharacterSheet({
       </section>
     </>}
 
-    {section === "resources" && <section className="sheet-v4__focus"><FocusHeader title="Ресурсы" detail="Все конечные запасы персонажа в одном месте." onBack={backToOverview}/><div className="sheet-v3__resource-list sheet-v4__focus-list">{visibleResources.map((resource) => <button type="button" key={resource.stateKey} onClick={() => setExplain({ title: resourceLabel(contract, resource.key, resource.variantKey), query: { kind: "resource", stateKey: resource.stateKey } })}><span><strong>{resourceLabel(contract, resource.key, resource.variantKey)}</strong><small>{rechargeLabel(resource.recharge.triggers)}</small></span><b>{resource.current}<em> / {resource.max.value}</em></b></button>)}</div></section>}
+    {section === "resources" && <CharacterFocusShell eyebrow="Запасы персонажа" title="Ресурсы" detail="Конечные запасы и правила их восстановления." meta={<span>{visibleResources.length} активных</span>} onBack={backToOverview}>
+      <div className="sheet-v3__resource-list sheet-v4__focus-list character-focus-v5__list">{visibleResources.map((resource) => <button type="button" key={resource.stateKey} onClick={() => setExplain({ title: resourceLabel(contract, resource.key, resource.variantKey), query: { kind: "resource", stateKey: resource.stateKey } })}><span><strong>{resourceLabel(contract, resource.key, resource.variantKey)}</strong><small>{rechargeLabel(resource.recharge.triggers)}</small></span><b>{resource.current}<em> / {resource.max.value}</em></b></button>)}</div>
+    </CharacterFocusShell>}
 
-    {section === "actions" && <section className="sheet-v4__focus"><FocusHeader title="Действия" detail="Боевые и специальные действия без остальных разделов вокруг." onBack={backToOverview}/><div className="sheet-v3__action-list sheet-v4__focus-list">{contract.actions.map((action) => <button type="button" className={action.available ? "" : "is-unavailable"} key={action.stateKey} onClick={() => setExplain({ title: action.label || friendlyKey(action.key), query: { kind: "action", stateKey: action.stateKey } })}><span className="sheet-v3__action-icon" aria-hidden="true">{action.attack ? "⚔" : "✦"}</span><span className="sheet-v3__action-copy"><strong>{action.label || friendlyKey(action.key)}</strong><small>{friendlyKey(action.economy)}{action.resourceCosts.length ? ` · ${action.resourceCosts.map((cost) => `${cost.amount} ${resourceLabel(contract, cost.key, cost.variantKey)}`).join(", ")}` : ""}</small></span><span className="sheet-v3__action-values">{action.attack && <em>Атака {signed(action.attack.bonus.value)}</em>}{action.damage.map((damage) => <em key={damage.key}>{damage.dice ? `${damage.dice.count}к${damage.dice.sides}` : ""}{damage.modifier.value ? signed(damage.modifier.value) : ""}{damage.type ? ` ${friendlyKey(damage.type).toLocaleLowerCase("ru-RU")}` : ""}</em>)}</span><span className="sheet-v3__chevron" aria-hidden="true">›</span></button>)}</div></section>}
+    {section === "actions" && <CharacterFocusShell eyebrow="Механики персонажа" title="Действия" detail="Боевые и специальные действия, которые сейчас доступны персонажу." meta={<span>{contract.actions.length} записей</span>} onBack={backToOverview}>
+      <div className="sheet-v3__action-list sheet-v4__focus-list character-focus-v5__list">{contract.actions.map((action) => <button type="button" className={action.available ? "" : "is-unavailable"} key={action.stateKey} onClick={() => setExplain({ title: action.label || friendlyKey(action.key), query: { kind: "action", stateKey: action.stateKey } })}><span className="sheet-v3__action-icon" aria-hidden="true">{action.attack ? "⚔" : "✦"}</span><span className="sheet-v3__action-copy"><strong>{action.label || friendlyKey(action.key)}</strong><small>{friendlyKey(action.economy)}{action.resourceCosts.length ? ` · ${action.resourceCosts.map((cost) => `${cost.amount} ${resourceLabel(contract, cost.key, cost.variantKey)}`).join(", ")}` : ""}</small></span><span className="sheet-v3__action-values">{action.attack && <em>Атака {signed(action.attack.bonus.value)}</em>}{action.damage.map((damage) => <em key={damage.key}>{damage.dice ? `${damage.dice.count}к${damage.dice.sides}` : ""}{damage.modifier.value ? signed(damage.modifier.value) : ""}{damage.type ? ` ${friendlyKey(damage.type).toLocaleLowerCase("ru-RU")}` : ""}</em>)}</span><span className="sheet-v3__chevron" aria-hidden="true">›</span></button>)}</div>
+    </CharacterFocusShell>}
 
-    {section === "features" && <section className="sheet-v4__focus"><FocusHeader title="Фиты и особенности" detail="Уникальные правила персонажа собраны отдельно от класса и основных статов." onBack={backToOverview}/>{canManage && <button className="sheet-v4__focus-add" type="button" onClick={onAddFeature}>＋ Добавить особенность</button>}{featureError && <div className="auth-error">{featureError}</div>}<div className="sheet-v3__feature-list sheet-v4__feature-list">{featureGrants.map((entry) => {
-      const payload = objectPayload(entry.payload)
-      const legacyId = typeof payload?.legacyFeatureId === "string" ? payload.legacyFeatureId : null
-      const feature = legacyId ? features.find((item) => item.id === legacyId) : undefined
-      return <article key={`${entry.target}:${entry.key}:${entry.variantKey}`} {...(feature && canManage ? bindFeature(feature) : {})} style={{ touchAction: "pan-y" }}><div><strong>{grantLabel(entry)}</strong>{feature && canManage && <button type="button" onClick={() => onEditFeature(feature)} aria-label={`Редактировать ${feature.name}`}>✎</button>}</div>{grantDescription(entry) && <p>{grantDescription(entry)}</p>}</article>
-    })}{!featureGrants.length && <div className="sheet-v4__empty">У персонажа пока нет отдельных фитов или особенностей.</div>}</div></section>}
+    {section === "features" && <CharacterFocusShell
+      eyebrow="Особое"
+      title="Фиты и особенности"
+      detail="Уникальные правила персонажа отдельно от классовой прогрессии."
+      meta={<span>{featureGrants.length} записей</span>}
+      onBack={backToOverview}
+      action={canManage ? <button className="character-focus-v5__primary" type="button" onClick={onAddFeature}>＋ Добавить</button> : undefined}
+    >
+      {featureError && <div className="auth-error">{featureError}</div>}
+      <div className="sheet-v3__feature-list sheet-v4__feature-list character-focus-v5__cards">{featureGrants.map((entry) => {
+        const payload = objectPayload(entry.payload)
+        const legacyId = typeof payload?.legacyFeatureId === "string" ? payload.legacyFeatureId : null
+        const feature = legacyId ? features.find((item) => item.id === legacyId) : undefined
+        return <article key={`${entry.target}:${entry.key}:${entry.variantKey}`} {...(feature && canManage ? bindFeature(feature) : {})} style={{ touchAction: "pan-y" }}><div><strong>{grantLabel(entry)}</strong>{feature && canManage && <button type="button" onClick={() => onEditFeature(feature)} aria-label={`Редактировать ${feature.name}`}>✎</button>}</div>{grantDescription(entry) && <p>{grantDescription(entry)}</p>}</article>
+      })}{!featureGrants.length && <div className="sheet-v4__empty">У персонажа пока нет отдельных фитов или особенностей.</div>}</div>
+    </CharacterFocusShell>}
 
-    {section === "defenses" && <section className="sheet-v4__focus"><FocusHeader title="Защиты и владения" detail="Постоянные свойства собраны в одном спокойном разделе." onBack={backToOverview}/>{(contract.capabilities.resistances.length > 0 || contract.capabilities.immunities.length > 0) && <div className="sheet-v4__group"><SectionHeading eyebrow="Устойчивость" title="Защиты"/><div className="sheet-v3__chips">{contract.capabilities.resistances.map((entry) => <span key={`r:${entry.key}:${entry.variantKey}`}><small>Сопротивление</small>{grantLabel(entry)}</span>)}{contract.capabilities.immunities.map((entry) => <span key={`i:${entry.key}:${entry.variantKey}`}><small>Иммунитет</small>{grantLabel(entry)}</span>)}</div></div>}{(["senses", "languages", "proficiencies"] as const).map((group) => {
-      const entries = contract.capabilities[group]
-      if (!entries.length) return null
-      const labels = { senses: ["Восприятие мира", "Чувства"], languages: ["Общение", "Языки"], proficiencies: ["Подготовка", "Владения"] }
-      return <div className="sheet-v4__group" key={group}><SectionHeading eyebrow={labels[group][0]} title={labels[group][1]} count={entries.length}/><div className="sheet-v3__chips sheet-v3__chips--plain">{entries.map((entry) => <span key={`${entry.key}:${entry.variantKey}`}>{grantLabel(entry)}</span>)}</div></div>
-    })}</section>}
+    {section === "defenses" && <CharacterFocusShell eyebrow="Постоянные свойства" title="Защиты и владения" detail="Защиты, чувства, языки и подготовка персонажа." meta={<span>{protectionCount + knowledgeCount} записей</span>} onBack={backToOverview}>
+      {(contract.capabilities.resistances.length > 0 || contract.capabilities.immunities.length > 0) && <div className="sheet-v4__group character-focus-v5__group"><SectionHeading eyebrow="Устойчивость" title="Защиты"/><div className="sheet-v3__chips">{contract.capabilities.resistances.map((entry) => <span key={`r:${entry.key}:${entry.variantKey}`}><small>Сопротивление</small>{grantLabel(entry)}</span>)}{contract.capabilities.immunities.map((entry) => <span key={`i:${entry.key}:${entry.variantKey}`}><small>Иммунитет</small>{grantLabel(entry)}</span>)}</div></div>}
+      {(["senses", "languages", "proficiencies"] as const).map((group) => {
+        const entries = contract.capabilities[group]
+        if (!entries.length) return null
+        const labels = { senses: ["Восприятие мира", "Чувства"], languages: ["Общение", "Языки"], proficiencies: ["Подготовка", "Владения"] }
+        return <div className="sheet-v4__group character-focus-v5__group" key={group}><SectionHeading eyebrow={labels[group][0]} title={labels[group][1]} count={entries.length}/><div className="sheet-v3__chips sheet-v3__chips--plain">{entries.map((entry) => <span key={`${entry.key}:${entry.variantKey}`}>{grantLabel(entry)}</span>)}</div></div>
+      })}
+    </CharacterFocusShell>}
 
-    {section === "identity" && <section className="sheet-v4__focus"><FocusHeader title="Происхождение" detail="То, кем персонаж является, без боевых механик вокруг." onBack={backToOverview}/><div className="sheet-v4__identity-list">{narrative.race && <div><span>Раса / вид</span><strong>{narrative.race}</strong></div>}{narrative.background && <div><span>Предыстория</span><strong>{narrative.background}</strong></div>}{narrative.alignment && <div><span>Мировоззрение</span><strong>{narrative.alignment}</strong></div>}</div></section>}
+    {section === "identity" && <CharacterFocusShell eyebrow="Персонаж" title="Происхождение" detail="Базовая ролевая идентичность без боевых показателей." onBack={backToOverview}>
+      <div className="sheet-v4__identity-list character-focus-v5__identity">{narrative.race && <div><span>Раса / вид</span><strong>{narrative.race}</strong></div>}{narrative.background && <div><span>Предыстория</span><strong>{narrative.background}</strong></div>}{narrative.alignment && <div><span>Мировоззрение</span><strong>{narrative.alignment}</strong></div>}</div>
+    </CharacterFocusShell>}
 
-    {section === "story" && <section className="sheet-v4__focus"><FocusHeader title="Характер и история" detail="Ролевая часть персонажа — отдельно от расчётов и механик." onBack={backToOverview}/><div className="sheet-v3__story-list sheet-v4__story-list"><TextBlock title="Черты личности" text={narrative.personality_traits}/><TextBlock title="Идеалы" text={narrative.ideals}/><TextBlock title="Привязанности" text={narrative.bonds}/><TextBlock title="Слабости" text={narrative.flaws}/><TextBlock title="Предыстория" text={narrative.backstory}/><TextBlock title="Заметки" text={narrative.notes}/></div></section>}
+    {section === "story" && <CharacterFocusShell eyebrow="Ролевая часть" title="Характер и история" detail="Черты, связи, слабости, предыстория и личные заметки." onBack={backToOverview}>
+      <div className="sheet-v3__story-list sheet-v4__story-list character-focus-v5__story"><TextBlock title="Черты личности" text={narrative.personality_traits}/><TextBlock title="Идеалы" text={narrative.ideals}/><TextBlock title="Привязанности" text={narrative.bonds}/><TextBlock title="Слабости" text={narrative.flaws}/><TextBlock title="Предыстория" text={narrative.backstory}/><TextBlock title="Заметки" text={narrative.notes}/></div>
+    </CharacterFocusShell>}
 
-    {explain && explanation && <div className="sheet-backdrop" onMouseDown={() => setExplain(null)}><div className="bottom-sheet sheet-v3__explain" onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><header><div><span>Расчёт персонажа</span><h3>{explain.title}</h3></div><button type="button" onClick={() => setExplain(null)} aria-label="Закрыть">×</button></header>{explanation.value !== undefined && <div className="sheet-v3__explain-value">{typeof explanation.value === "number" ? signed(explanation.value) : String(explanation.value)}</div>}<p>Значение рассчитано из базовых параметров и всех действующих особенностей.</p><div className="sheet-v3__explain-sources"><strong>Источники</strong>{[...collectSources(explanation.tree)].length ? [...collectSources(explanation.tree)].map((source) => <span key={source}>{source}</span>) : <span>Базовые параметры персонажа</span>}</div></div></div>}
+    {explain && explanation && <CharacterDetailSheet
+      eyebrow="Расчёт Character Engine"
+      title={explain.title}
+      value={explanation.value !== undefined ? (typeof explanation.value === "number" ? signed(explanation.value) : String(explanation.value)) : undefined}
+      onClose={() => setExplain(null)}
+      className="sheet-v3__explain"
+    >
+      <p>Значение собрано из базовых параметров и всех действующих источников.</p>
+      <div className="sheet-v3__explain-sources"><strong>Источники</strong>{[...collectSources(explanation.tree)].length ? [...collectSources(explanation.tree)].map((source) => <span key={source}>{source}</span>) : <span>Базовые параметры персонажа</span>}</div>
+    </CharacterDetailSheet>}
 
     {featureMenu && <ContextActionSheet title={featureMenu.name} subtitle="Действия с особенностью" actions={featureActions(featureMenu)} onClose={() => setFeatureMenu(null)}/>} 
   </section>
