@@ -1,4 +1,4 @@
-import type { FormulaExpression } from "../character-engine/index.ts"
+import type { FormulaExpression, SpellCastingMethodDefinition, SpellResourceOption } from "../character-engine/index.ts"
 import type { StoredMechanic, StoredMechanics } from "../types/characterMechanics.ts"
 import type { CharacterTemplateBundle } from "./types.ts"
 
@@ -31,6 +31,9 @@ const spellDc = add(lit(8), ref("core.proficiencyBonus"), intMod)
 const spellAttack = add(ref("core.proficiencyBonus"), intMod)
 
 type School = "abjuration" | "divination" | "evocation" | "illusion"
+type RuntimeSpellCastingMethod = Omit<SpellCastingMethodDefinition, "resourceOptions"> & {
+  resourceOptions?: Array<SpellResourceOption & { label?: string }>
+}
 
 type RuntimeSubclass = {
   id: "abjurer" | "diviner" | "evoker" | "illusionist"
@@ -127,7 +130,7 @@ function restoreBySlotActions(prefix: string, sourceKey: string, from: number, t
   })
 }
 
-function spell(id: string, sourceKey: string, slug: string, name: string, level: number, school: string, preparation: "always_prepared" | "not_required", methods: Record<string, unknown>[]): StoredMechanic {
+function spell(id: string, sourceKey: string, slug: string, name: string, level: number, school: string, preparation: "always_prepared" | "not_required", methods: RuntimeSpellCastingMethod[]): StoredMechanic {
   return {
     id,
     type: "spell",
@@ -139,7 +142,7 @@ function spell(id: string, sourceKey: string, slug: string, name: string, level:
   } as StoredMechanic
 }
 
-function slotMethod(from: number, kind = "spell") {
+function slotMethod(from: number, kind = "spell"): RuntimeSpellCastingMethod {
   return { key: "slot", kind, ability: "intelligence", saveDc: spellDc, attackBonus: spellAttack, requiresPrepared: false, resourceOptions: slotOptions(from) }
 }
 
