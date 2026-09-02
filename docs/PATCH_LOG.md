@@ -36,6 +36,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Diary image attachment, comment expansion, posting and long-press entry/comment actions keep their existing behavior while the presentation is reduced to the record, author, time and content that actually matter.
 - The character gallery is now media-first: a responsive dense grid gives the newest/first art a larger visual slot, keeps titles directly on the media, and collapses to two columns on phone widths instead of presenting every image as an equal utility tile.
 - Art still follows the shared interaction contract from Stage 4: tap opens the common Detail sheet, long press opens contextual actions, while captions and edit/delete controls remain available in Detail for authorized users.
+- Completed Character Profile v5 Stage 7 editor migration: avatar, Sheet, Resources, Spell, Inventory, Feature, Diary-post and Art-metadata editors now share one dark editorial editor language instead of mixing several generations of bottom-sheet UI.
+- Editor fields now use readable labels, consistent 44px-or-larger touch targets, clear focus-visible states and adaptive grids; long forms keep comfortable text areas instead of shrinking content into dashboard-sized controls.
+- Flat editors now share the same sticky header/action hierarchy, while the existing multi-step Inventory and Feature creators keep their progressive workflow but adopt the same v5 surfaces, progress language and review hierarchy.
+- Narrow-phone layouts collapse dense field groups without horizontal squeezing, preserve safe-area padding, and respect reduced-motion preferences.
 
 ### Runtime and rules changes
 
@@ -43,7 +47,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Preserved the existing Fighter narration export/getter contract used by `ReferenceGuide`; no Fighter mechanics, Character Engine contracts, resources, action economy or exact-rule text were changed.
 - Added an explicit Fighter authoring contract preventing future passes from collapsing every feature into another variation of «he kills efficiently»; feature narration must instead vary across positioning, endurance, command, observation, fear, recovery, discipline and the cost of survival.
 - Added `src/character-profile-v5.css` as a scoped semantic migration layer for character-profile surfaces, text, accents, spacing, radii, motion and icon sizing; it is loaded after the existing profile/module CSS so v5 can deliberately supersede older presentation without replacing runtime ownership.
-- Character Profile v5 Stages 1–6 remain presentation-only: the shared `useResolvedCharacterRuntime` path, Character Engine contract, Sheet/Class/Spells/Inventory runtime, persistence and canonical ownership remain unchanged.
+- Character Profile v5 Stages 1–7 remain presentation-only: the shared `useResolvedCharacterRuntime` path, Character Engine contract, Sheet/Class/Spells/Inventory runtime, persistence and canonical ownership remain unchanged.
 - The Stage 2 HP bar is derived only from `ResolvedCharacterContract` current/max HP and creates no new stored health value, local mechanic or persistence source.
 - Added reusable presentation primitives `CharacterFocusShell.tsx` and `CharacterDetailSheet.tsx`; neither component imports or owns Character Engine resolution, Supabase persistence, resources, gameplay state or domain-owner writes.
 - `ResolvedCharacterSheetBase` still resolves calculation detail through `explainCharacter(input, explain.query)` and still renders actions, resources, features and capabilities from the same `ResolvedCharacterContract`; Stage 3 changes only how those resolved values are presented and navigated.
@@ -58,6 +62,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - The existing `meganotrpg.character-class-focus` bridge is preserved for Sheet → Class/Subclass deep links; the new focus/reset signaling is presentation navigation only and does not become a mechanics owner.
 - Added `CharacterSocial.css` as the Stage 6 presentation layer for Diary and Gallery. It styles the existing profile markup and shared Detail component but owns no social/media records, character rules, persistence or permissions.
 - Diary/gallery CRUD remains in the existing `useCharacterSheet` social/media adapter and uses the same established permission/RLS path; Stage 6 adds no alternate storage, Character Engine source, GENA action, Oracle command or character-mechanics state.
+- Added `CharacterEditors.css` as the Stage 7 presentation layer. It scopes the existing editor families under Character Profile v5 tokens and changes no editor inputs, save/delete callbacks, permission gates, MechanicsBuilder state or persistence ownership.
+- Sheet/Resources/Spell/Inventory/Feature editing continues to delegate through the existing `CharacterProfileV2` callbacks into `useCharacterSheet`; the editor migration adds no direct Supabase access and no Character Engine, GENA, Oracle, Cheburashka or Shapoklyak ownership path.
 
 ### Repository / release process
 
@@ -82,11 +88,14 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Character Profile Stage 6 CI run #1355: production TypeScript/Vite build succeeded and lint completed with 0 errors / 22 warnings. The suite contains 634 tests and passed 624/634; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
 - Added `characterSocialSections.test.ts` with six regression gates for the Stage 6 social stylesheet, Diary chronology/composer, Diary long-press plus explicit comments, adaptive media-first Gallery, shared empty/error presentation and the existing social/media persistence boundary. All six Stage 6 tests pass in CI #1355.
 - Stage 2–5 character-profile regression families continue to pass under the Stage 6 social/media presentation changes; Stage 6 introduced no new failing test family.
+- Character Profile Stage 7 CI run #1359: production TypeScript/Vite build succeeded and lint completed with 0 errors / 22 warnings. The suite contains 640 tests and passed 630/640; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
+- Added `characterEditorPattern.test.ts` with six regression gates for the scoped Stage 7 stylesheet, shared editor hierarchy, mobile-sized/focus-visible controls, preserved permission boundaries, preserved specialized editor workflows and the presentation-only ownership boundary. All six Stage 7 tests pass in CI #1359.
+- Stage 2–6 character-profile regression families continue to pass under the Stage 7 editor migration; Stage 7 introduced no new failing test family.
 
 ### Known incomplete work
 
 - Fighter mechanics/runtime remain `IN_PROGRESS` under the existing class-work ledger and were intentionally not changed by this rewrite.
-- Character Profile v5 Stage 6 completes the Diary and Arts social/media recomposition. Later editor-specific and final polish/cleanup migration remains follow-up work and is not claimed by this work unit.
+- Character Profile v5 Stage 7 completes the editor-specific migration. Final visual polish, dead-style cleanup and migration consolidation remain follow-up work and are not claimed by this work unit.
 - The repository still has 10 stale Voss/text-contract assertions that must be reconciled with the already-authored class narration before the full CI suite can return green.
 
 ---
