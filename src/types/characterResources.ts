@@ -5,6 +5,7 @@ export type PersistentResourceRecoveryTrigger = Extract<ResourceRechargeTrigger,
 export type ResourceRecoveryStep =
   | { trigger: PersistentResourceRecoveryTrigger; restore: "full" }
   | { trigger: PersistentResourceRecoveryTrigger; restore: "amount"; amount: number }
+  | { trigger: PersistentResourceRecoveryTrigger; restore: "set"; amount: number }
 
 /**
  * Persistent CE state exists only for finite ledgers recovered by short rest,

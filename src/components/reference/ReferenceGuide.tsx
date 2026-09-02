@@ -128,7 +128,7 @@ function sourceKey(mechanic: StoredMechanic) {
 function mechanicName(mechanic: StoredMechanic) {
   if (mechanic.type === "resource" || mechanic.type === "action") return mechanic.label
   if (mechanic.type === "spell") return mechanic.payload.spell.name
-  if (mechanic.type === "numeric") return mechanic.label || mechanic.target
+  if (mechanic.type === "numeric" || mechanic.type === "formula") return mechanic.label || mechanic.target
   return payloadText(mechanic, "label") || mechanic.label || mechanic.key
 }
 

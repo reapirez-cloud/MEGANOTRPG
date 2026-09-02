@@ -184,6 +184,27 @@ test("full and partial recovery use explicit triggers and never mutate input sta
   assert.equal(state.resources?.["staff-charges"]?.current, 3)
 })
 
+test("set recovery assigns an exact value instead of filling the pool", () => {
+  const state: CharacterState = { currentHp: 10, tempHp: 0, resources: { power_surge: { current: 4 } } }
+  const resolved = resolveCharacter(base, state, [
+    {
+      id: "power-surge",
+      kind: "grant",
+      operation: "GRANT",
+      target: "resource",
+      key: "power_surge",
+      payload: {
+        max: 4,
+        initial: 1,
+        recharge: { triggers: ["long_rest"], restore: "set", amount: 1 },
+      },
+      source: source("power-surge", "Power Surge"),
+    },
+  ])
+  const recovered = applyResourceRecovery(state, resolved.resources, "long_rest")
+  assert.equal(recovered.resources?.power_surge?.current, 1)
+})
+
 test("spending a resource is immutable and refuses overspend", () => {
   const state: CharacterState = {
     currentHp: 20,

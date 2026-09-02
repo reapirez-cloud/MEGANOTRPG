@@ -7,6 +7,7 @@ import type {
   ActionResourceCost,
   CharacterCondition,
   FormulaExpression,
+  FormulaTarget,
   GrantPayload,
   GrantTarget,
   NumericOperation,
@@ -56,6 +57,15 @@ export type StoredNumericMechanic = StoredMechanicMeta & {
   value: number
 }
 
+export type StoredFormulaMechanic = StoredMechanicMeta & {
+  id: string
+  type: "formula"
+  label?: string
+  target: FormulaTarget
+  operation: "SET_FORMULA"
+  formula: FormulaExpression
+}
+
 export type StoredGrantMechanic = StoredMechanicMeta & {
   id: string
   type: "grant"
@@ -75,7 +85,7 @@ export type StoredResourceMechanic = StoredMechanicMeta & {
   recharge: PersistentResourceRecoveryTrigger | PersistentResourceRecoveryTrigger[]
   /** Optional mixed schedule, e.g. +1 on short rest and full on long rest. */
   recoveryRules?: ResourceRecoveryStep[]
-  restore?: "full" | "amount"
+  restore?: "full" | "amount" | "set"
   restoreAmount?: number
   initial?: "full" | "empty" | number
 }
@@ -124,6 +134,7 @@ export type StoredSpellMechanic = StoredMechanicMeta & {
 
 export type StoredMechanic =
   | StoredNumericMechanic
+  | StoredFormulaMechanic
   | StoredGrantMechanic
   | StoredResourceMechanic
   | StoredActionMechanic

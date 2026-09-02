@@ -48,12 +48,15 @@ export function contributionForStoredMechanic(mechanic: StoredMechanic, source: 
   const operation = mechanic.grantOperation || "GRANT"
   const variant = mechanic.variantKey ? { variantKey: mechanic.variantKey } : {}
   if (mechanic.type === "numeric") return withPriority(withCondition({ id, kind: "numeric", target: mechanic.target, operation: mechanic.operation, value: mechanic.value, source }, mechanic.condition), mechanic.priority)
+  if (mechanic.type === "formula") return withPriority(withCondition({ id, kind: "formula", target: mechanic.target, operation: mechanic.operation, formula: mechanic.formula, source }, mechanic.condition), mechanic.priority)
   if (mechanic.type === "grant") return withPriority(withCondition({ id, kind: "grant", operation, target: mechanic.target, key: mechanic.key, ...variant, ...(mechanic.payload === undefined ? {} : { payload: mechanic.payload }), source }, mechanic.condition), mechanic.priority)
   if (mechanic.type === "resource") {
     const triggers = rechargeTriggers(mechanic.recharge)
     const recharge = mechanic.restore === "amount"
       ? { triggers, restore: "amount" as const, amount: Math.max(1, mechanic.restoreAmount || 1) }
-      : { triggers, restore: "full" as const }
+      : mechanic.restore === "set"
+        ? { triggers, restore: "set" as const, amount: Math.max(0, mechanic.restoreAmount ?? 0) }
+        : { triggers, restore: "full" as const }
     const presentation = presentationPayload(mechanic.presentation)
     return withPriority(withCondition({
       id,
@@ -173,6 +176,7 @@ function formulaLabel(value: number | FormulaExpression): string {
 export function mechanicSummary(mechanic: StoredMechanic): string {
   let result = "Эффект"
   if (mechanic.type === "numeric") { const sign = mechanic.operation === "ADD" && mechanic.value >= 0 ? "+" : ""; result = `${targetNames[mechanic.target] || mechanic.target} ${sign}${mechanic.value}` }
+  else if (mechanic.type === "formula") result = `${targetNames[mechanic.target] || mechanic.target}: ${formulaLabel(mechanic.formula)}`
   else if (mechanic.type === "grant") {
     if (mechanic.target === "trait" && mechanic.key === "curse:item") {
       const payload = mechanic.payload

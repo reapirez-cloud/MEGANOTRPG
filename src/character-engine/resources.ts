@@ -89,8 +89,18 @@ function parseRecharge(value: unknown): ResourceRechargeRule {
     }
     return { triggers, restore: "amount", amount: candidate.amount }
   }
+  if (candidate.restore === "set") {
+    if (
+      typeof candidate.amount !== "number" ||
+      !Number.isFinite(candidate.amount) ||
+      candidate.amount < 0
+    ) {
+      throw new ResourceEngineError("resource recharge set amount must be a finite number >= 0")
+    }
+    return { triggers, restore: "set", amount: candidate.amount }
+  }
 
-  throw new ResourceEngineError("resource recharge.restore must be 'full' or 'amount'")
+  throw new ResourceEngineError("resource recharge.restore must be 'full', 'amount', or 'set'")
 }
 
 /** Runtime validation + normalization for a resource GRANT payload. */
@@ -269,9 +279,10 @@ export function applyResourceRecovery(
     if (!resource.recharge.triggers.includes(trigger)) continue
 
     const current = resource.current
-    const restored =
-      resource.recharge.restore === "full"
-        ? resource.max.value
+    const restored = resource.recharge.restore === "full"
+      ? resource.max.value
+      : resource.recharge.restore === "set"
+        ? Math.min(resource.max.value, resource.recharge.amount)
         : Math.min(resource.max.value, current + resource.recharge.amount)
     next.resources[resource.stateKey] = { current: restored }
   }

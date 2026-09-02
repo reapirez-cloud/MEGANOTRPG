@@ -76,8 +76,13 @@ function substituteFormula(expression: FormulaExpression, sourceLevel: number): 
 }
 
 function mechanicAtSourceLevel(mechanic: StoredMechanic, sourceLevel: number): StoredMechanic {
-  if (mechanic.type !== "resource" || typeof mechanic.max === "number") return mechanic
-  return { ...mechanic, max: substituteFormula(mechanic.max, sourceLevel) }
+  if (mechanic.type === "resource" && typeof mechanic.max !== "number") {
+    return { ...mechanic, max: substituteFormula(mechanic.max, sourceLevel) }
+  }
+  if (mechanic.type === "formula") {
+    return { ...mechanic, formula: substituteFormula(mechanic.formula, sourceLevel) }
+  }
+  return mechanic
 }
 
 function mechanicsAtSourceLevel(mechanics: StoredMechanics, sourceLevel: number): StoredMechanics {
@@ -96,7 +101,7 @@ function payloadLabel(mechanic: StoredMechanic): string | undefined {
 }
 
 function mechanicFallbackName(mechanic: StoredMechanic): string {
-  if (mechanic.type === "numeric") return mechanic.target
+  if (mechanic.type === "numeric" || mechanic.type === "formula") return mechanic.target
   return mechanic.key
 }
 

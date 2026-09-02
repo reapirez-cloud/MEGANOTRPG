@@ -7,6 +7,7 @@ test("persistent CE ledger accepts only rest or dawn recovery", () => {
   assert.doesNotThrow(() => assertPersistentResourceRecharge({ triggers: ["short_rest"], restore: "full" }))
   assert.doesNotThrow(() => assertPersistentResourceRecharge({ triggers: ["long_rest"], restore: "full" }))
   assert.doesNotThrow(() => assertPersistentResourceRecharge({ triggers: ["dawn"], restore: "amount", amount: 1 }))
+  assert.doesNotThrow(() => assertPersistentResourceRecharge({ triggers: ["long_rest"], restore: "set", amount: 1 }))
   assert.doesNotThrow(() => assertPersistentResourceRecharge({
     rules: [
       { trigger: "short_rest", restore: "amount", amount: 1 },
