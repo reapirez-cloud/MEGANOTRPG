@@ -51,8 +51,9 @@ export function useDialogSurface<T extends HTMLElement>(
   }, [onClose])
 
   useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
+    const mountedDialog = dialogRef.current
+    if (!mountedDialog) return
+    const dialog: HTMLElement = mountedDialog
 
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     lockBodyScroll()
