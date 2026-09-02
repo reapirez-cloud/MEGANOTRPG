@@ -3,9 +3,9 @@ export {
   getDruidBaseVossNarration,
   getDruidSubclassVossNarration,
   getDruidSubclassFeatureVossNarration,
-} from "./druidVossNarrationGemini"
+} from "./druidVossNarrationGemini.ts"
 
 export {
   druidClassVossComment,
   getDruidSubclassVossComment,
-} from "./druidVossNarrationLegacy"
+} from "./druidVossNarrationLegacy.ts"
