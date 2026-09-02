@@ -95,6 +95,11 @@ const DEFAULT_AC_FORMULA: FormulaExpression = {
   ],
 }
 
+const DEFAULT_INITIATIVE_FORMULA: FormulaExpression = {
+  kind: "reference",
+  key: "abilities.dexterity.modifier",
+}
+
 export function resolveCharacter(
   base: BaseCharacter,
   state: CharacterState,
@@ -269,13 +274,34 @@ export function resolveCharacter(
     state,
     maxHp.value,
   )
-  const initiative = resolveNumber(
+  const initiativeFormulaContributions = activeContributions.filter(
+    (contribution): contribution is FormulaContribution =>
+      contribution.kind === "formula" &&
+      contribution.target === "combat.initiative" &&
+      evaluateCondition(contribution.condition, { state, maxHp: maxHp.value }),
+  )
+  const initiativeSelection = selectFormula(
     "combat.initiative",
-    abilities.dexterity.modifier,
+    DEFAULT_INITIATIVE_FORMULA,
+    initiativeFormulaContributions,
+  )
+  const initiativeNumeric = resolveNumber(
+    "combat.initiative",
+    evaluateFormula(initiativeSelection.formula, formulaContext),
     activeContributions,
     state,
     maxHp.value,
   )
+  const initiative = {
+    ...initiativeNumeric,
+    sources: [
+      ...initiativeSelection.sources.map((entry) => ({
+        contributionId: entry.contributionId,
+        source: entry.source,
+      })),
+      ...initiativeNumeric.sources,
+    ],
+  }
   const passives = Object.fromEntries(
     PASSIVE_KEYS.map((passive) => {
       const skill = PASSIVE_SKILLS[passive]

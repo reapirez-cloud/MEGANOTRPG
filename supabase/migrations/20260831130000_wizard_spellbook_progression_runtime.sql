@@ -63,16 +63,18 @@ security definer
 set search_path = ''
 as $function$
   with wizard as (
-    select private.character_wizard_level(p_character_id) as level
+    select private.character_wizard_level(p_character_id) as wizard_level
   ), progress as (
-    select level,
-      private.wizard_spellbook_grant_quota(level) as quota,
+    select generated.source_level,
+      private.wizard_spellbook_grant_quota(generated.source_level) as quota,
       (select count(*)::integer
        from public.wizard_spellbook_level_grants grant_row
-       where grant_row.character_id=p_character_id and grant_row.wizard_level=level) as used
-    from wizard, lateral generate_series(1,coalesce(wizard.level,0)) level
+       where grant_row.character_id=p_character_id
+         and grant_row.wizard_level=generated.source_level) as used
+    from wizard
+    cross join lateral generate_series(1,coalesce(wizard.wizard_level,0)) as generated(source_level)
   )
-  select min(level) from progress where used<quota
+  select min(source_level) from progress where used<quota
 $function$;
 
 revoke all on function private.wizard_spellbook_grant_quota(integer) from public,anon,authenticated;
@@ -106,22 +108,23 @@ begin
   v_next:=private.next_wizard_spellbook_grant_level(p_character_id);
 
   with progress as (
-    select level,
-      private.wizard_spellbook_grant_quota(level) as quota,
-      private.wizard_spellbook_grant_max_spell_level(level) as max_spell_level,
+    select generated.source_level,
+      private.wizard_spellbook_grant_quota(generated.source_level) as quota,
+      private.wizard_spellbook_grant_max_spell_level(generated.source_level) as max_spell_level,
       (select count(*)::integer
        from public.wizard_spellbook_level_grants grant_row
-       where grant_row.character_id=p_character_id and grant_row.wizard_level=level) as used
-    from generate_series(1,v_level) level
+       where grant_row.character_id=p_character_id
+         and grant_row.wizard_level=generated.source_level) as used
+    from generate_series(1,v_level) as generated(source_level)
   )
   select
     coalesce(jsonb_agg(jsonb_build_object(
-      'sourceLevel',level,
+      'sourceLevel',source_level,
       'quota',quota,
       'used',used,
       'remaining',greatest(0,quota-used),
       'maxSpellLevel',max_spell_level
-    ) order by level),'[]'::jsonb),
+    ) order by source_level),'[]'::jsonb),
     coalesce(sum(greatest(0,quota-used)),0)::integer
   into v_levels,v_total_remaining
   from progress;

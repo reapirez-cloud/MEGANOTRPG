@@ -4,9 +4,8 @@ import type { RuleTemplate, RuleTemplateLevel } from "./types.ts"
  * Wizard subclass catalog contract.
  *
  * This file owns stable subclass identities, unlock levels and visual keys. The
- * first four PHB 2024 subclasses also have a runtime package in
- * wizardSubclassMechanics.ts and are installed into campaigns by the matching
- * Supabase migration.
+ * All supported subclasses have a runtime package in wizardSubclassMechanics.ts
+ * and are installed into campaigns by the matching Supabase migration.
  */
 export const WIZARD_SUBCLASS_PARENT_CATALOG_KEY = "class:wizard" as const
 export const WIZARD_SUBCLASS_UNLOCK_LEVEL = 3 as const
@@ -16,6 +15,15 @@ export const WIZARD_SUBCLASS_RUNTIME_READY_CATALOG_KEYS = [
   "subclass:wizard:diviner",
   "subclass:wizard:evoker",
   "subclass:wizard:illusionist",
+  "subclass:wizard:enchantment",
+  "subclass:wizard:conjuration",
+  "subclass:wizard:necromancy",
+  "subclass:wizard:transmutation",
+  "subclass:wizard:war-magic",
+  "subclass:wizard:bladesinging",
+  "subclass:wizard:order-of-scribes",
+  "subclass:wizard:graviturgy",
+  "subclass:wizard:chronurgy",
 ] as const
 
 export type WizardSubclassFeatureLevel = (typeof WIZARD_SUBCLASS_FEATURE_LEVELS)[number]
@@ -101,6 +109,7 @@ export const WIZARD_SUBCLASSES = [
     visualKey: "wizard-subclass:enchantment",
     unlockLevel: 3,
     featureLevels: levels,
+    runtimeReady: true,
   },
   {
     catalogKey: "subclass:wizard:conjuration",
@@ -113,6 +122,7 @@ export const WIZARD_SUBCLASSES = [
     visualKey: "wizard-subclass:conjuration",
     unlockLevel: 3,
     featureLevels: levels,
+    runtimeReady: true,
   },
   {
     catalogKey: "subclass:wizard:necromancy",
@@ -125,6 +135,7 @@ export const WIZARD_SUBCLASSES = [
     visualKey: "wizard-subclass:necromancy",
     unlockLevel: 3,
     featureLevels: levels,
+    runtimeReady: true,
   },
   {
     catalogKey: "subclass:wizard:transmutation",
@@ -137,6 +148,7 @@ export const WIZARD_SUBCLASSES = [
     visualKey: "wizard-subclass:transmutation",
     unlockLevel: 3,
     featureLevels: levels,
+    runtimeReady: true,
   },
   {
     catalogKey: "subclass:wizard:war-magic",
@@ -149,6 +161,7 @@ export const WIZARD_SUBCLASSES = [
     visualKey: "wizard-subclass:war-magic",
     unlockLevel: 3,
     featureLevels: levels,
+    runtimeReady: true,
   },
   {
     catalogKey: "subclass:wizard:bladesinging",
@@ -161,6 +174,7 @@ export const WIZARD_SUBCLASSES = [
     visualKey: "wizard-subclass:bladesinging",
     unlockLevel: 3,
     featureLevels: levels,
+    runtimeReady: true,
   },
   {
     catalogKey: "subclass:wizard:order-of-scribes",
@@ -173,6 +187,7 @@ export const WIZARD_SUBCLASSES = [
     visualKey: "wizard-subclass:order-of-scribes",
     unlockLevel: 3,
     featureLevels: levels,
+    runtimeReady: true,
   },
   {
     catalogKey: "subclass:wizard:graviturgy",
@@ -185,6 +200,7 @@ export const WIZARD_SUBCLASSES = [
     visualKey: "wizard-subclass:graviturgy",
     unlockLevel: 3,
     featureLevels: levels,
+    runtimeReady: true,
   },
   {
     catalogKey: "subclass:wizard:chronurgy",
@@ -197,6 +213,7 @@ export const WIZARD_SUBCLASSES = [
     visualKey: "wizard-subclass:chronurgy",
     unlockLevel: 3,
     featureLevels: levels,
+    runtimeReady: true,
   },
 ] as const satisfies readonly WizardSubclassDefinition[]
 

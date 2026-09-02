@@ -175,22 +175,23 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 ## Wizard (`class:wizard`)
 
 **Text:** `READY`  
-**Mechanics/runtime:** `IN_PROGRESS`
+**Mechanics/runtime:** `READY`
 
 - `last_text_audit: 2026-09-01`
 - `voss_base_class_feature_voice_pass: CONCRETE_GRIMDARK_BLACK_HUMOR_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
 - `last_mechanics_audit_started: 2026-08-31`
-- `last_dev_runtime_audit: 2026-09-01`
-- `rules_revision: Player's Handbook 2024 base class`
-- `subclasses: WAVE_0_CONTRACT_READY_CONTENT_NOT_INCLUDED`
+- `last_dev_runtime_audit: 2026-09-02`
+- `last_deployed_runtime_audit: 2026-09-02`
+- `rules_revision: Player's Handbook 2024 base class plus the declared compatibility revisions for all 13 supported subclasses`
+- `subclasses: READY_ALL_13_RUNTIME_PACKAGES`
 - `subclass_wave_0: READY_2026_08_31`
 - `subclass_supported_count: 13`
 - `subclass_contract: src/rule-templates/wizardSubclasses.ts`
 - `subclass_contract_regression: tests/wizardSubclassWave0.test.ts`
-- `dev_base_class_runtime: READY_PENDING_TARGET_DEPLOYMENT`
-- `dev_ci: GREEN_RUN_1176`
-- `current_dev_text: clean Russian base-class package with exact rules and a concrete grimdark Voss narration/comment overlay for every openable base feature card; unfinished Wizard subclasses remain absent`
-- `current_dev_runtime: physical spellbook, book-gated preparation, authoritative spellbook progression, parser-owned full-caster slots, prepared-cast enforcement, Ritual Adept, Arcane Recovery, Memorize Spell, long-rest cantrip replacement, Spell Mastery, Signature Spells and Gena short/long-rest choice surfaces are implemented and regression-gated in dev`
+- `dev_base_class_runtime: READY`
+- `dev_subclass_runtime_revision: wizard-subclasses-runtime@3`
+- `current_dev_text: clean Russian base-class and thirteen-subclass package with exact neutral rules plus the existing concrete Voss narration/comment layer`
+- `current_dev_runtime: physical spellbook and book-gated preparation remain authoritative; base Wizard plus Abjurer, Diviner, Evoker, Illusionist, Enchantment, Conjuration, Necromancy, Transmutation, War Magic, Bladesinging, Order of Scribes, Graviturgy and Chronurgy are implemented through the shared template/CE/action/spell/resource pipeline`
 - `starting_equipment_policy: NONE_CLASS_AUTHORED_GM_PROVIDES_GEAR`
 - `gena_rest_window_policy: FIRST_ASSIGNED_PLAYER_MESSAGE_OF_ANY_KIND_CLOSES_OPEN_POST_REST_WINDOWS`
 - `spellbook_regression: tests/wizardSpellbookRuntime.test.ts`
@@ -198,7 +199,12 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 - `arcane_recovery_regression: tests/wizardArcaneRecoveryRuntime.test.ts`
 - `completion_regression: tests/wizardCompletionRuntime.test.ts`
 - `base_closure_regression: tests/wizardBaseClosure.test.ts`
-- `production_runtime: NOT_DEPLOYED_OR_CERTIFIED`
+- `subclass_runtime_regression: tests/wizardSubclassRuntime.test.ts`
+- `subclass_sql_parity_regression: tests/wizardSubclassSqlRuntime.test.ts`
+- `production_runtime: DEPLOYED_AND_CERTIFIED_2026_09_02`
+- `production_subclass_count: 13`
+- `production_subclass_revision: wizard-subclasses-runtime@3`
+- `production_level_rows: CERTIFIED_3_6_10_14_FOR_EACH_SUBCLASS`
 - `catalog_bootstrap: dev migration preserves class:wizard and installs the clean base class for new campaigns`
 - `gm_adjudication_policy: FOUND_SPELL_TRANSCRIPTION_AND_SIMPLE_SHEET_CHOICES_ARE_MANUAL_BY_DESIGN`
 
@@ -222,22 +228,21 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 - Action/Bonus Action/Reaction legality and per-turn cadence inside Wizard rules remain GM-adjudicated under `GM_ADJUDICATION_BOUNDARY.md`; CE exposes real resources/access but does not create a turn tracker.
 - The rebuilt base class remains independent of subclass content; Wizard subclass infrastructure and package gates are tracked separately below.
 
-### Wizard subclass Wave 0
+### Wizard subclasses
 
-- Wave 0 defines exactly thirteen supported Wizard subclass identities in `wizardSubclasses.ts`; it does **not** install empty or unfinished subclass rows into the player-visible catalog.
-- Every future Wizard subclass package must attach to the active `class:wizard` template, use subclass unlock level 3, and place its compatibility feature rows only at Wizard levels 3/6/10/14.
+- The catalog defines and now installs exactly thirteen supported Wizard subclass identities from `wizardSubclasses.ts` and `wizardSubclassMechanics.ts`.
+- Every package attaches to the active `class:wizard` template, unlocks at Wizard level 3 and places compatibility feature rows only at Wizard levels 3/6/10/14.
 - The generic template resolver remains authoritative for effective subclass level. A stale/high subclass assignment or high total character level cannot unlock subclass mechanics before the parent Wizard reaches the required level.
 - The four PHB 2024 identities (Evoker, Diviner, Illusionist, Abjurer) replace their same-school 2014 variants rather than creating duplicate subclasses.
 - Older supported schools and supplement subclasses keep their original rules package but use the Wizard 2024 compatibility schedule: a former level-2 subclass entry feature is exposed at Wizard level 3; later 6/10/14 rows retain their levels.
-- Stable catalog keys and visual keys are reserved for all thirteen packages so later migrations/UI do not infer identity from translated display names.
-- No Wizard-specific subclass engine, turn tracker, scene-state machine, or bespoke choice runtime was added. Each subclass feature still follows the normal CE-owned vs GM-adjudicated boundary.
-- Regression `tests/wizardSubclassWave0.test.ts` guards identity uniqueness, PHB replacement policy, parent linkage, unlock level, allowed feature levels and multiclass/effective-level gating.
+- Stable catalog keys, visual keys, source labels and rules revisions are preserved for all thirteen packages; identity never depends on translated display names.
+- Finite rest-recovering pools and durable deterministic facts are CE/Shapoklyak state. Per-turn cadence, targets, corpses, visibility, range, concentration, summoned creatures and other scene facts remain explicit structured rules/actions adjudicated by the GM.
+- War Magic and Chronurgy use the generic formula contribution for Dexterity + Intelligence initiative. Power Surge uses the generic exact-value `set` recovery rule and returns to exactly 1 after a Long Rest.
+- Free subclass casts that spend non-slot resources are exposed as resource-backed class actions; canonical `class_spell` accesses continue to spend only ordinary spell slots.
+- The deployed campaign contains 13 active builtin Wizard subclass templates at revision `wizard-subclasses-runtime@3`, each with exactly the 3/6/10/14 rows. The deployed spell contract reports zero invalid method kinds and zero non-slot class-spell costs.
+- Regressions in `tests/wizardSubclassWave0.test.ts`, `tests/wizardSubclassRuntime.test.ts` and `tests/wizardSubclassSqlRuntime.test.ts` guard identity, effective level, CE behavior, resource/state boundaries and SQL/TypeScript payload parity.
 
-### Remaining certification blocker
-
-- Apply the intended `dev` migration stack to the target Supabase deployment and re-audit the deployed database/runtime against the same Wizard regressions and integration contract.
-
-Do not promote Wizard mechanics to `READY` until the target deployed state is applied and audited. There are no known `dev` base-class runtime blockers; subclass content begins with Wave 1 and is not yet claimed complete.
+There are no known Wizard implementation or deployment blockers in the declared 13-subclass scope.
 
 ---
 

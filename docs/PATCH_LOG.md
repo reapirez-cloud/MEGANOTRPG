@@ -2,32 +2,45 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-01-B
+## Active patch — 2026-09-02-B
 
 **Status:** OPEN
 **Branch:** `dev`
-**Base main:** `1bbf0eb658a0b79997fe0fb2e90133d06dfd5adc`
-**Started:** 2026-09-01
+**Base main:** `34848d1c1670fb510a629cfef2054245b6052ba6`
+**Started:** 2026-09-02
 
 ### Player-facing changes
 
-_No changes yet._
+- Completed and enabled all 13 supported Wizard subclasses in the class catalog: Abjurer, Diviner, Evoker, Illusionist, Enchantment, Conjuration, Necromancy, Transmutation, War Magic, Bladesinging, Order of Scribes, Graviturgy and Chronurgy.
+- Every subclass now exposes its real actions, finite pools, class-spell access, proficiencies, resistances and structured passive rules at Wizard levels 3/6/10/14.
+- Scene-dependent restrictions remain readable and GM-adjudicated instead of becoming fake turn/target/corpse trackers.
 
 ### Runtime and rules changes
 
-_No changes yet._
+- Added nine missing Wizard runtime packages and promoted the catalog runtime-ready set from four to all thirteen subclasses.
+- Added generic formula mechanics for dynamic initiative so War Magic and Chronurgy automatically add Intelligence to Dexterity initiative.
+- Added generic exact-value resource recovery (`restore: set`) for Power Surge, which now returns to exactly 1 after a Long Rest rather than filling to its Intelligence-based maximum.
+- Kept canonical class spell methods on `class_spell` with ordinary spell-slot costs; subclass free casts use resource-backed actions through the shared template action executor.
+- Added a generated forward-only Supabase installer at revision `wizard-subclasses-runtime@3`, including all level mechanics/choices, existing-campaign backfill and new-campaign bootstrap.
+- Corrected two previously undeployed Wizard migration ambiguities discovered by PostgreSQL 17: spellbook progression level aliases and canonical Wizard class-spell method kinds.
+- Applied the missing Wizard base/subclass migration chain to the connected Supabase target and certified 13 active packages with exact 3/6/10/14 rows.
 
 ### Repository / release process
 
-_No changes yet._
+- Work remains on `dev`; no promotion to `main` was performed without an explicit release request.
+- Added a deterministic migration generator so SQL payloads are derived from the TypeScript Wizard runtime source.
 
 ### Tests / verification added in this patch
 
-_No changes yet._
+- Expanded Wizard runtime coverage across all thirteen subclasses, including exact Power Surge recovery, initiative formulas, finite resources, slot alternatives, source metadata and persistent Chronurgy exhaustion.
+- Added SQL/TypeScript payload-parity coverage for every subclass level and choice row.
+- Added regression coverage for the generic exact-value resource recovery rule.
+- Deployed-state audit: 13/13 subclass templates, revision `wizard-subclasses-runtime@3`, all 3/6/10/14 rows present, zero invalid class-spell method kinds and zero invalid spell costs.
+- Full repository verification: 609 tests pass; production build succeeds; lint completes with only the pre-existing warning set and no errors.
 
 ### Known incomplete work
 
-_No changes recorded._
+- Supabase advisors still report pre-existing project-wide security/performance notices outside the Wizard package; this patch introduced no new table/RLS surface.
 
 ---
 

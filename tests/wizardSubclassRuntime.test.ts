@@ -43,6 +43,11 @@ function packageFor(catalogKey: string, wizardLevel: number): CharacterTemplateB
           wizard_diviner_portent_3_value: "11",
         }
       }
+      if (catalogKey === "subclass:wizard:bladesinging") {
+        bundle.assignment.selected_choices = {
+          wizard_bladesinging_weapon: "weapon:rapier",
+        }
+      }
     }
   }
 
@@ -96,7 +101,7 @@ test("Wizard subclass runtime package passes class quality and resource policy",
   assert.doesNotThrow(() => assertClassResourcePolicy(wizardSubclassRuntimeBundles))
 })
 
-test("every PHB 2024 Wizard subclass emits structured CE rules", () => {
+test("every supported Wizard subclass emits structured CE rules", () => {
   for (const catalogKey of WIZARD_SUBCLASS_RUNTIME_CATALOG_KEYS) {
     const contract = contractFor(catalogKey, 14)
     assert.ok(contract.rules.length >= 4, `${catalogKey} has too few rules`)
@@ -215,6 +220,91 @@ test("Illusionist spends only true persistent resources", () => {
   assert.ok(illusoryReality)
   assert.equal(illusorySelf.requirements.length, 0)
   assert.equal(illusoryReality.requirements.length, 0)
+})
+
+test("legacy schools expose exact GM actions and persist only finite pools", () => {
+  const enchantmentContract = contractFor("subclass:wizard:enchantment", 14)
+  assertHasAction("subclass:wizard:enchantment", 3, "wizard_enchantment_hypnotic_gaze")
+  assertHasAction("subclass:wizard:enchantment", 6, "wizard_enchantment_instinctive_charm")
+  assert.equal(enchantmentContract.resources.length, 0)
+
+  assert.equal(resourceMax("subclass:wizard:conjuration", 6, "wizard_conjuration_benign_transposition"), 1)
+  assertHasAction("subclass:wizard:conjuration", 6, "wizard_conjuration_restore_benign_transposition")
+
+  assertHasSpell("subclass:wizard:necromancy", 6, "spell:animate-dead")
+  assert.ok(contractFor("subclass:wizard:necromancy", 10).grants.some(
+    (entry) => entry.target === "resistance" && entry.key === "damage:necrotic",
+  ))
+
+  assert.equal(resourceMax("subclass:wizard:transmutation", 10, "wizard_transmutation_shapechanger"), 1)
+  assertHasSpell("subclass:wizard:transmutation", 10, "spell:polymorph")
+  assertHasAction("subclass:wizard:transmutation", 14, "wizard_transmutation_master_restore_life")
+})
+
+test("War Magic computes initiative and resets Power Surge to exactly one", () => {
+  const catalogKey = "subclass:wizard:war-magic"
+  const state = {
+    currentHp: 70,
+    tempHp: 0,
+    resources: { wizard_war_magic_power_surge: { current: 4 } },
+  }
+  const contract = contractFor(catalogKey, 14, state)
+  assert.equal(contract.combat.initiative.value, 6)
+  assert.ok(contract.combat.initiative.sources.some((entry) => entry.contributionId.includes("war-magic-initiative-formula")))
+  assert.equal(contract.resources.find((entry) => entry.key === "wizard_war_magic_power_surge")?.max.value, 4)
+  assert.equal(
+    applyResourceRecovery(state, contract.resources, "long_rest").resources?.wizard_war_magic_power_surge?.current,
+    1,
+  )
+  assertHasAction(catalogKey, 6, "wizard_war_magic_gain_power_surge")
+  assertHasAction(catalogKey, 6, "wizard_war_magic_spend_power_surge")
+})
+
+test("Bladesinging and Order of Scribes expose choices, pools, and slot payment", () => {
+  const bladesinger = contractFor("subclass:wizard:bladesinging", 14)
+  assert.equal(resourceMax("subclass:wizard:bladesinging", 14, "wizard_bladesinging_bladesong"), 5)
+  assert.ok(bladesinger.grants.some((entry) => entry.target === "proficiency" && entry.key === "weapon:rapier"))
+  assertHasAction("subclass:wizard:bladesinging", 10, "wizard_bladesinging_song_of_defense_9")
+
+  assert.equal(resourceMax("subclass:wizard:order-of-scribes", 6, "wizard_scribes_manifest_mind_casts"), 3)
+  const manifest = contractFor("subclass:wizard:order-of-scribes", 6).actions.find(
+    (entry) => entry.key === "wizard_scribes_manifest_mind",
+  )
+  assert.ok(manifest)
+  assert.equal(manifest.costOptions.length, 10)
+  assertHasAction("subclass:wizard:order-of-scribes", 14, "wizard_scribes_one_with_word")
+})
+
+test("Graviturgy and Chronurgy persist finite uses while scene cadence remains semantic", () => {
+  assert.equal(resourceMax("subclass:wizard:graviturgy", 10, "wizard_graviturgy_violent_attraction"), 4)
+  const horizon = contractFor("subclass:wizard:graviturgy", 14).actions.find(
+    (entry) => entry.key === "wizard_graviturgy_event_horizon",
+  )
+  assert.ok(horizon)
+  assert.equal(horizon.costOptions.length, 8)
+
+  const chronurgy = contractFor("subclass:wizard:chronurgy", 14)
+  assert.equal(chronurgy.combat.initiative.value, 6)
+  assert.equal(resourceMax("subclass:wizard:chronurgy", 3, "wizard_chronurgy_chronal_shift"), 2)
+  const convergent = chronurgy.actions.find((entry) => entry.key === "wizard_chronurgy_convergent_future")
+  assert.ok(convergent)
+  const used = executeAction({ currentHp: 70, tempHp: 0 }, convergent)
+  const exhaustionState = recoverableStateKey("wizard_chronurgy_convergent_future_exhaustion", ["long_rest"])
+  assert.equal(used.facts?.[exhaustionState], 1)
+  assert.equal(
+    applyResourceRecovery(used, chronurgy.resources, "long_rest").facts?.[exhaustionState],
+    undefined,
+  )
+})
+
+test("supplemental Wizard bundles retain their source labels and revisions", () => {
+  const sourceByKey = new Map(
+    wizardSubclassRuntimeBundles.map((bundle) => [bundle.template.catalog_key, bundle.template]),
+  )
+  assert.equal(sourceByKey.get("subclass:wizard:war-magic")?.source_label, "Xanathar's Guide to Everything")
+  assert.equal(sourceByKey.get("subclass:wizard:bladesinging")?.source_label, "Tasha's Cauldron of Everything")
+  assert.equal(sourceByKey.get("subclass:wizard:chronurgy")?.source_label, "Explorer's Guide to Wildemount")
+  assert.equal(sourceByKey.get("subclass:wizard:enchantment")?.rules_meta.rules_revision, "2014-compatible-on-wizard-2024")
 })
 
 test("forward migration installs the same persistent-state policy for existing and new campaigns", () => {

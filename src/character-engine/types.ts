@@ -151,7 +151,7 @@ export type FormulaExpression =
   | { kind: "max"; values: FormulaExpression[] }
   | { kind: "clamp"; value: FormulaExpression; min?: number; max?: number }
 
-export type FormulaTarget = "combat.ac"
+export type FormulaTarget = "combat.ac" | "combat.initiative"
 
 export interface FormulaContribution {
   id: string
@@ -187,6 +187,11 @@ export type ResourceRechargeRule =
   | {
       triggers: ResourceRechargeTrigger[]
       restore: "amount"
+      amount: number
+    }
+  | {
+      triggers: ResourceRechargeTrigger[]
+      restore: "set"
       amount: number
     }
 

@@ -15,7 +15,8 @@ function assertRestoreRule(value: unknown, context: string): asserts value is Re
   }
   if (rule.restore === "full") return
   if (rule.restore === "amount" && typeof rule.amount === "number" && Number.isFinite(rule.amount) && rule.amount > 0) return
-  throw new Error(`${context}: recovery rule must restore full or a positive amount`)
+  if (rule.restore === "set" && typeof rule.amount === "number" && Number.isFinite(rule.amount) && rule.amount >= 0) return
+  throw new Error(`${context}: recovery rule must restore full, add a positive amount, or set a non-negative amount`)
 }
 
 /**
@@ -52,7 +53,8 @@ export function assertPersistentResourceRecharge(
   }
   if (record.restore === "full") return
   if (record.restore === "amount" && typeof record.amount === "number" && Number.isFinite(record.amount) && record.amount > 0) return
-  throw new Error(`${context}: recharge must restore full or a positive amount`)
+  if (record.restore === "set" && typeof record.amount === "number" && Number.isFinite(record.amount) && record.amount >= 0) return
+  throw new Error(`${context}: recharge must restore full, add a positive amount, or set a non-negative amount`)
 }
 
 export function isPersistentResourceRecoveryTrigger(value: string): value is PersistentResourceRecoveryTrigger {

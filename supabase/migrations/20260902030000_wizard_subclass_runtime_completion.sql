@@ -198,7 +198,7 @@ set search_path = ''
 as $$
   select jsonb_build_object(
     'key',p_key,
-    'kind',p_kind,
+    'kind','class_spell',
     'ability','intelligence',
     'saveDc',private.wizard_spell_dc_formula(),
     'attackBonus',private.wizard_spell_attack_formula(),
@@ -490,14 +490,14 @@ begin
     private.wizard_school_savant('illusionist','illusion','Иллюзии')
     || jsonb_build_array(
       private.wizard_subclass_feature('illusionist-improved-illusions-rules','wizard:illusionist:improved-illusions','subclass:wizard:illusionist:improved-illusions','Улучшенные иллюзии','Заклинания Иллюзии можно накладывать без словесных компонентов; жестовые и материальные компоненты остаются. Дальность ваших заклинаний Иллюзии с базовой дальностью 10 футов или больше увеличивается на 60 футов. Вы знаете Малую иллюзию сверх лимита заговоров; при её сотворении можно создать звук и изображение вместе, а также использовать бонусное действие.',jsonb_build_object('kind','improved_illusions','removeVerbalComponentsFromIllusionSpells',true,'rangeBonusFeet',60,'minorIllusion',jsonb_build_object('granted',true,'soundAndImageTogether',true,'canCastAsBonusAction',true))),
-      private.wizard_spell_mechanic('illusionist-minor-illusion-access','wizard:illusionist:improved-illusions','minor-illusion','Малая иллюзия',0,'illusion','not_required',jsonb_build_array(jsonb_build_object('key','cantrip','kind','cantrip','ability','intelligence','saveDc',private.wizard_spell_dc_formula(),'requiresPrepared',false)))
+      private.wizard_spell_mechanic('illusionist-minor-illusion-access','wizard:illusionist:improved-illusions','minor-illusion','Малая иллюзия',0,'illusion','not_required',jsonb_build_array(jsonb_build_object('key','cantrip','kind','class_spell','ability','intelligence','saveDc',private.wizard_spell_dc_formula(),'requiresPrepared',false)))
     ),
     jsonb_build_array(
       private.wizard_subclass_resource('illusionist-free-summon-beast-resource','wizard:illusionist:phantasmal-creatures','wizard_illusionist_free_summon_beast','Призрачный зверь без ячейки',to_jsonb(1),to_jsonb('long_rest'::text)),
       private.wizard_subclass_resource('illusionist-free-summon-fey-resource','wizard:illusionist:phantasmal-creatures','wizard_illusionist_free_summon_fey','Призрачная фея без ячейки',to_jsonb(1),to_jsonb('long_rest'::text)),
       private.wizard_subclass_feature('illusionist-phantasmal-creatures-rules','wizard:illusionist:phantasmal-creatures','subclass:wizard:illusionist:phantasmal-creatures','Фантомные существа','Призыв зверя и Призыв феи всегда подготовлены и не занимают лимит подготовки. Когда вы накладываете одно из этих заклинаний, оно может считаться Иллюзией, а призванное существо выглядит призрачным. Каждое из двух заклинаний можно сотворить без ячейки один раз до долгого отдыха; существо от бесплатного сотворения получает половину обычных HP.',jsonb_build_object('kind','phantasmal_creatures','alwaysPrepared',jsonb_build_array('summon-beast','summon-fey'),'canTreatAsIllusion',true,'freeCastEachPerLongRest',true,'freeCastSummonHpMultiplier',0.5)),
-      private.wizard_spell_mechanic('illusionist-summon-beast-access','wizard:illusionist:phantasmal-creatures','summon-beast','Призыв зверя',2,'conjuration','always_prepared',jsonb_build_array(private.wizard_slot_method('slot','spell',2),jsonb_build_object('key','phantom-free','kind','spell','ability','intelligence','saveDc',private.wizard_spell_dc_formula(),'requiresPrepared',false,'resourceOptions',jsonb_build_array(jsonb_build_object('key','free','label','Бесплатный призрачный призыв','costs',jsonb_build_array(jsonb_build_object('key','wizard_illusionist_free_summon_beast','amount',1))))))),
-      private.wizard_spell_mechanic('illusionist-summon-fey-access','wizard:illusionist:phantasmal-creatures','summon-fey','Призыв феи',3,'conjuration','always_prepared',jsonb_build_array(private.wizard_slot_method('slot','spell',3),jsonb_build_object('key','phantom-free','kind','spell','ability','intelligence','saveDc',private.wizard_spell_dc_formula(),'requiresPrepared',false,'resourceOptions',jsonb_build_array(jsonb_build_object('key','free','label','Бесплатный призрачный призыв','costs',jsonb_build_array(jsonb_build_object('key','wizard_illusionist_free_summon_fey','amount',1)))))))
+      private.wizard_spell_mechanic('illusionist-summon-beast-access','wizard:illusionist:phantasmal-creatures','summon-beast','Призыв зверя',2,'conjuration','always_prepared',jsonb_build_array(private.wizard_slot_method('slot','spell',2))),
+      private.wizard_spell_mechanic('illusionist-summon-fey-access','wizard:illusionist:phantasmal-creatures','summon-fey','Призыв феи',3,'conjuration','always_prepared',jsonb_build_array(private.wizard_slot_method('slot','spell',3)))
     ),
     jsonb_build_array(
       private.wizard_subclass_resource('illusionist-illusory-self-resource','wizard:illusionist:illusory-self','wizard_illusionist_illusory_self','Иллюзорное я',to_jsonb(1),jsonb_build_array('short_rest','long_rest')),
