@@ -48,8 +48,8 @@ test("player-facing active reference contains only rebuilt class families", () =
     classReference.map((entry) => entry.id).sort(),
     ["cleric", "druid", "fighter", "wizard"],
   )
-  assert.equal(classReference.reduce((sum, entry) => sum + entry.subclasses.length, 0), 32)
-  assert.equal(classReference.find((entry) => entry.id === "wizard")?.subclasses.length, 0)
+  assert.equal(classReference.reduce((sum, entry) => sum + entry.subclasses.length, 0), 45)
+  assert.equal(classReference.find((entry) => entry.id === "wizard")?.subclasses.length, 13)
 })
 
 test("legacy reset remains immutable history and does not touch custom easter-egg classes", () => {
