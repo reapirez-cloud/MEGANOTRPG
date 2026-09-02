@@ -1,6 +1,7 @@
 import { evaluateCondition } from "./conditions.ts"
 import { resolveNumericConflicts } from "./conflicts.ts"
 import { evaluateFormula, validateFormula, type FormulaContext } from "./formulas.ts"
+import { stateRecoversOn } from "./stateLifecycle.ts"
 import type {
   CharacterContribution,
   CharacterState,
@@ -251,9 +252,10 @@ export function spendResource(
 }
 
 /**
- * Applies one explicit recovery event to all matching resources.
- * Long rest does not implicitly mean short rest: resources that support both
- * must list both triggers in their definition.
+ * Applies one explicit recovery event to all matching resources and persistent
+ * state facts whose generic lifecycle ends on that same event.
+ * Long rest does not implicitly mean short rest: resources/state that support
+ * both must list both triggers in their definition/key.
  */
 export function applyResourceRecovery(
   state: CharacterState,
@@ -272,6 +274,14 @@ export function applyResourceRecovery(
         ? resource.max.value
         : Math.min(resource.max.value, current + resource.recharge.amount)
     next.resources[resource.stateKey] = { current: restored }
+  }
+
+  if (next.facts) {
+    const facts = { ...next.facts }
+    for (const key of Object.keys(facts)) {
+      if (stateRecoversOn(key, trigger)) delete facts[key]
+    }
+    next.facts = facts
   }
 
   return next
