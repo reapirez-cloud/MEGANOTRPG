@@ -5,6 +5,7 @@ import { classReference, type ClassReferenceEntry, type ClassReferenceSubclassFe
 import {
   clericClassVossComment,
   clericClassVossNarration,
+  getClericBaseVossComment,
   getClericBaseVossNarration,
   getClericSubclassVossComment,
   getClericSubclassFeatureVossNarration,
@@ -434,6 +435,7 @@ export default function ReferenceGuide({
       return features.map((feature) => ({
         ...feature,
         explanation: getClericBaseVossNarration(feature.level, feature.sourceKey) || feature.explanation,
+        voss: getClericBaseVossComment(feature.level, feature.sourceKey) || feature.voss,
       }))
     }
     if (selectedClass?.id === "wizard") {
