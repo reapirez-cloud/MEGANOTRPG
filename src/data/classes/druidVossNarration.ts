@@ -13,6 +13,12 @@ import {
   druidGeminiSubclassComments,
   druidGeminiSubclassNarration,
 } from "./druidVossNarrationGemini"
+import {
+  druidMoreFeatureComments,
+  druidMoreFeatureNarration,
+  druidMoreSubclassComments,
+  druidMoreSubclassNarration,
+} from "./druidVossNarrationGeminiMore"
 
 export { druidClassVossComment, druidClassVossNarration, getDruidBaseVossNarration }
 
@@ -20,6 +26,9 @@ const subclassAliases: Record<string, string> = {
   "circle-of-stars": "stars",
   "circle-of-wildfire": "wildfire",
   "circle-of-the-land": "land",
+  "circle-of-the-sea": "sea",
+  "circle-of-the-shepherd": "shepherd",
+  "circle-of-dreams": "dreams",
 }
 
 function literarySubclassId(subclassId: string) {
@@ -28,20 +37,28 @@ function literarySubclassId(subclassId: string) {
 
 export function getDruidSubclassVossNarration(subclassId: string) {
   const id = literarySubclassId(subclassId)
-  return druidGeminiSubclassNarration[id] || getCurrentDruidSubclassVossNarration(subclassId)
+  return druidMoreSubclassNarration[id]
+    || druidGeminiSubclassNarration[id]
+    || getCurrentDruidSubclassVossNarration(subclassId)
 }
 
 export function getDruidSubclassVossComment(subclassId: string) {
   const id = literarySubclassId(subclassId)
-  return druidGeminiSubclassComments[id] || getCurrentDruidSubclassVossComment(subclassId)
+  return druidMoreSubclassComments[id]
+    || druidGeminiSubclassComments[id]
+    || getCurrentDruidSubclassVossComment(subclassId)
 }
 
 export function getDruidSubclassFeatureVossNarration(subclassId: string, featureName: string) {
   const id = literarySubclassId(subclassId)
-  return druidGeminiFeatureNarration[id]?.[featureName] || getCurrentDruidSubclassFeatureVossNarration(subclassId, featureName)
+  return druidMoreFeatureNarration[id]?.[featureName]
+    || druidGeminiFeatureNarration[id]?.[featureName]
+    || getCurrentDruidSubclassFeatureVossNarration(subclassId, featureName)
 }
 
 export function getDruidSubclassFeatureVossComment(subclassId: string, featureName: string) {
   const id = literarySubclassId(subclassId)
-  return druidGeminiFeatureComments[id]?.[featureName] || getCurrentDruidSubclassFeatureVossComment(subclassId, featureName)
+  return druidMoreFeatureComments[id]?.[featureName]
+    || druidGeminiFeatureComments[id]?.[featureName]
+    || getCurrentDruidSubclassFeatureVossComment(subclassId, featureName)
 }
