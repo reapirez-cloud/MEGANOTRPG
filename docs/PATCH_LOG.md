@@ -23,6 +23,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Simplified the sheet directory into concise section navigation without explanatory UI prose telling the player how to browse it.
 - Completed Character Profile v5 Stage 3 shared Focus/Detail language: Resources, Actions, Feats, Defenses, Origin and Story now use one consistent focused-section shell with an explicit back/context/title/action hierarchy instead of six locally authored section headers.
 - Character Engine calculation details now open in one shared character-detail bottom sheet with the resolved value and source provenance, while manager feature creation is promoted into the focused section header instead of sitting in a detached action row.
+- Completed Character Profile v5 Stage 4 interaction foundation: Back now descends exactly one character-navigation level at a time — focused Sheet section → Sheet overview → top-level character exit — instead of unexpectedly leaving the character while the player is still inside a nested surface.
+- The large character identity hero now collapses automatically on focused Sheet content and all non-Sheet sections, keeping only the portrait/name/status context needed while deeper content is being used.
+- Loading, empty, error and stale-runtime feedback now share one character-profile state language instead of mixing unrelated `center-state`, `auth-error` and ad-hoc empty placeholders.
+- Detail and action bottom sheets now share predictable dismissal behavior through explicit close, backdrop dismissal and Escape; art keeps the intended `tap → detail` and `long press → actions` split without tutorial copy explaining the gesture.
 
 ### Runtime and rules changes
 
@@ -30,11 +34,14 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Preserved the existing Fighter narration export/getter contract used by `ReferenceGuide`; no Fighter mechanics, Character Engine contracts, resources, action economy or exact-rule text were changed.
 - Added an explicit Fighter authoring contract preventing future passes from collapsing every feature into another variation of «he kills efficiently»; feature narration must instead vary across positioning, endurance, command, observation, fear, recovery, discipline and the cost of survival.
 - Added `src/character-profile-v5.css` as a scoped semantic migration layer for character-profile surfaces, text, accents, spacing, radii, motion and icon sizing; it is loaded after the existing profile/module CSS so v5 can deliberately supersede older presentation without replacing runtime ownership.
-- Character Profile v5 Stages 1–3 remain presentation-only: the shared `useResolvedCharacterRuntime` path, Character Engine contract, Sheet/Class/Spells/Inventory runtime, persistence and canonical ownership remain unchanged.
+- Character Profile v5 Stages 1–4 remain presentation-only: the shared `useResolvedCharacterRuntime` path, Character Engine contract, Sheet/Class/Spells/Inventory runtime, persistence and canonical ownership remain unchanged.
 - The Stage 2 HP bar is derived only from `ResolvedCharacterContract` current/max HP and creates no new stored health value, local mechanic or persistence source.
 - Added reusable presentation primitives `CharacterFocusShell.tsx` and `CharacterDetailSheet.tsx`; neither component imports or owns Character Engine resolution, Supabase persistence, resources, gameplay state or domain-owner writes.
 - `ResolvedCharacterSheetBase` still resolves calculation detail through `explainCharacter(input, explain.query)` and still renders actions, resources, features and capabilities from the same `ResolvedCharacterContract`; Stage 3 changes only how those resolved values are presented and navigated.
 - Existing class/subclass focus bridge and the runtime ownership boundaries for Class, Spells and Inventory remain untouched so later specialized v5 passes can adopt the shared Focus/Detail language without creating parallel engines.
+- Added `CharacterSectionState.tsx` as a presentation-only status primitive and `CharacterInteraction.css` as the Stage 4 interaction layer; neither owns character data, resources, persistence or gameplay resolution.
+- Stage 4 Sheet focus reset uses only a React presentation remount key to return the nested Sheet renderer to its overview. It does not clear, rebuild, mutate or persist character state and does not introduce a second navigation or mechanics owner.
+- Runtime errors with an already resolved snapshot are now presented explicitly as a stale last-known calculation while retry still delegates to the existing runtime refresh path; no fallback mechanic or guessed value is created.
 
 ### Repository / release process
 
@@ -50,11 +57,14 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Character Profile Stage 3 CI run #1329: production TypeScript/Vite build succeeded and lint completed with 0 errors / 21 warnings. The suite contains 616 tests and passed 606/616; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
 - Added `characterFocusPattern.test.ts` with five regression gates for one reusable full-page Focus shell, one reusable Detail bottom sheet, all six deep Sheet sections adopting the shared shell, CE explanations retaining `explainCharacter` as their source, adaptive token-driven presentation and the manager feature-create action living in the focused header. All five Stage 3 tests pass in CI #1329.
 - Updated the older Stage 2 hierarchy contract so it now requires the shared `CharacterFocusShell` and explicitly rejects the removed local `FocusHeader`; all existing v5 hierarchy tests continue to pass in CI #1329.
+- Character Profile Stage 4 CI run #1338: production TypeScript/Vite build succeeded and lint completed with 0 errors / 21 warnings. The suite contains 622 tests and passed 612/622; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
+- Added `characterInteractionPattern.test.ts` with six regression gates for one-level Back behavior, compact deep hero presentation, shared loading/empty/error/stale states, predictable Detail/Action dismissal, `tap → detail` plus `long press → actions` art behavior and the presentation-only runtime boundary. All six Stage 4 tests pass in CI #1338.
+- Stage 2 and Stage 3 character-profile regression gates continue to pass under the Stage 4 interaction changes; Stage 4 introduced no new failing test family.
 
 ### Known incomplete work
 
 - Fighter mechanics/runtime remain `IN_PROGRESS` under the existing class-work ledger and were intentionally not changed by this rewrite.
-- Character Profile v5 Stage 3 intentionally stops at the shared Focus/Detail interaction language. Deeper specialized v5 recomposition of Class, Spells, Inventory and other profile surfaces remains for later stages and is not claimed by this work unit.
+- Character Profile v5 Stage 4 intentionally stops at the shared interaction foundation. Deeper specialized v5 recomposition of Class, Spells, Inventory and other profile surfaces remains for later stages and is not claimed by this work unit.
 - The repository still has 10 stale Voss/text-contract assertions that must be reconciled with the already-authored class narration before the full CI suite can return green.
 
 ---
