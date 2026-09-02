@@ -1,15 +1,22 @@
 import type { RuleTemplate, RuleTemplateLevel } from "./types.ts"
 
 /**
- * Wizard subclass Wave 0 contract.
+ * Wizard subclass catalog contract.
  *
- * This is catalog/compatibility metadata, not a second subclass runtime. Actual
- * mechanics continue to flow through RuleTemplate -> resolver -> Character
- * Engine. Subclass rows are installed only when their content package is ready.
+ * This file owns stable subclass identities, unlock levels and visual keys. The
+ * first four PHB 2024 subclasses also have a runtime package in
+ * wizardSubclassMechanics.ts and are installed into campaigns by the matching
+ * Supabase migration.
  */
 export const WIZARD_SUBCLASS_PARENT_CATALOG_KEY = "class:wizard" as const
 export const WIZARD_SUBCLASS_UNLOCK_LEVEL = 3 as const
 export const WIZARD_SUBCLASS_FEATURE_LEVELS = [3, 6, 10, 14] as const
+export const WIZARD_SUBCLASS_RUNTIME_READY_CATALOG_KEYS = [
+  "subclass:wizard:abjurer",
+  "subclass:wizard:diviner",
+  "subclass:wizard:evoker",
+  "subclass:wizard:illusionist",
+] as const
 
 export type WizardSubclassFeatureLevel = (typeof WIZARD_SUBCLASS_FEATURE_LEVELS)[number]
 export type WizardSubclassSource = "phb-2024" | "legacy-school" | "tasha" | "xanathar" | "wildemount"
@@ -25,20 +32,16 @@ export type WizardSubclassDefinition = {
   visualKey: `wizard-subclass:${string}`
   unlockLevel: typeof WIZARD_SUBCLASS_UNLOCK_LEVEL
   featureLevels: readonly WizardSubclassFeatureLevel[]
+  runtimeReady?: boolean
 }
 
 const levels = WIZARD_SUBCLASS_FEATURE_LEVELS
 
-/**
- * Supported Wizard subclass identities. The four PHB 2024 subclasses replace
- * their 2014 namesakes; the remaining older subclasses use the 2024 Wizard
- * compatibility schedule, moving their former level-2 entry feature to level 3.
- */
 export const WIZARD_SUBCLASSES = [
   {
     catalogKey: "subclass:wizard:evoker",
     slug: "wizard-evoker",
-    name: "Эвокер",
+    name: "Воплотитель",
     englishName: "Evoker",
     source: "phb-2024",
     sourceLabel: "Player's Handbook 2024",
@@ -46,6 +49,7 @@ export const WIZARD_SUBCLASSES = [
     visualKey: "wizard-subclass:evoker",
     unlockLevel: 3,
     featureLevels: levels,
+    runtimeReady: true,
   },
   {
     catalogKey: "subclass:wizard:diviner",
@@ -58,6 +62,7 @@ export const WIZARD_SUBCLASSES = [
     visualKey: "wizard-subclass:diviner",
     unlockLevel: 3,
     featureLevels: levels,
+    runtimeReady: true,
   },
   {
     catalogKey: "subclass:wizard:illusionist",
@@ -70,11 +75,12 @@ export const WIZARD_SUBCLASSES = [
     visualKey: "wizard-subclass:illusionist",
     unlockLevel: 3,
     featureLevels: levels,
+    runtimeReady: true,
   },
   {
     catalogKey: "subclass:wizard:abjurer",
     slug: "wizard-abjurer",
-    name: "Абжурер",
+    name: "Абьюратор",
     englishName: "Abjurer",
     source: "phb-2024",
     sourceLabel: "Player's Handbook 2024",
@@ -82,6 +88,7 @@ export const WIZARD_SUBCLASSES = [
     visualKey: "wizard-subclass:abjurer",
     unlockLevel: 3,
     featureLevels: levels,
+    runtimeReady: true,
   },
   {
     catalogKey: "subclass:wizard:enchantment",
@@ -98,7 +105,7 @@ export const WIZARD_SUBCLASSES = [
   {
     catalogKey: "subclass:wizard:conjuration",
     slug: "wizard-conjuration",
-    name: "Школа воплощения",
+    name: "Школа призыва",
     englishName: "School of Conjuration",
     source: "legacy-school",
     sourceLabel: "Player's Handbook 2014",
@@ -202,11 +209,6 @@ export type WizardSubclassPackageValidation = {
   levels: readonly Pick<RuleTemplateLevel, "level">[]
 }
 
-/**
- * Guard for future Wizard subclass packages. It checks only structural facts
- * owned by the template system; individual feature mechanics still receive
- * their own runtime/GM-boundary audit in each subclass wave.
- */
 export function wizardSubclassPackageErrors(input: WizardSubclassPackageValidation): string[] {
   const errors: string[] = []
 
