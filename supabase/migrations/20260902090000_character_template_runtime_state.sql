@@ -1,3 +1,5 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
+
 alter table public.character_sheets
   add column if not exists runtime_facts jsonb not null default '{}'::jsonb;
 
