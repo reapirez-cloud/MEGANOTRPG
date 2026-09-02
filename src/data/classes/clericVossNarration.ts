@@ -1,19 +1,16 @@
 import {
-  getClericSubclassFeatureVossNarration as getClericSubclassFeatureVossNarrationGemini,
+  getClericSubclassFeatureVossNarration as getClericSubclassFeatureVossNarrationLegacy,
   normalizeClericDomainId,
-} from "./clericVossNarrationGemini.ts"
+} from "./clericVossNarrationLegacy.ts"
 
 export {
   clericClassVossNarration,
+  clericClassVossComment,
   normalizeClericDomainId,
   getClericBaseVossNarration,
   getClericSubclassVossNarration,
-  clericVossNarrationCoverage,
-} from "./clericVossNarrationGemini.ts"
-
-export {
-  clericClassVossComment,
   getClericSubclassVossComment,
+  clericVossNarrationCoverage,
 } from "./clericVossNarrationLegacy.ts"
 
 const blessedStrikesNarration: Record<string, string> = {
@@ -56,5 +53,5 @@ export function getClericSubclassFeatureVossNarration(subclassId: string, source
   }
   const override = featureNarrationOverrides[normalized]?.[sourceKey]
   if (override) return override
-  return getClericSubclassFeatureVossNarrationGemini(subclassId, sourceKey)
+  return getClericSubclassFeatureVossNarrationLegacy(subclassId, sourceKey)
 }
