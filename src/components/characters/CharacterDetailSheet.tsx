@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react"
 import "./CharacterSocial.css"
+import "./CharacterEditors.css"
 
 type Props = {
   eyebrow?: string
