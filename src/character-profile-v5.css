@@ -1,10 +1,15 @@
-/* Character profile v5 — Stage 1 foundation/navigation, Stage 2 content composition,
+/* Character Profile v5
+ * Stages 1–2: navigation + sheet composition.
  * Stage 3 shared Focus/Detail patterns.
- * This layer is intentionally presentation-only. Existing Sheet/Class/Spells/Inventory runtime remains unchanged.
+ * Stages 4–7: interaction, specialized sections, social/media and editors.
+ * Stage 8: final visual polish and removal of the retired v4 cascade.
+ *
+ * Presentation only. character-profile-v3.css remains a compatibility foundation for
+ * legacy class hooks still emitted by Sheet/Spellbook/Profile markup; v5 is the only
+ * active character-profile migration layer and must load after that foundation.
  */
 
 .character-profile-v2 {
-  /* Surfaces */
   --character-surface-base: #0b0b0e;
   --character-surface-raised: #121217;
   --character-surface-elevated: #17171d;
@@ -13,13 +18,11 @@
   --character-line: rgba(255, 255, 255, .085);
   --character-line-strong: rgba(255, 255, 255, .135);
 
-  /* Text */
   --character-text-primary: #f2eff5;
   --character-text-secondary: #b4afb9;
   --character-text-muted: #77717d;
   --character-text-faint: #5f5964;
 
-  /* Semantic accents */
   --character-accent: #9d83ce;
   --character-accent-soft: rgba(157, 131, 206, .12);
   --character-health: #d97882;
@@ -27,7 +30,6 @@
   --character-positive: #79c9a4;
   --character-magic: #aa91da;
 
-  /* Spacing */
   --character-space-1: 4px;
   --character-space-2: 8px;
   --character-space-3: 12px;
@@ -36,24 +38,21 @@
   --character-space-6: 24px;
   --character-space-8: 32px;
 
-  /* Radius */
   --character-radius-small: 10px;
   --character-radius-medium: 16px;
   --character-radius-large: 24px;
   --character-radius-sheet: 28px;
 
-  /* Motion */
   --character-motion-fast: 140ms;
   --character-motion-normal: 220ms;
   --character-motion-sheet: 280ms;
   --character-ease-standard: cubic-bezier(.2, .8, .2, 1);
 
-  /* Icon language */
   --character-icon-small: 16px;
   --character-icon-medium: 20px;
   --character-icon-large: 24px;
 
-  /* Bridge the existing v3/v4 surfaces onto the v5 semantic foundation. */
+  /* Compatibility tokens consumed by still-active v3 class hooks. */
   --profile-accent: var(--character-accent);
   --profile-accent-strong: #8667bc;
   --profile-accent-wash: var(--character-accent-soft);
@@ -72,8 +71,14 @@
   padding-top: var(--character-space-3);
 }
 
+.character-profile-v2 button:focus-visible,
+.character-navigator-v5:focus-visible {
+  outline: 2px solid rgba(157, 131, 206, .72);
+  outline-offset: 2px;
+}
+
 /* -------------------------------------------------------------------------- */
-/* Character identity                                                         */
+/* Identity                                                                    */
 /* -------------------------------------------------------------------------- */
 
 .character-profile-v2 .profile-v3__hero {
@@ -112,7 +117,7 @@
 
 .character-profile-v2 .profile-v3__name-row > div > span {
   color: var(--character-text-muted);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 760;
   letter-spacing: .1em;
 }
@@ -140,9 +145,9 @@
 .character-profile-v2 .profile-v3__class {
   width: fit-content;
   max-width: 100%;
-  min-height: 34px;
+  min-height: 44px;
   margin-top: 3px;
-  padding: 6px 8px 6px 10px;
+  padding: 7px 9px 7px 11px;
   border: 1px solid var(--character-line);
   border-radius: var(--character-radius-small);
   display: flex;
@@ -175,7 +180,7 @@
 .character-profile-v2 .profile-v3__class small {
   overflow: hidden;
   color: var(--character-text-muted);
-  font-size: 8px;
+  font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -196,7 +201,7 @@
   grid-area: reference;
   width: 100%;
   min-width: 0;
-  min-height: 42px;
+  min-height: 44px;
   padding: 7px 10px;
   border: 1px solid var(--character-line);
   border-radius: var(--character-radius-small);
@@ -231,13 +236,16 @@
 
 .character-profile-v2 .profile-v3__reference small {
   color: var(--character-text-muted);
-  font-size: 8px;
+  font-size: 9px;
 }
 
-.character-profile-v2 .profile-v3__class:hover,
-.character-profile-v2 .profile-v3__reference:hover {
-  border-color: rgba(157, 131, 206, .22);
-  background: rgba(157, 131, 206, .085);
+@media (hover: hover) {
+  .character-profile-v2 .profile-v3__class:hover,
+  .character-profile-v2 .profile-v3__reference:hover,
+  .character-navigator-v5:hover {
+    border-color: rgba(157, 131, 206, .24);
+    background: rgba(157, 131, 206, .085);
+  }
 }
 
 .character-profile-v2 .profile-v3__class:active,
@@ -276,17 +284,6 @@
     transform var(--character-motion-fast) var(--character-ease-standard);
 }
 
-.character-navigator-v5:hover {
-  border-color: rgba(157, 131, 206, .24);
-  background: rgba(20, 20, 25, .96);
-}
-
-.character-navigator-v5:focus-visible,
-.character-profile-v2 button:focus-visible {
-  outline: 2px solid rgba(157, 131, 206, .72);
-  outline-offset: 2px;
-}
-
 .character-navigator-v5__copy {
   min-width: 0;
   display: grid;
@@ -295,13 +292,13 @@
 
 .character-navigator-v5__copy small {
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--character-text-muted);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: .08em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .character-navigator-v5__current {
@@ -324,16 +321,16 @@
 
 .character-navigator-v5__current strong {
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 14px;
   font-weight: 760;
   letter-spacing: -.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .character-navigator-v5__chevron {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--character-line);
   border-radius: var(--character-radius-small);
   display: grid;
@@ -349,6 +346,8 @@
 /* -------------------------------------------------------------------------- */
 
 .character-profile-v2 .sheet-v5 {
+  width: 100%;
+  min-width: 0;
   gap: var(--character-space-3);
 }
 
@@ -361,7 +360,7 @@
 }
 
 .character-profile-v2 .sheet-v5 .sheet-v3__admin button {
-  min-height: 34px;
+  min-height: 44px;
   border-radius: 8px;
   color: var(--character-text-secondary);
   background: transparent;
@@ -369,13 +368,18 @@
 
 .character-profile-v2 .sheet-v5__combat {
   width: 100%;
+  min-width: 0;
+  padding: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--character-space-2);
+  overflow: visible;
 }
 
 .character-profile-v2 .sheet-v5__health,
 .character-profile-v2 .sheet-v5__combat .sheet-v3__vital {
+  width: 100%;
+  min-width: 0;
   min-height: 92px;
   padding: 14px;
   grid-column: auto;
@@ -383,6 +387,7 @@
   grid-template-areas:
     "label value"
     "track track";
+  justify-items: stretch;
   align-items: end;
   gap: 12px 16px;
   border: 1px solid rgba(217, 120, 130, .18);
@@ -390,6 +395,7 @@
   background:
     radial-gradient(circle at 100% 100%, rgba(217, 120, 130, .11), transparent 50%),
     var(--character-surface-raised);
+  text-align: left;
 }
 
 .character-profile-v2 .sheet-v5__health-heading {
@@ -402,16 +408,16 @@
 
 .character-profile-v2 .sheet-v5__health-heading > span {
   color: var(--character-health);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: .09em;
+  letter-spacing: .08em;
   text-transform: uppercase;
 }
 
 .character-profile-v2 .sheet-v5__health-heading > small {
   overflow: hidden;
   color: var(--character-text-muted);
-  font-size: 9px;
+  font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -422,7 +428,7 @@
   justify-self: end;
   align-self: center;
   color: var(--character-text-primary);
-  font-size: clamp(27px, 8vw, 34px);
+  font-size: clamp(28px, 8vw, 34px);
   font-weight: 760;
   font-variant-numeric: tabular-nums;
   letter-spacing: -.04em;
@@ -439,7 +445,7 @@
 .character-profile-v2 .sheet-v5__health-track {
   grid-area: track;
   width: 100%;
-  height: 5px;
+  height: 6px;
   overflow: hidden;
   border-radius: 999px;
   background: rgba(255, 255, 255, .065);
@@ -462,7 +468,7 @@
 
 .character-profile-v2 .sheet-v5__core-grid > button {
   min-width: 0;
-  min-height: 70px;
+  min-height: 72px;
   padding: 10px;
   grid-column: span 2;
   border: 1px solid var(--character-line);
@@ -486,9 +492,9 @@
   max-width: 100%;
   overflow: hidden;
   color: var(--character-text-muted);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 800;
-  letter-spacing: .065em;
+  letter-spacing: .055em;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -511,7 +517,7 @@
   max-width: 100%;
   overflow: hidden;
   color: var(--character-text-faint);
-  font-size: 8px;
+  font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -521,6 +527,9 @@
 /* -------------------------------------------------------------------------- */
 
 .character-profile-v2 .sheet-v5__abilities {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
   border: 1px solid var(--character-line);
   border-radius: var(--character-radius-medium);
   background: var(--character-surface-raised);
@@ -532,6 +541,7 @@
 
 .character-profile-v2 .sheet-v5__abilities .sheet-v3__section-heading > div > span {
   color: var(--character-text-muted);
+  font-size: 9px;
 }
 
 .character-profile-v2 .sheet-v5__abilities .sheet-v3__section-heading h3 {
@@ -543,6 +553,8 @@
 .character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-tabs {
   margin: 0 12px 10px;
   padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 2px;
   border: 0;
   border-bottom: 1px solid var(--character-line);
@@ -551,10 +563,13 @@
 }
 
 .character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-tabs button {
-  min-height: 34px;
+  min-width: 0;
+  min-height: 40px;
+  padding-inline: 2px;
   border-radius: 8px 8px 0 0;
   color: var(--character-text-muted);
   background: transparent;
+  font-size: 9px;
 }
 
 .character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-tabs button.is-active {
@@ -563,15 +578,54 @@
   box-shadow: inset 0 -2px 0 var(--character-accent);
 }
 
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-rail {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-flow: row nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-rail::-webkit-scrollbar {
+  display: none;
+}
+
 .character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-page {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 100%;
+  max-width: 100%;
   padding: 0 12px 10px;
+  display: grid;
   grid-template-columns: minmax(0, 1fr);
+  align-items: start;
   gap: var(--character-space-2);
+  box-sizing: border-box;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-score,
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__skill-column {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 0;
+  height: auto;
+  box-sizing: border-box;
 }
 
 .character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-score {
   padding: 9px;
+  display: grid;
   grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
   border-color: var(--character-line);
   border-radius: var(--character-radius-small);
   background: var(--character-surface-soft);
@@ -582,6 +636,7 @@
   min-width: 64px;
   height: 64px;
   min-height: 64px;
+  padding: 5px;
   border-color: var(--character-line);
   border-radius: 16px;
   background: rgba(157, 131, 206, .075);
@@ -589,10 +644,15 @@
 
 .character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-score > button strong {
   color: var(--character-text-primary);
+  font-size: 26px;
 }
 
 .character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-score > div > span {
   color: var(--character-text-primary);
+}
+
+.character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-score > div > button {
+  min-height: 44px;
 }
 
 .character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-score > div > button,
@@ -602,15 +662,16 @@
 }
 
 .character-profile-v2 .sheet-v5__abilities .sheet-v3__skill-column {
+  overflow: hidden;
   border-radius: var(--character-radius-small);
 }
 
 .character-profile-v2 .sheet-v5__abilities .sheet-v3__skill-column > button {
-  min-height: 42px;
+  min-height: 44px;
 }
 
 .character-profile-v2 .sheet-v5__ability-position {
-  min-height: 19px;
+  min-height: 20px;
   padding: 0 12px 10px;
   display: flex;
   align-items: center;
@@ -635,7 +696,7 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* Section directory + focused sections — Stage 2                             */
+/* Section directory — canonical v5, no v4 dependency                         */
 /* -------------------------------------------------------------------------- */
 
 .character-profile-v2 .sheet-v5__directory {
@@ -652,58 +713,111 @@
 
 .character-profile-v2 .sheet-v5__directory > header small {
   color: var(--character-text-muted);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 760;
-  letter-spacing: .09em;
+  letter-spacing: .08em;
   text-transform: uppercase;
 }
 
 .character-profile-v2 .sheet-v5__directory > header h3 {
-  margin-top: 2px;
+  margin: 2px 0 0;
   color: var(--character-text-primary);
   font-size: 16px;
   letter-spacing: -.015em;
 }
 
-.character-profile-v2 .sheet-v5__directory > header p {
-  display: none;
-}
-
-.character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list {
+.character-profile-v2 .sheet-v5__directory-list {
   padding: 5px 8px 8px;
+  display: grid;
   gap: 0;
 }
 
-.character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list > button {
-  min-height: 61px;
+.character-profile-v2 .sheet-v5__directory-list > button {
+  width: 100%;
+  min-width: 0;
+  min-height: 64px;
   padding: 8px 6px;
   border: 0;
   border-bottom: 1px solid var(--character-line);
   border-radius: 0;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
   background: transparent;
+  text-align: left;
+  transition:
+    background var(--character-motion-fast) var(--character-ease-standard),
+    transform var(--character-motion-fast) var(--character-ease-standard);
 }
 
-.character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list > button:last-child {
+.character-profile-v2 .sheet-v5__directory-list > button:last-child {
   border-bottom: 0;
 }
 
-.character-profile-v2 .sheet-v5__directory .sheet-v4__directory-icon {
-  border-color: var(--character-line);
+.character-profile-v2 .sheet-v5__directory-list > button:active {
+  background: rgba(255, 255, 255, .025);
+  transform: scale(.995);
+}
+
+.character-profile-v2 .sheet-v5__directory-list > button:disabled {
+  opacity: .52;
+}
+
+.character-profile-v2 .sheet-v5__directory-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--character-line);
+  border-radius: 12px;
   color: var(--character-accent);
   background: var(--character-accent-soft);
+  font-size: 14px;
 }
 
-.character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list strong {
-  color: var(--character-text-primary);
+.character-profile-v2 .sheet-v5__directory-list > button > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
 }
 
-.character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list small,
-.character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list em {
+.character-profile-v2 .sheet-v5__directory-list small {
   color: var(--character-text-muted);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.character-profile-v2 .sheet-v5__directory-list strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--character-text-primary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-profile-v2 .sheet-v5__directory-list em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--character-text-muted);
+  font-size: 9px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-profile-v2 .sheet-v5__directory-list > button > b {
+  color: var(--character-text-faint);
+  font-size: 18px;
+  font-weight: 500;
 }
 
 /* -------------------------------------------------------------------------- */
-/* Shared Focus / Detail language — Stage 3                                   */
+/* Shared Focus / Detail language — Stage 3 shared Focus/Detail patterns       */
 /* -------------------------------------------------------------------------- */
 
 .character-profile-v2 .character-focus-v5 {
@@ -729,8 +843,8 @@
 }
 
 .character-profile-v2 .character-focus-v5__back {
-  min-height: 34px;
-  padding: 0 10px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 1px solid var(--character-line);
   border-radius: 999px;
   display: inline-flex;
@@ -759,9 +873,9 @@
 
 .character-profile-v2 .character-focus-v5__copy > small {
   color: var(--character-text-muted);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 780;
-  letter-spacing: .09em;
+  letter-spacing: .08em;
   text-transform: uppercase;
 }
 
@@ -783,7 +897,7 @@
 }
 
 .character-profile-v2 .character-focus-v5__meta {
-  min-height: 18px;
+  min-height: 20px;
   margin-top: 3px;
   display: flex;
   flex-wrap: wrap;
@@ -795,7 +909,7 @@
   border-radius: 999px;
   color: var(--character-text-secondary);
   background: var(--character-surface-soft);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 680;
 }
 
@@ -804,8 +918,8 @@
 }
 
 .character-profile-v2 .character-focus-v5__primary {
-  min-height: 34px;
-  padding: 0 11px;
+  min-height: 44px;
+  padding: 0 13px;
   border: 1px solid rgba(157, 131, 206, .2);
   border-radius: 999px;
   color: var(--character-text-primary);
@@ -832,7 +946,7 @@
 }
 
 .character-profile-v2 .character-focus-v5__list > button {
-  min-height: 58px;
+  min-height: 60px;
   margin: 0;
   padding: 10px 8px;
   border: 0;
@@ -845,8 +959,10 @@
   border-bottom: 0;
 }
 
-.character-profile-v2 .character-focus-v5__list > button:hover {
-  background: rgba(255, 255, 255, .025);
+@media (hover: hover) {
+  .character-profile-v2 .character-focus-v5__list > button:hover {
+    background: rgba(255, 255, 255, .025);
+  }
 }
 
 .character-profile-v2 .character-focus-v5__cards {
@@ -859,7 +975,7 @@
 .character-profile-v2 .character-focus-v5__group,
 .character-profile-v2 .character-focus-v5__identity,
 .character-profile-v2 .character-focus-v5__story > article {
-  border-color: var(--character-line);
+  border: 1px solid var(--character-line);
   background: var(--character-surface-soft);
 }
 
@@ -879,17 +995,30 @@
 
 .character-profile-v2 .character-focus-v5__group .sheet-v3__section-heading {
   margin-bottom: 9px;
+  padding: 0 0 8px;
+}
+
+.character-profile-v2 .character-focus-v5__empty {
+  padding: 24px 16px;
+  color: var(--character-text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
 }
 
 .character-profile-v2 .character-focus-v5__identity {
   overflow: hidden;
   border-radius: var(--character-radius-small);
+  display: grid;
 }
 
 .character-profile-v2 .character-focus-v5__identity > div {
-  min-height: 58px;
+  min-height: 60px;
   padding: 11px 12px;
   border-bottom: 1px solid var(--character-line);
+  display: grid;
+  align-content: center;
+  gap: 4px;
 }
 
 .character-profile-v2 .character-focus-v5__identity > div:last-child {
@@ -899,6 +1028,10 @@
 .character-profile-v2 .character-focus-v5__identity span,
 .character-profile-v2 .character-focus-v5__story > article > span {
   color: var(--character-text-muted);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .07em;
+  text-transform: uppercase;
 }
 
 .character-profile-v2 .character-focus-v5__identity strong,
@@ -958,9 +1091,9 @@
 
 .character-profile-v2 .character-detail-v5__header small {
   color: var(--character-text-muted);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 780;
-  letter-spacing: .09em;
+  letter-spacing: .08em;
   text-transform: uppercase;
 }
 
@@ -973,8 +1106,8 @@
 }
 
 .character-profile-v2 .character-detail-v5__header > button {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--character-line);
   border-radius: 999px;
   color: var(--character-text-secondary);
@@ -1027,7 +1160,6 @@
   background: rgba(255, 255, 255, .025);
 }
 
-/* Keep action sheets visually tied to the character shell. */
 .character-profile-v2 .context-action-sheet {
   border-color: var(--character-line-strong);
   border-radius: var(--character-radius-sheet) var(--character-radius-sheet) 0 0;
@@ -1043,10 +1175,13 @@
   color: var(--character-accent);
 }
 
-/* The interface should not explain how to browse controls that are already visible. */
 .character-profile-v2 .inventory-rpg__hero-copy > p {
   display: none;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Responsive polish — Stage 8                                                */
+/* -------------------------------------------------------------------------- */
 
 @media (min-width: 600px) {
   .character-profile-v2 .profile-v3__hero {
@@ -1082,7 +1217,6 @@
     width: min(620px, calc(100vw - 24px));
     left: 50%;
     transform: translateX(-50%);
-    border-radius: var(--character-radius-sheet) var(--character-radius-sheet) 0 0;
   }
 }
 
@@ -1092,15 +1226,14 @@
     margin-inline: auto;
   }
 
-  .character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list {
+  .character-profile-v2 .sheet-v5__directory-list {
     padding: 8px;
-    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
 
-  .character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list > button,
-  .character-profile-v2 .sheet-v5__directory .sheet-v4__directory-list > button:last-child {
+  .character-profile-v2 .sheet-v5__directory-list > button,
+  .character-profile-v2 .sheet-v5__directory-list > button:last-child {
     min-height: 72px;
     padding: 9px;
     border: 1px solid var(--character-line);
@@ -1128,16 +1261,12 @@
 
   .character-profile-v2 .profile-v3__active {
     padding-inline: 6px;
-    font-size: 7px;
-  }
-
-  .character-profile-v2 .profile-v3__class {
-    max-width: 100%;
+    font-size: 8px;
   }
 
   .character-navigator-v5 {
     top: 6px;
-    min-height: 54px;
+    min-height: 56px;
     margin-top: 9px;
     margin-bottom: 12px;
     padding-block: 7px;
@@ -1150,21 +1279,13 @@
 
   .character-profile-v2 .sheet-v5__health,
   .character-profile-v2 .sheet-v5__combat .sheet-v3__vital {
-    min-height: 86px;
+    min-height: 88px;
     padding: 12px;
   }
 
+  /* Keep the intended 3 combat cards + 2 secondary cards hierarchy on phones. */
   .character-profile-v2 .sheet-v5__core-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .character-profile-v2 .sheet-v5__core-grid > button,
-  .character-profile-v2 .sheet-v5__core-grid > button:nth-child(4) {
-    grid-column: auto;
-  }
-
-  .character-profile-v2 .sheet-v5__core-grid > button:nth-child(5) {
-    grid-column: 1 / -1;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .character-profile-v2 .character-focus-v5 {
@@ -1185,7 +1306,7 @@
   }
 
   .character-profile-v2 .character-focus-v5__back {
-    width: 34px;
+    width: 44px;
     padding: 0;
     justify-content: center;
   }
@@ -1204,13 +1325,40 @@
   }
 }
 
+@media (max-width: 340px) {
+  .character-profile-v2 .sheet-v5__core-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .character-profile-v2 .sheet-v5__core-grid > button,
+  .character-profile-v2 .sheet-v5__core-grid > button:nth-child(4) {
+    grid-column: auto;
+  }
+
+  .character-profile-v2 .sheet-v5__core-grid > button:nth-child(5) {
+    grid-column: 1 / -1;
+  }
+
+  .character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-tabs {
+    margin-inline: 9px;
+  }
+
+  .character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-tabs button {
+    font-size: 8px;
+  }
+
+  .character-profile-v2 .sheet-v5__abilities .sheet-v3__ability-page {
+    padding-inline: 9px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .character-profile-v2 *,
   .character-profile-v2 *::before,
   .character-profile-v2 *::after {
     scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
   }
 }
