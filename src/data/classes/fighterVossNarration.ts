@@ -10,6 +10,12 @@ import {
   getFighterBrantBaseVossComment,
   getFighterBrantBaseVossNarration,
 } from "./fighterVossNarrationBrant"
+import {
+  getGeminiFighterSubclassFeatureVossComment,
+  getGeminiFighterSubclassFeatureVossNarration,
+  getGeminiFighterSubclassVossComment,
+  getGeminiFighterSubclassVossNarration,
+} from "./fighterSubclassVossNarrationGeminiPack1"
 
 export const fighterClassVossNarration = fighterBrantClassVossNarration
 export const fighterClassVossComment = fighterBrantClassVossComment
@@ -24,13 +30,20 @@ export function getFighterBaseVossComment(level: number, name: string) {
 }
 
 export function getFighterSubclassVossNarration(subclassId: string) {
-  return getPreviousFighterSubclassVossNarration(subclassId)
+  return getGeminiFighterSubclassVossNarration(subclassId)
+    || getPreviousFighterSubclassVossNarration(subclassId)
 }
 
 export function getFighterSubclassVossComment(subclassId: string) {
-  return getPreviousFighterSubclassVossComment(subclassId)
+  return getGeminiFighterSubclassVossComment(subclassId)
+    || getPreviousFighterSubclassVossComment(subclassId)
 }
 
 export function getFighterSubclassFeatureVossNarration(subclassId: string, level: number, name: string) {
-  return getPreviousFighterSubclassFeatureVossNarration(subclassId, level, name)
+  return getGeminiFighterSubclassFeatureVossNarration(subclassId, level, name)
+    || getPreviousFighterSubclassFeatureVossNarration(subclassId, level, name)
+}
+
+export function getFighterSubclassFeatureVossComment(subclassId: string, level: number, name: string) {
+  return getGeminiFighterSubclassFeatureVossComment(subclassId, level, name)
 }
