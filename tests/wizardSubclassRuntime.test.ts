@@ -2,7 +2,13 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 
-import { resolveCharacterContract, type CharacterEngineInput } from "../src/character-engine/index.ts"
+import {
+  applyResourceRecovery,
+  executeAction,
+  resolveCharacterContract,
+  type CharacterEngineInput,
+} from "../src/character-engine/index.ts"
+import { recoverableStateKey } from "../src/character-engine/stateLifecycle.ts"
 import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
 import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
 import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
@@ -13,6 +19,7 @@ import {
 } from "../src/rule-templates/wizardSubclassMechanics.ts"
 
 const migration = fs.readFileSync("supabase/migrations/20260902030000_wizard_subclass_runtime_completion.sql", "utf8")
+const persistentStateMigration = fs.readFileSync("supabase/migrations/20260902060000_wizard_subclass_persistent_state_policy.sql", "utf8")
 const actionRuntime = fs.readFileSync("supabase/migrations/20260830155543_gena_template_command_receipts.sql", "utf8")
 const spellRuntime = fs.readFileSync("supabase/migrations/20260830020000_class_chat_template_spell_runtime.sql", "utf8")
 
@@ -27,13 +34,26 @@ function packageFor(catalogKey: string, wizardLevel: number): CharacterTemplateB
 
   for (const bundle of selected) {
     if (bundle.template.kind === "class") bundle.assignment.template_level = wizardLevel
-    if (bundle.template.kind === "subclass") bundle.assignment.template_level = null
+    if (bundle.template.kind === "subclass") {
+      bundle.assignment.template_level = null
+      if (catalogKey === "subclass:wizard:diviner") {
+        bundle.assignment.selected_choices = {
+          wizard_diviner_portent_1_value: "4",
+          wizard_diviner_portent_2_value: "17",
+          wizard_diviner_portent_3_value: "11",
+        }
+      }
+    }
   }
 
   return selected
 }
 
-function engineInput(level: number, contributions: CharacterEngineInput["contributions"]): CharacterEngineInput {
+function engineInput(
+  level: number,
+  contributions: CharacterEngineInput["contributions"],
+  state: CharacterEngineInput["state"] = { currentHp: 70, tempHp: 0 },
+): CharacterEngineInput {
   return {
     base: {
       id: "wizard-subclass-runtime-character",
@@ -43,14 +63,18 @@ function engineInput(level: number, contributions: CharacterEngineInput["contrib
       baseMaxHp: 70,
       baseSpeed: 30,
     },
-    state: { currentHp: 70, tempHp: 0 },
+    state,
     contributions,
   }
 }
 
-function contractFor(catalogKey: string, wizardLevel: number) {
-  const parsed = resolveTemplateBundles(packageFor(catalogKey, wizardLevel), wizardLevel)
-  return resolveCharacterContract(engineInput(wizardLevel, parsed.contributions))
+function parsedFor(catalogKey: string, wizardLevel: number) {
+  return resolveTemplateBundles(packageFor(catalogKey, wizardLevel), wizardLevel)
+}
+
+function contractFor(catalogKey: string, wizardLevel: number, state?: CharacterEngineInput["state"]) {
+  const parsed = parsedFor(catalogKey, wizardLevel)
+  return resolveCharacterContract(engineInput(wizardLevel, parsed.contributions, state))
 }
 
 function resourceMax(catalogKey: string, wizardLevel: number, key: string) {
@@ -80,33 +104,86 @@ test("every PHB 2024 Wizard subclass emits structured CE rules", () => {
   }
 })
 
-test("Abjurer resolves Arcane Ward resources, reaction protection, and always prepared break spells", () => {
+test("Abjurer keeps only durable Ward state and leaves scene triggers to the GM", () => {
   assert.equal(resourceMax("subclass:wizard:abjurer", 3, "wizard_abjurer_arcane_ward"), 10)
   assert.equal(resourceMax("subclass:wizard:abjurer", 14, "wizard_abjurer_arcane_ward"), 32)
-  assertHasAction("subclass:wizard:abjurer", 3, "abjurer_ward_restore_slot_1")
+  assertHasAction("subclass:wizard:abjurer", 3, "abjurer_ward_cast_restore_1")
+  assertHasAction("subclass:wizard:abjurer", 3, "abjurer_ward_spend_slot_1")
   assertHasAction("subclass:wizard:abjurer", 6, "wizard_abjurer_projected_ward")
   assertHasSpell("subclass:wizard:abjurer", 10, "spell:counterspell")
   assertHasSpell("subclass:wizard:abjurer", 10, "spell:dispel-magic")
+
+  const projectedWard = contractFor("subclass:wizard:abjurer", 6).actions.find(
+    (entry) => entry.key === "wizard_abjurer_projected_ward",
+  )
+  assert.ok(projectedWard)
+  assert.equal(projectedWard.requirements.some((entry) => entry.enforcement === "gm"), false)
+  assert.ok(projectedWard.tags.includes("gm-adjudicated-trigger"))
 })
 
-test("Diviner resolves Portent as a scaling resource and exposes Gena-usable restore actions", () => {
-  assert.equal(resourceMax("subclass:wizard:diviner", 3, "wizard_diviner_portent"), 2)
-  assert.equal(resourceMax("subclass:wizard:diviner", 14, "wizard_diviner_portent"), 3)
-  assertHasAction("subclass:wizard:diviner", 3, "wizard_diviner_use_portent")
-  assertHasAction("subclass:wizard:diviner", 6, "diviner_expert_restore_slot_1")
-  assertHasAction("subclass:wizard:diviner", 10, "wizard_diviner_third_eye_darkvision")
+test("Diviner stores each Portent roll separately and Greater Portent only adds a third die", () => {
+  assert.equal(resourceMax("subclass:wizard:diviner", 3, "wizard_diviner_portent_1"), 1)
+  assert.equal(resourceMax("subclass:wizard:diviner", 3, "wizard_diviner_portent_2"), 1)
+  assert.equal(contractFor("subclass:wizard:diviner", 3).resources.some((entry) => entry.key === "wizard_diviner_portent_3"), false)
+  assert.equal(resourceMax("subclass:wizard:diviner", 14, "wizard_diviner_portent_3"), 1)
+  assertHasAction("subclass:wizard:diviner", 3, "wizard_diviner_use_portent_1_4")
+  assertHasAction("subclass:wizard:diviner", 3, "wizard_diviner_use_portent_2_17")
+  assertHasAction("subclass:wizard:diviner", 14, "wizard_diviner_use_portent_3_11")
+  assert.equal(contractFor("subclass:wizard:diviner", 14).resources.some((entry) => entry.key.includes("greater_portent")), false)
+
+  const bundle = wizardSubclassRuntimeBundles.find((entry) => entry.template.catalog_key === "subclass:wizard:diviner")
+  assert.ok(bundle)
+  const level3 = bundle.levels.find((entry) => entry.level === 3)
+  const level14 = bundle.levels.find((entry) => entry.level === 14)
+  assert.deepEqual(level3?.choices.map((choice) => choice.key), [
+    "wizard_diviner_portent_1_value",
+    "wizard_diviner_portent_2_value",
+  ])
+  assert.deepEqual(level14?.choices.map((choice) => choice.key), ["wizard_diviner_portent_3_value"])
+  assert.ok(level3?.choices.every((choice) => choice.refresh === "long_rest"))
 })
 
-test("Evoker resolves direct damage rules and Overchannel as a persistent class resource", () => {
+test("Third Eye stores the chosen mode only until the next short or long rest", () => {
+  const catalogKey = "subclass:wizard:diviner"
+  const contract = contractFor(catalogKey, 10)
+  const action = contract.actions.find((entry) => entry.key === "wizard_diviner_third_eye_darkvision")
+  assert.ok(action)
+
+  const initial = { currentHp: 70, tempHp: 0 }
+  const used = executeAction(initial, action)
+  const modeKey = recoverableStateKey("wizard_diviner_third_eye_mode", ["short_rest", "long_rest"])
+  assert.equal(used.facts?.[modeKey], "darkvision")
+
+  const recovered = applyResourceRecovery(used, contract.resources, "short_rest")
+  assert.equal(recovered.facts?.[modeKey], undefined)
+  assert.equal(recovered.resources?.wizard_diviner_third_eye?.current, 1)
+})
+
+test("Expert Divination exposes plain GM-adjudicated slot restoration actions", () => {
+  const action = contractFor("subclass:wizard:diviner", 6).actions.find(
+    (entry) => entry.key === "diviner_expert_restore_slot_1",
+  )
+  assert.ok(action)
+  assert.equal(action.requirements.length, 0)
+  assert.ok(action.tags.includes("gm-adjudicated-trigger"))
+})
+
+test("Evoker tracks repeated Overchannel backlash until a long rest", () => {
   const contract = contractFor("subclass:wizard:evoker", 14)
-  assert.ok(contract.rules.some((rule) => rule.key === "subclass:wizard:evoker:potent-cantrip"))
-  assert.ok(contract.rules.some((rule) => rule.key === "subclass:wizard:evoker:sculpt-spells"))
-  assert.ok(contract.rules.some((rule) => rule.key === "subclass:wizard:evoker:empowered-evocation"))
   assert.equal(resourceMax("subclass:wizard:evoker", 14, "wizard_evoker_overchannel_safe"), 1)
   assertHasAction("subclass:wizard:evoker", 14, "wizard_evoker_overchannel_safe")
+  assertHasAction("subclass:wizard:evoker", 14, "wizard_evoker_overchannel_repeat")
+
+  const repeat = contract.actions.find((entry) => entry.key === "wizard_evoker_overchannel_repeat")
+  assert.ok(repeat)
+  const counterKey = recoverableStateKey("wizard_evoker_overchannel_repeat_count", ["long_rest"])
+  const once = executeAction({ currentHp: 70, tempHp: 0 }, repeat)
+  const twice = executeAction(once, repeat)
+  assert.equal(twice.facts?.[counterKey], 2)
+  assert.equal(applyResourceRecovery(twice, contract.resources, "long_rest").facts?.[counterKey], undefined)
 })
 
-test("Illusionist resolves granted spells, free summon resources, Illusory Self, and Illusory Reality", () => {
+test("Illusionist spends only true persistent resources", () => {
   assertHasSpell("subclass:wizard:illusionist", 3, "spell:minor-illusion")
   assertHasSpell("subclass:wizard:illusionist", 6, "spell:summon-beast")
   assertHasSpell("subclass:wizard:illusionist", 6, "spell:summon-fey")
@@ -114,6 +191,29 @@ test("Illusionist resolves granted spells, free summon resources, Illusory Self,
   assert.equal(resourceMax("subclass:wizard:illusionist", 10, "wizard_illusionist_illusory_self"), 1)
   assertHasAction("subclass:wizard:illusionist", 10, "wizard_illusionist_illusory_self")
   assertHasAction("subclass:wizard:illusionist", 14, "wizard_illusionist_illusory_reality")
+
+  const illusorySelf = contractFor("subclass:wizard:illusionist", 10).actions.find(
+    (entry) => entry.key === "wizard_illusionist_illusory_self",
+  )
+  const illusoryReality = contractFor("subclass:wizard:illusionist", 14).actions.find(
+    (entry) => entry.key === "wizard_illusionist_illusory_reality",
+  )
+  assert.ok(illusorySelf)
+  assert.ok(illusoryReality)
+  assert.equal(illusorySelf.requirements.length, 0)
+  assert.equal(illusoryReality.requirements.length, 0)
+})
+
+test("forward migration installs the same persistent-state policy for existing and new campaigns", () => {
+  assert.match(persistentStateMigration, /install_wizard_2024_subclass_runtime_v2/)
+  assert.match(persistentStateMigration, /phb-2024-wizard-subclasses-runtime@2/)
+  assert.match(persistentStateMigration, /recovery-state\[long_rest\]::wizard_abjurer_arcane_ward_created/)
+  assert.match(persistentStateMigration, /wizard_diviner_portent_1_value/)
+  assert.match(persistentStateMigration, /wizard_diviner_portent_3_value/)
+  assert.match(persistentStateMigration, /recovery-state\[long_rest,short_rest\]::wizard_diviner_third_eye_mode/)
+  assert.match(persistentStateMigration, /wizard_evoker_overchannel_repeat_count/)
+  assert.match(persistentStateMigration, /gm-adjudicated-trigger/)
+  assert.match(persistentStateMigration, /install_wizard_2024_subclass_runtime_for_new_campaign_v2/)
 })
 
 test("migration installs the runtime package and reuses generic Gena template executors", () => {
