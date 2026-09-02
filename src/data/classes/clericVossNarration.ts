@@ -5,9 +5,9 @@ export {
   getClericSubclassVossNarration,
   getClericSubclassFeatureVossNarration,
   clericVossNarrationCoverage,
-} from "./clericVossNarrationGemini"
+} from "./clericVossNarrationGemini.ts"
 
 export {
   clericClassVossComment,
   getClericSubclassVossComment,
-} from "./clericVossNarrationLegacy"
+} from "./clericVossNarrationLegacy.ts"
