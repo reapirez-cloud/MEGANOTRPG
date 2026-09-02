@@ -93,7 +93,7 @@ export default function CharacterClassPanel(props: Props) {
             wizardLevel={wizardPackage.level}
             contract={props.contract}
           />}
-          <CharacterClassPanelBase {...props} showHero={false} sourceFocus="class" />
+          <CharacterClassPanelBase characterId={props.characterId} contract={props.contract} onOpenReference={props.onOpenReference} />
         </CharacterFocusShell>
       </div>
     )
@@ -111,7 +111,7 @@ export default function CharacterClassPanel(props: Props) {
           action={referenceAction}
         >
           <CharacterTemplateChoices characterId={props.characterId} />
-          <CharacterClassPanelBase {...props} showHero={false} sourceFocus="subclass" />
+          <CharacterClassPanelBase characterId={props.characterId} contract={props.contract} onOpenReference={props.onOpenReference} />
         </CharacterFocusShell>
       </div>
     )
