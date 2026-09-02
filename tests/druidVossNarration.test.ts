@@ -73,11 +73,13 @@ test("catalog aliases resolve to the same authored circle voice", () => {
   assert.equal(getDruidSubclassVossComment("circle-of-the-land"), getDruidSubclassVossComment("land"))
 })
 
-test("Druid class and Circle of the Moon keep grimdark warmth without treating the druid as a monster", () => {
+test("Druid class and Circle of the Moon keep war-horror black humor without turning the druid into a monster", () => {
+  const moon = getDruidSubclassVossNarration("moon")
   assert.match(druidClassVossComment, /рана|медвед/i)
-  assert.match(getDruidSubclassVossNarration("moon"), /бережнее|умиление/i)
+  assert.match(moon, /берсерк|передов|вражеск|боев|разорван/i)
   assert.match(getDruidSubclassVossComment("moon"), /плащ|дружб/i)
-  assert.doesNotMatch(getDruidSubclassVossNarration("moon"), /двулич|чудовищ|монстр/i)
+  assert.doesNotMatch(moon, /двулич|чудовищ|монстр/i)
+  assert.doesNotMatch(moon, /умилени|бережн|поглад/i)
 })
 
 test("ReferenceGuide overrides old Druid rule-paraphrase explanations with authored narration", () => {
