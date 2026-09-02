@@ -169,18 +169,31 @@ test("Expert Divination exposes plain GM-adjudicated slot restoration actions", 
 })
 
 test("Evoker tracks repeated Overchannel backlash until a long rest", () => {
-  const contract = contractFor("subclass:wizard:evoker", 14)
-  assert.equal(resourceMax("subclass:wizard:evoker", 14, "wizard_evoker_overchannel_safe"), 1)
-  assertHasAction("subclass:wizard:evoker", 14, "wizard_evoker_overchannel_safe")
-  assertHasAction("subclass:wizard:evoker", 14, "wizard_evoker_overchannel_repeat")
+  const catalogKey = "subclass:wizard:evoker"
+  const initialContract = contractFor(catalogKey, 14)
+  assert.equal(resourceMax(catalogKey, 14, "wizard_evoker_overchannel_safe"), 1)
+  assertHasAction(catalogKey, 14, "wizard_evoker_overchannel_safe")
+  assertHasAction(catalogKey, 14, "wizard_evoker_overchannel_repeat")
 
-  const repeat = contract.actions.find((entry) => entry.key === "wizard_evoker_overchannel_repeat")
-  assert.ok(repeat)
+  const safe = initialContract.actions.find((entry) => entry.key === "wizard_evoker_overchannel_safe")
+  const repeatBeforeSafe = initialContract.actions.find((entry) => entry.key === "wizard_evoker_overchannel_repeat")
+  assert.ok(safe)
+  assert.ok(repeatBeforeSafe)
+  assert.equal(repeatBeforeSafe.available, false)
+
+  const safeState = executeAction({ currentHp: 70, tempHp: 0 }, safe)
   const counterKey = recoverableStateKey("wizard_evoker_overchannel_repeat_count", ["long_rest"])
-  const once = executeAction({ currentHp: 70, tempHp: 0 }, repeat)
+  assert.equal(safeState.facts?.[counterKey], 0)
+
+  const repeatContract = contractFor(catalogKey, 14, safeState)
+  const repeat = repeatContract.actions.find((entry) => entry.key === "wizard_evoker_overchannel_repeat")
+  assert.ok(repeat)
+  assert.equal(repeat.available, true)
+
+  const once = executeAction(safeState, repeat)
   const twice = executeAction(once, repeat)
   assert.equal(twice.facts?.[counterKey], 2)
-  assert.equal(applyResourceRecovery(twice, contract.resources, "long_rest").facts?.[counterKey], undefined)
+  assert.equal(applyResourceRecovery(twice, repeatContract.resources, "long_rest").facts?.[counterKey], undefined)
 })
 
 test("Illusionist spends only true persistent resources", () => {
@@ -209,7 +222,8 @@ test("forward migration installs the same persistent-state policy for existing a
   assert.match(persistentStateMigration, /phb-2024-wizard-subclasses-runtime@2/)
   assert.match(persistentStateMigration, /recovery-state\[long_rest\]::wizard_abjurer_arcane_ward_created/)
   assert.match(persistentStateMigration, /wizard_diviner_portent_1_value/)
-  assert.match(persistentStateMigration, /wizard_diviner_portent_3_value/)
+  assert.match(persistentStateMigration, /wizard_portent_choice_v2\(3\)/)
+  assert.match(persistentStateMigration, /v_choice_key text := 'wizard_diviner_portent_'\|\|p_index::text\|\|'_value'/)
   assert.match(persistentStateMigration, /recovery-state\[long_rest,short_rest\]::wizard_diviner_third_eye_mode/)
   assert.match(persistentStateMigration, /wizard_evoker_overchannel_repeat_count/)
   assert.match(persistentStateMigration, /gm-adjudicated-trigger/)
