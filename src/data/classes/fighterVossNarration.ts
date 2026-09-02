@@ -16,6 +16,12 @@ import {
   getGeminiFighterSubclassVossComment,
   getGeminiFighterSubclassVossNarration,
 } from "./fighterSubclassVossNarrationGeminiPack1"
+import {
+  getGeminiFighterSubclassFeatureVossCommentPack2,
+  getGeminiFighterSubclassFeatureVossNarrationPack2,
+  getGeminiFighterSubclassVossCommentPack2,
+  getGeminiFighterSubclassVossNarrationPack2,
+} from "./fighterSubclassVossNarrationGeminiPack2"
 
 export const fighterClassVossNarration = fighterBrantClassVossNarration
 export const fighterClassVossComment = fighterBrantClassVossComment
@@ -30,20 +36,24 @@ export function getFighterBaseVossComment(level: number, name: string) {
 }
 
 export function getFighterSubclassVossNarration(subclassId: string) {
-  return getGeminiFighterSubclassVossNarration(subclassId)
+  return getGeminiFighterSubclassVossNarrationPack2(subclassId)
+    || getGeminiFighterSubclassVossNarration(subclassId)
     || getPreviousFighterSubclassVossNarration(subclassId)
 }
 
 export function getFighterSubclassVossComment(subclassId: string) {
-  return getGeminiFighterSubclassVossComment(subclassId)
+  return getGeminiFighterSubclassVossCommentPack2(subclassId)
+    || getGeminiFighterSubclassVossComment(subclassId)
     || getPreviousFighterSubclassVossComment(subclassId)
 }
 
 export function getFighterSubclassFeatureVossNarration(subclassId: string, level: number, name: string) {
-  return getGeminiFighterSubclassFeatureVossNarration(subclassId, level, name)
+  return getGeminiFighterSubclassFeatureVossNarrationPack2(subclassId, level, name)
+    || getGeminiFighterSubclassFeatureVossNarration(subclassId, level, name)
     || getPreviousFighterSubclassFeatureVossNarration(subclassId, level, name)
 }
 
 export function getFighterSubclassFeatureVossComment(subclassId: string, level: number, name: string) {
-  return getGeminiFighterSubclassFeatureVossComment(subclassId, level, name)
+  return getGeminiFighterSubclassFeatureVossCommentPack2(subclassId, level, name)
+    || getGeminiFighterSubclassFeatureVossComment(subclassId, level, name)
 }
