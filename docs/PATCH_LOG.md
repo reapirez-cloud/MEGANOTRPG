@@ -11,26 +11,31 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
-- None yet. The new Monk material is intentionally kept as an authoring-only draft and is not visible in the class catalog or character UI.
+- None yet. The new Monk material is intentionally kept as authoring-only draft content and is not visible in the class catalog or character UI.
+- Added literary draft coverage for the first three planned Monk subclasses: Open Hand / Brother Anselm, Shadow / Brother Cassian and Drunken Master / Uncle Bartosz. Each keeps a subclass preview, feature stories and separate Voss comments while remaining inactive.
 
 ### Runtime and rules changes
 
-- No Monk mechanics/runtime were added. The draft keeps every exact-rule field empty so Gemini-authored prose cannot become mechanical truth by accident.
+- No Monk mechanics/runtime were added. Base and subclass drafts keep every exact-rule field empty so Gemini-authored prose, levels and rule claims cannot become mechanical truth by accident.
+- User-supplied subclass source labels and the remaining seven-subclass list are stored only as authoring/planning hints; exact editions, feature schedules and mechanics still require an independent rules pass.
 
 ### Repository / release process
 
 - Opened immediately after successful promotion of patch `2026-09-02-C`.
 - Added `src/data/classes/monkReferenceDraft.ts` as the non-runtime literary source for Brother Korn's base-Monk Voss narration and feature comments.
-- Added an explicit Monk checkpoint to `CLASS_WORK_STATUS.md`: text authoring is `IN_PROGRESS`, mechanics/runtime are `NOT_STARTED`, subclasses are `NOT_STARTED`, and activation is forbidden until the exact rules/package pass is complete.
+- Added `src/data/classes/monkSubclassReferenceDraft.ts` as the non-runtime literary source for the first subclass wave and the remaining Monk authoring queue.
+- Updated the Monk checkpoint in `CLASS_WORK_STATUS.md`: text authoring remains `IN_PROGRESS`, mechanics/runtime remain `NOT_STARTED`, three of the ten user-planned subclasses now have authored literary drafts, and activation remains forbidden until the exact rules/package pass is complete.
 
 ### Tests / verification added in this patch
 
-- Verified the Monk draft is not imported by `classReference` or runtime code; no mechanics/build-success claim is made for the future Monk package.
+- Verified the Monk base/subclass drafts are not imported by `classReference` or runtime code; no mechanics/build-success claim is made for the future Monk package.
+- The subclass draft explicitly documents that its source labels, feature levels and names are not authoritative mechanics.
 
 ### Known incomplete work
 
 - The repository still has 10 stale Voss/text-contract assertions inherited from the released patch and awaiting reconciliation with the authored narration.
-- Monk exact 2024 rules, CE resources/actions/choices, subclass packages, package-quality tests and catalog/runtime activation are intentionally pending a separate mechanics pass.
+- Monk exact 2024/legacy rules, CE resources/actions/choices, package-quality tests and catalog/runtime activation are intentionally pending a separate mechanics pass.
+- Seven user-planned Monk subclasses still need their literary drafts: Elements, Mercy, Kensei, Ascendant Dragon, Astral Self, Sun Soul and Long Death.
 
 ---
 
@@ -131,7 +136,96 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Stage 2 and Stage 3 character-profile regression gates continue to pass under the Stage 4 interaction changes; Stage 4 introduced no new failing test family.
 - Character Profile Stage 5 CI run #1351: production TypeScript/Vite build succeeded and lint completed with 0 errors / 22 warnings. The suite contains 628 tests and passed 618/628; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
 - Added `characterSpecializedSections.test.ts` with six regression gates for the shared specialized header, Class directory/Focus hierarchy, CE-backed Magic values and slots, Inventory Focus/Detail behavior, profile Back integration and the presentation-only ownership boundary. All six Stage 5 tests pass in CI #1351.
-- Updated the older spell-catalog and Sheet hierarchy guards so they continue enforcing the real architectural invariants — shared catalog spell membership and runtime-backed Class/Subclass navigation — without requiring the removed explanatory text.
+- Updated the older spell-catalog and Sheet hierarchy guards so they continue enforcing the real architectural invariants — shared catalog spell membership and runtime-backed Class/Subclass navigation — without requiring the removed explanatory copy or the retired `Все` segmented switch. Those guards pass in CI #1351.
+- Character Profile Stage 6 CI run #1355: production TypeScript/Vite build succeeded and lint completed with 0 errors / 22 warnings. The suite contains 634 tests and passed 624/634; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
+- Added `characterSocialSections.test.ts` with six regression gates for the Stage 6 social stylesheet, Diary chronology/composer, Diary long-press plus explicit comments, adaptive media-first Gallery, shared empty/error presentation and the existing social/media persistence boundary. All six Stage 6 tests pass in CI #1355.
+- Stage 2–5 character-profile regression families continue to pass under the Stage 6 social/media presentation changes; Stage 6 introduced no new failing test family.
+- Character Profile Stage 7 CI run #1359: production TypeScript/Vite build succeeded and lint completed with 0 errors / 22 warnings. The suite contains 640 tests and passed 630/640; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
+- Added `characterEditorPattern.test.ts` with six regression gates for the scoped Stage 7 stylesheet, shared editor hierarchy, mobile-sized/focus-visible controls, preserved permission boundaries, preserved specialized editor workflows and the presentation-only ownership boundary. All six Stage 7 tests pass in CI #1359.
+- Stage 2–6 character-profile regression families continue to pass under the Stage 7 editor migration; Stage 7 introduced no new failing test family.
+- Character Profile Stage 8 CI run #1365: production TypeScript/Vite build succeeded and lint completed with 0 errors / 22 warnings. The suite contains 645 tests and passed 635/645; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
+- Added `characterProfileConsolidation.test.ts` with five regression gates proving that v4 is physically retired, v5 is the sole active migration layer over the explicit v3 compatibility foundation, directory/focus structure is self-contained, phone hierarchy/touch targets remain deliberate and the consolidation does not acquire mechanics or persistence ownership. All five Stage 8 tests pass in CI #1365.
+- Updated `characterSheetHierarchy.test.ts` to guard the consolidated v5 selectors and explicit v3→v5 cascade instead of requiring the deleted v4 layer; the complete Character Profile Stage 2–7 regression families continue to pass under Stage 8.
+- Character Profile Stage 9 CI run #1375: production TypeScript/Vite build succeeded and lint completed with 0 errors / 22 warnings. The suite contains 650 tests and passed 640/650; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
+- Added `characterAccessibilityStage9.test.ts` with five regression gates for shared keyboard-modal behavior, focus trapping/restoration, background scroll locking, 44px touch targets, keyboard-focusable uploads and the presentation-only boundary. All five Stage 9 tests pass in CI #1375.
+- Updated the historical Stage 4 dismissal guard to assert the shared `useDialogSurface` contract rather than requiring duplicate local Escape handlers; all Character Profile Stage 2–8 regression families continue to pass under Stage 9.
+
+### Known incomplete work
+
+- Fighter mechanics/runtime remain `IN_PROGRESS` under the existing class-work ledger and were intentionally not changed by this rewrite.
+- Character Profile v5 Stages 1–9 are complete for the current design/accessibility pass. The remaining `profile-v3__*` / `sheet-v3__*` and social `v2-*` class names are compatibility/legacy markup hooks still emitted by existing components; Stage 9 deliberately did not perform a mass selector rename because that would be code-hygiene work rather than a user-facing UX fix.
+- The repository still has 10 stale Voss/text-contract assertions that must be reconciled with the already-authored class narration before the full CI suite can return green.
+
+---
+
+### Patch — 2026-09-02-B
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
+**Base main:** `34848d1c1670fb510a629cfef2054245b6052ba6`
+**Started:** 2026-09-02
+**Released:** 2026-09-02
+**Release identity:** `main / a9f02222e4fa70a0bfa541fd2fa0e9711e458fb2`
+
+### Player-facing changes
+
+- Rewrote the complete active Druid Voss narration layer: the base class, all eight supported circles and their feature cards now read as battlefield recollections instead of generic class summaries.
+- Circle of the Moon now follows the intended horror directly: Voss sees a healer who can become a predator without feeling a contradiction, not a lovable animal or warmly regarded pet. The same hands can close an ally's wound and tear open an enemy.
+- Druid narration now consistently carries despair, concrete wartime consequences, irony and black humor as a coping mechanism while keeping the exact rules in their separate neutral layer.
+- Rewrote the complete active Cleric Voss narration layer: the base class, all fourteen supported domains and every active domain feature now use Voss's subjective battlefield voice instead of a neutral grimdark observer.
+- Cleric narration now centers Voss's prejudice that too many priests preach courage from the rear and retreat when the line breaks, while individual domains receive distinct judgements rather than repeating that thesis: Life earns reluctant respect for bloody field medicine, War for sharing the front line, Order reads as sanctified coercion, Peace as armed hypocrisy that can still save lives, and Tempest as rear-line artillery with a holy symbol.
+- Completed and enabled all 13 supported Wizard subclasses in the class catalog: Abjurer, Diviner, Evoker, Illusionist, Enchantment, Conjuration, Necromancy, Transmutation, War Magic, Bladesinging, Order of Scribes, Graviturgy and Chronurgy.
+- Every subclass now exposes its real actions, finite pools, class-spell access, proficiencies, resistances and structured passive rules at Wizard levels 3/6/10/14.
+- Scene-dependent restrictions remain readable and GM-adjudicated instead of becoming fake turn/target/corpse trackers.
+
+### Runtime and rules changes
+
+- Replaced the contradictory global Voss authoring canon that previously forced warmth toward Circle of the Moon. The canonical voice contract now explicitly treats Voss's class judgements as his own veteran prejudices while preserving system text as neutral fact.
+- Added durable authoring guidance for future AI/content passes: Druids are framed through the healing/predation duality; Clerics through Voss's rear-line coward prejudice; Bards through crowd manipulation and «Hope»; Wizards through informed, deliberate magical harm; Sorcerers through power without training and the danger of feeling chosen.
+- The active Cleric literary source `src/data/classes/clericVossNarration.ts` is now self-contained rather than exporting most narration from the legacy file; the legacy source remains historical/reference material only.
+- No Druid or Cleric mechanics, Character Engine contracts, rule triggers, resources, action economy or exact-rule text were changed by these narration passes.
+- Added nine missing Wizard runtime packages and promoted the catalog runtime-ready set from four to all thirteen subclasses.
+- Added generic formula mechanics for dynamic initiative so War Magic and Chronurgy automatically add Intelligence to Dexterity initiative.
+- Added generic exact-value resource recovery (`restore: set`) for Power Surge, which now returns to exactly 1 after a Long Rest rather than filling to its Intelligence-based maximum.
+- Kept canonical class spell methods on `class_spell` with ordinary spell-slot costs; subclass free casts use resource-backed actions through the shared template action executor.
+- Added a generated forward-only Supabase installer at revision `wizard-subclasses-runtime@3`, including all level mechanics/choices, existing-campaign backfill and new-campaign bootstrap.
+- Corrected two previously undeployed Wizard migration ambiguities discovered by PostgreSQL 17: spellbook progression level aliases and canonical Wizard class-spell method kinds.
+- Applied the missing Wizard base/subclass migration chain to the connected Supabase target and certified 13 active packages with exact 3/6/10/14 rows.
+
+### Repository / release process
+
+- The active Druid literary source is `src/data/classes/druidVossNarration.ts`; the active Cleric literary source is `src/data/classes/clericVossNarration.ts`; shared future-author guidance is centralized in `src/data/vossVoice.ts`. Legacy/Gemini narration files remain reference material rather than the active canonical voice.
+- Added a deterministic migration generator so SQL payloads are derived from the TypeScript Wizard runtime source.
+- Promoted this patch through PR #41 and merged it to `main` as `a9f02222e4fa70a0bfa541fd2fa0e9711e458fb2`.
+
+### Tests / verification added in this patch
+
+- Druid narration rewrite was kept isolated from `src/data/classes/druidReference.ts`, so the exact mechanical source was not edited in this pass.
+- Cleric narration rewrite preserves the existing public getter/export contract (`clericClassVossNarration`, `clericClassVossComment`, domain normalization and base/domain/feature getters) so `ReferenceGuide` wiring does not need a parallel UI rewrite.
+- Existing exported Voss voice guards and Druid narration getter signatures were preserved so current reference rendering imports remain compatible.
+- Expanded Wizard runtime coverage across all thirteen subclasses, including exact Power Surge recovery, initiative formulas, finite resources, slot alternatives, source metadata and persistent Chronurgy exhaustion.
+- Added SQL/TypeScript payload-parity coverage for every subclass level and choice row.
+- Added regression coverage for the generic exact-value resource recovery rule.
+- Deployed-state audit: 13/13 subclass templates, revision `wizard-subclasses-runtime@3`, all 3/6/10/14 rows present, zero invalid class-spell method kinds and zero invalid spell costs.
+- Full repository verification before these narration-only follow-ups: 609 tests pass; production build succeeds; lint completes with only the pre-existing warning set and no errors. The Druid/Cleric text follow-ups were not represented by a new full CI completion claim before release.
+
+### Known incomplete work
+
+- The remaining class text packages still need the same canonical Voss rewrite; the shared voice contract now records the intended axes so future passes do not invent a new tone per class.
+- Supabase advisors still report pre-existing project-wide security/performance notices outside the Wizard package; this patch introduced no new table/RLS surface.
+
+---
+
+### Patch — 2026-08-31-A
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
+**Base main:** `a098751cabf5b8934494ac4725849b3781308a9b`
+**Started:** 2026-08-31
+**Released:** 2026-09-01
+**Release identity:** `main / 2026-09-01-A`
+
+### Player-facing changes
 
 - Rewrote the complete authored Voss layer for every openable base-class and feature card of Fighter, Druid, Cleric and the rebuilt subclass-free Wizard, plus all 10 Fighter archetypes, 8 Druid circles, 14 Cleric domains and their feature cards. The new register uses concrete bodily consequences, black humor and exhausted hope without profanity or direct insults; Circle of the Moon remains a dangerous but warmly regarded protector rather than a disguised monster.
 - Added the rebuilt **Wizard / Волшебник** class to the current class catalog, with authored 2024 class text and the new class bootstrap path.
