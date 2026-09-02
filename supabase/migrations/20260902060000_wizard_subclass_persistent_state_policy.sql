@@ -152,8 +152,7 @@ begin
         'Использовать Знамение '||p_index::text||': '||v_value::text,
         'special',
         jsonb_build_object(
-          'resourceKey',v_resource_key,
-          'resourceCost',1,
+          'resourceCosts',jsonb_build_array(jsonb_build_object('key',v_resource_key,'amount',1)),
           'effects',jsonb_build_array(jsonb_build_object(
             'kind','semantic','key','replace_d20_before_roll',
             'payload',jsonb_build_object('portentIndex',p_index,'portentValue',v_value)
@@ -304,9 +303,9 @@ begin
         'Бонусным действием выберите один режим до начала короткого или долгого отдыха: тёмное зрение 120 футов, чтение любого языка или возможность накладывать Видение невидимого без траты ячейки. После короткого или долгого отдыха режим заканчивается и использование восстанавливается.',
         jsonb_build_object('kind','third_eye','resource','wizard_diviner_third_eye','modeState',v_state_third_eye,'options',jsonb_build_array('darkvision','greater_comprehension','see_invisibility'))
       ),
-      private.wizard_subclass_action('diviner-third-eye-darkvision','wizard:diviner:third-eye','wizard_diviner_third_eye_darkvision','Третий глаз: тёмное зрение','bonus_action',jsonb_build_object('resourceKey','wizard_diviner_third_eye','resourceCost',1,'effects',jsonb_build_array(jsonb_build_object('kind','state','key',v_state_third_eye,'operation','SET','value','darkvision'),jsonb_build_object('kind','semantic','key','third_eye_mode','payload',jsonb_build_object('mode','darkvision','rangeFeet',120))))),
-      private.wizard_subclass_action('diviner-third-eye-comprehension','wizard:diviner:third-eye','wizard_diviner_third_eye_comprehension','Третий глаз: читать любой язык','bonus_action',jsonb_build_object('resourceKey','wizard_diviner_third_eye','resourceCost',1,'effects',jsonb_build_array(jsonb_build_object('kind','state','key',v_state_third_eye,'operation','SET','value','greater_comprehension'),jsonb_build_object('kind','semantic','key','third_eye_mode','payload',jsonb_build_object('mode','greater_comprehension','readAnyLanguage',true))))),
-      private.wizard_subclass_action('diviner-third-eye-see-invisibility','wizard:diviner:third-eye','wizard_diviner_third_eye_see_invisibility','Третий глаз: Видение невидимого','bonus_action',jsonb_build_object('resourceKey','wizard_diviner_third_eye','resourceCost',1,'effects',jsonb_build_array(jsonb_build_object('kind','state','key',v_state_third_eye,'operation','SET','value','see_invisibility'),jsonb_build_object('kind','semantic','key','third_eye_mode','payload',jsonb_build_object('mode','see_invisibility','castWithoutSlot','see-invisibility')))))
+      private.wizard_subclass_action('diviner-third-eye-darkvision','wizard:diviner:third-eye','wizard_diviner_third_eye_darkvision','Третий глаз: тёмное зрение','bonus_action',jsonb_build_object('resourceCosts',jsonb_build_array(jsonb_build_object('key','wizard_diviner_third_eye','amount',1)),'effects',jsonb_build_array(jsonb_build_object('kind','state','key',v_state_third_eye,'operation','SET','value','darkvision'),jsonb_build_object('kind','semantic','key','third_eye_mode','payload',jsonb_build_object('mode','darkvision','rangeFeet',120))))),
+      private.wizard_subclass_action('diviner-third-eye-comprehension','wizard:diviner:third-eye','wizard_diviner_third_eye_comprehension','Третий глаз: читать любой язык','bonus_action',jsonb_build_object('resourceCosts',jsonb_build_array(jsonb_build_object('key','wizard_diviner_third_eye','amount',1)),'effects',jsonb_build_array(jsonb_build_object('kind','state','key',v_state_third_eye,'operation','SET','value','greater_comprehension'),jsonb_build_object('kind','semantic','key','third_eye_mode','payload',jsonb_build_object('mode','greater_comprehension','readAnyLanguage',true))))),
+      private.wizard_subclass_action('diviner-third-eye-see-invisibility','wizard:diviner:third-eye','wizard_diviner_third_eye_see_invisibility','Третий глаз: Видение невидимого','bonus_action',jsonb_build_object('resourceCosts',jsonb_build_array(jsonb_build_object('key','wizard_diviner_third_eye','amount',1)),'effects',jsonb_build_array(jsonb_build_object('kind','state','key',v_state_third_eye,'operation','SET','value','see_invisibility'),jsonb_build_object('kind','semantic','key','third_eye_mode','payload',jsonb_build_object('mode','see_invisibility','castWithoutSlot','see-invisibility')))))
     )
   );
 
@@ -321,7 +320,7 @@ begin
 
   -- Evoker: per-spell cadence is not a resource, but repeated Overchannel count affects future backlash until long rest.
   perform private.wizard_replace_level_runtime_v2(
-    v_evoker,14,array['evoker-overchannel-rules'],
+    v_evoker,14,array['evoker-overchannel-rules','evoker-overchannel-safe-action','evoker-overchannel-repeat-action'],
     jsonb_build_array(
       private.wizard_subclass_feature(
         'evoker-overchannel-rules','wizard:evoker:overchannel','subclass:wizard:evoker:overchannel','Перегрузка',
@@ -329,8 +328,23 @@ begin
         jsonb_build_object('kind','overchannel','resource','wizard_evoker_overchannel_safe','repeatState',v_state_overchannel,'spellSlotMin',1,'spellSlotMax',5,'maximizeDamageThisTurn',true,'repeatNecroticBacklash',jsonb_build_object('dicePerSlotLevel','repeat_count + 1','ignoresResistanceAndImmunity',true))
       ),
       private.wizard_subclass_action(
+        'evoker-overchannel-safe-action','wizard:evoker:overchannel','wizard_evoker_overchannel_safe','Перегрузить заклинание без отдачи','special',
+        jsonb_build_object(
+          'resourceCosts',jsonb_build_array(jsonb_build_object('key','wizard_evoker_overchannel_safe','amount',1)),
+          'effects',jsonb_build_array(
+            jsonb_build_object('kind','state','key',v_state_overchannel,'operation','SET','value',0),
+            jsonb_build_object('kind','semantic','key','maximize_spell_damage','payload',jsonb_build_object('slotMin',1,'slotMax',5))
+          )
+        )
+      ),
+      private.wizard_subclass_action(
         'evoker-overchannel-repeat-action','wizard:evoker:overchannel','wizard_evoker_overchannel_repeat','Повторно перегрузить заклинание','special',
         jsonb_build_object(
+          'requirements',jsonb_build_array(jsonb_build_object(
+            'kind','condition',
+            'condition',jsonb_build_object('kind','state','key',v_state_overchannel,'operator','EXISTS'),
+            'label','Сначала используйте безопасную Перегрузку после продолжительного отдыха'
+          )),
           'effects',jsonb_build_array(
             jsonb_build_object('kind','state','key',v_state_overchannel,'operation','ADD','value',1),
             jsonb_build_object('kind','semantic','key','overchannel_repeat','payload',jsonb_build_object('slotMin',1,'slotMax',5,'counterState',v_state_overchannel,'backlashDicePerSlotLevel','repeat_count + 1','damageType','necrotic','ignoresResistanceAndImmunity',true))
@@ -346,7 +360,7 @@ begin
     v_illusionist,10,array['illusionist-illusory-self-rules','illusionist-illusory-self-action'],
     jsonb_build_array(
       private.wizard_subclass_feature('illusionist-illusory-self-rules','wizard:illusionist:illusory-self','subclass:wizard:illusionist:illusory-self','Иллюзорное я','Когда существо попадает по вам броском атаки, реакцией потратьте Иллюзорное я, чтобы атака промахнулась. Приложение не проверяет факт попадания. Ресурс восстанавливается после короткого или долгого отдыха; его также можно восстановить без действия, потратив ячейку 2 уровня или выше.',jsonb_build_object('kind','illusory_self','resource','wizard_illusionist_illusory_self','restoreBySlotMinLevel',2)),
-      private.wizard_subclass_action('illusionist-illusory-self-action','wizard:illusionist:illusory-self','wizard_illusionist_illusory_self','Подставить Иллюзорное я','reaction',jsonb_build_object('resourceKey','wizard_illusionist_illusory_self','resourceCost',1,'effects',jsonb_build_array(jsonb_build_object('kind','semantic','key','force_attack_miss','payload',jsonb_build_object('adjudicatedBy','gm'))),'tags',jsonb_build_array('wizard','subclass','reaction','gm-adjudicated-trigger')))
+      private.wizard_subclass_action('illusionist-illusory-self-action','wizard:illusionist:illusory-self','wizard_illusionist_illusory_self','Подставить Иллюзорное я','reaction',jsonb_build_object('resourceCosts',jsonb_build_array(jsonb_build_object('key','wizard_illusionist_illusory_self','amount',1)),'effects',jsonb_build_array(jsonb_build_object('kind','semantic','key','force_attack_miss','payload',jsonb_build_object('adjudicatedBy','gm'))),'tags',jsonb_build_array('wizard','subclass','reaction','gm-adjudicated-trigger')))
     )
   );
 
