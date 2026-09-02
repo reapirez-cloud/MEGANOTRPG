@@ -1,4 +1,5 @@
-import { useEffect, type ReactNode } from "react"
+import { useId, type ReactNode } from "react"
+import { useDialogSurface } from "../../hooks/useDialogSurface.ts"
 import "./CharacterSocial.css"
 import "./CharacterEditors.css"
 
@@ -21,28 +22,25 @@ export default function CharacterDetailSheet({
   onClose,
   className = "",
 }: Props) {
-  useEffect(() => {
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose()
-    }
-    document.addEventListener("keydown", closeOnEscape)
-    return () => document.removeEventListener("keydown", closeOnEscape)
-  }, [onClose])
+  const titleId = useId()
+  const dialogRef = useDialogSurface<HTMLElement>(onClose)
 
   return (
     <div className="sheet-backdrop character-detail-v5__backdrop" onMouseDown={onClose}>
       <section
+        ref={dialogRef}
         className={`bottom-sheet character-detail-v5 ${className}`.trim()}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-labelledby={titleId}
+        tabIndex={-1}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="sheet-handle" />
+        <div className="sheet-handle" aria-hidden="true" />
         <header className="character-detail-v5__header">
           <div>
             <small>{eyebrow}</small>
-            <h3>{title}</h3>
+            <h3 id={titleId}>{title}</h3>
           </div>
           <button type="button" onClick={onClose} aria-label="Закрыть">×</button>
         </header>
