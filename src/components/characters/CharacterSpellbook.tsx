@@ -9,6 +9,9 @@ import type {
   CharacterSpell,
   CharacterSpellOption,
 } from "../../types/characterSheet.ts"
+import CharacterDetailSheet from "./CharacterDetailSheet.tsx"
+import CharacterSectionHeader from "./CharacterSectionHeader.tsx"
+import CharacterSectionState from "./CharacterSectionState.tsx"
 import SpellSlotMeter from "./SpellSlotMeter.tsx"
 import { spellSlotResources } from "./spellSlots.ts"
 
@@ -106,33 +109,34 @@ export default function CharacterSpellbook(props: Props) {
 
   if (!sheet.spellcasting_enabled) {
     return (
-      <section className="spellbook-v3 spellbook-v3--empty">
-        <div className="spellbook-v3__empty-card">
-          <span aria-hidden="true">✦</span>
-          <h3>Магия не открыта</h3>
-          <p>Раздел появится у персонажа, когда ГМ включит заклинания.</p>
-          {canManage && <button type="button" onClick={onEnableMagic}>Включить магию</button>}
-        </div>
+      <section className="spellbook-v3 spellbook-v3--empty character-spellbook-v5 character-specialized-v5">
+        <CharacterSectionHeader eyebrow="Магия персонажа" title="Магия" icon="✦" action={<button type="button" onClick={onOpenReference}>Справочник</button>} />
+        <CharacterSectionState
+          kind="empty"
+          title="Магия не открыта"
+          detail="У персонажа пока нет активного доступа к разделу заклинаний."
+          action={canManage ? <button className="section-link" type="button" onClick={onEnableMagic}>Включить магию</button> : undefined}
+        />
       </section>
     )
   }
 
   return (
-    <section className="spellbook-v3">
-      <header className="spellbook-v3__hero">
-        <div className="spellbook-v3__hero-copy">
-          <span>Книга заклинаний</span>
-          <h3>{preparedCount} подготовлено · {spells.length} изучено</h3>
-          <p>Заклинания персонажа всегда ссылаются на общий каталог. Здесь меняется только его личный выбор и подготовка.</p>
-        </div>
-        <button className="spellbook-v3__reference" type="button" onClick={onOpenReference}>
-          <span aria-hidden="true">⌘</span>
-          Справочник
-        </button>
-      </header>
+    <section className="spellbook-v3 character-spellbook-v5 character-specialized-v5">
+      <CharacterSectionHeader
+        eyebrow="Магия персонажа"
+        title="Магия"
+        detail="Подготовка, известные заклинания и доступные ячейки."
+        icon="✦"
+        meta={<>
+          <span>{preparedCount} подготовлено</span>
+          <span>{spells.length} изучено</span>
+        </>}
+        action={<button type="button" onClick={onOpenReference}>Справочник</button>}
+      />
 
       {(magic || spellcastingAbility) && (
-        <div className="spellbook-v3__casting">
+        <div className="spellbook-v3__casting" aria-label="Показатели заклинателя">
           <div><span>Характеристика</span><strong>{spellcastingAbility ? abilityNames[spellcastingAbility] : "—"}</strong></div>
           <div><span>СЛ</span><strong>{magic?.saveDc ?? "—"}</strong></div>
           <div><span>Атака</span><strong>{magic ? signed(magic.attackBonus) : "—"}</strong></div>
@@ -141,7 +145,7 @@ export default function CharacterSpellbook(props: Props) {
 
       <div className="spellbook-v3__slots">
         <div className="sheet-v3__section-heading">
-          <div><span>Магический ресурс</span><h3>Ячейки заклинаний</h3></div>
+          <div><span>Ресурс</span><h3>Ячейки заклинаний</h3></div>
           {canManage && <button type="button" onClick={onEditResources}>Настроить</button>}
         </div>
         <SpellSlotMeter
@@ -165,7 +169,7 @@ export default function CharacterSpellbook(props: Props) {
         ))}
       </div>
 
-      {error && <div className="auth-error">{error}</div>}
+      {error && <CharacterSectionState compact kind="error" title="Заклинания не обновились" detail={error} />}
 
       <div className="spellbook-v3__list">
         {visibleSpells.map((spell) => (
@@ -196,13 +200,16 @@ export default function CharacterSpellbook(props: Props) {
             </div>
           </article>
         ))}
-        {visibleSpells.length === 0 && (
-          <div className="spellbook-v3__empty-list">
-            <strong>{mode === "prepared" ? "Нет подготовленных заклинаний" : "Список пуст"}</strong>
-            <span>{selectedLevel === null ? "Добавить заклинание можно только из Справочника." : "На этом уровне ничего не найдено."}</span>
-          </div>
-        )}
       </div>
+
+      {visibleSpells.length === 0 && (
+        <CharacterSectionState
+          compact
+          kind="empty"
+          title={mode === "prepared" ? "Нет подготовленных заклинаний" : "Список пуст"}
+          detail={selectedLevel === null ? "Добавить заклинание можно через Справочник." : "На выбранном уровне ничего не найдено."}
+        />
+      )}
 
       <button className="spellbook-v3__add-option" type="button" onClick={onOpenReference}>
         + Добавить из Справочника
@@ -213,7 +220,7 @@ export default function CharacterSpellbook(props: Props) {
           <span className={sheet.spell_change_unlocked ? "is-open" : ""} aria-hidden="true" />
           <div>
             <strong>{sheet.spell_change_unlocked ? "Смена заклинаний открыта" : "Смена заклинаний закрыта"}</strong>
-            <p>{sheet.spell_change_unlocked ? "Можно менять подготовку и добавлять разрешённые заклинания из каталога." : "Заклинания можно просматривать, но изменять выбор пока нельзя."}</p>
+            <p>{sheet.spell_change_unlocked ? "Можно менять подготовку и добавлять разрешённые заклинания." : "Заклинания доступны для просмотра без изменения выбора."}</p>
           </div>
         </div>
       )}
@@ -223,41 +230,27 @@ export default function CharacterSpellbook(props: Props) {
       )}
 
       {selectedSpell && (
-        <div className="sheet-backdrop sheet-backdrop--spell" onMouseDown={() => setSelectedSpell(null)}>
-          <article className="bottom-sheet spell-detail-v3" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="sheet-handle" />
-            <header className="spell-detail-v3__head">
-              <div>
-                <span>{levelName(selectedSpell.spell_level)}</span>
-                <h3>{selectedSpell.name}</h3>
-              </div>
-              <button type="button" onClick={() => setSelectedSpell(null)} aria-label="Закрыть">×</button>
-            </header>
-            <div className="spell-detail-v3__facts">
-              {selectedSpell.school && <div><span>Школа</span><strong>{selectedSpell.school}</strong></div>}
-              {selectedSpell.casting_time && <div><span>Накладывание</span><strong>{selectedSpell.casting_time}</strong></div>}
-              {selectedSpell.spell_range && <div><span>Дистанция</span><strong>{selectedSpell.spell_range}</strong></div>}
-              {selectedSpell.duration && <div><span>Длительность</span><strong>{selectedSpell.duration}</strong></div>}
-            </div>
-            <div className="spell-detail-v3__tags">
-              {selectedSpell.concentration && <span>Концентрация</span>}
-              {selectedSpell.ritual && <span>Ритуал</span>}
-              {selectedSpell.components && <span>{selectedSpell.components}</span>}
-            </div>
-            {selectedSpell.description ? <p>{selectedSpell.description}</p> : <p className="spell-detail-v3__muted">Описание приходит из общего каталога.</p>}
-            {selectedSpell.source && <small>Источник: {selectedSpell.source}</small>}
-            <div className="spell-detail-v3__actions">
-              {canChooseSpells && (
-                <button type="button" className="spell-detail-v3__primary" onClick={() => onTogglePrepared(selectedSpell)}>
-                  {selectedSpell.prepared ? "Убрать подготовку" : "Подготовить"}
-                </button>
-              )}
-              {canChooseSpells && (
-                <button type="button" className="spell-detail-v3__danger" onClick={() => onForget(selectedSpell)}>Убрать из изученных</button>
-              )}
-            </div>
-          </article>
-        </div>
+        <CharacterDetailSheet eyebrow={levelName(selectedSpell.spell_level)} title={selectedSpell.name} onClose={() => setSelectedSpell(null)} className="character-spell-detail-v5">
+          <div className="character-spell-detail-v5__facts">
+            {selectedSpell.school && <div><span>Школа</span><strong>{selectedSpell.school}</strong></div>}
+            {selectedSpell.casting_time && <div><span>Накладывание</span><strong>{selectedSpell.casting_time}</strong></div>}
+            {selectedSpell.spell_range && <div><span>Дистанция</span><strong>{selectedSpell.spell_range}</strong></div>}
+            {selectedSpell.duration && <div><span>Длительность</span><strong>{selectedSpell.duration}</strong></div>}
+          </div>
+          <div className="character-spell-detail-v5__tags">
+            {selectedSpell.concentration && <span>Концентрация</span>}
+            {selectedSpell.ritual && <span>Ритуал</span>}
+            {selectedSpell.components && <span>{selectedSpell.components}</span>}
+          </div>
+          <p className="character-spell-detail-v5__description">{selectedSpell.description || "Описание приходит из Справочника."}</p>
+          {selectedSpell.source && <small className="character-spell-detail-v5__source">Источник: {selectedSpell.source}</small>}
+          {canChooseSpells && <div className="character-spell-detail-v5__actions">
+            <button type="button" className="spell-detail-v3__primary" onClick={() => onTogglePrepared(selectedSpell)}>
+              {selectedSpell.prepared ? "Убрать подготовку" : "Подготовить"}
+            </button>
+            <button type="button" className="spell-detail-v3__danger" onClick={() => onForget(selectedSpell)}>Убрать из изученных</button>
+          </div>}
+        </CharacterDetailSheet>
       )}
     </section>
   )

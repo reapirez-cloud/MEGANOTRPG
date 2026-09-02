@@ -1,0 +1,764 @@
+/* Character Profile v5 — Stage 7 editor migration.
+ * Presentation only: existing editor components keep their current save/delete callbacks,
+ * permission gates, mechanics builders and persistence owners.
+ */
+
+.character-profile-v2 :is(
+  .compact-editor-sheet,
+  .dnd-sheet-editor,
+  .character-resource-editor,
+  .v2-editor-sheet.creation-wizard
+) {
+  width: min(720px, calc(100vw - 16px));
+  max-height: min(92dvh, 900px);
+  padding: 0 14px calc(14px + env(safe-area-inset-bottom));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--character-line-strong);
+  border-bottom: 0;
+  border-radius: var(--character-radius-sheet) var(--character-radius-sheet) 0 0;
+  color: var(--character-text-primary);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(157, 131, 206, .09), transparent 32%),
+    var(--character-surface-overlay);
+  box-shadow: 0 -22px 64px rgba(0, 0, 0, .46);
+  scrollbar-width: thin;
+  scrollbar-color: var(--character-line-strong) transparent;
+}
+
+.character-profile-v2 :is(
+  .compact-editor-sheet,
+  .dnd-sheet-editor,
+  .character-resource-editor,
+  .v2-editor-sheet.creation-wizard
+) > .sheet-handle {
+  width: 40px;
+  height: 4px;
+  margin: 7px auto 3px;
+  border-radius: 999px;
+  background: var(--character-line-strong);
+}
+
+/* One header language for small editors, full sheet editors and progressive wizards. */
+.character-profile-v2 :is(.character-editor-head, .v2-sheet-head.creation-wizard__head) {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  min-width: 0;
+  margin: 0 -2px;
+  padding: 10px 2px 13px;
+  border-bottom: 1px solid var(--character-line);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  background: linear-gradient(180deg, rgba(18, 18, 23, .99) 82%, rgba(18, 18, 23, .92));
+  backdrop-filter: blur(14px);
+}
+
+.character-profile-v2 :is(.character-editor-head, .v2-sheet-head.creation-wizard__head) > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.character-profile-v2 .v2-sheet-head.creation-wizard__head > div > span {
+  color: var(--character-accent);
+  font-size: 9px;
+  font-weight: 780;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.character-profile-v2 :is(.character-editor-head .sheet-title, .v2-sheet-head.creation-wizard__head h3) {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--character-text-primary);
+  font-size: clamp(19px, 5vw, 23px);
+  font-weight: 780;
+  line-height: 1.08;
+  letter-spacing: -.025em;
+}
+
+.character-profile-v2 :is(.character-editor-head .sheet-copy, .v2-sheet-head.creation-wizard__head p) {
+  max-width: 610px;
+  margin: 0;
+  color: var(--character-text-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.character-profile-v2 :is(.character-editor-head .sheet-close, .v2-sheet-head.creation-wizard__head > button) {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  padding: 0;
+  border: 1px solid var(--character-line);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: var(--character-text-secondary);
+  background: var(--character-surface-soft);
+  font: inherit;
+  font-size: 21px;
+  line-height: 1;
+}
+
+/* Fields should read like tools, not tiny dashboard cells. */
+.character-profile-v2 :is(
+  .compact-editor-sheet,
+  .dnd-sheet-editor,
+  .character-resource-editor,
+  .v2-editor-sheet.creation-wizard
+) :is(label, .editor-label) {
+  min-width: 0;
+  color: var(--character-text-secondary);
+  font-size: 10px;
+  font-weight: 680;
+  line-height: 1.35;
+}
+
+.character-profile-v2 :is(
+  .compact-editor-sheet,
+  .dnd-sheet-editor,
+  .character-resource-editor,
+  .v2-editor-sheet.creation-wizard
+) :is(.field-label, label > span:first-child) {
+  color: var(--character-text-secondary);
+}
+
+.character-profile-v2 :is(
+  .compact-editor-sheet,
+  .dnd-sheet-editor,
+  .character-resource-editor,
+  .v2-editor-sheet.creation-wizard
+) :is(.app-input, .app-select, .app-textarea, .editor-label > input, .editor-label > textarea) {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin-top: 5px;
+  padding: 10px 11px;
+  border: 1px solid var(--character-line);
+  border-radius: 12px;
+  outline: 0;
+  color: var(--character-text-primary);
+  background: rgba(255, 255, 255, .032);
+  box-shadow: none;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  transition:
+    border-color var(--character-motion-fast) var(--character-ease-standard),
+    background var(--character-motion-fast) var(--character-ease-standard),
+    box-shadow var(--character-motion-fast) var(--character-ease-standard);
+}
+
+.character-profile-v2 :is(
+  .compact-editor-sheet,
+  .dnd-sheet-editor,
+  .character-resource-editor,
+  .v2-editor-sheet.creation-wizard
+) :is(.app-textarea, .editor-label > textarea) {
+  min-height: 104px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.character-profile-v2 :is(
+  .compact-editor-sheet,
+  .dnd-sheet-editor,
+  .character-resource-editor,
+  .v2-editor-sheet.creation-wizard
+) .dnd-long-text {
+  min-height: 150px;
+}
+
+.character-profile-v2 :is(
+  .compact-editor-sheet,
+  .dnd-sheet-editor,
+  .character-resource-editor,
+  .v2-editor-sheet.creation-wizard
+) :is(.app-input, .app-select, .app-textarea, .editor-label > input, .editor-label > textarea):focus {
+  border-color: rgba(157, 131, 206, .52);
+  background: rgba(157, 131, 206, .055);
+  box-shadow: 0 0 0 3px rgba(157, 131, 206, .09);
+}
+
+.character-profile-v2 :is(
+  .compact-editor-sheet,
+  .dnd-sheet-editor,
+  .character-resource-editor,
+  .v2-editor-sheet.creation-wizard
+) :is(input, textarea)::placeholder {
+  color: var(--character-text-faint);
+}
+
+/* Sections: use spacing and typography first; borders only where they help scanning. */
+.character-profile-v2 .dnd-sheet-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.character-profile-v2 .dnd-editor-section,
+.character-profile-v2 .resource-editor-section {
+  margin: 0;
+  padding: 13px 0 3px;
+  border: 0;
+  border-top: 1px solid var(--character-line);
+  border-radius: 0;
+  display: grid;
+  gap: 10px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.character-profile-v2 .dnd-sheet-editor > .dnd-editor-section:first-of-type,
+.character-profile-v2 .character-resource-editor > .resource-editor-section:first-of-type {
+  border-top: 0;
+}
+
+.character-profile-v2 .dnd-editor-section > h4,
+.character-profile-v2 .resource-editor-section__head > strong,
+.character-profile-v2 .spell-slot-editor__head > strong {
+  margin: 0;
+  color: var(--character-text-primary);
+  font-size: 13px;
+  font-weight: 760;
+  letter-spacing: -.01em;
+}
+
+.character-profile-v2 .resource-editor-section__head,
+.character-profile-v2 .spell-slot-editor__head {
+  display: grid;
+  gap: 3px;
+}
+
+.character-profile-v2 :is(.resource-editor-section__head, .spell-slot-editor__head) > small {
+  color: var(--character-text-muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.character-profile-v2 :is(.dnd-editor-grid, .resource-hp-grid) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.character-profile-v2 .dnd-editor-grid--3,
+.character-profile-v2 .resource-hp-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.character-profile-v2 .dnd-editor-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.character-profile-v2 .narrative-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.character-profile-v2 .narrative-editor-grid > label:has(textarea) {
+  grid-column: 1 / -1;
+}
+
+/* Proficiencies are choice rows, not miniature cards. */
+.character-profile-v2 .dnd-check-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.character-profile-v2 .dnd-check {
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--character-line);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--character-surface-soft);
+}
+
+.character-profile-v2 .dnd-check input,
+.character-profile-v2 .dnd-switch-row input,
+.character-profile-v2 .spell-toggle-grid input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--character-accent);
+}
+
+.character-profile-v2 .dnd-skill-edit-list {
+  border: 1px solid var(--character-line);
+  border-radius: var(--character-radius-medium);
+  overflow: hidden;
+  background: rgba(255, 255, 255, .018);
+}
+
+.character-profile-v2 .dnd-skill-edit-row {
+  min-height: 48px;
+  padding: 7px 9px 7px 11px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(118px, .42fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.character-profile-v2 .dnd-skill-edit-row + .dnd-skill-edit-row {
+  border-top: 1px solid var(--character-line);
+}
+
+.character-profile-v2 .dnd-skill-edit-row .app-select {
+  margin-top: 0;
+}
+
+.character-profile-v2 .dnd-switch-row {
+  min-height: 58px;
+  padding: 10px 11px;
+  border: 1px solid var(--character-line);
+  border-radius: var(--character-radius-medium);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--character-surface-soft);
+}
+
+.character-profile-v2 .dnd-switch-row > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.character-profile-v2 .dnd-switch-row strong {
+  color: var(--character-text-primary);
+  font-size: 11px;
+}
+
+.character-profile-v2 .dnd-switch-row small {
+  color: var(--character-text-muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.character-profile-v2 .spell-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.character-profile-v2 .spell-toggle-grid > label {
+  min-height: 44px;
+  padding: 9px 10px;
+  border: 1px solid var(--character-line);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--character-surface-soft);
+}
+
+.character-profile-v2 .spell-prepared-toggle--active {
+  border-color: rgba(121, 201, 164, .26) !important;
+  color: var(--character-positive) !important;
+  background: rgba(121, 201, 164, .07) !important;
+}
+
+/* HP and slots keep values scannable without becoming a second character sheet. */
+.character-profile-v2 .resource-hp-grid > label,
+.character-profile-v2 :is(.spell-slot-editor__grid, .resource-slot-grid) > label {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--character-line);
+  border-radius: 13px;
+  display: grid;
+  gap: 4px;
+  background: var(--character-surface-soft);
+}
+
+.character-profile-v2 .resource-hp-grid .app-input,
+.character-profile-v2 :is(.spell-slot-editor__grid, .resource-slot-grid) .app-input {
+  margin-top: 0;
+  font-size: 16px;
+  font-weight: 740;
+  font-variant-numeric: tabular-nums;
+}
+
+.character-profile-v2 :is(.spell-slot-editor, .resource-editor-section) {
+  min-width: 0;
+}
+
+.character-profile-v2 :is(.spell-slot-editor__grid, .resource-slot-grid) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.character-profile-v2 :is(.spell-slot-editor__grid, .resource-slot-grid) label > span {
+  color: var(--character-text-secondary);
+  font-size: 9px;
+  font-weight: 720;
+}
+
+.character-profile-v2 :is(.spell-slot-editor__grid, .resource-slot-grid) label > small {
+  color: var(--character-text-muted);
+  font-size: 8px;
+  font-weight: 560;
+}
+
+/* Progressive item/feature editors keep their workflow, but adopt the same hierarchy. */
+.character-profile-v2 .creation-wizard__progress {
+  position: sticky;
+  top: 82px;
+  z-index: 7;
+  margin: 0 -2px;
+  padding: 8px 2px 10px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 5px;
+  background: rgba(18, 18, 23, .96);
+}
+
+.character-profile-v2 .creation-wizard__progress > i {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--character-line-strong);
+}
+
+.character-profile-v2 .creation-wizard__progress > i.is-active {
+  background: var(--character-accent);
+}
+
+.character-profile-v2 .creation-wizard__step {
+  padding: 10px 0 2px;
+  display: grid;
+  gap: 12px;
+}
+
+.character-profile-v2 .creation-wizard__intro {
+  min-width: 0;
+  padding: 2px 1px 9px;
+  border-bottom: 1px solid var(--character-line);
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.character-profile-v2 .creation-wizard__intro > span {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(157, 131, 206, .2);
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: var(--character-accent);
+  background: var(--character-accent-soft);
+  font-size: 10px;
+  font-weight: 780;
+}
+
+.character-profile-v2 .creation-wizard__intro > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.character-profile-v2 .creation-wizard__intro strong {
+  color: var(--character-text-primary);
+  font-size: 13px;
+}
+
+.character-profile-v2 .creation-wizard__intro small,
+.character-profile-v2 .creation-optional {
+  color: var(--character-text-muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.character-profile-v2 .creation-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.character-profile-v2 .creation-preset {
+  min-width: 0;
+  min-height: 76px;
+  padding: 11px;
+  border: 1px solid var(--character-line);
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 9px;
+  color: var(--character-text-secondary);
+  background: var(--character-surface-soft);
+  text-align: left;
+}
+
+.character-profile-v2 .creation-preset > span {
+  color: var(--character-accent);
+  font-size: 19px;
+}
+
+.character-profile-v2 .creation-preset > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.character-profile-v2 .creation-preset strong {
+  color: var(--character-text-primary);
+  font-size: 11px;
+}
+
+.character-profile-v2 .creation-preset small {
+  color: var(--character-text-muted);
+  font-size: 9px;
+  line-height: 1.42;
+}
+
+.character-profile-v2 .creation-preset > i {
+  color: var(--character-text-faint);
+  font-style: normal;
+}
+
+.character-profile-v2 .creation-preset.is-active {
+  border-color: rgba(157, 131, 206, .42);
+  color: var(--character-text-primary);
+  background: var(--character-accent-soft);
+}
+
+.character-profile-v2 .creation-preset.is-active > i {
+  color: var(--character-accent);
+}
+
+.character-profile-v2 :is(.creation-default-note, .creation-review-card, .creation-review-block) {
+  border: 1px solid var(--character-line);
+  border-radius: 14px;
+  background: var(--character-surface-soft);
+  box-shadow: none;
+}
+
+.character-profile-v2 .creation-default-note {
+  padding: 10px 11px;
+}
+
+.character-profile-v2 .creation-review-block {
+  padding: 11px;
+}
+
+.character-profile-v2 .creation-review-block > span {
+  color: var(--character-text-muted);
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.character-profile-v2 .creation-review-block :is(p, li) {
+  color: var(--character-text-secondary);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+/* Consistent error and action language. */
+.character-profile-v2 :is(
+  .compact-editor-sheet,
+  .dnd-sheet-editor,
+  .character-resource-editor,
+  .v2-editor-sheet.creation-wizard
+) .auth-error {
+  margin: 0;
+  padding: 10px 11px;
+  border: 1px solid rgba(217, 120, 130, .22);
+  border-radius: 12px;
+  color: #e6a2aa;
+  background: rgba(217, 120, 130, .07);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.character-profile-v2 :is(
+  .editor-action-row,
+  .v2-editor-actions.creation-wizard__actions
+),
+.character-profile-v2 :is(
+  .compact-editor-sheet,
+  .dnd-sheet-editor,
+  .character-resource-editor
+) > .sheet-save {
+  position: sticky;
+  bottom: 0;
+  z-index: 8;
+  margin: 0 -2px;
+  padding: 11px 2px 2px;
+  background: linear-gradient(0deg, rgba(18, 18, 23, .99) 78%, rgba(18, 18, 23, .82));
+}
+
+.character-profile-v2 :is(.editor-action-row, .v2-editor-actions.creation-wizard__actions) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.character-profile-v2 :is(
+  .sheet-save,
+  .v2-primary-button,
+  .v2-secondary-button,
+  .v2-danger-button,
+  .secondary-action-button,
+  .danger-mini-button
+) {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.character-profile-v2 :is(.sheet-save, .v2-primary-button) {
+  border: 1px solid rgba(157, 131, 206, .28);
+  color: var(--character-text-primary);
+  background: var(--character-accent-soft);
+}
+
+.character-profile-v2 :is(.v2-secondary-button, .secondary-action-button) {
+  border: 1px solid var(--character-line);
+  color: var(--character-text-secondary);
+  background: var(--character-surface-soft);
+}
+
+.character-profile-v2 :is(.v2-danger-button, .danger-mini-button) {
+  border: 1px solid rgba(217, 120, 130, .22);
+  color: #e6a2aa;
+  background: rgba(217, 120, 130, .06);
+}
+
+.character-profile-v2 :is(.sheet-save, .v2-primary-button, .v2-secondary-button, .v2-danger-button):disabled {
+  cursor: default;
+  opacity: .45;
+}
+
+.character-profile-v2 :is(
+  .compact-editor-sheet,
+  .dnd-sheet-editor,
+  .character-resource-editor,
+  .v2-editor-sheet.creation-wizard
+) :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid rgba(157, 131, 206, .72);
+  outline-offset: 2px;
+}
+
+@media (min-width: 760px) {
+  .character-profile-v2 :is(
+    .compact-editor-sheet,
+    .dnd-sheet-editor,
+    .character-resource-editor,
+    .v2-editor-sheet.creation-wizard
+  ) {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .character-profile-v2 .dnd-sheet-editor {
+    width: min(760px, calc(100vw - 28px));
+  }
+}
+
+@media (max-width: 560px) {
+  .character-profile-v2 :is(.dnd-editor-grid--3, .resource-hp-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .character-profile-v2 .creation-preset-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .character-profile-v2 :is(.spell-slot-editor__grid, .resource-slot-grid) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 430px) {
+  .character-profile-v2 :is(
+    .compact-editor-sheet,
+    .dnd-sheet-editor,
+    .character-resource-editor,
+    .v2-editor-sheet.creation-wizard
+  ) {
+    width: 100%;
+    max-height: 94dvh;
+    padding-inline: 12px;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 22px 22px 0 0;
+  }
+
+  .character-profile-v2 :is(.character-editor-head, .v2-sheet-head.creation-wizard__head) {
+    padding-top: 8px;
+  }
+
+  .character-profile-v2 :is(.dnd-editor-grid, .dnd-editor-grid--2, .narrative-editor-grid) {
+    grid-template-columns: 1fr;
+  }
+
+  .character-profile-v2 .narrative-editor-grid > label:has(textarea) {
+    grid-column: auto;
+  }
+
+  .character-profile-v2 .dnd-check-grid,
+  .character-profile-v2 .spell-toggle-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .character-profile-v2 .dnd-skill-edit-row {
+    grid-template-columns: minmax(0, 1fr) 116px;
+  }
+
+  .character-profile-v2 :is(.editor-action-row, .v2-editor-actions.creation-wizard__actions) {
+    flex-wrap: wrap;
+  }
+
+  .character-profile-v2 :is(.editor-action-row, .v2-editor-actions.creation-wizard__actions) > :last-child {
+    flex: 1 1 150px;
+  }
+}
+
+@media (max-width: 340px) {
+  .character-profile-v2 :is(.dnd-editor-grid--3, .resource-hp-grid) {
+    grid-template-columns: 1fr;
+  }
+
+  .character-profile-v2 .dnd-check-grid,
+  .character-profile-v2 .spell-toggle-grid,
+  .character-profile-v2 :is(.spell-slot-editor__grid, .resource-slot-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .character-profile-v2 .dnd-skill-edit-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .character-profile-v2 :is(
+    .compact-editor-sheet,
+    .dnd-sheet-editor,
+    .character-resource-editor,
+    .v2-editor-sheet.creation-wizard
+  ) * {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

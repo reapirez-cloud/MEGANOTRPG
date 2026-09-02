@@ -27,6 +27,8 @@ import CharacterResourcesEditor from "../components/characters/CharacterResource
 import InventoryItemEditor from "../components/characters/InventoryItemEditor.tsx"
 import SpellEditor from "../components/characters/SpellEditor.tsx"
 import FeatureEditor from "../components/characters/FeatureEditor.tsx"
+import CharacterDetailSheet from "../components/characters/CharacterDetailSheet.tsx"
+import CharacterSectionState from "../components/characters/CharacterSectionState.tsx"
 import ImageUploadField from "../components/common/ImageUploadField.tsx"
 import CampaignImage from "../components/common/CampaignImage.tsx"
 import ReferenceGuide from "../components/reference/ReferenceGuide.tsx"
@@ -56,6 +58,21 @@ type DiaryMenu =
   | { type: "comment"; item: DiaryComment }
 
 type ArtMenu = { item: CharacterArt }
+
+type TabMeta = {
+  label: string
+  detail: string
+  icon: string
+}
+
+const tabMeta: Record<Tab, TabMeta> = {
+  sheet: { label: "Лист", detail: "Характеристики и состояние", icon: "◈" },
+  class: { label: "Класс", detail: "Класс, подкласс и способности", icon: "◇" },
+  spells: { label: "Магия", detail: "Заклинания и ячейки", icon: "✦" },
+  inventory: { label: "Вещи", detail: "Инвентарь и экипировка", icon: "▣" },
+  diary: { label: "Дневник", detail: "Записи персонажа", icon: "≡" },
+  arts: { label: "Арты", detail: "Галерея персонажа", icon: "▧" },
+}
 
 function normalizeClass(value: string): string {
   return value.trim().toLocaleLowerCase("ru-RU").replace(/[._-]+/g, " ").replace(/\s+/g, " ")
@@ -98,6 +115,9 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
   const runtime = useResolvedCharacterRuntime(character)
 
   const [tab, setTab] = useState<Tab>("sheet")
+  const [navigatorOpen, setNavigatorOpen] = useState(false)
+  const [sheetFocused, setSheetFocused] = useState(false)
+  const [sheetFocusResetKey, setSheetFocusResetKey] = useState(0)
   const [inventoryMode, setInventoryMode] = useState<InventoryMode>("inventory")
   const [editor, setEditor] = useState<Editor>(null)
   const [reference, setReference] = useState<ReferenceTarget>(null)
@@ -132,9 +152,9 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
 
   if (!character) {
     return (
-      <div className="screen">
+      <div className="screen character-profile-v2">
         {!embedded && <header className="screen-header"><button className="icon-button" type="button" onClick={onBack}>←</button><h1 className="screen-header__title">Персонаж</h1><span /></header>}
-        <div className="center-state">Персонаж не найден или у тебя нет доступа.</div>
+        <CharacterSectionState kind="empty" title="Персонаж недоступен" detail="Он удалён, скрыт или у тебя больше нет доступа." />
       </div>
     )
   }
@@ -170,6 +190,25 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
       data.spellOptions.length > 0
     ),
   )
+
+  function openTab(next: Tab) {
+    setTab(next)
+    setSheetFocused(false)
+    setNavigatorOpen(false)
+  }
+
+  function handleProfileBack() {
+    if (sheetFocused) {
+      setSheetFocused(false)
+      setSheetFocusResetKey((value) => value + 1)
+      return
+    }
+    if (tab !== "sheet") {
+      openTab("sheet")
+      return
+    }
+    onBack()
+  }
 
   async function saveAvatar(event: FormEvent) {
     event.preventDefault()
@@ -348,7 +387,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
     const art = target.item
     const editable = canManage || art.uploaded_by === user.id
     return [
-      { id: "open", label: "Открыть арт", detail: "Посмотреть целиком", icon: "↗", onSelect: () => setSelectedArt(art) },
+      { id: "open", label: "Просмотр", detail: "Открыть арт целиком", icon: "↗", onSelect: () => setSelectedArt(art) },
       ...(editable ? [
         { id: "edit", label: "Редактировать", detail: "Название и подпись", icon: "✎", onSelect: () => openArtEditor(art) } satisfies ContextAction,
         { id: "delete", label: "Удалить арт", detail: "Удалить из галереи", icon: "×", danger: true, onSelect: () => deleteArt(art) } satisfies ContextAction,
@@ -358,22 +397,30 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
 
   const fullName = member ? `${currentCharacter.name} (${member.display_name})` : currentCharacter.name
   const runtimeTab = tab === "sheet" || tab === "class" || tab === "spells"
+  const currentTab = tabMeta[tab]
+  const profileIsDeep = tab !== "sheet" || sheetFocused
+  const navigatorActions: ContextAction[] = [
+    { id: "sheet", label: tabMeta.sheet.label, detail: tabMeta.sheet.detail, icon: tabMeta.sheet.icon, disabled: tab === "sheet" && !sheetFocused, onSelect: () => { if (sheetFocused) setSheetFocusResetKey((value) => value + 1); openTab("sheet") } },
+    { id: "class", label: tabMeta.class.label, detail: tabMeta.class.detail, icon: tabMeta.class.icon, disabled: tab === "class", onSelect: () => openTab("class") },
+    ...((magicSectionVisible || canManage) ? [{ id: "spells", label: tabMeta.spells.label, detail: tabMeta.spells.detail, icon: tabMeta.spells.icon, disabled: tab === "spells", onSelect: () => openTab("spells") } satisfies ContextAction] : []),
+    { id: "inventory", label: tabMeta.inventory.label, detail: tabMeta.inventory.detail, icon: tabMeta.inventory.icon, disabled: tab === "inventory", onSelect: () => openTab("inventory") },
+    { id: "diary", label: tabMeta.diary.label, detail: tabMeta.diary.detail, icon: tabMeta.diary.icon, disabled: tab === "diary", onSelect: () => openTab("diary") },
+    { id: "arts", label: tabMeta.arts.label, detail: tabMeta.arts.detail, icon: tabMeta.arts.icon, disabled: tab === "arts", onSelect: () => openTab("arts") },
+  ]
   const runtimePanelState = !resolved
-    ? <div className="center-state">
-        {runtime.error
-          ? <><span>CE не смог собрать персонажа: {runtime.error}</span><button className="section-link" type="button" onClick={runtime.refresh}>Повторить</button></>
-          : <><span className="status-spinner" /><span>Собираем механику персонажа…</span></>}
-      </div>
+    ? runtime.error
+      ? <CharacterSectionState kind="error" title="Не удалось собрать механику" detail={runtime.error} action={<button className="section-link" type="button" onClick={runtime.refresh}>Повторить</button>} />
+      : <CharacterSectionState kind="loading" title="Собираем механику персонажа" detail="Character Engine рассчитывает актуальное состояние." />
     : runtime.error
-      ? <div className="auth-error">CE показывает последний доступный расчёт: {runtime.error} <button className="section-link" type="button" onClick={runtime.refresh}>Повторить</button></div>
+      ? <CharacterSectionState compact kind="stale" title="Показан последний доступный расчёт" detail={runtime.error} action={<button className="section-link" type="button" onClick={runtime.refresh}>Обновить</button>} />
       : null
 
   return (
     <div className={`screen character-profile-screen character-profile-v2 ${embedded ? "character-profile-screen--embedded" : ""}`}>
-      {!embedded && <header className="screen-header"><button className="icon-button" type="button" onClick={onBack} aria-label="Назад">←</button><h1 className="screen-header__title">{fullName}</h1><span /></header>}
+      {!embedded && <header className="screen-header"><button className="icon-button" type="button" onClick={handleProfileBack} aria-label="Назад">←</button><h1 className="screen-header__title">{fullName}</h1><span /></header>}
 
       <div className="profile-scroll character-profile-scroll profile-v3">
-        <section className="profile-v3__hero">
+        <section className={`profile-v3__hero${profileIsDeep ? " profile-v3__hero--compact" : ""}`}>
           <button
             className="profile-v3__portrait"
             type="button"
@@ -394,7 +441,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
               {active && <span className="profile-v3__active">Активен</span>}
             </div>
             {member && <p>Игрок · {member.display_name}</p>}
-            <button className="profile-v3__class" type="button" onClick={() => setTab("class")}>
+            <button className="profile-v3__class" type="button" onClick={() => openTab("class")}>
               <span><strong>{currentCharacter.character_class || "Класс не указан"}</strong><small>{currentCharacter.level} уровень · открыть класс</small></span>
               <i aria-hidden="true">›</i>
             </button>
@@ -406,17 +453,25 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
           </button>
         </section>
 
-        <nav className="profile-v3__tabs" aria-label="Разделы персонажа">
-          <button className={tab === "sheet" ? "is-active" : ""} type="button" onClick={() => setTab("sheet")}><span aria-hidden="true">◈</span>Лист</button>
-          <button className={tab === "class" ? "is-active" : ""} type="button" onClick={() => setTab("class")}><span aria-hidden="true">◇</span>Класс</button>
-          {(magicSectionVisible || canManage) && <button className={tab === "spells" ? "is-active" : ""} type="button" onClick={() => setTab("spells")}><span aria-hidden="true">✦</span>Магия</button>}
-          <button className={tab === "inventory" ? "is-active" : ""} type="button" onClick={() => setTab("inventory")}><span aria-hidden="true">▣</span>Вещи</button>
-          <button className={tab === "diary" ? "is-active" : ""} type="button" onClick={() => setTab("diary")}><span aria-hidden="true">≡</span>Дневник</button>
-          <button className={tab === "arts" ? "is-active" : ""} type="button" onClick={() => setTab("arts")}><span aria-hidden="true">◇</span>Арты</button>
-        </nav>
+        <button
+          className="character-navigator-v5"
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={navigatorOpen}
+          onClick={() => setNavigatorOpen(true)}
+        >
+          <span className="character-navigator-v5__copy">
+            <small>{currentCharacter.name}</small>
+            <span className="character-navigator-v5__current">
+              <i aria-hidden="true">{currentTab.icon}</i>
+              <strong>{currentTab.label}</strong>
+            </span>
+          </span>
+          <span className="character-navigator-v5__chevron" aria-hidden="true">⌄</span>
+        </button>
 
-        {data.loading && <div className="center-state"><span className="status-spinner" /><span>Загружаем данные персонажа…</span></div>}
-        {data.error && <div className="auth-error">{data.error}</div>}
+        {data.loading && <CharacterSectionState kind="loading" title="Загружаем данные персонажа" detail="Собираем лист, вещи, записи и галерею." />}
+        {data.error && <CharacterSectionState compact kind="error" title="Часть данных не загрузилась" detail={data.error} />}
         {!data.loading && runtimeTab && runtimePanelState}
 
         {!data.loading && tab === "sheet" && sheet && resolved && (
@@ -428,6 +483,8 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
             spellcastingAbility={resolved.spellcastingAbility}
             canManage={canManage}
             features={data.features}
+            focusResetKey={sheetFocusResetKey}
+            onFocusChange={setSheetFocused}
             onEditSheet={() => setEditor({ type: "sheet" })}
             onEditResources={() => setEditor({ type: "resources" })}
             onAddFeature={() => setEditor({ type: "feature", feature: null })}
@@ -436,7 +493,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
             onOpenClassReference={() => setReference({ section: "classes", classId })}
             onOpenSpells={(level) => {
               setSpellLevelFilter(level ?? null)
-              setTab("spells")
+              openTab("spells")
             }}
           />
         )}
@@ -445,6 +502,8 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
           <CharacterClassPanel
             characterId={characterId}
             contract={resolved.contract}
+            focusResetKey={sheetFocusResetKey}
+            onFocusChange={setSheetFocused}
             onOpenReference={() => setReference({ section: "classes", classId })}
           />
         )}
@@ -478,7 +537,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
         {!data.loading && tab === "inventory" && (
           <section className="v2-inventory-wrap">
             <div className="v2-subtabs"><button className={inventoryMode === "inventory" ? "v2-subtab v2-subtab--active" : "v2-subtab"} type="button" onClick={() => setInventoryMode("inventory")}>Предметы</button><button className={inventoryMode === "equipment" ? "v2-subtab v2-subtab--active" : "v2-subtab"} type="button" onClick={() => setInventoryMode("equipment")}>Экипировка</button></div>
-            <CharacterInventory mode={inventoryMode} items={data.inventory} canManage={canManage} canEquip={canUseInventory} onCreate={() => setEditor({ type: "inventory", item: null })} onEdit={(item) => setEditor({ type: "inventory", item })} onDelete={data.deleteInventoryItem} onSetEquipped={data.setInventoryEquipped} />
+            <CharacterInventory mode={inventoryMode} items={data.inventory} canManage={canManage} canEquip={canUseInventory} focusResetKey={sheetFocusResetKey} onFocusChange={setSheetFocused} onCreate={() => setEditor({ type: "inventory", item: null })} onEdit={(item) => setEditor({ type: "inventory", item })} onDelete={data.deleteInventoryItem} onSetEquipped={data.setInventoryEquipped} />
           </section>
         )}
 
@@ -486,18 +545,18 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
           <section className="character-tab-section v2-diary">
             <div className="section-head"><div><h3 className="section-title">Дневник</h3><p className="item-meta">Записи персонажа видны тем, кому доступен персонаж</p></div></div>
             {canWriteDiary && <form className="v2-diary-compose surface" onSubmit={publishDiary}><textarea value={diaryDraft} onChange={(event) => setDiaryDraft(event.target.value)} placeholder={`Что записывает ${currentCharacter.name}?`} /><div><label className="section-link">{diaryFile ? diaryFile.name : "+ Изображение"}<input type="file" accept="image/*" onChange={(event) => setDiaryFile(event.target.files?.[0] || null)} /></label><button type="submit" disabled={diaryPublishing || (!diaryDraft.trim() && !diaryFile)}>{diaryPublishing ? "Публикуем…" : "Записать"}</button></div></form>}
-            {diaryError && <div className="auth-error">{diaryError}</div>}
+            {diaryError && <CharacterSectionState compact kind="error" title="Дневник не обновился" detail={diaryError} />}
             <div className="v2-diary-list">{data.posts.map((post) => <article className="v2-diary-post surface" key={post.id} {...bindDiaryLongPress({ type: "post", item: post })} style={{ touchAction: "pan-y" }}><div className="v2-diary-post__meta"><strong>{authorName(post.created_by)}</strong><span>{formatTime(post.created_at)}</span></div>{post.body && <p>{post.body}</p>}{post.media_url && <CampaignImage value={post.media_url} alt="Иллюстрация записи" />}<button className="v2-comments-toggle" type="button" onClick={() => setOpenComments(openComments === post.id ? null : post.id)}>Комментарии · {commentsFor(post.id).length}</button>{openComments === post.id && <div className="v2-comments">{commentsFor(post.id).map((comment) => <div className="v2-comment" key={comment.id} {...bindDiaryLongPress({ type: "comment", item: comment })} style={{ touchAction: "pan-y" }}><span><strong>{authorName(comment.created_by)}</strong><small>{formatTime(comment.created_at)}</small></span><p>{comment.body}</p></div>)}{canWriteDiary && <div className="v2-comment-compose"><input value={commentDrafts[post.id] || ""} onChange={(event) => setCommentDrafts((current) => ({ ...current, [post.id]: event.target.value }))} placeholder="Комментарий" /><button type="button" onClick={() => void addComment(post.id)}>Отправить</button></div>}</div>}</article>)}</div>
-            {data.posts.length === 0 && <div className="character-empty surface">В дневнике пока пусто.</div>}
+            {data.posts.length === 0 && <CharacterSectionState kind="empty" title="В дневнике пока пусто" detail="Здесь появятся записи персонажа." />}
           </section>
         )}
 
         {!data.loading && tab === "arts" && (
           <section className="character-tab-section">
             <div className="section-head"><div><h3 className="section-title">Галерея персонажа</h3><p className="item-meta">Портреты, сцены и памятные моменты</p></div>{(canManage || isAssignedPlayer) && <label className="section-link character-art-upload">{artUploading ? "Загрузка…" : "+ Арт"}<input type="file" accept="image/*" disabled={artUploading} onChange={(event) => { void uploadArt(event.target.files?.[0] || null); event.currentTarget.value = "" }} /></label>}</div>
-            {artError && <div className="auth-error">{artError}</div>}
+            {artError && <CharacterSectionState compact kind="error" title="Галерея не обновилась" detail={artError} />}
             <div className="character-art-grid">{data.arts.map((art) => <button type="button" key={art.id} aria-label={art.title} onClick={() => setSelectedArt(art)} {...bindArtLongPress({ item: art })} style={{ touchAction: "pan-y" }}><CampaignImage value={art.image_url} alt={art.title} loading="lazy" /></button>)}</div>
-            {data.arts.length === 0 && <div className="character-empty surface">У персонажа пока нет артов.</div>}
+            {data.arts.length === 0 && <CharacterSectionState kind="empty" title="Галерея пуста" detail="Здесь появятся арты и памятные сцены персонажа." />}
           </section>
         )}
       </div>
@@ -512,12 +571,17 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
 
       {editingPost && <div className="sheet-backdrop" onMouseDown={() => setEditingPost(null)}><form className="bottom-sheet compact-editor-sheet" onSubmit={saveEditedPost} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="character-editor-head"><div><h3 className="sheet-title">Редактировать запись</h3><p className="sheet-copy">Дневник персонажа</p></div><button className="sheet-close" type="button" onClick={() => setEditingPost(null)}>×</button></div><label className="editor-label">Текст<textarea value={editingPostBody} onChange={(event) => setEditingPostBody(event.target.value)} /></label><button className="sheet-save" type="submit" disabled={postSaving}>{postSaving ? "Сохраняем…" : "Сохранить"}</button></form></div>}
 
-      {selectedArt && <div className="sheet-backdrop" onMouseDown={() => setSelectedArt(null)}><div className="bottom-sheet art-viewer-sheet" onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="character-editor-head"><div><h3 className="sheet-title">{selectedArt.title || currentCharacter.name}</h3><p className="sheet-copy">Галерея персонажа</p></div><button className="sheet-close" type="button" onClick={() => setSelectedArt(null)}>×</button></div><CampaignImage className="art-viewer-image" value={selectedArt.image_url} alt={selectedArt.title} />{selectedArt.caption && <p className="sheet-copy">{selectedArt.caption}</p>}{(canManage || selectedArt.uploaded_by === user.id) && <div className="spell-card__actions"><button className="inline-edit-button" type="button" onClick={() => openArtEditor(selectedArt)}>✎ Редактировать</button><button className="danger-mini-button" type="button" onClick={() => void deleteArt(selectedArt)}>Удалить</button></div>}</div></div>}
+      {selectedArt && <CharacterDetailSheet eyebrow="Галерея персонажа" title={selectedArt.title || currentCharacter.name} onClose={() => setSelectedArt(null)} className="art-viewer-sheet character-art-detail-v5">
+        <CampaignImage className="art-viewer-image" value={selectedArt.image_url} alt={selectedArt.title} />
+        {selectedArt.caption && <p>{selectedArt.caption}</p>}
+        {(canManage || selectedArt.uploaded_by === user.id) && <div className="spell-card__actions"><button className="inline-edit-button" type="button" onClick={() => openArtEditor(selectedArt)}>✎ Редактировать</button><button className="danger-mini-button" type="button" onClick={() => void deleteArt(selectedArt)}>Удалить</button></div>}
+      </CharacterDetailSheet>}
 
       {editingArt && <div className="sheet-backdrop" onMouseDown={() => setEditingArt(null)}><form className="bottom-sheet compact-editor-sheet" onSubmit={saveArt} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="character-editor-head"><div><h3 className="sheet-title">Редактировать арт</h3><p className="sheet-copy">Название и подпись</p></div><button className="sheet-close" type="button" onClick={() => setEditingArt(null)}>×</button></div><label className="editor-label">Название<input value={artTitle} onChange={(event) => setArtTitle(event.target.value)} /></label><label className="editor-label">Подпись<textarea value={artCaption} onChange={(event) => setArtCaption(event.target.value)} /></label><button className="sheet-save" type="submit" disabled={artSaving}>{artSaving ? "Сохраняем…" : "Сохранить"}</button></form></div>}
 
-      {diaryMenu && <ContextActionSheet title={diaryMenu.type === "post" ? "Запись дневника" : "Комментарий"} subtitle="Долгое нажатие открывает действия" actions={diaryActions(diaryMenu)} onClose={() => setDiaryMenu(null)} />}
-      {artMenu && <ContextActionSheet title={artMenu.item.title || currentCharacter.name} subtitle="Долгое нажатие открывает действия с артом" actions={artActions(artMenu)} onClose={() => setArtMenu(null)} />}
+      {navigatorOpen && <ContextActionSheet title={currentCharacter.name} subtitle={`Сейчас открыт раздел «${currentTab.label}»`} actions={navigatorActions} onClose={() => setNavigatorOpen(false)} />}
+      {diaryMenu && <ContextActionSheet title={diaryMenu.type === "post" ? "Запись дневника" : "Комментарий"} subtitle="Действия с записью" actions={diaryActions(diaryMenu)} onClose={() => setDiaryMenu(null)} />}
+      {artMenu && <ContextActionSheet title={artMenu.item.title || currentCharacter.name} subtitle="Действия с артом" actions={artActions(artMenu)} onClose={() => setArtMenu(null)} />}
 
       {reference && <ReferenceGuide key={`${reference.section}:${reference.section === "classes" ? reference.classId || "all" : "spells"}`} character={{ id: currentCharacter.id, name: currentCharacter.name, character_class: currentCharacter.character_class }} canManage={canManage} onClose={() => setReference(null)} onCharacterChanged={data.reload} initialSection={reference.section} initialClassId={reference.section === "classes" ? reference.classId : null} />}
     </div>

@@ -24,6 +24,7 @@ import "./chat-release-fixes.css"
 import "./spell-slot-clarity.css"
 import "./creation-wizard.css"
 import "./character-sheet-modules.css"
+import "./character-profile-v5.css"
 
 import BottomNav from "./components/app/BottomNav"
 import NotificationsSheet from "./components/app/NotificationsSheet"

@@ -1,3 +1,6 @@
+import { useId } from "react"
+import { useDialogSurface } from "../../hooks/useDialogSurface.ts"
+
 export type ContextAction = {
   id: string
   label: string
@@ -21,6 +24,10 @@ export default function ContextActionSheet({
   actions,
   onClose,
 }: Props) {
+  const titleId = useId()
+  const subtitleId = useId()
+  const dialogRef = useDialogSurface<HTMLDivElement>(onClose, ".context-action:not(:disabled)")
+
   function choose(action: ContextAction) {
     if (action.disabled) return
     onClose()
@@ -30,19 +37,22 @@ export default function ContextActionSheet({
   return (
     <div className="sheet-backdrop" onMouseDown={onClose}>
       <div
+        ref={dialogRef}
         className="bottom-sheet context-action-sheet"
         role="dialog"
         aria-modal="true"
-        aria-label={`Действия: ${title}`}
+        aria-labelledby={titleId}
+        aria-describedby={subtitleId}
+        tabIndex={-1}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="sheet-handle" />
+        <div className="sheet-handle" aria-hidden="true" />
         <div className="character-editor-head">
           <div>
-            <h3 className="sheet-title">{title}</h3>
-            <p className="sheet-copy">{subtitle}</p>
+            <h3 className="sheet-title" id={titleId}>{title}</h3>
+            <p className="sheet-copy" id={subtitleId}>{subtitle}</p>
           </div>
-          <button className="sheet-close" type="button" onClick={onClose}>
+          <button className="sheet-close" type="button" onClick={onClose} aria-label="Закрыть действия">
             ×
           </button>
         </div>

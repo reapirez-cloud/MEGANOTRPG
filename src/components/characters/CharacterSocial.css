@@ -1,0 +1,529 @@
+/* Character Profile v5 — Stage 6 social/media composition.
+ * Diary and gallery presentation only. Persistence and permissions stay in useCharacterSheet.
+ */
+
+.character-profile-v2 .v2-diary,
+.character-profile-v2 .character-tab-section:has(.character-art-grid) {
+  display: grid;
+  gap: 12px;
+}
+
+/* Recompose the two legacy section heads into the same quiet editorial language used by v5. */
+.character-profile-v2 .v2-diary > .section-head,
+.character-profile-v2 .character-tab-section:has(.character-art-grid) > .section-head {
+  min-width: 0;
+  margin: 0;
+  padding: 14px 2px 12px;
+  border-bottom: 1px solid var(--character-line);
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 11px;
+}
+
+.character-profile-v2 .v2-diary > .section-head::before,
+.character-profile-v2 .character-tab-section:has(.character-art-grid) > .section-head::before {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--character-line);
+  border-radius: 13px;
+  color: var(--character-accent);
+  background: var(--character-accent-soft);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.character-profile-v2 .v2-diary > .section-head::before {
+  content: "≡";
+}
+
+.character-profile-v2 .character-tab-section:has(.character-art-grid) > .section-head::before {
+  content: "▧";
+}
+
+.character-profile-v2 .v2-diary > .section-head > div,
+.character-profile-v2 .character-tab-section:has(.character-art-grid) > .section-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.character-profile-v2 .v2-diary > .section-head .section-title,
+.character-profile-v2 .character-tab-section:has(.character-art-grid) > .section-head .section-title {
+  margin: 0;
+  color: var(--character-text-primary);
+  font-size: 19px;
+  line-height: 1.15;
+  letter-spacing: -.018em;
+}
+
+.character-profile-v2 .v2-diary > .section-head .item-meta,
+.character-profile-v2 .character-tab-section:has(.character-art-grid) > .section-head .item-meta {
+  margin: 0;
+  max-width: 620px;
+  color: var(--character-text-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+/* Diary composer is an authored note surface, not a generic form card. */
+.character-profile-v2 .v2-diary-compose {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--character-line);
+  border-radius: var(--character-radius-medium);
+  display: grid;
+  gap: 10px;
+  background:
+    linear-gradient(135deg, rgba(150, 118, 214, .055), transparent 44%),
+    var(--character-surface-raised);
+  box-shadow: none;
+}
+
+.character-profile-v2 .v2-diary-compose textarea {
+  width: 100%;
+  min-height: 94px;
+  padding: 2px 2px 8px;
+  border: 0;
+  border-bottom: 1px solid var(--character-line);
+  outline: 0;
+  resize: vertical;
+  color: var(--character-text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.character-profile-v2 .v2-diary-compose textarea::placeholder {
+  color: var(--character-text-muted);
+}
+
+.character-profile-v2 .v2-diary-compose > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.character-profile-v2 .v2-diary-compose .section-link,
+.character-profile-v2 .character-art-upload {
+  position: relative;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--character-line);
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--character-text-secondary);
+  background: var(--character-surface-soft);
+  font-size: 10px;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.character-profile-v2 .v2-diary-compose .section-link {
+  max-width: 68%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Keep native file controls keyboard-focusable while visually hiding the tiny input itself. */
+.character-profile-v2 .v2-diary-compose .section-link input,
+.character-profile-v2 .character-art-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.character-profile-v2 .v2-diary-compose .section-link:focus-within,
+.character-profile-v2 .character-art-upload:focus-within,
+.character-profile-v2 .v2-diary-compose textarea:focus-visible,
+.character-profile-v2 .v2-diary-compose button:focus-visible,
+.character-profile-v2 .v2-comments-toggle:focus-visible,
+.character-profile-v2 .v2-comment-compose input:focus-visible,
+.character-profile-v2 .v2-comment-compose button:focus-visible,
+.character-profile-v2 .character-art-grid > button:focus-visible {
+  outline: 2px solid var(--character-accent);
+  outline-offset: 2px;
+}
+
+.character-profile-v2 .v2-diary-compose button[type="submit"] {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(168, 135, 224, .24);
+  border-radius: 12px;
+  color: var(--character-text-primary);
+  background: var(--character-accent-soft);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.character-profile-v2 .v2-diary-compose button[type="submit"]:disabled {
+  opacity: .42;
+}
+
+/* Diary entries read as a quiet chronology instead of a stack of dashboard cards. */
+.character-profile-v2 .v2-diary-list {
+  position: relative;
+  display: grid;
+  gap: 9px;
+}
+
+.character-profile-v2 .v2-diary-list::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  bottom: 18px;
+  left: 10px;
+  width: 1px;
+  background: linear-gradient(var(--character-line), transparent);
+  pointer-events: none;
+}
+
+.character-profile-v2 .v2-diary-post {
+  position: relative;
+  margin: 0 0 0 22px;
+  padding: 12px 12px 11px;
+  border: 1px solid var(--character-line);
+  border-radius: var(--character-radius-medium);
+  display: grid;
+  gap: 9px;
+  background: var(--character-surface-raised);
+  box-shadow: none;
+}
+
+.character-profile-v2 .v2-diary-post::before {
+  content: "";
+  position: absolute;
+  left: -17px;
+  top: 18px;
+  width: 7px;
+  height: 7px;
+  border: 2px solid var(--character-surface-base, #0a0a0d);
+  border-radius: 999px;
+  background: var(--character-accent);
+  box-shadow: 0 0 0 1px var(--character-line);
+}
+
+.character-profile-v2 .v2-diary-post__meta {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.character-profile-v2 .v2-diary-post__meta strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--character-text-secondary);
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.character-profile-v2 .v2-diary-post__meta span {
+  flex: 0 0 auto;
+  color: var(--character-text-muted);
+  font-size: 9px;
+}
+
+.character-profile-v2 .v2-diary-post > p {
+  margin: 0;
+  color: var(--character-text-primary);
+  font-size: 13px;
+  line-height: 1.62;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.character-profile-v2 .v2-diary-post > img {
+  width: 100%;
+  max-height: 430px;
+  border-radius: var(--character-radius-small);
+  display: block;
+  object-fit: cover;
+  background: #08080a;
+}
+
+.character-profile-v2 .v2-comments-toggle {
+  width: fit-content;
+  min-height: 44px;
+  margin: 1px 0 0;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--character-text-muted);
+  background: var(--character-surface-soft);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 720;
+}
+
+.character-profile-v2 .v2-comments-toggle:active {
+  transform: scale(.985);
+}
+
+.character-profile-v2 .v2-comments {
+  margin-top: 1px;
+  padding: 9px 0 0 11px;
+  border-top: 1px solid var(--character-line);
+  border-left: 1px solid var(--character-line);
+  display: grid;
+  gap: 8px;
+}
+
+.character-profile-v2 .v2-comment {
+  min-width: 0;
+  padding: 0 0 8px;
+  display: grid;
+  gap: 4px;
+}
+
+.character-profile-v2 .v2-comment + .v2-comment {
+  border-top: 1px solid rgba(255, 255, 255, .04);
+  padding-top: 8px;
+}
+
+.character-profile-v2 .v2-comment > span {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.character-profile-v2 .v2-comment strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--character-text-secondary);
+  font-size: 10px;
+}
+
+.character-profile-v2 .v2-comment small {
+  flex: 0 0 auto;
+  color: var(--character-text-muted);
+  font-size: 8px;
+}
+
+.character-profile-v2 .v2-comment p {
+  margin: 0;
+  color: var(--character-text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.character-profile-v2 .v2-comment-compose {
+  min-width: 0;
+  padding-top: 1px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+
+.character-profile-v2 .v2-comment-compose input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 11px;
+  border: 1px solid var(--character-line);
+  border-radius: 11px;
+  outline: 0;
+  color: var(--character-text-primary);
+  background: var(--character-surface-soft);
+  font: inherit;
+  font-size: 10px;
+}
+
+.character-profile-v2 .v2-comment-compose button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--character-line);
+  border-radius: 11px;
+  color: var(--character-text-primary);
+  background: var(--character-accent-soft);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 740;
+}
+
+/* Gallery: media is primary; labels stay on the media instead of becoming extra cards. */
+.character-profile-v2 .character-art-upload {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.character-profile-v2 .character-art-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-flow: dense;
+  gap: 7px;
+}
+
+.character-profile-v2 .character-art-grid > button {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 4 / 5;
+  padding: 0;
+  border: 1px solid var(--character-line);
+  border-radius: var(--character-radius-small);
+  overflow: hidden;
+  background: var(--character-surface-raised);
+  box-shadow: none;
+}
+
+.character-profile-v2 .character-art-grid > button:first-child {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.character-profile-v2 .character-art-grid > button img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: transform var(--character-motion-normal) var(--character-ease-standard);
+}
+
+.character-profile-v2 .character-art-grid > button::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 44% 0 0;
+  pointer-events: none;
+  background: linear-gradient(transparent, rgba(5, 5, 8, .78));
+}
+
+.character-profile-v2 .character-art-grid > button::after {
+  content: attr(aria-label);
+  position: absolute;
+  z-index: 2;
+  left: 9px;
+  right: 9px;
+  bottom: 8px;
+  overflow: hidden;
+  color: rgba(255, 255, 255, .9);
+  font-size: 9px;
+  font-weight: 720;
+  line-height: 1.25;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.character-profile-v2 .character-art-grid > button:active img {
+  transform: scale(1.015);
+}
+
+.character-profile-v2 .character-art-detail-v5 {
+  gap: 11px;
+}
+
+.character-profile-v2 .character-art-detail-v5 .art-viewer-image {
+  max-height: 66dvh;
+  border: 1px solid var(--character-line);
+}
+
+.character-profile-v2 .character-art-detail-v5 p {
+  margin: 0;
+  color: var(--character-text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.character-profile-v2 .character-art-detail-v5 .spell-card__actions {
+  padding-top: 9px;
+  border-top: 1px solid var(--character-line);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .character-profile-v2 .character-art-grid > button:hover img {
+    transform: scale(1.025);
+  }
+}
+
+@media (max-width: 560px) {
+  .character-profile-v2 .character-art-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .character-profile-v2 .character-art-grid > button:first-child {
+    aspect-ratio: 16 / 10;
+  }
+}
+
+@media (max-width: 430px) {
+  .character-profile-v2 .v2-diary > .section-head,
+  .character-profile-v2 .character-tab-section:has(.character-art-grid) > .section-head {
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .character-profile-v2 .v2-diary > .section-head::before,
+  .character-profile-v2 .character-tab-section:has(.character-art-grid) > .section-head::before {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+  }
+
+  .character-profile-v2 .character-art-upload {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .character-profile-v2 .v2-diary-compose > div {
+    align-items: stretch;
+  }
+
+  .character-profile-v2 .v2-diary-compose .section-link {
+    max-width: none;
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 340px) {
+  .character-profile-v2 .character-art-grid {
+    gap: 5px;
+  }
+
+  .character-profile-v2 .v2-diary-post {
+    margin-left: 18px;
+    padding: 10px;
+  }
+
+  .character-profile-v2 .v2-diary-list::before {
+    left: 8px;
+  }
+
+  .character-profile-v2 .v2-diary-post::before {
+    left: -15px;
+  }
+
+  .character-profile-v2 .v2-comment-compose {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .character-profile-v2 .character-art-grid > button img {
+    transition: none;
+  }
+}
