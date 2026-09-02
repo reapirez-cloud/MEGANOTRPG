@@ -32,6 +32,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Magic now opens with a compact v5 section header, keeps the resolved casting characteristic / save DC / attack values and shared spell-slot meter visible, and uses the common empty/error states plus the common Detail sheet for spell inspection instead of its previous bespoke spell detail surface.
 - Inventory now uses focused category and equipment-slot drill-down rather than carrying every navigation level in one old shell. A tap opens the shared item Detail view, long press still opens contextual actions, and equip/unequip plus curse disclosure retain their existing behavior.
 - The profile-level Back flow now recognizes internal Class and Inventory focus and returns to the specialized section overview before leaving that top-level character tab.
+- Completed Character Profile v5 Stage 6 social/media recomposition for Diary and Arts. Diary now reads as a character chronology with a quiet timeline, authored-note composer, readable entry bodies and inset comment threads instead of another stack of dashboard cards.
+- Diary image attachment, comment expansion, posting and long-press entry/comment actions keep their existing behavior while the presentation is reduced to the record, author, time and content that actually matter.
+- The character gallery is now media-first: a responsive dense grid gives the newest/first art a larger visual slot, keeps titles directly on the media, and collapses to two columns on phone widths instead of presenting every image as an equal utility tile.
+- Art still follows the shared interaction contract from Stage 4: tap opens the common Detail sheet, long press opens contextual actions, while captions and edit/delete controls remain available in Detail for authorized users.
 
 ### Runtime and rules changes
 
@@ -39,7 +43,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Preserved the existing Fighter narration export/getter contract used by `ReferenceGuide`; no Fighter mechanics, Character Engine contracts, resources, action economy or exact-rule text were changed.
 - Added an explicit Fighter authoring contract preventing future passes from collapsing every feature into another variation of «he kills efficiently»; feature narration must instead vary across positioning, endurance, command, observation, fear, recovery, discipline and the cost of survival.
 - Added `src/character-profile-v5.css` as a scoped semantic migration layer for character-profile surfaces, text, accents, spacing, radii, motion and icon sizing; it is loaded after the existing profile/module CSS so v5 can deliberately supersede older presentation without replacing runtime ownership.
-- Character Profile v5 Stages 1–5 remain presentation-only: the shared `useResolvedCharacterRuntime` path, Character Engine contract, Sheet/Class/Spells/Inventory runtime, persistence and canonical ownership remain unchanged.
+- Character Profile v5 Stages 1–6 remain presentation-only: the shared `useResolvedCharacterRuntime` path, Character Engine contract, Sheet/Class/Spells/Inventory runtime, persistence and canonical ownership remain unchanged.
 - The Stage 2 HP bar is derived only from `ResolvedCharacterContract` current/max HP and creates no new stored health value, local mechanic or persistence source.
 - Added reusable presentation primitives `CharacterFocusShell.tsx` and `CharacterDetailSheet.tsx`; neither component imports or owns Character Engine resolution, Supabase persistence, resources, gameplay state or domain-owner writes.
 - `ResolvedCharacterSheetBase` still resolves calculation detail through `explainCharacter(input, explain.query)` and still renders actions, resources, features and capabilities from the same `ResolvedCharacterContract`; Stage 3 changes only how those resolved values are presented and navigated.
@@ -52,6 +56,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Magic still derives casting math from `contract.spellcasting.byAbility`, spell slots from `contract.resources`, and character spell membership through the shared catalog/reference path; no local spell formula, slot pool or alternate spell authoring path was introduced.
 - Inventory mutation still delegates through the existing equip/delete callbacks and owner runtime. Stage 5 adds no direct Supabase, Cheburashka or Oracle bypass from the presentation layer.
 - The existing `meganotrpg.character-class-focus` bridge is preserved for Sheet → Class/Subclass deep links; the new focus/reset signaling is presentation navigation only and does not become a mechanics owner.
+- Added `CharacterSocial.css` as the Stage 6 presentation layer for Diary and Gallery. It styles the existing profile markup and shared Detail component but owns no social/media records, character rules, persistence or permissions.
+- Diary/gallery CRUD remains in the existing `useCharacterSheet` social/media adapter and uses the same established permission/RLS path; Stage 6 adds no alternate storage, Character Engine source, GENA action, Oracle command or character-mechanics state.
 
 ### Repository / release process
 
@@ -73,11 +79,14 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Character Profile Stage 5 CI run #1351: production TypeScript/Vite build succeeded and lint completed with 0 errors / 22 warnings. The suite contains 628 tests and passed 618/628; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
 - Added `characterSpecializedSections.test.ts` with six regression gates for the shared specialized header, Class directory/Focus hierarchy, CE-backed Magic values and slots, Inventory Focus/Detail behavior, profile Back integration and the presentation-only ownership boundary. All six Stage 5 tests pass in CI #1351.
 - Updated the older spell-catalog and Sheet hierarchy guards so they continue enforcing the real architectural invariants — shared catalog spell membership and runtime-backed Class/Subclass navigation — without requiring the removed explanatory copy or the retired `Все` segmented switch. Those guards pass in CI #1351.
+- Character Profile Stage 6 CI run #1355: production TypeScript/Vite build succeeded and lint completed with 0 errors / 22 warnings. The suite contains 634 tests and passed 624/634; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
+- Added `characterSocialSections.test.ts` with six regression gates for the Stage 6 social stylesheet, Diary chronology/composer, Diary long-press plus explicit comments, adaptive media-first Gallery, shared empty/error presentation and the existing social/media persistence boundary. All six Stage 6 tests pass in CI #1355.
+- Stage 2–5 character-profile regression families continue to pass under the Stage 6 social/media presentation changes; Stage 6 introduced no new failing test family.
 
 ### Known incomplete work
 
 - Fighter mechanics/runtime remain `IN_PROGRESS` under the existing class-work ledger and were intentionally not changed by this rewrite.
-- Character Profile v5 Stage 5 completes the specialized Class, Magic and Inventory recomposition. Diary/Arts and later editor-specific/polish migration remain follow-up stages and are not claimed by this work unit.
+- Character Profile v5 Stage 6 completes the Diary and Arts social/media recomposition. Later editor-specific and final polish/cleanup migration remains follow-up work and is not claimed by this work unit.
 - The repository still has 10 stale Voss/text-contract assertions that must be reconciled with the already-authored class narration before the full CI suite can return green.
 
 ---
