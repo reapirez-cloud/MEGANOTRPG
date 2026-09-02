@@ -31,5 +31,8 @@ export function getClericSubclassFeatureVossNarration(subclassId: string, source
   if (sourceKey === "blessed-strikes-l8-2" && blessedStrikesNarration[normalized]) {
     return blessedStrikesNarration[normalized]
   }
+  if (normalized === "nature" && sourceKey === "master-of-nature-l17-1") {
+    return "Однажды жрец Природы поднял руку, и лес вокруг дороги перестал быть лесом — он стал засадой. Корни ломали строй, ветви стаскивали людей с лошадей, звери шли рядом без страха. Когда всё закончилось, птицы вернулись первыми. Им было совершенно всё равно, кто считал себя хозяином этой земли утром."
+  }
   return getClericSubclassFeatureVossNarrationGemini(subclassId, sourceKey)
 }
