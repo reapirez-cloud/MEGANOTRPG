@@ -7,6 +7,7 @@ const sheetBridge = fs.readFileSync("src/components/characters/ResolvedCharacter
 const sectionState = fs.readFileSync("src/components/characters/CharacterSectionState.tsx", "utf8")
 const detailSheet = fs.readFileSync("src/components/characters/CharacterDetailSheet.tsx", "utf8")
 const actionSheet = fs.readFileSync("src/components/common/ContextActionSheet.tsx", "utf8")
+const dialogSurface = fs.readFileSync("src/hooks/useDialogSurface.ts", "utf8")
 const styles = fs.readFileSync("src/components/characters/CharacterInteraction.css", "utf8")
 
 test("stage 4 makes Back descend one navigation level at a time", () => {
@@ -36,8 +37,9 @@ test("loading empty error and stale feedback use one presentation primitive", ()
 })
 
 test("detail and action bottom sheets share predictable dismissal behavior", () => {
-  assert.match(detailSheet, /event\.key === "Escape"/)
-  assert.match(actionSheet, /event\.key === "Escape"/)
+  assert.match(detailSheet, /useDialogSurface<HTMLElement>\(onClose\)/)
+  assert.match(actionSheet, /useDialogSurface<HTMLDivElement>\(onClose/)
+  assert.match(dialogSurface, /event\.key === "Escape"/)
   assert.match(detailSheet, /onMouseDown=\{onClose\}/)
   assert.match(actionSheet, /onMouseDown=\{onClose\}/)
   assert.match(detailSheet, /aria-modal="true"/)
@@ -54,6 +56,7 @@ test("tap opens art detail while long press stays reserved for actions", () => {
 test("stage 4 remains presentation-only and does not create gameplay state", () => {
   assert.doesNotMatch(sectionState, /character-engine|supabase|GENA|Oracle|resource_states/i)
   assert.doesNotMatch(detailSheet, /character-engine|supabase|GENA|Oracle|resource_states/i)
+  assert.doesNotMatch(dialogSurface, /character-engine|supabase|GENA|Oracle|resource_states/i)
   assert.doesNotMatch(styles, /hp\s*=|spell_slot|resource_state/i)
   assert.match(profile, /useResolvedCharacterRuntime\(character\)/)
   assert.match(profile, /resolved\.contract/)
