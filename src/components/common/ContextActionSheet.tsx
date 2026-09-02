@@ -1,3 +1,5 @@
+import { useEffect } from "react"
+
 export type ContextAction = {
   id: string
   label: string
@@ -21,6 +23,14 @@ export default function ContextActionSheet({
   actions,
   onClose,
 }: Props) {
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", closeOnEscape)
+    return () => document.removeEventListener("keydown", closeOnEscape)
+  }, [onClose])
+
   function choose(action: ContextAction) {
     if (action.disabled) return
     onClose()
@@ -42,7 +52,7 @@ export default function ContextActionSheet({
             <h3 className="sheet-title">{title}</h3>
             <p className="sheet-copy">{subtitle}</p>
           </div>
-          <button className="sheet-close" type="button" onClick={onClose}>
+          <button className="sheet-close" type="button" onClick={onClose} aria-label="Закрыть действия">
             ×
           </button>
         </div>
