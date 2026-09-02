@@ -1,7 +1,7 @@
+import { druidReference } from "./druidReference"
 import {
-  druidClassVossComment,
-  druidClassVossNarration,
-  getDruidBaseVossNarration,
+  druidClassVossComment as currentDruidClassVossComment,
+  getDruidBaseVossNarration as getCurrentDruidBaseVossNarration,
   getDruidSubclassFeatureVossComment as getCurrentDruidSubclassFeatureVossComment,
   getDruidSubclassFeatureVossNarration as getCurrentDruidSubclassFeatureVossNarration,
   getDruidSubclassVossComment as getCurrentDruidSubclassVossComment,
@@ -19,8 +19,30 @@ import {
   druidMoreSubclassComments,
   druidMoreSubclassNarration,
 } from "./druidVossNarrationGeminiMore"
+import {
+  druidLechClassVossNarration,
+  getDruidLechBaseVossComment,
+  getDruidLechBaseVossNarration,
+} from "./druidVossNarrationLech"
 
-export { druidClassVossComment, druidClassVossNarration, getDruidBaseVossNarration }
+export const druidClassVossNarration = druidLechClassVossNarration
+export const druidClassVossComment = currentDruidClassVossComment
+
+export function getDruidBaseVossNarration(level: number, name: string) {
+  return getDruidLechBaseVossNarration(level, name)
+    || getCurrentDruidBaseVossNarration(level, name)
+}
+
+export function getDruidBaseVossComment(level: number, name: string) {
+  return getDruidLechBaseVossComment(level, name)
+}
+
+// The Druid class view still reads base-feature comments from druidReference directly.
+// Keep only the authored literary comment field synchronized here; mechanics stay untouched.
+for (const feature of druidReference.features) {
+  const authoredComment = getDruidLechBaseVossComment(feature.level, feature.name)
+  if (authoredComment) feature.voss = authoredComment
+}
 
 const subclassAliases: Record<string, string> = {
   "circle-of-stars": "stars",
