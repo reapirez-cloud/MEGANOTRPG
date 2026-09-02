@@ -1,5 +1,6 @@
 import type { SpellClassKey } from "../lib/spellCatalog"
 import { wizardReferenceSubclasses } from "./classes/wizardReference"
+import { wizardSupplementReferenceSubclasses } from "./classes/wizardSupplementReference"
 import { wizardTashaReferenceSubclasses } from "./classes/wizardTashaReference"
 
 export type ClassReferenceSubclassFeature = {
@@ -100,8 +101,8 @@ export const classReference: ClassReferenceEntry[] = [
     id: "wizard",
     name: "Волшебник",
     nameEn: "Wizard",
-    tagline: "Учёный тайной магии с книгой заклинаний и самой широкой подготовкой.",
-    description: "Волшебник получает магию через обучение и собственную книгу заклинаний. Он постоянно расширяет записанный репертуар, после отдыха перестраивает подготовку под задачу, умеет читать ритуалы прямо из книги и частично возвращать потраченные ячейки во время короткого отдыха.",
-    subclasses: [...wizardReferenceSubclasses, ...wizardTashaReferenceSubclasses],
+    tagline: "Учёный тайной магии, который носит библиотеку, артиллерию и несколько будущих катастроф в одной книге.",
+    description: "Волшебник не получает силу по наследству и не вымаливает её у богов — он изучает, записывает и повторяет формулы, пока реальность не начинает подчиняться почерку. Его книга заклинаний хранит растущий арсенал; после отдыха он меняет подготовку под задачу, читает ритуалы прямо из книги и возвращает часть потраченной магии во время короткого отдыха. Восс обычно добавляет, что хороший волшебник готовится к завтрашней войне, а плохой становится причиной сегодняшней.",
+    subclasses: [...wizardReferenceSubclasses, ...wizardTashaReferenceSubclasses, ...wizardSupplementReferenceSubclasses],
   },
 ]
