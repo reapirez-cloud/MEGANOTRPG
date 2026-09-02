@@ -38,7 +38,7 @@ test("learnable spell options are catalog links instead of standalone definition
 
 test("spellbook authors character spell membership only through the shared reference", () => {
   assert.match(spellbook, /\+ Добавить из Справочника/)
-  assert.match(spellbook, /Заклинания персонажа всегда ссылаются на общий каталог/)
+  assert.match(spellbook, /onClick=\{onOpenReference\}/)
   assert.doesNotMatch(spellbook, /onClick=\{onAddOption\}/)
   assert.doesNotMatch(spellbook, /onClick=\{\(\) => onEditSpell/)
   assert.doesNotMatch(spellbook, /onClick=\{\(\) => onEditOption/)
