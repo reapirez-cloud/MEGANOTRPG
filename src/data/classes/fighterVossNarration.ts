@@ -1,1 +1,1 @@
-export * from "./fighterVossNarrationLegacy"
+export * from "./fighterVossNarrationLegacy.ts"
