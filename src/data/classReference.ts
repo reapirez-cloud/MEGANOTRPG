@@ -1,5 +1,6 @@
 import type { SpellClassKey } from "../lib/spellCatalog"
 import { wizardReferenceSubclasses } from "./classes/wizardReference"
+import { wizardTashaReferenceSubclasses } from "./classes/wizardTashaReference"
 
 export type ClassReferenceSubclassFeature = {
   level: number
@@ -101,6 +102,6 @@ export const classReference: ClassReferenceEntry[] = [
     nameEn: "Wizard",
     tagline: "Учёный тайной магии с книгой заклинаний и самой широкой подготовкой.",
     description: "Волшебник получает магию через обучение и собственную книгу заклинаний. Он постоянно расширяет записанный репертуар, после отдыха перестраивает подготовку под задачу, умеет читать ритуалы прямо из книги и частично возвращать потраченные ячейки во время короткого отдыха.",
-    subclasses: wizardReferenceSubclasses,
+    subclasses: [...wizardReferenceSubclasses, ...wizardTashaReferenceSubclasses],
   },
 ]
