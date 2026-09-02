@@ -1,9 +1,22 @@
 import type { SpellClassKey } from "../lib/spellCatalog"
+import { wizardReferenceSubclasses } from "./classes/wizardReference"
+
+export type ClassReferenceSubclassFeature = {
+  level: number
+  name: string
+  explanation: string
+  mechanics: string
+  details?: string[]
+  voss?: string
+}
 
 export type ClassReferenceSubclass = {
   id: string
   name: string
   summary: string
+  mechanics?: string
+  features?: ClassReferenceSubclassFeature[]
+  voss?: string
 }
 
 export type ClassReferenceEntry = {
@@ -88,11 +101,6 @@ export const classReference: ClassReferenceEntry[] = [
     nameEn: "Wizard",
     tagline: "Учёный тайной магии с книгой заклинаний и самой широкой подготовкой.",
     description: "Волшебник получает магию через обучение и собственную книгу заклинаний. Он постоянно расширяет записанный репертуар, после отдыха перестраивает подготовку под задачу, умеет читать ритуалы прямо из книги и частично возвращать потраченные ячейки во время короткого отдыха.",
-    subclasses: [
-      { id: "abjurer", name: "Абьюратор", summary: "Защитные формулы, контрзаклятия и барьеры против чужой магии и насилия." },
-      { id: "diviner", name: "Прорицатель", summary: "Знамения, вероятности и скрытые связи между решениями и последствиями." },
-      { id: "evoker", name: "Воплотитель", summary: "Чистая высвобожденная сила: пламя, гром, лёд, свет и прямой магический удар." },
-      { id: "illusionist", name: "Иллюзионист", summary: "Ложные образы, обман чувств и контроль того, во что враг успевает поверить." },
-    ],
+    subclasses: wizardReferenceSubclasses,
   },
 ]
