@@ -27,6 +27,12 @@ import {
   clericBatch2DomainFeatureNarration,
   clericBatch2DomainNarration,
 } from "./clericVossNarrationDomainsGeminiBatch2"
+import {
+  clericBatch3DomainComments,
+  clericBatch3DomainFeatureComments,
+  clericBatch3DomainFeatureNarration,
+  clericBatch3DomainNarration,
+} from "./clericVossNarrationDomainsGeminiBatch3"
 
 export {
   clericClassVossComment,
@@ -39,7 +45,8 @@ export {
 
 export function getClericSubclassVossNarration(subclassId: string) {
   const id = normalizeClericDomainId(subclassId)
-  return clericBatch2DomainNarration[id]
+  return clericBatch3DomainNarration[id]
+    || clericBatch2DomainNarration[id]
     || clericMoreDomainNarration[id]
     || clericDomainNarration[id]
     || getCurrentClericSubclassVossNarration(subclassId)
@@ -47,7 +54,8 @@ export function getClericSubclassVossNarration(subclassId: string) {
 
 export function getClericSubclassVossComment(subclassId: string) {
   const id = normalizeClericDomainId(subclassId)
-  return clericBatch2DomainComments[id]
+  return clericBatch3DomainComments[id]
+    || clericBatch2DomainComments[id]
     || clericMoreDomainComments[id]
     || clericDomainComments[id]
     || getCurrentClericSubclassVossComment(subclassId)
@@ -55,7 +63,8 @@ export function getClericSubclassVossComment(subclassId: string) {
 
 export function getClericSubclassFeatureVossNarration(subclassId: string, sourceKey: string) {
   const id = normalizeClericDomainId(subclassId)
-  return clericBatch2DomainFeatureNarration[id]?.[sourceKey]
+  return clericBatch3DomainFeatureNarration[id]?.[sourceKey]
+    || clericBatch2DomainFeatureNarration[id]?.[sourceKey]
     || clericMoreDomainFeatureNarration[id]?.[sourceKey]
     || clericDomainFeatureNarration[id]?.[sourceKey]
     || getCurrentClericSubclassFeatureVossNarration(subclassId, sourceKey)
@@ -63,7 +72,8 @@ export function getClericSubclassFeatureVossNarration(subclassId: string, source
 
 export function getClericSubclassFeatureVossComment(subclassId: string, sourceKey: string) {
   const id = normalizeClericDomainId(subclassId)
-  return clericBatch2DomainFeatureComments[id]?.[sourceKey]
+  return clericBatch3DomainFeatureComments[id]?.[sourceKey]
+    || clericBatch2DomainFeatureComments[id]?.[sourceKey]
     || clericMoreDomainFeatureComments[id]?.[sourceKey]
     || clericDomainFeatureComments[id]?.[sourceKey]
     || ""
