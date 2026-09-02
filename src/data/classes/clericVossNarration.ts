@@ -15,6 +15,12 @@ import {
   clericDomainFeatureNarration,
   clericDomainNarration,
 } from "./clericVossNarrationDomainsGemini"
+import {
+  clericMoreDomainComments,
+  clericMoreDomainFeatureComments,
+  clericMoreDomainFeatureNarration,
+  clericMoreDomainNarration,
+} from "./clericVossNarrationDomainsGeminiMore"
 
 export {
   clericClassVossComment,
@@ -27,21 +33,28 @@ export {
 
 export function getClericSubclassVossNarration(subclassId: string) {
   const id = normalizeClericDomainId(subclassId)
-  return clericDomainNarration[id] || getCurrentClericSubclassVossNarration(subclassId)
+  return clericMoreDomainNarration[id]
+    || clericDomainNarration[id]
+    || getCurrentClericSubclassVossNarration(subclassId)
 }
 
 export function getClericSubclassVossComment(subclassId: string) {
   const id = normalizeClericDomainId(subclassId)
-  return clericDomainComments[id] || getCurrentClericSubclassVossComment(subclassId)
+  return clericMoreDomainComments[id]
+    || clericDomainComments[id]
+    || getCurrentClericSubclassVossComment(subclassId)
 }
 
 export function getClericSubclassFeatureVossNarration(subclassId: string, sourceKey: string) {
   const id = normalizeClericDomainId(subclassId)
-  return clericDomainFeatureNarration[id]?.[sourceKey]
+  return clericMoreDomainFeatureNarration[id]?.[sourceKey]
+    || clericDomainFeatureNarration[id]?.[sourceKey]
     || getCurrentClericSubclassFeatureVossNarration(subclassId, sourceKey)
 }
 
 export function getClericSubclassFeatureVossComment(subclassId: string, sourceKey: string) {
   const id = normalizeClericDomainId(subclassId)
-  return clericDomainFeatureComments[id]?.[sourceKey] || ""
+  return clericMoreDomainFeatureComments[id]?.[sourceKey]
+    || clericDomainFeatureComments[id]?.[sourceKey]
+    || ""
 }
