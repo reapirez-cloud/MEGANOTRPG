@@ -194,6 +194,7 @@ declare
   v_state_ward text := 'recovery-state[long_rest]::wizard_abjurer_arcane_ward_created';
   v_state_third_eye text := 'recovery-state[long_rest,short_rest]::wizard_diviner_third_eye_mode';
   v_state_overchannel text := 'recovery-state[long_rest]::wizard_evoker_overchannel_repeat_count';
+  i integer;
 begin
   perform private.install_wizard_2024_subclass_runtime_v1(p_campaign_id);
 
