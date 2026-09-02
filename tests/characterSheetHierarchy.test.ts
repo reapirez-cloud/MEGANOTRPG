@@ -55,8 +55,10 @@ test("class and subclass directory entries open runtime mechanics instead of cre
   assert.match(sheetBridge, /Способности подкласса/)
   assert.match(sheetBridge, /meganotrpg\.character-class-focus/)
   assert.match(sheetBridge, /\.profile-v3__class/)
-  assert.match(classPanel, /Все/)
+  assert.match(classPanel, /aria-label="Разделы класса"/)
+  assert.match(classPanel, /CharacterClassPanelBase/)
   assert.match(classPanel, /Подкласс/)
+  assert.doesNotMatch(classPanel, /character-class-focus__switch/)
   assert.match(profile, /<CharacterClassPanel/)
 })
 
