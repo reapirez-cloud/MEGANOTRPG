@@ -11,23 +11,28 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
-_No changes yet._
+- Rewrote the complete active Fighter Voss narration layer: the base class, all ten supported archetypes and every active archetype feature now use Voss's own soldier perspective instead of a generic grimdark observer.
+- Fighter is now the profession Voss understands and respects most: strength comes from training, judgement, fear, repetition and responsibility rather than divine, innate or borrowed magic. The rewrite keeps that respect grim and costly rather than heroic or romantic.
+- Each Fighter archetype now has its own axis instead of repeating efficient killing: Battle Master is closest to Voss's own battlefield trade; Cavalier is self-sacrificing protection; Champion is the horror of pure human conditioning; Banneret earns authority by leading from the front; Samurai is disciplined fear management; magical archetypes remain useful but inherit Voss's distrust of magic.
 
 ### Runtime and rules changes
 
-_No changes yet._
+- `src/data/classes/fighterVossNarration.ts` is now a self-contained canonical literary source rather than a one-line re-export of `fighterVossNarrationLegacy.ts`; the legacy file remains archival/reference material only.
+- Preserved the existing Fighter narration export/getter contract used by `ReferenceGuide`; no Fighter mechanics, Character Engine contracts, resources, action economy or exact-rule text were changed.
+- Added an explicit Fighter authoring contract preventing future passes from collapsing every feature into another variation of «he kills efficiently»; feature narration must instead vary across positioning, endurance, command, observation, fear, recovery, discipline and the cost of survival.
 
 ### Repository / release process
 
-_No changes yet._
+- Work remains on `dev`; no promotion to `main` was performed without an explicit release request.
 
 ### Tests / verification added in this patch
 
-_No changes yet._
+- Verified the canonical Fighter file preserves `fighterClassVossNarration`, `fighterClassVossComment`, `getFighterBaseVossNarration`, `getFighterSubclassVossNarration`, `getFighterSubclassVossComment` and `getFighterSubclassFeatureVossNarration` signatures expected by the existing reference UI.
+- This is a narration-only follow-up; no new full repository CI completion claim is made for this text pass.
 
 ### Known incomplete work
 
-_No changes recorded._
+- Fighter mechanics/runtime remain `IN_PROGRESS` under the existing class-work ledger and were intentionally not changed by this rewrite.
 
 ---
 
