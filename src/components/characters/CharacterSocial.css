@@ -111,9 +111,10 @@
 
 .character-profile-v2 .v2-diary-compose .section-link,
 .character-profile-v2 .character-art-upload {
+  position: relative;
   min-width: 0;
-  min-height: 36px;
-  padding: 0 11px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 1px solid var(--character-line);
   border-radius: 12px;
   display: inline-flex;
@@ -133,13 +134,33 @@
   white-space: nowrap;
 }
 
+/* Keep native file controls keyboard-focusable while visually hiding the tiny input itself. */
 .character-profile-v2 .v2-diary-compose .section-link input,
 .character-profile-v2 .character-art-upload input {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.character-profile-v2 .v2-diary-compose .section-link:focus-within,
+.character-profile-v2 .character-art-upload:focus-within,
+.character-profile-v2 .v2-diary-compose textarea:focus-visible,
+.character-profile-v2 .v2-diary-compose button:focus-visible,
+.character-profile-v2 .v2-comments-toggle:focus-visible,
+.character-profile-v2 .v2-comment-compose input:focus-visible,
+.character-profile-v2 .v2-comment-compose button:focus-visible,
+.character-profile-v2 .character-art-grid > button:focus-visible {
+  outline: 2px solid var(--character-accent);
+  outline-offset: 2px;
 }
 
 .character-profile-v2 .v2-diary-compose button[type="submit"] {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 14px;
   border: 1px solid rgba(168, 135, 224, .24);
   border-radius: 12px;
@@ -241,9 +262,9 @@
 
 .character-profile-v2 .v2-comments-toggle {
   width: fit-content;
-  min-height: 30px;
+  min-height: 44px;
   margin: 1px 0 0;
-  padding: 0 9px;
+  padding: 0 11px;
   border: 0;
   border-radius: 999px;
   color: var(--character-text-muted);
@@ -319,8 +340,8 @@
 
 .character-profile-v2 .v2-comment-compose input {
   min-width: 0;
-  min-height: 36px;
-  padding: 0 10px;
+  min-height: 44px;
+  padding: 0 11px;
   border: 1px solid var(--character-line);
   border-radius: 11px;
   outline: 0;
@@ -331,8 +352,8 @@
 }
 
 .character-profile-v2 .v2-comment-compose button {
-  min-height: 36px;
-  padding: 0 10px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 1px solid var(--character-line);
   border-radius: 11px;
   color: var(--character-text-primary);
