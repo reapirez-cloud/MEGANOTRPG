@@ -77,8 +77,9 @@ Current stable presentation categories:
 **Text:** `READY`  
 **Mechanics/runtime:** `IN_PROGRESS`
 
-- `last_text_audit: 2026-09-01`
-- `voss_class_subclass_feature_voice_pass: CONCRETE_GRIMDARK_BLACK_HUMOR_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
+- `last_text_audit: 2026-09-02`
+- `voss_class_subclass_feature_voice_pass: VOSS_SOLDIER_RESPECT_DISCIPLINE_COST_WITH_DISTINCT_ARCHETYPES_2026_09_02`
+- `current_dev_text: canonical Voss narration rewritten for the base Fighter, all ten supported archetypes and every active archetype feature; Fighter is the profession Voss understands and respects most, while each archetype explores a distinct facet of soldiering, command, endurance, magic distrust or the cost of survival; exact rules unchanged`
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
