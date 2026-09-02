@@ -17,6 +17,7 @@ import {
   druidClassVossNarration,
   getDruidBaseVossNarration,
   getDruidSubclassVossComment,
+  getDruidSubclassFeatureVossComment,
   getDruidSubclassFeatureVossNarration,
   getDruidSubclassVossNarration,
 } from "../../data/classes/druidVossNarration"
@@ -466,6 +467,7 @@ export default function ReferenceGuide({
       return features.map((feature) => ({
         ...feature,
         explanation: getDruidSubclassFeatureVossNarration(selectedSubclass.id, feature.name) || feature.explanation,
+        voss: getDruidSubclassFeatureVossComment(selectedSubclass.id, feature.name) || feature.voss,
       }))
     }
     if (selectedClass?.id === "fighter") {
