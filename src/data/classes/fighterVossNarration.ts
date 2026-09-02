@@ -3,9 +3,9 @@ export {
   getFighterBaseVossNarration,
   getFighterSubclassVossNarration,
   getFighterSubclassFeatureVossNarration,
-} from "./fighterVossNarrationGemini"
+} from "./fighterVossNarrationGemini.ts"
 
 export {
   fighterClassVossComment,
   getFighterSubclassVossComment,
-} from "./fighterVossNarrationLegacy"
+} from "./fighterVossNarrationLegacy.ts"
