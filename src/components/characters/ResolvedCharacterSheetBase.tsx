@@ -15,7 +15,6 @@ import { useLongPressItem } from "../../hooks/useLongPressItem.ts"
 import { registeredCharacterClassPackages } from "../../rule-templates/classPackages.ts"
 import type { CharacterFeature, CharacterSheet } from "../../types/characterSheet.ts"
 import ContextActionSheet, { type ContextAction } from "../common/ContextActionSheet.tsx"
-import SpellSlotMeter from "./SpellSlotMeter.tsx"
 import { spellSlotResources } from "./spellSlots.ts"
 import "../../character-profile-v4.css"
 
@@ -48,10 +47,6 @@ const skills: Array<[SkillKey, string]> = [
   ["stealth", "Скрытность"],
   ["survival", "Выживание"],
 ]
-
-const abilityNames = Object.fromEntries(
-  abilities.map(([key, , label]) => [key, label]),
-) as Record<AbilityKey, string>
 
 const abilityShort = Object.fromEntries(
   abilities.map(([key, short]) => [key, short]),
@@ -199,6 +194,9 @@ export default function ResolvedCharacterSheet({
   )
   const hasIdentity = Boolean(narrative.race || narrative.background || narrative.alignment)
   const hasMagic = Boolean(magic || slots.length > 0 || contract.spells.length > 0)
+  const healthPercent = contract.combat.maxHp.value > 0
+    ? Math.min(100, Math.max(0, (contract.combat.currentHp / contract.combat.maxHp.value) * 100))
+    : 0
 
   const classLabel = classPackages.length
     ? classPackages.map((entry) => `${entry.className} ${entry.level}`).join(" · ")
@@ -240,7 +238,7 @@ export default function ResolvedCharacterSheet({
     ]
   }
 
-  return <section className="character-tab-section sheet-v3 sheet-v4">
+  return <section className="character-tab-section sheet-v3 sheet-v4 sheet-v5">
     {canManage && <div className="sheet-v3__admin" aria-label="Инструменты ведущего">
       <button type="button" onClick={onEditSheet}><span>✎</span> Лист</button>
       <button type="button" onClick={onEditResources}><span>♥</span> Ресурсы</button>
@@ -248,18 +246,22 @@ export default function ResolvedCharacterSheet({
     </div>}
 
     {section === "overview" && <>
-      <section className="sheet-v3__combat sheet-v4__combat" aria-label="Основные показатели">
-        <button className="sheet-v3__vital" type="button" onClick={() => explainNumber("Максимум здоровья", { kind: "number", target: "combat.maxHp" })}>
-          <span>Здоровье</span><strong>{contract.combat.currentHp}<em> / {contract.combat.maxHp.value}</em></strong><small>{contract.combat.tempHp > 0 ? `+${contract.combat.tempHp} временных` : "HP"}</small>
+      <section className="sheet-v3__combat sheet-v4__combat sheet-v5__combat" aria-label="Основные показатели">
+        <button className="sheet-v3__vital sheet-v5__health" type="button" onClick={() => explainNumber("Максимум здоровья", { kind: "number", target: "combat.maxHp" })}>
+          <span className="sheet-v5__health-heading"><span>Здоровье</span><small>{contract.combat.tempHp > 0 ? `+${contract.combat.tempHp} временных` : "Текущее состояние"}</small></span>
+          <strong>{contract.combat.currentHp}<em> / {contract.combat.maxHp.value}</em></strong>
+          <span className="sheet-v5__health-track" aria-hidden="true"><i style={{ width: `${healthPercent}%` }} /></span>
         </button>
-        <button type="button" onClick={() => explainNumber("Класс доспеха", { kind: "number", target: "combat.ac" })}><span>КД</span><strong>{contract.combat.ac.value}</strong><small>Защита</small></button>
-        <button type="button" onClick={() => explainNumber("Инициатива", { kind: "number", target: "combat.initiative" })}><span>Инициатива</span><strong>{signed(contract.combat.initiative.value)}</strong><small>Порядок хода</small></button>
-        <button type="button" onClick={() => explainNumber("Скорость", { kind: "number", target: "combat.speed" })}><span>Скорость</span><strong>{contract.combat.speed.value}</strong><small>фт.</small></button>
-        <button type="button" onClick={() => explainNumber("Бонус мастерства", { kind: "number", target: "core.proficiencyBonus" })}><span>Мастерство</span><strong>{signed(contract.proficiencyBonus.value)}</strong><small>Бонус</small></button>
-        <button type="button" onClick={() => explainNumber("Пассивное восприятие", { kind: "number", target: "passives.perception" })}><span>Пассивное</span><strong>{contract.passives.perception.value}</strong><small>Восприятие</small></button>
+        <div className="sheet-v5__core-grid">
+          <button type="button" onClick={() => explainNumber("Класс доспеха", { kind: "number", target: "combat.ac" })}><span>КД</span><strong>{contract.combat.ac.value}</strong><small>Защита</small></button>
+          <button type="button" onClick={() => explainNumber("Инициатива", { kind: "number", target: "combat.initiative" })}><span>Инициатива</span><strong>{signed(contract.combat.initiative.value)}</strong><small>Порядок хода</small></button>
+          <button type="button" onClick={() => explainNumber("Скорость", { kind: "number", target: "combat.speed" })}><span>Скорость</span><strong>{contract.combat.speed.value}</strong><small>фт.</small></button>
+          <button type="button" onClick={() => explainNumber("Бонус мастерства", { kind: "number", target: "core.proficiencyBonus" })}><span>Мастерство</span><strong>{signed(contract.proficiencyBonus.value)}</strong><small>Бонус</small></button>
+          <button type="button" onClick={() => explainNumber("Пассивное восприятие", { kind: "number", target: "passives.perception" })}><span>Пассивное</span><strong>{contract.passives.perception.value}</strong><small>Восприятие</small></button>
+        </div>
       </section>
 
-      <section className="sheet-v3__section sheet-v3__abilities sheet-v4__abilities">
+      <section className="sheet-v3__section sheet-v3__abilities sheet-v4__abilities sheet-v5__abilities">
         <SectionHeading eyebrow="Проверки и спасброски" title="Характеристики" />
         <div className="sheet-v3__ability-tabs" role="tablist" aria-label="Характеристики">
           {abilities.map(([key, short], index) => <button type="button" role="tab" aria-selected={activeAbility === index} className={activeAbility === index ? "is-active" : ""} key={key} onClick={() => showAbility(index)}>{short}</button>)}
@@ -283,11 +285,13 @@ export default function ResolvedCharacterSheet({
             </article>
           })}
         </div>
-        <p className="sheet-v3__swipe-hint"><span aria-hidden="true">↔</span> Листай между характеристиками</p>
+        <div className="sheet-v5__ability-position" aria-label={`Характеристика ${activeAbility + 1} из ${abilities.length}`}>
+          {abilities.map(([key], index) => <i key={key} className={index === activeAbility ? "is-active" : ""} />)}
+        </div>
       </section>
 
-      <section className="sheet-v4__directory" aria-label="Разделы листа">
-        <header><small>Всё остальное — по разделам</small><h3>Разделы листа</h3><p>Открывай только то, что нужно сейчас. Никакой длинной ленты одинаковых панелей.</p></header>
+      <section className="sheet-v4__directory sheet-v5__directory" aria-label="Разделы листа">
+        <header><small>Лист персонажа</small><h3>Разделы</h3></header>
         <div className="sheet-v4__directory-list">
           <button type="button" onClick={onOpenClassReference} disabled={!onOpenClassReference}><span className="sheet-v4__directory-icon">◇</span><span><small>Класс</small><strong>Способности класса</strong><em>{classLabel}</em></span><b>›</b></button>
           <button type="button" onClick={onOpenClassReference} disabled={!onOpenClassReference}><span className="sheet-v4__directory-icon">✦</span><span><small>Подкласс</small><strong>Способности подкласса</strong><em>{subclassLabel}</em></span><b>›</b></button>
