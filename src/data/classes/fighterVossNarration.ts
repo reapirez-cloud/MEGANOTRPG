@@ -22,6 +22,12 @@ import {
   getGeminiFighterSubclassVossCommentPack2,
   getGeminiFighterSubclassVossNarrationPack2,
 } from "./fighterSubclassVossNarrationGeminiPack2"
+import {
+  getGeminiFighterSubclassFeatureVossCommentPack3,
+  getGeminiFighterSubclassFeatureVossNarrationPack3,
+  getGeminiFighterSubclassVossCommentPack3,
+  getGeminiFighterSubclassVossNarrationPack3,
+} from "./fighterSubclassVossNarrationGeminiPack3"
 
 export const fighterClassVossNarration = fighterBrantClassVossNarration
 export const fighterClassVossComment = fighterBrantClassVossComment
@@ -36,24 +42,28 @@ export function getFighterBaseVossComment(level: number, name: string) {
 }
 
 export function getFighterSubclassVossNarration(subclassId: string) {
-  return getGeminiFighterSubclassVossNarrationPack2(subclassId)
+  return getGeminiFighterSubclassVossNarrationPack3(subclassId)
+    || getGeminiFighterSubclassVossNarrationPack2(subclassId)
     || getGeminiFighterSubclassVossNarration(subclassId)
     || getPreviousFighterSubclassVossNarration(subclassId)
 }
 
 export function getFighterSubclassVossComment(subclassId: string) {
-  return getGeminiFighterSubclassVossCommentPack2(subclassId)
+  return getGeminiFighterSubclassVossCommentPack3(subclassId)
+    || getGeminiFighterSubclassVossCommentPack2(subclassId)
     || getGeminiFighterSubclassVossComment(subclassId)
     || getPreviousFighterSubclassVossComment(subclassId)
 }
 
 export function getFighterSubclassFeatureVossNarration(subclassId: string, level: number, name: string) {
-  return getGeminiFighterSubclassFeatureVossNarrationPack2(subclassId, level, name)
+  return getGeminiFighterSubclassFeatureVossNarrationPack3(subclassId, level, name)
+    || getGeminiFighterSubclassFeatureVossNarrationPack2(subclassId, level, name)
     || getGeminiFighterSubclassFeatureVossNarration(subclassId, level, name)
     || getPreviousFighterSubclassFeatureVossNarration(subclassId, level, name)
 }
 
 export function getFighterSubclassFeatureVossComment(subclassId: string, level: number, name: string) {
-  return getGeminiFighterSubclassFeatureVossCommentPack2(subclassId, level, name)
+  return getGeminiFighterSubclassFeatureVossCommentPack3(subclassId, level, name)
+    || getGeminiFighterSubclassFeatureVossCommentPack2(subclassId, level, name)
     || getGeminiFighterSubclassFeatureVossComment(subclassId, level, name)
 }
