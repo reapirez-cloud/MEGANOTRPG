@@ -24,5 +24,8 @@ export function getDruidSubclassFeatureVossNarration(subclassId: string, feature
   if ((subclassId === "spores" || subclassId === "circle-of-spores") && featureName === "Ореол спор и Симбиотическая сущность") {
     return getDruidSubclassFeatureVossNarrationGemini(subclassId, "Ореоло спор и Симбиотическая сущность")
   }
+  if ((subclassId === "land" || subclassId === "circle-of-the-land") && featureName === "Природное восстановление") {
+    return "На коротком привале земной друид садится прямо в грязь и замолкает, пока остальные латают ремни и раны. Через несколько минут он встаёт заметно собраннее, будто сама почва вернула ему то, что бой успел выжечь. Я однажды сел рядом в надежде на тот же эффект. Земля вернула только холод в спину."
+  }
   return getDruidSubclassFeatureVossNarrationGemini(subclassId, featureName)
 }
