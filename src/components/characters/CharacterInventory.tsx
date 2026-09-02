@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { categoryLabel, categoryOrder, equipmentSlots, slotLabel, slotOrder } from "../../lib/dndInventory"
 import { itemCurseInfo, mechanicSummary, playerVisibleItemMechanics } from "../../lib/characterMechanics"
 import type { EquipmentSlot, InventoryCategory, InventoryItem } from "../../types/characterSheet"
 import CampaignImage from "../common/CampaignImage"
 import ContextActionSheet, { type ContextAction } from "../common/ContextActionSheet"
 import { useLongPressItem } from "../../hooks/useLongPressItem"
+import CharacterDetailSheet from "./CharacterDetailSheet.tsx"
+import CharacterFocusShell from "./CharacterFocusShell.tsx"
+import CharacterSectionHeader from "./CharacterSectionHeader.tsx"
+import CharacterSectionState from "./CharacterSectionState.tsx"
 import "./CharacterInventory.css"
 
 type Result = Promise<{ ok: boolean; error?: string }>
@@ -17,6 +21,8 @@ type Props = {
   onEdit: (item: InventoryItem) => void
   onDelete: (itemId: string) => Result
   onSetEquipped: (itemId: string, equipped: boolean, equipmentSlot: EquipmentSlot | null) => Result
+  onFocusChange?: (focused: boolean) => void
+  focusResetKey?: number
 }
 
 type CurrencyKind = "gold" | "silver" | "copper"
@@ -116,7 +122,7 @@ function ItemBadges({ item, canManage }: { item: InventoryItem; canManage: boole
 }
 
 export default function CharacterInventory(props: Props) {
-  const { mode, items, canManage, canEquip, onCreate, onEdit, onDelete, onSetEquipped } = props
+  const { mode, items, canManage, canEquip, onCreate, onEdit, onDelete, onSetEquipped, onFocusChange, focusResetKey = 0 } = props
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState<InventoryCategory | null>(() => mode === "equipment" ? "equipment" : null)
   const [slot, setSlot] = useState<EquipmentSlot | null>(null)
@@ -129,7 +135,19 @@ export default function CharacterInventory(props: Props) {
     setQuery("")
     setSlot(null)
     setCategory(mode === "equipment" ? "equipment" : null)
-  }, [mode])
+    onFocusChange?.(false)
+  }, [mode, onFocusChange])
+
+  useEffect(() => {
+    setQuery("")
+    setSlot(null)
+    setCategory(mode === "equipment" ? "equipment" : null)
+    setDetail(null)
+    setMenu(null)
+    onFocusChange?.(false)
+  }, [focusResetKey, mode, onFocusChange])
+
+  useEffect(() => () => onFocusChange?.(false), [onFocusChange])
 
   const counts = useMemo(() => {
     const byCategory = new Map<InventoryCategory, number>()
@@ -204,32 +222,27 @@ export default function CharacterInventory(props: Props) {
     setCategory(next)
     setSlot(null)
     setQuery("")
+    onFocusChange?.(true)
   }
 
   function openSlot(next: EquipmentSlot) {
     setSlot(next)
     setQuery("")
+    onFocusChange?.(true)
   }
 
   function goBack() {
     setQuery("")
     if (slot) {
       setSlot(null)
+      onFocusChange?.(mode === "inventory")
       return
     }
-    if (mode === "inventory" && category) setCategory(null)
+    if (mode === "inventory" && category) {
+      setCategory(null)
+      onFocusChange?.(false)
+    }
   }
-
-  const detailSheet = detail
-    ? <InventoryDetail
-        item={detail}
-        canManage={canManage}
-        canEquip={canEquip}
-        onClose={() => setDetail(null)}
-        onEdit={() => { setDetail(null); onEdit(detail) }}
-        onToggle={() => toggleEquip(detail)}
-      />
-    : null
 
   const actionSheet = menu
     ? <ContextActionSheet title={menu.name} subtitle="Действия с предметом" actions={actions(menu)} onClose={() => setMenu(null)} />
@@ -238,6 +251,7 @@ export default function CharacterInventory(props: Props) {
   const atRoot = mode === "inventory" && category === null
   const inEquipmentDirectory = category === "equipment" && slot === null && !query.trim()
   const showSearchResultsAtRoot = atRoot && Boolean(query.trim())
+  const isDeep = Boolean(slot || (mode === "inventory" && category))
   const pageTitle = atRoot
     ? "Инвентарь"
     : slot
@@ -252,118 +266,135 @@ export default function CharacterInventory(props: Props) {
       ? "Инвентарь · раздел"
       : "Вещи персонажа"
 
-  return (
-    <section className="character-tab-section inventory-rpg">
-      <header className="inventory-rpg__hero">
-        <div className="inventory-rpg__hero-main">
-          {(slot || (category && mode === "inventory")) && (
-            <button className="inventory-rpg__back" type="button" onClick={goBack} aria-label="Назад">←</button>
-          )}
-          <div className="inventory-rpg__hero-copy">
-            <span className="inventory-rpg__eyebrow">{pageEyebrow}</span>
-            <h3>{pageTitle}</h3>
-            <p>{atRoot ? "Открывай нужный раздел, а не прокручивай одну бесконечную стену предметов." : slot ? "Предметы этого слота. Надетое всегда отмечено отдельно." : category === "equipment" ? "Выбери часть экипировки — внутри будут только подходящие вещи." : "Все предметы этого типа собраны в одном месте."}</p>
-          </div>
-          {canManage && <button className="inventory-rpg__create" type="button" onClick={onCreate}>＋ Предмет</button>}
+  const createAction = canManage
+    ? <button className="character-specialized-v5__action" type="button" onClick={onCreate}>＋ Предмет</button>
+    : undefined
+
+  const wallet = (
+    <div className="inventory-rpg__wallet" aria-label="Валюта персонажа">
+      <div className="inventory-rpg__coin inventory-rpg__coin--gold"><small>Золото</small><strong>{counts.currency.gold}</strong><span>ЗМ</span></div>
+      <div className="inventory-rpg__coin inventory-rpg__coin--silver"><small>Серебро</small><strong>{counts.currency.silver}</strong><span>СМ</span></div>
+      <div className="inventory-rpg__coin inventory-rpg__coin--copper"><small>Медь</small><strong>{counts.currency.copper}</strong><span>ММ</span></div>
+    </div>
+  )
+
+  const body: ReactNode = <>
+    {items.length > 0 && (
+      <label className="inventory-rpg__search">
+        <span aria-hidden="true">⌕</span>
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={atRoot ? "Найти предмет" : `Поиск: ${pageTitle}`} />
+        {query && <button type="button" onClick={() => setQuery("")} aria-label="Очистить поиск">×</button>}
+      </label>
+    )}
+
+    {atRoot && !showSearchResultsAtRoot && (
+      <section className="inventory-rpg__directory" aria-label="Разделы инвентаря">
+        <div className="inventory-rpg__section-head"><div><small>Разделы</small><strong>Инвентарь</strong></div></div>
+        <div className="inventory-rpg__folder-grid">
+          {rootCategories.map((entry) => (
+            <button className="inventory-rpg__folder" type="button" key={entry} onClick={() => openCategory(entry)}>
+              <span className="inventory-rpg__folder-icon">{categoryIcons[entry]}</span>
+              <span className="inventory-rpg__folder-copy"><strong>{categoryLabel(entry)}</strong><small>{entry === "equipment" ? "Оружие, броня и слоты" : entry === "consumable" ? "Зелья, свитки и расходуемые вещи" : `${counts.byCategory.get(entry) || 0} предметов`}</small></span>
+              <span className="inventory-rpg__folder-count">{counts.byCategory.get(entry) || 0}</span>
+              <span className="inventory-rpg__folder-chevron">›</span>
+            </button>
+          ))}
         </div>
+      </section>
+    )}
 
-        <div className="inventory-rpg__wallet" aria-label="Валюта персонажа">
-          <div className="inventory-rpg__coin inventory-rpg__coin--gold"><small>Золото</small><strong>{counts.currency.gold}</strong><span>ЗМ</span></div>
-          <div className="inventory-rpg__coin inventory-rpg__coin--silver"><small>Серебро</small><strong>{counts.currency.silver}</strong><span>СМ</span></div>
-          <div className="inventory-rpg__coin inventory-rpg__coin--copper"><small>Медь</small><strong>{counts.currency.copper}</strong><span>ММ</span></div>
-        </div>
-      </header>
-
-      {items.length > 0 && (
-        <label className="inventory-rpg__search">
-          <span aria-hidden="true">⌕</span>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={atRoot ? "Найти предмет во всём инвентаре" : `Поиск: ${pageTitle}`} />
-          {query && <button type="button" onClick={() => setQuery("")} aria-label="Очистить поиск">×</button>}
-        </label>
-      )}
-
-      {atRoot && !showSearchResultsAtRoot && (
-        <section className="inventory-rpg__directory" aria-label="Разделы инвентаря">
-          <div className="inventory-rpg__section-head"><div><small>Разделы</small><strong>Куда открыть</strong></div></div>
-          <div className="inventory-rpg__folder-grid">
-            {rootCategories.map((entry) => (
-              <button className="inventory-rpg__folder" type="button" key={entry} onClick={() => openCategory(entry)}>
-                <span className="inventory-rpg__folder-icon">{categoryIcons[entry]}</span>
-                <span className="inventory-rpg__folder-copy"><strong>{categoryLabel(entry)}</strong><small>{entry === "equipment" ? "Оружие, броня и слоты" : entry === "consumable" ? "Зелья, свитки и расходуемые вещи" : "Открыть раздел"}</small></span>
-                <span className="inventory-rpg__folder-count">{counts.byCategory.get(entry) || 0}</span>
-                <span className="inventory-rpg__folder-chevron">›</span>
+    {inEquipmentDirectory && (
+      <section className="inventory-rpg__directory" aria-label="Слоты экипировки">
+        <div className="inventory-rpg__section-head"><div><small>Экипировка</small><strong>Слоты</strong></div></div>
+        <div className="inventory-rpg__slot-folders">
+          {equipmentSlots.map((entry) => {
+            const count = counts.bySlot.get(entry.value) || 0
+            return (
+              <button className={count ? "inventory-rpg__slot-folder has-items" : "inventory-rpg__slot-folder"} type="button" key={entry.value} onClick={() => openSlot(entry.value)}>
+                <span className="inventory-rpg__slot-folder-icon">{slotIcons[entry.value]}</span>
+                <span><strong>{entry.label}</strong><small>{count ? `${count} ${count === 1 ? "предмет" : "предм."}` : "Пусто"}</small></span>
+                <b>›</b>
               </button>
+            )
+          })}
+        </div>
+      </section>
+    )}
+
+    {(!atRoot || showSearchResultsAtRoot) && !inEquipmentDirectory && (
+      <section className="inventory-rpg__section">
+        <div className="inventory-rpg__section-head">
+          <div><small>{showSearchResultsAtRoot ? "Поиск" : slot ? "Слот" : "Раздел"}</small><strong>{showSearchResultsAtRoot ? "Результаты" : pageTitle}</strong></div>
+          <span>{visibleItems.length}</span>
+        </div>
+        {visibleItems.length > 0 ? (
+          <div className="inventory-rpg__list">
+            {visibleItems.map((item) => (
+              <article {...bindLongPress(item)} style={{ touchAction: "pan-y" }} className="inventory-rpg__item" key={item.id}>
+                <button type="button" className="inventory-rpg__item-main" onClick={() => setDetail(item)}>
+                  <ItemThumb item={item} />
+                  <span className="inventory-rpg__item-copy">
+                    <span className="inventory-rpg__item-title">
+                      <strong>{item.name}</strong>
+                      {item.quantity !== 1 && <em className="inventory-rpg__quantity">×{item.quantity}</em>}
+                    </span>
+                    <span className="inventory-rpg__item-meta">
+                      <span>{categoryLabel(item.category)}</span>
+                      {item.category === "equipment" && <><span className="inventory-rpg__dot">·</span><span>{slotLabel(item.equipment_slot)}</span></>}
+                    </span>
+                    <span className="inventory-rpg__item-preview">{itemPreview(item, canManage)}</span>
+                    <ItemBadges item={item} canManage={canManage} />
+                  </span>
+                  <span className="inventory-rpg__chevron">›</span>
+                </button>
+                {canManage && <button className="inventory-rpg__menu" type="button" onClick={() => setMenu(item)} aria-label={`Действия с ${item.name}`}>•••</button>}
+              </article>
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <CharacterSectionState compact kind="empty" title={query ? "Ничего не найдено" : "Здесь пока пусто"} detail={query ? "Попробуй другой запрос." : "Предметы этого типа появятся здесь после добавления."} />
+        )}
+      </section>
+    )}
 
-      {inEquipmentDirectory && (
-        <section className="inventory-rpg__directory" aria-label="Слоты экипировки">
-          <div className="inventory-rpg__section-head"><div><small>Экипировка</small><strong>Выбери слот</strong></div></div>
-          <div className="inventory-rpg__slot-folders">
-            {equipmentSlots.map((entry) => {
-              const count = counts.bySlot.get(entry.value) || 0
-              return (
-                <button className={count ? "inventory-rpg__slot-folder has-items" : "inventory-rpg__slot-folder"} type="button" key={entry.value} onClick={() => openSlot(entry.value)}>
-                  <span className="inventory-rpg__slot-folder-icon">{slotIcons[entry.value]}</span>
-                  <span><strong>{entry.label}</strong><small>{count ? `${count} ${count === 1 ? "предмет" : "предм."}` : "Пусто"}</small></span>
-                  <b>›</b>
-                </button>
-              )
-            })}
-          </div>
-        </section>
-      )}
+    {atRoot && items.length === 0 && <CharacterSectionState kind="empty" title="Инвентарь пуст" detail="Добавленные предметы автоматически появятся в своих разделах." />}
+    {error && <CharacterSectionState compact kind="error" title="Инвентарь не обновился" detail={error} />}
+  </>
 
-      {(!atRoot || showSearchResultsAtRoot) && !inEquipmentDirectory && (
-        <section className="inventory-rpg__section">
-          <div className="inventory-rpg__section-head">
-            <div><small>{showSearchResultsAtRoot ? "Поиск" : slot ? "Слот" : "Раздел"}</small><strong>{showSearchResultsAtRoot ? "Результаты" : pageTitle}</strong></div>
-            <span>{visibleItems.length}</span>
-          </div>
-          {visibleItems.length > 0 ? (
-            <div className="inventory-rpg__list">
-              {visibleItems.map((item) => (
-                <article {...bindLongPress(item)} style={{ touchAction: "pan-y" }} className="inventory-rpg__item" key={item.id}>
-                  <button type="button" className="inventory-rpg__item-main" onClick={() => setDetail(item)}>
-                    <ItemThumb item={item} />
-                    <span className="inventory-rpg__item-copy">
-                      <span className="inventory-rpg__item-title">
-                        <strong>{item.name}</strong>
-                        {item.quantity !== 1 && <em className="inventory-rpg__quantity">×{item.quantity}</em>}
-                      </span>
-                      <span className="inventory-rpg__item-meta">
-                        <span>{categoryLabel(item.category)}</span>
-                        {item.category === "equipment" && <><span className="inventory-rpg__dot">·</span><span>{slotLabel(item.equipment_slot)}</span></>}
-                      </span>
-                      <span className="inventory-rpg__item-preview">{itemPreview(item, canManage)}</span>
-                      <ItemBadges item={item} canManage={canManage} />
-                    </span>
-                    <span className="inventory-rpg__chevron">›</span>
-                  </button>
-                  {canManage && <button className="inventory-rpg__menu" type="button" onClick={() => setMenu(item)} aria-label={`Действия с ${item.name}`}>•••</button>}
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="inventory-rpg__empty">
-              <span>{query ? "⌕" : "◇"}</span>
-              <strong>{query ? "Ничего не найдено" : "Здесь пока пусто"}</strong>
-              <p>{query ? "Попробуй другой запрос." : "Предметы этого типа появятся здесь, когда ГМ добавит их персонажу."}</p>
-            </div>
-          )}
-        </section>
-      )}
+  return (
+    <section className="character-tab-section inventory-rpg inventory-rpg-v5 character-specialized-v5">
+      {isDeep ? (
+        <CharacterFocusShell
+          eyebrow={pageEyebrow}
+          title={pageTitle}
+          detail={slot ? "Предметы выбранного слота." : "Предметы выбранного раздела."}
+          onBack={goBack}
+          backLabel={slot && mode === "inventory" ? "Экипировка" : "Вещи"}
+          action={createAction}
+        >
+          {body}
+        </CharacterFocusShell>
+      ) : <>
+        <CharacterSectionHeader
+          eyebrow="Вещи персонажа"
+          title={mode === "equipment" ? "Экипировка" : "Инвентарь"}
+          detail={mode === "equipment" ? "Надетые и доступные предметы по слотам." : "Предметы собраны по назначению, без общей бесконечной стены."}
+          icon={mode === "equipment" ? "◆" : "▣"}
+          meta={<span>{items.length} предметов</span>}
+          action={createAction}
+        />
+        {wallet}
+        {body}
+      </>}
 
-      {atRoot && items.length === 0 && (
-        <div className="inventory-rpg__empty">
-          <span>◇</span><strong>Инвентарь пуст</strong><p>Когда появятся предметы, они автоматически разложатся по разделам.</p>
-        </div>
-      )}
-
-      {error && <div className="inventory-rpg__error">{error}</div>}
-      {detailSheet}
+      {detail && <InventoryDetail
+        item={detail}
+        canManage={canManage}
+        canEquip={canEquip}
+        onClose={() => setDetail(null)}
+        onEdit={() => { setDetail(null); onEdit(detail) }}
+        onToggle={() => toggleEquip(detail)}
+      />}
       {actionSheet}
     </section>
   )
@@ -387,65 +418,60 @@ function InventoryDetail({ item, canManage, canEquip, onClose, onEdit, onToggle 
     : "В инвентаре"
 
   return (
-    <div className="sheet-backdrop inventory-rpg__backdrop" onMouseDown={onClose}>
-      <section className="bottom-sheet inventory-rpg-detail" role="dialog" aria-modal="true" aria-label={item.name} onMouseDown={(event) => event.stopPropagation()}>
-        <div className="sheet-handle" />
-        <header className="inventory-rpg-detail__head">
-          <ItemThumb item={item} />
-          <div className="inventory-rpg-detail__title">
-            <small>{categoryLabel(item.category)}{item.equipment_slot ? ` · ${slotLabel(item.equipment_slot)}` : ""}</small>
-            <h3>{item.name}</h3>
-            <p>{status}</p>
-          </div>
-          <button className="inventory-rpg-detail__close" type="button" onClick={onClose}>×</button>
-        </header>
-
-        {item.image_url && <div className="inventory-rpg-detail__art"><CampaignImage value={item.image_url} alt="" /></div>}
-
-        <div className="inventory-rpg-detail__facts">
-          <div className="inventory-rpg-detail__fact"><small>Количество</small><strong>{item.quantity}</strong></div>
-          <div className="inventory-rpg-detail__fact"><small>Вес / шт.</small><strong>{weight}</strong></div>
-          <div className="inventory-rpg-detail__fact"><small>Состояние</small><strong>{item.equipped ? "Надето" : "В рюкзаке"}</strong></div>
+    <CharacterDetailSheet eyebrow={categoryLabel(item.category)} title={item.name} onClose={onClose} className="inventory-detail-v5">
+      <div className="inventory-detail-v5__hero">
+        <ItemThumb item={item} />
+        <div className="inventory-detail-v5__hero-copy">
+          <small>{item.equipment_slot ? slotLabel(item.equipment_slot) : categoryLabel(item.category)}</small>
+          <strong>{status}</strong>
         </div>
+      </div>
 
-        <ItemBadges item={item} canManage={canManage} />
+      {item.image_url && <div className="inventory-detail-v5__art"><CampaignImage value={item.image_url} alt="" /></div>}
 
-        {item.description && <section className="inventory-rpg-detail__section"><small>Описание</small><p>{item.description}</p></section>}
+      <div className="inventory-detail-v5__facts">
+        <div><small>Количество</small><strong>{item.quantity}</strong></div>
+        <div><small>Вес / шт.</small><strong>{weight}</strong></div>
+        <div><small>Состояние</small><strong>{item.equipped ? "Надето" : "В рюкзаке"}</strong></div>
+      </div>
 
-        {showCurse && (
-          <section className="inventory-rpg-detail__section inventory-rpg-detail__section--curse">
-            <small>Проклятие</small>
-            <p>{showCurseEffect ? (curse.description || "Предмет проклят. Подробности эффекта не указаны.") : "Проклятие обнаружено. Его эффект неизвестен."}</p>
-          </section>
-        )}
+      <ItemBadges item={item} canManage={canManage} />
 
-        <section className="inventory-rpg-detail__section">
-          <small>Механика</small>
-          {mechanics.length ? (
-            <div className="inventory-rpg-detail__mechanics">
-              {mechanics.map((mechanic) => {
-                const inactive = mechanic.activation === "equipped" && !item.equipped
-                return (
-                  <div className={inactive ? "inventory-rpg-detail__mechanic is-inactive" : "inventory-rpg-detail__mechanic"} key={mechanic.id}>
-                    <i>✦</i>
-                    <span>
-                      <strong>{mechanicSummary(mechanic)}</strong>
-                      <small>{inactive ? "Неактивно: предмет нужно надеть" : mechanic.activation === "equipped" ? "Активно, пока предмет надет" : `Источник: ${item.name}`}</small>
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          ) : <p>У предмета нет видимых механических эффектов.</p>}
+      {item.description && <section className="inventory-detail-v5__section"><small>Описание</small><p>{item.description}</p></section>}
+
+      {showCurse && (
+        <section className="inventory-detail-v5__section inventory-rpg-detail__section--curse">
+          <small>Проклятие</small>
+          <p>{showCurseEffect ? (curse.description || "Предмет проклят. Подробности эффекта не указаны.") : "Проклятие обнаружено. Его эффект неизвестен."}</p>
         </section>
+      )}
 
-        {(canManage || (item.category === "equipment" && canEquip)) && (
-          <footer className="inventory-rpg-detail__actions">
-            {canManage && <button type="button" className="inventory-rpg-detail__edit" onClick={onEdit}>Редактировать</button>}
-            {item.category === "equipment" && canEquip && <button type="button" className={item.equipped ? "inventory-rpg-detail__equip is-remove" : "inventory-rpg-detail__equip"} onClick={onToggle}>{item.equipped ? "Снять" : "Надеть"}</button>}
-          </footer>
-        )}
+      <section className="inventory-detail-v5__section">
+        <small>Механика</small>
+        {mechanics.length ? (
+          <div className="inventory-rpg-detail__mechanics">
+            {mechanics.map((mechanic) => {
+              const inactive = mechanic.activation === "equipped" && !item.equipped
+              return (
+                <div className={inactive ? "inventory-rpg-detail__mechanic is-inactive" : "inventory-rpg-detail__mechanic"} key={mechanic.id}>
+                  <i>✦</i>
+                  <span>
+                    <strong>{mechanicSummary(mechanic)}</strong>
+                    <small>{inactive ? "Неактивно: предмет нужно надеть" : mechanic.activation === "equipped" ? "Активно, пока предмет надет" : `Источник: ${item.name}`}</small>
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        ) : <p>У предмета нет видимых механических эффектов.</p>}
       </section>
-    </div>
+
+      {(canManage || (item.category === "equipment" && canEquip)) && (
+        <footer className="inventory-detail-v5__actions">
+          {canManage && <button type="button" className="inventory-rpg-detail__edit" onClick={onEdit}>Редактировать</button>}
+          {item.category === "equipment" && canEquip && <button type="button" className={item.equipped ? "inventory-rpg-detail__equip is-remove" : "inventory-rpg-detail__equip"} onClick={onToggle}>{item.equipped ? "Снять" : "Надеть"}</button>}
+        </footer>
+      )}
+    </CharacterDetailSheet>
   )
 }
