@@ -86,8 +86,8 @@
 
 .character-section-header-v5__action > button,
 .character-specialized-v5__action {
-  min-height: 36px;
-  padding: 0 11px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 1px solid var(--character-line);
   border-radius: 12px;
   color: var(--character-text-primary);
@@ -95,6 +95,15 @@
   font: inherit;
   font-size: 10px;
   font-weight: 740;
+}
+
+.character-section-header-v5__action > button:focus-visible,
+.character-specialized-v5__action:focus-visible,
+.character-specialized-v5__directory-button:focus-visible,
+.character-spell-detail-v5__actions button:focus-visible,
+.inventory-detail-v5__actions button:focus-visible {
+  outline: 2px solid var(--character-accent);
+  outline-offset: 2px;
 }
 
 .character-specialized-v5__directory {
@@ -324,7 +333,7 @@
 }
 
 .character-spell-detail-v5__actions button {
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 12px;
   font-weight: 740;
 }
@@ -450,7 +459,7 @@
 }
 
 .inventory-detail-v5__actions button {
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 12px;
 }
 
