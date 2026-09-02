@@ -502,6 +502,8 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
           <CharacterClassPanel
             characterId={characterId}
             contract={resolved.contract}
+            focusResetKey={sheetFocusResetKey}
+            onFocusChange={setSheetFocused}
             onOpenReference={() => setReference({ section: "classes", classId })}
           />
         )}
@@ -535,7 +537,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
         {!data.loading && tab === "inventory" && (
           <section className="v2-inventory-wrap">
             <div className="v2-subtabs"><button className={inventoryMode === "inventory" ? "v2-subtab v2-subtab--active" : "v2-subtab"} type="button" onClick={() => setInventoryMode("inventory")}>Предметы</button><button className={inventoryMode === "equipment" ? "v2-subtab v2-subtab--active" : "v2-subtab"} type="button" onClick={() => setInventoryMode("equipment")}>Экипировка</button></div>
-            <CharacterInventory mode={inventoryMode} items={data.inventory} canManage={canManage} canEquip={canUseInventory} onCreate={() => setEditor({ type: "inventory", item: null })} onEdit={(item) => setEditor({ type: "inventory", item })} onDelete={data.deleteInventoryItem} onSetEquipped={data.setInventoryEquipped} />
+            <CharacterInventory mode={inventoryMode} items={data.inventory} canManage={canManage} canEquip={canUseInventory} focusResetKey={sheetFocusResetKey} onFocusChange={setSheetFocused} onCreate={() => setEditor({ type: "inventory", item: null })} onEdit={(item) => setEditor({ type: "inventory", item })} onDelete={data.deleteInventoryItem} onSetEquipped={data.setInventoryEquipped} />
           </section>
         )}
 
