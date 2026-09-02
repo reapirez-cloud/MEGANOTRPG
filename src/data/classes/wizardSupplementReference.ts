@@ -1,7 +1,7 @@
 import type { ClassReferenceSubclass } from "../classReference"
-import { wizardLegacySchoolReferenceSubclasses } from "./wizardLegacySchoolsReference"
-import { wizardWildemountReferenceSubclasses } from "./wizardWildemountReference"
-import { wizardXanatharReferenceSubclasses } from "./wizardXanatharReference"
+import { wizardLegacySchoolReferenceSubclasses } from "./wizardLegacySchoolsReference.ts"
+import { wizardWildemountReferenceSubclasses } from "./wizardWildemountReference.ts"
+import { wizardXanatharReferenceSubclasses } from "./wizardXanatharReference.ts"
 
 /**
  * Presentation-only aggregate for official Wizard subclasses outside the
