@@ -1,5 +1,5 @@
-import type { SpellClassKey } from "../lib/spellCatalog"
-import { wizardReferenceSubclasses } from "./classes/wizardReference"
+import type { SpellClassKey } from "../lib/spellCatalog.ts"
+import { wizardReferenceSubclasses } from "./classes/wizardReference.ts"
 
 export type ClassReferenceSubclassFeature = {
   level: number
