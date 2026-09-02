@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { ResolvedCharacterContract } from "../../character-engine/index.ts"
 import { registeredCharacterClassPackages } from "../../rule-templates/classPackages.ts"
 import CharacterClassPanelBase from "./CharacterClassPanelBase.tsx"
@@ -35,6 +35,7 @@ export default function CharacterClassPanel(props: Props) {
   const hasWizard = Boolean(wizardPackage)
   const hasSubclass = packages.some((entry) => entry.subclassTemplateId)
   const [focus, setFocus] = useState<Focus>(initialFocus)
+  const resetReady = useRef(false)
 
   const classNames = useMemo(() => packages.map((entry) => entry.className).join(" · ") || "Класс не привязан", [packages])
   const subclassNames = useMemo(
@@ -42,31 +43,36 @@ export default function CharacterClassPanel(props: Props) {
     [packages],
   )
 
-  useEffect(() => () => {
-    window.sessionStorage.removeItem(FOCUS_KEY)
-    onFocusChange?.(false)
-  }, [onFocusChange])
+  useEffect(() => {
+    onFocusChange?.(focus !== "all")
+    return () => {
+      window.sessionStorage.removeItem(FOCUS_KEY)
+      onFocusChange?.(false)
+    }
+  }, [focus, onFocusChange])
 
   useEffect(() => {
     if (focus === "spellbook" && !hasWizard) {
       setFocus("all")
-      onFocusChange?.(false)
+      window.sessionStorage.removeItem(FOCUS_KEY)
     }
     if (focus === "subclass" && !hasSubclass) {
       setFocus("all")
-      onFocusChange?.(false)
+      window.sessionStorage.removeItem(FOCUS_KEY)
     }
-  }, [focus, hasSubclass, hasWizard, onFocusChange])
+  }, [focus, hasSubclass, hasWizard])
 
   useEffect(() => {
+    if (!resetReady.current) {
+      resetReady.current = true
+      return
+    }
     setFocus("all")
     window.sessionStorage.removeItem(FOCUS_KEY)
-    onFocusChange?.(false)
-  }, [focusResetKey, onFocusChange])
+  }, [focusResetKey])
 
   function choose(next: Focus) {
     setFocus(next)
-    onFocusChange?.(next !== "all")
     if (next === "all") window.sessionStorage.removeItem(FOCUS_KEY)
     else window.sessionStorage.setItem(FOCUS_KEY, next)
   }
