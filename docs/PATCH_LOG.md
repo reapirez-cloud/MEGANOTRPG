@@ -14,12 +14,17 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Rewrote the complete active Fighter Voss narration layer: the base class, all ten supported archetypes and every active archetype feature now use Voss's own soldier perspective instead of a generic grimdark observer.
 - Fighter is now the profession Voss understands and respects most: strength comes from training, judgement, fear, repetition and responsibility rather than divine, innate or borrowed magic. The rewrite keeps that respect grim and costly rather than heroic or romantic.
 - Each Fighter archetype now has its own axis instead of repeating efficient killing: Battle Master is closest to Voss's own battlefield trade; Cavalier is self-sacrificing protection; Champion is the horror of pure human conditioning; Banneret earns authority by leading from the front; Samurai is disciplined fear management; magical archetypes remain useful but inherit Voss's distrust of magic.
+- Started Character Profile v5 Stage 1: one sticky Character Navigator now shows the character name and current section, then opens section selection through the standard action sheet.
+- Removed the old persistent horizontal Sheet/Class/Magic/Items/Diary/Arts rail while preserving the same destinations and the existing conditional visibility of Magic.
+- Removed redundant inventory browsing instruction copy from the character-profile presentation and calmed the profile shell toward the agreed dark editorial campaign-companion direction.
 
 ### Runtime and rules changes
 
 - `src/data/classes/fighterVossNarration.ts` is now a self-contained canonical literary source rather than a one-line re-export of `fighterVossNarrationLegacy.ts`; the legacy file remains archival/reference material only.
 - Preserved the existing Fighter narration export/getter contract used by `ReferenceGuide`; no Fighter mechanics, Character Engine contracts, resources, action economy or exact-rule text were changed.
 - Added an explicit Fighter authoring contract preventing future passes from collapsing every feature into another variation of «he kills efficiently»; feature narration must instead vary across positioning, endurance, command, observation, fear, recovery, discipline and the cost of survival.
+- Added `src/character-profile-v5.css` as a scoped Stage 1 semantic layer for character-profile surfaces, text, accents, spacing, radii, motion and icon sizing; existing v3 profile variables bridge into the new tokens so later stages can migrate incrementally.
+- Stage 1 is presentation-only: the shared `useResolvedCharacterRuntime` path, Character Engine contract, Sheet/Class/Spells/Inventory runtime, persistence and canonical ownership remain unchanged.
 
 ### Repository / release process
 
@@ -29,10 +34,13 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 - Verified the canonical Fighter file preserves `fighterClassVossNarration`, `fighterClassVossComment`, `getFighterBaseVossNarration`, `getFighterSubclassVossNarration`, `getFighterSubclassVossComment` and `getFighterSubclassFeatureVossNarration` signatures expected by the existing reference UI.
 - This is a narration-only follow-up; no new full repository CI completion claim is made for this text pass.
+- Character Profile Stage 1 CI run #1318: production TypeScript/Vite build succeeded and lint completed with 0 errors / 23 warnings. The repository test suite passed 599/609 tests; the 10 failures are stale pre-existing Voss/text-contract assertions from the earlier Fighter/Druid/Cleric narration rewrites, not failures in the Stage 1 profile code.
 
 ### Known incomplete work
 
 - Fighter mechanics/runtime remain `IN_PROGRESS` under the existing class-work ledger and were intentionally not changed by this rewrite.
+- Character Profile Stage 1 intentionally stops at foundation tokens and navigation; later profile-content re-composition is not part of this work unit.
+- The repository still has 10 stale Voss/text-contract assertions that must be reconciled with the already-authored class narration before the full CI suite can return green.
 
 ---
 
