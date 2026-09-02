@@ -57,6 +57,21 @@ type DiaryMenu =
 
 type ArtMenu = { item: CharacterArt }
 
+type TabMeta = {
+  label: string
+  detail: string
+  icon: string
+}
+
+const tabMeta: Record<Tab, TabMeta> = {
+  sheet: { label: "Лист", detail: "Характеристики и состояние", icon: "◈" },
+  class: { label: "Класс", detail: "Класс, подкласс и способности", icon: "◇" },
+  spells: { label: "Магия", detail: "Заклинания и ячейки", icon: "✦" },
+  inventory: { label: "Вещи", detail: "Инвентарь и экипировка", icon: "▣" },
+  diary: { label: "Дневник", detail: "Записи персонажа", icon: "≡" },
+  arts: { label: "Арты", detail: "Галерея персонажа", icon: "▧" },
+}
+
 function normalizeClass(value: string): string {
   return value.trim().toLocaleLowerCase("ru-RU").replace(/[._-]+/g, " ").replace(/\s+/g, " ")
 }
@@ -98,6 +113,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
   const runtime = useResolvedCharacterRuntime(character)
 
   const [tab, setTab] = useState<Tab>("sheet")
+  const [navigatorOpen, setNavigatorOpen] = useState(false)
   const [inventoryMode, setInventoryMode] = useState<InventoryMode>("inventory")
   const [editor, setEditor] = useState<Editor>(null)
   const [reference, setReference] = useState<ReferenceTarget>(null)
@@ -358,6 +374,15 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
 
   const fullName = member ? `${currentCharacter.name} (${member.display_name})` : currentCharacter.name
   const runtimeTab = tab === "sheet" || tab === "class" || tab === "spells"
+  const currentTab = tabMeta[tab]
+  const navigatorActions: ContextAction[] = [
+    { id: "sheet", label: tabMeta.sheet.label, detail: tabMeta.sheet.detail, icon: tabMeta.sheet.icon, disabled: tab === "sheet", onSelect: () => setTab("sheet") },
+    { id: "class", label: tabMeta.class.label, detail: tabMeta.class.detail, icon: tabMeta.class.icon, disabled: tab === "class", onSelect: () => setTab("class") },
+    ...((magicSectionVisible || canManage) ? [{ id: "spells", label: tabMeta.spells.label, detail: tabMeta.spells.detail, icon: tabMeta.spells.icon, disabled: tab === "spells", onSelect: () => setTab("spells") } satisfies ContextAction] : []),
+    { id: "inventory", label: tabMeta.inventory.label, detail: tabMeta.inventory.detail, icon: tabMeta.inventory.icon, disabled: tab === "inventory", onSelect: () => setTab("inventory") },
+    { id: "diary", label: tabMeta.diary.label, detail: tabMeta.diary.detail, icon: tabMeta.diary.icon, disabled: tab === "diary", onSelect: () => setTab("diary") },
+    { id: "arts", label: tabMeta.arts.label, detail: tabMeta.arts.detail, icon: tabMeta.arts.icon, disabled: tab === "arts", onSelect: () => setTab("arts") },
+  ]
   const runtimePanelState = !resolved
     ? <div className="center-state">
         {runtime.error
@@ -406,14 +431,22 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
           </button>
         </section>
 
-        <nav className="profile-v3__tabs" aria-label="Разделы персонажа">
-          <button className={tab === "sheet" ? "is-active" : ""} type="button" onClick={() => setTab("sheet")}><span aria-hidden="true">◈</span>Лист</button>
-          <button className={tab === "class" ? "is-active" : ""} type="button" onClick={() => setTab("class")}><span aria-hidden="true">◇</span>Класс</button>
-          {(magicSectionVisible || canManage) && <button className={tab === "spells" ? "is-active" : ""} type="button" onClick={() => setTab("spells")}><span aria-hidden="true">✦</span>Магия</button>}
-          <button className={tab === "inventory" ? "is-active" : ""} type="button" onClick={() => setTab("inventory")}><span aria-hidden="true">▣</span>Вещи</button>
-          <button className={tab === "diary" ? "is-active" : ""} type="button" onClick={() => setTab("diary")}><span aria-hidden="true">≡</span>Дневник</button>
-          <button className={tab === "arts" ? "is-active" : ""} type="button" onClick={() => setTab("arts")}><span aria-hidden="true">◇</span>Арты</button>
-        </nav>
+        <button
+          className="character-navigator-v5"
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={navigatorOpen}
+          onClick={() => setNavigatorOpen(true)}
+        >
+          <span className="character-navigator-v5__copy">
+            <small>{currentCharacter.name}</small>
+            <span className="character-navigator-v5__current">
+              <i aria-hidden="true">{currentTab.icon}</i>
+              <strong>{currentTab.label}</strong>
+            </span>
+          </span>
+          <span className="character-navigator-v5__chevron" aria-hidden="true">⌄</span>
+        </button>
 
         {data.loading && <div className="center-state"><span className="status-spinner" /><span>Загружаем данные персонажа…</span></div>}
         {data.error && <div className="auth-error">{data.error}</div>}
@@ -516,6 +549,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
 
       {editingArt && <div className="sheet-backdrop" onMouseDown={() => setEditingArt(null)}><form className="bottom-sheet compact-editor-sheet" onSubmit={saveArt} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="character-editor-head"><div><h3 className="sheet-title">Редактировать арт</h3><p className="sheet-copy">Название и подпись</p></div><button className="sheet-close" type="button" onClick={() => setEditingArt(null)}>×</button></div><label className="editor-label">Название<input value={artTitle} onChange={(event) => setArtTitle(event.target.value)} /></label><label className="editor-label">Подпись<textarea value={artCaption} onChange={(event) => setArtCaption(event.target.value)} /></label><button className="sheet-save" type="submit" disabled={artSaving}>{artSaving ? "Сохраняем…" : "Сохранить"}</button></form></div>}
 
+      {navigatorOpen && <ContextActionSheet title={currentCharacter.name} subtitle={`Сейчас открыт раздел «${currentTab.label}»`} actions={navigatorActions} onClose={() => setNavigatorOpen(false)} />}
       {diaryMenu && <ContextActionSheet title={diaryMenu.type === "post" ? "Запись дневника" : "Комментарий"} subtitle="Долгое нажатие открывает действия" actions={diaryActions(diaryMenu)} onClose={() => setDiaryMenu(null)} />}
       {artMenu && <ContextActionSheet title={artMenu.item.title || currentCharacter.name} subtitle="Долгое нажатие открывает действия с артом" actions={artActions(artMenu)} onClose={() => setArtMenu(null)} />}
 
