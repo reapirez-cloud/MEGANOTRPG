@@ -256,14 +256,14 @@ There are no known Wizard implementation or deployment blockers in the declared 
 
 - `authoring_started: 2026-09-03`
 - `authoring_source: src/data/classes/monkReferenceDraft.ts`
-- `subclass_authoring_source: src/data/classes/monkSubclassReferenceDraft.ts`
-- `current_dev_text: base Monk Voss narration follows Brother Korn of the Silent Stone; first subclass authoring wave adds Brother Anselm / Open Hand, Brother Cassian / Shadow and Uncle Bartosz / Drunken Master, with preview stories, feature stories and separate Voss comments`
+- `subclass_authoring_sources: src/data/classes/monkSubclassReferenceDraft.ts; src/data/classes/monkSubclassReferenceDraftWave2.ts`
+- `current_dev_text: base Monk Voss narration follows Brother Korn of the Silent Stone; subclass waves now add Brother Anselm / Open Hand, Brother Cassian / Shadow, Uncle Bartosz / Drunken Master, Brother Vaclav / Elements, Sister Magdalena / Mercy and Master Yoshiro / Kensei, each with preview stories, feature stories and separate Voss comments`
 - `exact_rules: INTENTIONALLY_EMPTY_PENDING_MECHANICS_PASS`
 - `runtime_visibility: NOT_ACTIVE`
 - `class_reference_visibility: NOT_ACTIVE`
-- `subclasses: IN_PROGRESS_3_AUTHORED_OF_10_USER_PLANNED`
-- `authored_subclasses: open-hand, shadow, drunken-master`
-- `queued_subclasses: elements, mercy, kensei, ascendant-dragon, astral-self, sun-soul, long-death`
+- `subclasses: IN_PROGRESS_6_AUTHORED_OF_10_USER_PLANNED`
+- `authored_subclasses: open-hand, shadow, drunken-master, elements, mercy, kensei`
+- `queued_subclasses: ascendant-dragon, astral-self, sun-soul, long-death`
 - `source_policy: subclass source labels copied from the user are planning hints only and must be independently verified during the mechanics pass`
 - `mechanics_policy: Gemini copy is literary source only; exact 2024/legacy rules, level schedule, CE resources/actions/choices and runtime package will be authored and audited separately before activation`
 
