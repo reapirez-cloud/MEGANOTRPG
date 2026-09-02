@@ -117,8 +117,8 @@
 }
 
 .character-profile-v2 .character-section-state-v5__action .section-link {
-  min-height: 32px;
-  padding: 0 10px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 1px solid var(--character-line);
   border-radius: 999px;
   color: var(--character-text-primary);
@@ -178,6 +178,29 @@
 
 .character-profile-v2 .character-art-detail-v5 .spell-card__actions {
   margin-top: 2px;
+}
+
+/* Stage 9: modal surfaces behave like true modal UI, not visual overlays. */
+.character-profile-v2 .character-detail-v5__backdrop,
+.character-profile-v2 .sheet-backdrop:has(.context-action-sheet) {
+  overscroll-behavior: none;
+}
+
+.character-profile-v2 .character-detail-v5,
+.character-profile-v2 .context-action-sheet {
+  overscroll-behavior: contain;
+}
+
+.character-profile-v2 .character-detail-v5:focus,
+.character-profile-v2 .context-action-sheet:focus {
+  outline: none;
+}
+
+.character-profile-v2 .character-detail-v5 button:focus-visible,
+.character-profile-v2 .context-action-sheet button:focus-visible,
+.character-profile-v2 .character-section-state-v5__action .section-link:focus-visible {
+  outline: 2px solid var(--character-accent);
+  outline-offset: 2px;
 }
 
 .character-profile-v2 .character-focus-v5,
