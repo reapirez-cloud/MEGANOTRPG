@@ -43,12 +43,12 @@ test("Wizard 2024 text package explicitly stops before runtime mechanics", () =>
   assert.doesNotMatch(migration, /subclass:wizard:/)
 })
 
-test("Wizard reference exposes the rebuilt base class and no subclasses", () => {
+test("Wizard reference exposes the rebuilt base class and current subclass reference package", () => {
   const wizard = wizardReferenceBlock()
   assert.match(wizard, /name: "Волшебник"/)
   assert.match(wizard, /nameEn: "Wizard"/)
   assert.match(wizard, /книг(?:а|ой) заклинаний/i)
-  assert.match(wizard, /subclasses: \[\]/)
+  assert.match(wizard, /subclasses: wizardReferenceSubclasses/)
 })
 
 test("Wizard exact text covers every base feature present in this subclass-free pass", () => {
