@@ -2,9 +2,9 @@ export {
   wizardClassVossNarration,
   getWizardBaseVossNarration,
   wizardVossNarrationCoverage,
-} from "./wizardVossNarrationGemini"
+} from "./wizardVossNarrationGemini.ts"
 
 export {
   wizardClassVossComment,
   getWizardBaseVossComment,
-} from "./wizardVossNarrationLegacy"
+} from "./wizardVossNarrationLegacy.ts"
