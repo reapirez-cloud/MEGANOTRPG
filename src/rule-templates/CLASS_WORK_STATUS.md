@@ -249,6 +249,24 @@ There are no known Wizard implementation or deployment blockers in the declared 
 
 ---
 
+## Monk (`class:monk`)
+
+**Text:** `IN_PROGRESS`  
+**Mechanics/runtime:** `NOT_STARTED`
+
+- `authoring_started: 2026-09-03`
+- `authoring_source: src/data/classes/monkReferenceDraft.ts`
+- `current_dev_text: base Monk Voss narration is authored around Brother Korn of the Silent Stone; class and feature stories/comments are stored as an authoring-only draft`
+- `exact_rules: INTENTIONALLY_EMPTY_PENDING_MECHANICS_PASS`
+- `runtime_visibility: NOT_ACTIVE`
+- `class_reference_visibility: NOT_ACTIVE`
+- `subclasses: NOT_STARTED`
+- `mechanics_policy: Gemini copy is literary source only; exact 2024 rules and CE/runtime package will be authored and audited separately before activation`
+
+The draft must not be imported into `classReference`, Chasovoy runtime templates or Character Class UI until exact Monk rules, resources/actions/choices and package-quality tests are complete enough for the intended activation step.
+
+---
+
 ## Legacy builtin catalog reset
 
 **Status:** `REMOVED_2026_08_29`
