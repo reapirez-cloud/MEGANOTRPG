@@ -26,6 +26,7 @@ import {
 import {
   fighterClassVossComment,
   fighterClassVossNarration,
+  getFighterBaseVossComment,
   getFighterBaseVossNarration,
   getFighterSubclassVossComment,
   getFighterSubclassFeatureVossNarration,
@@ -344,7 +345,7 @@ export default function ReferenceGuide({ campaignId: campaignIdProp, character, 
 
   const classFeatures = useMemo(() => {
     const features = buildTemplateFeatures(classTemplate, levels)
-    if (selectedClass?.id === "fighter") return features.map((feature) => ({ ...feature, explanation: getFighterBaseVossNarration(feature.level, feature.name) || feature.explanation }))
+    if (selectedClass?.id === "fighter") return features.map((feature) => ({ ...feature, explanation: getFighterBaseVossNarration(feature.level, feature.name) || feature.explanation, voss: getFighterBaseVossComment(feature.level, feature.name) || feature.voss }))
     if (selectedClass?.id === "cleric") return features.map((feature) => ({ ...feature, explanation: getClericBaseVossNarration(feature.level, feature.sourceKey) || feature.explanation, voss: getClericBaseVossComment(feature.level, feature.sourceKey) || feature.voss }))
     if (selectedClass?.id === "wizard") return features.map((feature) => ({ ...feature, explanation: getWizardBaseVossNarration(feature.level, feature.sourceKey) || feature.explanation, voss: getWizardBaseVossComment(feature.level, feature.sourceKey) || feature.voss }))
     return features
