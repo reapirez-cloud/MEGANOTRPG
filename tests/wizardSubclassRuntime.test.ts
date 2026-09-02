@@ -19,6 +19,7 @@ import {
 } from "../src/rule-templates/wizardSubclassMechanics.ts"
 
 const migration = fs.readFileSync("supabase/migrations/20260902030000_wizard_subclass_runtime_completion.sql", "utf8")
+const persistentStateMigration = fs.readFileSync("supabase/migrations/20260902060000_wizard_subclass_persistent_state_policy.sql", "utf8")
 const actionRuntime = fs.readFileSync("supabase/migrations/20260830155543_gena_template_command_receipts.sql", "utf8")
 const spellRuntime = fs.readFileSync("supabase/migrations/20260830020000_class_chat_template_spell_runtime.sql", "utf8")
 
@@ -201,6 +202,18 @@ test("Illusionist spends only true persistent resources", () => {
   assert.ok(illusoryReality)
   assert.equal(illusorySelf.requirements.length, 0)
   assert.equal(illusoryReality.requirements.length, 0)
+})
+
+test("forward migration installs the same persistent-state policy for existing and new campaigns", () => {
+  assert.match(persistentStateMigration, /install_wizard_2024_subclass_runtime_v2/)
+  assert.match(persistentStateMigration, /phb-2024-wizard-subclasses-runtime@2/)
+  assert.match(persistentStateMigration, /recovery-state\[long_rest\]::wizard_abjurer_arcane_ward_created/)
+  assert.match(persistentStateMigration, /wizard_diviner_portent_1_value/)
+  assert.match(persistentStateMigration, /wizard_diviner_portent_3_value/)
+  assert.match(persistentStateMigration, /recovery-state\[long_rest,short_rest\]::wizard_diviner_third_eye_mode/)
+  assert.match(persistentStateMigration, /wizard_evoker_overchannel_repeat_count/)
+  assert.match(persistentStateMigration, /gm-adjudicated-trigger/)
+  assert.match(persistentStateMigration, /install_wizard_2024_subclass_runtime_for_new_campaign_v2/)
 })
 
 test("migration installs the runtime package and reuses generic Gena template executors", () => {
