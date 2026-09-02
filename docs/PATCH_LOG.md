@@ -2,12 +2,45 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-02-B
+## Active patch — 2026-09-02-C
 
 **Status:** OPEN
 **Branch:** `dev`
+**Base main:** `a9f02222e4fa70a0bfa541fd2fa0e9711e458fb2`
+**Started:** 2026-09-02
+
+### Player-facing changes
+
+_No changes yet._
+
+### Runtime and rules changes
+
+_No changes yet._
+
+### Repository / release process
+
+_No changes yet._
+
+### Tests / verification added in this patch
+
+_No changes yet._
+
+### Known incomplete work
+
+_No changes recorded._
+
+---
+
+## Released patches
+
+### Patch — 2026-09-02-B
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `34848d1c1670fb510a629cfef2054245b6052ba6`
 **Started:** 2026-09-02
+**Released:** 2026-09-02
+**Release identity:** `main / a9f02222e4fa70a0bfa541fd2fa0e9711e458fb2`
 
 ### Player-facing changes
 
@@ -36,9 +69,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Repository / release process
 
-- Work remains on `dev`; no promotion to `main` was performed for the Cleric rewrite without an explicit release request.
 - The active Druid literary source is `src/data/classes/druidVossNarration.ts`; the active Cleric literary source is `src/data/classes/clericVossNarration.ts`; shared future-author guidance is centralized in `src/data/vossVoice.ts`. Legacy/Gemini narration files remain reference material rather than the active canonical voice.
 - Added a deterministic migration generator so SQL payloads are derived from the TypeScript Wizard runtime source.
+- Promoted this patch through PR #41 and merged it to `main` as `a9f02222e4fa70a0bfa541fd2fa0e9711e458fb2`.
 
 ### Tests / verification added in this patch
 
@@ -49,7 +82,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added SQL/TypeScript payload-parity coverage for every subclass level and choice row.
 - Added regression coverage for the generic exact-value resource recovery rule.
 - Deployed-state audit: 13/13 subclass templates, revision `wizard-subclasses-runtime@3`, all 3/6/10/14 rows present, zero invalid class-spell method kinds and zero invalid spell costs.
-- Full repository verification before these narration-only follow-ups: 609 tests pass; production build succeeds; lint completes with only the pre-existing warning set and no errors. The Druid/Cleric text follow-ups have not yet been represented by a new full CI completion claim.
+- Full repository verification before these narration-only follow-ups: 609 tests pass; production build succeeds; lint completes with only the pre-existing warning set and no errors. The Druid/Cleric text follow-ups were not represented by a new full CI completion claim before release.
 
 ### Known incomplete work
 
@@ -57,8 +90,6 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Supabase advisors still report pre-existing project-wide security/performance notices outside the Wizard package; this patch introduced no new table/RLS surface.
 
 ---
-
-## Released patches
 
 ### Patch — 2026-08-31-A
 
