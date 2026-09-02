@@ -27,6 +27,11 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - The large character identity hero now collapses automatically on focused Sheet content and all non-Sheet sections, keeping only the portrait/name/status context needed while deeper content is being used.
 - Loading, empty, error and stale-runtime feedback now share one character-profile state language instead of mixing unrelated `center-state`, `auth-error` and ad-hoc empty placeholders.
 - Detail and action bottom sheets now share predictable dismissal behavior through explicit close, backdrop dismissal and Escape; art keeps the intended `tap → detail` and `long press → actions` split without tutorial copy explaining the gesture.
+- Completed Character Profile v5 Stage 5 specialized-section recomposition for Class, Magic and Inventory so those major surfaces now use the same section-header, Focus and Detail language as the rebuilt Sheet instead of embedding their older standalone visual shells inside v5.
+- Class is now a concise directory into focused Class, Subclass and Wizard «Моя книга» surfaces. The old `Все / Класс / Подкласс / Моя книга` segmented switch is removed while the existing Sheet deep-link bridge into class or subclass mechanics remains supported.
+- Magic now opens with a compact v5 section header, keeps the resolved casting characteristic / save DC / attack values and shared spell-slot meter visible, and uses the common empty/error states plus the common Detail sheet for spell inspection instead of its previous bespoke spell detail surface.
+- Inventory now uses focused category and equipment-slot drill-down rather than carrying every navigation level in one old shell. A tap opens the shared item Detail view, long press still opens contextual actions, and equip/unequip plus curse disclosure retain their existing behavior.
+- The profile-level Back flow now recognizes internal Class and Inventory focus and returns to the specialized section overview before leaving that top-level character tab.
 
 ### Runtime and rules changes
 
@@ -34,7 +39,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Preserved the existing Fighter narration export/getter contract used by `ReferenceGuide`; no Fighter mechanics, Character Engine contracts, resources, action economy or exact-rule text were changed.
 - Added an explicit Fighter authoring contract preventing future passes from collapsing every feature into another variation of «he kills efficiently»; feature narration must instead vary across positioning, endurance, command, observation, fear, recovery, discipline and the cost of survival.
 - Added `src/character-profile-v5.css` as a scoped semantic migration layer for character-profile surfaces, text, accents, spacing, radii, motion and icon sizing; it is loaded after the existing profile/module CSS so v5 can deliberately supersede older presentation without replacing runtime ownership.
-- Character Profile v5 Stages 1–4 remain presentation-only: the shared `useResolvedCharacterRuntime` path, Character Engine contract, Sheet/Class/Spells/Inventory runtime, persistence and canonical ownership remain unchanged.
+- Character Profile v5 Stages 1–5 remain presentation-only: the shared `useResolvedCharacterRuntime` path, Character Engine contract, Sheet/Class/Spells/Inventory runtime, persistence and canonical ownership remain unchanged.
 - The Stage 2 HP bar is derived only from `ResolvedCharacterContract` current/max HP and creates no new stored health value, local mechanic or persistence source.
 - Added reusable presentation primitives `CharacterFocusShell.tsx` and `CharacterDetailSheet.tsx`; neither component imports or owns Character Engine resolution, Supabase persistence, resources, gameplay state or domain-owner writes.
 - `ResolvedCharacterSheetBase` still resolves calculation detail through `explainCharacter(input, explain.query)` and still renders actions, resources, features and capabilities from the same `ResolvedCharacterContract`; Stage 3 changes only how those resolved values are presented and navigated.
@@ -42,6 +47,11 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added `CharacterSectionState.tsx` as a presentation-only status primitive and `CharacterInteraction.css` as the Stage 4 interaction layer; neither owns character data, resources, persistence or gameplay resolution.
 - Stage 4 Sheet focus reset uses only a React presentation remount key to return the nested Sheet renderer to its overview. It does not clear, rebuild, mutate or persist character state and does not introduce a second navigation or mechanics owner.
 - Runtime errors with an already resolved snapshot are now presented explicitly as a stale last-known calculation while retry still delegates to the existing runtime refresh path; no fallback mechanic or guessed value is created.
+- Added the presentation-only `CharacterSectionHeader.tsx` and `CharacterSpecialized.css` primitives for Stage 5. They own hierarchy and styling only and do not read or mutate domain persistence.
+- Class still renders the existing `CharacterClassPanelBase` against the same `ResolvedCharacterContract`; Stage 5 only wraps class, subclass and Wizard book destinations in the shared v5 navigation language.
+- Magic still derives casting math from `contract.spellcasting.byAbility`, spell slots from `contract.resources`, and character spell membership through the shared catalog/reference path; no local spell formula, slot pool or alternate spell authoring path was introduced.
+- Inventory mutation still delegates through the existing equip/delete callbacks and owner runtime. Stage 5 adds no direct Supabase, Cheburashka or Oracle bypass from the presentation layer.
+- The existing `meganotrpg.character-class-focus` bridge is preserved for Sheet → Class/Subclass deep links; the new focus/reset signaling is presentation navigation only and does not become a mechanics owner.
 
 ### Repository / release process
 
@@ -60,11 +70,14 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Character Profile Stage 4 CI run #1338: production TypeScript/Vite build succeeded and lint completed with 0 errors / 21 warnings. The suite contains 622 tests and passed 612/622; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
 - Added `characterInteractionPattern.test.ts` with six regression gates for one-level Back behavior, compact deep hero presentation, shared loading/empty/error/stale states, predictable Detail/Action dismissal, `tap → detail` plus `long press → actions` art behavior and the presentation-only runtime boundary. All six Stage 4 tests pass in CI #1338.
 - Stage 2 and Stage 3 character-profile regression gates continue to pass under the Stage 4 interaction changes; Stage 4 introduced no new failing test family.
+- Character Profile Stage 5 CI run #1351: production TypeScript/Vite build succeeded and lint completed with 0 errors / 22 warnings. The suite contains 628 tests and passed 618/628; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
+- Added `characterSpecializedSections.test.ts` with six regression gates for the shared specialized header, Class directory/Focus hierarchy, CE-backed Magic values and slots, Inventory Focus/Detail behavior, profile Back integration and the presentation-only ownership boundary. All six Stage 5 tests pass in CI #1351.
+- Updated the older spell-catalog and Sheet hierarchy guards so they continue enforcing the real architectural invariants — shared catalog spell membership and runtime-backed Class/Subclass navigation — without requiring the removed explanatory copy or the retired `Все` segmented switch. Those guards pass in CI #1351.
 
 ### Known incomplete work
 
 - Fighter mechanics/runtime remain `IN_PROGRESS` under the existing class-work ledger and were intentionally not changed by this rewrite.
-- Character Profile v5 Stage 4 intentionally stops at the shared interaction foundation. Deeper specialized v5 recomposition of Class, Spells, Inventory and other profile surfaces remains for later stages and is not claimed by this work unit.
+- Character Profile v5 Stage 5 completes the specialized Class, Magic and Inventory recomposition. Diary/Arts and later editor-specific/polish migration remain follow-up stages and are not claimed by this work unit.
 - The repository still has 10 stale Voss/text-contract assertions that must be reconciled with the already-authored class narration before the full CI suite can return green.
 
 ---
