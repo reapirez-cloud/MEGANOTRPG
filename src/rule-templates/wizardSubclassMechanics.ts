@@ -1,4 +1,4 @@
-import type { FormulaExpression } from "../character-engine/index.ts"
+import type { FormulaExpression, SpellCastingMethodDefinition } from "../character-engine/index.ts"
 import type { StoredMechanic, StoredMechanics } from "../types/characterMechanics.ts"
 import type { CharacterTemplateBundle } from "./types.ts"
 
@@ -127,7 +127,7 @@ function restoreBySlotActions(prefix: string, sourceKey: string, from: number, t
   })
 }
 
-function spell(id: string, sourceKey: string, slug: string, name: string, level: number, school: string, preparation: "always_prepared" | "not_required", methods: Record<string, unknown>[]): StoredMechanic {
+function spell(id: string, sourceKey: string, slug: string, name: string, level: number, school: string, preparation: "always_prepared" | "not_required", methods: SpellCastingMethodDefinition[]): StoredMechanic {
   return {
     id,
     type: "spell",
@@ -139,7 +139,7 @@ function spell(id: string, sourceKey: string, slug: string, name: string, level:
   } as StoredMechanic
 }
 
-function slotMethod(from: number, kind = "spell") {
+function slotMethod(from: number, kind = "spell"): SpellCastingMethodDefinition {
   return { key: "slot", kind, ability: "intelligence", saveDc: spellDc, attackBonus: spellAttack, requiresPrepared: false, resourceOptions: slotOptions(from) }
 }
 
