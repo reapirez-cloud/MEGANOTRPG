@@ -315,8 +315,7 @@ function portentChoice(index: 1 | 2 | 3): RuleChoiceDefinition {
             `Использовать Знамение ${index}: ${value}`,
             "special",
             {
-              resourceKey,
-              resourceCost: 1,
+              resourceCosts: [{ key: resourceKey, amount: 1 }],
               effects: [
                 {
                   kind: "semantic",
@@ -561,8 +560,7 @@ const diviner: RuntimeSubclass = {
         "Третий глаз: тёмное зрение",
         "bonus_action",
         {
-          resourceKey: "wizard_diviner_third_eye",
-          resourceCost: 1,
+          resourceCosts: [{ key: "wizard_diviner_third_eye", amount: 1 }],
           effects: [
             { kind: "state", key: thirdEyeModeState, operation: "SET", value: "darkvision" },
             { kind: "semantic", key: "third_eye_mode", payload: { mode: "darkvision", rangeFeet: 120 } },
@@ -576,8 +574,7 @@ const diviner: RuntimeSubclass = {
         "Третий глаз: читать любой язык",
         "bonus_action",
         {
-          resourceKey: "wizard_diviner_third_eye",
-          resourceCost: 1,
+          resourceCosts: [{ key: "wizard_diviner_third_eye", amount: 1 }],
           effects: [
             { kind: "state", key: thirdEyeModeState, operation: "SET", value: "greater_comprehension" },
             { kind: "semantic", key: "third_eye_mode", payload: { mode: "greater_comprehension", readAnyLanguage: true } },
@@ -591,8 +588,7 @@ const diviner: RuntimeSubclass = {
         "Третий глаз: Видение невидимого",
         "bonus_action",
         {
-          resourceKey: "wizard_diviner_third_eye",
-          resourceCost: 1,
+          resourceCosts: [{ key: "wizard_diviner_third_eye", amount: 1 }],
           effects: [
             { kind: "state", key: thirdEyeModeState, operation: "SET", value: "see_invisibility" },
             {
@@ -689,9 +685,11 @@ const evoker: RuntimeSubclass = {
         "Перегрузить заклинание без отдачи",
         "special",
         {
-          resourceKey: "wizard_evoker_overchannel_safe",
-          resourceCost: 1,
-          effects: [{ kind: "semantic", key: "maximize_spell_damage", payload: { slotMin: 1, slotMax: 5 } }],
+          resourceCosts: [{ key: "wizard_evoker_overchannel_safe", amount: 1 }],
+          effects: [
+            { kind: "state", key: overchannelRepeatState, operation: "SET", value: 0 },
+            { kind: "semantic", key: "maximize_spell_damage", payload: { slotMin: 1, slotMax: 5 } },
+          ],
         },
       ),
       action(
@@ -701,6 +699,13 @@ const evoker: RuntimeSubclass = {
         "Повторно перегрузить заклинание",
         "special",
         {
+          requirements: [
+            {
+              kind: "condition",
+              condition: { kind: "state", key: overchannelRepeatState, operator: "EXISTS" },
+              label: "Сначала используйте безопасную Перегрузку после продолжительного отдыха",
+            },
+          ],
           effects: [
             { kind: "state", key: overchannelRepeatState, operation: "ADD", value: 1 },
             {
@@ -842,8 +847,7 @@ const illusionist: RuntimeSubclass = {
         "Подставить Иллюзорное я",
         "reaction",
         {
-          resourceKey: "wizard_illusionist_illusory_self",
-          resourceCost: 1,
+          resourceCosts: [{ key: "wizard_illusionist_illusory_self", amount: 1 }],
           effects: [{ kind: "semantic", key: "force_attack_miss", payload: { adjudicatedBy: "gm" } }],
           tags: ["wizard", "subclass", "reaction", "gm-adjudicated-trigger"],
         },
