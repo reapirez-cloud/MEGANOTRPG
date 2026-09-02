@@ -17,14 +17,20 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Started Character Profile v5 Stage 1: one sticky Character Navigator now shows the character name and current section, then opens section selection through the standard action sheet.
 - Removed the old persistent horizontal Sheet/Class/Magic/Items/Diary/Arts rail while preserving the same destinations and the existing conditional visibility of Magic.
 - Removed redundant inventory browsing instruction copy from the character-profile presentation and calmed the profile shell toward the agreed dark editorial campaign-companion direction.
+- Completed Character Profile v5 Stage 2 profile-content recomposition: Health is now the primary combat panel with resolved current/max HP and a quiet state bar, while AC, initiative, speed, proficiency and passive perception use an adaptive secondary-stat grid instead of five equal mini-cards.
+- Reworked the ability/skill surface without changing its mechanics: the existing ability rail and related skills remain, tutorial swipe copy is gone, a quiet position indicator replaces it, and the layout adapts between narrow stacked and wider split compositions.
+- Rebalanced the profile identity block: class and level are visible again beside the character identity, while Reference is a signed `Справочник` entry instead of an icon-only control.
+- Simplified the sheet directory into concise section navigation without explanatory UI prose telling the player how to browse it.
 
 ### Runtime and rules changes
 
 - `src/data/classes/fighterVossNarration.ts` is now a self-contained canonical literary source rather than a one-line re-export of `fighterVossNarrationLegacy.ts`; the legacy file remains archival/reference material only.
 - Preserved the existing Fighter narration export/getter contract used by `ReferenceGuide`; no Fighter mechanics, Character Engine contracts, resources, action economy or exact-rule text were changed.
 - Added an explicit Fighter authoring contract preventing future passes from collapsing every feature into another variation of «he kills efficiently»; feature narration must instead vary across positioning, endurance, command, observation, fear, recovery, discipline and the cost of survival.
-- Added `src/character-profile-v5.css` as a scoped Stage 1 semantic layer for character-profile surfaces, text, accents, spacing, radii, motion and icon sizing; existing v3 profile variables bridge into the new tokens so later stages can migrate incrementally.
-- Stage 1 is presentation-only: the shared `useResolvedCharacterRuntime` path, Character Engine contract, Sheet/Class/Spells/Inventory runtime, persistence and canonical ownership remain unchanged.
+- Added `src/character-profile-v5.css` as a scoped semantic migration layer for character-profile surfaces, text, accents, spacing, radii, motion and icon sizing; it is loaded after the existing profile/module CSS so v5 can deliberately supersede older presentation without replacing runtime ownership.
+- Stage 1 and Stage 2 remain presentation-only: the shared `useResolvedCharacterRuntime` path, Character Engine contract, Sheet/Class/Spells/Inventory runtime, persistence and canonical ownership remain unchanged.
+- The Stage 2 HP bar is derived only from `ResolvedCharacterContract` current/max HP and creates no new stored health value, local mechanic or persistence source.
+- Existing Character Engine explanation queries, class/subclass focus bridge, focused secondary sections and action/resource/feature data continue to use the same resolved contract.
 
 ### Repository / release process
 
@@ -34,12 +40,14 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 - Verified the canonical Fighter file preserves `fighterClassVossNarration`, `fighterClassVossComment`, `getFighterBaseVossNarration`, `getFighterSubclassVossNarration`, `getFighterSubclassVossComment` and `getFighterSubclassFeatureVossNarration` signatures expected by the existing reference UI.
 - This is a narration-only follow-up; no new full repository CI completion claim is made for this text pass.
-- Character Profile Stage 1 CI run #1318: production TypeScript/Vite build succeeded and lint completed with 0 errors / 23 warnings. The repository test suite passed 599/609 tests; the 10 failures are stale pre-existing Voss/text-contract assertions from the earlier Fighter/Druid/Cleric narration rewrites, not failures in the Stage 1 profile code.
+- Character Profile Stage 1 CI run #1319: production TypeScript/Vite build succeeded and lint completed with 0 errors / 23 warnings. The repository test suite passed 599/609 tests; the 10 failures are stale pre-existing Voss/text-contract assertions from the earlier Fighter/Druid/Cleric narration rewrites, not failures in the Stage 1 profile code.
+- Character Profile Stage 2 CI run #1322: production TypeScript/Vite build succeeded and lint completed with 0 errors / 21 warnings. The suite now contains 611 tests and passed 601/611; the same 10 stale Voss/text-contract assertions remain the only failures.
+- Expanded `characterSheetHierarchy.test.ts` with v5 regression gates for Health-first hierarchy, CE-derived HP presentation without a second storage source, identity/Class/Reference composition, CSS cascade ordering and adaptive mobile layout. All Stage 2 hierarchy tests pass in CI #1322.
 
 ### Known incomplete work
 
 - Fighter mechanics/runtime remain `IN_PROGRESS` under the existing class-work ledger and were intentionally not changed by this rewrite.
-- Character Profile Stage 1 intentionally stops at foundation tokens and navigation; later profile-content re-composition is not part of this work unit.
+- Character Profile v5 Stage 2 intentionally stops at the sheet overview hierarchy and identity composition; later specialized v5 passes for deeper Class/Spells/Inventory and other profile surfaces are not claimed by this work unit.
 - The repository still has 10 stale Voss/text-contract assertions that must be reconciled with the already-authored class narration before the full CI suite can return green.
 
 ---
