@@ -45,11 +45,12 @@ export default function CharacterClassPanel(props: Props) {
 
   useEffect(() => {
     onFocusChange?.(focus !== "all")
-    return () => {
-      window.sessionStorage.removeItem(FOCUS_KEY)
-      onFocusChange?.(false)
-    }
   }, [focus, onFocusChange])
+
+  useEffect(() => () => {
+    window.sessionStorage.removeItem(FOCUS_KEY)
+    onFocusChange?.(false)
+  }, [onFocusChange])
 
   useEffect(() => {
     if (focus === "spellbook" && !hasWizard) {
