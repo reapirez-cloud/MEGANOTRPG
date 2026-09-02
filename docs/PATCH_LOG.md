@@ -2,6 +2,35 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
+## Active patch — 2026-09-02-D
+
+**Status:** OPEN
+**Branch:** `dev`
+**Base main:** `70596b402a9f37ce8295b174462381c8633badfd`
+**Started:** 2026-09-02
+
+### Player-facing changes
+
+- None yet.
+
+### Runtime and rules changes
+
+- None yet.
+
+### Repository / release process
+
+- Opened immediately after successful promotion of patch `2026-09-02-C`.
+
+### Tests / verification added in this patch
+
+- None yet.
+
+### Known incomplete work
+
+- The repository still has 10 stale Voss/text-contract assertions inherited from the released patch and awaiting reconciliation with the authored narration.
+
+---
+
 ## Released patches
 
 ### Patch — 2026-09-02-C
@@ -11,6 +40,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 **Base main:** `a37d9900c9a753c9c10bd7ca4f8c0d97f168e0ee`
 **Started:** 2026-09-02
 **Released:** 2026-09-02
+**Release identity:** `main / 70596b402a9f37ce8295b174462381c8633badfd`
 
 ### Player-facing changes
 
@@ -81,6 +111,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Repository / release process
 
 - Promotion to `main` was explicitly authorized on 2026-09-02; this patch is closed for release.
+- Promoted through PR #42 and merged to `main` as `70596b402a9f37ce8295b174462381c8633badfd`.
 
 ### Tests / verification added in this patch
 
