@@ -43,6 +43,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Completed Character Profile v5 Stage 8 final consolidation: the retired v4 sheet layer is gone, its active structural rules have been absorbed into v5, and the current profile no longer depends on `sheet-v4__*` hooks or `character-profile-v4.css`.
 - Final polish increases label readability and preserves 44px interaction targets across the profile, while the phone combat hierarchy keeps three primary combat cards above two secondary metrics instead of collapsing them into an arbitrary equal grid.
 - Very narrow screens still receive an explicit two-column fallback, while ordinary phone widths keep the intended combat hierarchy; hover-only feedback is now gated to pointer devices and reduced-motion behavior remains respected.
+- Completed Character Profile v5 Stage 9 interaction/accessibility hardening: shared Detail and contextual Action bottom sheets now behave as real modal surfaces — keyboard focus stays inside them, Escape closes them, focus returns to the invoking control, and background document scrolling is locked while a sheet is open.
+- Normalized the remaining small interaction controls to 44px-or-larger targets across stale/error actions, specialized Class/Magic/Inventory actions, Diary comments and social uploads, with visible focus treatment for keyboard users.
+- Diary/gallery file inputs remain native and keyboard-focusable while visually hidden; upload labels now expose focus state instead of relying on mouse/touch-only `display:none` controls.
 
 ### Runtime and rules changes
 
@@ -50,7 +53,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Preserved the existing Fighter narration export/getter contract used by `ReferenceGuide`; no Fighter mechanics, Character Engine contracts, resources, action economy or exact-rule text were changed.
 - Added an explicit Fighter authoring contract preventing future passes from collapsing every feature into another variation of «he kills efficiently»; feature narration must instead vary across positioning, endurance, command, observation, fear, recovery, discipline and the cost of survival.
 - Added `src/character-profile-v5.css` as a scoped semantic migration layer for character-profile surfaces, text, accents, spacing, radii, motion and icon sizing; it is loaded after the existing profile/module CSS so v5 can deliberately supersede older presentation without replacing runtime ownership.
-- Character Profile v5 Stages 1–8 remain presentation-only: the shared `useResolvedCharacterRuntime` path, Character Engine contract, Sheet/Class/Spells/Inventory runtime, persistence and canonical ownership remain unchanged.
+- Character Profile v5 Stages 1–9 remain presentation-only: the shared `useResolvedCharacterRuntime` path, Character Engine contract, Sheet/Class/Spells/Inventory runtime, persistence and canonical ownership remain unchanged.
 - The Stage 2 HP bar is derived only from `ResolvedCharacterContract` current/max HP and creates no new stored health value, local mechanic or persistence source.
 - Added reusable presentation primitives `CharacterFocusShell.tsx` and `CharacterDetailSheet.tsx`; neither component imports or owns Character Engine resolution, Supabase persistence, resources, gameplay state or domain-owner writes.
 - `ResolvedCharacterSheetBase` still resolves calculation detail through `explainCharacter(input, explain.query)` and still renders actions, resources, features and capabilities from the same `ResolvedCharacterContract`; Stage 3 changes only how those resolved values are presented and navigated.
@@ -69,6 +72,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Sheet/Resources/Spell/Inventory/Feature editing continues to delegate through the existing `CharacterProfileV2` callbacks into `useCharacterSheet`; the editor migration adds no direct Supabase access and no Character Engine, GENA, Oracle, Cheburashka or Shapoklyak ownership path.
 - Stage 8 removes the `character-profile-v4.css` import from `ResolvedCharacterSheetBase`, deletes the stylesheet itself, and replaces every active `sheet-v4__*` presentation hook with v5-owned structure. `character-profile-v3.css` remains intentionally as a compatibility foundation for still-emitted legacy class names, while v5 is the only active migration/design layer above it.
 - Stage 8 changes no resolved values, resource state, class/spell/inventory ownership, persistence callback or gameplay command path.
+- Added presentation-only `src/hooks/useDialogSurface.ts` as the shared modal-interaction primitive for Character Detail and Context Action sheets. It owns focus trapping/restoration, Escape dismissal and background-scroll locking only and has no Character Engine, persistence, GENA, Oracle, Cheburashka or Shapoklyak ownership.
+- Stage 9 changes no resolved values, resources, spell/inventory state, persistence callbacks or owner commands; it only hardens modal/input interaction and accessible presentation.
 
 ### Repository / release process
 
@@ -99,11 +104,14 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Character Profile Stage 8 CI run #1365: production TypeScript/Vite build succeeded and lint completed with 0 errors / 22 warnings. The suite contains 645 tests and passed 635/645; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
 - Added `characterProfileConsolidation.test.ts` with five regression gates proving that v4 is physically retired, v5 is the sole active migration layer over the explicit v3 compatibility foundation, directory/focus structure is self-contained, phone hierarchy/touch targets remain deliberate and the consolidation does not acquire mechanics or persistence ownership. All five Stage 8 tests pass in CI #1365.
 - Updated `characterSheetHierarchy.test.ts` to guard the consolidated v5 selectors and explicit v3→v5 cascade instead of requiring the deleted v4 layer; the complete Character Profile Stage 2–7 regression families continue to pass under Stage 8.
+- Character Profile Stage 9 CI run #1375: production TypeScript/Vite build succeeded and lint completed with 0 errors / 22 warnings. The suite contains 650 tests and passed 640/650; exactly the same 10 stale Voss/text-contract assertions remain the only failures.
+- Added `characterAccessibilityStage9.test.ts` with five regression gates for shared keyboard-modal behavior, focus trapping/restoration, background scroll locking, 44px touch targets, keyboard-focusable uploads and the presentation-only boundary. All five Stage 9 tests pass in CI #1375.
+- Updated the historical Stage 4 dismissal guard to assert the shared `useDialogSurface` contract rather than requiring duplicate local Escape handlers; all Character Profile Stage 2–8 regression families continue to pass under Stage 9.
 
 ### Known incomplete work
 
 - Fighter mechanics/runtime remain `IN_PROGRESS` under the existing class-work ledger and were intentionally not changed by this rewrite.
-- Character Profile v5 Stage 8 closes the planned eight-stage profile redesign and consolidation. The remaining `profile-v3__*` / `sheet-v3__*` class names are an intentional compatibility foundation for existing markup, not an active v3/v4 visual migration layer; renaming those hooks can be a later code-hygiene task and is not required for the v5 design to function.
+- Character Profile v5 Stages 1–9 are complete for the current design/accessibility pass. The remaining `profile-v3__*` / `sheet-v3__*` and social `v2-*` class names are compatibility/legacy markup hooks still emitted by existing components; Stage 9 deliberately did not perform a mass selector rename because that would be code-hygiene work rather than a user-facing UX fix.
 - The repository still has 10 stale Voss/text-contract assertions that must be reconciled with the already-authored class narration before the full CI suite can return green.
 
 ---
