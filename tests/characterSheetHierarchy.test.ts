@@ -47,7 +47,8 @@ test("secondary sheet content is focused instead of one permanent stack", () => 
   assert.match(sheetBase, /section === "features"/)
   assert.match(sheetBase, /section === "defenses"/)
   assert.match(sheetBase, /section === "story"/)
-  assert.match(sheetBase, /FocusHeader/)
+  assert.match(sheetBase, /CharacterFocusShell/)
+  assert.doesNotMatch(sheetBase, /function FocusHeader/)
 })
 
 test("class and subclass directory entries open runtime mechanics instead of creating another rules source", () => {
