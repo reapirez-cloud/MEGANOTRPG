@@ -15,18 +15,25 @@ import {
 } from "./wizardVossNarrationJohann.ts"
 import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep.ts"
 
-export const wizardClassVossNarration = normalizeVossWorldToneDeep(wizardJohannClassVossNarration)
-export const wizardClassVossComment = normalizeVossWorldToneDeep(wizardJohannClassVossComment)
+function normalizeWizardVoss(text: string | null | undefined) {
+  return normalizeVossWorldToneDeep(text).replace(
+    /Ему больше не нужны были ячейки, паузы и вздохи/giu,
+    "Ему больше не нужны были передышки, новые расчёты и долгие приготовления",
+  )
+}
+
+export const wizardClassVossNarration = normalizeWizardVoss(wizardJohannClassVossNarration)
+export const wizardClassVossComment = normalizeWizardVoss(wizardJohannClassVossComment)
 
 export function getWizardBaseVossNarration(level: number, sourceKey: string) {
-  return normalizeVossWorldToneDeep(
+  return normalizeWizardVoss(
     getWizardJohannBaseVossNarration(level, sourceKey)
       || getLegacyWizardBaseVossNarration(level, sourceKey),
   )
 }
 
 export function getWizardBaseVossComment(level: number, sourceKey: string) {
-  return normalizeVossWorldToneDeep(
+  return normalizeWizardVoss(
     getWizardJohannBaseVossComment(level, sourceKey)
       || getLegacyWizardBaseVossComment(level, sourceKey),
   )
