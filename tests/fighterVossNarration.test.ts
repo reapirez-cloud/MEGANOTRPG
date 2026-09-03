@@ -108,7 +108,7 @@ function assertNarration(text: string, label: string) {
 
 test("Voss authoring contract explicitly forbids mechanics-first explanations", () => {
   assert.match(vossVoice.explanationStyle, /не упрощённое правило и не перевод механики/iu)
-  assert.match(vossVoice.explanationStyle, /рассказ прожжённого приключенца/iu)
+  assert.match(vossVoice.explanationStyle, /пересказ боевого опыта|конкретный эпизод/iu)
   assert.ok(vossVoiceRules.some((rule) => /Запрещён шаблон.*пересказать эффект.*шутк/iu.test(rule)))
   assert.ok(vossVoiceRules.some((rule) => /Нельзя строить authorExplanation из description/iu.test(rule)))
   assert.ok(vossVoiceRules.some((rule) => /не обязан помогать восстановить правило/iu.test(rule)))
@@ -152,7 +152,7 @@ test("all ten Fighter archetypes and every supported archetype feature have uniq
 })
 
 test("Fighter class comment preserves grimdark black humor without profanity", () => {
-  assert.match(fighterClassVossComment, /смерт|бой/i)
+  assert.match(fighterClassVossComment, /войн|кошмар|шпаг/i)
   assert.doesNotMatch(fighterClassVossComment, /мраз|идиот|дебил|мудак/i)
 })
 
