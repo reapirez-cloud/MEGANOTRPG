@@ -24,14 +24,15 @@ function literarySubclass(subclass: (typeof paladinSubclassReferenceDraftWave2)[
  * Wave 4 deliberately extends the literary roster with UA Treachery and the
  * third-party Grim Hollow Pestilence/Zeal oaths.
  * Wave 5 adds third-party Abyss/Blood material and restores Illrigger to this
- * project's Paladin lineage as an infernal oath. Its modern presentation is
- * MCDM-inspired, but it must not be mistaken for an official Wizards Sacred Oath.
+ * project's Paladin lineage as an infernal oath. Historically the Illrigger name
+ * began as an evil-paladin archetype; the modern seal-driven presentation here is
+ * MCDM-inspired and must not be mistaken for an official Wizards Sacred Oath.
  *
  * Mechanics remain intentionally inactive until the independent Paladin rules/runtime pass.
  */
 export const paladinReferenceComplete = {
   ...paladinReferenceBase,
-  description: "Литературный перевод базового Паладина, девяти официальных клятв и шести дополнительных клятв готов. Дополнительный ростер хранит происхождение отдельно: Предательство — UA, Мор и Рвение — Grim Hollow, Бездна и Кровь — сторонний Midgard/Kobold Press-слой, Иллриггер оформлен в проекте как Клятва Аду с MCDM-вдохновением. Точные правила, выдача способностей и Character Engine будут подключены отдельным проверяемым механическим пакетом.",
+  description: "Литературный перевод базового Паладина, девяти официальных клятв и шести дополнительных клятв готов. Дополнительный ростер хранит происхождение отдельно: Предательство — UA, Мор и Рвение — Grim Hollow, Бездна и Кровь — сторонний Midgard/Kobold Press-слой, Иллриггер возвращён к паладинской линии как Клятва Аду; современная версия образа вдохновлена MCDM. Точные правила, выдача способностей и Character Engine будут подключены отдельным проверяемым механическим пакетом.",
   subclasses: [
     ...paladinReferenceBase.subclasses.filter((subclass) => firstWaveIds.has(subclass.id)),
     ...paladinSubclassReferenceDraftWave2.map(literarySubclass),
