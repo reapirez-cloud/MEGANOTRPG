@@ -77,9 +77,10 @@ Current stable presentation categories:
 **Text:** `READY`  
 **Mechanics/runtime:** `IN_PROGRESS`
 
-- `last_text_audit: 2026-09-02`
+- `last_text_audit: 2026-09-03`
 - `voss_class_subclass_feature_voice_pass: VOSS_SOLDIER_RESPECT_DISCIPLINE_COST_WITH_DISTINCT_ARCHETYPES_2026_09_02`
-- `current_dev_text: canonical Voss narration rewritten for the base Fighter, all ten supported archetypes and every active archetype feature; Fighter is the profession Voss understands and respects most, while each archetype explores a distinct facet of soldiering, command, endurance, magic distrust or the cost of survival; exact rules unchanged`
+- `current_dev_text: Brant base narration plus all four accepted Fighter Gemini subclass packs are restored as the active layered narration chain; every active archetype preview/feature can resolve through fighterVossNarration.ts and ReferenceGuide now also consumes dedicated Fighter feature comments`
+- `translation_wiring_audit: ACTIVE_CHAIN_RESTORED_FROM_MAIN_2026_09_03`
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
@@ -112,9 +113,10 @@ Do not promote Fighter mechanics to `READY` until dev and the intended deployed 
 **Text:** `READY`  
 **Mechanics/runtime:** `IN_PROGRESS`
 
-- `last_text_audit: 2026-09-02`
+- `last_text_audit: 2026-09-03`
 - `voss_class_subclass_feature_voice_pass: BATTLEFIELD_DUALITY_DRUID_HORROR_CANON_2026_09_02`
 - `current_dev_text: canonical Voss battlefield narration rewritten for base Druid, all eight circles and their feature cards; exact rules unchanged`
+- `translation_wiring_audit: DEV_AND_MAIN_ACTIVE_AGGREGATOR_IDENTICAL_2026_09_03`
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
@@ -148,9 +150,10 @@ Do not promote Druid mechanics to `READY` until dev and the intended deployed st
 **Text:** `READY`  
 **Mechanics/runtime:** `IN_PROGRESS`
 
-- `last_text_audit: 2026-09-02`
+- `last_text_audit: 2026-09-03`
 - `voss_class_subclass_feature_voice_pass: GRIMDARK_REARLINE_COWARD_PREJUDICE_WITH_DOMAIN_EXCEPTIONS_2026_09_02`
 - `current_dev_text: canonical Voss narration rewritten for the base Cleric, all fourteen supported domains and every active domain feature; class-wide distrust centers on rear-line cowardice while individual domains earn distinct contempt or grudging respect; exact rules unchanged`
+- `translation_wiring_audit: DEV_AND_MAIN_ACTIVE_AGGREGATOR_IDENTICAL_2026_09_03`
 - `last_mechanics_audit_started: 2026-08-29`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
@@ -180,8 +183,9 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 **Text:** `READY`  
 **Mechanics/runtime:** `READY`
 
-- `last_text_audit: 2026-09-01`
-- `voss_base_class_feature_voice_pass: CONCRETE_GRIMDARK_BLACK_HUMOR_WITHOUT_PROFANITY_OR_DIRECT_INSULTS_2026_09_01`
+- `last_text_audit: 2026-09-03`
+- `voss_base_class_feature_voice_pass: JOHANN_BASE_PLUS_LAYERED_GEMINI_SUBCLASS_PACKS_2026_09_03`
+- `translation_wiring_audit: RESTORED_JOHANN_AND_GEMINI_PACKS_1_2_3_4_IN_DEV_2026_09_03`
 - `last_mechanics_audit_started: 2026-08-31`
 - `last_dev_runtime_audit: 2026-09-02`
 - `last_deployed_runtime_audit: 2026-09-02`
@@ -193,7 +197,7 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 - `subclass_contract_regression: tests/wizardSubclassWave0.test.ts`
 - `dev_base_class_runtime: READY`
 - `dev_subclass_runtime_revision: wizard-subclasses-runtime@3`
-- `current_dev_text: clean Russian base-class and thirteen-subclass package with exact neutral rules plus the existing concrete Voss narration/comment layer`
+- `current_dev_text: player-facing Wizard narration now resolves from wizardVossNarrationJohann.ts for the base class and the layered Gemini subclass packs before falling back to the curated base subclass source; pack 2 includes the accepted Vitold/Bruno/Gorn literary pass, while Order of Scribes remains known literary debt rather than a runtime blocker`
 - `current_dev_runtime: physical spellbook and book-gated preparation remain authoritative; base Wizard plus Abjurer, Diviner, Evoker, Illusionist, Enchantment, Conjuration, Necromancy, Transmutation, War Magic, Bladesinging, Order of Scribes, Graviturgy and Chronurgy are implemented through the shared template/CE/action/spell/resource pipeline`
 - `starting_equipment_policy: NONE_CLASS_AUTHORED_GM_PROVIDES_GEAR`
 - `gena_rest_window_policy: FIRST_ASSIGNED_PLAYER_MESSAGE_OF_ANY_KIND_CLOSES_OPEN_POST_REST_WINDOWS`
@@ -245,29 +249,53 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 - The deployed campaign contains 13 active builtin Wizard subclass templates at revision `wizard-subclasses-runtime@3`, each with exactly the 3/6/10/14 rows. The deployed spell contract reports zero invalid method kinds and zero non-slot class-spell costs.
 - Regressions in `tests/wizardSubclassWave0.test.ts`, `tests/wizardSubclassRuntime.test.ts` and `tests/wizardSubclassSqlRuntime.test.ts` guard identity, effective level, CE behavior, resource/state boundaries and SQL/TypeScript payload parity.
 
-There are no known Wizard implementation or deployment blockers in the declared 13-subclass scope.
+There are no known Wizard implementation or deployment blockers in the declared 13-subclass scope. Order of Scribes remains an explicitly accepted literary debt only.
 
 ---
 
 ## Monk (`class:monk`)
 
-**Text:** `IN_PROGRESS`  
+**Text:** `READY_AUTHORING_SCOPE`  
 **Mechanics/runtime:** `NOT_STARTED`
 
 - `authoring_started: 2026-09-03`
 - `authoring_source: src/data/classes/monkReferenceDraft.ts`
-- `subclass_authoring_sources: src/data/classes/monkSubclassReferenceDraft.ts; src/data/classes/monkSubclassReferenceDraftWave2.ts; src/data/classes/monkSubclassReferenceDraftWave3.ts`
-- `current_dev_text: base Monk Voss narration follows Brother Korn of the Silent Stone; subclass waves now add Brother Anselm / Open Hand, Brother Cassian / Shadow, Uncle Bartosz / Drunken Master, Brother Vaclav / Elements, Sister Magdalena / Mercy, Master Yoshiro / Kensei, Brother Ragnar / Ascendant Dragon, Brother Hieronymus / Astral Self and Brother Ignatius / Sun Soul, each with preview stories, feature stories and separate Voss comments`
+- `subclass_authoring_sources: src/data/classes/monkSubclassReferenceDraft.ts; src/data/classes/monkSubclassReferenceDraftWave2.ts; src/data/classes/monkSubclassReferenceDraftWave3.ts; src/data/classes/monkSubclassReferenceDraftWave4.ts`
+- `authoring_closure: src/data/classes/monkAuthoringClosure.md`
+- `current_dev_text: Brother Korn base narration plus all ten declared WotC-scope literary identities are authored; Cobalt Soul / Sister Valeria and Living Weapon / Brother Goran are preserved as additional partner/third-party-adjacent authoring drafts pending independent source eligibility review`
 - `exact_rules: INTENTIONALLY_EMPTY_PENDING_MECHANICS_PASS`
 - `runtime_visibility: NOT_ACTIVE`
-- `class_reference_visibility: NOT_ACTIVE`
-- `subclasses: IN_PROGRESS_9_AUTHORED_OF_10_USER_PLANNED`
-- `authored_subclasses: open-hand, shadow, drunken-master, elements, mercy, kensei, ascendant-dragon, astral-self, sun-soul`
-- `queued_subclasses: long-death`
+- `class_reference_visibility: NOT_ACTIVE; stale generic static Monk fallback removed 2026-09-03 so unfinished mechanics cannot expose an obsolete non-Korn description`
+- `subclasses: LITERARY_SCOPE_COMPLETE_10_OF_10_PLUS_2_OPTIONAL`
+- `authored_wotc_scope: open-hand, shadow, drunken-master, elements, mercy, kensei, ascendant-dragon, astral-self, sun-soul, long-death`
+- `optional_authoring_candidates: cobalt-soul, living-weapon`
 - `source_policy: subclass source labels copied from the user are planning hints only and must be independently verified during the mechanics pass`
 - `mechanics_policy: Gemini copy is literary source only; exact 2024/legacy rules, level schedule, CE resources/actions/choices and runtime package will be authored and audited separately before activation`
 
 The drafts must not be imported into `classReference`, Chasovoy runtime templates or Character Class UI until exact Monk rules, resources/actions/choices and package-quality tests are complete enough for the intended activation step.
+
+---
+
+## Sorcerer (`class:sorcerer`)
+
+**Text:** `READY_AUTHORING_SCOPE`  
+**Mechanics/runtime:** `NOT_STARTED`
+
+- `authoring_started: 2026-09-03`
+- `authoring_source: src/data/classes/sorcererReferenceDraft.ts`
+- `subclass_authoring_sources: src/data/classes/sorcererSubclassReferenceDraft.ts; src/data/classes/sorcererSubclassReferenceDraftWave2.ts; src/data/classes/sorcererSubclassReferenceDraftWave3.ts; src/data/classes/sorcererSubclassReferenceDraftWave4.ts`
+- `authoring_plan: src/data/classes/sorcererAuthoringPlan.md`
+- `current_dev_text: Luka base narration plus the nine originally planned Sorcerer identities are authored; Runechild / Kazimir, Phoenix / Marfa and Stone / Gordey are additionally preserved as extended candidates`
+- `exact_rules: INTENTIONALLY_EMPTY_PENDING_MECHANICS_PASS`
+- `runtime_visibility: NOT_ACTIVE`
+- `class_reference_visibility: NOT_ACTIVE`
+- `subclasses: COMPLETE_9_PLANNED_PLUS_3_EXTENDED_AUTHORED`
+- `planned_authored: aberrant-sorcery, clockwork-sorcery, draconic-sorcery, wild-magic, divine-soul, shadow-magic, storm-sorcery, lunar-sorcery, pyromancer`
+- `extended_candidates: runechild, phoenix-sorcery, stone-sorcery`
+- `source_policy: source/publication labels in literary copy are non-authoritative; Plane Shift, partner/community and UA eligibility must be independently verified before runtime inclusion`
+- `mechanics_policy: Gemini/user-supplied exact-rule copy is literary planning material only; exact spellcasting, Sorcery Point, Metamagic, subclass mechanics, CE resources/actions and runtime package will be independently authored and audited before activation`
+
+The Sorcerer drafts must not be imported into `classReference`, Chasovoy runtime templates or Character Class UI until exact Sorcerer rules, source eligibility, resources/actions/choices and package-quality tests are complete enough for the intended activation step.
 
 ---
 
@@ -278,18 +306,20 @@ The drafts must not be imported into `classReference`, Chasovoy runtime template
 
 - `authoring_started: 2026-09-03`
 - `authoring_source: src/data/classes/warlockReferenceDraft.ts`
-- `subclass_authoring_sources: src/data/classes/warlockSubclassReferenceDraft.ts; src/data/classes/warlockSubclassReferenceDraftWave2.ts`
-- `current_dev_text: base Warlock Voss narration follows the abandoned drummer Michel; patron waves now add Emil / Archfey, Brun / Fiend, Sibylla / Great Old One, Zakhar / Celestial, Jonah / Hexblade and Nazar / Fathomless, preserving each patron relationship as a distinct story of need, protection, memory, vengeance, emotional anesthesia, compulsory purification, bodily possession or belonging to the abyss`
+- `subclass_authoring_sources: src/data/classes/warlockSubclassReferenceDraft.ts; src/data/classes/warlockSubclassReferenceDraftWave2.ts; src/data/classes/warlockSubclassReferenceDraftWave3.ts`
+- `authoring_plan: src/data/classes/warlockAuthoringPlan.md`
+- `current_dev_text: base Warlock Voss narration follows the abandoned drummer Michel; eight patron identities are now authored — Emil / Archfey, Brun / Fiend, Sibylla / Great Old One, Zakhar / Celestial, Jonah / Hexblade, Nazar / Fathomless, Abdul / Genie and captain von Stein / Undead`
 - `exact_rules: INTENTIONALLY_EMPTY_PENDING_MECHANICS_PASS`
 - `runtime_visibility: NOT_ACTIVE`
 - `class_reference_visibility: NOT_ACTIVE`
-- `subclasses: IN_PROGRESS_6_AUTHORED_OF_9_USER_PLANNED`
-- `authored_subclasses: archfey, fiend, great-old-one, celestial, hexblade, fathomless`
-- `queued_subclasses: genie, undead, undying`
+- `subclasses: IN_PROGRESS_8_AUTHORED_OF_9_USER_PLANNED`
+- `authored_subclasses: archfey, fiend, great-old-one, celestial, hexblade, fathomless, genie, undead`
+- `queued_subclasses: undying`
+- `duplicate_policy: the second supplied Fathomless/Nazar-Sverr block was not duplicated; wave 2 Nazar remains the canonical complete Fathomless literary draft`
 - `source_policy: patron source labels copied from the user are planning hints only and must be independently verified during the mechanics pass`
 - `mechanics_policy: Gemini/user-supplied exact-rule copy is literary planning material only; exact Pact Magic, Invocations, Pact options, patron spells/features, Mystic Arcanum, CE resources/actions and runtime package will be independently authored and audited before activation`
 
-The Warlock drafts must not be imported into `classReference`, Chasovoy runtime templates or Character Class UI until exact Warlock rules, patron packages, resource/action contracts and package-quality tests are complete enough for the intended activation step.
+The Warlock drafts must not be imported into `classReference`, Chasovlyak runtime templates or Character Class UI until exact Warlock rules, patron packages, resource/action contracts and package-quality tests are complete enough for the intended activation step.
 
 ---
 
