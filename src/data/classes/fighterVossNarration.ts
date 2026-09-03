@@ -36,22 +36,26 @@ import {
 } from "./fighterSubclassVossNarrationGeminiPack4.ts"
 import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep.ts"
 
-export const fighterClassVossNarration = normalizeVossWorldToneDeep(fighterBrantClassVossNarration)
-export const fighterClassVossComment = normalizeVossWorldToneDeep(fighterBrantClassVossComment)
+function normalizeFighterVoss(text: string | null | undefined) {
+  return normalizeVossWorldToneDeep(text).replace(/зерновому налогу/giu, "зерновому оброку")
+}
+
+export const fighterClassVossNarration = normalizeFighterVoss(fighterBrantClassVossNarration)
+export const fighterClassVossComment = normalizeFighterVoss(fighterBrantClassVossComment)
 
 export function getFighterBaseVossNarration(level: number, name: string) {
-  return normalizeVossWorldToneDeep(
+  return normalizeFighterVoss(
     getFighterBrantBaseVossNarration(level, name)
       || getPreviousFighterBaseVossNarration(level, name),
   )
 }
 
 export function getFighterBaseVossComment(level: number, name: string) {
-  return normalizeVossWorldToneDeep(getFighterBrantBaseVossComment(level, name))
+  return normalizeFighterVoss(getFighterBrantBaseVossComment(level, name))
 }
 
 export function getFighterSubclassVossNarration(subclassId: string) {
-  return normalizeVossWorldToneDeep(
+  return normalizeFighterVoss(
     getGeminiFighterSubclassVossNarrationPack4(subclassId)
       || getGeminiFighterSubclassVossNarrationPack3(subclassId)
       || getGeminiFighterSubclassVossNarrationPack2(subclassId)
@@ -61,7 +65,7 @@ export function getFighterSubclassVossNarration(subclassId: string) {
 }
 
 export function getFighterSubclassVossComment(subclassId: string) {
-  return normalizeVossWorldToneDeep(
+  return normalizeFighterVoss(
     getGeminiFighterSubclassVossCommentPack4(subclassId)
       || getGeminiFighterSubclassVossCommentPack3(subclassId)
       || getGeminiFighterSubclassVossCommentPack2(subclassId)
@@ -71,7 +75,7 @@ export function getFighterSubclassVossComment(subclassId: string) {
 }
 
 export function getFighterSubclassFeatureVossNarration(subclassId: string, level: number, name: string) {
-  return normalizeVossWorldToneDeep(
+  return normalizeFighterVoss(
     getGeminiFighterSubclassFeatureVossNarrationPack4(subclassId, level, name)
       || getGeminiFighterSubclassFeatureVossNarrationPack3(subclassId, level, name)
       || getGeminiFighterSubclassFeatureVossNarrationPack2(subclassId, level, name)
@@ -81,7 +85,7 @@ export function getFighterSubclassFeatureVossNarration(subclassId: string, level
 }
 
 export function getFighterSubclassFeatureVossComment(subclassId: string, level: number, name: string) {
-  return normalizeVossWorldToneDeep(
+  return normalizeFighterVoss(
     getGeminiFighterSubclassFeatureVossCommentPack4(subclassId, level, name)
       || getGeminiFighterSubclassFeatureVossCommentPack3(subclassId, level, name)
       || getGeminiFighterSubclassFeatureVossCommentPack2(subclassId, level, name)
