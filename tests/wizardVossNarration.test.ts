@@ -69,7 +69,7 @@ test("Voss grimdark calibration requires concrete consequences without profanity
   assert.match(vossVoice.harshness, /обугленные силуэты|топор в черепе/iu)
   assert.match(vossVoice.harshness, /Мат, ругань и прямые оскорбления/iu)
   assert.ok(vossVoiceRules.some((rule) => /конкретным последствием.*обугленный силуэт/iu.test(rule)))
-  assert.ok(vossVoiceRules.some((rule) => /Чёрный юмор.*безысходности/iu.test(rule)))
+  assert.ok(vossVoiceRules.some((rule) => /Чёрный юмор.*отчаяния|защита психики/iu.test(rule)))
 })
 
 test("rebuilt Wizard class and every real base feature use the new Voss register", () => {
