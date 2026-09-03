@@ -1,4 +1,4 @@
-import { paladinReferenceCurrent as paladinReferenceWave1 } from "./paladinReferenceCurrent.ts"
+import { paladinReferenceCurrent as paladinReferenceWave1 } from "./paladinReferenceCurrentWave1.ts"
 import { paladinSubclassReferenceDraftWave2 } from "./paladinSubclassReferenceDraftWave2.ts"
 
 const wave1Ids = new Set(["devotion", "vengeance", "ancients"])
