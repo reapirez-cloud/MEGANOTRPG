@@ -1,7 +1,11 @@
 import { bardReferenceCurrent as bardReferenceBase } from "./bardReferenceBase.ts"
-import { bardSubclassReferenceDraft } from "./bardSubclassReferenceDraft.ts"
+import {
+  bardSubclassReferenceDraft,
+  type BardSubclassReferenceDraft,
+} from "./bardSubclassReferenceDraft.ts"
+import { bardSubclassReferenceDraftWave2 } from "./bardSubclassReferenceDraftWave2.ts"
 
-function literarySubclass(subclass: (typeof bardSubclassReferenceDraft)[number]) {
+function literarySubclass(subclass: BardSubclassReferenceDraft) {
   return {
     id: subclass.id,
     name: subclass.name,
@@ -13,7 +17,10 @@ function literarySubclass(subclass: (typeof bardSubclassReferenceDraft)[number])
 }
 
 const authoredSubclasses = new Map(
-  bardSubclassReferenceDraft.map((subclass) => [subclass.id, literarySubclass(subclass)]),
+  [...bardSubclassReferenceDraft, ...bardSubclassReferenceDraftWave2].map((subclass) => [
+    subclass.id,
+    literarySubclass(subclass),
+  ]),
 )
 
 /**
@@ -25,7 +32,7 @@ const authoredSubclasses = new Map(
  */
 export const bardReferenceCurrent = {
   ...bardReferenceBase,
-  description: "Литературный перевод базового Барда и первых трёх коллегий готов. Остальные коллегии остаются в ростере до своих авторских волн; точные правила, ресурсы и Character Engine будут подключены отдельным проверяемым механическим пакетом.",
+  description: "Литературный перевод базового Барда и шести коллегий готов. Коллегии Творения, Духов и Трагедии остаются в ростере до своей авторской волны; точные правила, ресурсы и Character Engine будут подключены отдельным проверяемым механическим пакетом.",
   subclasses: bardReferenceBase.subclasses.map(
     (subclass) => authoredSubclasses.get(subclass.id) ?? subclass,
   ),
