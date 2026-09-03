@@ -1,4 +1,4 @@
-import { druidReference } from "./druidReference"
+import { druidReference } from "./druidReference.ts"
 import {
   druidClassVossComment as currentDruidClassVossComment,
   getDruidBaseVossNarration as getCurrentDruidBaseVossNarration,
@@ -6,25 +6,25 @@ import {
   getDruidSubclassFeatureVossNarration as getCurrentDruidSubclassFeatureVossNarration,
   getDruidSubclassVossComment as getCurrentDruidSubclassVossComment,
   getDruidSubclassVossNarration as getCurrentDruidSubclassVossNarration,
-} from "./druidVossNarrationMoon"
+} from "./druidVossNarrationMoon.ts"
 import {
   druidGeminiFeatureComments,
   druidGeminiFeatureNarration,
   druidGeminiSubclassComments,
   druidGeminiSubclassNarration,
-} from "./druidVossNarrationGemini"
+} from "./druidVossNarrationGemini.ts"
 import {
   druidMoreFeatureComments,
   druidMoreFeatureNarration,
   druidMoreSubclassComments,
   druidMoreSubclassNarration,
-} from "./druidVossNarrationGeminiMore"
+} from "./druidVossNarrationGeminiMore.ts"
 import {
   druidLechClassVossNarration,
   getDruidLechBaseVossComment,
   getDruidLechBaseVossNarration,
-} from "./druidVossNarrationLech"
-import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep"
+} from "./druidVossNarrationLech.ts"
+import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep.ts"
 
 export const druidClassVossNarration = normalizeVossWorldToneDeep(druidLechClassVossNarration)
 export const druidClassVossComment = normalizeVossWorldToneDeep(currentDruidClassVossComment)
