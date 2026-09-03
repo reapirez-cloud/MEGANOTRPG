@@ -8,32 +8,32 @@ import {
   getClericSubclassVossComment as getCurrentClericSubclassVossComment,
   getClericSubclassVossNarration as getCurrentClericSubclassVossNarration,
   normalizeClericDomainId,
-} from "./clericVossNarrationCurrent"
+} from "./clericVossNarrationCurrent.ts"
 import {
   clericDomainComments,
   clericDomainFeatureComments,
   clericDomainFeatureNarration,
   clericDomainNarration,
-} from "./clericVossNarrationDomainsGemini"
+} from "./clericVossNarrationDomainsGemini.ts"
 import {
   clericMoreDomainComments,
   clericMoreDomainFeatureComments,
   clericMoreDomainFeatureNarration,
   clericMoreDomainNarration,
-} from "./clericVossNarrationDomainsGeminiMore"
+} from "./clericVossNarrationDomainsGeminiMore.ts"
 import {
   clericBatch2DomainComments,
   clericBatch2DomainFeatureComments,
   clericBatch2DomainFeatureNarration,
   clericBatch2DomainNarration,
-} from "./clericVossNarrationDomainsGeminiBatch2"
+} from "./clericVossNarrationDomainsGeminiBatch2.ts"
 import {
   clericBatch3DomainComments,
   clericBatch3DomainFeatureComments,
   clericBatch3DomainFeatureNarration,
   clericBatch3DomainNarration,
-} from "./clericVossNarrationDomainsGeminiBatch3"
-import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep"
+} from "./clericVossNarrationDomainsGeminiBatch3.ts"
+import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep.ts"
 
 export { clericVossNarrationCoverage, normalizeClericDomainId }
 
