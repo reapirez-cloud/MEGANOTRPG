@@ -33,24 +33,24 @@ import {
   clericBatch3DomainFeatureNarration,
   clericBatch3DomainNarration,
 } from "./clericVossNarrationDomainsGeminiBatch3"
-import { normalizeVossWorldTone } from "./vossWorldTone"
+import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep"
 
 export { clericVossNarrationCoverage, normalizeClericDomainId }
 
-export const clericClassVossNarration = normalizeVossWorldTone(currentClericClassVossNarration)
-export const clericClassVossComment = normalizeVossWorldTone(currentClericClassVossComment)
+export const clericClassVossNarration = normalizeVossWorldToneDeep(currentClericClassVossNarration)
+export const clericClassVossComment = normalizeVossWorldToneDeep(currentClericClassVossComment)
 
 export function getClericBaseVossNarration(level: number, sourceKey: string) {
-  return normalizeVossWorldTone(getCurrentClericBaseVossNarration(level, sourceKey))
+  return normalizeVossWorldToneDeep(getCurrentClericBaseVossNarration(level, sourceKey))
 }
 
 export function getClericBaseVossComment(level: number, sourceKey: string) {
-  return normalizeVossWorldTone(getCurrentClericBaseVossComment(level, sourceKey))
+  return normalizeVossWorldToneDeep(getCurrentClericBaseVossComment(level, sourceKey))
 }
 
 export function getClericSubclassVossNarration(subclassId: string) {
   const id = normalizeClericDomainId(subclassId)
-  return normalizeVossWorldTone(
+  return normalizeVossWorldToneDeep(
     clericBatch3DomainNarration[id]
       || clericBatch2DomainNarration[id]
       || clericMoreDomainNarration[id]
@@ -61,7 +61,7 @@ export function getClericSubclassVossNarration(subclassId: string) {
 
 export function getClericSubclassVossComment(subclassId: string) {
   const id = normalizeClericDomainId(subclassId)
-  return normalizeVossWorldTone(
+  return normalizeVossWorldToneDeep(
     clericBatch3DomainComments[id]
       || clericBatch2DomainComments[id]
       || clericMoreDomainComments[id]
@@ -72,7 +72,7 @@ export function getClericSubclassVossComment(subclassId: string) {
 
 export function getClericSubclassFeatureVossNarration(subclassId: string, sourceKey: string) {
   const id = normalizeClericDomainId(subclassId)
-  return normalizeVossWorldTone(
+  return normalizeVossWorldToneDeep(
     clericBatch3DomainFeatureNarration[id]?.[sourceKey]
       || clericBatch2DomainFeatureNarration[id]?.[sourceKey]
       || clericMoreDomainFeatureNarration[id]?.[sourceKey]
@@ -83,7 +83,7 @@ export function getClericSubclassFeatureVossNarration(subclassId: string, source
 
 export function getClericSubclassFeatureVossComment(subclassId: string, sourceKey: string) {
   const id = normalizeClericDomainId(subclassId)
-  return normalizeVossWorldTone(
+  return normalizeVossWorldToneDeep(
     clericBatch3DomainFeatureComments[id]?.[sourceKey]
       || clericBatch2DomainFeatureComments[id]?.[sourceKey]
       || clericMoreDomainFeatureComments[id]?.[sourceKey]
