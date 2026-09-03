@@ -1,5 +1,13 @@
 type Replacement = readonly [RegExp, string]
 
+const unicodeWordBoundarySource = String.raw`(?:(?<![\p{L}\p{N}_])(?=[\p{L}\p{N}_])|(?<=[\p{L}\p{N}_])(?![\p{L}\p{N}_]))`
+
+function withUnicodeWordBoundaries(pattern: RegExp) {
+  if (!pattern.source.includes("\\b")) return pattern
+  const flags = pattern.flags.includes("u") ? pattern.flags : `${pattern.flags}u`
+  return new RegExp(pattern.source.split("\\b").join(unicodeWordBoundarySource), flags)
+}
+
 /**
  * Player-facing Voss narration must sound like a brutal fantasy war memoir,
  * not a 19th/20th-century military report or a modern psychology textbook.
@@ -286,9 +294,13 @@ const worldToneReplacements: Replacement[] = [
   [/\bотделений\b/giu, "десятков"],
 ]
 
+const compiledWorldToneReplacements = worldToneReplacements.map(
+  ([pattern, replacement]) => [withUnicodeWordBoundaries(pattern), replacement] as const,
+)
+
 export function normalizeVossWorldTone(text: string | null | undefined) {
   if (!text) return text || ""
-  return worldToneReplacements.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), text)
+  return compiledWorldToneReplacements.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), text)
 }
 
 export function normalizeVossOptional(text: string | null | undefined) {
@@ -300,7 +312,7 @@ export function normalizeVossOptional(text: string | null | undefined) {
  * Words that should not return to authored Voss prose. Kept exported so tests,
  * audits and future authoring tooling can share the same contract.
  */
-export const vossForbiddenWorldTonePatterns = [
+const rawForbiddenWorldTonePatterns = [
   /\bпистолет/iu,
   /\bревольвер/iu,
   /\bвинтовк/iu,
@@ -329,3 +341,5 @@ export const vossForbiddenWorldTonePatterns = [
   /\bТорун/iu,
   /\bШтральзунд/iu,
 ] as const
+
+export const vossForbiddenWorldTonePatterns = rawForbiddenWorldTonePatterns.map(withUnicodeWordBoundaries)
