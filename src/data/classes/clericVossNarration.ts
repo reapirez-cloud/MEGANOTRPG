@@ -1,9 +1,9 @@
 import {
-  clericClassVossComment,
-  clericClassVossNarration,
+  clericClassVossComment as currentClericClassVossComment,
+  clericClassVossNarration as currentClericClassVossNarration,
   clericVossNarrationCoverage,
-  getClericBaseVossComment,
-  getClericBaseVossNarration,
+  getClericBaseVossComment as getCurrentClericBaseVossComment,
+  getClericBaseVossNarration as getCurrentClericBaseVossNarration,
   getClericSubclassFeatureVossNarration as getCurrentClericSubclassFeatureVossNarration,
   getClericSubclassVossComment as getCurrentClericSubclassVossComment,
   getClericSubclassVossNarration as getCurrentClericSubclassVossNarration,
@@ -33,48 +33,61 @@ import {
   clericBatch3DomainFeatureNarration,
   clericBatch3DomainNarration,
 } from "./clericVossNarrationDomainsGeminiBatch3"
+import { normalizeVossWorldTone } from "./vossWorldTone"
 
-export {
-  clericClassVossComment,
-  clericClassVossNarration,
-  clericVossNarrationCoverage,
-  getClericBaseVossComment,
-  getClericBaseVossNarration,
-  normalizeClericDomainId,
+export { clericVossNarrationCoverage, normalizeClericDomainId }
+
+export const clericClassVossNarration = normalizeVossWorldTone(currentClericClassVossNarration)
+export const clericClassVossComment = normalizeVossWorldTone(currentClericClassVossComment)
+
+export function getClericBaseVossNarration(level: number, sourceKey: string) {
+  return normalizeVossWorldTone(getCurrentClericBaseVossNarration(level, sourceKey))
+}
+
+export function getClericBaseVossComment(level: number, sourceKey: string) {
+  return normalizeVossWorldTone(getCurrentClericBaseVossComment(level, sourceKey))
 }
 
 export function getClericSubclassVossNarration(subclassId: string) {
   const id = normalizeClericDomainId(subclassId)
-  return clericBatch3DomainNarration[id]
-    || clericBatch2DomainNarration[id]
-    || clericMoreDomainNarration[id]
-    || clericDomainNarration[id]
-    || getCurrentClericSubclassVossNarration(subclassId)
+  return normalizeVossWorldTone(
+    clericBatch3DomainNarration[id]
+      || clericBatch2DomainNarration[id]
+      || clericMoreDomainNarration[id]
+      || clericDomainNarration[id]
+      || getCurrentClericSubclassVossNarration(subclassId),
+  )
 }
 
 export function getClericSubclassVossComment(subclassId: string) {
   const id = normalizeClericDomainId(subclassId)
-  return clericBatch3DomainComments[id]
-    || clericBatch2DomainComments[id]
-    || clericMoreDomainComments[id]
-    || clericDomainComments[id]
-    || getCurrentClericSubclassVossComment(subclassId)
+  return normalizeVossWorldTone(
+    clericBatch3DomainComments[id]
+      || clericBatch2DomainComments[id]
+      || clericMoreDomainComments[id]
+      || clericDomainComments[id]
+      || getCurrentClericSubclassVossComment(subclassId),
+  )
 }
 
 export function getClericSubclassFeatureVossNarration(subclassId: string, sourceKey: string) {
   const id = normalizeClericDomainId(subclassId)
-  return clericBatch3DomainFeatureNarration[id]?.[sourceKey]
-    || clericBatch2DomainFeatureNarration[id]?.[sourceKey]
-    || clericMoreDomainFeatureNarration[id]?.[sourceKey]
-    || clericDomainFeatureNarration[id]?.[sourceKey]
-    || getCurrentClericSubclassFeatureVossNarration(subclassId, sourceKey)
+  return normalizeVossWorldTone(
+    clericBatch3DomainFeatureNarration[id]?.[sourceKey]
+      || clericBatch2DomainFeatureNarration[id]?.[sourceKey]
+      || clericMoreDomainFeatureNarration[id]?.[sourceKey]
+      || clericDomainFeatureNarration[id]?.[sourceKey]
+      || getCurrentClericSubclassFeatureVossNarration(subclassId, sourceKey),
+  )
 }
 
 export function getClericSubclassFeatureVossComment(subclassId: string, sourceKey: string) {
   const id = normalizeClericDomainId(subclassId)
-  return clericBatch3DomainFeatureComments[id]?.[sourceKey]
-    || clericBatch2DomainFeatureComments[id]?.[sourceKey]
-    || clericMoreDomainFeatureComments[id]?.[sourceKey]
-    || clericDomainFeatureComments[id]?.[sourceKey]
-    || ""
+  return normalizeVossWorldTone(
+    clericBatch3DomainFeatureComments[id]?.[sourceKey]
+      || clericBatch2DomainFeatureComments[id]?.[sourceKey]
+      || clericMoreDomainFeatureComments[id]?.[sourceKey]
+      || clericDomainFeatureComments[id]?.[sourceKey]
+      || "",
+  )
 }
