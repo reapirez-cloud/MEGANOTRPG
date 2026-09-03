@@ -26,8 +26,10 @@ import {
 import {
   fighterClassVossComment,
   fighterClassVossNarration,
+  getFighterBaseVossComment,
   getFighterBaseVossNarration,
   getFighterSubclassVossComment,
+  getFighterSubclassFeatureVossComment,
   getFighterSubclassFeatureVossNarration,
   getFighterSubclassVossNarration,
 } from "../../data/classes/fighterVossNarration"
@@ -344,7 +346,7 @@ export default function ReferenceGuide({ campaignId: campaignIdProp, character, 
 
   const classFeatures = useMemo(() => {
     const features = buildTemplateFeatures(classTemplate, levels)
-    if (selectedClass?.id === "fighter") return features.map((feature) => ({ ...feature, explanation: getFighterBaseVossNarration(feature.level, feature.name) || feature.explanation }))
+    if (selectedClass?.id === "fighter") return features.map((feature) => ({ ...feature, explanation: getFighterBaseVossNarration(feature.level, feature.name) || feature.explanation, voss: getFighterBaseVossComment(feature.level, feature.name) || feature.voss }))
     if (selectedClass?.id === "cleric") return features.map((feature) => ({ ...feature, explanation: getClericBaseVossNarration(feature.level, feature.sourceKey) || feature.explanation, voss: getClericBaseVossComment(feature.level, feature.sourceKey) || feature.voss }))
     if (selectedClass?.id === "wizard") return features.map((feature) => ({ ...feature, explanation: getWizardBaseVossNarration(feature.level, feature.sourceKey) || feature.explanation, voss: getWizardBaseVossComment(feature.level, feature.sourceKey) || feature.voss }))
     return features
@@ -363,7 +365,7 @@ export default function ReferenceGuide({ campaignId: campaignIdProp, character, 
       })
     }
     if (selectedClass?.id === "druid") return features.map((feature) => ({ ...feature, explanation: getDruidSubclassFeatureVossNarration(selectedSubclass.id, feature.name) || feature.explanation, voss: getDruidSubclassFeatureVossComment(selectedSubclass.id, feature.name) || feature.voss }))
-    if (selectedClass?.id === "fighter") return features.map((feature) => ({ ...feature, explanation: getFighterSubclassFeatureVossNarration(selectedSubclass.id, feature.level, feature.name) || feature.explanation }))
+    if (selectedClass?.id === "fighter") return features.map((feature) => ({ ...feature, explanation: getFighterSubclassFeatureVossNarration(selectedSubclass.id, feature.level, feature.name) || feature.explanation, voss: getFighterSubclassFeatureVossComment(selectedSubclass.id, feature.level, feature.name) || feature.voss }))
     if (selectedClass?.id === "cleric") return features.map((feature) => ({ ...feature, explanation: getClericSubclassFeatureVossNarration(selectedSubclass.id, feature.sourceKey) || feature.explanation, voss: getClericSubclassFeatureVossComment(selectedSubclass.id, feature.sourceKey) || feature.voss }))
     return features
   }, [selectedClass, selectedSubclass, selectedSubclassTemplate, levels])
