@@ -43,12 +43,19 @@ test("historical full-catalog migrations stay immutable migration history", () =
   assert.match(historicalSubclassSql, /private\.official_subclass_spell_mechanic/)
 })
 
-test("player-facing active reference contains only rebuilt class families", () => {
+test("player-facing reference distinguishes rebuilt runtime classes from literary previews", () => {
   assert.deepEqual(
     classReference.map((entry) => entry.id).sort(),
+    ["cleric", "druid", "fighter", "monk", "sorcerer", "warlock", "wizard"],
+  )
+  assert.deepEqual(
+    classReference.filter((entry) => !entry.referenceOnly).map((entry) => entry.id).sort(),
     ["cleric", "druid", "fighter", "wizard"],
   )
-  assert.equal(classReference.reduce((sum, entry) => sum + entry.subclasses.length, 0), 45)
+  assert.deepEqual(
+    classReference.filter((entry) => entry.referenceOnly).map((entry) => entry.id).sort(),
+    ["monk", "sorcerer", "warlock"],
+  )
   assert.equal(classReference.find((entry) => entry.id === "wizard")?.subclasses.length, 13)
 })
 
