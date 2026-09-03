@@ -1,4 +1,4 @@
-import { paladinReferenceCurrent as paladinReferenceBase } from "./paladinReferenceCurrent.ts"
+import { paladinReferenceCurrent as paladinReferenceBase } from "./paladinReferenceWave2Base.ts"
 import { paladinSubclassReferenceDraftWave2 } from "./paladinSubclassReferenceDraftWave2.ts"
 import { paladinSubclassReferenceDraftWave3 } from "./paladinSubclassReferenceDraftWave3.ts"
 
