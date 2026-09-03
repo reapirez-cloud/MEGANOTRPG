@@ -1,3 +1,4 @@
+import { paladinSubclassReferenceDrafts } from "./paladinSubclassReferenceDraft.ts"
 import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep.ts"
 
 type PaladinLiteraryFeature = {
@@ -188,22 +189,7 @@ const features: PaladinLiteraryFeature[] = [
   },
 ]
 
-const subclasses = [
-  {
-    id: "devotion",
-    name: "Клятва Преданности",
-    summary: "Оплот праведности, защиты невинных и борьбы с потусторонней нечистью. Полный литературный пакет клятвы будет добавлен отдельно.",
-  },
-  {
-    id: "vengeance",
-    name: "Клятва Мести",
-    summary: "Бескомпромиссная охота на великое зло, где собственная чистота уступает месту результату. Полный литературный пакет клятвы будет добавлен отдельно.",
-  },
-  {
-    id: "ancients",
-    name: "Клятва Древних",
-    summary: "Защита жизни, первобытного света и мира от увядания и тлена. Полный литературный пакет клятвы будет добавлен отдельно.",
-  },
+const remainingSubclassPlaceholders = [
   {
     id: "glory",
     name: "Клятва Славы",
@@ -241,7 +227,7 @@ export const paladinReferenceCurrent = {
   name: "Паладин",
   nameEn: "Paladin",
   tagline: "Сила не от милости богов, а от клятвы, которую человек отказался нарушить даже ради здравого смысла.",
-  description: "Литературный перевод базового Паладина готов. Точные правила, выдача способностей и Character Engine будут подключены отдельным проверяемым механическим пакетом; клятвы пока представлены только официальным ростером.",
+  description: "Литературный перевод базового Паладина и первой тройки клятв готов. Точные правила, выдача способностей и Character Engine будут подключены отдельным проверяемым механическим пакетом.",
   mechanics: "",
   explanation: normalizeVossWorldToneDeep(authorDescription),
   voss: normalizeVossWorldToneDeep(authorComment),
@@ -251,5 +237,5 @@ export const paladinReferenceCurrent = {
     voss: normalizeVossWorldToneDeep(feature.voss),
   })),
   referenceOnly: true,
-  subclasses,
+  subclasses: [...paladinSubclassReferenceDrafts, ...remainingSubclassPlaceholders],
 }
