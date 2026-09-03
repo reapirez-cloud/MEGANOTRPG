@@ -37,6 +37,8 @@ import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep.ts"
 
 export { clericVossNarrationCoverage, normalizeClericDomainId }
 
+const twilightDivineStrikeNarration = `На ночной дороге у Проклятой гати один налётчик решил, что Урсула — просто старая сестра в сером плаще. Он выскочил из камышей и занёс саблю над её головой. Урсула даже не подняла голоса: только перехватила короткую булаву обеими руками и ударила его в грудь. Железо вошло неглубоко, зато следом из навершия расползся холодный сумеречный свет. Мужик застыл с открытым ртом, будто вместе с теплом из него вышла сама решимость жить, и рухнул в грязь уже молча. Вот что мне всегда не нравилось в её милосердной полутьме: своих она укрывала от страха, а чужим тем же светом объясняла, что ночь бывает последней.`
+
 function normalizeClericVoss(text: string | null | undefined) {
   return normalizeVossWorldToneDeep(text)
     .replace(/первоклассного бухгалтера/giu, "сухого счётного писаря")
@@ -80,6 +82,9 @@ export function getClericSubclassVossComment(subclassId: string) {
 
 export function getClericSubclassFeatureVossNarration(subclassId: string, sourceKey: string) {
   const id = normalizeClericDomainId(subclassId)
+  if (id === "twilight" && sourceKey === "divine-strike-l8-1") {
+    return normalizeClericVoss(twilightDivineStrikeNarration)
+  }
   return normalizeClericVoss(
     clericBatch3DomainFeatureNarration[id]?.[sourceKey]
       || clericBatch2DomainFeatureNarration[id]?.[sourceKey]
