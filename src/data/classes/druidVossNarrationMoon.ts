@@ -6,7 +6,7 @@ import {
   getDruidSubclassFeatureVossNarration as getBaseDruidSubclassFeatureVossNarration,
   getDruidSubclassVossComment as getBaseDruidSubclassVossComment,
   getDruidSubclassVossNarration as getBaseDruidSubclassVossNarration,
-} from "./druidVossNarrationBase"
+} from "./druidVossNarrationBase.ts"
 
 export { druidClassVossComment, druidClassVossNarration, getDruidBaseVossNarration }
 
