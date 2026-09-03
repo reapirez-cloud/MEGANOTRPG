@@ -3,38 +3,38 @@ import {
   getFighterSubclassFeatureVossNarration as getPreviousFighterSubclassFeatureVossNarration,
   getFighterSubclassVossComment as getPreviousFighterSubclassVossComment,
   getFighterSubclassVossNarration as getPreviousFighterSubclassVossNarration,
-} from "./fighterVossNarrationPreBrant"
+} from "./fighterVossNarrationPreBrant.ts"
 import {
   fighterBrantClassVossComment,
   fighterBrantClassVossNarration,
   getFighterBrantBaseVossComment,
   getFighterBrantBaseVossNarration,
-} from "./fighterVossNarrationBrant"
+} from "./fighterVossNarrationBrant.ts"
 import {
   getGeminiFighterSubclassFeatureVossComment,
   getGeminiFighterSubclassFeatureVossNarration,
   getGeminiFighterSubclassVossComment,
   getGeminiFighterSubclassVossNarration,
-} from "./fighterSubclassVossNarrationGeminiPack1"
+} from "./fighterSubclassVossNarrationGeminiPack1.ts"
 import {
   getGeminiFighterSubclassFeatureVossCommentPack2,
   getGeminiFighterSubclassFeatureVossNarrationPack2,
   getGeminiFighterSubclassVossCommentPack2,
   getGeminiFighterSubclassVossNarrationPack2,
-} from "./fighterSubclassVossNarrationGeminiPack2"
+} from "./fighterSubclassVossNarrationGeminiPack2.ts"
 import {
   getGeminiFighterSubclassFeatureVossCommentPack3,
   getGeminiFighterSubclassFeatureVossNarrationPack3,
   getGeminiFighterSubclassVossCommentPack3,
   getGeminiFighterSubclassVossNarrationPack3,
-} from "./fighterSubclassVossNarrationGeminiPack3"
+} from "./fighterSubclassVossNarrationGeminiPack3.ts"
 import {
   getGeminiFighterSubclassFeatureVossCommentPack4,
   getGeminiFighterSubclassFeatureVossNarrationPack4,
   getGeminiFighterSubclassVossCommentPack4,
   getGeminiFighterSubclassVossNarrationPack4,
-} from "./fighterSubclassVossNarrationGeminiPack4"
-import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep"
+} from "./fighterSubclassVossNarrationGeminiPack4.ts"
+import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep.ts"
 
 export const fighterClassVossNarration = normalizeVossWorldToneDeep(fighterBrantClassVossNarration)
 export const fighterClassVossComment = normalizeVossWorldToneDeep(fighterBrantClassVossComment)
