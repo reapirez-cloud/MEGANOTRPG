@@ -46,7 +46,7 @@ test("historical full-catalog migrations stay immutable migration history", () =
 test("player-facing reference distinguishes rebuilt runtime classes from literary previews", () => {
   assert.deepEqual(
     classReference.map((entry) => entry.id).sort(),
-    ["cleric", "druid", "fighter", "monk", "paladin", "sorcerer", "warlock", "wizard"],
+    ["bard", "cleric", "druid", "fighter", "monk", "paladin", "sorcerer", "warlock", "wizard"],
   )
   assert.deepEqual(
     classReference.filter((entry) => !entry.referenceOnly).map((entry) => entry.id).sort(),
@@ -54,7 +54,7 @@ test("player-facing reference distinguishes rebuilt runtime classes from literar
   )
   assert.deepEqual(
     classReference.filter((entry) => entry.referenceOnly).map((entry) => entry.id).sort(),
-    ["monk", "paladin", "sorcerer", "warlock"],
+    ["bard", "monk", "paladin", "sorcerer", "warlock"],
   )
   assert.equal(classReference.find((entry) => entry.id === "wizard")?.subclasses.length, 13)
 })
