@@ -2,53 +2,60 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-02-D
+## Released patches
 
-**Status:** OPEN
-**Branch:** `dev`
+### Patch — 2026-09-02-D
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `70596b402a9f37ce8295b174462381c8633badfd`
 **Started:** 2026-09-02
+**Released:** 2026-09-03
+**Release identity:** `patch 2026-09-02-D / explicit main fast-forward release`
 
 ### Player-facing changes
 
-- None yet. The new Monk and Warlock material is intentionally kept as authoring-only draft content and is not visible in the class catalog or character UI.
-- Added literary draft coverage for nine planned Monk subclasses across three waves: Open Hand / Brother Anselm, Shadow / Brother Cassian, Drunken Master / Uncle Bartosz, Elements / Brother Vaclav, Mercy / Sister Magdalena, Kensei / Master Yoshiro, Ascendant Dragon / Brother Ragnar, Astral Self / Brother Hieronymus and Sun Soul / Brother Ignatius. Each keeps a subclass preview, feature stories and separate Voss comments while remaining inactive.
-- Added the Warlock base literary draft around Michel plus six patron packages across two waves: Archfey / Emil, Fiend / Brun, Great Old One / Sibylla, Celestial / Zakhar, Hexblade / Jonah and Fathomless / Nazar. Their patron relationships remain distinct stories of memory-for-relief, vengeance-for-survival, cosmic emotional anesthesia, compulsory celestial purification, bodily possession by a weapon and belonging found in the abyss rather than generic greedy Faustian bargains.
+- Restored the accepted layered Voss translation chain for Fighter: Brant is the active base voice and all four accepted Fighter Gemini subclass packs are once again resolved before the older fallback material.
+- Restored the accepted Wizard literary chain: Johann/Kaspar is the active base-class narration and Wizard subclass Gemini packs 1–4 are applied in priority order before curated fallback text. The accepted Vitold / Bruno / Gorn pass from pack 2 is therefore active again; Order of Scribes remains an explicit literary debt rather than a mechanics blocker.
+- Restored dedicated Fighter feature-level Voss comments in `ReferenceGuide`, so the UI no longer drops the separate post-rule comment layer for Fighter abilities.
+- Removed the stale generic Monk card from the player-facing static class catalog. Monk literary authoring is complete around Brother Korn, but the class remains intentionally hidden until its independently authored mechanics/runtime package is ready instead of exposing obsolete fallback copy.
+- Druid and Cleric were audited during the translation reconciliation and their active narration aggregators already matched the accepted `main` versions; no replacement was needed.
+- Completed the declared Monk literary scope: Brother Korn base class, all ten declared WotC-scope subclass drafts, plus Cobalt Soul / Sister Valeria and Living Weapon / Brother Goran as optional source-review candidates.
+- Preserved the complete Sorcerer literary authoring package: Luka base class, nine originally planned subclass identities and three extended candidates (Runechild, Phoenix Sorcery and Stone Sorcery), all still authoring-only.
+- Expanded Warlock literary authoring to eight of nine planned patrons by adding Genie / Abdul and Undead / captain von Stein. The existing Nazar/Fathomless wave remains canonical rather than duplicating a second overlapping Fathomless draft.
 
 ### Runtime and rules changes
 
-- No Monk or Warlock mechanics/runtime were added. Base and subclass drafts keep every exact-rule field empty so Gemini/user-authored prose, levels, spell lists and rule claims cannot become mechanical truth by accident.
-- User-supplied class/subclass source labels and remaining authoring queues are stored only as planning hints; exact editions, feature schedules, Pact Magic/Invocations and other mechanics still require an independent rules pass.
+- No new Monk, Sorcerer or Warlock mechanics/runtime were activated. Their authoring drafts continue to keep `mechanics` empty and treat supplied exact-rule blocks, levels, spell lists and source labels as non-authoritative planning material.
+- Fighter, Druid, Cleric and Wizard mechanics were not rewritten by the translation reconciliation; the change restores only which accepted literary layers the existing reference UI resolves.
+- Removed the unfinished Monk static fallback from `classReference`; unfinished classes must not appear merely because prose exists while their canonical Chasovoy/CE runtime package is absent.
 
 ### Repository / release process
 
-- Opened immediately after successful promotion of patch `2026-09-02-C`.
-- Added `src/data/classes/monkReferenceDraft.ts` as the non-runtime literary source for Brother Korn's base-Monk Voss narration and feature comments.
-- Added `src/data/classes/monkSubclassReferenceDraft.ts` as the non-runtime literary source for the first subclass wave.
-- Added `src/data/classes/monkSubclassReferenceDraftWave2.ts` for Elements, Mercy and Kensei, preserving only their literary Voss layers while keeping mechanics/details empty.
-- Added `src/data/classes/monkSubclassReferenceDraftWave3.ts` for Ascendant Dragon, Astral Self and Sun Soul under the same authoring-only boundary.
-- Added `src/data/classes/warlockReferenceDraft.ts` and `src/data/classes/warlockAuthoringPlan.md` as the non-runtime base-class literary source and authoring queue for Warlock.
-- Added `src/data/classes/warlockSubclassReferenceDraft.ts` for the first three patron literary packages, with all mechanics/details intentionally empty.
-- Added `src/data/classes/warlockSubclassReferenceDraftWave2.ts` for Celestial, Hexblade and Fathomless under the same authoring-only boundary; `warlockAuthoringPlan.md` now records six of nine planned patrons as authored.
-- Updated `CLASS_WORK_STATUS.md` with the second Warlock wave: text authoring remains `IN_PROGRESS`, mechanics/runtime remain `NOT_STARTED`, six of nine user-planned patrons are authored, and catalog/runtime activation remains forbidden until the exact rules/package pass is complete.
-- Updated the Monk checkpoint in `CLASS_WORK_STATUS.md`: text authoring remains `IN_PROGRESS`, mechanics/runtime remain `NOT_STARTED`, nine of the ten user-planned subclasses now have authored literary drafts, and activation remains forbidden until the exact rules/package pass is complete.
+- Reconciled the previously diverged `main` and `dev` histories with a real two-parent merge commit (`0923c2dc42351698100da97d8f392e7adf808a7e`) instead of force-updating either branch. The merge preserved the current dev authoring work while restoring the accepted Fighter/Wizard translation files that existed only on the newer main line.
+- PR #43 is closed/superseded by that explicit reconciliation merge.
+- Added `src/data/classes/warlockSubclassReferenceDraftWave3.ts` for Genie and Undead under the same authoring-only boundary used by the earlier Warlock waves.
+- Updated `warlockAuthoringPlan.md` to eight of nine planned patrons and recorded the duplicate-Fathomless policy.
+- Reconciled `CLASS_WORK_STATUS.md`: Fighter/Wizard active translation wiring is recorded, Druid/Cleric equality is recorded, Monk is 10/10 plus two optional literary candidates, Sorcerer now has a dedicated 9+3 authoring checkpoint, and Warlock is 8/9 with only Undying left.
 
 ### Tests / verification added in this patch
 
-- Verified the Monk and Warlock drafts are authoring-only sources and are not activated through `classReference` or runtime code; no mechanics/build-success claim is made for the future packages.
-- The class/subclass drafts explicitly document that source labels, feature levels, spell lists and names supplied with the literary copy are not authoritative mechanics.
+- Verified the active Druid and Cleric aggregator blobs match between reconciled dev and the accepted main source.
+- Verified Fighter now resolves Brant plus Gemini packs 1–4 and `ReferenceGuide` imports the dedicated Fighter base/feature comment getters.
+- Verified Wizard now resolves the Johann base source and subclass Gemini packs 1–4 before fallback material.
+- Verified Monk/Sorcerer/Warlock authoring drafts remain outside the active runtime/catalog path; the stale Monk catalog shell was removed rather than activating unverified rules.
+- No new full CI/build-success claim is made for this authoring/translation reconciliation unless a current-head workflow reports it separately.
 
 ### Known incomplete work
 
-- The repository still has 10 stale Voss/text-contract assertions inherited from the released patch and awaiting reconciliation with the authored narration.
-- Monk exact 2024/legacy rules, CE resources/actions/choices, package-quality tests and catalog/runtime activation are intentionally pending a separate mechanics pass.
-- One user-planned Monk subclass still needs its literary draft: Long Death.
-- Warlock exact 2024/legacy rules, Pact Magic slot progression, Invocations/Pact options, patron spell packages, Mystic Arcanum, CE resources/actions, package tests and catalog/runtime activation are intentionally pending a separate mechanics pass.
-- Three user-planned Warlock patrons remain to be authored: Genie, Undead and Undying.
+- The repository still has 10 stale Voss/text-contract assertions inherited from the earlier narration releases and awaiting reconciliation with the authored text.
+- Monk exact 2024/legacy rules, CE resources/actions/choices, package-quality tests and catalog/runtime activation remain intentionally pending a separate mechanics pass.
+- Sorcerer exact rules, source eligibility for extended candidates, Sorcery Point/Metamagic runtime, CE integration and package tests remain intentionally pending a separate mechanics pass.
+- Warlock exact rules, Pact Magic slot progression, Invocations/Pact options, patron spell packages, Mystic Arcanum, CE resources/actions and package tests remain intentionally pending a separate mechanics pass.
+- One user-planned Warlock literary patron remains: Undying / Бессмертный.
+- Wizard Order of Scribes remains accepted literary debt; the already-certified Wizard runtime package is not blocked by that prose debt.
 
 ---
-
-## Released patches
 
 ### Patch — 2026-09-02-C
 
