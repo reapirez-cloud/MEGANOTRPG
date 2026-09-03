@@ -4,6 +4,7 @@ import { monkSubclassReferenceDrafts } from "./classes/monkSubclassReferenceDraf
 import { monkSubclassReferenceDraftWave2 } from "./classes/monkSubclassReferenceDraftWave2.ts"
 import { monkSubclassReferenceDraftWave3 } from "./classes/monkSubclassReferenceDraftWave3.ts"
 import { monkSubclassReferenceDraftWave4 } from "./classes/monkSubclassReferenceDraftWave4.ts"
+import { paladinReferenceCurrent } from "./classes/paladinReferenceCurrent.ts"
 import { sorcererReferenceDraft } from "./classes/sorcererReferenceDraft.ts"
 import { sorcererSubclassReferenceDraft } from "./classes/sorcererSubclassReferenceDraft.ts"
 import { sorcererSubclassReferenceDraftWave2 } from "./classes/sorcererSubclassReferenceDraftWave2.ts"
@@ -227,6 +228,7 @@ export const classReference: ClassReferenceEntry[] = [
     subclasses: [...wizardReferenceSubclasses, ...wizardTashaReferenceSubclasses, ...wizardSupplementReferenceSubclasses],
   },
   monkLiteraryReference,
+  paladinReferenceCurrent,
   sorcererLiteraryReference,
   warlockLiteraryReference,
 ]
