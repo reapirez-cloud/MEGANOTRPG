@@ -5,7 +5,7 @@ import {
   getClericSubclassVossNarration,
   normalizeClericDomainId,
   getClericBaseVossNarration as getLegacyClericBaseVossNarration,
-} from "./clericVossNarrationBase"
+} from "./clericVossNarrationBase.ts"
 
 export {
   clericVossNarrationCoverage,
