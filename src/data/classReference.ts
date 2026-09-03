@@ -9,10 +9,11 @@ import { sorcererSubclassReferenceDraft } from "./classes/sorcererSubclassRefere
 import { sorcererSubclassReferenceDraftWave2 } from "./classes/sorcererSubclassReferenceDraftWave2.ts"
 import { sorcererSubclassReferenceDraftWave3 } from "./classes/sorcererSubclassReferenceDraftWave3.ts"
 import { sorcererSubclassReferenceDraftWave4 } from "./classes/sorcererSubclassReferenceDraftWave4.ts"
-import { warlockReferenceDraft } from "./classes/warlockReferenceDraft.ts"
+import { warlockReferenceCurrent } from "./classes/warlockReferenceCurrent.ts"
 import { warlockSubclassReferenceDraft } from "./classes/warlockSubclassReferenceDraft.ts"
 import { warlockSubclassReferenceDraftWave2 } from "./classes/warlockSubclassReferenceDraftWave2.ts"
 import { warlockSubclassReferenceDraftWave3 } from "./classes/warlockSubclassReferenceDraftWave3.ts"
+import { normalizeVossWorldTone } from "./classes/vossWorldTone.ts"
 import { wizardReferenceSubclasses } from "./classes/wizardReference.ts"
 import { wizardSupplementReferenceSubclasses } from "./classes/wizardSupplementReference.ts"
 import { wizardTashaReferenceSubclasses } from "./classes/wizardTashaReference.ts"
@@ -80,10 +81,10 @@ function literaryFeature(feature: LiteraryFeatureDraft): ClassReferenceSubclassF
   return {
     level: feature.level,
     name: feature.name,
-    explanation: feature.explanation,
+    explanation: normalizeVossWorldTone(feature.explanation),
     mechanics: feature.mechanics,
     details: feature.details,
-    voss: feature.voss,
+    voss: normalizeVossWorldTone(feature.voss),
   }
 }
 
@@ -92,8 +93,8 @@ function literarySubclass(subclass: LiterarySubclassDraft): ClassReferenceSubcla
     id: subclass.id,
     name: subclass.name,
     summary: "Литературный перевод готов. Точные правила будут подключены отдельным механическим пакетом.",
-    explanation: subclass.authorDescription,
-    voss: subclass.authorComment,
+    explanation: normalizeVossWorldTone(subclass.authorDescription),
+    voss: normalizeVossWorldTone(subclass.authorComment),
     features: subclass.features.map(literaryFeature),
   }
 }
@@ -110,8 +111,8 @@ function literaryClass(
     tagline,
     description: "Литературный перевод класса уже доступен в справочнике; точные механики и Character Engine для этого класса подключаются отдельным, независимо проверяемым пакетом.",
     mechanics: "Механический пакет класса пока не активирован. Эта карточка показывает готовый справочный слой правил и авторский слой Восса, но не выдаёт персонажу способности или ресурсы.",
-    explanation: draft.authorDescription,
-    voss: draft.authorComment,
+    explanation: normalizeVossWorldTone(draft.authorDescription),
+    voss: normalizeVossWorldTone(draft.authorComment),
     features: draft.features.map(literaryFeature),
     referenceOnly: true,
     subclasses: subclasses.map(literarySubclass),
@@ -137,11 +138,11 @@ const sorcererLiteraryReference = literaryClass(
     ...sorcererSubclassReferenceDraftWave3,
     ...sorcererSubclassReferenceDraftWave4,
   ],
-  "Сила без школы и инструкции: человек получает артиллерию раньше, чем успевает научиться отвечать за выстрел.",
+  "Сила без школы и наставника: человек получает мощь, способную снести крепостную стену, раньше, чем учится отвечать за её применение.",
 )
 
 const warlockLiteraryReference = literaryClass(
-  warlockReferenceDraft,
+  warlockReferenceCurrent,
   [
     ...warlockSubclassReferenceDraft,
     ...warlockSubclassReferenceDraftWave2,
@@ -221,7 +222,7 @@ export const classReference: ClassReferenceEntry[] = [
     id: "wizard",
     name: "Волшебник",
     nameEn: "Wizard",
-    tagline: "Учёный тайной магии, который носит библиотеку, артиллерию и несколько будущих катастроф в одной книге.",
+    tagline: "Учёный тайной магии, который носит библиотеку, осадную мощь и несколько будущих катастроф в одной книге.",
     description: "Волшебник не получает силу по наследству и не вымаливает её у богов — он изучает, записывает и повторяет формулы, пока реальность не начинает подчиняться почерку. Его книга заклинаний хранит растущий арсенал; после отдыха он меняет подготовку под задачу, читает ритуалы прямо из книги и возвращает часть потраченной магии во время короткого отдыха. Восс обычно добавляет, что хороший волшебник готовится к завтрашней войне, а плохой становится причиной сегодняшней.",
     subclasses: [...wizardReferenceSubclasses, ...wizardTashaReferenceSubclasses, ...wizardSupplementReferenceSubclasses],
   },
