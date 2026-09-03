@@ -62,7 +62,11 @@ test("all eight Druid circles and every supported circle feature have authored n
   }
 
   for (const feature of druidReference.features) all.push(getDruidBaseVossNarration(feature.level, feature.name))
-  assert.equal(new Set(all).size, all.length, "Druid Voss narration must not reuse one text across different cards")
+
+  // Four compatibility cards are aliases of an already-authored Druid feature.
+  // They deliberately share that feature's story; a fifth collision means a real copy regression.
+  const duplicateAliasCount = all.length - new Set(all).size
+  assert.equal(duplicateAliasCount, 4, "Druid narration gained an unexpected duplicate beyond the four catalog aliases")
 })
 
 test("catalog aliases resolve to the same authored circle voice", () => {
@@ -73,11 +77,11 @@ test("catalog aliases resolve to the same authored circle voice", () => {
   assert.equal(getDruidSubclassVossComment("circle-of-the-land"), getDruidSubclassVossComment("land"))
 })
 
-test("Druid class and Circle of the Moon keep grimdark warmth without treating the druid as a monster", () => {
-  assert.match(druidClassVossComment, /рана|медвед/i)
-  assert.match(getDruidSubclassVossNarration("moon"), /бережнее|умиление/i)
-  assert.match(getDruidSubclassVossComment("moon"), /плащ|дружб/i)
-  assert.doesNotMatch(getDruidSubclassVossNarration("moon"), /двулич|чудовищ|монстр/i)
+test("Druid class and Circle of the Moon keep Voss's predator horror without pet sentimentality", () => {
+  assert.match(druidClassVossComment, /когт|могил|рана/i)
+  assert.match(getDruidSubclassVossNarration("moon"), /звер|хищ|притвор/i)
+  assert.match(getDruidSubclassVossComment("moon"), /звер|человеч|овц|пастуш/i)
+  assert.doesNotMatch(getDruidSubclassVossNarration("moon"), /умил|питом|поглад/i)
 })
 
 test("ReferenceGuide overrides old Druid rule-paraphrase explanations with authored narration", () => {
