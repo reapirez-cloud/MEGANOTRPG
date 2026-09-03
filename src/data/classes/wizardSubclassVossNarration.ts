@@ -45,7 +45,6 @@ for (const subclass of [
   ...wizardTashaReferenceSubclasses,
   ...wizardSupplementReferenceSubclasses,
 ]) {
-  if (subclass.explanation) subclass.explanation = normalizeVossWorldToneDeep(subclass.explanation)
   if (subclass.voss) subclass.voss = normalizeVossWorldToneDeep(subclass.voss)
   for (const feature of subclass.features || []) {
     feature.explanation = normalizeVossWorldToneDeep(feature.explanation)
