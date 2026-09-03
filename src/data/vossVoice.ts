@@ -116,7 +116,9 @@ export const vossForbiddenModernRegister = [
   "бюрократ",
   "адвокат",
   "юрист",
-  "страхов",
+  "страховк",
+  "страхован",
+  "страховой",
   "отдел кадров",
   "кадров",
   "маркетинг",
@@ -163,6 +165,26 @@ function containsForbidden(text: string, terms: readonly string[]) {
   return terms.some((term) => normalized.includes(term))
 }
 
+const modernWholeWords = new Set(["слот"])
+const unicodeWordCharacter = /[\p{L}\p{N}_]/u
+
+function containsForbiddenModernRegister(text: string) {
+  const normalized = text.toLocaleLowerCase("ru")
+  return vossForbiddenModernRegister.some((term) => {
+    let start = normalized.indexOf(term)
+    while (start !== -1) {
+      const before = start > 0 ? normalized[start - 1] : ""
+      const afterIndex = start + term.length
+      const after = afterIndex < normalized.length ? normalized[afterIndex] : ""
+      const startsAtWordBoundary = !before || !unicodeWordCharacter.test(before)
+      const endsAtWordBoundary = !after || !unicodeWordCharacter.test(after)
+      if (startsAtWordBoundary && (!modernWholeWords.has(term) || endsAtWordBoundary)) return true
+      start = normalized.indexOf(term, start + 1)
+    }
+    return false
+  })
+}
+
 export function vossCommentHasDeveloperLeak(comment: string) {
   return containsForbidden(comment, vossForbiddenDeveloperTerms)
 }
@@ -176,7 +198,7 @@ export function vossExplanationHasRulesMeta(explanation: string) {
 }
 
 export function vossTextHasModernRegister(text: string) {
-  return containsForbidden(text, vossForbiddenModernRegister)
+  return containsForbiddenModernRegister(text)
 }
 
 export function vossTextHasAbusiveRegister(text: string) {
