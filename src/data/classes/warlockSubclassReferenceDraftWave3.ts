@@ -1,11 +1,17 @@
+import { warlockSubclassReferenceCurrentWave3 } from "./warlockSubclassReferenceCurrentWave3.ts"
+import { warlockSubclassReferenceDraftWave4 } from "./warlockSubclassReferenceDraftWave4.ts"
+
 /**
- * Wave 3 compatibility entry point.
+ * Wave 3 compatibility/aggregation entry point.
  *
- * The current Genie / Undead / Undying literary layer lives in
- * `warlockSubclassReferenceCurrentWave3.ts`. This module keeps the stable export used by
- * `classReference.ts` while ensuring the superseded narratives can no longer reach the
- * player-facing reference.
+ * `classReference.ts` already consumes this stable export. Keep the current
+ * Genie / Undead / Undying literary layer here and append the expanded
+ * Raven Queen / Seeker / Great Wyrm literary roster without touching the
+ * mechanics package.
  *
  * Mechanics intentionally remain empty until the independent Warlock runtime pass.
  */
-export { warlockSubclassReferenceCurrentWave3 as warlockSubclassReferenceDraftWave3 } from "./warlockSubclassReferenceCurrentWave3.ts"
+export const warlockSubclassReferenceDraftWave3 = [
+  ...warlockSubclassReferenceCurrentWave3,
+  ...warlockSubclassReferenceDraftWave4,
+]
