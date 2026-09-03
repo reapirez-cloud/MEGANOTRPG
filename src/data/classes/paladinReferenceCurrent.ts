@@ -190,6 +190,15 @@ const features: PaladinLiteraryFeature[] = [
   },
 ]
 
+const paladinSubclassReferenceWave2 = paladinSubclassReferenceDraftWave2.map((subclass) => ({
+  id: subclass.id,
+  name: subclass.name,
+  summary: "Литературный перевод клятвы готов. Точные правила и Character Engine будут подключены отдельным механическим пакетом.",
+  explanation: subclass.authorDescription,
+  voss: subclass.authorComment,
+  features: subclass.features,
+}))
+
 const remainingSubclassPlaceholders = [
   {
     id: "watchers",
@@ -223,5 +232,5 @@ export const paladinReferenceCurrent = {
     voss: normalizeVossWorldToneDeep(feature.voss),
   })),
   referenceOnly: true,
-  subclasses: [...paladinSubclassReferenceDrafts, ...paladinSubclassReferenceDraftWave2, ...remainingSubclassPlaceholders],
+  subclasses: [...paladinSubclassReferenceDrafts, ...paladinSubclassReferenceWave2, ...remainingSubclassPlaceholders],
 }
