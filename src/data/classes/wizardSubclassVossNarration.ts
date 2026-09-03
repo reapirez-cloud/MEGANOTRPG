@@ -30,27 +30,31 @@ import {
   getWizardGeminiPack4SubclassVossNarration,
   wizardGeminiPack4Coverage,
 } from "./wizardSubclassVossNarrationGeminiPack4.ts"
-import { normalizeVossWorldTone } from "./vossWorldTone"
+import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep"
 
 applyWizardGeminiPack1FeatureStories()
 applyWizardGeminiPack2FeatureStories()
 applyWizardGeminiPack3FeatureStories()
 applyWizardGeminiPack4FeatureStories()
 
+// Gemini feature-story packs mutate reference objects directly. Normalize those
+// objects after all packs are applied so no player-facing feature can bypass the
+// fantasy-era audit through the static reference catalog.
 for (const subclass of [
   ...wizardReferenceSubclasses,
   ...wizardTashaReferenceSubclasses,
   ...wizardSupplementReferenceSubclasses,
 ]) {
-  if (subclass.voss) subclass.voss = normalizeVossWorldTone(subclass.voss)
+  if (subclass.explanation) subclass.explanation = normalizeVossWorldToneDeep(subclass.explanation)
+  if (subclass.voss) subclass.voss = normalizeVossWorldToneDeep(subclass.voss)
   for (const feature of subclass.features || []) {
-    feature.explanation = normalizeVossWorldTone(feature.explanation)
-    if (feature.voss) feature.voss = normalizeVossWorldTone(feature.voss)
+    feature.explanation = normalizeVossWorldToneDeep(feature.explanation)
+    if (feature.voss) feature.voss = normalizeVossWorldToneDeep(feature.voss)
   }
 }
 
 export function getWizardSubclassVossNarration(subclassId: string) {
-  return normalizeVossWorldTone(
+  return normalizeVossWorldToneDeep(
     getWizardGeminiPack4SubclassVossNarration(subclassId)
       || getWizardGeminiPack3SubclassVossNarration(subclassId)
       || getWizardGeminiPack2SubclassVossNarration(subclassId)
@@ -60,7 +64,7 @@ export function getWizardSubclassVossNarration(subclassId: string) {
 }
 
 export function getWizardSubclassVossComment(subclassId: string) {
-  return normalizeVossWorldTone(
+  return normalizeVossWorldToneDeep(
     getWizardGeminiPack4SubclassVossComment(subclassId)
       || getWizardGeminiPack3SubclassVossComment(subclassId)
       || getWizardGeminiPack2SubclassVossComment(subclassId)
