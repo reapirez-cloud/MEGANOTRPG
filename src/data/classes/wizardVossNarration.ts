@@ -13,18 +13,23 @@ import {
   wizardJohannClassVossNarration,
   wizardJohannVossNarrationCoverage,
 } from "./wizardVossNarrationJohann.ts"
+import { normalizeVossWorldTone } from "./vossWorldTone"
 
-export const wizardClassVossNarration = wizardJohannClassVossNarration
-export const wizardClassVossComment = wizardJohannClassVossComment
+export const wizardClassVossNarration = normalizeVossWorldTone(wizardJohannClassVossNarration)
+export const wizardClassVossComment = normalizeVossWorldTone(wizardJohannClassVossComment)
 
 export function getWizardBaseVossNarration(level: number, sourceKey: string) {
-  return getWizardJohannBaseVossNarration(level, sourceKey)
-    || getLegacyWizardBaseVossNarration(level, sourceKey)
+  return normalizeVossWorldTone(
+    getWizardJohannBaseVossNarration(level, sourceKey)
+      || getLegacyWizardBaseVossNarration(level, sourceKey),
+  )
 }
 
 export function getWizardBaseVossComment(level: number, sourceKey: string) {
-  return getWizardJohannBaseVossComment(level, sourceKey)
-    || getLegacyWizardBaseVossComment(level, sourceKey)
+  return normalizeVossWorldTone(
+    getWizardJohannBaseVossComment(level, sourceKey)
+      || getLegacyWizardBaseVossComment(level, sourceKey),
+  )
 }
 
 export const wizardVossNarrationCoverage = Array.from(new Set([
