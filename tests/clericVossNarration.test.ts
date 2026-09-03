@@ -75,8 +75,10 @@ test("every Cleric card has unique in-world narration without rules vocabulary",
   assert.equal(new Set(all).size, all.length, "Cleric Voss narration must not reuse one text across cards")
 })
 
-test("Cleric class comment keeps the new despairing black-humor register", () => {
-  assert.match(clericClassVossComment, /смерт|жить/i)
+test("Cleric class comment keeps the current despairing black-humor register", () => {
+  assert.match(clericClassVossComment, /небесн|бог|уговор|договор/i)
+  assert.match(clericClassVossComment, /бой|враг|свет/i)
+  assert.doesNotMatch(clericClassVossComment, /контракт|бухгалтер|бюрократ/i)
   assert.doesNotMatch(clericClassVossComment, /мраз|идиот|дебил|мудак/i)
 })
 
