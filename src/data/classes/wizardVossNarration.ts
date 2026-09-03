@@ -13,7 +13,7 @@ import {
   wizardJohannClassVossNarration,
   wizardJohannVossNarrationCoverage,
 } from "./wizardVossNarrationJohann.ts"
-import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep"
+import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep.ts"
 
 export const wizardClassVossNarration = normalizeVossWorldToneDeep(wizardJohannClassVossNarration)
 export const wizardClassVossComment = normalizeVossWorldToneDeep(wizardJohannClassVossComment)
