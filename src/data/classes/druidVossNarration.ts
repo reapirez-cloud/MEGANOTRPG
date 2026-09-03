@@ -24,24 +24,28 @@ import {
   getDruidLechBaseVossComment,
   getDruidLechBaseVossNarration,
 } from "./druidVossNarrationLech"
+import { normalizeVossWorldTone } from "./vossWorldTone"
 
-export const druidClassVossNarration = druidLechClassVossNarration
-export const druidClassVossComment = currentDruidClassVossComment
+export const druidClassVossNarration = normalizeVossWorldTone(druidLechClassVossNarration)
+export const druidClassVossComment = normalizeVossWorldTone(currentDruidClassVossComment)
 
 export function getDruidBaseVossNarration(level: number, name: string) {
-  return getDruidLechBaseVossNarration(level, name)
-    || getCurrentDruidBaseVossNarration(level, name)
+  return normalizeVossWorldTone(
+    getDruidLechBaseVossNarration(level, name)
+      || getCurrentDruidBaseVossNarration(level, name),
+  )
 }
 
 export function getDruidBaseVossComment(level: number, name: string) {
-  return getDruidLechBaseVossComment(level, name)
+  return normalizeVossWorldTone(getDruidLechBaseVossComment(level, name))
 }
 
 // The Druid class view still reads base-feature comments from druidReference directly.
 // Keep only the authored literary comment field synchronized here; mechanics stay untouched.
 for (const feature of druidReference.features) {
   const authoredComment = getDruidLechBaseVossComment(feature.level, feature.name)
-  if (authoredComment) feature.voss = authoredComment
+  if (authoredComment) feature.voss = normalizeVossWorldTone(authoredComment)
+  feature.explanation = normalizeVossWorldTone(feature.explanation)
 }
 
 const subclassAliases: Record<string, string> = {
@@ -59,28 +63,36 @@ function literarySubclassId(subclassId: string) {
 
 export function getDruidSubclassVossNarration(subclassId: string) {
   const id = literarySubclassId(subclassId)
-  return druidMoreSubclassNarration[id]
-    || druidGeminiSubclassNarration[id]
-    || getCurrentDruidSubclassVossNarration(subclassId)
+  return normalizeVossWorldTone(
+    druidMoreSubclassNarration[id]
+      || druidGeminiSubclassNarration[id]
+      || getCurrentDruidSubclassVossNarration(subclassId),
+  )
 }
 
 export function getDruidSubclassVossComment(subclassId: string) {
   const id = literarySubclassId(subclassId)
-  return druidMoreSubclassComments[id]
-    || druidGeminiSubclassComments[id]
-    || getCurrentDruidSubclassVossComment(subclassId)
+  return normalizeVossWorldTone(
+    druidMoreSubclassComments[id]
+      || druidGeminiSubclassComments[id]
+      || getCurrentDruidSubclassVossComment(subclassId),
+  )
 }
 
 export function getDruidSubclassFeatureVossNarration(subclassId: string, featureName: string) {
   const id = literarySubclassId(subclassId)
-  return druidMoreFeatureNarration[id]?.[featureName]
-    || druidGeminiFeatureNarration[id]?.[featureName]
-    || getCurrentDruidSubclassFeatureVossNarration(subclassId, featureName)
+  return normalizeVossWorldTone(
+    druidMoreFeatureNarration[id]?.[featureName]
+      || druidGeminiFeatureNarration[id]?.[featureName]
+      || getCurrentDruidSubclassFeatureVossNarration(subclassId, featureName),
+  )
 }
 
 export function getDruidSubclassFeatureVossComment(subclassId: string, featureName: string) {
   const id = literarySubclassId(subclassId)
-  return druidMoreFeatureComments[id]?.[featureName]
-    || druidGeminiFeatureComments[id]?.[featureName]
-    || getCurrentDruidSubclassFeatureVossComment(subclassId, featureName)
+  return normalizeVossWorldTone(
+    druidMoreFeatureComments[id]?.[featureName]
+      || druidGeminiFeatureComments[id]?.[featureName]
+      || getCurrentDruidSubclassFeatureVossComment(subclassId, featureName),
+  )
 }
