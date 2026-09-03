@@ -8,13 +8,18 @@ Authoring-only checkpoint. This file is not runtime data and must never be rende
 - Central Voss distinction: Wizard understands the machinery and chooses what to do with it; Sorcerer receives power before receiving the maturity, knowledge or consent needed to carry it.
 - Exact rule blocks, feature levels and mechanical claims in supplied literary copy are non-authoritative notes only.
 
-## Subclass authoring queue
+## Subclass literary authoring
 
-The following identities/source labels come from the supplied authoring brief and must be independently verified before mechanics/runtime inclusion:
+**Status:** `IN_PROGRESS_3_AUTHORED_OF_9_PLANNED`
 
-1. Aberrant Sorcery — Аберрантное чародейство
-2. Clockwork Sorcery — Чародейство часового механизма
-3. Draconic Sorcery — Драконье чародейство
+Authored in `sorcererSubclassReferenceDraft.ts`:
+
+1. Aberrant Sorcery — Грета
+2. Clockwork Sorcery — Себастьян
+3. Draconic Sorcery — Бранко
+
+Queued identities/source labels come from the supplied authoring brief and must be independently verified before mechanics/runtime inclusion:
+
 4. Wild Magic Sorcery — Чародейство дикой магии
 5. Divine Soul — Божественная душа
 6. Shadow Magic — Теневая магия
@@ -24,7 +29,7 @@ The following identities/source labels come from the supplied authoring brief an
 
 ## Runtime boundary
 
-- Literary text: base Sorcerer IN PROGRESS; subclasses NOT STARTED.
+- Literary text: base Sorcerer authored; subclass authoring 3/9 planned identities.
 - Exact mechanics/resources/actions/spellcasting/Metamagic/runtime: NOT STARTED.
 - Catalog/runtime visibility: NOT ACTIVE.
-- `sorcererReferenceDraft.ts` must not be imported into `classReference`, class runtime templates or Character Class UI until an independent Sorcerer mechanics pass verifies the chosen rules revision, levels, spellcasting contract, Sorcery Point resources, Metamagic choices, CE integration and tests.
+- `sorcererReferenceDraft.ts` and `sorcererSubclassReferenceDraft.ts` must not be imported into `classReference`, class runtime templates or Character Class UI until an independent Sorcerer mechanics pass verifies the chosen rules revision, levels, spellcasting contract, Sorcery Point resources, Metamagic choices, CE integration and tests.
