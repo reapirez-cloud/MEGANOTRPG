@@ -37,7 +37,10 @@ import {
 import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep.ts"
 
 function normalizeFighterVoss(text: string | null | undefined) {
-  return normalizeVossWorldToneDeep(text).replace(/зерновому налогу/giu, "зерновому оброку")
+  return normalizeVossWorldToneDeep(text)
+    .replace(/зерновому налогу/giu, "зерновому оброку")
+    .replace(/мимолетное преимущество/giu, "найденную брешь")
+    .replace(/мимолётное преимущество/giu, "найденную брешь")
 }
 
 export const fighterClassVossNarration = normalizeFighterVoss(fighterBrantClassVossNarration)
