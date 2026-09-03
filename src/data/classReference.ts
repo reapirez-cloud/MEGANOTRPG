@@ -13,7 +13,7 @@ import { warlockReferenceCurrent } from "./classes/warlockReferenceCurrent.ts"
 import { warlockSubclassReferenceDraft } from "./classes/warlockSubclassReferenceDraft.ts"
 import { warlockSubclassReferenceDraftWave2 } from "./classes/warlockSubclassReferenceDraftWave2.ts"
 import { warlockSubclassReferenceDraftWave3 } from "./classes/warlockSubclassReferenceDraftWave3.ts"
-import { normalizeVossWorldTone } from "./classes/vossWorldTone.ts"
+import { normalizeVossWorldToneDeep } from "./classes/vossWorldToneDeep.ts"
 import { wizardReferenceSubclasses } from "./classes/wizardReference.ts"
 import { wizardSupplementReferenceSubclasses } from "./classes/wizardSupplementReference.ts"
 import { wizardTashaReferenceSubclasses } from "./classes/wizardTashaReference.ts"
@@ -81,10 +81,10 @@ function literaryFeature(feature: LiteraryFeatureDraft): ClassReferenceSubclassF
   return {
     level: feature.level,
     name: feature.name,
-    explanation: normalizeVossWorldTone(feature.explanation),
+    explanation: normalizeVossWorldToneDeep(feature.explanation),
     mechanics: feature.mechanics,
     details: feature.details,
-    voss: normalizeVossWorldTone(feature.voss),
+    voss: normalizeVossWorldToneDeep(feature.voss),
   }
 }
 
@@ -93,8 +93,8 @@ function literarySubclass(subclass: LiterarySubclassDraft): ClassReferenceSubcla
     id: subclass.id,
     name: subclass.name,
     summary: "Литературный перевод готов. Точные правила будут подключены отдельным механическим пакетом.",
-    explanation: normalizeVossWorldTone(subclass.authorDescription),
-    voss: normalizeVossWorldTone(subclass.authorComment),
+    explanation: normalizeVossWorldToneDeep(subclass.authorDescription),
+    voss: normalizeVossWorldToneDeep(subclass.authorComment),
     features: subclass.features.map(literaryFeature),
   }
 }
@@ -111,8 +111,8 @@ function literaryClass(
     tagline,
     description: "Литературный перевод класса уже доступен в справочнике; точные механики и Character Engine для этого класса подключаются отдельным, независимо проверяемым пакетом.",
     mechanics: "Механический пакет класса пока не активирован. Эта карточка показывает готовый справочный слой правил и авторский слой Восса, но не выдаёт персонажу способности или ресурсы.",
-    explanation: normalizeVossWorldTone(draft.authorDescription),
-    voss: normalizeVossWorldTone(draft.authorComment),
+    explanation: normalizeVossWorldToneDeep(draft.authorDescription),
+    voss: normalizeVossWorldToneDeep(draft.authorComment),
     features: draft.features.map(literaryFeature),
     referenceOnly: true,
     subclasses: subclasses.map(literarySubclass),
