@@ -271,6 +271,28 @@ The drafts must not be imported into `classReference`, Chasovoy runtime template
 
 ---
 
+## Warlock (`class:warlock`)
+
+**Text:** `IN_PROGRESS`  
+**Mechanics/runtime:** `NOT_STARTED`
+
+- `authoring_started: 2026-09-03`
+- `authoring_source: src/data/classes/warlockReferenceDraft.ts`
+- `subclass_authoring_sources: src/data/classes/warlockSubclassReferenceDraft.ts`
+- `current_dev_text: base Warlock Voss narration follows the abandoned drummer Michel; first patron wave adds Emil / Archfey, Brun / Fiend and Sibylla / Great Old One, preserving each patron relationship as a distinct story of need, protection, memory, vengeance or emotional anesthesia`
+- `exact_rules: INTENTIONALLY_EMPTY_PENDING_MECHANICS_PASS`
+- `runtime_visibility: NOT_ACTIVE`
+- `class_reference_visibility: NOT_ACTIVE`
+- `subclasses: IN_PROGRESS_3_AUTHORED_OF_9_USER_PLANNED`
+- `authored_subclasses: archfey, fiend, great-old-one`
+- `queued_subclasses: celestial, hexblade, fathomless, genie, undead, undying`
+- `source_policy: patron source labels copied from the user are planning hints only and must be independently verified during the mechanics pass`
+- `mechanics_policy: Gemini/user-supplied exact-rule copy is literary planning material only; exact Pact Magic, Invocations, Pact options, patron spells/features, Mystic Arcanum, CE resources/actions and runtime package will be independently authored and audited before activation`
+
+The Warlock drafts must not be imported into `classReference`, Chasovoy runtime templates or Character Class UI until exact Warlock rules, patron packages, resource/action contracts and package-quality tests are complete enough for the intended activation step.
+
+---
+
 ## Legacy builtin catalog reset
 
 **Status:** `REMOVED_2026_08_29`
