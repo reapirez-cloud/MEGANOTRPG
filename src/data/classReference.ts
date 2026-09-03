@@ -1,4 +1,18 @@
 import type { SpellClassKey } from "../lib/spellCatalog"
+import { monkReferenceDraft } from "./classes/monkReferenceDraft.ts"
+import { monkSubclassReferenceDrafts } from "./classes/monkSubclassReferenceDraft.ts"
+import { monkSubclassReferenceDraftWave2 } from "./classes/monkSubclassReferenceDraftWave2.ts"
+import { monkSubclassReferenceDraftWave3 } from "./classes/monkSubclassReferenceDraftWave3.ts"
+import { monkSubclassReferenceDraftWave4 } from "./classes/monkSubclassReferenceDraftWave4.ts"
+import { sorcererReferenceDraft } from "./classes/sorcererReferenceDraft.ts"
+import { sorcererSubclassReferenceDraft } from "./classes/sorcererSubclassReferenceDraft.ts"
+import { sorcererSubclassReferenceDraftWave2 } from "./classes/sorcererSubclassReferenceDraftWave2.ts"
+import { sorcererSubclassReferenceDraftWave3 } from "./classes/sorcererSubclassReferenceDraftWave3.ts"
+import { sorcererSubclassReferenceDraftWave4 } from "./classes/sorcererSubclassReferenceDraftWave4.ts"
+import { warlockReferenceDraft } from "./classes/warlockReferenceDraft.ts"
+import { warlockSubclassReferenceDraft } from "./classes/warlockSubclassReferenceDraft.ts"
+import { warlockSubclassReferenceDraftWave2 } from "./classes/warlockSubclassReferenceDraftWave2.ts"
+import { warlockSubclassReferenceDraftWave3 } from "./classes/warlockSubclassReferenceDraftWave3.ts"
 import { wizardReferenceSubclasses } from "./classes/wizardReference.ts"
 import { wizardSupplementReferenceSubclasses } from "./classes/wizardSupplementReference.ts"
 import { wizardTashaReferenceSubclasses } from "./classes/wizardTashaReference.ts"
@@ -17,6 +31,7 @@ export type ClassReferenceSubclass = {
   name: string
   summary: string
   mechanics?: string
+  explanation?: string
   features?: ClassReferenceSubclassFeature[]
   voss?: string
 }
@@ -27,15 +42,120 @@ export type ClassReferenceEntry = {
   nameEn: string
   tagline: string
   description: string
+  mechanics?: string
+  explanation?: string
+  features?: ClassReferenceSubclassFeature[]
+  voss?: string
+  referenceOnly?: boolean
   subclasses: ClassReferenceSubclass[]
 }
+
+type LiteraryFeatureDraft = {
+  level: number
+  name: string
+  explanation: string
+  mechanics: string
+  details: string[]
+  voss: string
+}
+
+type LiterarySubclassDraft = {
+  id: string
+  name: string
+  authorDescription: string
+  authorComment: string
+  features: LiteraryFeatureDraft[]
+}
+
+type LiteraryClassDraft = {
+  id: SpellClassKey
+  name: string
+  nameEn: string
+  authorDescription: string
+  authorComment: string
+  features: LiteraryFeatureDraft[]
+}
+
+function literaryFeature(feature: LiteraryFeatureDraft): ClassReferenceSubclassFeature {
+  return {
+    level: feature.level,
+    name: feature.name,
+    explanation: feature.explanation,
+    mechanics: feature.mechanics,
+    details: feature.details,
+    voss: feature.voss,
+  }
+}
+
+function literarySubclass(subclass: LiterarySubclassDraft): ClassReferenceSubclass {
+  return {
+    id: subclass.id,
+    name: subclass.name,
+    summary: "Литературный перевод готов. Точные правила будут подключены отдельным механическим пакетом.",
+    explanation: subclass.authorDescription,
+    voss: subclass.authorComment,
+    features: subclass.features.map(literaryFeature),
+  }
+}
+
+function literaryClass(
+  draft: LiteraryClassDraft,
+  subclasses: LiterarySubclassDraft[],
+  tagline: string,
+): ClassReferenceEntry {
+  return {
+    id: draft.id,
+    name: draft.name,
+    nameEn: draft.nameEn,
+    tagline,
+    description: "Литературный перевод класса уже доступен в справочнике; точные механики и Character Engine для этого класса подключаются отдельным, независимо проверяемым пакетом.",
+    mechanics: "Механический пакет класса пока не активирован. Эта карточка показывает только готовый авторский слой Восса и не выдаёт персонажу способности или ресурсы.",
+    explanation: draft.authorDescription,
+    voss: draft.authorComment,
+    features: draft.features.map(literaryFeature),
+    referenceOnly: true,
+    subclasses: subclasses.map(literarySubclass),
+  }
+}
+
+const monkLiteraryReference = literaryClass(
+  monkReferenceDraft,
+  [
+    ...monkSubclassReferenceDrafts,
+    ...monkSubclassReferenceDraftWave2,
+    ...monkSubclassReferenceDraftWave3,
+    ...monkSubclassReferenceDraftWave4,
+  ],
+  "Тело как оружие, дисциплина как оправдание и святость, за которой Восс всегда ищет кровь.",
+)
+
+const sorcererLiteraryReference = literaryClass(
+  sorcererReferenceDraft,
+  [
+    ...sorcererSubclassReferenceDraft,
+    ...sorcererSubclassReferenceDraftWave2,
+    ...sorcererSubclassReferenceDraftWave3,
+    ...sorcererSubclassReferenceDraftWave4,
+  ],
+  "Сила без школы и инструкции: человек получает артиллерию раньше, чем успевает научиться отвечать за выстрел.",
+)
+
+const warlockLiteraryReference = literaryClass(
+  warlockReferenceDraft,
+  [
+    ...warlockSubclassReferenceDraft,
+    ...warlockSubclassReferenceDraftWave2,
+    ...warlockSubclassReferenceDraftWave3,
+  ],
+  "Сделка, которую заключают не от хорошей жизни — и долг, который всегда приходит за своим.",
+)
 
 /**
  * Player-facing class reference catalog.
  *
- * Only classes that currently exist as rebuilt builtin rule templates belong
- * here. Historical/removed class data must not be kept as a UI fallback: doing
- * so resurrects deleted classes whenever the database template is absent.
+ * Rebuilt runtime classes and explicitly marked literary previews may live here.
+ * `referenceOnly` entries are presentation-only: they must never be treated as
+ * proof that a class template, mechanics package or Character Engine runtime exists.
  */
 export const classReference: ClassReferenceEntry[] = [
   {
@@ -105,4 +225,7 @@ export const classReference: ClassReferenceEntry[] = [
     description: "Волшебник не получает силу по наследству и не вымаливает её у богов — он изучает, записывает и повторяет формулы, пока реальность не начинает подчиняться почерку. Его книга заклинаний хранит растущий арсенал; после отдыха он меняет подготовку под задачу, читает ритуалы прямо из книги и возвращает часть потраченной магии во время короткого отдыха. Восс обычно добавляет, что хороший волшебник готовится к завтрашней войне, а плохой становится причиной сегодняшней.",
     subclasses: [...wizardReferenceSubclasses, ...wizardTashaReferenceSubclasses, ...wizardSupplementReferenceSubclasses],
   },
+  monkLiteraryReference,
+  sorcererLiteraryReference,
+  warlockLiteraryReference,
 ]
