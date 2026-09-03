@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import { bardReferenceCurrent } from "../src/data/classes/bardReferenceCurrent.ts"
+import { bardSubclassReferenceDraftWave3 } from "../src/data/classes/bardSubclassReferenceDraftWave3.ts"
 
 const expectedCollegeIds = [
   "lore",
@@ -23,15 +24,16 @@ test("Bard literary reference covers the full nine-college roster", () => {
   )
 
   for (const subclass of bardReferenceCurrent.subclasses) {
-    assert.ok(subclass.explanation?.trim(), `${subclass.id} is missing authored explanation`)
-    assert.ok(subclass.voss?.trim(), `${subclass.id} is missing authored Voss comment`)
-    assert.ok(subclass.features?.length, `${subclass.id} is missing authored feature stories`)
+    assert.ok("explanation" in subclass && subclass.explanation.trim(), `${subclass.id} is missing authored explanation`)
+    assert.ok("voss" in subclass && subclass.voss.trim(), `${subclass.id} is missing authored Voss comment`)
+    assert.ok("features" in subclass && subclass.features.length, `${subclass.id} is missing authored feature stories`)
   }
 })
 
 test("Bard literary colleges do not pretend supplied rules are implemented mechanics", () => {
   for (const subclass of bardReferenceCurrent.subclasses) {
-    for (const feature of subclass.features ?? []) {
+    assert.ok("features" in subclass, `${subclass.id} unexpectedly stayed a roster placeholder`)
+    for (const feature of subclass.features) {
       assert.equal(feature.mechanics, "", `${subclass.id}/${feature.name} unexpectedly exposes runtime mechanics`)
       assert.deepEqual(feature.details ?? [], [], `${subclass.id}/${feature.name} unexpectedly exposes rule details`)
     }
@@ -39,7 +41,8 @@ test("Bard literary colleges do not pretend supplied rules are implemented mecha
 })
 
 test("Tragedy stays explicitly outside official Wizards college labeling", () => {
-  const tragedy = bardReferenceCurrent.subclasses.find((subclass) => subclass.id === "tragedy")
+  const tragedy = bardSubclassReferenceDraftWave3.find((subclass) => subclass.id === "tragedy")
   assert.ok(tragedy)
+  assert.match(tragedy.sourceHint, /partner\/third-party/i)
   assert.match(bardReferenceCurrent.description, /девяти коллегий/i)
 })
