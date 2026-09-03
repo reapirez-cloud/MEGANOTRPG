@@ -11,13 +11,14 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
-- None yet. The new Monk material is intentionally kept as authoring-only draft content and is not visible in the class catalog or character UI.
+- None yet. The new Monk and Warlock material is intentionally kept as authoring-only draft content and is not visible in the class catalog or character UI.
 - Added literary draft coverage for nine planned Monk subclasses across three waves: Open Hand / Brother Anselm, Shadow / Brother Cassian, Drunken Master / Uncle Bartosz, Elements / Brother Vaclav, Mercy / Sister Magdalena, Kensei / Master Yoshiro, Ascendant Dragon / Brother Ragnar, Astral Self / Brother Hieronymus and Sun Soul / Brother Ignatius. Each keeps a subclass preview, feature stories and separate Voss comments while remaining inactive.
+- Added the Warlock base literary draft around Michel plus the first patron wave: Archfey / Emil, Fiend / Brun and Great Old One / Sibylla. Their patron relationships remain separate stories of memory-for-relief, vengeance-for-survival and cosmic emotional anesthesia rather than generic greedy Faustian bargains.
 
 ### Runtime and rules changes
 
-- No Monk mechanics/runtime were added. Base and subclass drafts keep every exact-rule field empty so Gemini/user-authored prose, levels and rule claims cannot become mechanical truth by accident.
-- User-supplied subclass source labels and the remaining one-subclass list are stored only as authoring/planning hints; exact editions, feature schedules and mechanics still require an independent rules pass.
+- No Monk or Warlock mechanics/runtime were added. Base and subclass drafts keep every exact-rule field empty so Gemini/user-authored prose, levels, spell lists and rule claims cannot become mechanical truth by accident.
+- User-supplied class/subclass source labels and remaining authoring queues are stored only as planning hints; exact editions, feature schedules, Pact Magic/Invocations and other mechanics still require an independent rules pass.
 
 ### Repository / release process
 
@@ -26,18 +27,23 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added `src/data/classes/monkSubclassReferenceDraft.ts` as the non-runtime literary source for the first subclass wave.
 - Added `src/data/classes/monkSubclassReferenceDraftWave2.ts` for Elements, Mercy and Kensei, preserving only their literary Voss layers while keeping mechanics/details empty.
 - Added `src/data/classes/monkSubclassReferenceDraftWave3.ts` for Ascendant Dragon, Astral Self and Sun Soul under the same authoring-only boundary.
+- Added `src/data/classes/warlockReferenceDraft.ts` and `src/data/classes/warlockAuthoringPlan.md` as the non-runtime base-class literary source and authoring queue for Warlock.
+- Added `src/data/classes/warlockSubclassReferenceDraft.ts` for the first three patron literary packages, with all mechanics/details intentionally empty.
+- Updated `CLASS_WORK_STATUS.md` with a dedicated Warlock checkpoint: text authoring `IN_PROGRESS`, mechanics/runtime `NOT_STARTED`, three of nine user-planned patrons authored, and catalog/runtime activation forbidden until the exact rules/package pass is complete.
 - Updated the Monk checkpoint in `CLASS_WORK_STATUS.md`: text authoring remains `IN_PROGRESS`, mechanics/runtime remain `NOT_STARTED`, nine of the ten user-planned subclasses now have authored literary drafts, and activation remains forbidden until the exact rules/package pass is complete.
 
 ### Tests / verification added in this patch
 
-- Verified the Monk base/subclass drafts are not imported by `classReference` or runtime code; no mechanics/build-success claim is made for the future Monk package.
-- The subclass drafts explicitly document that source labels, feature levels and names supplied with the literary copy are not authoritative mechanics.
+- Verified the Monk and Warlock drafts are authoring-only sources and are not activated through `classReference` or runtime code; no mechanics/build-success claim is made for the future packages.
+- The class/subclass drafts explicitly document that source labels, feature levels, spell lists and names supplied with the literary copy are not authoritative mechanics.
 
 ### Known incomplete work
 
 - The repository still has 10 stale Voss/text-contract assertions inherited from the released patch and awaiting reconciliation with the authored narration.
 - Monk exact 2024/legacy rules, CE resources/actions/choices, package-quality tests and catalog/runtime activation are intentionally pending a separate mechanics pass.
 - One user-planned Monk subclass still needs its literary draft: Long Death.
+- Warlock exact 2024/legacy rules, Pact Magic slot progression, Invocations/Pact options, patron spell packages, Mystic Arcanum, CE resources/actions, package tests and catalog/runtime activation are intentionally pending a separate mechanics pass.
+- Six user-planned Warlock patrons remain to be authored: Celestial, Hexblade, Fathomless, Genie, Undead and Undying.
 
 ---
 
