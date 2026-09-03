@@ -1,4 +1,4 @@
-import { normalizeVossWorldTone } from "./vossWorldTone"
+import { normalizeVossWorldTone } from "./vossWorldTone.ts"
 
 type Replacement = readonly [RegExp, string]
 
