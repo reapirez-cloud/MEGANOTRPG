@@ -11,19 +11,19 @@ Authoring-only checkpoint. This file is not runtime data and must never be rende
 
 ## Subclass literary authoring
 
-**Status:** `IN_PROGRESS_3_OF_9_PATRONS_AUTHORED`
+**Status:** `IN_PROGRESS_6_OF_9_PATRONS_AUTHORED`
 
-Authored in `warlockSubclassReferenceDraft.ts`:
+Authored in `warlockSubclassReferenceDraft.ts` and `warlockSubclassReferenceDraftWave2.ts`:
 
 1. Archfey Patron — Архифея — Эмиль. Core relationship: relief from fear and grief is purchased by surrendering the memories that made the grief meaningful.
 2. Fiend Patron — Исчадие — Брун. Core relationship: vengeance after betrayal; the patron acts as an infernal creditor who keeps its debtor alive long enough to settle the blood account.
 3. Great Old One Patron — Великий Древний — Сибилла. Core relationship: cosmic scale becomes emotional anesthesia; the patron's alien perspective makes unbearable human suffering feel microscopically irrelevant.
+4. Celestial Patron — Небожитель — Захар. Core relationship: celestial "mercy" is sterile compulsory purification; the patron saves what it regards as contaminated property, not because it understands human suffering.
+5. Hexblade Patron — Ведьмовской клинок — Иона. Core relationship: courage is never granted; a terrified human body becomes the handle through which an ancient weapon acts with the confidence its bearer lacks.
+6. The Fathomless — Непостижимый / Глубинный — Назар. Core relationship: humans locked him in a drowning box; the oceanic abyss answered by replacing treacherous air with a colder, more reliable belonging.
 
 Queued identities/source labels from the supplied authoring brief; each requires independent source/mechanics verification before runtime inclusion:
 
-4. Celestial Patron — Небожитель — D&D 2024 authoring target.
-5. Hexblade Patron — Ведьмовской клинок — Xanathar's Guide to Everything legacy authoring target.
-6. The Fathomless — Непостижимый / Глубинный — Tasha's Cauldron of Everything legacy authoring target.
 7. The Genie — Джинн — Tasha's Cauldron of Everything legacy authoring target.
 8. The Undead — Нежить — Van Richten's Guide to Ravenloft legacy authoring target.
 9. The Undying — Бессмертный — Sword Coast Adventurer's Guide legacy authoring target.
@@ -32,7 +32,7 @@ The supplied roster is an authoring queue, not yet a verified claim that every e
 
 ## Runtime boundary
 
-- Literary text: base Warlock plus three patron identities are authored.
+- Literary text: base Warlock plus six patron identities are authored.
 - Exact mechanics/resources/actions/Pact Magic/Invocations/Pacts/Mystic Arcanum/runtime: NOT STARTED.
 - Catalog/runtime visibility: NOT ACTIVE.
-- `warlockReferenceDraft.ts` and `warlockSubclassReferenceDraft.ts` must not be imported into `classReference`, class runtime templates or Character Class UI until an independent Warlock mechanics pass verifies the chosen rules revision, subclass levels, Pact Magic slot progression, invocation prerequisites, Pact options, Mystic Arcanum, patron spell lists, CE integration and tests.
+- `warlockReferenceDraft.ts`, `warlockSubclassReferenceDraft.ts` and `warlockSubclassReferenceDraftWave2.ts` must not be imported into `classReference`, class runtime templates or Character Class UI until an independent Warlock mechanics pass verifies the chosen rules revision, subclass levels, Pact Magic slot progression, invocation prerequisites, Pact options, Mystic Arcanum, patron spell lists, CE integration and tests.
