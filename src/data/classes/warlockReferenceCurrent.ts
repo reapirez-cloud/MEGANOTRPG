@@ -1,5 +1,5 @@
-import { warlockReferenceDraft } from "./warlockReferenceDraft"
-import { normalizeVossWorldTone } from "./vossWorldTone"
+import { warlockReferenceDraft } from "./warlockReferenceDraft.ts"
+import { normalizeVossWorldTone } from "./vossWorldTone.ts"
 
 const level20Explanation = `После войны Даниэль исчез. Не героически — просто однажды его место у костра осталось пустым. Я решил, что хозяин наконец утащил своё имущество туда, откуда оно пришло.
 
