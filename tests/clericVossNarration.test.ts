@@ -42,7 +42,7 @@ test("Cleric narration covers the final 84 feature grants plus class and fourtee
 })
 
 test("every Cleric card has unique in-world narration without rules vocabulary", () => {
-  const all: string[] = [clericClassVossNarration]
+  const all: Array<{ label: string; text: string }> = [{ label: "class:cleric", text: clericClassVossNarration }]
   assertNarration(clericClassVossNarration, "class:cleric")
 
   for (const entry of clericVossNarrationCoverage.base) {
@@ -51,28 +51,38 @@ test("every Cleric card has unique in-world narration without rules vocabulary",
     const sourceKey = entry.slice(separator + 1)
     const text = getClericBaseVossNarration(level, sourceKey)
     assert.ok(text, `missing Cleric base narration for ${entry}`)
-    assertNarration(text, `class:cleric:${entry}`)
-    all.push(text)
+    const label = `class:cleric:${entry}`
+    assertNarration(text, label)
+    all.push({ label, text })
   }
 
   for (const subclassId of clericVossNarrationCoverage.subclasses) {
     const intro = getClericSubclassVossNarration(subclassId)
     assert.ok(intro, `missing Cleric domain narration for ${subclassId}`)
-    assertNarration(intro, `subclass:cleric:${subclassId}`)
+    const introLabel = `subclass:cleric:${subclassId}`
+    assertNarration(intro, introLabel)
     assert.ok(getClericSubclassVossComment(subclassId), `missing Cleric domain comment for ${subclassId}`)
-    all.push(intro)
+    all.push({ label: introLabel, text: intro })
 
     const sourceKeys = clericVossNarrationCoverage.subclassFeatures[subclassId] || []
     for (const sourceKey of sourceKeys) {
       const text = getClericSubclassFeatureVossNarration(subclassId, sourceKey)
       assert.ok(text, `missing Cleric feature narration for ${subclassId}:${sourceKey}`)
-      assertNarration(text, `subclass:cleric:${subclassId}:${sourceKey}`)
-      all.push(text)
+      const label = `subclass:cleric:${subclassId}:${sourceKey}`
+      assertNarration(text, label)
+      all.push({ label, text })
     }
   }
 
   assert.equal(all.length, 99)
-  assert.equal(new Set(all).size, all.length, "Cleric Voss narration must not reuse one text across cards")
+  const labelsByText = new Map<string, string[]>()
+  for (const entry of all) {
+    const labels = labelsByText.get(entry.text) || []
+    labels.push(entry.label)
+    labelsByText.set(entry.text, labels)
+  }
+  const duplicates = [...labelsByText.values()].filter((labels) => labels.length > 1)
+  assert.deepEqual(duplicates, [], `Cleric Voss narration duplicates: ${JSON.stringify(duplicates)}`)
 })
 
 test("Cleric class comment keeps the current despairing black-humor register", () => {
