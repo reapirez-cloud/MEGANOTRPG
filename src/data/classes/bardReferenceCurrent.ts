@@ -26,9 +26,9 @@ const authoredSubclasses = new Map(
 /**
  * Current player-facing Bard literary reference.
  *
- * Base Bard narration is preserved in bardReferenceBase.ts. Finished subclass
- * waves replace only their matching roster placeholders. Exact-rule blocks remain
- * authoring notes until the independent Bard mechanics/runtime audit.
+ * Base Bard narration is preserved in bardReferenceBase.ts. Six finished subclass
+ * narratives replace only their matching roster placeholders. Exact-rule blocks
+ * remain authoring notes until the independent Bard mechanics/runtime audit.
  */
 export const bardReferenceCurrent = {
   ...bardReferenceBase,
