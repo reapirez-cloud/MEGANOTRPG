@@ -1,10 +1,11 @@
 import type { SpellClassKey } from "../lib/spellCatalog"
+import { bardReferenceCurrent } from "./classes/bardReferenceCurrent.ts"
 import { monkReferenceDraft } from "./classes/monkReferenceDraft.ts"
 import { monkSubclassReferenceDrafts } from "./classes/monkSubclassReferenceDraft.ts"
 import { monkSubclassReferenceDraftWave2 } from "./classes/monkSubclassReferenceDraftWave2.ts"
 import { monkSubclassReferenceDraftWave3 } from "./classes/monkSubclassReferenceDraftWave3.ts"
 import { monkSubclassReferenceDraftWave4 } from "./classes/monkSubclassReferenceDraftWave4.ts"
-import { paladinReferenceCurrent } from "./classes/paladinReferenceCurrent.ts"
+import { paladinReferenceComplete } from "./classes/paladinReferenceComplete.ts"
 import { sorcererReferenceDraft } from "./classes/sorcererReferenceDraft.ts"
 import { sorcererSubclassReferenceDraft } from "./classes/sorcererSubclassReferenceDraft.ts"
 import { sorcererSubclassReferenceDraftWave2 } from "./classes/sorcererSubclassReferenceDraftWave2.ts"
@@ -227,8 +228,9 @@ export const classReference: ClassReferenceEntry[] = [
     description: "Волшебник не получает силу по наследству и не вымаливает её у богов — он изучает, записывает и повторяет формулы, пока реальность не начинает подчиняться почерку. Его книга заклинаний хранит растущий арсенал; после отдыха он меняет подготовку под задачу, читает ритуалы прямо из книги и возвращает часть потраченной магии во время короткого отдыха. Восс обычно добавляет, что хороший волшебник готовится к завтрашней войне, а плохой становится причиной сегодняшней.",
     subclasses: [...wizardReferenceSubclasses, ...wizardTashaReferenceSubclasses, ...wizardSupplementReferenceSubclasses],
   },
+  bardReferenceCurrent,
   monkLiteraryReference,
-  paladinReferenceCurrent,
+  paladinReferenceComplete,
   sorcererLiteraryReference,
   warlockLiteraryReference,
 ]
