@@ -1,4 +1,5 @@
 import { paladinSubclassReferenceDrafts } from "./paladinSubclassReferenceDraft.ts"
+import { paladinSubclassReferenceDraftWave2 } from "./paladinSubclassReferenceDraftWave2.ts"
 import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep.ts"
 
 type PaladinLiteraryFeature = {
@@ -191,21 +192,6 @@ const features: PaladinLiteraryFeature[] = [
 
 const remainingSubclassPlaceholders = [
   {
-    id: "glory",
-    name: "Клятва Славы",
-    summary: "Клятва подвига, физического превосходства и превращения собственной жизни в легенду. Полный литературный пакет клятвы будет добавлен отдельно.",
-  },
-  {
-    id: "conquest",
-    name: "Клятва Завоевания",
-    summary: "Железный порядок через подавление страха, неповиновения и вражеской воли. Полный литературный пакет клятвы будет добавлен отдельно.",
-  },
-  {
-    id: "redemption",
-    name: "Клятва Искупления",
-    summary: "Путь терпения и щита, допускающий насилие только как последнюю неизбежную меру. Полный литературный пакет клятвы будет добавлен отдельно.",
-  },
-  {
     id: "watchers",
     name: "Клятва Стражей",
     summary: "Стражи границ мира против чуждых планарных сил, вторжений и существ извне. Полный литературный пакет клятвы будет добавлен отдельно.",
@@ -227,7 +213,7 @@ export const paladinReferenceCurrent = {
   name: "Паладин",
   nameEn: "Paladin",
   tagline: "Сила не от милости богов, а от клятвы, которую человек отказался нарушить даже ради здравого смысла.",
-  description: "Литературный перевод базового Паладина и первой тройки клятв готов. Точные правила, выдача способностей и Character Engine будут подключены отдельным проверяемым механическим пакетом.",
+  description: "Литературный перевод базового Паладина и первых шести клятв готов. Точные правила, выдача способностей и Character Engine будут подключены отдельным проверяемым механическим пакетом.",
   mechanics: "",
   explanation: normalizeVossWorldToneDeep(authorDescription),
   voss: normalizeVossWorldToneDeep(authorComment),
@@ -237,5 +223,5 @@ export const paladinReferenceCurrent = {
     voss: normalizeVossWorldToneDeep(feature.voss),
   })),
   referenceOnly: true,
-  subclasses: [...paladinSubclassReferenceDrafts, ...remainingSubclassPlaceholders],
+  subclasses: [...paladinSubclassReferenceDrafts, ...paladinSubclassReferenceDraftWave2, ...remainingSubclassPlaceholders],
 }
