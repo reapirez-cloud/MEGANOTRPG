@@ -1,3 +1,6 @@
+import { wizardReferenceSubclasses } from "./wizardReference"
+import { wizardSupplementReferenceSubclasses } from "./wizardSupplementReference"
+import { wizardTashaReferenceSubclasses } from "./wizardTashaReference"
 import {
   getWizardSubclassVossComment as getBaseWizardSubclassVossComment,
   getWizardSubclassVossNarration as getBaseWizardSubclassVossNarration,
@@ -33,6 +36,18 @@ applyWizardGeminiPack1FeatureStories()
 applyWizardGeminiPack2FeatureStories()
 applyWizardGeminiPack3FeatureStories()
 applyWizardGeminiPack4FeatureStories()
+
+for (const subclass of [
+  ...wizardReferenceSubclasses,
+  ...wizardTashaReferenceSubclasses,
+  ...wizardSupplementReferenceSubclasses,
+]) {
+  if (subclass.voss) subclass.voss = normalizeVossWorldTone(subclass.voss)
+  for (const feature of subclass.features || []) {
+    feature.explanation = normalizeVossWorldTone(feature.explanation)
+    if (feature.voss) feature.voss = normalizeVossWorldTone(feature.voss)
+  }
+}
 
 export function getWizardSubclassVossNarration(subclassId: string) {
   return normalizeVossWorldTone(
