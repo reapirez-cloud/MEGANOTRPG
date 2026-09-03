@@ -7,7 +7,7 @@ const unicodeWordBoundarySource = String.raw`(?:(?<![\p{L}\p{N}_])(?=[\p{L}\p{N}
 function withUnicodeWordBoundaries(pattern: RegExp) {
   if (!pattern.source.includes("\\b")) return pattern
   const flags = pattern.flags.includes("u") ? pattern.flags : `${pattern.flags}u`
-  return new RegExp(pattern.source.replaceAll("\\b", unicodeWordBoundarySource), flags)
+  return new RegExp(pattern.source.split("\\b").join(unicodeWordBoundarySource), flags)
 }
 
 /**
