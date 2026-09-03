@@ -1,6 +1,6 @@
-import { wizardReferenceSubclasses } from "./wizardReference"
-import { wizardSupplementReferenceSubclasses } from "./wizardSupplementReference"
-import { wizardTashaReferenceSubclasses } from "./wizardTashaReference"
+import { wizardReferenceSubclasses } from "./wizardReference.ts"
+import { wizardSupplementReferenceSubclasses } from "./wizardSupplementReference.ts"
+import { wizardTashaReferenceSubclasses } from "./wizardTashaReference.ts"
 import {
   getWizardSubclassVossComment as getBaseWizardSubclassVossComment,
   getWizardSubclassVossNarration as getBaseWizardSubclassVossNarration,
@@ -30,7 +30,7 @@ import {
   getWizardGeminiPack4SubclassVossNarration,
   wizardGeminiPack4Coverage,
 } from "./wizardSubclassVossNarrationGeminiPack4.ts"
-import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep"
+import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep.ts"
 
 applyWizardGeminiPack1FeatureStories()
 applyWizardGeminiPack2FeatureStories()
