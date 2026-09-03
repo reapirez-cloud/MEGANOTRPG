@@ -2,6 +2,14 @@ import { normalizeVossWorldTone } from "./vossWorldTone.ts"
 
 type Replacement = readonly [RegExp, string]
 
+const unicodeWordBoundarySource = String.raw`(?:(?<![\p{L}\p{N}_])(?=[\p{L}\p{N}_])|(?<=[\p{L}\p{N}_])(?![\p{L}\p{N}_]))`
+
+function withUnicodeWordBoundaries(pattern: RegExp) {
+  if (!pattern.source.includes("\\b")) return pattern
+  const flags = pattern.flags.includes("u") ? pattern.flags : `${pattern.flags}u`
+  return new RegExp(pattern.source.replaceAll("\\b", unicodeWordBoundarySource), flags)
+}
+
 /**
  * Second-pass audit for older authored packs. These are deliberately literary
  * substitutions: exact rules/mechanics never pass through this function.
@@ -42,6 +50,7 @@ const deepAuditReplacements: Replacement[] = [
   [/\bдивизион(?:а|у|ом|е|ы|ов|ами|ах)?\b/giu, "отряд"],
   [/\bдивизи(?:я|и|ю|ей|ями|ях)\b/giu, "полк"],
   [/\bбюрократи(?:я|и|ю|ей|е)\b/giu, "писарская волокита"],
+  [/\bбухгалтер(?:ия|ии|ию|ией|ие)\b/giu, "счётная палата"],
   [/\bсанитарная команда с лицензией на отстрел\b/giu, "церковные ловчие с правом казнить на месте"],
   [/\bполевой санитарной службе\b/giu, "полевом лазарете"],
   [/\bсанитарной службе\b/giu, "лазарете"],
@@ -69,9 +78,56 @@ const deepAuditReplacements: Replacement[] = [
   [/\bштыки\b/giu, "пики"],
   [/\bштык\b/giu, "пика"],
   [/\bпистолетного выстрела\b/giu, "выстрела редкой ручной фитильной пищали"],
+  [/\bпистолетами\b/giu, "ручными фитильными пищалями"],
+  [/\bпистолетах\b/giu, "ручных фитильных пищалях"],
+  [/\bпистолетов\b/giu, "ручных фитильных пищалей"],
+  [/\bпистолетом\b/giu, "ручной фитильной пищалью"],
+  [/\bпистолета\b/giu, "ручной фитильной пищали"],
+  [/\bпистолету\b/giu, "ручной фитильной пищали"],
+  [/\bпистолете\b/giu, "ручной фитильной пищали"],
+  [/\bпистолеты\b/giu, "ручные фитильные пищали"],
+  [/\bпистолет\b/giu, "ручная фитильная пищаль"],
   [/\bпистоли\b/giu, "ручные фитильные пищали"],
   [/\bпистолью\b/giu, "ручной фитильной пищалью"],
   [/\bпистоль\b/giu, "ручная фитильная пищаль"],
+  [/\bвинтовками\b/giu, "длинными фитильными пищалями"],
+  [/\bвинтовках\b/giu, "длинных фитильных пищалях"],
+  [/\bвинтовок\b/giu, "длинных фитильных пищалей"],
+  [/\bвинтовкой\b/giu, "длинной фитильной пищалью"],
+  [/\bвинтовки\b/giu, "длинной фитильной пищали"],
+  [/\bвинтовке\b/giu, "длинной фитильной пищали"],
+  [/\bвинтовку\b/giu, "длинную фитильную пищаль"],
+  [/\bвинтовка\b/giu, "длинная фитильная пищаль"],
+  [/\bмушкетами\b/giu, "тяжёлыми фитильными пищалями"],
+  [/\bмушкетах\b/giu, "тяжёлых фитильных пищалях"],
+  [/\bмушкетов\b/giu, "тяжёлых фитильных пищалей"],
+  [/\bмушкетом\b/giu, "тяжёлой фитильной пищалью"],
+  [/\bмушкета\b/giu, "тяжёлой фитильной пищали"],
+  [/\bмушкету\b/giu, "тяжёлой фитильной пищали"],
+  [/\bмушкете\b/giu, "тяжёлой фитильной пищали"],
+  [/\bмушкеты\b/giu, "тяжёлые фитильные пищали"],
+  [/\bмушкет\b/giu, "тяжёлая фитильная пищаль"],
+  [/\bружьями\b/giu, "фитильными пищалями"],
+  [/\bружьях\b/giu, "фитильных пищалях"],
+  [/\bружей\b/giu, "фитильных пищалей"],
+  [/\bружьём\b/giu, "фитильной пищалью"],
+  [/\bружьем\b/giu, "фитильной пищалью"],
+  [/\bружью\b/giu, "фитильной пищали"],
+  [/\bружье\b/giu, "фитильная пищаль"],
+  [/\bружьё\b/giu, "фитильная пищаль"],
+  [/\bружья\b/giu, "фитильные пищали"],
+  [/\bштуцерами\b/giu, "длинными фитильными пищалями"],
+  [/\bштуцерах\b/giu, "длинных фитильных пищалях"],
+  [/\bштуцеров\b/giu, "длинных фитильных пищалей"],
+  [/\bштуцером\b/giu, "длинной фитильной пищалью"],
+  [/\bштуцера\b/giu, "длинной фитильной пищали"],
+  [/\bштуцер\b/giu, "длинная фитильная пищаль"],
+  [/\bснайпер(?:а|у|ом|е|ы|ов|ами|ах)?\b/giu, "меткий стрелок"],
+  [/\bшрапнель(?:ю|и)?\b/giu, "осколки"],
+  [/\bфугас(?:а|у|ом|е|ы|ов|ами|ах)?\b/giu, "пороховой горшок"],
+  [/\bпатронташ(?:а|у|ем|е)?\b/giu, "ремень с пороховницами"],
+  [/\bпатронных сумок\b/giu, "сумок с порохом и свинцовыми шарами"],
+  [/\bпатронную сумку\b/giu, "сумку с порохом и свинцовыми шарами"],
   [/\bпулеметный огонь\b/giu, "ливень тяжёлых арбалетных болтов"],
   [/\bпулемётный огонь\b/giu, "ливень тяжёлых арбалетных болтов"],
   [/\bпулеметные гнезда\b/giu, "расчёты тяжёлых арбалетов"],
@@ -182,6 +238,10 @@ const deepAuditReplacements: Replacement[] = [
   [/\bчистая физика\b/giu, "никакого чуда — одно ремесло тела"],
   [/\bЧистая физика\b/gu, "Никакого чуда — одно ремесло тела"],
   [/\bимпульс действия\b/giu, "силу для нового рывка"],
+  [/\bфизиологи(?:я|и|ю|ей|е)\b/giu, "устройство тела"],
+  [/\bанатоми(?:я|и|ю|ей|е)\b/giu, "устройство тела"],
+  [/\bметаболизм(?:а|у|ом|е)?\b/giu, "обмен сил в теле"],
+  [/\bдиплом(?:а|у|ом|е|ы|ов|ами|ах)?\b/giu, "учёная грамота"],
 
   // Modern state / psychology / office language.
   [/\bконтракт между ним и его небесным хозяином\b/giu, "уговор между ним и его небесным хозяином"],
@@ -230,13 +290,20 @@ const deepAuditReplacements: Replacement[] = [
   [/\bлатинск(?:ий|ая|ое|ие|ого|ому|им|их|ой|ую)\b/giu, "учёный"],
 ]
 
+const compiledDeepAuditReplacements = deepAuditReplacements.map(
+  ([pattern, replacement]) => [withUnicodeWordBoundaries(pattern), replacement] as const,
+)
+
 export function normalizeVossWorldToneDeep(text: string | null | undefined) {
   const firstPass = normalizeVossWorldTone(text)
   if (!firstPass) return firstPass
-  return deepAuditReplacements.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), firstPass)
+  return compiledDeepAuditReplacements.reduce(
+    (result, [pattern, replacement]) => result.replace(pattern, replacement),
+    firstPass,
+  )
 }
 
-export const vossDeepForbiddenWorldTonePatterns = [
+const rawDeepForbiddenWorldTonePatterns = [
   /\bВерден/iu,
   /\bВильно/iu,
   /\bВаршав/iu,
@@ -260,3 +327,5 @@ export const vossDeepForbiddenWorldTonePatterns = [
   /\bмиллисекунд/iu,
   /\bштык/iu,
 ] as const
+
+export const vossDeepForbiddenWorldTonePatterns = rawDeepForbiddenWorldTonePatterns.map(withUnicodeWordBoundaries)
