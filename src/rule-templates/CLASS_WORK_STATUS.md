@@ -278,14 +278,14 @@ The drafts must not be imported into `classReference`, Chasovoy runtime template
 
 - `authoring_started: 2026-09-03`
 - `authoring_source: src/data/classes/warlockReferenceDraft.ts`
-- `subclass_authoring_sources: src/data/classes/warlockSubclassReferenceDraft.ts`
-- `current_dev_text: base Warlock Voss narration follows the abandoned drummer Michel; first patron wave adds Emil / Archfey, Brun / Fiend and Sibylla / Great Old One, preserving each patron relationship as a distinct story of need, protection, memory, vengeance or emotional anesthesia`
+- `subclass_authoring_sources: src/data/classes/warlockSubclassReferenceDraft.ts; src/data/classes/warlockSubclassReferenceDraftWave2.ts`
+- `current_dev_text: base Warlock Voss narration follows the abandoned drummer Michel; patron waves now add Emil / Archfey, Brun / Fiend, Sibylla / Great Old One, Zakhar / Celestial, Jonah / Hexblade and Nazar / Fathomless, preserving each patron relationship as a distinct story of need, protection, memory, vengeance, emotional anesthesia, compulsory purification, bodily possession or belonging to the abyss`
 - `exact_rules: INTENTIONALLY_EMPTY_PENDING_MECHANICS_PASS`
 - `runtime_visibility: NOT_ACTIVE`
 - `class_reference_visibility: NOT_ACTIVE`
-- `subclasses: IN_PROGRESS_3_AUTHORED_OF_9_USER_PLANNED`
-- `authored_subclasses: archfey, fiend, great-old-one`
-- `queued_subclasses: celestial, hexblade, fathomless, genie, undead, undying`
+- `subclasses: IN_PROGRESS_6_AUTHORED_OF_9_USER_PLANNED`
+- `authored_subclasses: archfey, fiend, great-old-one, celestial, hexblade, fathomless`
+- `queued_subclasses: genie, undead, undying`
 - `source_policy: patron source labels copied from the user are planning hints only and must be independently verified during the mechanics pass`
 - `mechanics_policy: Gemini/user-supplied exact-rule copy is literary planning material only; exact Pact Magic, Invocations, Pact options, patron spells/features, Mystic Arcanum, CE resources/actions and runtime package will be independently authored and audited before activation`
 
