@@ -74,7 +74,7 @@ test("Cleric ledger keeps text READY while the mechanics audit remains open", ()
   const cleric = ledger.split("## Cleric (`class:cleric`)")[1]?.split("\n---")[0] ?? ""
   assert.match(cleric, /\*\*Text:\*\* `READY`/)
   assert.match(cleric, /\*\*Mechanics\/runtime:\*\* `IN_PROGRESS`/)
-  assert.match(cleric, /last_text_audit: 2026-09-01/)
+  assert.match(cleric, /last_text_audit: 2026-09-03/)
   assert.match(cleric, /last_mechanics_audit_started: 2026-08-29/)
   assert.match(cleric, /fourteen-domain runtime coverage is not yet certified/i)
   assert.match(cleric, /Do not promote Cleric mechanics to `READY`/)
