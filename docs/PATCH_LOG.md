@@ -12,30 +12,31 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Player-facing changes
 
 - None yet. The new Monk material is intentionally kept as authoring-only draft content and is not visible in the class catalog or character UI.
-- Added literary draft coverage for the first three planned Monk subclasses: Open Hand / Brother Anselm, Shadow / Brother Cassian and Drunken Master / Uncle Bartosz. Each keeps a subclass preview, feature stories and separate Voss comments while remaining inactive.
+- Added literary draft coverage for six planned Monk subclasses across two waves: Open Hand / Brother Anselm, Shadow / Brother Cassian, Drunken Master / Uncle Bartosz, Elements / Brother Vaclav, Mercy / Sister Magdalena and Kensei / Master Yoshiro. Each keeps a subclass preview, feature stories and separate Voss comments while remaining inactive.
 
 ### Runtime and rules changes
 
-- No Monk mechanics/runtime were added. Base and subclass drafts keep every exact-rule field empty so Gemini-authored prose, levels and rule claims cannot become mechanical truth by accident.
-- User-supplied subclass source labels and the remaining seven-subclass list are stored only as authoring/planning hints; exact editions, feature schedules and mechanics still require an independent rules pass.
+- No Monk mechanics/runtime were added. Base and subclass drafts keep every exact-rule field empty so Gemini/user-authored prose, levels and rule claims cannot become mechanical truth by accident.
+- User-supplied subclass source labels and the remaining four-subclass list are stored only as authoring/planning hints; exact editions, feature schedules and mechanics still require an independent rules pass.
 
 ### Repository / release process
 
 - Opened immediately after successful promotion of patch `2026-09-02-C`.
 - Added `src/data/classes/monkReferenceDraft.ts` as the non-runtime literary source for Brother Korn's base-Monk Voss narration and feature comments.
-- Added `src/data/classes/monkSubclassReferenceDraft.ts` as the non-runtime literary source for the first subclass wave and the remaining Monk authoring queue.
-- Updated the Monk checkpoint in `CLASS_WORK_STATUS.md`: text authoring remains `IN_PROGRESS`, mechanics/runtime remain `NOT_STARTED`, three of the ten user-planned subclasses now have authored literary drafts, and activation remains forbidden until the exact rules/package pass is complete.
+- Added `src/data/classes/monkSubclassReferenceDraft.ts` as the non-runtime literary source for the first subclass wave.
+- Added `src/data/classes/monkSubclassReferenceDraftWave2.ts` for Elements, Mercy and Kensei, preserving only their literary Voss layers while keeping mechanics/details empty.
+- Updated the Monk checkpoint in `CLASS_WORK_STATUS.md`: text authoring remains `IN_PROGRESS`, mechanics/runtime remain `NOT_STARTED`, six of the ten user-planned subclasses now have authored literary drafts, and activation remains forbidden until the exact rules/package pass is complete.
 
 ### Tests / verification added in this patch
 
 - Verified the Monk base/subclass drafts are not imported by `classReference` or runtime code; no mechanics/build-success claim is made for the future Monk package.
-- The subclass draft explicitly documents that its source labels, feature levels and names are not authoritative mechanics.
+- The subclass drafts explicitly document that source labels, feature levels and names supplied with the literary copy are not authoritative mechanics.
 
 ### Known incomplete work
 
 - The repository still has 10 stale Voss/text-contract assertions inherited from the released patch and awaiting reconciliation with the authored narration.
 - Monk exact 2024/legacy rules, CE resources/actions/choices, package-quality tests and catalog/runtime activation are intentionally pending a separate mechanics pass.
-- Seven user-planned Monk subclasses still need their literary drafts: Elements, Mercy, Kensei, Ascendant Dragon, Astral Self, Sun Soul and Long Death.
+- Four user-planned Monk subclasses still need literary drafts: Ascendant Dragon, Astral Self, Sun Soul and Long Death.
 
 ---
 
