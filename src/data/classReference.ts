@@ -109,7 +109,7 @@ function literaryClass(
     nameEn: draft.nameEn,
     tagline,
     description: "Литературный перевод класса уже доступен в справочнике; точные механики и Character Engine для этого класса подключаются отдельным, независимо проверяемым пакетом.",
-    mechanics: "Механический пакет класса пока не активирован. Эта карточка показывает только готовый авторский слой Восса и не выдаёт персонажу способности или ресурсы.",
+    mechanics: "Механический пакет класса пока не активирован. Эта карточка показывает готовый справочный слой правил и авторский слой Восса, но не выдаёт персонажу способности или ресурсы.",
     explanation: draft.authorDescription,
     voss: draft.authorComment,
     features: draft.features.map(literaryFeature),
@@ -147,7 +147,7 @@ const warlockLiteraryReference = literaryClass(
     ...warlockSubclassReferenceDraftWave2,
     ...warlockSubclassReferenceDraftWave3,
   ],
-  "Сделка, которую заключают не от хорошей жизни — и долг, который всегда приходит за своим.",
+  "Кто-то сам идёт к чудовищу за силой. К кому-то чудовище приходит первым — когда больше не приходит никто.",
 )
 
 /**
