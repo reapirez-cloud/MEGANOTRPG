@@ -1,6 +1,7 @@
 -- CLASS_MIGRATION_SCOPE: mechanics
 -- CLASS_INTEGRATION_STRICT: class:wizard
 -- CLASS_PACKAGE_TEST: tests/wizardCompletionRuntime.test.ts
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
 -- CLASS_WORK_STATUS: wizard:text=READY;mechanics=READY
 -- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 -- Wizard 2024 preparation contract.
