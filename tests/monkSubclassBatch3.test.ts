@@ -17,21 +17,17 @@ function feature(id: string, sourceKey: string, key: string, label: string, desc
 }
 
 function action(id: string, sourceKey: string, key: string, label: string, economy: string, focus = 0): StoredMechanic {
-  return {
-    id, type: "action", sourceKey, key, label, economy,
-    ...(focus ? { resourceCosts: [{ key: "monk_focus", amount: focus }] } : {}),
-    tags: ["subclass"],
-  }
+  return { id, type: "action", sourceKey, key, label, economy, ...(focus ? { resourceCosts: [{ key: "monk_focus", amount: focus }] } : {}), tags: ["subclass"] }
 }
 
 function value(id: string, sourceKey: string, key: string, label: string, amount: number | FormulaExpression): StoredMechanic {
   return { id, type: "grant", target: "value", sourceKey, key, grantOperation: "REPLACE", payload: { label, value: amount } }
 }
 
-const baseFocus: StoredMechanics = [{
-  id: "monk-focus-l20", type: "resource", sourceKey: "monk-focus", key: "monk_focus", label: "Очки концентрации",
-  max: 20, recharge: ["short_rest", "long_rest"], initial: "full", grantOperation: "REPLACE", priority: 20,
-}]
+const baseMonk: StoredMechanics = [
+  { id: "monk-focus-l20", type: "resource", sourceKey: "monk-focus", key: "monk_focus", label: "Очки концентрации", max: 20, recharge: ["short_rest", "long_rest"], initial: "full", grantOperation: "REPLACE", priority: 20 },
+  value("monk-ma-die-l20", "monk-martial-arts", "martial_arts_die_sides", "Куб Боевых искусств", 12),
+]
 
 const livingDie: FormulaExpression = {
   kind: "min",
@@ -79,7 +75,6 @@ const mechanics: Record<string, StoredMechanics> = {
 const cobaltChoices: RuleChoiceDefinition[] = [
   { key: "cobalt_erudition_skill", label: "Навык эрудиции", target: "proficiency", options: ["skill:arcana", "skill:history", "skill:investigation", "skill:nature", "skill:religion"], count_by_level: { "6": 1, "11": 2, "17": 3 }, selection_mode: "player_once" },
 ]
-
 const livingChoices: RuleChoiceDefinition[] = [
   { key: "living_weapon_discipline", label: "Боевая дисциплина", target: "trait", options: ["forged_heart", "nightmare_shroud", "travelers_blade", "weretouched"], count: 1, selection_mode: "player_once" },
   { key: "living_manifest_damage_type", label: "Тип Manifest Blow", target: "trait", options: ["damage:bludgeoning", "damage:piercing", "damage:slashing", "damage:cold", "damage:lightning", "damage:necrotic", "damage:psychic", "damage:thunder"], count: 1, selection_mode: "player_once", refresh: "long_rest" },
@@ -120,18 +115,16 @@ function subclassBundle(id: keyof typeof mechanics) {
 }
 
 function inputFor(id: keyof typeof mechanics, resources: CharacterEngineInput["state"]["resources"] = {}): CharacterEngineInput {
-  const parsed = resolveTemplateBundles([bundle("class", "monk-class", "class:monk", baseFocus), subclassBundle(id)], 20)
+  const parsed = resolveTemplateBundles([bundle("class", "monk-class", "class:monk", baseMonk), subclassBundle(id)], 20)
   return {
     base: { id: "monk-character", name: "Монах", level: 20, abilities: { strength: 10, dexterity: 20, constitution: 14, intelligence: 10, wisdom: 16, charisma: 8 }, baseMaxHp: 120, baseSpeed: 30 },
-    state: { currentHp: 120, tempHp: 0, resources },
-    contributions: parsed.contributions,
+    state: { currentHp: 120, tempHp: 0, resources }, contributions: parsed.contributions,
   }
 }
 
 function spend(id: keyof typeof mechanics, key: string, current = 20) {
   const input = inputFor(id, { monk_focus: { current } })
-  const contract = resolveCharacterContract(input)
-  const resolved = contract.actions.find((entry) => entry.key === key)
+  const resolved = resolveCharacterContract(input).actions.find((entry) => entry.key === key)
   assert.ok(resolved, `missing action ${key}`)
   assert.equal(resolved.available, true)
   return executeAction(input.state, resolved)
@@ -147,7 +140,7 @@ test("batch 3 declares two official and two third-party Monk subclasses", () => 
 
 test("batch 3 fixtures pass package quality with parent Monk", () => {
   for (const id of ["sun-soul", "long-death", "cobalt-soul", "living-weapon"] as const) {
-    const bundles = [bundle("class", "monk-class", "class:monk", baseFocus), subclassBundle(id)]
+    const bundles = [bundle("class", "monk-class", "class:monk", baseMonk), subclassBundle(id)]
     assert.doesNotThrow(() => assertClassPackageQuality(bundles))
     assert.doesNotThrow(() => assertClassResourcePolicy(bundles))
   }
@@ -176,14 +169,16 @@ test("Cobalt Soul spends 1 / 1 / 3 Focus and is third-party", () => {
 test("Living Weapon keeps choices and raises the 2024 unarmed die one step to d12 cap", () => {
   const contract = resolveCharacterContract(inputFor("living-weapon"))
   assert.equal(contract.values.find((entry) => entry.key === "living_weapon_unarmed_die_sides")?.value.value, 12)
-  const profiled = resolveTemplateBundles([bundle("class", "monk-class", "class:monk", baseFocus), subclassBundle("living-weapon")], 20)
-  assert.ok(profiled.contributions.some((entry) => entry.kind === "grant" && entry.target === "trait" && entry.key === "forged_heart"))
-  assert.ok(profiled.contributions.some((entry) => entry.kind === "grant" && entry.target === "trait" && entry.key === "damage:psychic"))
-  assert.ok(profiled.contributions.some((entry) => entry.kind === "grant" && entry.target === "trait" && entry.key === "travelers_blade"))
+  const parsed = resolveTemplateBundles([bundle("class", "monk-class", "class:monk", baseMonk), subclassBundle("living-weapon")], 20)
+  assert.ok(parsed.contributions.some((entry) => entry.kind === "grant" && entry.target === "trait" && entry.key === "forged_heart"))
+  assert.ok(parsed.contributions.some((entry) => entry.kind === "grant" && entry.target === "trait" && entry.key === "damage:psychic"))
+  assert.ok(parsed.contributions.some((entry) => entry.kind === "grant" && entry.target === "trait" && entry.key === "travelers_blade"))
   assert.equal(spend("living-weapon", "reflexive_adaptation").resources?.monk_focus?.current, 19)
 })
 
-test("integer overload exists before batch 3 migration", () => {
+test("integer overload is gated by the same batch package test", () => {
+  assert.match(compat, /CLASS_PACKAGE_TEST:\s*tests\/monkSubclassBatch3\.test\.ts/)
+  assert.match(compat, /CLASS_WORK_STATUS:\s*monk:subclasses-batch3=RUNTIME_COMPAT/)
   assert.match(compat, /p_value integer/)
   assert.match(compat, /to_jsonb\(p_value\)/)
 })
