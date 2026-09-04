@@ -1,6 +1,8 @@
 -- CLASS_MIGRATION_SCOPE: mechanics
 -- CLASS_INTEGRATION_STRICT: class:monk
+-- CLASS_PACKAGE_TEST: tests/monkSubclassBatch3.test.ts
 -- CLASS_RESOURCE_POLICY: short-long-rest-v1
+-- CLASS_WORK_STATUS: monk:subclasses-batch3=RUNTIME_COMPAT
 -- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 -- Compatibility overload used by Monk subclass runtime migrations.
 
