@@ -67,18 +67,27 @@ function resource(id: string, sourceKey: string, key: string, label: string, max
   }
 }
 
-const baseFocus: StoredMechanics = [{
-  id: "monk-focus-l20",
-  type: "resource",
-  sourceKey: "monk-focus",
-  key: "monk_focus",
-  label: "Очки концентрации",
-  max: 20,
-  recharge: ["short_rest", "long_rest"],
-  initial: "full",
-  grantOperation: "REPLACE",
-  priority: 20,
-}]
+const baseFocus: StoredMechanics = [
+  feature(
+    "monk-focus-rules",
+    "monk-focus",
+    "monk_focus_rules",
+    "Монашеская концентрация",
+    "Запас Очков концентрации равен уровню монаха и полностью восстанавливается после короткого или долгого отдыха. Классовые и подклассовые приёмы расходуют этот общий конечный ресурс.",
+  ),
+  {
+    id: "monk-focus-l20",
+    type: "resource",
+    sourceKey: "monk-focus",
+    key: "monk_focus",
+    label: "Очки концентрации",
+    max: 20,
+    recharge: ["short_rest", "long_rest"],
+    initial: "full",
+    grantOperation: "REPLACE",
+    priority: 20,
+  },
+]
 
 const subclassMechanics: Record<string, StoredMechanics> = {
   mercy: [
@@ -126,7 +135,7 @@ const subclassMechanics: Record<string, StoredMechanics> = {
 }
 
 const summaries: Record<string, string> = {
-  mercy: "Монах милосердия лечит, усиливает Безоружные удары некротическим уроном и расходует общий Focus вместе с отдельными долгими-rest ресурсами.",
+  mercy: "Монах милосердия лечит, усиливает Безоружные удары некротическим уроном и расходует общий Focus вместе с отдельными ресурсами долгого отдыха.",
   shadow: "Монах тени расходует Focus на Тьму, улучшенный телепорт и Покров теней, а условия освещения определяются фактической сценой.",
   elements: "Монах стихий расходует Focus на Единение со стихиями и Взрыв стихий, получая элементальные удары и мобильность по уровням.",
   "open-hand": "Монах открытой ладони усиливает Шквал ударов контролем, имеет конечный запас самоисцеления и тратит Focus на Дрожащую ладонь.",
@@ -151,15 +160,16 @@ function bundle(kind: "class" | "subclass", id: string, catalogKey: string, mech
   }
 }
 
+function parentBundle() {
+  return bundle("class", "monk-class", "class:monk", baseFocus)
+}
+
 function subclassBundle(subclass: keyof typeof subclassMechanics) {
   return bundle("subclass", `monk-${subclass}`, `subclass:monk:${subclass}`, subclassMechanics[subclass])
 }
 
 function inputFor(subclass: keyof typeof subclassMechanics, resources: CharacterEngineInput["state"]["resources"] = {}): CharacterEngineInput {
-  const parsed = resolveTemplateBundles([
-    bundle("class", "monk-class", "class:monk", baseFocus),
-    subclassBundle(subclass),
-  ], 20)
+  const parsed = resolveTemplateBundles([parentBundle(), subclassBundle(subclass)], 20)
 
   return {
     base: {
@@ -187,10 +197,12 @@ test("batch 1 installs exactly the four 2024 Monk subclass catalog keys", () => 
   assert.match(migration, /subclass_supported_count',4/)
   assert.match(migration, /'feature_levels',jsonb_build_array\(3,6,11,17\)/)
   assert.match(migration, /'shared_resource','monk_focus'/)
+  assert.match(migration, /CLASS_RESOURCE_POLICY: short-long-rest-v1/)
+  assert.match(migration, /CLASS_STATUS_LEDGER: src\/rule-templates\/CLASS_WORK_STATUS\.md/)
 })
 
-test("all four subclass fixtures pass strict quality and resource policy", () => {
-  const bundles = (["mercy", "shadow", "elements", "open-hand"] as const).map(subclassBundle)
+test("all four subclasses pass strict quality and resource policy together with parent Monk", () => {
+  const bundles = [parentBundle(), ...(["mercy", "shadow", "elements", "open-hand"] as const).map(subclassBundle)]
   assert.doesNotThrow(() => assertClassPackageQuality(bundles))
   assert.doesNotThrow(() => assertClassResourcePolicy(bundles))
 })
