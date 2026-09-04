@@ -267,23 +267,49 @@ There are no known Wizard implementation or deployment blockers in the declared 
 ## Monk (`class:monk`)
 
 **Text:** `READY_AUTHORING_SCOPE`  
-**Mechanics/runtime:** `NOT_STARTED`
+**Mechanics/runtime:** `READY`
 
 - `authoring_started: 2026-09-03`
 - `authoring_source: src/data/classes/monkReferenceDraft.ts`
 - `subclass_authoring_sources: src/data/classes/monkSubclassReferenceDraft.ts; src/data/classes/monkSubclassReferenceDraftWave2.ts; src/data/classes/monkSubclassReferenceDraftWave3.ts; src/data/classes/monkSubclassReferenceDraftWave4.ts`
 - `authoring_closure: src/data/classes/monkAuthoringClosure.md`
-- `current_dev_text: Brother Korn base narration plus all ten declared WotC-scope literary identities are authored; Cobalt Soul / Sister Valeria and Living Weapon / Brother Goran are preserved as additional partner/third-party-adjacent authoring drafts pending independent source eligibility review`
+- `current_dev_text: Brother Korn base narration plus all ten declared WotC-scope literary identities are authored; Cobalt Soul / Sister Valeria and Living Weapon / Brother Goran are retained as the two additional third-party/partnered runtime packages`
 - `exact_reference_rules: READY_CURRENT_AUTHORED_ROSTER_2026_09_04`
-- `runtime_visibility: NOT_ACTIVE`
-- `class_reference_visibility: ACTIVE_REFERENCE_ONLY; Korn narration and exact reference rules are visible without CE activation`
-- `subclasses: LITERARY_SCOPE_COMPLETE_10_OF_10_PLUS_2_OPTIONAL`
-- `authored_wotc_scope: open-hand, shadow, drunken-master, elements, mercy, kensei, ascendant-dragon, astral-self, sun-soul, long-death`
-- `optional_authoring_candidates: cobalt-soul, living-weapon`
-- `source_policy: subclass source labels copied from the user are planning hints only and must be independently verified during the mechanics pass`
-- `mechanics_policy: exact reference rules are present; CE resources/actions/choices and runtime package remain a separate future implementation before activation`
+- `last_mechanics_audit_started: 2026-09-04`
+- `last_dev_runtime_audit: 2026-09-04`
+- `last_deployed_runtime_audit: 2026-09-04`
+- `dev_base_class_runtime: READY`
+- `dev_subclass_runtime: READY_12_TOTAL_10_WOTC_PLUS_2_ADDITIONAL`
+- `dev_subclass_runtime_revision: monk-subclasses-batch3-runtime-v1`
+- `runtime_closure_revision: monk-runtime-finalization-v1`
+- `subclass_supported_count: 12`
+- `wotc_subclass_supported_count: 10`
+- `additional_subclass_supported_count: 2`
+- `subclass_batch1: mercy, shadow, elements, open-hand`
+- `subclass_batch2: drunken-master, kensei, ascendant-dragon, astral-self`
+- `subclass_batch3: sun-soul, long-death, cobalt-soul, living-weapon`
+- `subclass_feature_levels: 3,6,11,17 where defined by the source package`
+- `shared_resource: monk_focus`
+- `base_runtime_regressions: tests/monkOfficialPack.test.ts; tests/monkRuntimeCompletion.test.ts`
+- `subclass_regressions: tests/monkSubclassBatch1.test.ts; tests/monkSubclassBatch2.test.ts; tests/monkSubclassBatch3.test.ts`
+- `catalog_bootstrap: READY; 20260904122000_monk_catalog_bootstrap.sql creates class:monk before runtime for existing and new campaigns`
+- `resource_integer_compat: READY; literal subclass resource maxima are accepted without weakening formula-json maxima`
+- `value_reference_precision: READY; canonical dependency is values.martial_arts_die_sides and deployed legacy bad-reference count is zero`
+- `runtime_visibility: DEV_AND_PRODUCTION_ACTIVE_AND_AUDITED_2026_09_04`
+- `class_reference_visibility: ACTIVE; Korn narration and exact reference rules remain the presentation source while runtime templates carry CE mechanics separately`
+- `subclasses: READY_10_OF_10_WOTC_PLUS_2_ADDITIONAL_RUNTIME`
+- `wotc_runtime_scope: open-hand, shadow, drunken-master, elements, mercy, kensei, ascendant-dragon, astral-self, sun-soul, long-death`
+- `additional_runtime_scope: cobalt-soul, living-weapon`
+- `source_classification: cobalt-soul=third_party_partnered; living-weapon=third_party`
+- `mechanics_policy: CE owns persistent Focus and finite rest-recovering uses; scene/target/light/turn legality remains GM-adjudicated when the app lacks authoritative state; subclass packages reuse the base monk_focus pool rather than duplicating it`
+- `production_runtime: DEPLOYED_AND_CERTIFIED_2026_09_04`
+- `production_subclass_count: 12`
+- `production_wotc_subclass_count: 10`
+- `production_additional_subclass_count: 2`
+- `production_runtime_metadata: mechanics_status=READY; subclass_mechanics_status=READY; subclass_runtime_included=true`
+- `production_bad_legacy_value_refs: 0`
 
-The authored reference is visible through `classReference`, but it must not be imported into Chasovoy runtime templates or Character Class runtime UI until resources/actions/choices and package-quality tests are complete enough for activation.
+Base Monk and all declared Monk runtime packages are implemented, regression-gated and deployed. The current supported roster is complete at ten WotC subclasses plus Cobalt Soul and Living Weapon as two explicitly non-WotC additions. Scene and turn facts outside authoritative app state remain on the documented GM adjudication boundary and are not runtime blockers.
 
 ---
 
