@@ -1,6 +1,9 @@
 -- CLASS_MIGRATION_SCOPE: mechanics
 -- CLASS_INTEGRATION_STRICT: class:monk
 -- CLASS_PACKAGE_TEST: tests/monkOfficialPack.test.ts
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
+-- CLASS_WORK_STATUS: monk:base=RUNTIME_READY;subclasses=UNCHANGED
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 --
 -- Precision audit against the 2024 Monk rules. This changes only base-class
 -- rows and keeps subclass packages untouched.
@@ -36,7 +39,6 @@ begin
   ),'[]'::jsonb)
   where l.template_id=v_monk;
 
-  -- Focus save DC is deterministic, so expose it as a native named value.
   update public.rule_template_levels
   set mechanics=mechanics||jsonb_build_array(jsonb_build_object(
     'id','monk-focus-save-dc-l2',
