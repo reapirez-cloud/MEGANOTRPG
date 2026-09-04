@@ -2,8 +2,11 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 
+import { resolveCharacterContract, type CharacterEngineInput } from "../src/character-engine/index.ts"
 import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
 import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
+import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
+import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
 import { wizardSubclassRuntimeBundles } from "../src/rule-templates/wizardSubclassMechanics.ts"
 
 const closure = fs.readFileSync(
@@ -18,9 +21,49 @@ function section(source: string, start: string, end: string) {
   return source.slice(from, to >= 0 ? to : undefined)
 }
 
+function cloneBundle(bundle: CharacterTemplateBundle): CharacterTemplateBundle {
+  return JSON.parse(JSON.stringify(bundle)) as CharacterTemplateBundle
+}
+
 test("Wizard runtime closure keeps the canonical subclass package behind shared class gates", () => {
   assert.doesNotThrow(() => assertClassPackageQuality(wizardSubclassRuntimeBundles))
   assert.doesNotThrow(() => assertClassResourcePolicy(wizardSubclassRuntimeBundles))
+
+  const packages = wizardSubclassRuntimeBundles
+    .filter((bundle) =>
+      bundle.template.catalog_key === "class:wizard"
+      || bundle.template.catalog_key === "subclass:wizard:abjurer"
+    )
+    .map(cloneBundle)
+
+  for (const bundle of packages) {
+    if (bundle.template.kind === "class") bundle.assignment.template_level = 14
+    if (bundle.template.kind === "subclass") bundle.assignment.template_level = null
+  }
+
+  const parsed = resolveTemplateBundles(packages, 14)
+  const input: CharacterEngineInput = {
+    base: {
+      id: "wizard-runtime-closure-character",
+      name: "Wizard Runtime Closure",
+      level: 14,
+      abilities: {
+        strength: 8,
+        dexterity: 14,
+        constitution: 14,
+        intelligence: 18,
+        wisdom: 12,
+        charisma: 10,
+      },
+      baseMaxHp: 70,
+      baseSpeed: 30,
+    },
+    state: { currentHp: 70, tempHp: 0 },
+    contributions: parsed.contributions,
+  }
+  const contract = resolveCharacterContract(input)
+  assert.ok(contract.resources.some((entry) => entry.key === "wizard_abjurer_arcane_ward"))
+  assert.ok(contract.actions.some((entry) => entry.key === "wizard_abjurer_projected_ward"))
 })
 
 test("final Wizard runtime closure restores authoritative base metadata after subclass v3", () => {
