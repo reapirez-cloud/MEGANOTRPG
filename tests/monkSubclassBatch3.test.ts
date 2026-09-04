@@ -11,15 +11,14 @@ import type { StoredMechanic, StoredMechanics } from "../src/types/characterMech
 
 const migration = fs.readFileSync("supabase/migrations/20260904145500_monk_subclasses_batch3_runtime.sql", "utf8")
 const compat = fs.readFileSync("supabase/migrations/20260904145400_monk_subclass_value_integer_compat.sql", "utf8")
+const precision = fs.readFileSync("supabase/migrations/20260904145600_monk_subclasses_batch3_value_reference_precision.sql", "utf8")
 
 function feature(id: string, sourceKey: string, key: string, label: string, description: string): StoredMechanic {
   return { id, type: "grant", target: "feature", sourceKey, key, payload: { label, description } }
 }
-
 function action(id: string, sourceKey: string, key: string, label: string, economy: string, focus = 0): StoredMechanic {
   return { id, type: "action", sourceKey, key, label, economy, ...(focus ? { resourceCosts: [{ key: "monk_focus", amount: focus }] } : {}), tags: ["subclass"] }
 }
-
 function value(id: string, sourceKey: string, key: string, label: string, amount: number | FormulaExpression): StoredMechanic {
   return { id, type: "grant", target: "value", sourceKey, key, grantOperation: "REPLACE", payload: { label, value: amount } }
 }
@@ -34,7 +33,7 @@ const livingDie: FormulaExpression = {
   values: [
     { kind: "literal", value: 12 },
     { kind: "add", terms: [
-      { kind: "reference", key: "values.value:martial_arts_die_sides:default" },
+      { kind: "reference", key: "values.martial_arts_die_sides" },
       { kind: "literal", value: 2 },
     ] },
   ],
@@ -113,15 +112,10 @@ function subclassBundle(id: keyof typeof mechanics) {
   const sourceKind = id === "cobalt-soul" || id === "living-weapon" ? "third_party" : "official"
   return bundle("subclass", `monk-${id}`, `subclass:monk:${id}`, mechanics[id], choices, sourceKind)
 }
-
 function inputFor(id: keyof typeof mechanics, resources: CharacterEngineInput["state"]["resources"] = {}): CharacterEngineInput {
   const parsed = resolveTemplateBundles([bundle("class", "monk-class", "class:monk", baseMonk), subclassBundle(id)], 20)
-  return {
-    base: { id: "monk-character", name: "Монах", level: 20, abilities: { strength: 10, dexterity: 20, constitution: 14, intelligence: 10, wisdom: 16, charisma: 8 }, baseMaxHp: 120, baseSpeed: 30 },
-    state: { currentHp: 120, tempHp: 0, resources }, contributions: parsed.contributions,
-  }
+  return { base: { id: "monk-character", name: "Монах", level: 20, abilities: { strength: 10, dexterity: 20, constitution: 14, intelligence: 10, wisdom: 16, charisma: 8 }, baseMaxHp: 120, baseSpeed: 30 }, state: { currentHp: 120, tempHp: 0, resources }, contributions: parsed.contributions }
 }
-
 function spend(id: keyof typeof mechanics, key: string, current = 20) {
   const input = inputFor(id, { monk_focus: { current } })
   const resolved = resolveCharacterContract(input).actions.find((entry) => entry.key === key)
@@ -137,7 +131,6 @@ test("batch 3 declares two official and two third-party Monk subclasses", () => 
   assert.match(migration, /'third_party','Critical Role \/ Tal''Dorei Campaign Setting Reborn'/)
   assert.match(migration, /'third_party','Exploring Eberron — Keith Baker'/)
 })
-
 test("batch 3 fixtures pass package quality with parent Monk", () => {
   for (const id of ["sun-soul", "long-death", "cobalt-soul", "living-weapon"] as const) {
     const bundles = [bundle("class", "monk-class", "class:monk", baseMonk), subclassBundle(id)]
@@ -145,27 +138,23 @@ test("batch 3 fixtures pass package quality with parent Monk", () => {
     assert.doesNotThrow(() => assertClassResourcePolicy(bundles))
   }
 })
-
 test("Sun Soul spends shared Focus for its paid attacks", () => {
   assert.equal(spend("sun-soul", "radiant_sun_bolt_bonus_pair").resources?.monk_focus?.current, 19)
   assert.equal(spend("sun-soul", "searing_arc_strike_3").resources?.monk_focus?.current, 17)
   assert.equal(spend("sun-soul", "searing_sunburst_3").resources?.monk_focus?.current, 17)
-  assert.match(migration, /values\.value:martial_arts_die_sides:default/)
+  assert.match(precision, /values\.martial_arts_die_sides/)
 })
-
 test("Long Death exposes 1 Focus survival and 10 Focus maximum touch", () => {
   assert.equal(spend("long-death", "mastery_of_death").resources?.monk_focus?.current, 19)
   assert.equal(spend("long-death", "touch_of_the_long_death_10").resources?.monk_focus?.current, 10)
   assert.match(migration, /for v_i in 1\.\.10 loop/)
 })
-
 test("Cobalt Soul spends 1 / 1 / 3 Focus and is third-party", () => {
   assert.equal(spend("cobalt-soul", "extort_truth").resources?.monk_focus?.current, 19)
   assert.equal(spend("cobalt-soul", "mind_of_mercury").resources?.monk_focus?.current, 19)
   assert.equal(spend("cobalt-soul", "debilitating_barrage").resources?.monk_focus?.current, 17)
   assert.equal(subclassBundle("cobalt-soul").template.source_kind, "third_party")
 })
-
 test("Living Weapon keeps choices and raises the 2024 unarmed die one step to d12 cap", () => {
   const contract = resolveCharacterContract(inputFor("living-weapon"))
   assert.equal(contract.values.find((entry) => entry.key === "living_weapon_unarmed_die_sides")?.value.value, 12)
@@ -175,10 +164,10 @@ test("Living Weapon keeps choices and raises the 2024 unarmed die one step to d1
   assert.ok(parsed.contributions.some((entry) => entry.kind === "grant" && entry.target === "trait" && entry.key === "travelers_blade"))
   assert.equal(spend("living-weapon", "reflexive_adaptation").resources?.monk_focus?.current, 19)
 })
-
-test("integer overload is gated by the same batch package test", () => {
+test("compat and precision migrations are gated by the batch package test", () => {
   assert.match(compat, /CLASS_PACKAGE_TEST:\s*tests\/monkSubclassBatch3\.test\.ts/)
   assert.match(compat, /CLASS_WORK_STATUS:\s*monk:subclasses-batch3=RUNTIME_COMPAT/)
-  assert.match(compat, /p_value integer/)
-  assert.match(compat, /to_jsonb\(p_value\)/)
+  assert.match(precision, /CLASS_PACKAGE_TEST:\s*tests\/monkSubclassBatch3\.test\.ts/)
+  assert.match(precision, /values\.value:martial_arts_die_sides:default/)
+  assert.match(precision, /values\.martial_arts_die_sides/)
 })
