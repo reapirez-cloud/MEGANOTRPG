@@ -1,6 +1,9 @@
 -- CLASS_MIGRATION_SCOPE: mechanics
 -- CLASS_INTEGRATION_STRICT: class:monk
 -- CLASS_PACKAGE_TEST: tests/monkOfficialPack.test.ts
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
+-- CLASS_WORK_STATUS: monk:base=RUNTIME_READY;subclasses=UNCHANGED
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 --
 -- Normalize the Monk pack to the current StoredMechanic contract and keep
 -- implementation language out of player-facing feature text.
