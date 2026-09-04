@@ -1,6 +1,9 @@
 -- CLASS_MIGRATION_SCOPE: mechanics
 -- CLASS_INTEGRATION_STRICT: class:monk
 -- CLASS_PACKAGE_TEST: tests/monkRuntimeCompletion.test.ts
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
+-- CLASS_WORK_STATUS: monk:base=RUNTIME_READY;subclasses=UNCHANGED
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 --
 -- Final native mechanics that CE can represent truthfully without inventing
 -- scene state. Armor-dependent AC/speed remain exact rules prose until equipped
@@ -20,7 +23,6 @@ begin
   order by version desc,created_at desc limit 1;
   if v_monk is null then return; end if;
 
-  -- Disciplined Survivor: actual proficiency in every saving throw.
   foreach v_save in array array['strength','dexterity','constitution','intelligence','wisdom','charisma'] loop
     update public.rule_template_levels
     set mechanics=mechanics||jsonb_build_array(jsonb_build_object(
@@ -36,8 +38,6 @@ begin
       );
   end loop;
 
-  -- Body and Mind is deterministic: +4 DEX/WIS, each capped at 25.
-  -- In this engine MAX is the numeric ceiling operation (see conflicts.ts).
   update public.rule_template_levels
   set mechanics=mechanics||jsonb_build_array(
     jsonb_build_object('id','monk-body-mind-dex-add','type','numeric','target','abilities.dexterity','operation','ADD','value',4,'sourceKey','monk-body-and-mind','priority',20),
