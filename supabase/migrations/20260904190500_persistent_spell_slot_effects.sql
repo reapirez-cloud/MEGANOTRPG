@@ -1,6 +1,6 @@
 -- CLASS_MIGRATION_SCOPE: infrastructure
 -- Keep every CE resource read/effect on character_resource_states, including parser-owned spell slots.
--- The legacy character_sheets.spell_slots path is intentionally not used by template runtime helpers.
+-- Template runtime helpers now use one persistent CE ledger for both ordinary class resources and spell slots.
 
 create or replace function private.character_runtime_resource_snapshot(
   p_character_id uuid,
