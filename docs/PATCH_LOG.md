@@ -2,12 +2,16 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-04-A
+## Released patches
 
-**Status:** OPEN
-**Branch:** `dev`
+### Patch — 2026-09-04-A
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `2f925706941493dc34611fe92e850c9607cbbcd1`
 **Started:** 2026-09-04
+**Released:** 2026-09-04
+**Release identity:** `patch 2026-09-04-A / explicit main fast-forward release`
 
 ### Player-facing changes
 
@@ -15,18 +19,22 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added explicit reference-only cards for missing 2024 base-class features. These cards deliberately keep their English feature name and show a visible `Перевода способности пока нет` note instead of inventing Voss narration.
 - Kept every rebuilt class marked `referenceOnly`: the new text is visible in the Reference Guide but does not grant character resources, actions, spells or other Character Engine mechanics.
 
+### Runtime and architecture changes
+
+- Added the final forward-only Wizard runtime closure after the subclass-v3 installer. Existing and newly created campaigns now retain the authoritative Wizard metadata, all 13 supported subclass packages and the established post-rest policy after installation order is resolved.
+- Added the subclass-mechanics roadmap describing the shared CE/template pipeline, completion gate, source audit and implementation waves without activating any additional subclass runtime.
+
 ### Tests / verification
 
 - Added a regression gate requiring every visible base/subclass feature in the five translated new-class families to have a non-empty mechanical rule.
 - Updated the Bard reference test to distinguish exact reference text from runtime activation.
+- Added Wizard closure regression coverage for installer ordering, shared class-quality/resource gates, parser output and representative CE resolution.
 - Full test suite passes (`660/660`), production TypeScript/Vite build succeeds, and lint reports no errors.
 
 ### Known incomplete work
 
 - Artificer, Barbarian, Ranger and Rogue do not yet have authored translation/reference source files in the current `dev` tree; they are not silently reconstructed from the retired vague legacy catalog.
 - Runtime/Character Engine packages for the five reference-complete class families remain intentionally outside this patch.
-
-## Released patches
 
 ### Patch — 2026-09-02-D
 
