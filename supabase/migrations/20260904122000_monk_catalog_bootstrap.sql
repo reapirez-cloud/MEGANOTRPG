@@ -1,4 +1,4 @@
--- CLASS_MIGRATION_SCOPE: catalog
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- CLASS_INTEGRATION_STRICT: class:monk
 -- CLASS_PACKAGE_TEST: tests/monkOfficialPack.test.ts
 -- CLASS_WORK_STATUS: monk:catalog=READY
