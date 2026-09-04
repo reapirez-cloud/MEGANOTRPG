@@ -1,6 +1,7 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- Character Engine owns parser-defined spell slots in character_resource_states.
 -- Keep every generic class/chat resource cost on that same persistent ledger.
--- Legacy cast_prepared_spell has its own character_sheets path and is intentionally
+-- Legacy cast_prepared_spell keeps its separate legacy slot-storage path and is intentionally
 -- not routed through this helper.
 
 create or replace function private.consume_character_resource_costs(
