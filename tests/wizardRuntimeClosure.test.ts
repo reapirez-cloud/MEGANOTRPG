@@ -2,6 +2,10 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 
+import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
+import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
+import { wizardSubclassRuntimeBundles } from "../src/rule-templates/wizardSubclassMechanics.ts"
+
 const closure = fs.readFileSync(
   "supabase/migrations/20260904090000_wizard_runtime_closure_v1.sql",
   "utf8",
@@ -13,6 +17,11 @@ function section(source: string, start: string, end: string) {
   const to = source.indexOf(end, from + start.length)
   return source.slice(from, to >= 0 ? to : undefined)
 }
+
+test("Wizard runtime closure keeps the canonical subclass package behind shared class gates", () => {
+  assert.doesNotThrow(() => assertClassPackageQuality(wizardSubclassRuntimeBundles))
+  assert.doesNotThrow(() => assertClassResourcePolicy(wizardSubclassRuntimeBundles))
+})
 
 test("final Wizard runtime closure restores authoritative base metadata after subclass v3", () => {
   const apply = section(
