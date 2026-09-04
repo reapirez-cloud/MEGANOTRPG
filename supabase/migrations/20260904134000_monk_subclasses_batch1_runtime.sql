@@ -1,8 +1,9 @@
 -- CLASS_MIGRATION_SCOPE: mechanics
 -- CLASS_INTEGRATION_STRICT: class:monk
 -- CLASS_PACKAGE_TEST: tests/monkSubclassBatch1.test.ts
--- CLASS_RESOURCE_POLICY: reuse-base-monk-focus
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
 -- CLASS_WORK_STATUS: monk:subclasses-batch1=RUNTIME_READY
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 --
 -- 2024 Monk subclass batch 1: Mercy, Shadow, Elements, Open Hand.
 -- Subclasses reuse the base monk_focus pool. Scene/target/light/turn conditions
