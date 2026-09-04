@@ -3,6 +3,8 @@ import fs from "node:fs"
 import test from "node:test"
 
 import { resolveCharacterContract, type CharacterEngineInput } from "../src/character-engine/index.ts"
+import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
+import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
 import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
 import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
 import type { StoredMechanics } from "../src/types/characterMechanics.ts"
@@ -57,6 +59,11 @@ function input(level: number, dexterity: number, wisdom: number): CharacterEngin
     contributions: parsed.contributions,
   }
 }
+
+test("Monk completion package passes strict quality and resource policy", () => {
+  assert.doesNotThrow(() => assertClassPackageQuality([bundle(20)]))
+  assert.doesNotThrow(() => assertClassResourcePolicy([bundle(20)]))
+})
 
 test("Disciplined Survivor grants native proficiency in every saving throw", () => {
   const contract = resolveCharacterContract(input(14, 18, 16))
