@@ -5,15 +5,16 @@ import {
 } from "./bardSubclassReferenceDraft.ts"
 import { bardSubclassReferenceDraftWave2 } from "./bardSubclassReferenceDraftWave2.ts"
 import { bardSubclassReferenceDraftWave3 } from "./bardSubclassReferenceDraftWave3.ts"
+import { completeSubclassFeatures } from "./referenceMechanics.ts"
 
 function literarySubclass(subclass: BardSubclassReferenceDraft) {
   return {
     id: subclass.id,
     name: subclass.name,
-    summary: "Литературный перевод коллегии готов. Точные правила и Character Engine будут подключены отдельным механическим пакетом.",
+    summary: "Литературный перевод и точные справочные правила готовы. Character Engine остаётся отдельным будущим механическим пакетом.",
     explanation: subclass.authorDescription,
     voss: subclass.authorComment,
-    features: subclass.features,
+    features: completeSubclassFeatures(subclass.id, subclass.features),
   }
 }
 
@@ -29,12 +30,12 @@ const authoredSubclasses = new Map(
  * Current player-facing Bard literary reference.
  *
  * Base Bard narration is preserved in bardReferenceBase.ts. All nine current
- * roster colleges now have authored literary presentations. Exact-rule blocks
- * remain authoring notes until the independent Bard mechanics/runtime audit.
+ * roster colleges now have authored literary presentations and exact reference
+ * rules. Runtime mechanics remain a separate future package.
  */
 export const bardReferenceCurrent = {
   ...bardReferenceBase,
-  description: "Литературный перевод базового Барда и всех девяти коллегий текущего ростера готов. Точные правила, ресурсы и Character Engine будут подключены отдельным проверяемым механическим пакетом.",
+  description: "Литературный перевод базового Барда и всех девяти коллегий текущего ростера готов; карточки содержат точные справочные правила. Ресурсы и Character Engine будут подключены отдельным проверяемым механическим пакетом.",
   subclasses: bardReferenceBase.subclasses.map(
     (subclass) => authoredSubclasses.get(subclass.id) ?? subclass,
   ),

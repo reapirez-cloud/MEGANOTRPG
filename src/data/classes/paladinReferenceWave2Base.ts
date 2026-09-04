@@ -1,6 +1,7 @@
 import { paladinSubclassReferenceDrafts } from "./paladinSubclassReferenceDraft.ts"
 import { paladinSubclassReferenceDraftWave2 } from "./paladinSubclassReferenceDraftWave2.ts"
 import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep.ts"
+import { completeReferenceFeatures, completeSubclassFeatures } from "./referenceMechanics.ts"
 
 type PaladinLiteraryFeature = {
   level: number
@@ -196,7 +197,16 @@ const paladinSubclassReferenceWave2 = paladinSubclassReferenceDraftWave2.map((su
   summary: "Литературный перевод клятвы готов. Точные правила и Character Engine будут подключены отдельным механическим пакетом.",
   explanation: subclass.authorDescription,
   voss: subclass.authorComment,
-  features: subclass.features,
+  features: completeSubclassFeatures(subclass.id, subclass.features),
+}))
+
+const paladinSubclassReferenceWave1 = paladinSubclassReferenceDrafts.map((subclass) => ({
+  id: subclass.id,
+  name: subclass.name,
+  summary: "Литературный перевод клятвы готов; точные правила заполнены как справочный слой без подключения к Character Engine.",
+  explanation: subclass.explanation,
+  voss: subclass.voss,
+  features: completeSubclassFeatures(subclass.id, subclass.features),
 }))
 
 const remainingSubclassPlaceholders = [
@@ -226,11 +236,11 @@ export const paladinReferenceCurrent = {
   mechanics: "",
   explanation: normalizeVossWorldToneDeep(authorDescription),
   voss: normalizeVossWorldToneDeep(authorComment),
-  features: features.map((feature) => ({
+  features: completeReferenceFeatures("paladin", features.map((feature) => ({
     ...feature,
     explanation: normalizeVossWorldToneDeep(feature.explanation),
     voss: normalizeVossWorldToneDeep(feature.voss),
-  })),
+  }))),
   referenceOnly: true,
-  subclasses: [...paladinSubclassReferenceDrafts, ...paladinSubclassReferenceWave2, ...remainingSubclassPlaceholders],
+  subclasses: [...paladinSubclassReferenceWave1, ...paladinSubclassReferenceWave2, ...remainingSubclassPlaceholders],
 }

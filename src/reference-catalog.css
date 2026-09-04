@@ -212,6 +212,25 @@
   border: 1px solid rgba(255,255,255,.065);
 }
 
+.reference-feature-translation-note {
+  border-color: color-mix(in srgb, var(--amber, #d7a85c) 42%, transparent);
+  background: color-mix(in srgb, var(--amber, #d7a85c) 9%, var(--surface, #17191d));
+}
+
+.reference-feature-translation-note > span {
+  color: var(--amber, #d7a85c);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.reference-feature-translation-note p {
+  margin: 0.45rem 0 0;
+  color: var(--text-secondary, #c8c3b8);
+  line-height: 1.55;
+}
+
 .reference-feature-detail-rule > span,
 .reference-feature-detail-facts > span {
   color: #8d8992;

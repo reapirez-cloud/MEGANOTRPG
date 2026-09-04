@@ -253,6 +253,17 @@ There are no known Wizard implementation or deployment blockers in the declared 
 
 ---
 
+## Bard / Paladin reference layer
+
+**Exact reference text:** `READY_CURRENT_AUTHORED_ROSTERS_2026_09_04`
+**Mechanics/runtime:** `NOT_STARTED`
+
+- Bard and Paladin base cards plus every currently authored subclass card now resolve a non-empty exact-rule description through `src/data/classes/referenceMechanics.ts`.
+- Missing translated base features are visible as English-named cards with an explicit translation note; no Voss prose is synthesized for them.
+- These entries remain `referenceOnly`; no Chasovoy template, resource, action, spell access or Character Engine contribution is activated by this reference pass.
+
+---
+
 ## Monk (`class:monk`)
 
 **Text:** `READY_AUTHORING_SCOPE`  
@@ -263,16 +274,16 @@ There are no known Wizard implementation or deployment blockers in the declared 
 - `subclass_authoring_sources: src/data/classes/monkSubclassReferenceDraft.ts; src/data/classes/monkSubclassReferenceDraftWave2.ts; src/data/classes/monkSubclassReferenceDraftWave3.ts; src/data/classes/monkSubclassReferenceDraftWave4.ts`
 - `authoring_closure: src/data/classes/monkAuthoringClosure.md`
 - `current_dev_text: Brother Korn base narration plus all ten declared WotC-scope literary identities are authored; Cobalt Soul / Sister Valeria and Living Weapon / Brother Goran are preserved as additional partner/third-party-adjacent authoring drafts pending independent source eligibility review`
-- `exact_rules: INTENTIONALLY_EMPTY_PENDING_MECHANICS_PASS`
+- `exact_reference_rules: READY_CURRENT_AUTHORED_ROSTER_2026_09_04`
 - `runtime_visibility: NOT_ACTIVE`
-- `class_reference_visibility: NOT_ACTIVE; stale generic static Monk fallback removed 2026-09-03 so unfinished mechanics cannot expose an obsolete non-Korn description`
+- `class_reference_visibility: ACTIVE_REFERENCE_ONLY; Korn narration and exact reference rules are visible without CE activation`
 - `subclasses: LITERARY_SCOPE_COMPLETE_10_OF_10_PLUS_2_OPTIONAL`
 - `authored_wotc_scope: open-hand, shadow, drunken-master, elements, mercy, kensei, ascendant-dragon, astral-self, sun-soul, long-death`
 - `optional_authoring_candidates: cobalt-soul, living-weapon`
 - `source_policy: subclass source labels copied from the user are planning hints only and must be independently verified during the mechanics pass`
-- `mechanics_policy: Gemini copy is literary source only; exact 2024/legacy rules, level schedule, CE resources/actions/choices and runtime package will be authored and audited separately before activation`
+- `mechanics_policy: exact reference rules are present; CE resources/actions/choices and runtime package remain a separate future implementation before activation`
 
-The drafts must not be imported into `classReference`, Chasovoy runtime templates or Character Class UI until exact Monk rules, resources/actions/choices and package-quality tests are complete enough for the intended activation step.
+The authored reference is visible through `classReference`, but it must not be imported into Chasovoy runtime templates or Character Class runtime UI until resources/actions/choices and package-quality tests are complete enough for activation.
 
 ---
 
@@ -286,16 +297,16 @@ The drafts must not be imported into `classReference`, Chasovoy runtime template
 - `subclass_authoring_sources: src/data/classes/sorcererSubclassReferenceDraft.ts; src/data/classes/sorcererSubclassReferenceDraftWave2.ts; src/data/classes/sorcererSubclassReferenceDraftWave3.ts; src/data/classes/sorcererSubclassReferenceDraftWave4.ts`
 - `authoring_plan: src/data/classes/sorcererAuthoringPlan.md`
 - `current_dev_text: Luka base narration plus the nine originally planned Sorcerer identities are authored; Runechild / Kazimir, Phoenix / Marfa and Stone / Gordey are additionally preserved as extended candidates`
-- `exact_rules: INTENTIONALLY_EMPTY_PENDING_MECHANICS_PASS`
+- `exact_reference_rules: READY_CURRENT_AUTHORED_ROSTER_2026_09_04`
 - `runtime_visibility: NOT_ACTIVE`
-- `class_reference_visibility: NOT_ACTIVE`
+- `class_reference_visibility: ACTIVE_REFERENCE_ONLY`
 - `subclasses: COMPLETE_9_PLANNED_PLUS_3_EXTENDED_AUTHORED`
 - `planned_authored: aberrant-sorcery, clockwork-sorcery, draconic-sorcery, wild-magic, divine-soul, shadow-magic, storm-sorcery, lunar-sorcery, pyromancer`
 - `extended_candidates: runechild, phoenix-sorcery, stone-sorcery`
 - `source_policy: source/publication labels in literary copy are non-authoritative; Plane Shift, partner/community and UA eligibility must be independently verified before runtime inclusion`
-- `mechanics_policy: Gemini/user-supplied exact-rule copy is literary planning material only; exact spellcasting, Sorcery Point, Metamagic, subclass mechanics, CE resources/actions and runtime package will be independently authored and audited before activation`
+- `mechanics_policy: exact reference rules are present; Sorcery Point/Metamagic resources, CE actions/choices and runtime package remain a separate future implementation before activation`
 
-The Sorcerer drafts must not be imported into `classReference`, Chasovoy runtime templates or Character Class UI until exact Sorcerer rules, source eligibility, resources/actions/choices and package-quality tests are complete enough for the intended activation step.
+The authored Sorcerer reference is visible through `classReference`, but it must not be imported into Chasovoy runtime templates or Character Class runtime UI until source eligibility, resources/actions/choices and package-quality tests are complete enough for activation.
 
 ---
 
@@ -309,17 +320,17 @@ The Sorcerer drafts must not be imported into `classReference`, Chasovoy runtime
 - `subclass_authoring_sources: src/data/classes/warlockSubclassReferenceDraft.ts; src/data/classes/warlockSubclassReferenceDraftWave2.ts; src/data/classes/warlockSubclassReferenceDraftWave3.ts`
 - `authoring_plan: src/data/classes/warlockAuthoringPlan.md`
 - `current_dev_text: base Warlock Voss narration follows the abandoned drummer Michel; eight patron identities are now authored — Emil / Archfey, Brun / Fiend, Sibylla / Great Old One, Zakhar / Celestial, Jonah / Hexblade, Nazar / Fathomless, Abdul / Genie and captain von Stein / Undead`
-- `exact_rules: INTENTIONALLY_EMPTY_PENDING_MECHANICS_PASS`
+- `exact_reference_rules: READY_CURRENT_AUTHORED_ROSTER_2026_09_04`
 - `runtime_visibility: NOT_ACTIVE`
-- `class_reference_visibility: NOT_ACTIVE`
+- `class_reference_visibility: ACTIVE_REFERENCE_ONLY`
 - `subclasses: IN_PROGRESS_8_AUTHORED_OF_9_USER_PLANNED`
 - `authored_subclasses: archfey, fiend, great-old-one, celestial, hexblade, fathomless, genie, undead`
 - `queued_subclasses: undying`
 - `duplicate_policy: the second supplied Fathomless/Nazar-Sverr block was not duplicated; wave 2 Nazar remains the canonical complete Fathomless literary draft`
 - `source_policy: patron source labels copied from the user are planning hints only and must be independently verified during the mechanics pass`
-- `mechanics_policy: Gemini/user-supplied exact-rule copy is literary planning material only; exact Pact Magic, Invocations, Pact options, patron spells/features, Mystic Arcanum, CE resources/actions and runtime package will be independently authored and audited before activation`
+- `mechanics_policy: exact reference rules are present; Pact Magic, Invocations, Pact options, patron spell access, Mystic Arcanum resources/actions and runtime package remain a separate future implementation before activation`
 
-The Warlock drafts must not be imported into `classReference`, Chasovlyak runtime templates or Character Class UI until exact Warlock rules, patron packages, resource/action contracts and package-quality tests are complete enough for the intended activation step.
+The authored Warlock reference is visible through `classReference`, but it must not be imported into Chasovlyak runtime templates or Character Class runtime UI until patron packages, resource/action contracts and package-quality tests are complete enough for activation.
 
 ---
 

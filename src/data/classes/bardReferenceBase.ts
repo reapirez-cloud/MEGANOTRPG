@@ -1,4 +1,5 @@
 import { normalizeVossWorldToneDeep } from "./vossWorldToneDeep.ts"
+import { completeReferenceFeatures } from "./referenceMechanics.ts"
 
 type BardLiteraryFeature = {
   level: number
@@ -163,7 +164,7 @@ export const bardReferenceCurrent = {
   mechanics: "Механический пакет Барда пока не активирован. Присланные блоки точных правил хранятся как авторские ориентиры и не считаются независимо проверенной реализацией 2024e.",
   explanation: normalizeVossWorldToneDeep(authorDescription),
   voss: normalizeVossWorldToneDeep(authorComment),
-  features: features.map(literaryFeature),
+  features: completeReferenceFeatures("bard", features.map(literaryFeature)),
   referenceOnly: true,
   subclasses: [
     {

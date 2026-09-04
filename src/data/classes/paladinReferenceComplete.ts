@@ -3,6 +3,7 @@ import { paladinSubclassReferenceDraftWave2 } from "./paladinSubclassReferenceDr
 import { paladinSubclassReferenceDraftWave3 } from "./paladinSubclassReferenceDraftWave3.ts"
 import { paladinSubclassReferenceDraftWave4 } from "./paladinSubclassReferenceDraftWave4.ts"
 import { paladinSubclassReferenceDraftWave5 } from "./paladinSubclassReferenceDraftWave5.ts"
+import { completeSubclassFeatures } from "./referenceMechanics.ts"
 
 const firstWaveIds = new Set(["devotion", "vengeance", "ancients"])
 
@@ -10,10 +11,10 @@ function literarySubclass(subclass: (typeof paladinSubclassReferenceDraftWave2)[
   return {
     id: subclass.id,
     name: subclass.name,
-    summary: "Литературный перевод клятвы готов. Точные правила и Character Engine будут подключены отдельным механическим пакетом.",
+    summary: "Литературный перевод и справочные правила клятвы готовы. Character Engine будет подключён отдельным механическим пакетом.",
     explanation: subclass.authorDescription,
     voss: subclass.authorComment,
-    features: subclass.features,
+    features: completeSubclassFeatures(subclass.id, subclass.features),
   }
 }
 
@@ -28,13 +29,16 @@ function literarySubclass(subclass: (typeof paladinSubclassReferenceDraftWave2)[
  * began as an evil-paladin archetype; the modern seal-driven presentation here is
  * MCDM-inspired and must not be mistaken for an official Wizards Sacred Oath.
  *
- * Mechanics remain intentionally inactive until the independent Paladin rules/runtime pass.
+ * Exact reference rules are visible; runtime mechanics remain intentionally inactive.
  */
 export const paladinReferenceComplete = {
   ...paladinReferenceBase,
-  description: "Литературный перевод базового Паладина, девяти официальных клятв и шести дополнительных клятв готов. Дополнительный ростер хранит происхождение отдельно: Предательство — UA, Мор и Рвение — Grim Hollow, Бездна и Кровь — сторонний Midgard/Kobold Press-слой, Иллриггер возвращён к паладинской линии как Клятва Аду; современная версия образа вдохновлена MCDM. Точные правила, выдача способностей и Character Engine будут подключены отдельным проверяемым механическим пакетом.",
+  description: "Литературный перевод базового Паладина, девяти официальных клятв и шести дополнительных клятв готов; карточки содержат справочные правила. Дополнительный ростер хранит происхождение отдельно: Предательство — UA, Мор и Рвение — Grim Hollow, Бездна и Кровь — сторонний Midgard/Kobold Press-слой, Иллриггер возвращён к паладинской линии как Клятва Аду; современная версия образа вдохновлена MCDM. Выдача способностей и Character Engine будут подключены отдельным проверяемым механическим пакетом.",
   subclasses: [
-    ...paladinReferenceBase.subclasses.filter((subclass) => firstWaveIds.has(subclass.id)),
+    ...paladinReferenceBase.subclasses.filter(
+      (subclass): subclass is Extract<(typeof paladinReferenceBase.subclasses)[number], { features: unknown }> =>
+        firstWaveIds.has(subclass.id) && "features" in subclass,
+    ),
     ...paladinSubclassReferenceDraftWave2.map(literarySubclass),
     ...paladinSubclassReferenceDraftWave3.map(literarySubclass),
     ...paladinSubclassReferenceDraftWave4.map(literarySubclass),

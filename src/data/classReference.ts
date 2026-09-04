@@ -12,6 +12,7 @@ import { sorcererSubclassReferenceDraftWave2 } from "./classes/sorcererSubclassR
 import { sorcererSubclassReferenceDraftWave3 } from "./classes/sorcererSubclassReferenceDraftWave3.ts"
 import { sorcererSubclassReferenceDraftWave4 } from "./classes/sorcererSubclassReferenceDraftWave4.ts"
 import { warlockReferenceCurrent } from "./classes/warlockReferenceCurrent.ts"
+import { completeReferenceFeatures, completeSubclassFeatures } from "./classes/referenceMechanics.ts"
 import { warlockSubclassReferenceDraft } from "./classes/warlockSubclassReferenceDraft.ts"
 import { warlockSubclassReferenceDraftWave2 } from "./classes/warlockSubclassReferenceDraftWave2.ts"
 import { warlockSubclassReferenceDraftWave3 } from "./classes/warlockSubclassReferenceDraftWave3.ts"
@@ -27,6 +28,7 @@ export type ClassReferenceSubclassFeature = {
   mechanics: string
   details?: string[]
   voss?: string
+  translationNote?: string
 }
 
 export type ClassReferenceSubclass = {
@@ -94,10 +96,10 @@ function literarySubclass(subclass: LiterarySubclassDraft): ClassReferenceSubcla
   return {
     id: subclass.id,
     name: subclass.name,
-    summary: "Литературный перевод готов. Точные правила будут подключены отдельным механическим пакетом.",
+    summary: "Литературный перевод и справочное описание правил готовы. Runtime-механики будут подключены отдельным пакетом.",
     explanation: normalizeVossWorldToneDeep(subclass.authorDescription),
     voss: normalizeVossWorldToneDeep(subclass.authorComment),
-    features: subclass.features.map(literaryFeature),
+    features: completeSubclassFeatures(subclass.id, subclass.features.map(literaryFeature)),
   }
 }
 
@@ -111,11 +113,11 @@ function literaryClass(
     name: draft.name,
     nameEn: draft.nameEn,
     tagline,
-    description: "Литературный перевод класса уже доступен в справочнике; точные механики и Character Engine для этого класса подключаются отдельным, независимо проверяемым пакетом.",
-    mechanics: "Механический пакет класса пока не активирован. Эта карточка показывает готовый справочный слой правил и авторский слой Восса, но не выдаёт персонажу способности или ресурсы.",
+    description: "Литературный перевод класса и точные справочные правила доступны в справочнике; Character Engine для этого класса подключается отдельным, независимо проверяемым пакетом.",
+    mechanics: "Карточка показывает точные правила и авторский слой Восса, но остаётся справочной: она не выдаёт персонажу способности или ресурсы.",
     explanation: normalizeVossWorldToneDeep(draft.authorDescription),
     voss: normalizeVossWorldToneDeep(draft.authorComment),
-    features: draft.features.map(literaryFeature),
+    features: completeReferenceFeatures(draft.id, draft.features.map(literaryFeature)),
     referenceOnly: true,
     subclasses: subclasses.map(literarySubclass),
   }

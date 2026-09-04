@@ -30,12 +30,11 @@ test("Bard literary reference covers the full nine-college roster", () => {
   }
 })
 
-test("Bard literary colleges do not pretend supplied rules are implemented mechanics", () => {
+test("Bard literary colleges expose exact reference rules without claiming runtime mechanics", () => {
   for (const subclass of bardReferenceCurrent.subclasses) {
     assert.ok("features" in subclass, `${subclass.id} unexpectedly stayed a roster placeholder`)
     for (const feature of subclass.features) {
-      assert.equal(feature.mechanics, "", `${subclass.id}/${feature.name} unexpectedly exposes runtime mechanics`)
-      assert.deepEqual(feature.details ?? [], [], `${subclass.id}/${feature.name} unexpectedly exposes rule details`)
+      assert.ok(feature.mechanics.trim(), `${subclass.id}/${feature.name} is missing its exact reference rule`)
     }
   }
 })

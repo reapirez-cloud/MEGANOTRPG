@@ -2,6 +2,30 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
+## Active patch — 2026-09-04-A
+
+**Status:** OPEN
+**Branch:** `dev`
+**Base main:** `2f925706941493dc34611fe92e850c9607cbbcd1`
+**Started:** 2026-09-04
+
+### Player-facing changes
+
+- Filled the reference-rule cards for the translated Bard, Monk, Paladin, Sorcerer and Warlock base classes and their complete currently authored subclass rosters.
+- Added explicit reference-only cards for missing 2024 base-class features. These cards deliberately keep their English feature name and show a visible `Перевода способности пока нет` note instead of inventing Voss narration.
+- Kept every rebuilt class marked `referenceOnly`: the new text is visible in the Reference Guide but does not grant character resources, actions, spells or other Character Engine mechanics.
+
+### Tests / verification
+
+- Added a regression gate requiring every visible base/subclass feature in the five translated new-class families to have a non-empty mechanical rule.
+- Updated the Bard reference test to distinguish exact reference text from runtime activation.
+- Full test suite passes (`660/660`), production TypeScript/Vite build succeeds, and lint reports no errors.
+
+### Known incomplete work
+
+- Artificer, Barbarian, Ranger and Rogue do not yet have authored translation/reference source files in the current `dev` tree; they are not silently reconstructed from the retired vague legacy catalog.
+- Runtime/Character Engine packages for the five reference-complete class families remain intentionally outside this patch.
+
 ## Released patches
 
 ### Patch — 2026-09-02-D
