@@ -1,3 +1,8 @@
+-- CLASS_MIGRATION_SCOPE: mechanics
+-- CLASS_INTEGRATION_STRICT: class:wizard
+-- CLASS_PACKAGE_TEST: tests/wizardCompletionRuntime.test.ts
+-- CLASS_WORK_STATUS: wizard:text=READY;mechanics=READY
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 -- Wizard 2024 preparation contract.
 -- The live Wizard template lost the metadata consumed by CharacterPreparation,
 -- while the server commit path also treated always-prepared Mastery/Signature
