@@ -1,6 +1,9 @@
 -- CLASS_MIGRATION_SCOPE: mechanics
 -- CLASS_INTEGRATION_STRICT: class:monk
 -- CLASS_PACKAGE_TEST: tests/monkSubclassBatch1.test.ts
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
+-- CLASS_WORK_STATUS: monk:subclasses-batch1=RUNTIME_READY
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 --
 -- Metadata audit for Monk subclass batch 1. Targeting/range is descriptive only;
 -- scene-dependent eligibility remains a table rule and is never faked as CE state.
