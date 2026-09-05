@@ -1,3 +1,9 @@
+-- CLASS_MIGRATION_SCOPE: mechanics
+-- CLASS_WORK_STATUS: fighter:text=READY;mechanics=IN_PROGRESS
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
+-- CLASS_INTEGRATION_STRICT: class:fighter
+-- CLASS_PACKAGE_TEST: tests/fighterRuntimeClosure.test.ts
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
 begin;
 
 -- Legacy structured Fighter subclass spells used `subclass_spell`, while the
