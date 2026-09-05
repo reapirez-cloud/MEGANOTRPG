@@ -5,7 +5,8 @@ import { useAuth } from "../context/AuthContext.tsx"
 import { useCharacters } from "../context/CharacterContext.tsx"
 import { useCharacterSheet } from "../hooks/useCharacterSheet.ts"
 import { useResolvedCharacterRuntime } from "../hooks/useResolvedCharacterRuntime.ts"
-import { uploadCampaignImage } from "../lib/mediaUpload.ts"
+import { deleteCampaignMediaObject, uploadCampaignImage } from "../lib/mediaUpload.ts"
+import { resolveCampaignMediaUrl } from "../lib/campaignMedia.ts"
 import { classReference } from "../data/classReference.ts"
 import type { SpellClassKey } from "../lib/spellCatalog.ts"
 import type {
@@ -31,6 +32,7 @@ import CharacterDetailSheet from "../components/characters/CharacterDetailSheet.
 import CharacterSectionState from "../components/characters/CharacterSectionState.tsx"
 import ImageUploadField from "../components/common/ImageUploadField.tsx"
 import CampaignImage from "../components/common/CampaignImage.tsx"
+import SquareImageCropper from "../components/common/SquareImageCropper.tsx"
 import ReferenceGuide from "../components/reference/ReferenceGuide.tsx"
 import ContextActionSheet, { type ContextAction } from "../components/common/ContextActionSheet.tsx"
 import { useLongPressItem } from "../hooks/useLongPressItem.ts"
@@ -127,6 +129,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
   const [avatarUrl, setAvatarUrl] = useState("")
   const [avatarSaving, setAvatarSaving] = useState(false)
   const [avatarError, setAvatarError] = useState("")
+  const [avatarCropFile, setAvatarCropFile] = useState<File | null>(null)
 
   const [diaryDraft, setDiaryDraft] = useState("")
   const [diaryFile, setDiaryFile] = useState<File | null>(null)
@@ -224,17 +227,49 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
     setEditor(null)
   }
 
-  async function setAvatarFromArt(art: CharacterArt) {
+  async function startAvatarCropFromArt(art: CharacterArt) {
     if (!canEditAvatar || avatarSaving) return
     setAvatarSaving(true)
     setAvatarError("")
-    const result = await updateOwnCharacterAvatar(currentCharacter.id, art.image_url)
-    setAvatarSaving(false)
+    try {
+      const sourceUrl = await resolveCampaignMediaUrl(art.image_url)
+      if (!sourceUrl) throw new Error("Не удалось открыть изображение для кадрирования.")
+      const response = await fetch(sourceUrl)
+      if (!response.ok) throw new Error("Не удалось загрузить изображение для кадрирования.")
+      const blob = await response.blob()
+      if (!blob.type.startsWith("image/")) throw new Error("Выбранный арт не является изображением.")
+      const extension = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg"
+      const safeName = (art.title || currentCharacter.name || "avatar").replace(/[^a-zа-яё0-9_-]+/gi, "-").slice(0, 60) || "avatar"
+      setAvatarCropFile(new File([blob], `${safeName}.${extension}`, { type: blob.type, lastModified: Date.now() }))
+      setSelectedArt(null)
+      setArtMenu(null)
+    } catch (reason) {
+      setAvatarError(reason instanceof Error ? reason.message : "Не удалось подготовить арт для кадрирования.")
+    } finally {
+      setAvatarSaving(false)
+    }
+  }
+
+  async function saveAvatarCrop(croppedFile: File) {
+    if (!canEditAvatar || avatarSaving) return
+    setAvatarCropFile(null)
+    setAvatarSaving(true)
+    setAvatarError("")
+    const upload = await uploadCampaignImage(croppedFile, "character-avatars", campaignId)
+    if (!upload.ok) {
+      setAvatarSaving(false)
+      setAvatarError(upload.error || "Не удалось сохранить кадрированный аватар.")
+      return
+    }
+    const result = await updateOwnCharacterAvatar(currentCharacter.id, upload.url)
     if (!result.ok) {
+      await deleteCampaignMediaObject(upload.url)
+      setAvatarSaving(false)
       setAvatarError(result.error || "Не удалось изменить аватар.")
       return
     }
     await refresh()
+    setAvatarSaving(false)
     setSelectedArt(null)
     setArtMenu(null)
   }
@@ -401,16 +436,15 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
   function artActions(target: ArtMenu): ContextAction[] {
     const art = target.item
     const editable = canManage || art.uploaded_by === user.id
-    const isCurrentAvatar = currentCharacter.avatar_url === art.image_url
     return [
       { id: "open", label: "Просмотр", detail: "Открыть арт целиком", icon: "↗", onSelect: () => setSelectedArt(art) },
       ...(canEditAvatar ? [{
         id: "avatar",
-        label: isCurrentAvatar ? "Текущий аватар" : "Сделать аватаром",
-        detail: isCurrentAvatar ? "Этот арт уже используется" : "Использовать этот арт как портрет персонажа",
+        label: "Сделать аватаром",
+        detail: "Выбрать область изображения, которая попадёт в аватар",
         icon: "◉",
-        disabled: isCurrentAvatar || avatarSaving,
-        onSelect: () => void setAvatarFromArt(art),
+        disabled: avatarSaving,
+        onSelect: () => void startAvatarCropFromArt(art),
       } satisfies ContextAction] : []),
       ...(editable ? [
         { id: "edit", label: "Редактировать", detail: "Название и подпись", icon: "✎", onSelect: () => openArtEditor(art) } satisfies ContextAction,
@@ -586,6 +620,8 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
         )}
       </div>
 
+      {avatarCropFile && <SquareImageCropper file={avatarCropFile} shape="circle" onCancel={() => setAvatarCropFile(null)} onConfirm={(file) => void saveAvatarCrop(file)} />}
+
       {editor?.type === "avatar" && canEditAvatar && <div className="sheet-backdrop" onMouseDown={() => setEditor(null)}><form className="bottom-sheet compact-editor-sheet" onSubmit={saveAvatar} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="character-editor-head"><div><h3 className="sheet-title">Портрет персонажа</h3><p className="sheet-copy">Выбери изображение, затем сам настрой квадрат кадра.</p></div><button className="sheet-close" type="button" onClick={() => setEditor(null)}>×</button></div><ImageUploadField value={avatarUrl} onChange={setAvatarUrl} folder="character-avatars" campaignId={campaignId} label="Изображение персонажа" hint="После выбора перемести и увеличь изображение внутри квадрата." crop="square" />{avatarError && <div className="auth-error">{avatarError}</div>}<button className="sheet-save" type="submit" disabled={avatarSaving}>{avatarSaving ? "Сохраняем…" : "Сохранить портрет"}</button></form></div>}
       {editor?.type === "sheet" && sheet && canManage && <CharacterSheetEditor sheet={sheet} systemEditable onClose={() => setEditor(null)} onSave={data.updateSheet} />}
       {editor?.type === "resources" && sheet && canManage && <CharacterResourcesEditor sheet={sheet} onClose={() => setEditor(null)} onSave={data.updateSheet} />}
@@ -599,7 +635,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
       {selectedArt && <CharacterDetailSheet eyebrow="Галерея персонажа" title={selectedArt.title || currentCharacter.name} onClose={() => setSelectedArt(null)} className="art-viewer-sheet character-art-detail-v5">
         <CampaignImage className="art-viewer-image" value={selectedArt.image_url} alt={selectedArt.title} />
         {selectedArt.caption && <p>{selectedArt.caption}</p>}
-        {canEditAvatar && <div className="spell-card__actions"><button className="inline-edit-button" type="button" disabled={avatarSaving || currentCharacter.avatar_url === selectedArt.image_url} onClick={() => void setAvatarFromArt(selectedArt)}>{currentCharacter.avatar_url === selectedArt.image_url ? "Текущий аватар" : avatarSaving ? "Сохраняем…" : "Сделать аватаром"}</button></div>}
+        {canEditAvatar && <div className="spell-card__actions"><button className="inline-edit-button" type="button" disabled={avatarSaving} onClick={() => void startAvatarCropFromArt(selectedArt)}>{avatarSaving ? "Готовим…" : "Сделать аватаром"}</button></div>}
         {(canManage || selectedArt.uploaded_by === user.id) && <div className="spell-card__actions"><button className="inline-edit-button" type="button" onClick={() => openArtEditor(selectedArt)}>✎ Редактировать</button><button className="danger-mini-button" type="button" onClick={() => void deleteArt(selectedArt)}>Удалить</button></div>}
       </CharacterDetailSheet>}
 
