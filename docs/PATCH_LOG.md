@@ -2,9 +2,12 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch
+## Active patch — 2026-09-05-B
 
-No unreleased changes.
+**Status:** OPEN
+**Branch:** `dev`
+**Base main:** `3e06e9cd49482b14cb9b27354507799e35bcb630`
+**Started:** 2026-09-05
 
 ## Released patches
 
