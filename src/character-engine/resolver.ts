@@ -48,7 +48,7 @@ const SKILL_ABILITIES: Record<SkillKey, AbilityKey> = {
   investigation: "intelligence",
   medicine: "wisdom",
   nature: "intelligence",
-  perception: "perception" as never,
+  perception: "wisdom",
   performance: "charisma",
   persuasion: "charisma",
   religion: "intelligence",
