@@ -4,6 +4,7 @@ import test from "node:test"
 
 import { resolveCharacterContract, type CharacterEngineInput } from "../src/character-engine/index.ts"
 import { resourceCostInputs, resourceSyncInputs } from "../src/lib/resourceRuntime.ts"
+import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
 import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
 import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
 import type { CharacterTemplateBundle, RuleTemplate } from "../src/rule-templates/types.ts"
@@ -16,7 +17,7 @@ const clericTemplate: RuleTemplate = {
   kind: "class",
   slug: "cleric",
   name: "Жрец",
-  description: "Тестовый пакет жреца двадцатого уровня.",
+  description: "Жрец двадцатого уровня использует подготовленные заклинания, Божественный канал и Божественное вмешательство.",
   version: 1,
   mechanics: [],
   choices: [],
@@ -27,7 +28,7 @@ const clericTemplate: RuleTemplate = {
   source_kind: "official",
   source_label: "Official",
   is_builtin: true,
-  mechanical_summary: "Полный finite-resource smoke test жреца.",
+  mechanical_summary: "Подготовленные заклинания до 9 уровня, четыре использования Божественного канала и одно Божественное вмешательство.",
   author_description: "",
   author_comment: "",
   rules_meta: {},
@@ -43,7 +44,8 @@ const warTemplate: RuleTemplate = {
   kind: "subclass",
   slug: "war-domain",
   name: "Домен войны",
-  description: "Домен для проверки независимого пула Жреца войны и общего Божественного канала.",
+  description: "Боевой домен с Направленным ударом и ограниченными дополнительными атаками Жреца войны.",
+  mechanical_summary: "Направленный удар расходует Божественный канал, а Жрец войны расходует отдельный восстанавливаемый запас дополнительных атак.",
   parent_template_id: clericTemplate.id,
   unlock_level: 3,
   catalog_key: "subclass:cleric:war-domain",
@@ -65,6 +67,17 @@ const slotMax = [4, 3, 3, 3, 3, 2, 2, 1, 1] as const
 
 function clericBundle(): CharacterTemplateBundle {
   const mechanics = [
+    {
+      id: "cleric-l20-channel-feature",
+      type: "grant" as const,
+      target: "feature" as const,
+      key: "class:cleric:channel-divinity",
+      sourceKey: "channel-divinity",
+      payload: {
+        label: "Божественный канал",
+        description: "У вас четыре использования Божественного канала. Божественная искра и Изгнание нежити расходуют по одному использованию; короткий отдых восстанавливает одно, долгий отдых восстанавливает весь запас.",
+      },
+    },
     {
       id: "cleric-l20-channel",
       type: "resource" as const,
@@ -97,6 +110,17 @@ function clericBundle(): CharacterTemplateBundle {
       resourceKey: "channel_divinity",
       resourceCost: 1,
       sourceKey: "channel-divinity",
+    },
+    {
+      id: "cleric-l20-divine-intervention-feature",
+      type: "grant" as const,
+      target: "feature" as const,
+      key: "class:cleric:divine-intervention",
+      sourceKey: "divine-intervention",
+      payload: {
+        label: "Божественное вмешательство",
+        description: "Вы можете применить Божественное вмешательство один раз; использование восстанавливается после долгого отдыха.",
+      },
     },
     {
       id: "cleric-l20-divine-intervention-resource",
@@ -146,6 +170,17 @@ function warBundle(): CharacterTemplateBundle {
       choices: [],
       mechanics: [
         {
+          id: "cleric-war-runtime-feature",
+          type: "grant",
+          target: "feature",
+          key: "subclass:cleric:war-domain:runtime",
+          sourceKey: "war-domain-l3-1",
+          payload: {
+            label: "Направленный удар и Жрец войны",
+            description: "Направленный удар расходует одно использование Божественного канала. Жрец войны расходует одно использование собственного запаса на дополнительную атаку бонусным действием.",
+          },
+        },
+        {
           id: "cleric-war-priest-resource",
           type: "resource",
           key: "war_priest",
@@ -182,6 +217,7 @@ function warBundle(): CharacterTemplateBundle {
 function resolveTestCleric() {
   const packages = [clericBundle(), warBundle()]
   assert.doesNotThrow(() => assertClassPackageQuality(packages))
+  assert.doesNotThrow(() => assertClassResourcePolicy(packages))
   const parsed = resolveTemplateBundles(packages, 20)
   const input: CharacterEngineInput = {
     base: {
