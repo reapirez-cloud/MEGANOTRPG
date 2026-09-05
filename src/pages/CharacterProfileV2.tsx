@@ -18,7 +18,7 @@ import type {
   InventoryItem,
 } from "../types/characterSheet.ts"
 
-import ResolvedCharacterSheet from "../components/characters/ResolvedCharacterSheet.tsx"
+import ResolvedCharacterSheetOpus from "../components/characters/ResolvedCharacterSheetOpus.tsx"
 import CharacterClassPanel from "../components/characters/CharacterClassPanel.tsx"
 import CharacterSpellbook from "../components/characters/CharacterSpellbook.tsx"
 import CharacterInventory from "../components/characters/CharacterInventory.tsx"
@@ -398,7 +398,6 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
   const fullName = member ? `${currentCharacter.name} (${member.display_name})` : currentCharacter.name
   const runtimeTab = tab === "sheet" || tab === "class" || tab === "spells"
   const currentTab = tabMeta[tab]
-  const profileIsDeep = tab !== "sheet" || sheetFocused
   const navigatorActions: ContextAction[] = [
     { id: "sheet", label: tabMeta.sheet.label, detail: tabMeta.sheet.detail, icon: tabMeta.sheet.icon, disabled: tab === "sheet" && !sheetFocused, onSelect: () => { if (sheetFocused) setSheetFocusResetKey((value) => value + 1); openTab("sheet") } },
     { id: "class", label: tabMeta.class.label, detail: tabMeta.class.detail, icon: tabMeta.class.icon, disabled: tab === "class", onSelect: () => openTab("class") },
@@ -416,81 +415,82 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
       : null
 
   return (
-    <div className={`screen character-profile-screen character-profile-v2 ${embedded ? "character-profile-screen--embedded" : ""}`}>
+    <div className={`screen character-profile-screen character-profile-v2 character-profile-opus ${embedded ? "character-profile-screen--embedded" : ""}`}>
       {!embedded && <header className="screen-header"><button className="icon-button" type="button" onClick={handleProfileBack} aria-label="Назад">←</button><h1 className="screen-header__title">{fullName}</h1><span /></header>}
 
-      <div className="profile-scroll character-profile-scroll profile-v3">
-        <section className={`profile-v3__hero${profileIsDeep ? " profile-v3__hero--compact" : ""}`}>
-          <button
-            className="profile-v3__portrait"
-            type="button"
-            onClick={canEditAvatar ? () => { setAvatarUrl(currentCharacter.avatar_url || ""); setAvatarError(""); setEditor({ type: "avatar" }) } : undefined}
-            aria-label={canEditAvatar ? "Изменить портрет" : `Портрет ${currentCharacter.name}`}
-          >
-            {currentCharacter.avatar_url
-              ? <CampaignImage value={currentCharacter.avatar_url} alt={`Портрет ${currentCharacter.name}`} />
-              : <span>{currentCharacter.name.slice(0, 1).toUpperCase()}</span>}
-            {canEditAvatar && <i aria-hidden="true">✎</i>}
-          </button>
-          <div className="profile-v3__identity">
-            <div className="profile-v3__name-row">
-              <div>
-                <span>Персонаж</span>
-                <h2>{currentCharacter.name}</h2>
+      <div className="profile-scroll character-profile-scroll">
+        {tab === "sheet" && !sheetFocused && (
+          <section className="opus-hero">
+            <div className="opus-hero__portrait-wrapper">
+              <div className="opus-hero__portrait">
+                {currentCharacter.avatar_url
+                  ? <CampaignImage value={currentCharacter.avatar_url} alt={`Портрет ${currentCharacter.name}`} />
+                  : <div className="opus-hero__portrait-fallback">{currentCharacter.name.slice(0, 1).toUpperCase()}</div>}
+                {canEditAvatar && (
+                  <button
+                    className="opus-hero__portrait-edit"
+                    type="button"
+                    onClick={() => { setAvatarUrl(currentCharacter.avatar_url || ""); setAvatarError(""); setEditor({ type: "avatar" }) }}
+                    aria-label="Изменить портрет"
+                  >
+                    ✎
+                  </button>
+                )}
               </div>
-              {active && <span className="profile-v3__active">Активен</span>}
             </div>
-            {member && <p>Игрок · {member.display_name}</p>}
-            <button className="profile-v3__class" type="button" onClick={() => openTab("class")}>
-              <span><strong>{currentCharacter.character_class || "Класс не указан"}</strong><small>{currentCharacter.level} уровень · открыть класс</small></span>
-              <i aria-hidden="true">›</i>
-            </button>
-            {currentCharacter.bio && <p className="profile-v3__bio">{currentCharacter.bio}</p>}
-          </div>
-          <button className="profile-v3__reference" type="button" onClick={() => setReference({ section: "classes", classId })}>
-            <span aria-hidden="true">⌘</span>
-            <span><strong>Справочник</strong><small>Классы и правила</small></span>
-          </button>
-        </section>
+            <div className="opus-hero__identity">
+              <h1 className="opus-hero__name">
+                {currentCharacter.name}
+                {active && <span className="opus-hero__active-badge">● Активен</span>}
+              </h1>
+              <div className="opus-hero__class">
+                <span className="opus-hero__class-icon">◇</span>
+                {currentCharacter.character_class || "Класс не указан"} · {currentCharacter.level} ур
+              </div>
+              {member && <p className="opus-hero__player">Игрок · {member.display_name}</p>}
+              {currentCharacter.bio && <p className="opus-hero__bio">{currentCharacter.bio}</p>}
+            </div>
+          </section>
+        )}
 
-        <button
-          className="character-navigator-v5"
-          type="button"
-          aria-haspopup="dialog"
-          aria-expanded={navigatorOpen}
-          onClick={() => setNavigatorOpen(true)}
-        >
-          <span className="character-navigator-v5__copy">
-            <small>{currentCharacter.name}</small>
-            <span className="character-navigator-v5__current">
-              <i aria-hidden="true">{currentTab.icon}</i>
-              <strong>{currentTab.label}</strong>
-            </span>
-          </span>
-          <span className="character-navigator-v5__chevron" aria-hidden="true">⌄</span>
-        </button>
+        <nav className="opus-tabs">
+          <div className="opus-tabs__rail">
+            {[
+              tabMeta.sheet,
+              tabMeta.class,
+              ...(magicSectionVisible || canManage ? [tabMeta.spells] : []),
+              tabMeta.inventory,
+              tabMeta.diary,
+              tabMeta.arts
+            ].map((tabData) => {
+              const tabKey = Object.keys(tabMeta).find(key => tabMeta[key as Tab] === tabData) as Tab
+              return (
+                <button
+                  key={tabKey}
+                  className={`opus-tab${tab === tabKey ? " is-active" : ""}`}
+                  type="button"
+                  onClick={() => openTab(tabKey)}
+                >
+                  <span className="opus-tab__icon">{tabData.icon}</span>
+                  {tabData.label}
+                </button>
+              )
+            })}
+          </div>
+        </nav>
 
         {data.loading && <CharacterSectionState kind="loading" title="Загружаем данные персонажа" detail="Собираем лист, вещи, записи и галерею." />}
         {data.error && <CharacterSectionState compact kind="error" title="Часть данных не загрузилась" detail={data.error} />}
         {!data.loading && runtimeTab && runtimePanelState}
 
         {!data.loading && tab === "sheet" && sheet && resolved && (
-          <ResolvedCharacterSheet
+          <ResolvedCharacterSheetOpus
             input={resolved.input}
             contract={resolved.contract}
             narrative={sheet}
-            characterClass={currentCharacter.character_class}
-            spellcastingAbility={resolved.spellcastingAbility}
             canManage={canManage}
-            features={data.features}
-            focusResetKey={sheetFocusResetKey}
-            onFocusChange={setSheetFocused}
             onEditSheet={() => setEditor({ type: "sheet" })}
             onEditResources={() => setEditor({ type: "resources" })}
-            onAddFeature={() => setEditor({ type: "feature", feature: null })}
-            onEditFeature={(feature) => setEditor({ type: "feature", feature })}
-            onDeleteFeature={data.deleteFeature}
-            onOpenClassReference={() => setReference({ section: "classes", classId })}
             onOpenSpells={(level) => {
               setSpellLevelFilter(level ?? null)
               openTab("spells")

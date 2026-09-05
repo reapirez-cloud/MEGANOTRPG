@@ -1,0 +1,1145 @@
+/* Character Profile Opus
+ * Complete visual redesign: combat-ready character HUD
+ * Mobile-first, gesture-driven, dramatic hierarchy
+ * Design concept: game character screen, not admin panel
+ */
+
+.character-profile-opus {
+  --opus-bg-base: #08080a;
+  --opus-bg-surface: #0f0f12;
+  --opus-bg-elevated: #16161a;
+  --opus-bg-overlay: rgba(15, 15, 18, .98);
+  
+  --opus-line-subtle: rgba(255, 255, 255, .06);
+  --opus-line: rgba(255, 255, 255, .09);
+  --opus-line-strong: rgba(255, 255, 255, .14);
+  
+  --opus-text: #f4f2f7;
+  --opus-text-secondary: #b8b4be;
+  --opus-text-muted: #7a7581;
+  --opus-text-faint: #5a5661;
+  
+  --opus-accent: #a691d9;
+  --opus-accent-soft: rgba(166, 145, 217, .11);
+  --opus-accent-glow: rgba(166, 145, 217, .22);
+  
+  --opus-health: #e0808a;
+  --opus-health-glow: rgba(224, 128, 138, .18);
+  --opus-armor: #7bb8e8;
+  --opus-armor-glow: rgba(123, 184, 232, .16);
+  --opus-speed: #85d4a8;
+  --opus-positive: #79c9a4;
+  --opus-warning: #e5b56f;
+  --opus-magic: #b497e3;
+  
+  --opus-radius-xs: 8px;
+  --opus-radius-sm: 12px;
+  --opus-radius-md: 18px;
+  --opus-radius-lg: 24px;
+  --opus-radius-xl: 32px;
+  
+  --opus-space-1: 4px;
+  --opus-space-2: 8px;
+  --opus-space-3: 12px;
+  --opus-space-4: 16px;
+  --opus-space-5: 20px;
+  --opus-space-6: 24px;
+  --opus-space-8: 32px;
+  --opus-space-10: 40px;
+  
+  --opus-motion-instant: 100ms;
+  --opus-motion-fast: 160ms;
+  --opus-motion-normal: 240ms;
+  --opus-motion-slow: 360ms;
+  --opus-ease: cubic-bezier(.22, .88, .22, 1);
+  
+  color: var(--opus-text);
+  background: var(--opus-bg-base);
+  min-height: 100dvh;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Hero — Large portrait, dramatic identity */
+/* -------------------------------------------------------------------------- */
+
+.opus-hero {
+  position: relative;
+  padding: var(--opus-space-5) var(--opus-space-4) var(--opus-space-4);
+  overflow: hidden;
+}
+
+.opus-hero__portrait-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 1;
+  margin: 0 auto var(--opus-space-4);
+}
+
+.opus-hero__portrait {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--opus-line-strong);
+  border-radius: 50%;
+  overflow: hidden;
+  background: 
+    radial-gradient(circle at 30% 20%, rgba(166, 145, 217, .14), transparent 60%),
+    var(--opus-bg-elevated);
+  box-shadow: 
+    0 0 0 1px rgba(0, 0, 0, .4),
+    0 12px 48px rgba(0, 0, 0, .5),
+    inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+
+.opus-hero__portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.opus-hero__portrait-fallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--opus-text-faint);
+  font-size: clamp(64px, 18vw, 96px);
+  font-weight: 800;
+  user-select: none;
+}
+
+.opus-hero__portrait-edit {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--opus-text);
+  background: rgba(15, 15, 18, .92);
+  backdrop-filter: blur(12px);
+  font-size: 18px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .4);
+  transition: transform var(--opus-motion-fast) var(--opus-ease);
+}
+
+.opus-hero__portrait-edit:active {
+  transform: scale(.92);
+}
+
+.opus-hero__identity {
+  text-align: center;
+  margin-bottom: var(--opus-space-5);
+}
+
+.opus-hero__name {
+  margin: 0 0 var(--opus-space-2);
+  color: var(--opus-text);
+  font-size: clamp(26px, 7vw, 36px);
+  font-weight: 780;
+  letter-spacing: -.04em;
+  line-height: 1.08;
+}
+
+.opus-hero__class {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--opus-line);
+  border-radius: 999px;
+  color: var(--opus-text-secondary);
+  background: var(--opus-bg-surface);
+  font-size: 12px;
+  font-weight: 680;
+  letter-spacing: .01em;
+}
+
+.opus-hero__class-icon {
+  color: var(--opus-accent);
+  font-size: 14px;
+  font-style: normal;
+}
+
+.opus-hero__player {
+  margin-top: var(--opus-space-2);
+  color: var(--opus-text-muted);
+  font-size: 11px;
+}
+
+.opus-hero__active-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 3px 7px;
+  border: 1px solid rgba(121, 201, 164, .2);
+  border-radius: 999px;
+  color: var(--opus-positive);
+  background: rgba(121, 201, 164, .08);
+  font-size: 9px;
+  font-weight: 720;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.opus-hero__bio {
+  max-width: 420px;
+  margin: var(--opus-space-3) auto 0;
+  color: var(--opus-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Combat Stats — HP, AC, Initiative prominence */
+/* -------------------------------------------------------------------------- */
+
+.opus-combat {
+  padding: 0 var(--opus-space-4) var(--opus-space-5);
+  display: grid;
+  gap: var(--opus-space-3);
+}
+
+.opus-combat__hp {
+  position: relative;
+  min-height: 120px;
+  padding: var(--opus-space-5);
+  border: 1px solid rgba(224, 128, 138, .2);
+  border-radius: var(--opus-radius-lg);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 100% 0%, var(--opus-health-glow), transparent 68%),
+    var(--opus-bg-surface);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, .3);
+}
+
+.opus-combat__hp::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, .03), transparent 50%);
+  pointer-events: none;
+}
+
+.opus-combat__hp-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--opus-health);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.opus-combat__hp-value {
+  display: block;
+  margin-bottom: var(--opus-space-3);
+  color: var(--opus-text);
+  font-size: clamp(40px, 11vw, 56px);
+  font-weight: 780;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.055em;
+  line-height: 1;
+}
+
+.opus-combat__hp-value em {
+  color: var(--opus-text-muted);
+  font-size: 0.4em;
+  font-style: normal;
+  font-weight: 680;
+  letter-spacing: -.02em;
+  margin-left: 0.15em;
+}
+
+.opus-combat__hp-track {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .06);
+}
+
+.opus-combat__hp-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--opus-health), #f49aa2);
+  box-shadow: 0 0 12px var(--opus-health-glow);
+  transition: width var(--opus-motion-normal) var(--opus-ease);
+}
+
+.opus-combat__secondary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--opus-space-3);
+}
+
+.opus-combat__stat {
+  position: relative;
+  min-height: 110px;
+  padding: var(--opus-space-4);
+  border: 1px solid var(--opus-line);
+  border-radius: var(--opus-radius-md);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: var(--opus-bg-surface);
+  overflow: hidden;
+}
+
+.opus-combat__stat::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, .02), transparent 60%);
+  pointer-events: none;
+}
+
+.opus-combat__stat-label {
+  display: block;
+  color: var(--opus-text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.opus-combat__stat-value {
+  display: block;
+  color: var(--opus-text);
+  font-size: clamp(32px, 8vw, 42px);
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+
+.opus-combat__stat--ac {
+  border-color: rgba(123, 184, 232, .18);
+  background:
+    radial-gradient(circle at 0% 100%, var(--opus-armor-glow), transparent 72%),
+    var(--opus-bg-surface);
+}
+
+.opus-combat__stat--ac .opus-combat__stat-value {
+  color: var(--opus-armor);
+}
+
+.opus-combat__stat--initiative .opus-combat__stat-value {
+  color: var(--opus-speed);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tab Navigation — Minimal, gesture-first */
+/* -------------------------------------------------------------------------- */
+
+.opus-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 0 var(--opus-space-4);
+  margin-bottom: var(--opus-space-5);
+  background: linear-gradient(180deg, var(--opus-bg-base) 80%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+.opus-tabs__rail {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+
+.opus-tabs__rail::-webkit-scrollbar {
+  display: none;
+}
+
+.opus-tab {
+  flex: 0 0 auto;
+  min-width: 72px;
+  padding: var(--opus-space-3) var(--opus-space-2);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--opus-text-muted);
+  font-size: 11px;
+  font-weight: 720;
+  letter-spacing: .02em;
+  text-align: center;
+  transition:
+    color var(--opus-motion-fast) var(--opus-ease),
+    border-color var(--opus-motion-fast) var(--opus-ease);
+  scroll-snap-align: start;
+}
+
+.opus-tab__icon {
+  display: block;
+  margin: 0 auto 4px;
+  font-size: 18px;
+  font-style: normal;
+}
+
+.opus-tab.is-active {
+  color: var(--opus-accent);
+  border-bottom-color: var(--opus-accent);
+}
+
+.opus-tab:active {
+  transform: scale(.96);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Core Stats Grid — Compact, scannable */
+/* -------------------------------------------------------------------------- */
+
+.opus-stats-grid {
+  padding: 0 var(--opus-space-4) var(--opus-space-5);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--opus-space-2);
+}
+
+.opus-stat-button {
+  min-height: 82px;
+  padding: var(--opus-space-3);
+  border: 1px solid var(--opus-line);
+  border-radius: var(--opus-radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2px;
+  background: var(--opus-bg-surface);
+  color: inherit;
+  text-align: left;
+  transition:
+    border-color var(--opus-motion-fast) var(--opus-ease),
+    background var(--opus-motion-fast) var(--opus-ease),
+    transform var(--opus-motion-instant) var(--opus-ease);
+}
+
+.opus-stat-button:active {
+  transform: scale(.97);
+  background: var(--opus-bg-elevated);
+}
+
+.opus-stat-button__label {
+  display: block;
+  color: var(--opus-text-muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.opus-stat-button__value {
+  display: block;
+  color: var(--opus-text);
+  font-size: 24px;
+  font-weight: 740;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.03em;
+  line-height: 1;
+}
+
+.opus-stat-button__detail {
+  display: block;
+  color: var(--opus-text-faint);
+  font-size: 9px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Abilities — Compact accordion, not swipe pages */
+/* -------------------------------------------------------------------------- */
+
+.opus-abilities {
+  padding: 0 var(--opus-space-4) var(--opus-space-5);
+}
+
+.opus-section-header {
+  margin-bottom: var(--opus-space-3);
+}
+
+.opus-section-header__eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--opus-text-muted);
+  font-size: 9px;
+  font-weight: 780;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.opus-section-header__title {
+  margin: 0;
+  color: var(--opus-text);
+  font-size: 18px;
+  font-weight: 770;
+  letter-spacing: -.02em;
+}
+
+.opus-ability-list {
+  display: grid;
+  gap: var(--opus-space-2);
+}
+
+.opus-ability-item {
+  overflow: hidden;
+  border: 1px solid var(--opus-line);
+  border-radius: var(--opus-radius-md);
+  background: var(--opus-bg-surface);
+}
+
+.opus-ability-header {
+  width: 100%;
+  min-height: 64px;
+  padding: var(--opus-space-3);
+  border: 0;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--opus-space-3);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  transition: background var(--opus-motion-fast) var(--opus-ease);
+}
+
+.opus-ability-header:active {
+  background: rgba(255, 255, 255, .02);
+}
+
+.opus-ability-score-badge {
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--opus-line);
+  border-radius: var(--opus-radius-sm);
+  display: grid;
+  place-items: center;
+  background: var(--opus-accent-soft);
+}
+
+.opus-ability-score-badge__value {
+  display: block;
+  color: var(--opus-text);
+  font-size: 26px;
+  font-weight: 780;
+  letter-spacing: -.02em;
+  line-height: 1;
+}
+
+.opus-ability-header__copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.opus-ability-header__name {
+  display: block;
+  color: var(--opus-text);
+  font-size: 13px;
+  font-weight: 740;
+}
+
+.opus-ability-header__mod {
+  display: block;
+  color: var(--opus-text-secondary);
+  font-size: 11px;
+}
+
+.opus-ability-header__save {
+  padding: 4px 8px;
+  border: 1px solid var(--opus-line);
+  border-radius: 999px;
+  color: var(--opus-text-secondary);
+  background: var(--opus-bg-elevated);
+  font-size: 9px;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.opus-ability-header__save.is-proficient {
+  border-color: var(--opus-accent-glow);
+  color: var(--opus-accent);
+  background: var(--opus-accent-soft);
+}
+
+.opus-ability-skills {
+  padding: 0 var(--opus-space-3) var(--opus-space-3);
+  display: grid;
+  gap: 1px;
+}
+
+.opus-skill-button {
+  min-height: 44px;
+  padding: var(--opus-space-2) var(--opus-space-3);
+  border: 0;
+  border-radius: var(--opus-radius-xs);
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, .02);
+  color: inherit;
+  text-align: left;
+  transition: background var(--opus-motion-fast) var(--opus-ease);
+}
+
+.opus-skill-button:active {
+  background: rgba(255, 255, 255, .05);
+}
+
+.opus-skill-button__prof {
+  display: block;
+  color: var(--opus-text-faint);
+  font-size: 10px;
+}
+
+.opus-skill-button__prof.is-proficient {
+  color: var(--opus-accent);
+}
+
+.opus-skill-button__name {
+  display: block;
+  color: var(--opus-text-secondary);
+  font-size: 11px;
+  font-weight: 640;
+}
+
+.opus-skill-button__value {
+  display: block;
+  color: var(--opus-text);
+  font-size: 13px;
+  font-weight: 720;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Section Container — Generic wrapper */
+/* -------------------------------------------------------------------------- */
+
+.opus-section {
+  padding: 0 var(--opus-space-4) var(--opus-space-5);
+}
+
+.opus-card {
+  padding: var(--opus-space-4);
+  border: 1px solid var(--opus-line);
+  border-radius: var(--opus-radius-md);
+  background: var(--opus-bg-surface);
+}
+
+.opus-directory {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--opus-line);
+  border-radius: var(--opus-radius-md);
+  background: var(--opus-bg-surface);
+}
+
+.opus-directory-item {
+  min-height: 68px;
+  padding: var(--opus-space-3);
+  border: 0;
+  border-bottom: 1px solid var(--opus-line-subtle);
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--opus-space-3);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  transition: background var(--opus-motion-fast) var(--opus-ease);
+}
+
+.opus-directory-item:last-child {
+  border-bottom: 0;
+}
+
+.opus-directory-item:active {
+  background: rgba(255, 255, 255, .025);
+}
+
+.opus-directory-item__icon {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--opus-line);
+  border-radius: var(--opus-radius-sm);
+  display: grid;
+  place-items: center;
+  color: var(--opus-accent);
+  background: var(--opus-accent-soft);
+  font-size: 16px;
+  font-style: normal;
+}
+
+.opus-directory-item__copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.opus-directory-item__label {
+  display: block;
+  color: var(--opus-text-muted);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.opus-directory-item__title {
+  display: block;
+  overflow: hidden;
+  color: var(--opus-text);
+  font-size: 13px;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opus-directory-item__detail {
+  display: block;
+  overflow: hidden;
+  color: var(--opus-text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opus-directory-item__chevron {
+  color: var(--opus-text-faint);
+  font-size: 20px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Resources — Visual progress bars */
+/* -------------------------------------------------------------------------- */
+
+.opus-resource-list {
+  display: grid;
+  gap: var(--opus-space-2);
+}
+
+.opus-resource {
+  min-height: 72px;
+  padding: var(--opus-space-3) var(--opus-space-4);
+  border: 1px solid var(--opus-line);
+  border-radius: var(--opus-radius-sm);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  gap: 6px var(--opus-space-4);
+  background: var(--opus-bg-surface);
+}
+
+.opus-resource__name {
+  display: block;
+  color: var(--opus-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.opus-resource__value {
+  grid-row: 1;
+  justify-self: end;
+  color: var(--opus-text);
+  font-size: 18px;
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+
+.opus-resource__track {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .05);
+}
+
+.opus-resource__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--opus-accent), var(--opus-magic));
+  transition: width var(--opus-motion-normal) var(--opus-ease);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Responsive */
+/* -------------------------------------------------------------------------- */
+
+@media (min-width: 600px) {
+  .opus-hero__portrait-wrapper {
+    max-width: 320px;
+  }
+  
+  .opus-combat {
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  
+  .opus-stats-grid {
+    max-width: 560px;
+    margin: 0 auto;
+  }
+  
+  .opus-abilities {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  
+  .opus-section {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 380px) {
+  .opus-hero__portrait-wrapper {
+    max-width: 240px;
+  }
+  
+  .opus-combat__hp {
+    min-height: 100px;
+    padding: var(--opus-space-4);
+  }
+  
+  .opus-combat__stat {
+    min-height: 96px;
+  }
+  
+  .opus-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .opus-stat-button {
+    min-height: 76px;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Legacy component wrappers — adapt v3/v5 components to Opus theme */
+/* -------------------------------------------------------------------------- */
+
+.character-profile-opus .profile-v3,
+.character-profile-opus .character-tab-section {
+  padding: 0;
+}
+
+.character-profile-opus .v2-inventory-wrap,
+.character-profile-opus .v2-diary {
+  padding: 0 var(--opus-space-4);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.character-profile-opus .v2-subtabs {
+  display: flex;
+  gap: 4px;
+  padding: var(--opus-space-3) 0;
+  margin-bottom: var(--opus-space-4);
+}
+
+.character-profile-opus .v2-subtab {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 var(--opus-space-4);
+  border: 1px solid var(--opus-line);
+  border-radius: var(--opus-radius-sm);
+  background: var(--opus-bg-surface);
+  color: var(--opus-text-secondary);
+  font-size: 12px;
+  font-weight: 680;
+  transition: all var(--opus-motion-fast) var(--opus-ease);
+}
+
+.character-profile-opus .v2-subtab--active {
+  border-color: var(--opus-accent-glow);
+  color: var(--opus-accent);
+  background: var(--opus-accent-soft);
+}
+
+.character-profile-opus .section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--opus-space-4);
+  margin-bottom: var(--opus-space-4);
+}
+
+.character-profile-opus .section-title {
+  margin: 0 0 4px;
+  color: var(--opus-text);
+  font-size: 18px;
+  font-weight: 770;
+  letter-spacing: -.02em;
+}
+
+.character-profile-opus .item-meta {
+  margin: 0;
+  color: var(--opus-text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.character-profile-opus .section-link,
+.character-profile-opus .character-art-upload {
+  min-height: 44px;
+  padding: 0 var(--opus-space-4);
+  border: 1px solid var(--opus-line);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--opus-accent);
+  background: var(--opus-accent-soft);
+  font-size: 11px;
+  font-weight: 720;
+  cursor: pointer;
+  transition: all var(--opus-motion-fast) var(--opus-ease);
+}
+
+.character-profile-opus .section-link:active,
+.character-profile-opus .character-art-upload:active {
+  transform: scale(.96);
+}
+
+.character-profile-opus .section-link input[type="file"],
+.character-profile-opus .character-art-upload input[type="file"] {
+  display: none;
+}
+
+/* Diary styles */
+.character-profile-opus .v2-diary-compose {
+  margin-bottom: var(--opus-space-4);
+  padding: var(--opus-space-4);
+  border: 1px solid var(--opus-line);
+  border-radius: var(--opus-radius-md);
+  background: var(--opus-bg-surface);
+}
+
+.character-profile-opus .v2-diary-compose textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: var(--opus-space-3);
+  margin-bottom: var(--opus-space-3);
+  border: 1px solid var(--opus-line);
+  border-radius: var(--opus-radius-sm);
+  background: rgba(255, 255, 255, .02);
+  color: var(--opus-text);
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.character-profile-opus .v2-diary-compose > div {
+  display: flex;
+  gap: var(--opus-space-2);
+  justify-content: flex-end;
+}
+
+.character-profile-opus .v2-diary-compose button {
+  min-height: 44px;
+  padding: 0 var(--opus-space-4);
+  border: 1px solid var(--opus-accent-glow);
+  border-radius: 999px;
+  background: var(--opus-accent-soft);
+  color: var(--opus-accent);
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.character-profile-opus .v2-diary-list {
+  display: grid;
+  gap: var(--opus-space-3);
+}
+
+.character-profile-opus .v2-diary-post {
+  padding: var(--opus-space-4);
+  border: 1px solid var(--opus-line);
+  border-radius: var(--opus-radius-md);
+  background: var(--opus-bg-surface);
+}
+
+.character-profile-opus .v2-diary-post__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--opus-space-3);
+  color: var(--opus-text-muted);
+  font-size: 10px;
+}
+
+.character-profile-opus .v2-diary-post__meta strong {
+  color: var(--opus-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.character-profile-opus .v2-diary-post p {
+  margin: 0 0 var(--opus-space-3);
+  color: var(--opus-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.character-profile-opus .v2-diary-post img {
+  border-radius: var(--opus-radius-sm);
+  margin-bottom: var(--opus-space-3);
+}
+
+.character-profile-opus .v2-comments-toggle {
+  padding: var(--opus-space-2) 0;
+  border: 0;
+  background: transparent;
+  color: var(--opus-text-muted);
+  font-size: 10px;
+  font-weight: 680;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.character-profile-opus .v2-comments {
+  margin-top: var(--opus-space-3);
+  padding-top: var(--opus-space-3);
+  border-top: 1px solid var(--opus-line-subtle);
+  display: grid;
+  gap: var(--opus-space-2);
+}
+
+.character-profile-opus .v2-comment {
+  padding: var(--opus-space-2);
+  border-radius: var(--opus-radius-xs);
+  background: rgba(255, 255, 255, .02);
+}
+
+.character-profile-opus .v2-comment > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.character-profile-opus .v2-comment strong {
+  color: var(--opus-text);
+  font-size: 11px;
+  font-weight: 680;
+}
+
+.character-profile-opus .v2-comment small {
+  color: var(--opus-text-faint);
+  font-size: 9px;
+}
+
+.character-profile-opus .v2-comment p {
+  margin: 0;
+  color: var(--opus-text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.character-profile-opus .v2-comment-compose {
+  display: flex;
+  gap: var(--opus-space-2);
+  margin-top: var(--opus-space-2);
+}
+
+.character-profile-opus .v2-comment-compose input {
+  flex: 1;
+  min-height: 36px;
+  padding: 0 var(--opus-space-3);
+  border: 1px solid var(--opus-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .02);
+  color: var(--opus-text);
+  font-size: 11px;
+}
+
+.character-profile-opus .v2-comment-compose button {
+  min-height: 36px;
+  padding: 0 var(--opus-space-4);
+  border: 1px solid var(--opus-line);
+  border-radius: 999px;
+  background: var(--opus-bg-elevated);
+  color: var(--opus-text-secondary);
+  font-size: 10px;
+  font-weight: 680;
+}
+
+/* Art gallery */
+.character-profile-opus .character-art-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--opus-space-3);
+}
+
+.character-profile-opus .character-art-grid button {
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid var(--opus-line);
+  border-radius: var(--opus-radius-md);
+  overflow: hidden;
+  background: var(--opus-bg-surface);
+  transition: transform var(--opus-motion-fast) var(--opus-ease);
+}
+
+.character-profile-opus .character-art-grid button:active {
+  transform: scale(.97);
+}
+
+.character-profile-opus .character-art-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (min-width: 420px) {
+  .character-profile-opus .character-art-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Adapt existing components to Opus theme */
+.character-profile-opus .profile-v3 .sheet-v3,
+.character-profile-opus .profile-v3 .sheet-v5,
+.character-profile-opus .inventory-rpg-v2,
+.character-profile-opus .spellbook-v3 {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 var(--opus-space-4);
+}
+
+/* Surface overrides for nested components */
+.character-profile-opus .surface {
+  background: var(--opus-bg-surface);
+  border-color: var(--opus-line);
+}
+
+.character-profile-opus .profile-v3__hero {
+  display: none;
+}
+
+.character-profile-opus .character-navigator-v5 {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .opus-combat__hp-fill,
+  .opus-resource__fill,
+  .opus-tab,
+  * {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+}
