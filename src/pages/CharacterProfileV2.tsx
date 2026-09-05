@@ -224,6 +224,21 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
     setEditor(null)
   }
 
+  async function setAvatarFromArt(art: CharacterArt) {
+    if (!canEditAvatar || avatarSaving) return
+    setAvatarSaving(true)
+    setAvatarError("")
+    const result = await updateOwnCharacterAvatar(currentCharacter.id, art.image_url)
+    setAvatarSaving(false)
+    if (!result.ok) {
+      setAvatarError(result.error || "Не удалось изменить аватар.")
+      return
+    }
+    await refresh()
+    setSelectedArt(null)
+    setArtMenu(null)
+  }
+
   async function learnSpell(option: CharacterSpellOption) {
     setSpellActionId(`learn:${option.id}`)
     setSpellError("")
@@ -386,8 +401,17 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
   function artActions(target: ArtMenu): ContextAction[] {
     const art = target.item
     const editable = canManage || art.uploaded_by === user.id
+    const isCurrentAvatar = currentCharacter.avatar_url === art.image_url
     return [
       { id: "open", label: "Просмотр", detail: "Открыть арт целиком", icon: "↗", onSelect: () => setSelectedArt(art) },
+      ...(canEditAvatar ? [{
+        id: "avatar",
+        label: isCurrentAvatar ? "Текущий аватар" : "Сделать аватаром",
+        detail: isCurrentAvatar ? "Этот арт уже используется" : "Использовать этот арт как портрет персонажа",
+        icon: "◉",
+        disabled: isCurrentAvatar || avatarSaving,
+        onSelect: () => void setAvatarFromArt(art),
+      } satisfies ContextAction] : []),
       ...(editable ? [
         { id: "edit", label: "Редактировать", detail: "Название и подпись", icon: "✎", onSelect: () => openArtEditor(art) } satisfies ContextAction,
         { id: "delete", label: "Удалить арт", detail: "Удалить из галереи", icon: "×", danger: true, onSelect: () => deleteArt(art) } satisfies ContextAction,
@@ -422,21 +446,17 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
         {tab === "sheet" && !sheetFocused && (
           <section className="opus-hero">
             <div className="opus-hero__portrait-wrapper">
-              <div className="opus-hero__portrait">
+              <button
+                className="opus-hero__portrait"
+                type="button"
+                onClick={() => { setAvatarError(""); openTab("arts") }}
+                aria-label="Открыть арты персонажа"
+                style={{ padding: 0 }}
+              >
                 {currentCharacter.avatar_url
                   ? <CampaignImage value={currentCharacter.avatar_url} alt={`Портрет ${currentCharacter.name}`} />
                   : <div className="opus-hero__portrait-fallback">{currentCharacter.name.slice(0, 1).toUpperCase()}</div>}
-                {canEditAvatar && (
-                  <button
-                    className="opus-hero__portrait-edit"
-                    type="button"
-                    onClick={() => { setAvatarUrl(currentCharacter.avatar_url || ""); setAvatarError(""); setEditor({ type: "avatar" }) }}
-                    aria-label="Изменить портрет"
-                  >
-                    ✎
-                  </button>
-                )}
-              </div>
+              </button>
             </div>
             <div className="opus-hero__identity">
               <h1 className="opus-hero__name">
@@ -558,6 +578,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
         {!data.loading && tab === "arts" && (
           <section className="character-tab-section">
             <div className="section-head"><div><h3 className="section-title">Галерея персонажа</h3><p className="item-meta">Портреты, сцены и памятные моменты</p></div>{(canManage || isAssignedPlayer) && <label className="section-link character-art-upload">{artUploading ? "Загрузка…" : "+ Арт"}<input type="file" accept="image/*" disabled={artUploading} onChange={(event) => { void uploadArt(event.target.files?.[0] || null); event.currentTarget.value = "" }} /></label>}</div>
+            {avatarError && <CharacterSectionState compact kind="error" title="Аватар не обновился" detail={avatarError} />}
             {artError && <CharacterSectionState compact kind="error" title="Галерея не обновилась" detail={artError} />}
             <div className="character-art-grid">{data.arts.map((art) => <button type="button" key={art.id} aria-label={art.title} onClick={() => setSelectedArt(art)} {...bindArtLongPress({ item: art })} style={{ touchAction: "pan-y" }}><CampaignImage value={art.image_url} alt={art.title} loading="lazy" /></button>)}</div>
             {data.arts.length === 0 && <CharacterSectionState kind="empty" title="Галерея пуста" detail="Здесь появятся арты и памятные сцены персонажа." />}
@@ -578,6 +599,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
       {selectedArt && <CharacterDetailSheet eyebrow="Галерея персонажа" title={selectedArt.title || currentCharacter.name} onClose={() => setSelectedArt(null)} className="art-viewer-sheet character-art-detail-v5">
         <CampaignImage className="art-viewer-image" value={selectedArt.image_url} alt={selectedArt.title} />
         {selectedArt.caption && <p>{selectedArt.caption}</p>}
+        {canEditAvatar && <div className="spell-card__actions"><button className="inline-edit-button" type="button" disabled={avatarSaving || currentCharacter.avatar_url === selectedArt.image_url} onClick={() => void setAvatarFromArt(selectedArt)}>{currentCharacter.avatar_url === selectedArt.image_url ? "Текущий аватар" : avatarSaving ? "Сохраняем…" : "Сделать аватаром"}</button></div>}
         {(canManage || selectedArt.uploaded_by === user.id) && <div className="spell-card__actions"><button className="inline-edit-button" type="button" onClick={() => openArtEditor(selectedArt)}>✎ Редактировать</button><button className="danger-mini-button" type="button" onClick={() => void deleteArt(selectedArt)}>Удалить</button></div>}
       </CharacterDetailSheet>}
 
