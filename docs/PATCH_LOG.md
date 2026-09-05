@@ -2,14 +2,33 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-04-B
-
-**Status:** OPEN
-**Branch:** `dev`
-**Base main:** `769d5234b96cdfdf80c8f95bfb3cecf75b3de358`
-**Started:** 2026-09-04
-
 ## Released patches
+
+### Patch — 2026-09-04-B
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
+**Base main:** `a5ca15916329620575af435a701def44c27dd55b`
+**Started:** 2026-09-04
+**Released:** 2026-09-05
+**Release identity:** `patch 2026-09-04-B / explicit main fast-forward release`
+
+### Player-facing changes
+
+- Fixed zone creation and editing for every campaign GM and the owner/admin, including GM-only zones created by another manager.
+- Kept players read-only: they still cannot create, edit, archive or delete zones and only see locations allowed by normal visibility/discovery rules.
+
+### Runtime and security changes
+
+- Corrected the world visibility contract so `private` locations and links mean “GM-only” instead of “creator-only”.
+- Made the manager branch of the `locations` SELECT policy row-local so Supabase `INSERT ... RETURNING id` can return a newly created zone without weakening player RLS.
+- Preserved Larisa ownership and the existing `GM Cabinet → Oracle → Larisa` mutation path; no React-to-table write bypass was added.
+
+### Tests / verification
+
+- Added regression coverage for manager-wide private-zone visibility, player discovery-only visibility, manager-only private links and non-exposed helper grants.
+- Reproduced the original RLS failure against the live database, then verified both current GM accounts can create GM-only zones and the second GM can edit the first GM's zone; a player probe remains denied. All probes were rolled back.
+- Full test suite passes (`698/698`), the production TypeScript/Vite build succeeds, and lint completes with only the existing warnings.
 
 ### Patch — 2026-09-04-A
 
