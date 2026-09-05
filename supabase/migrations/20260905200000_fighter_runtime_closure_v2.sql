@@ -1,3 +1,8 @@
+-- CLASS_MIGRATION_SCOPE: mechanics
+-- CLASS_WORK_STATUS: fighter:text=READY;mechanics=IN_PROGRESS
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
+-- CLASS_INTEGRATION_STRICT: class:fighter
+-- CLASS_PACKAGE_TEST: tests/fighterRuntimeClosure.test.ts
 begin;
 
 -- Final Fighter runtime closure.

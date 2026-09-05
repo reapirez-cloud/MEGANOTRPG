@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 begin;
 
 -- Superseded before formal deployment by
