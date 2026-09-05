@@ -14,6 +14,7 @@ type Props = {
   file: File
   onCancel: () => void
   onConfirm: (file: File) => void
+  shape?: "square" | "circle"
 }
 
 const OUTPUT_SIZE = 1200
@@ -28,7 +29,7 @@ function croppedName(name: string) {
   return `${stem}-square.webp`
 }
 
-export default function SquareImageCropper({ file, onCancel, onConfirm }: Props) {
+export default function SquareImageCropper({ file, onCancel, onConfirm, shape = "square" }: Props) {
   const frameRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
   const dragRef = useRef<{
@@ -162,14 +163,16 @@ export default function SquareImageCropper({ file, onCancel, onConfirm }: Props)
     }
   }
 
+  const circular = shape === "circle"
+
   return createPortal(
     <div className="portrait-crop-backdrop" role="dialog" aria-modal="true" aria-labelledby="portrait-crop-title">
       <div className="portrait-crop-sheet">
         <header className="portrait-crop-head">
           <div>
-            <span>Портрет персонажа</span>
-            <h3 id="portrait-crop-title">Выбери квадрат</h3>
-            <p>Перемещай изображение внутри рамки и настрой масштаб.</p>
+            <span>{circular ? "Аватар персонажа" : "Портрет персонажа"}</span>
+            <h3 id="portrait-crop-title">{circular ? "Выбери область аватара" : "Выбери квадрат"}</h3>
+            <p>{circular ? "Перемещай изображение и настрой масштаб — внутри круга останется аватар." : "Перемещай изображение внутри рамки и настрой масштаб."}</p>
           </div>
           <button type="button" onClick={onCancel} aria-label="Закрыть кадрирование">×</button>
         </header>
@@ -181,6 +184,7 @@ export default function SquareImageCropper({ file, onCancel, onConfirm }: Props)
           onPointerMove={moveDrag}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
+          style={circular ? { borderRadius: "50%", overflow: "hidden" } : undefined}
         >
           {sourceUrl && (
             <img
@@ -227,7 +231,7 @@ export default function SquareImageCropper({ file, onCancel, onConfirm }: Props)
             Отмена
           </button>
           <button type="button" className="portrait-crop-apply" onClick={() => void applyCrop()} disabled={saving || !imageSize.width}>
-            {saving ? "Готовим…" : "Использовать квадрат"}
+            {saving ? "Готовим…" : circular ? "Использовать аватар" : "Использовать квадрат"}
           </button>
         </div>
       </div>
