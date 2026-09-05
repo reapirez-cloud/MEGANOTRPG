@@ -2,14 +2,38 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-05-A
+## Active patch
 
-**Status:** OPEN
-**Branch:** `dev`
-**Base main:** `4c7db0499b1154efa7300e342403edfed3ccf630`
-**Started:** 2026-09-05
+No unreleased changes.
 
 ## Released patches
+
+### Patch — 2026-09-05-A
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
+**Base main:** `4c7db0499b1154efa7300e342403edfed3ccf630`
+**Started:** 2026-09-05
+**Released:** 2026-09-05
+**Release identity:** `patch 2026-09-05-A / explicit main fast-forward release`
+
+### Player-facing changes
+
+- Fixed character-identity posting for the campaign owner/admin and every GM: managers can now speak as any visible living PC or NPC in every writable chat, including personal character rooms and GM-only rooms.
+- Aligned the actor picker with server permissions. Managers see all visible living characters; ordinary players see only their assigned active living PC, so the UI no longer offers an actor the server will reject.
+- Preserved private-character isolation: a private NPC or PC remains unavailable to another manager unless that manager already has legitimate character visibility.
+
+### Runtime and security changes
+
+- Replaced the legacy per-user chat actor binding requirement in the message identity trigger with the canonical `is_owner OR role = 'gm'` manager invariant.
+- Kept room state authoritative: managers can write to open and GM-only rooms, while closed/read-only rooms remain immutable; players still need normal room write access.
+- Audited the active UI gates, live chat/world RLS policies and current server functions for owner-vs-GM drift. Active manager policies use `private.can_manage_campaign`; creator-only GM workspaces and private characters retain their separate privacy rules.
+
+### Tests / verification
+
+- Added regression coverage for manager-wide visible character selection, active-PC-only player selection, private-character isolation and the non-callable identity trigger.
+- Reproduced the owner, GM and player failures against the live database before the migration, then verified owner inactive-PC posting, GM NPC/other-PC posting, GM-only room posting and assigned-player posting after deployment. Cross-character player posting and another GM's private NPC remain denied; all probes were rolled back.
+- Full test suite passes (`712/712`), the production TypeScript/Vite build succeeds, and lint completes with only the existing warnings.
 
 ### Patch — 2026-09-04-B
 
