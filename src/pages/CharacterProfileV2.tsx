@@ -489,8 +489,12 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
             contract={resolved.contract}
             narrative={sheet}
             canManage={canManage}
+            features={data.features}
             onEditSheet={() => setEditor({ type: "sheet" })}
             onEditResources={() => setEditor({ type: "resources" })}
+            onAddFeature={() => setEditor({ type: "feature", feature: null })}
+            onEditFeature={(feature) => setEditor({ type: "feature", feature })}
+            onDeleteFeature={data.deleteFeature}
             onOpenSpells={(level) => {
               setSpellLevelFilter(level ?? null)
               openTab("spells")
