@@ -1,9 +1,8 @@
 begin;
 
--- Preserve the current authored/generated presentation layer before restoring the
--- canonical Fighter mechanics pack. The live project missed the historical
--- completion migration, while later reference syncs kept feature prose but
--- removed persistent choices/resources.
+-- Preserve current authored/generated presentation before restoring the
+-- canonical Fighter mechanics pack. Production missed the historical completion
+-- migration while later reference syncs kept prose but removed choices/resources.
 create temp table _fighter_runtime_snapshot on commit drop as
 select
   t.id as template_id,
@@ -20,16 +19,15 @@ where t.is_active
   and (t.catalog_key = 'class:fighter' or t.catalog_key like 'subclass:fighter:%');
 
 -- Normal migration chains already have private.apply_fighter_completion().
--- Production had migration-history drift, so bootstrap the historical pack from
--- an immutable repo commit only when that function is actually absent.
+-- The live database had migration-history drift, so bootstrap the historical
+-- pack from an immutable repository commit only when that function is absent.
 do $bootstrap$
 declare
   v_status integer;
   v_sql text;
 begin
   if to_regprocedure('private.apply_fighter_completion(uuid)') is null then
-    select status, content
-      into v_status, v_sql
+    select status, content into v_status, v_sql
     from extensions.http_get(
       'https://raw.githubusercontent.com/reapirez-cloud/MEGANOTRPG/8884fcbcbed66e8b649e5d70196d26c490e1fbe4/supabase/migrations/20260829060000_fighter_completion_and_ru_audit.sql'
     );
@@ -39,9 +37,6 @@ begin
         v_status, coalesce(length(v_sql), 0);
     end if;
 
-    -- The downloaded migration owns its transaction in the repository. Here it
-    -- executes inside this repair transaction so the current text snapshot can
-    -- be restored atomically.
     v_sql := regexp_replace(v_sql, '^\s*begin;\s*', '', 'i');
     v_sql := regexp_replace(v_sql, '\s*commit;\s*$', '', 'i');
     execute v_sql;
@@ -64,8 +59,8 @@ begin
 end
 $apply$;
 
--- Keep the current feature prose and current spell records exactly as they were,
--- but keep canonical resources/actions/values and canonical persistent choices.
+-- Preserve current feature prose, spell records and useful generated actions.
+-- Canonical actions win on equal labels/keys; this prevents duplicated buttons.
 update public.rule_template_levels l
 set mechanics = rebuilt.mechanics
 from _fighter_runtime_snapshot s
@@ -88,12 +83,30 @@ cross join lateral (
     select m, 2 as bucket, ord
     from jsonb_array_elements(s.mechanics) with ordinality q(m, ord)
     where m->>'type' = 'spell'
+
+    union all
+
+    select original.m, 3 as bucket, original.ord
+    from jsonb_array_elements(s.mechanics) with ordinality original(m, ord)
+    where original.m->>'type' = 'action'
+      and not exists (
+        select 1
+        from jsonb_array_elements(coalesce(l.mechanics, '[]'::jsonb)) canonical(m)
+        where canonical.m->>'type' = 'action'
+          and (
+            canonical.m->>'key' = original.m->>'key'
+            or (
+              coalesce(canonical.m->>'label','') <> ''
+              and canonical.m->>'label' = original.m->>'label'
+            )
+          )
+      )
   ) x
 ) rebuilt
 where l.template_id = s.template_id and l.level = s.level;
 
--- Preserve current catalog wording/metadata, merge in any canonical rules flags,
--- and mark this layer as mechanically audited.
+-- Preserve current catalog wording/metadata, merge canonical runtime flags and
+-- mark the resulting Fighter layer as mechanically audited.
 update public.rule_templates t
 set
   name = s.name,
@@ -116,7 +129,6 @@ from (
 ) s
 where t.id = s.template_id;
 
--- Helper: append/replace a raw grant mechanic on one active Fighter subclass level.
 create or replace function private.fighter_runtime_put_grant(
   p_catalog_key text,
   p_level integer,
@@ -139,14 +151,16 @@ begin
   if v_id is null then return; end if;
 
   insert into public.rule_template_levels(template_id, level, mechanics, choices)
-  values(v_id, p_level, jsonb_build_array(p_mechanic), '[]'::jsonb)
-  on conflict(template_id, level) do update
+  values(v_id, p_level, '[]'::jsonb, '[]'::jsonb)
+  on conflict(template_id, level) do nothing;
+
+  update public.rule_template_levels l
   set mechanics = coalesce((
     select jsonb_agg(m order by ord)
-    from jsonb_array_elements(coalesce(public.rule_template_levels.mechanics, '[]'::jsonb))
-      with ordinality q(m, ord)
+    from jsonb_array_elements(coalesce(l.mechanics, '[]'::jsonb)) with ordinality q(m, ord)
     where coalesce(m->>'id', m->>'key') <> v_identity
-  ), '[]'::jsonb) || jsonb_build_array(p_mechanic);
+  ), '[]'::jsonb) || jsonb_build_array(p_mechanic)
+  where l.template_id = v_id and l.level = p_level;
 end;
 $$;
 
@@ -174,8 +188,7 @@ select private.fighter_runtime_put_grant(
   '{"id":"fighter-echo-reclaim-pool","type":"grant","target":"resource","key":"reclaim_potential","sourceKey":"reclaim-potential","grantOperation":"REPLACE","priority":15,"payload":{"max":{"kind":"max","values":[{"kind":"literal","value":1},{"kind":"reference","key":"abilities.constitution.modifier"}]},"label":"Возврат потенциала","initial":"full","recharge":{"triggers":["long_rest"],"restore":"full"}}}'::jsonb
 );
 
--- Samurai counters. Tireless Spirit is represented as an explicit structured
--- rule on the feature below; initiative restoration remains an executor event.
+-- Samurai counters. Tireless Spirit is a structured executor event below.
 select private.fighter_runtime_put_grant(
   'subclass:fighter:samurai', 3,
   '{"id":"fighter-samurai-spirit-pool","type":"grant","target":"resource","key":"fighting_spirit","sourceKey":"fighting-spirit","grantOperation":"REPLACE","priority":3,"payload":{"max":3,"label":"Боевой дух","initial":"full","recharge":{"triggers":["long_rest"],"restore":"full"}}}'::jsonb
@@ -185,9 +198,8 @@ select private.fighter_runtime_put_grant(
   '{"id":"fighter-samurai-death-pool","type":"grant","target":"resource","key":"strength_before_death","sourceKey":"strength-before-death","grantOperation":"REPLACE","priority":18,"payload":{"max":1,"label":"Стойкость перед смертью","initial":"full","recharge":{"triggers":["long_rest"],"restore":"full"}}}'::jsonb
 );
 
--- Champion publishes the improved critical threshold as a generic scalar and as
--- a structured rule. Character Engine actions can consume the scalar without
--- knowing anything about Fighter/Champion.
+-- Champion publishes improved critical as a generic scalar and structured rule;
+-- consumers can apply it to weapon/unarmed attack resolution without class names.
 select private.fighter_runtime_put_grant(
   'subclass:fighter:champion', 3,
   '{"id":"fighter-champion-critical-19","type":"grant","target":"value","key":"attack_critical_threshold","sourceKey":"improved-critical","grantOperation":"REPLACE","priority":3,"payload":{"value":19,"label":"Порог критического попадания"}}'::jsonb
@@ -197,8 +209,8 @@ select private.fighter_runtime_put_grant(
   '{"id":"fighter-champion-critical-18","type":"grant","target":"value","key":"attack_critical_threshold","sourceKey":"superior-critical","grantOperation":"REPLACE","priority":15,"payload":{"value":18,"label":"Порог критического попадания"}}'::jsonb
 );
 
--- Add resource costs to existing generated actions where the action already
--- exists. This avoids duplicate UI actions and makes availability/spending real.
+-- Add costs to generated actions that already exist; this keeps one UI action and
+-- lets Character Engine availability/spending use the restored counters.
 do $costs$
 declare
   r record;
@@ -224,8 +236,9 @@ begin
       update public.rule_template_levels l
       set mechanics = (
         select jsonb_agg(
-          case when ord=r.ord then jsonb_set(m,'{resourceCosts}',jsonb_build_array(jsonb_build_object('key',v_cost_key,'amount',1)),true)
-               else m end
+          case when ord=r.ord
+            then jsonb_set(m,'{resourceCosts}',jsonb_build_array(jsonb_build_object('key',v_cost_key,'amount',1)),true)
+            else m end
           order by ord
         )
         from jsonb_array_elements(coalesce(l.mechanics,'[]'::jsonb)) with ordinality q(m,ord)
@@ -236,7 +249,8 @@ begin
 end
 $costs$;
 
--- Publish structured semantics for Champion and Samurai executor-only triggers.
+-- Structured rules for effects whose executor lifecycle is broader than a plain
+-- rest counter.
 do $structured$
 declare
   r record;
@@ -274,8 +288,8 @@ begin
 end
 $structured$;
 
--- Hard integrity gate: the migration must fail atomically if the three persistent
--- selection systems or the core resource systems are still missing.
+-- Hard integrity gate: fail atomically if persistent selections or core resource
+-- systems are still missing.
 do $verify$
 declare
   v_missing text;
