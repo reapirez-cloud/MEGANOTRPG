@@ -7,6 +7,7 @@ import {
   type CharacterContribution,
   type CharacterEngineInput,
 } from "../src/character-engine/index.ts"
+import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
 import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
 import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
 import type { CharacterTemplateBundle, RuleTemplate } from "../src/rule-templates/types.ts"
@@ -198,6 +199,7 @@ test("closure validates persistent choices, resources and Champion thresholds", 
 test("Fighter strict package reaches resolver and Character Engine with Champion 18-20 criticals", () => {
   const packages = [fighterBundle(), championBundle()]
   assert.doesNotThrow(() => assertClassPackageQuality(packages))
+  assert.doesNotThrow(() => assertClassResourcePolicy(packages))
 
   const parsed = resolveTemplateBundles(packages, 15)
   const contract = resolveCharacterContract(engineInput([...parsed.contributions, weaponAttack()]))
