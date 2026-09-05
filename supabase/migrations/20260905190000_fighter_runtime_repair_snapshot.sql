@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 begin;
 
 create table if not exists private.fighter_runtime_repair_snapshot (

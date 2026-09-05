@@ -1,4 +1,4 @@
-import { resolveActions } from "./actions.ts"
+import { ActionEngineError, resolveActions } from "./actions.ts"
 import { evaluateCondition } from "./conditions.ts"
 import { resolveNumericConflicts } from "./conflicts.ts"
 import { validateCharacterEngineInput } from "./core.ts"
@@ -228,6 +228,13 @@ export function resolveCharacter(
     formulaContext[`resources.${resource.stateKey}.max`] = resource.max.value
   }
 
+  const globalCriticalThreshold = formulaContext["values.attack_critical_threshold"] ?? 20
+  if (!Number.isInteger(globalCriticalThreshold) || globalCriticalThreshold < 1 || globalCriticalThreshold > 20) {
+    throw new ActionEngineError(
+      `values.attack_critical_threshold resolved to ${globalCriticalThreshold}; expected integer 1..20`,
+    )
+  }
+
   const actions = resolveActions(
     grants,
     activeContributions,
@@ -235,7 +242,16 @@ export function resolveCharacter(
     state,
     maxHp.value,
     formulaContext,
-  )
+  ).map((action) => {
+    if (!action.attack) return action
+    return {
+      ...action,
+      attack: {
+        ...action.attack,
+        criticalThreshold: action.attack.criticalThreshold ?? globalCriticalThreshold,
+      },
+    }
+  })
 
   const spells = resolveSpells(
     grants,

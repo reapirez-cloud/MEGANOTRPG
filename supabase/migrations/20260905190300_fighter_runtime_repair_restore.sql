@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 begin;
 
 -- The canonical completion migrations intentionally replace subclass level mechanics.
