@@ -3,6 +3,7 @@
 -- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 -- CLASS_INTEGRATION_STRICT: class:fighter
 -- CLASS_PACKAGE_TEST: tests/fighterRuntimeClosure.test.ts
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
 begin;
 
 -- Final Fighter runtime closure.
