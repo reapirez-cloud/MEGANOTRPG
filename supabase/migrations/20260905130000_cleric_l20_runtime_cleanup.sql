@@ -40,7 +40,7 @@ begin
 end;
 $$;
 
--- Superseded free/legacy action rows.
+-- Superseded free/legacy action rows whose canonical runtime id is different.
 select private.cleric_l20_remove_legacy_mechanic('subclass:cleric:death-domain',2,'cleric-death-touch-of-death-action');
 select private.cleric_l20_remove_legacy_mechanic('subclass:cleric:forge-domain',2,'cleric-forge-artisans-blessing-action');
 select private.cleric_l20_remove_legacy_mechanic('subclass:cleric:grave-domain',3,'cleric-grave-path-to-grave-action');
@@ -49,13 +49,16 @@ select private.cleric_l20_remove_legacy_mechanic('subclass:cleric:knowledge-doma
 select private.cleric_l20_remove_legacy_mechanic('subclass:cleric:light-domain',3,'cleric-light-radiance-of-dawn-action');
 select private.cleric_l20_remove_legacy_mechanic('subclass:cleric:light-domain',3,'cleric-light-warding-flare-action');
 select private.cleric_l20_remove_legacy_mechanic('subclass:cleric:peace-domain',1,'cleric-peace-emboldening-bond-action');
-select private.cleric_l20_remove_legacy_mechanic('subclass:cleric:tempest-domain',1,'cleric-tempest-wrath-action');
 select private.cleric_l20_remove_legacy_mechanic('subclass:cleric:tempest-domain',2,'cleric-tempest-destructive-wrath-action');
 select private.cleric_l20_remove_legacy_mechanic('subclass:cleric:trickery-domain',3,'cleric-trickery-invoke-duplicity-action');
-select private.cleric_l20_remove_legacy_mechanic('subclass:cleric:war-domain',3,'cleric-war-guided-strike-action');
-select private.cleric_l20_remove_legacy_mechanic('subclass:cleric:war-domain',3,'cleric-war-priest-action');
 select private.cleric_l20_remove_legacy_mechanic('subclass:cleric:war-domain',6,'cleric-war-gods-blessing-shield');
 select private.cleric_l20_remove_legacy_mechanic('subclass:cleric:war-domain',6,'cleric-war-gods-blessing-spiritual');
+
+-- These canonical actions intentionally reuse their historical ids and are
+-- replaced in-place by 20260830010000; never delete them here:
+-- cleric-tempest-wrath-action
+-- cleric-war-guided-strike-action
+-- cleric-war-priest-action
 
 -- Superseded resource rows whose new canonical ledger uses another id/key.
 -- Rows whose runtime-completion id is identical (Grave Sentinel, Knowledge
@@ -84,11 +87,8 @@ begin
       'cleric-light-radiance-of-dawn-action',
       'cleric-light-warding-flare-action',
       'cleric-peace-emboldening-bond-action',
-      'cleric-tempest-wrath-action',
       'cleric-tempest-destructive-wrath-action',
       'cleric-trickery-invoke-duplicity-action',
-      'cleric-war-guided-strike-action',
-      'cleric-war-priest-action',
       'cleric-war-gods-blessing-shield',
       'cleric-war-gods-blessing-spiritual',
       'cleric-light-warding-flare-resource-l3',
