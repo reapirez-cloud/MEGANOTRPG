@@ -258,11 +258,8 @@ test("cleric L20 cleanup removes every known legacy free alias and duplicate led
     "cleric-light-radiance-of-dawn-action",
     "cleric-light-warding-flare-action",
     "cleric-peace-emboldening-bond-action",
-    "cleric-tempest-wrath-action",
     "cleric-tempest-destructive-wrath-action",
     "cleric-trickery-invoke-duplicity-action",
-    "cleric-war-guided-strike-action",
-    "cleric-war-priest-action",
     "cleric-war-gods-blessing-shield",
     "cleric-war-gods-blessing-spiritual",
     "cleric-light-warding-flare-resource-l3",
@@ -295,4 +292,14 @@ test("cleric L20 cleanup removes every known legacy free alias and duplicate led
   ]
   for (const id of canonicalIds) assert.match(cleanup, new RegExp(id))
   assert.match(cleanup, /a\.resource_cost=1/)
+})
+
+test("cleanup never deletes same-id actions upgraded in place by runtime completion", () => {
+  for (const id of [
+    "cleric-tempest-wrath-action",
+    "cleric-war-guided-strike-action",
+    "cleric-war-priest-action",
+  ]) {
+    assert.doesNotMatch(cleanup, new RegExp(`cleric_l20_remove_legacy_mechanic\\([^;]+${id}`))
+  }
 })
