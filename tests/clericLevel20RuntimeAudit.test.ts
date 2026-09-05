@@ -248,7 +248,7 @@ test("every finite action on the level-20 test Cleric resolves to an existing CE
   assert.ok(contract.actions.some((action) => action.key === "war_priest" && action.resourceCosts.some((cost) => cost.stateKey === "war_priest")))
 })
 
-test("cleric L20 cleanup removes every known legacy free alias and requires canonical paid replacements", () => {
+test("cleric L20 cleanup removes every known legacy free alias and duplicate ledger", () => {
   const legacyIds = [
     "cleric-death-touch-of-death-action",
     "cleric-forge-artisans-blessing-action",
@@ -265,8 +265,12 @@ test("cleric L20 cleanup removes every known legacy free alias and requires cano
     "cleric-war-priest-action",
     "cleric-war-gods-blessing-shield",
     "cleric-war-gods-blessing-spiritual",
+    "cleric-light-warding-flare-resource-l3",
+    "cleric-light-warding-flare-resource-l6",
+    "cleric-order-embodiment-resource",
+    "cleric-peace-emboldening-bond-resource",
   ]
-  for (const id of legacyIds) assert.match(cleanup, new RegExp(`cleric_l20_remove_legacy_action\\([^;]+${id}`))
+  for (const id of legacyIds) assert.match(cleanup, new RegExp(`cleric_l20_remove_legacy_mechanic\\([^;]+${id}`))
 
   const canonicalIds = [
     "cleric-death-touch-runtime",
@@ -284,6 +288,10 @@ test("cleric L20 cleanup removes every known legacy free alias and requires cano
     "cleric-war-priest-action",
     "cleric-war-god-shield-action",
     "cleric-war-god-weapon-action",
+    "cleric-light-flare-resource",
+    "cleric-light-flare-upgrade-resource",
+    "cleric-order-law-resource",
+    "cleric-peace-bond-resource",
   ]
   for (const id of canonicalIds) assert.match(cleanup, new RegExp(id))
   assert.match(cleanup, /a\.resource_cost=1/)
