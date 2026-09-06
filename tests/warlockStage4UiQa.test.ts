@@ -5,6 +5,7 @@ import test from "node:test"
 import { resolveTemplateChoiceStates } from "../src/rule-templates/choiceState.ts"
 import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
 import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
+import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
 import type { CharacterTemplateBundle, RuleChoiceDefinition } from "../src/rule-templates/types.ts"
 
 const migration = readFileSync("supabase/migrations/20260906201356_choice_runtime_replacement_limit_and_warlock_stage4.sql", "utf8")
@@ -186,6 +187,13 @@ test("Stage 4 Warlock choice package still passes generic quality and resource g
   const bundle = warlockBundle(true)
   assert.doesNotThrow(() => assertClassPackageQuality([bundle]))
   assert.doesNotThrow(() => assertClassResourcePolicy([bundle]))
+})
+
+test("Stage 4 structured invocations traverse the real class parser", () => {
+  const parsed = resolveTemplateBundles([warlockBundle()], 5)
+  assert.ok(parsed.contributions.some((entry) => entry.key === "agonizing-blast" && entry.target === "trait"))
+  assert.ok(parsed.contributions.some((entry) => entry.key === "pact-of-the-blade" && entry.target === "trait"))
+  assert.ok(parsed.sources.some((entry) => entry.choiceKey === "warlock_eldritch_invocations" && entry.optionKey === "thirsting-blade"))
 })
 
 test("Stage 4 migration enforces one replacement and keeps subclasses outside scope", () => {
