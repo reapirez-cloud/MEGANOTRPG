@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import { resolveTemplateChoiceStates } from "../src/rule-templates/choiceState.ts"
+import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
+import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
 import type { CharacterTemplateBundle, RuleChoiceDefinition } from "../src/rule-templates/types.ts"
 
 const migration = readFileSync("supabase/migrations/20260906201356_choice_runtime_replacement_limit_and_warlock_stage4.sql", "utf8")
@@ -113,6 +115,7 @@ function warlockBundle(includeTome = false): CharacterTemplateBundle {
       slug: "warlock",
       name: "Колдун",
       description: "Колдун 2024",
+      mechanical_summary: "Колдун использует Магию договора, выбирает мистические воззвания с требованиями и меняет одно воззвание при повышении уровня.",
       version: 1,
       mechanics: [],
       choices: [],
@@ -177,6 +180,12 @@ test("Pact of the Tome choices stay hidden without Tome and become rest-editable
   assert.equal(visible.status, "editable")
   assert.equal(visible.refresh, "short_or_long_rest")
   assert.equal(visible.instances.length, 3)
+})
+
+test("Stage 4 Warlock choice package still passes generic quality and resource gates", () => {
+  const bundle = warlockBundle(true)
+  assert.doesNotThrow(() => assertClassPackageQuality([bundle]))
+  assert.doesNotThrow(() => assertClassResourcePolicy([bundle]))
 })
 
 test("Stage 4 migration enforces one replacement and keeps subclasses outside scope", () => {
