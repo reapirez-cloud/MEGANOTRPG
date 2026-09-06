@@ -13,8 +13,8 @@ import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
 import type { CharacterTemplateBundle, RuleChoiceDefinition } from "../src/rule-templates/types.ts"
 
 const catalog = readFileSync("supabase/migrations/20260906073433_warlock_2024_eldritch_invocations_catalog.sql", "utf8")
-const restRefresh = readFileSync("supabase/migrations/20260906192500_choice_runtime_rest_refresh_v1.sql", "utf8")
-const runtime = readFileSync("supabase/migrations/20260906193000_warlock_invocations_runtime_v1.sql", "utf8")
+const restRefresh = readFileSync("supabase/migrations/20260906192520_choice_runtime_rest_refresh_v1.sql", "utf8")
+const runtime = readFileSync("supabase/migrations/20260906192806_warlock_invocations_runtime_v1.sql", "utf8")
 
 const feature = (id: string, key: string, description: string, mechanic: Record<string, unknown>) => ({
   id,
