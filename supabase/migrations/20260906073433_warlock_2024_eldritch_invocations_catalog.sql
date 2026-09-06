@@ -1,4 +1,5 @@
 -- D&D 2024 Warlock Eldritch Invocations.
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- Catalog-only preparation for the Chasovoy reference engine.
 -- Runtime wiring is intentionally out of scope for this migration.
 
