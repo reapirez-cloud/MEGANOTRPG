@@ -1,3 +1,7 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
+-- Bestiary infrastructure touches the shared reference-definition kind catalog
+-- but does not install class or subclass mechanics.
+
 alter table public.reference_definitions
   drop constraint if exists reference_definitions_kind_check;
 
