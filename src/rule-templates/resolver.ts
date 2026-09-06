@@ -1,6 +1,11 @@
 import type { CharacterContribution, CharacterSource, FormulaExpression } from "../character-engine/index.ts"
 import { contributionForStoredMechanic } from "../lib/characterMechanics.ts"
 import type { StoredMechanic, StoredMechanics } from "../types/characterMechanics.ts"
+import {
+  mechanicsForStructuredChoiceInstance,
+  structuredChoiceInstanceIdentity,
+  structuredChoiceInstances,
+} from "./choiceRuntimeV2.ts"
 import type { CharacterTemplateBundle, RuleChoiceDefinition, RuleTemplateKind } from "./types.ts"
 
 // INTERNAL: before adding or changing class/subclass mechanics, read ./CLASS_INTEGRATION_NOTES.md.
@@ -156,6 +161,19 @@ function mechanicContributions(
   })
 }
 
+function requirementAvailableV2(
+  definition: RuleChoiceDefinition,
+  selectedChoices: Record<string, string | string[]> | null | undefined,
+  sourceLevel: number,
+): boolean {
+  const requirement = definition.requires_choice
+  if (!requirement) return true
+  const requiredDefinition = { ...definition, key: requirement.key, options: [requirement.option], count: 1 }
+  return structuredChoiceInstances(requiredDefinition, selectedChoices, sourceLevel)
+    .some((instance) => instance.option === requirement.option)
+    || normalizeSelected(selectedChoices?.[requirement.key]).includes(requirement.option)
+}
+
 function choiceContributions(
   bundle: CharacterTemplateBundle,
   definition: RuleChoiceDefinition,
@@ -163,18 +181,18 @@ function choiceContributions(
   unlockLevel: number,
   nodes: Map<string, TemplateSourceNode>,
 ): CharacterContribution[] {
-  if (!choiceDefinitionAvailable(definition, bundle.assignment.selected_choices)) return []
+  if (!requirementAvailableV2(definition, bundle.assignment.selected_choices, sourceLevel)) return []
 
-  const selected = normalizeSelected(bundle.assignment.selected_choices?.[definition.key])
-    .filter((key) => definition.options.includes(key) && choiceOptionAvailableAtLevel(definition, key, sourceLevel))
-    .slice(0, choiceCountAtLevel(definition, sourceLevel))
+  const selected = structuredChoiceInstances(definition, bundle.assignment.selected_choices, sourceLevel)
   const root = templateRootSource(bundle)
 
-  return selected.flatMap((key, index) => {
+  return selected.flatMap((instance, index) => {
+    const key = instance.option
     const optionName = definition.option_labels?.[key] || key
+    const identity = structuredChoiceInstanceIdentity(instance, index, selected)
     const source: CharacterSource = {
-      id: `${root.id}:choice:${definition.key}:${key}`,
-      name: `${definition.label}: ${optionName}`,
+      id: `${root.id}:choice:${definition.key}:${identity}`,
+      name: `${definition.label}: ${optionName}${instance.selector_value ? ` · ${instance.selector_value}` : ""}`,
       sourceType: root.sourceType,
       parentSourceId: root.id,
       visibility: root.visibility,
@@ -199,19 +217,14 @@ function choiceContributions(
       operation: "GRANT",
       target: definition.target,
       key,
+      variantKey: identity,
       ...(definition.target === "proficiency" ? { payload: { rank: 1 } } : {}),
       source,
     }
 
-    const unlockedMechanics: StoredMechanics = [
-      ...(definition.option_mechanics?.[key] || []),
-      ...Object.entries(definition.option_mechanics_by_level?.[key] || {})
-        .filter(([level]) => Number(level) <= sourceLevel)
-        .sort(([a], [b]) => Number(a) - Number(b))
-        .flatMap(([, mechanics]) => mechanics || []),
-    ]
-
-    const optionMechanics = mechanicsAtSourceLevel(unlockedMechanics, sourceLevel).map((mechanic) => contributionForStoredMechanic(mechanic, source))
+    const unlockedMechanics = mechanicsForStructuredChoiceInstance(definition, instance, sourceLevel, index)
+    const optionMechanics = mechanicsAtSourceLevel(unlockedMechanics, sourceLevel)
+      .map((mechanic) => contributionForStoredMechanic(mechanic, source))
     return [base, ...optionMechanics]
   })
 }
