@@ -123,11 +123,12 @@ test("Archfey resolves Steps of the Fey, charm immunity and Beguiling Defenses t
   assert.ok(contract.capabilities.immunities.some((entry) => entry.key === "condition:charmed"))
   assert.ok(contract.resources.some((entry) => entry.key === "warlock_archfey_beguiling_defenses"))
   assert.ok(contract.actions.some((entry) => entry.key === "warlock_archfey_beguiling_defenses_restore_by_pact_slot"))
-  const misty = spellAccess(contract, "misty-step")
+  const misty = contract.spells.find((spell) => spell.key === spellKey("misty-step"))
   assert.ok(misty)
-  assert.equal(misty.preparationMode, "always_prepared")
-  assert.ok(misty.methods.some((method) => method.kind === "pact_magic"))
-  assert.ok(misty.methods.some((method) => method.key === "steps-of-the-fey"))
+  assert.ok(misty.accesses.some((access) =>
+    access.preparationMode === "always_prepared" && access.methods.some((method) => method.kind === "pact_magic")))
+  assert.ok(misty.accesses.some((access) =>
+    access.key === "warlock-subclass:archfey:steps-of-the-fey" && access.methods.some((method) => method.key === "steps-of-the-fey")))
 })
 
 test("Celestial resolves Healing Light progression, radiant resistance and Searing Vengeance", () => {
