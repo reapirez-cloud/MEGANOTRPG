@@ -21,8 +21,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function payloadText(mechanic: StoredMechanic | undefined, key: "label" | "description" | "authorExplanation" | "authorComment") {
-  if (!mechanic || mechanic.type !== "grant" || !isRecord(mechanic.payload)) return ""
-  const value = mechanic.payload[key]
+  if (!mechanic || mechanic.type !== "grant") return ""
+  const payload: unknown = mechanic.payload
+  if (!isRecord(payload)) return ""
+  const value = payload[key]
   return typeof value === "string" ? value.trim() : ""
 }
 
