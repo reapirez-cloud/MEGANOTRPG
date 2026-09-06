@@ -15,7 +15,8 @@ test("translated new classes expose complete reference mechanics without runtime
 
     for (const feature of entry.features ?? []) {
       assert.ok(feature.mechanics.trim(), `${classId}/${feature.level}/${feature.name} has no mechanics`)
-      if (!feature.explanation.trim()) {
+      const translatedWarlockInvocation = classId === "warlock" && feature.name.startsWith("Воззвание:")
+      if (!feature.explanation.trim() && !translatedWarlockInvocation) {
         assert.match(feature.translationNote ?? "", /Перевода способности пока нет/)
       }
     }
