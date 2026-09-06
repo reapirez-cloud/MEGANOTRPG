@@ -1,4 +1,7 @@
 -- CLASS_MIGRATION_SCOPE: mechanics
+-- CLASS_INTEGRATION_STRICT: class:warlock
+-- CLASS_PACKAGE_TEST: tests/warlockStage4UiQa.test.ts
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
 -- CLASS_WORK_STATUS: warlock:base=READY;invocations=RUNTIME_READY;ui_qa=STAGE4;subclasses=UNCHANGED
 -- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 -- Stage 4: generic Choice Runtime v2 replacement limit plus Warlock 2024 invocation replacement policy.
