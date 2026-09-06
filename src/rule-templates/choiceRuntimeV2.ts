@@ -54,18 +54,29 @@ function legacyInstances(selectedChoices: Record<string, unknown>, choiceKey: st
   return value.map(cleanInstance).filter((entry): entry is StructuredChoiceInstance => Boolean(entry))
 }
 
+/**
+ * Returns the durable v2 instances exactly as the assignment stores them, before
+ * level/prerequisite filtering. UI uses this to explain stale/locked choices and
+ * to submit replacements without flattening selector-bound repeatable options.
+ */
+export function storedStructuredChoiceInstances(
+  definition: RuleChoiceDefinition,
+  selectedChoicesInput: unknown,
+): StructuredChoiceInstance[] {
+  const selectedChoices = asRecord(selectedChoicesInput) || {}
+  const runtime = asRecord(selectedChoices._choice_runtime_v2) as ChoiceRuntimeEnvelope | null
+  const rawInstances = runtime?.choices?.[definition.key]?.instances
+  return Array.isArray(rawInstances)
+    ? rawInstances.map(cleanInstance).filter((entry): entry is StructuredChoiceInstance => Boolean(entry))
+    : legacyInstances(selectedChoices, definition.key)
+}
+
 export function structuredChoiceInstances(
   definition: RuleChoiceDefinition,
   selectedChoicesInput: unknown,
   sourceLevel: number,
 ): StructuredChoiceInstance[] {
-  const selectedChoices = asRecord(selectedChoicesInput) || {}
-  const runtime = asRecord(selectedChoices._choice_runtime_v2) as ChoiceRuntimeEnvelope | null
-  const rawInstances = runtime?.choices?.[definition.key]?.instances
-  const candidates = Array.isArray(rawInstances)
-    ? rawInstances.map(cleanInstance).filter((entry): entry is StructuredChoiceInstance => Boolean(entry))
-    : legacyInstances(selectedChoices, definition.key)
-
+  const candidates = storedStructuredChoiceInstances(definition, selectedChoicesInput)
   const rules = (definition as ChoiceDefinitionV2).option_rules || {}
   const optionSet = new Set(definition.options)
   const selectedOptionSet = new Set(candidates.map((instance) => instance.option))

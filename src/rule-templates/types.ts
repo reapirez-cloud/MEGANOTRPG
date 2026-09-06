@@ -6,13 +6,36 @@ export type RuleTemplateKind = "race" | "subrace" | "class" | "subclass"
 export type RuleChoiceTarget = "language" | "proficiency" | "sense" | "trait"
 export type RuleTemplateSourceKind = "official" | "third_party" | "custom"
 export type RuleChoiceSelectionMode = "manager" | "player_once"
-export type RuleChoiceRefreshPolicy = "long_rest"
+export type RuleChoiceRefreshPolicy = "long_rest" | "short_rest" | "short_or_long_rest"
+export type RuleChoiceReplacementPolicy = "locked" | "always" | "preparation" | "on_level_change" | "preparation_or_level_change"
 
 export type RuleChoiceRequirement = {
   /** Another persistent choice in the same assignment. */
   key: string
   /** This choice is active only while the parent choice contains this option. */
   option: string
+}
+
+export type RuleChoiceSelectorOption = {
+  value: string
+  label?: string
+}
+
+export type RuleChoiceSelector = {
+  key: string
+  options?: Array<string | RuleChoiceSelectorOption>
+}
+
+export type RuleChoiceOptionRule = {
+  min_level?: number
+  unlock_level?: number
+  repeatable?: boolean
+  selector?: string | RuleChoiceSelector
+  selector_options?: Array<string | RuleChoiceSelectorOption>
+  required_options?: string[]
+  required_invocations?: string[]
+  required_choices?: Array<string | RuleChoiceRequirement>
+  mechanics?: StoredMechanics
 }
 
 export type RuleChoiceDefinition = {
@@ -36,11 +59,18 @@ export type RuleChoiceDefinition = {
    */
   selection_mode?: RuleChoiceSelectionMode
   /**
-   * Explicit exception to player_once immutability. A long_rest choice may be
-   * fully replaced only while the server-authoritative post-rest preparation
-   * session is open. Ordinary player chat closes that session.
+   * Explicit rest refresh. Server authority still decides whether the matching
+   * short/long-rest window is currently open.
    */
   refresh?: RuleChoiceRefreshPolicy
+  /** Generic structured Choice Runtime v2 rules keyed by stable option identity. */
+  option_rules?: Record<string, RuleChoiceOptionRule>
+  /** Whether a complete choice can be replaced, and under which server-owned window. */
+  replacement_policy?: RuleChoiceReplacementPolicy
+  /** Maximum number of previously stored instances that may be replaced in one commit. */
+  replacement_limit?: number
+  /** Choice-wide repeatability for sources that do not need per-option rules. */
+  repeatable?: boolean
   /** Extra CE mechanics applied only when this option is selected. */
   option_mechanics?: Record<string, StoredMechanics>
   /**
@@ -48,6 +78,9 @@ export type RuleChoiceDefinition = {
    * for the same land/style/pact choice again every time it gains a new tier.
    */
   option_mechanics_by_level?: Record<string, Record<string, StoredMechanics>>
+  /** Optional authoring metadata used by catalog/runtime presentation. */
+  required?: boolean
+  resolved_as?: string
 }
 
 export type RuleTemplate = {
