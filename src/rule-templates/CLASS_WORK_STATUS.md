@@ -192,7 +192,7 @@ Base Cleric and all fourteen supported domains are implemented, regression-gated
 **Mechanics/runtime:** `READY`
 
 - `last_text_audit: 2026-09-03`
-- `voss_base_class_feature_voice_pass: JOHANN_BASE_PLUS_LAYERED_GEMINI_SUBCLASS_PACKS_1_2_3_4_IN_DEV_2026_09_03`
+- `voss_base_class_feature_voice_pass: JOHANN_BASE_PLUS_LAYERED_GEMINI_SUBCLASS_PACKS_2026_09_03`
 - `translation_wiring_audit: RESTORED_JOHANN_AND_GEMINI_PACKS_1_2_3_4_IN_DEV_2026_09_03`
 - `last_mechanics_audit_started: 2026-08-31`
 - `last_dev_runtime_audit: 2026-09-02`
