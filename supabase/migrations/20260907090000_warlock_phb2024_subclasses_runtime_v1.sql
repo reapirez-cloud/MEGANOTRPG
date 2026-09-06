@@ -2,7 +2,8 @@
 -- CLASS_INTEGRATION_STRICT: subclass:warlock
 -- CLASS_RESOURCE_POLICY: short-long-rest-v1
 -- CLASS_PACKAGE_TEST: tests/warlockPhb2024SubclassesRuntime.test.ts
--- CLASS_WORK_STATUS: src/rule-templates/CLASS_WORK_STATUS.md
+-- CLASS_WORK_STATUS: warlock:text=IN_PROGRESS;mechanics=IN_PROGRESS
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 
 create or replace function private.warlock_subclass_feature_v1(
   p_id text,
