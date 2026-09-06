@@ -56,8 +56,18 @@ function contractFor(catalogKey: string, level: number, selectedChoices: Record<
   return { parsed, contract: resolveCharacterContract(input) }
 }
 
+function spellKey(slug: string): string {
+  return `spell:${slug}`
+}
+
 function spellAccess(contract: ReturnType<typeof resolveCharacterContract>, slug: string) {
-  return contract.spells.find((spell) => spell.key === slug)?.accesses.find((access) => access.key.includes("warlock-subclass"))
+  return contract.spells
+    .find((spell) => spell.key === spellKey(slug))
+    ?.accesses.find((access) => access.key.includes("warlock-subclass"))
+}
+
+function hasSpell(contract: ReturnType<typeof resolveCharacterContract>, slug: string): boolean {
+  return contract.spells.some((spell) => spell.key === spellKey(slug))
 }
 
 test("Stage 5 defines exactly the four PHB 2024 patron identities", () => {
@@ -83,7 +93,7 @@ test("all four patrons attach to class:warlock, unlock at 3, and use the shared 
 
   const low = contractFor("subclass:warlock:archfey", 2).contract
   assert.equal(low.resources.some((entry) => entry.key.startsWith("warlock_archfey")), false)
-  assert.equal(low.spells.some((entry) => entry.key === "misty-step"), false)
+  assert.equal(hasSpell(low, "misty-step"), false)
 
   const unlocked = contractFor("subclass:warlock:archfey", 3).contract
   assert.ok(unlocked.resources.some((entry) => entry.key === "warlock_archfey_steps_of_the_fey"))
@@ -109,38 +119,39 @@ test("Stage 5 package passes strict quality/resource gates and reaches parser pl
 
 test("Archfey resolves Steps of the Fey, charm immunity and Beguiling Defenses through CE", () => {
   const { contract } = contractFor("subclass:warlock:archfey", 14)
-  assert.equal(contract.resources.find((entry) => entry.key === "warlock_archfey_steps_of_the_fey")?.maximum.value, 4)
+  assert.equal(contract.resources.find((entry) => entry.key === "warlock_archfey_steps_of_the_fey")?.max.value, 4)
   assert.ok(contract.capabilities.immunities.some((entry) => entry.key === "condition:charmed"))
   assert.ok(contract.resources.some((entry) => entry.key === "warlock_archfey_beguiling_defenses"))
   assert.ok(contract.actions.some((entry) => entry.key === "warlock_archfey_beguiling_defenses_restore_by_pact_slot"))
   const misty = spellAccess(contract, "misty-step")
   assert.ok(misty)
+  assert.equal(misty.preparationMode, "always_prepared")
   assert.ok(misty.methods.some((method) => method.kind === "pact_magic"))
   assert.ok(misty.methods.some((method) => method.key === "steps-of-the-fey"))
 })
 
 test("Celestial resolves Healing Light progression, radiant resistance and Searing Vengeance", () => {
   const { contract } = contractFor("subclass:warlock:celestial", 14)
-  assert.equal(contract.resources.find((entry) => entry.key === "warlock_celestial_healing_light")?.maximum.value, 15)
+  assert.equal(contract.resources.find((entry) => entry.key === "warlock_celestial_healing_light")?.max.value, 15)
   assert.ok(contract.actions.some((entry) => entry.key === "warlock_celestial_healing_light_5d6"))
   assert.ok(contract.capabilities.resistances.some((entry) => entry.key === "damage:radiant"))
   assert.ok(contract.resources.some((entry) => entry.key === "warlock_celestial_searing_vengeance"))
-  assert.ok(contract.spells.some((entry) => entry.key === "summon-celestial"))
+  assert.ok(hasSpell(contract, "summon-celestial"))
 })
 
 test("Fiend resolves Luck, rest-editable Fiendish Resilience and Hurl Through Hell", () => {
   const selected = { warlock_fiend_fiendish_resilience: ["fire"] }
   const { contract } = contractFor("subclass:warlock:fiend", 14, selected)
-  assert.equal(contract.resources.find((entry) => entry.key === "warlock_fiend_dark_ones_own_luck")?.maximum.value, 4)
+  assert.equal(contract.resources.find((entry) => entry.key === "warlock_fiend_dark_ones_own_luck")?.max.value, 4)
   assert.ok(contract.capabilities.resistances.some((entry) => entry.key === "damage:fire"))
   assert.ok(contract.resources.some((entry) => entry.key === "warlock_fiend_hurl_through_hell"))
   assert.ok(contract.actions.some((entry) => entry.key === "warlock_fiend_hurl_through_hell_restore_by_pact_slot"))
-  assert.ok(contract.spells.some((entry) => entry.key === "fireball"))
+  assert.ok(hasSpell(contract, "fireball"))
 })
 
 test("Great Old One resolves Hex, Clairvoyant Combatant and Thought Shield", () => {
   const { contract } = contractFor("subclass:warlock:great-old-one", 14)
-  assert.ok(contract.spells.some((entry) => entry.key === "hex"))
+  assert.ok(hasSpell(contract, "hex"))
   assert.ok(contract.resources.some((entry) => entry.key === "warlock_goo_clairvoyant_combatant"))
   assert.ok(contract.actions.some((entry) => entry.key === "warlock_goo_clairvoyant_combatant_restore_by_pact_slot"))
   assert.ok(contract.capabilities.resistances.some((entry) => entry.key === "damage:psychic"))
@@ -150,14 +161,15 @@ test("Great Old One resolves Hex, Clairvoyant Combatant and Thought Shield", () 
 test("patron spell access is always prepared Pact Magic and follows Warlock pact-slot level", () => {
   const fireball5 = spellAccess(contractFor("subclass:warlock:fiend", 5).contract, "fireball")
   assert.ok(fireball5)
-  assert.equal(fireball5.preparation.mode, "always_prepared")
+  assert.equal(fireball5.preparationMode, "always_prepared")
   assert.equal(fireball5.methods[0]?.kind, "pact_magic")
   assert.equal(fireball5.methods[0]?.resourceOptions[0]?.castLevel, 3)
 
   const fireball9 = spellAccess(contractFor("subclass:warlock:fiend", 9).contract, "fireball")
   assert.ok(fireball9)
-  assert.equal(fireball9.methods[0]?.resourceOptions[0]?.castLevel, 5)
-  assert.deepEqual(fireball9.methods[0]?.resourceOptions[0]?.costs, [{ key: "warlock_pact_slots", amount: 1 }])
+  const pact5 = fireball9.methods[0]?.resourceOptions[0]
+  assert.equal(pact5?.castLevel, 5)
+  assert.ok(pact5?.costs.some((cost) => cost.key === "warlock_pact_slots" && cost.amount === 1))
 })
 
 test("Stage 5 keeps scene/turn legality semantic instead of inventing runtime state", () => {
