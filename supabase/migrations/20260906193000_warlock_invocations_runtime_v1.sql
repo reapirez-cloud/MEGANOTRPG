@@ -32,7 +32,7 @@ begin
 
   v_method := jsonb_build_object(
     'key', p_method_kind,
-    'kind', p_method_kind,
+    'kind', 'class_feature',
     'ability', 'charisma',
     'requiresPrepared', false
   );
