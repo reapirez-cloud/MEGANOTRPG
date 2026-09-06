@@ -90,12 +90,16 @@ export function structuredChoiceInstances(
     .slice(0, count)
 }
 
+function replaceToken(value: string, token: string, replacement: string): string {
+  return value.split(token).join(replacement)
+}
+
 function replaceStringTokens(value: string, instance: StructuredChoiceInstance, index: number): string {
-  return value
-    .replaceAll("{{choice.option}}", instance.option)
-    .replaceAll("{{choice.selector}}", instance.selector || "")
-    .replaceAll("{{choice.selector_value}}", instance.selector_value || "")
-    .replaceAll("{{choice.instance_index}}", String(index))
+  let result = value
+  result = replaceToken(result, "{{choice.option}}", instance.option)
+  result = replaceToken(result, "{{choice.selector}}", instance.selector || "")
+  result = replaceToken(result, "{{choice.selector_value}}", instance.selector_value || "")
+  return replaceToken(result, "{{choice.instance_index}}", String(index))
 }
 
 function substituteUnknown(value: unknown, instance: StructuredChoiceInstance, index: number): unknown {
