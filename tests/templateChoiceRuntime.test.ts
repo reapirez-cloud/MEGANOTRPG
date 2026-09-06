@@ -30,5 +30,7 @@ test("Class tab renders CE decisions with explicit confirmation and lock state",
   assert.match(ui, /Зафиксировать выбор/)
   assert.match(ui, /Зафиксировано/)
   assert.match(ui, /Выкл/)
-  assert.match(ui, /попросит только добавить новый/)
+  assert.match(ui, /Старый пакет правил использует постоянный выбор v1/)
+  assert.match(ui, /Choice Runtime v2/)
+  assert.match(ui, /Сохранить выбор/)
 })
