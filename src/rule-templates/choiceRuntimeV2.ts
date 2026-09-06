@@ -126,7 +126,17 @@ export function mechanicsForStructuredChoiceInstance(
     ...ruleMechanics,
     ...levelMechanics,
   ]
-  return substituteUnknown(mechanics, instance, index) as StoredMechanic[]
+  const substituted = substituteUnknown(mechanics, instance, index) as StoredMechanics
+
+  // A selector-bound repeatable choice represents mechanically distinct grants.
+  // Give otherwise-unkeyed grant payloads the selected target as their variant so
+  // CE preserves both sources instead of treating them as conflicting duplicates.
+  if (!instance.selector_value) return substituted
+  return substituted.map((mechanic) =>
+    mechanic.type === "grant" && !mechanic.variantKey
+      ? { ...mechanic, variantKey: instance.selector_value }
+      : mechanic,
+  )
 }
 
 export function structuredChoiceInstanceIdentity(
