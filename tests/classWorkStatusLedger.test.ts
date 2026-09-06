@@ -14,17 +14,30 @@ function scopedClassMigrations(): string[] {
     .filter((name) => /class|subclass/i.test(fs.readFileSync(`${migrationsDir}/${name}`, "utf8")))
 }
 
+function classSection(classKey: "fighter" | "druid" | "cleric"): string {
+  const heading = classKey === "fighter" ? "Fighter" : classKey === "druid" ? "Druid" : "Cleric"
+  return ledger.split(`## ${heading} (\`class:${classKey}\`)`)[1]?.split("\n---")[0] ?? ""
+}
+
 test("class work status ledger is a mandatory maintained checkpoint", () => {
   assert.match(ledger, /REQUIRED MAINTENANCE FILE/)
   assert.match(ledger, /update this file in the same work session/i)
   assert.match(ledger, /TEXT READY does not mean MECHANICS READY/)
 
-  for (const classKey of ["fighter", "druid", "cleric"]) {
-    const heading = classKey === "fighter" ? "Fighter" : classKey === "druid" ? "Druid" : "Cleric"
-    const section = ledger.split(`## ${heading} (\`class:${classKey}\`)`)[1]?.split("\n---")[0] ?? ""
+  for (const classKey of ["fighter", "druid"] as const) {
+    const section = classSection(classKey)
     assert.match(section, /\*\*Text:\*\* `READY`/)
     assert.match(section, /\*\*Mechanics\/runtime:\*\* `IN_PROGRESS`/)
   }
+
+  const cleric = classSection("cleric")
+  assert.match(cleric, /\*\*Text:\*\* `READY`/)
+  assert.match(cleric, /\*\*Mechanics\/runtime:\*\* `READY`/)
+  assert.match(cleric, /last_deployed_runtime_audit: 2026-09-06/)
+  assert.match(cleric, /cleric-runtime-certified@2026-09-06/)
+  assert.match(cleric, /production_runtime: DEPLOYED_AND_CERTIFIED_2026_09_06/)
+  assert.match(cleric, /production_domain_count: 14/)
+  assert.match(cleric, /ZERO_BROKEN_RESOURCE_REFS/)
 
   assert.match(pointer, /Read CLASS_WORK_STATUS\.md FIRST/)
   assert.match(pointer, /mark it IN_PROGRESS/i)
