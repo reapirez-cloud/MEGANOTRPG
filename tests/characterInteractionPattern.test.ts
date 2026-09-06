@@ -9,6 +9,7 @@ const detailSheet = fs.readFileSync("src/components/characters/CharacterDetailSh
 const actionSheet = fs.readFileSync("src/components/common/ContextActionSheet.tsx", "utf8")
 const dialogSurface = fs.readFileSync("src/hooks/useDialogSurface.ts", "utf8")
 const styles = fs.readFileSync("src/components/characters/CharacterInteraction.css", "utf8")
+const opusStyles = fs.readFileSync("src/character-profile-opus.css", "utf8")
 
 test("stage 4 makes Back descend one navigation level at a time", () => {
   assert.match(profile, /function handleProfileBack\(\)/)
@@ -19,12 +20,11 @@ test("stage 4 makes Back descend one navigation level at a time", () => {
   assert.match(sheetBridge, /<ResolvedCharacterSheetBase key=\{focusResetKey\}/)
 })
 
-test("focused or non-sheet character surfaces collapse the large identity hero", () => {
-  assert.match(profile, /const profileIsDeep = tab !== "sheet" \|\| sheetFocused/)
-  assert.match(profile, /profile-v3__hero--compact/)
-  assert.match(styles, /\.profile-v3__hero--compact \{/)
-  assert.match(styles, /\.profile-v3__hero--compact \.profile-v3__bio[\s\S]*?display:\s*none/)
-  assert.match(styles, /@media \(max-width: 430px\)[\s\S]*?\.profile-v3__hero--compact/)
+test("focused or non-sheet character surfaces hide the large Opus identity hero", () => {
+  assert.match(profile, /\{tab === "sheet" && !sheetFocused && \([\s\S]*?<section className="opus-hero">/)
+  assert.doesNotMatch(profile, /profile-v3__hero--compact/)
+  assert.match(opusStyles, /\.opus-hero\s*\{/)
+  assert.match(opusStyles, /\.opus-hero__portrait\s*\{/)
 })
 
 test("loading empty error and stale feedback use one presentation primitive", () => {

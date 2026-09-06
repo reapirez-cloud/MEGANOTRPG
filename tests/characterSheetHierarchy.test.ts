@@ -7,6 +7,7 @@ const sheetBridge = fs.readFileSync("src/components/characters/ResolvedCharacter
 const classPanel = fs.readFileSync("src/components/characters/CharacterClassPanel.tsx", "utf8")
 const profile = fs.readFileSync("src/pages/CharacterProfileV2.tsx", "utf8")
 const stylesV5 = fs.readFileSync("src/character-profile-v5.css", "utf8")
+const opusStyles = fs.readFileSync("src/character-profile-opus.css", "utf8")
 const app = fs.readFileSync("src/App.tsx", "utf8")
 const suppressions = fs.readFileSync("src/hooks/useCharacterSourceSuppressions.ts", "utf8")
 const templateRegistry = fs.readFileSync("src/hooks/useCharacterTemplateRegistry.ts", "utf8")
@@ -68,12 +69,13 @@ test("class tab subscribers cannot collide with the character runtime suppressio
   assert.match(templateRegistry, /clearCharacterSourceSuppressions\(characterId\)/)
 })
 
-test("v5 hero exposes class identity and an explicit Reference entry without duplicating profile controls", () => {
-  assert.equal((profile.match(/className="profile-v3__class"/g) || []).length, 1)
-  assert.equal((profile.match(/className="profile-v3__reference"/g) || []).length, 1)
-  assert.match(profile, /<strong>Справочник<\/strong>/)
-  assert.match(stylesV5, /\.character-profile-v2 \.profile-v3__class \{[\s\S]*?display:\s*flex;/)
-  assert.match(stylesV5, /\.character-profile-v2 \.profile-v3__reference > span:last-child \{[\s\S]*?display:\s*grid;/)
+test("Opus hero exposes class identity and Reference remains explicit through the class runtime", () => {
+  assert.equal((profile.match(/className="opus-hero__class"/g) || []).length, 1)
+  assert.match(profile, /currentCharacter\.character_class \|\| "Класс не указан"/)
+  assert.match(opusStyles, /\.opus-hero__class\s*\{/)
+  assert.match(profile, /<CharacterClassPanel[\s\S]*?onOpenReference=\{\(\) => setReference\(\{ section: "classes", classId \}\)\}/)
+  assert.match(profile, /reference && <ReferenceGuide/)
+  assert.doesNotMatch(profile, /profile-v3__reference/)
 })
 
 test("v3 compatibility foundation loads before the one canonical v5 migration layer", () => {
