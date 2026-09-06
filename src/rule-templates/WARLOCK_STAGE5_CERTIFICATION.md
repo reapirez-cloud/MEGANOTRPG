@@ -15,7 +15,7 @@
 - `runtime_rows_per_patron: 3,5,6,7,9,10,14`
 - `regressions: tests/warlockPhb2024SubclassesRuntime.test.ts; tests/warlockStage5SqlSyntaxBalance.test.ts`
 - `production_supabase: DEPLOYED_AND_AUDITED_2026_09_07`
-- `vercel_preview: BLOCKED_BY_HOBBY_BUILD_RATE_LIMIT_NON_CODE_2026_09_07`
+- `vercel_preview: SUCCESS_BOTH_PROJECT_CHECKS_2026_09_07`
 
 ## Production audit
 
@@ -43,11 +43,11 @@ Patron spell access is always prepared and uses the shared Warlock Pact Magic co
 
 ## Quality gates
 
-GitHub Actions run `#1816` passed build, lint, and the complete test suite after the SQL-balance regression caught and removed two extra closing parentheses in the Stage 5 migration.
+GitHub Actions run `#1817` passed build, lint, and the complete test suite after the SQL-balance regression caught and removed two extra closing parentheses in the Stage 5 migration.
 
 Supabase security and performance advisors were re-run after deployment. They reported existing project-wide security/performance debt, but no Stage 5-specific table, policy, index, or public RPC warning. Stage 5 installer functions remain in the private schema.
 
-Both Vercel commit checks for the final pre-certification head were rejected by the Hobby plan build-rate limit. Their failure target was the Vercel `upgradeToPro=build-rate-limit` page rather than a build log, so this is recorded as an external preview-capacity blocker, not a Stage 5 code failure.
+Both Vercel project checks succeeded on the certified Stage 5 head. Earlier pre-certification checks briefly hit the Hobby build-rate limit, but the final preview builds completed successfully and therefore do not block Stage 5 closure.
 
 ## Remaining Warlock scope
 
