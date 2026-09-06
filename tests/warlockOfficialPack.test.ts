@@ -116,7 +116,7 @@ const levels: Array<{ level: number; mechanics: StoredMechanics }> = [
     level: 20,
     mechanics: [
       value("warlock-cunning-restore-20", "warlock-base:magical-cunning", "warlock_magical_cunning_restore", "Возврат Магической хитрости", 4, 20),
-      feature("warlock-master-rules", "warlock-base:eldritch-master", "eldritch_master", "Древнейший мастер", "Магическая хитрость восстанавливает все потраченные ячейки Магии договора; её минутный ритуал и восстановление после долгого отдыха не меняются."),
+      feature("warlock-master-rules", "warlock-base:eldritch-master", "eldritch_master", "Древнейший мастер", "Магическая хитрость теперь восстанавливает все потраченные ячейки Магии договора вместо половины максимального запаса."),
     ],
   },
 ]
