@@ -2,6 +2,7 @@ import {
   choiceCountAtLevel,
   choiceDefinitionAvailable,
   choiceOptionAvailableAtLevel,
+  choiceOptionTemplateRequirementsSatisfied,
 } from "./resolver.ts"
 import { storedStructuredChoiceInstances, type StructuredChoiceInstance } from "./choiceRuntimeV2.ts"
 import type {
@@ -35,6 +36,7 @@ export type TemplateChoiceOptionState = {
   repeatable: boolean
   minLevel: number
   requiredOptions: string[]
+  requiredTemplateCatalogKeys: string[]
   lockedReason: string | null
   selector: TemplateChoiceSelectorState | null
 }
@@ -168,6 +170,9 @@ export function resolveTemplateChoiceStates(
       .filter((bundle) => bundle.template.kind === "class")
       .map((bundle) => [bundle.template.id, Math.max(1, bundle.assignment.template_level || characterLevel)] as const),
   )
+  const activeTemplateCatalogKeys = new Set(
+    bundles.flatMap((bundle) => bundle.template.catalog_key ? [bundle.template.catalog_key] : []),
+  )
   const result: TemplateChoiceState[] = []
 
   for (const bundle of bundles) {
@@ -220,14 +225,18 @@ export function resolveTemplateChoiceStates(
           Number(rule.unlock_level || 1),
         )
         const requiredOptions = requiredOptionsForRule(rule)
+        const requiredTemplateCatalogKeys = [...new Set(rule.required_template_catalog_keys || [])]
         const missing = requiredOptions.filter((option) => !selectedOptionSet.has(option))
         const levelAvailable = choiceOptionAvailableAtLevel(definition, key, sourceLevel) && sourceLevel >= minLevel
-        const available = levelAvailable && missing.length === 0
+        const templateAvailable = choiceOptionTemplateRequirementsSatisfied(definition, key, activeTemplateCatalogKeys)
+        const available = levelAvailable && missing.length === 0 && templateAvailable
         const lockedReason = !levelAvailable
           ? `Доступно с ${minLevel} уровня`
           : missing.length > 0
             ? `Нужно: ${selectedOptionLabels(definition, missing)}`
-            : null
+            : !templateAvailable
+              ? "Требуется связанный источник персонажа"
+              : null
         return {
           key,
           label: definition.option_labels?.[key] || key,
@@ -236,6 +245,7 @@ export function resolveTemplateChoiceStates(
           repeatable: Boolean(rule.repeatable || definition.repeatable),
           minLevel,
           requiredOptions,
+          requiredTemplateCatalogKeys,
           lockedReason,
           selector: selectorState(rule),
         }
@@ -249,6 +259,7 @@ export function resolveTemplateChoiceStates(
           repeatable: false,
           minLevel: 1,
           requiredOptions: [],
+          requiredTemplateCatalogKeys: [],
           lockedReason: "Вариант больше не существует в текущем пакете правил",
           selector: null,
         })
