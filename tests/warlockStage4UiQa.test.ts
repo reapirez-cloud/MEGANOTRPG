@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
+import { resolveCharacterContract } from "../src/character-engine/index.ts"
 import { resolveTemplateChoiceStates } from "../src/rule-templates/choiceState.ts"
 import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
 import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
@@ -189,11 +190,26 @@ test("Stage 4 Warlock choice package still passes generic quality and resource g
   assert.doesNotThrow(() => assertClassResourcePolicy([bundle]))
 })
 
-test("Stage 4 structured invocations traverse the real class parser", () => {
+test("Stage 4 structured invocations traverse parser and resolved Character Engine contract", () => {
   const parsed = resolveTemplateBundles([warlockBundle()], 5)
   assert.ok(parsed.contributions.some((entry) => entry.key === "agonizing-blast" && entry.target === "trait"))
   assert.ok(parsed.contributions.some((entry) => entry.key === "pact-of-the-blade" && entry.target === "trait"))
   assert.ok(parsed.sources.some((entry) => entry.choiceKey === "warlock_eldritch_invocations" && entry.optionKey === "thirsting-blade"))
+
+  const contract = resolveCharacterContract({
+    base: {
+      id: "warlock-stage4",
+      name: "Колдун",
+      level: 5,
+      abilities: { strength: 8, dexterity: 14, constitution: 14, intelligence: 10, wisdom: 10, charisma: 18 },
+      baseMaxHp: 40,
+      baseSpeed: 30,
+    },
+    state: { currentHp: 40, tempHp: 0, resources: {} },
+    contributions: parsed.contributions,
+  })
+  assert.ok(contract.capabilities.traits.some((entry) => entry.key === "agonizing-blast"))
+  assert.ok(contract.capabilities.traits.some((entry) => entry.key === "pact-of-the-blade"))
 })
 
 test("Stage 4 migration enforces one replacement and keeps subclasses outside scope", () => {
