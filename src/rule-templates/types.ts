@@ -35,6 +35,11 @@ export type RuleChoiceOptionRule = {
   required_options?: string[]
   required_invocations?: string[]
   required_choices?: Array<string | RuleChoiceRequirement>
+  /**
+   * CE-owned source prerequisite. Every listed active template catalog key must
+   * be assigned to the same character before this option can be selected or emitted.
+   */
+  required_template_catalog_keys?: string[]
   mechanics?: StoredMechanics
 }
 
