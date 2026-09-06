@@ -140,7 +140,7 @@ function bundle(includeBlade = true): CharacterTemplateBundle {
 }
 
 test("Warlock Stage 3 keeps the complete 28-invocation catalog", () => {
-  const identities = new Set([...catalog.matchAll(/class:warlock:invocation:([a-z0-9-]+)/g)].map((match) => match[1]))
+  const identities = new Set([...catalog.matchAll(/\n\s+\('([a-z0-9-]+)',\s*'/g)].map((match) => match[1]))
   assert.equal(identities.size, 28)
   assert.match(runtime, /jsonb_array_length\(v_options\) <> 28/)
   assert.match(runtime, /'1',1,'2',3,'5',5,'7',6,'9',7,'12',8,'15',9,'18',10/)
