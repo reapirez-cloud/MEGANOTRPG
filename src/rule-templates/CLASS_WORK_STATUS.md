@@ -360,15 +360,19 @@ The authored Sorcerer reference is visible through `classReference`, but it must
 - `last_deployed_runtime_audit: 2026-09-06`
 - `stage_2_base_runtime: READY_2026_09_06`
 - `stage_3_invocation_runtime: READY_2026_09_06`
+- `stage_4_ui_qa: READY_2026_09_06`
 - `dev_base_class_runtime: READY`
 - `dev_invocation_runtime: READY_28_OF_28`
 - `base_runtime_revision: xphb-2024-warlock-base-runtime-v1`
 - `invocation_runtime_revision: xphb-2024-warlock-invocations-runtime-v1`
+- `stage_4_runtime_revision: xphb-2024-warlock-ui-qa-v1`
 - `base_runtime_regression: tests/warlockOfficialPack.test.ts`
 - `invocation_runtime_regression: tests/warlockInvocationsRuntime.test.ts`
-- `runtime_visibility: BASE_AND_INVOCATION_RUNTIME_DEV_AND_PRODUCTION_ACTIVE_AND_AUDITED_2026_09_06`
+- `stage_4_regression: tests/warlockStage4UiQa.test.ts`
+- `runtime_visibility: BASE_INVOCATIONS_AND_STAGE4_UI_DEV_AND_PRODUCTION_ACTIVE_AND_AUDITED_2026_09_06`
 - `class_reference_visibility: ACTIVE`
-- `current_dev_runtime: clean class:warlock catalog plus Pact Magic and every declared 2024 base-class feature from stage 2, plus all 28 Eldritch Invocations as structured Choice Runtime v2 instances with level gates, prerequisites, repeatable selector targets, native CE resources/spell accesses/senses/values where the engine owns the fact, and exact structured rules at the GM scene/turn boundary`
+- `choice_ui_runtime: GENERIC_CHOICE_RUNTIME_V2_READY_NO_WARLOCK_ONLY_BRANCH`
+- `current_dev_runtime: clean class:warlock catalog plus Pact Magic and every declared 2024 base-class feature from stage 2, all 28 Eldritch Invocations from stage 3, and the generic Stage 4 CharacterTemplateChoices v2 UI with selector targets, prerequisite/level lock reasons, repeatable instances, authoritative rest-refresh choices, and one-invocation replacement policy on Warlock level gain; the full Stage 4 fixture passes package quality, resource policy, template parser and resolved Character Engine contract`
 - `pact_magic_resource: warlock_pact_slots`
 - `pact_magic_slot_count_progression: L1=1; L2-10=2; L11-16=3; L17-20=4`
 - `pact_magic_slot_level_progression: L1-2=1; L3-4=2; L5-6=3; L7-8=4; L9-20=5`
@@ -380,27 +384,29 @@ The authored Sorcerer reference is visible through `classReference`, but it must
 - `mystic_arcanum_runtime: independent level 6/7/8/9 Long Rest resources at Warlock levels 11/13/15/17 plus persistent player_once spell choices using Choice Runtime v2`
 - `invocation_choice_key: warlock_eldritch_invocations`
 - `invocation_count_progression: L1=1; L2=3; L5=5; L7=6; L9=7; L12=8; L15=9; L18=10`
+- `invocation_replacement_policy: ON_LEVEL_CHANGE_MAX_1_PREVIOUS_INVOCATION`
 - `repeatable_invocations: agonizing-blast, eldritch-spear, lessons-of-the-first-ones, repelling-blast; selector-bound instances remain mechanically distinct in CE`
 - `invocation_prerequisite_runtime: Choice Runtime v2 validates required invocations and minimum levels server-side; stale dependent selections remain persisted but become inert in the parser until prerequisites are valid again`
 - `invocation_handler_policy: runtime_hint.kind dispatch through private.warlock_invocation_mechanics_v1; no 28-way class-specific client switch`
 - `pact_tome_runtime: three cantrips plus two level-1 ritual spells selected from canonical spell_catalog; both dependent choices require pact-of-the-tome and refresh after an authoritative Short or Long Rest`
 - `production_pact_tome_options: 45 cantrips; 12 level-1 rituals at the 2026-09-06 audit`
 - `rest_choice_rpc: public.commit_character_template_rest_choice_v1; authenticated-only SECURITY DEFINER with auth/assignment/manager checks; PUBLIC and anon execute revoked`
-- `production_runtime: BASE_AND_INVOCATIONS_DEPLOYED_AND_AUDITED_2026_09_06`
+- `choice_v2_rpc: public.commit_character_template_choice_v2; authenticated gameplay wrapper; anon execute revoked; private.commit_character_template_choice_v2_core_stage4 is not executable by authenticated clients`
+- `production_runtime: BASE_INVOCATIONS_AND_STAGE4_POLICY_DEPLOYED_AND_AUDITED_2026_09_06`
 - `production_level_rows: 20`
 - `production_invocation_catalog: 28_TOTAL_28_RUNTIME_READY`
-- `production_runtime_metadata: mechanics_status=BASE_AND_INVOCATIONS_RUNTIME_READY; invocation_runtime_included=true; invocation_runtime_count=28; subclass_runtime_included=false`
-- `supabase_advisor_note: cast_warlock_pact_spell_v1 and commit_character_template_rest_choice_v1 are intentionally authenticated SECURITY DEFINER gameplay RPCs matching the existing authoritative resource/choice architecture; both perform explicit auth/ownership or assignment checks and are not executable by PUBLIC or anon`
-- `invocation_catalog: 20260906073433_warlock_2024_eldritch_invocations_catalog seeds the canonical 28 identities; 20260906192806_warlock_invocations_runtime_v1 promotes all 28 to runtime_ready`
+- `production_runtime_metadata: runtime_revision=xphb-2024-warlock-ui-qa-v1; stage_4_ui_qa=true; invocation_runtime_included=true; invocation_runtime_count=28; invocation_replacement_policy=on_level_change; invocation_replacement_limit=1; subclass_runtime_included=false`
+- `supabase_advisor_note: cast_warlock_pact_spell_v1, commit_character_template_rest_choice_v1 and commit_character_template_choice_v2 are intentionally authenticated SECURITY DEFINER gameplay RPCs matching the authoritative resource/choice architecture; the Stage 4 v2 public wrapper performs auth/assignment validation while its private core is not executable by authenticated or anon clients`
+- `invocation_catalog: 20260906073433_warlock_2024_eldritch_invocations_catalog seeds the canonical 28 identities; 20260906192806_warlock_invocations_runtime_v1 promotes all 28 to runtime_ready; 20260906201356_choice_runtime_replacement_limit_and_warlock_stage4 closes UI/replacement policy`
 - `invocation_runtime: READY_STAGE_3`
-- `subclasses: IN_PROGRESS_8_AUTHORED_OF_9_USER_PLANNED; runtime unchanged and deliberately excluded from stages 2 and 3`
+- `subclasses: IN_PROGRESS_8_AUTHORED_OF_9_USER_PLANNED; runtime unchanged and deliberately excluded from stages 2, 3 and 4`
 - `authored_subclasses: archfey, fiend, great-old-one, celestial, hexblade, fathomless, genie, undead`
 - `queued_subclasses: undying`
 - `duplicate_policy: the second supplied Fathomless/Nazar-Sverr block was not duplicated; wave 2 Nazar remains the canonical complete Fathomless literary draft`
 - `source_policy: patron source labels copied from the user are planning hints only and must be independently verified during the mechanics pass`
-- `mechanics_policy: stages 2 and 3 are closed; overall Warlock mechanics remain IN_PROGRESS only because patron subclass runtime is a separate future implementation`
+- `mechanics_policy: stages 2, 3 and 4 are closed; overall Warlock mechanics remain IN_PROGRESS only because patron subclass runtime is a separate future implementation`
 
-Stage 3 is closed for the Warlock invocation layer. All 28 cataloged Eldritch Invocations are runtime-ready in the deployed Supabase state and flow through the shared Choice Runtime v2 → template resolver → Character Engine pipeline. Repeatable selector choices and dependencies are regression-gated, Pact of the Tome has authoritative rest-refresh choices, and scene/turn facts remain on the documented GM boundary rather than being faked as runtime state. Patron subclasses remain explicitly outside this closure, so the overall Warlock mechanics status stays `IN_PROGRESS`.
+Stage 4 is closed for the base Warlock and Eldritch Invocation experience. The generic Character Class choice UI now consumes Choice Runtime v2 directly, exposes selector targets and exact lock reasons, supports repeatable invocation instances and authoritative Pact of the Tome rest refresh, and enforces the 2024 one-invocation replacement limit on level gain through the server wrapper. The Stage 4 regression reaches choice state, reusable package/resource gates, the real template parser and the resolved Character Engine contract. The deployed Supabase state is at `xphb-2024-warlock-ui-qa-v1` with all 28 invocations and subclasses still excluded. Patron subclasses remain outside this closure, so the overall Warlock mechanics status correctly stays `IN_PROGRESS`.
 
 ---
 
