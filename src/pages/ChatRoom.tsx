@@ -14,6 +14,7 @@ import { useResolvedCharacterRuntime } from "../hooks/useResolvedCharacterRuntim
 import { useLongPressItem } from "../hooks/useLongPressItem"
 import CharacterAvatar from "../components/characters/CharacterAvatar"
 import ChatActionSheet, { type FreeDiceRequest } from "../components/chat/ChatActionSheet"
+import ChatActionDetailSheet from "../components/chat/ChatActionDetailSheet"
 import ChatActorPicker from "../components/chat/ChatActorPicker"
 import ChatRoomSettings from "../components/chat/ChatRoomSettings"
 import ChatMessageActions from "../components/chat/ChatMessageActions"
@@ -33,6 +34,7 @@ import "../game-story-v2.css"
 type Props = { roomId: string; onBack: () => void; onOpenCharacter: (characterId: string) => void }
 type MessageCharacter = { id: string; name: string; avatar_url: string | null }
 type SpellEventTarget = { spellKey: string; label: string }
+type ActionEventTarget = { mechanicId: string; label: string; detail: string }
 
 const formatTime = (value: string) => new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(value))
 const numberValue = (value: unknown) => typeof value === "number" ? value : Number(value) || 0
@@ -43,9 +45,11 @@ function withinGroup(a: ChatMessage | undefined, b: ChatMessage) {
   return a.user_id === b.user_id && a.character_id === b.character_id && a.author_name === b.author_name && new Date(b.created_at).getTime() - new Date(a.created_at).getTime() < 5 * 60 * 1000
 }
 
-function ChatEventCard({ message, onOpenSpell }: { message: ChatMessage; onOpenSpell: (target: SpellEventTarget) => void }) {
+function ChatEventCard({ message, onOpenSpell, onOpenAction }: { message: ChatMessage; onOpenSpell: (target: SpellEventTarget) => void; onOpenAction: (target: ActionEventTarget) => void }) {
   const payload = (message.event_payload || {}) as ChatEventPayload
   const label = textValue(payload.label) || "Игровое действие"
+  const mechanicId = textValue(payload.mechanicId)
+  const detail = textValue(payload.detail)
   if (message.event_kind === "roll") {
     const hasD20 = Boolean(payload.rollD20)
     const d20 = numberValue(payload.d20)
@@ -53,12 +57,18 @@ function ChatEventCard({ message, onOpenSpell }: { message: ChatMessage; onOpenS
     const total = numberValue(payload.total)
     const effect = payload.effect && typeof payload.effect === "object" && !Array.isArray(payload.effect) ? payload.effect as Record<string, unknown> : null
     const rolls = effect && Array.isArray(effect.rolls) ? effect.rolls.map(numberValue) : []
-    return <div className="chat-event chat-event--roll"><span className="chat-event__icon">◈</span><div className="chat-event__copy"><small>{textValue(payload.kind) || "Бросок"}</small><strong>{label}</strong>{hasD20 && <span>d20 <b>{d20}</b> {modifier >= 0 ? "+" : "−"} {Math.abs(modifier)} <em>= {total}</em></span>}{effect && <span>{numberValue(effect.count)}d{numberValue(effect.sides)} [{rolls.join(", ")}] {numberValue(effect.modifier) >= 0 ? "+" : "−"} {Math.abs(numberValue(effect.modifier))} <em>= {numberValue(effect.total)}</em></span>}</div></div>
+    const content = <><span className="chat-event__icon">◈</span><div className="chat-event__copy"><small>{textValue(payload.kind) || "Бросок"}</small><strong>{label}</strong>{hasD20 && <span>d20 <b>{d20}</b> {modifier >= 0 ? "+" : "−"} {Math.abs(modifier)} <em>= {total}</em></span>}{effect && <span>{numberValue(effect.count)}d{numberValue(effect.sides)} [{rolls.join(", ")}] {numberValue(effect.modifier) >= 0 ? "+" : "−"} {Math.abs(numberValue(effect.modifier))} <em>= {numberValue(effect.total)}</em></span>}</div></>
+    return mechanicId
+      ? <button type="button" className="chat-event chat-event--roll chat-event--interactive" onClick={() => onOpenAction({ mechanicId, label, detail })}>{content}</button>
+      : <div className="chat-event chat-event--roll">{content}</div>
   }
   if (message.event_kind === "spell") {
-    return <button type="button" className="chat-event chat-event--spell chat-event--interactive" onClick={() => onOpenSpell({ spellKey: textValue(payload.spellKey), label })}><span className="chat-event__icon">✧</span><div className="chat-event__copy"><small>Заклинание</small><strong>{label}</strong>{textValue(payload.detail) && <span>{textValue(payload.detail)}</span>}</div></button>
+    return <button type="button" className="chat-event chat-event--spell chat-event--interactive" onClick={() => onOpenSpell({ spellKey: textValue(payload.spellKey), label })}><span className="chat-event__icon">✧</span><div className="chat-event__copy"><small>Заклинание</small><strong>{label}</strong>{detail && <span>{detail}</span>}</div></button>
   }
-  return <div className={`chat-event chat-event--${message.event_kind}`}><span className="chat-event__icon">⚔</span><div className="chat-event__copy"><small>Действие</small><strong>{label}</strong>{textValue(payload.detail) && <span>{textValue(payload.detail)}</span>}</div></div>
+  if (message.event_kind === "action" && mechanicId) {
+    return <button type="button" className="chat-event chat-event--action chat-event--interactive" onClick={() => onOpenAction({ mechanicId, label, detail })}><span className="chat-event__icon">⚔</span><div className="chat-event__copy"><small>Действие</small><strong>{label}</strong>{detail && <span>{detail}</span>}</div></button>
+  }
+  return <div className={`chat-event chat-event--${message.event_kind}`}><span className="chat-event__icon">⚔</span><div className="chat-event__copy"><small>Действие</small><strong>{label}</strong>{detail && <span>{detail}</span>}</div></div>
 }
 
 function roomTypeLabel(roomType: RoomType, readOnly: boolean, roomState: RoomState) {
@@ -90,6 +100,7 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
   const [contextOpen, setContextOpen] = useState(false)
   const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(null)
   const [selectedSpellEvent, setSelectedSpellEvent] = useState<SpellEventTarget | null>(null)
+  const [selectedActionEvent, setSelectedActionEvent] = useState<ActionEventTarget | null>(null)
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
   const [attachmentError, setAttachmentError] = useState("")
   const [uploadingAttachment, setUploadingAttachment] = useState(false)
@@ -194,6 +205,7 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
       setRoomAccessLoaded(false)
       setRoomCharacterId(null)
       setSelectedSpellEvent(null)
+      setSelectedActionEvent(null)
     })
     return () => { cancelled = true }
   }, [roomId])
@@ -312,7 +324,7 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
             diceSides: damage?.dice?.sides || 0,
             diceModifier: damage?.modifier.value || 0,
           })
-        : await chat.sendTemplateAction({ ...common, payload: { detail: action.economy } })
+        : await chat.sendTemplateAction({ ...common, payload: { detail: action.economy, mechanicId } })
       if (sent) { resolved.refresh(); setActionsOpen(false) }
       return
     }
@@ -408,7 +420,7 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
           <article className={`message message-v2 ${own ? "message--self" : ""}`}>
             {!grouped && (linked ? <button className="message-v2-author" type="button" onClick={() => onOpenCharacter(linked.id)}>{message.author_name}</button> : <div className="message-v2-author">{message.author_name}</div>)}
             {message.attachment_url && <CampaignImage className="message__attachment" value={message.attachment_url} alt="Вложение" loading="lazy" />}
-            {message.event_kind ? <ChatEventCard message={message} onOpenSpell={setSelectedSpellEvent} /> : message.body && <p className="message__text">{message.body}</p>}
+            {message.event_kind ? <ChatEventCard message={message} onOpenSpell={setSelectedSpellEvent} onOpenAction={setSelectedActionEvent} /> : message.body && <p className="message__text">{message.body}</p>}
             <div className="message__time">{formatTime(message.created_at)}{message.edited_at ? " · изм." : ""}</div>
           </article>
           {own && !grouped && (linked ? <button className="message-avatar-button" type="button" onClick={() => onOpenCharacter(linked.id)}><CharacterAvatar character={avatar} size="small" /></button> : <CharacterAvatar character={avatar} size="small" />)}
@@ -449,5 +461,6 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
     {settingsOpen && <ChatRoomSettings roomId={roomId} roomTitle={roomTitle} members={members} characters={characters} onClose={() => setSettingsOpen(false)} onSaved={(nextTitle) => { setRoomTitle(nextTitle); void loadRoomAccess() }} />}
     {selectedMessage && <ChatMessageActions message={selectedMessage} characterId={selectedMessage.character_id} own={selectedMessage.user_id === user.id} canManage={canManage} onOpenCharacter={onOpenCharacter} onClose={() => setSelectedMessage(null)} onEdit={chat.editMessage} onDelete={chat.deleteMessage} />}
     {selectedSpellEvent && <ChatSpellDetailSheet spellKey={selectedSpellEvent.spellKey} label={selectedSpellEvent.label} onClose={() => setSelectedSpellEvent(null)} />}
+    {selectedActionEvent && <ChatActionDetailSheet campaignId={campaignId} mechanicId={selectedActionEvent.mechanicId} label={selectedActionEvent.label} detail={selectedActionEvent.detail} onClose={() => setSelectedActionEvent(null)} />}
   </div>
 }
