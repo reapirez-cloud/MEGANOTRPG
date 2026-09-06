@@ -165,10 +165,7 @@ select
   ),
   null
 from seed s
-join public.reference_definitions d
-  on d.scope = 'system'
- and d.kind = 'feature'
- and d.slug = s.slug
+join upserted d on d.slug = s.slug
 on conflict (definition_id, revision)
 do update set
   name = excluded.name,
