@@ -73,7 +73,7 @@ function sourceFiles(root: string): string[] {
 }
 
 function containsClassTemplateWork(sql: string): boolean {
-  return /rule_templates|rule_template_levels|character_template_assignments|CLASS_(?:MIGRATION_SCOPE|INTEGRATION_STRICT|WORK_STATUS|STATUS_LEDGER)|(?:class|subclass):[a-z0-9_-]+/i.test(sql)
+  return /CLASS_(?:MIGRATION_SCOPE|INTEGRATION_STRICT|WORK_STATUS|STATUS_LEDGER)|(?:class|subclass):[a-z0-9_-]+|\bkind\s*(?:=|in)\s*\(?\s*['"](?:class|subclass)['"]/i.test(sql)
 }
 
 function futureClassMigrationFiles(): string[] {
