@@ -9,7 +9,7 @@ const pointer = fs.readFileSync("src/rule-templates/INTERNAL_CLASS_QUALITY_READM
 const fighterReadyPass = fs.readFileSync("supabase/migrations/20260829124500_fighter_text_ready_finalization.sql", "utf8")
 
 function containsClassTemplateWork(sql: string): boolean {
-  return /rule_templates|rule_template_levels|character_template_assignments|CLASS_(?:MIGRATION_SCOPE|INTEGRATION_STRICT|WORK_STATUS|STATUS_LEDGER)|(?:class|subclass):[a-z0-9_-]+/i.test(sql)
+  return /CLASS_(?:MIGRATION_SCOPE|INTEGRATION_STRICT|WORK_STATUS|STATUS_LEDGER)|(?:class|subclass):[a-z0-9_-]+|\bkind\s*(?:=|in)\s*\(?\s*['"](?:class|subclass)['"]/i.test(sql)
 }
 
 function scopedClassMigrations(): string[] {
