@@ -9,6 +9,15 @@ This file is the canonical release journal for work accumulated on `dev` before 
 **Base main:** `3e06e9cd49482b14cb9b27354507799e35bcb630`
 **Started:** 2026-09-05
 
+### Player-facing changes
+
+- Fixed the post-rest chat card so each completed spell, class-choice or roll task disappears immediately after its successful confirmation; once no actionable post-rest tasks remain, the card no longer occupies the bottom of the chat.
+
+### Tests / verification
+
+- Added regression coverage requiring completed post-rest tasks to be filtered out of the rendered chat card and preventing informational notices from keeping the card open by themselves.
+- The focused post-rest preparation suite passes (`21/21`) and the production TypeScript/Vite build succeeds. The repository-wide suite still has two pre-existing character-profile hierarchy failures unrelated to chat preparation.
+
 ## Released patches
 
 ### Patch — 2026-09-05-A

@@ -275,13 +275,13 @@ export default function ChatPreparationCard({ roomId, characterId, model, spells
   const longRestOpen = Boolean(model.session?.is_open)
   const shortRestOpen = Boolean(model.shortRestSession?.is_open)
   const wizardRestOpen = Boolean(model.wizard && (longRestOpen || shortRestOpen))
-  const genericLongRestOpen = longRestOpen && model.tasks.length > 0
+  const spellTasks = model.tasks.filter((task): task is SpellPreparationTask => task.kind === "spells" && !task.record)
+  const choiceTasks = model.tasks.filter((task): task is ChoicePreparationTask => task.kind === "choice" && !task.record)
+  const rollTasks = model.tasks.filter((task): task is RollPreparationTask => task.kind === "roll" && !task.record)
+  const noticeTasks = model.tasks.filter((task): task is NoticePreparationTask => task.kind === "notice" && task.key !== "wizard-cantrip-replacement-notice")
+  const genericLongRestOpen = longRestOpen && spellTasks.length + choiceTasks.length + rollTasks.length > 0
 
   if (!isOwner || (!genericLongRestOpen && !wizardRestOpen)) return null
-  const spellTasks = model.tasks.filter((task): task is SpellPreparationTask => task.kind === "spells")
-  const choiceTasks = model.tasks.filter((task): task is ChoicePreparationTask => task.kind === "choice")
-  const rollTasks = model.tasks.filter((task): task is RollPreparationTask => task.kind === "roll")
-  const noticeTasks = model.tasks.filter((task): task is NoticePreparationTask => task.kind === "notice" && task.key !== "wizard-cantrip-replacement-notice")
   const restLabel = shortRestOpen && longRestOpen ? "Отдых завершён" : shortRestOpen ? "Короткий отдых завершён" : "Долгий отдых завершён"
 
   return <aside className="rest-prep-card">

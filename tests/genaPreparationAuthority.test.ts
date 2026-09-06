@@ -107,3 +107,10 @@ test("chat preparation locks confirmed tasks and enforces exact quotas", () => {
   assert.match(card, /busy \|\| locked/)
   assert.match(card, /После «Готово» этот выбор нельзя менять до следующего долгого отдыха/)
 })
+
+test("completed post-rest tasks leave the chat card immediately", () => {
+  assert.match(card, /task\.kind === "spells" && !task\.record/)
+  assert.match(card, /task\.kind === "choice" && !task\.record/)
+  assert.match(card, /task\.kind === "roll" && !task\.record/)
+  assert.match(card, /spellTasks\.length \+ choiceTasks\.length \+ rollTasks\.length > 0/)
+})
