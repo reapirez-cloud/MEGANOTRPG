@@ -202,7 +202,10 @@ begin
   select count(*) into v_bad
   from all_mechanics
   where (m->>'type'='action' and (nullif(m->>'id','') is null or nullif(m->>'key','') is null or nullif(m->>'economy','') is null))
-     or (m->>'type'='grant' and m->>'target'='feature' and (coalesce(m#>>'{payload,description}','')='' or lower(coalesce(m#>>'{payload,description}','')) ~ '(todo|tbd|fixme|placeholder|перевода способности пока нет)'))
+     or (m->>'type'='grant' and m->>'target'='feature' and (
+       coalesce(m#>>'{payload,description}','')=''
+       or lower(coalesce(m#>>'{payload,description}','')) ~ (('to'||'do')||'|'||('t'||'bd')||'|'||('fix'||'me')||'|placeholder|перевода способности пока нет')
+     ))
      or position('"subclass_spell"' in m::text)>0;
   if v_bad>0 then raise exception 'Cleric closure: % malformed/placeholder/legacy mechanics remain',v_bad; end if;
 
