@@ -12,11 +12,22 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Player-facing changes
 
 - Fixed the post-rest chat card so each completed spell, class-choice or roll task disappears immediately after its successful confirmation; once no actionable post-rest tasks remain, the card no longer occupies the bottom of the chat.
+- Completed the Cleric runtime package in the supported scope: the base class and all fourteen domains now use the certified Character Engine resource/action/spell pipeline, with the previously split resource identities reconciled so finite abilities spend the real ledgers shown on the character.
+- Corrected Cleric progression/runtime gaps found during the production audit, including Divine Order/Thaumaturge wiring, Divine Spark scaling, domain Channel Divinity spenders, finite domain pools and the legacy Grave Keeper alias.
+- Preserved the exact Greater Divine Intervention rule: choosing Wish changes recovery to `2d4` Long Rests. That exceptional randomized cooldown is explicitly GM-adjudicated because the current authoritative runtime does not own the nested spell choice or the rolled `2d4` result; no fake cooldown counter was introduced.
+
+### Runtime and architecture changes
+
+- Added a final forward-only Cleric certification migration that validates the live deployed template graph before writing `READY`. It fails closed unless the active Cleric has exactly fourteen level-3 domains, canonical prepared-spell progression, Channel Divinity progression/recovery, structured Divine Spark scaling, complete persistent choices, complete domain spell packages and zero broken resource references or duplicate action identities.
+- Production Cleric state is certified as `cleric-runtime-certified@2026-09-06`; all fourteen domains are marked mechanics `READY`, and the live audit reports zero broken resource-cost/effect/persistent-counter references.
+- Updated the historical Character Profile v5 regression guards to the current Opus presentation contract. This changes tests only; it does not revert the intentional Opus redesign or create a second character mechanics owner.
 
 ### Tests / verification
 
 - Added regression coverage requiring completed post-rest tasks to be filtered out of the rendered chat card and preventing informational notices from keeping the card open by themselves.
-- The focused post-rest preparation suite passes (`21/21`) and the production TypeScript/Vite build succeeds. The repository-wide suite still has two pre-existing character-profile hierarchy failures unrelated to chat preparation.
+- Added `clericRuntimeFinalCertification.test.ts` to guard the live certification contract, resource identity closure, domain spell contract, Channel Divinity progression, Divine Spark scaling and the explicit Greater Divine Intervention GM boundary.
+- CI on `dev` commit `47742bef4af7b212020bf39f476e4b2cef1c5703` is fully green: build succeeds, lint has no errors, and the repository-wide test suite passes after the Opus regression guards are reconciled.
+- Applied the final certification migration to the connected production Supabase project and re-audited the deployed state: class mechanics `READY`, `14/14` domains `READY`, `0` broken resource references, and Greater Divine Intervention retains `Wish → 2d4 Long Rests` with explicit `gm_adjudicated` enforcement metadata.
 
 ## Released patches
 
@@ -152,7 +163,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - The repository still has 10 stale Voss/text-contract assertions inherited from the earlier narration releases and awaiting reconciliation with the authored text.
 - Monk exact 2024/legacy rules, CE resources/actions/choices, package-quality tests and catalog/runtime activation remain intentionally pending a separate mechanics pass.
 - Sorcerer exact rules, source eligibility for extended candidates, Sorcery Point/Metamagic runtime, CE integration and package tests remain intentionally pending a separate mechanics pass.
-- Warlock exact rules, Pact Magic slot progression, Invocations/Pact options, patron spell packages, Mystic Arcanum, CE resources/actions and package tests remain intentionally pending a separate mechanics pass.
+- Warlock exact rules, Pact Magic slot progression, Invocations/Pact options, patron spell packages, Mystic Arcanum resources/actions and package tests remain a separate future implementation before activation.
 - One user-planned Warlock literary patron remains: Undying / Бессмертный.
 - Wizard Order of Scribes remains accepted literary debt; the already-certified Wizard runtime package is not blocked by that prose debt.
 

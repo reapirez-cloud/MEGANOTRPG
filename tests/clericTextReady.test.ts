@@ -70,12 +70,19 @@ test("Cleric player text has an immersion regression gate", () => {
   assert.match(migration, /developer\/meta leaks/)
 })
 
-test("Cleric ledger keeps text READY while the mechanics audit remains open", () => {
+test("Cleric ledger records the production-certified mechanics closure", () => {
   const cleric = ledger.split("## Cleric (`class:cleric`)")[1]?.split("\n---")[0] ?? ""
   assert.match(cleric, /\*\*Text:\*\* `READY`/)
-  assert.match(cleric, /\*\*Mechanics\/runtime:\*\* `IN_PROGRESS`/)
+  assert.match(cleric, /\*\*Mechanics\/runtime:\*\* `READY`/)
   assert.match(cleric, /last_text_audit: 2026-09-03/)
   assert.match(cleric, /last_mechanics_audit_started: 2026-08-29/)
-  assert.match(cleric, /fourteen-domain runtime coverage is not yet certified/i)
-  assert.match(cleric, /Do not promote Cleric mechanics to `READY`/)
+  assert.match(cleric, /last_dev_runtime_audit: 2026-09-06/)
+  assert.match(cleric, /last_deployed_runtime_audit: 2026-09-06/)
+  assert.match(cleric, /cleric-runtime-certified@2026-09-06/)
+  assert.match(cleric, /DEPLOYED_AND_CERTIFIED_2026_09_06/)
+  assert.match(cleric, /production_domain_count: 14/)
+  assert.match(cleric, /ZERO_BROKEN_RESOURCE_REFS/)
+  assert.match(cleric, /Greater Divine Intervention/i)
+  assert.match(cleric, /2d4/i)
+  assert.doesNotMatch(cleric, /Do not promote Cleric mechanics to `READY`/)
 })

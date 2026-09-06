@@ -148,33 +148,41 @@ Do not promote Druid mechanics to `READY` until dev and the intended deployed st
 ## Cleric (`class:cleric`)
 
 **Text:** `READY`  
-**Mechanics/runtime:** `IN_PROGRESS`
+**Mechanics/runtime:** `READY`
 
 - `last_text_audit: 2026-09-03`
 - `voss_class_subclass_feature_voice_pass: GRIMDARK_REARLINE_COWARD_PREJUDICE_WITH_DOMAIN_EXCEPTIONS_2026_09_02`
 - `current_dev_text: canonical Voss narration rewritten for the base Cleric, all fourteen supported domains and every active domain feature; class-wide distrust centers on rear-line cowardice while individual domains earn distinct contempt or grudging respect; exact rules unchanged`
 - `translation_wiring_audit: DEV_AND_MAIN_ACTIVE_AGGREGATOR_IDENTICAL_2026_09_03`
 - `last_mechanics_audit_started: 2026-08-29`
+- `last_dev_runtime_audit: 2026-09-06`
+- `last_deployed_runtime_audit: 2026-09-06`
+- `runtime_certification: cleric-runtime-certified@2026-09-06`
 - `class_tab_source: resolved CE contract through classPresentation.ts`
 - `class_tab_type_contract: ENABLED_2026_08_29`
-- `current_dev_runtime: exact rules and spell/resource structure exist, but full fourteen-domain runtime coverage is not yet certified`
-- `production_catalog_reset: APPLIED_2026_08_29`
-- `production_latest_observed_migration: 20260829184828_remove_legacy_builtin_classes`
-- `production_runtime: still not certified as equivalent to the current dev mechanical stack; historical migration ordering drift remains`
+- `current_dev_runtime: base Cleric and all fourteen domains are certified through the shared template/parser/Character Engine/action/spell/resource pipeline; Divine Order, Channel Divinity, Divine Spark, spell preparation, Blessed Strikes, Divine Intervention and domain finite pools use canonical CE identities`
+- `production_runtime: DEPLOYED_AND_CERTIFIED_2026_09_06`
+- `production_domain_count: 14`
+- `production_domain_unlock_contract: ALL_14_AT_CLERIC_LEVEL_3`
+- `production_resource_identity_audit: ZERO_BROKEN_RESOURCE_REFS`
+- `production_spell_package_audit: ALL_14_DOMAIN_PACKAGES_ALWAYS_PREPARED_CLASS_SPELL_WISDOM`
+- `production_channel_divinity_contract: SHARED_CANONICAL_RESOURCE_2_AT_L2_3_AT_L6_4_AT_L18_SHORT_REST_PLUS_1_LONG_REST_FULL`
+- `production_greater_divine_intervention: exact Wish branch preserved; 2d4 Long Rest cooldown is GM-adjudicated because the current authoritative runtime does not own the nested spell choice or rolled 2d4 result`
+- `certification_regression: tests/clericRuntimeFinalCertification.test.ts`
 
-### Mechanics audit targets
+### Certified mechanics scope
 
-- Base Cleric: cantrips/prepared spells/slots, Divine Order choice, Channel Divinity pool/recovery, Divine Spark, Turn/Sear Undead, Blessed Strikes persistent branch, Divine Intervention recovery.
-- Domain spell groups: always-prepared source identity and shared slot spending.
-- Nested Divine Order/Blessed Strikes choices: persistence and level gating.
-- Every Wisdom/PB-scaled finite pool and reaction must have a real CE resource when uses are finite.
-- Every Channel Divinity domain action must consume the shared canonical Channel Divinity resource.
-- Arcana/Death/Forge/Grave/Knowledge/Life/Light/Nature/Order/Peace/Tempest/Trickery/Twilight/War must each be audited source-group by source-group.
-- Legacy domain rows below class level 3 must be blocked by subclass unlock and must never grant early mechanics.
+- Base spellcasting uses the full-caster slot ledger, the 1–20 prepared-spell progression, Wisdom, and authoritative Long Rest preparation refresh.
+- Divine Order and Blessed Strikes are persistent level-gated choices; only selected branches emit mechanics.
+- Channel Divinity is one shared CE resource with canonical level progression and recovery; Divine Spark and every domain spender consume that shared identity.
+- Divine Spark carries structured `1d8 / 2d8 / 3d8 / 4d8` Cleric-level scaling rather than a stale static action payload.
+- All fourteen domains — Arcana, Death, Forge, Grave, Knowledge, Life, Light, Nature, Order, Peace, Tempest, Trickery, Twilight and War — are production-audited. Historical feature rows below level 3 remain safely blocked by the parent subclass unlock.
+- Every finite action/resource effect/persistent counter audited in the supported Cleric package resolves to an actual CE ledger; production has zero broken resource references and no duplicate action identity in the certified package.
+- Domain spell groups are always prepared, use canonical `class_spell` access with Wisdom and share ordinary Cleric spell slots.
+- Greater Divine Intervention keeps the exact `Wish → 2d4 Long Rests` rule. That exceptional randomized cooldown is explicitly GM-adjudicated under `GM_ADJUDICATION_BOUNDARY.md`; the ordinary Divine Intervention finite resource remains CE-owned.
+- Action/Bonus Action/Reaction availability, scene-trigger validity and other non-authoritative play facts remain GM-adjudicated by design rather than backed by fake turn/scene counters.
 
-Reaction/action availability and scene-trigger validity remain GM-adjudicated; CE owns the finite pools and durable character-side results it can actually know.
-
-Do not promote Cleric mechanics to `READY` until dev and the intended deployed state pass the same audit.
+Base Cleric and all fourteen supported domains are implemented, regression-gated and production-certified in the declared scope. There are no known Cleric implementation or deployment blockers in that scope.
 
 ---
 
@@ -217,7 +225,7 @@ Do not promote Cleric mechanics to `READY` until dev and the intended deployed s
 
 ### Dev base-class closure
 
-- Spellbook as authoritative owned-spell state: physical item identity, held-book access, six starting level-1 spells and two additional eligible Wizard spells per later Wizard level are implemented and regression-gated. Class-authored starting equipment is intentionally empty; the GM supplies all gear.
+- Spellbook as authoritative owned-spell state: physical item identity, held-book access, six level-1 spells at Wizard level 1 and two additional eligible Wizard spells per later Wizard level are implemented and regression-gated. Class-authored starting equipment is intentionally empty; the GM supplies all gear.
 - Prepared Wizard spells are selected only from the actual held spellbook and obey the fixed 2024 prepared-spell progression. Spell Mastery and Signature Spells remain always prepared and are excluded from the ordinary Gena preparation quota.
 - Full-caster spell-slot capacity is emitted as native CE resources through the shared parser-owned slot primitive. Ordinary Wizard slot casting now requires preparation and uses the canonical slot-resource path.
 - Ritual Adept is implemented in dev: an eligible ritual in the currently held physical Wizard spellbook exposes a no-preparation, no-slot ritual method; losing access to that book removes the ritual access from the next CE snapshot.
