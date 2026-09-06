@@ -1,7 +1,7 @@
 -- CLASS_MIGRATION_SCOPE: mechanics
 -- CLASS_INTEGRATION_STRICT: class:warlock
 -- CLASS_PACKAGE_TEST: tests/warlockOfficialPack.test.ts
--- CLASS_RESOURCE_POLICY: pact-short-long-rest-v1
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
 -- CLASS_WORK_STATUS: warlock:base=RUNTIME_READY;invocations=PENDING;subclasses=UNCHANGED
 -- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 --
