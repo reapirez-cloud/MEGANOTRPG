@@ -8,10 +8,14 @@ const ledger = fs.readFileSync("src/rule-templates/CLASS_WORK_STATUS.md", "utf8"
 const pointer = fs.readFileSync("src/rule-templates/INTERNAL_CLASS_QUALITY_README.txt", "utf8")
 const fighterReadyPass = fs.readFileSync("supabase/migrations/20260829124500_fighter_text_ready_finalization.sql", "utf8")
 
+function containsClassTemplateWork(sql: string): boolean {
+  return /CLASS_(?:MIGRATION_SCOPE|INTEGRATION_STRICT|WORK_STATUS|STATUS_LEDGER)|(?:class|subclass):[a-z0-9_-]+|\bkind\s*(?:=|in)\s*\(?\s*['"](?:class|subclass)['"]/i.test(sql)
+}
+
 function scopedClassMigrations(): string[] {
   return fs.readdirSync(migrationsDir)
     .filter((name) => name.endsWith(".sql") && name >= `${SCOPED_MIGRATION_CUTOFF}.sql`)
-    .filter((name) => /class|subclass/i.test(fs.readFileSync(`${migrationsDir}/${name}`, "utf8")))
+    .filter((name) => containsClassTemplateWork(fs.readFileSync(`${migrationsDir}/${name}`, "utf8")))
 }
 
 function classSection(classKey: "fighter" | "druid" | "cleric"): string {

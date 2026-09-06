@@ -347,7 +347,7 @@ The authored Sorcerer reference is visible through `classReference`, but it must
 ## Warlock (`class:warlock`)
 
 **Text:** `IN_PROGRESS`  
-**Mechanics/runtime:** `NOT_STARTED`
+**Mechanics/runtime:** `IN_PROGRESS`
 
 - `authoring_started: 2026-09-03`
 - `authoring_source: src/data/classes/warlockReferenceDraft.ts`
@@ -355,16 +355,39 @@ The authored Sorcerer reference is visible through `classReference`, but it must
 - `authoring_plan: src/data/classes/warlockAuthoringPlan.md`
 - `current_dev_text: base Warlock Voss narration follows the abandoned drummer Michel; eight patron identities are now authored — Emil / Archfey, Brun / Fiend, Sibylla / Great Old One, Zakhar / Celestial, Jonah / Hexblade, Nazar / Fathomless, Abdul / Genie and captain von Stein / Undead`
 - `exact_reference_rules: READY_CURRENT_AUTHORED_ROSTER_2026_09_04`
-- `runtime_visibility: NOT_ACTIVE`
-- `class_reference_visibility: ACTIVE_REFERENCE_ONLY`
-- `subclasses: IN_PROGRESS_8_AUTHORED_OF_9_USER_PLANNED`
+- `last_mechanics_audit_started: 2026-09-06`
+- `last_dev_runtime_audit: 2026-09-06`
+- `last_deployed_runtime_audit: 2026-09-06`
+- `stage_2_base_runtime: READY_2026_09_06`
+- `dev_base_class_runtime: READY`
+- `base_runtime_revision: xphb-2024-warlock-base-runtime-v1`
+- `base_runtime_regression: tests/warlockOfficialPack.test.ts`
+- `runtime_visibility: BASE_RUNTIME_DEV_AND_PRODUCTION_ACTIVE_AND_AUDITED_2026_09_06`
+- `class_reference_visibility: ACTIVE`
+- `current_dev_runtime: clean class:warlock catalog plus Pact Magic CE resource, exact 1–20 Pact Slot and slot-level progression, Short/Long Rest recovery, Magical Cunning, level-20 Eldritch Master upgrade, Contact Patron, Mystic Arcanum 6/7/8/9 resources/actions and generic persistent Arcanum choices`
+- `pact_magic_resource: warlock_pact_slots`
+- `pact_magic_slot_count_progression: L1=1; L2-10=2; L11-16=3; L17-20=4`
+- `pact_magic_slot_level_progression: L1-2=1; L3-4=2; L5-6=3; L7-8=4; L9-20=5`
+- `pact_magic_recovery: FULL_ON_SHORT_REST_AND_LONG_REST`
+- `pact_magic_cast_rpc: public.cast_warlock_pact_spell_v1; authenticated-only; auth.uid and can_operate_character_resources enforced; PUBLIC/anon execute revoked`
+- `magical_cunning_runtime: CE resource-backed action; ceil(max Pact Slots / 2) restored after 1-minute rite; one use per Long Rest`
+- `eldritch_master_runtime: Magical Cunning restore value becomes all Pact Slots at Warlock level 20`
+- `contact_patron_runtime: level 9 resource-backed Contact Other Plane semantic action with independent Long Rest use and automatic Intelligence-save success metadata`
+- `mystic_arcanum_runtime: independent level 6/7/8/9 Long Rest resources at Warlock levels 11/13/15/17 plus persistent player_once spell choices using Choice Runtime v2`
+- `production_runtime: BASE_RUNTIME_DEPLOYED_AND_AUDITED_2026_09_06`
+- `production_level_rows: 20`
+- `production_runtime_metadata: mechanics_status=BASE_RUNTIME_READY; invocation_runtime_included=false; subclass_runtime_included=false`
+- `supabase_advisor_note: cast_warlock_pact_spell_v1 is intentionally an authenticated SECURITY DEFINER gameplay RPC matching the existing resource-action architecture; it performs explicit auth/ownership checks and is not executable by PUBLIC or anon`
+- `invocation_catalog: SEE_20260906073433_warlock_2024_eldritch_invocations_catalog; runtime wiring remains stage 3`
+- `invocation_runtime: NOT_STARTED_STAGE_3`
+- `subclasses: IN_PROGRESS_8_AUTHORED_OF_9_USER_PLANNED; runtime unchanged and excluded from stage 2`
 - `authored_subclasses: archfey, fiend, great-old-one, celestial, hexblade, fathomless, genie, undead`
 - `queued_subclasses: undying`
 - `duplicate_policy: the second supplied Fathomless/Nazar-Sverr block was not duplicated; wave 2 Nazar remains the canonical complete Fathomless literary draft`
 - `source_policy: patron source labels copied from the user are planning hints only and must be independently verified during the mechanics pass`
-- `mechanics_policy: exact reference rules are present; Pact Magic, Invocations, Pact options, patron spell access, Mystic Arcanum resources/actions and runtime package remain a separate future implementation before activation`
+- `mechanics_policy: stage 2 base runtime is closed; overall Warlock mechanics remain IN_PROGRESS until Eldritch Invocation runtime is implemented in stage 3 and subclass runtime is handled separately`
 
-The authored Warlock reference is visible through `classReference`, but it must not be imported into Chasovlyak runtime templates or Character Class runtime UI until patron packages, resource/action contracts and package-quality tests are complete enough for activation.
+Stage 2 is closed for the Warlock base class. Pact Magic and the declared base 2024 class features are installed through the shared Character Engine/resource/action/choice pipeline and have been verified in the deployed Supabase state. Eldritch Invocation runtime and every patron subclass remain explicitly outside this closure and therefore keep the overall Warlock mechanics status at `IN_PROGRESS`.
 
 ---
 

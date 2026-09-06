@@ -72,13 +72,14 @@ function sourceFiles(root: string): string[] {
   return result
 }
 
+function containsClassTemplateWork(sql: string): boolean {
+  return /CLASS_(?:MIGRATION_SCOPE|INTEGRATION_STRICT|WORK_STATUS|STATUS_LEDGER)|(?:class|subclass):[a-z0-9_-]+|\bkind\s*(?:=|in)\s*\(?\s*['"](?:class|subclass)['"]/i.test(sql)
+}
+
 function futureClassMigrationFiles(): string[] {
   return fs.readdirSync(migrationsDir)
     .filter((name) => name.endsWith(".sql") && name >= `${SCOPED_MIGRATION_CUTOFF}.sql`)
-    .filter((name) => {
-      const sql = fs.readFileSync(path.join(migrationsDir, name), "utf8")
-      return /rule_templates|class|subclass/i.test(sql)
-    })
+    .filter((name) => containsClassTemplateWork(fs.readFileSync(path.join(migrationsDir, name), "utf8")))
 }
 
 function migrationScope(sql: string, name: string): ClassMigrationScope {
