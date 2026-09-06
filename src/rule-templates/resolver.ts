@@ -67,6 +67,20 @@ export function choiceOptionAvailableAtLevel(definition: RuleChoiceDefinition, o
   return sourceLevel >= Math.max(1, Number(definition.option_unlock_level?.[option] || 1))
 }
 
+/**
+ * Generic CE-owned source prerequisite for a choice option. The parser receives
+ * every active template assignment, so a stale selected option becomes inert as
+ * soon as a required source is no longer assigned.
+ */
+export function choiceOptionTemplateRequirementsSatisfied(
+  definition: RuleChoiceDefinition,
+  option: string,
+  activeTemplateCatalogKeys: ReadonlySet<string>,
+): boolean {
+  const required = definition.option_rules?.[option]?.required_template_catalog_keys || []
+  return required.every((catalogKey) => activeTemplateCatalogKeys.has(catalogKey))
+}
+
 function substituteFormula(expression: FormulaExpression, sourceLevel: number): FormulaExpression {
   switch (expression.kind) {
     case "reference": return expression.key === "source.level" ? { kind: "literal", value: sourceLevel } : expression
@@ -180,10 +194,12 @@ function choiceContributions(
   sourceLevel: number,
   unlockLevel: number,
   nodes: Map<string, TemplateSourceNode>,
+  activeTemplateCatalogKeys: ReadonlySet<string>,
 ): CharacterContribution[] {
   if (!requirementAvailableV2(definition, bundle.assignment.selected_choices, sourceLevel)) return []
 
   const selected = structuredChoiceInstances(definition, bundle.assignment.selected_choices, sourceLevel)
+    .filter((instance) => choiceOptionTemplateRequirementsSatisfied(definition, instance.option, activeTemplateCatalogKeys))
   const root = templateRootSource(bundle)
 
   return selected.flatMap((instance, index) => {
@@ -254,6 +270,9 @@ export function resolveTemplateBundles(bundles: CharacterTemplateBundle[], chara
       .filter((bundle) => bundle.template.kind === "class")
       .map((bundle) => [bundle.template.id, Math.max(1, bundle.assignment.template_level || characterLevel)] as const),
   )
+  const activeTemplateCatalogKeys = new Set(
+    bundles.flatMap((bundle) => bundle.template.catalog_key ? [bundle.template.catalog_key] : []),
+  )
 
   for (const bundle of bundles) {
     const effectiveLevel = sourceLevelForBundle(bundle, characterLevel, classLevels)
@@ -276,11 +295,15 @@ export function resolveTemplateBundles(bundles: CharacterTemplateBundle[], chara
     if (bundle.template.kind === "subclass" && effectiveLevel < rootUnlockLevel) continue
 
     contributions.push(...mechanicContributions(bundle, bundle.template.mechanics || [], effectiveLevel, 1, nodes))
-    for (const definition of bundle.template.choices || []) contributions.push(...choiceContributions(bundle, definition, effectiveLevel, 1, nodes))
+    for (const definition of bundle.template.choices || []) {
+      contributions.push(...choiceContributions(bundle, definition, effectiveLevel, 1, nodes, activeTemplateCatalogKeys))
+    }
 
     for (const level of bundle.levels.filter((entry) => entry.level <= effectiveLevel).sort((a, b) => a.level - b.level)) {
       contributions.push(...mechanicContributions(bundle, level.mechanics || [], effectiveLevel, level.level, nodes))
-      for (const definition of level.choices || []) contributions.push(...choiceContributions(bundle, definition, effectiveLevel, level.level, nodes))
+      for (const definition of level.choices || []) {
+        contributions.push(...choiceContributions(bundle, definition, effectiveLevel, level.level, nodes, activeTemplateCatalogKeys))
+      }
     }
   }
 
