@@ -1,4 +1,5 @@
 import { warlockReferenceDraft } from "./warlockReferenceDraft.ts"
+import { warlockInvocationsReference } from "./warlockInvocationsReference.ts"
 import { normalizeVossWorldTone } from "./vossWorldTone.ts"
 
 const level20Explanation = `После войны Даниэль исчез. Не героически — просто однажды его место у костра осталось пустым. Я решил, что хозяин наконец утащил своё имущество туда, откуда оно пришло.
@@ -25,35 +26,38 @@ export const warlockReferenceCurrent = {
   ...warlockReferenceDraft,
   authorDescription: normalizeVossWorldTone(warlockReferenceDraft.authorDescription),
   authorComment: normalizeVossWorldTone(warlockReferenceDraft.authorComment),
-  features: warlockReferenceDraft.features.map((feature) => {
-    if (feature.level === 20) {
-      return {
-        ...feature,
-        explanation: level20Explanation,
-        voss: level20Comment,
+  features: [
+    ...warlockReferenceDraft.features.map((feature) => {
+      if (feature.level === 20) {
+        return {
+          ...feature,
+          explanation: level20Explanation,
+          voss: level20Comment,
+        }
       }
-    }
 
-    const explanation = normalizeVossWorldTone(feature.explanation)
-    let voss = normalizeVossWorldTone(feature.voss)
+      const explanation = normalizeVossWorldTone(feature.explanation)
+      let voss = normalizeVossWorldTone(feature.voss)
 
-    if (feature.level === 1) {
-      voss = voss.replace("Академический маг", "Учёный маг")
-    }
-    if (feature.level === 2) {
-      voss = `Смотреть на это тошно до спазмов в кишках: парень ползает на брюхе перед пустотой, унижается, а спустя шесть десятков ударов сердца встаёт так, будто хозяин заново налил ему в жилы всю дрянь до краёв. Гордости там нет ни на грош, зато результат на бруствере виден сразу.`
-    }
-    if (feature.level === 3) {
-      return {
-        ...feature,
-        explanation: explanation.replace("не военный контракт, который можно разорвать у полкового писаря", "не наёмная грамота, которую можно порвать у полкового писаря"),
-        voss,
+      if (feature.level === 1) {
+        voss = voss.replace("Академический маг", "Учёный маг")
       }
-    }
-    if (feature.level === 11) {
-      voss = `Придворные маги трясут печатями своих академий и учат подобные чары полжизни, дрожа над каждым слогом. Даниэль вбивает себе ржавый гвоздь в мясо — и стирает укреплённый форт с лица земли за один удар сердца. Страшная сила, за которую расплачиваются собственной плотью.`
-    }
+      if (feature.level === 2) {
+        voss = `Смотреть на это тошно до спазмов в кишках: парень ползает на брюхе перед пустотой, унижается, а спустя шесть десятков ударов сердца встаёт так, будто хозяин заново налил ему в жилы всю дрянь до краёв. Гордости там нет ни на грош, зато результат на бруствере виден сразу.`
+      }
+      if (feature.level === 3) {
+        return {
+          ...feature,
+          explanation: explanation.replace("не военный контракт, который можно разорвать у полкового писаря", "не наёмная грамота, которую можно порвать у полкового писаря"),
+          voss,
+        }
+      }
+      if (feature.level === 11) {
+        voss = `Придворные маги трясут печатями своих академий и учат подобные чары полжизни, дрожа над каждым слогом. Даниэль вбивает себе ржавый гвоздь в мясо — и стирает укреплённый форт с лица земли за один удар сердца. Страшная сила, за которую расплачиваются собственной плотью.`
+      }
 
-    return { ...feature, explanation, voss }
-  }),
+      return { ...feature, explanation, voss }
+    }),
+    ...warlockInvocationsReference,
+  ],
 }
