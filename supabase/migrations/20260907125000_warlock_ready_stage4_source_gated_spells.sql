@@ -2,7 +2,7 @@
 -- CLASS_INTEGRATION_STRICT: class:warlock
 -- CLASS_PACKAGE_TEST: tests/warlockReadyStage4SupplementalSpellAccess.test.ts
 -- CLASS_RESOURCE_POLICY: short-long-rest-v1
--- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
+-- CLASS_WORK_STATUS: src/rule-templates/CLASS_WORK_STATUS.md
 --
 -- READY-plan Stage 4 repair. Supplemental patron expanded spell lists are legacy
 -- spell-list additions, not always-prepared grants. Eligibility is authored as a
