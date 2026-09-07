@@ -150,10 +150,10 @@ test("Stage 3 certification preserves concrete invocation runtime", () => {
   assert.match(closure, /WARLOCK_STAGE3_GIFT_PROTECTORS_RUNTIME_INCOMPLETE/)
 
   assert.match(runtime, /v_kind = 'at_will_spell'/)
-  assert.match(runtime, /eldritch_smite/)
-  assert.match(runtime, /gift_of_depths/)
-  assert.match(runtime, /gift_of_protectors/)
-  assert.match(runtime, /pact_chain/)
+  assert.match(runtime, /v_kind = 'on_hit_pact_slot'/)
+  assert.match(runtime, /v_kind = 'compound' and p_slug = 'gift-of-the-depths'/)
+  assert.match(runtime, /v_kind = 'book_of_shadows_protection'/)
+  assert.match(runtime, /v_kind = 'pact_boon_chain'/)
 })
 
 test("Pact Boons close through their real runtime boundaries", () => {
