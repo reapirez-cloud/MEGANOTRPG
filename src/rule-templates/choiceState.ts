@@ -3,6 +3,7 @@ import {
   choiceDefinitionAvailable,
   choiceOptionAvailableAtLevel,
 } from "./resolver.ts"
+import { choiceOptionSourceAvailable } from "./choiceSourceRequirements.ts"
 import { storedStructuredChoiceInstances, type StructuredChoiceInstance } from "./choiceRuntimeV2.ts"
 import type {
   CharacterTemplateBundle,
@@ -222,12 +223,15 @@ export function resolveTemplateChoiceStates(
         const requiredOptions = requiredOptionsForRule(rule)
         const missing = requiredOptions.filter((option) => !selectedOptionSet.has(option))
         const levelAvailable = choiceOptionAvailableAtLevel(definition, key, sourceLevel) && sourceLevel >= minLevel
-        const available = levelAvailable && missing.length === 0
+        const sourceAvailable = choiceOptionSourceAvailable(rule, bundles, characterLevel)
+        const available = levelAvailable && missing.length === 0 && sourceAvailable
         const lockedReason = !levelAvailable
           ? `Доступно с ${minLevel} уровня`
           : missing.length > 0
             ? `Нужно: ${selectedOptionLabels(definition, missing)}`
-            : null
+            : !sourceAvailable
+              ? "Требуется подходящий активный класс или подкласс"
+              : null
         return {
           key,
           label: definition.option_labels?.[key] || key,
