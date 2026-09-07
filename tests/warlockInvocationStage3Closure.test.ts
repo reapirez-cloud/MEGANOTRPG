@@ -2,6 +2,12 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 
+import { resolveCharacterContract } from "../src/character-engine/index.ts"
+import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
+import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
+import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
+import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
+
 const closurePath = "supabase/migrations/20260907020552_warlock_stage3_invocation_runtime_closure_v1.sql"
 const runtimePath = "supabase/migrations/20260906192806_warlock_invocations_runtime_v1.sql"
 const closure = fs.readFileSync(closurePath, "utf8")
@@ -44,6 +50,57 @@ function marker(name: string) {
   return match[1].split(",").map((value) => value.trim()).filter(Boolean)
 }
 
+function qualityBundle(): CharacterTemplateBundle {
+  return {
+    assignment: {
+      id: "assignment-warlock-stage3-closure",
+      character_id: "character-warlock-stage3-closure",
+      template_id: "class-warlock-stage3-closure",
+      template_level: 5,
+      selected_choices: {},
+      assigned_at: "2026-09-07T00:00:00Z",
+      updated_at: "2026-09-07T00:00:00Z",
+    },
+    template: {
+      id: "class-warlock-stage3-closure",
+      campaign_id: "campaign",
+      kind: "class",
+      slug: "warlock-stage3-closure",
+      name: "Колдун",
+      description: "Колдун с проверенными Мистическими воззваниями и их точными игровыми границами.",
+      version: 1,
+      mechanics: [{
+        id: "warlock-stage3-certification",
+        type: "grant",
+        target: "feature",
+        key: "warlock_invocation_stage3_certified",
+        sourceKey: "warlock-base:eldritch-invocations",
+        payload: {
+          label: "Мистические воззвания",
+          description: "Выбранные Мистические воззвания применяют свои постоянные эффекты, требования уровня и зависимости только пока соответствующий выбор активен.",
+        },
+      }],
+      choices: [],
+      parent_template_id: null,
+      unlock_level: null,
+      catalog_key: "class:warlock",
+      catalog_revision: "xphb-2024-warlock-stage3-closure-v1",
+      source_kind: "official",
+      source_label: "Player's Handbook 2024",
+      is_builtin: true,
+      mechanical_summary: "Колдун получает постоянные Мистические воззвания с точными требованиями, зависимостями, ресурсами и явно отделёнными ситуативными эффектами.",
+      author_description: "",
+      author_comment: "",
+      rules_meta: {},
+      is_active: true,
+      created_by: null,
+      created_at: "2026-09-07T00:00:00Z",
+      updated_at: "2026-09-07T00:00:00Z",
+    },
+    levels: [],
+  }
+}
+
 const automated = marker("STAGE3_AUTOMATED")
 const resourceAction = marker("STAGE3_RESOURCE_ACTION")
 const gmSemantic = marker("STAGE3_GM_SEMANTIC")
@@ -59,6 +116,29 @@ test("Warlock Stage 3 classifies every invocation exactly once", () => {
   assert.deepEqual([...new Set(all)].sort(), EXPECTED)
 })
 
+test("Stage 3 package still passes strict quality, resource policy, parser, and CE", () => {
+  const source = qualityBundle()
+  assert.doesNotThrow(() => assertClassPackageQuality([source]))
+  assert.doesNotThrow(() => assertClassResourcePolicy([source]))
+
+  const parsed = resolveTemplateBundles([source], 5)
+  assert.ok(parsed.contributions.length > 0)
+
+  const contract = resolveCharacterContract({
+    base: {
+      id: "warlock-stage3-closure",
+      name: "Колдун",
+      level: 5,
+      abilities: { strength: 8, dexterity: 14, constitution: 14, intelligence: 10, wisdom: 10, charisma: 18 },
+      baseMaxHp: 40,
+      baseSpeed: 30,
+    },
+    state: { currentHp: 40, tempHp: 0, resources: {} },
+    contributions: parsed.contributions,
+  })
+  assert.match(JSON.stringify(contract), /warlock_invocation_stage3_certified/)
+})
+
 test("Stage 3 certification preserves concrete invocation runtime", () => {
   assert.match(closure, /CLASS_MIGRATION_SCOPE:\s*mechanics/i)
   assert.match(closure, /CLASS_INTEGRATION_STRICT:\s*class:warlock/i)
@@ -69,7 +149,7 @@ test("Stage 3 certification preserves concrete invocation runtime", () => {
   assert.match(closure, /WARLOCK_STAGE3_GIFT_DEPTHS_RUNTIME_INCOMPLETE/)
   assert.match(closure, /WARLOCK_STAGE3_GIFT_PROTECTORS_RUNTIME_INCOMPLETE/)
 
-  assert.match(runtime, /always_at_will_spell/)
+  assert.match(runtime, /v_kind = 'at_will_spell'/)
   assert.match(runtime, /eldritch_smite/)
   assert.match(runtime, /gift_of_depths/)
   assert.match(runtime, /gift_of_protectors/)
