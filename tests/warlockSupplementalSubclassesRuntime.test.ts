@@ -59,25 +59,29 @@ test("Hexblade and Fathomless finite abilities use real CE resources", () => {
   const hex = contractFor("subclass:warlock:hexblade", 14)
   assert.equal(hex.resources.find((entry) => entry.key === "warlock_hexblade_curse")?.max.value, 1)
   assert.ok(hex.actions.some((entry) => entry.key === "warlock_hexblade_curse_action"))
+  assert.ok(hex.actions.some((entry) => entry.key === "warlock_hexblade_armor_of_hexes_action"))
   assert.ok(hex.resources.some((entry) => entry.key === "warlock_hexblade_accursed_specter"))
 
   const fathomless = contractFor("subclass:warlock:fathomless", 14)
-  assert.equal(fathomless.resources.find((entry) => entry.key === "warlock_fathomless_tentacle")?.max.value, 4)
+  assert.equal(fathomless.resources.find((entry) => entry.key === "warlock_fathomless_tentacle")?.max.value, 5)
   assert.ok(fathomless.capabilities.resistances.some((entry) => entry.key === "damage:cold"))
+  assert.ok(fathomless.actions.some((entry) => entry.key === "warlock_fathomless_guardian_coil_action"))
   assert.ok(fathomless.resources.some((entry) => entry.key === "warlock_fathomless_fathomless_plunge"))
 })
 
 test("Genie keeps patron choice persistent and exposes resistance plus flight", () => {
   const contract = contractFor("subclass:warlock:genie", 14, { warlock_genie_patron_kind: ["efreeti"] })
   assert.ok(contract.capabilities.resistances.some((entry) => entry.key === "damage:fire"))
-  assert.equal(contract.resources.find((entry) => entry.key === "warlock_genie_elemental_flight")?.max.value, 4)
+  assert.equal(contract.resources.find((entry) => entry.key === "warlock_genie_elemental_flight")?.max.value, 5)
   assert.ok(contract.actions.some((entry) => entry.key === "warlock_genie_limited_wish_action"))
+  assert.ok(!contract.resources.some((entry) => entry.key === "warlock_genie_limited_wish"))
 })
 
 test("Undead and Undying resolve their durable finite pools", () => {
   const undead = contractFor("subclass:warlock:undead", 14)
-  assert.equal(undead.resources.find((entry) => entry.key === "warlock_undead_form_of_dread")?.max.value, 4)
+  assert.equal(undead.resources.find((entry) => entry.key === "warlock_undead_form_of_dread")?.max.value, 5)
   assert.ok(undead.capabilities.resistances.some((entry) => entry.key === "damage:necrotic"))
+  assert.ok(undead.actions.some((entry) => entry.key === "warlock_undead_necrotic_husk_action"))
   assert.ok(undead.resources.some((entry) => entry.key === "warlock_undead_spirit_projection"))
 
   const undying = contractFor("subclass:warlock:undying", 14)
@@ -88,5 +92,6 @@ test("Undead and Undying resolve their durable finite pools", () => {
 test("Stage 2 keeps target hit turn scene and randomized cooldown state semantic", () => {
   const serialized = JSON.stringify(warlockSupplementalRuntimeBundles)
   assert.match(serialized, /gm_(?:target|hit|turn|trigger|scene|cooldown)/)
+  assert.match(serialized, /1d4_long_rests/)
   assert.doesNotMatch(serialized, /turn_counter|target_is_hit|scene_state_confirmed|limited_wish_roll_state/)
 })
