@@ -48,6 +48,8 @@ import type { SpellClassKey } from "../../lib/spellCatalog"
 import type { RuleTemplate, RuleTemplateLevel } from "../../rule-templates/types"
 import type { StoredMechanic } from "../../types/characterMechanics"
 import SpellReference from "../characters/SpellReference"
+import BestiaryReference from "./BestiaryReference"
+import WarlockInvocationsReference from "./WarlockInvocationsReference"
 
 type CharacterTarget = {
   id: string
@@ -55,7 +57,7 @@ type CharacterTarget = {
   character_class: string
 }
 
-type ReferenceSection = "home" | "spells" | "classes" | "class-detail" | "subclass-detail" | "bestiary" | "chaos"
+type ReferenceSection = "home" | "spells" | "classes" | "class-detail" | "subclass-detail" | "invocations" | "bestiary" | "chaos"
 
 type Props = {
   campaignId?: string
@@ -63,7 +65,7 @@ type Props = {
   canManage: boolean
   onClose: () => void
   onCharacterChanged?: () => void
-  initialSection?: "home" | "spells" | "classes" | "bestiary" | "chaos"
+  initialSection?: "home" | "spells" | "classes" | "invocations" | "bestiary" | "chaos"
   initialClassId?: SpellClassKey | null
 }
 
@@ -92,7 +94,8 @@ type RuleFeatureView = {
 const sections = [
   { id: "spells" as const, icon: "✦", title: "Заклинания", copy: "Каталог заклинаний с поиском, фильтрами и подробными карточками.", meta: "Готово" },
   { id: "classes" as const, icon: "◇", title: "Классы", copy: "Классы, прогрессия, подклассы и объяснения способностей.", meta: `${classReference.length} классов` },
-  { id: "bestiary" as const, icon: "◉", title: "Бестиарий", copy: "Существа, противники и их справочные карточки будут жить отдельным разделом.", meta: "Каркас готов" },
+  { id: "invocations" as const, icon: "✧", title: "Инвокации", copy: "Таинственные воззвания колдуна, требования и точные правила отдельным каталогом.", meta: "Готово" },
+  { id: "bestiary" as const, icon: "◉", title: "Бестиарий", copy: "Существа D&D 5e SRD с характеристиками, CR, AC и HP из живого каталога.", meta: "2014 SRD" },
   { id: "chaos" as const, icon: "⌁", title: "Болезни, безумия и дикая магия", copy: "Таблицы и справочные эффекты, которые не относятся напрямую к заклинаниям или существам.", meta: "Каркас готов" },
 ]
 
@@ -387,10 +390,21 @@ export default function ReferenceGuide({ campaignId: campaignIdProp, character, 
     if (section === "class-detail") { setSelectedClass(null); setSelectedSubclass(null); setSection("classes"); return }
     setSection("home")
   }
-  function openClass(entry: ClassReferenceEntry) { setSelectedFeature(null); setSelectedClass(entry); setSelectedSubclass(null); setSection("class-detail") }
-  function openSubclass(subclass: ReferenceSubclassView) { setSelectedFeature(null); setSelectedSubclass(subclass); setSection("subclass-detail") }
 
-  const title = section === "home" ? "Справочник" : section === "classes" ? "Классы" : section === "class-detail" ? selectedClass?.name || "Класс" : section === "subclass-detail" ? selectedSubclass?.name || "Подкласс" : section === "bestiary" ? "Бестиарий" : "Болезни, безумия и дикая магия"
+  function openClass(entry: ClassReferenceEntry) {
+    setSelectedFeature(null)
+    setSelectedClass(entry)
+    setSelectedSubclass(null)
+    setSection("class-detail")
+  }
+
+  function openSubclass(subclass: ReferenceSubclassView) {
+    setSelectedFeature(null)
+    setSelectedSubclass(subclass)
+    setSection("subclass-detail")
+  }
+
+  const title = section === "home" ? "Справочник" : section === "classes" ? "Классы" : section === "class-detail" ? selectedClass?.name || "Класс" : section === "subclass-detail" ? selectedSubclass?.name || "Подкласс" : section === "invocations" ? "Инвокации" : section === "bestiary" ? "Бестиарий" : "Болезни, безумия и дикая магия"
   const isDruid = selectedClass?.id === "druid"
   const isFighter = selectedClass?.id === "fighter"
   const isCleric = selectedClass?.id === "cleric"
@@ -412,7 +426,9 @@ export default function ReferenceGuide({ campaignId: campaignIdProp, character, 
         {section === "classes" && <main className="reference-guide-content reference-guide-content--list"><div className="reference-guide-section-note"><strong>Класс → прогрессия → подкласс</strong><p>Открой класс, затем нужную специализацию. Для незавершённых механических пакетов справочник показывает готовый литературный перевод отдельно от runtime.</p></div>{catalogLoading && <div className="reference-catalog-status">Загружаю правила кампании…</div>}{catalogError && <div className="reference-catalog-status is-error">Каталог временно недоступен: {catalogError}</div>}<div className="reference-class-list">{classReference.map((entry) => <button className="reference-class-card surface" type="button" key={entry.id} onClick={() => openClass(entry)}><span className="reference-class-card__monogram">{entry.name.slice(0, 1)}</span><span className="reference-class-card__copy"><span className="reference-class-card__title"><strong>{entry.name}</strong><small>{entry.nameEn}</small></span><span>{classTagline(entry)}</span><em>{entry.referenceOnly ? `Перевод • ${entry.subclasses.length} подклассов` : entry.id === "druid" ? `${druidReference.subclasses.length} кругов` : `${entry.subclasses.length} подклассов`}</em></span><span className="reference-guide-section__chevron">›</span></button>)}</div></main>}
         {section === "class-detail" && selectedClass && <main className="reference-guide-content reference-guide-content--detail"><div className="reference-class-hero surface"><span className="reference-class-hero__monogram">{selectedClass.name.slice(0, 1)}</span><div><h3>{selectedClass.name}</h3><span>{selectedClass.nameEn}</span><p>{classTagline(selectedClass)}</p></div></div>{classExplanation && <section className="reference-voss-explanation surface"><span>Восс объясняет</span><p>{classExplanation}</p></section>}<section className="reference-class-description"><span>Описание класса</span><p>{classDescription}</p></section><section className="reference-class-mechanics surface"><span>{selectedClass.referenceOnly ? "Статус механики" : "Коротко о правилах"}</span><p>{classSummary}</p></section>{classComment && <section className="reference-voss-note surface"><span>Комментарий Восса</span><p>{classComment}</p></section>}<section className="reference-class-feature-section"><div className="reference-subclass-section__head"><span>Прогрессия класса</span><small>{isDruid ? druidReference.features.length : classFeatures.length}</small></div><div className="reference-class-feature-list">{isDruid ? druidReference.features.map((feature) => <FeatureCard key={`${feature.level}:${feature.name}`} feature={{ level: feature.level, sourceKey: feature.name, name: feature.name, explanation: getDruidBaseVossNarration(feature.level, feature.name) || feature.explanation, description: feature.mechanics, facts: feature.details || [], voss: feature.voss }} onOpen={setSelectedFeature} />) : classFeatures.length ? classFeatures.map((feature, index) => <FeatureCard key={`${feature.level}:${feature.sourceKey}:${index}`} feature={feature} onOpen={setSelectedFeature} />) : <div className="reference-catalog-status">Подробная прогрессия для этой карточки ещё не загружена.</div>}</div></section><section className="reference-subclass-section"><div className="reference-subclass-section__head"><span>Подклассы</span><small>{visibleSubclasses.length}</small></div><div className="reference-subclass-list">{visibleSubclasses.map((subclass) => <button className="reference-subclass-card surface" type="button" key={subclass.id} onClick={() => openSubclass(subclass)}><span className="reference-subclass-card__copy"><strong>{subclass.name}</strong><p>{subclass.explanation || subclass.summary}</p></span><span className="reference-guide-section__chevron">›</span></button>)}</div></section></main>}
         {section === "subclass-detail" && selectedClass && selectedSubclass && <main className="reference-guide-content reference-guide-content--detail"><div className="reference-class-hero surface"><span className="reference-class-hero__monogram">{selectedSubclass.name.slice(0, 1)}</span><div><h3>{selectedSubclass.name}</h3><span>{selectedClass.name}</span><p>{selectedSubclass.summary}</p></div></div>{subclassExplanation && <section className="reference-voss-explanation surface"><span>Восс объясняет</span><p>{subclassExplanation}</p></section>}{subclassDescription && <section className="reference-class-description"><span>Описание подкласса</span><p>{subclassDescription}</p></section>}{subclassSummary && subclassSummary !== subclassDescription && <section className="reference-class-mechanics surface"><span>Коротко о правилах</span><p>{subclassSummary}</p></section>}{subclassComment && <section className="reference-voss-note surface"><span>Комментарий Восса</span><p>{subclassComment}</p></section>}<section className="reference-class-feature-section"><div className="reference-subclass-section__head"><span>Прогрессия подкласса</span><small>{subclassFeatures.length}</small></div><div className="reference-class-feature-list">{subclassFeatures.length ? subclassFeatures.map((feature, index) => <FeatureCard key={`${feature.level}:${feature.sourceKey}:${index}`} feature={feature} onOpen={setSelectedFeature} />) : <div className="reference-catalog-status">Для этой специализации пока есть справочное описание, но подробные уровневые карточки ещё не загружены.</div>}</div></section></main>}
-        {(section === "bestiary" || section === "chaos") && <main className="reference-guide-content reference-guide-content--empty"><div className="reference-guide-placeholder surface"><span>{section === "bestiary" ? "◉" : "⌁"}</span><h3>{section === "bestiary" ? "Раздел для бестиария готов" : "Раздел для таблиц готов"}</h3><p>{section === "bestiary" ? "Сюда можно добавлять существ отдельными карточками, не смешивая их с миром кампании или персонажами." : "Здесь будут отдельные категории: болезни, безумия и дикая магия. Они отделены от заклинаний и классов на уровне навигации."}</p></div></main>}
+        {section === "invocations" && <WarlockInvocationsReference />}
+        {section === "bestiary" && <BestiaryReference />}
+        {section === "chaos" && <main className="reference-guide-content reference-guide-content--empty"><div className="reference-guide-placeholder surface"><span>⌁</span><h3>Раздел для таблиц готов</h3><p>Здесь будут отдельные категории: болезни, безумия и дикая магия. Они отделены от заклинаний и классов на уровне навигации.</p></div></main>}
       </section>
       {selectedFeature && <section className="reference-feature-detail-overlay" role="dialog" aria-modal="true" aria-label={`Правило: ${selectedFeature.name}`}><div className="reference-feature-detail-page"><header className="reference-feature-detail-header"><button className="icon-button" type="button" onClick={() => setSelectedFeature(null)} aria-label="Назад к списку способностей">←</button><div><span>{selectedFeature.level} уровень</span><h2>{selectedFeature.name}</h2></div><span /></header><main className="reference-feature-detail-content">{selectedFeature.translationNote && <section className="reference-feature-translation-note surface"><span>Нужен перевод</span><p>{selectedFeature.translationNote}</p></section>}{selectedFeature.explanation && <section className="reference-voss-explanation surface"><span>Восс объясняет</span><p>{selectedFeature.explanation}</p></section>}{selectedFeature.description && <section className="reference-feature-detail-rule surface"><span>Точное правило</span><p>{selectedFeature.description}</p></section>}{selectedFeature.facts.length ? <section className="reference-feature-detail-facts"><span>Механические данные</span><ul className="reference-rule-facts">{selectedFeature.facts.map((fact) => <li key={fact}>{fact}</li>)}</ul></section> : null}{selectedFeature.voss && <section className="reference-voss-note surface"><span>Комментарий Восса</span><p>{selectedFeature.voss}</p></section>}</main></div></section>}
     </div>
