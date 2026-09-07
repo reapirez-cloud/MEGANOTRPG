@@ -55,7 +55,7 @@ function decorateMechanics(level: number, mechanics: StoredMechanic[]) {
 function normalizeName(value: string) {
   return value
     .toLocaleLowerCase("ru")
-    .replaceAll("ё", "е")
+    .replace(/ё/g, "е")
     .replace(/[^a-zа-я0-9]+/gi, "")
 }
 
