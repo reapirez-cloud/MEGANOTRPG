@@ -10,7 +10,7 @@ import {
 
 const migration = fs.readFileSync("supabase/migrations/20260831100000_wizard_2024_text_pack.sql", "utf8")
 const bootstrap = fs.readFileSync("supabase/migrations/20260831100100_wizard_catalog_bootstrap.sql", "utf8")
-const reference = fs.readFileSync("src/data/classReference.ts", "utf8")
+const reference = fs.readFileSync("src/data/classReferenceCatalog.ts", "utf8")
 const ledger = fs.readFileSync("src/rule-templates/CLASS_WORK_STATUS.md", "utf8")
 
 const baseFeatures = [
