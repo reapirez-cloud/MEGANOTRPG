@@ -128,18 +128,6 @@ $$;
 
 revoke all on function private.apply_warlock_supplemental_stage2_completion_v1(uuid) from public;
 
-create or replace function public.handle_warlock_supplemental_runtime_v1()
-returns trigger
-language plpgsql
-security definer
-set search_path = public, private, pg_temp
-as $$
-begin
-  perform private.apply_warlock_supplemental_stage2_completion_v1(new.id);
-  return new;
-end;
-$$;
-
 do $$
 declare
   v_campaign record;
