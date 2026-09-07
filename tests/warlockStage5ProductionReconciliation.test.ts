@@ -2,8 +2,10 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 
+import { resolveCharacterContract } from "../src/character-engine/index.ts"
 import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
 import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
+import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
 import {
   warlockSubclassRuntimeBundles,
   WARLOCK_SUBCLASS_RUNTIME_CATALOG_KEYS,
@@ -12,6 +14,16 @@ import {
 const migrationPath = "supabase/migrations/20260907074308_warlock_stage5_production_reconciliation_v1.sql"
 const migration = fs.readFileSync(migrationPath, "utf8")
 
+function bundlesAtLevel(level: number) {
+  return warlockSubclassRuntimeBundles.map((bundle) => ({
+    ...bundle,
+    assignment: {
+      ...bundle.assignment,
+      ...(bundle.template.kind === "class" ? { template_level: level } : { template_level: null }),
+    },
+  }))
+}
+
 test("Stage 5 production reconciliation preserves the strict subclass package contract", () => {
   assert.match(migration, /CLASS_MIGRATION_SCOPE:\s*mechanics/i)
   assert.match(migration, /CLASS_INTEGRATION_STRICT:\s*subclass:warlock/i)
@@ -19,6 +31,23 @@ test("Stage 5 production reconciliation preserves the strict subclass package co
   assert.match(migration, /CLASS_RESOURCE_POLICY:\s*short-long-rest-v1/i)
   assert.doesNotThrow(() => assertClassPackageQuality(warlockSubclassRuntimeBundles))
   assert.doesNotThrow(() => assertClassResourcePolicy(warlockSubclassRuntimeBundles))
+
+  const parsed = resolveTemplateBundles(bundlesAtLevel(14), 14)
+  assert.ok(parsed.contributions.length > 0)
+  const contract = resolveCharacterContract({
+    base: {
+      id: "warlock-stage5-production-reconcile",
+      name: "Колдун",
+      level: 14,
+      abilities: { strength: 8, dexterity: 14, constitution: 14, intelligence: 10, wisdom: 10, charisma: 18 },
+      baseMaxHp: 92,
+      baseSpeed: 30,
+    },
+    state: { currentHp: 92, tempHp: 0, resources: {} },
+    contributions: parsed.contributions,
+  })
+  assert.ok(contract.rules.length > 0)
+  assert.ok(contract.resources.some((entry) => entry.key === "warlock_pact_slots"))
 })
 
 test("Stage 5 keeps exactly the four PHB 2024 patrons", () => {
