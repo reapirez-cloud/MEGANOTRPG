@@ -1,4 +1,8 @@
 import { warlockReferenceCurrent } from "./warlockReferenceCurrent.ts"
+import { warlockSubclassReferenceDraft } from "./warlockSubclassReferenceDraft.ts"
+import { warlockSubclassReferenceDraftWave2 } from "./warlockSubclassReferenceDraftWave2.ts"
+import { warlockSubclassReferenceDraftWave3 } from "./warlockSubclassReferenceDraftWave3.ts"
+import type { WarlockSubclassReferenceDraft } from "./warlockSubclassReferenceDraft.ts"
 import type { RuleTemplate, RuleTemplateLevel } from "../../rule-templates/types.ts"
 import type { StoredMechanic } from "../../types/characterMechanics.ts"
 
@@ -12,6 +16,16 @@ const authoredByLevel = new Map<number, AuthoredFeature>()
 for (const feature of authoredBaseFeatures) {
   if (!authoredByLevel.has(feature.level)) authoredByLevel.set(feature.level, feature)
 }
+
+const authoredSubclassDrafts: WarlockSubclassReferenceDraft[] = [
+  ...warlockSubclassReferenceDraft,
+  ...warlockSubclassReferenceDraftWave2,
+  ...warlockSubclassReferenceDraftWave3,
+]
+
+const authoredSubclassById = new Map(
+  authoredSubclassDrafts.map((subclass) => [subclass.id, subclass]),
+)
 
 function authoredFeatureForSource(level: number, sourceKey: string | undefined) {
   if (!sourceKey) return undefined
@@ -38,6 +52,76 @@ function decorateMechanics(level: number, mechanics: StoredMechanic[]) {
   })
 }
 
+function normalizeName(value: string) {
+  return value
+    .toLocaleLowerCase("ru")
+    .replaceAll("ё", "е")
+    .replace(/[^a-zа-я0-9]+/gi, "")
+}
+
+function mechanicLabels(mechanics: StoredMechanic[]) {
+  const labels = new Set<string>()
+  for (const mechanic of mechanics) {
+    if ("label" in mechanic && typeof mechanic.label === "string" && mechanic.label.trim()) {
+      labels.add(mechanic.label.trim())
+    }
+    if (mechanic.type === "grant" && mechanic.payload && typeof mechanic.payload === "object") {
+      const label = (mechanic.payload as { label?: unknown }).label
+      if (typeof label === "string" && label.trim()) labels.add(label.trim())
+    }
+  }
+  return [...labels]
+}
+
+function decorateSubclassMechanics(
+  subclass: WarlockSubclassReferenceDraft,
+  level: number,
+  mechanics: StoredMechanic[],
+) {
+  const authored = subclass.features.filter((feature) => feature.level === level)
+  if (!authored.length || !mechanics.length) return mechanics
+
+  const groups = new Map<string, StoredMechanic[]>()
+  for (const mechanic of mechanics) {
+    const key = mechanic.sourceKey?.trim() || mechanic.id
+    groups.set(key, [...(groups.get(key) || []), mechanic])
+  }
+
+  const featureBySource = new Map<string, (typeof authored)[number]>()
+  for (const feature of authored) {
+    const authoredName = normalizeName(feature.name)
+    const matched = [...groups.entries()]
+      .filter(([, group]) => mechanicLabels(group).some((label) => {
+        const runtimeName = normalizeName(label)
+        return runtimeName.length >= 5 && (authoredName.includes(runtimeName) || runtimeName.includes(authoredName))
+      }))
+      .map(([source]) => source)
+
+    if (matched.length) {
+      for (const source of matched) if (!featureBySource.has(source)) featureBySource.set(source, feature)
+      continue
+    }
+
+    if (authored.length === 1 && groups.size === 1) {
+      featureBySource.set([...groups.keys()][0], feature)
+    }
+  }
+
+  return mechanics.map((mechanic) => {
+    const source = mechanic.sourceKey?.trim() || mechanic.id
+    const feature = featureBySource.get(source)
+    if (!feature) return mechanic
+    return {
+      ...mechanic,
+      presentation: {
+        ...mechanic.presentation,
+        authorExplanation: feature.explanation,
+        authorComment: feature.voss,
+      },
+    }
+  })
+}
+
 function patronChoiceReferenceMechanic(): StoredMechanic | null {
   const authored = authoredByLevel.get(3)
   if (!authored) return null
@@ -59,6 +143,12 @@ function patronChoiceReferenceMechanic(): StoredMechanic | null {
   } as unknown as StoredMechanic
 }
 
+function subclassId(template: RuleTemplate) {
+  const prefix = "subclass:warlock:"
+  const catalogKey = template.catalog_key?.trim() || ""
+  return catalogKey.startsWith(prefix) ? catalogKey.slice(prefix.length) : ""
+}
+
 /**
  * Runtime owns mechanics; this adapter restores the authored Warlock reference
  * layer that existed before the class was switched from static cards to live
@@ -73,28 +163,57 @@ export function applyWarlockReferencePresentation(
   )
   if (!warlock) return { templates, levels }
 
+  const subclassByTemplateId = new Map<string, WarlockSubclassReferenceDraft>()
+  for (const template of templates) {
+    if (template.kind !== "subclass" || template.parent_template_id !== warlock.id) continue
+    const authored = authoredSubclassById.get(subclassId(template))
+    if (authored) subclassByTemplateId.set(template.id, authored)
+  }
+
   const decoratedTemplates = templates.map((template) => {
-    if (template.id !== warlock.id) return template
+    if (template.id === warlock.id) {
+      return {
+        ...template,
+        author_description: warlockReferenceCurrent.authorDescription,
+        author_comment: warlockReferenceCurrent.authorComment,
+        mechanics: decorateMechanics(1, template.mechanics || []),
+      }
+    }
+
+    const subclass = subclassByTemplateId.get(template.id)
+    if (!subclass) return template
     return {
       ...template,
-      author_description: warlockReferenceCurrent.authorDescription,
-      author_comment: warlockReferenceCurrent.authorComment,
-      mechanics: decorateMechanics(1, template.mechanics || []),
+      author_description: subclass.authorDescription,
+      author_comment: subclass.authorComment,
+      mechanics: decorateSubclassMechanics(
+        subclass,
+        Math.max(1, template.unlock_level || 3),
+        template.mechanics || [],
+      ),
     }
   })
 
   const patronChoice = patronChoiceReferenceMechanic()
   const decoratedLevels = levels.map((row) => {
-    if (row.template_id !== warlock.id) return row
-    let mechanics = decorateMechanics(row.level, row.mechanics || [])
-    if (
-      row.level === 3 &&
-      patronChoice &&
-      !mechanics.some((mechanic) => mechanic.sourceKey === patronChoice.sourceKey)
-    ) {
-      mechanics = [...mechanics, patronChoice]
+    if (row.template_id === warlock.id) {
+      let mechanics = decorateMechanics(row.level, row.mechanics || [])
+      if (
+        row.level === 3 &&
+        patronChoice &&
+        !mechanics.some((mechanic) => mechanic.sourceKey === patronChoice.sourceKey)
+      ) {
+        mechanics = [...mechanics, patronChoice]
+      }
+      return { ...row, mechanics }
     }
-    return { ...row, mechanics }
+
+    const subclass = subclassByTemplateId.get(row.template_id)
+    if (!subclass) return row
+    return {
+      ...row,
+      mechanics: decorateSubclassMechanics(subclass, row.level, row.mechanics || []),
+    }
   })
 
   return { templates: decoratedTemplates, levels: decoratedLevels }
