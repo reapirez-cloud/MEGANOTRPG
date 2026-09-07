@@ -6,54 +6,49 @@ const migrationPath = "supabase/migrations/20260907005756_warlock_runtime_founda
 const migration = fs.readFileSync(migrationPath, "utf8")
 
 test("choice runtime accepts short_or_long_rest without opening an unrestricted replacement path", () => {
-  assert.match(
-    migration,
-    /v_refresh not in \('\', 'long_rest', 'short_or_long_rest'\)/,
+  assert.ok(migration.includes("v_refresh not in ('', 'long_rest', 'short_or_long_rest')"))
+  assert.ok(
+    migration.includes(
+      "v_refresh in ('long_rest', 'short_or_long_rest') and private.is_character_preparation_open(v_character.id)",
+    ),
   )
-  assert.match(
-    migration,
-    /v_refresh in \('long_rest', 'short_or_long_rest'\) and private\.is_character_preparation_open\(v_character\.id\)/,
-  )
-  assert.doesNotMatch(
-    migration,
-    /v_refresh = 'short_or_long_rest'\s*;/,
-  )
+  assert.ok(!migration.includes("v_refresh = 'short_or_long_rest';"))
 })
 
 test("resource actions resolve CE numeric expressions instead of requiring literal JSON numbers", () => {
-  assert.match(
-    migration,
-    /private\.evaluate_character_template_numeric_expression\(p_character_id,v_effect->'amount'\)/,
+  assert.ok(
+    migration.includes(
+      "private.evaluate_character_template_numeric_expression(p_character_id,v_effect->'amount')",
+    ),
   )
-  assert.match(
-    migration,
-    /Resource effect amount must resolve to a non-negative integer/,
-  )
-  assert.doesNotMatch(
-    migration,
-    /Resource effect amount must be numeric/,
-  )
+  assert.ok(migration.includes("Resource effect amount must resolve to a non-negative integer"))
+  assert.ok(!migration.includes("Resource effect amount must be numeric"))
 })
 
 test("SQL numeric evaluator mirrors the Character Engine formula grammar", () => {
-  for (const kind of ["literal", "reference", "add", "subtract", "multiply", "min", "max", "clamp"]) {
-    assert.match(migration, new RegExp(`v_kind = '${kind}'|v_kind in \\('min', 'max'\\)`), kind)
+  for (const kind of ["literal", "reference", "add", "subtract", "multiply", "clamp"]) {
+    assert.ok(migration.includes(`v_kind = '${kind}'`), kind)
   }
-  assert.match(migration, /v_key like 'values\.%'/)
-  assert.match(migration, /private\.character_runtime_value_snapshot\(p_character_id, substr\(v_key, 8\)\)/)
-  assert.match(migration, /core\.proficiencyBonus/)
-  assert.match(migration, /abilities\\\.\[a-z_\]\+\\\.\(score\|modifier\)/)
-  assert.match(migration, /resources\.%\.current/)
-  assert.match(migration, /resources\.%\.max/)
+  assert.ok(migration.includes("v_kind in ('min', 'max')"))
+  assert.ok(migration.includes("v_key like 'values.%'"))
+  assert.ok(
+    migration.includes(
+      "private.character_runtime_value_snapshot(p_character_id, substr(v_key, 8))",
+    ),
+  )
+  assert.ok(migration.includes("core.proficiencyBonus"))
+  assert.ok(migration.includes("^abilities\\.[a-z_]+\\.(score|modifier)$"))
+  assert.ok(migration.includes("resources.%.current"))
+  assert.ok(migration.includes("resources.%.max"))
 })
 
 test("runtime value references preserve grant priority, suppression and replace semantics", () => {
-  assert.match(migration, /create or replace function private\.character_runtime_value_snapshot/)
-  assert.match(migration, /order by priority/)
-  assert.match(migration, /v_operation = 'SUPPRESS'/)
-  assert.match(migration, /v_operation = 'REPLACE'/)
-  assert.match(migration, /v_operation not in \('GRANT', 'REPLACE'\)/)
-  assert.match(migration, /public\.character_source_suppressions/)
+  assert.ok(migration.includes("create or replace function private.character_runtime_value_snapshot"))
+  assert.ok(migration.includes("order by priority"))
+  assert.ok(migration.includes("v_operation = 'SUPPRESS'"))
+  assert.ok(migration.includes("v_operation = 'REPLACE'"))
+  assert.ok(migration.includes("v_operation not in ('GRANT', 'REPLACE')"))
+  assert.ok(migration.includes("public.character_source_suppressions"))
 })
 
 test("stage 1 runtime foundation stays class-generic", () => {
@@ -62,6 +57,6 @@ test("stage 1 runtime foundation stays class-generic", () => {
   assert.ok(helperStart >= 0)
   assert.ok(actionStart > helperStart)
   const runtimeFoundation = migration.slice(helperStart)
-  assert.doesNotMatch(runtimeFoundation, /warlock_magical_cunning_restore/)
+  assert.ok(!runtimeFoundation.includes("warlock_magical_cunning_restore"))
   assert.doesNotMatch(runtimeFoundation, /if\s+.*warlock/i)
 })
