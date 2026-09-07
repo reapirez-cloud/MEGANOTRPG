@@ -1,3 +1,10 @@
+-- CLASS_MIGRATION_SCOPE: mechanics
+-- CLASS_INTEGRATION_STRICT: subclass:warlock
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
+-- CLASS_PACKAGE_TEST: tests/warlockSupplementalSubclassesRuntime.test.ts
+-- CLASS_WORK_STATUS: warlock:text=IN_PROGRESS;mechanics=IN_PROGRESS
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
+
 -- Warlock Stage 2 completion patch.
 -- Aligns persisted Supabase runtime with the Character Engine contract certified in TS.
 
