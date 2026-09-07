@@ -347,44 +347,50 @@ The authored Sorcerer reference is visible through `classReference`, but it must
 ## Warlock (`class:warlock`)
 
 **Text:** `READY`  
-**Mechanics/runtime:** `IN_PROGRESS`
+**Mechanics/runtime:** `READY`
 
 - `authoring_started: 2026-09-03`
 - `authoring_source: src/data/classes/warlockReferenceCurrent.ts`
 - `subclass_authoring_sources: src/data/classes/warlockSubclassReferenceCurrent.ts; src/data/classes/warlockSubclassReferenceCurrentWave2.ts; src/data/classes/warlockSubclassReferenceCurrentWave3.ts; src/data/classes/warlockSubclassReferenceDraftWave4.ts`
 - `authoring_plan: src/data/classes/warlockAuthoringPlan.md`
+- `final_certification: src/rule-templates/WARLOCK_READY_CERTIFICATION.md`
 - `stage_1_source_of_truth_sync: READY_2026_09_07`
-- `current_dev_text: base Warlock and the current literary patron roster are visible through one runtime-aware class reference; translated/reference-only supplemental patrons are explicitly separated from certified runtime patrons`
+- `stage_2_supplemental_patron_runtime: READY_5_OF_5_2026_09_07`
+- `stage_3_end_to_end_1_20: READY_2026_09_07`
+- `stage_4_final_source_gate_and_production_certification: READY_2026_09_07`
+- `current_dev_text: base Warlock and all nine supported runtime patrons are visible through one runtime-aware class reference; Raven Queen, Seeker and Great Wyrm remain explicitly literary/reference-only`
 - `exact_reference_rules: READY_CURRENT_AUTHORED_ROSTER_2026_09_07`
 - `last_mechanics_audit_started: 2026-09-06`
 - `last_dev_runtime_audit: 2026-09-07`
 - `last_deployed_runtime_audit: 2026-09-07`
-- `stage_2_base_runtime: READY_2026_09_06`
-- `stage_3_invocation_runtime: READY_2026_09_06`
-- `stage_4_ui_qa: READY_2026_09_06`
-- `stage_5_phb2024_patron_runtime: READY_2026_09_07`
-- `stage_5_certification: src/rule-templates/WARLOCK_STAGE5_CERTIFICATION.md`
 - `dev_base_class_runtime: READY`
 - `dev_invocation_runtime: READY_28_OF_28`
 - `dev_phb2024_patron_runtime: READY_4_OF_4`
+- `dev_supplemental_patron_runtime: READY_5_OF_5`
+- `runtime_supported_patron_count: 9`
 - `base_runtime_revision: xphb-2024-warlock-base-runtime-v1`
 - `invocation_runtime_revision: xphb-2024-warlock-invocations-runtime-v1`
 - `stage_4_runtime_revision: xphb-2024-warlock-ui-qa-v1`
-- `stage_5_runtime_revision: xphb-2024-warlock-subclasses-runtime-v1`
+- `phb_patron_runtime_revision: xphb-2024-warlock-subclasses-runtime-v1`
+- `supplemental_patron_runtime_revision: warlock-supplemental-runtime-v1`
+- `source_gate_revision: warlock-ready-stage4-source-gated-spells-v1`
 - `base_runtime_regression: tests/warlockOfficialPack.test.ts`
 - `invocation_runtime_regression: tests/warlockInvocationsRuntime.test.ts`
-- `stage_4_regression: tests/warlockStage4UiQa.test.ts`
-- `stage_5_regressions: tests/warlockPhb2024SubclassesRuntime.test.ts; tests/warlockStage5ProductionReconciliation.test.ts`
+- `phb_patron_regressions: tests/warlockPhb2024SubclassesRuntime.test.ts; tests/warlockStage5ProductionReconciliation.test.ts`
+- `supplemental_patron_regression: tests/warlockSupplementalSubclassesRuntime.test.ts`
+- `ready_plan_e2e_regression: tests/warlockReadyPlanStage3E2e.test.ts`
+- `source_gate_regression: tests/warlockReadyStage4SupplementalSpellAccess.test.ts`
 - `reference_boundary_regression: tests/newClassReferenceMechanics.test.ts`
-- `runtime_visibility: BASE_INVOCATIONS_STAGE4_UI_AND_PHB2024_PATRONS_DEV_AND_PRODUCTION_ACTIVE_AND_AUDITED_2026_09_07`
-- `class_reference_visibility: BASE_RUNTIME_BACKED; PHB2024_4_RUNTIME_BACKED; SUPPLEMENTAL_AND_EXPANDED_PATRONS_REFERENCE_ONLY`
-- `choice_ui_runtime: GENERIC_CHOICE_RUNTIME_V2_READY_NO_WARLOCK_ONLY_BRANCH`
-- `current_dev_runtime: clean class:warlock catalog plus Pact Magic and every declared 2024 base-class feature from stage 2, all 28 Eldritch Invocations from stage 3, generic Stage 4 CharacterTemplateChoices v2 UI, and the four certified PHB 2024 patron packages from Stage 5`
+- `final_code_gate: GitHub Actions CI #1863 run 34132411173 passed build, lint and complete test suite on 2026-09-07`
+- `runtime_visibility: BASE_INVOCATIONS_AND_ALL_9_SUPPORTED_PATRONS_DEV_AND_PRODUCTION_ACTIVE_AND_AUDITED_2026_09_07`
+- `class_reference_visibility: BASE_RUNTIME_BACKED; PHB2024_4_RUNTIME_BACKED; SUPPLEMENTAL_5_RUNTIME_BACKED; EXPANDED_3_REFERENCE_ONLY`
+- `choice_ui_runtime: GENERIC_CHOICE_RUNTIME_V2_READY_NO_WARLOCK_ONLY_CLIENT_BRANCH`
+- `current_dev_runtime: complete supported Warlock runtime includes 1-20 Pact Magic/base progression, all 28 Eldritch Invocations, Mystic Arcanum 6-9, four PHB 2024 patrons, five supplemental patrons and source-gated supplemental expanded spell choices through the shared template/parser/Character Engine/persistence pipeline`
 - `pact_magic_resource: warlock_pact_slots`
 - `pact_magic_slot_count_progression: L1=1; L2-10=2; L11-16=3; L17-20=4`
 - `pact_magic_slot_level_progression: L1-2=1; L3-4=2; L5-6=3; L7-8=4; L9-20=5`
 - `pact_magic_recovery: FULL_ON_SHORT_REST_AND_LONG_REST`
-- `pact_magic_cast_rpc: public.cast_warlock_pact_spell_v1; authenticated-only; auth.uid and can_operate_character_resources enforced; PUBLIC/anon execute revoked`
+- `pact_magic_cast_rpc: public.cast_warlock_pact_spell_v1; auth.uid and can_operate_character_resources enforced before mutation`
 - `magical_cunning_runtime: CE resource-backed action; ceil(max Pact Slots / 2) restored after 1-minute rite; one use per Long Rest`
 - `eldritch_master_runtime: Magical Cunning restore value becomes all Pact Slots at Warlock level 20`
 - `contact_patron_runtime: level 9 resource-backed Contact Other Plane semantic action with independent Long Rest use and automatic Intelligence-save success metadata`
@@ -393,31 +399,30 @@ The authored Sorcerer reference is visible through `classReference`, but it must
 - `invocation_count_progression: L1=1; L2=3; L5=5; L7=6; L9=7; L12=8; L15=9; L18=10`
 - `invocation_replacement_policy: ON_LEVEL_CHANGE_MAX_1_PREVIOUS_INVOCATION`
 - `repeatable_invocations: agonizing-blast, eldritch-spear, lessons-of-the-first-ones, repelling-blast; selector-bound instances remain mechanically distinct in CE`
-- `invocation_prerequisite_runtime: Choice Runtime v2 validates required invocations and minimum levels server-side; stale dependent selections remain persisted but become inert in the parser until prerequisites are valid again`
-- `invocation_handler_policy: runtime_hint.kind dispatch through private.warlock_invocation_mechanics_v1; no 28-way class-specific client switch`
-- `pact_tome_runtime: three cantrips plus two level-1 ritual spells selected from canonical spell_catalog; both dependent choices require pact-of-the-tome and refresh after an authoritative Short or Long Rest`
-- `production_pact_tome_options: 45 cantrips; 12 level-1 rituals at the 2026-09-06 audit`
-- `rest_choice_rpc: public.commit_character_template_rest_choice_v1; authenticated-only SECURITY DEFINER with auth/assignment/manager checks; PUBLIC and anon execute revoked`
-- `choice_v2_rpc: public.commit_character_template_choice_v2; authenticated gameplay wrapper; anon execute revoked; private.commit_character_template_choice_v2_core_stage4 is not executable by authenticated clients`
-- `production_runtime: BASE_INVOCATIONS_STAGE4_AND_PHB2024_PATRONS_DEPLOYED_AND_AUDITED_2026_09_07`
+- `invocation_prerequisite_runtime: Choice Runtime v2 validates required invocations and minimum levels server-side; stale dependent selections remain persisted but become inert until prerequisites are valid again`
+- `pact_tome_runtime: three cantrips plus two level-1 ritual spells selected from canonical spell_catalog; dependent choices require pact-of-the-tome and refresh after authoritative Short or Long Rest`
+- `supplemental_spell_source_runtime: option_rules.source_requirements_any plus database trigger plus server RPC revalidation; stale patron spell selections become inert when their source disappears`
+- `production_runtime: BASE_INVOCATIONS_PHB2024_4_AND_SUPPLEMENTAL_5_DEPLOYED_AND_CERTIFIED_2026_09_07`
 - `production_base_catalog_revision: xphb-2024-warlock-ui-qa-v1`
 - `production_base_level_rows: 20`
 - `production_invocation_catalog: 28_TOTAL_28_RUNTIME_READY`
-- `production_patron_catalog_revision: xphb-2024-warlock-subclasses-runtime-v1`
+- `production_supported_patron_count: 9`
 - `production_phb2024_patron_count: 4`
-- `production_phb2024_patron_level_rows: 7_EACH_AT_3_5_6_7_9_10_14`
+- `production_supplemental_patron_count: 5`
+- `production_patron_unlock_contract: ALL_9_AT_WARLOCK_LEVEL_3`
 - `production_phb2024_patrons: archfey, celestial, fiend, great-old-one`
-- `production_runtime_metadata: base runtime_revision=xphb-2024-warlock-ui-qa-v1; Stage 5 patron templates are active builtin children of class:warlock at unlock level 3`
-- `supabase_advisor_note: cast_warlock_pact_spell_v1, commit_character_template_rest_choice_v1 and commit_character_template_choice_v2 are intentionally authenticated SECURITY DEFINER gameplay RPCs matching the authoritative resource/choice architecture; the Stage 4 v2 public wrapper performs auth/assignment validation while its private core is not executable by authenticated or anon clients`
-- `invocation_catalog: 20260906073433_warlock_2024_eldritch_invocations_catalog seeds the canonical 28 identities; 20260906192806_warlock_invocations_runtime_v1 promotes all 28 to runtime_ready; 20260906201356_choice_runtime_replacement_limit_and_warlock_stage4 closes UI/replacement policy`
-- `runtime_ready_subclasses: archfey, celestial, fiend, great-old-one`
-- `supplemental_reference_only_subclasses: hexblade, fathomless, genie, undead, undying`
+- `production_supplemental_patrons: hexblade, fathomless, genie, undead, undying`
+- `production_source_gate_audit: SHIELD_REQUIRES_HEXBLADE; SANCTUARY_REQUIRES_GENIE_PLUS_DAO; VALIDATION_TRIGGER_INSTALLED`
+- `production_duplicate_active_catalog_keys: 0`
+- `production_orphan_subclasses: 0`
+- `production_required_legacy_spell_seeds: 6_OF_6_PRESENT`
+- `supabase_advisor_note: post-deployment security/performance advisors report pre-existing project-wide RLS/SECURITY_DEFINER/index debt; no Warlock-specific finding invalidates the certified runtime; Warlock gameplay RPC authorization remains enforced internally`
+- `runtime_ready_subclasses: archfey, celestial, fiend, great-old-one, hexblade, fathomless, genie, undead, undying`
 - `expanded_literary_only_subclasses: raven-queen, seeker, great-wyrm`
-- `duplicate_policy: the second supplied Fathomless/Nazar-Sverr block was not duplicated; wave 2 Nazar remains the canonical complete Fathomless literary draft`
 - `source_policy: expanded/UA literary identities are not promoted into the supported runtime roster without an explicit source/scope decision`
-- `mechanics_policy: stages 2–5 are closed for the base class, invocations, UI and four PHB 2024 patrons; overall Warlock mechanics remain IN_PROGRESS because the chosen supplemental patron runtime scope is not yet closed`
+- `mechanics_policy: all four readiness stages are closed; CE owns persistent resources/choices/access, while scene/target/hit/reaction/turn/randomized facts outside authoritative app state remain GM-adjudicated rather than represented by fake counters`
 
-The Stage 1 source-of-truth sync is closed. Production Supabase and the player-facing reference now agree that the base PHB 2024 Warlock plus Archfey, Celestial, Fiend and Great Old One are runtime-backed. Hexblade, Fathomless, Genie, Undead and Undying remain reference-only pending a separate runtime pass; Raven Queen, Seeker and Great Wyrm remain expanded literary material and are not silently treated as supported runtime. Overall Warlock mechanics correctly remains `IN_PROGRESS` until the supplemental support scope is closed or explicitly narrowed.
+Base Warlock, all 28 supported Eldritch Invocations and all nine supported runtime patrons are implemented, regression-gated and deployed. GitHub, the player-facing runtime roster and production Supabase agree on the supported boundary. There are no known Warlock-specific implementation, persistence, source-eligibility or deployment blockers in that scope. Raven Queen, Seeker and Great Wyrm remain explicit literary/reference-only material and do not block `READY`.
 
 ---
 
