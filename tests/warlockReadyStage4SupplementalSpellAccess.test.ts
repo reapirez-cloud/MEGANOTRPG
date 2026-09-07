@@ -205,7 +205,7 @@ test("Hexblade expanded spell is hidden without its source and becomes real CE s
   const warlock = classBundle("shield")
   const withoutPatron = resolveTemplateChoiceStates([warlock], 5)[0]
   assert.equal(withoutPatron?.options.find((option) => option.key === "shield")?.available, false)
-  assert.match(withoutPatron?.options.find((option) => option.key === "shield")?.lockedReason || "", /источник/i)
+  assert.match(withoutPatron?.options.find((option) => option.key === "shield")?.lockedReason || "", /активный класс или подкласс/i)
   assert.equal(contractFor([warlock]).contract.spells.some((spell) => spell.key === "spell:shield"), false)
 
   const hexblade = subclassBundle("hexblade")
