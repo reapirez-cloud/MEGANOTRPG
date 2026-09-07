@@ -321,7 +321,15 @@ test("selected Pact Magic spells become real CE spell access and spend only pact
   const method = access.methods.find((entry) => entry.kind === "pact_magic")
   assert.ok(method)
   assert.equal(method.resourceOptions[0]?.castLevel, 3)
-  assert.deepEqual(method.resourceOptions[0]?.costs, [{ key: "warlock_pact_slots", amount: 1, variantKey: "default" }])
+  const pactCost = method.resourceOptions[0]?.costs[0]
+  assert.ok(pactCost)
+  assert.equal(pactCost.key, "warlock_pact_slots")
+  assert.equal(pactCost.variantKey, "default")
+  assert.equal(pactCost.stateKey, "warlock_pact_slots")
+  assert.equal(pactCost.amount, 1)
+  assert.equal(pactCost.current, 2)
+  assert.equal(pactCost.max, 2)
+  assert.equal(pactCost.available, true)
   assert.equal(method.resourceOptions.some((option) => option.costs.some((cost) => cost.key.startsWith("spell_slot_"))), false)
 })
 
