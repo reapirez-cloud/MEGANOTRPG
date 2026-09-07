@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { applyWarlockReferencePresentation } from "../data/classes/warlockReferencePresentation.ts"
 import { supabase } from "../lib/supabase.ts"
 import type { RuleTemplate, RuleTemplateKind, RuleTemplateLevel } from "../rule-templates/types.ts"
 
@@ -17,13 +18,15 @@ export function useRuleTemplates(campaignId: string, includeInactive = false) {
     if (!includeInactive) query = query.eq("is_active", true)
     const result = await query
     if (result.error) { setError(result.error.message); setLoading(false); return }
-    const next = (result.data || []) as RuleTemplate[]
-    setTemplates(next)
-    const ids = next.map((item) => item.id)
-    if (!ids.length) { setLevels([]); setLoading(false); return }
+    const rawTemplates = (result.data || []) as RuleTemplate[]
+    const ids = rawTemplates.map((item) => item.id)
+    if (!ids.length) { setTemplates(rawTemplates); setLevels([]); setLoading(false); return }
     const levelResult = await supabase.from("rule_template_levels").select("id,template_id,level,mechanics,choices").in("template_id", ids).order("level")
     if (levelResult.error) { setError(levelResult.error.message); setLoading(false); return }
-    setLevels((levelResult.data || []) as RuleTemplateLevel[])
+    const rawLevels = (levelResult.data || []) as RuleTemplateLevel[]
+    const presented = applyWarlockReferencePresentation(rawTemplates, rawLevels)
+    setTemplates(presented.templates)
+    setLevels(presented.levels)
     setLoading(false)
   }, [campaignId, includeInactive])
 
