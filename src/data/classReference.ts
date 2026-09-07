@@ -39,6 +39,7 @@ export type ClassReferenceSubclass = {
   explanation?: string
   features?: ClassReferenceSubclassFeature[]
   voss?: string
+  referenceOnly?: boolean
 }
 
 export type ClassReferenceEntry = {
@@ -145,15 +146,41 @@ const sorcererLiteraryReference = literaryClass(
   "Сила без школы и наставника: человек получает мощь, способную снести крепостную стену, раньше, чем учится отвечать за её применение.",
 )
 
-const warlockLiteraryReference = literaryClass(
-  warlockReferenceCurrent,
-  [
-    ...warlockSubclassReferenceDraft,
-    ...warlockSubclassReferenceDraftWave2,
-    ...warlockSubclassReferenceDraftWave3,
-  ],
-  "Кто-то сам идёт к чудовищу за силой. К кому-то чудовище приходит первым — когда больше не приходит никто.",
-)
+const WARLOCK_PHB2024_RUNTIME_SUBCLASS_IDS = new Set([
+  "archfey",
+  "celestial",
+  "fiend",
+  "great-old-one",
+])
+
+const warlockReferenceSubclasses = [
+  ...warlockSubclassReferenceDraft,
+  ...warlockSubclassReferenceDraftWave2,
+  ...warlockSubclassReferenceDraftWave3,
+]
+
+function warlockReferenceSubclass(subclass: LiterarySubclassDraft): ClassReferenceSubclass {
+  const runtimeReady = WARLOCK_PHB2024_RUNTIME_SUBCLASS_IDS.has(subclass.id)
+  return {
+    ...literarySubclass(subclass),
+    referenceOnly: !runtimeReady,
+    summary: runtimeReady
+      ? "Справочное описание и runtime-механики этого покровителя подключены к Character Engine и входят в сертифицированный PHB 2024 набор Warlock."
+      : "Литературный перевод и справочное описание правил готовы; этот покровитель пока не входит в сертифицированный runtime-набор Warlock.",
+  }
+}
+
+const warlockReference: ClassReferenceEntry = {
+  ...literaryClass(
+    warlockReferenceCurrent,
+    warlockReferenceSubclasses,
+    "Кто-то сам идёт к чудовищу за силой. К кому-то чудовище приходит первым — когда больше не приходит никто.",
+  ),
+  description: "Базовый Warlock по Player's Handbook 2024 подключён к Character Engine. Архифея, Небожитель, Исчадие и Великий Древний входят в сертифицированный runtime-набор; дополнительные покровители остаются справочными до отдельной механической сертификации.",
+  mechanics: "Базовый класс использует действующий PHB 2024 runtime, включая Pact Magic и Eldritch Invocations. Runtime-подклассы: Архифея, Небожитель, Исчадие и Великий Древний. Остальные карточки не должны считаться доказательством подключённой механики.",
+  referenceOnly: false,
+  subclasses: warlockReferenceSubclasses.map(warlockReferenceSubclass),
+}
 
 /**
  * Player-facing class reference catalog.
@@ -234,5 +261,5 @@ export const classReference: ClassReferenceEntry[] = [
   monkLiteraryReference,
   paladinReferenceComplete,
   sorcererLiteraryReference,
-  warlockLiteraryReference,
+  warlockReference,
 ]
