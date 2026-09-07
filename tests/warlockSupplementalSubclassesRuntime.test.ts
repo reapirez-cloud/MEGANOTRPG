@@ -66,7 +66,7 @@ test("Hexblade and Fathomless finite abilities use real CE resources", () => {
   assert.equal(fathomless.resources.find((entry) => entry.key === "warlock_fathomless_tentacle")?.max.value, 5)
   assert.ok(fathomless.capabilities.resistances.some((entry) => entry.key === "damage:cold"))
   assert.ok(fathomless.actions.some((entry) => entry.key === "warlock_fathomless_guardian_coil_action"))
-  assert.ok(fathomless.resources.some((entry) => entry.key === "warlock_fathomless_fathomless_plunge"))
+  assert.ok(fathomless.resources.some((entry) => entry.key === "warlock_fathomless_plunge"))
 })
 
 test("Genie keeps patron choice persistent and exposes resistance plus flight", () => {
