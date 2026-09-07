@@ -57,6 +57,24 @@ Production verification on 2026-09-07 confirmed all five templates active/builti
 
 The class now has **9 runtime-backed patrons total**: four PHB 2024 patrons plus five supplemental patrons.
 
+## Stage 3 — end-to-end 1–20 character run
+
+**Status:** `READY_2026_09_07`
+
+Stage 3 is closed by `WARLOCK_READY_PLAN_STAGE3_CERTIFICATION.md` and `tests/warlockReadyPlanStage3E2e.test.ts`.
+
+Production-safe live verification used the public runtime RPC path under a real campaign-manager authorization context and rolled the temporary character back after assertions. It passed:
+
+- Warlock milestone assignments at levels `1, 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 20` (12/12);
+- subclass selection at level 3 and automatic subclass-level following through level 20;
+- assignment of all nine supported runtime patrons (9/9);
+- persistent Pact Magic spend and full Short Rest recovery;
+- Pact Magic Long Rest recovery;
+- Mystic Arcanum Long Rest recovery;
+- no persisted test character after the run.
+
+Stage 3 also fixed the stale player-facing four-patron allow-list. `src/data/classReference.ts` now derives the runtime-ready Warlock roster from the PHB and supplemental runtime catalog constants, so all nine supported patrons are correctly presented as Character Engine-backed.
+
 ## Expanded / UA literary material
 
 The following identities remain literary/reference material only and are not part of the supported runtime roster:
@@ -71,7 +89,7 @@ Do not promote these identities merely because a translated card exists.
 
 - Base Warlock: runtime-backed.
 - Archfey / Celestial / Fiend / Great Old One: runtime-backed.
-- Hexblade / Fathomless / Genie / Undead / Undying: runtime-backed as of Stage 2.
+- Hexblade / Fathomless / Genie / Undead / Undying: runtime-backed.
 - Raven Queen / Seeker / Great Wyrm: expanded/UA literary-only until an explicit source and support decision.
 - A reference card must never be interpreted as proof of runtime support without the matching deployed `rule_template` package.
 
@@ -83,14 +101,10 @@ Supabase security/performance advisors were re-run after deployment. They contin
 
 ## Remaining Warlock closure plan
 
-### Stage 3 — end-to-end 1–20 character run
-
-Exercise creation, level progression, Pact Magic, invocations, all supported patron features, resources, rest recovery, persistence and reload behavior across the nine-patron runtime roster.
-
 ### Stage 4 — final READY certification
 
-Reconcile GitHub and production Supabase, run the complete Warlock regression/build/lint gates, update the canonical class ledger and only then promote overall Warlock mechanics/runtime from `IN_PROGRESS` to `READY`.
+Reconcile GitHub and production Supabase one last time, run the complete Warlock regression/build/lint/CI gates, update the canonical class ledger and only then promote overall Warlock mechanics/runtime from `IN_PROGRESS` to `READY`.
 
 ## Boundary rule
 
-`WARLOCK_STAGE5_CERTIFICATION.md` remains authoritative for the four PHB 2024 patrons. Stage 2 closes the five-patron supplemental runtime scope. Overall Warlock mechanics remains `IN_PROGRESS` only because the end-to-end Stage 3 run and final Stage 4 certification are still pending; supplemental patron runtime is no longer a blocker.
+`WARLOCK_STAGE5_CERTIFICATION.md` remains authoritative for the four PHB 2024 patrons. Stage 2 closes the five-patron supplemental runtime scope. `WARLOCK_READY_PLAN_STAGE3_CERTIFICATION.md` closes the current readiness-plan Stage 3 end-to-end run. Overall Warlock mechanics remains `IN_PROGRESS` only because final Stage 4 certification and canonical ledger promotion are still pending.
