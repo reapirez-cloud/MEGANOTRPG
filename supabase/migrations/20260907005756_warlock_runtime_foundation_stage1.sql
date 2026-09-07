@@ -1,3 +1,6 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
+-- Shared class runtime infrastructure for rest-editable choices and CE numeric resource effects.
+
 create or replace function private.character_runtime_value_snapshot(
   p_character_id uuid,
   p_key text
