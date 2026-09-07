@@ -1,12 +1,12 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { classReference } from "../src/data/classReference.ts"
+import { classReference, WARLOCK_RUNTIME_REFERENCE_SUBCLASS_IDS } from "../src/data/classReference.ts"
 import fs from "node:fs"
 
 const expected = ["bard", "monk", "paladin", "sorcerer", "warlock"]
 const referenceOnlyClasses = new Set(["bard", "monk", "paladin", "sorcerer"])
-const warlockRuntimePatrons = new Set(["archfey", "celestial", "fiend", "great-old-one"])
+const warlockRuntimePatrons = new Set(WARLOCK_RUNTIME_REFERENCE_SUBCLASS_IDS)
 
 test("translated new classes expose complete reference mechanics with truthful runtime activation", () => {
   for (const classId of expected) {
@@ -32,10 +32,11 @@ test("translated new classes expose complete reference mechanics with truthful r
   }
 })
 
-test("Warlock reference mirrors the certified PHB 2024 runtime boundary", () => {
+test("Warlock reference mirrors the certified nine-patron runtime boundary", () => {
   const warlock = classReference.find((candidate) => candidate.id === "warlock")
   assert.ok(warlock, "warlock is absent from class reference")
   assert.equal(warlock.referenceOnly, false, "base Warlock must use the certified runtime template")
+  assert.equal(warlockRuntimePatrons.size, 9, "Warlock runtime roster must contain nine certified patrons")
 
   const seenRuntimePatrons = new Set<string>()
   for (const subclass of warlock.subclasses) {
