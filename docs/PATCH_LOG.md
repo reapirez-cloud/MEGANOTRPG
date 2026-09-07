@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Warlock reference now follows the deployed runtime boundary instead of presenting the entire class as reference-only: the PHB 2024 base class plus Archfey, Celestial, Fiend and Great Old One use their real Character Engine templates, while supplemental and expanded literary patrons remain explicitly outside certified runtime.
 - Fixed the post-rest chat card so each completed spell, class-choice or roll task disappears immediately after its successful confirmation; once no actionable post-rest tasks remain, the card no longer occupies the bottom of the chat.
 - Completed the Cleric runtime package in the supported scope: the base class and all fourteen domains now use the certified Character Engine resource/action/spell pipeline, with the previously split resource identities reconciled so finite abilities spend the real ledgers shown on the character.
 - Corrected Cleric progression/runtime gaps found during the production audit, including Divine Order/Thaumaturge wiring, Divine Spark scaling, domain Channel Divinity spenders, finite domain pools and the legacy Grave Keeper alias.
@@ -18,12 +19,15 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Reconciled the Warlock reference catalog, authoring boundary and canonical class-work ledger with production Supabase. Production already contains `class:warlock` at `xphb-2024-warlock-ui-qa-v1` plus exactly four active PHB 2024 patron templates at `xphb-2024-warlock-subclasses-runtime-v1`, so Stage 1 required no database mutation.
+- Added a strict Warlock reference boundary: Hexblade, Fathomless, Genie, Undead and Undying remain reference-only pending runtime work; Raven Queen, Seeker and Great Wyrm remain expanded literary/UA material and are not silently promoted into the supported runtime roster.
 - Added a final forward-only Cleric certification migration that validates the live deployed template graph before writing `READY`. It fails closed unless the active Cleric has exactly fourteen level-3 domains, canonical prepared-spell progression, Channel Divinity progression/recovery, structured Divine Spark scaling, complete persistent choices, complete domain spell packages and zero broken resource references or duplicate action identities.
 - Production Cleric state is certified as `cleric-runtime-certified@2026-09-06`; all fourteen domains are marked mechanics `READY`, and the live audit reports zero broken resource-cost/effect/persistent-counter references.
 - Updated the historical Character Profile v5 regression guards to the current Opus presentation contract. This changes tests only; it does not revert the intentional Opus redesign or create a second character mechanics owner.
 
 ### Tests / verification
 
+- Added a Warlock reference regression requiring the base class to be runtime-backed, exactly the four certified PHB 2024 patrons to be runtime-backed, and every other visible patron to stay reference-only. Production Supabase audit confirms 20 base level rows and 7 rows each for Archfey, Celestial, Fiend and Great Old One.
 - Added regression coverage requiring completed post-rest tasks to be filtered out of the rendered chat card and preventing informational notices from keeping the card open by themselves.
 - Added `clericRuntimeFinalCertification.test.ts` to guard the live certification contract, resource identity closure, domain spell contract, Channel Divinity progression, Divine Spark scaling and the explicit Greater Divine Intervention GM boundary.
 - CI on `dev` commit `47742bef4af7b212020bf39f476e4b2cef1c5703` is fully green: build succeeds, lint has no errors, and the repository-wide test suite passes after the Opus regression guards are reconciled.
