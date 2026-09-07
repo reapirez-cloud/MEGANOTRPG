@@ -184,6 +184,7 @@ const undying: Patron = {
 const patrons: Patron[] = [hexblade, fathomless, genie, undead, undying]
 const parent = warlockSubclassRuntimeBundles.find((bundle) => bundle.template.catalog_key === "class:warlock")
 if (!parent) throw new Error("Warlock parent runtime bundle is missing")
+const parentTemplateId = parent.template.id
 const now = "2026-09-07T10:06:00.000Z"
 
 function bundleFor(patron: Patron): CharacterTemplateBundle {
@@ -192,7 +193,7 @@ function bundleFor(patron: Patron): CharacterTemplateBundle {
     assignment: { id: `${templateId}-assignment`, character_id: "warlock-supplemental-runtime-character", template_id: templateId, template_level: null, selected_choices: {}, assigned_at: now, updated_at: now },
     template: {
       id: templateId, campaign_id: "warlock-supplemental-runtime-campaign", kind: "subclass", slug: patron.id, name: patron.name, description: patron.description,
-      version: 1, mechanics: [], choices: [], parent_template_id: parent.template.id, unlock_level: 3, catalog_key: patron.catalogKey,
+      version: 1, mechanics: [], choices: [], parent_template_id: parentTemplateId, unlock_level: 3, catalog_key: patron.catalogKey,
       catalog_revision: WARLOCK_SUPPLEMENTAL_RUNTIME_REVISION, source_kind: "official", source_label: "Official supplemental Warlock patron",
       is_builtin: true, mechanical_summary: "Полный supplemental runtime: CE-пулы, действия, пассивы и явно семантические условия сцены.",
       rules_meta: { base_class: "class:warlock", mechanics_status: "READY", runtime_scope: "WARLOCK_SUPPLEMENTAL_5", feature_levels: [3,6,10,14], gm_adjudication_boundary: true },
@@ -212,7 +213,7 @@ export function assertWarlockSupplementalRuntime(): void {
   if (subclasses.length !== 5) throw new Error(`WARLOCK_SUPPLEMENTAL_COUNT:${subclasses.length}`)
   for (const bundle of subclasses) {
     if (!WARLOCK_SUPPLEMENTAL_RUNTIME_CATALOG_KEYS.includes(bundle.template.catalog_key as WarlockSupplementalCatalogKey)) throw new Error(`WARLOCK_SUPPLEMENTAL_KEY:${bundle.template.catalog_key}`)
-    if (bundle.template.parent_template_id !== parent.template.id || bundle.template.unlock_level !== 3) throw new Error(`WARLOCK_SUPPLEMENTAL_PARENT:${bundle.template.catalog_key}`)
+    if (bundle.template.parent_template_id !== parentTemplateId || bundle.template.unlock_level !== 3) throw new Error(`WARLOCK_SUPPLEMENTAL_PARENT:${bundle.template.catalog_key}`)
     const levels = bundle.levels.map((entry) => entry.level)
     if (levels.join(",") !== WARLOCK_SUPPLEMENTAL_RUNTIME_LEVELS.join(",")) throw new Error(`WARLOCK_SUPPLEMENTAL_LEVELS:${bundle.template.catalog_key}`)
   }
