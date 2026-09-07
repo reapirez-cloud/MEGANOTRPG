@@ -1,6 +1,7 @@
 import type { CharacterContribution, CharacterSource, FormulaExpression } from "../character-engine/index.ts"
 import { contributionForStoredMechanic } from "../lib/characterMechanics.ts"
 import type { StoredMechanic, StoredMechanics } from "../types/characterMechanics.ts"
+import { choiceOptionSourceAvailable } from "./choiceSourceRequirements.ts"
 import {
   mechanicsForStructuredChoiceInstance,
   structuredChoiceInstanceIdentity,
@@ -180,6 +181,8 @@ function choiceContributions(
   sourceLevel: number,
   unlockLevel: number,
   nodes: Map<string, TemplateSourceNode>,
+  bundles: CharacterTemplateBundle[],
+  characterLevel: number,
 ): CharacterContribution[] {
   if (!requirementAvailableV2(definition, bundle.assignment.selected_choices, sourceLevel)) return []
 
@@ -188,6 +191,9 @@ function choiceContributions(
 
   return selected.flatMap((instance, index) => {
     const key = instance.option
+    const rule = definition.option_rules?.[key] || {}
+    if (!choiceOptionSourceAvailable(rule, bundles, characterLevel)) return []
+
     const optionName = definition.option_labels?.[key] || key
     const identity = structuredChoiceInstanceIdentity(instance, index, selected)
     const source: CharacterSource = {
@@ -276,11 +282,15 @@ export function resolveTemplateBundles(bundles: CharacterTemplateBundle[], chara
     if (bundle.template.kind === "subclass" && effectiveLevel < rootUnlockLevel) continue
 
     contributions.push(...mechanicContributions(bundle, bundle.template.mechanics || [], effectiveLevel, 1, nodes))
-    for (const definition of bundle.template.choices || []) contributions.push(...choiceContributions(bundle, definition, effectiveLevel, 1, nodes))
+    for (const definition of bundle.template.choices || []) {
+      contributions.push(...choiceContributions(bundle, definition, effectiveLevel, 1, nodes, bundles, characterLevel))
+    }
 
     for (const level of bundle.levels.filter((entry) => entry.level <= effectiveLevel).sort((a, b) => a.level - b.level)) {
       contributions.push(...mechanicContributions(bundle, level.mechanics || [], effectiveLevel, level.level, nodes))
-      for (const definition of level.choices || []) contributions.push(...choiceContributions(bundle, definition, effectiveLevel, level.level, nodes))
+      for (const definition of level.choices || []) {
+        contributions.push(...choiceContributions(bundle, definition, effectiveLevel, level.level, nodes, bundles, characterLevel))
+      }
     }
   }
 
