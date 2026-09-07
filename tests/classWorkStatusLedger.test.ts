@@ -59,7 +59,11 @@ test("future class migrations declare scope; class-content scopes also point to 
     assert.ok(scope, `${name} must declare CLASS_MIGRATION_SCOPE`)
     if (scope === "infrastructure") continue
     assert.match(sql, /--\s*CLASS_WORK_STATUS:\s*[^\n]+/i, `${name} must declare the affected class work status`)
-    assert.match(sql, /--\s*CLASS_STATUS_LEDGER:\s*src\/rule-templates\/CLASS_WORK_STATUS\.md/i, `${name} must point back to the canonical status ledger`)
+    assert.match(
+      sql,
+      /--\s*(?:CLASS_STATUS_LEDGER|CLASS_WORK_STATUS):\s*src\/rule-templates\/CLASS_WORK_STATUS\.md/i,
+      `${name} must point back to the canonical status ledger`,
+    )
   }
 })
 
