@@ -50,13 +50,14 @@ test("player-facing reference distinguishes rebuilt runtime classes from literar
   )
   assert.deepEqual(
     classReference.filter((entry) => !entry.referenceOnly).map((entry) => entry.id).sort(),
-    ["cleric", "druid", "fighter", "wizard"],
+    ["cleric", "druid", "fighter", "warlock", "wizard"],
   )
   assert.deepEqual(
     classReference.filter((entry) => entry.referenceOnly).map((entry) => entry.id).sort(),
-    ["bard", "monk", "paladin", "sorcerer", "warlock"],
+    ["bard", "monk", "paladin", "sorcerer"],
   )
   assert.equal(classReference.find((entry) => entry.id === "wizard")?.subclasses.length, 13)
+  assert.equal(classReference.find((entry) => entry.id === "warlock")?.referenceOnly, false)
 })
 
 test("legacy reset remains immutable history and does not touch custom easter-egg classes", () => {
