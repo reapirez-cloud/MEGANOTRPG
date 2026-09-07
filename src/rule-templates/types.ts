@@ -16,6 +16,15 @@ export type RuleChoiceRequirement = {
   option: string
 }
 
+export type RuleChoiceSourceRequirement = {
+  /** Stable catalog identity of another assigned template required by this option. */
+  catalog_key: string
+  /** Optional persistent choice on that source assignment. */
+  choice_key?: string
+  /** Optional required option inside choice_key. */
+  choice_option?: string
+}
+
 export type RuleChoiceSelectorOption = {
   value: string
   label?: string
@@ -35,6 +44,8 @@ export type RuleChoiceOptionRule = {
   required_options?: string[]
   required_invocations?: string[]
   required_choices?: Array<string | RuleChoiceRequirement>
+  /** Option is active when at least one cross-template source requirement is satisfied. */
+  source_requirements_any?: RuleChoiceSourceRequirement[]
   mechanics?: StoredMechanics
 }
 
