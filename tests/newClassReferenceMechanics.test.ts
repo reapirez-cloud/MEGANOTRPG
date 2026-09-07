@@ -5,12 +5,14 @@ import { classReference } from "../src/data/classReference.ts"
 import fs from "node:fs"
 
 const expected = ["bard", "monk", "paladin", "sorcerer", "warlock"]
+const referenceOnlyClasses = new Set(["bard", "monk", "paladin", "sorcerer"])
+const warlockRuntimePatrons = new Set(["archfey", "celestial", "fiend", "great-old-one"])
 
-test("translated new classes expose complete reference mechanics without runtime activation", () => {
+test("translated new classes expose complete reference mechanics with truthful runtime activation", () => {
   for (const classId of expected) {
     const entry = classReference.find((candidate) => candidate.id === classId)
     assert.ok(entry, `${classId} is absent from class reference`)
-    assert.equal(entry.referenceOnly, true, `${classId} must remain reference-only`)
+    assert.equal(entry.referenceOnly, referenceOnlyClasses.has(classId), `${classId} runtime/reference status is stale`)
     assert.ok(entry.features?.length, `${classId} has no base feature cards`)
 
     for (const feature of entry.features ?? []) {
@@ -28,6 +30,21 @@ test("translated new classes expose complete reference mechanics without runtime
       }
     }
   }
+})
+
+test("Warlock reference mirrors the certified PHB 2024 runtime boundary", () => {
+  const warlock = classReference.find((candidate) => candidate.id === "warlock")
+  assert.ok(warlock, "warlock is absent from class reference")
+  assert.equal(warlock.referenceOnly, false, "base Warlock must use the certified runtime template")
+
+  const seenRuntimePatrons = new Set<string>()
+  for (const subclass of warlock.subclasses) {
+    const runtimeReady = warlockRuntimePatrons.has(subclass.id)
+    assert.equal(subclass.referenceOnly, !runtimeReady, `warlock/${subclass.id} runtime/reference status is stale`)
+    if (runtimeReady) seenRuntimePatrons.add(subclass.id)
+  }
+
+  assert.deepEqual(seenRuntimePatrons, warlockRuntimePatrons)
 })
 
 test("missing-translation notes are carried into the visible Reference Guide", () => {
