@@ -332,30 +332,40 @@ Base Monk and all declared Monk runtime packages are implemented, regression-gat
 - `authoring_plan: src/data/classes/sorcererAuthoringPlan.md`
 - `current_dev_text: Luka base narration plus the nine originally planned Sorcerer identities are authored; Runechild / Kazimir, Phoenix / Marfa and Stone / Gordey are additionally preserved as extended candidates`
 - `exact_reference_rules: READY_CURRENT_AUTHORED_ROSTER_2026_09_04`
-- `last_mechanics_audit_started: 2026-09-08`
+- `last_mechanics_audit_started: 2026-09-09`
 - `stage_1_foundation: READY_2026_09_08_PR_60`
 - `stage_1_runtime_revision: xphb-2024-sorcerer-stage1-foundation-v2`
 - `stage_2_resource_runtime: READY_2026_09_08`
 - `stage_2_runtime_revision: xphb-2024-sorcerer-stage2-resource-v1`
 - `stage_2_migration: supabase/migrations/20260908192000_sorcerer_stage2_resource_runtime_v1.sql`
 - `stage_2_regressions: tests/sorcererResourceRuntimeStage2.test.ts; tests/sorcererStage2MigrationShape.test.ts`
-- `runtime_visibility: BASE_STAGE2_RESOURCE_ACTIVE_DEV_AND_PRODUCTION_2026_09_08`
-- `class_reference_visibility: ACTIVE_REFERENCE_ONLY_UNTIL_LATER_RUNTIME_STAGES_CLOSE`
+- `stage_3_font_of_magic_runtime: READY_2026_09_08_PR_62`
+- `stage_3_runtime_revision: xphb-2024-sorcerer-stage3-font-of-magic-v1`
+- `stage_3_reverse_conversion_correction: READY_2026_09_09`
+- `stage_3_reverse_conversion_migration: supabase/migrations/20260908230000_sorcerer_stage3_reverse_conversion_fix_v1.sql`
+- `stage_4_metamagic_runtime: READY_2026_09_09_PR_63`
+- `stage_4_runtime_revision: xphb-2024-sorcerer-stage4-metamagic-v1`
+- `stage_4_migrations: supabase/migrations/20260908231500_sorcerer_stage4_spell_modifier_runtime_v1.sql; supabase/migrations/20260908232000_sorcerer_stage4_metamagic_runtime_v1.sql`
+- `stage_4_regression: tests/sorcererMetamagicStage4.test.ts`
+- `runtime_visibility: BASE_STAGE4_METAMAGIC_ACTIVE_DEV_AND_PRODUCTION_2026_09_09`
+- `class_reference_visibility: ACTIVE_REFERENCE_ONLY_UNTIL_REMAINING_RUNTIME_STAGES_CLOSE`
 - `canonical_resources: innate_sorcery=2/LR; sorcery_points=max Sorcerer level/LR; sorcerous_restoration=1/LR`
 - `sorcerous_restoration_amount: floor(Sorcerer level / 2), after Short Rest, from Sorcerer level 5`
 - `assignment_resource_sync: ACTIVE; persistent current lives in character_resource_states and level changes preserve spent deficit`
-- `production_runtime: STAGE2_RESOURCE_DEPLOYED_2026_09_08`
-- `font_of_magic_conversion_runtime: PENDING_STAGE3`
-- `metamagic_runtime: PENDING_STAGE4`
-- `spell_runtime: PENDING`
+- `production_runtime: STAGE4_METAMAGIC_DEPLOYED_2026_09_09`
+- `font_of_magic_conversion_runtime: READY_STAGE3_PLUS_2024_REVERSE_CONVERSION_CORRECTION`
+- `metamagic_runtime: READY_STAGE4_10_OPTIONS_CHOICE_2_4_6_ATOMIC_GENA_CAST`
+- `sorcery_incarnate_runtime: PENDING_STAGE5`
+- `arcane_apotheosis_runtime: PENDING_STAGE5`
+- `spell_runtime: PENDING_LATER_STAGE`
 - `subclass_runtime: PENDING`
 - `subclasses: COMPLETE_9_PLANNED_PLUS_3_EXTENDED_AUTHORED`
 - `planned_authored: aberrant-sorcery, clockwork-sorcery, draconic-sorcery, wild-magic, divine-soul, shadow-magic, storm-sorcery, lunar-sorcery, pyromancer`
 - `extended_candidates: runechild, phoenix-sorcery, stone-sorcery`
 - `source_policy: source/publication labels in literary copy are non-authoritative; Plane Shift, partner/community and UA eligibility must be independently verified before runtime inclusion`
-- `mechanics_policy: Stage 1 structural foundation and Stage 2 persistent resource accounting are active; full class mechanics remain IN_PROGRESS until Font of Magic conversion, Metamagic execution, spell runtime and the later declared stages are implemented and verified`
+- `mechanics_policy: Stages 1–4 are active in the shared template/CE/Shapoklyak/GENA pipeline: foundation, persistent Sorcerer resources, bidirectional Font of Magic conversion and Metamagic choice/execution. Overall class mechanics remain IN_PROGRESS until Sorcery Incarnate, Arcane Apotheosis, the remaining base-class runtime work, spell runtime and later declared subclass/full-integration stages are implemented and verified.`
 
-Sorcerer Stage 1 foundation and Stage 2 persistent resource accounting are installed in the shared template/CE/Shapoklyak resource pipeline and deployed to the connected Supabase target. The player reference remains explicitly reference-only for the unfinished class package; Stage 2 does not claim Font of Magic slot conversion, Metamagic execution, spell runtime or subclass runtime.
+Sorcerer Stages 1–4 are installed and deployed. Metamagic uses the generic persistent choice runtime with the official ten-option roster, 2/4/6 known-option progression, one replacement on a Sorcerer level gain, real Sorcery Point costs and one receipt-aware GENA transaction for spell plus selected modifier. The 2024 Font of Magic reverse slot-to-Sorcery-Points conversion is also corrected by a forward-only migration. Stage 5+ work remains explicit; this ledger does not claim Sorcery Incarnate, Arcane Apotheosis, full Sorcerer spell runtime or subclass runtime as complete.
 
 ---
 
