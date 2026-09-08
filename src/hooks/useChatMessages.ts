@@ -42,6 +42,16 @@ export type ChatTemplateSpellRequest = {
   label: string
   payload?: ChatEventPayload
 }
+export type ChatSpellWithModifiersRequest = {
+  characterId: string
+  spellMechanicId?: string
+  methodKey?: string
+  optionKey?: string
+  spellResourceCosts?: ResourceCostInput[]
+  modifierMechanicIds: string[]
+  label: string
+  payload?: ChatEventPayload
+}
 export type ChatInventoryUseRequest = Omit<ChatRollRequest, "characterId"> & {
   characterId: string
   itemId: string
@@ -49,10 +59,9 @@ export type ChatInventoryUseRequest = Omit<ChatRollRequest, "characterId"> & {
   payload?: ChatEventPayload
 }
 
-// GENA gateway owns send_chat_roll_v3, send_chat_template_roll_v1,
-// send_chat_template_action_v1 and send_chat_template_spell_v1. Keeping the
-// names here makes the migration boundary discoverable without letting this UI
-// hook become the RPC owner again.
+// GENA gateway owns receipt-aware template actions/rolls/spells and the atomic
+// spell+modifier command. This hook only forwards gameplay intentions and keeps
+// chat presentation synchronized with the returned event.
 
 const fields = "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at, attachment_url, attachment_kind, event_kind, event_payload"
 const PAGE_SIZE = 50
@@ -215,6 +224,10 @@ export function useChatMessages(roomId: string) {
     return runGenaCommand(() => genaSession.sendTemplateSpell({ roomId, ...request }))
   }, [roomId, runGenaCommand])
 
+  const sendSpellWithModifiers = useCallback(async (request: ChatSpellWithModifiersRequest): Promise<boolean> => {
+    return runGenaCommand(() => genaSession.sendSpellWithModifiers({ roomId, ...request }))
+  }, [roomId, runGenaCommand])
+
   const useInventoryItem = useCallback(async (request: ChatInventoryUseRequest): Promise<boolean> => {
     return runGenaCommand(() => genaSession.useInventoryItem({ roomId, ...request }))
   }, [roomId, runGenaCommand])
@@ -254,6 +267,7 @@ export function useChatMessages(roomId: string) {
     sendEvent,
     sendTemplateAction,
     sendTemplateSpell,
+    sendSpellWithModifiers,
     useInventoryItem,
     editMessage,
     deleteMessage,
