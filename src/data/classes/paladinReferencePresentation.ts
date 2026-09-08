@@ -1,11 +1,30 @@
 import { paladinReferenceComplete } from "./paladinReferenceComplete.ts"
-import type { ClassReferenceSubclassFeature } from "../classReferenceCatalog.ts"
 import type { RuleTemplate, RuleTemplateLevel } from "../../rule-templates/types.ts"
 import type { StoredMechanic } from "../../types/characterMechanics.ts"
 
-type AuthoredFeature = ClassReferenceSubclassFeature
+type AuthoredFeature = {
+  level: number
+  name: string
+  explanation: string
+  mechanics: string
+  voss?: string
+}
 
-type AuthoredSubclass = (typeof paladinReferenceComplete.subclasses)[number]
+type AuthoredSubclass = {
+  id: string
+  explanation?: string
+  voss?: string
+  features?: AuthoredFeature[]
+}
+
+type AuthoredPaladin = {
+  explanation?: string
+  voss?: string
+  features?: AuthoredFeature[]
+  subclasses: AuthoredSubclass[]
+}
+
+const authoredPaladin = paladinReferenceComplete as unknown as AuthoredPaladin
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value)
@@ -66,7 +85,7 @@ function decorateMechanic(mechanic: StoredMechanic, feature: AuthoredFeature): S
 
 function featureAssignments(
   level: number,
-  authoredFeatures: readonly AuthoredFeature[] | undefined,
+  authoredFeatures: AuthoredFeature[] | undefined,
   mechanics: StoredMechanic[],
 ) {
   const authored = (authoredFeatures || []).filter((feature) => feature.level === level)
@@ -98,14 +117,8 @@ function featureAssignments(
 
   const unmatchedFeatures = authored.filter((feature) => !usedFeatures.has(feature))
   const unmatchedSources = [...groups.keys()].filter((source) => !assignment.has(source))
-
-  // Runtime groups and authored cards are normally one-to-one by sourceKey. When
-  // localized labels drift, preserve the old authored order rather than dropping
-  // the translation entirely. This only decorates client-side presentation copies.
   if (unmatchedFeatures.length === unmatchedSources.length) {
     unmatchedFeatures.forEach((feature, index) => assignment.set(unmatchedSources[index], feature))
-  } else if (unmatchedFeatures.length === 1 && unmatchedSources.length === 1) {
-    assignment.set(unmatchedSources[0], unmatchedFeatures[0])
   }
 
   return assignment
@@ -113,7 +126,7 @@ function featureAssignments(
 
 function decorateLevelMechanics(
   level: number,
-  authoredFeatures: readonly AuthoredFeature[] | undefined,
+  authoredFeatures: AuthoredFeature[] | undefined,
   mechanics: StoredMechanic[],
 ) {
   const assignment = featureAssignments(level, authoredFeatures, mechanics)
@@ -132,10 +145,7 @@ function subclassId(template: RuleTemplate) {
 
 /**
  * Restores the authored Russian Paladin reference layer over live CE mechanics.
- *
- * The returned templates are presentation copies only. Runtime resource/action/
- * spell mechanics remain untouched; we restore names, translated rules, stories
- * and Voss comments that existed before the Paladin switched to rule_templates.
+ * These are presentation-only copies; Character Engine execution is untouched.
  */
 export function applyPaladinReferencePresentation(
   templates: RuleTemplate[],
@@ -146,9 +156,8 @@ export function applyPaladinReferencePresentation(
   )
   if (!paladin) return { templates, levels }
 
-  const authoredClassFeatures = paladinReferenceComplete.features || []
-  const authoredSubclassById = new Map<string, AuthoredSubclass>(
-    paladinReferenceComplete.subclasses.map((subclass) => [subclass.id, subclass]),
+  const authoredSubclassById = new Map(
+    authoredPaladin.subclasses.map((subclass) => [subclass.id, subclass]),
   )
   const authoredSubclassByTemplateId = new Map<string, AuthoredSubclass>()
 
@@ -162,22 +171,21 @@ export function applyPaladinReferencePresentation(
     if (template.id === paladin.id) {
       return {
         ...template,
-        author_description: paladinReferenceComplete.explanation || template.author_description,
-        author_comment: paladinReferenceComplete.voss || template.author_comment,
-        mechanics: decorateLevelMechanics(1, authoredClassFeatures, template.mechanics || []),
+        author_description: authoredPaladin.explanation || template.author_description,
+        author_comment: authoredPaladin.voss || template.author_comment,
+        mechanics: decorateLevelMechanics(1, authoredPaladin.features, template.mechanics || []),
       }
     }
 
     const authored = authoredSubclassByTemplateId.get(template.id)
     if (!authored) return template
-    const features = "features" in authored ? authored.features : undefined
     return {
       ...template,
       author_description: authored.explanation || template.author_description,
       author_comment: authored.voss || template.author_comment,
       mechanics: decorateLevelMechanics(
         Math.max(1, template.unlock_level || 3),
-        features,
+        authored.features,
         template.mechanics || [],
       ),
     }
@@ -187,16 +195,15 @@ export function applyPaladinReferencePresentation(
     if (row.template_id === paladin.id) {
       return {
         ...row,
-        mechanics: decorateLevelMechanics(row.level, authoredClassFeatures, row.mechanics || []),
+        mechanics: decorateLevelMechanics(row.level, authoredPaladin.features, row.mechanics || []),
       }
     }
 
     const authored = authoredSubclassByTemplateId.get(row.template_id)
     if (!authored) return row
-    const features = "features" in authored ? authored.features : undefined
     return {
       ...row,
-      mechanics: decorateLevelMechanics(row.level, features, row.mechanics || []),
+      mechanics: decorateLevelMechanics(row.level, authored.features, row.mechanics || []),
     }
   })
 
