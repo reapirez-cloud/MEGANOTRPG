@@ -33,7 +33,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function normalizeName(value: string) {
   return value
     .toLocaleLowerCase("ru")
-    .replaceAll("ё", "е")
+    .replace(/ё/g, "е")
     .replace(/[^a-zа-я0-9]+/gi, "")
 }
 
@@ -48,7 +48,8 @@ function mechanicLabels(mechanics: StoredMechanic[]) {
       labels.add(mechanic.label.trim())
     }
     if (mechanic.type === "grant" && isRecord(mechanic.payload)) {
-      const label = mechanic.payload.label
+      const payload = mechanic.payload as unknown as Record<string, unknown>
+      const label = payload.label
       if (typeof label === "string" && label.trim()) labels.add(label.trim())
     }
   }
@@ -66,14 +67,15 @@ function decorateMechanic(mechanic: StoredMechanic, feature: AuthoredFeature): S
     return { ...mechanic, presentation } as StoredMechanic
   }
 
-  const existingDescription = typeof mechanic.payload.description === "string"
-    ? mechanic.payload.description
+  const payload = mechanic.payload as unknown as Record<string, unknown>
+  const existingDescription = typeof payload.description === "string"
+    ? payload.description
     : ""
 
   return {
     ...mechanic,
     payload: {
-      ...mechanic.payload,
+      ...payload,
       label: feature.name,
       description: feature.mechanics || existingDescription,
       authorExplanation: feature.explanation,
