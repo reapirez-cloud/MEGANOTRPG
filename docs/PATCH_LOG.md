@@ -18,6 +18,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Preserved the exact Greater Divine Intervention rule: choosing Wish changes recovery to `2d4` Long Rests. That exceptional randomized cooldown is explicitly GM-adjudicated because the current authoritative runtime does not own the nested spell choice or the rolled `2d4` result; no fake cooldown counter was introduced.
 - Began the clean Sorcerer 2024 runtime rebuild: the base `class:sorcerer` foundation is now assignable with its 1–20 structural progression, core proficiencies and class skill choice while the existing Luka/reference prose remains a separate presentation source.
 - Added the Sorcerer Stage 2 resource layer: Innate Sorcery has two real Long Rest uses, Sorcery Points become a persistent pool from level 2 with maximum equal to Sorcerer level, and Sorcerous Restoration from level 5 restores up to `floor(Sorcerer level / 2)` spent points after a Short Rest once per Long Rest.
+- Added Sorcerer Stage 3 Font of Magic slot conversion and corrected the 2024 reverse conversion: an unexpended spell slot can be converted back into Sorcery Points without an action, from 1st-level slot → 1 point through 9th-level slot → 9 points.
+- Added Sorcerer Stage 4 Metamagic to the actual spell-casting flow: all ten 2024 options are selectable, known options scale `2 → 4 → 6` at Sorcerer levels 2/10/17, one known option may be replaced on a Sorcerer level gain, and Chat lets the player attach eligible Metamagic to the exact spell being cast.
 
 ### Runtime and architecture changes
 
@@ -28,7 +30,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Updated the historical Character Profile v5 regression guards to the current Opus presentation contract. This changes tests only; it does not revert the intentional Opus redesign or create a second character mechanics owner.
 - Sorcerer Stage 1 installs one active builtin `class:sorcerer`/`sorcerer-core` template per campaign, 20 level rows, stable level-specific feature identities, Constitution/Charisma save proficiencies, simple weapons and the six-option/two-pick class skill choice. The class remains overall `IN_PROGRESS`; structural presence is not a full mechanics-completion claim.
 - Sorcerer Stage 2 uses the shared template/Character Engine/Shapoklyak resource model rather than adding class-specific tables. Canonical current values live in `character_resource_states`; assignment and level synchronization preserves the spent deficit when the maximum grows and removes orphaned Sorcerer counters when the class is removed.
-- Stage 2 deliberately stops before Font of Magic slot conversion and Metamagic execution. Those remain separate later stages, as do the full Sorcerer spell-selection runtime and subclass packages.
+- Sorcerer Stage 3 uses generic resource effects for both directions of Font of Magic and keeps created temporary slot capacity in the canonical spell-slot ledger rather than introducing a Sorcerer-only slot table.
+- Sorcerer Stage 4 reuses Choice Runtime v2 and CE resource-backed actions instead of a class-specific Metamagic engine. The receipt-aware GENA composite spell command validates the selected modifier actions and spends the spell slot plus Sorcery Points atomically under one stable `commandId`, so retries cannot double-spend either resource.
+- The live Sorcerer catalog is now `xphb-2024-sorcerer-stage4-metamagic-v1`; Sorcery Incarnate, Arcane Apotheosis, remaining base-class work, the later spell-runtime closure and subclasses remain later stages rather than being hidden behind a false `READY` claim.
 
 ### Tests / verification
 
@@ -40,6 +44,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added `sorcererCatalogStage1.test.ts`, `sorcererResourceRuntimeStage2.test.ts` and `sorcererStage2MigrationShape.test.ts` covering the clean foundation, 1–20 structural progression, resource-policy/package gates, low/mid/high-level CE resolution, resource spending/restoration and assignment persistence semantics.
 - PR #61 CI confirms the Sorcerer Stage 2 tests pass, production build succeeds and lint has zero errors. The repository-wide suite still has the same five pre-existing Paladin reconciliation failures already present on the `dev` base; none of the Sorcerer tests fail.
 - Applied `sorcerer_stage2_resource_runtime_v1` to the connected Supabase project and re-audited the live template: revision `xphb-2024-sorcerer-stage2-resource-v1`, runtime stage 2, resource runtime active, Font conversion and Metamagic still false. The deployed resource definitions are exactly `innate_sorcery` (2/LR), `sorcery_points` (max = Sorcerer level/LR) and `sorcerous_restoration` (1/LR).
+- Applied the Stage 3 reverse-conversion correction and both Stage 4 migrations to the connected Supabase project. Live verification reports `runtime_stage=4`, `metamagic_runtime_included=true`, `font_of_magic_reverse_conversion_runtime=true`, exactly 10 Metamagic options and `count_by_level={2:2,10:4,17:6}`.
+- Added `sorcererMetamagicStage4.test.ts`; all eight Stage 4 checks pass, covering the complete option roster/costs, 2/4/6 progression, one-option level-up replacement, CE resource actions, Empowered/Seeking combination exceptions, reverse Font conversion, atomic GENA spell+modifier execution and Chat wiring.
+- PR #63 build/lint/Stage 4 regression verification passes after the UI import repair. The full repository suite retains only the same five inherited Paladin reconciliation failures present on the `dev` base; no Sorcerer Stage 4 regression fails.
 
 ## Released patches
 
