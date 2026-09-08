@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import type { ResolvedAction, ResolvedSpell } from "../../character-engine/index.ts"
 import "./ChatActionSheet.css"
 
-export function spellModifierActions(actions: ResolvedAction[]) {
+function spellModifierActions(actions: ResolvedAction[]) {
   return actions.filter((action) => action.tags.includes("spell_modifier"))
 }
 
@@ -10,7 +10,7 @@ function isStackException(action: ResolvedAction) {
   return action.tags.includes("metamagic_stack_exception")
 }
 
-export function canCombineSpellModifier(selected: ResolvedAction[], candidate: ResolvedAction) {
+function canCombineSpellModifier(selected: ResolvedAction[], candidate: ResolvedAction) {
   if (selected.some((action) => action.stateKey === candidate.stateKey)) return true
   if (selected.length >= 3) return false
   if (isStackException(candidate)) return true
