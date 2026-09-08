@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import type { ResolvedAction, ResolvedSpell } from "../../character-engine/index.ts"
 import "./ChatActionSheet.css"
 
-function spellModifierActions(actions: ResolvedAction[]) {
+export function spellModifierActions(actions: ResolvedAction[]) {
   return actions.filter((action) => action.tags.includes("spell_modifier"))
 }
 
