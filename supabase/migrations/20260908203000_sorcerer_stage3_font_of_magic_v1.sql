@@ -3,6 +3,7 @@
 -- CLASS_RESOURCE_POLICY: short-long-rest-v1
 -- CLASS_PACKAGE_TEST: tests/sorcererFontOfMagicStage3.test.ts
 -- CLASS_WORK_STATUS: sorcerer:stage3_font_of_magic=READY
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 --
 -- Stage 3: 2024 Font of Magic spell-slot creation.
 -- A created slot is represented as a generic temporary maximum bonus on the
