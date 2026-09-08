@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { applyPaladinReferencePresentation } from "../data/classes/paladinReferencePresentation.ts"
 import { applyWarlockReferencePresentation } from "../data/classes/warlockReferencePresentation.ts"
 import { supabase } from "../lib/supabase.ts"
 import type { RuleTemplate, RuleTemplateKind, RuleTemplateLevel } from "../rule-templates/types.ts"
@@ -24,7 +25,8 @@ export function useRuleTemplates(campaignId: string, includeInactive = false) {
     const levelResult = await supabase.from("rule_template_levels").select("id,template_id,level,mechanics,choices").in("template_id", ids).order("level")
     if (levelResult.error) { setError(levelResult.error.message); setLoading(false); return }
     const rawLevels = (levelResult.data || []) as RuleTemplateLevel[]
-    const presented = applyWarlockReferencePresentation(rawTemplates, rawLevels)
+    const warlockPresented = applyWarlockReferencePresentation(rawTemplates, rawLevels)
+    const presented = applyPaladinReferencePresentation(warlockPresented.templates, warlockPresented.levels)
     setTemplates(presented.templates)
     setLevels(presented.levels)
     setLoading(false)
