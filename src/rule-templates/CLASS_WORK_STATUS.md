@@ -324,7 +324,7 @@ Base Monk and all declared Monk runtime packages are implemented, regression-gat
 ## Sorcerer (`class:sorcerer`)
 
 **Text:** `READY_AUTHORING_SCOPE`  
-**Mechanics/runtime:** `NOT_STARTED`
+**Mechanics/runtime:** `IN_PROGRESS`
 
 - `authoring_started: 2026-09-03`
 - `authoring_source: src/data/classes/sorcererReferenceDraft.ts`
@@ -332,15 +332,30 @@ Base Monk and all declared Monk runtime packages are implemented, regression-gat
 - `authoring_plan: src/data/classes/sorcererAuthoringPlan.md`
 - `current_dev_text: Luka base narration plus the nine originally planned Sorcerer identities are authored; Runechild / Kazimir, Phoenix / Marfa and Stone / Gordey are additionally preserved as extended candidates`
 - `exact_reference_rules: READY_CURRENT_AUTHORED_ROSTER_2026_09_04`
-- `runtime_visibility: NOT_ACTIVE`
-- `class_reference_visibility: ACTIVE_REFERENCE_ONLY`
+- `last_mechanics_audit_started: 2026-09-08`
+- `stage_1_foundation: READY_2026_09_08_PR_60`
+- `stage_1_runtime_revision: xphb-2024-sorcerer-stage1-foundation-v2`
+- `stage_2_resource_runtime: READY_2026_09_08`
+- `stage_2_runtime_revision: xphb-2024-sorcerer-stage2-resource-v1`
+- `stage_2_migration: supabase/migrations/20260908192000_sorcerer_stage2_resource_runtime_v1.sql`
+- `stage_2_regressions: tests/sorcererResourceRuntimeStage2.test.ts; tests/sorcererStage2MigrationShape.test.ts`
+- `runtime_visibility: BASE_STAGE2_RESOURCE_ACTIVE_DEV_AND_PRODUCTION_2026_09_08`
+- `class_reference_visibility: ACTIVE_REFERENCE_ONLY_UNTIL_LATER_RUNTIME_STAGES_CLOSE`
+- `canonical_resources: innate_sorcery=2/LR; sorcery_points=max Sorcerer level/LR; sorcerous_restoration=1/LR`
+- `sorcerous_restoration_amount: floor(Sorcerer level / 2), after Short Rest, from Sorcerer level 5`
+- `assignment_resource_sync: ACTIVE; persistent current lives in character_resource_states and level changes preserve spent deficit`
+- `production_runtime: STAGE2_RESOURCE_DEPLOYED_2026_09_08`
+- `font_of_magic_conversion_runtime: PENDING_STAGE3`
+- `metamagic_runtime: PENDING_STAGE4`
+- `spell_runtime: PENDING`
+- `subclass_runtime: PENDING`
 - `subclasses: COMPLETE_9_PLANNED_PLUS_3_EXTENDED_AUTHORED`
 - `planned_authored: aberrant-sorcery, clockwork-sorcery, draconic-sorcery, wild-magic, divine-soul, shadow-magic, storm-sorcery, lunar-sorcery, pyromancer`
 - `extended_candidates: runechild, phoenix-sorcery, stone-sorcery`
 - `source_policy: source/publication labels in literary copy are non-authoritative; Plane Shift, partner/community and UA eligibility must be independently verified before runtime inclusion`
-- `mechanics_policy: exact reference rules are present; Sorcery Point/Metamagic resources, CE actions/choices and runtime package remain a separate future implementation before activation`
+- `mechanics_policy: Stage 1 structural foundation and Stage 2 persistent resource accounting are active; full class mechanics remain IN_PROGRESS until Font of Magic conversion, Metamagic execution, spell runtime and the later declared stages are implemented and verified`
 
-The authored Sorcerer reference is visible through `classReference`, but it must not be imported into Chasovoy runtime templates or Character Class runtime UI until source eligibility, resources/actions/choices and package-quality tests are complete enough for activation.
+Sorcerer Stage 1 foundation and Stage 2 persistent resource accounting are installed in the shared template/CE/Shapoklyak resource pipeline and deployed to the connected Supabase target. The player reference remains explicitly reference-only for the unfinished class package; Stage 2 does not claim Font of Magic slot conversion, Metamagic execution, spell runtime or subclass runtime.
 
 ---
 

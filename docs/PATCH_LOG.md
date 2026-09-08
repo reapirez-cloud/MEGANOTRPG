@@ -16,6 +16,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Completed the Cleric runtime package in the supported scope: the base class and all fourteen domains now use the certified Character Engine resource/action/spell pipeline, with the previously split resource identities reconciled so finite abilities spend the real ledgers shown on the character.
 - Corrected Cleric progression/runtime gaps found during the production audit, including Divine Order/Thaumaturge wiring, Divine Spark scaling, domain Channel Divinity spenders, finite domain pools and the legacy Grave Keeper alias.
 - Preserved the exact Greater Divine Intervention rule: choosing Wish changes recovery to `2d4` Long Rests. That exceptional randomized cooldown is explicitly GM-adjudicated because the current authoritative runtime does not own the nested spell choice or the rolled `2d4` result; no fake cooldown counter was introduced.
+- Began the clean Sorcerer 2024 runtime rebuild: the base `class:sorcerer` foundation is now assignable with its 1–20 structural progression, core proficiencies and class skill choice while the existing Luka/reference prose remains a separate presentation source.
+- Added the Sorcerer Stage 2 resource layer: Innate Sorcery has two real Long Rest uses, Sorcery Points become a persistent pool from level 2 with maximum equal to Sorcerer level, and Sorcerous Restoration from level 5 restores up to `floor(Sorcerer level / 2)` spent points after a Short Rest once per Long Rest.
 
 ### Runtime and architecture changes
 
@@ -24,6 +26,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added a final forward-only Cleric certification migration that validates the live deployed template graph before writing `READY`. It fails closed unless the active Cleric has exactly fourteen level-3 domains, canonical prepared-spell progression, Channel Divinity progression/recovery, structured Divine Spark scaling, complete persistent choices, complete domain spell packages and zero broken resource references or duplicate action identities.
 - Production Cleric state is certified as `cleric-runtime-certified@2026-09-06`; all fourteen domains are marked mechanics `READY`, and the live audit reports zero broken resource-cost/effect/persistent-counter references.
 - Updated the historical Character Profile v5 regression guards to the current Opus presentation contract. This changes tests only; it does not revert the intentional Opus redesign or create a second character mechanics owner.
+- Sorcerer Stage 1 installs one active builtin `class:sorcerer`/`sorcerer-core` template per campaign, 20 level rows, stable level-specific feature identities, Constitution/Charisma save proficiencies, simple weapons and the six-option/two-pick class skill choice. The class remains overall `IN_PROGRESS`; structural presence is not a full mechanics-completion claim.
+- Sorcerer Stage 2 uses the shared template/Character Engine/Shapoklyak resource model rather than adding class-specific tables. Canonical current values live in `character_resource_states`; assignment and level synchronization preserves the spent deficit when the maximum grows and removes orphaned Sorcerer counters when the class is removed.
+- Stage 2 deliberately stops before Font of Magic slot conversion and Metamagic execution. Those remain separate later stages, as do the full Sorcerer spell-selection runtime and subclass packages.
 
 ### Tests / verification
 
@@ -32,6 +37,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added `clericRuntimeFinalCertification.test.ts` to guard the live certification contract, resource identity closure, domain spell contract, Channel Divinity progression, Divine Spark scaling and the explicit Greater Divine Intervention GM boundary.
 - CI on `dev` commit `47742bef4af7b212020bf39f476e4b2cef1c5703` is fully green: build succeeds, lint has no errors, and the repository-wide test suite passes after the Opus regression guards are reconciled.
 - Applied the final certification migration to the connected production Supabase project and re-audited the deployed state: class mechanics `READY`, `14/14` domains `READY`, `0` broken resource references, and Greater Divine Intervention retains `Wish → 2d4 Long Rests` with explicit `gm_adjudicated` enforcement metadata.
+- Added `sorcererCatalogStage1.test.ts`, `sorcererResourceRuntimeStage2.test.ts` and `sorcererStage2MigrationShape.test.ts` covering the clean foundation, 1–20 structural progression, resource-policy/package gates, low/mid/high-level CE resolution, resource spending/restoration and assignment persistence semantics.
+- PR #61 CI confirms the Sorcerer Stage 2 tests pass, production build succeeds and lint has zero errors. The repository-wide suite still has the same five pre-existing Paladin reconciliation failures already present on the `dev` base; none of the Sorcerer tests fail.
+- Applied `sorcerer_stage2_resource_runtime_v1` to the connected Supabase project and re-audited the live template: revision `xphb-2024-sorcerer-stage2-resource-v1`, runtime stage 2, resource runtime active, Font conversion and Metamagic still false. The deployed resource definitions are exactly `innate_sorcery` (2/LR), `sorcery_points` (max = Sorcerer level/LR) and `sorcerous_restoration` (1/LR).
 
 ## Released patches
 
