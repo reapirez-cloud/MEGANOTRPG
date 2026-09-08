@@ -238,13 +238,14 @@ Base Cleric and all fourteen supported domains are implemented, regression-gated
 - Signature Spells are implemented with two level-3 held-book selections, always-prepared access, separate free-cast resources and independent Short/Long Rest recovery. Player replacement after the initial selection is not allowed; an uninitialized level-20 choice is exposed in Gena.
 - Scholar uses the agreed informational path: Gena tells the player that Scholar is available; the player chooses an eligible already-proficient skill and asks the GM to raise it to Expertise through the ordinary sheet editor. No dynamic Wizard option provider or feature-specific RPC is required.
 - ASI and Epic Boon do not receive a Wizard-specific picker. They use the generic feat/allocation contract when available or the normal GM sheet-edit path; lack of Wizard-specific automation is not a base-class runtime blocker.
-- Found-spell/scroll transcription, its gold/time procedure, consuming the scroll and spending in-world time are **GM-adjudicated by design**. The GM uses normal inventory/currency/spellbook tools and CE/Gena stores the durable result.
-- Multi-book progression UI mirrors the server rule: a level-progression spell already written in any held Wizard spellbook is not offered again, while the GM's direct per-book grant flow may still target another book where appropriate.
+- Found-spell/scroll transcription, its gold/time procedure, consuming/removing the source, replacement of a lost book and backup-book narrative handling are **GM-adjudicated by design**. The GM uses normal inventory/currency/spellbook tools and CE/Gena stores the durable result.
+- Multi-book progression UI now mirrors the server rule: a level-progression spell already written in any held Wizard spellbook is not offered again, while the GM's direct per-book grant flow may still target another book where appropriate.
 - Action/Bonus Action/Reaction legality and per-turn cadence inside Wizard rules remain GM-adjudicated under `GM_ADJUDICATION_BOUNDARY.md`; CE exposes real resources/access but does not create a turn tracker.
+- The rebuilt base class remains independent of subclass content; Wizard subclass infrastructure and package gates are tracked separately below.
 
 ### Wizard subclasses
 
-- The catalog defines and installs exactly thirteen supported Wizard subclass identities from `wizardSubclasses.ts` and `wizardSubclassMechanics.ts`.
+- The catalog defines and now installs exactly thirteen supported Wizard subclass identities from `wizardSubclasses.ts` and `wizardSubclassMechanics.ts`.
 - Every package attaches to the active `class:wizard` template, unlocks at Wizard level 3 and places compatibility feature rows only at Wizard levels 3/6/10/14.
 - The generic template resolver remains authoritative for effective subclass level. A stale/high subclass assignment or high total character level cannot unlock subclass mechanics before the parent Wizard reaches the required level.
 - The four PHB 2024 identities (Evoker, Diviner, Illusionist, Abjurer) replace their same-school 2014 variants rather than creating duplicate subclasses.
