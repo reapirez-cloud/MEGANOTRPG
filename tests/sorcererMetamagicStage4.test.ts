@@ -263,7 +263,7 @@ test("spell plus Metamagic execution is one receipt-aware GENA transaction", () 
 
 test("chat attaches selected Metamagic to the exact spell cast instead of firing an unrelated action", () => {
   assert.match(gateway, /sendSpellWithModifiers/)
-  assert.match(gateway, /send_chat_spell_with_template_modifiers_v1/)
+  assert.match(gateway, /send_chat_spell_with_template_modifiers_v2/)
   assert.match(chatHook, /sendSpellWithModifiers/)
   assert.match(modifierSheet, /spell_modifier/)
   assert.match(modifierSheet, /metamagic_stack_exception/)
