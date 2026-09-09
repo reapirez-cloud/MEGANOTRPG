@@ -1,3 +1,10 @@
+-- CLASS_MIGRATION_SCOPE: mechanics
+-- CLASS_INTEGRATION_STRICT: class:sorcerer
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
+-- CLASS_PACKAGE_TEST: tests/sorcererMetamagicStage4.test.ts
+-- CLASS_WORK_STATUS: sorcerer:text=READY_AUTHORING_SCOPE;mechanics=IN_PROGRESS
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
+
 begin;
 
 create or replace function private.sorcerer_stage6_spell_mechanic_v1(p_slug text)
