@@ -351,26 +351,34 @@ Base Monk and all declared Monk runtime packages are implemented, regression-gat
 - `stage_5_runtime_revision: xphb-2024-sorcerer-stage5-base-runtime-v1`
 - `stage_5_migrations: supabase/migrations/20260909000000_sorcerer_stage5_stage4_compat_v1.sql; supabase/migrations/20260909010000_sorcerer_stage5_base_runtime_v1.sql; supabase/migrations/20260909011000_sorcerer_stage5_trigger_cleanup_v1.sql`
 - `stage_5_regression: tests/sorcererBaseRuntimeStage5.test.ts`
-- `runtime_visibility: BASE_STAGE5_ACTIVE_DEV_AND_PRODUCTION_2026_09_09`
+- `stage_6_spell_runtime: READY_2026_09_09`
+- `stage_6_runtime_revision: xphb-2024-sorcerer-stage6-spell-runtime-v1`
+- `stage_6_migration: supabase/migrations/20260909090000_sorcerer_stage6_spell_runtime_v1.sql`
+- `stage_6_regression: tests/sorcererSpellRuntimeStage6.test.ts`
+- `runtime_visibility: BASE_STAGE6_ACTIVE_DEV_AND_PRODUCTION_2026_09_09`
 - `class_reference_visibility: ACTIVE_REFERENCE_ONLY_UNTIL_REMAINING_RUNTIME_STAGES_CLOSE`
 - `canonical_resources: innate_sorcery=2/LR; sorcery_points=max Sorcerer level/LR; sorcerous_restoration=1/LR`
 - `sorcerous_restoration_amount: floor(Sorcerer level / 2), after Short Rest, from Sorcerer level 5`
 - `assignment_resource_sync: ACTIVE; persistent current lives in character_resource_states and level changes preserve spent deficit`
-- `production_runtime: STAGE5_BASE_RUNTIME_DEPLOYED_2026_09_09`
+- `production_runtime: STAGE6_SPELL_RUNTIME_DEPLOYED_2026_09_09`
 - `font_of_magic_conversion_runtime: READY_STAGE3_PLUS_2024_REVERSE_CONVERSION_CORRECTION`
 - `metamagic_runtime: READY_STAGE4_10_OPTIONS_CHOICE_2_4_6_ATOMIC_GENA_CAST`
+- `metamagic_cast_rpc: send_chat_spell_with_template_modifiers_v2`
 - `innate_sorcery_activation_runtime: READY_STAGE5_SERVER_60_SECONDS`
 - `sorcery_incarnate_runtime: READY_STAGE5_LEVEL7_FALLBACK_2_SP_AND_TWO_METAMAGIC_WHILE_ACTIVE`
 - `arcane_apotheosis_runtime: READY_STAGE5_LEVEL20_ONE_FREE_METAMAGIC_WHILE_ACTIVE_GM_TURN_BOUNDARY`
-- `spell_runtime: PENDING_LATER_STAGE`
+- `spell_runtime: READY_STAGE6`
+- `spell_runtime_visibility: ACTIVE_DEV_AND_PRODUCTION_2026_09_09`
+- `spell_catalog_links: DYNAMIC_SORCERER_CLASS_CATALOG`
+- `spell_choice_runtime: PERSISTENT_ON_LEVEL_CHANGE_2024`
 - `subclass_runtime: PENDING`
 - `subclasses: COMPLETE_9_PLANNED_PLUS_3_EXTENDED_AUTHORED`
 - `planned_authored: aberrant-sorcery, clockwork-sorcery, draconic-sorcery, wild-magic, divine-soul, shadow-magic, storm-sorcery, lunar-sorcery, pyromancer`
 - `extended_candidates: runechild, phoenix-sorcery, stone-sorcery`
 - `source_policy: source/publication labels in literary copy are non-authoritative; Plane Shift, partner/community and UA eligibility must be independently verified before runtime inclusion`
-- `mechanics_policy: Stages 1–5 are active in the shared template/CE/Shapoklyak/GENA pipeline: foundation, persistent Sorcerer resources, bidirectional Font of Magic conversion, Metamagic choice/execution, authoritative one-minute Innate Sorcery activation, Sorcery Incarnate fallback/two-Metamagic behavior and Arcane Apotheosis cost waiver semantics. Per-turn cadence remains GM-adjudicated because the application has no authoritative turn tracker. Overall class mechanics remain IN_PROGRESS until the later spell/full-integration stage and subclass runtime are implemented and verified.`
+- `mechanics_policy: Stages 1–6 are active in the shared template/CE/Shapoklyak/GENA pipeline: foundation, persistent Sorcerer resources, bidirectional Font of Magic conversion, Metamagic choice/execution, authoritative one-minute Innate Sorcery activation, Sorcery Incarnate fallback/two-Metamagic behavior, Arcane Apotheosis cost waiver semantics, and persistent Charisma spell selection/casting through the canonical full-caster slot ledger. Per-turn cadence remains GM-adjudicated because the application has no authoritative turn tracker. Overall class mechanics remain IN_PROGRESS only until subclass runtime is implemented and verified.`
 
-Sorcerer Stages 1–5 are installed in `dev` and deployed to the connected Supabase project. Stage 5 gives Innate Sorcery a server-owned one-minute lifetime, lets Sorcery Incarnate activate it for 2 Sorcery Points when its normal uses are empty and permits up to two Metamagic options while it is active. Arcane Apotheosis waives the Sorcery Point cost of one Metamagic while Innate Sorcery is active; the rule's once-per-turn cadence stays on the documented GM boundary rather than inventing turn state. Stage 6/full spell integration and subclass runtime remain explicit future work, so the overall class status stays `IN_PROGRESS`.
+Sorcerer Stages 1–6 are installed in `dev` and deployed to the connected Supabase project. Stage 6 closes the base-class spell runtime: Sorcerer cantrips and prepared spells use persistent level-change choices, Charisma, the canonical full-caster slot ledger and the `v2` Metamagic cast path, with spell links synchronized from the live Sorcerer catalog. Subclass runtime remains the explicit Stage 7 work item, so the overall class status stays `IN_PROGRESS` while Stage 6 itself is `READY`.
 
 ---
 
