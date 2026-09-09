@@ -225,7 +225,7 @@ export class SupabaseGenaSessionGateway {
 
   async sendSpellWithModifiers(command: GenaSpellWithModifiersCommand): Promise<number> {
     const commandId = command.commandId ?? createEngineCommandId()
-    const { data, error } = await this.client.rpc("send_chat_spell_with_template_modifiers_v1", {
+    const { data, error } = await this.client.rpc("send_chat_spell_with_template_modifiers_v2", {
       p_room_id: command.roomId,
       p_character_id: command.characterId,
       p_spell_mechanic_id: command.spellMechanicId ?? null,
