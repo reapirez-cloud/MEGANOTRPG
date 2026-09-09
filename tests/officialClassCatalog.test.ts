@@ -50,11 +50,11 @@ test("player-facing reference distinguishes rebuilt runtime classes from literar
   )
   assert.deepEqual(
     classReference.filter((entry) => !entry.referenceOnly).map((entry) => entry.id).sort(),
-    ["cleric", "druid", "fighter", "warlock", "wizard"],
+    ["cleric", "druid", "fighter", "paladin", "warlock", "wizard"],
   )
   assert.deepEqual(
     classReference.filter((entry) => entry.referenceOnly).map((entry) => entry.id).sort(),
-    ["bard", "monk", "paladin", "sorcerer"],
+    ["bard", "monk", "sorcerer"],
   )
   assert.equal(classReference.find((entry) => entry.id === "wizard")?.subclasses.length, 13)
   assert.equal(classReference.find((entry) => entry.id === "warlock")?.referenceOnly, false)
