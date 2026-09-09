@@ -20,6 +20,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added the Sorcerer Stage 2 resource layer: Innate Sorcery has two real Long Rest uses, Sorcery Points become a persistent pool from level 2 with maximum equal to Sorcerer level, and Sorcerous Restoration from level 5 restores up to `floor(Sorcerer level / 2)` spent points after a Short Rest once per Long Rest.
 - Added Sorcerer Stage 3 Font of Magic slot conversion and corrected the 2024 reverse conversion: an unexpended spell slot can be converted back into Sorcery Points without an action, from 1st-level slot → 1 point through 9th-level slot → 9 points.
 - Added Sorcerer Stage 4 Metamagic to the actual spell-casting flow: all ten 2024 options are selectable, known options scale `2 → 4 → 6` at Sorcerer levels 2/10/17, one known option may be replaced on a Sorcerer level gain, and Chat lets the player attach eligible Metamagic to the exact spell being cast.
+- Added Sorcerer Stage 5 base-class runtime: Innate Sorcery now has a server-owned one-minute lifetime; from level 7 Sorcery Incarnate can activate it for 2 Sorcery Points when normal uses are empty and permits up to two Metamagic options while active; at level 20 Arcane Apotheosis waives one Metamagic Sorcery Point cost while Innate Sorcery is active.
 
 ### Runtime and architecture changes
 
@@ -32,7 +33,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Sorcerer Stage 2 uses the shared template/Character Engine/Shapoklyak resource model rather than adding class-specific tables. Canonical current values live in `character_resource_states`; assignment and level synchronization preserves the spent deficit when the maximum grows and removes orphaned Sorcerer counters when the class is removed.
 - Sorcerer Stage 3 uses generic resource effects for both directions of Font of Magic and keeps created temporary slot capacity in the canonical spell-slot ledger rather than introducing a Sorcerer-only slot table.
 - Sorcerer Stage 4 reuses Choice Runtime v2 and CE resource-backed actions instead of a class-specific Metamagic engine. The receipt-aware GENA composite spell command validates the selected modifier actions and spends the spell slot plus Sorcery Points atomically under one stable `commandId`, so retries cannot double-spend either resource.
-- The live Sorcerer catalog is now `xphb-2024-sorcerer-stage4-metamagic-v1`; Sorcery Incarnate, Arcane Apotheosis, remaining base-class work, the later spell-runtime closure and subclasses remain later stages rather than being hidden behind a false `READY` claim.
+- Sorcerer Stage 5 stores Innate Sorcery activity as an expiring Shapoklyak runtime fact rather than a permanent boolean, reuses the receipt-aware GENA spell+modifier path for Sorcery Incarnate/Arcane Apotheosis, and keeps the Arcane Apotheosis once-per-turn cadence on the documented GM boundary instead of inventing turn state.
+- The live Sorcerer catalog is now `xphb-2024-sorcerer-stage5-base-runtime-v1`; Stage 5 base runtime is deployed, while Stage 6/full spell integration and subclass runtime remain later stages rather than being hidden behind a false overall `READY` claim.
 
 ### Tests / verification
 
@@ -47,6 +49,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Applied the Stage 3 reverse-conversion correction and both Stage 4 migrations to the connected Supabase project. Live verification reports `runtime_stage=4`, `metamagic_runtime_included=true`, `font_of_magic_reverse_conversion_runtime=true`, exactly 10 Metamagic options and `count_by_level={2:2,10:4,17:6}`.
 - Added `sorcererMetamagicStage4.test.ts`; all eight Stage 4 checks pass, covering the complete option roster/costs, 2/4/6 progression, one-option level-up replacement, CE resource actions, Empowered/Seeking combination exceptions, reverse Font conversion, atomic GENA spell+modifier execution and Chat wiring.
 - PR #63 build/lint/Stage 4 regression verification passes after the UI import repair. The full repository suite retains only the same five inherited Paladin reconciliation failures present on the `dev` base; no Sorcerer Stage 4 regression fails.
+- Added `sorcererBaseRuntimeStage5.test.ts`; all seven Stage 5 checks pass, covering strict migration/resource headers, one-minute server-owned Innate Sorcery, level-7 fallback activation, live expiration state, Arcane Apotheosis cost waiver and the explicit GM turn boundary.
+- PR #64 build and lint pass; the full suite is `881/886` with only the same five inherited Paladin reconciliation failures present on the `dev` base. The connected Supabase project is at `xphb-2024-sorcerer-stage5-base-runtime-v1`, runtime stage 5, with exactly one Stage 5 campaign trigger and the obsolete Stage 4 trigger removed.
 
 ## Released patches
 
