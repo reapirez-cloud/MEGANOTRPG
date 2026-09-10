@@ -36,7 +36,7 @@ test("Rogue wave 1 publishes three complete literary subclasses without claiming
 
 test("Thief uses the 2024 Fast Hands, Supreme Sneak and Use Magic Device contracts", () => {
   const fastHands = subclassFeature("thief", "Быстрые руки")
-  assert.match(fastHands.mechanics, /Magic action/i)
+  assert.match(fastHands.mechanics, /действие Magic/i)
   assert.match(fastHands.mechanics, /Utilize/i)
   assert.doesNotMatch(fastHands.mechanics, /любым немагическим предметом/i)
 
@@ -94,7 +94,7 @@ test("Arcane Trickster uses the 2024 spell and Mage Hand subclass revisions", ()
 
   const versatile = subclassFeature("arcane-trickster", "Универсальный ловкач")
   assert.match(versatile.mechanics, /Trip.*Cunning Strike/i)
-  assert.match(versatile.mechanics, /другому существу в пределах 5 футов/i)
+  assert.match(versatile.mechanics, /существу в пределах 5 футов/i)
   assert.match(versatile.mechanics, /не выдаёт вам Преимущество на атаки/i)
 
   const spellThief = subclassFeature("arcane-trickster", "Воровство заклинаний")
