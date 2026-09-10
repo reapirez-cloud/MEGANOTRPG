@@ -118,7 +118,7 @@ test("Sorcerous Restoration restores the level-scaled amount and consumes one us
   const action = contract.actions.find((entry) => entry.key === "sorcerous_restoration")
   assert.ok(action)
   const next = executeAction(input.state, action)
-  assert.equal(next.resources?.sorcery_points?.current, 5)
+  assert.equal(next.resources?.sorcery_points?.current, 6)
   assert.equal(next.resources?.sorcerous_restoration?.current, 0)
 })
 
