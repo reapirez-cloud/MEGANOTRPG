@@ -74,7 +74,7 @@ test("Swashbuckler stays an exact Xanathar legacy reference instead of inventing
   const audacity = subclassFeature("swashbuckler", "Дерзкая отвага")
   assert.match(audacity.mechanics, /модификатор Харизмы.*Initiative/i)
   assert.match(audacity.mechanics, /никакие другие существа не находятся в пределах 5 футов от вас/i)
-  assert.match(audacity.mechanics, /не создаёт Advantage/i)
+  assert.match(audacity.mechanics, /Преимущество не требуется/i)
 
   const panache = subclassFeature("swashbuckler", "Панегирик / Насмешка")
   assert.match(panache.mechanics, /Persuasion.*Insight/i)
