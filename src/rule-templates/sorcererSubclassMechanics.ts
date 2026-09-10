@@ -80,6 +80,32 @@ function bonusSpell(subclass: string, sourceKey: string, spell: BonusSpell): Sto
     },
   } as StoredMechanic
 }
+function featureSpell(subclass: string, sourceKey: string, methodKey: string, spell: Omit<BonusSpell, "unlock">, costs: Array<{ key: string; amount: number }>): StoredMechanic {
+  const method: SpellCastingMethodDefinition = {
+    key: methodKey,
+    kind: "class_feature",
+    ability: "charisma",
+    saveDc: spellDc,
+    attackBonus: spellAttack,
+    requiresPrepared: false,
+    ...(spell.level === 0 ? {} : {
+      resourceOptions: [{ key: methodKey, castLevel: spell.level, costs }],
+    }),
+  }
+  return {
+    id: `${subclass}-${methodKey}-${spell.slug}`,
+    type: "spell",
+    sourceKey,
+    key: `spell:${spell.slug}`,
+    catalogSlug: spell.slug,
+    variantKey: `sorcerer-subclass:${subclass}:${methodKey}:${spell.slug}`,
+    payload: {
+      spell: { name: spell.name, level: spell.level, school: spell.school },
+      preparation: { mode: "always_prepared" },
+      methods: [method],
+    },
+  } as StoredMechanic
+}
 function spellRows(subclass: string, spells: BonusSpell[]): Record<number, StoredMechanics> {
   const rows: Record<number, StoredMechanics> = {}
   for (const spell of spells) (rows[spell.unlock] ??= []).push(bonusSpell(subclass, `sorcerer:${subclass}:spells`, spell))
@@ -162,10 +188,23 @@ const subclasses: RuntimeSubclass[] = [
       5: mergeRow(aberrantSpells[5]),
       6: [
         feature("aberrant-psionic-sorcery", "sorcerer:aberrant:psionic", "sorcerer_aberrant_psionic_sorcery", "Псионическое чародейство", "Псионические заклинания 1 уровня и выше можно сотворять, тратя Очки чародейства в количестве, равном уровню заклинания, вместо ячейки; при таком сотворении не нужны вербальные и соматические компоненты, а материальные компоненты с указанной стоимостью по-прежнему требуются.", { kind: "psionic_sorcery", sorceryPointCost: "spell_level", ignoresVerbal: true, ignoresSomatic: true, ignoresCostlessMaterial: true }),
+        featureSpell("aberrant-sorcery", "sorcerer:aberrant:psionic", "psionic-sorcery", { slug: "arms-of-hadar", name: "Руки Хадара", level: 1, school: "Conjuration" }, [{ key: "sorcery_points", amount: 1 }]),
+        featureSpell("aberrant-sorcery", "sorcerer:aberrant:psionic", "psionic-sorcery", { slug: "calm-emotions", name: "Умиротворение", level: 2, school: "Enchantment" }, [{ key: "sorcery_points", amount: 2 }]),
+        featureSpell("aberrant-sorcery", "sorcerer:aberrant:psionic", "psionic-sorcery", { slug: "detect-thoughts", name: "Обнаружение мыслей", level: 2, school: "Divination" }, [{ key: "sorcery_points", amount: 2 }]),
+        featureSpell("aberrant-sorcery", "sorcerer:aberrant:psionic", "psionic-sorcery", { slug: "dissonant-whispers", name: "Диссонирующий шёпот", level: 1, school: "Enchantment" }, [{ key: "sorcery_points", amount: 1 }]),
+        featureSpell("aberrant-sorcery", "sorcerer:aberrant:psionic", "psionic-sorcery", { slug: "hunger-of-hadar", name: "Голод Хадара", level: 3, school: "Conjuration" }, [{ key: "sorcery_points", amount: 3 }]),
+        featureSpell("aberrant-sorcery", "sorcerer:aberrant:psionic", "psionic-sorcery", { slug: "sending", name: "Послание", level: 3, school: "Divination" }, [{ key: "sorcery_points", amount: 3 }]),
         resistance("aberrant-psychic-resistance", "sorcerer:aberrant:psychic-defenses", "psychic", "Психическая защита"),
         feature("aberrant-psychic-defenses", "sorcerer:aberrant:psychic-defenses", "sorcerer_aberrant_psychic_defenses", "Психическая защита", "Вы получаете сопротивление психическому урону и преимущество на спасброски против состояний Очарован и Испуган.", { kind: "psychic_defenses", charmFearSaveAdvantage: true }),
       ],
-      7: mergeRow(aberrantSpells[7]), 9: mergeRow(aberrantSpells[9]),
+      7: mergeRow(aberrantSpells[7], [
+        featureSpell("aberrant-sorcery", "sorcerer:aberrant:psionic", "psionic-sorcery", { slug: "black-tentacles", name: "Чёрные щупальца", level: 4, school: "Conjuration" }, [{ key: "sorcery_points", amount: 4 }]),
+        featureSpell("aberrant-sorcery", "sorcerer:aberrant:psionic", "psionic-sorcery", { slug: "summon-aberration", name: "Призыв аберрации", level: 4, school: "Conjuration" }, [{ key: "sorcery_points", amount: 4 }]),
+      ]),
+      9: mergeRow(aberrantSpells[9], [
+        featureSpell("aberrant-sorcery", "sorcerer:aberrant:psionic", "psionic-sorcery", { slug: "telepathic-bond", name: "Телепатическая связь", level: 5, school: "Divination" }, [{ key: "sorcery_points", amount: 5 }]),
+        featureSpell("aberrant-sorcery", "sorcerer:aberrant:psionic", "psionic-sorcery", { slug: "telekinesis", name: "Телекинез", level: 5, school: "Transmutation" }, [{ key: "sorcery_points", amount: 5 }]),
+      ]),
       14: [feature("aberrant-revelation", "sorcerer:aberrant:revelation", "sorcerer_aberrant_revelation_in_flesh", "Откровение во плоти", "Бонусным действием потратьте 1 Очко чародейства и выберите телесное изменение на 10 минут: видение невидимого, полёт, плавание с дыханием под водой или прохождение через узкие пространства; дополнительные варианты стоят по 1 очку каждый.", { kind: "revelation_in_flesh", durationMinutes: 10 }), semanticAction("aberrant-revelation-action", "sorcerer:aberrant:revelation", "sorcerer_aberrant_revelation_in_flesh", "Откровение во плоти", "bonus_action", { gmBenefitSelection: true, durationMinutes: 10 }, [{ key: "sorcery_points", amount: 1 }])],
       18: [feature("aberrant-implosion", "sorcerer:aberrant:implosion", "sorcerer_aberrant_warping_implosion", "Искривляющее схлопывание", "Действием телепортируйтесь на 120 футов и заставьте существ в оставленной точке совершить спасбросок Силы; провал наносит силовой урон и притягивает к центру. Одно применение бесплатно между долгими отдыхами; повторное применение стоит 5 Очков чародейства.", { kind: "warping_implosion", rangeFeet: 120, save: "strength" }), resource("aberrant-implosion-use", "sorcerer:aberrant:implosion", "sorcerer_aberrant_warping_implosion", "Искривляющее схлопывание", 1, "long_rest"), semanticAction("aberrant-implosion-free", "sorcerer:aberrant:implosion", "sorcerer_aberrant_warping_implosion_free", "Искривляющее схлопывание", "action", { rangeFeet: 120, gmSaveGate: true }, [{ key: "sorcerer_aberrant_warping_implosion", amount: 1 }]), semanticAction("aberrant-implosion-paid", "sorcerer:aberrant:implosion", "sorcerer_aberrant_warping_implosion_paid", "Искривляющее схлопывание за Очки чародейства", "action", { rangeFeet: 120, gmSaveGate: true }, [{ key: "sorcery_points", amount: 5 }])],
     },
@@ -214,12 +253,31 @@ const subclasses: RuntimeSubclass[] = [
       14: [feature("divine-wings", "sorcerer:divine-soul:wings", "sorcerer_divine_soul_otherworldly_wings", "Неземные крылья", "Бонусным действием проявите спектральные крылья и получите скорость полёта 30 футов, пока не уберёте их бонусным действием.", { kind: "otherworldly_wings", flySpeed: 30 }), semanticAction("divine-wings-action", "sorcerer:divine-soul:wings", "sorcerer_divine_soul_otherworldly_wings", "Неземные крылья", "bonus_action", { flySpeed: 30, toggle: true })],
       18: [feature("divine-recovery", "sorcerer:divine-soul:recovery", "sorcerer_divine_soul_unearthly_recovery", "Неземное восстановление", "Бонусным действием, когда у вас меньше половины максимума HP, восстановите HP в количестве половины максимума. Одно применение восстанавливается после долгого отдыха.", { kind: "unearthly_recovery", heal: "half_max_hp", requiresBelowHalfHp: true }), resource("divine-recovery-use", "sorcerer:divine-soul:recovery", "sorcerer_divine_soul_unearthly_recovery", "Неземное восстановление", 1, "long_rest"), semanticAction("divine-recovery-action", "sorcerer:divine-soul:recovery", "sorcerer_divine_soul_unearthly_recovery", "Неземное восстановление", "bonus_action", { heal: "half_max_hp", gmHpGate: true }, [{ key: "sorcerer_divine_soul_unearthly_recovery", amount: 1 }])],
     },
+    choices: {
+      3: [{
+        key: "sorcerer_divine_soul_affinity",
+        label: "Божественная душа: источник силы",
+        target: "trait",
+        options: ["good", "evil", "law", "chaos", "neutrality"],
+        option_labels: { good: "Добро", evil: "Зло", law: "Закон", chaos: "Хаос", neutrality: "Нейтральность" },
+        count: 1,
+        selection_mode: "player_once",
+        replacement_policy: "locked",
+        option_mechanics: {
+          good: [bonusSpell("divine-soul", "sorcerer:divine-soul:divine-magic", { slug: "cure-wounds", name: "Лечение ран", level: 1, school: "Abjuration", unlock: 3 })],
+          evil: [bonusSpell("divine-soul", "sorcerer:divine-soul:divine-magic", { slug: "inflict-wounds", name: "Нанесение ран", level: 1, school: "Necromancy", unlock: 3 })],
+          law: [bonusSpell("divine-soul", "sorcerer:divine-soul:divine-magic", { slug: "bless", name: "Благословение", level: 1, school: "Enchantment", unlock: 3 })],
+          chaos: [bonusSpell("divine-soul", "sorcerer:divine-soul:divine-magic", { slug: "bane", name: "Порча", level: 1, school: "Enchantment", unlock: 3 })],
+          neutrality: [bonusSpell("divine-soul", "sorcerer:divine-soul:divine-magic", { slug: "protection-from-evil-and-good", name: "Защита от зла и добра", level: 1, school: "Abjuration", unlock: 3 })],
+        },
+      }],
+    },
   },
   {
     id: "shadow-magic", name: "Теневая магия", sourceLabel: "Xanathar's Guide to Everything (2017)",
     summary: "Наследуемые способности тени перенесены на вход 3 уровня; ограниченные применения и затраты Очков чародейства учтены через общий CE ledger.",
     levels: {
-      3: [feature("shadow-eyes", "sorcerer:shadow:eyes", "sorcerer_shadow_eyes_of_the_dark", "Глаза тьмы", "Вы получаете тёмное зрение 120 футов. С 3 уровня можете сотворить Тьму за 2 Очка чародейства и видеть сквозь созданную таким образом Тьму.", { kind: "eyes_of_the_dark", darkvisionFeet: 120 }), semanticAction("shadow-darkness", "sorcerer:shadow:eyes", "sorcerer_shadow_darkness", "Тьма через Глаза тьмы", "action", { spell: "darkness", seeThroughOwnDarkness: true }, [{ key: "sorcery_points", amount: 2 }]), feature("shadow-grave", "sorcerer:shadow:grave", "sorcerer_shadow_strength_of_the_grave", "Сила могилы", "Когда урон снижает вас до 0 HP и не убивает мгновенно, совершите спасбросок Харизмы Сл 5 + полученный урон; при успехе остаётесь на 1 HP. Не работает против критического или сияющего урона. Одно применение восстанавливается после долгого отдыха.", { kind: "strength_of_the_grave", save: "charisma", dc: "5+damage", exclusions: ["critical","radiant"] }), resource("shadow-grave-use", "sorcerer:shadow:grave", "sorcerer_shadow_strength_of_the_grave", "Сила могилы", 1, "long_rest"), semanticAction("shadow-grave-action", "sorcerer:shadow:grave", "sorcerer_shadow_strength_of_the_grave", "Сила могилы", "reaction", { gmZeroHpGate: true, save: "charisma", dc: "5+damage" }, [{ key: "sorcerer_shadow_strength_of_the_grave", amount: 1 }])],
+      3: [feature("shadow-eyes", "sorcerer:shadow:eyes", "sorcerer_shadow_eyes_of_the_dark", "Глаза тьмы", "Вы получаете тёмное зрение 120 футов. С 3 уровня можете сотворить Тьму за 2 Очка чародейства и видеть сквозь созданную таким образом Тьму.", { kind: "eyes_of_the_dark", darkvisionFeet: 120, seeThroughOwnDarkness: true }), featureSpell("shadow-magic", "sorcerer:shadow:eyes", "eyes-of-the-dark", { slug: "darkness", name: "Тьма", level: 2, school: "Evocation" }, [{ key: "sorcery_points", amount: 2 }]), feature("shadow-grave", "sorcerer:shadow:grave", "sorcerer_shadow_strength_of_the_grave", "Сила могилы", "Когда урон снижает вас до 0 HP и не убивает мгновенно, совершите спасбросок Харизмы Сл 5 + полученный урон; при успехе остаётесь на 1 HP. Не работает против критического или сияющего урона. Одно применение восстанавливается после долгого отдыха.", { kind: "strength_of_the_grave", save: "charisma", dc: "5+damage", exclusions: ["critical","radiant"] }), resource("shadow-grave-use", "sorcerer:shadow:grave", "sorcerer_shadow_strength_of_the_grave", "Сила могилы", 1, "long_rest"), semanticAction("shadow-grave-action", "sorcerer:shadow:grave", "sorcerer_shadow_strength_of_the_grave", "Сила могилы", "reaction", { gmZeroHpGate: true, save: "charisma", dc: "5+damage" }, [{ key: "sorcerer_shadow_strength_of_the_grave", amount: 1 }])],
       6: [feature("shadow-hound", "sorcerer:shadow:hound", "sorcerer_shadow_hound_of_ill_omen", "Пёс дурного предзнаменования", "Бонусным действием потратьте 3 Очка чародейства и призовите пса, выбирая видимую цель в пределах 120 футов. Пёс преследует цель и даёт ей помеху на спасброски против ваших заклинаний, пока находится рядом.", { kind: "hound_of_ill_omen", rangeFeet: 120 }), semanticAction("shadow-hound-action", "sorcerer:shadow:hound", "sorcerer_shadow_hound_of_ill_omen", "Пёс дурного предзнаменования", "bonus_action", { rangeFeet: 120, gmTargetGate: true }, [{ key: "sorcery_points", amount: 3 }])],
       14: [feature("shadow-walk", "sorcerer:shadow:walk", "sorcerer_shadow_walk", "Теневой шаг", "Бонусным действием, находясь в тусклом свете или тьме, телепортируйтесь на расстояние до 120 футов в другое видимое место тусклого света или тьмы.", { kind: "shadow_walk", rangeFeet: 120, gmLightGate: true }), semanticAction("shadow-walk-action", "sorcerer:shadow:walk", "sorcerer_shadow_walk", "Теневой шаг", "bonus_action", { rangeFeet: 120, gmLightGate: true })],
       18: [feature("shadow-umbral", "sorcerer:shadow:umbral", "sorcerer_shadow_umbral_form", "Теневая форма", "Бонусным действием потратьте 6 Очков чародейства и на 1 минуту примите теневую форму: проходите сквозь существ и предметы как по труднопроходимой местности и получаете сопротивление всему урону, кроме силового и сияющего.", { kind: "umbral_form", durationMinutes: 1 }), semanticAction("shadow-umbral-action", "sorcerer:shadow:umbral", "sorcerer_shadow_umbral_form", "Теневая форма", "bonus_action", { durationMinutes: 1, gmMovementGate: true }, [{ key: "sorcery_points", amount: 6 }])],
@@ -239,13 +297,29 @@ const subclasses: RuntimeSubclass[] = [
     id: "lunar-sorcery", name: "Лунное чародейство", sourceLabel: "Dragonlance: Shadow of the Dragon Queen (2022)",
     summary: "Пятнадцать лунных заклинаний всегда подготовлены; выбранная фаза определяет бесплатное заклинание, скидку на Метамагию, постоянные преимущества и Лунное явление.",
     levels: {
-      3: mergeRow(lunarSpells[3], [feature("lunar-embodiment", "sorcerer:lunar:embodiment", "sorcerer_lunar_embodiment", "Лунное воплощение", "Вы знаете все заклинания трёх лунных фаз из таблицы подкласса. После долгого отдыха выберите активную фазу. Заклинание 1 уровня активной фазы можно один раз сотворить без ячейки; бесплатное применение возвращается после долгого отдыха.", { kind: "lunar_embodiment", persistentPhaseChoice: true, freeFirstLevelCastPerLongRest: true }), resource("lunar-free-cast", "sorcerer:lunar:embodiment", "sorcerer_lunar_free_phase_cast", "Бесплатное лунное заклинание", 1, "long_rest"), feature("lunar-moon-fire", "sorcerer:lunar:moon-fire", "sorcerer_lunar_moon_fire", "Лунный огонь", "Вы изучаете заговор Священное пламя; когда сотворяете его, можете выбрать две цели в пределах 5 футов друг от друга.", { kind: "moon_fire", secondTargetDistanceFeet: 5 })]),
+      3: mergeRow(lunarSpells[3], [feature("lunar-embodiment", "sorcerer:lunar:embodiment", "sorcerer_lunar_embodiment", "Лунное воплощение", "Вы знаете все заклинания трёх лунных фаз из таблицы подкласса. После долгого отдыха выберите активную фазу. Заклинание 1 уровня активной фазы можно один раз сотворить без ячейки; бесплатное применение возвращается после долгого отдыха.", { kind: "lunar_embodiment", persistentPhaseChoice: true, freeFirstLevelCastPerLongRest: true }), resource("lunar-free-cast", "sorcerer:lunar:embodiment", "sorcerer_lunar_free_phase_cast", "Бесплатное лунное заклинание", 1, "long_rest"), feature("lunar-moon-fire", "sorcerer:lunar:moon-fire", "sorcerer_lunar_moon_fire", "Лунный огонь", "Вы изучаете заговор Священное пламя; когда сотворяете его, можете выбрать две цели в пределах 5 футов друг от друга.", { kind: "moon_fire", secondTargetDistanceFeet: 5 }), bonusSpell("lunar-sorcery", "sorcerer:lunar:moon-fire", { slug: "sacred-flame", name: "Священное пламя", level: 0, school: "Evocation", unlock: 3 })]),
       5: mergeRow(lunarSpells[5]), 7: mergeRow(lunarSpells[7]), 9: mergeRow(lunarSpells[9]),
       6: [feature("lunar-boons", "sorcerer:lunar:boons", "sorcerer_lunar_boons", "Лунные дары", "Когда применяете Метамагию к заклинанию школы, связанной с активной фазой, уменьшите стоимость Метамагии на 1 Очко чародейства (минимум 0). Это снижение можно применить число раз, равное бонусу мастерства, и все применения возвращаются после долгого отдыха.", { kind: "lunar_boons", activePhaseSchoolGate: true, metamagicDiscount: 1 }), resource("lunar-boons-use", "sorcerer:lunar:boons", "sorcerer_lunar_boons", "Лунные дары", ref("core.proficiencyBonus"), "long_rest"), feature("lunar-waxing", "sorcerer:lunar:waxing", "sorcerer_lunar_waxing_and_waning", "Прибывание и убывание", "Бонусным действием потратьте 1 Очко чародейства, чтобы сменить текущую лунную фазу. После долгого отдыха фазу можно выбрать бесплатно.", { kind: "waxing_and_waning", phaseChangeCost: 1 }), semanticAction("lunar-waxing-action", "sorcerer:lunar:waxing", "sorcerer_lunar_waxing_and_waning", "Сменить лунную фазу", "bonus_action", { gmPhaseSelectionGate: true }, [{ key: "sorcery_points", amount: 1 }])],
       14: [feature("lunar-empowerment", "sorcerer:lunar:empowerment", "sorcerer_lunar_empowerment", "Лунное усиление", "Активная фаза даёт постоянное преимущество: Полная луна усиливает проверки расследования и восприятия, Новолуние даёт преимущество на скрытность и помеху атакам по вам в тусклом свете или тьме, Серп даёт сопротивление некротическому и сияющему урону.", { kind: "lunar_empowerment", phaseDependent: true, gmLightGate: true })],
       18: [feature("lunar-phenomenon", "sorcerer:lunar:phenomenon", "sorcerer_lunar_phenomenon", "Лунное явление", "Бонусным действием проявите эффект активной фазы: Полная луна ослепляет и лечит, Новолуние наносит некротический урон и снижает скорость, Серп телепортирует вас и союзника. После использования конкретной фазы она недоступна до долгого отдыха, если не потратить 5 Очков чародейства для восстановления её применения.", { kind: "lunar_phenomenon", perPhaseUses: 1, restoreCost: 5 }), ...["full","new","crescent"].flatMap((phase) => [resource(`lunar-phenomenon-${phase}`, "sorcerer:lunar:phenomenon", `sorcerer_lunar_phenomenon_${phase}`, `Лунное явление: ${phase}`, 1, "long_rest"), semanticAction(`lunar-phenomenon-${phase}-action`, "sorcerer:lunar:phenomenon", `sorcerer_lunar_phenomenon_${phase}`, `Лунное явление: ${phase}`, "bonus_action", { phase, gmEffectGate: true }, [{ key: `sorcerer_lunar_phenomenon_${phase}`, amount: 1 }])])],
     },
-    choices: { 3: [{ key: "sorcerer_lunar_phase", label: "Лунная фаза", target: "trait", options: ["full","new","crescent"], option_labels: { full: "Полная луна", new: "Новолуние", crescent: "Серп луны" }, count: 1, selection_mode: "player_once", refresh: "long_rest", replacement_policy: "preparation", replacement_limit: 1 }] },
+    choices: { 3: [{
+      key: "sorcerer_lunar_phase",
+      label: "Лунная фаза",
+      target: "trait",
+      options: ["full","new","crescent"],
+      option_labels: { full: "Полная луна", new: "Новолуние", crescent: "Серп луны" },
+      count: 1,
+      selection_mode: "player_once",
+      refresh: "long_rest",
+      replacement_policy: "preparation",
+      replacement_limit: 1,
+      option_mechanics: {
+        full: [featureSpell("lunar-sorcery", "sorcerer:lunar:embodiment", "lunar-free-full", { slug: "shield", name: "Щит", level: 1, school: "Abjuration" }, [{ key: "sorcerer_lunar_free_phase_cast", amount: 1 }])],
+        new: [featureSpell("lunar-sorcery", "sorcerer:lunar:embodiment", "lunar-free-new", { slug: "ray-of-sickness", name: "Луч болезни", level: 1, school: "Necromancy" }, [{ key: "sorcerer_lunar_free_phase_cast", amount: 1 }])],
+        crescent: [featureSpell("lunar-sorcery", "sorcerer:lunar:embodiment", "lunar-free-crescent", { slug: "color-spray", name: "Цветной всплеск", level: 1, school: "Illusion" }, [{ key: "sorcerer_lunar_free_phase_cast", amount: 1 }])],
+      },
+    }] },
   },
   {
     id: "pyromancer", name: "Пиромант", sourceLabel: "Plane Shift: Kaladesh (2017)",
