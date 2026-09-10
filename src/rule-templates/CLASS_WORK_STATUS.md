@@ -324,15 +324,18 @@ Base Monk and all declared Monk runtime packages are implemented, regression-gat
 ## Sorcerer (`class:sorcerer`)
 
 **Text:** `READY_AUTHORING_SCOPE`  
-**Mechanics/runtime:** `IN_PROGRESS`
+**Mechanics/runtime:** `READY`
 
 - `authoring_started: 2026-09-03`
 - `authoring_source: src/data/classes/sorcererReferenceDraft.ts`
 - `subclass_authoring_sources: src/data/classes/sorcererSubclassReferenceDraft.ts; src/data/classes/sorcererSubclassReferenceDraftWave2.ts; src/data/classes/sorcererSubclassReferenceDraftWave3.ts; src/data/classes/sorcererSubclassReferenceDraftWave4.ts`
 - `authoring_plan: src/data/classes/sorcererAuthoringPlan.md`
-- `current_dev_text: Luka base narration plus the nine originally planned Sorcerer identities are authored; Runechild / Kazimir, Phoenix / Marfa and Stone / Gordey are additionally preserved as extended candidates`
+- `current_dev_text: Luka base narration plus the nine supported Sorcerer runtime identities are authored; Runechild / Kazimir, Phoenix / Marfa and Stone / Gordey remain extended reference-only candidates outside the certified runtime scope`
 - `exact_reference_rules: READY_CURRENT_AUTHORED_ROSTER_2026_09_04`
 - `last_mechanics_audit_started: 2026-09-09`
+- `last_dev_runtime_audit: 2026-09-10`
+- `last_deployed_runtime_audit: 2026-09-10`
+- `runtime_certification: sorcerer-stage7-runtime-certified@2026-09-10`
 - `stage_1_foundation: READY_2026_09_08_PR_60`
 - `stage_1_runtime_revision: xphb-2024-sorcerer-stage1-foundation-v2`
 - `stage_2_resource_runtime: READY_2026_09_08`
@@ -355,12 +358,20 @@ Base Monk and all declared Monk runtime packages are implemented, regression-gat
 - `stage_6_runtime_revision: xphb-2024-sorcerer-stage6-spell-runtime-v1`
 - `stage_6_migration: supabase/migrations/20260909090000_sorcerer_stage6_spell_runtime_v1.sql`
 - `stage_6_regression: tests/sorcererSpellRuntimeStage6.test.ts`
-- `runtime_visibility: BASE_STAGE6_ACTIVE_DEV_AND_PRODUCTION_2026_09_09`
-- `class_reference_visibility: ACTIVE_REFERENCE_ONLY_UNTIL_REMAINING_RUNTIME_STAGES_CLOSE`
+- `stage_7_subclass_runtime: READY_2026_09_10`
+- `stage_7_runtime_revision: xphb-2024-sorcerer-stage7-subclass-runtime-v1`
+- `stage_7_migration: supabase/migrations/20260910200000_sorcerer_stage7_subclass_runtime_v1.sql`
+- `stage_7_choice_action_migration: supabase/migrations/20260910203000_sorcerer_stage7_template_choice_action_v1.sql`
+- `stage_7_lunar_dedup_correction: supabase/migrations/20260910204000_sorcerer_stage7_lunar_choice_dedup_fix_v1.sql`
+- `stage_7_regression: tests/sorcererSubclassesStage7.test.ts`
+- `runtime_visibility: STAGE7_BASE_AND_9_SUBCLASSES_ACTIVE_DEV_AND_PRODUCTION_2026_09_10`
+- `class_reference_visibility: RUNTIME_BACKED_BASE_PLUS_9; EXTENDED_3_REFERENCE_ONLY`
 - `canonical_resources: innate_sorcery=2/LR; sorcery_points=max Sorcerer level/LR; sorcerous_restoration=1/LR`
 - `sorcerous_restoration_amount: floor(Sorcerer level / 2), after Short Rest, from Sorcerer level 5`
 - `assignment_resource_sync: ACTIVE; persistent current lives in character_resource_states and level changes preserve spent deficit`
-- `production_runtime: STAGE6_SPELL_RUNTIME_DEPLOYED_2026_09_09`
+- `production_runtime: STAGE7_SUBCLASS_RUNTIME_DEPLOYED_AND_CERTIFIED_2026_09_10`
+- `production_subclass_count: 9`
+- `production_subclass_parent_contract: ALL_9_PARENTED_TO_CLASS_SORCERER_AND_UNLOCK_AT_LEVEL_3`
 - `font_of_magic_conversion_runtime: READY_STAGE3_PLUS_2024_REVERSE_CONVERSION_CORRECTION`
 - `metamagic_runtime: READY_STAGE4_10_OPTIONS_CHOICE_2_4_6_ATOMIC_GENA_CAST`
 - `metamagic_cast_rpc: send_chat_spell_with_template_modifiers_v2`
@@ -371,14 +382,36 @@ Base Monk and all declared Monk runtime packages are implemented, regression-gat
 - `spell_runtime_visibility: ACTIVE_DEV_AND_PRODUCTION_2026_09_09`
 - `spell_catalog_links: DYNAMIC_SORCERER_CLASS_CATALOG`
 - `spell_choice_runtime: PERSISTENT_ON_LEVEL_CHANGE_2024`
-- `subclass_runtime: PENDING`
-- `subclasses: COMPLETE_9_PLANNED_PLUS_3_EXTENDED_AUTHORED`
-- `planned_authored: aberrant-sorcery, clockwork-sorcery, draconic-sorcery, wild-magic, divine-soul, shadow-magic, storm-sorcery, lunar-sorcery, pyromancer`
-- `extended_candidates: runechild, phoenix-sorcery, stone-sorcery`
-- `source_policy: source/publication labels in literary copy are non-authoritative; Plane Shift, partner/community and UA eligibility must be independently verified before runtime inclusion`
-- `mechanics_policy: Stages 1–6 are active in the shared template/CE/Shapoklyak/GENA pipeline: foundation, persistent Sorcerer resources, bidirectional Font of Magic conversion, Metamagic choice/execution, authoritative one-minute Innate Sorcery activation, Sorcery Incarnate fallback/two-Metamagic behavior, Arcane Apotheosis cost waiver semantics, and persistent Charisma spell selection/casting through the canonical full-caster slot ledger. Per-turn cadence remains GM-adjudicated because the application has no authoritative turn tracker. Overall class mechanics remain IN_PROGRESS only until subclass runtime is implemented and verified.`
+- `subclass_runtime: READY_STAGE7_9`
+- `subclass_runtime_count: 9`
+- `subclasses: COMPLETE_9_RUNTIME_PLUS_3_EXTENDED_REFERENCE_ONLY`
+- `runtime_subclasses: aberrant-sorcery, clockwork-sorcery, draconic-sorcery, wild-magic-sorcery, divine-soul, shadow-magic, storm-sorcery, lunar-sorcery, pyromancer`
+- `subclass_runtime_reference_only: runechild, phoenix-sorcery, stone-sorcery`
+- `divine_soul_spell_runtime: SORCERER_PLUS_CLERIC_SOURCE_GATED_WITH_SHARED_PREPARED_QUOTA`
+- `aberrant_psionic_runtime: CLASS_FEATURE_SPELL_METHODS_SP_EQUAL_SPELL_LEVEL`
+- `shadow_darkness_runtime: CLASS_FEATURE_SPELL_METHOD_2_SP`
+- `draconic_resilience_runtime: COMBAT_MAX_HP_PLUS_3_AT_L3_PLUS_1_EACH_L4_TO_L20`
+- `clockwork_restore_balance_runtime: MAX_1_OR_CHARISMA_MODIFIER_PER_LONG_REST`
+- `lunar_phase_mutation_runtime: ATOMIC_TEMPLATE_CHOICE_ACTION_1_SP_WITH_CHOICE_RUNTIME_V2_PERSISTENCE`
+- `lunar_level6_shape: EXACTLY_ONE_BOONS_FEATURE_ONE_BOONS_RESOURCE_ONE_WAXING_FEATURE_ONE_WAXING_ACTION`
+- `source_policy: source/publication labels in literary copy are non-authoritative; Runechild, Phoenix Sorcery and Stone Sorcery remain explicitly outside the certified Stage 7 runtime scope until separately approved`
+- `mechanics_policy: Stages 1–7 are active in the shared template/CE/Shapoklyak/GENA pipeline. Base resources, Font of Magic, Metamagic, Innate Sorcery, full Sorcerer spell selection/casting and all nine supported subclass packages use canonical shared resources and source identities. Divine Soul extends the generic spell choice through source requirements; Lunar phase changes are an authoritative generic template-choice action in the same receipt-aware transaction as the 1 SP cost. Per-turn cadence and scene legality remain GM-adjudicated because the application has no authoritative turn tracker.`
 
-Sorcerer Stages 1–6 are installed in `dev` and deployed to the connected Supabase project. Stage 6 closes the base-class spell runtime: Sorcerer cantrips and prepared spells use persistent level-change choices, Charisma, the canonical full-caster slot ledger and the `v2` Metamagic cast path, with spell links synchronized from the live Sorcerer catalog. Subclass runtime remains the explicit Stage 7 work item, so the overall class status stays `IN_PROGRESS` while Stage 6 itself is `READY`.
+### Certified mechanics scope
+
+- Base Sorcerer Stages 1–6 remain active: full-caster slots, Charisma spellcasting, persistent spell choices, canonical Sorcery Points, Font of Magic, Metamagic and Innate Sorcery all share the existing CE/GENA runtime.
+- Nine supported subclass identities are active in production and inherit Sorcerer class level through their parent assignment. All unlock at Sorcerer level 3 under the project's 2024 compatibility policy.
+- Aberrant Psionic Sorcery exposes real class-feature casting methods whose Sorcery Point cost equals spell level.
+- Clockwork Restore Balance uses the Charisma modifier with a minimum of 1 and a Long Rest recharge.
+- Draconic Resilience contributes directly to `combat.maxHp`: +3 on subclass entry and +1 for each later Sorcerer level.
+- Wild Magic follows the 2024 player-driven surge/Tides contract instead of the obsolete GM-triggered base surge.
+- Divine Soul extends the existing Sorcerer cantrip/prepared-spell choices with Cleric options behind `source_requirements_any`; ordinary Sorcerers cannot select those options and the normal Sorcerer prepared quota/replacement rules remain unchanged.
+- Shadow Magic exposes Darkness as a real 2-SP class-feature spell access.
+- Lunar Sorcery exposes Sacred Flame and active-phase free spell access; changing phase costs 1 Sorcery Point and atomically persists the new `sorcerer_lunar_phase` through Choice Runtime v2. The level-6 package is deduplicated and contains exactly one feature/action identity for Waxing and Waning.
+- Storm Sorcery and Pyromancer durable resistances/immunities resolve as native grants; their scene-triggered consequences remain exact GM-adjudicated rules instead of fake combat state.
+- Runechild, Phoenix Sorcery and Stone Sorcery remain reference-only extended candidates and are not part of the certified runtime count.
+
+Sorcerer Stages 1–7 and the nine declared runtime subclasses are implemented and deployed in the connected Supabase project. No known Sorcerer implementation or deployment blocker remains inside this declared Stage 7 scope.
 
 ---
 
