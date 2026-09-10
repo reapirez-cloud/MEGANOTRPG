@@ -341,6 +341,21 @@ function parentTemplate(): RuleTemplate {
     mechanical_summary: "Харизматический полный заклинатель с Очками чародейства; подклассы используют этот общий ресурс и общий реестр ячеек.", rules_meta: {}, is_active: true, created_by: null, created_at: now, updated_at: now,
   }
 }
+const draconicRuntime = subclasses.find((entry) => entry.id === "draconic-sorcery")
+if (draconicRuntime) {
+  for (let level = 3; level <= 20; level += 1) {
+    const hp: StoredMechanic = {
+      id: `draconic-resilience-hp-${level}`,
+      type: "numeric",
+      sourceKey: "sorcerer:draconic:resilience",
+      target: "combat.maxHp",
+      operation: "ADD",
+      value: level === 3 ? 3 : 1,
+    }
+    draconicRuntime.levels[level] = [hp, ...(draconicRuntime.levels[level] ?? [])]
+  }
+}
+
 function parentBundle(): CharacterTemplateBundle {
   const slotResources: StoredMechanics = Array.from({ length: 9 }, (_, index) => resource(`slot-${index + 1}`, "sorcerer:spellcasting", `spell_slot_${index + 1}`, `Ячейки ${index + 1} уровня`, 1, "long_rest"))
   return {
