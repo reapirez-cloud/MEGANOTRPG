@@ -58,8 +58,8 @@ test("Rogue corrections do not regress to the supplied inaccurate rule blocks", 
   assert.match(expertise.mechanics, /воровские инструменты не являются допустимым выбором/i)
 
   const thievesCant = rogueFeature("Воровской жаргон")
-  assert.doesNotMatch(thievesCant.mechanics, /8\s*\+/)
-  assert.doesNotMatch(thievesCant.mechanics, /Внимательност/)
+  assert.doesNotMatch(thievesCant.mechanics, /СЛ\s*=|8\s*\+.*бонус мастерства/i)
+  assert.match(thievesCant.mechanics, /не задаёт отдельную формулу СЛ/i)
 
   const cunningStrike = rogueFeature("Хитрый удар")
   assert.match(cunningStrike.mechanics, /Poisoner’s Kit/)
