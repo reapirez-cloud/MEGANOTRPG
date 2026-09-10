@@ -12,10 +12,21 @@ const guide = fs.readFileSync("src/components/reference/ReferenceGuide.tsx", "ut
 const expectedBaseFeatures = [
   "Врожденные чары и Сотворение заклинаний",
   "Источник магии и Метамагия",
+  "Подкласс чародея",
+  "Улучшение характеристик",
+  "Чародейское восстановление",
+  "Воплощение чародейства",
+  "Эпический дар",
+  "Магический апофеоз",
+]
+
+const authoredNarrativeBaseFeatures = new Set([
+  "Врожденные чары и Сотворение заклинаний",
+  "Источник магии и Метамагия",
   "Чародейское восстановление",
   "Воплощение чародейства",
   "Магический апофеоз",
-]
+])
 
 const expectedFirstSubclassFeature: Record<string, string> = {
   "aberrant-sorcery": "Псионические заклинания и Телепатическая связь",
@@ -36,9 +47,12 @@ test("Sorcerer keeps the authored Russian base ability presentation after runtim
   assert.deepEqual(sorcerer.features?.map((feature) => feature.name), expectedBaseFeatures)
 
   for (const feature of sorcerer.features || []) {
-    assert.ok(feature.explanation.trim(), `${feature.name} lost the authored explanation`)
     assert.ok(feature.mechanics.trim(), `${feature.name} lost the exact Russian rule text`)
-    assert.ok(feature.voss?.trim(), `${feature.name} lost Voss commentary`)
+    assert.equal(feature.translationNote, undefined, `${feature.name} is still marked as untranslated`)
+    if (authoredNarrativeBaseFeatures.has(feature.name)) {
+      assert.ok(feature.explanation.trim(), `${feature.name} lost the authored explanation`)
+      assert.ok(feature.voss?.trim(), `${feature.name} lost Voss commentary`)
+    }
   }
 })
 
@@ -57,6 +71,7 @@ test("all nine runtime Sorcerer subclasses keep their translated authored abilit
       assert.ok(feature.explanation.trim(), `${id}/${feature.name} lost the authored explanation`)
       assert.ok(feature.mechanics.trim(), `${id}/${feature.name} lost the exact Russian rule text`)
       assert.ok(feature.voss?.trim(), `${id}/${feature.name} lost Voss commentary`)
+      assert.equal(feature.translationNote, undefined, `${id}/${feature.name} is still marked as untranslated`)
     }
   }
 })
