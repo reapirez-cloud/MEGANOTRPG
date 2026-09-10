@@ -66,7 +66,7 @@ test("Assassin keeps current 2024 infiltration and poison behavior", () => {
   assert.match(infiltration.mechanics, /1 часа/i)
   assert.match(infiltration.mechanics, /Roving Aim/i)
   assert.match(infiltration.mechanics, /Steady Aim больше не уменьшает.*Speed до 0/i)
-  assert.doesNotMatch(infiltration.mechanics, /Преимуществ.*Обман/i)
+  assert.match(infiltration.mechanics, /не даёт отдельного Преимущества на проверки Обмана/i)
 
   const envenom = subclassFeature("assassin", "Отравленное оружие")
   assert.match(envenom.mechanics, /2d6.*каждый раз.*проваливает спасбросок/i)
