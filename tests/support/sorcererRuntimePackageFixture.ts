@@ -48,21 +48,25 @@ const levels: Array<{ level: number; mechanics: StoredMechanics }> = [
       { id: "restoration-action", type: "action", sourceKey: "sorcerous-restoration", key: "sorcerous_restoration", label: "Чародейское восстановление", economy: "special", resourceCosts: [{ key: "sorcerous_restoration", amount: 1 }], effects: [{ kind: "resource", key: "sorcery_points", operation: "RESTORE", amount: { kind: "reference", key: "values.sorcerous_restoration_amount" } }], tags: ["class", "sorcerer", "short_rest"] },
     ],
   },
-  ...([[7, 3], [9, 4], [11, 5], [13, 6], [15, 7], [17, 8], [19, 9], [20, 10]] as const).map(([level, value]) => ({
-    level,
-    mechanics: [
-      {
-        id: `restoration-value-${level}`,
-        type: "grant",
-        sourceKey: "sorcerous-restoration",
-        target: "value",
-        key: "sorcerous_restoration_amount",
-        grantOperation: "REPLACE",
-        priority: level,
-        payload: { label: "Возврат Очков чародейства", value },
-      } as StoredMechanic,
-    ],
-  })),
+  ...Array.from({ length: 15 }, (_, index) => {
+    const level = index + 6
+    const value = Math.floor(level / 2)
+    return {
+      level,
+      mechanics: [
+        {
+          id: `restoration-value-${level}`,
+          type: "grant",
+          sourceKey: "sorcerous-restoration",
+          target: "value",
+          key: "sorcerous_restoration_amount",
+          grantOperation: "REPLACE",
+          priority: level,
+          payload: { label: "Возврат Очков чародейства", value },
+        } as StoredMechanic,
+      ],
+    }
+  }),
 ]
 
 export function sorcererRuntimePackageFixture(level = 20): CharacterTemplateBundle {
