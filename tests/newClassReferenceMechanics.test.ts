@@ -1,11 +1,11 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { classReference, WARLOCK_RUNTIME_REFERENCE_SUBCLASS_IDS } from "../src/data/classReference.ts"
+import { classReference, SORCERER_RUNTIME_REFERENCE_SUBCLASS_IDS, WARLOCK_RUNTIME_REFERENCE_SUBCLASS_IDS } from "../src/data/classReference.ts"
 import fs from "node:fs"
 
 const expected = ["bard", "monk", "paladin", "sorcerer", "warlock"]
-const referenceOnlyClasses = new Set(["bard", "monk", "sorcerer"])
+const referenceOnlyClasses = new Set(["bard", "monk"])
 const warlockRuntimePatrons = new Set(WARLOCK_RUNTIME_REFERENCE_SUBCLASS_IDS)
 
 test("translated new classes expose complete reference mechanics with truthful runtime activation", () => {
@@ -46,6 +46,25 @@ test("Warlock reference mirrors the certified nine-patron runtime boundary", () 
   }
 
   assert.deepEqual(seenRuntimePatrons, warlockRuntimePatrons)
+})
+
+test("Sorcerer reference mirrors the certified nine-subclass runtime boundary", () => {
+  const sorcerer = classReference.find((candidate) => candidate.id === "sorcerer")
+  assert.ok(sorcerer, "sorcerer is absent from class reference")
+  assert.equal(sorcerer.referenceOnly, false, "base Sorcerer must use the certified runtime template")
+
+  const runtimeSubclasses = new Set(SORCERER_RUNTIME_REFERENCE_SUBCLASS_IDS)
+  assert.equal(runtimeSubclasses.size, 9, "Sorcerer runtime roster must contain nine certified subclasses")
+
+  const seen = new Set<string>()
+  for (const subclass of sorcerer.subclasses) {
+    const runtimeReady = runtimeSubclasses.has(subclass.id)
+    assert.equal(subclass.referenceOnly, !runtimeReady, `sorcerer/${subclass.id} runtime/reference status is stale`)
+    if (runtimeReady) seen.add(subclass.id)
+  }
+
+  assert.deepEqual(seen, runtimeSubclasses)
+  assert.equal(sorcerer.subclasses.filter((subclass) => subclass.referenceOnly).length, 3)
 })
 
 test("missing-translation notes are carried into the visible Reference Guide", () => {
