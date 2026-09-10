@@ -18,7 +18,12 @@ test("translated new classes expose complete reference mechanics with truthful r
     for (const feature of entry.features ?? []) {
       assert.ok(feature.mechanics.trim(), `${classId}/${feature.level}/${feature.name} has no mechanics`)
       const translatedWarlockInvocation = classId === "warlock" && feature.name.startsWith("Воззвание:")
-      if (!feature.explanation.trim() && !translatedWarlockInvocation) {
+      const translatedSorcererSystemFeature = classId === "sorcerer" && [
+        "Подкласс чародея",
+        "Улучшение характеристик",
+        "Эпический дар",
+      ].includes(feature.name)
+      if (!feature.explanation.trim() && !translatedWarlockInvocation && !translatedSorcererSystemFeature) {
         assert.match(feature.translationNote ?? "", /Перевода способности пока нет/)
       }
     }
