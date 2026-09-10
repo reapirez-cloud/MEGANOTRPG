@@ -546,7 +546,7 @@ begin
   if not exists(
     select 1
     from public.rule_templates t
-    join public.rule_template_levels l on l.template_id=t.id and l.level=6
+    join public.rule_template_levels l on l.template_id=t.id and l.level=3
     cross join lateral jsonb_array_elements(coalesce(l.mechanics,'[]'::jsonb)) m(value)
     where t.campaign_id=p_campaign_id
       and t.catalog_key='subclass:sorcerer:clockwork-sorcery'
