@@ -16,6 +16,17 @@ const paladinMechanics = (workStatus: string): LegacyClassMigrationMetadata => (
   statusLedger: "src/rule-templates/CLASS_WORK_STATUS.md",
 })
 
+const sorcererMechanics = (
+  workStatus: string,
+  packageTest: string,
+): LegacyClassMigrationMetadata => ({
+  scope: "mechanics",
+  packageTest,
+  resourcePolicy: "short-long-rest-v1",
+  workStatus,
+  statusLedger: "src/rule-templates/CLASS_WORK_STATUS.md",
+})
+
 /**
  * Metadata for already-applied class migrations created before the strict
  * migration-header contract was enforced. Keeping it here avoids rewriting
@@ -42,6 +53,23 @@ export const LEGACY_CLASS_MIGRATION_METADATA: Record<string, LegacyClassMigratio
     statusLedger: "src/rule-templates/CLASS_WORK_STATUS.md",
   },
   "20260908131500_paladin_final_closeout_v1.sql": paladinMechanics("paladin:CLOSED"),
+
+  // These Sorcerer migrations were already deployed before the complete
+  // migration-metadata contract landed. Their SQL-specific regressions remain
+  // dedicated tests; the package-level gate reuses the closest fully integrated
+  // Sorcerer package test instead of rewriting applied migration history.
+  "20260908192000_sorcerer_stage2_resource_runtime_v1.sql": sorcererMechanics(
+    "sorcerer:stage2_resource=READY",
+    "tests/sorcererResourceRuntimeStage2.test.ts",
+  ),
+  "20260908203000_sorcerer_stage3_font_of_magic_v1.sql": sorcererMechanics(
+    "sorcerer:stage3_font_of_magic=READY",
+    "tests/sorcererMetamagicStage4.test.ts",
+  ),
+  "20260909010000_sorcerer_stage5_base_runtime_v1.sql": sorcererMechanics(
+    "sorcerer:stage5=READY",
+    "tests/sorcererMetamagicStage4.test.ts",
+  ),
 }
 
 export function legacyClassMigrationMetadata(name: string): LegacyClassMigrationMetadata | undefined {
