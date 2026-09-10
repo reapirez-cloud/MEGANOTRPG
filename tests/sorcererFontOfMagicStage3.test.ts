@@ -2,10 +2,47 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 
+import { resolveCharacterContract } from "../src/character-engine/index.ts"
+import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
+import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
+import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
+import { sorcererRuntimePackageFixture } from "./support/sorcererRuntimePackageFixture.ts"
+
 const sql = fs.readFileSync(
   "supabase/migrations/20260908203000_sorcerer_stage3_font_of_magic_v1.sql",
   "utf8",
 )
+
+test("Stage 3 package contract reaches the real parser and Character Engine", () => {
+  const bundle = sorcererRuntimePackageFixture(20)
+  assert.doesNotThrow(() => assertClassPackageQuality([bundle]))
+  assert.doesNotThrow(() => assertClassResourcePolicy([bundle]))
+
+  const parsed = resolveTemplateBundles([bundle], 20)
+  const contract = resolveCharacterContract({
+    base: {
+      id: "sorcerer-stage3-package-gate",
+      name: "Чародей",
+      level: 20,
+      abilities: { strength: 8, dexterity: 14, constitution: 14, intelligence: 10, wisdom: 10, charisma: 20 },
+      baseMaxHp: 120,
+      baseSpeed: 30,
+    },
+    state: {
+      currentHp: 120,
+      tempHp: 0,
+      resources: {
+        innate_sorcery: { current: 2 },
+        sorcery_points: { current: 20 },
+        sorcerous_restoration: { current: 1 },
+      },
+    },
+    contributions: parsed.contributions,
+  })
+
+  assert.equal(contract.resources.find((entry) => entry.key === "sorcery_points")?.max.value, 20)
+  assert.ok(contract.actions.find((entry) => entry.key === "innate_sorcery"))
+})
 
 test("stage 3 uses the 2024 Font of Magic costs and unlock levels", () => {
   assert.match(sql, /\(2,1,2\),\s*\(3,2,3\),\s*\(5,3,5\),\s*\(7,4,6\),\s*\(9,5,7\)/)
