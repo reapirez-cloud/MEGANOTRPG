@@ -303,15 +303,21 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
     return true
   }
 
-  async function runAction(action: ResolvedAction) {
+  async function runAction(action: ResolvedAction, actionOptionKey?: string) {
     const characterId = actors.selected?.characterId || null
     if (!characterId) throw new Error("Для классового действия нужен выбранный персонаж.")
 
     const damage = action.damage[0]
     const mechanicId = templateMechanicIdForChatAction(action)
     if (mechanicId) {
-      const optionKey = templatePaymentOptionKeyForChatAction(action)
-      if (optionKey === null) throw new Error("У действия несколько способов оплаты. Сначала нужно выбрать расход ресурса.")
+      const templateChoice = action.effects.find((effect) => effect.kind === "template_choice")
+      if (templateChoice && !actionOptionKey) throw new Error("Сначала выбери новый вариант.")
+      const paymentOptionKey = templatePaymentOptionKeyForChatAction(action)
+      if (paymentOptionKey === null) throw new Error("У действия несколько способов оплаты. Сначала нужно выбрать расход ресурса.")
+      if (actionOptionKey && action.costOptions.length) {
+        throw new Error("Действие одновременно требует выбора эффекта и способа оплаты, этот маршрут пока не поддерживается.")
+      }
+      const optionKey = actionOptionKey ?? paymentOptionKey
       const common = {
         characterId,
         mechanicId,
