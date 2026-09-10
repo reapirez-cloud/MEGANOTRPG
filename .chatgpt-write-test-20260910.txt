@@ -1,4 +1,0 @@
-ChatGPT GitHub write-access verification
-branch=dev
-date=2026-09-10
-purpose=create-read-delete verification
