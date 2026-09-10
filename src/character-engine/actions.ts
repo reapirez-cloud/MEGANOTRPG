@@ -354,6 +354,37 @@ function parseEffects(value: unknown): ActionEffectDefinition[] {
         ...(effect.payload === undefined ? {} : { payload: effect.payload as MechanicalData }),
       }
     }
+    if (kind === "template_choice") {
+      const choiceKey = nonEmptyString(effect.choiceKey, `${field}.choiceKey`)
+      const operation = nonEmptyString(effect.operation, `${field}.operation`)
+      if (operation !== "SET_OPTION") {
+        throw new ActionEngineError(`unsupported ${field}.operation: ${operation}`)
+      }
+      if (!Array.isArray(effect.options) || effect.options.length === 0) {
+        throw new ActionEngineError(`${field}.options must be a non-empty array`)
+      }
+      const options = effect.options.map((option, optionIndex) =>
+        nonEmptyString(option, `${field}.options[${optionIndex}]`),
+      )
+      if (new Set(options).size !== options.length) {
+        throw new ActionEngineError(`${field}.options must be unique`)
+      }
+      let optionLabels: Record<string, string> | undefined
+      if (effect.optionLabels !== undefined) {
+        const labels = asObject(effect.optionLabels, `${field}.optionLabels must be an object`)
+        optionLabels = Object.fromEntries(Object.entries(labels).map(([option, label]) => [
+          option,
+          nonEmptyString(label, `${field}.optionLabels.${option}`),
+        ]))
+      }
+      return {
+        kind,
+        choiceKey,
+        operation,
+        options,
+        ...(optionLabels ? { optionLabels } : {}),
+      }
+    }
     throw new ActionEngineError(`unsupported ${field}.kind: ${kind}`)
   })
 }
@@ -560,7 +591,7 @@ function resolveEffect(
   resources: ResolvedResource[],
   formulaContext: FormulaContext,
 ): ResolvedActionEffect {
-  if (definition.kind === "state" || definition.kind === "semantic") return definition
+  if (definition.kind === "state" || definition.kind === "semantic" || definition.kind === "template_choice") return definition
   const variantKey = definition.variantKey ?? "default"
   const stateKey = resourceStateKey(definition.key, variantKey)
   const resource = resources.find((candidate) => candidate.stateKey === stateKey)
@@ -728,7 +759,7 @@ export function applyActionEffects(state: CharacterState, action: ResolvedAction
   )
 
   for (const effect of action.effects) {
-    if (effect.kind === "semantic") continue
+    if (effect.kind === "semantic" || effect.kind === "template_choice") continue
     if (effect.kind === "state") {
       if (effect.operation === "UNSET") {
         delete facts[effect.key]
