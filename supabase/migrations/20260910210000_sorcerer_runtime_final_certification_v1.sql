@@ -461,7 +461,7 @@ begin
       raise exception 'SORCERER_FINAL_SUBCLASS_LEVELS_INVALID:%:%:%',p_campaign_id,v_expected.catalog_key,v_levels;
     end if;
 
-    select count(*) into v_count
+    select count(distinct spell_id) into v_count
     from public.rule_template_spell_links
     where template_id=v_subclass;
     if v_count<>v_expected.spell_links then
