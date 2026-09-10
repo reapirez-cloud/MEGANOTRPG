@@ -146,6 +146,7 @@ export {
   type ActionResourceEffectDefinition,
   type ActionSemanticEffectDefinition,
   type ActionStateEffectDefinition,
+  type ActionTemplateChoiceEffectDefinition,
   type BaseCharacter,
   type CharacterCondition,
   type CharacterContribution,
