@@ -281,6 +281,27 @@ function referenceFeatures(subclass: ReferenceSubclassView): RuleFeatureView[] {
   return referenceFeatureViews(subclass.features, `reference:subclass:${subclass.id}`)
 }
 
+function mergeSorcererAuthoredFeatures(
+  authored: RuleFeatureView[],
+  runtime: RuleFeatureView[],
+  unlockLevel = 1,
+) {
+  if (!authored.length) return runtime
+
+  return authored.map((feature) => {
+    const level = Math.max(feature.level, unlockLevel)
+    const runtimeFacts = runtime
+      .filter((entry) => entry.level === level)
+      .flatMap((entry) => entry.facts)
+
+    return {
+      ...feature,
+      level,
+      facts: [...new Set([...feature.facts, ...runtimeFacts])],
+    }
+  })
+}
+
 function lastSegment(value: string, separator: string) {
   const parts = value.split(separator)
   return parts[parts.length - 1] || value
@@ -336,10 +357,22 @@ export default function ReferenceGuide({ campaignId: campaignIdProp, character, 
       const rawId = templateCatalogTail(template)
       const id = selectedClass.id === "cleric" ? normalizeClericDomainId(rawId) : rawId
       const old = fallbackById.get(id)
-      const storedExplanation = template.author_description?.trim() || old?.explanation
+      const isSorcerer = selectedClass.id === "sorcerer"
+      const storedExplanation = isSorcerer
+        ? old?.explanation || template.author_description?.trim()
+        : template.author_description?.trim() || old?.explanation
       const authoredExplanation = selectedClass.id === "druid" ? getDruidSubclassVossNarration(id) : selectedClass.id === "fighter" ? getFighterSubclassVossNarration(id) : selectedClass.id === "cleric" ? getClericSubclassVossNarration(id) : selectedClass.id === "wizard" ? getWizardSubclassVossNarration(id) : ""
       const authoredComment = selectedClass.id === "druid" ? getDruidSubclassVossComment(id) : selectedClass.id === "fighter" ? getFighterSubclassVossComment(id) : selectedClass.id === "cleric" ? getClericSubclassVossComment(id) : selectedClass.id === "wizard" ? getWizardSubclassVossComment(id) : ""
-      return { id, name: template.name || old?.name || id, summary: template.description?.trim() || old?.summary || "Специализация класса.", mechanics: template.mechanical_summary?.trim() || old?.mechanics, explanation: authoredExplanation || storedExplanation, voss: authoredComment || template.author_comment?.trim() || old?.voss, features: old?.features, templateId: template.id } satisfies ReferenceSubclassView
+      return {
+        id,
+        name: isSorcerer ? old?.name || template.name || id : template.name || old?.name || id,
+        summary: template.description?.trim() || old?.summary || "Специализация класса.",
+        mechanics: template.mechanical_summary?.trim() || old?.mechanics,
+        explanation: authoredExplanation || storedExplanation,
+        voss: isSorcerer ? old?.voss || template.author_comment?.trim() : authoredComment || template.author_comment?.trim() || old?.voss,
+        features: old?.features,
+        templateId: template.id,
+      } satisfies ReferenceSubclassView
     })
     const dbById = new Map(dbViews.map((item) => [item.id, item]))
     const merged = fallback.map((item) => dbById.get(item.id) || item)
@@ -355,7 +388,9 @@ export default function ReferenceGuide({ campaignId: campaignIdProp, character, 
 
   const classFeatures = useMemo(() => {
     const templateFeatures = buildTemplateFeatures(classTemplate, levels)
-    const features = templateFeatures.length ? templateFeatures : selectedClass ? referenceFeatureViews(selectedClass.features, `reference:class:${selectedClass.id}`) : []
+    const authoredFeatures = selectedClass ? referenceFeatureViews(selectedClass.features, `reference:class:${selectedClass.id}`) : []
+    const features = templateFeatures.length ? templateFeatures : authoredFeatures
+    if (selectedClass?.id === "sorcerer") return mergeSorcererAuthoredFeatures(authoredFeatures, templateFeatures)
     if (selectedClass?.id === "fighter") return features.map((feature) => ({ ...feature, explanation: getFighterBaseVossNarration(feature.level, feature.name) || feature.explanation, voss: getFighterBaseVossComment(feature.level, feature.name) || feature.voss }))
     if (selectedClass?.id === "cleric") return features.map((feature) => ({ ...feature, explanation: getClericBaseVossNarration(feature.level, feature.sourceKey) || feature.explanation, voss: getClericBaseVossComment(feature.level, feature.sourceKey) || feature.voss }))
     if (selectedClass?.id === "wizard") return features.map((feature) => ({ ...feature, explanation: getWizardBaseVossNarration(feature.level, feature.sourceKey) || feature.explanation, voss: getWizardBaseVossComment(feature.level, feature.sourceKey) || feature.voss }))
@@ -367,6 +402,9 @@ export default function ReferenceGuide({ campaignId: campaignIdProp, character, 
     if (!selectedSubclass) return features
     const authored = referenceFeatures(selectedSubclass)
     if (selectedClass?.referenceOnly && !features.length) return authored
+    if (selectedClass?.id === "sorcerer") {
+      return mergeSorcererAuthoredFeatures(authored, features, selectedSubclassTemplate?.unlock_level || 1)
+    }
     if (selectedClass?.id === "wizard") {
       if (!features.length) return authored
       return features.map((feature) => {

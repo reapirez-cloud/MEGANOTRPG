@@ -90,9 +90,9 @@ const missingBaseCards: Record<string, ReferenceFeatureCard[]> = {
     { level: 19, name: "Epic Boon", explanation: "", mechanics: "Получите эпический дар либо другой талант, требованиям которого соответствуете.", details: [], translationNote: TRANSLATION_MISSING },
   ],
   sorcerer: [
-    { level: 3, name: "Sorcerer Subclass", explanation: "", mechanics: "Выберите происхождение чародейства. Оно даёт способности на 3-м, 6-м, 14-м и 18-м уровнях чародея.", details: [], translationNote: TRANSLATION_MISSING },
-    { level: 4, name: "Ability Score Improvement", explanation: "", mechanics: "Получите талант «Улучшение характеристик» либо другой доступный талант. Эта черта повторяется на 8-м, 12-м и 16-м уровнях чародея.", details: [], translationNote: TRANSLATION_MISSING },
-    { level: 19, name: "Epic Boon", explanation: "", mechanics: "Получите эпический дар либо другой талант, требованиям которого соответствуете.", details: [], translationNote: TRANSLATION_MISSING },
+    { level: 3, name: "Подкласс чародея", explanation: "", mechanics: "Выберите происхождение чародейства. Оно даёт способности на 3-м, 6-м, 14-м и 18-м уровнях чародея.", details: [] },
+    { level: 4, name: "Улучшение характеристик", explanation: "", mechanics: "Получите талант «Улучшение характеристик» либо другой доступный талант. Эта черта повторяется на 8-м, 12-м и 16-м уровнях чародея.", details: [] },
+    { level: 19, name: "Эпический дар", explanation: "", mechanics: "Получите эпический дар либо другой талант, требованиям которого соответствуете.", details: [] },
   ],
   warlock: [
     { level: 4, name: "Ability Score Improvement", explanation: "", mechanics: "Получите талант «Улучшение характеристик» либо другой доступный талант. Эта черта повторяется на 8-м, 12-м и 16-м уровнях колдуна.", details: [], translationNote: TRANSLATION_MISSING },
