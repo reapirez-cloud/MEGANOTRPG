@@ -233,7 +233,7 @@ test("GENA/UI uses the final Metamagic and template-choice action routes", () =>
   assert.match(chatSheet, /template_choice/)
   assert.match(chatSheet, /optionLabels/)
   assert.match(chatRoom, /actionOptionKey/)
-  assert.match(chatRoom, /sendAction/)
+  assert.match(chatRoom, /chat\.sendTemplateAction/)
 })
 
 test("Stage 8 migration repairs even-level Sorcerous Restoration and certifies all base systems", () => {
