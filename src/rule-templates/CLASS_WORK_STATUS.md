@@ -335,7 +335,7 @@ Base Monk and all declared Monk runtime packages are implemented, regression-gat
 - `last_mechanics_audit_started: 2026-09-09`
 - `last_dev_runtime_audit: 2026-09-10`
 - `last_deployed_runtime_audit: 2026-09-10`
-- `runtime_certification: sorcerer-stage7-runtime-certified@2026-09-10`
+- `runtime_certification: sorcerer-runtime-final-v1@2026-09-10`
 - `stage_1_foundation: READY_2026_09_08_PR_60`
 - `stage_1_runtime_revision: xphb-2024-sorcerer-stage1-foundation-v2`
 - `stage_2_resource_runtime: READY_2026_09_08`
@@ -365,12 +365,19 @@ Base Monk and all declared Monk runtime packages are implemented, regression-gat
 - `stage_7_lunar_dedup_correction: supabase/migrations/20260910204000_sorcerer_stage7_lunar_choice_dedup_fix_v1.sql`
 - `stage_7_bastion_text_precision: supabase/migrations/20260910205000_sorcerer_stage7_bastion_text_precision_v1.sql`
 - `stage_7_regression: tests/sorcererSubclassesStage7.test.ts`
-- `runtime_visibility: STAGE7_BASE_AND_9_SUBCLASSES_ACTIVE_DEV_AND_PRODUCTION_2026_09_10`
+- `stage_8_final_certification: READY_2026_09_10`
+- `stage_8_runtime_revision: xphb-2024-sorcerer-runtime-final-v1`
+- `stage_8_migration: supabase/migrations/20260910210000_sorcerer_runtime_final_certification_v1.sql`
+- `stage_8_regression: tests/sorcererRuntimeFinalCertification.test.ts`
+- `stage_8_restoration_correction: floor(Sorcerer level / 2) is now emitted at every Sorcerer level 5-20, including even levels`
+- `stage_8_reference_activation: BASE_PLUS_9_RUNTIME_VISIBLE; RUNECHILD_PHOENIX_STONE_REFERENCE_ONLY`
+- `stage_8_multiclass_certification: SUBCLASS_AND_SOURCE_LEVEL_USE_PARENT_SORCERER_LEVEL_NOT_TOTAL_CHARACTER_LEVEL`
+- `runtime_visibility: FINAL_BASE_AND_9_SUBCLASSES_ACTIVE_DEV_AND_PRODUCTION_2026_09_10`
 - `class_reference_visibility: RUNTIME_BACKED_BASE_PLUS_9; EXTENDED_3_REFERENCE_ONLY`
 - `canonical_resources: innate_sorcery=2/LR; sorcery_points=max Sorcerer level/LR; sorcerous_restoration=1/LR`
 - `sorcerous_restoration_amount: floor(Sorcerer level / 2), after Short Rest, from Sorcerer level 5`
 - `assignment_resource_sync: ACTIVE; persistent current lives in character_resource_states and level changes preserve spent deficit`
-- `production_runtime: STAGE7_SUBCLASS_RUNTIME_DEPLOYED_AND_CERTIFIED_2026_09_10`
+- `production_runtime: STAGE8_FINAL_RUNTIME_DEPLOYED_AND_CERTIFIED_2026_09_10`
 - `production_subclass_count: 9`
 - `production_subclass_parent_contract: ALL_9_PARENTED_TO_CLASS_SORCERER_AND_UNLOCK_AT_LEVEL_3`
 - `font_of_magic_conversion_runtime: READY_STAGE3_PLUS_2024_REVERSE_CONVERSION_CORRECTION`
@@ -396,7 +403,7 @@ Base Monk and all declared Monk runtime packages are implemented, regression-gat
 - `lunar_phase_mutation_runtime: ATOMIC_TEMPLATE_CHOICE_ACTION_1_SP_WITH_CHOICE_RUNTIME_V2_PERSISTENCE`
 - `lunar_level6_shape: EXACTLY_ONE_BOONS_FEATURE_ONE_BOONS_RESOURCE_ONE_WAXING_FEATURE_ONE_WAXING_ACTION`
 - `source_policy: source/publication labels in literary copy are non-authoritative; Runechild, Phoenix Sorcery and Stone Sorcery remain explicitly outside the certified Stage 7 runtime scope until separately approved`
-- `mechanics_policy: Stages 1–7 are active in the shared template/CE/Shapoklyak/GENA pipeline. Base resources, Font of Magic, Metamagic, Innate Sorcery, full Sorcerer spell selection/casting and all nine supported subclass packages use canonical shared resources and source identities. Divine Soul extends the generic spell choice through source requirements; Lunar phase changes are an authoritative generic template-choice action in the same receipt-aware transaction as the 1 SP cost. Per-turn cadence and scene legality remain GM-adjudicated because the application has no authoritative turn tracker.`
+- `mechanics_policy: Stages 1–8 are certified in the shared template/CE/Shapoklyak/GENA pipeline. Base resources, Font of Magic, Metamagic, Innate Sorcery, full Sorcerer spell selection/casting and all nine supported subclass packages use canonical shared resources and source identities. Divine Soul extends the generic spell choice through source requirements; Lunar phase changes are an authoritative generic template-choice action in the same receipt-aware transaction as the 1 SP cost. Sorcerous Restoration is certified at floor(Sorcerer level / 2) for every level 5-20. Per-turn cadence and scene legality remain GM-adjudicated because the application has no authoritative turn tracker.`
 
 ### Certified mechanics scope
 
@@ -412,7 +419,7 @@ Base Monk and all declared Monk runtime packages are implemented, regression-gat
 - Storm Sorcery and Pyromancer durable resistances/immunities resolve as native grants; their scene-triggered consequences remain exact GM-adjudicated rules instead of fake combat state.
 - Runechild, Phoenix Sorcery and Stone Sorcery remain reference-only extended candidates and are not part of the certified runtime count.
 
-Sorcerer Stages 1–7 and the nine declared runtime subclasses are implemented and deployed in the connected Supabase project. No known Sorcerer implementation or deployment blocker remains inside this declared Stage 7 scope.
+Sorcerer Stages 1–8 and the nine declared runtime subclasses are implemented, player-reference activated, regression-gated and production-certified in the connected Supabase project. No known Sorcerer implementation or deployment blocker remains inside the declared final runtime scope.
 
 ---
 
