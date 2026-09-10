@@ -113,7 +113,7 @@ test("Draconic Resilience changes max HP and affinity grants a native resistance
   const level6 = contractFor("subclass:sorcerer:draconic-sorcery", 6, { sorcerer_draconic_affinity: "fire" }).contract
   assert.equal(level3.combat.maxHp.value, 33)
   assert.equal(level6.combat.maxHp.value, 36)
-  assert.ok(level6.grants.some((entry) => entry.target === "resistance" && entry.key === "damage:fire"))
+  assert.ok(level6.capabilities.resistances.some((entry) => entry.key === "damage:fire"))
 })
 
 test("Wild Magic uses the 2024 player-driven surge and Tides recharge contract", () => {
@@ -152,10 +152,10 @@ test("high-level legacy subclasses resolve their native durable grants", () => {
   const shadow = contractFor("subclass:sorcerer:shadow-magic", 18).contract
   assert.ok(shadow.resources.some((entry) => entry.key === "sorcerer_shadow_strength_of_grave"))
   const storm = contractFor("subclass:sorcerer:storm-sorcery", 18).contract
-  assert.ok(storm.grants.some((entry) => entry.target === "immunity" && entry.key === "damage:lightning"))
-  assert.ok(storm.grants.some((entry) => entry.target === "immunity" && entry.key === "damage:thunder"))
+  assert.ok(storm.capabilities.immunities.some((entry) => entry.key === "damage:lightning"))
+  assert.ok(storm.capabilities.immunities.some((entry) => entry.key === "damage:thunder"))
   const pyro = contractFor("subclass:sorcerer:pyromancer", 18).contract
-  assert.ok(pyro.grants.some((entry) => entry.target === "immunity" && entry.key === "damage:fire"))
+  assert.ok(pyro.capabilities.immunities.some((entry) => entry.key === "damage:fire"))
 })
 
 test("Stage 7 migration is a strict mechanics package and excludes reference-only candidates", () => {
