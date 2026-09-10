@@ -1,4 +1,5 @@
 import { classReference as catalogClassReference } from "./classReferenceCatalog.ts"
+import { rogueReferenceCurrent } from "./classes/rogueReferenceCurrent.ts"
 import { WARLOCK_PHB2024_SUBCLASS_RUNTIME_CATALOG_KEYS } from "../rule-templates/warlockSubclasses.ts"
 import { WARLOCK_SUPPLEMENTAL_RUNTIME_CATALOG_KEYS } from "../rule-templates/warlockSupplementalSubclasses.ts"
 
@@ -18,6 +19,7 @@ export const WARLOCK_RUNTIME_REFERENCE_SUBCLASS_IDS = WARLOCK_RUNTIME_CATALOG_KE
 )
 
 const warlockRuntimeSubclassIds = new Set<string>(WARLOCK_RUNTIME_REFERENCE_SUBCLASS_IDS)
+const publicClassReferenceCatalog = [...catalogClassReference, rogueReferenceCurrent]
 
 /**
  * Public reference catalog.
@@ -27,7 +29,7 @@ const warlockRuntimeSubclassIds = new Set<string>(WARLOCK_RUNTIME_REFERENCE_SUBC
  * Character Engine packages, so player-facing cards cannot silently drift back
  * to a stale four-patron allow-list.
  */
-export const classReference = catalogClassReference.map((entry) => {
+export const classReference = publicClassReferenceCatalog.map((entry) => {
   if (entry.id !== "warlock") return entry
 
   return {
