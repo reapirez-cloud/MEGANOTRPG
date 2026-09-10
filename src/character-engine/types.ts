@@ -315,10 +315,23 @@ export interface ActionSemanticEffectDefinition {
   payload?: MechanicalData
 }
 
+/**
+ * Durable template-choice mutation requested by an action.
+ * CE carries this declaratively; the authoritative template runtime persists it.
+ */
+export interface ActionTemplateChoiceEffectDefinition {
+  kind: "template_choice"
+  choiceKey: string
+  operation: "SET_OPTION"
+  options: string[]
+  optionLabels?: Record<string, string>
+}
+
 export type ActionEffectDefinition =
   | ActionStateEffectDefinition
   | ActionResourceEffectDefinition
   | ActionSemanticEffectDefinition
+  | ActionTemplateChoiceEffectDefinition
 
 /**
  * Generic action definition. Weapons, class abilities and custom attacks all use
@@ -591,6 +604,7 @@ export type ResolvedActionEffect =
       max: number
     }
   | ActionSemanticEffectDefinition
+  | ActionTemplateChoiceEffectDefinition
 
 export interface ResolvedAction {
   key: string
