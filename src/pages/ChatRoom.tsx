@@ -21,6 +21,7 @@ import ChatMessageActions from "../components/chat/ChatMessageActions"
 import ChatContextSheet from "../components/chat/ChatContextSheet"
 import ChatPreparationCard from "../components/chat/ChatPreparationCard"
 import ChatSpellDetailSheet from "../components/chat/ChatSpellDetailSheet"
+import ChatSpellModifierSheet, { spellModifierActions } from "../components/chat/ChatSpellModifierSheet"
 import {
   templateMechanicIdForChatAction,
   templateMechanicIdForSpellAccess,
@@ -101,6 +102,7 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
   const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(null)
   const [selectedSpellEvent, setSelectedSpellEvent] = useState<SpellEventTarget | null>(null)
   const [selectedActionEvent, setSelectedActionEvent] = useState<ActionEventTarget | null>(null)
+  const [pendingModifiedSpell, setPendingModifiedSpell] = useState<ResolvedSpell | null>(null)
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
   const [attachmentError, setAttachmentError] = useState("")
   const [uploadingAttachment, setUploadingAttachment] = useState(false)
@@ -113,6 +115,7 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
   const previousLastMessageIdRef = useRef<number | null>(null)
   const chat = useChatMessages(roomId)
   const { loading: chatLoading, markRead: markChatRead, messages: chatMessages } = chat
+  const modifierActions = useMemo(() => spellModifierActions(resolved.contract?.actions || []), [resolved.contract])
   const characterById = useMemo(() => {
     const map = new Map<string, MessageCharacter>()
     for (const character of characters) map.set(character.id, character)
@@ -206,6 +209,7 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
       setRoomCharacterId(null)
       setSelectedSpellEvent(null)
       setSelectedActionEvent(null)
+      setPendingModifiedSpell(null)
     })
     return () => { cancelled = true }
   }, [roomId])
@@ -299,15 +303,21 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
     return true
   }
 
-  async function runAction(action: ResolvedAction) {
+  async function runAction(action: ResolvedAction, actionOptionKey?: string) {
     const characterId = actors.selected?.characterId || null
     if (!characterId) throw new Error("Для классового действия нужен выбранный персонаж.")
 
     const damage = action.damage[0]
     const mechanicId = templateMechanicIdForChatAction(action)
     if (mechanicId) {
-      const optionKey = templatePaymentOptionKeyForChatAction(action)
-      if (optionKey === null) throw new Error("У действия несколько способов оплаты. Сначала нужно выбрать расход ресурса.")
+      const templateChoice = action.effects.find((effect) => effect.kind === "template_choice")
+      if (templateChoice && !actionOptionKey) throw new Error("Сначала выбери новый вариант.")
+      const paymentOptionKey = templatePaymentOptionKeyForChatAction(action)
+      if (paymentOptionKey === null) throw new Error("У действия несколько способов оплаты. Сначала нужно выбрать расход ресурса.")
+      if (actionOptionKey && action.costOptions.length) {
+        throw new Error("Действие одновременно требует выбора эффекта и способа оплаты, этот маршрут пока не поддерживается.")
+      }
+      const optionKey = actionOptionKey ?? paymentOptionKey
       const common = {
         characterId,
         mechanicId,
@@ -362,7 +372,7 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
     if (sent) { resolved.refresh(); setActionsOpen(false) }
   }
 
-  async function castSpell(spell: ResolvedSpell) {
+  async function executeSpell(spell: ResolvedSpell, modifiers: ResolvedAction[] = []) {
     const characterId = actors.selected?.characterId || null
     if (!characterId) throw new Error("Для заклинания нужен выбранный персонаж.")
 
@@ -371,8 +381,41 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
     const option = method?.resourceOptions.find((item) => item.available) || method?.resourceOptions[0]
     if (!access || !method) throw new Error("У заклинания нет доступного способа сотворения.")
 
-    const detail = [spell.identity.level ? `${spell.identity.level} уровень` : "Кантрип", option?.castLevel && option.castLevel !== spell.identity.level ? `ячейка ${option.castLevel} ур.` : "", method.attackBonus ? `атака ${method.attackBonus.value >= 0 ? "+" : ""}${method.attackBonus.value}` : "", method.saveDc ? `СЛ ${method.saveDc.value}` : ""].filter(Boolean).join(" · ")
+    const modifierLabels = modifiers.map((action) => (action.label || action.key).replace(/^Метамагия:\s*/u, ""))
+    const detail = [
+      spell.identity.level ? `${spell.identity.level} уровень` : "Кантрип",
+      option?.castLevel && option.castLevel !== spell.identity.level ? `ячейка ${option.castLevel} ур.` : "",
+      method.attackBonus ? `атака ${method.attackBonus.value >= 0 ? "+" : ""}${method.attackBonus.value}` : "",
+      method.saveDc ? `СЛ ${method.saveDc.value}` : "",
+      modifierLabels.length ? `Метамагия: ${modifierLabels.join(" + ")}` : "",
+    ].filter(Boolean).join(" · ")
+
     const mechanicId = templateMechanicIdForSpellAccess(access)
+    if (modifiers.length) {
+      const modifierMechanicIds = modifiers.map((action) => {
+        const id = templateMechanicIdForChatAction(action)
+        if (!id) throw new Error("Модификатор заклинания потерял связь с шаблоном класса.")
+        return id
+      })
+      const contract = resolved.contract
+      const costs = !mechanicId && contract && option ? resourceCostInputs(contract, option.costs) : []
+      const sent = await chat.sendSpellWithModifiers({
+        characterId,
+        ...(mechanicId ? {
+          spellMechanicId: mechanicId,
+          methodKey: method.key,
+          ...(option ? { optionKey: option.key } : {}),
+        } : {
+          spellResourceCosts: costs,
+        }),
+        modifierMechanicIds,
+        label: spell.identity.name,
+        payload: { detail, spellKey: spell.key },
+      })
+      if (sent) { resolved.refresh(); setActionsOpen(false) }
+      return sent
+    }
+
     if (mechanicId) {
       const sent = await chat.sendTemplateSpell({
         characterId,
@@ -383,13 +426,23 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
         payload: { detail, spellKey: spell.key },
       })
       if (sent) { resolved.refresh(); setActionsOpen(false) }
-      return
+      return sent
     }
 
     const contract = resolved.contract
     const costs = contract && option ? resourceCostInputs(contract, option.costs) : []
     const sent = await chat.sendEvent(characterId, "spell", spell.identity.name, { detail, spellKey: spell.key }, costs)
     if (sent) { resolved.refresh(); setActionsOpen(false) }
+    return sent
+  }
+
+  async function castSpell(spell: ResolvedSpell) {
+    if (modifierActions.length) {
+      setPendingModifiedSpell(spell)
+      setActionsOpen(false)
+      return
+    }
+    await executeSpell(spell)
   }
 
   const realtimeLabel = chat.realtime === "live" ? "онлайн" : chat.realtime === "connecting" ? "подключение" : "офлайн"
@@ -456,6 +509,16 @@ export default function ChatRoom({ roomId, onBack, onOpenCharacter }: Props) {
     </form>}
 
     {actionsOpen && <ChatActionSheet characterName={actors.selected?.character?.name || null} contract={resolved.contract} loading={resolved.loading} includePrivateSources={canManage} onClose={() => setActionsOpen(false)} onFreeRoll={freeRoll} onCheck={rollCheck} onAction={runAction} onSpell={castSpell} />}
+    {pendingModifiedSpell && <ChatSpellModifierSheet
+      spell={pendingModifiedSpell}
+      modifierActions={modifierActions}
+      busy={chat.sending}
+      onClose={() => setPendingModifiedSpell(null)}
+      onCast={async (modifiers) => {
+        const sent = await executeSpell(pendingModifiedSpell, modifiers)
+        if (sent) setPendingModifiedSpell(null)
+      }}
+    />}
     {actorOpen && <ChatActorPicker actors={actors.actors} selected={actors.selected} onSelect={actors.selectActor} onClose={() => setActorOpen(false)} />}
     {contextOpen && <ChatContextSheet roomId={roomId} selectedCharacterId={actors.selected?.characterId || null} onRecovery={refreshRecoveredCharacter} onClose={() => setContextOpen(false)} onOpenCharacter={onOpenCharacter} onOpenSettings={() => { setContextOpen(false); setSettingsOpen(true) }} onChanged={() => void loadRoomAccess()} />}
     {settingsOpen && <ChatRoomSettings roomId={roomId} roomTitle={roomTitle} members={members} characters={characters} onClose={() => setSettingsOpen(false)} onSaved={(nextTitle) => { setRoomTitle(nextTitle); void loadRoomAccess() }} />}

@@ -1,6 +1,10 @@
 import { classReference as catalogClassReference } from "./classReferenceCatalog.ts"
+import { rogueReferenceCurrent } from "./classes/rogueReferenceCurrent.ts"
+import { rogueSubclassReferenceWave1 } from "./classes/rogueSubclassReferenceWave1.ts"
+import { rogueSubclassReferenceWave2 } from "./classes/rogueSubclassReferenceWave2.ts"
 import { WARLOCK_PHB2024_SUBCLASS_RUNTIME_CATALOG_KEYS } from "../rule-templates/warlockSubclasses.ts"
 import { WARLOCK_SUPPLEMENTAL_RUNTIME_CATALOG_KEYS } from "../rule-templates/warlockSupplementalSubclasses.ts"
+import { SORCERER_STAGE7_RUNTIME_CATALOG_KEYS } from "../rule-templates/sorcererSubclassMechanics.ts"
 
 export type {
   ClassReferenceEntry,
@@ -17,7 +21,16 @@ export const WARLOCK_RUNTIME_REFERENCE_SUBCLASS_IDS = WARLOCK_RUNTIME_CATALOG_KE
   catalogKey.replace("subclass:warlock:", ""),
 )
 
+export const SORCERER_RUNTIME_REFERENCE_SUBCLASS_IDS = SORCERER_STAGE7_RUNTIME_CATALOG_KEYS.map((catalogKey) =>
+  catalogKey.replace("subclass:sorcerer:", ""),
+)
+
 const warlockRuntimeSubclassIds = new Set<string>(WARLOCK_RUNTIME_REFERENCE_SUBCLASS_IDS)
+const sorcererRuntimeSubclassIds = new Set<string>(SORCERER_RUNTIME_REFERENCE_SUBCLASS_IDS)
+const rogueTranslatedSubclassById = new Map(
+  [...rogueSubclassReferenceWave1, ...rogueSubclassReferenceWave2].map((subclass) => [subclass.id, subclass]),
+)
+const publicClassReferenceCatalog = [...catalogClassReference, rogueReferenceCurrent]
 
 /**
  * Public reference catalog.
@@ -27,7 +40,35 @@ const warlockRuntimeSubclassIds = new Set<string>(WARLOCK_RUNTIME_REFERENCE_SUBC
  * Character Engine packages, so player-facing cards cannot silently drift back
  * to a stale four-patron allow-list.
  */
-export const classReference = catalogClassReference.map((entry) => {
+export const classReference = publicClassReferenceCatalog.map((entry) => {
+  if (entry.id === "rogue") {
+    return {
+      ...entry,
+      subclasses: entry.subclasses.map((subclass) => rogueTranslatedSubclassById.get(subclass.id) ?? subclass),
+    }
+  }
+
+  if (entry.id === "sorcerer") {
+    return {
+      ...entry,
+      description:
+        "Базовый Чародей подключён к Character Engine по правилам 2024: Врождённое чародейство, Очки чародейства, Источник магии, Метамагия, Чародейское восстановление, Воплощение чародейства, Магический апофеоз и полный заклинательный runtime работают через общий CE/GENA контур.",
+      mechanics:
+        "Runtime поддерживает базовый класс и девять сертифицированных подклассов. Выборы заклинаний и Метамагии сохраняются между уровнями, ресурсы и ячейки расходуются через общий ledger, а три расширенных кандидата Runechild, Phoenix Sorcery и Stone Sorcery остаются только справочными.",
+      referenceOnly: false,
+      subclasses: entry.subclasses.map((subclass) => {
+        const runtimeReady = sorcererRuntimeSubclassIds.has(subclass.id)
+        return {
+          ...subclass,
+          referenceOnly: !runtimeReady,
+          summary: runtimeReady
+            ? "Справочное описание и runtime-механики этого происхождения подключены к Character Engine и входят в сертифицированный Sorcerer runtime."
+            : "Литературный перевод и справочное описание правил готовы; этот расширенный кандидат не входит в сертифицированный Sorcerer runtime.",
+        }
+      }),
+    }
+  }
+
   if (entry.id !== "warlock") return entry
 
   return {

@@ -10,6 +10,7 @@ import {
 } from "../src/rule-templates/classResourcePolicy.ts"
 import type { CharacterTemplateBundle, RuleTemplate } from "../src/rule-templates/types.ts"
 import type { StoredMechanics } from "../src/types/characterMechanics.ts"
+import { legacyClassMigrationMetadata } from "./support/legacyClassMigrationMetadata.ts"
 
 const RESOURCE_POLICY_MIGRATION_CUTOFF = "20260830013000"
 
@@ -146,12 +147,17 @@ test("new mechanics migrations must opt into the resource policy and test it", (
   const migrationsDir = "supabase/migrations"
   const migrations = fs.readdirSync(migrationsDir)
     .filter((name) => name.endsWith(".sql") && name >= `${RESOURCE_POLICY_MIGRATION_CUTOFF}.sql`)
-    .filter((name) => /CLASS_MIGRATION_SCOPE:\s*mechanics/i.test(fs.readFileSync(path.join(migrationsDir, name), "utf8")))
+    .filter((name) => {
+      const sql = fs.readFileSync(path.join(migrationsDir, name), "utf8")
+      return /CLASS_MIGRATION_SCOPE:\s*mechanics/i.test(sql) || legacyClassMigrationMetadata(name)?.scope === "mechanics"
+    })
 
   for (const name of migrations) {
     const sql = fs.readFileSync(path.join(migrationsDir, name), "utf8")
-    assert.match(sql, /--\s*CLASS_RESOURCE_POLICY:\s*short-long-rest-v1\b/i, `${name} must declare CLASS_RESOURCE_POLICY: short-long-rest-v1`)
-    const testPath = sql.match(/--\s*CLASS_PACKAGE_TEST:\s*([^\s]+)/i)?.[1]
+    const legacy = legacyClassMigrationMetadata(name)
+    const declaresPolicy = /--\s*CLASS_RESOURCE_POLICY:\s*short-long-rest-v1\b/i.test(sql)
+    assert.ok(declaresPolicy || legacy?.resourcePolicy === "short-long-rest-v1", `${name} must declare CLASS_RESOURCE_POLICY: short-long-rest-v1`)
+    const testPath = sql.match(/--\s*CLASS_PACKAGE_TEST:\s*([^\s]+)/i)?.[1] ?? legacy?.packageTest
     assert.ok(testPath && fs.existsSync(testPath), `${name} must point to a package test`)
     const packageTest = fs.readFileSync(testPath, "utf8")
     assert.match(packageTest, /assertClassResourcePolicy/, `${testPath} must run the class resource policy`)

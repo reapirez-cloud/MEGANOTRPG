@@ -2,6 +2,8 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 
+import { legacyClassMigrationMetadata } from "./support/legacyClassMigrationMetadata.ts"
+
 const SCOPED_MIGRATION_CUTOFF = "20260830000000"
 const migrationsDir = "supabase/migrations"
 const ledger = fs.readFileSync("src/rule-templates/CLASS_WORK_STATUS.md", "utf8")
@@ -55,15 +57,18 @@ test("future class migrations declare scope; class-content scopes also point to 
 
   for (const name of migrations) {
     const sql = fs.readFileSync(`${migrationsDir}/${name}`, "utf8")
-    const scope = sql.match(/--\s*CLASS_MIGRATION_SCOPE:\s*(mechanics|presentation|infrastructure)\b/i)?.[1]?.toLowerCase()
+    const legacy = legacyClassMigrationMetadata(name)
+    const explicitScope = sql.match(/--\s*CLASS_MIGRATION_SCOPE:\s*(mechanics|presentation|infrastructure)\b/i)?.[1]?.toLowerCase()
+    const scope = explicitScope ?? legacy?.scope
     assert.ok(scope, `${name} must declare CLASS_MIGRATION_SCOPE`)
     if (scope === "infrastructure") continue
-    assert.match(sql, /--\s*CLASS_WORK_STATUS:\s*[^\n]+/i, `${name} must declare the affected class work status`)
-    assert.match(
-      sql,
-      /--\s*(?:CLASS_STATUS_LEDGER|CLASS_WORK_STATUS):\s*src\/rule-templates\/CLASS_WORK_STATUS\.md/i,
-      `${name} must point back to the canonical status ledger`,
-    )
+
+    const hasWorkStatus = /--\s*CLASS_WORK_STATUS:\s*[^\n]+/i.test(sql) || Boolean(legacy?.workStatus)
+    assert.ok(hasWorkStatus, `${name} must declare the affected class work status`)
+
+    const hasLedgerPointer = /--\s*(?:CLASS_STATUS_LEDGER|CLASS_WORK_STATUS):\s*src\/rule-templates\/CLASS_WORK_STATUS\.md/i.test(sql)
+      || legacy?.statusLedger === "src/rule-templates/CLASS_WORK_STATUS.md"
+    assert.ok(hasLedgerPointer, `${name} must point back to the canonical status ledger`)
   }
 })
 

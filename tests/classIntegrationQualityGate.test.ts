@@ -11,6 +11,7 @@ import {
 } from "../src/rule-templates/internalClassQuality.ts"
 import type { CharacterTemplateBundle, RuleTemplate } from "../src/rule-templates/types.ts"
 import type { StoredMechanics } from "../src/types/characterMechanics.ts"
+import { legacyClassMigrationMetadata } from "./support/legacyClassMigrationMetadata.ts"
 
 const SCOPED_MIGRATION_CUTOFF = "20260830000000"
 const migrationsDir = "supabase/migrations"
@@ -84,8 +85,10 @@ function futureClassMigrationFiles(): string[] {
 
 function migrationScope(sql: string, name: string): ClassMigrationScope {
   const value = sql.match(/--\s*CLASS_MIGRATION_SCOPE:\s*(mechanics|presentation|infrastructure)\b/i)?.[1]?.toLowerCase()
-  assert.ok(value, `${name} must declare CLASS_MIGRATION_SCOPE: mechanics|presentation|infrastructure`)
-  return value as ClassMigrationScope
+  if (value) return value as ClassMigrationScope
+  const legacy = legacyClassMigrationMetadata(name)
+  assert.ok(legacy, `${name} must declare CLASS_MIGRATION_SCOPE: mechanics|presentation|infrastructure`)
+  return legacy.scope
 }
 
 test("internal class requirements are code, not player-facing UI", () => {
@@ -273,11 +276,12 @@ test("future class migrations declare scope and mechanics migrations pass the st
 
   for (const name of migrations) {
     const sql = fs.readFileSync(path.join(migrationsDir, name), "utf8")
+    const legacy = legacyClassMigrationMetadata(name)
     const scope = migrationScope(sql, name)
     if (scope !== "mechanics") continue
 
     assert.match(sql, /--\s*CLASS_INTEGRATION_STRICT:\s*(?:class|subclass):[a-z0-9:_-]+/i, `${name} must declare the strict class integration contract`)
-    const testPath = sql.match(/--\s*CLASS_PACKAGE_TEST:\s*([^\s]+)/i)?.[1]
+    const testPath = sql.match(/--\s*CLASS_PACKAGE_TEST:\s*([^\s]+)/i)?.[1] ?? legacy?.packageTest
     assert.ok(testPath, `${name} must point to its class package test`)
     assert.ok(fs.existsSync(testPath), `${name} points to missing ${testPath}`)
     const packageTest = fs.readFileSync(testPath, "utf8")

@@ -52,6 +52,20 @@ export type GenaTemplateSpellCommand = {
   commandId?: string
 }
 
+export type GenaSpellWithModifiersCommand = {
+  roomId: string
+  characterId: string
+  spellMechanicId?: string
+  methodKey?: string
+  optionKey?: string
+  spellResourceCosts?: ResourceCostInput[]
+  modifierMechanicIds: string[]
+  label: string
+  payload?: ChatEventPayload
+  /** Stable retry key for one declared spell + modifier intention. */
+  commandId?: string
+}
+
 export type GenaInventoryUseCommand = GenaChatRollCommand & {
   characterId: string
   itemId: string
@@ -206,6 +220,25 @@ export class SupabaseGenaSessionGateway {
     })
     const id = resultId(data, error)
     await this.invalidate(command.characterId, "template.spell", commandId)
+    return id
+  }
+
+  async sendSpellWithModifiers(command: GenaSpellWithModifiersCommand): Promise<number> {
+    const commandId = command.commandId ?? createEngineCommandId()
+    const { data, error } = await this.client.rpc("send_chat_spell_with_template_modifiers_v2", {
+      p_room_id: command.roomId,
+      p_character_id: command.characterId,
+      p_spell_mechanic_id: command.spellMechanicId ?? null,
+      p_method_key: command.methodKey ?? null,
+      p_option_key: command.optionKey ?? null,
+      p_spell_resource_costs: command.spellResourceCosts ?? [],
+      p_modifier_mechanic_ids: command.modifierMechanicIds,
+      p_label: command.label,
+      p_payload: command.payload ?? {},
+      p_command_id: commandId,
+    })
+    const id = resultId(data, error)
+    await this.invalidate(command.characterId, "spell.with_modifiers", commandId)
     return id
   }
 
