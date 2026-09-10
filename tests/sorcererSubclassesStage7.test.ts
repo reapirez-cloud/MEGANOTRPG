@@ -17,6 +17,8 @@ import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
 
 const migrationPath = "supabase/migrations/20260910200000_sorcerer_stage7_subclass_runtime_v1.sql"
 const migration = fs.readFileSync(migrationPath, "utf8")
+const choiceActionMigration = fs.readFileSync("supabase/migrations/20260910203000_sorcerer_stage7_template_choice_action_v1.sql", "utf8")
+const lunarDedupMigration = fs.readFileSync("supabase/migrations/20260910204000_sorcerer_stage7_lunar_choice_dedup_fix_v1.sql", "utf8")
 
 const parent = sorcererStage7RuntimeBundles.find((bundle) => bundle.template.catalog_key === "class:sorcerer")!
 const subclasses = sorcererStage7RuntimeBundles.filter((bundle) => bundle.template.kind === "subclass")
@@ -146,6 +148,29 @@ test("Shadow Darkness and Lunar free phase spell are actual spell methods", () =
   assert.ok(shield)
   assert.ok(shield.resourceOptions[0]?.costs.some((cost) => cost.key === "sorcerer_lunar_free_phase_cast" && cost.amount === 1))
   assert.ok(spellMethods("subclass:sorcerer:lunar-sorcery", 3, "sacred-flame").some((method) => method.kind === "class_spell"))
+})
+
+test("Lunar phase change is a real atomic template-choice action", () => {
+  const { contract } = contractFor("subclass:sorcerer:lunar-sorcery", 6, { sorcerer_lunar_phase: "full" })
+  const change = contract.actions.find((action) => action.key === "sorcerer_lunar_waxing_and_waning")
+  assert.ok(change)
+  assert.ok(change.resourceCosts.some((cost) => cost.key === "sorcery_points" && cost.amount === 1))
+  const effect = change.effects.find((entry) => entry.kind === "template_choice")
+  assert.ok(effect)
+  assert.equal(effect.choiceKey, "sorcerer_lunar_phase")
+  assert.equal(effect.operation, "SET_OPTION")
+  assert.deepEqual(effect.options, ["full", "new", "crescent"])
+  assert.doesNotMatch(JSON.stringify(change), /gmPhaseSelectionGate|change_lunar_phase/)
+
+  assert.match(choiceActionMigration, /apply_character_template_choice_action_effect_v1/)
+  assert.match(choiceActionMigration, /validate_template_choice_instances_v2/)
+  assert.match(choiceActionMigration, /_choice_runtime_v2/)
+  assert.match(choiceActionMigration, /send_chat_template_action_v2/)
+  assert.match(choiceActionMigration, /template_choice/)
+  assert.match(choiceActionMigration, /sorcery_points/)
+  assert.match(lunarDedupMigration, /lunar-waxing-action/)
+  assert.match(lunarDedupMigration, /lunar-waxing/)
+  assert.match(lunarDedupMigration, /LEVEL6_SHAPE_INVALID/)
 })
 
 test("high-level legacy subclasses resolve their native durable grants", () => {
