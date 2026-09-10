@@ -363,6 +363,7 @@ Base Monk and all declared Monk runtime packages are implemented, regression-gat
 - `stage_7_migration: supabase/migrations/20260910200000_sorcerer_stage7_subclass_runtime_v1.sql`
 - `stage_7_choice_action_migration: supabase/migrations/20260910203000_sorcerer_stage7_template_choice_action_v1.sql`
 - `stage_7_lunar_dedup_correction: supabase/migrations/20260910204000_sorcerer_stage7_lunar_choice_dedup_fix_v1.sql`
+- `stage_7_bastion_text_precision: supabase/migrations/20260910205000_sorcerer_stage7_bastion_text_precision_v1.sql`
 - `stage_7_regression: tests/sorcererSubclassesStage7.test.ts`
 - `runtime_visibility: STAGE7_BASE_AND_9_SUBCLASSES_ACTIVE_DEV_AND_PRODUCTION_2026_09_10`
 - `class_reference_visibility: RUNTIME_BACKED_BASE_PLUS_9; EXTENDED_3_REFERENCE_ONLY`
