@@ -43,6 +43,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Tests / verification
 - Added `tests/bardCatalogStage1.test.ts` to run the strict class quality gate, parser -> Character Engine resolution at low/mid/high Bard levels, starting proficiency choices, Stage 1 non-runtime guarantees and the corrected 2024 reference rules.
 - Dry-ran the complete Bard Stage 1 SQL against the connected production schema inside a rolled-back transaction; the migration executed successfully without changing production data.
+- The first CI pass caught the shared class-resource-policy contract missing from the migration header/test. Added `CLASS_RESOURCE_POLICY: short-long-rest-v1` and real `assertClassResourcePolicy` coverage rather than bypassing the regression.
+- Follow-up CI is fully green: production build, lint and the complete repository test suite pass on the Bard Stage 1 code.
+- Applied `bard_catalog_stage1` to the connected production Supabase project and re-audited the live definition: exactly one active builtin `class:bard`, 20 level rows, 5 base mechanics, 3-of-18 skill choice, 3-of-10 musical-instrument choice, no active `sheet_profile`, and the private installer is executable by `service_role` but not `anon`/`authenticated`.
 
 - Added a Warlock reference regression requiring the base class to be runtime-backed, exactly the four certified PHB 2024 patrons to be runtime-backed, and every other visible patron to stay reference-only. Production Supabase audit confirms 20 base level rows and 7 rows each for Archfey, Celestial, Fiend and Great Old One.
 - Added regression coverage requiring completed post-rest tasks to be filtered out of the rendered chat card and preventing informational notices from keeping the card open by themselves.
