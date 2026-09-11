@@ -5,6 +5,7 @@ import { bardReferenceCurrent } from "../src/data/classes/bardReferenceCurrent.t
 import { bardSubclassReferenceDraftWave3 } from "../src/data/classes/bardSubclassReferenceDraftWave3.ts"
 
 const expectedCollegeIds = [
+  "dance",
   "lore",
   "glamour",
   "valor",
@@ -16,7 +17,7 @@ const expectedCollegeIds = [
   "tragedy",
 ]
 
-test("Bard literary reference covers the full nine-college roster", () => {
+test("Bard literary reference covers the full ten-college roster", () => {
   assert.equal(bardReferenceCurrent.referenceOnly, true)
   assert.deepEqual(
     bardReferenceCurrent.subclasses.map((subclass) => subclass.id),
@@ -43,5 +44,6 @@ test("Tragedy stays explicitly outside official Wizards college labeling", () =>
   const tragedy = bardSubclassReferenceDraftWave3.find((subclass) => subclass.id === "tragedy")
   assert.ok(tragedy)
   assert.match(tragedy.sourceHint, /partner\/third-party/i)
-  assert.match(bardReferenceCurrent.description, /девяти коллегий/i)
+  assert.match(bardReferenceCurrent.description, /десяти колледжей/i)
+  assert.match(bardReferenceCurrent.description, /Трагедии.*reference-only/i)
 })
