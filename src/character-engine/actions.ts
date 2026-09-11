@@ -276,6 +276,12 @@ function parseRequirements(value: unknown): ActionRequirementDefinition[] {
     }
     if (kind === "resource") {
       const minimum = finiteNonNegative(requirement.minimum, `${field}.minimum`)
+      const maximum = requirement.maximum === undefined
+        ? undefined
+        : finiteNonNegative(requirement.maximum, `${field}.maximum`)
+      if (maximum !== undefined && maximum < minimum) {
+        throw new ActionEngineError(`${field}.maximum must be >= minimum`)
+      }
       return {
         kind,
         key: nonEmptyString(requirement.key, `${field}.key`),
@@ -283,6 +289,7 @@ function parseRequirements(value: unknown): ActionRequirementDefinition[] {
           ? {}
           : { variantKey: nonEmptyString(requirement.variantKey, `${field}.variantKey`) }),
         minimum,
+        ...(maximum === undefined ? {} : { maximum }),
         enforcement,
         ...(label ? { label } : {}),
       }
@@ -568,7 +575,10 @@ function resolveRequirement(
   } else if (definition.kind === "resource") {
     const stateKey = resourceStateKey(definition.key, definition.variantKey ?? "default")
     const resource = resources.find((candidate) => candidate.stateKey === stateKey)
-    satisfied = resource !== undefined && resource.current >= definition.minimum
+    satisfied =
+      resource !== undefined &&
+      resource.current >= definition.minimum &&
+      (definition.maximum === undefined || resource.current <= definition.maximum)
   } else {
     const variantKey = definition.variantKey ?? "default"
     satisfied = grants.some(
