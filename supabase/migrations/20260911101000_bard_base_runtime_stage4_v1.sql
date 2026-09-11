@@ -725,7 +725,7 @@ begin
         'words_of_creation_runtime',true,
         'words_of_creation_always_prepared',jsonb_build_array('power-word-heal','power-word-kill'),
         'feat_choice_hooks',true,
-        'feat_source_runtime_available',false,
+        'feat_source_runtime_present',false,
         'feat_runtime_boundary','generic_feat_source_pending',
         'subclass_runtime_included',false,
         'next_stage','bard_subclasses'
