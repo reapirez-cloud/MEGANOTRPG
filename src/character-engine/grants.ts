@@ -280,7 +280,7 @@ export function resolveProficiencyRank(
   if (mode === "suppress") return { rank: 0, sources: [] }
 
   const matching = resolution.grants.filter(
-    (grant) => grant.target === "proficiency" && grant.key === key && grant.variantKey === "default",
+    (grant) => grant.target === "proficiency" && grant.key === key,
   )
   const grantRank = matching.reduce<ProficiencyRank>(
     (rank, grant) => Math.max(rank, proficiencyRankFromPayload(grant.payload)) as ProficiencyRank,
