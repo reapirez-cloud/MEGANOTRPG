@@ -207,7 +207,7 @@ export function resolveResources(
     .map((grant) => {
       const definition = parseResourceGrantPayload(grant.payload)
       const stateKey = resourceStateKey(grant.key, grant.variantKey)
-      const max = resolveResourceMaximum(
+      const baseMax = resolveResourceMaximum(
         stateKey,
         definition,
         contributions,
@@ -215,6 +215,14 @@ export function resolveResources(
         maxHp,
         formulaContext,
       )
+      const temporaryMaxBonus = state.resources?.[stateKey]?.temporaryMaxBonus ?? 0
+      if (!Number.isFinite(temporaryMaxBonus) || temporaryMaxBonus < 0) {
+        throw new ResourceEngineError(`resource temporary max bonus must be a finite number >= 0: ${stateKey}`)
+      }
+      const max = {
+        ...baseMax,
+        value: baseMax.value + temporaryMaxBonus,
+      }
       const rawCurrent = state.resources?.[stateKey]?.current ?? initialCurrent(definition, max.value)
       if (!Number.isFinite(rawCurrent) || rawCurrent < 0) {
         throw new ResourceEngineError(`resource current must be a finite number >= 0: ${stateKey}`)
@@ -225,6 +233,7 @@ export function resolveResources(
         variantKey: grant.variantKey,
         stateKey,
         current: Math.min(rawCurrent, max.value),
+        temporaryMaxBonus,
         rawCurrent,
         max,
         recharge: definition.recharge ?? NEVER_RECHARGE,
@@ -238,7 +247,7 @@ function cloneStateWithResources(state: CharacterState) {
   return {
     ...state,
     resources: Object.fromEntries(
-      Object.entries(state.resources ?? {}).map(([key, value]) => [key, { current: value.current }]),
+      Object.entries(state.resources ?? {}).map(([key, value]) => [key, { ...value }]),
     ),
   }
 }
@@ -257,7 +266,10 @@ export function spendResource(
   }
 
   const next = cloneStateWithResources(state)
-  next.resources[resource.stateKey] = { current: resource.current - amount }
+  next.resources[resource.stateKey] = {
+    ...next.resources[resource.stateKey],
+    current: resource.current - amount,
+  }
   return next
 }
 
@@ -276,15 +288,31 @@ export function applyResourceRecovery(
   if (trigger === "never") return next
 
   for (const resource of resources) {
-    if (!resource.recharge.triggers.includes(trigger)) continue
+    const matchesRecovery = resource.recharge.triggers.includes(trigger)
+    const clearsTemporaryMax = trigger === "long_rest" && resource.temporaryMaxBonus > 0
+    if (!matchesRecovery && !clearsTemporaryMax) continue
 
     const current = resource.current
-    const restored = resource.recharge.restore === "full"
-      ? resource.max.value
-      : resource.recharge.restore === "set"
-        ? Math.min(resource.max.value, resource.recharge.amount)
-        : Math.min(resource.max.value, current + resource.recharge.amount)
-    next.resources[resource.stateKey] = { current: restored }
+    const restored = matchesRecovery
+      ? resource.recharge.restore === "full"
+        ? resource.max.value
+        : resource.recharge.restore === "set"
+          ? Math.min(resource.max.value, resource.recharge.amount)
+          : Math.min(resource.max.value, current + resource.recharge.amount)
+      : current
+
+    if (clearsTemporaryMax) {
+      const persistentMax = Math.max(0, resource.max.value - resource.temporaryMaxBonus)
+      next.resources[resource.stateKey] = {
+        current: Math.min(persistentMax, restored),
+        temporaryMaxBonus: 0,
+      }
+    } else {
+      next.resources[resource.stateKey] = {
+        ...next.resources[resource.stateKey],
+        current: restored,
+      }
+    }
   }
 
   if (next.facts) {
