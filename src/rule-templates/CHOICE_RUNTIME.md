@@ -36,6 +36,20 @@ This separation is deliberate: **GENA executes character rules; Oracle/admin com
 
 Post-rest GENA UI adds a generation lock on top: a refreshable choice can be drafted while its current generation has no receipt, then becomes read-only immediately after confirmation.
 
+## Dynamic option providers
+
+`RuleChoiceDefinition.option_provider` is the generic hook for choices whose eligible options depend on authoritative character state.
+
+The first implemented provider is:
+
+- `{ kind: "skill_proficiencies", minimum_rank, maximum_rank }`;
+- UI derives current ranks from base/manual sheet proficiencies plus active template contributions;
+- the server independently recomputes proficiency eligibility from persistent sheet state and active template assignments before accepting a new structured choice;
+- already stored instances remain valid while later count increases request additional selections, so an Expertise choice does not invalidate its own rank-2 selections;
+- this provider is source-agnostic. Bard Expertise is only its first consumer.
+
+Do not add class-specific option filtering. Future catalog/weapon/tool/language providers must extend the same contract and receive matching server validation.
+
 ## Spells and future feats
 
 Spell options should use stable catalog identities such as `spell:guidance` and their mechanics should grant the canonical `class_spell` access. The choice runtime stores only the selected stable keys; CE continues to resolve the actual mechanics from the source definition.
@@ -44,4 +58,4 @@ Prepared-spell quotas are authored by the class package. Always-prepared class/s
 
 The same choice contract is intentionally source-agnostic. When feats become CE sources, their "choose from" clauses should use this runtime rather than inventing a second selection system.
 
-The next generic primitives are tracked in `./AGENTS.md`: dynamic option providers, structured CE-owned prerequisites, uniqueness/exclusion constraints, bounded numeric allocations, explicit respec/change policy, multi-stage dependent choices, and first-class feat source integration. Implement each when a real rule first needs it, but implement it generically rather than inside one feat/class.
+The next generic primitives are tracked in `./AGENTS.md`: additional dynamic option providers beyond skills, structured CE-owned prerequisites, uniqueness/exclusion constraints, bounded numeric allocations, explicit respec/change policy, multi-stage dependent choices, and first-class feat source integration. Implement each when a real rule first needs it, but implement it generically rather than inside one feat/class.
