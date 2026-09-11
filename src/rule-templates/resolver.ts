@@ -217,6 +217,14 @@ function choiceContributions(
       optionKey: key,
     })
 
+    const unlockedMechanics = mechanicsForStructuredChoiceInstance(definition, instance, sourceLevel, index)
+    const optionMechanics = mechanicsAtSourceLevel(unlockedMechanics, sourceLevel)
+      .map((mechanic) => contributionForStoredMechanic(mechanic, source))
+
+    if (definition.target === "spell") {
+      return optionMechanics
+    }
+
     const base: CharacterContribution = {
       id: `${source.id}:grant:${index}`,
       kind: "grant",
@@ -227,10 +235,6 @@ function choiceContributions(
       ...(definition.target === "proficiency" ? { payload: { rank: 1 } } : {}),
       source,
     }
-
-    const unlockedMechanics = mechanicsForStructuredChoiceInstance(definition, instance, sourceLevel, index)
-    const optionMechanics = mechanicsAtSourceLevel(unlockedMechanics, sourceLevel)
-      .map((mechanic) => contributionForStoredMechanic(mechanic, source))
     return [base, ...optionMechanics]
   })
 }
