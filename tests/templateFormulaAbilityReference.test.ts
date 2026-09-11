@@ -12,7 +12,8 @@ test("server formula evaluator reads the canonical scalar ability columns", () =
   for (const ability of ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]) {
     assert.match(migration, new RegExp(`when '${ability}' then s\\.${ability}::numeric`))
   }
-  assert.doesNotMatch(migration, /ability_scores/)
+  assert.doesNotMatch(migration, /\bs\.ability_scores\b/)
+  assert.match(migration, /from public\.character_sheets s/)
 })
 
 test("ability modifier formulas preserve the D&D floor rule", () => {
