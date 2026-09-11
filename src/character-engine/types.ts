@@ -278,6 +278,8 @@ export type ActionRequirementDefinition =
       key: string
       variantKey?: string
       minimum: number
+      /** Optional upper bound for resources that can only fire below a threshold. */
+      maximum?: number
       enforcement?: ActionRequirementEnforcement
       label?: string
     }
