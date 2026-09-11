@@ -32,6 +32,7 @@ const authoredSubclasses = new Map(
  * Base Bard narration is preserved in bardReferenceBase.ts. All nine current
  * roster colleges now have authored literary presentations and exact reference
  * rules. Runtime mechanics remain a separate future package.
+ * Runtime roadmap/checklist: ./bardRuntimePlan.md. Keep referenceOnly until its certification gate is complete.
  */
 export const bardReferenceCurrent = {
   ...bardReferenceBase,
