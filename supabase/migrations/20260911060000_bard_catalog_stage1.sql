@@ -1,5 +1,6 @@
 -- CLASS_MIGRATION_SCOPE: mechanics
 -- CLASS_INTEGRATION_STRICT: class:bard
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
 -- CLASS_PACKAGE_TEST: tests/bardCatalogStage1.test.ts
 -- CLASS_WORK_STATUS: bard:catalog=STAGE1_READY,bard:mechanics=PENDING_STAGE2
 -- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
