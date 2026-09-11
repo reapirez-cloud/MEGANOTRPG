@@ -305,7 +305,7 @@ export interface ActionResourceEffectDefinition {
   kind: "resource"
   key: string
   variantKey?: string
-  operation: "RESTORE" | "SPEND" | "SET"
+  operation: "RESTORE" | "SPEND" | "SET" | "GRANT_TEMPORARY_MAX" | "ENSURE_MINIMUM"
   amount: number | FormulaExpression
 }
 
