@@ -4,26 +4,35 @@
 
 ## Current boundary
 
-**Stage 4: BASE RUNTIME READY.**
+**Stage 5: SUBCLASS RUNTIME READY.**
 
-The canonical `class:bard` foundation, Bardic Inspiration, spell runtime and remaining 2024 base-class runtime are deployed to production. The player-facing Bard reference remains `referenceOnly` until subclass work and final certification are complete.
+The canonical `class:bard` foundation, Bardic Inspiration, spell runtime, remaining base mechanics and the approved subclass runtime are deployed to production. The player-facing Bard reference remains `referenceOnly` until Stage 6 final certification is complete.
 
-Production revision: `xphb-2024-bard-stage4-base-runtime-v1`.
+Production revision: `xphb-2024-bard-stage5-subclasses-runtime-v1`.
 
-Stage 4 now owns:
+Stage 5 now owns nine runtime-backed colleges:
 
-- Expertise as one persistent choice: 2 already-proficient skills at Bard 2, growing to 4 at Bard 9, each resolving to proficiency rank 2;
-- a generic `skill_proficiencies` dynamic choice provider shared by future rules. The client derives eligible skills from sheet + active template grants and the server independently validates every newly added option;
-- Jack of All Trades as a generic untrained-skill proficiency fraction: half PB, rounded down, only for skill checks with proficiency rank 0; initiative remains untouched;
-- Countercharm as a structured Reaction with the exact 30-foot failed-save reroll/Advantage rule. The failed-save trigger and reaction legality remain table-adjudicated rather than fake runtime state;
-- Words of Creation as two separate always-prepared CE spell accesses for Power Word Heal and Power Word Kill plus the structured second-target-within-10-feet rule;
-- precise structured ASI hooks at Bard 4/8/12/16 and Epic Boon hook at Bard 19.
+- PHB 2024: College of Dance, College of Glamour, College of Lore, College of Valor;
+- approved official legacy/supplement: College of Eloquence, College of Swords, College of Whispers, College of Creation, College of Spirits.
 
-The repository still has no first-class generic feat source/allocation runtime. Stage 4 therefore deliberately does **not** add a Bard-specific feat picker. ASI/Epic Boon are exact generic `feat_choice` hooks until that shared subsystem exists. This is architecture debt, not a reason to fork Bard UI.
+College of Tragedy remains explicit reference-only third-party/partner material and has no active builtin runtime template.
 
-Production migration: `bard_base_runtime_stage4_v1` (journal `20260911101327`).
+Runtime guarantees now include:
 
-The production post-deploy smoke verified that a starting Bard skill is recognized as rank 1 by the generic provider, an eligible Expertise selection passes, an untrained skill is rejected, and both Words of Creation spell links remain present. Final Stage 4 code CI passed build, lint and `970/970` tests.
+- every subclass is a child of the active `class:bard` template, unlocks at Bard 3 and resolves mechanics from parent Bard level rather than total character level or a stale subclass level;
+- every subclass ability that actually spends base Bardic Inspiration references the single canonical `bardic_inspiration` resource;
+- subclass-owned finite pools use the shared persistent resource ledger with explicit Short/Long Rest recovery;
+- Glamour, Lore and Spirits spell accesses use the canonical spell catalog and shared slot runtime;
+- Lore Magical Discoveries and Spirits Spirit Session use shared Choice Runtime instead of bespoke subclass pickers;
+- Spirit Session uses the generic `long_rest` refresh path; the client choice card was corrected so all declared rest refresh policies route through the authoritative rest-choice RPC;
+- scene, hit, turn and initiative triggers remain exact structured/table-adjudicated rules rather than fake persistent state;
+- every runtime action has a matching player-facing feature explanation under the same stable `sourceKey`; the migration self-certifies this invariant before commit.
+
+Production migration: `bard_subclasses_stage5_v1` (journal `20260911133259`).
+
+The production post-deploy smoke verified parent-level gating (Bard 2 blocks the subclass, Bard 3 activates it), the canonical Bardic Inspiration ledger, and creation of Glamour's real `bard_glamour_beguiling_magic` resource on subclass assignment. All probes were rolled back. Final pre-documentation Stage 5 code CI passed build, lint and `981/981` tests. Supabase advisors reported no Bard/Stage5-specific findings.
+
+Next implementation target: **Stage 6 — final certification**.
 
 ## Stage 2 — Bardic Inspiration — COMPLETE
 
@@ -78,26 +87,33 @@ Implemented and deployed on 2026-09-11.
 
 Next implementation target: **Stage 5 — subclasses**.
 
-## Stage 5 — subclasses
+## Stage 5 — subclasses — COMPLETE
 
-First complete the Player's Handbook 2024 roster:
+Implemented and deployed on 2026-09-11.
 
-1. College of Dance — currently missing from the authored Bard roster;
-2. College of Glamour;
-3. College of Lore;
-4. College of Valor.
+- migration: `supabase/migrations/20260911162000_bard_subclasses_stage5_v1.sql`;
+- package test: `tests/bardSubclassesStage5.test.ts`;
+- production revision: `xphb-2024-bard-stage5-subclasses-runtime-v1`;
+- runtime subclass count: 9;
+- PHB 2024 runtime: Dance, Glamour, Lore, Valor;
+- approved legacy/supplement runtime: Eloquence, Swords, Whispers, Creation, Spirits;
+- College of Dance was added to the authored Bard reference roster with exact 2024 reference rules;
+- College of Tragedy remains `referenceOnly` and has zero active builtin runtime templates;
+- every runtime subclass has `parent_template_id = class:bard`, `unlock_level = 3` and parent-level source semantics;
+- every BI-tagged spender uses `bardic_inspiration`; subclass-specific pools such as Infectious Inspiration remain independent finite resources rather than fake copies of the base pool;
+- Glamour has native always-prepared Charm Person, Mirror Image and Command accesses plus persistent finite resources/actions;
+- Lore has three bonus skill choices, Cutting Words and a persistent two-spell Magical Discoveries choice from Cleric/Druid/Wizard lists;
+- Valor uses native proficiency/permission grants and structured Combat Inspiration / Extra Attack / Battle Magic rules;
+- Swords uses a shared fighting-style choice and three canonical BI-backed Flourish actions;
+- Whispers, Creation and Eloquence finite pools use shared resource/action runtime;
+- Spirits uses the spell catalog for Guidance, Tales from Beyond structured semantics and a long-rest-refresh Spirit Session spell choice;
+- all action source packages have exact feature explanations, enforced again by migration certification;
+- dry-run, full CI, production deployment, live audit and post-deploy assignment/resource smoke all passed;
+- production contains one Stage 5 Bard campaign installer and no obsolete Bard Stage 4 installer;
+- production private installer/upsert helpers are closed to `anon` and `authenticated` and executable by `service_role` only;
+- Supabase advisors report no Bard/Stage5-specific findings.
 
-Then complete the approved legacy/supplement roster through the same CE/template primitives:
-
-- College of Eloquence;
-- College of Swords;
-- College of Whispers;
-- College of Creation;
-- College of Spirits.
-
-College of Tragedy remains `referenceOnly` unless the project explicitly approves the Tal'Dorei third-party package for gameplay.
-
-Every subclass feature that spends Bardic Inspiration must reference the same canonical `bardic_inspiration` resource. Do not create subclass copies of the pool.
+Next implementation target: **Stage 6 — final certification**.
 
 ## Stage 6 — certification
 
