@@ -139,12 +139,22 @@ const levelMechanics: Record<number, StoredMechanics> = {
       label: "Превосходное вдохновение",
       economy: "free",
       range: { kind: "self" },
-      requirements: [{
-        kind: "condition",
-        condition: { kind: "always" },
-        enforcement: "gm",
-        label: "После броска инициативы, если применений Вдохновения барда меньше двух",
-      }],
+      requirements: [
+        {
+          kind: "resource",
+          key: "bardic_inspiration",
+          minimum: 0,
+          maximum: 1,
+          enforcement: "engine",
+          label: "Доступно только если применений Вдохновения барда меньше двух",
+        },
+        {
+          kind: "condition",
+          condition: { kind: "always" },
+          enforcement: "gm",
+          label: "Используйте только после броска инициативы",
+        },
+      ],
       effects: [{ kind: "resource", key: "bardic_inspiration", operation: "SET", amount: 2 }],
       tags: ["class", "bard", "initiative-trigger", "gm-confirmed"],
     },
@@ -342,10 +352,19 @@ test("Superior Inspiration uses a structured GM-confirmed initiative action and 
   assert.ok(action)
   assert.ok(action.tags.includes("initiative-trigger"))
   assert.ok(action.tags.includes("gm-confirmed"))
-  assert.equal(action.requirements[0]?.enforcement, "gm")
+  assert.equal(action.requirements[0]?.enforcement, "engine")
+  assert.equal(action.requirements[0]?.satisfied, true)
+  assert.equal(action.requirements[1]?.enforcement, "gm")
 
   const next = executeAction(input.state, action)
   assert.equal(next.resources?.bardic_inspiration?.current, 2)
+
+  const alreadyAboveThreshold = resolveCharacterContract(
+    inputAt(18, 18, { bardic_inspiration: { current: 3 } }),
+  ).actions.find((entry) => entry.key === "superior_inspiration")
+  assert.ok(alreadyAboveThreshold)
+  assert.equal(alreadyAboveThreshold.available, false)
+
   assert.doesNotMatch(migration, /initiative_confirmed|initiative_available|turn_state/)
 })
 
