@@ -264,38 +264,37 @@ There are no known Wizard implementation or deployment blockers in the declared 
 ## Bard (`class:bard`)
 
 **Exact reference text:** `READY_CURRENT_AUTHORED_ROSTER_2026_09_04`  
-**Mechanics/runtime:** `IN_PROGRESS — STAGE2_INSPIRATION_READY`
+**Mechanics/runtime:** `IN_PROGRESS — STAGE3_SPELL_RUNTIME_READY`
 
 - `stage1_migration: supabase/migrations/20260911060000_bard_catalog_stage1.sql`
-- `stage1_runtime_revision: xphb-2024-bard-stage1-foundation-v1`
-- `stage1_package_test: tests/bardCatalogStage1.test.ts`
 - `stage2_migration: supabase/migrations/20260911073000_bard_stage2_inspiration_runtime.sql`
 - `stage2_closure_migration: supabase/migrations/20260911074000_bard_stage2_superior_inspiration_v2.sql`
-- `stage2_runtime_revision: xphb-2024-bard-stage2-inspiration-v2`
-- `stage2_package_test: tests/bardResourceRuntimeStage2.test.ts`
-- `stage2_ci: GREEN_2026_09_11 / build + lint + full tests 951/951`
-- `production_stage2: DEPLOYED_AND_AUDITED_2026_09_11`
-- `production_migrations: template_formula_ability_reference_fix; bard_stage2_inspiration_runtime; bard_stage2_superior_inspiration_v2`
-- `production_sheet_profile: ABSENT_BY_DESIGN; sheet_profile_deferred=true`
-- `production_stage2_privileges: v2 ensure/apply helpers anon=false; authenticated=false; service_role=true`
-- `production_campaign_trigger: aaaaaaaah_campaigns_ensure_bard_stage2_superior_inspiration_v2`
-- `generic_formula_fix: abilities.*.(score|modifier) resolves from scalar character_sheets ability columns`
-- `generic_action_requirement_fix: resource requirements support an optional maximum bound in CE, matching the server contract`
-- `generic_temporary_resource_fix: CE hydrates temporary_max_bonus, resolves effective maximums, syncs persistent maximums without double-counting and clears temporary capacity on Long Rest`
-- Stage 1 remains the class/catalog foundation: d8 Hit Die, Dexterity/Charisma saves, light armor, simple weapons, three chosen skills, three chosen musical instruments and the 1–20 structural feature tree.
-- Stage 2 owns one canonical `bardic_inspiration` persistent resource. Maximum is Charisma modifier with minimum 1; the die scales `d6/d8/d10/d12` at Bard levels `1/5/10/15`.
-- Recovery is Long Rest at Bard 1–4 and Short/Long Rest from Bard 5. Assignment, Bard-level and Charisma synchronization preserve spent deficit and remove orphaned state on class removal.
-- `bardic_inspiration_grant` is a real bonus-action resource spender. The target-side one-hour Inspiration die remains precisely described/table-adjudicated because the application does not own cross-character temporary effect state.
-- Font of Inspiration uses the canonical shared `spell_slot_1…9` ledger and restores one expended Inspiration use without an action. Pure Bard spell slots are still Stage 3, so a pure Stage-2 Bard has no fake slot ledger; multiclass shared slots remain usable.
-- Superior Inspiration is a structured free action available only while current Inspiration uses are below two. The final v2 runtime uses generic `ENSURE_MINIMUM(2)`: with an ordinary maximum of one it temporarily expands capacity to two, survives reload, and Long Rest removes the temporary capacity. If the persistent maximum later rises to two or more, Bard synchronization absorbs/removes the temporary bonus.
-- The initiative trigger stays in exact rules prose/table adjudication; no fake `*_confirmed`, `*_available` or turn state was introduced.
-- Production v2 smoke test assigned Bard inside a rolled-back transaction, verified the `CHA +1` maximum-one edge, `ENSURE_MINIMUM → current 2 / max 2 / temp 1`, reload preservation, and absorption when Charisma raised the persistent maximum.
-- The audited 2024 spell/cantrip/prepared progression remains inert under `spellcasting_contract`; executable spellcasting and `sheet_profile` are Stage 3.
-- The persistent next-stage checklist lives in `src/data/classes/bardRuntimePlan.md`. **Next target: Stage 3 — spell runtime.**
+- `stage3_migration: supabase/migrations/20260911080000_bard_stage3_spell_runtime_v1.sql`
+- `stage3_runtime_revision: xphb-2024-bard-stage3-spell-runtime-v1`
+- `stage3_package_test: tests/bardSpellRuntimeStage3.test.ts`
+- `stage3_ci: GREEN_2026_09_11 / build + lint + full tests 960/960`
+- `production_stage3: DEPLOYED_AND_AUDITED_2026_09_11`
+- `production_stage3_migration: bard_stage3_spell_runtime_v1 / journal 20260911075642`
+- `production_sheet_profile: ACTIVE / charisma / bard / musical_instrument / full-caster slots`
+- `production_spell_choices: bard_cantrips=11 options; bard_prepared_spells=457 levelled options`
+- `production_spell_links: 468`
+- `production_magical_secrets_gate_mismatches: 0`
+- `production_campaign_trigger: aaaaaaaai_campaigns_ensure_bard_spell_runtime_stage3_v1`
+- `production_stage3_privileges: ensure/sync anon=false; authenticated=false; service_role=true`
+- `generic_choice_fix: RuleChoiceTarget supports spell; spell choices emit canonical option mechanics without an empty duplicate spell grant`
+- Stage 1 remains the structural class foundation and Stage 2 remains the canonical Bardic Inspiration runtime.
+- Stage 3 activates Charisma spellcasting and the audited full-caster slot progression through the shared `spell_slot_1…9` persistent ledger.
+- Cantrips are a persistent Bard-list choice: 2 at Bard 1, 3 at Bard 4 and 4 at Bard 10. One Bard cantrip may be replaced when the Bard source level increases.
+- Prepared spells use the exact 2024 progression `4/5/6/7/9/10/11/12/14/15/16/16/17/17/18/18/19/20/21/22`. One prepared spell may be replaced when the Bard source level increases.
+- Magical Secrets begins at Bard 10 for levelled spells only. New and replacement prepared spells may then come from Bard, Cleric, Druid or Wizard lists, and every option still respects the highest spell level available at that Bard level. Cantrips remain Bard-only.
+- Musical instruments are represented as a structured spellcasting-focus permission.
+- Production transaction smoke verified Bard 10 slot maxima, preservation of a spent 3rd-level slot across the 10→11 level sync and the new 6th-level slot at Bard 11.
+- The class remains `referenceOnly`: Expertise, Jack of All Trades runtime, Countercharm, Words of Creation, shared feat/ASI runtime and subclasses are later stages.
+- The persistent next-stage checklist lives in `src/data/classes/bardRuntimePlan.md`. **Next target: Stage 4 — remaining base mechanics.**
 - The authored roster still lacks PHB 2024 College of Dance. College of Tragedy remains third-party/reference-only unless explicitly approved for gameplay.
-- Final certification must still solve starting-class vs multiclass-entry proficiencies generically.
+- Final certification still has generic multiclass debt: starting-class vs multiclass-entry proficiencies and a shared multiclass caster-level/slot aggregator. Do not solve either with Bard-only UI/runtime branches.
 
-**Stage 2 is complete in its declared scope.** Do not change the whole Bard class to `READY` or clear `referenceOnly` until the later Stage 3–6 certification gate in `bardRuntimePlan.md` passes against repository tests and deployed Supabase state.
+**Stage 3 is complete in its declared scope.** Do not change the whole Bard class to `READY` or clear `referenceOnly` until Stages 4–6 and final production certification pass.
 
 ---
 
