@@ -104,6 +104,17 @@ function bardBundle(level: number, expertise: string[] = []): CharacterTemplateB
     choices: [] as RuleChoiceDefinition[],
   }))
 
+  levels[0]!.mechanics.push({
+    id: "test-spell-slot-9",
+    type: "resource",
+    sourceKey: "spellcasting",
+    key: "spell_slot_9",
+    label: "Ячейки 9 уровня",
+    max: 1,
+    recharge: ["long_rest"],
+    initial: "full",
+  })
+
   levels[0]!.choices.push({
     key: "bard-skills",
     label: "Навыки: Бард",
@@ -391,7 +402,7 @@ test("Words of Creation grants both spells always prepared and keeps shared slot
 
 test("ASI and Epic Boon remain generic feat hooks, never a Bard-specific picker", () => {
   assert.match(migration, /'runtime_owner','generic_feat_source_pending'/)
-  assert.match(migration, /'feat_source_runtime_available',false/)
+  assert.match(migration, /'feat_source_runtime_present',false/)
   assert.match(migration, /Bard-specific picker/)
   assert.doesNotMatch(migration, /bard_feat_choice|bard_asi_choice|bard_epic_boon_choice/)
 })
