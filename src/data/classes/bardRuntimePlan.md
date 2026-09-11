@@ -4,28 +4,30 @@
 
 ## Current boundary
 
-**Stage 2: BARDIC INSPIRATION RUNTIME READY.**
+**Stage 3: SPELL RUNTIME READY.**
 
-The canonical `class:bard` foundation and Stage 2 resource package are deployed to production. The public Bard reference must still remain `referenceOnly` until the final certification gate below is complete.
+The canonical `class:bard` foundation, Bardic Inspiration runtime and 2024 Bard spell runtime are deployed to production. The player-facing Bard reference remains `referenceOnly` until the later base-mechanics, subclass and certification stages are complete.
 
-Stage 1 remains the structural foundation: identity, d8 Hit Die, core proficiencies, starting skill/instrument choices, the 1–20 feature tree, and the inert audited spell progression contract.
+Production revision: `xphb-2024-bard-stage3-spell-runtime-v1`.
 
-Stage 2 now owns:
+Stage 3 now owns:
 
-- one canonical Shapoklyak-backed `bardic_inspiration` resource;
-- maximum equal to the Charisma modifier, minimum 1;
-- die value `d6 → d8 → d10 → d12` at Bard levels `1 / 5 / 10 / 15`;
-- Long Rest recovery at levels 1–4 and Short/Long Rest recovery from level 5;
-- a real bonus-action Bardic Inspiration spender through the shared template-action path;
-- Font of Inspiration using the shared `spell_slot_1…9` ledger to restore one expended use without an action;
-- Superior Inspiration as a structured free action that is engine-blocked unless current uses are below two, while the initiative trigger itself remains table-adjudicated because the application does not own authoritative initiative state;
-- assignment, Bard-level and Charisma synchronization that preserves spent deficit and removes orphaned Bard resource state.
+- Charisma spellcasting through native CE `class_spell` accesses;
+- the exact full-caster slot progression from Bard 1–20 using the shared `spell_slot_1…9` persistent ledger;
+- Bard cantrips as a persistent choice: 2 at level 1, 3 at level 4, 4 at level 10;
+- exact prepared-spell counts `4/5/6/7/9/10/11/12/14/15/16/16/17/17/18/18/19/20/21/22`;
+- one cantrip replacement and one prepared-spell replacement when the Bard source level increases;
+- Bard-only cantrip choices, including replacements;
+- Magical Secrets from Bard 10 for levelled spells only: new and replacement prepared spells may come from Bard, Cleric, Druid or Wizard lists, still gated by the highest spell level available to that Bard level;
+- musical instruments as a structured spellcasting-focus permission;
+- active executable `sheet_profile` with Charisma, Bard list metadata, full-caster slots and the audited cantrip/prepared progression;
+- canonical spell links for every selectable access.
 
-The generic server formula evaluator was corrected so `abilities.*.(score|modifier)` reads the real scalar ability columns on `character_sheets`. The CE action contract now supports a generic upper bound on resource requirements and the shared resource runtime hydrates/persists `temporary_max_bonus`, matching the server runtime.
+The production catalog currently resolves 11 Bard cantrips plus 457 selectable levelled spells across the Bard/Cleric/Druid/Wizard Magical Secrets union, for 468 template spell links. Magical Secrets gate parity is audited at zero mismatches.
 
-Stage 2 deliberately does **not** activate Bard spell preparation, Bard spell slots, subclasses, or an executable `sheet_profile`. A pure Bard therefore cannot use Font's slot-conversion action until Stage 3 creates the canonical shared spell-slot ledger. A multiclass character with real shared spell slots can use the same action without any Bard-specific slot storage.
+The generic Choice Runtime parser was also corrected so `target: "spell"` is a first-class typed choice target and selected spell choices emit only their canonical `option_mechanics`. It no longer creates a second empty spell grant with no payload. This is a generic fix and also removes a latent failure mode from existing spell-choice packages such as Sorcerer.
 
-Production revision: `xphb-2024-bard-stage2-inspiration-v2`.
+Stage 3 deliberately does **not** complete Expertise, Jack of All Trades, Countercharm, Words of Creation, feat/ASI runtime or subclasses. Those remain later stages.
 
 ## Stage 2 — Bardic Inspiration — COMPLETE
 
@@ -37,29 +39,28 @@ Implemented and deployed on 2026-09-11.
 - recovery: Long Rest at levels 1–4; Short or Long Rest from level 5;
 - spending goes through the shared GENA/template-action path;
 - Font of Inspiration spends one canonical shared spell slot and restores one expended use;
-- Superior Inspiration never reduces an existing pool of two or more uses and still reaches two when the ordinary Charisma-based maximum is only one. It uses generic `ENSURE_MINIMUM` plus temporary capacity that survives reload and is removed on Long Rest; its initiative trigger stays on the table/GM adjudication boundary rather than becoming fake runtime state;
+- Superior Inspiration never reduces an existing pool of two or more uses and still reaches two when the ordinary Charisma-based maximum is only one. It uses generic `ENSURE_MINIMUM` plus temporary capacity that survives reload and is removed on Long Rest;
 - assignment/level/Charisma synchronization preserves spent deficit and removal cleans orphaned state;
 - no Bard-only resource table exists;
-- Stage 2 closure migration: `supabase/migrations/20260911074000_bard_stage2_superior_inspiration_v2.sql`;
-- production v2 smoke test covered the `CHA +1` edge, reload preservation and absorption of temporary capacity when the persistent maximum rises.
+- Stage 2 closure migration: `supabase/migrations/20260911074000_bard_stage2_superior_inspiration_v2.sql`.
 
-Next implementation target: **Stage 3 — spell runtime**.
+## Stage 3 — spell runtime — COMPLETE
 
-## Stage 3 — spell runtime
+Implemented and deployed on 2026-09-11.
 
-Promote the audited Stage 1 spell contract into active runtime:
+- migration: `supabase/migrations/20260911080000_bard_stage3_spell_runtime_v1.sql`;
+- package test: `tests/bardSpellRuntimeStage3.test.ts`;
+- production revision: `xphb-2024-bard-stage3-spell-runtime-v1`;
+- exact Bard cantrip progression and exact prepared-spell progression are active;
+- selected spells resolve into native Charisma spell accesses and consume the shared spell-slot ledger;
+- source-level tests prove Magical Secrets uses Bard level rather than total character level;
+- Magical Secrets expands only levelled spell selection, never the Bard cantrip list;
+- `sheet_profile_deferred=false`; the executable profile is now active;
+- transaction smoke tests verified Bard 10 slot maxima, one spent 3rd-level slot surviving the Bard 10→11 sync, and the new 6th-level slot appearing at Bard 11;
+- production audit confirms 11 cantrip options, 457 levelled options, 468 spell links and zero Magical Secrets gate mismatches;
+- private Stage 3 installer/sync helpers are closed to `anon` and `authenticated` and executable by `service_role`.
 
-- Charisma spellcasting;
-- Bard spell catalog;
-- full-caster spell slots;
-- cantrips: 2 at level 1, 3 at level 4, 4 at level 10;
-- prepared spells: exact 2024 progression through 22 at level 20;
-- persistent selections and one cantrip replacement plus one prepared-spell replacement on a Bard level gain;
-- musical instrument as spellcasting focus;
-- Magical Secrets from Bard 10 expands new and replacement choices to Bard, Cleric, Druid and Wizard lists;
-- only at this stage add the executable `sheet_profile` and persistent spell-slot synchronization.
-
-The production spell catalog already contains Bard class links; reuse the shared spell catalog/slot primitives rather than adding Bard-owned spell storage.
+Next implementation target: **Stage 4 — remaining base mechanics**.
 
 ## Stage 4 — remaining base mechanics
 
@@ -117,4 +118,7 @@ Only after that gate:
 
 ## Generic debt to settle before final certification
 
-2024 multiclass Bard entry proficiencies differ from starting as Bard: multiclassing grants a narrower set of proficiencies. The current generic class-assignment model does not yet distinguish first-class entry grants from multiclass entry grants. Solve that as a generic class primitive before final Bard certification. Do not add a `if bard` branch to the sheet or GM panel.
+- 2024 multiclass Bard entry proficiencies differ from starting as Bard: multiclassing grants a narrower set of proficiencies. The current generic class-assignment model does not yet distinguish first-class entry grants from multiclass entry grants. Solve that as a generic class primitive before final Bard certification.
+- The shared spell-slot ledger does not yet have a generic multiclass caster-level aggregator across multiple assigned spellcasting classes. Existing class-specific slot synchronizers can therefore overwrite the same `spell_slot_*` base maxima if true multiclass spellcasting is enabled. Solve this once for all full/half/third casters rather than adding a Bard-only branch.
+
+Do not add `if bard` branches to the sheet, GM panel or shared spell-slot owner.
