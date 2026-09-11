@@ -4,38 +4,44 @@
 
 ## Current boundary
 
-**Stage 1: FOUNDATION.**
+**Stage 2: BARDIC INSPIRATION RUNTIME READY.**
 
-The canonical `class:bard` template may exist and be assigned, but the public Bard reference must remain `referenceOnly` until the final certification gate below is complete.
+The canonical `class:bard` foundation and Stage 2 resource package are deployed to production. The public Bard reference must still remain `referenceOnly` until the final certification gate below is complete.
 
-Stage 1 owns only:
+Stage 1 remains the structural foundation: identity, d8 Hit Die, core proficiencies, starting skill/instrument choices, the 1–20 feature tree, and the inert audited spell progression contract.
 
-- stable `class:bard` / `bard-core` identity;
-- d8 Hit Die;
-- Dexterity and Charisma saving-throw proficiencies;
-- light armor and simple weapons;
-- three player-selected skills from the full skill list;
-- three player-selected musical instruments;
-- structural Bard feature unlocks from levels 1-20;
-- inert, audited 2024 spell/progression and Bardic Inspiration contracts in `rules_meta`.
+Stage 2 now owns:
 
-Stage 1 deliberately does **not** activate a `sheet_profile`. In MEGANOTRPG that field is executable assignment data and immediately changes the character sheet and spell slots. It must only be promoted from the inert `spellcasting_contract` when the real persistent spell-slot/selection runtime is installed.
+- one canonical Shapoklyak-backed `bardic_inspiration` resource;
+- maximum equal to the Charisma modifier, minimum 1;
+- die value `d6 → d8 → d10 → d12` at Bard levels `1 / 5 / 10 / 15`;
+- Long Rest recovery at levels 1–4 and Short/Long Rest recovery from level 5;
+- a real bonus-action Bardic Inspiration spender through the shared template-action path;
+- Font of Inspiration using the shared `spell_slot_1…9` ledger to restore one expended use without an action;
+- Superior Inspiration as a structured free action that is engine-blocked unless current uses are below two, while the initiative trigger itself remains table-adjudicated because the application does not own authoritative initiative state;
+- assignment, Bard-level and Charisma synchronization that preserves spent deficit and removes orphaned Bard resource state.
 
-## Stage 2 — Bardic Inspiration
+The generic server formula evaluator was corrected so `abilities.*.(score|modifier)` reads the real scalar ability columns on `character_sheets`. The CE action contract also now supports a generic upper bound on resource requirements, matching the server runtime.
 
-Create one canonical Shapoklyak-backed resource:
+Stage 2 deliberately does **not** activate Bard spell preparation, Bard spell slots, subclasses, or an executable `sheet_profile`. A pure Bard therefore cannot use Font's slot-conversion action until Stage 3 creates the canonical shared spell-slot ledger. A multiclass character with real shared spell slots can use the same action without any Bard-specific slot storage.
+
+Production revision: `xphb-2024-bard-stage2-inspiration-v1`.
+
+## Stage 2 — Bardic Inspiration — COMPLETE
+
+Implemented and deployed on 2026-09-11.
 
 - state key: `bardic_inspiration`;
 - maximum: Charisma modifier, minimum 1;
 - die: d6 at Bard 1, d8 at 5, d10 at 10, d12 at 15;
-- recovery: Long Rest at levels 1-4; Short or Long Rest from level 5;
+- recovery: Long Rest at levels 1–4; Short or Long Rest from level 5;
 - spending goes through the shared GENA/template-action path;
-- Font of Inspiration can expend a spell slot, without an action, to restore one expended use;
-- Superior Inspiration at Bard 18 raises the available pool to at least two when initiative is rolled.
+- Font of Inspiration spends one canonical shared spell slot and restores one expended use;
+- Superior Inspiration never reduces an existing pool of two or more uses; its initiative trigger stays on the table/GM adjudication boundary rather than becoming fake runtime state;
+- assignment/level/Charisma synchronization preserves spent deficit and removal cleans orphaned state;
+- no Bard-only resource table exists.
 
-Assignment/level/Charisma synchronization must preserve the spent deficit, survive reload, and remove orphaned Bard state when the class is removed.
-
-Do not create a Bard-only resource table.
+Next implementation target: **Stage 3 — spell runtime**.
 
 ## Stage 3 — spell runtime
 
