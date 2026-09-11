@@ -308,12 +308,22 @@ begin
       'label','Превосходное вдохновение',
       'economy','free',
       'range',jsonb_build_object('kind','self'),
-      'requirements',jsonb_build_array(jsonb_build_object(
-        'kind','condition',
-        'condition',jsonb_build_object('kind','always'),
-        'enforcement','gm',
-        'label','После броска инициативы, если применений Вдохновения барда меньше двух'
-      )),
+      'requirements',jsonb_build_array(
+        jsonb_build_object(
+          'kind','resource',
+          'key','bardic_inspiration',
+          'minimum',0,
+          'maximum',1,
+          'enforcement','engine',
+          'label','Доступно только если применений Вдохновения барда меньше двух'
+        ),
+        jsonb_build_object(
+          'kind','condition',
+          'condition',jsonb_build_object('kind','always'),
+          'enforcement','gm',
+          'label','Используйте только после броска инициативы'
+        )
+      ),
       'effects',jsonb_build_array(jsonb_build_object(
         'kind','resource',
         'key','bardic_inspiration',
