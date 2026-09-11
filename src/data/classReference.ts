@@ -5,6 +5,9 @@ import { rogueSubclassReferenceWave2 } from "./classes/rogueSubclassReferenceWav
 import { WARLOCK_PHB2024_SUBCLASS_RUNTIME_CATALOG_KEYS } from "../rule-templates/warlockSubclasses.ts"
 import { WARLOCK_SUPPLEMENTAL_RUNTIME_CATALOG_KEYS } from "../rule-templates/warlockSupplementalSubclasses.ts"
 import { SORCERER_STAGE7_RUNTIME_CATALOG_KEYS } from "../rule-templates/sorcererSubclassMechanics.ts"
+import {
+  BARD_RUNTIME_REFERENCE_SUBCLASS_IDS,
+} from "../rule-templates/bardRuntimeCatalog.ts"
 
 export type {
   ClassReferenceEntry,
@@ -25,6 +28,9 @@ export const SORCERER_RUNTIME_REFERENCE_SUBCLASS_IDS = SORCERER_STAGE7_RUNTIME_C
   catalogKey.replace("subclass:sorcerer:", ""),
 )
 
+export { BARD_RUNTIME_REFERENCE_SUBCLASS_IDS }
+
+const bardRuntimeSubclassIds = new Set<string>(BARD_RUNTIME_REFERENCE_SUBCLASS_IDS)
 const warlockRuntimeSubclassIds = new Set<string>(WARLOCK_RUNTIME_REFERENCE_SUBCLASS_IDS)
 const sorcererRuntimeSubclassIds = new Set<string>(SORCERER_RUNTIME_REFERENCE_SUBCLASS_IDS)
 const rogueTranslatedSubclassById = new Map(
@@ -45,6 +51,27 @@ export const classReference = publicClassReferenceCatalog.map((entry) => {
     return {
       ...entry,
       subclasses: entry.subclasses.map((subclass) => rogueTranslatedSubclassById.get(subclass.id) ?? subclass),
+    }
+  }
+
+  if (entry.id === "bard") {
+    return {
+      ...entry,
+      description:
+        "Бард по Player's Handbook 2024 подключён к Character Engine: Вдохновение барда, Источник вдохновения, Экспертиза, Мастер на все руки, Контрочарование, Магические секреты, Высшее вдохновение, Слова созидания и полный заклинательный runtime работают через общий CE/GENA контур.",
+      mechanics:
+        "Runtime поддерживает базовый класс и девять сертифицированных коллегий. Выборы навыков, инструментов, Экспертизы и заклинаний сохраняются в общем Choice Runtime, ресурсы и ячейки расходуются через общий ledger, а Коллегия Трагедии остаётся только справочным сторонним материалом.",
+      referenceOnly: false,
+      subclasses: entry.subclasses.map((subclass) => {
+        const runtimeReady = bardRuntimeSubclassIds.has(subclass.id)
+        return {
+          ...subclass,
+          referenceOnly: !runtimeReady,
+          summary: runtimeReady
+            ? "Справочное описание и runtime-механики этой коллегии подключены к Character Engine и входят в сертифицированный Bard runtime."
+            : "Литературный перевод и точные справочные правила готовы; эта сторонняя коллегия не входит в сертифицированный Bard runtime.",
+        }
+      }),
     }
   }
 
