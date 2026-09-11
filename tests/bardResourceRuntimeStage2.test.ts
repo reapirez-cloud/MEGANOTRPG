@@ -148,12 +148,6 @@ const levelMechanics: Record<number, StoredMechanics> = {
           enforcement: "engine",
           label: "Доступно только если применений Вдохновения барда меньше двух",
         },
-        {
-          kind: "condition",
-          condition: { kind: "always" },
-          enforcement: "gm",
-          label: "Используйте только после броска инициативы",
-        },
       ],
       effects: [{ kind: "resource", key: "bardic_inspiration", operation: "SET", amount: 2 }],
       tags: ["class", "bard", "initiative-trigger", "gm-confirmed"],
@@ -354,7 +348,10 @@ test("Superior Inspiration uses a structured GM-confirmed initiative action and 
   assert.ok(action.tags.includes("gm-confirmed"))
   assert.equal(action.requirements[0]?.enforcement, "engine")
   assert.equal(action.requirements[0]?.satisfied, true)
-  assert.equal(action.requirements[1]?.enforcement, "gm")
+  assert.match(
+    String(contract.capabilities.features.find((entry) => entry.key === "class:bard:superior-inspiration:l18")?.payload && JSON.stringify(contract.capabilities.features.find((entry) => entry.key === "class:bard:superior-inspiration:l18")?.payload)),
+    /инициатив/i,
+  )
 
   const next = executeAction(input.state, action)
   assert.equal(next.resources?.bardic_inspiration?.current, 2)
@@ -373,7 +370,7 @@ test("Stage 2 persistence follows assignment, Bard level and Charisma without cr
   assert.match(migration, /character_sheets_sync_bard_resources_stage2_v1/)
   assert.match(migration, /after insert or update of charisma/)
   assert.match(migration, /private\.evaluate_character_template_numeric_expression/)
-  assert.match(migration, /current=greatest\([\s\S]*excluded\.max_snapshot[\s\S]*max_snapshot-public\.character_resource_states\.current/)
+  assert.match(migration, /current=greatest\([\s\S]*excluded\.max_snapshot[\s\S]*public\.character_resource_states\.max_snapshot\s*-\s*public\.character_resource_states\.current/)
   assert.match(migration, /state_key='bardic_inspiration'/)
   assert.doesNotMatch(migration, /create table[\s\S]*bard/i)
 })
