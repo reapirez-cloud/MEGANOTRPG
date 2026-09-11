@@ -13,12 +13,8 @@ import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
 import type { CharacterTemplateBundle, RuleChoiceDefinition } from "../src/rule-templates/types.ts"
 import type { StoredMechanic } from "../src/types/characterMechanics.ts"
 
-const stage1 = fs.readFileSync(
-  "supabase/migrations/20260911060000_bard_catalog_stage1.sql",
-  "utf8",
-)
 const migration = fs.readFileSync(
-  "supabase/migrations/20260911080000_bard_spell_runtime_stage3.sql",
+  "supabase/migrations/20260911080000_bard_stage3_spell_runtime_v1.sql",
   "utf8",
 )
 
@@ -266,15 +262,14 @@ test("Bard spell access spends the shared spell-slot ledger", () => {
 test("Bard cantrips remain Bard-list choices while Magical Secrets expands only levelled spells", () => {
   assert.match(migration, /where s\.spell_level=0[\s\S]*c\.class_key='bard'/)
   assert.match(migration, /s\.spell_level between 1 and 9[\s\S]*c\.class_key in \('bard','cleric','druid','wizard'\)/)
-  assert.match(migration, /greatest\([\s\S]*case s\.spell_level[\s\S]*else 10[\s\S]*end[\s\S]*\)/)
+  assert.match(migration, /greatest\(10,private\.bard_stage3_spell_unlock_level_v1\(s\.spell_level\)\)/)
   assert.match(migration, /'magical_secrets_cantrips',false/)
 })
 
 test("Bard carries exact cantrip and prepared-spell count progression", () => {
   assert.match(migration, /'count_by_level',jsonb_build_object\('1',2,'4',3,'10',4\)/)
-  assert.match(stage1, /"1":4,"2":5,"3":6,"4":7,"5":9,"6":10,"7":11,"8":12,"9":14,"10":15/)
-  assert.match(stage1, /"11":16,"12":16,"13":17,"14":17,"15":18,"16":18,"17":19,"18":20,"19":21,"20":22/)
-  assert.match(migration, /v_prepared_by_level:=v_spell_contract->'prepared_spells_by_level'/)
+  assert.match(migration, /'1',4,'2',5,'3',6,'4',7,'5',9,'6',10,'7',11,'8',12,'9',14,'10',15/)
+  assert.match(migration, /'11',16,'12',16,'13',17,'14',17,'15',18,'16',18,'17',19,'18',20,'19',21,'20',22/)
   assert.match(migration, /'replacement_policy','on_level_change'/)
   assert.match(migration, /'replacement_limit',1/)
 })
