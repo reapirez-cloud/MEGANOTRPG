@@ -269,6 +269,12 @@ There are no known Wizard implementation or deployment blockers in the declared 
 - `stage1_migration: supabase/migrations/20260911060000_bard_catalog_stage1.sql`
 - `stage1_runtime_revision: xphb-2024-bard-stage1-foundation-v1`
 - `stage1_package_test: tests/bardCatalogStage1.test.ts`
+- `stage1_ci: GREEN_2026_09_11 / build + lint + full tests`
+- `production_stage1: DEPLOYED_AND_AUDITED_2026_09_11`
+- `production_migration: bard_catalog_stage1`
+- `production_template_shape: 1 active builtin class:bard; 20 level rows; 5 base mechanics; 2 starting choices`
+- `production_sheet_profile: ABSENT_BY_DESIGN; sheet_profile_deferred=true`
+- `production_ensure_privileges: anon=false; authenticated=false; service_role=true`
 - Stage 1 installs one active builtin `class:bard` / `bard-core` definition per campaign, the level 1-20 structural feature tree, d8 Hit Die, Dexterity/Charisma saves, light armor, simple weapons, three chosen skills and three chosen musical instruments.
 - Bardic Inspiration, executable spellcasting, active spell-slot synchronization and subclasses are intentionally **not** activated by Stage 1. The player-facing Bard remains `referenceOnly`.
 - The audited 2024 spell/cantrip/prepared progression is stored only under the inert `spellcasting_contract`. `sheet_profile` is deliberately deferred because that field immediately mutates the live character sheet when a class is assigned.
