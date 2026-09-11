@@ -5,7 +5,7 @@ import { classReference, SORCERER_RUNTIME_REFERENCE_SUBCLASS_IDS, WARLOCK_RUNTIM
 import fs from "node:fs"
 
 const expected = ["bard", "monk", "paladin", "sorcerer", "warlock"]
-const referenceOnlyClasses = new Set(["bard", "monk"])
+const referenceOnlyClasses = new Set(["monk"])
 const warlockRuntimePatrons = new Set(WARLOCK_RUNTIME_REFERENCE_SUBCLASS_IDS)
 
 test("translated new classes expose complete reference mechanics with truthful runtime activation", () => {
