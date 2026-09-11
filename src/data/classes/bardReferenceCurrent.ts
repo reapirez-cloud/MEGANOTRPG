@@ -5,6 +5,7 @@ import {
 } from "./bardSubclassReferenceDraft.ts"
 import { bardSubclassReferenceDraftWave2 } from "./bardSubclassReferenceDraftWave2.ts"
 import { bardSubclassReferenceDraftWave3 } from "./bardSubclassReferenceDraftWave3.ts"
+import { bardSubclassReferenceDance } from "./bardSubclassReferenceDance.ts"
 import { completeSubclassFeatures } from "./referenceMechanics.ts"
 
 function literarySubclass(subclass: BardSubclassReferenceDraft) {
@@ -20,6 +21,7 @@ function literarySubclass(subclass: BardSubclassReferenceDraft) {
 
 const authoredSubclasses = new Map(
   [
+    bardSubclassReferenceDance,
     ...bardSubclassReferenceDraft,
     ...bardSubclassReferenceDraftWave2,
     ...bardSubclassReferenceDraftWave3,
@@ -29,14 +31,14 @@ const authoredSubclasses = new Map(
 /**
  * Current player-facing Bard literary reference.
  *
- * Base Bard narration is preserved in bardReferenceBase.ts. All nine current
- * roster colleges now have authored literary presentations and exact reference
+ * Base Bard narration is preserved in bardReferenceBase.ts. The Player's Handbook 2024
+ * College of Dance plus the previous nine-college literary roster now have authored presentations and exact reference
  * rules. Runtime mechanics remain a separate future package.
  * Runtime roadmap/checklist: ./bardRuntimePlan.md. Keep referenceOnly until its certification gate is complete.
  */
 export const bardReferenceCurrent = {
   ...bardReferenceBase,
-  description: "Литературный перевод базового Барда и всех девяти коллегий текущего ростера готов; карточки содержат точные справочные правила.",
+  description: "Литературный перевод базового Барда и десяти колледжей готов; девять входят в заявленный runtime Stage 5, а Коллегия Трагедии остаётся отдельным reference-only материалом.",
   subclasses: bardReferenceBase.subclasses.map(
     (subclass) => authoredSubclasses.get(subclass.id) ?? subclass,
   ),
