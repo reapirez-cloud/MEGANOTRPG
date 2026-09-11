@@ -302,6 +302,41 @@ function mergeSorcererAuthoredFeatures(
   })
 }
 
+function mergeBardAuthoredFeatures(
+  authored: RuleFeatureView[],
+  runtime: RuleFeatureView[],
+  unlockLevel = 1,
+) {
+  if (!authored.length) return runtime
+
+  const remaining = [...runtime]
+  const merged = authored.map((feature) => {
+    const level = Math.max(feature.level, unlockLevel)
+    let matchIndex = remaining.findIndex((entry) => entry.level === level && entry.name === feature.name)
+    if (matchIndex < 0) {
+      matchIndex = remaining.findIndex(
+        (entry) => entry.level === level && (feature.name.includes(entry.name) || entry.name.includes(feature.name)),
+      )
+    }
+    if (matchIndex < 0) matchIndex = remaining.findIndex((entry) => entry.level === level)
+
+    const runtimeFeature = matchIndex >= 0 ? remaining.splice(matchIndex, 1)[0] : undefined
+    return {
+      ...(runtimeFeature ?? {}),
+      ...feature,
+      level,
+      sourceKey: runtimeFeature?.sourceKey ?? feature.sourceKey,
+      description: feature.description || runtimeFeature?.description || "",
+      facts: [...new Set([...feature.facts, ...(runtimeFeature?.facts ?? [])])],
+      translationNote: feature.translationNote ?? runtimeFeature?.translationNote,
+    }
+  })
+
+  return [...merged, ...remaining].sort(
+    (left, right) => left.level - right.level || left.name.localeCompare(right.name, "ru"),
+  )
+}
+
 function lastSegment(value: string, separator: string) {
   const parts = value.split(separator)
   return parts[parts.length - 1] || value
@@ -390,6 +425,7 @@ export default function ReferenceGuide({ campaignId: campaignIdProp, character, 
     const templateFeatures = buildTemplateFeatures(classTemplate, levels)
     const authoredFeatures = selectedClass ? referenceFeatureViews(selectedClass.features, `reference:class:${selectedClass.id}`) : []
     const features = templateFeatures.length ? templateFeatures : authoredFeatures
+    if (selectedClass?.id === "bard") return mergeBardAuthoredFeatures(authoredFeatures, templateFeatures)
     if (selectedClass?.id === "sorcerer") return mergeSorcererAuthoredFeatures(authoredFeatures, templateFeatures)
     if (selectedClass?.id === "fighter") return features.map((feature) => ({ ...feature, explanation: getFighterBaseVossNarration(feature.level, feature.name) || feature.explanation, voss: getFighterBaseVossComment(feature.level, feature.name) || feature.voss }))
     if (selectedClass?.id === "cleric") return features.map((feature) => ({ ...feature, explanation: getClericBaseVossNarration(feature.level, feature.sourceKey) || feature.explanation, voss: getClericBaseVossComment(feature.level, feature.sourceKey) || feature.voss }))
@@ -402,6 +438,9 @@ export default function ReferenceGuide({ campaignId: campaignIdProp, character, 
     if (!selectedSubclass) return features
     const authored = referenceFeatures(selectedSubclass)
     if (selectedClass?.referenceOnly && !features.length) return authored
+    if (selectedClass?.id === "bard") {
+      return mergeBardAuthoredFeatures(authored, features, selectedSubclassTemplate?.unlock_level || 1)
+    }
     if (selectedClass?.id === "sorcerer") {
       return mergeSorcererAuthoredFeatures(authored, features, selectedSubclassTemplate?.unlock_level || 1)
     }

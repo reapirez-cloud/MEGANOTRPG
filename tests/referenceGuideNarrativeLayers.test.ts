@@ -38,3 +38,12 @@ test("feature detail renders Voss explanation before the exact rule and comment 
   assert.ok(rule > explanation, "exact rule must follow the Voss explanation")
   assert.ok(comment > rule, "Voss personal comment must follow the exact rule")
 })
+
+
+test("runtime Bard keeps authored ability translations and Voss layers", () => {
+  assert.match(source, /function mergeBardAuthoredFeatures\(/)
+  assert.match(source, /selectedClass\?\.id === "bard"\) return mergeBardAuthoredFeatures\(authoredFeatures, templateFeatures\)/)
+  assert.match(source, /selectedClass\?\.id === "bard"[\s\S]*mergeBardAuthoredFeatures\(authored, features, selectedSubclassTemplate\?\.unlock_level \|\| 1\)/)
+  assert.match(source, /description: feature\.description \|\| runtimeFeature\?\.description \|\| ""/)
+  assert.match(source, /facts: \[\.\.\.new Set\(\[\.\.\.feature\.facts, \.\.\.\(runtimeFeature\?\.facts \?\? \[\]\)\]\)\]/)
+})
