@@ -4,30 +4,26 @@
 
 ## Current boundary
 
-**Stage 3: SPELL RUNTIME READY.**
+**Stage 4: BASE RUNTIME READY.**
 
-The canonical `class:bard` foundation, Bardic Inspiration runtime and 2024 Bard spell runtime are deployed to production. The player-facing Bard reference remains `referenceOnly` until the later base-mechanics, subclass and certification stages are complete.
+The canonical `class:bard` foundation, Bardic Inspiration, spell runtime and remaining 2024 base-class runtime are deployed to production. The player-facing Bard reference remains `referenceOnly` until subclass work and final certification are complete.
 
-Production revision: `xphb-2024-bard-stage3-spell-runtime-v1`.
+Production revision: `xphb-2024-bard-stage4-base-runtime-v1`.
 
-Stage 3 now owns:
+Stage 4 now owns:
 
-- Charisma spellcasting through native CE `class_spell` accesses;
-- the exact full-caster slot progression from Bard 1–20 using the shared `spell_slot_1…9` persistent ledger;
-- Bard cantrips as a persistent choice: 2 at level 1, 3 at level 4, 4 at level 10;
-- exact prepared-spell counts `4/5/6/7/9/10/11/12/14/15/16/16/17/17/18/18/19/20/21/22`;
-- one cantrip replacement and one prepared-spell replacement when the Bard source level increases;
-- Bard-only cantrip choices, including replacements;
-- Magical Secrets from Bard 10 for levelled spells only: new and replacement prepared spells may come from Bard, Cleric, Druid or Wizard lists, still gated by the highest spell level available to that Bard level;
-- musical instruments as a structured spellcasting-focus permission;
-- active executable `sheet_profile` with Charisma, Bard list metadata, full-caster slots and the audited cantrip/prepared progression;
-- canonical spell links for every selectable access.
+- Expertise as one persistent choice: 2 already-proficient skills at Bard 2, growing to 4 at Bard 9, each resolving to proficiency rank 2;
+- a generic `skill_proficiencies` dynamic choice provider shared by future rules. The client derives eligible skills from sheet + active template grants and the server independently validates every newly added option;
+- Jack of All Trades as a generic untrained-skill proficiency fraction: half PB, rounded down, only for skill checks with proficiency rank 0; initiative remains untouched;
+- Countercharm as a structured Reaction with the exact 30-foot failed-save reroll/Advantage rule. The failed-save trigger and reaction legality remain table-adjudicated rather than fake runtime state;
+- Words of Creation as two separate always-prepared CE spell accesses for Power Word Heal and Power Word Kill plus the structured second-target-within-10-feet rule;
+- precise structured ASI hooks at Bard 4/8/12/16 and Epic Boon hook at Bard 19.
 
-The production catalog currently resolves 11 Bard cantrips plus 457 selectable levelled spells across the Bard/Cleric/Druid/Wizard Magical Secrets union, for 468 template spell links. Magical Secrets gate parity is audited at zero mismatches.
+The repository still has no first-class generic feat source/allocation runtime. Stage 4 therefore deliberately does **not** add a Bard-specific feat picker. ASI/Epic Boon are exact generic `feat_choice` hooks until that shared subsystem exists. This is architecture debt, not a reason to fork Bard UI.
 
-The generic Choice Runtime parser was also corrected so `target: "spell"` is a first-class typed choice target and selected spell choices emit only their canonical `option_mechanics`. It no longer creates a second empty spell grant with no payload. This is a generic fix and also removes a latent failure mode from existing spell-choice packages such as Sorcerer.
+Production migration: `bard_base_runtime_stage4_v1` (journal `20260911101327`).
 
-Stage 3 deliberately does **not** complete Expertise, Jack of All Trades, Countercharm, Words of Creation, feat/ASI runtime or subclasses. Those remain later stages.
+The production post-deploy smoke verified that a starting Bard skill is recognized as rank 1 by the generic provider, an eligible Expertise selection passes, an untrained skill is rejected, and both Words of Creation spell links remain present. Final Stage 4 code CI passed build, lint and `970/970` tests.
 
 ## Stage 2 — Bardic Inspiration — COMPLETE
 
@@ -62,15 +58,25 @@ Implemented and deployed on 2026-09-11.
 
 Next implementation target: **Stage 4 — remaining base mechanics**.
 
-## Stage 4 — remaining base mechanics
+## Stage 4 — remaining base mechanics — COMPLETE
 
-Use generic mechanics where the rules expose generic needs:
+Implemented and deployed on 2026-09-11.
 
-- Expertise: persistent choice of two already-proficient skills at Bard 2 and two more at Bard 9. If the current choice runtime cannot derive options from owned proficiencies, add a generic dynamic option provider first.
-- Jack of All Trades: generic half-proficiency bonus rule for skill-based ability checks in which the character lacks proficiency. It no longer applies to initiative in the 2024 rules.
-- Countercharm: structured reaction rule. Scene trigger/legality stays with the GM; no turn tracker.
-- Words of Creation: Power Word Heal and Power Word Kill always prepared plus the limited second-target rule.
-- ASI/Epic Boon: use the shared feat/allocation system when available, never a Bard-specific picker.
+- migration: `supabase/migrations/20260911101000_bard_base_runtime_stage4_v1.sql`;
+- package test: `tests/bardBaseRuntimeStage4.test.ts`;
+- production revision: `xphb-2024-bard-stage4-base-runtime-v1`;
+- Expertise persists through Choice Runtime v2 and increases from 2 to 4 selections at Bard 9;
+- only rank-1 owned skills are eligible for a new Expertise pick; existing Expertise selections remain stored when the count later increases;
+- proficiency resolution now merges grants across choice variants, closing a generic CE bug that could hide proficiency choices behind non-default variant identities;
+- Jack of All Trades is implemented by the generic `skill_check:untrained_proficiency_fraction` permission and affects untrained skills only, never initiative;
+- Countercharm is a structured Reaction action with a 30-foot emanation and exact reroll-with-Advantage consequence; trigger legality remains on the table boundary;
+- Power Word Heal and Power Word Kill are always-prepared Bard spell accesses at level 20 and continue to spend the shared slot ledger;
+- Words of Creation exposes the optional second target within 10 feet of the first as a structured rule without inventing target-state tracking;
+- ASI and Epic Boon are represented as generic feat-choice hooks because no first-class feat/allocation runtime exists yet; no Bard-specific picker was added;
+- production dry-run, pre-deploy provider smoke, live audit and post-deploy smoke all passed;
+- Supabase advisors reported no new Bard/provider findings.
+
+Next implementation target: **Stage 5 — subclasses**.
 
 ## Stage 5 — subclasses
 
@@ -120,5 +126,6 @@ Only after that gate:
 
 - 2024 multiclass Bard entry proficiencies differ from starting as Bard: multiclassing grants a narrower set of proficiencies. The current generic class-assignment model does not yet distinguish first-class entry grants from multiclass entry grants. Solve that as a generic class primitive before final Bard certification.
 - The shared spell-slot ledger does not yet have a generic multiclass caster-level aggregator across multiple assigned spellcasting classes. Existing class-specific slot synchronizers can therefore overwrite the same `spell_slot_*` base maxima if true multiclass spellcasting is enabled. Solve this once for all full/half/third casters rather than adding a Bard-only branch.
+- The project still lacks first-class feat sources and the bounded ability-score allocation primitive required to execute ASI/Epic Boon choices generically. Stage 4 stores exact shared hooks; final certification must not invent a Bard-only feat system.
 
 Do not add `if bard` branches to the sheet, GM panel or shared spell-slot owner.
