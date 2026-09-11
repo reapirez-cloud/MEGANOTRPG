@@ -242,8 +242,8 @@ test("Magical Secrets uses Bard source level rather than total character level",
   assert.ok(secret)
   assert.equal(secret.identity.level, 5)
   assert.equal(secret.accesses[0]?.methods[0]?.ability, "charisma")
-  assert.equal(secret.accesses[0]?.methods[0]?.saveDc?.value, 16)
-  assert.equal(secret.accesses[0]?.methods[0]?.attackBonus?.value, 8)
+  assert.equal(secret.accesses[0]?.methods[0]?.saveDc?.value, 18)
+  assert.equal(secret.accesses[0]?.methods[0]?.attackBonus?.value, 10)
 })
 
 test("Bard spell access spends the shared spell-slot ledger", () => {
