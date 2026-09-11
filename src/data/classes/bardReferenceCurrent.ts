@@ -36,7 +36,7 @@ const authoredSubclasses = new Map(
  */
 export const bardReferenceCurrent = {
   ...bardReferenceBase,
-  description: "Литературный перевод базового Барда и всех девяти коллегий текущего ростера готов; карточки содержат точные справочные правила. Ресурсы и Character Engine будут подключены отдельным проверяемым механическим пакетом.",
+  description: "Литературный перевод базового Барда и всех девяти коллегий текущего ростера готов; карточки содержат точные справочные правила.",
   subclasses: bardReferenceBase.subclasses.map(
     (subclass) => authoredSubclasses.get(subclass.id) ?? subclass,
   ),
