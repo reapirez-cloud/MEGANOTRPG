@@ -263,36 +263,38 @@ There are no known Wizard implementation or deployment blockers in the declared 
 
 ## Bard (`class:bard`)
 
-**Exact reference text:** `READY_CURRENT_AUTHORED_ROSTER_2026_09_04`  
-**Mechanics/runtime:** `IN_PROGRESS — STAGE4_BASE_RUNTIME_READY`
+**Exact reference text:** `READY_CURRENT_AUTHORED_ROSTER_2026_09_11`  
+**Mechanics/runtime:** `IN_PROGRESS — STAGE5_SUBCLASS_RUNTIME_READY`
 
 - `stage1_migration: supabase/migrations/20260911060000_bard_catalog_stage1.sql`
 - `stage2_migration: supabase/migrations/20260911073000_bard_stage2_inspiration_runtime.sql`
 - `stage2_closure_migration: supabase/migrations/20260911074000_bard_stage2_superior_inspiration_v2.sql`
 - `stage3_migration: supabase/migrations/20260911080000_bard_stage3_spell_runtime_v1.sql`
 - `stage4_migration: supabase/migrations/20260911101000_bard_base_runtime_stage4_v1.sql`
-- `stage4_runtime_revision: xphb-2024-bard-stage4-base-runtime-v1`
-- `stage4_package_test: tests/bardBaseRuntimeStage4.test.ts`
-- `stage4_ci: GREEN_2026_09_11 / build + lint + full tests 970/970`
-- `production_stage4: DEPLOYED_AND_AUDITED_2026_09_11`
-- `production_stage4_migration: bard_base_runtime_stage4_v1 / journal 20260911101327`
-- `production_campaign_trigger: aaaaaaaaj_campaigns_ensure_bard_base_runtime_stage4_v1`
-- `production_stage4_privileges: ensure/provider helpers anon=false; authenticated=false; service_role=true`
-- `production_stage4_advisors: NO_NEW_BARD_OR_DYNAMIC_PROVIDER_FINDINGS`
-- `generic_dynamic_choice_provider: skill_proficiencies / client sheet+template derivation / server revalidation`
-- `generic_proficiency_fix: CE resolves proficiency grants across choice variants instead of default variant only`
-- Stage 1 remains the structural class foundation; Stage 2 remains the canonical Bardic Inspiration runtime; Stage 3 remains the canonical Charisma/full-caster spell runtime.
-- Expertise is one persistent Choice Runtime v2 choice at Bard 2: two already-proficient rank-1 skills, growing to four at Bard 9. Each selected skill emits rank-2 proficiency. The generic provider prevents new selections in unowned skills and rejects already-rank-2 skills while preserving previously stored Expertise selections.
-- Jack of All Trades is native CE behavior through `skill_check:untrained_proficiency_fraction`: half PB rounded down on skill checks with proficiency rank 0. Initiative is explicitly unaffected.
-- Countercharm resolves as a structured 30-foot Reaction action and rule. The failed-save/condition trigger is exact in the contract but remains table-adjudicated because the app owns no authoritative failed-save/reaction state.
-- Words of Creation grants Power Word Heal and Power Word Kill as always-prepared level-20 spell accesses outside the normal prepared-spell quota. The optional second target within 10 feet of the first is a structured table-adjudicated rule; casting still uses the shared slot ledger.
-- ASI at Bard 4/8/12/16 and Epic Boon at Bard 19 now have precise generic `feat_choice` hooks. The repository has no first-class feat/allocation runtime yet, so Stage 4 intentionally does not create a Bard-only feat UI. This generic subsystem remains final-certification debt.
-- Production pre/post-deploy transaction smoke verified template-granted skill eligibility, allowed Expertise, server rejection of an untrained skill, and the two Words of Creation spell links. All probes were rolled back.
-- The persistent next-stage checklist lives in `src/data/classes/bardRuntimePlan.md`. **Next target: Stage 5 — subclasses.**
-- The authored roster still lacks PHB 2024 College of Dance. College of Tragedy remains third-party/reference-only unless explicitly approved for gameplay.
-- Final certification still has generic debt: starting-class vs multiclass-entry proficiencies, shared multiclass caster-level/slot aggregation, and first-class feat/ability-allocation runtime. Do not solve any of these with Bard-only UI/runtime branches.
+- `stage5_migration: supabase/migrations/20260911162000_bard_subclasses_stage5_v1.sql`
+- `stage5_runtime_revision: xphb-2024-bard-stage5-subclasses-runtime-v1`
+- `stage5_package_test: tests/bardSubclassesStage5.test.ts`
+- `stage5_ci: GREEN_2026_09_11 / build + lint + full tests 981/981`
+- `production_stage5: DEPLOYED_AND_AUDITED_2026_09_11`
+- `production_stage5_migration: bard_subclasses_stage5_v1 / journal 20260911133259`
+- `production_campaign_trigger: aaaaaaaak_campaigns_ensure_bard_subclasses_stage5_v1`
+- `production_stage5_privileges: installer/upsert anon=false; authenticated=false; service_role=true`
+- `production_stage5_advisors: NO_BARD_OR_STAGE5_SPECIFIC_FINDINGS`
+- Stage 1 remains the structural class foundation; Stage 2 is the canonical Bardic Inspiration runtime; Stage 3 is the canonical Charisma/full-caster spell runtime; Stage 4 is the remaining base-class runtime.
+- Stage 5 has exactly nine active runtime colleges: Dance, Glamour, Lore, Valor, Eloquence, Swords, Whispers, Creation and Spirits.
+- PHB 2024 College of Dance is now present in the authored reference roster and runtime package.
+- College of Tragedy remains third-party/reference-only and production contains zero active builtin `subclass:bard:tragedy` templates.
+- Every runtime subclass is parented to the active `class:bard`, unlocks at Bard 3 and resolves source level from the parent Bard assignment.
+- Every action tagged as spending Bardic Inspiration uses the one canonical `bardic_inspiration` state key. Independent finite subclass pools remain independent resources and are not misidentified as Bardic Inspiration copies.
+- Glamour, Lore and Spirits use canonical spell catalog links. Production link counts after deployment: Glamour 3, Lore 494, Spirits 83.
+- Lore Magical Discoveries is a persistent two-spell Choice Runtime selection; Spirits Spirit Session is a long-rest-refresh spell choice. The generic character choice UI now routes every declared refresh policy, including `long_rest`, through the authoritative rest-choice RPC.
+- All subclass actions have an exact player-facing feature explanation under the same stable `sourceKey`; the Stage 5 migration certifies this invariant before commit.
+- Scene, hit, turn and initiative triggers remain precise structured/table-adjudicated contracts rather than fake `*_confirmed`, `*_available` or turn counters.
+- Production transaction smoke verified Bard 2 keeps a subclass locked, Bard 3 activates it from the parent level, the canonical Bardic Inspiration resource remains present, and assigning Glamour creates `bard_glamour_beguiling_magic = 1/1`. The probe was rolled back.
+- The persistent next-stage checklist lives in `src/data/classes/bardRuntimePlan.md`. **Next target: Stage 6 — final certification.**
+- Final certification still has generic debt: starting-class vs multiclass-entry proficiencies, shared multiclass caster-level/slot aggregation, and first-class feat/ability-allocation runtime. Do not solve these with Bard-only UI/runtime branches.
 
-**Stage 4 is complete in its declared base-class scope.** Do not change the whole Bard class to `READY` or clear `referenceOnly` until Stage 5 subclasses, Stage 6 certification and the remaining generic certification debt are resolved.
+**Stage 5 is complete in its declared subclass scope.** Do not change the whole Bard class to `READY` or clear `referenceOnly` until Stage 6 certification and the remaining generic certification debt are resolved.
 
 ---
 
