@@ -446,6 +446,7 @@ as $$
           'swords-style-two-weapon',
           'bard:swords:fighting-style',
           'bard_swords_two_weapon_fighting',
+          'Бой двумя оружиями',
           'При бое двумя оружиями модификатор характеристики добавляется к урону дополнительной атаки.',
           '{"kind":"fighting_style_two_weapon","addAbilityModifierToOffhandDamage":true}'::jsonb
         )
