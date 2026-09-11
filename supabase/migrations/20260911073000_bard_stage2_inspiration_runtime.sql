@@ -348,7 +348,7 @@ begin
         'bardic_inspiration_die_value_key','bardic_inspiration_die_sides',
         'font_of_inspiration_runtime',true,
         'font_of_inspiration_shared_spell_slot_ledger',true,
-        'superior_inspiration_runtime','structured_gm_confirmed',
+        'superior_inspiration_runtime','structured_table_adjudicated',
         'superior_inspiration_automatic_initiative_hook',false,
         'spell_runtime_included',false,
         'subclass_runtime_included',false,
