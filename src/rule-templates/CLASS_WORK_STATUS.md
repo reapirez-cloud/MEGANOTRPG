@@ -274,7 +274,7 @@ There are no known Wizard implementation or deployment blockers in the declared 
 - `stage3_package_test: tests/bardSpellRuntimeStage3.test.ts`
 - `stage3_ci: GREEN_2026_09_11 / build + lint + full tests 960/960`
 - `production_stage3: DEPLOYED_AND_AUDITED_2026_09_11`
-- `production_stage3_migration: bard_stage3_spell_runtime_v1 / journal 20260911075642`
+- `production_stage3_migration: bard_stage3_spell_runtime_v1 / journal 20260911082103`
 - `production_sheet_profile: ACTIVE / charisma / bard / musical_instrument / full-caster slots`
 - `production_spell_choices: bard_cantrips=11 options; bard_prepared_spells=457 levelled options`
 - `production_spell_links: 468`
