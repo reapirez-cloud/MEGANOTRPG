@@ -264,37 +264,38 @@ There are no known Wizard implementation or deployment blockers in the declared 
 ## Bard (`class:bard`)
 
 **Exact reference text:** `READY_CURRENT_AUTHORED_ROSTER_2026_09_11`  
-**Mechanics/runtime:** `IN_PROGRESS — STAGE5_SUBCLASS_RUNTIME_READY`
+**Mechanics/runtime:** `READY`
 
-- `stage1_migration: supabase/migrations/20260911060000_bard_catalog_stage1.sql`
-- `stage2_migration: supabase/migrations/20260911073000_bard_stage2_inspiration_runtime.sql`
-- `stage2_closure_migration: supabase/migrations/20260911074000_bard_stage2_superior_inspiration_v2.sql`
-- `stage3_migration: supabase/migrations/20260911080000_bard_stage3_spell_runtime_v1.sql`
-- `stage4_migration: supabase/migrations/20260911101000_bard_base_runtime_stage4_v1.sql`
-- `stage5_migration: supabase/migrations/20260911162000_bard_subclasses_stage5_v1.sql`
-- `stage5_runtime_revision: xphb-2024-bard-stage5-subclasses-runtime-v1`
-- `stage5_package_test: tests/bardSubclassesStage5.test.ts`
-- `stage5_ci: GREEN_2026_09_11 / build + lint + full tests 981/981`
-- `production_stage5: DEPLOYED_AND_AUDITED_2026_09_11`
-- `production_stage5_migration: bard_subclasses_stage5_v1 / journal 20260911133259`
-- `production_campaign_trigger: aaaaaaaak_campaigns_ensure_bard_subclasses_stage5_v1`
-- `production_stage5_privileges: installer/upsert anon=false; authenticated=false; service_role=true`
-- `production_stage5_advisors: NO_BARD_OR_STAGE5_SPECIFIC_FINDINGS`
-- Stage 1 remains the structural class foundation; Stage 2 is the canonical Bardic Inspiration runtime; Stage 3 is the canonical Charisma/full-caster spell runtime; Stage 4 is the remaining base-class runtime.
-- Stage 5 has exactly nine active runtime colleges: Dance, Glamour, Lore, Valor, Eloquence, Swords, Whispers, Creation and Spirits.
-- PHB 2024 College of Dance is now present in the authored reference roster and runtime package.
-- College of Tragedy remains third-party/reference-only and production contains zero active builtin `subclass:bard:tragedy` templates.
-- Every runtime subclass is parented to the active `class:bard`, unlocks at Bard 3 and resolves source level from the parent Bard assignment.
-- Every action tagged as spending Bardic Inspiration uses the one canonical `bardic_inspiration` state key. Independent finite subclass pools remain independent resources and are not misidentified as Bardic Inspiration copies.
-- Glamour, Lore and Spirits use canonical spell catalog links. Production link counts after deployment: Glamour 3, Lore 494, Spirits 83.
-- Lore Magical Discoveries is a persistent two-spell Choice Runtime selection; Spirits Spirit Session is a long-rest-refresh spell choice. The generic character choice UI now routes every declared refresh policy, including `long_rest`, through the authoritative rest-choice RPC.
-- All subclass actions have an exact player-facing feature explanation under the same stable `sourceKey`; the Stage 5 migration certifies this invariant before commit.
-- Scene, hit, turn and initiative triggers remain precise structured/table-adjudicated contracts rather than fake `*_confirmed`, `*_available` or turn counters.
-- Production transaction smoke verified Bard 2 keeps a subclass locked, Bard 3 activates it from the parent level, the canonical Bardic Inspiration resource remains present, and assigning Glamour creates `bard_glamour_beguiling_magic = 1/1`. The probe was rolled back.
-- The persistent next-stage checklist lives in `src/data/classes/bardRuntimePlan.md`. **Next target: Stage 6 — final certification.**
-- Final certification still has generic debt: starting-class vs multiclass-entry proficiencies, shared multiclass caster-level/slot aggregation, and first-class feat/ability-allocation runtime. Do not solve these with Bard-only UI/runtime branches.
+- `final_certification_migration: supabase/migrations/20260911175500_bard_runtime_final_certification_v1.sql`
+- `final_runtime_revision: xphb-2024-bard-runtime-final-v1`
+- `final_package_test: tests/bardRuntimeFinalCertification.test.ts`
+- `pre_documentation_ci: GREEN_2026_09_11 / build + lint + full tests 990/990`
+- `production_final: DEPLOYED_AND_AUDITED_2026_09_11`
+- `production_final_migration: bard_runtime_final_certification_v1 / journal 20260911150941`
+- `production_campaign_trigger: aaaaaaaal_campaigns_ensure_bard_runtime_final_v1`
+- `production_final_privileges: certifier/installer anon=false; authenticated=false; service_role=true`
+- `production_final_advisors: NO_BARD_OR_STAGE6_SPECIFIC_FINDINGS`
+- `public_reference_runtime: ENABLED / base Bard referenceOnly=false through classReference runtime overlay`
+- `runtime_subclass_count: 9`
+- `runtime_subclasses: Dance, Glamour, Lore, Valor, Eloquence, Swords, Whispers, Creation, Spirits`
+- `reference_only_subclasses: Tragedy`
+- `production_broken_resource_refs: 0`
+- `production_duplicate_mechanic_ids: 0`
+- Stage 1 is the structural class foundation; Stage 2 is the canonical Bardic Inspiration runtime; Stage 3 is the Charisma/full-caster spell runtime; Stage 4 is the remaining base-class runtime; Stage 5 is the nine-college runtime package.
+- Final certification is fail-closed. `READY` is written only after the migration validates the full prior stage stack, exact 1–20 level rows, starting grants/choices, Inspiration scaling/recovery, Font, Superior Inspiration, Expertise, Jack of All Trades, Countercharm, spell source gates, Words of Creation, all nine subclasses, resource identity, mechanic-ID uniqueness and shared RPC availability/privileges.
+- Parent/source-level semantics are certified: a high total character level does not unlock Bard subclass features early. Production smoke used total level 12 with Bard level 3 and correctly resolved the subclass at source level 3; it then followed Bard level changes.
+- Persistent-state smoke is certified: one spent Bardic Inspiration use survived resource re-sync; one spent 3rd-level spell slot survived Bard 10→11; the expected 6th-level slot appeared at Bard 11. All probes were rolled back.
+- Class tab uses the resolved CE contract through `presentClassPackages()`; the final regression requires runtime resource/action entries and rejects Bard-specific presentation branches.
+- Chat execution remains on shared GENA/template v2 RPCs. Choice UI uses shared Choice Runtime/rest RPCs; there is no Bard-only Chat or choice branch.
+- Public reference now mirrors the certified runtime boundary: base Bard + nine approved colleges are runtime-backed; Tragedy remains reference-only.
+- Supabase live parity after certification: `mechanics_status=READY`, `runtime_status=ready`, `runtime_stage=6`, nine child subclasses `runtime_status=ready`, Tragedy active builtin count 0, one final Bard campaign installer, broken resource refs 0, duplicate mechanic IDs 0.
+- Generic cross-class capabilities intentionally remain outside Supported Bard Runtime V1 and are recorded explicitly in production metadata rather than faked by Bard-specific code:
+  - `multiclass_entry_profile_runtime = generic_pending`;
+  - `multiclass_spell_slot_aggregation_runtime = generic_pending`;
+  - `feat_source_runtime = generic_pending`.
+- What is certified for multiclass use today is Bard parent/source-level semantics. Starting-vs-multiclass entry grants, combined caster slot aggregation and the generic feat/ASI subsystem must be solved once for all affected classes.
 
-**Stage 5 is complete in its declared subclass scope.** Do not change the whole Bard class to `READY` or clear `referenceOnly` until Stage 6 certification and the remaining generic certification debt are resolved.
+**Bard is mechanically READY in the currently supported application runtime.** Do not reopen Bard with class-specific UI/runtime branches to solve the generic cross-class debts above.
 
 ---
 
