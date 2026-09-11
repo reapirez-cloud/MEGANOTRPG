@@ -230,7 +230,7 @@ function StructuredChoiceCard({
     if (!canChoose || busy || !complete) return
     setBusy(true)
     setError("")
-    const result = state.refresh === "short_rest" || state.refresh === "short_or_long_rest"
+    const result = state.refresh
       ? await commitCharacterTemplateRestChoice(characterId, state.assignmentId, state.key, draft)
       : await commitCharacterTemplateChoiceV2(characterId, state.assignmentId, state.key, draft)
     setBusy(false)
@@ -306,7 +306,7 @@ function StructuredChoiceCard({
         {visible.length === 0 && <div className="template-choice-card__empty">Подходящих вариантов нет.</div>}
       </div>
 
-      {state.refresh && <p className="template-choice-card__notice">Этот набор можно менять только в открытом окне {state.refresh === "short_rest" ? "короткого отдыха" : "короткого или долгого отдыха"}. Сервер проверяет окно отдыха при сохранении.</p>}
+      {state.refresh && <p className="template-choice-card__notice">Этот набор можно менять только в открытом окне {state.refresh === "short_rest" ? "короткого отдыха" : state.refresh === "long_rest" ? "долгого отдыха" : "короткого или долгого отдыха"}. Сервер проверяет окно отдыха при сохранении.</p>}
       {duplicateSelectors && <p className="template-choice-card__notice is-warning">Повторяемое воззвание нельзя назначить одной и той же цели дважды.</p>}
       {!canChoose && <p className="template-choice-card__notice">Этот выбор может подтвердить владелец персонажа или ГМ.</p>}
       {error && <div className="auth-error template-choice-card__error">{error}</div>}
