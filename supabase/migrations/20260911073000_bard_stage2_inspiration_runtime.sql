@@ -316,12 +316,6 @@ begin
           'maximum',1,
           'enforcement','engine',
           'label','Доступно только если применений Вдохновения барда меньше двух'
-        ),
-        jsonb_build_object(
-          'kind','condition',
-          'condition',jsonb_build_object('kind','always'),
-          'enforcement','gm',
-          'label','Используйте только после броска инициативы'
         )
       ),
       'effects',jsonb_build_array(jsonb_build_object(
