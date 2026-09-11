@@ -625,6 +625,14 @@ begin
     jsonb_build_object(
       'level',6,
       'mechanics',jsonb_build_array(
+        private.bard_stage5_feature_v1(
+          'dance-inspiring-movement-feature',
+          'bard:dance:inspiring-movement',
+          'bard_dance_inspiring_movement_rule',
+          'Вдохновляющее движение',
+          'Когда видимый враг завершает ход в 5 футах от вас, реакцией потратьте Вдохновение барда: переместитесь до половины скорости без провоцирования атак возможности, после чего выбранный союзник в 30 футах может реакцией сделать то же.',
+          '{"kind":"inspiring_movement","trigger":"visible_enemy_ends_turn_within_5_feet","resource":"bardic_inspiration","selfMove":"half_speed","allyRangeFeet":30,"allyReactionMove":"half_speed","noOpportunityAttacks":true,"triggerAdjudication":"table"}'::jsonb
+        ),
         private.bard_stage5_action_v1(
           'dance-inspiring-movement',
           'bard:dance:inspiring-movement',
@@ -636,6 +644,14 @@ begin
           '[{"kind":"semantic","key":"dance_inspiring_movement","payload":{"trigger":"visible_enemy_ends_turn_within_5_feet","selfMove":"half_speed","allyRangeFeet":30,"allyReactionMove":"half_speed","noOpportunityAttacks":true}}]'::jsonb,
           '["bard","subclass","dance","bardic-inspiration","table-adjudicated-trigger"]'::jsonb,
           '{"kind":"self"}'::jsonb
+        ),
+        private.bard_stage5_feature_v1(
+          'dance-tandem-footwork-feature',
+          'bard:dance:tandem-footwork',
+          'bard_dance_tandem_footwork_rule',
+          'Совместная работа ног',
+          'Когда вы бросаете инициативу и не Недееспособны, можете потратить Вдохновение барда, бросить его кость и добавить результат к инициативе своей и выбранных союзников в 30 футах, которые видят или слышат вас.',
+          '{"kind":"tandem_footwork","trigger":"initiative_roll","resource":"bardic_inspiration","radiusFeet":30,"targets":"self_and_chosen_allies_that_see_or_hear","bonus":"bardic_inspiration_die_roll","triggerAdjudication":"table"}'::jsonb
         ),
         private.bard_stage5_action_v1(
           'dance-tandem-footwork',
@@ -722,6 +738,14 @@ begin
           '["bard","subclass","glamour","bardic-inspiration","no-action"]'::jsonb,
           '{"kind":"self"}'::jsonb
         ),
+        private.bard_stage5_feature_v1(
+          'glamour-mantle-inspiration-feature',
+          'bard:glamour:mantle-inspiration',
+          'bard_glamour_mantle_of_inspiration_rule',
+          'Мантия вдохновения',
+          'Бонусным действием потратьте Вдохновение барда и выберите существ в пределах 60 футов числом до модификатора Харизмы, минимум одно. Каждое получает временные HP, равные удвоенному броску кости Вдохновения, и может реакцией переместиться на свою скорость без провоцирования атак возможности.',
+          '{"kind":"mantle_of_inspiration","resource":"bardic_inspiration","rangeFeet":60,"targetCount":"charisma_modifier_min_1","temporaryHp":"2_x_bardic_inspiration_die_roll","allowReactionMove":"speed","noOpportunityAttacks":true}'::jsonb
+        ),
         private.bard_stage5_action_v1(
           'glamour-mantle-inspiration',
           'bard:glamour:mantle-inspiration',
@@ -739,6 +763,14 @@ begin
     jsonb_build_object(
       'level',6,
       'mechanics',jsonb_build_array(
+        private.bard_stage5_feature_v1(
+          'glamour-majesty-feature',
+          'bard:glamour:mantle-majesty',
+          'bard_glamour_mantle_of_majesty_rule',
+          'Мантия величия',
+          'Бонусным действием на 1 минуту поддерживайте концентрацию как на заклинании. Пока эффект действует, «Приказ» можно сотворять бонусным действием без ячейки, а Очарованные вами цели автоматически проваливают спасбросок против этого «Приказа». После долгого отдыха доступно одно бесплатное применение; повторно можно активировать за ячейку 3+ уровня.',
+          '{"kind":"mantle_of_majesty","activation":"bonus_action","durationMinutes":1,"concentration":true,"commandAsBonusActionWithoutSlot":true,"charmedTargetsAutoFailCommandSave":true,"repeatCost":"spell_slot_level_3_plus"}'::jsonb
+        ),
         private.bard_stage5_spell_v1('glamour','bard:glamour:mantle-majesty','command','glamour-always-prepared'),
         private.bard_stage5_resource_v1(
           'glamour-majesty-resource',
@@ -765,6 +797,14 @@ begin
     jsonb_build_object(
       'level',14,
       'mechanics',jsonb_build_array(
+        private.bard_stage5_feature_v1(
+          'glamour-unbreakable-feature',
+          'bard:glamour:unbreakable-majesty',
+          'bard_glamour_unbreakable_majesty_rule',
+          'Нерушимое величие',
+          'Бонусным действием примите Нерушимое величие на 1 минуту. Когда существо впервые за ход попадает по вам атакой, оно совершает спасбросок Харизмы против Сл ваших заклинаний; при провале попадание превращается в промах. Эффект прекращается при Недееспособности; применение возвращается после короткого или долгого отдыха.',
+          '{"kind":"unbreakable_majesty","activation":"bonus_action","durationMinutes":1,"endsIf":"incapacitated","trigger":"first_attack_hit_by_creature_each_turn","save":"charisma","onFail":"attack_misses","turnAdjudication":"table"}'::jsonb
+        ),
         private.bard_stage5_resource_v1(
           'glamour-unbreakable-resource',
           'bard:glamour:unbreakable-majesty',
@@ -804,6 +844,14 @@ begin
       'level',3,
       'choices',jsonb_build_array(private.bard_stage5_lore_skills_choice_v1()),
       'mechanics',jsonb_build_array(
+        private.bard_stage5_feature_v1(
+          'lore-cutting-words-feature',
+          'bard:lore:cutting-words',
+          'bard_lore_cutting_words_rule',
+          'Острое словцо',
+          'Когда видимое вами существо в пределах 60 футов успешно совершает бросок атаки или проверку характеристики либо совершает бросок урона, реакцией потратьте Вдохновение барда, бросьте его кость и вычтите результат из броска цели.',
+          '{"kind":"cutting_words","activation":"reaction","resource":"bardic_inspiration","rangeFeet":60,"triggers":["successful_attack_roll","successful_ability_check","damage_roll"],"subtract":"bardic_inspiration_die_roll","requiresTargetVisible":true,"triggerAdjudication":"table"}'::jsonb
+        ),
         private.bard_stage5_action_v1(
           'lore-cutting-words',
           'bard:lore:cutting-words',
@@ -915,6 +963,14 @@ begin
           'При проверке Харизмы (Убеждение или Обман) результат d20 9 или меньше считается 10.',
           '{"kind":"minimum_d20_result","skills":["persuasion","deception"],"ability":"charisma","minimum":10}'::jsonb
         ),
+        private.bard_stage5_feature_v1(
+          'eloquence-unsettling-feature',
+          'bard:eloquence:unsettling-words',
+          'bard_eloquence_unsettling_words_rule',
+          'Тревожные слова',
+          'Бонусным действием потратьте Вдохновение барда и выберите существо в пределах 60 футов, которое вас слышит. Бросьте кость Вдохновения; цель вычитает результат из следующего спасброска, который совершит до начала вашего следующего хода.',
+          '{"kind":"unsettling_words","activation":"bonus_action","resource":"bardic_inspiration","rangeFeet":60,"requiresHearing":true,"subtractFrom":"next_saving_throw","amount":"bardic_inspiration_die_roll","expires":"start_of_bard_next_turn"}'::jsonb
+        ),
         private.bard_stage5_action_v1(
           'eloquence-unsettling-words',
           'bard:eloquence:unsettling-words',
@@ -939,6 +995,14 @@ begin
           'Неиссякаемое вдохновение',
           'Если существо использует вашу кость Вдохновения барда на d20-проверке и всё равно проваливает её, кость сохраняется.',
           '{"kind":"unfailing_inspiration","retainDieOnFailedD20Test":true}'::jsonb
+        ),
+        private.bard_stage5_feature_v1(
+          'eloquence-universal-speech-feature',
+          'bard:eloquence:universal-speech',
+          'bard_eloquence_universal_speech_rule',
+          'Всеобщая речь',
+          'Действием выберите в пределах 60 футов число существ до модификатора Харизмы, минимум одно. В течение 1 часа выбранные существа магически понимают вашу речь независимо от языка. Одно применение возвращается после долгого отдыха; повторное применение можно оплатить ячейкой заклинаний.',
+          '{"kind":"universal_speech","activation":"action","rangeFeet":60,"targetCount":"charisma_modifier_min_1","durationHours":1,"effect":"targets_understand_bard_regardless_of_language","repeatCost":"spell_slot"}'::jsonb
         ),
         private.bard_stage5_resource_v1(
           'eloquence-universal-speech-resource',
@@ -965,6 +1029,14 @@ begin
     jsonb_build_object(
       'level',14,
       'mechanics',jsonb_build_array(
+        private.bard_stage5_feature_v1(
+          'eloquence-infectious-feature',
+          'bard:eloquence:infectious-inspiration',
+          'bard_eloquence_infectious_inspiration_rule',
+          'Заразительное вдохновение',
+          'Когда существо в пределах 60 футов успешно использует вашу кость Вдохновения барда, реакцией дайте кость другому существу в пределах 60 футов, кроме себя, не расходуя базовое применение Вдохновения. Число применений этой реакции равно модификатору Харизмы, минимум одно, и восстанавливается после долгого отдыха.',
+          '{"kind":"infectious_inspiration","activation":"reaction","trigger":"another_creature_succeeds_after_using_your_bardic_inspiration","rangeFeet":60,"target":"different_creature_other_than_self","grantsBardicInspirationWithoutPoolCost":true,"uses":"charisma_modifier_min_1","recharge":"long_rest"}'::jsonb
+        ),
         private.bard_stage5_resource_v1(
           'eloquence-infectious-resource',
           'bard:eloquence:infectious-inspiration',
@@ -1095,6 +1167,14 @@ begin
     jsonb_build_object(
       'level',3,
       'mechanics',jsonb_build_array(
+        private.bard_stage5_feature_v1(
+          'whispers-psychic-blades-feature',
+          'bard:whispers:psychic-blades',
+          'bard_whispers_psychic_blades_rule',
+          'Психические клинки',
+          'Раз за ход после попадания оружием можете потратить Вдохновение барда и нанести цели дополнительный психический урон: 2d6 на 3 уровне, 3d6 на 5, 5d6 на 10 и 8d6 на 15 уровне барда.',
+          '{"kind":"psychic_blades","trigger":"weapon_hit","oncePerTurn":true,"resource":"bardic_inspiration","psychicDamageDiceByBardLevel":{"3":"2d6","5":"3d6","10":"5d6","15":"8d6"},"turnAdjudication":"table"}'::jsonb
+        ),
         private.bard_stage5_action_v1(
           'whispers-psychic-blades',
           'bard:whispers:psychic-blades',
@@ -1106,6 +1186,14 @@ begin
           '[{"kind":"semantic","key":"whispers_psychic_blades","payload":{"trigger":"weapon_hit","oncePerTurn":true,"psychicDamageDiceByBardLevel":{"3":"2d6","5":"3d6","10":"5d6","15":"8d6"}}}]'::jsonb,
           '["bard","subclass","whispers","bardic-inspiration","table-adjudicated-hit","table-adjudicated-turn"]'::jsonb,
           '{"kind":"self"}'::jsonb
+        ),
+        private.bard_stage5_feature_v1(
+          'whispers-terror-feature',
+          'bard:whispers:words-of-terror',
+          'bard_whispers_words_of_terror_rule',
+          'Слова ужаса',
+          'После разговора с гуманоидом наедине не менее 1 минуты заставьте его совершить спасбросок Мудрости. При провале он Испуган вами или выбранным существом на 1 час, пока его не атакуют, не ранят или он не увидит нападение на союзника. Одно применение возвращается после короткого или долгого отдыха.',
+          '{"kind":"words_of_terror","setupMinutes":1,"target":"humanoid_alone","save":"wisdom","onFail":"frightened","durationHours":1,"recharge":["short_rest","long_rest"]}'::jsonb
         ),
         private.bard_stage5_resource_v1(
           'whispers-terror-resource',
@@ -1132,6 +1220,14 @@ begin
     jsonb_build_object(
       'level',6,
       'mechanics',jsonb_build_array(
+        private.bard_stage5_feature_v1(
+          'whispers-mantle-capture-feature',
+          'bard:whispers:mantle',
+          'bard_whispers_capture_shadow_rule',
+          'Захват тени',
+          'Когда гуманоид умирает в пределах 30 футов, реакцией захватите его тень. Тень хранится до использования или долгого отдыха; затем действием можно принять облик умершего на 1 час. Захват доступен один раз и восстанавливается после короткого или долгого отдыха.',
+          '{"kind":"capture_shadow","activation":"reaction","trigger":"humanoid_dies_within_30_feet","retainedUntil":"used_or_long_rest","recharge":["short_rest","long_rest"],"retainedShadowState":"table_adjudicated"}'::jsonb
+        ),
         private.bard_stage5_resource_v1(
           'whispers-mantle-resource',
           'bard:whispers:mantle',
@@ -1165,6 +1261,14 @@ begin
     jsonb_build_object(
       'level',14,
       'mechanics',jsonb_build_array(
+        private.bard_stage5_feature_v1(
+          'whispers-shadow-lore-feature',
+          'bard:whispers:shadow-lore',
+          'bard_whispers_shadow_lore_rule',
+          'Знание теней',
+          'Действием прошепчите существу в пределах 30 футов, которое слышит и понимает вас. Оно совершает спасбросок Мудрости; при провале Очаровано вами на 8 часов и считает, что вы знаете его самый постыдный секрет. Эффект заканчивается при нападении на цель; применение возвращается после долгого отдыха.',
+          '{"kind":"shadow_lore","activation":"action","rangeFeet":30,"requiresSharedLanguageAndHearing":true,"save":"wisdom","onFail":"charmed","durationHours":8,"recharge":"long_rest"}'::jsonb
+        ),
         private.bard_stage5_resource_v1(
           'whispers-shadow-lore-resource',
           'bard:whispers:shadow-lore',
@@ -1211,6 +1315,14 @@ begin
           'Выданная вами кость Вдохновения барда получает дополнительный эффект: для проверки можно перебросить кость; для атаки — вызвать громовой урон рядом с целью; для спасброска — дать временные HP, равные броску + модификатор Харизмы.',
           '{"kind":"mote_of_potential","usesExistingGrantedDie":true,"abilityCheck":"reroll_inspiration_die_choose_either","attackRoll":{"save":"constitution","radiusFeet":5,"damageType":"thunder","damage":"bardic_inspiration_die_roll"},"savingThrow":{"temporaryHp":"bardic_inspiration_die_roll_plus_charisma_modifier_min_1"}}'::jsonb
         ),
+        private.bard_stage5_feature_v1(
+          'creation-performance-feature',
+          'bard:creation:performance',
+          'bard_creation_performance_of_creation_rule',
+          'Выступление творения',
+          'Действием создайте в свободном пространстве в 10 футах немагический предмет стоимостью не более 20 × уровень барда зм; допустимый размер растёт с уровнем, а предмет существует число часов, равное бонусу мастерства. Одно бесплатное применение возвращается после долгого отдыха; повторно можно применить за ячейку 2+ уровня.',
+          '{"kind":"performance_of_creation","activation":"action","rangeFeet":10,"item":"nonmagical","maxGoldValue":"20_x_bard_level","durationHours":"proficiency_bonus","freeUseRecharge":"long_rest","repeatCost":"spell_slot_level_2_plus"}'::jsonb
+        ),
         private.bard_stage5_resource_v1(
           'creation-performance-resource',
           'bard:creation:performance',
@@ -1236,6 +1348,14 @@ begin
     jsonb_build_object(
       'level',6,
       'mechanics',jsonb_build_array(
+        private.bard_stage5_feature_v1(
+          'creation-animate-feature',
+          'bard:creation:animating-performance',
+          'bard_creation_animating_performance_rule',
+          'Оживляющее выступление',
+          'Действием оживите Большой или меньший немагический предмет в пределах 30 футов на 1 час. Он ходит сразу после вас и без команды уклоняется; бонусным действием вы можете приказать ему действовать. Одно бесплатное применение возвращается после долгого отдыха; повторно можно активировать за ячейку 3+ уровня.',
+          '{"kind":"animating_performance","activation":"action","rangeFeet":30,"durationHours":1,"turn":"immediately_after_bard","defaultAction":"dodge","command":"bonus_action","freeUseRecharge":"long_rest","repeatCost":"spell_slot_level_3_plus","summonState":"table_adjudicated"}'::jsonb
+        ),
         private.bard_stage5_resource_v1(
           'creation-animate-resource',
           'bard:creation:animating-performance',
@@ -1303,6 +1423,14 @@ begin
           'Духовная фокусировка',
           'Для вас Указание имеет дальность 60 футов. В качестве фокусировки для заклинаний барда можно использовать свечу, хрустальный шар, череп, спиритическую доску или колоду тарокка.',
           '{"kind":"spiritual_focus","guidanceRangeFeet":60,"focuses":["candle","crystal_ball","skull","spirit_board","tarokka_deck"]}'::jsonb
+        ),
+        private.bard_stage5_feature_v1(
+          'spirits-tales-feature',
+          'bard:spirits:tales-beyond',
+          'bard_spirits_tales_from_beyond_rule',
+          'Байки из запределья',
+          'Бонусным действием с духовной фокусировкой потратьте Вдохновение барда и бросьте его кость по таблице Баек. До короткого или долгого отдыха хранится одна выпавшая байка; действием передайте её видимому существу в пределах 30 футов и примените соответствующий эффект.',
+          '{"kind":"tales_from_beyond","activation":"bonus_action","resource":"bardic_inspiration","requiresSpiritualFocus":true,"roll":"bardic_inspiration_die","retainOneTaleUntil":"bestowed_or_short_or_long_rest","bestowAction":"action","targetRangeFeet":30,"resolution":"table_adjudicated"}'::jsonb
         ),
         private.bard_stage5_action_v1(
           'spirits-tales-roll',
@@ -1446,6 +1574,7 @@ declare
   v_bad integer;
   v_bi_bad integer;
   v_spell_links integer;
+  v_action_without_feature integer;
   v_lore_choice jsonb;
   v_spirit_choice jsonb;
 begin
@@ -1519,6 +1648,29 @@ begin
         and is_active
     ) then
       raise exception 'BARD_STAGE5_TRAGEDY_MUST_REMAIN_REFERENCE_ONLY:%',r.campaign_id;
+    end if;
+
+    select count(*) into v_action_without_feature
+    from public.rule_templates t
+    join public.rule_template_levels l on l.template_id=t.id
+    cross join lateral jsonb_array_elements(coalesce(l.mechanics,'[]'::jsonb)) a(value)
+    where t.campaign_id=r.campaign_id
+      and t.parent_template_id=r.id
+      and t.is_active
+      and a.value->>'type'='action'
+      and not exists(
+        select 1
+        from public.rule_template_levels lf
+        cross join lateral jsonb_array_elements(coalesce(lf.mechanics,'[]'::jsonb)) f(value)
+        where lf.template_id=t.id
+          and f.value->>'type'='grant'
+          and f.value->>'target'='feature'
+          and f.value->>'sourceKey'=a.value->>'sourceKey'
+          and length(coalesce(f.value->'payload'->>'description',''))>=45
+      );
+
+    if v_action_without_feature<>0 then
+      raise exception 'BARD_STAGE5_ACTION_WITHOUT_FEATURE:%:%',r.campaign_id,v_action_without_feature;
     end if;
 
     select count(*) into v_bi_bad
