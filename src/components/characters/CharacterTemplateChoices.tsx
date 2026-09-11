@@ -344,11 +344,11 @@ export default function CharacterTemplateChoices({ characterId }: { characterId:
           setSheetSkillProficiencies({})
           return
         }
-        setSheetSkillProficiencies(Object.fromEntries(
-          Object.entries(raw as Record<string, unknown>)
-            .map(([key, value]) => [key, Number(value)])
-            .filter(([, value]) => Number.isFinite(value) && value > 0),
-        ))
+        const entries = Object.entries(raw as Record<string, unknown>).flatMap(([key, value]) => {
+          const rank = Number(value)
+          return Number.isFinite(rank) && rank > 0 ? [[key, rank] as const] : []
+        })
+        setSheetSkillProficiencies(Object.fromEntries(entries))
       })
     return () => { cancelled = true }
   }, [characterId, revision])
