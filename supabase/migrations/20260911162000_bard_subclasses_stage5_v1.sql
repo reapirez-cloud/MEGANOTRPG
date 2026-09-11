@@ -1525,12 +1525,15 @@ begin
     from public.rule_templates t
     join public.rule_template_levels l on l.template_id=t.id
     cross join lateral jsonb_array_elements(coalesce(l.mechanics,'[]'::jsonb)) m(value)
-    cross join lateral jsonb_array_elements(coalesce(m.value->'resourceCosts','[]'::jsonb)) c(value)
     where t.campaign_id=r.campaign_id
       and t.parent_template_id=r.id
       and t.is_active
-      and c.value->>'key' like '%inspiration%'
-      and c.value->>'key'<>'bardic_inspiration';
+      and coalesce(m.value->'tags','[]'::jsonb) @> '["bardic-inspiration"]'::jsonb
+      and not exists(
+        select 1
+        from jsonb_array_elements(coalesce(m.value->'resourceCosts','[]'::jsonb)) c(value)
+        where c.value->>'key'='bardic_inspiration'
+      );
 
     if v_bi_bad<>0 then
       raise exception 'BARD_STAGE5_NONCANONICAL_INSPIRATION_RESOURCE:%:%',r.campaign_id,v_bi_bad;
