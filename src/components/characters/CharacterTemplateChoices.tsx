@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useAuth } from "../../context/AuthContext.tsx"
 import { useCharacters } from "../../context/CharacterContext.tsx"
+import { supabase } from "../../lib/supabase.ts"
 import {
   commitCharacterTemplateChoice,
   commitCharacterTemplateChoiceV2,
@@ -169,6 +170,7 @@ function StructuredChoiceCard({
   const removed = removedStoredCount(state.instances, draft)
 
   function dynamicLockedReason(option: TemplateChoiceOptionState) {
+    if (!option.available && option.lockedReason) return option.lockedReason
     if (state.sourceLevel < option.minLevel) return `Доступно с ${option.minLevel} уровня`
     const missing = option.requiredOptions.filter((required) => !chosenOptions.has(required))
     if (missing.length > 0) {
@@ -324,13 +326,38 @@ export default function CharacterTemplateChoices({ characterId }: { characterId:
   const { characters, canManage } = useCharacters()
   const character = characters.find((item) => item.id === characterId) || null
   const [revision, setRevision] = useState(0)
+  const [sheetSkillProficiencies, setSheetSkillProficiencies] = useState<Record<string, number>>({})
 
   useEffect(() => subscribeCharacterTemplateBundles(characterId, () => setRevision((value) => value + 1)), [characterId])
+
+  useEffect(() => {
+    let cancelled = false
+    void supabase
+      .from("character_sheets")
+      .select("skill_proficiencies")
+      .eq("character_id", characterId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return
+        const raw = data?.skill_proficiencies
+        if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+          setSheetSkillProficiencies({})
+          return
+        }
+        setSheetSkillProficiencies(Object.fromEntries(
+          Object.entries(raw as Record<string, unknown>)
+            .map(([key, value]) => [key, Number(value)])
+            .filter(([, value]) => Number.isFinite(value) && value > 0),
+        ))
+      })
+    return () => { cancelled = true }
+  }, [characterId, revision])
 
   const states = useMemo(() => resolveTemplateChoiceStates(
     registeredCharacterTemplateBundles(characterId),
     character?.level || 1,
-  ).filter((state) => state.status !== "hidden" && (state.templateKind === "class" || state.templateKind === "subclass")), [characterId, character?.level, revision])
+    { skillProficiencies: sheetSkillProficiencies },
+  ).filter((state) => state.status !== "hidden" && (state.templateKind === "class" || state.templateKind === "subclass")), [characterId, character?.level, revision, sheetSkillProficiencies])
 
   if (!states.length) return null
 
