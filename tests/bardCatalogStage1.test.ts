@@ -8,6 +8,7 @@ import {
 } from "../src/character-engine/index.ts"
 import { bardReferenceCurrent } from "../src/data/classes/bardReferenceCurrent.ts"
 import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
+import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
 import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
 import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
 import type { StoredMechanic, StoredMechanics } from "../src/types/characterMechanics.ts"
@@ -206,6 +207,7 @@ test("Bard Stage 1 migration declares the strict mechanics boundary", () => {
 test("Bard Stage 1 has the exact starting proficiency choices without activating runtime resources", () => {
   const { bundle, parsed, contract } = resolveBard(1)
   assert.doesNotThrow(() => assertClassPackageQuality([bundle]))
+  assert.doesNotThrow(() => assertClassResourcePolicy([bundle]))
 
   for (const key of ["savingThrow:dexterity", "savingThrow:charisma", "armor:light", "weapon:simple"]) {
     assert.ok(parsed.contributions.some((entry) =>
@@ -230,6 +232,7 @@ test("Bard Stage 1 resolves low, mid and high class-level feature gates through 
   for (const level of [1, 10, 20]) {
     const { bundle } = resolveBard(level)
     assert.doesNotThrow(() => assertClassPackageQuality([bundle]))
+    assert.doesNotThrow(() => assertClassResourcePolicy([bundle]))
   }
 
   const levelOne = resolveBard(1).contract
