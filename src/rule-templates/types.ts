@@ -3,7 +3,7 @@
 import type { StoredMechanics } from "../types/characterMechanics.ts"
 
 export type RuleTemplateKind = "race" | "subrace" | "class" | "subclass"
-export type RuleChoiceTarget = "language" | "proficiency" | "sense" | "trait"
+export type RuleChoiceTarget = "language" | "proficiency" | "sense" | "trait" | "spell"
 export type RuleTemplateSourceKind = "official" | "third_party" | "custom"
 export type RuleChoiceSelectionMode = "manager" | "player_once"
 export type RuleChoiceRefreshPolicy = "long_rest" | "short_rest" | "short_or_long_rest"
