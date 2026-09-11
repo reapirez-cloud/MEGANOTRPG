@@ -3,12 +3,14 @@ import fs from "node:fs"
 import test from "node:test"
 
 import {
+  applyResourceRecovery,
   executeAction,
   resolveCharacterContract,
   type CharacterContribution,
   type CharacterEngineInput,
 } from "../src/character-engine/index.ts"
 import { bardReferenceCurrent } from "../src/data/classes/bardReferenceCurrent.ts"
+import { resourceSyncInputs } from "../src/lib/resourceRuntime.ts"
 import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
 import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
 import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
@@ -17,6 +19,8 @@ import type { StoredMechanic, StoredMechanics } from "../src/types/characterMech
 
 const migrationPath = "supabase/migrations/20260911073000_bard_stage2_inspiration_runtime.sql"
 const migration = fs.readFileSync(migrationPath, "utf8")
+const closureMigrationPath = "supabase/migrations/20260911074000_bard_stage2_superior_inspiration_v2.sql"
+const closureMigration = fs.readFileSync(closureMigrationPath, "utf8")
 
 const inspirationMax = {
   kind: "max" as const,
@@ -149,8 +153,8 @@ const levelMechanics: Record<number, StoredMechanics> = {
           label: "Доступно только если применений Вдохновения барда меньше двух",
         },
       ],
-      effects: [{ kind: "resource", key: "bardic_inspiration", operation: "SET", amount: 2 }],
-      tags: ["class", "bard", "initiative-trigger", "gm-confirmed"],
+      effects: [{ kind: "resource", key: "bardic_inspiration", operation: "ENSURE_MINIMUM", amount: 2 }],
+      tags: ["class", "bard", "initiative-trigger", "table-adjudicated"],
     },
   ],
 }
@@ -177,7 +181,7 @@ function bundleAt(level: number): CharacterTemplateBundle {
       mechanics: [],
       choices: [],
       catalog_key: "class:bard",
-      catalog_revision: "xphb-2024-bard-stage2-inspiration-v1",
+      catalog_revision: "xphb-2024-bard-stage2-inspiration-v2",
       source_kind: "official",
       source_label: "Player's Handbook 2024",
       is_builtin: true,
@@ -256,9 +260,13 @@ test("Bard Stage 2 declares strict class/resource gates and remains pre-spell-ru
   assert.match(migration, /CLASS_INTEGRATION_STRICT: class:bard/)
   assert.match(migration, /CLASS_RESOURCE_POLICY: short-long-rest-v1/)
   assert.match(migration, /CLASS_PACKAGE_TEST: tests\/bardResourceRuntimeStage2\.test\.ts/)
-  assert.match(migration, /'spell_runtime_included',false/)
-  assert.match(migration, /'sheet_profile_deferred',true/)
-  assert.doesNotMatch(migration, /'sheet_profile'\s*,/)
+  assert.match(closureMigration, /CLASS_MIGRATION_SCOPE: mechanics/)
+  assert.match(closureMigration, /CLASS_INTEGRATION_STRICT: class:bard/)
+  assert.match(closureMigration, /CLASS_RESOURCE_POLICY: short-long-rest-v1/)
+  assert.match(closureMigration, /CLASS_PACKAGE_TEST: tests\/bardResourceRuntimeStage2\.test\.ts/)
+  assert.match(closureMigration, /'spell_runtime_included',false/)
+  assert.match(closureMigration, /'sheet_profile_deferred',true/)
+  assert.doesNotMatch(closureMigration, /'sheet_profile'\s*,/)
   assert.equal(bardReferenceCurrent.referenceOnly, true)
 })
 
@@ -339,15 +347,17 @@ test("Font is unavailable before a canonical shared spell-slot resource exists",
   assert.ok(action.costOptions.every((entry) => entry.available === false))
 })
 
-test("Superior Inspiration uses a structured GM-confirmed initiative action and never invents initiative state", () => {
+test("Superior Inspiration guarantees two uses without inventing initiative state", () => {
   const input = inputAt(18, 18, { bardic_inspiration: { current: 0 } })
   const contract = resolveCharacterContract(input)
   const action = contract.actions.find((entry) => entry.key === "superior_inspiration")
   assert.ok(action)
   assert.ok(action.tags.includes("initiative-trigger"))
-  assert.ok(action.tags.includes("gm-confirmed"))
+  assert.ok(action.tags.includes("table-adjudicated"))
   assert.equal(action.requirements[0]?.enforcement, "engine")
   assert.equal(action.requirements[0]?.satisfied, true)
+  assert.equal(action.effects[0]?.kind, "resource")
+  assert.equal(action.effects[0]?.operation, "ENSURE_MINIMUM")
   assert.match(
     String(contract.capabilities.features.find((entry) => entry.key === "class:bard:superior-inspiration:l18")?.payload && JSON.stringify(contract.capabilities.features.find((entry) => entry.key === "class:bard:superior-inspiration:l18")?.payload)),
     /инициатив/i,
@@ -355,6 +365,36 @@ test("Superior Inspiration uses a structured GM-confirmed initiative action and 
 
   const next = executeAction(input.state, action)
   assert.equal(next.resources?.bardic_inspiration?.current, 2)
+  assert.equal(next.resources?.bardic_inspiration?.temporaryMaxBonus ?? 0, 0)
+
+  const lowCharismaInput = inputAt(18, 12, { bardic_inspiration: { current: 0 } })
+  const lowCharismaContract = resolveCharacterContract(lowCharismaInput)
+  const lowCharismaAction = lowCharismaContract.actions.find((entry) => entry.key === "superior_inspiration")
+  assert.ok(lowCharismaAction)
+  assert.equal(lowCharismaContract.resources.find((entry) => entry.key === "bardic_inspiration")?.max.value, 1)
+
+  const lowCharismaNext = executeAction(lowCharismaInput.state, lowCharismaAction)
+  assert.equal(lowCharismaNext.resources?.bardic_inspiration?.current, 2)
+  assert.equal(lowCharismaNext.resources?.bardic_inspiration?.temporaryMaxBonus, 1)
+
+  const lowCharismaResolved = resolveCharacterContract({
+    ...lowCharismaInput,
+    state: lowCharismaNext,
+  })
+  const lowCharismaResource = lowCharismaResolved.resources.find((entry) => entry.key === "bardic_inspiration")
+  assert.ok(lowCharismaResource)
+  assert.equal(lowCharismaResource.max.value, 2)
+  assert.equal(lowCharismaResource.current, 2)
+  assert.equal(lowCharismaResource.temporaryMaxBonus, 1)
+  assert.equal(resourceSyncInputs(lowCharismaResolved)[0]?.max, 1)
+
+  const afterLongRest = applyResourceRecovery(
+    lowCharismaNext,
+    lowCharismaResolved.resources,
+    "long_rest",
+  )
+  assert.equal(afterLongRest.resources?.bardic_inspiration?.current, 1)
+  assert.equal(afterLongRest.resources?.bardic_inspiration?.temporaryMaxBonus, 0)
 
   const alreadyAboveThreshold = resolveCharacterContract(
     inputAt(18, 18, { bardic_inspiration: { current: 3 } }),
@@ -362,7 +402,9 @@ test("Superior Inspiration uses a structured GM-confirmed initiative action and 
   assert.ok(alreadyAboveThreshold)
   assert.equal(alreadyAboveThreshold.available, false)
 
-  assert.doesNotMatch(migration, /initiative_confirmed|initiative_available|turn_state/)
+  assert.match(closureMigration, /'operation','ENSURE_MINIMUM'/)
+  assert.match(closureMigration, /xphb-2024-bard-stage2-inspiration-v2/)
+  assert.doesNotMatch(closureMigration, /initiative_confirmed|initiative_available|turn_state/)
 })
 
 test("Stage 2 persistence follows assignment, Bard level and Charisma without creating another ledger", () => {
@@ -370,13 +412,16 @@ test("Stage 2 persistence follows assignment, Bard level and Charisma without cr
   assert.match(migration, /character_sheets_sync_bard_resources_stage2_v1/)
   assert.match(migration, /after insert or update of charisma/)
   assert.match(migration, /private\.evaluate_character_template_numeric_expression/)
-  assert.match(migration, /current=greatest\([\s\S]*excluded\.max_snapshot[\s\S]*public\.character_resource_states\.max_snapshot\s*-\s*public\.character_resource_states\.current/)
-  assert.match(migration, /state_key='bardic_inspiration'/)
-  assert.doesNotMatch(migration, /create table[\s\S]*bard/i)
+  assert.match(closureMigration, /temporary_max_bonus/)
+  assert.match(closureMigration, /excluded\.max_snapshot>=2/)
+  assert.match(closureMigration, /public\.character_resource_states\.max_snapshot[\s\S]*public\.character_resource_states\.current/)
+  assert.match(closureMigration, /state_key='bardic_inspiration'/)
+  assert.doesNotMatch(closureMigration, /create table[\s\S]*bard/i)
 })
 
-test("new campaigns promote Stage 2 and retire the Stage 1-only campaign trigger", () => {
-  assert.match(migration, /drop trigger if exists aaaaaaaaf_campaigns_ensure_bard_catalog_stage1_v1/)
-  assert.match(migration, /create trigger aaaaaaaag_campaigns_ensure_bard_resource_runtime_stage2_v1/)
-  assert.match(migration, /perform private\.ensure_bard_catalog_stage1_v1\(p_campaign_id\)/)
+test("new campaigns install the final Stage 2 v2 package instead of stopping at v1", () => {
+  assert.match(closureMigration, /perform private\.ensure_bard_resource_runtime_stage2_v1\(p_campaign_id\)/)
+  assert.match(closureMigration, /drop trigger if exists aaaaaaaag_campaigns_ensure_bard_resource_runtime_stage2_v1/)
+  assert.match(closureMigration, /create trigger aaaaaaaah_campaigns_ensure_bard_stage2_superior_inspiration_v2/)
+  assert.match(closureMigration, /private\.ensure_bard_stage2_superior_inspiration_v2\(new\.id\)/)
 })
