@@ -21,11 +21,11 @@ Stage 2 now owns:
 - Superior Inspiration as a structured free action that is engine-blocked unless current uses are below two, while the initiative trigger itself remains table-adjudicated because the application does not own authoritative initiative state;
 - assignment, Bard-level and Charisma synchronization that preserves spent deficit and removes orphaned Bard resource state.
 
-The generic server formula evaluator was corrected so `abilities.*.(score|modifier)` reads the real scalar ability columns on `character_sheets`. The CE action contract also now supports a generic upper bound on resource requirements, matching the server runtime.
+The generic server formula evaluator was corrected so `abilities.*.(score|modifier)` reads the real scalar ability columns on `character_sheets`. The CE action contract now supports a generic upper bound on resource requirements and the shared resource runtime hydrates/persists `temporary_max_bonus`, matching the server runtime.
 
 Stage 2 deliberately does **not** activate Bard spell preparation, Bard spell slots, subclasses, or an executable `sheet_profile`. A pure Bard therefore cannot use Font's slot-conversion action until Stage 3 creates the canonical shared spell-slot ledger. A multiclass character with real shared spell slots can use the same action without any Bard-specific slot storage.
 
-Production revision: `xphb-2024-bard-stage2-inspiration-v1`.
+Production revision: `xphb-2024-bard-stage2-inspiration-v2`.
 
 ## Stage 2 — Bardic Inspiration — COMPLETE
 
@@ -37,9 +37,11 @@ Implemented and deployed on 2026-09-11.
 - recovery: Long Rest at levels 1–4; Short or Long Rest from level 5;
 - spending goes through the shared GENA/template-action path;
 - Font of Inspiration spends one canonical shared spell slot and restores one expended use;
-- Superior Inspiration never reduces an existing pool of two or more uses; its initiative trigger stays on the table/GM adjudication boundary rather than becoming fake runtime state;
+- Superior Inspiration never reduces an existing pool of two or more uses and still reaches two when the ordinary Charisma-based maximum is only one. It uses generic `ENSURE_MINIMUM` plus temporary capacity that survives reload and is removed on Long Rest; its initiative trigger stays on the table/GM adjudication boundary rather than becoming fake runtime state;
 - assignment/level/Charisma synchronization preserves spent deficit and removal cleans orphaned state;
-- no Bard-only resource table exists.
+- no Bard-only resource table exists;
+- Stage 2 closure migration: `supabase/migrations/20260911074000_bard_stage2_superior_inspiration_v2.sql`;
+- production v2 smoke test covered the `CHA +1` edge, reload preservation and absorption of temporary capacity when the persistent maximum rises.
 
 Next implementation target: **Stage 3 — spell runtime**.
 
