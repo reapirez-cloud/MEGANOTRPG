@@ -4,35 +4,33 @@
 
 ## Current boundary
 
-**Stage 5: SUBCLASS RUNTIME READY.**
+**Stage 6: FINAL RUNTIME CERTIFIED / READY.**
 
-The canonical `class:bard` foundation, Bardic Inspiration, spell runtime, remaining base mechanics and the approved subclass runtime are deployed to production. The player-facing Bard reference remains `referenceOnly` until Stage 6 final certification is complete.
+The supported Bard runtime is complete and deployed to production. The public class reference is runtime-backed, the nine approved colleges are runtime-backed, and the final production certification is fail-closed.
 
-Production revision: `xphb-2024-bard-stage5-subclasses-runtime-v1`.
+Production revision: `xphb-2024-bard-runtime-final-v1`.
 
-Stage 5 now owns nine runtime-backed colleges:
+Final certification proves:
 
-- PHB 2024: College of Dance, College of Glamour, College of Lore, College of Valor;
-- approved official legacy/supplement: College of Eloquence, College of Swords, College of Whispers, College of Creation, College of Spirits.
+- exactly one active builtin `class:bard` with level rows 1–20;
+- complete Stage 1–5 runtime stack is present before `READY` can be written;
+- Bardic Inspiration uses the canonical `bardic_inspiration` ledger, exact d6/d8/d10/d12 scaling, correct Long Rest → Short/Long Rest recovery transition, Font slot conversion and Superior Inspiration minimum-2 semantics;
+- Expertise uses the shared `skill_proficiencies` provider; Jack of All Trades is the exact untrained-skill half-PB rule and never touches initiative;
+- Bard spell choices use Charisma, the shared slot ledger, exact cantrip/prepared progression and the Bard/Cleric/Druid/Wizard Magical Secrets source gate;
+- Words of Creation keeps Power Word Heal and Power Word Kill always prepared and preserves the structured 10-foot second-target rule;
+- all nine runtime colleges are children of the active Bard, unlock at Bard 3 and resolve from parent Bard level;
+- Tragedy remains reference-only with zero active builtin runtime templates;
+- no broken Bard/subclass resource references or duplicate mechanic IDs exist;
+- Class tab presentation is generated from the resolved CE contract;
+- Chat uses shared GENA template action/spell routes and choices use shared Choice Runtime/rest RPCs;
+- final installer/certifier functions are closed to `anon` and `authenticated` and executable by `service_role`;
+- pre-deploy dry-run, pre-deploy smoke, post-deploy smoke, live parity audit and full CI all passed.
 
-College of Tragedy remains explicit reference-only third-party/partner material and has no active builtin runtime template.
+Production migration: `bard_runtime_final_certification_v1` (journal `20260911150941`).
 
-Runtime guarantees now include:
+Pre-documentation Stage 6 CI passed build, lint and `990/990` tests. The production smoke used a total-level-12 character with a lower Bard source level to prove subclass progression follows Bard level, preserved one spent Bardic Inspiration use through re-sync, preserved a spent 3rd-level slot through Bard 10→11, and created the expected 6th-level slot at Bard 11. Every probe ran inside a rolled-back transaction.
 
-- every subclass is a child of the active `class:bard` template, unlocks at Bard 3 and resolves mechanics from parent Bard level rather than total character level or a stale subclass level;
-- every subclass ability that actually spends base Bardic Inspiration references the single canonical `bardic_inspiration` resource;
-- subclass-owned finite pools use the shared persistent resource ledger with explicit Short/Long Rest recovery;
-- Glamour, Lore and Spirits spell accesses use the canonical spell catalog and shared slot runtime;
-- Lore Magical Discoveries and Spirits Spirit Session use shared Choice Runtime instead of bespoke subclass pickers;
-- Spirit Session uses the generic `long_rest` refresh path; the client choice card was corrected so all declared rest refresh policies route through the authoritative rest-choice RPC;
-- scene, hit, turn and initiative triggers remain exact structured/table-adjudicated rules rather than fake persistent state;
-- every runtime action has a matching player-facing feature explanation under the same stable `sourceKey`; the migration self-certifies this invariant before commit.
-
-Production migration: `bard_subclasses_stage5_v1` (journal `20260911133259`).
-
-The production post-deploy smoke verified parent-level gating (Bard 2 blocks the subclass, Bard 3 activates it), the canonical Bardic Inspiration ledger, and creation of Glamour's real `bard_glamour_beguiling_magic` resource on subclass assignment. All probes were rolled back. Final pre-documentation Stage 5 code CI passed build, lint and `981/981` tests. Supabase advisors reported no Bard/Stage5-specific findings.
-
-Next implementation target: **Stage 6 — final certification**.
+Supabase security/performance advisors report no Bard/Stage6-specific findings. Existing project-wide advisor debt remains outside this class certification.
 
 ## Stage 2 — Bardic Inspiration — COMPLETE
 
@@ -115,33 +113,41 @@ Implemented and deployed on 2026-09-11.
 
 Next implementation target: **Stage 6 — final certification**.
 
-## Stage 6 — certification
+## Stage 6 — certification — COMPLETE
 
-Bard becomes mechanically READY only after all of these pass:
+Implemented and deployed on 2026-09-11.
 
-- strict class package quality gate;
-- low/mid/high Bard-level parser -> CE tests;
-- multiclass tests use Bard source level, not total character level;
-- Bardic Inspiration max, die scaling, spending and recovery survive reload;
-- Expertise choices persist and only eligible skills can be selected;
-- Jack of All Trades uses the exact 2024 skill-only rule;
-- spell progression, replacements and Magical Secrets are source-gated correctly;
-- every supported subclass uses parent Bard level and has no broken resource references;
-- Class tab consumes the resolved CE contract;
-- Chat execution uses GENA/shared template RPCs;
-- production Supabase matches the intended repository package;
-- build, lint and full tests pass.
+- migration: `supabase/migrations/20260911175500_bard_runtime_final_certification_v1.sql`;
+- package test: `tests/bardRuntimeFinalCertification.test.ts`;
+- production migration: `bard_runtime_final_certification_v1`;
+- production journal: `20260911150941`;
+- production revision: `xphb-2024-bard-runtime-final-v1`;
+- `runtime_stage = 6`;
+- `mechanics_status = READY`;
+- `runtime_status = ready`;
+- public Bard reference: runtime-backed;
+- runtime subclasses: 9/9 ready;
+- Tragedy: reference-only, active builtin runtime count 0;
+- broken resource references: 0;
+- duplicate mechanic IDs: 0;
+- final Bard campaign installer: `aaaaaaaal_campaigns_ensure_bard_runtime_final_v1`;
+- final certifier/installer privileges: `anon=false`, `authenticated=false`, `service_role=true`;
+- Class tab regression proves Bard resource/action entries come from `presentClassPackages()` over the resolved CE contract;
+- Chat regression proves template actions/spells use GENA v2 routes and Bard choices use the generic Choice Runtime, with no Bard-specific UI branch;
+- multiclass regression proves subclass feature levels use the Bard parent assignment rather than total character level;
+- public reference regression exposes the nine certified colleges as runtime-backed while Tragedy remains reference-only;
+- final pre-documentation CI: build green, lint green, full suite `990/990`;
+- final production smoke and advisor audit passed.
 
-Only after that gate:
+## Generic cross-class debt outside Supported Bard Runtime V1
 
-- set `mechanics_status = READY`;
-- mark runtime certification metadata;
-- change the player-facing Bard from `referenceOnly: true` to runtime-backed.
+These are real project-wide capabilities that remain unfinished, but they are not implemented or faked inside Bard and therefore do not invalidate the certified Bard runtime that the application currently supports:
 
-## Generic debt to settle before final certification
+- **Multiclass entry grants.** 2024 multiclass Bard entry proficiencies differ from starting as Bard. The generic class-assignment model still has no first-class “starting class vs later multiclass entry” grant mode. Production metadata records `multiclass_entry_profile_runtime = generic_pending`.
+- **Combined multiclass spell slots.** The project still lacks one generic caster-level aggregator across multiple spellcasting class assignments. Existing class synchronizers can own the shared `spell_slot_*` ledger independently. Production metadata records `multiclass_spell_slot_aggregation_runtime = generic_pending`.
+- **Feat / bounded ability allocation.** The repository still lacks a first-class generic feat source and bounded ASI allocation primitive. Bard keeps precise generic `feat_choice` hooks and records `feat_source_runtime = generic_pending`.
 
-- 2024 multiclass Bard entry proficiencies differ from starting as Bard: multiclassing grants a narrower set of proficiencies. The current generic class-assignment model does not yet distinguish first-class entry grants from multiclass entry grants. Solve that as a generic class primitive before final Bard certification.
-- The shared spell-slot ledger does not yet have a generic multiclass caster-level aggregator across multiple assigned spellcasting classes. Existing class-specific slot synchronizers can therefore overwrite the same `spell_slot_*` base maxima if true multiclass spellcasting is enabled. Solve this once for all full/half/third casters rather than adding a Bard-only branch.
-- The project still lacks first-class feat sources and the bounded ability-score allocation primitive required to execute ASI/Epic Boon choices generically. Stage 4 stores exact shared hooks; final certification must not invent a Bard-only feat system.
+What *is* certified for multiclass use is parent/source-level semantics: Bard subclass progression and Bard-gated choices use Bard level, not total character level.
 
-Do not add `if bard` branches to the sheet, GM panel or shared spell-slot owner.
+These debts must be solved once as shared systems for every affected class. Do not add `if bard` branches to the sheet, GM panel, feat flow or shared spell-slot owner.
+
