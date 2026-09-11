@@ -261,14 +261,29 @@ There are no known Wizard implementation or deployment blockers in the declared 
 
 ---
 
-## Bard / Paladin reference layer
+## Bard (`class:bard`)
 
-**Exact reference text:** `READY_CURRENT_AUTHORED_ROSTERS_2026_09_04`
-**Mechanics/runtime:** `NOT_STARTED`
+**Exact reference text:** `READY_CURRENT_AUTHORED_ROSTER_2026_09_04`  
+**Mechanics/runtime:** `IN_PROGRESS — STAGE1_FOUNDATION`
 
-- Bard and Paladin base cards plus every currently authored subclass card now resolve a non-empty exact-rule description through `src/data/classes/referenceMechanics.ts`.
-- Missing translated base features are visible as English-named cards with an explicit translation note; no Voss prose is synthesized for them.
-- These entries remain `referenceOnly`; no Chasovoy template, resource, action, spell access or Character Engine contribution is activated by this reference pass.
+- `stage1_migration: supabase/migrations/20260911060000_bard_catalog_stage1.sql`
+- `stage1_runtime_revision: xphb-2024-bard-stage1-foundation-v1`
+- `stage1_package_test: tests/bardCatalogStage1.test.ts`
+- Stage 1 installs one active builtin `class:bard` / `bard-core` definition per campaign, the level 1-20 structural feature tree, d8 Hit Die, Dexterity/Charisma saves, light armor, simple weapons, three chosen skills and three chosen musical instruments.
+- Bardic Inspiration, executable spellcasting, active spell-slot synchronization and subclasses are intentionally **not** activated by Stage 1. The player-facing Bard remains `referenceOnly`.
+- The audited 2024 spell/cantrip/prepared progression is stored only under the inert `spellcasting_contract`. `sheet_profile` is deliberately deferred because that field immediately mutates the live character sheet when a class is assigned.
+- The exact Bard reference rules were corrected for the 2024 Jack of All Trades, Font of Inspiration and Magical Secrets behavior before runtime work continued.
+- The persistent next-stage checklist lives beside the Bard sources in `src/data/classes/bardRuntimePlan.md`. Stage 2 is the canonical `bardic_inspiration` resource/runtime.
+- The current authored roster still lacks the PHB 2024 College of Dance. College of Tragedy remains third-party/reference-only unless explicitly approved for gameplay.
+- Final certification must also solve starting-class vs multiclass-entry proficiencies generically; do not add Bard-specific UI or assignment branching.
+
+Do not change Bard to `READY` or clear `referenceOnly` until the certification gate in `bardRuntimePlan.md` passes against repository tests and deployed Supabase state.
+
+---
+
+## Paladin reference-layer legacy note
+
+The former shared Bard/Paladin reference note was split when Bard runtime work started. Paladin runtime readiness is governed by the Paladin migrations and certification regressions; do not infer Paladin status from the Bard section.
 
 ---
 
