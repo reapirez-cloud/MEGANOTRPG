@@ -438,6 +438,7 @@ begin
         'spellcasting_focus','musical_instrument',
         'magical_secrets_runtime',true,
         'magical_secrets_unlock_level',10,
+        'magical_secrets_cantrips',false,
         'magical_secrets_lists',jsonb_build_array('bard','cleric','druid','wizard'),
         'sheet_profile_deferred',false,
         'sheet_profile',v_sheet_profile,
