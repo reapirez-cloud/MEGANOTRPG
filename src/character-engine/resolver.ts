@@ -63,6 +63,38 @@ const PASSIVE_SKILLS: Record<PassiveKey, SkillKey> = {
   insight: "insight",
 }
 
+type UntrainedSkillProficiencyFraction = {
+  amount: number
+  sources: import("./types.ts").ResolvedSourceRef[]
+}
+
+function untrainedSkillProficiencyFraction(
+  grants: ReturnType<typeof resolveGrantResolution>["grants"],
+  proficiencyBonus: number,
+): UntrainedSkillProficiencyFraction {
+  const matching = grants.filter((grant) =>
+    grant.target === "permission"
+    && grant.key === "skill_check:untrained_proficiency_fraction"
+  )
+  if (matching.length === 0) return { amount: 0, sources: [] }
+
+  let amount = 0
+  const sources = matching.flatMap((grant) => grant.sources)
+  for (const grant of matching) {
+    const payload = grant.payload
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) continue
+    const object = payload as Record<string, unknown>
+    const numerator = Number(object.numerator ?? 1)
+    const denominator = Number(object.denominator ?? 2)
+    const round = String(object.round ?? "down")
+    if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) continue
+    const raw = proficiencyBonus * numerator / denominator
+    const next = round === "up" ? Math.ceil(raw) : Math.floor(raw)
+    amount = Math.max(amount, next)
+  }
+  return { amount, sources }
+}
+
 function resolveNumber(
   target: NumericTarget,
   baseValue: number,
@@ -144,6 +176,7 @@ export function resolveCharacter(
 
   const grantResolution = resolveGrantResolution(activeContributions, state, maxHp.value)
   const grants = grantResolution.grants
+  const untrainedSkillBonus = untrainedSkillProficiencyFraction(grants, proficiencyBonus.value)
 
   const skills = Object.fromEntries(
     SKILL_KEYS.map((skill) => {
@@ -153,18 +186,26 @@ export function resolveCharacter(
         grantResolution,
         skillProficiencyKey(skill),
       )
+      const bonus = resolveNumber(
+        `skills.${skill}.bonus`,
+        abilities[ability].modifier + (
+          proficiency.rank > 0
+            ? proficiencyBonus.value * proficiency.rank
+            : untrainedSkillBonus.amount
+        ),
+        activeContributions,
+        state,
+        maxHp.value,
+      )
+      if (proficiency.rank === 0 && untrainedSkillBonus.amount > 0) {
+        bonus.sources = [...untrainedSkillBonus.sources, ...bonus.sources]
+      }
       const result: ResolvedSkill = {
         key: skill,
         ability,
         proficiencyRank: proficiency.rank,
         proficiencySources: proficiency.sources,
-        bonus: resolveNumber(
-          `skills.${skill}.bonus`,
-          abilities[ability].modifier + proficiencyBonus.value * proficiency.rank,
-          activeContributions,
-          state,
-          maxHp.value,
-        ),
+        bonus,
       }
       return [skill, result]
     }),
