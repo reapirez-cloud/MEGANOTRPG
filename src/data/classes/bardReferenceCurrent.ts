@@ -12,7 +12,7 @@ function literarySubclass(subclass: BardSubclassReferenceDraft) {
   return {
     id: subclass.id,
     name: subclass.name,
-    summary: "Литературный перевод и точные справочные правила готовы. Character Engine остаётся отдельным будущим механическим пакетом.",
+    summary: "Литературный перевод и точные справочные правила готовы.",
     explanation: subclass.authorDescription,
     voss: subclass.authorComment,
     features: completeSubclassFeatures(subclass.id, subclass.features),
@@ -33,7 +33,7 @@ const authoredSubclasses = new Map(
  *
  * Base Bard narration is preserved in bardReferenceBase.ts. The Player's Handbook 2024
  * College of Dance plus the previous nine-college literary roster now have authored presentations and exact reference
- * rules. Runtime mechanics remain a separate future package.
+ * rules. Nine approved colleges have Stage 5 runtime mechanics; Tragedy remains reference-only.
  * Runtime roadmap/checklist: ./bardRuntimePlan.md. Keep referenceOnly until its certification gate is complete.
  */
 export const bardReferenceCurrent = {
