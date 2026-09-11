@@ -276,6 +276,12 @@ function parseRequirements(value: unknown): ActionRequirementDefinition[] {
     }
     if (kind === "resource") {
       const minimum = finiteNonNegative(requirement.minimum, `${field}.minimum`)
+      const maximum = requirement.maximum === undefined
+        ? undefined
+        : finiteNonNegative(requirement.maximum, `${field}.maximum`)
+      if (maximum !== undefined && maximum < minimum) {
+        throw new ActionEngineError(`${field}.maximum must be >= minimum`)
+      }
       return {
         kind,
         key: nonEmptyString(requirement.key, `${field}.key`),
@@ -283,6 +289,7 @@ function parseRequirements(value: unknown): ActionRequirementDefinition[] {
           ? {}
           : { variantKey: nonEmptyString(requirement.variantKey, `${field}.variantKey`) }),
         minimum,
+        ...(maximum === undefined ? {} : { maximum }),
         enforcement,
         ...(label ? { label } : {}),
       }
@@ -330,7 +337,13 @@ function parseEffects(value: unknown): ActionEffectDefinition[] {
     }
     if (kind === "resource") {
       const operation = nonEmptyString(effect.operation, `${field}.operation`)
-      if (operation !== "RESTORE" && operation !== "SPEND" && operation !== "SET") {
+      if (
+        operation !== "RESTORE" &&
+        operation !== "SPEND" &&
+        operation !== "SET" &&
+        operation !== "GRANT_TEMPORARY_MAX" &&
+        operation !== "ENSURE_MINIMUM"
+      ) {
         throw new ActionEngineError(`unsupported ${field}.operation: ${operation}`)
       }
       const amount =
@@ -568,7 +581,10 @@ function resolveRequirement(
   } else if (definition.kind === "resource") {
     const stateKey = resourceStateKey(definition.key, definition.variantKey ?? "default")
     const resource = resources.find((candidate) => candidate.stateKey === stateKey)
-    satisfied = resource !== undefined && resource.current >= definition.minimum
+    satisfied =
+      resource !== undefined &&
+      resource.current >= definition.minimum &&
+      (definition.maximum === undefined || resource.current <= definition.maximum)
   } else {
     const variantKey = definition.variantKey ?? "default"
     satisfied = grants.some(
@@ -745,7 +761,10 @@ export function applyActionResourceCosts(
     if (current < cost.amount) {
       throw new ActionEngineError(`insufficient resource for action: ${cost.stateKey}`)
     }
-    resources[cost.stateKey] = { current: current - cost.amount }
+    resources[cost.stateKey] = {
+      ...resources[cost.stateKey],
+      current: current - cost.amount,
+    }
   }
 
   return { ...state, resources }
@@ -779,6 +798,26 @@ export function applyActionEffects(state: CharacterState, action: ResolvedAction
     const runtime = resources[effect.stateKey]
     if (!runtime) throw new ActionEngineError(`resource effect target is unavailable: ${effect.stateKey}`)
     const current = runtime.current
+
+    if (effect.operation === "GRANT_TEMPORARY_MAX") {
+      resources[effect.stateKey] = {
+        ...runtime,
+        current: current + effect.amount,
+        temporaryMaxBonus: (runtime.temporaryMaxBonus ?? 0) + effect.amount,
+      }
+      continue
+    }
+
+    if (effect.operation === "ENSURE_MINIMUM") {
+      const extraCapacity = Math.max(0, effect.amount - effect.max)
+      resources[effect.stateKey] = {
+        ...runtime,
+        current: Math.max(current, effect.amount),
+        temporaryMaxBonus: (runtime.temporaryMaxBonus ?? 0) + extraCapacity,
+      }
+      continue
+    }
+
     let next: number
     if (effect.operation === "RESTORE") next = Math.min(effect.max, current + effect.amount)
     else if (effect.operation === "SET") next = Math.min(effect.max, effect.amount)
@@ -788,7 +827,7 @@ export function applyActionEffects(state: CharacterState, action: ResolvedAction
       }
       next = current - effect.amount
     }
-    resources[effect.stateKey] = { current: Math.max(0, next) }
+    resources[effect.stateKey] = { ...runtime, current: Math.max(0, next) }
   }
 
   return { ...state, facts, resources }

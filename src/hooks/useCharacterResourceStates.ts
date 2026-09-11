@@ -33,7 +33,7 @@ export function useCharacterResourceStates(characterId: string | null) {
     const token = ++loadTokenRef.current
     setLoading(true); setError("")
     const promise = (async () => {
-      const { data, error: queryError } = await supabase.from("character_resource_states").select("character_id,state_key,current,max_snapshot,label,recharge,updated_by,created_at,updated_at").eq("character_id", characterId).order("state_key")
+      const { data, error: queryError } = await supabase.from("character_resource_states").select("character_id,state_key,current,max_snapshot,temporary_max_bonus,label,recharge,updated_by,created_at,updated_at").eq("character_id", characterId).order("state_key")
       if (token !== loadTokenRef.current) return
       if (queryError) { setError(queryError.message); setLoading(false); return }
       setRows((data || []) as CharacterResourceStateRow[]); setLoading(false)
@@ -62,7 +62,16 @@ export function useCharacterResourceStates(characterId: string | null) {
     }
   }, [characterId, load])
 
-  const state = useMemo(() => Object.fromEntries(rows.map((row) => [row.state_key, { current: row.current }])), [rows])
+  const state = useMemo(
+    () => Object.fromEntries(rows.map((row) => [
+      row.state_key,
+      {
+        current: row.current,
+        temporaryMaxBonus: row.temporary_max_bonus,
+      },
+    ])),
+    [rows],
+  )
   useEffect(() => {
     if (!characterId) return
     registerCharacterResourceState(characterId, state)

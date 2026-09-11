@@ -261,14 +261,47 @@ There are no known Wizard implementation or deployment blockers in the declared 
 
 ---
 
-## Bard / Paladin reference layer
+## Bard (`class:bard`)
 
-**Exact reference text:** `READY_CURRENT_AUTHORED_ROSTERS_2026_09_04`
-**Mechanics/runtime:** `NOT_STARTED`
+**Exact reference text:** `READY_CURRENT_AUTHORED_ROSTER_2026_09_11`  
+**Mechanics/runtime:** `READY`
 
-- Bard and Paladin base cards plus every currently authored subclass card now resolve a non-empty exact-rule description through `src/data/classes/referenceMechanics.ts`.
-- Missing translated base features are visible as English-named cards with an explicit translation note; no Voss prose is synthesized for them.
-- These entries remain `referenceOnly`; no Chasovoy template, resource, action, spell access or Character Engine contribution is activated by this reference pass.
+- `final_certification_migration: supabase/migrations/20260911175500_bard_runtime_final_certification_v1.sql`
+- `final_runtime_revision: xphb-2024-bard-runtime-final-v1`
+- `final_package_test: tests/bardRuntimeFinalCertification.test.ts`
+- `pre_documentation_ci: GREEN_2026_09_11 / build + lint + full tests 990/990`
+- `production_final: DEPLOYED_AND_AUDITED_2026_09_11`
+- `production_final_migration: bard_runtime_final_certification_v1 / journal 20260911150941`
+- `production_campaign_trigger: aaaaaaaal_campaigns_ensure_bard_runtime_final_v1`
+- `production_final_privileges: certifier/installer anon=false; authenticated=false; service_role=true`
+- `production_final_advisors: NO_BARD_OR_STAGE6_SPECIFIC_FINDINGS`
+- `public_reference_runtime: ENABLED / base Bard referenceOnly=false through classReference runtime overlay`
+- `runtime_subclass_count: 9`
+- `runtime_subclasses: Dance, Glamour, Lore, Valor, Eloquence, Swords, Whispers, Creation, Spirits`
+- `reference_only_subclasses: Tragedy`
+- `production_broken_resource_refs: 0`
+- `production_duplicate_mechanic_ids: 0`
+- Stage 1 is the structural class foundation; Stage 2 is the canonical Bardic Inspiration runtime; Stage 3 is the Charisma/full-caster spell runtime; Stage 4 is the remaining base-class runtime; Stage 5 is the nine-college runtime package.
+- Final certification is fail-closed. `READY` is written only after the migration validates the full prior stage stack, exact 1–20 level rows, starting grants/choices, Inspiration scaling/recovery, Font, Superior Inspiration, Expertise, Jack of All Trades, Countercharm, spell source gates, Words of Creation, all nine subclasses, resource identity, mechanic-ID uniqueness and shared RPC availability/privileges.
+- Parent/source-level semantics are certified: a high total character level does not unlock Bard subclass features early. Production smoke used total level 12 with Bard level 3 and correctly resolved the subclass at source level 3; it then followed Bard level changes.
+- Persistent-state smoke is certified: one spent Bardic Inspiration use survived resource re-sync; one spent 3rd-level spell slot survived Bard 10→11; the expected 6th-level slot appeared at Bard 11. All probes were rolled back.
+- Class tab uses the resolved CE contract through `presentClassPackages()`; the final regression requires runtime resource/action entries and rejects Bard-specific presentation branches.
+- Chat execution remains on shared GENA/template v2 RPCs. Choice UI uses shared Choice Runtime/rest RPCs; there is no Bard-only Chat or choice branch.
+- Public reference now mirrors the certified runtime boundary: base Bard + nine approved colleges are runtime-backed; Tragedy remains reference-only.
+- Supabase live parity after certification: `mechanics_status=READY`, `runtime_status=ready`, `runtime_stage=6`, nine child subclasses `runtime_status=ready`, Tragedy active builtin count 0, one final Bard campaign installer, broken resource refs 0, duplicate mechanic IDs 0.
+- Generic cross-class capabilities intentionally remain outside Supported Bard Runtime V1 and are recorded explicitly in production metadata rather than faked by Bard-specific code:
+  - `multiclass_entry_profile_runtime = generic_pending`;
+  - `multiclass_spell_slot_aggregation_runtime = generic_pending`;
+  - `feat_source_runtime = generic_pending`.
+- What is certified for multiclass use today is Bard parent/source-level semantics. Starting-vs-multiclass entry grants, combined caster slot aggregation and the generic feat/ASI subsystem must be solved once for all affected classes.
+
+**Bard is mechanically READY in the currently supported application runtime.** Do not reopen Bard with class-specific UI/runtime branches to solve the generic cross-class debts above.
+
+---
+
+## Paladin reference-layer legacy note
+
+The former shared Bard/Paladin reference note was split when Bard runtime work started. Paladin runtime readiness is governed by the Paladin migrations and certification regressions; do not infer Paladin status from the Bard section.
 
 ---
 

@@ -59,6 +59,8 @@ export interface CharacterState {
 /** Runtime truth for a consumable resource. */
 export interface ResourceState {
   current: number
+  /** Generic temporary capacity already persisted in character_resource_states. */
+  temporaryMaxBonus?: number
   /**
    * @deprecated Maximum is resolved from the resource definition/contributions.
    * Kept temporarily for adapter compatibility and intentionally ignored by Resource Engine.
@@ -278,6 +280,8 @@ export type ActionRequirementDefinition =
       key: string
       variantKey?: string
       minimum: number
+      /** Optional upper bound for resources that can only fire below a threshold. */
+      maximum?: number
       enforcement?: ActionRequirementEnforcement
       label?: string
     }
@@ -301,7 +305,7 @@ export interface ActionResourceEffectDefinition {
   kind: "resource"
   key: string
   variantKey?: string
-  operation: "RESTORE" | "SPEND" | "SET"
+  operation: "RESTORE" | "SPEND" | "SET" | "GRANT_TEMPORARY_MAX" | "ENSURE_MINIMUM"
   amount: number | FormulaExpression
 }
 
@@ -536,6 +540,8 @@ export interface ResolvedResource {
   /** Key used inside CharacterState.resources. */
   stateKey: string
   current: number
+  /** Generic temporary capacity added on top of the persistent/base maximum. */
+  temporaryMaxBonus: number
   /** Unclamped runtime value retained for later explain/debug tooling. */
   rawCurrent: number
   max: ResolvedNumber

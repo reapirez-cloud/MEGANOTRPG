@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useAuth } from "../../context/AuthContext.tsx"
 import { useCharacters } from "../../context/CharacterContext.tsx"
+import { supabase } from "../../lib/supabase.ts"
 import {
   commitCharacterTemplateChoice,
   commitCharacterTemplateChoiceV2,
@@ -169,6 +170,7 @@ function StructuredChoiceCard({
   const removed = removedStoredCount(state.instances, draft)
 
   function dynamicLockedReason(option: TemplateChoiceOptionState) {
+    if (!option.available && option.lockedReason) return option.lockedReason
     if (state.sourceLevel < option.minLevel) return `Доступно с ${option.minLevel} уровня`
     const missing = option.requiredOptions.filter((required) => !chosenOptions.has(required))
     if (missing.length > 0) {
@@ -228,7 +230,7 @@ function StructuredChoiceCard({
     if (!canChoose || busy || !complete) return
     setBusy(true)
     setError("")
-    const result = state.refresh === "short_rest" || state.refresh === "short_or_long_rest"
+    const result = state.refresh
       ? await commitCharacterTemplateRestChoice(characterId, state.assignmentId, state.key, draft)
       : await commitCharacterTemplateChoiceV2(characterId, state.assignmentId, state.key, draft)
     setBusy(false)
@@ -304,7 +306,7 @@ function StructuredChoiceCard({
         {visible.length === 0 && <div className="template-choice-card__empty">Подходящих вариантов нет.</div>}
       </div>
 
-      {state.refresh && <p className="template-choice-card__notice">Этот набор можно менять только в открытом окне {state.refresh === "short_rest" ? "короткого отдыха" : "короткого или долгого отдыха"}. Сервер проверяет окно отдыха при сохранении.</p>}
+      {state.refresh && <p className="template-choice-card__notice">Этот набор можно менять только в открытом окне {state.refresh === "short_rest" ? "короткого отдыха" : state.refresh === "long_rest" ? "долгого отдыха" : "короткого или долгого отдыха"}. Сервер проверяет окно отдыха при сохранении.</p>}
       {duplicateSelectors && <p className="template-choice-card__notice is-warning">Повторяемое воззвание нельзя назначить одной и той же цели дважды.</p>}
       {!canChoose && <p className="template-choice-card__notice">Этот выбор может подтвердить владелец персонажа или ГМ.</p>}
       {error && <div className="auth-error template-choice-card__error">{error}</div>}
@@ -324,13 +326,38 @@ export default function CharacterTemplateChoices({ characterId }: { characterId:
   const { characters, canManage } = useCharacters()
   const character = characters.find((item) => item.id === characterId) || null
   const [revision, setRevision] = useState(0)
+  const [sheetSkillProficiencies, setSheetSkillProficiencies] = useState<Record<string, number>>({})
 
   useEffect(() => subscribeCharacterTemplateBundles(characterId, () => setRevision((value) => value + 1)), [characterId])
+
+  useEffect(() => {
+    let cancelled = false
+    void supabase
+      .from("character_sheets")
+      .select("skill_proficiencies")
+      .eq("character_id", characterId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return
+        const raw = data?.skill_proficiencies
+        if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+          setSheetSkillProficiencies({})
+          return
+        }
+        const entries = Object.entries(raw as Record<string, unknown>).flatMap(([key, value]) => {
+          const rank = Number(value)
+          return Number.isFinite(rank) && rank > 0 ? [[key, rank] as const] : []
+        })
+        setSheetSkillProficiencies(Object.fromEntries(entries))
+      })
+    return () => { cancelled = true }
+  }, [characterId, revision])
 
   const states = useMemo(() => resolveTemplateChoiceStates(
     registeredCharacterTemplateBundles(characterId),
     character?.level || 1,
-  ).filter((state) => state.status !== "hidden" && (state.templateKind === "class" || state.templateKind === "subclass")), [characterId, character?.level, revision])
+    { skillProficiencies: sheetSkillProficiencies },
+  ).filter((state) => state.status !== "hidden" && (state.templateKind === "class" || state.templateKind === "subclass")), [characterId, character?.level, revision, sheetSkillProficiencies])
 
   if (!states.length) return null
 

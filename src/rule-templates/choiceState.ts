@@ -2,6 +2,7 @@ import {
   choiceCountAtLevel,
   choiceDefinitionAvailable,
   choiceOptionAvailableAtLevel,
+  resolveTemplateBundles,
 } from "./resolver.ts"
 import { choiceOptionSourceAvailable } from "./choiceSourceRequirements.ts"
 import { storedStructuredChoiceInstances, type StructuredChoiceInstance } from "./choiceRuntimeV2.ts"
@@ -17,6 +18,12 @@ import type {
 } from "./types.ts"
 
 export type TemplateChoiceStatus = "hidden" | "pending" | "editable" | "locked"
+
+export type TemplateChoiceRuntimeContext = {
+  /** Base/manual sheet ranks. Template grants are merged on top generically. */
+  skillProficiencies?: Record<string, number>
+}
+
 
 export type TemplateChoiceSelectorOptionState = {
   value: string
@@ -160,9 +167,56 @@ function selectedOptionLabels(definition: RuleChoiceDefinition, keys: string[]) 
   return keys.map((key) => definition.option_labels?.[key] || key).join(", ")
 }
 
+function providerSkillRanks(
+  bundles: CharacterTemplateBundle[],
+  characterLevel: number,
+  context?: TemplateChoiceRuntimeContext,
+): Record<string, number> {
+  const ranks: Record<string, number> = { ...(context?.skillProficiencies || {}) }
+  const parsed = resolveTemplateBundles(bundles, characterLevel)
+  for (const contribution of parsed.contributions) {
+    if (
+      contribution.kind !== "grant"
+      || contribution.target !== "proficiency"
+      || !contribution.key.startsWith("skill:")
+      || contribution.operation === "SUPPRESS"
+    ) continue
+    const skill = contribution.key.slice("skill:".length)
+    const payload = contribution.payload
+    const rank = payload && typeof payload === "object" && !Array.isArray(payload)
+      ? Number((payload as Record<string, unknown>).rank || 1)
+      : 1
+    ranks[skill] = Math.max(ranks[skill] || 0, Number.isFinite(rank) ? rank : 1)
+  }
+  return ranks
+}
+
+function providerAvailability(
+  definition: RuleChoiceDefinition,
+  optionKey: string,
+  selected: boolean,
+  skillRanks: Record<string, number>,
+): { available: boolean; reason: string | null } {
+  if (selected || !definition.option_provider) return { available: true, reason: null }
+  const provider = definition.option_provider
+  if (provider.kind === "skill_proficiencies") {
+    if (!optionKey.startsWith("skill:")) {
+      return { available: false, reason: "Вариант не является навыком" }
+    }
+    const skill = optionKey.slice("skill:".length)
+    const rank = skillRanks[skill] || 0
+    const minimum = provider.minimum_rank ?? 1
+    const maximum = provider.maximum_rank ?? 2
+    if (rank < minimum) return { available: false, reason: "Требуется владение этим навыком" }
+    if (rank > maximum) return { available: false, reason: "Для этого навыка уже есть более высокий уровень владения" }
+  }
+  return { available: true, reason: null }
+}
+
 export function resolveTemplateChoiceStates(
   bundles: CharacterTemplateBundle[],
   characterLevel: number,
+  context?: TemplateChoiceRuntimeContext,
 ): TemplateChoiceState[] {
   const classLevels = new Map(
     bundles
@@ -170,6 +224,7 @@ export function resolveTemplateChoiceStates(
       .map((bundle) => [bundle.template.id, Math.max(1, bundle.assignment.template_level || characterLevel)] as const),
   )
   const result: TemplateChoiceState[] = []
+  const skillRanks = providerSkillRanks(bundles, characterLevel, context)
 
   for (const bundle of bundles) {
     const sourceLevel = sourceLevelForChoice(bundle, characterLevel, classLevels)
@@ -224,14 +279,17 @@ export function resolveTemplateChoiceStates(
         const missing = requiredOptions.filter((option) => !selectedOptionSet.has(option))
         const levelAvailable = choiceOptionAvailableAtLevel(definition, key, sourceLevel) && sourceLevel >= minLevel
         const sourceAvailable = choiceOptionSourceAvailable(rule, bundles, characterLevel)
-        const available = levelAvailable && missing.length === 0 && sourceAvailable
+        const provider = providerAvailability(definition, key, selectedOptionSet.has(key), skillRanks)
+        const available = levelAvailable && missing.length === 0 && sourceAvailable && provider.available
         const lockedReason = !levelAvailable
           ? `Доступно с ${minLevel} уровня`
           : missing.length > 0
             ? `Нужно: ${selectedOptionLabels(definition, missing)}`
             : !sourceAvailable
               ? "Требуется подходящий активный класс или подкласс"
-              : null
+              : !provider.available
+                ? provider.reason
+                : null
         return {
           key,
           label: definition.option_labels?.[key] || key,

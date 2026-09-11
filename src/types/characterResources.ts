@@ -25,6 +25,7 @@ export type CharacterResourceStateRow = {
   state_key: string
   current: number
   max_snapshot: number
+  temporary_max_bonus: number
   label: string
   recharge: PersistedResourceRecharge
   updated_by: string | null

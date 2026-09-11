@@ -3,11 +3,19 @@
 import type { StoredMechanics } from "../types/characterMechanics.ts"
 
 export type RuleTemplateKind = "race" | "subrace" | "class" | "subclass"
-export type RuleChoiceTarget = "language" | "proficiency" | "sense" | "trait"
+export type RuleChoiceTarget = "language" | "proficiency" | "sense" | "trait" | "spell"
 export type RuleTemplateSourceKind = "official" | "third_party" | "custom"
 export type RuleChoiceSelectionMode = "manager" | "player_once"
 export type RuleChoiceRefreshPolicy = "long_rest" | "short_rest" | "short_or_long_rest"
 export type RuleChoiceReplacementPolicy = "locked" | "always" | "preparation" | "on_level_change" | "preparation_or_level_change"
+
+export type RuleChoiceOptionProvider =
+  | {
+      kind: "skill_proficiencies"
+      minimum_rank?: 1 | 2
+      maximum_rank?: 1 | 2
+    }
+
 
 export type RuleChoiceRequirement = {
   /** Another persistent choice in the same assignment. */
@@ -59,6 +67,8 @@ export type RuleChoiceDefinition = {
   count_by_level?: Record<string, number>
   /** Minimum source.level for an option to be selectable/emitted. */
   option_unlock_level?: Record<string, number>
+  /** Generic runtime eligibility filter; server remains authoritative. */
+  option_provider?: RuleChoiceOptionProvider
   /** Human labels for mechanically stable option keys such as skill:nature. */
   option_labels?: Record<string, string>
   /** Optional dependency on another persistent choice in this template assignment. */

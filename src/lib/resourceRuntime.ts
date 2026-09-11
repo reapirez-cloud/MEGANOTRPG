@@ -71,7 +71,7 @@ export function resourceSyncInputs(contract: ResolvedCharacterContract): Resourc
   return contract.resources.map((resource) => ({
     stateKey: resource.stateKey,
     current: resource.current,
-    max: resource.max.value,
+    max: Math.max(0, resource.max.value - resource.temporaryMaxBonus),
     label: grantLabel(contract, resource),
     recharge: persistedResourceRecharge(contract, resource),
   }))
