@@ -21,6 +21,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added Sorcerer Stage 3 Font of Magic slot conversion and corrected the 2024 reverse conversion: an unexpended spell slot can be converted back into Sorcery Points without an action, from 1st-level slot → 1 point through 9th-level slot → 9 points.
 - Added Sorcerer Stage 4 Metamagic to the actual spell-casting flow: all ten 2024 options are selectable, known options scale `2 → 4 → 6` at Sorcerer levels 2/10/17, one known option may be replaced on a Sorcerer level gain, and Chat lets the player attach eligible Metamagic to the exact spell being cast.
 - Added Sorcerer Stage 5 base-class runtime: Innate Sorcery now has a server-owned one-minute lifetime; from level 7 Sorcery Incarnate can activate it for 2 Sorcery Points when normal uses are empty and permits up to two Metamagic options while active; at level 20 Arcane Apotheosis waives one Metamagic Sorcery Point cost while Innate Sorcery is active.
+- Began the Bard 2024 runtime rebuild with a safe Stage 1 foundation while keeping the player-facing class reference-only. Corrected Jack of All Trades to the 2024 skill-only half-proficiency rule, corrected Font of Inspiration slot-to-inspiration recovery, and completed the Magical Secrets replacement wording.
 
 ### Runtime and architecture changes
 
@@ -35,8 +36,13 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Sorcerer Stage 4 reuses Choice Runtime v2 and CE resource-backed actions instead of a class-specific Metamagic engine. The receipt-aware GENA composite spell command validates the selected modifier actions and spends the spell slot plus Sorcery Points atomically under one stable `commandId`, so retries cannot double-spend either resource.
 - Sorcerer Stage 5 stores Innate Sorcery activity as an expiring Shapoklyak runtime fact rather than a permanent boolean, reuses the receipt-aware GENA spell+modifier path for Sorcery Incarnate/Arcane Apotheosis, and keeps the Arcane Apotheosis once-per-turn cadence on the documented GM boundary instead of inventing turn state.
 - The live Sorcerer catalog is now `xphb-2024-sorcerer-stage5-base-runtime-v1`; Stage 5 base runtime is deployed, while Stage 6/full spell integration and subclass runtime remain later stages rather than being hidden behind a false overall `READY` claim.
+- Added the Bard Stage 1 class definition: stable `class:bard` identity, 1-20 structural progression, d8 Hit Die, Dexterity/Charisma saves, light armor, simple weapons, three persistent skill choices and three persistent musical-instrument choices.
+- Kept Bardic Inspiration, spell execution, subclasses and executable `sheet_profile` data deferred. The exact full-caster progression is stored as inert contract metadata so assigning the unfinished class cannot partially mutate the character sheet or create fake spell-slot runtime.
+- Added `src/data/classes/bardRuntimePlan.md` beside the Bard source as the durable Stage 2-6 checklist, including Bardic Inspiration, spell runtime, base mechanics, College of Dance/subclasses, multiclass entry semantics and final certification.
 
 ### Tests / verification
+- Added `tests/bardCatalogStage1.test.ts` to run the strict class quality gate, parser -> Character Engine resolution at low/mid/high Bard levels, starting proficiency choices, Stage 1 non-runtime guarantees and the corrected 2024 reference rules.
+- Dry-ran the complete Bard Stage 1 SQL against the connected production schema inside a rolled-back transaction; the migration executed successfully without changing production data.
 
 - Added a Warlock reference regression requiring the base class to be runtime-backed, exactly the four certified PHB 2024 patrons to be runtime-backed, and every other visible patron to stay reference-only. Production Supabase audit confirms 20 base level rows and 7 rows each for Archfey, Celestial, Fiend and Great Old One.
 - Added regression coverage requiring completed post-rest tasks to be filtered out of the rendered chat card and preventing informational notices from keeping the card open by themselves.
