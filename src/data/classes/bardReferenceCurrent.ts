@@ -34,7 +34,8 @@ const authoredSubclasses = new Map(
  * Base Bard narration is preserved in bardReferenceBase.ts. The Player's Handbook 2024
  * College of Dance plus the previous nine-college literary roster now have authored presentations and exact reference
  * rules. Nine approved colleges have Stage 5 runtime mechanics; Tragedy remains reference-only.
- * Runtime roadmap/checklist: ./bardRuntimePlan.md. Keep referenceOnly until its certification gate is complete.
+ * Runtime roadmap/checklist: ./bardRuntimePlan.md. This raw literary source stays presentation-only;
+ * src/data/classReference.ts overlays the certified runtime boundary for the player-facing catalog.
  */
 export const bardReferenceCurrent = {
   ...bardReferenceBase,
