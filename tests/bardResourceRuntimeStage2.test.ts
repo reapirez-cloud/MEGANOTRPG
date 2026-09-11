@@ -402,7 +402,7 @@ test("Superior Inspiration guarantees two uses without inventing initiative stat
   assert.ok(alreadyAboveThreshold)
   assert.equal(alreadyAboveThreshold.available, false)
 
-  assert.match(closureMigration, /'operation','ENSURE_MINIMUM'/)
+  assert.match(closureMigration, /effects,0,operation[\s\S]*ENSURE_MINIMUM/)
   assert.match(closureMigration, /xphb-2024-bard-stage2-inspiration-v2/)
   assert.doesNotMatch(closureMigration, /initiative_confirmed|initiative_available|turn_state/)
 })
