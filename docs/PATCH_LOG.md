@@ -11,6 +11,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Made the new UI 1.0 the default root entry. Opening the app now lands on the new interface automatically; the untouched previous interface remains temporarily available at `/legacy.html`.
+- Reworked the bottom navigation from a flat bar into a MEGANOT-specific raised-center dock: Я and Чаты sit in the lower hull while Главная rises as a central crown, preserving the 25/50/25 hierarchy without looking like a stock tab bar.
+
 - Rebuilt the isolated MEGANOT UI 1.0 start page from scratch around a grayscale editorial visual system: graphite/steel/stone surfaces, warm off-white typography, asymmetric section hierarchy and a 25/50/25 Я / Главная / Чаты dock.
 - Every start-page destination now has a stable UI 1.0 route and an explicit placeholder screen until that feature is designed, including What’s New, World, Society News, Achievements, Art, Updates, Chats and Я.
 

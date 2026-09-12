@@ -138,6 +138,8 @@ function Dock({ route }: { route: Route }) {
 
   return (
     <nav className="u1-dock" aria-label="Основная навигация">
+      <span className="u1-dock__hull" aria-hidden="true" />
+      <span className="u1-dock__crown" aria-hidden="true" />
       {items.map((item) => {
         const selected = item.id === active
 
@@ -157,7 +159,8 @@ function Dock({ route }: { route: Route }) {
                 transition={{ type: "spring", stiffness: 430, damping: 40 }}
               />
             )}
-            <span>{item.label}</span>
+            <span className="u1-dock__label">{item.label}</span>
+            {item.id === "home" && <span className="u1-dock__home-mark" aria-hidden="true" />}
           </button>
         )
       })}

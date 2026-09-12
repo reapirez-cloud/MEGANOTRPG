@@ -242,8 +242,9 @@ This rule applies to all future UI 1.0 work unless the user explicitly asks to i
 
 The new MEGANOT UI 1.0 is a **separate application surface**, not a redesign layer mounted inside the legacy app.
 
-- Legacy app entry: `index.html -> src/main.tsx -> src/App.tsx`.
-- New UI 1.0 entry: `ui-v1.html -> src/ui-v1-isolated/main.tsx -> src/ui-v1-isolated/**`.
+- New UI 1.0 is the default entry: `index.html -> src/ui-v1-isolated/main.tsx -> src/ui-v1-isolated/**`.
+- Legacy app is kept separately at `legacy.html -> src/main.tsx -> src/App.tsx` during the transition.
+- `ui-v1.html` remains only as a temporary alias to the new UI while local bookmarks/tests migrate.
 - The new UI MUST NOT import legacy page components, legacy app components, legacy CSS, `src/App.tsx`, or legacy route types.
 - The legacy app MUST NOT import UI 1.0 screens or styles.
 - Do not "bridge" the two UIs by mounting old screens under new navigation. Deferred new destinations use placeholders until their own implementation stage.
@@ -265,3 +266,13 @@ The current MEGANOT UI 1.0 visual direction is intentionally grayscale and edito
 - Section titles live on their visual preview and must remain readable through a built-in dark scrim/contrast treatment.
 - Use color later only when it comes from campaign artwork, semantic states, or a deliberate product decision.
 - Deferred destinations always receive a clean UI 1.0 placeholder and stable route before their real implementation.
+
+
+### UI 1.0 navigation shape
+
+Navigation shape is part of the product identity, not generic component chrome.
+
+- The bottom dock must not collapse back into a flat rounded rectangle with three equal-looking buttons.
+- Current direction: lower side wings with a physically raised central Home crown/bulge.
+- Preserve the 25 / 50 / 25 information hierarchy while allowing the central geometry to rise above the side controls.
+- Avoid generic floating-tab-bar patterns copied from design-system defaults; the dock should remain recognizable as MEGANOT even without labels.

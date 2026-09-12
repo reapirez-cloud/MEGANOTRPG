@@ -2,14 +2,18 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 
-const html = fs.readFileSync("ui-v1.html", "utf8")
+const html = fs.readFileSync("index.html", "utf8")
+const aliasHtml = fs.readFileSync("ui-v1.html", "utf8")
+const legacyHtml = fs.readFileSync("legacy.html", "utf8")
 const entry = fs.readFileSync("src/ui-v1-isolated/main.tsx", "utf8")
 const app = fs.readFileSync("src/ui-v1-isolated/UiV1App.tsx", "utf8")
 const styles = fs.readFileSync("src/ui-v1-isolated/styles.css", "utf8")
 const legacyApp = fs.readFileSync("src/App.tsx", "utf8")
 
-test("UI v1 has a physically separate application entry", () => {
+test("UI v1 is now the default application entry", () => {
   assert.match(html, /src\/ui-v1-isolated\/main\.tsx/)
+  assert.match(aliasHtml, /src\/ui-v1-isolated\/main\.tsx/)
+  assert.match(legacyHtml, /src\/main\.tsx/)
   assert.match(entry, /\.\/UiV1App/)
   assert.match(entry, /\.\/styles\.css/)
   assert.doesNotMatch(entry + app, /\.\.\/App|pages\/|components\/app|CharacterContext|supabase/i)
@@ -47,4 +51,12 @@ test("every deferred UI v1 destination has a stable placeholder route", () => {
 
   assert.match(app, /function Placeholder/)
   assert.doesNotMatch(app, /<Feed|<World|<Chats|<GmWorkspace|<CharacterProfileV2/)
+})
+
+
+test("UI v1 dock has a raised central crown instead of a flat rectangular bar", () => {
+  assert.match(app, /u1-dock__crown/)
+  assert.match(styles, /\.u1-dock__crown/)
+  assert.match(styles, /height:\s*78px/)
+  assert.match(styles, /margin-top:\s*-11px/)
 })

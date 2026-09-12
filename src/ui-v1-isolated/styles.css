@@ -483,34 +483,84 @@ button {
   left: 14px;
   right: 14px;
   bottom: max(12px, var(--u1-safe-bottom));
-  height: 62px;
-  padding: 4px;
+  height: 78px;
   display: grid;
   grid-template-columns: 1fr 2fr 1fr;
+  align-items: end;
   gap: 3px;
+  padding: 16px 4px 4px;
+  background: transparent;
+  isolation: isolate;
+}
+
+.u1-dock__hull {
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 58px;
   border: 1px solid var(--u1-line);
-  border-radius: 18px;
-  background: rgba(12, 14, 16, 0.94);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.36);
+  border-radius: 22px;
+  background: rgba(12, 14, 16, 0.96);
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
   backdrop-filter: blur(20px);
+}
+
+.u1-dock__crown {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 50%;
+  width: calc(50% + 18px);
+  height: 74px;
+  transform: translateX(-50%);
+  border: 1px solid var(--u1-line);
+  border-bottom-color: transparent;
+  border-radius: 28px 28px 18px 18px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.025), transparent 40%),
+    rgba(14, 16, 18, 0.985);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.u1-dock__crown::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -2px;
+  height: 12px;
+  background: rgba(14, 16, 18, 0.985);
 }
 
 .u1-dock__item {
   position: relative;
+  z-index: 2;
   min-width: 0;
+  height: 50px;
   padding: 0 10px;
   border: 0;
-  border-radius: 14px;
+  border-radius: 16px;
   background: transparent;
   color: var(--u1-text-faint);
-  overflow: hidden;
+  overflow: visible;
   cursor: pointer;
 }
 
 .u1-dock__item--home {
+  align-self: start;
+  height: 64px;
+  margin-top: -11px;
+  border-radius: 22px;
+  color: var(--u1-text-soft);
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-weight: 720;
+  letter-spacing: 0.025em;
 }
 
 .u1-dock__item--workspace,
@@ -520,21 +570,52 @@ button {
   letter-spacing: 0.04em;
 }
 
-.u1-dock__item > span:last-child {
+.u1-dock__label {
   position: relative;
-  z-index: 2;
+  z-index: 3;
+}
+
+.u1-dock__home-mark {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 11px;
+  width: 18px;
+  height: 2px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.42;
+}
+
+.u1-dock__item--home .u1-dock__label {
+  display: inline-block;
+  transform: translateY(7px);
 }
 
 .u1-dock__selection {
   position: absolute;
-  inset: 0;
-  border-radius: 14px;
-  background: var(--u1-surface-3);
-  box-shadow: inset 0 0 0 1px rgba(235, 237, 239, 0.05);
+  z-index: 1;
+  inset: 4px;
+  border-radius: 13px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.038), rgba(255,255,255,.012));
+  box-shadow: inset 0 0 0 1px rgba(235, 237, 239, 0.045);
+}
+
+.u1-dock__item--home .u1-dock__selection {
+  inset: 4px 6px 3px;
+  border-radius: 19px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
 }
 
 .u1-dock__item[data-selected] {
   color: var(--u1-text);
+}
+
+.u1-dock__item:active {
+  transform: translateY(1px);
 }
 
 @media (min-width: 620px) {

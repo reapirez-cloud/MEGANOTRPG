@@ -16,8 +16,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        legacy: path.resolve(import.meta.dirname, "index.html"),
-        uiV1: path.resolve(import.meta.dirname, "ui-v1.html")
+        app: path.resolve(import.meta.dirname, "index.html"),
+        uiV1Alias: path.resolve(import.meta.dirname, "ui-v1.html"),
+        legacy: path.resolve(import.meta.dirname, "legacy.html")
       }
     }
   }
