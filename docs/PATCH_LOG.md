@@ -2,6 +2,23 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
+## Active patch — 2026-09-12-C
+
+**Status:** OPEN
+**Branch:** `dev`
+**Base main:** `c42f7ebe389b290e3c4bf74588cf338f75c0807b`
+**Started:** 2026-09-12
+
+### Player-facing changes
+
+### Runtime and architecture changes
+
+### Tests / verification
+
+### Known incomplete work
+
+---
+
 ## Released patches
 
 ## Patch — 2026-09-12-B
