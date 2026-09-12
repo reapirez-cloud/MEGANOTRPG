@@ -30,6 +30,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added `src/data/classes/rogueRuntimePlan.md` as the canonical seven-stage closure plan for taking Rogue from reference-only content to production `READY`. The plan fixes the supported nine-subclass roster, source/version boundaries, shared-engine ownership rules, per-stage test/deployment gates and a fail-closed Stage 7 certification; future Rogue work now resumes from the first incomplete stage instead of inventing a new implementation route.
+
 - Rogue Wave 3 reference mechanics were independently reconciled against the published legacy rules rather than trusting supplied prose: Mastermind imitation/truth semantics, Scout Sudden Strike targeting, and Phantom Wails/Soul Trinket/Death’s Friend behavior were corrected. No Rogue Character Engine, Supabase runtime template or persistent resource was introduced by this text/reference pass.
 
 - Reconciled the Warlock reference catalog, authoring boundary and canonical class-work ledger with production Supabase. Production already contains `class:warlock` at `xphb-2024-warlock-ui-qa-v1` plus exactly four active PHB 2024 patron templates at `xphb-2024-warlock-subclasses-runtime-v1`, so Stage 1 required no database mutation.
