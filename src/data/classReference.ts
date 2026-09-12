@@ -2,6 +2,7 @@ import { classReference as catalogClassReference } from "./classReferenceCatalog
 import { rogueReferenceCurrent } from "./classes/rogueReferenceCurrent.ts"
 import { rogueSubclassReferenceWave1 } from "./classes/rogueSubclassReferenceWave1.ts"
 import { rogueSubclassReferenceWave2 } from "./classes/rogueSubclassReferenceWave2.ts"
+import { rogueSubclassReferenceWave3 } from "./classes/rogueSubclassReferenceWave3.ts"
 import { WARLOCK_PHB2024_SUBCLASS_RUNTIME_CATALOG_KEYS } from "../rule-templates/warlockSubclasses.ts"
 import { WARLOCK_SUPPLEMENTAL_RUNTIME_CATALOG_KEYS } from "../rule-templates/warlockSupplementalSubclasses.ts"
 import { SORCERER_STAGE7_RUNTIME_CATALOG_KEYS } from "../rule-templates/sorcererSubclassMechanics.ts"
@@ -34,7 +35,9 @@ const bardRuntimeSubclassIds = new Set<string>(BARD_RUNTIME_REFERENCE_SUBCLASS_I
 const warlockRuntimeSubclassIds = new Set<string>(WARLOCK_RUNTIME_REFERENCE_SUBCLASS_IDS)
 const sorcererRuntimeSubclassIds = new Set<string>(SORCERER_RUNTIME_REFERENCE_SUBCLASS_IDS)
 const rogueTranslatedSubclassById = new Map(
-  [...rogueSubclassReferenceWave1, ...rogueSubclassReferenceWave2].map((subclass) => [subclass.id, subclass]),
+  [...rogueSubclassReferenceWave1, ...rogueSubclassReferenceWave2, ...rogueSubclassReferenceWave3].map(
+    (subclass) => [subclass.id, subclass],
+  ),
 )
 const publicClassReferenceCatalog = [...catalogClassReference, rogueReferenceCurrent]
 
