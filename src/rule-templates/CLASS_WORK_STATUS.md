@@ -546,6 +546,15 @@ Base Warlock, all 28 supported Eldritch Invocations and all nine supported runti
 - `authoring_started: 2026-09-10`
 - `base_authoring_source: src/data/classes/rogueReferenceCurrent.ts`
 - `subclass_authoring_sources: src/data/classes/rogueSubclassReferenceWave1.ts; src/data/classes/rogueSubclassReferenceWave2.ts; src/data/classes/rogueSubclassReferenceWave3.ts`
+- `runtime_plan: src/data/classes/rogueRuntimePlan.md`
+- `runtime_plan_status: STAGE_1_NEXT; STAGES_1_TO_7_REQUIRED_FOR_READY`
+- `stage_1_source_freeze_and_text_closure: NOT_STARTED`
+- `stage_2_foundation_1_20: NOT_STARTED`
+- `stage_3_core_rogue_runtime: NOT_STARTED`
+- `stage_4_base_runtime_certification: NOT_STARTED`
+- `stage_5_phb2024_subclasses: NOT_STARTED`
+- `stage_6_legacy_supplement_subclasses: NOT_STARTED`
+- `stage_7_final_production_certification: NOT_STARTED`
 - `current_dev_text: all nine supported subclass feature packs are authored and visible through the public reference overlay; only base Rogue Steady Aim / Точный прицел and Slippery Mind / Скользкий ум still have explicit missing literary prose`
 - `exact_reference_rules: BASE_2024_READY_PLUS_9_SUBCLASS_PACKS_READY_2026_09_12`
 - `subclass_reference_roster: thief, assassin, arcane-trickster, soulknife, swashbuckler, inquisitive, mastermind, scout, phantom`
@@ -565,7 +574,7 @@ Known source-copy corrections locked by Wave 3 regression:
 - Tasha's Tokens of the Departed has no extra Undead/Construct exclusion, and the queried spirit is not required to tell the truth.
 - Tasha's Death's Friend grants its fallback Soul Trinket at the end of a Long Rest when none are held; it does not use Initiative as that trigger.
 
-Rogue must remain mechanically `NOT_STARTED` until a clean `class:rogue` template/runtime package is built through the shared Chasovoy → Shapoklyak/CE path, regression-gated, deployed and audited. The next text closure is limited to the two explicit base-class literary gaps above.
+Rogue must remain mechanically `NOT_STARTED` until the clean `class:rogue` package starts Stage 2. The canonical implementation order and fail-closed READY gate are defined in `src/data/classes/rogueRuntimePlan.md`. Stage 1 is the next required stage; overall `READY` is forbidden before Stage 7 production certification.
 
 ---
 
