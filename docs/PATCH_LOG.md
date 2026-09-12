@@ -2,12 +2,16 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-13-B
+## Released patches
 
-**Status:** OPEN
-**Branch:** `dev`
+## Patch — 2026-09-13-B
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `2893fa8afd795f1ed323ca4576562a10f48216b1`
 **Started:** 2026-09-13
+**Released:** 2026-09-13
+**Release identity:** `main / 2026-09-13-B`
 
 ### Player-facing changes
 
@@ -22,12 +26,13 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Tests / verification
 
 - Updated UI 1.0 contract tests to require inline long-press actions, native-selection suppression and placeholder-only management flows, while explicitly rejecting the previous bottom-sheet CRUD implementation.
+- CI run #2215 passed Build, Lint, repository tests, Storybook build and Playwright smoke on the release code head before promotion.
 
 ### Known incomplete work
 
 ---
 
-## Released patches
+---
 
 ## Patch — 2026-09-13-A
 
