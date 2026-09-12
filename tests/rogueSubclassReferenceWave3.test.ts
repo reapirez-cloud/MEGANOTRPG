@@ -41,7 +41,7 @@ test("Mastermind keeps exact legacy limits instead of invented contests", () => 
   assert.match(intrigue.mechanics, /два языка/i)
   assert.match(intrigue.mechanics, /не менее 1 минуты/i)
   assert.match(intrigue.mechanics, /знаете язык/i)
-  assert.doesNotMatch(intrigue.mechanics, /Insight.*Deception|Проницательность.*Обман/i)
+  assert.match(intrigue.mechanics, /не создаёт.*Insight против Deception/i)
 
   const manipulator = subclassFeature("mastermind", "Проницательный манипулятор")
   assert.match(manipulator.mechanics, /Intelligence.*Wisdom.*Charisma.*уровни классов/i)
