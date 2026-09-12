@@ -2,7 +2,9 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-12-B
+## Released patches
+
+## Patch — 2026-09-12-B
 
 **Status:** RELEASED
 **Branch:** `dev` → `main`
@@ -41,9 +43,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - The full «Что нового» chronology screen remains a connected placeholder; this patch only surfaces the latest real feed events on Home.
 
 
+
 ---
 
-## Released patches
 
 ## Patch — 2026-09-12-A
 
