@@ -11,6 +11,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Replaced the UI 1.0 Dock SVG masks with generated transparent PNG artwork for Я, Главная and Чаты, keeping the approved 25/50/25 dock geometry while testing a richer metallic icon treatment.
+
 - Replaced the UI 1.0 Dock's flat SVG mask icons with the generated metallic PNG navigation assets for Я, Главная and Чаты so the local build can be compared directly against the earlier vector treatment.
 
 - Replaced the UI 1.0 «Что нового» placeholder with a full campaign chronology: date-grouped editorial stream, sticky day labels, a narrow time rail and source-specific composition without uniform feed cards.
@@ -18,6 +20,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added progressive loading for older history while keeping the newest events first.
 
 ### Runtime and architecture changes
+
+- Navigation artwork now loads as portable raster assets from `public/ui-v1/nav-icons/*.png`; the previous SVG masks are no longer referenced by UI 1.0.
 
 - Navigation artwork now loads as optimized transparent PNG files from `public/ui-v1/nav-icons/**`; the superseded SVG files were removed so the Dock has one active asset source instead of two competing implementations.
 

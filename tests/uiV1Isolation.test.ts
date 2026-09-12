@@ -151,3 +151,12 @@ test("dock no longer references SVG navigation assets", () => {
   assert.match(styles, /nav-icons\/home\.png/)
   assert.match(styles, /nav-icons\/chats\.png/)
 })
+
+
+test("PNG navigation assets replace the SVG masks", () => {
+  assert.match(styles, /nav-icons\/me\.png/)
+  assert.match(styles, /nav-icons\/home\.png/)
+  assert.match(styles, /nav-icons\/chats\.png/)
+  assert.doesNotMatch(styles, /nav-icons\/(?:me|home|chats)\.svg/)
+  assert.doesNotMatch(styles, /mask-image:\s*url\("\/ui-v1\/nav-icons\//)
+})

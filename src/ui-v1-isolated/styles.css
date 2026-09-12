@@ -669,7 +669,7 @@ button {
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
-  opacity: .9;
+  opacity: .78;
   transition: opacity 160ms ease, filter 160ms ease, transform 160ms ease;
 }
 
