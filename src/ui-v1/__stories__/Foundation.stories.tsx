@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import MeganotDialog from "../overlays/MeganotDialog";
+import MeganotMenu from "../overlays/MeganotMenu";
 import Pressable from "../primitives/Pressable";
 import Surface from "../primitives/Surface";
 
@@ -33,21 +34,45 @@ function FoundationShowcase() {
         </Surface>
       </section>
 
-      <Pressable
-        type="button"
-        onClick={() => setDialogOpen(true)}
-        style={{
-          justifySelf: "start",
-          minHeight: "44px",
-          padding: "0 16px",
-          border: "1px solid var(--mg-color-border)",
-          borderRadius: "var(--mg-radius-sm)",
-          background: "var(--mg-color-surface-2)",
-          color: "var(--mg-color-text-strong)",
-        }}
-      >
-        Открыть Meganot Dialog
-      </Pressable>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+        <Pressable
+          type="button"
+          onClick={() => setDialogOpen(true)}
+          style={{
+            minHeight: "44px",
+            padding: "0 16px",
+            border: "1px solid var(--mg-color-border)",
+            borderRadius: "var(--mg-radius-sm)",
+            background: "var(--mg-color-surface-2)",
+            color: "var(--mg-color-text-strong)",
+          }}
+        >
+          Открыть Meganot Dialog
+        </Pressable>
+
+        <MeganotMenu
+          trigger={
+            <Pressable
+              type="button"
+              style={{
+                minHeight: "44px",
+                padding: "0 16px",
+                border: "1px solid var(--mg-color-border)",
+                borderRadius: "var(--mg-radius-sm)",
+                background: "var(--mg-color-surface-2)",
+                color: "var(--mg-color-text-strong)",
+              }}
+            >
+              Открыть Meganot Menu
+            </Pressable>
+          }
+          items={[
+            { id: "open", label: "Открыть", detail: "Обычное действие" },
+            { id: "disabled", label: "Недоступно", disabled: true },
+            { id: "delete", label: "Удалить", detail: "Опасное действие", danger: true },
+          ]}
+        />
+      </div>
 
       <MeganotDialog
         open={dialogOpen}

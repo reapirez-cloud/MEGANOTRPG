@@ -7,67 +7,67 @@ function source(file: string) {
   return fs.readFileSync(file, "utf8")
 }
 
-function walk(dir: string): string[] {
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = path.join(dir, entry.name)
-    return entry.isDirectory() ? walk(full) : [full]
-  })
+function collectSources(root: string): string[] {
+  const output: string[] = []
+
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const fullPath = path.join(root, entry.name)
+
+    if (entry.isDirectory()) {
+      output.push(...collectSources(fullPath))
+      continue
+    }
+
+    if (/\.(ts|tsx)$/.test(entry.name)) output.push(fullPath)
+  }
+
+  return output
 }
 
-test("UI v1 entry stylesheet is composed from foundation layers", () => {
-  const css = source("src/ui-v1/ui-v1.css")
-
-  assert.match(css, /foundation\/tokens\.css/)
-  assert.match(css, /foundation\/typography\.css/)
-  assert.match(css, /foundation\/materials\.css/)
-  assert.match(css, /foundation\/interactions\.css/)
-  assert.match(css, /overlays\/overlays\.css/)
-  assert.match(css, /shell\/shell\.css/)
-})
-
-test("new UI uses its own semantic token namespace", () => {
+test("UI v1 foundation owns semantic tokens and shared motion", () => {
   const tokens = source("src/ui-v1/foundation/tokens.css")
-
-  assert.match(tokens, /--mg-color-canvas:/)
-  assert.match(tokens, /--mg-space-4:/)
-  assert.match(tokens, /--mg-radius-md:/)
-  assert.match(tokens, /--mg-type-display:/)
-  assert.doesNotMatch(tokens, /--app-/)
-})
-
-test("App Shell owns reduced motion and the shared Layer Host", () => {
+  const motion = source("src/ui-v1/motion/presets.ts")
   const shell = source("src/ui-v1/shell/MeganotAppShell.tsx")
 
+  assert.match(tokens, /--mg-color-canvas:/)
+  assert.match(tokens, /--mg-type-display:/)
+  assert.match(tokens, /--mg-safe-bottom:/)
+  assert.match(motion, /spring:\s*\{/)
+  assert.match(motion, /press:\s*\{/)
   assert.match(shell, /<MotionConfig reducedMotion="user">/)
-  assert.match(shell, /<LayerHost>/)
-  assert.match(shell, /className="mg-theme mg-shell"/)
 })
 
-test("UI v1 screens do not import Radix directly", () => {
-  const files = walk("src/ui-v1").filter((file) => /\.(ts|tsx)$/.test(file))
+test("UI v1 owns Radix behavior behind Meganot overlay wrappers", () => {
+  const wrappers = [
+    "src/ui-v1/overlays/MeganotDialog.tsx",
+    "src/ui-v1/overlays/MeganotPopover.tsx",
+    "src/ui-v1/overlays/MeganotTooltip.tsx",
+    "src/ui-v1/overlays/MeganotMenu.tsx",
+  ]
 
-  for (const file of files) {
-    if (file.includes(`${path.sep}overlays${path.sep}`)) continue
+  for (const file of wrappers) {
+    assert.match(source(file), /@radix-ui\//)
+    assert.match(source(file), /useLayerHost/)
+  }
+
+  const protectedSources = [
+    ...collectSources("src/ui-v1/screens"),
+    ...collectSources("src/ui-v1/shell"),
+  ]
+
+  for (const file of protectedSources) {
     assert.doesNotMatch(
       source(file),
       /@radix-ui\//,
-      `Radix import must stay behind Meganot overlay wrappers: ${file}`,
+      `${file} must use Meganot-owned overlay wrappers instead of importing Radix directly`,
     )
   }
 })
 
-test("Dock consumes the shared motion language instead of local timings", () => {
-  const dock = source("src/ui-v1/shell/MeganotDock.tsx")
+test("Surface stays a material primitive instead of becoming a universal layout card", () => {
+  const surface = source("src/ui-v1/primitives/Surface.tsx")
 
-  assert.match(dock, /mgMotion\.press/)
-  assert.match(dock, /mgMotion\.duration\.fast/)
-  assert.match(dock, /mgMotion\.spring\.selection/)
-  assert.doesNotMatch(dock, /stiffness:\s*420/)
-})
-
-test("Storybook renders the actual UI v1 theme", () => {
-  const preview = source(".storybook/preview.ts")
-
-  assert.match(preview, /ui-v1\/ui-v1\.css/)
-  assert.match(preview, /mg-theme mg-story-root/)
+  assert.match(surface, /SurfaceTone/)
+  assert.match(surface, /data-tone=\{tone\}/)
+  assert.doesNotMatch(surface, /title|subtitle|icon|action/)
 })

@@ -17,7 +17,8 @@ Implemented:
 - Motion presets for press, selection, scene and reveal behavior;
 - global `MotionConfig` with `reducedMotion="user"`;
 - shared `LayerHost` for transient UI;
-- Meganot-owned wrappers for Radix Dialog, Popover and Tooltip;
+- Meganot-owned wrappers for Radix Dialog, Popover, Tooltip and Dropdown/Menu;
+- architecture guard preventing new UI screens/shell code from importing Radix directly;
 - Storybook now loads the real UI v1 foundation and shows a Foundation showcase;
 - the App Shell and Dock consume the shared tokens/motion foundation.
 
