@@ -2,6 +2,8 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
+## Released patches
+
 ## Patch — 2026-09-12-A
 
 **Status:** RELEASED
