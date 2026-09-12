@@ -36,8 +36,8 @@ test("Rogue wave 3 publishes Mastermind Scout and Phantom literary feature packs
 
 test("Mastermind keeps exact legacy limits instead of invented contests", () => {
   const intrigue = subclassFeature("mastermind", "Мастер интриг")
-  assert.match(intrigue.mechanics, /Disguise Kit/i)
-  assert.match(intrigue.mechanics, /Forgery Kit/i)
+  assert.match(intrigue.mechanics, /Набором для грима/i)
+  assert.match(intrigue.mechanics, /Набором для подделки документов/i)
   assert.match(intrigue.mechanics, /два языка/i)
   assert.match(intrigue.mechanics, /не менее 1 минуты/i)
   assert.match(intrigue.mechanics, /знаете язык/i)
@@ -62,7 +62,7 @@ test("Scout preserves Xanathar Ambush Master and Sudden Strike target semantics"
   const strike = subclassFeature("scout", "Внезапный удар")
   assert.match(strike.mechanics, /действие Attack/i)
   assert.match(strike.mechanics, /бонусным действием/i)
-  assert.match(strike.mechanics, /Sneak Attack нельзя применить к одной цели более одного раза за ход/i)
+  assert.match(strike.mechanics, /Sneak Attack нельзя применить к одной(?: и той же)? цели более одного раза/i)
   assert.match(strike.mechanics, /сама дополнительная атака не обязана выбирать другую цель/i)
   assert.doesNotMatch(strike.mechanics, /работает только.*обе атаки.*разным существам/i)
 })
