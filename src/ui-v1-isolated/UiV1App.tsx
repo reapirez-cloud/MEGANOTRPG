@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 type RootSpace = "home" | "workspace" | "chats"
 type SectionId =
@@ -119,6 +119,33 @@ function go(path: string) {
   window.location.hash = path.startsWith("#") ? path : `#/${path}`
 }
 
+type TelegramHapticWindow = Window & {
+  Telegram?: {
+    WebApp?: {
+      HapticFeedback?: {
+        impactOccurred?: (style: "light" | "medium" | "heavy" | "rigid" | "soft") => void
+      }
+    }
+  }
+}
+
+function softHaptic() {
+  const telegramHaptics = (window as TelegramHapticWindow).Telegram?.WebApp?.HapticFeedback
+
+  if (telegramHaptics?.impactOccurred) {
+    try {
+      telegramHaptics.impactOccurred("soft")
+      return
+    } catch {
+      // Fall back to the browser vibration API below.
+    }
+  }
+
+  if (typeof navigator.vibrate === "function") {
+    navigator.vibrate(8)
+  }
+}
+
 function routeKey(route: Route) {
   return route.type === "root" ? `root:${route.space}` : `section:${route.section}`
 }
@@ -128,7 +155,13 @@ function activeRoot(route: Route): RootSpace {
   return "home"
 }
 
-function Dock({ route }: { route: Route }) {
+function Dock({
+  route,
+  onNavigate,
+}: {
+  route: Route
+  onNavigate: (space: RootSpace) => void
+}) {
   const active = activeRoot(route)
   const items: Array<{ id: RootSpace; label: string; path: string }> = [
     { id: "workspace", label: "Я", path: "workspace" },
@@ -137,7 +170,7 @@ function Dock({ route }: { route: Route }) {
   ]
 
   return (
-    <nav className="u1-dock" aria-label="Основная навигация">
+    <nav className="u1-dock" aria-label="Основная навигация" data-active={active}>
       <span className="u1-dock__hull" aria-hidden="true" />
       <span className="u1-dock__crown" aria-hidden="true" />
       {items.map((item) => {
@@ -150,7 +183,7 @@ function Dock({ route }: { route: Route }) {
             className={`u1-dock__item u1-dock__item--${item.id}`}
             data-selected={selected || undefined}
             aria-current={selected ? "page" : undefined}
-            onClick={() => go(item.path)}
+            onClick={() => onNavigate(item.id)}
           >
             {selected && (
               <motion.span
@@ -207,7 +240,10 @@ function Home() {
           className="u1-avatar"
           type="button"
           aria-label="Открыть пространство Я"
-          onClick={() => go("workspace")}
+          onClick={() => {
+            softHaptic()
+            go("workspace")
+          }}
         >
           VI
         </button>
@@ -310,8 +346,91 @@ function Screen({ route }: { route: Route }) {
   )
 }
 
+const rootSpaceOrder: RootSpace[] = ["workspace", "home", "chats"]
+
+type SwipeState = {
+  pointerId: number
+  startX: number
+  startY: number
+  lastX: number
+  lastY: number
+  startedAt: number
+}
+
 export default function UiV1App() {
   const [route, setRoute] = useState<Route>(() => parseRoute())
+  const swipeRef = useRef<SwipeState | null>(null)
+  const suppressClickUntilRef = useRef(0)
+
+  const navigateRoot = useCallback((space: RootSpace) => {
+    if (route.type === "root" && route.space === space) return
+
+    softHaptic()
+    go(space)
+  }, [route])
+
+  const onPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (route.type !== "root" || event.pointerType === "mouse") return
+
+    swipeRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
+      startedAt: performance.now(),
+    }
+
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }, [route])
+
+  const onPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const swipe = swipeRef.current
+    if (!swipe || swipe.pointerId !== event.pointerId) return
+
+    swipe.lastX = event.clientX
+    swipe.lastY = event.clientY
+  }, [])
+
+  const finishSwipe = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const swipe = swipeRef.current
+    swipeRef.current = null
+
+    if (!swipe || swipe.pointerId !== event.pointerId || route.type !== "root") return
+
+    const deltaX = swipe.lastX - swipe.startX
+    const deltaY = swipe.lastY - swipe.startY
+    const elapsed = performance.now() - swipe.startedAt
+    const horizontalDistance = Math.abs(deltaX)
+    const verticalDistance = Math.abs(deltaY)
+
+    const isIntentionalSwipe =
+      horizontalDistance >= 54 &&
+      horizontalDistance > verticalDistance * 1.35 &&
+      elapsed <= 850
+
+    if (!isIntentionalSwipe) return
+
+    const currentIndex = rootSpaceOrder.indexOf(route.space)
+    const direction = deltaX < 0 ? 1 : -1
+    const nextSpace = rootSpaceOrder[currentIndex + direction]
+
+    if (!nextSpace) return
+
+    suppressClickUntilRef.current = performance.now() + 320
+    navigateRoot(nextSpace)
+  }, [navigateRoot, route])
+
+  const cancelSwipe = useCallback(() => {
+    swipeRef.current = null
+  }, [])
+
+  const suppressSwipeClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (performance.now() >= suppressClickUntilRef.current) return
+
+    event.preventDefault()
+    event.stopPropagation()
+  }, [])
 
   useEffect(() => {
     if (!window.location.hash) {
@@ -326,7 +445,14 @@ export default function UiV1App() {
   return (
     <div className="u1-app">
       <div className="u1-backdrop" aria-hidden="true" />
-      <div className="u1-stage">
+      <div
+        className="u1-stage"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={finishSwipe}
+        onPointerCancel={cancelSwipe}
+        onClickCapture={suppressSwipeClick}
+      >
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={routeKey(route)}
@@ -340,7 +466,7 @@ export default function UiV1App() {
           </motion.div>
         </AnimatePresence>
 
-        <Dock route={route} />
+        <Dock route={route} onNavigate={navigateRoot} />
       </div>
     </div>
   )

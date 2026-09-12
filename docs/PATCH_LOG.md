@@ -11,6 +11,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Added mobile-first root navigation gestures to UI 1.0: deliberate horizontal swipes move between Я / Главная / Чаты while vertical scrolling remains native.
+- Added restrained soft haptics for root navigation, preferring Telegram HapticFeedback when available and falling back to a short browser vibration on supported devices.
+- Replaced the active Dock frame with a local grayscale glow and stronger Home-crown glow so location remains visible without introducing another moving rectangle.
+
 - Refined the new raised-center dock interaction: active states now appear inside their own segment instead of sliding across the raised Home crown, and mobile blue tap flashes are suppressed while keyboard focus remains visible.
 - Reduced the start-page preview scale for a denser, calmer composition and rebalanced the secondary row so the full «Достижения» label fits cleanly.
 

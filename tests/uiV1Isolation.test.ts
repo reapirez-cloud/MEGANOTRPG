@@ -74,3 +74,22 @@ test("home previews use the compact proportions and achievements label fits inte
   assert.match(styles, /\.u1-preview--achievements \.u1-preview__caption strong/)
   assert.match(styles, /white-space:\s*nowrap/)
 })
+
+
+test("root spaces support deliberate horizontal swipe navigation with soft haptics", () => {
+  assert.match(app, /rootSpaceOrder: RootSpace\[\] = \["workspace", "home", "chats"\]/)
+  assert.match(app, /horizontalDistance >= 54/)
+  assert.match(app, /horizontalDistance > verticalDistance \* 1\.35/)
+  assert.match(app, /onPointerDown=\{onPointerDown\}/)
+  assert.match(app, /onPointerUp=\{finishSwipe\}/)
+  assert.match(app, /impactOccurred\("soft"\)/)
+  assert.match(app, /navigator\.vibrate\(8\)/)
+  assert.match(styles, /touch-action:\s*pan-y/)
+})
+
+test("dock uses local glow instead of a selected-state frame", () => {
+  assert.match(styles, /radial-gradient\(/)
+  assert.match(styles, /text-shadow:\s*0 0 13px/)
+  assert.match(styles, /data-active="home"/)
+  assert.doesNotMatch(styles, /\.u1-dock__selection[\s\S]*?box-shadow:\s*inset 0 0 0 1px/)
+})
