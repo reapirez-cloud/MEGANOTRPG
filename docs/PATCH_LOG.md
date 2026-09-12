@@ -9,7 +9,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 **Base main:** `995626bae3d4502ea072c0cb7b4ceb7480fd89f6`
 **Started:** 2026-09-12
 **Released:** 2026-09-12
-**Release identity:** pending main fast-forward
+**Release identity:** `main / dd4758fb528b18b8c834c8a19132f073caa0504a`
 
 ### Player-facing changes
 
