@@ -206,6 +206,34 @@ Before adding a write path:
 Architecture rules that materially affect future implementation must live in repository instructions/docs adjacent to the relevant code, not only in chat, commit messages or temporary plans. Keep short pointer comments in central implementation files so an agent opening the code is directed to the full contract.
 
 
+
+## Working fallback / connection placeholder — mandatory
+
+If a requested feature, data source, route, external service, subsystem, asset pipeline, or runtime dependency cannot be connected safely in the current task, agents MUST leave a **working connection placeholder** instead of faking completion, silently dropping the feature, or wiring the new UI back into legacy behavior.
+
+Required pattern:
+
+```text
+current working surface
+-> stable adapter / route / component / source contract
+-> explicit placeholder or graceful fallback
+-> later real integration replaces only the placeholder
+```
+
+The placeholder must be designed for replacement, not demolition:
+
+- keep the intended final route, component boundary, source id/type, adapter interface, or event contract stable where possible;
+- make the current state usable and non-breaking;
+- clearly distinguish unavailable data/functionality from real connected data;
+- never invent fake backend results, fake persistence, fake success states, or mock content that could be mistaken for production truth;
+- preserve enough metadata/context for the later connector to attach without redesigning the parent screen;
+- add a regression test when the connection seam is important enough that a future agent could accidentally bypass or remove it;
+- record the unresolved dependency in the active patch log when it materially affects shipped behavior.
+
+For UI 1.0, this means a real route plus a new-UI placeholder. For data/runtime work, this means a stable adapter/fallback contract rather than hard-coded pretend data. For assets or external tools, keep a portable source or import seam when direct synchronization is unavailable.
+
+If the missing dependency later becomes available, replace the placeholder at the seam. Do not rebuild the parent workflow unless its contract truly needs to change.
+
 ## UI 1.0 incremental integration — mandatory
 
 MEGANOT UI 1.0 is being built incrementally over working application behavior.

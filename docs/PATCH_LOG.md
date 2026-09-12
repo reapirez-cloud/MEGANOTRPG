@@ -17,6 +17,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added a repository-wide mandatory working-placeholder rule: when a requested integration cannot be connected safely yet, agents must leave a stable working seam/placeholder for later attachment instead of faking completion, dropping the feature, or routing the new UI back into legacy behavior.
+
 - Added a dedicated UI 1.0 chronology data adapter that resolves campaign membership, author/profile identity, character identity and signed campaign-media URLs without importing legacy UI contexts.
 - Supabase Realtime remains a refresh signal rather than the only source of truth: every feed change triggers a fresh chronology query.
 - Added stable future source presentation/connection slots for GM notes, world, zone, NPC, lore and system events. The current database still constrains feed source types to diary/art/achievement/update/moment, so future source kinds remain intentionally unpersisted until a dedicated migration is approved.
