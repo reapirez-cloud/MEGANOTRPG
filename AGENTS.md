@@ -252,3 +252,16 @@ The new MEGANOT UI 1.0 is a **separate application surface**, not a redesign lay
 - Do not reuse legacy visual classes even if their current appearance seems convenient.
 
 The purpose of this separation is to allow UI 1.0 to be designed as a genuinely new product interface while the old application remains stable and independently runnable.
+
+
+## UI 1.0 visual direction — current product decision
+
+The current MEGANOT UI 1.0 visual direction is intentionally grayscale and editorial.
+
+- Base palette: graphite, charcoal, steel and stone grays with warm off-white text.
+- Avoid decorative purple/blue/green AI gradients as a default visual language.
+- The interface should feel like a modern campaign journal/archive, not a generic admin dashboard.
+- Home uses asymmetric hierarchy and unequal section weight instead of a uniform card grid.
+- Section titles live on their visual preview and must remain readable through a built-in dark scrim/contrast treatment.
+- Use color later only when it comes from campaign artwork, semantic states, or a deliberate product decision.
+- Deferred destinations always receive a clean UI 1.0 placeholder and stable route before their real implementation.

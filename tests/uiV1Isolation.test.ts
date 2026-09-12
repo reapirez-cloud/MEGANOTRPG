@@ -22,3 +22,29 @@ test("UI v1 does not load the legacy stylesheet graph", () => {
 test("legacy app does not import the isolated UI v1 tree", () => {
   assert.doesNotMatch(legacyApp, /ui-v1-isolated/)
 })
+
+test("UI v1 start page keeps the approved grayscale visual direction", () => {
+  assert.match(styles, /--u1-canvas:\s*#090a0b/)
+  assert.match(styles, /--u1-steel:/)
+  assert.match(styles, /--u1-stone:/)
+  assert.doesNotMatch(styles, /145, 104, 185|72, 105, 113|76, 122, 101/)
+  assert.match(app, /Главная\s*<br\s*\/>\s*картина/)
+})
+
+test("every deferred UI v1 destination has a stable placeholder route", () => {
+  for (const path of [
+    "workspace",
+    "chats",
+    "whats-new",
+    "world",
+    "society-news",
+    "achievements",
+    "art",
+    "updates",
+  ]) {
+    assert.match(app, new RegExp(path))
+  }
+
+  assert.match(app, /function Placeholder/)
+  assert.doesNotMatch(app, /<Feed|<World|<Chats|<GmWorkspace|<CharacterProfileV2/)
+})

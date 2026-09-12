@@ -11,6 +11,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Rebuilt the isolated MEGANOT UI 1.0 start page from scratch around a grayscale editorial visual system: graphite/steel/stone surfaces, warm off-white typography, asymmetric section hierarchy and a 25/50/25 Я / Главная / Чаты dock.
+- Every start-page destination now has a stable UI 1.0 route and an explicit placeholder screen until that feature is designed, including What’s New, World, Society News, Achievements, Art, Updates, Chats and Я.
+
 - Reframed MEGANOT UI 1.0 as a physically separate application surface. The old application remains independently runnable at the normal entry, while the new design is previewed locally at `/ui-v1.html#/home` with no legacy page or stylesheet imports.
 - New UI destinations that are not designed yet use explicit placeholders instead of rendering legacy interfaces.
 

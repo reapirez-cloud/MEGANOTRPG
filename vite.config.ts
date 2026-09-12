@@ -12,5 +12,13 @@ export default defineConfig({
     alias: {
       "@": path.resolve(import.meta.dirname, "./src")
     }
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        legacy: path.resolve(import.meta.dirname, "index.html"),
+        uiV1: path.resolve(import.meta.dirname, "ui-v1.html")
+      }
+    }
   }
 })
