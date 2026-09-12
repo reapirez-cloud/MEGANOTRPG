@@ -33,4 +33,9 @@ Current checkpoint:
 - Wave 3 is `src/data/classes/rogueSubclassReferenceWave3.ts`: Mastermind and Scout use exact Xanathar legacy rules; Phantom uses the Tasha’s Cauldron of Everything rules rather than later revised/UA semantics.
 - Regression coverage explicitly rejects known bad source-copy claims: Master of Intrigue does not invent an Insight-vs-Deception detection rule; Scout Sudden Strike does not require every extra attack to target a different creature; Phantom Soul Tokens do not invent an Undead/Construct exclusion, spirit answers need not be truthful, Wails rolls half the Sneak Attack dice, and Tasha Death’s Friend grants its fallback token after Long Rest rather than on Initiative.
 
-Next translation item: supply literary prose for base Rogue `Точный прицел` and `Скользкий ум`. After that the Rogue text/reference layer can be marked fully READY before runtime implementation starts.
+Canonical READY plan: `src/data/classes/rogueRuntimePlan.md`.
+
+Next Rogue stage: **Stage 1 — source freeze, literary closure and executable specification**.
+- Supply literary prose for base Rogue `Точный прицел` and `Скользкий ум`.
+- Re-audit/freeze base + all 9 subclass rules and classify every feature by runtime ownership before executable work.
+- After Stage 1 closes, follow Stages 2–7 in `rogueRuntimePlan.md` in order. Do not invent a new Rogue plan unless the user explicitly changes scope.
