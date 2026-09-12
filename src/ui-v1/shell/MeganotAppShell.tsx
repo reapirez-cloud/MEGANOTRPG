@@ -1,6 +1,8 @@
+import { MotionConfig } from "motion/react"
 import type { ReactNode } from "react"
 
 import type { RootSpace } from "../../lib/appRoute"
+import LayerHost from "../overlays/LayerHost"
 import AppBackdrop from "./AppBackdrop"
 import AppScene from "./AppScene"
 import MeganotDock from "./MeganotDock"
@@ -19,12 +21,16 @@ export default function MeganotAppShell({
   onNavigate,
 }: Props) {
   return (
-    <div className="mg-shell">
-      <AppBackdrop />
-      <div className="mg-shell__content">
-        <AppScene>{children}</AppScene>
-        {showDock && <MeganotDock active={activeSpace} onNavigate={onNavigate} />}
+    <MotionConfig reducedMotion="user">
+      <div className="mg-theme mg-shell">
+        <LayerHost>
+          <AppBackdrop />
+          <div className="mg-shell__content">
+            <AppScene>{children}</AppScene>
+            {showDock && <MeganotDock active={activeSpace} onNavigate={onNavigate} />}
+          </div>
+        </LayerHost>
       </div>
-    </div>
+    </MotionConfig>
   )
 }

@@ -1,6 +1,7 @@
 import { motion } from "motion/react"
 
 import type { RootSpace } from "../../lib/appRoute"
+import { mgMotion } from "../motion/presets"
 
 type Props = {
   active: RootSpace
@@ -22,17 +23,17 @@ export default function MeganotDock({ active, onNavigate }: Props) {
           <motion.button
             key={item.id}
             type="button"
-            className={`mg-dock__item mg-dock__item--${item.id} ${selected ? "is-active" : ""}`}
+            className={`mg-dock__item mg-dock__item--${item.id} mg-interactive mg-focusable ${selected ? "is-active" : ""}`}
             aria-current={selected ? "page" : undefined}
             onClick={() => onNavigate(item.id)}
-            whileTap={{ scale: 0.97 }}
-            transition={{ duration: 0.14 }}
+            whileTap={mgMotion.press}
+            transition={{ duration: mgMotion.duration.fast }}
           >
             {selected && (
               <motion.span
                 className="mg-dock__active"
                 layoutId="meganot-dock-active"
-                transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                transition={mgMotion.spring.selection}
               />
             )}
             <span className="mg-dock__label">{item.label}</span>

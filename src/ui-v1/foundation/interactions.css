@@ -1,0 +1,35 @@
+.mg-focusable {
+  outline: none;
+}
+
+.mg-focusable:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--mg-color-accent) 76%, transparent);
+  outline-offset: 3px;
+}
+
+.mg-interactive {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.mg-interactive[aria-disabled="true"],
+.mg-interactive:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+.mg-story-root {
+  min-height: 100vh;
+  padding: var(--mg-space-6);
+  background:
+    radial-gradient(circle at 70% 10%, rgba(95, 69, 133, 0.18), transparent 32%),
+    var(--mg-color-canvas);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mg-theme *,
+  .mg-theme *::before,
+  .mg-theme *::after {
+    scroll-behavior: auto !important;
+  }
+}

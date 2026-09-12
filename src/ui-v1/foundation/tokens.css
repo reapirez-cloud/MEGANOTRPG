@@ -1,0 +1,86 @@
+.mg-theme {
+  color-scheme: dark;
+
+  --mg-color-canvas: #07070a;
+  --mg-color-canvas-deep: #040406;
+  --mg-color-surface-1: rgba(19, 17, 23, 0.88);
+  --mg-color-surface-2: rgba(28, 24, 34, 0.9);
+  --mg-color-surface-3: rgba(41, 34, 51, 0.92);
+  --mg-color-surface-inset: rgba(9, 8, 12, 0.72);
+  --mg-color-glass: rgba(14, 12, 18, 0.7);
+
+  --mg-color-text-strong: #f7f4fb;
+  --mg-color-text: rgba(242, 237, 247, 0.84);
+  --mg-color-text-muted: rgba(231, 225, 240, 0.54);
+  --mg-color-text-faint: rgba(231, 225, 240, 0.36);
+
+  --mg-color-border-soft: rgba(255, 255, 255, 0.07);
+  --mg-color-border: rgba(230, 216, 245, 0.12);
+  --mg-color-border-strong: rgba(230, 216, 245, 0.2);
+
+  --mg-color-accent: #c7b7df;
+  --mg-color-accent-strong: #e0d4f0;
+  --mg-color-danger: #ef9a9a;
+  --mg-color-success: #8fcca7;
+  --mg-color-warning: #e0bd82;
+
+  --mg-shadow-soft: 0 10px 34px rgba(0, 0, 0, 0.2);
+  --mg-shadow-raised: 0 18px 54px rgba(0, 0, 0, 0.34);
+  --mg-shadow-overlay: 0 24px 80px rgba(0, 0, 0, 0.52);
+
+  --mg-blur-chrome: 24px;
+  --mg-blur-overlay: 30px;
+
+  --mg-radius-xs: 10px;
+  --mg-radius-sm: 14px;
+  --mg-radius-md: 18px;
+  --mg-radius-lg: 24px;
+  --mg-radius-xl: 30px;
+  --mg-radius-pill: 999px;
+
+  --mg-space-1: 4px;
+  --mg-space-2: 8px;
+  --mg-space-3: 12px;
+  --mg-space-4: 16px;
+  --mg-space-5: 20px;
+  --mg-space-6: 24px;
+  --mg-space-7: 32px;
+  --mg-space-8: 40px;
+  --mg-space-9: 48px;
+
+  --mg-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --mg-type-display: clamp(2.25rem, 10vw, 3.5rem);
+  --mg-type-title: clamp(1.5rem, 6vw, 2rem);
+  --mg-type-heading: 1.125rem;
+  --mg-type-body: 0.9375rem;
+  --mg-type-label: 0.8125rem;
+  --mg-type-meta: 0.6875rem;
+
+  --mg-leading-display: 0.94;
+  --mg-leading-title: 1.02;
+  --mg-leading-heading: 1.15;
+  --mg-leading-body: 1.5;
+  --mg-leading-compact: 1.25;
+
+  --mg-weight-regular: 450;
+  --mg-weight-medium: 560;
+  --mg-weight-semibold: 650;
+  --mg-weight-bold: 740;
+
+  --mg-duration-instant: 90ms;
+  --mg-duration-fast: 140ms;
+  --mg-duration-base: 220ms;
+  --mg-duration-slow: 360ms;
+
+  --mg-z-backdrop: 0;
+  --mg-z-scene: 10;
+  --mg-z-chrome: 20;
+  --mg-z-layer: 50;
+  --mg-z-tooltip: 80;
+
+  --mg-safe-top: env(safe-area-inset-top, 0px);
+  --mg-safe-right: env(safe-area-inset-right, 0px);
+  --mg-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --mg-safe-left: env(safe-area-inset-left, 0px);
+}
