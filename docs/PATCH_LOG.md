@@ -11,6 +11,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Completed the Rogue literary subclass roster with full feature-by-feature Voss copy for Mastermind, Scout and Phantom; all nine supported Rogue subclass identities now have authored feature packs in the public reference overlay, while the class remains explicitly reference-only until runtime work begins.
+
 - Warlock reference now follows the deployed runtime boundary instead of presenting the entire class as reference-only: the PHB 2024 base class plus Archfey, Celestial, Fiend and Great Old One use their real Character Engine templates, while supplemental and expanded literary patrons remain explicitly outside certified runtime.
 - Fixed the post-rest chat card so each completed spell, class-choice or roll task disappears immediately after its successful confirmation; once no actionable post-rest tasks remain, the card no longer occupies the bottom of the chat.
 - Completed the Cleric runtime package in the supported scope: the base class and all fourteen domains now use the certified Character Engine resource/action/spell pipeline, with the previously split resource identities reconciled so finite abilities spend the real ledgers shown on the character.
@@ -27,6 +29,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added Bard Stage 4 base runtime: Expertise now selects only skills the character actually owns, Jack of All Trades adds half proficiency only to untrained skill checks, Countercharm is a structured 30-foot Reaction, and Words of Creation grants Power Word Heal/Power Word Kill plus the optional second target rule. The Bard still remains reference-only until subclass/final certification work is complete.
 
 ### Runtime and architecture changes
+
+- Rogue Wave 3 reference mechanics were independently reconciled against the published legacy rules rather than trusting supplied prose: Mastermind imitation/truth semantics, Scout Sudden Strike targeting, and Phantom Wails/Soul Trinket/Death’s Friend behavior were corrected. No Rogue Character Engine, Supabase runtime template or persistent resource was introduced by this text/reference pass.
 
 - Reconciled the Warlock reference catalog, authoring boundary and canonical class-work ledger with production Supabase. Production already contains `class:warlock` at `xphb-2024-warlock-ui-qa-v1` plus exactly four active PHB 2024 patron templates at `xphb-2024-warlock-subclasses-runtime-v1`, so Stage 1 required no database mutation.
 - Added a strict Warlock reference boundary: Hexblade, Fathomless, Genie, Undead and Undying remain reference-only pending runtime work; Raven Queen, Seeker and Great Wyrm remain expanded literary/UA material and are not silently promoted into the supported runtime roster.
@@ -67,6 +71,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Final certification explicitly records unsupported cross-class systems as generic pending debt instead of inventing Bard branches: starting-vs-multiclass entry profiles, combined multiclass spell-slot aggregation, and the generic feat/ASI source runtime.
 
 ### Tests / verification
+- Added `tests/rogueSubclassReferenceWave3.test.ts` to lock the three new subclass feature packs and reject known incorrect Mastermind, Scout and Phantom rule variants; updated the Rogue work ledger to keep runtime honestly `NOT_STARTED` and preserve the two remaining base literary gaps.
 - Added `tests/bardCatalogStage1.test.ts` to run the strict class quality gate, parser -> Character Engine resolution at low/mid/high Bard levels, starting proficiency choices, Stage 1 non-runtime guarantees and the corrected 2024 reference rules.
 - Dry-ran the complete Bard Stage 1 SQL against the connected production schema inside a rolled-back transaction; the migration executed successfully without changing production data.
 - The first CI pass caught the shared class-resource-policy contract missing from the migration header/test. Added `CLASS_RESOURCE_POLICY: short-long-rest-v1` and real `assertClassResourcePolicy` coverage rather than bypassing the regression.
