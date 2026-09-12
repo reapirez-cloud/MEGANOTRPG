@@ -60,3 +60,17 @@ test("UI v1 dock has a raised central crown instead of a flat rectangular bar", 
   assert.match(styles, /height:\s*78px/)
   assert.match(styles, /margin-top:\s*-11px/)
 })
+
+
+test("dock active state stays inside its own segment and mobile tap flash is disabled", () => {
+  assert.doesNotMatch(app, /layoutId="ui-v1-dock-selection"/)
+  assert.match(app, /initial=\{\{ opacity: 0, scale: 0\.96 \}\}/)
+  assert.match(styles, /-webkit-tap-highlight-color:\s*transparent/)
+})
+
+test("home previews use the compact proportions and achievements label fits intentionally", () => {
+  assert.match(styles, /min-height:\s*clamp\(218px, 58vw, 320px\)/)
+  assert.match(styles, /grid-template-columns:\s*minmax\(0, 1\.2fr\) minmax\(0, 0\.8fr\)/)
+  assert.match(styles, /\.u1-preview--achievements \.u1-preview__caption strong/)
+  assert.match(styles, /white-space:\s*nowrap/)
+})

@@ -155,8 +155,9 @@ function Dock({ route }: { route: Route }) {
             {selected && (
               <motion.span
                 className="u1-dock__selection"
-                layoutId="ui-v1-dock-selection"
-                transition={{ type: "spring", stiffness: 430, damping: 40 }}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
               />
             )}
             <span className="u1-dock__label">{item.label}</span>
@@ -172,7 +173,7 @@ function SectionPreview({ item }: { item: PreviewItem }) {
   return (
     <motion.button
       type="button"
-      className={`u1-preview u1-preview--${item.shape} u1-preview--${item.tone}`}
+      className={`u1-preview u1-preview--${item.shape} u1-preview--${item.tone} u1-preview--${item.section}`}
       onClick={() => go(`home/${item.section}`)}
       whileTap={{ scale: 0.989 }}
       transition={{ duration: 0.14 }}
