@@ -70,29 +70,28 @@ Home reads real Supabase data for campaign identity/cover, chronology, art previ
 
 ## World — canonical player-facing terminology
 
-The current user-facing World vocabulary is **Зоны / NPC / Лор / Карта**:
+The current user-facing World vocabulary is **Локации / Персонажи / Лор / Карта**:
 
 ```text
 Мир
-├─ Зоны
-├─ NPC
+├─ Локации
+├─ Персонажи
 ├─ Лор
 └─ Карта
 ```
 
-Technical names are intentionally allowed to differ:
+Terminology rule:
 
-- Zones are stored/owned through `locations` / Larisa location commands;
-- the stable World subsection id for NPC may remain `characters` for route compatibility;
-- the World NPC screen must query NPCs only, not player characters.
-
-Do not change user-facing labels back to **Локации** or **Персонажи** just because internal tables/types use those names.
+- **Локации** is the player-facing word. Technical storage/engine names remain `locations`.
+- **Персонажи** is the player-facing World label for characters who inhabit the world. The stable subsection id may remain `characters`, and the current storage filter may still use `character_type = npc`.
+- **Игроки** is the player-facing term for PCs / player-controlled characters in party/workspace management surfaces.
+- `NPC`, `PC`, `zone` and similar shorthand may remain in code, contracts and data fields where technically useful, but should not be the default immersive UI vocabulary.
 
 Current World status:
 
 - hub — implemented;
-- Zones hierarchy/navigation — implemented first pass;
-- NPC list — implemented first pass, NPC-only;
+- Locations hierarchy/navigation — implemented first pass;
+- World Characters list — implemented first pass; technically filtered to non-player characters;
 - Lore list — implemented first pass;
 - Map — intentional placeholder until its own design stage;
 - dedicated detail/edit/create interfaces — deferred unless explicitly designed.
@@ -142,7 +141,7 @@ The existing Zone long-press/context action implementation is temporary and must
 Planned proof sequence remains:
 
 1. Snake core/provider/trigger/context menu;
-2. migrate Zones and delete their local long-press runtime;
+2. migrate Locations and delete their local long-press runtime;
 3. use Inventory as the second unrelated entity family proving Snake is generic;
 4. add further universal surfaces only when real flows require them.
 
@@ -162,7 +161,7 @@ B. Home                                   DONE first production pass
 C. chronology/basic content sections      DONE / partial by section
 D. World                                  PARTIAL, usable first pass
 E. Snake interaction runtime              NEXT major architecture stage
-F. Inventory as Snake proof #2            AFTER Snake/Zone migration
+F. Inventory as Snake proof #2            AFTER Snake/Location migration
 G. Workspace: Player + GM                 AFTER interaction foundation
 H. Character UI / Sheet / Inventory UI    AFTER Workspace foundation
 I. Chats UI 1.0                           DEFERRED

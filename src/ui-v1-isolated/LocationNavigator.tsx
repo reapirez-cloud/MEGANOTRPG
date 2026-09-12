@@ -27,7 +27,7 @@ function LocationHeader({
       >
         ←
       </button>
-      <h1>Зоны</h1>
+      <h1>Локации</h1>
       <span className="u1-section-head__action">{action}</span>
     </header>
   )
@@ -145,7 +145,7 @@ function LocationTile({
       <button
         type="button"
         className="u1-location-open-button"
-        aria-label={`Открыть зону: ${item.name}`}
+        aria-label={`Открыть локацию: ${item.name}`}
         onClick={onOpen}
       >
         <span className="u1-location-open-button__glyph" aria-hidden="true">↗</span>
@@ -200,18 +200,18 @@ function LocationInlineMenu({
   onBack: () => void
 }) {
   const actions: LocationAction[] = [
-    { id: "open", label: "Открыть зону", run: onOpen },
-    { id: "add-child", label: "Добавить подзону", managerOnly: true, placeholderTitle: "Добавление подзоны" },
+    { id: "open", label: "Открыть локацию", run: onOpen },
+    { id: "add-child", label: "Добавить вложенную локацию", managerOnly: true, placeholderTitle: "Добавление вложенной локации" },
     { id: "add-transition", label: "Добавить переход", managerOnly: true, placeholderTitle: "Добавление перехода" },
-    { id: "edit", label: "Редактировать", managerOnly: true, placeholderTitle: "Редактирование зоны" },
-    { id: "delete", label: "Удалить", managerOnly: true, danger: true, placeholderTitle: "Удаление зоны" },
+    { id: "edit", label: "Редактировать", managerOnly: true, placeholderTitle: "Редактирование локации" },
+    { id: "delete", label: "Удалить", managerOnly: true, danger: true, placeholderTitle: "Удаление локации" },
   ]
 
   return (
     <motion.div
       className="u1-location-inline-menu"
       role="group"
-      aria-label={`Действия с зоной: ${location.name}`}
+      aria-label={`Действия с локацией: ${location.name}`}
       initial={{ height: 0, opacity: 0, y: -6 }}
       animate={{ height: "auto", opacity: 1, y: 0 }}
       exit={{ height: 0, opacity: 0, y: -6 }}
@@ -369,7 +369,7 @@ function LocationDetailConnection({ location }: { location: UiV1Location }) {
       <section className="u1-location-detail-seam">
         {location.display_image_url && <img src={location.display_image_url} alt="" draggable={false} />}
         {location.summary && <p>{location.summary}</p>}
-        <span>Карточка зоны подключена отдельным маршрутом. Полное наполнение спроектируем своим этапом.</span>
+        <span>Карточка локации подключена отдельным маршрутом. Полное наполнение спроектируем своим этапом.</span>
       </section>
     </main>
   )
@@ -469,7 +469,7 @@ export function LocationNavigator({
     return (
       <main className="u1-section-page">
         <LocationHeader backTo="home/world/locations" />
-        <EmptyState>Эта зона недоступна или больше не существует.</EmptyState>
+        <EmptyState>Эта локация недоступна или больше не существует.</EmptyState>
       </main>
     )
   }
@@ -545,11 +545,11 @@ export function LocationNavigator({
           <button
             type="button"
             className="u1-section-add"
-            aria-label="Добавить главную зону"
+            aria-label="Добавить главную локацию"
             onClick={() => {
               setActionTargetId(null)
               setInlinePlaceholder(null)
-              setRootPlaceholder("Создание главной зоны")
+              setRootPlaceholder("Создание главной локации")
             }}
           >
             +

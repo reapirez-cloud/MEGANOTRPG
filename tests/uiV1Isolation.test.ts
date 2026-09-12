@@ -200,9 +200,9 @@ test("Location previews open inline actions without native text selection", () =
 test("World and Knowledge Base use extensible registries and keep Map intentionally shallow", () => {
   assert.match(sectionRegistry, /worldHubSections/)
   assert.match(sectionRegistry, /knowledgeBaseSections/)
-  assert.match(sectionRegistry, /id: "locations", title: "Зоны"/)
-  assert.match(sectionRegistry, /id: "characters", title: "NPC"/)
-  assert.match(locationNavigator, /<h1>Зоны<\/h1>/)
+  assert.match(sectionRegistry, /id: "locations", title: "Локации"/)
+  assert.match(sectionRegistry, /id: "characters", title: "Персонажи"/)
+  assert.match(locationNavigator, /<h1>Локации<\/h1>/)
   assert.match(sectionData, /eq\("character_type", "npc"\)/)
   assert.match(sectionRegistry, /id: "lore"/)
   assert.match(sectionRegistry, /id: "map"/)
@@ -242,7 +242,7 @@ test("Society News reads campaign_updates but publishes through Oracle -> Larisa
 
 test("UI v1 documentation has one explicit current-state authority", () => {
   assert.match(currentStateDoc, /CANONICAL CURRENT STATE/)
-  assert.match(currentStateDoc, /Зоны \/ NPC \/ Лор \/ Карта/)
+  assert.match(currentStateDoc, /Локации \/ Персонажи \/ Лор \/ Карта/)
   assert.match(currentStateDoc, /index\.html -> src\/ui-v1-isolated\/main\.tsx/)
   assert.match(currentStateDoc, /Snake.*planned.*not implemented/is)
   assert.match(historicalIsolationDoc, /SUPERSEDED HISTORICAL RECORD/)

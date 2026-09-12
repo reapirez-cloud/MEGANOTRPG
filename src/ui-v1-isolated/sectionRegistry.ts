@@ -14,9 +14,10 @@ export type HubSection = {
  * land on a clean connection placeholder until their content screen is built.
  */
 export const worldHubSections: HubSection[] = [
-  { id: "locations", title: "Зоны", caption: "Регионы, места и вложенные области мира", tone: "stone", state: "live" },
-  // Keep the stable technical route id "characters"; the player-facing World surface is NPC-only.
-  { id: "characters", title: "NPC", caption: "Известные NPC и жители мира", tone: "ash", state: "live" },
+  { id: "locations", title: "Локации", caption: "Места и вложенные области мира", tone: "stone", state: "live" },
+  // Keep the stable technical route id "characters"; the player-facing World surface contains world characters.
+  // Player-controlled characters are presented elsewhere as "Игроки"; storage may still use character_type = "npc".
+  { id: "characters", title: "Персонажи", caption: "Известные персонажи и жители мира", tone: "ash", state: "live" },
   { id: "lore", title: "Лор", caption: "Статьи, записи и сведения о мире", tone: "steel", state: "live" },
   { id: "map", title: "Карта", caption: "Отдельный раздел карты мира", tone: "night", state: "placeholder" },
 ]

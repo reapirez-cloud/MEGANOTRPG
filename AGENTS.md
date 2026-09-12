@@ -267,12 +267,12 @@ That file is the canonical implementation-status snapshot for the current redesi
 
 Canonical player-facing World terminology for the current redesign is:
 
-- **Зоны** — technical storage/engine names may remain `locations`;
-- **NPC** — the current stable subsection id may remain `characters` for route compatibility, but the World surface is NPC-only;
+- **Локации** — technical storage/engine names may remain `locations`;
+- **Персонажи** — world characters; the stable subsection id may remain `characters` and storage may still use `character_type = npc`;
 - **Лор**;
 - **Карта**.
 
-Do not reintroduce `Локации / Персонажи` as player-facing World labels merely because legacy code or technical table names use those words.
+Player-controlled characters / PCs are called **Игроки** on player/party/workspace management surfaces. Technical shorthand such as `NPC`, `PC` and `zone` may remain inside code and engine contracts, but should not replace the immersive user-facing vocabulary without a specific UX reason.
 
 GM-authored campaign announcements are descriptive chronology owned by **Larisa** and must follow `GM UI -> Oracle -> Larisa -> canonical storage`. UI 1.0 must not insert directly into `campaign_updates`.
 
