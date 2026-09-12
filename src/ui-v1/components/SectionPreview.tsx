@@ -24,7 +24,7 @@ export default function SectionPreview({
   className = "",
 }: Props) {
   const style = imageUrl
-    ? ({ "--mg-section-image": `url("${imageUrl.replaceAll('"', "%22")}")` } as CSSProperties)
+    ? ({ "--mg-section-image": `url("${imageUrl.replace(/"/g, "%22")}")` } as CSSProperties)
     : undefined
 
   return (

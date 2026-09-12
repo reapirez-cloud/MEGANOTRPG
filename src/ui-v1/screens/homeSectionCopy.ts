@@ -1,9 +1,13 @@
 import type { HomeSection } from "../../lib/appRoute"
 
 export const homeSectionCopy: Record<
-  Exclude<HomeSection, "whats-new">,
+  HomeSection,
   { title: string; description: string }
 > = {
+  "whats-new": {
+    title: "Что нового",
+    description: "Хроника кампании.",
+  },
   "society-news": {
     title: "Новости общества",
     description:
