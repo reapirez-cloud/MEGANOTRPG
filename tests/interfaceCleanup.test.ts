@@ -3,13 +3,18 @@ import fs from "node:fs"
 import test from "node:test"
 
 const app = fs.readFileSync("src/App.tsx", "utf8")
+const routeModel = fs.readFileSync("src/lib/appRoute.ts", "utf8")
 const workspace = fs.readFileSync("src/pages/GmWorkspace.tsx", "utf8")
 const world = fs.readFileSync("src/pages/World.tsx", "utf8")
 const worldEditor = fs.readFileSync("src/components/world/WorldEditor.tsx", "utf8")
 
-test("GM workspace no longer mounts the obsolete rule-template manager", () => {
+test("UI v1 shell owns global navigation without the obsolete root bars", () => {
   assert.doesNotMatch(app, /RuleTemplateManager/)
-  assert.match(app, /canManage&&<GmWorkspace/)
+  assert.doesNotMatch(app, /import BottomNav/)
+  assert.doesNotMatch(app, /import TopBar/)
+  assert.match(app, /<MeganotAppShell/)
+  assert.match(app, /canManage && \([\s\S]*?<GmWorkspace/)
+  assert.doesNotMatch(routeModel, /components\/app\/BottomNav/)
 })
 
 test("GM can assign and reassign a PC directly from its workspace card", () => {
