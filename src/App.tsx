@@ -263,7 +263,7 @@ function Workspace() {
         <HomeSectionPlaceholder title={copy.title} description={copy.description} />
       </>
     )
-  } else if (route.space === "home") {
+  } else if (route.type === "space" && route.space === "home") {
     content = (
       <HomeFoundation
         campaignId={campaignId}
@@ -279,7 +279,7 @@ function Workspace() {
         onOpenWorkspace={() => navigate("/workspace")}
       />
     )
-  } else if (route.space === "chats") {
+  } else if (route.type === "space" && route.space === "chats") {
     content = (
       <FeaturePlaceholder
         title="Чаты"
