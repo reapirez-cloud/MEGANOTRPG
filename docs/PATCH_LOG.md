@@ -11,6 +11,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Reframed MEGANOT UI 1.0 as a physically separate application surface. The old application remains independently runnable at the normal entry, while the new design is previewed locally at `/ui-v1.html#/home` with no legacy page or stylesheet imports.
+- New UI destinations that are not designed yet use explicit placeholders instead of rendering legacy interfaces.
+
 - Began the MEGANOT UI 1.0 shell migration: Home now uses the new atmospheric preview-based layout and the global Dock is wired as Я / Главная / Чаты with Home visually dominant.
 - Deferred UI 1.0 root spaces now show explicit placeholders instead of embedding legacy root interfaces. Chats and Я keep their final routes now and will be replaced in place when their dedicated redesign stages begin; the previous working Chats/Workspace surfaces remain available only through explicit `/legacy/*` compatibility routes until their replacements exist.
 

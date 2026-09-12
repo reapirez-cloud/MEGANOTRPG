@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { HashRouter, useLocation, useNavigate } from "react-router"
 import "./App.css"
 import "./auth.css"
 import "./character-system.css"
@@ -27,23 +26,16 @@ import "./creation-wizard.css"
 import "./character-sheet-modules.css"
 import "./character-profile-v5.css"
 import "./character-profile-opus.css"
-import "./ui-v1/ui-v1.css"
 
+import BottomNav from "./components/app/BottomNav"
 import NotificationsSheet from "./components/app/NotificationsSheet"
+import TopBar from "./components/app/TopBar"
 import AuthGate from "./components/auth/AuthGate"
 import CharacterGameFrame from "./components/characters/CharacterGameFrame"
 import ReferenceGuide from "./components/reference/ReferenceGuide"
 import { CharacterProvider, useCharacters } from "./context/CharacterContext"
 import { useNotifications } from "./hooks/useNotifications"
-import {
-  characterReturnPath,
-  characterRoutePath,
-  dockSpaceForRoute,
-  legacyRedirectForLocation,
-  parseAppLocation,
-  rootSpacePath,
-  type RootSpace,
-} from "./lib/appRoute"
+import { mainRouteHash, parseAppRoute, type AppRoute } from "./lib/appRoute"
 import Art from "./pages/Art"
 import CharacterProfileV2 from "./pages/CharacterProfileV2"
 import Characters from "./pages/Characters"
@@ -52,312 +44,25 @@ import Chats from "./pages/Chats"
 import Feed from "./pages/Feed"
 import GmWorkspace from "./pages/GmWorkspace"
 import World from "./pages/World"
-import ContextHeader from "./ui-v1/shell/ContextHeader"
-import MeganotAppShell from "./ui-v1/shell/MeganotAppShell"
-import HomeFoundation from "./ui-v1/screens/HomeFoundation"
-import FeaturePlaceholder from "./ui-v1/screens/FeaturePlaceholder"
-import HomeSectionPlaceholder from "./ui-v1/screens/HomeSectionPlaceholder"
-import { homeSectionCopy } from "./ui-v1/screens/homeSectionCopy"
 
-function Workspace() {
-  const {
-    campaignId,
-    campaignTitle,
-    campaignCoverUrl,
-    activeCharacter,
-    myMember,
-    canManage,
-  } = useCharacters()
-  const notifications = useNotifications(campaignId)
-  const location = useLocation()
-  const routerNavigate = useNavigate()
-  const route = useMemo(
-    () => parseAppLocation(location.pathname, location.search),
-    [location.pathname, location.search],
-  )
-  const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [referenceOpen, setReferenceOpen] = useState(false)
-  const [characterRefreshKey, setCharacterRefreshKey] = useState(0)
-
-  const navigate = useCallback(
-    (path: string, replace = false) => {
-      routerNavigate(path, { replace })
-    },
-    [routerNavigate],
-  )
-
-  useEffect(() => {
-    const redirect = legacyRedirectForLocation(location.pathname)
-    if (redirect) navigate(redirect, true)
-  }, [location.pathname, navigate])
-
-  const goBack = useCallback(() => {
-    if (route.type === "chat") {
-      navigate("/chats")
-      return
-    }
-
-    if (route.type === "gallery") {
-      navigate("/home")
-      return
-    }
-
-    if (route.type === "character") {
-      navigate(characterReturnPath(route))
-      return
-    }
-
-    if (route.type === "home-section" || route.type === "world") {
-      navigate("/home")
-      return
-    }
-
-    if (route.type === "workspace-characters") {
-      navigate("/workspace")
-      return
-    }
-
-    if (route.type === "legacy-root") {
-      navigate(route.target === "chats" ? "/chats" : "/workspace")
-      return
-    }
-
-    navigate("/home")
-  }, [navigate, route])
-
-  useEffect(() => {
-    const back = window.Telegram?.WebApp?.BackButton
-    if (!back) return
-
-    if (route.type === "space") {
-      back.hide()
-    } else {
-      back.show()
-      back.onClick(goBack)
-    }
-
-    return () => back.offClick(goBack)
-  }, [goBack, route.type])
-
-  const openNotifications = useCallback(() => setNotificationsOpen(true), [])
-  const openReference = useCallback(() => setReferenceOpen(true), [])
-
-  const legacyWorkspaceActions = (
-    <>
-      <button type="button" onClick={openReference}>Справочник</button>
-      <button type="button" onClick={openNotifications}>
-        Уведомления{notifications.unreadCount > 0 ? ` · ${notifications.unreadCount > 9 ? "9+" : notifications.unreadCount}` : ""}
-      </button>
-    </>
-  )
-
-  const activeSpace = dockSpaceForRoute(route)
-  const navigateSpace = useCallback(
-    (space: RootSpace) => navigate(rootSpacePath(space)),
-    [navigate],
-  )
-
-  let content
-
-  if (route.type === "chat") {
-    content = (
-      <ChatRoom
-        roomId={route.id}
-        onBack={goBack}
-        onOpenCharacter={(id) => navigate(characterRoutePath(id, "chat", route.id))}
-      />
-    )
-  } else if (route.type === "character") {
-    content = (
-      <CharacterGameFrame characterId={route.id}>
-        <CharacterProfileV2 characterId={route.id} onBack={goBack} />
-      </CharacterGameFrame>
-    )
-  } else if (route.type === "gallery") {
-    content = (
-      <>
-        <ContextHeader title="Арты и комиксы" eyebrow="Главная" onBack={goBack} />
-        <main className="app-content app-content--overlay"><Art /></main>
-      </>
-    )
-  } else if (route.type === "world") {
-    content = (
-      <>
-        <ContextHeader title="Мир" eyebrow="Главная" onBack={goBack} />
-        <main className="app-content"><World /></main>
-      </>
-    )
-  } else if (route.type === "workspace-characters") {
-    content = (
-      <>
-        <ContextHeader title="Персонажи" eyebrow="Пространство" onBack={goBack} />
-        <main className="app-content">
-          <Characters
-            onOpenCharacter={(id) => navigate(characterRoutePath(id, "characters"))}
-          />
-        </main>
-      </>
-    )
-  } else if (route.type === "legacy-root" && route.target === "chats") {
-    content = (
-      <>
-        <ContextHeader title="Старые чаты" eyebrow="Legacy bridge" onBack={goBack} />
-        <main className="app-content">
-          <Chats onOpenRoom={(id) => navigate(`/chat/${encodeURIComponent(id)}`)} />
-        </main>
-      </>
-    )
-  } else if (route.type === "legacy-root" && route.target === "workspace") {
-    content = (
-      <>
-        <ContextHeader
-          title={canManage ? "Старое пространство мастера" : "Старое личное пространство"}
-          eyebrow="Legacy bridge"
-          onBack={goBack}
-          actions={legacyWorkspaceActions}
-        />
-        <main className="app-content">
-          {canManage && (
-            <GmWorkspace
-              onOpenCharacter={(id) => navigate(characterRoutePath(id, "workspace"))}
-              onOpenRoom={(id) => navigate(`/chat/${encodeURIComponent(id)}`)}
-            />
-          )}
-          {!canManage && activeCharacter && (
-            <CharacterGameFrame characterId={activeCharacter.id}>
-              <CharacterProfileV2
-                key={`${activeCharacter.id}:${characterRefreshKey}`}
-                characterId={activeCharacter.id}
-                onBack={goBack}
-                embedded
-              />
-            </CharacterGameFrame>
-          )}
-          {!canManage && !activeCharacter && (
-            <FeaturePlaceholder
-              eyebrow="Legacy bridge"
-              title="Персонаж не назначен"
-              description="Старое личное пространство сохранено как временный мост, но активного персонажа сейчас нет."
-            />
-          )}
-        </main>
-      </>
-    )
-  } else if (route.type === "home-section" && route.section === "whats-new") {
-    content = (
-      <>
-        <ContextHeader title="Что нового" eyebrow="Главная" onBack={goBack} />
-        <main className="app-content">
-          <Feed
-            onOpenCharacter={(id) => navigate(characterRoutePath(id, "whats-new"))}
-            onOpenGallery={() => navigate("/gallery")}
-          />
-        </main>
-      </>
-    )
-  } else if (route.type === "home-section") {
-    const copy = homeSectionCopy[route.section]
-    content = (
-      <>
-        <ContextHeader title={copy.title} eyebrow="Главная" onBack={goBack} />
-        <HomeSectionPlaceholder title={copy.title} description={copy.description} />
-      </>
-    )
-  } else if (route.type === "space" && route.space === "home") {
-    content = (
-      <HomeFoundation
-        campaignId={campaignId}
-        campaignTitle={campaignTitle}
-        campaignCoverUrl={campaignCoverUrl}
-        displayName={myMember?.display_name || ""}
-        onOpenWhatsNew={() => navigate("/home/whats-new")}
-        onOpenWorld={() => navigate("/world")}
-        onOpenSocietyNews={() => navigate("/home/society-news")}
-        onOpenAchievements={() => navigate("/home/achievements")}
-        onOpenGallery={() => navigate("/gallery")}
-        onOpenUpdates={() => navigate("/home/updates")}
-        onOpenWorkspace={() => navigate("/workspace")}
-      />
-    )
-  } else if (route.type === "space" && route.space === "chats") {
-    content = (
-      <FeaturePlaceholder
-        title="Чаты"
-        description="Новый интерфейс чатов будет подключён отдельным этапом. Маршрут и место в Dock уже окончательные, поэтому остальные части UI 1.0 могут ссылаться сюда без временных обходов."
-      />
-    )
-  } else {
-    content = (
-      <FeaturePlaceholder
-        eyebrow={canManage ? "Управление" : "Личное пространство"}
-        title="Я"
-        description={
-          canManage
-            ? "Новое пространство управления мастера и владельца будет собрано отдельным этапом. Старый GM-интерфейс остаётся источником рабочей логики, но не показывается как новый UI."
-            : activeCharacter
-              ? "Новое личное пространство игрока будет построено вокруг активного персонажа отдельным этапом. Персонаж уже привязан к этому маршруту архитектурно."
-              : "Личное пространство подключено к новой навигации и ждёт своего этапа реализации."
-        }
-      />
-    )
-  }
-
-  const showDock =
-    route.type !== "chat" &&
-    route.type !== "character" &&
-    route.type !== "gallery" &&
-    route.type !== "legacy-root"
-
-  return (
-    <MeganotAppShell
-      activeSpace={activeSpace}
-      showDock={showDock}
-      onNavigate={navigateSpace}
-    >
-      {content}
-      {notificationsOpen && (
-        <NotificationsSheet
-          items={notifications.items}
-          loading={notifications.loading}
-          error={notifications.error}
-          onClose={() => setNotificationsOpen(false)}
-          onMarkRead={notifications.markAllRead}
-          onOpenFeed={() => navigate("/home/whats-new")}
-        />
-      )}
-      {referenceOpen && (
-        <ReferenceGuide
-          campaignId={campaignId}
-          character={activeCharacter
-            ? {
-                id: activeCharacter.id,
-                name: activeCharacter.name,
-                character_class: activeCharacter.character_class,
-              }
-            : null}
-          canManage={canManage}
-          onClose={() => setReferenceOpen(false)}
-          onCharacterChanged={() => setCharacterRefreshKey((count) => count + 1)}
-        />
-      )}
-    </MeganotAppShell>
-  )
+function Workspace(){
+  const{campaignId,activeCharacter,myCharacters,canManage}=useCharacters();const notifications=useNotifications(campaignId);const[route,setRoute]=useState<AppRoute>(()=>parseAppRoute(window.location.hash));const[notificationsOpen,setNotificationsOpen]=useState(false);const[referenceOpen,setReferenceOpen]=useState(false);const[characterRefreshKey,setCharacterRefreshKey]=useState(0)
+  useEffect(()=>{if(!window.location.hash)window.history.replaceState(null,"","#/feed");const update=()=>setRoute(parseAppRoute(window.location.hash));window.addEventListener("hashchange",update);return()=>window.removeEventListener("hashchange",update)},[])
+  const navigate=useCallback((hash:string,replace=false)=>{if(window.location.hash===hash)return;if(replace)window.history.replaceState(null,"",hash);else window.location.hash=hash;setRoute(parseAppRoute(hash))},[])
+  const goBack=useCallback(()=>{if(route.type==="chat")navigate("#/chats");else if(route.type==="gallery")navigate("#/feed");else if(route.type==="character"&&route.from==="chat"&&route.roomId)navigate(`#/chat/${route.roomId}`);else if(route.type==="character")navigate(route.from==="chat"?"#/chats":mainRouteHash(route.from))},[navigate,route])
+  useEffect(()=>{const back=window.Telegram?.WebApp?.BackButton;if(!back)return;if(route.type==="main")back.hide();else{back.show();back.onClick(goBack)}return()=>back.offClick(goBack)},[goBack,route.type])
+  const title=useMemo(()=>{if(route.type!=="main")return"";if(route.tab==="feed")return"Хроника";if(route.tab==="chats")return"Чаты";if(route.tab==="world")return"Мир";if(route.tab==="characters")return"Персонажи";return canManage?"Управление":"Мой персонаж"},[canManage,route])
+  if(route.type==="chat")return <div className="app-shell"><ChatRoom roomId={route.id} onBack={goBack} onOpenCharacter={(id)=>navigate(`#/character/${id}?from=chat&room=${route.id}`)}/></div>
+  if(route.type==="character")return <div className="app-shell"><CharacterGameFrame characterId={route.id}><CharacterProfileV2 characterId={route.id} onBack={goBack}/></CharacterGameFrame></div>
+  if(route.type==="gallery")return <div className="app-shell"><div className="screen"><header className="screen-header"><button className="icon-button" type="button" onClick={goBack} aria-label="Назад">←</button><h1 className="screen-header__title">Арты и комиксы</h1><span/></header><main className="app-content app-content--overlay"><Art/></main></div></div>
+  return <div className="app-shell"><TopBar title={title} unreadCount={notifications.unreadCount} onOpenReference={()=>setReferenceOpen(true)} onOpenNotifications={()=>setNotificationsOpen(true)}/><main className="app-content">
+    {route.tab==="feed"&&<Feed onOpenCharacter={(id)=>navigate(`#/character/${id}?from=feed`)} onOpenGallery={()=>navigate("#/gallery")}/>} {route.tab==="chats"&&<Chats onOpenRoom={(id)=>navigate(`#/chat/${id}`)}/>} {route.tab==="world"&&<World/>} {route.tab==="characters"&&<Characters onOpenCharacter={(id)=>navigate(`#/character/${id}?from=characters`)}/>} 
+    {route.tab==="me"&&canManage&&<GmWorkspace onOpenCharacter={(id)=>navigate(`#/character/${id}?from=me`)} onOpenRoom={(id)=>navigate(`#/chat/${id}`)}/>}
+    {route.tab==="me"&&!canManage&&activeCharacter&&<CharacterGameFrame characterId={activeCharacter.id}><CharacterProfileV2 key={`${activeCharacter.id}:${characterRefreshKey}`} characterId={activeCharacter.id} onBack={()=>navigate("#/feed")} embedded/></CharacterGameFrame>}
+    {route.tab==="me"&&!canManage&&!activeCharacter&&<section className="me-empty surface"><span>◇</span><h2>{myCharacters.length?"Нет активного персонажа":"Персонаж ещё не назначен"}</h2><p>{myCharacters.length?"Активного героя выбирает ГМ в панели кампании.":"ГМ выдаст тебе персонажа — создавать героев игрок сам не может."}</p><button type="button" onClick={()=>navigate("#/characters")}>Открыть персонажей</button></section>}
+  </main>
+  {notificationsOpen&&<NotificationsSheet items={notifications.items} loading={notifications.loading} error={notifications.error} onClose={()=>setNotificationsOpen(false)} onMarkRead={notifications.markAllRead} onOpenFeed={()=>navigate("#/feed")}/>} {referenceOpen&&<ReferenceGuide campaignId={campaignId} character={activeCharacter?{id:activeCharacter.id,name:activeCharacter.name,character_class:activeCharacter.character_class}:null} canManage={canManage} onClose={()=>setReferenceOpen(false)} onCharacterChanged={()=>setCharacterRefreshKey((c)=>c+1)}/>} 
+  <BottomNav active={route.tab} onChange={(tab)=>navigate(mainRouteHash(tab))} meLabel={canManage?"Панель":"Я"}/></div>
 }
-
-function AppContent() {
-  return (
-    <CharacterProvider>
-      <Workspace />
-    </CharacterProvider>
-  )
-}
-
-export default function App() {
-  return (
-    <AuthGate>
-      <HashRouter>
-        <AppContent />
-      </HashRouter>
-    </AuthGate>
-  )
-}
+function AppContent(){return <CharacterProvider><Workspace/></CharacterProvider>}
+export default function App(){return <AuthGate><AppContent/></AuthGate>}

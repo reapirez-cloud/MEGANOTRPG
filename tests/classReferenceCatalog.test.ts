@@ -3,16 +3,16 @@ import fs from "node:fs"
 import test from "node:test"
 
 const app = fs.readFileSync("src/App.tsx", "utf8")
+const topBar = fs.readFileSync("src/components/app/TopBar.tsx", "utf8")
 const reference = fs.readFileSync("src/components/reference/ReferenceGuide.tsx", "utf8")
 const druid = fs.readFileSync("src/data/classes/druidReference.ts", "utf8")
 const clarity = fs.readFileSync("supabase/migrations/20260828010000_druid_rule_clarity.sql", "utf8")
 
-test("rules reference remains reachable through the explicit legacy workspace bridge", () => {
-  assert.match(app, /route\.type === "legacy-root" && route\.target === "workspace"/)
-  assert.match(app, /const openReference = useCallback\(\(\) => setReferenceOpen\(true\)/)
-  assert.match(app, /onClick=\{openReference\}>Справочник<\/button>/)
-  assert.match(app, /<ReferenceGuide/)
-  assert.match(app, /campaignId=\{campaignId\}/)
+test("rules reference has an actual app entry point and campaign catalog", () => {
+  assert.match(topBar, /onOpenReference/)
+  assert.match(topBar, /aria-label="Справочник"/)
+  assert.match(app, /onOpenReference=\{\(\)=>setReferenceOpen\(true\)\}/)
+  assert.match(app, /<ReferenceGuide campaignId=\{campaignId\}/)
   assert.match(reference, /useRuleTemplates\(campaignId\)/)
 })
 

@@ -236,3 +236,19 @@ Legacy screens may remain reachable through explicit legacy/deep routes when nee
 Example: if Home is being built but new Chats and new Я/Workspace are not part of the current stage, the Dock still connects to `/chats` and `/workspace`, but those root routes show UI 1.0 placeholders until their dedicated implementation stages.
 
 This rule applies to all future UI 1.0 work unless the user explicitly asks to implement that destination now.
+
+
+## UI 1.0 hard isolation — mandatory
+
+The new MEGANOT UI 1.0 is a **separate application surface**, not a redesign layer mounted inside the legacy app.
+
+- Legacy app entry: `index.html -> src/main.tsx -> src/App.tsx`.
+- New UI 1.0 entry: `ui-v1.html -> src/ui-v1-isolated/main.tsx -> src/ui-v1-isolated/**`.
+- The new UI MUST NOT import legacy page components, legacy app components, legacy CSS, `src/App.tsx`, or legacy route types.
+- The legacy app MUST NOT import UI 1.0 screens or styles.
+- Do not "bridge" the two UIs by mounting old screens under new navigation. Deferred new destinations use placeholders until their own implementation stage.
+- Existing business logic/data may be integrated later through explicit adapters/hooks designed for UI 1.0, but the visual tree and stylesheet graph remain isolated.
+- Do not modify legacy UI to make a new UI screen look right. Fix the new UI inside its own entry and source tree.
+- Do not reuse legacy visual classes even if their current appearance seems convenient.
+
+The purpose of this separation is to allow UI 1.0 to be designed as a genuinely new product interface while the old application remains stable and independently runnable.

@@ -46,6 +46,6 @@ test("owner admin remains a player-capable identity with GM-equivalent managemen
   assert.match(characterContext, /const\s+isOwner\s*=\s*myMember\?\.is_owner\s*===\s*true/)
   assert.match(characterContext, /const\s+canManage\s*=\s*isGm\s*\|\|\s*isOwner/)
   assert.match(characterContext, /character\.assigned_user_id\s*===\s*user\.id\s*&&\s*character\.character_type\s*===\s*"pc"/s)
-  assert.match(appSource, /route\.type === "legacy-root" && route\.target === "workspace"[\s\S]*?\{canManage && \([\s\S]*?<GmWorkspace/)
-  assert.doesNotMatch(appSource, /\{isGm && \([\s\S]*?<GmWorkspace/)
+  assert.match(appSource, /route\.tab==="me"&&canManage&&<GmWorkspace/)
+  assert.doesNotMatch(appSource, /route\.tab==="me"&&isGm&&<GmWorkspace/)
 })
