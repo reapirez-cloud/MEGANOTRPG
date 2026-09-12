@@ -124,6 +124,25 @@ export class SupabaseLarisaStorage implements LarisaStorage {
       return { kind: command.kind, characterIds: [], locationIds: [command.locationId], sceneIds: [], details: { event: command.event } }
     }
 
+    if (command.kind === "world.campaign_announcement_publish") {
+      const { data, error } = await this.client.from("campaign_updates").insert({
+        campaign_id: command.context.campaignId,
+        created_by: command.context.requestedBy,
+        kind: "announcement",
+        title: command.title.trim(),
+        body: command.body.trim(),
+        published_at: command.context.occurredAt,
+      }).select("id").single()
+      if (error || !data) fail(error, "Could not publish campaign announcement")
+      return {
+        kind: command.kind,
+        characterIds: [],
+        locationIds: [],
+        sceneIds: [],
+        details: { announcementId: data.id, kind: "announcement" },
+      }
+    }
+
     if (command.kind === "world.location_section_create") {
       const { data, error } = await this.client.from("location_sections").insert({ location_id: command.locationId, title: command.title.trim(), body: command.body.trim() }).select("id").single()
       if (error || !data) fail(error, "Could not create location section")

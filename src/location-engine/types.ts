@@ -39,6 +39,7 @@ export type LarisaCommand =
   | { kind: "world.location_set_archived"; context: EngineCommandContext; locationId: string; archived: boolean }
   | { kind: "world.location_delete"; context: EngineCommandContext; locationId: string }
   | { kind: "world.location_publish_event"; context: EngineCommandContext; locationId: string; event: "opened" | "updated" | "destroyed" }
+  | { kind: "world.campaign_announcement_publish"; context: EngineCommandContext; title: string; body: string }
   | { kind: "world.location_section_create"; context: EngineCommandContext; locationId: string; title: string; body: string }
   | { kind: "world.location_section_update"; context: EngineCommandContext; sectionId: string; title: string; body: string }
   | { kind: "world.location_section_delete"; context: EngineCommandContext; sectionId: string }

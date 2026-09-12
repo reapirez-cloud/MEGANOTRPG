@@ -82,6 +82,7 @@ export type OracleWorldCommands = {
   setLocationArchived(context: OracleContext, locationId: string, archived: boolean): OracleWorldResult
   deleteLocation(context: OracleContext, locationId: string): OracleWorldResult
   publishLocationEvent(context: OracleContext, locationId: string, event: "opened" | "updated" | "destroyed"): OracleWorldResult
+  publishCampaignAnnouncement(context: OracleContext, title: string, body: string): OracleWorldResult
   createLocationSection(context: OracleContext, locationId: string, title: string, body: string): OracleWorldResult
   updateLocationSection(context: OracleContext, sectionId: string, title: string, body: string): OracleWorldResult
   deleteLocationSection(context: OracleContext, sectionId: string): OracleWorldResult

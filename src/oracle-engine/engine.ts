@@ -91,6 +91,7 @@ export class OracleEngine {
       setLocationArchived: (context, locationId, archived) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_set_archived", context, locationId, archived })),
       deleteLocation: (context, locationId) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_delete", context, locationId })),
       publishLocationEvent: (context, locationId, event) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_publish_event", context, locationId, event })),
+      publishCampaignAnnouncement: (context, title, body) => direct(context, () => dependencies.larisa.execute({ kind: "world.campaign_announcement_publish", context, title, body })),
       createLocationSection: (context, locationId, title, body) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_section_create", context, locationId, title, body })),
       updateLocationSection: (context, sectionId, title, body) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_section_update", context, sectionId, title, body })),
       deleteLocationSection: (context, sectionId) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_section_delete", context, sectionId })),

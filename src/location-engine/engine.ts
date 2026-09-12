@@ -29,6 +29,11 @@ export class LarisaEngine {
     if (command.context.authority !== "gm" && command.context.authority !== "system") {
       throw new EngineCommandError("world.gm_required", `${command.kind} requires GM authority`)
     }
+    if (command.kind === "world.campaign_announcement_publish") {
+      if (!command.title.trim() || !command.body.trim()) {
+        throw new EngineCommandError("world.announcement_required", "Campaign announcement requires a title and body")
+      }
+    }
     if (command.kind === "world.set_character_position" || command.kind === "world.set_scene_position") {
       if (!Number.isInteger(command.campaignDay) || command.campaignDay < 1) {
         throw new EngineCommandError("world.invalid_day", "Campaign day must be an integer >= 1")
@@ -39,7 +44,15 @@ export class LarisaEngine {
     }
 
     const mutation = await this.storage.execute(command)
-    const aggregateType = mutation.sceneIds.length ? "scene" as const : "location" as const
+    const aggregateType = mutation.sceneIds.length
+      ? "scene" as const
+      : mutation.locationIds.length
+        ? "location" as const
+        : command.kind === "world.campaign_announcement_publish"
+          ? "campaign" as const
+          : mutation.characterIds.length
+            ? "character" as const
+            : "campaign" as const
     const aggregateId = mutation.sceneIds[0] || mutation.locationIds[0] || mutation.characterIds[0] || command.context.campaignId
     const event: EngineEvent = {
       commandId: command.context.commandId,

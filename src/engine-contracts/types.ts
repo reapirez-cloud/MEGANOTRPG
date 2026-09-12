@@ -35,7 +35,7 @@ export type EngineEvent<TPayload extends Record<string, unknown> = Record<string
   engine: EngineName
   kind: string
   campaignId: string
-  aggregateType: "session" | "character" | "inventory" | "item" | "location" | "scene" | "roll" | "definition"
+  aggregateType: "session" | "campaign" | "character" | "inventory" | "item" | "location" | "scene" | "roll" | "definition"
   aggregateId: string
   occurredAt: string
   visibility: EngineEventVisibility
