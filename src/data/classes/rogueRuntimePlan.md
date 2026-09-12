@@ -5,7 +5,7 @@
 
 ## Overall target
 
-**Current text/reference:** all 9 subclass feature packs authored; base Rogue still has two explicit literary gaps (`Steady Aim / Точный прицел`, `Slippery Mind / Скользкий ум`).  
+**Current text/reference:** `READY` — base Rogue and all 9 supported subclass feature packs have complete Voss prose plus independently audited neutral rule text.  
 **Current mechanics/runtime:** `NOT_STARTED`.  
 **Target:** base Rogue 1–20 plus all 9 supported subclasses implemented through the shared Chasovoy → Shapoklyak/GENA → Character Engine pipeline, deployed to the connected Supabase project, regression-gated and final-certified as `READY`.
 
@@ -48,7 +48,15 @@ Gemini/Voss prose is **literary input only**. It is never authoritative for mech
 
 ## Stage 1 — source freeze, literary closure and executable specification
 
-**Status:** `NOT_STARTED`
+**Status:** `COMPLETE_2026_09_12`
+
+Closure artifacts:
+
+- `src/data/classes/rogueRuntimeFeatureMatrix.md` freezes all 61 supported base/subclass feature identities, source versions and runtime ownership modes;
+- `Точный прицел / Steady Aim` and `Скользкий ум / Slippery Mind` now have authored Voss prose and comments in the existing Rogue/Gemini register;
+- base Rogue 2024 plus all 9 subclass packages were independently source-audited; supplied literary copy remains non-authoritative for mechanics;
+- Arcane Trickster Spell Thief is explicitly frozen to the 2024 rule: Intelligence save, eligible qualifying spell need not be a Wizard spell, and recharge locks only after an actual steal;
+- Rogue remains `referenceOnly=true`; no Character Engine/Supabase runtime is claimed by Stage 1.
 
 Goal: freeze one trustworthy specification before executable work begins.
 
