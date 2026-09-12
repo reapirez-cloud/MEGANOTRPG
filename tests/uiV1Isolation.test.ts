@@ -164,14 +164,9 @@ test("Location navigator keeps the full ancestor chain and separates direct chil
   assert.doesNotMatch(locationNavigator, /WorldMapView/)
 })
 
-test("Location management uses Oracle to reach Larisa and keeps manager actions extensible", () => {
-  assert.match(locationData, /oracle\.world\.createLocation/)
-  assert.match(locationData, /oracle\.world\.updateLocation/)
-  assert.match(locationData, /oracle\.world\.deleteLocation/)
-  assert.match(locationData, /oracle\.world\.createLocationSection/)
-  assert.match(locationData, /oracle\.world\.createLocationLink/)
-  assert.match(locationData, /createEngineCommandContext/)
-  assert.match(locationData, /authority: "gm"/)
+test("Location management stays read-only until its dedicated interfaces are designed", () => {
+  assert.doesNotMatch(locationData, /oracle\.world|createEngineCommandContext/)
+  assert.doesNotMatch(locationNavigator, /LocationEditorSheet|TransitionEditorSheet|DeleteLocationSheet/)
   assert.match(locationNavigator, /type LocationAction =/)
   assert.match(locationNavigator, /Открыть зону/)
   assert.match(locationNavigator, /Добавить подзону/)
@@ -179,13 +174,21 @@ test("Location management uses Oracle to reach Larisa and keeps manager actions 
   assert.match(locationNavigator, /Редактировать/)
   assert.match(locationNavigator, /Удалить/)
   assert.match(locationNavigator, /managerOnly/)
+  assert.match(locationNavigator, /Интерфейс этой функции будет спроектирован отдельным этапом/)
 })
 
-test("Location previews support long press, a reserved detail icon seam and root-zone creation", () => {
+test("Location previews open inline actions without native text selection", () => {
   assert.match(locationNavigator, /}, 520\)/)
+  assert.match(locationNavigator, /LocationInlineMenu/)
+  assert.match(locationNavigator, /height: "auto"/)
+  assert.doesNotMatch(locationNavigator, /u1-location-sheet-backdrop|LocationActionSheet/)
   assert.match(locationNavigator, /u1-location-open-button/)
   assert.match(locationNavigator, /\/detail/)
   assert.match(locationNavigator, /Добавить главную зону/)
+  assert.match(sectionStyles, /-webkit-user-select:\s*none/)
+  assert.match(sectionStyles, /user-select:\s*none/)
+  assert.match(sectionStyles, /-webkit-touch-callout:\s*none/)
+  assert.match(sectionStyles, /u1-location-inline-menu/)
   assert.match(sectionStyles, /u1-location-open-button__glyph/)
 })
 

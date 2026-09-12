@@ -1,12 +1,9 @@
 import { AnimatePresence, motion } from "motion/react"
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
-import type { VisibilityMode } from "../types/world"
 import {
   useUiV1Locations,
   type UiV1Location,
-  type UiV1LocationDraft,
-  type UiV1LocationLink,
 } from "./useUiV1Locations"
 
 function navigate(path: string) {
@@ -115,7 +112,13 @@ function LocationTile({
       }}
     >
       {item.display_image_url ? (
-        <img className="u1-location-tile__image" src={item.display_image_url} alt="" />
+        <img
+          className="u1-location-tile__image"
+          src={item.display_image_url}
+          alt=""
+          draggable={false}
+          onDragStart={(event) => event.preventDefault()}
+        />
       ) : (
         <span className="u1-location-tile__texture" aria-hidden="true" />
       )}
@@ -151,397 +154,194 @@ type LocationAction = {
   label: string
   managerOnly?: boolean
   danger?: boolean
-  run: () => void
+  placeholderTitle?: string
+  run?: () => void
 }
 
-function LocationActionSheet({
+function InlineFeaturePlaceholder({
+  title,
+  onBack,
+}: {
+  title: string
+  onBack: () => void
+}) {
+  return (
+    <motion.div
+      className="u1-location-inline-placeholder"
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 3 }}
+    >
+      <strong>{title}</strong>
+      <span>Интерфейс этой функции будет спроектирован отдельным этапом.</span>
+      <button type="button" onClick={onBack}>← К действиям</button>
+    </motion.div>
+  )
+}
+
+function LocationInlineMenu({
   location,
   canManage,
-  onClose,
+  placeholderTitle,
   onOpen,
-  onAddChild,
-  onAddTransition,
-  onEdit,
-  onDelete,
+  onPlaceholder,
+  onBack,
 }: {
   location: UiV1Location
   canManage: boolean
-  onClose: () => void
+  placeholderTitle: string | null
   onOpen: () => void
-  onAddChild: () => void
-  onAddTransition: () => void
-  onEdit: () => void
-  onDelete: () => void
+  onPlaceholder: (title: string) => void
+  onBack: () => void
 }) {
   const actions: LocationAction[] = [
     { id: "open", label: "Открыть зону", run: onOpen },
-    { id: "add-child", label: "Добавить подзону", managerOnly: true, run: onAddChild },
-    { id: "add-transition", label: "Добавить переход", managerOnly: true, run: onAddTransition },
-    { id: "edit", label: "Редактировать", managerOnly: true, run: onEdit },
-    { id: "delete", label: "Удалить", managerOnly: true, danger: true, run: onDelete },
+    { id: "add-child", label: "Добавить подзону", managerOnly: true, placeholderTitle: "Добавление подзоны" },
+    { id: "add-transition", label: "Добавить переход", managerOnly: true, placeholderTitle: "Добавление перехода" },
+    { id: "edit", label: "Редактировать", managerOnly: true, placeholderTitle: "Редактирование зоны" },
+    { id: "delete", label: "Удалить", managerOnly: true, danger: true, placeholderTitle: "Удаление зоны" },
   ]
 
   return (
     <motion.div
-      className="u1-location-sheet-backdrop"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onMouseDown={onClose}
+      className="u1-location-inline-menu"
+      role="group"
+      aria-label={`Действия с зоной: ${location.name}`}
+      initial={{ height: 0, opacity: 0, y: -6 }}
+      animate={{ height: "auto", opacity: 1, y: 0 }}
+      exit={{ height: 0, opacity: 0, y: -6 }}
+      transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
     >
-      <motion.section
-        className="u1-location-action-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Действия с зоной: ${location.name}`}
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <header>
-          <strong>{location.name}</strong>
-          <button type="button" onClick={onClose} aria-label="Закрыть">×</button>
-        </header>
-        <div className="u1-location-action-sheet__list">
-          {actions
-            .filter((action) => !action.managerOnly || canManage)
-            .map((action) => (
-              <button
-                type="button"
-                key={action.id}
-                data-danger={action.danger || undefined}
-                onClick={() => {
-                  onClose()
-                  action.run()
-                }}
-              >
-                {action.label}
-              </button>
-            ))}
-        </div>
-      </motion.section>
+      <AnimatePresence mode="wait" initial={false}>
+        {placeholderTitle ? (
+          <InlineFeaturePlaceholder
+            key={placeholderTitle}
+            title={placeholderTitle}
+            onBack={onBack}
+          />
+        ) : (
+          <motion.div
+            key="actions"
+            className="u1-location-inline-menu__actions"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {actions
+              .filter((action) => !action.managerOnly || canManage)
+              .map((action, index) => (
+                <motion.button
+                  type="button"
+                  key={action.id}
+                  data-danger={action.danger || undefined}
+                  initial={{ opacity: 0, x: -5 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.025, duration: 0.16 }}
+                  onClick={() => {
+                    if (action.run) {
+                      action.run()
+                      return
+                    }
+                    if (action.placeholderTitle) {
+                      onPlaceholder(action.placeholderTitle)
+                    }
+                  }}
+                >
+                  {action.label}
+                </motion.button>
+              ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }
 
-function LocationEditorSheet({
+function LocationNode({
+  item,
+  mode,
+  expanded,
+  placeholderTitle,
+  canManage,
+  onNavigate,
+  onOpen,
+  onLongPress,
+  onPlaceholder,
+  onBack,
+}: {
+  item: UiV1Location
+  mode: TileMode
+  expanded: boolean
+  placeholderTitle: string | null
+  canManage: boolean
+  onNavigate: () => void
+  onOpen: () => void
+  onLongPress: () => void
+  onPlaceholder: (title: string) => void
+  onBack: () => void
+}) {
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!expanded) return
+
+    const frame = window.requestAnimationFrame(() => {
+      ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [expanded])
+
+  return (
+    <motion.div
+      ref={ref}
+      layout
+      className="u1-location-node"
+      data-location-node-id={item.id}
+      data-mode={mode}
+      data-expanded={expanded || undefined}
+    >
+      <LocationTile
+        item={item}
+        mode={mode}
+        onNavigate={onNavigate}
+        onOpen={onOpen}
+        onLongPress={onLongPress}
+      />
+
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <LocationInlineMenu
+            location={item}
+            canManage={canManage}
+            placeholderTitle={placeholderTitle}
+            onOpen={onOpen}
+            onPlaceholder={onPlaceholder}
+            onBack={onBack}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
+
+function RootFeaturePlaceholder({
   title,
-  initial,
   onClose,
-  onSave,
 }: {
   title: string
-  initial?: UiV1Location | null
   onClose: () => void
-  onSave: (draft: UiV1LocationDraft) => Promise<{ ok: boolean; error?: string }>
 }) {
-  const [name, setName] = useState(initial?.name || "")
-  const [summary, setSummary] = useState(initial?.summary || "")
-  const [visibilityMode, setVisibilityMode] = useState<VisibilityMode>(initial?.visibility_mode || "discover")
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
-
-  async function submit() {
-    if (!name.trim()) {
-      setError("Нужно название зоны.")
-      return
-    }
-
-    setSaving(true)
-    setError("")
-    const result = await onSave({
-      name: name.trim(),
-      summary: summary.trim(),
-      visibilityMode,
-    })
-    setSaving(false)
-
-    if (!result.ok) {
-      setError(result.error || "Не удалось сохранить.")
-      return
-    }
-
-    onClose()
-  }
-
   return (
-    <motion.div
-      className="u1-location-sheet-backdrop"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onMouseDown={onClose}
+    <motion.section
+      className="u1-location-root-placeholder"
+      initial={{ opacity: 0, height: 0, y: -5 }}
+      animate={{ opacity: 1, height: "auto", y: 0 }}
+      exit={{ opacity: 0, height: 0, y: -5 }}
     >
-      <motion.section
-        className="u1-location-form-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <header>
-          <strong>{title}</strong>
-          <button type="button" onClick={onClose} aria-label="Закрыть">×</button>
-        </header>
-
-        <label>
-          <span>Название</span>
-          <input value={name} onChange={(event) => setName(event.target.value)} maxLength={160} />
-        </label>
-
-        <label>
-          <span>Короткое описание</span>
-          <textarea value={summary} onChange={(event) => setSummary(event.target.value)} rows={3} />
-        </label>
-
-        <label>
-          <span>Видимость</span>
-          <select
-            value={visibilityMode}
-            onChange={(event) => setVisibilityMode(event.target.value as VisibilityMode)}
-          >
-            <option value="always">Всегда видно</option>
-            <option value="discover">После открытия</option>
-            <option value="private">Только мастеру</option>
-          </select>
-        </label>
-
-        {error && <p className="u1-location-form-sheet__error">{error}</p>}
-
-        <button
-          type="button"
-          className="u1-location-form-sheet__submit"
-          disabled={saving}
-          onClick={() => void submit()}
-        >
-          {saving ? "Сохраняю…" : "Сохранить"}
-        </button>
-      </motion.section>
-    </motion.div>
-  )
-}
-
-function TransitionEditorSheet({
-  source,
-  locations,
-  links,
-  onClose,
-  onSave,
-}: {
-  source: UiV1Location
-  locations: UiV1Location[]
-  links: UiV1LocationLink[]
-  onClose: () => void
-  onSave: (
-    targetLocationId: string,
-    label: string,
-    visibilityMode: VisibilityMode,
-  ) => Promise<{ ok: boolean; error?: string }>
-}) {
-  const linkedTargets = new Set(
-    links
-      .filter((link) => link.source_location_id === source.id)
-      .map((link) => link.target_location_id),
-  )
-  const targets = locations.filter(
-    (location) => location.id !== source.id && !linkedTargets.has(location.id),
-  )
-  const [targetId, setTargetId] = useState(targets[0]?.id || "")
-  const [label, setLabel] = useState("")
-  const [visibilityMode, setVisibilityMode] = useState<VisibilityMode>("discover")
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
-
-  async function submit() {
-    if (!targetId) {
-      setError("Нет доступной зоны для перехода.")
-      return
-    }
-
-    setSaving(true)
-    setError("")
-    const result = await onSave(targetId, label, visibilityMode)
-    setSaving(false)
-
-    if (!result.ok) {
-      setError(result.error || "Не удалось добавить переход.")
-      return
-    }
-
-    onClose()
-  }
-
-  return (
-    <motion.div
-      className="u1-location-sheet-backdrop"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onMouseDown={onClose}
-    >
-      <motion.section
-        className="u1-location-form-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Добавить переход"
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <header>
-          <strong>Добавить переход</strong>
-          <button type="button" onClick={onClose} aria-label="Закрыть">×</button>
-        </header>
-
-        <label>
-          <span>Куда</span>
-          <select value={targetId} onChange={(event) => setTargetId(event.target.value)}>
-            {targets.map((location) => (
-              <option key={location.id} value={location.id}>{location.name}</option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          <span>Название перехода</span>
-          <input
-            value={label}
-            onChange={(event) => setLabel(event.target.value)}
-            placeholder="Например: Тайный тоннель"
-            maxLength={160}
-          />
-        </label>
-
-        <label>
-          <span>Видимость</span>
-          <select
-            value={visibilityMode}
-            onChange={(event) => setVisibilityMode(event.target.value as VisibilityMode)}
-          >
-            <option value="always">Всегда видно</option>
-            <option value="discover">После открытия</option>
-            <option value="private">Только мастеру</option>
-          </select>
-        </label>
-
-        {error && <p className="u1-location-form-sheet__error">{error}</p>}
-
-        <button
-          type="button"
-          className="u1-location-form-sheet__submit"
-          disabled={saving || !targets.length}
-          onClick={() => void submit()}
-        >
-          {saving ? "Добавляю…" : "Добавить переход"}
-        </button>
-      </motion.section>
-    </motion.div>
-  )
-}
-
-function countDescendants(locations: UiV1Location[], locationId: string) {
-  const childrenByParent = new Map<string, string[]>()
-  for (const location of locations) {
-    if (!location.parent_location_id) continue
-    const list = childrenByParent.get(location.parent_location_id) || []
-    list.push(location.id)
-    childrenByParent.set(location.parent_location_id, list)
-  }
-
-  let count = 0
-  const stack = [...(childrenByParent.get(locationId) || [])]
-  const visited = new Set<string>()
-  while (stack.length) {
-    const id = stack.pop()
-    if (!id || visited.has(id)) continue
-    visited.add(id)
-    count += 1
-    stack.push(...(childrenByParent.get(id) || []))
-  }
-  return count
-}
-
-function DeleteLocationSheet({
-  location,
-  descendantCount,
-  onClose,
-  onConfirm,
-}: {
-  location: UiV1Location
-  descendantCount: number
-  onClose: () => void
-  onConfirm: () => Promise<{ ok: boolean; error?: string }>
-}) {
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
-
-  async function confirm() {
-    setSaving(true)
-    setError("")
-    const result = await onConfirm()
-    setSaving(false)
-
-    if (!result.ok) {
-      setError(result.error || "Не удалось удалить зону.")
-      return
-    }
-
-    onClose()
-  }
-
-  return (
-    <motion.div
-      className="u1-location-sheet-backdrop"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onMouseDown={onClose}
-    >
-      <motion.section
-        className="u1-location-form-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Удалить зону"
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <header>
-          <strong>Удалить «{location.name}»?</strong>
-          <button type="button" onClick={onClose} aria-label="Закрыть">×</button>
-        </header>
-
-        <p className="u1-location-delete-copy">
-          Зона будет удалена окончательно.
-          {descendantCount > 0
-            ? ` Вместе с ней удалятся вложенные подзоны: ${descendantCount}.`
-            : ""}
-          {" "}Переходы, ведущие в удалённые зоны, тоже исчезнут.
-        </p>
-
-        {error && <p className="u1-location-form-sheet__error">{error}</p>}
-
-        <button
-          type="button"
-          className="u1-location-form-sheet__submit"
-          data-danger="true"
-          disabled={saving}
-          onClick={() => void confirm()}
-        >
-          {saving ? "Удаляю…" : "Удалить"}
-        </button>
-      </motion.section>
-    </motion.div>
+      <strong>{title}</strong>
+      <span>Интерфейс этой функции будет спроектирован отдельным этапом.</span>
+      <button type="button" onClick={onClose}>Закрыть</button>
+    </motion.section>
   )
 }
 
@@ -562,7 +362,7 @@ function LocationDetailConnection({ location }: { location: UiV1Location }) {
       </header>
 
       <section className="u1-location-detail-seam">
-        {location.display_image_url && <img src={location.display_image_url} alt="" />}
+        {location.display_image_url && <img src={location.display_image_url} alt="" draggable={false} />}
         {location.summary && <p>{location.summary}</p>}
         <span>Карточка зоны подключена отдельным маршрутом. Полное наполнение спроектируем своим этапом.</span>
       </section>
@@ -578,13 +378,12 @@ export function LocationNavigator({
   detail?: boolean
 }) {
   const world = useUiV1Locations()
-  const [actionTarget, setActionTarget] = useState<UiV1Location | null>(null)
-  const [editor, setEditor] = useState<{
-    mode: "root" | "child" | "edit"
-    target: UiV1Location | null
+  const [actionTargetId, setActionTargetId] = useState<string | null>(null)
+  const [inlinePlaceholder, setInlinePlaceholder] = useState<{
+    locationId: string
+    title: string
   } | null>(null)
-  const [transitionSource, setTransitionSource] = useState<UiV1Location | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<UiV1Location | null>(null)
+  const [rootPlaceholder, setRootPlaceholder] = useState<string | null>(null)
 
   const locationById = useMemo(
     () => new Map(world.locations.map((location) => [location.id, location])),
@@ -686,11 +485,55 @@ export function LocationNavigator({
 
   function navigateInto(location: UiV1Location) {
     if (location.id === selected?.id) return
+    setActionTargetId(null)
+    setInlinePlaceholder(null)
     navigate(`home/world/locations/${location.id}`)
   }
 
+  function toggleActions(location: UiV1Location) {
+    setRootPlaceholder(null)
+    setInlinePlaceholder(null)
+    setActionTargetId((current) => current === location.id ? null : location.id)
+  }
+
+  function renderNode(location: UiV1Location, mode: TileMode) {
+    const expanded = actionTargetId === location.id
+    const placeholderTitle =
+      inlinePlaceholder?.locationId === location.id
+        ? inlinePlaceholder.title
+        : null
+
+    return (
+      <LocationNode
+        key={location.id}
+        item={location}
+        mode={mode}
+        expanded={expanded}
+        placeholderTitle={placeholderTitle}
+        canManage={world.canManage}
+        onNavigate={() => navigateInto(location)}
+        onOpen={() => openDetail(location)}
+        onLongPress={() => toggleActions(location)}
+        onPlaceholder={(title) => {
+          setActionTargetId(location.id)
+          setInlinePlaceholder({ locationId: location.id, title })
+        }}
+        onBack={() => setInlinePlaceholder(null)}
+      />
+    )
+  }
+
   return (
-    <main className="u1-section-page">
+    <main
+      className="u1-section-page"
+      onPointerDownCapture={(event) => {
+        if (!actionTargetId) return
+        const target = event.target as HTMLElement
+        if (target.closest(`[data-location-node-id="${actionTargetId}"]`)) return
+        setActionTargetId(null)
+        setInlinePlaceholder(null)
+      }}
+    >
       <LocationHeader
         backTo={backTo}
         action={world.canManage ? (
@@ -698,14 +541,31 @@ export function LocationNavigator({
             type="button"
             className="u1-section-add"
             aria-label="Добавить главную зону"
-            onClick={() => setEditor({ mode: "root", target: null })}
+            onClick={() => {
+              setActionTargetId(null)
+              setInlinePlaceholder(null)
+              setRootPlaceholder("Создание главной зоны")
+            }}
           >
             +
           </button>
         ) : null}
       />
 
-      <section className="u1-location-navigator" aria-label="Навигация по локациям">
+      <AnimatePresence initial={false}>
+        {rootPlaceholder && (
+          <RootFeaturePlaceholder
+            title={rootPlaceholder}
+            onClose={() => setRootPlaceholder(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <section
+        className="u1-location-navigator"
+        aria-label="Навигация по локациям"
+        data-menu-open={Boolean(actionTargetId) || undefined}
+      >
         <AnimatePresence mode="popLayout" initial={false}>
           {!selected ? (
             <motion.div
@@ -715,16 +575,7 @@ export function LocationNavigator({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              {roots.map((location) => (
-                <LocationTile
-                  key={location.id}
-                  item={location}
-                  mode="root"
-                  onNavigate={() => navigateInto(location)}
-                  onOpen={() => openDetail(location)}
-                  onLongPress={() => setActionTarget(location)}
-                />
-              ))}
+              {roots.map((location) => renderNode(location, "root"))}
             </motion.div>
           ) : (
             <motion.div
@@ -736,16 +587,7 @@ export function LocationNavigator({
             >
               <div className="u1-location-path">
                 <AnimatePresence mode="popLayout" initial={false}>
-                  {path.map((location) => (
-                    <LocationTile
-                      key={location.id}
-                      item={location}
-                      mode="path"
-                      onNavigate={() => navigateInto(location)}
-                      onOpen={() => openDetail(location)}
-                      onLongPress={() => setActionTarget(location)}
-                    />
-                  ))}
+                  {path.map((location) => renderNode(location, "path"))}
                 </AnimatePresence>
               </div>
 
@@ -754,16 +596,7 @@ export function LocationNavigator({
                   <h2 id="u1-location-children">Подзоны</h2>
                   <div className="u1-location-child-list">
                     <AnimatePresence mode="popLayout" initial={false}>
-                      {children.map((location) => (
-                        <LocationTile
-                          key={location.id}
-                          item={location}
-                          mode="child"
-                          onNavigate={() => navigateInto(location)}
-                          onOpen={() => openDetail(location)}
-                          onLongPress={() => setActionTarget(location)}
-                        />
-                      ))}
+                      {children.map((location) => renderNode(location, "child"))}
                     </AnimatePresence>
                   </div>
                 </section>
@@ -782,7 +615,11 @@ export function LocationNavigator({
                           type="button"
                           className="u1-location-transition"
                           key={transition.id}
-                          onClick={() => navigate(`home/world/locations/${target.id}`)}
+                          onClick={() => {
+                            setActionTargetId(null)
+                            setInlinePlaceholder(null)
+                            navigate(`home/world/locations/${target.id}`)
+                          }}
                         >
                           <span aria-hidden="true">→</span>
                           <span>
@@ -801,79 +638,6 @@ export function LocationNavigator({
 
         {!selected && roots.length === 0 && <EmptyState>Локаций пока нет.</EmptyState>}
       </section>
-
-      <AnimatePresence>
-        {actionTarget && (
-          <LocationActionSheet
-            location={actionTarget}
-            canManage={world.canManage}
-            onClose={() => setActionTarget(null)}
-            onOpen={() => openDetail(actionTarget)}
-            onAddChild={() => setEditor({ mode: "child", target: actionTarget })}
-            onAddTransition={() => setTransitionSource(actionTarget)}
-            onEdit={() => setEditor({ mode: "edit", target: actionTarget })}
-            onDelete={() => setDeleteTarget(actionTarget)}
-          />
-        )}
-
-        {editor && (
-          <LocationEditorSheet
-            key={`editor:${editor.mode}:${editor.target?.id || "root"}`}
-            title={
-              editor.mode === "root"
-                ? "Новая главная зона"
-                : editor.mode === "child"
-                  ? `Подзона: ${editor.target?.name || ""}`
-                  : `Редактировать: ${editor.target?.name || ""}`
-            }
-            initial={editor.mode === "edit" ? editor.target : null}
-            onClose={() => setEditor(null)}
-            onSave={(draft) =>
-              editor.mode === "edit" && editor.target
-                ? world.updateLocation(editor.target, draft)
-                : world.createLocation(
-                    editor.mode === "child" ? editor.target?.id || null : null,
-                    draft,
-                  )
-            }
-          />
-        )}
-
-        {transitionSource && (
-          <TransitionEditorSheet
-            key={`transition:${transitionSource.id}`}
-            source={transitionSource}
-            locations={world.locations}
-            links={world.links}
-            onClose={() => setTransitionSource(null)}
-            onSave={(targetId, label, visibilityMode) =>
-              world.createTransition(
-                transitionSource.id,
-                targetId,
-                label,
-                visibilityMode,
-              )
-            }
-          />
-        )}
-
-        {deleteTarget && (
-          <DeleteLocationSheet
-            key={`delete:${deleteTarget.id}`}
-            location={deleteTarget}
-            descendantCount={countDescendants(world.locations, deleteTarget.id)}
-            onClose={() => setDeleteTarget(null)}
-            onConfirm={async () => {
-              const parentId = deleteTarget.parent_location_id
-              const result = await world.deleteLocation(deleteTarget.id)
-              if (result.ok) {
-                navigate(parentId ? `home/world/locations/${parentId}` : "home/world/locations")
-              }
-              return result
-            }}
-          />
-        )}
-      </AnimatePresence>
     </main>
   )
 }

@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 
-import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
 import { supabase } from "../lib/supabase"
-import { oracle } from "../oracle-engine/runtime.ts"
 import type { VisibilityMode } from "../types/world"
 import { useUiV1CampaignScope } from "./useUiV1SectionData"
 
@@ -35,18 +33,6 @@ export type UiV1LocationLink = {
   label: string
   sort_order: number
   visibility_mode: VisibilityMode
-}
-
-export type UiV1LocationDraft = {
-  name: string
-  summary: string
-  visibilityMode: VisibilityMode
-}
-
-export type UiV1MutationResult = {
-  ok: boolean
-  error?: string
-  id?: string
 }
 
 export function useUiV1Locations() {
@@ -122,142 +108,6 @@ export function useUiV1Locations() {
     void load()
   }, [load, scope.campaignId, scope.loading])
 
-  const gmContext = useCallback(() => {
-    if (!scope.campaignId || !scope.userId || !scope.canManage) {
-      throw new Error("Недостаточно прав.")
-    }
-
-    return createEngineCommandContext({
-      campaignId: scope.campaignId,
-      requestedBy: scope.userId,
-      authority: "gm",
-    })
-  }, [scope.campaignId, scope.canManage, scope.userId])
-
-  const createLocation = useCallback(async (
-    parentLocationId: string | null,
-    draft: UiV1LocationDraft,
-  ): Promise<UiV1MutationResult> => {
-    try {
-      const result = await oracle.world.createLocation(gmContext(), {
-        parentLocationId,
-        name: draft.name.trim(),
-        summary: draft.summary.trim(),
-        description: "",
-        imageUrl: null,
-        visibilityMode: draft.visibilityMode,
-      })
-      await load()
-      const locationId = result.value.details.locationId
-      return {
-        ok: true,
-        id: typeof locationId === "string" ? locationId : result.value.locationIds[0],
-      }
-    } catch (mutationError) {
-      return {
-        ok: false,
-        error: mutationError instanceof Error ? mutationError.message : "Не удалось создать зону.",
-      }
-    }
-  }, [gmContext, load])
-
-  const updateLocation = useCallback(async (
-    location: UiV1Location,
-    draft: UiV1LocationDraft,
-  ): Promise<UiV1MutationResult> => {
-    try {
-      await oracle.world.updateLocation(gmContext(), location.id, {
-        name: draft.name.trim(),
-        summary: draft.summary.trim(),
-        description: location.description,
-        imageUrl: location.image_url,
-        visibilityMode: draft.visibilityMode,
-      })
-      await load()
-      return { ok: true }
-    } catch (mutationError) {
-      return {
-        ok: false,
-        error: mutationError instanceof Error ? mutationError.message : "Не удалось обновить зону.",
-      }
-    }
-  }, [gmContext, load])
-
-  const deleteLocation = useCallback(async (locationId: string): Promise<UiV1MutationResult> => {
-    try {
-      await oracle.world.deleteLocation(gmContext(), locationId)
-      await load()
-      return { ok: true }
-    } catch (mutationError) {
-      return {
-        ok: false,
-        error: mutationError instanceof Error ? mutationError.message : "Не удалось удалить зону.",
-      }
-    }
-  }, [gmContext, load])
-
-  const createTransition = useCallback(async (
-    sourceLocationId: string,
-    targetLocationId: string,
-    label: string,
-    visibilityMode: VisibilityMode,
-  ): Promise<UiV1MutationResult> => {
-    try {
-      if (links.some(
-        (link) =>
-          link.source_location_id === sourceLocationId &&
-          link.target_location_id === targetLocationId,
-      )) {
-        return { ok: false, error: "Такой переход из этой зоны уже существует." }
-      }
-
-      let section = sections.find(
-        (item) =>
-          item.location_id === sourceLocationId &&
-          item.title.trim().toLocaleLowerCase("ru") === "переходы",
-      )
-
-      if (!section) {
-        const created = await oracle.world.createLocationSection(
-          gmContext(),
-          sourceLocationId,
-          "Переходы",
-          "",
-        )
-        const sectionId = created.value.details.sectionId
-        if (typeof sectionId !== "string" || !sectionId) {
-          return { ok: false, error: "Не удалось подготовить раздел переходов." }
-        }
-        section = {
-          id: sectionId,
-          location_id: sourceLocationId,
-          title: "Переходы",
-          body: "",
-          sort_order: 0,
-        }
-      }
-
-      const createdLink = await oracle.world.createLocationLink(
-        gmContext(),
-        section.id,
-        targetLocationId,
-        label.trim(),
-        visibilityMode,
-      )
-      await load()
-      const linkId = createdLink.value.details.linkId
-      return {
-        ok: true,
-        id: typeof linkId === "string" ? linkId : undefined,
-      }
-    } catch (mutationError) {
-      return {
-        ok: false,
-        error: mutationError instanceof Error ? mutationError.message : "Не удалось создать переход.",
-      }
-    }
-  }, [gmContext, links, load, sections])
-
   return {
     ...scope,
     locations,
@@ -265,9 +115,5 @@ export function useUiV1Locations() {
     links,
     loading: scope.loading || loading,
     error: scope.error || error,
-    createLocation,
-    updateLocation,
-    deleteLocation,
-    createTransition,
   }
 }

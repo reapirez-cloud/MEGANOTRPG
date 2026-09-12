@@ -11,9 +11,17 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Replaced the location long-press bottom sheet with a contextual inline action tray that unfolds directly from the pressed location tile. Sibling tiles move smoothly through Motion layout and fade slightly while the active location remains visually anchored.
+- Disabled native text selection / long-press callouts on location controls so Telegram/Android no longer offers Copy/Select while the app is opening its own action tray.
+- Removed the prematurely designed create/edit/transition/delete forms from UI 1.0. The actions remain visible in the extensible manager action registry, but now open clean in-place placeholders until each management interface is explicitly designed. The root + action follows the same rule.
+
 ### Runtime and architecture changes
 
+- Reduced the isolated location adapter back to read-only world data for this stage; UI 1.0 no longer imports Oracle/Larisa mutation commands from the location navigator before the corresponding management interfaces are approved.
+
 ### Tests / verification
+
+- Updated UI 1.0 contract tests to require inline long-press actions, native-selection suppression and placeholder-only management flows, while explicitly rejecting the previous bottom-sheet CRUD implementation.
 
 ### Known incomplete work
 
