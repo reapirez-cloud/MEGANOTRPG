@@ -642,5 +642,10 @@ Installed on 2026-09-12 for the new MEGANOT UI v1.0 foundation:
 - Motion for React via `motion`
 - Radix UI primitives: Dialog, Dropdown Menu, Popover, Tooltip
 - React Router v7 via `react-router`
+- Storybook 10 with React/Vite integration
+- Storybook Docs and accessibility addon
+- Playwright for browser and mobile-viewport smoke/e2e testing
 
-These dependencies belong to the new UI v1.0 foundation. They are not a continuation of the legacy UI version chain. Storybook and Playwright remain deferred until the new App Shell exists.
+These dependencies belong to the new UI v1.0 foundation. They are not a continuation of the legacy UI version chain.
+
+Storybook is configured as the isolated workshop for UI v1 components. Playwright is configured now so the toolchain is ready before App Shell implementation; current browser coverage is intentionally only a smoke test and must grow with the new App Shell rather than encode legacy UI behavior.
