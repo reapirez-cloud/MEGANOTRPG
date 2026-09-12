@@ -103,9 +103,9 @@ test("dock navigation is icon-only and keeps accessible names", () => {
   assert.match(app, /aria-label=\{item\.label\}/)
   assert.match(app, /u1-dock__glyph/)
   assert.doesNotMatch(app, /u1-dock__label/)
-  assert.match(styles, /nav-icons\\/me\\.png/)
-  assert.match(styles, /nav-icons\\/home\\.png/)
-  assert.match(styles, /nav-icons\\/chats\\.png/)
+  assert.match(styles, /nav-icons\/me\.png/)
+  assert.match(styles, /nav-icons\/home\.png/)
+  assert.match(styles, /nav-icons\/chats\.png/)
 })
 
 test("home puts real latest events before section previews", () => {
