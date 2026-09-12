@@ -22,6 +22,8 @@ const locationData = fs.readFileSync("src/ui-v1-isolated/useUiV1Locations.ts", "
 const currentStateDoc = fs.readFileSync("docs/UI_V1_CURRENT_STATE_2026-09-13.md", "utf8")
 const historicalIsolationDoc = fs.readFileSync("docs/UI_V1_HARD_ISOLATION_2026-09-12.md", "utf8")
 const historicalFoundationDoc = fs.readFileSync("docs/UI_V1_STAGE_02_FOUNDATION_2026-09-12.md", "utf8")
+const historicalVisualDirectionDoc = fs.readFileSync("docs/UI_V1_VISUAL_DIRECTION_2026-09-12.md", "utf8")
+const characterUxAuditDoc = fs.readFileSync("docs/CHARACTER_UX_REDESIGN_AUDIT.md", "utf8")
 
 test("World preview artwork is committed with UI v1", () => {
   assert.equal(fs.existsSync(worldPreviewAsset), true)
@@ -245,6 +247,10 @@ test("UI v1 documentation has one explicit current-state authority", () => {
   assert.match(currentStateDoc, /Snake.*planned.*not implemented/is)
   assert.match(historicalIsolationDoc, /SUPERSEDED HISTORICAL RECORD/)
   assert.match(historicalFoundationDoc, /PARTIALLY INVALIDATED BY THE HARD-ISOLATION RESET/)
+  assert.match(historicalVisualDirectionDoc, /PARTIALLY SUPERSEDED DESIGN DIRECTION/)
+  assert.match(historicalVisualDirectionDoc, /old dominant .*Что нового.* no longer/is)
+  assert.match(characterUxAuditDoc, /DEFERRED REDESIGN AUDIT/)
+  assert.match(characterUxAuditDoc, /not an instruction to start that work now/i)
 })
 
 test("What’s New is a real chronology screen rather than a placeholder", () => {

@@ -194,6 +194,9 @@ Useful as decision history, not current capability truth:
 - `REDESIGN_PLAN_01_APP_SHELL_AND_HOME.md`;
 - `UI_V1_STAGE_02_FOUNDATION_2026-09-12.md`;
 - `UI_V1_STAGE_03_HOME_2026-09-12.md`;
-- `UI_V1_HARD_ISOLATION_2026-09-12.md`.
+- `UI_V1_HARD_ISOLATION_2026-09-12.md`;
+- `UI_V1_VISUAL_DIRECTION_2026-09-12.md` (palette/isolation direction still useful, old Home composition superseded).
+
+`CHARACTER_UX_REDESIGN_AUDIT.md` is **deferred future-stage design input**, not a historical dead document and not the current implementation queue. Use it when the sequence reaches Workspace/Character work.
 
 Focused engine/interaction contracts such as `SNAKE_INTERACTION_CONTRACT.md` remain authoritative for their specific boundaries unless explicitly superseded later.

@@ -1,6 +1,8 @@
 # Character UX Redesign — первичный аудит и направление
 
-> Status: **ACTIVE REDESIGN / PRIMARY AUDIT / NOT FINAL SPEC**
+> Status: **DEFERRED REDESIGN AUDIT / PRIMARY INPUT / NOT CURRENT IMPLEMENTATION STAGE**
+>
+> **Current-stage notice (2026-09-13):** this audit remains the primary UX input when Character/GM character redesign work begins, but it is **not an instruction to start that work now**. The current sequence in `docs/UI_V1_CURRENT_STATE_2026-09-13.md` puts Snake first, then its Inventory proof, then Player/GM Workspace, and only then the heavy Character UI/Sheet/Inventory redesign. Current-state and later focused decisions override conflicting implementation timing or surface assumptions in this audit.
 >
 > Branch context: `dev`
 >

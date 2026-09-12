@@ -21,6 +21,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added `docs/UI_V1_CURRENT_STATE_2026-09-13.md` as the canonical redesign status snapshot and made `AGENTS.md` point future agents there before UI 1.0 work. Older redesign stage files are now explicitly historical/superseded where their implementation claims no longer match the isolated app.
 - Corrected Society News publication from a direct React -> Supabase write to the named-engine path `UI -> Oracle -> Larisa -> campaign_updates`. Larisa now owns the explicit descriptive campaign-announcement command and emits a campaign-scoped engine event.
 - Clarified that the old Stage 2 Foundation claims about `MotionConfig`, `LayerHost` and Meganot Radix wrappers are not current isolated-tree capabilities after the hard-isolation reset.
+- Marked the old UI 1.0 visual-direction file as partially superseded because its dominant `Что нового` Home composition no longer matches the product, and marked the Character UX audit as deferred future-stage input rather than a current implementation order.
 
 ### Tests / verification
 

@@ -2,7 +2,11 @@
 
 > Date: 2026-09-12
 >
-> Status: ACTIVE DESIGN DIRECTION
+> Status: **HISTORICAL / PARTIALLY SUPERSEDED DESIGN DIRECTION**
+>
+> This file preserves the first visual direction from 12 September 2026. The low-chroma palette, isolated-UI principle and three-part dock remain useful direction, but the Home composition and destination list below are historical where they conflict with current code.
+>
+> **Current authority:** `docs/UI_V1_CURRENT_STATE_2026-09-13.md` + actual UI 1.0 code. In particular, the old dominant `Что нового` Home preview is no longer the current Home structure.
 
 The new UI is designed from scratch and remains physically isolated from the legacy application.
 
