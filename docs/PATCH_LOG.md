@@ -11,6 +11,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Attached the approved coastal grimdark panorama to the UI 1.0 «Мир» entry. The Home preview now uses the real campaign artwork instead of the dark fallback.
+
 - Removed the duplicated «Что нового» hero from UI 1.0 Home. The chronology now has one Home entry point: «Последние события» / «Все», instead of two controls opening the same destination.
 - Promoted «Мир» to the first Home destination while keeping its visual footprint restrained rather than replacing one oversized hero with another.
 - Added «База знаний» as the second Home destination with a compact preview for rules, items, spells and bestiary plus its own isolated placeholder route for later implementation.
@@ -30,6 +32,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added the optimized World preview asset at `public/ui-v1/world/world-preview.webp` (640×213 WebP, ~21 KB). Supabase `campaigns.cover_url` is the connection point, so the existing isolated Home cover pipeline owns rendering instead of a one-off hardcoded image branch.
+
 - Extended the isolated Home data adapter to resolve signed campaign cover/gallery media, achievements and future society-news feed sources while preserving UI 1.0's hard separation from legacy screens.
 - Home Realtime refresh now listens to feed items, campaign art and achievements so the new compact surfaces stay current without treating Realtime as canonical storage.
 
@@ -44,6 +48,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added stable future source presentation/connection slots for GM notes, world, zone, NPC, lore and system events. The current database still constrains feed source types to diary/art/achievement/update/moment, so future source kinds remain intentionally unpersisted until a dedicated migration is approved.
 
 ### Tests / verification
+
+- Added a UI 1.0 repository guard for the committed World preview asset so the campaign cover cannot silently disappear from source control.
 
 - Updated UI 1.0 isolation tests to lock the mixed Home composition, smaller hero proportions, removal of the Home updates entry, real gallery/achievement/cover integrations and the new ordering with recent events below destinations.
 

@@ -12,6 +12,12 @@ const legacyApp = fs.readFileSync("src/App.tsx", "utf8")
 const whatsNew = fs.readFileSync("src/ui-v1-isolated/WhatsNew.tsx", "utf8")
 const chronicleData = fs.readFileSync("src/ui-v1-isolated/useChronicleData.ts", "utf8")
 const chronicleStyles = fs.readFileSync("src/ui-v1-isolated/whats-new.css", "utf8")
+const worldPreviewAsset = "public/ui-v1/world/world-preview.webp"
+
+test("World preview artwork is committed with UI v1", () => {
+  assert.equal(fs.existsSync(worldPreviewAsset), true)
+  assert.ok(fs.statSync(worldPreviewAsset).size < 100_000)
+})
 
 test("UI v1 is now the default application entry", () => {
   assert.match(html, /src\/ui-v1-isolated\/main\.tsx/)

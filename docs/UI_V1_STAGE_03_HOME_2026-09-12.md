@@ -74,3 +74,10 @@ The active Home order is now:
 6. **«Последние события»** — compact chronology preview, with «Все» as the single Home entry into the full chronology.
 
 «Что нового» remains a real deep chronology screen, not a Home tile. «Обновления» remain absent from Home.
+
+
+## World preview artwork
+
+> Asset update: 2026-09-12
+
+The approved coastal grimdark panorama is now the campaign artwork used by the Home «Мир» entry. The source upload was reduced to a 640×213 WebP derivative at `public/ui-v1/world/world-preview.webp` (about 21 KB), which is sufficient for the mobile Home preview while avoiding a multi-megabyte image payload. The UI continues to read this through the campaign `cover_url` contract rather than hardcoding a special-case image into `WorldPreview`.
