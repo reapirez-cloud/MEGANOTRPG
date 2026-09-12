@@ -11,6 +11,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Closed the last two Rogue literary gaps: `Точный прицел / Steady Aim` and `Скользкий ум / Slippery Mind` now have full Voss narration/comments written to match the existing Gemini Rogue register; the supported base class and all nine subclass packs now have complete literary cards.
+
 - Completed the Rogue literary subclass roster with full feature-by-feature Voss copy for Mastermind, Scout and Phantom; all nine supported Rogue subclass identities now have authored feature packs in the public reference overlay, while the class remains explicitly reference-only until runtime work begins.
 
 - Warlock reference now follows the deployed runtime boundary instead of presenting the entire class as reference-only: the PHB 2024 base class plus Archfey, Celestial, Fiend and Great Old One use their real Character Engine templates, while supplemental and expanded literary patrons remain explicitly outside certified runtime.
@@ -29,6 +31,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added Bard Stage 4 base runtime: Expertise now selects only skills the character actually owns, Jack of All Trades adds half proficiency only to untrained skill checks, Countercharm is a structured 30-foot Reaction, and Words of Creation grants Power Word Heal/Power Word Kill plus the optional second target rule. The Bard still remains reference-only until subclass/final certification work is complete.
 
 ### Runtime and architecture changes
+
+- Completed Rogue Stage 1 source freeze without activating runtime: `rogueRuntimeFeatureMatrix.md` now fixes the source/version boundary, stable identities and runtime ownership mode for all 61 supported features. The audit also locks the 2024 Arcane Trickster Spell Thief scope, including eligible non-Wizard spells, while Rogue remains `referenceOnly=true` and mechanics runtime stays `NOT_STARTED` until Stage 2.
 
 - Added `src/data/classes/rogueRuntimePlan.md` as the canonical seven-stage closure plan for taking Rogue from reference-only content to production `READY`. The plan fixes the supported nine-subclass roster, source/version boundaries, shared-engine ownership rules, per-stage test/deployment gates and a fail-closed Stage 7 certification; future Rogue work now resumes from the first incomplete stage instead of inventing a new implementation route.
 
@@ -73,6 +77,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Final certification explicitly records unsupported cross-class systems as generic pending debt instead of inventing Bard branches: starting-vs-multiclass entry profiles, combined multiclass spell-slot aggregation, and the generic feat/ASI source runtime.
 
 ### Tests / verification
+
+- Updated Rogue base reference regression coverage for the completed Steady Aim/Slippery Mind prose and added a Stage 1 source-freeze gate covering the 15 base features, 46 subclass features, frozen 2024/legacy rule deltas, stable feature matrix and Stage 2 handoff.
 - Added `tests/rogueSubclassReferenceWave3.test.ts` to lock the three new subclass feature packs and reject known incorrect Mastermind, Scout and Phantom rule variants; updated the Rogue work ledger to keep runtime honestly `NOT_STARTED` and preserve the two remaining base literary gaps.
 - Added `tests/bardCatalogStage1.test.ts` to run the strict class quality gate, parser -> Character Engine resolution at low/mid/high Bard levels, starting proficiency choices, Stage 1 non-runtime guarantees and the corrected 2024 reference rules.
 - Dry-ran the complete Bard Stage 1 SQL against the connected production schema inside a rolled-back transaction; the migration executed successfully without changing production data.
