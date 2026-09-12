@@ -29,12 +29,9 @@ import "./character-profile-v5.css"
 import "./character-profile-opus.css"
 import "./ui-v1/ui-v1.css"
 
-import NotificationsSheet from "./components/app/NotificationsSheet"
 import AuthGate from "./components/auth/AuthGate"
 import CharacterGameFrame from "./components/characters/CharacterGameFrame"
-import ReferenceGuide from "./components/reference/ReferenceGuide"
 import { CharacterProvider, useCharacters } from "./context/CharacterContext"
-import { useNotifications } from "./hooks/useNotifications"
 import {
   characterReturnPath,
   characterRoutePath,
@@ -48,13 +45,12 @@ import Art from "./pages/Art"
 import CharacterProfileV2 from "./pages/CharacterProfileV2"
 import Characters from "./pages/Characters"
 import ChatRoom from "./pages/ChatRoom"
-import Chats from "./pages/Chats"
 import Feed from "./pages/Feed"
-import GmWorkspace from "./pages/GmWorkspace"
 import World from "./pages/World"
 import ContextHeader from "./ui-v1/shell/ContextHeader"
 import MeganotAppShell from "./ui-v1/shell/MeganotAppShell"
 import HomeFoundation from "./ui-v1/screens/HomeFoundation"
+import FeaturePlaceholder from "./ui-v1/screens/FeaturePlaceholder"
 import HomeSectionPlaceholder from "./ui-v1/screens/HomeSectionPlaceholder"
 import { homeSectionCopy } from "./ui-v1/screens/homeSectionCopy"
 
@@ -64,20 +60,15 @@ function Workspace() {
     campaignTitle,
     campaignCoverUrl,
     activeCharacter,
-    myCharacters,
     myMember,
     canManage,
   } = useCharacters()
-  const notifications = useNotifications(campaignId)
   const location = useLocation()
   const routerNavigate = useNavigate()
   const route = useMemo(
     () => parseAppLocation(location.pathname, location.search),
     [location.pathname, location.search],
   )
-  const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [referenceOpen, setReferenceOpen] = useState(false)
-  const [characterRefreshKey, setCharacterRefreshKey] = useState(0)
 
   const navigate = useCallback(
     (path: string, replace = false) => {
@@ -133,18 +124,6 @@ function Workspace() {
 
     return () => back.offClick(goBack)
   }, [goBack, route.type])
-
-  const openNotifications = useCallback(() => setNotificationsOpen(true), [])
-  const openReference = useCallback(() => setReferenceOpen(true), [])
-
-  const workspaceActions = (
-    <>
-      <button type="button" onClick={openReference}>Справочник</button>
-      <button type="button" onClick={openNotifications}>
-        Уведомления{notifications.unreadCount > 0 ? ` · ${notifications.unreadCount > 9 ? "9+" : notifications.unreadCount}` : ""}
-      </button>
-    </>
-  )
 
   const activeSpace = dockSpaceForRoute(route)
   const navigateSpace = useCallback(
@@ -231,53 +210,24 @@ function Workspace() {
     )
   } else if (route.space === "chats") {
     content = (
-      <>
-        <ContextHeader title="Чаты" />
-        <main className="app-content">
-          <Chats onOpenRoom={(id) => navigate(`/chat/${encodeURIComponent(id)}`)} />
-        </main>
-      </>
+      <FeaturePlaceholder
+        title="Чаты"
+        description="Новый интерфейс чатов будет подключён отдельным этапом. Маршрут и место в Dock уже окончательные, поэтому остальные части UI 1.0 могут ссылаться сюда без временных обходов."
+      />
     )
   } else {
     content = (
-      <>
-        <ContextHeader
-          title={canManage ? "Пространство мастера" : "Личное пространство"}
-          actions={workspaceActions}
-        />
-        <main className="app-content">
-          {canManage && (
-            <GmWorkspace
-              onOpenCharacter={(id) => navigate(characterRoutePath(id, "workspace"))}
-              onOpenRoom={(id) => navigate(`/chat/${encodeURIComponent(id)}`)}
-            />
-          )}
-          {!canManage && activeCharacter && (
-            <CharacterGameFrame characterId={activeCharacter.id}>
-              <CharacterProfileV2
-                key={`${activeCharacter.id}:${characterRefreshKey}`}
-                characterId={activeCharacter.id}
-                onBack={() => navigate("/workspace")}
-                embedded
-              />
-            </CharacterGameFrame>
-          )}
-          {!canManage && !activeCharacter && (
-            <section className="me-empty surface">
-              <span>◇</span>
-              <h2>{myCharacters.length ? "Нет активного персонажа" : "Персонаж ещё не назначен"}</h2>
-              <p>
-                {myCharacters.length
-                  ? "Активного героя выбирает ГМ в панели кампании."
-                  : "ГМ выдаст тебе персонажа — создавать героев игрок сам не может."}
-              </p>
-              <button type="button" onClick={() => navigate("/workspace/characters")}>
-                Открыть персонажей
-              </button>
-            </section>
-          )}
-        </main>
-      </>
+      <FeaturePlaceholder
+        eyebrow={canManage ? "Управление" : "Личное пространство"}
+        title="Я"
+        description={
+          canManage
+            ? "Новое пространство управления мастера и владельца будет собрано отдельным этапом. Старый GM-интерфейс остаётся источником рабочей логики, но не показывается как новый UI."
+            : activeCharacter
+              ? "Новое личное пространство игрока будет построено вокруг активного персонажа отдельным этапом. Персонаж уже привязан к этому маршруту архитектурно."
+              : "Личное пространство подключено к новой навигации и ждёт своего этапа реализации."
+        }
+      />
     )
   }
 
@@ -293,31 +243,6 @@ function Workspace() {
       onNavigate={navigateSpace}
     >
       {content}
-      {notificationsOpen && (
-        <NotificationsSheet
-          items={notifications.items}
-          loading={notifications.loading}
-          error={notifications.error}
-          onClose={() => setNotificationsOpen(false)}
-          onMarkRead={notifications.markAllRead}
-          onOpenFeed={() => navigate("/home/whats-new")}
-        />
-      )}
-      {referenceOpen && (
-        <ReferenceGuide
-          campaignId={campaignId}
-          character={activeCharacter
-            ? {
-                id: activeCharacter.id,
-                name: activeCharacter.name,
-                character_class: activeCharacter.character_class,
-              }
-            : null}
-          canManage={canManage}
-          onClose={() => setReferenceOpen(false)}
-          onCharacterChanged={() => setCharacterRefreshKey((count) => count + 1)}
-        />
-      )}
     </MeganotAppShell>
   )
 }

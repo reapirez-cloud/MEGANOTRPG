@@ -23,3 +23,16 @@ Decisions confirmed with the product owner:
 This is the first coded visual direction, not a claim that final art, typography, spacing or image selection can never change.
 
 Important: unfinished Home sections receive their own routes rather than secretly redirecting to unrelated legacy screens.
+
+
+## Incremental connection rule
+
+Deferred root spaces use explicit placeholders in the new shell.
+
+At this stage:
+- `/home` is the active UI 1.0 implementation;
+- `/chats` is connected through a UI 1.0 placeholder until the Chats stage;
+- `/workspace` ("Я") is connected through a UI 1.0 placeholder until the Workspace stage;
+- legacy/deep screens remain compatibility bridges only where working behavior still needs to survive.
+
+Do not mount deferred legacy root UIs inside the new shell just to avoid an empty destination.

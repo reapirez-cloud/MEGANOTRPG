@@ -11,6 +11,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Began the MEGANOT UI 1.0 shell migration: Home now uses the new atmospheric preview-based layout and the global Dock is wired as Я / Главная / Чаты with Home visually dominant.
+- Deferred UI 1.0 root spaces now show explicit placeholders instead of embedding legacy root interfaces. Chats and Я keep their final routes now and will be replaced in place when their dedicated redesign stages begin.
+
 - Closed the last two Rogue literary gaps: `Точный прицел / Steady Aim` and `Скользкий ум / Slippery Mind` now have full Voss narration/comments written to match the existing Gemini Rogue register; the supported base class and all nine subclass packs now have complete literary cards.
 
 - Completed the Rogue literary subclass roster with full feature-by-feature Voss copy for Mastermind, Scout and Phantom; all nine supported Rogue subclass identities now have authored feature packs in the public reference overlay, while the class remains explicitly reference-only until runtime work begins.

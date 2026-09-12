@@ -204,3 +204,35 @@ Before adding a write path:
 ## Keep instructions discoverable
 
 Architecture rules that materially affect future implementation must live in repository instructions/docs adjacent to the relevant code, not only in chat, commit messages or temporary plans. Keep short pointer comments in central implementation files so an agent opening the code is directed to the full contract.
+
+
+## UI 1.0 incremental integration — mandatory
+
+MEGANOT UI 1.0 is being built incrementally over working application behavior.
+
+When a destination, root space, screen, feature or workflow belongs to the new UI 1.0 architecture but its new interface is **not being implemented in the current stage**, agents MUST connect it with an explicit UI 1.0 placeholder instead of silently rendering the legacy interface inside the new shell.
+
+Required pattern:
+
+```text
+new route / navigation entry
+-> UI 1.0 placeholder
+-> later implementation stage
+-> replace placeholder with the real new UI
+```
+
+The placeholder is a wiring contract, not fake completion. It should clearly identify the future destination and preserve the intended route so other new UI can connect to it safely.
+
+Do not:
+
+- redesign a deferred feature incidentally just because another screen links to it;
+- embed an old page into a new root space and present it as the new UI;
+- redirect an unfinished destination to an unrelated legacy page;
+- remove working legacy behavior before its replacement exists;
+- create temporary navigation structures that will need to be renamed or rerouted when the feature is finally built.
+
+Legacy screens may remain reachable through explicit legacy/deep routes when needed to preserve working behavior during migration. They are behavior references and temporary compatibility bridges, not visual foundations.
+
+Example: if Home is being built but new Chats and new Я/Workspace are not part of the current stage, the Dock still connects to `/chats` and `/workspace`, but those root routes show UI 1.0 placeholders until their dedicated implementation stages.
+
+This rule applies to all future UI 1.0 work unless the user explicitly asks to implement that destination now.
