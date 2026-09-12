@@ -11,6 +11,11 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Rebuilt UI 1.0 Home around mixed content types instead of six oversized preview tiles: «Что нового» is the single hero, «Мир» is a shorter visual entry, society news and achievements are editorial rows, and «Арты» is a compact live thumbnail strip.
+- Removed «Обновления» from Home entirely and stopped surfacing `update` feed rows in Home's recent-event preview; the existing deep route remains only as a future relocation seam.
+- Moved «Последние события» below the main campaign destinations and reduced it to a compact three-item chronology preview.
+- Connected Home to real campaign cover art, gallery previews and achievement count/latest-title data already present in Supabase. Society news stays honest: if no GM/announcement source exists yet, Home shows a quiet empty state instead of rebranding application updates as campaign news.
+
 - Replaced the UI 1.0 Dock SVG masks with generated transparent PNG artwork for Я, Главная and Чаты, keeping the approved 25/50/25 dock geometry while testing a richer metallic icon treatment.
 
 - Replaced the UI 1.0 Dock's flat SVG mask icons with the generated metallic PNG navigation assets for Я, Главная and Чаты so the local build can be compared directly against the earlier vector treatment.
@@ -20,6 +25,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added progressive loading for older history while keeping the newest events first.
 
 ### Runtime and architecture changes
+
+- Extended the isolated Home data adapter to resolve signed campaign cover/gallery media, achievements and future society-news feed sources while preserving UI 1.0's hard separation from legacy screens.
+- Home Realtime refresh now listens to feed items, campaign art and achievements so the new compact surfaces stay current without treating Realtime as canonical storage.
 
 - Navigation artwork now loads as portable raster assets from `public/ui-v1/nav-icons/*.png`; the previous SVG masks are no longer referenced by UI 1.0.
 
@@ -32,6 +40,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added stable future source presentation/connection slots for GM notes, world, zone, NPC, lore and system events. The current database still constrains feed source types to diary/art/achievement/update/moment, so future source kinds remain intentionally unpersisted until a dedicated migration is approved.
 
 ### Tests / verification
+
+- Updated UI 1.0 isolation tests to lock the mixed Home composition, smaller hero proportions, removal of the Home updates entry, real gallery/achievement/cover integrations and the new ordering with recent events below destinations.
 
 - Added UI 1.0 chronology contract coverage for non-art aggregation, full copy rendering, author/character lookup, Realtime refresh, sticky date grouping and future source connection slots.
 - Expanded Playwright smoke coverage so «Что нового» must open as the real chronology screen before returning to Home.

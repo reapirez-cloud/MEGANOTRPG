@@ -37,3 +37,22 @@ At this stage:
 - working legacy root surfaces are preserved explicitly at `/legacy/chats` and `/legacy/workspace`, never through the new Dock.
 
 Do not mount deferred legacy root UIs inside the new shell just to avoid an empty destination.
+
+
+## Home v2 — mixed-content composition
+
+> Decision update: 2026-09-12
+
+The first Home pass made every destination a large image tile. That made the page vertically heavy and pushed the product back toward a generic card/dashboard rhythm.
+
+The active Home direction is now:
+
+- **«Что нового»** is the only true hero entry and may use the latest event media, falling back to campaign cover;
+- **«Мир»** remains visual but is substantially shorter than the hero and uses the campaign cover when available;
+- **«Новости общества»** is an editorial text entry, not a tile;
+- **«Достижения»** is a compact editorial entry with the real campaign achievement count and latest title;
+- **«Арты»** is represented by a small strip of the latest real gallery images rather than another large card;
+- **«Последние события»** moves below the main destinations and becomes a compact chronology preview;
+- **«Обновления» are removed from Home entirely.** The stable route may remain for future relocation, but application changelog/update tracking is not treated as a primary player destination.
+
+Home should no longer be composed from one reusable tile shape with decorative filler. Each entry type should express the nature of its content.

@@ -1,19 +1,34 @@
 import { useEffect, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
+import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
 import { supabase } from "../lib/supabase"
 
 export type HomeEvent = {
   id: string
-  source_type: "achievement" | "diary" | "moment" | "update"
+  source_type: string
   title: string
   body: string
+  media_url: string | null
   published_at: string
+}
+
+export type HomeSocietyNews = HomeEvent
+
+export type HomeArtPreview = {
+  id: string
+  title: string
+  imageUrl: string
 }
 
 type HomeData = {
   campaignTitle: string
+  campaignCoverUrl: string | null
   events: HomeEvent[]
+  artPreviews: HomeArtPreview[]
+  achievementCount: number
+  latestAchievementTitle: string | null
+  societyNews: HomeSocietyNews | null
   loading: boolean
   error: string | null
 }
@@ -23,7 +38,12 @@ const EVENT_LIMIT = 3
 
 export function useHomeData(): HomeData {
   const [campaignTitle, setCampaignTitle] = useState(FALLBACK_CAMPAIGN_TITLE)
+  const [campaignCoverUrl, setCampaignCoverUrl] = useState<string | null>(null)
   const [events, setEvents] = useState<HomeEvent[]>([])
+  const [artPreviews, setArtPreviews] = useState<HomeArtPreview[]>([])
+  const [achievementCount, setAchievementCount] = useState(0)
+  const [latestAchievementTitle, setLatestAchievementTitle] = useState<string | null>(null)
+  const [societyNews, setSocietyNews] = useState<HomeSocietyNews | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -90,9 +110,10 @@ export function useHomeData(): HomeData {
       const refreshEvents = async () => {
         const { data, error: feedError } = await supabase
           .from("feed_items")
-          .select("id, source_type, title, body, published_at")
+          .select("id, source_type, title, body, media_url, published_at")
           .eq("campaign_id", campaignId)
           .neq("source_type", "art")
+          .neq("source_type", "update")
           .order("published_at", { ascending: false })
           .limit(EVENT_LIMIT)
 
@@ -104,16 +125,77 @@ export function useHomeData(): HomeData {
           return
         }
 
-        setEvents((data || []) as HomeEvent[])
+        const rows = (data || []) as HomeEvent[]
+        const resolved = await Promise.all(
+          rows.map(async (row) => ({
+            ...row,
+            media_url: await resolveCampaignMediaUrl(row.media_url),
+          })),
+        )
+
+        if (!cancelled) setEvents(resolved)
       }
 
+      const refreshArtPreviews = async () => {
+        const { data, error: artError } = await supabase
+          .from("campaign_art_items")
+          .select("id, title, image_url")
+          .eq("campaign_id", campaignId)
+          .order("created_at", { ascending: false })
+          .limit(3)
+
+        if (cancelled || artError) return
+
+        const resolved = await Promise.all(
+          (data || []).map(async (row: { id: string; title: string | null; image_url: string }) => ({
+            id: row.id,
+            title: row.title || "Арт кампании",
+            imageUrl: (await resolveCampaignMediaUrl(row.image_url)) || row.image_url,
+          })),
+        )
+
+        if (!cancelled) setArtPreviews(resolved)
+      }
+
+      const refreshAchievements = async () => {
+        const { data, count, error: achievementError } = await supabase
+          .from("achievements")
+          .select("title, awarded_at", { count: "exact" })
+          .eq("campaign_id", campaignId)
+          .order("awarded_at", { ascending: false })
+          .limit(1)
+
+        if (cancelled || achievementError) return
+
+        setAchievementCount(count || 0)
+        setLatestAchievementTitle(data?.[0]?.title || null)
+      }
+
+      const refreshSocietyNews = async () => {
+        const { data, error: newsError } = await supabase
+          .from("feed_items")
+          .select("id, source_type, title, body, media_url, published_at")
+          .eq("campaign_id", campaignId)
+          .in("source_type", ["gm_note", "gm_post", "announcement"])
+          .order("published_at", { ascending: false })
+          .limit(1)
+
+        if (cancelled || newsError) return
+        setSocietyNews(((data || [])[0] as HomeSocietyNews | undefined) || null)
+      }
+
+      const campaignRequest = supabase
+        .from("campaigns")
+        .select("title, cover_url")
+        .eq("id", campaignId)
+        .maybeSingle()
+
       const [campaignResult] = await Promise.all([
-        supabase
-          .from("campaigns")
-          .select("title")
-          .eq("id", campaignId)
-          .maybeSingle(),
+        campaignRequest,
         refreshEvents(),
+        refreshArtPreviews(),
+        refreshAchievements(),
+        refreshSocietyNews(),
       ])
 
       if (cancelled) return
@@ -122,8 +204,15 @@ export function useHomeData(): HomeData {
         setCampaignTitle(campaignResult.data.title)
       }
 
+      if (campaignResult.data?.cover_url) {
+        setCampaignCoverUrl(
+          (await resolveCampaignMediaUrl(campaignResult.data.cover_url)) ||
+            campaignResult.data.cover_url,
+        )
+      }
+
       channel = supabase
-        .channel(`ui-v1-home-feed-${campaignId}`)
+        .channel("ui-v1-home-" + campaignId)
         .on(
           "postgres_changes",
           {
@@ -134,6 +223,31 @@ export function useHomeData(): HomeData {
           },
           () => {
             void refreshEvents()
+            void refreshSocietyNews()
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "campaign_art_items",
+            filter: `campaign_id=eq.${campaignId}`,
+          },
+          () => {
+            void refreshArtPreviews()
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "achievements",
+            filter: `campaign_id=eq.${campaignId}`,
+          },
+          () => {
+            void refreshAchievements()
           },
         )
         .subscribe()
@@ -149,5 +263,15 @@ export function useHomeData(): HomeData {
     }
   }, [])
 
-  return { campaignTitle, events, loading, error }
+  return {
+    campaignTitle,
+    campaignCoverUrl,
+    events,
+    artPreviews,
+    achievementCount,
+    latestAchievementTitle,
+    societyNews,
+    loading,
+    error,
+  }
 }

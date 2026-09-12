@@ -72,11 +72,17 @@ test("dock active state stays inside its own segment and mobile tap flash is dis
   assert.match(styles, /-webkit-tap-highlight-color:\s*transparent/)
 })
 
-test("home previews use the compact proportions and achievements label fits intentionally", () => {
-  assert.match(styles, /min-height:\s*clamp\(218px, 58vw, 320px\)/)
-  assert.match(styles, /grid-template-columns:\s*minmax\(0, 1\.2fr\) minmax\(0, 0\.8fr\)/)
-  assert.match(styles, /\.u1-preview--achievements \.u1-preview__caption strong/)
-  assert.match(styles, /white-space:\s*nowrap/)
+test("home uses mixed editorial entry types instead of a uniform preview grid", () => {
+  assert.doesNotMatch(app, /function SectionPreview/)
+  assert.match(app, /function WhatsNewHero/)
+  assert.match(app, /function WorldPreview/)
+  assert.match(app, /function SocietyNewsEntry/)
+  assert.match(app, /function AchievementEntry/)
+  assert.match(app, /function ArtPreviewStrip/)
+  assert.doesNotMatch(app, /go\("home\/updates"\)/)
+  assert.match(styles, /min-height:\s*clamp\(172px, 43vw, 238px\)/)
+  assert.match(styles, /\.u1-editorial-entry/)
+  assert.match(styles, /\.u1-art-entry__strip/)
 })
 
 
@@ -108,12 +114,16 @@ test("dock navigation is icon-only and keeps accessible names", () => {
   assert.match(styles, /nav-icons\/chats\.png/)
 })
 
-test("home puts real latest events before section previews", () => {
+test("home puts campaign destinations before the compact recent-event stream", () => {
   const homeData = fs.readFileSync("src/ui-v1-isolated/useHomeData.ts", "utf8")
   assert.match(app, /<LatestEvents events=\{events\}/)
-  assert.ok(app.indexOf("<LatestEvents") < app.indexOf('<section className="u1-grid"'))
+  assert.ok(app.indexOf('<section className="u1-home-sections"') < app.indexOf("<LatestEvents"))
   assert.match(homeData, /from\("feed_items"\)/)
   assert.match(homeData, /neq\("source_type", "art"\)/)
+  assert.match(homeData, /neq\("source_type", "update"\)/)
+  assert.match(homeData, /from\("campaign_art_items"\)/)
+  assert.match(homeData, /from\("achievements"\)/)
+  assert.match(homeData, /cover_url/)
   assert.match(homeData, /postgres_changes/)
   assert.match(homeData, /meganotrpg:v1:campaign-id/)
 })

@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "motion/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { useHomeData, type HomeEvent } from "./useHomeData"
+import { useHomeData, type HomeArtPreview, type HomeEvent, type HomeSocietyNews } from "./useHomeData"
 import { WhatsNew } from "./WhatsNew"
 
 type RootSpace = "home" | "workspace" | "chats"
@@ -17,57 +17,13 @@ type Route =
   | { type: "root"; space: RootSpace }
   | { type: "section"; section: SectionId }
 
-type PreviewItem = {
-  section: SectionId
-  title: string
-  note: string
-  shape: "lead" | "world" | "portrait" | "square" | "small" | "wide"
-  tone: "graphite" | "steel" | "ash" | "stone" | "smoke" | "charcoal"
-}
-
-const previewItems: PreviewItem[] = [
-  {
-    section: "whats-new",
-    title: "Что нового",
-    note: "Хроника кампании",
-    shape: "lead",
-    tone: "graphite",
-  },
-  {
-    section: "world",
-    title: "Мир",
-    note: "Зоны · NPC · Лор · Карта",
-    shape: "world",
-    tone: "steel",
-  },
-  {
-    section: "society-news",
-    title: "Новости общества",
-    note: "Важное для всех",
-    shape: "portrait",
-    tone: "ash",
-  },
-  {
-    section: "achievements",
-    title: "Достижения",
-    note: "История партии",
-    shape: "square",
-    tone: "stone",
-  },
-  {
-    section: "art",
-    title: "Арты",
-    note: "Галерея кампании",
-    shape: "small",
-    tone: "smoke",
-  },
-  {
-    section: "updates",
-    title: "Обновления",
-    note: "Изменения приложения",
-    shape: "wide",
-    tone: "charcoal",
-  },
+const sectionIds: SectionId[] = [
+  "whats-new",
+  "world",
+  "society-news",
+  "achievements",
+  "art",
+  "updates",
 ]
 
 const sectionCopy: Record<SectionId, { eyebrow: string; title: string; body: string }> = {
@@ -111,7 +67,7 @@ function parseRoute(): Route {
   if (path === "chats") return { type: "root", space: "chats" }
 
   const section = path.startsWith("home/") ? path.slice("home/".length) : ""
-  if (previewItems.some((item) => item.section === section)) {
+  if (sectionIds.includes(section as SectionId)) {
     return { type: "section", section: section as SectionId }
   }
 
@@ -208,36 +164,149 @@ function Dock({
   )
 }
 
-function SectionPreview({ item }: { item: PreviewItem }) {
+function EntryMedia({ src }: { src: string | null }) {
+  if (!src) return <span className="u1-entry-media u1-entry-media--fallback" aria-hidden="true" />
+
+  return <img className="u1-entry-media" src={src} alt="" loading="lazy" aria-hidden="true" />
+}
+
+function WhatsNewHero({
+  event,
+  imageUrl,
+  loading,
+}: {
+  event: HomeEvent | null
+  imageUrl: string | null
+  loading: boolean
+}) {
   return (
     <motion.button
       type="button"
-      className={`u1-preview u1-preview--${item.shape} u1-preview--${item.tone} u1-preview--${item.section}`}
-      onClick={() => go(`home/${item.section}`)}
-      whileTap={{ scale: 0.989 }}
+      className="u1-home-hero"
+      onClick={() => go("home/whats-new")}
+      whileTap={{ scale: 0.992 }}
       transition={{ duration: 0.14 }}
     >
-      <span className="u1-preview__field" aria-hidden="true">
-        <span className="u1-preview__line u1-preview__line--a" />
-        <span className="u1-preview__line u1-preview__line--b" />
-        <span className="u1-preview__index">
-          {String(previewItems.indexOf(item) + 1).padStart(2, "0")}
+      <EntryMedia src={imageUrl} />
+      <span className="u1-entry-scrim" aria-hidden="true" />
+      <span className="u1-home-hero__copy">
+        <small>Хроника кампании</small>
+        <strong>Что нового</strong>
+        <span>
+          {loading
+            ? "Загружаю последние события…"
+            : event
+              ? eventHeadline(event)
+              : "Кампания только начинается"}
         </span>
-      </span>
-      <span className="u1-preview__scrim" aria-hidden="true" />
-      <span className="u1-preview__caption">
-        <strong>{item.title}</strong>
-        <small>{item.note}</small>
       </span>
     </motion.button>
   )
 }
 
-const eventTypeLabel: Record<HomeEvent["source_type"], string> = {
-  achievement: "Достижение",
-  diary: "Дневник",
-  moment: "Событие",
-  update: "Обновление",
+function WorldPreview({ coverUrl }: { coverUrl: string | null }) {
+  return (
+    <motion.button
+      type="button"
+      className="u1-world-entry"
+      onClick={() => go("home/world")}
+      whileTap={{ scale: 0.992 }}
+      transition={{ duration: 0.14 }}
+    >
+      <EntryMedia src={coverUrl} />
+      <span className="u1-entry-scrim u1-entry-scrim--soft" aria-hidden="true" />
+      <span className="u1-world-entry__copy">
+        <strong>Мир</strong>
+        <small>Зоны · NPC · Лор · Карта</small>
+      </span>
+    </motion.button>
+  )
+}
+
+function SocietyNewsEntry({ news }: { news: HomeSocietyNews | null }) {
+  return (
+    <button
+      type="button"
+      className="u1-editorial-entry u1-society-entry"
+      onClick={() => go("home/society-news")}
+    >
+      <span className="u1-editorial-entry__label">Новости общества</span>
+      <span className="u1-editorial-entry__value">
+        {news ? eventHeadline(news) : "Пока без объявлений"}
+      </span>
+      <span className="u1-editorial-entry__arrow" aria-hidden="true">→</span>
+    </button>
+  )
+}
+
+function AchievementEntry({
+  count,
+  latestTitle,
+}: {
+  count: number
+  latestTitle: string | null
+}) {
+  return (
+    <button
+      type="button"
+      className="u1-editorial-entry u1-achievement-entry"
+      onClick={() => go("home/achievements")}
+    >
+      <span className="u1-editorial-entry__label">Достижения</span>
+      <span className="u1-editorial-entry__value">
+        {latestTitle || "История партии"}
+      </span>
+      <span className="u1-achievement-entry__count">{count}</span>
+      <span className="u1-editorial-entry__arrow" aria-hidden="true">→</span>
+    </button>
+  )
+}
+
+function ArtPreviewStrip({ items }: { items: HomeArtPreview[] }) {
+  return (
+    <motion.button
+      type="button"
+      className="u1-art-entry"
+      onClick={() => go("home/art")}
+      whileTap={{ scale: 0.994 }}
+      transition={{ duration: 0.14 }}
+    >
+      <span className="u1-art-entry__head">
+        <strong>Арты</strong>
+        <small>{items.length ? "Последние работы" : "Галерея кампании"}</small>
+        <span aria-hidden="true">→</span>
+      </span>
+
+      <span className="u1-art-entry__strip" aria-hidden="true">
+        {items.length > 0 ? (
+          items.slice(0, 3).map((item) => (
+            <span className="u1-art-entry__thumb" key={item.id}>
+              <img src={item.imageUrl} alt="" loading="lazy" />
+            </span>
+          ))
+        ) : (
+          <>
+            <span className="u1-art-entry__thumb u1-art-entry__thumb--empty" />
+            <span className="u1-art-entry__thumb u1-art-entry__thumb--empty" />
+            <span className="u1-art-entry__thumb u1-art-entry__thumb--empty" />
+          </>
+        )}
+      </span>
+    </motion.button>
+  )
+}
+
+function eventTypeLabel(sourceType: HomeEvent["source_type"]) {
+  if (sourceType === "achievement") return "Достижение"
+  if (sourceType === "diary") return "Дневник"
+  if (sourceType === "moment") return "Событие"
+  if (sourceType === "gm_note" || sourceType === "gm_post" || sourceType === "announcement") {
+    return "Общество"
+  }
+  if (sourceType === "world" || sourceType === "zone" || sourceType === "npc" || sourceType === "lore") {
+    return "Мир"
+  }
+  return "Событие"
 }
 
 function formatEventTime(value: string) {
@@ -307,7 +376,7 @@ function LatestEvents({
               onClick={() => go("home/whats-new")}
             >
               <span className="u1-latest__meta">
-                <strong>{eventTypeLabel[event.source_type]}</strong>
+                <strong>{eventTypeLabel(event.source_type)}</strong>
                 <small>{formatEventTime(event.published_at)}</small>
               </span>
               <span className="u1-latest__copy">
@@ -330,7 +399,20 @@ function LatestEvents({
 }
 
 function Home() {
-  const { campaignTitle, events, loading, error } = useHomeData()
+  const {
+    campaignTitle,
+    campaignCoverUrl,
+    events,
+    artPreviews,
+    achievementCount,
+    latestAchievementTitle,
+    societyNews,
+    loading,
+    error,
+  } = useHomeData()
+
+  const latestEvent = events[0] || null
+  const heroImageUrl = latestEvent?.media_url || campaignCoverUrl
 
   return (
     <main className="u1-home">
@@ -355,22 +437,18 @@ function Home() {
 
       <div className="u1-rule" aria-hidden="true" />
 
-      <LatestEvents events={events} loading={loading} error={error} />
-
-      <section className="u1-grid" aria-label="Разделы кампании">
-        <SectionPreview item={previewItems[0]} />
-        <SectionPreview item={previewItems[1]} />
-
-        <div className="u1-grid__row u1-grid__row--first">
-          <SectionPreview item={previewItems[2]} />
-          <SectionPreview item={previewItems[3]} />
-        </div>
-
-        <div className="u1-grid__row u1-grid__row--second">
-          <SectionPreview item={previewItems[4]} />
-          <SectionPreview item={previewItems[5]} />
-        </div>
+      <section className="u1-home-sections" aria-label="Разделы кампании">
+        <WhatsNewHero event={latestEvent} imageUrl={heroImageUrl} loading={loading} />
+        <WorldPreview coverUrl={campaignCoverUrl} />
+        <SocietyNewsEntry news={societyNews} />
+        <AchievementEntry
+          count={achievementCount}
+          latestTitle={latestAchievementTitle}
+        />
+        <ArtPreviewStrip items={artPreviews} />
       </section>
+
+      <LatestEvents events={events} loading={loading} error={error} />
     </main>
   )
 }
