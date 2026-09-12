@@ -18,24 +18,24 @@ Current checkpoint:
 
 Resume trigger: `ALL_CLASS_TRANSLATIONS_COMPLETE`.
 
-## Rogue translation pass
+## Rogue READY work
 
-**Status:** SUBCLASS_REFERENCE_ALL_9_READY_BASE_HAS_2_LITERARY_GAPS  
+**Status:** STAGE_1_COMPLETE_STAGE_2_NEXT  
 **Marked:** 2026-09-12  
 **Branch:** dev
 
+Canonical READY plan: `src/data/classes/rogueRuntimePlan.md`.  
+Stage 1 freeze matrix: `src/data/classes/rogueRuntimeFeatureMatrix.md`.
+
 Current checkpoint:
-- Gemini literary copy for the base Rogue is preserved in `src/data/classes/rogueReferenceCurrent.ts`.
-- Base Rogue 2024 mechanics were independently corrected and written as exact reference mechanics for later runtime work.
-- Missing Gemini prose remains explicit only for `Точный прицел` (Steady Aim, level 3) and `Скользкий ум` (Slippery Mind, level 15); do not invent Voss narration for them during mechanics work.
-- Rogue is published to the Reference Guide as `referenceOnly=true`; no Character Engine or Supabase runtime is claimed or installed by this translation pass.
-- All nine supported subclass feature packs are now authored and overlaid into the public reference: Thief, Assassin, Arcane Trickster, Soulknife, Swashbuckler, Inquisitive, Mastermind, Scout and Phantom.
-- Wave 3 is `src/data/classes/rogueSubclassReferenceWave3.ts`: Mastermind and Scout use exact Xanathar legacy rules; Phantom uses the Tasha’s Cauldron of Everything rules rather than later revised/UA semantics.
-- Regression coverage explicitly rejects known bad source-copy claims: Master of Intrigue does not invent an Insight-vs-Deception detection rule; Scout Sudden Strike does not require every extra attack to target a different creature; Phantom Soul Tokens do not invent an Undead/Construct exclusion, spirit answers need not be truthful, Wails rolls half the Sneak Attack dice, and Tasha Death’s Friend grants its fallback token after Long Rest rather than on Initiative.
+- Base Rogue literary/reference layer is complete. `Точный прицел / Steady Aim` and `Скользкий ум / Slippery Mind` now have authored Voss prose; no supported Rogue card carries `TRANSLATION_MISSING`.
+- Base Rogue 2024 and all nine supported subclass packs have independently audited exact neutral mechanics.
+- All 61 supported base/subclass features have stable feature keys and an explicit runtime ownership mode in the Stage 1 matrix.
+- Frozen roster: Thief, Assassin, Arcane Trickster, Soulknife, Swashbuckler, Inquisitive, Mastermind, Scout and Phantom.
+- Source boundary remains: PHB 2024 base + Thief/Assassin/Arcane Trickster/Soulknife; Xanathar legacy Swashbuckler/Inquisitive/Mastermind/Scout; Tasha Phantom.
+- Rogue remains `referenceOnly=true`; no CE/Supabase runtime is claimed yet.
 
-Canonical READY plan: `src/data/classes/rogueRuntimePlan.md`.
+Next Rogue stage: **Stage 2 — clean class foundation and 1–20 progression**.
+- Build the canonical `class:rogue` package, source-level progression, proficiencies, Expertise/Weapon Mastery choices, subclass unlock and structural feature identities through shared class/template infrastructure.
+- Do not redo Stage 1 unless the user explicitly changes the source/version scope.
 
-Next Rogue stage: **Stage 1 — source freeze, literary closure and executable specification**.
-- Supply literary prose for base Rogue `Точный прицел` and `Скользкий ум`.
-- Re-audit/freeze base + all 9 subclass rules and classify every feature by runtime ownership before executable work.
-- After Stage 1 closes, follow Stages 2–7 in `rogueRuntimePlan.md` in order. Do not invent a new Rogue plan unless the user explicitly changes scope.
