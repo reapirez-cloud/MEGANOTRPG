@@ -19,6 +19,9 @@ const sectionRegistry = fs.readFileSync("src/ui-v1-isolated/sectionRegistry.ts",
 const sectionStyles = fs.readFileSync("src/ui-v1-isolated/section-screens.css", "utf8")
 const locationNavigator = fs.readFileSync("src/ui-v1-isolated/LocationNavigator.tsx", "utf8")
 const locationData = fs.readFileSync("src/ui-v1-isolated/useUiV1Locations.ts", "utf8")
+const currentStateDoc = fs.readFileSync("docs/UI_V1_CURRENT_STATE_2026-09-13.md", "utf8")
+const historicalIsolationDoc = fs.readFileSync("docs/UI_V1_HARD_ISOLATION_2026-09-12.md", "utf8")
+const historicalFoundationDoc = fs.readFileSync("docs/UI_V1_STAGE_02_FOUNDATION_2026-09-12.md", "utf8")
 
 test("World preview artwork is committed with UI v1", () => {
   assert.equal(fs.existsSync(worldPreviewAsset), true)
@@ -195,8 +198,10 @@ test("Location previews open inline actions without native text selection", () =
 test("World and Knowledge Base use extensible registries and keep Map intentionally shallow", () => {
   assert.match(sectionRegistry, /worldHubSections/)
   assert.match(sectionRegistry, /knowledgeBaseSections/)
-  assert.match(sectionRegistry, /id: "locations"/)
-  assert.match(sectionRegistry, /id: "characters"/)
+  assert.match(sectionRegistry, /id: "locations", title: "Зоны"/)
+  assert.match(sectionRegistry, /id: "characters", title: "NPC"/)
+  assert.match(locationNavigator, /<h1>Зоны<\/h1>/)
+  assert.match(sectionData, /eq\("character_type", "npc"\)/)
   assert.match(sectionRegistry, /id: "lore"/)
   assert.match(sectionRegistry, /id: "map"/)
   assert.match(sectionRegistry, /id: "spells"/)
@@ -217,16 +222,29 @@ test("Achievements render as narrow title-only previews and remain character-lin
   assert.match(sectionStyles, /min-height:\s*clamp\(82px, 23vw, 100px\)/)
 })
 
-test("Society News uses manager-only announcements backed by campaign_updates", () => {
+test("Society News reads campaign_updates but publishes through Oracle -> Larisa", () => {
   const homeData = fs.readFileSync("src/ui-v1-isolated/useHomeData.ts", "utf8")
   assert.match(sectionData, /from\("campaign_updates"\)/)
   assert.match(sectionData, /eq\("kind", "announcement"\)/)
   assert.match(sectionData, /membership\.role === "gm" \|\| membership\.is_owner === true/)
+  assert.match(sectionData, /createEngineCommandContext/)
+  assert.match(sectionData, /oracle\.world\.publishCampaignAnnouncement/)
+  assert.doesNotMatch(sectionData, /from\("campaign_updates"\)[\s\S]{0,220}\.insert\(/)
   assert.match(sectionScreens, /news\.canManage \? \(/)
   assert.match(sectionScreens, /aria-label="Новая публикация"/)
   assert.match(homeData, /from\("campaign_updates"\)/)
   assert.match(homeData, /eq\("kind", "announcement"\)/)
   assert.doesNotMatch(homeData, /gm_note|gm_post/)
+})
+
+
+test("UI v1 documentation has one explicit current-state authority", () => {
+  assert.match(currentStateDoc, /CANONICAL CURRENT STATE/)
+  assert.match(currentStateDoc, /Зоны \/ NPC \/ Лор \/ Карта/)
+  assert.match(currentStateDoc, /index\.html -> src\/ui-v1-isolated\/main\.tsx/)
+  assert.match(currentStateDoc, /Snake.*planned.*not implemented/is)
+  assert.match(historicalIsolationDoc, /SUPERSEDED HISTORICAL RECORD/)
+  assert.match(historicalFoundationDoc, /PARTIALLY INVALIDATED BY THE HARD-ISOLATION RESET/)
 })
 
 test("What’s New is a real chronology screen rather than a placeholder", () => {

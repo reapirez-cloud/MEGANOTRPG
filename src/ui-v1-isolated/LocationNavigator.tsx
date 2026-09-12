@@ -27,7 +27,7 @@ function LocationHeader({
       >
         ←
       </button>
-      <h1>Локации</h1>
+      <h1>Зоны</h1>
       <span className="u1-section-head__action">{action}</span>
     </header>
   )

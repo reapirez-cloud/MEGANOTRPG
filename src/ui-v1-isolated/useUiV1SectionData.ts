@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react"
 
+import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { supabase } from "../lib/supabase"
+import { oracle } from "../oracle-engine/runtime.ts"
 
 export type AchievementPreview = {
   id: string
@@ -246,17 +248,28 @@ export function useUiV1SocietyNews() {
       return { ok: false, error: "Недостаточно прав." }
     }
 
-    const { error: insertError } = await supabase
-      .from("campaign_updates")
-      .insert({
-        campaign_id: scope.campaignId,
-        created_by: scope.userId,
-        kind: "announcement",
-        title: title.trim(),
-        body: body.trim(),
-      })
+    const cleanTitle = title.trim()
+    const cleanBody = body.trim()
+    if (!cleanTitle || !cleanBody) {
+      return { ok: false, error: "Нужны заголовок и текст." }
+    }
 
-    if (insertError) return { ok: false, error: insertError.message }
+    try {
+      await oracle.world.publishCampaignAnnouncement(
+        createEngineCommandContext({
+          campaignId: scope.campaignId,
+          requestedBy: scope.userId,
+          authority: "gm",
+        }),
+        cleanTitle,
+        cleanBody,
+      )
+    } catch (publishError) {
+      return {
+        ok: false,
+        error: publishError instanceof Error ? publishError.message : "Не удалось опубликовать.",
+      }
+    }
 
     await load()
     return { ok: true as const }
@@ -299,6 +312,7 @@ export function useUiV1WorldData() {
           .from("characters")
           .select("id, name, character_class, character_type")
           .eq("campaign_id", scope.campaignId)
+          .eq("character_type", "npc")
           .order("name", { ascending: true }),
         supabase
           .from("world_articles")

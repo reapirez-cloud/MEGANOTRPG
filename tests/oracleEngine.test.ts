@@ -51,6 +51,7 @@ test("Oracle turns GM declarations into direct owner commands without Gena", asy
   await oracle.inventory.consume(gm, "hero-1", "grenade-1", 4)
   await oracle.characters.setHp(gm, "hero-1", 3, { maxHp: 40 })
   await oracle.world.moveCharacter(gm, "hero-1", "hole-1", 7, "night")
+  await oracle.world.publishCampaignAnnouncement(gm, "Ворота закрыты", "Город переходит на осадное положение.")
   await oracle.definitions.create(gm, {
     kind: "item",
     scope: "campaign",
@@ -62,6 +63,7 @@ test("Oracle turns GM declarations into direct owner commands without Gena", asy
     { owner: "cheburashka", kind: "inventory.consume" },
     { owner: "shapoklyak", kind: "entity.set_hp" },
     { owner: "larisa", kind: "world.set_character_position" },
+    { owner: "larisa", kind: "world.campaign_announcement_publish" },
     { owner: "chasovoy", kind: "definition.create" },
   ])
   assert.equal(calls.every(({ command }) => command.context === gm), true)

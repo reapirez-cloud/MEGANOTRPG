@@ -101,7 +101,7 @@ Oracle stores nothing.
 - Character/entity canonical state → Shapoklyak.
 - Character sheet mechanics, template assignments, suppressions, spells/features and persistent resource state → Shapoklyak.
 - Inventory item instances/equipment/runtime → Cheburashka.
-- Runtime world positions/discovery/scenes, location topology, sections/links and NPC habitats → Larisa.
+- Runtime world positions/discovery/scenes, location topology, sections/links, NPC habitats and descriptive campaign/world chronology → Larisa.
 - Class/subclass/item/spell/feat/etc. reusable definitions → Chasovoy.
 - Derived mechanics → Character Engine, recomputed from canonical inputs.
 
@@ -111,7 +111,7 @@ The Oracle surface exposes the current GM mutation capabilities of all four owne
 
 - characters: create, update, delete, active assignment, avatar, life state, visibility, NPC reveal, HP, sheet mechanics, spellcasting access, spell/options/features, resources, recovery, template assignment/removal and source suppression;
 - inventory: create, update, remove, equip, consume and transfer;
-- world: discovery, character position, scene position, participants/sync, location CRUD/visibility/archive/events, location section CRUD, location link CRUD and NPC habitat attachment;
+- world: discovery, character position, scene position, participants/sync, location CRUD/visibility/archive/events, descriptive campaign-announcement publishing, location section CRUD, location link CRUD and NPC habitat attachment;
 - definitions: create, revise and archive.
 
 A new GM mutation is not added directly to React first. Its owner gets the command and persistence boundary first; Oracle then exposes that owner command to the GM Cabinet.
