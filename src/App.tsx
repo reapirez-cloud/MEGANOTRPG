@@ -55,11 +55,14 @@ import World from "./pages/World"
 import ContextHeader from "./ui-v1/shell/ContextHeader"
 import MeganotAppShell from "./ui-v1/shell/MeganotAppShell"
 import HomeFoundation from "./ui-v1/screens/HomeFoundation"
+import HomeSectionPlaceholder from "./ui-v1/screens/HomeSectionPlaceholder"
+import { homeSectionCopy } from "./ui-v1/screens/homeSectionCopy"
 
 function Workspace() {
   const {
     campaignId,
     campaignTitle,
+    campaignCoverUrl,
     activeCharacter,
     myCharacters,
     myMember,
@@ -190,7 +193,7 @@ function Workspace() {
         </main>
       </>
     )
-  } else if (route.type === "home-section") {
+  } else if (route.type === "home-section" && route.section === "whats-new") {
     content = (
       <>
         <ContextHeader title="Что нового" eyebrow="Главная" onBack={goBack} />
@@ -202,14 +205,27 @@ function Workspace() {
         </main>
       </>
     )
+  } else if (route.type === "home-section") {
+    const copy = homeSectionCopy[route.section]
+    content = (
+      <>
+        <ContextHeader title={copy.title} eyebrow="Главная" onBack={goBack} />
+        <HomeSectionPlaceholder title={copy.title} description={copy.description} />
+      </>
+    )
   } else if (route.space === "home") {
     content = (
       <HomeFoundation
+        campaignId={campaignId}
         campaignTitle={campaignTitle}
+        campaignCoverUrl={campaignCoverUrl}
         displayName={myMember?.display_name || ""}
         onOpenWhatsNew={() => navigate("/home/whats-new")}
         onOpenWorld={() => navigate("/world")}
+        onOpenSocietyNews={() => navigate("/home/society-news")}
+        onOpenAchievements={() => navigate("/home/achievements")}
         onOpenGallery={() => navigate("/gallery")}
+        onOpenUpdates={() => navigate("/home/updates")}
         onOpenWorkspace={() => navigate("/workspace")}
       />
     )

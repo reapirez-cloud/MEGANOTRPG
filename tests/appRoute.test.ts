@@ -59,3 +59,19 @@ test("legacy character return targets are translated to UI v1 semantics", () => 
   assert.equal(feedRoute.type === "character" ? feedRoute.returnTo : null, "whats-new")
   assert.equal(meRoute.type === "character" ? meRoute.returnTo : null, "workspace")
 })
+
+
+test("Home sub-sections have distinct UI v1 routes", () => {
+  assert.deepEqual(parseAppRoute("#/home/society-news"), {
+    type: "home-section",
+    section: "society-news",
+  })
+  assert.deepEqual(parseAppRoute("#/home/achievements"), {
+    type: "home-section",
+    section: "achievements",
+  })
+  assert.deepEqual(parseAppRoute("#/home/updates"), {
+    type: "home-section",
+    section: "updates",
+  })
+})

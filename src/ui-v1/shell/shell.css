@@ -136,7 +136,7 @@
   z-index: var(--mg-z-chrome);
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(132px, 1.62fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(148px, 2fr) minmax(0, 1fr);
   gap: 6px;
   padding: 7px max(10px, var(--mg-safe-right)) calc(7px + var(--mg-safe-bottom)) max(10px, var(--mg-safe-left));
   border-top: 1px solid var(--mg-color-border-soft);

@@ -9,9 +9,9 @@ type Props = {
 }
 
 const items: Array<{ id: RootSpace; label: string }> = [
-  { id: "chats", label: "Чаты" },
+  { id: "workspace", label: "Я" },
   { id: "home", label: "Главная" },
-  { id: "workspace", label: "Пространство" },
+  { id: "chats", label: "Чаты" },
 ]
 
 export default function MeganotDock({ active, onNavigate }: Props) {

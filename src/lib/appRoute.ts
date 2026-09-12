@@ -1,5 +1,11 @@
 export type RootSpace = "chats" | "home" | "workspace"
 
+export type HomeSection =
+  | "whats-new"
+  | "society-news"
+  | "achievements"
+  | "updates"
+
 export type LegacyMainTab = "feed" | "chats" | "world" | "characters" | "me"
 
 export type CharacterReturnTarget =
@@ -13,7 +19,7 @@ export type CharacterReturnTarget =
 
 export type AppRoute =
   | { type: "space"; space: RootSpace }
-  | { type: "home-section"; section: "whats-new" }
+  | { type: "home-section"; section: HomeSection }
   | { type: "world" }
   | { type: "workspace-characters" }
   | { type: "chat"; id: string }
@@ -70,10 +76,18 @@ export function parseAppLocation(pathname: string, search = ""): AppRoute {
   if (path === "/gallery") return { type: "gallery" }
   if (path === "/world") return { type: "world" }
   if (path === "/workspace/characters") return { type: "workspace-characters" }
-  if (path === "/home/whats-new" || path === "/feed") {
-    return { type: "home-section", section: "whats-new" }
+
+  const homeSection = parts[0] === "home" ? parts[1] : null
+  if (
+    homeSection === "whats-new" ||
+    homeSection === "society-news" ||
+    homeSection === "achievements" ||
+    homeSection === "updates"
+  ) {
+    return { type: "home-section", section: homeSection }
   }
 
+  if (path === "/feed") return { type: "home-section", section: "whats-new" }
   if (path === "/chats") return { type: "space", space: "chats" }
   if (path === "/workspace" || path === "/me") {
     return { type: "space", space: "workspace" }
