@@ -301,6 +301,28 @@ Realtime is **not** canonical engine communication. It only tells a client that 
 
 Failure is finite: missing/hung owner reads become an explicit error/stale state rather than indefinite loading.
 
+## Snake — UI interaction/action agent
+
+**Architecture status:** planned named interaction/control agent for UI 1.0; canonical domain ownership remains unchanged.
+
+Snake answers: **“What can the user do with this object right now, how should that interaction be presented, and to which authoritative path should the selected action be dispatched?”**
+
+Snake is intentionally entity-agnostic:
+
+- domain/read-model integrations provide action manifests;
+- Snake centralizes long press, right click, positioning, universal interaction surfaces and action dispatch;
+- Snake does not infer actions from narrative names such as “sword”, “location” or “NPC”;
+- Snake owns no canonical gameplay/world/inventory/character state;
+- normal gameplay actions still enter GENA where orchestration/history is required;
+- GM canonical mutations still enter Oracle and then the explicit owner;
+- universal UI windows (context menu, confirm, editor, picker, detail, notice/error, placeholder) receive schemas/actions instead of being reimplemented per entity;
+- an action whose interface has not been designed yet must use the universal Placeholder surface.
+
+The current location-specific inline long-press menu is temporary and must not be copied. Locations are the first planned migration target; Inventory is the second proving ground for cross-entity reuse.
+
+Full contract: docs/SNAKE_INTERACTION_CONTRACT.md.
+
+
 ## Quest Journal — product module, not an engine
 
 Quest Journal remains a lightweight organization feature. GM-authored quests and player personal reminders may link to characters/locations, but changing a journal entry does not automatically mutate character/world/inventory mechanics.

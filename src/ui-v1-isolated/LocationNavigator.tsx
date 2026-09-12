@@ -39,6 +39,11 @@ function EmptyState({ children }: { children: React.ReactNode }) {
 
 type TileMode = "root" | "path" | "child"
 
+// TEMPORARY UI1 interaction seam.
+// Do not copy this location-specific long-press/context-menu logic to another feature.
+// It must be replaced by the universal Snake interaction runtime described in
+// docs/SNAKE_INTERACTION_CONTRACT.md.
+
 function LocationTile({
   item,
   mode,

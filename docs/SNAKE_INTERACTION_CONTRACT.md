@@ -1,0 +1,434 @@
+# SNAKE Interaction Engine Contract
+
+> Status: **PLANNED ARCHITECTURE — canonical interaction boundary for UI 1.0**
+>
+> Snake is a named UI interaction/control agent. It is **not** a canonical gameplay-state owner and it does not replace GENA, Oracle, Shapoklyak, Cheburashka, Larisa, Chasovoy, Tobik or CE.
+>
+> This contract records an explicit product/architecture decision. Future UI 1.0 work must follow it rather than creating entity-specific long-press menus, modal systems or ad-hoc direct mutation paths.
+
+## Core law
+
+**Snake does not need to know what an entity means. Snake needs to know what can currently be done with it, how that interaction must be presented, and where the selected action must be dispatched.**
+
+A location, sword, feat, NPC, chat message, spell or future entity may all use Snake. Snake must not contain business branches such as:
+
+~~~text
+if location -> location menu
+if sword -> inventory menu
+if npc -> npc menu
+~~~
+
+The domain-specific layer supplies the available actions. Snake provides one reusable interaction runtime.
+
+## Why Snake exists
+
+UI 1.0 needs one recognizable interaction language instead of separate copies of the same machinery.
+
+The following concerns are generic and belong to Snake / Snake surfaces:
+
+- long press recognition on touch devices;
+- right-click / context-menu invocation on desktop;
+- one physical gesture producing exactly one invocation;
+- pointer coordinates and anchor information;
+- viewport collision and menu flipping;
+- native text-selection / touch-callout suppression for registered triggers;
+- keyboard close / Escape;
+- outside-click close;
+- focus and accessibility behavior;
+- presentation of enabled, disabled, hidden, destructive and grouped actions;
+- confirmation flows;
+- picker flows;
+- schema-driven editor flows;
+- detail/action surfaces;
+- placeholders for intentionally deferred interfaces;
+- consistent success, error and retry presentation;
+- dispatching the chosen action to its declared control/owner path.
+
+Entity-specific screens must not reimplement those concerns.
+
+## Snake is a control/interaction agent, not a domain owner
+
+Snake owns no canonical gameplay fact.
+
+Snake must not persist:
+
+- item equipment/quantity/charges;
+- character HP/resources/features;
+- world hierarchy or location links;
+- reusable definitions;
+- session/gameplay history;
+- dice outcomes.
+
+Snake orchestrates the user interaction and dispatches the selected command to the authoritative path already defined by the named-engine architecture.
+
+Examples:
+
+~~~text
+Normal player equips an inventory instance
+UI -> Snake -> GENA -> Cheburashka -> canonical inventory state
+-> character invalidation -> shared resolver -> CE -> refreshed UI
+~~~
+
+~~~text
+GM deletes a location
+GM UI -> Snake -> Oracle -> Larisa -> canonical world state
+~~~
+
+~~~text
+Explicitly permitted self-owned narrow mutation
+UI -> Snake -> approved owner facade
+~~~
+
+Snake MUST NOT bypass GENA/Oracle/owner boundaries merely because it knows which button the user pressed.
+
+## Entity reference
+
+Snake works against a generic reference, not a domain-specific React component contract.
+
+Conceptual shape:
+
+~~~ts
+type SnakeEntityRef = {
+  type: string
+  id: string
+}
+~~~
+
+type identifies the source family for diagnostics/action-provider lookup. It is not permission for Snake to infer domain behavior.
+
+## Action provider law
+
+**Context Menu does not contain actions. The object/domain integration provides actions.**
+
+Snake receives or resolves an action manifest through an entity-specific provider outside Snake itself.
+
+Conceptual shape:
+
+~~~ts
+type SnakeAction = {
+  id: string
+  label: string
+  enabled?: boolean
+  hidden?: boolean
+  tone?: "normal" | "danger"
+  group?: string
+  disabledReason?: string
+
+  surface?: SnakeSurfaceRequest
+  execution?: SnakeExecutionDescriptor
+}
+~~~
+
+The provider may inspect:
+
+- current object state;
+- viewer/manager authority;
+- capabilities supplied by the canonical/read-model layer;
+- whether an operation is presently available;
+- whether the interaction needs confirmation or additional input.
+
+Snake does not infer those facts itself.
+
+For example, two inventory instances may expose different action manifests:
+
+~~~text
+Instance A:
+- Inspect
+- Equip
+- Transfer
+
+Instance B:
+- Inspect
+- Consume
+~~~
+
+Snake does not need to know that A is a sword or B is a potion.
+
+## Capability-driven design
+
+Where a domain already exposes stable capabilities, action providers should prefer those capabilities over UI-name/type guessing.
+
+Prefer:
+
+~~~text
+canInspect
+canEquip
+canUnequip
+canConsume
+canTransfer
+canArchive
+canDelete
+~~~
+
+over:
+
+~~~text
+if item.name contains "меч" -> show equip
+~~~
+
+This is the same architectural principle used by CE: normalized mechanical input is more important than narrative naming.
+
+## Universal interaction surfaces
+
+Snake uses a small reusable family of UI 1.0 surfaces. A surface must not know the domain reason it was opened.
+
+Planned primitives:
+
+~~~text
+ContextMenu
+ConfirmWindow
+EditorWindow
+PickerWindow
+DetailWindow
+Notice / Error
+Placeholder
+~~~
+
+More primitives may be added only when they represent a genuinely reusable interaction shape.
+
+Do not create foundational UI primitives such as:
+
+~~~text
+CreateLocationModal
+CreateNpcModal
+CreateSwordModal
+DeleteLocationConfirmation
+DeleteInventoryConfirmation
+~~~
+
+when the difference can be expressed as data/schema/actions passed into a shared surface.
+
+A reusable window may receive different title, fields, values, validation metadata and submit action while preserving the same visual/behavioral contract.
+
+## Context menu contract
+
+The first Snake surface is the universal context menu.
+
+Desktop:
+
+~~~text
+right click -> Snake opens the menu near the pointer
+~~~
+
+Touch:
+
+~~~text
+long press -> Snake opens the same menu near the press point
+~~~
+
+Required behavior:
+
+- floating menu near invocation point, analogous to desktop context menus;
+- never a location-specific bottom sheet;
+- never an inline list that changes document layout as the canonical pattern;
+- automatic left/right and up/down flipping near viewport edges;
+- compact recognizable UI 1.0 styling;
+- one menu runtime reused by all registered entities;
+- touch long press must suppress the subsequent browser/WebView contextmenu duplicate;
+- native selection/copy/touch-callout must not race the Snake gesture;
+- mouse right-click must not wait for the touch long-press timer;
+- ordinary primary click/tap remains the object's normal action.
+
+### One gesture = one invocation
+
+Telegram/Android may emit a synthetic contextmenu after a long press.
+
+Snake must mark the touch gesture as consumed and suppress the duplicate browser event. Never implement long-press opening as a toggle.
+
+Bad:
+
+~~~text
+long-press timer -> toggle open
+synthetic contextmenu -> toggle closed
+~~~
+
+Required:
+
+~~~text
+long-press timer -> open(menu, point)
+synthetic contextmenu for consumed gesture -> preventDefault, no second open
+~~~
+
+## Universal windows are schema-driven
+
+An editor is not a location editor or item editor at the framework level.
+
+Conceptually:
+
+~~~ts
+type SnakeEditorRequest = {
+  title: string
+  fields: SnakeFieldSchema[]
+  initialValues: Record<string, unknown>
+  submitAction: SnakeAction
+}
+~~~
+
+The same EditorWindow can render a zone, NPC or another entity because it only understands field primitives and the action contract.
+
+Likewise:
+
+- ConfirmWindow receives copy + confirm/cancel actions;
+- PickerWindow receives a selectable source and selection contract;
+- DetailWindow receives a detail/read-model descriptor;
+- Notice/Error receives status/result content;
+- Placeholder receives the deferred feature identity.
+
+## Placeholder law
+
+If a destination/action exists but its UI has not been explicitly designed or approved yet, Snake MUST use the universal Placeholder surface.
+
+Snake must not invent a domain form merely because the backend command already exists.
+
+Example:
+
+~~~text
+Location action "Добавить подзону"
+-> Snake action exists
+-> dedicated creation/editor contract not approved yet
+-> Snake opens Placeholder
+~~~
+
+Later, only the action surface descriptor changes from placeholder to editor / picker / another approved reusable surface. The parent location navigator does not need to be redesigned.
+
+This rule is the interaction-engine form of the repository working-placeholder contract.
+
+## Execution descriptor
+
+Snake dispatches. It does not implement the command.
+
+Conceptual shape:
+
+~~~ts
+type SnakeExecutionDescriptor = {
+  plane: "gena" | "oracle" | "owner"
+  owner?: "shapoklyak" | "cheburashka" | "larisa" | "chasovoy" | "tobik"
+  command: string
+  target: SnakeEntityRef
+  payload?: unknown
+}
+~~~
+
+This is a conceptual contract, not permission to create one unsafe generic backend RPC.
+
+The actual adapter must still call typed, explicit engine methods. In particular:
+
+- normal gameplay requiring session correlation goes through GENA;
+- GM canonical writes go through Oracle and its explicit owner method;
+- owner-direct execution is only for an already-approved narrow self-owned operation;
+- Snake never dynamically writes arbitrary Supabase tables;
+- Snake never turns a string owner + command into unrestricted reflection over engine internals.
+
+## Interaction result
+
+Snake should normalize interaction outcomes sufficiently for universal surfaces.
+
+Conceptually:
+
+~~~ts
+type SnakeActionResult =
+  | { type: "success" }
+  | { type: "error"; message: string }
+  | { type: "confirm"; request: SnakeConfirmRequest }
+  | { type: "pick"; request: SnakePickerRequest }
+  | { type: "edit"; request: SnakeEditorRequest }
+  | { type: "detail"; request: SnakeDetailRequest }
+  | { type: "placeholder"; feature: string }
+~~~
+
+The domain owner remains the source of domain truth. Snake only coordinates the interaction sequence.
+
+## Source of actions
+
+The action manifest must live beside the domain/read-model integration that understands the entity, not inside the generic menu renderer.
+
+Good:
+
+~~~text
+location action provider -> Snake actions
+inventory action provider -> Snake actions
+character action provider -> Snake actions
+message action provider -> Snake actions
+~~~
+
+Bad:
+
+~~~text
+Snake.tsx:
+  switch entity.type:
+    location -> business rules
+    item -> business rules
+    npc -> business rules
+~~~
+
+A future implementation may move capability production closer to named engine facades/read models, but Snake boundary remains the same.
+
+## UI integration contract
+
+A UI object registers a reference and action source with Snake.
+
+Conceptually:
+
+~~~tsx
+<SnakeTrigger
+  entity={entityRef}
+  actions={actions}
+>
+  <SomeVisualObject />
+</SnakeTrigger>
+~~~
+
+The visual component does not own:
+
+- long-press timers;
+- right-click handling;
+- context-menu positioning;
+- native callout suppression;
+- outside-click logic;
+- menu styling;
+- confirmation plumbing.
+
+Those stay centralized.
+
+## Current location implementation is temporary
+
+The current UI 1.0 location-specific long-press implementation predates this contract and is **not** the pattern to copy.
+
+Known defect in that temporary implementation:
+
+~~~text
+touch long-press timer opens the menu
++ Telegram/Android may emit contextmenu for the same gesture
++ current toggle semantics can immediately close it
+~~~
+
+The correct fix is migration to the Snake context-menu runtime, not duplication of another local workaround.
+
+Do not copy LocationNavigator long-press/menu code into inventory, characters, chats, achievements or any other future surface.
+
+## Planned implementation sequence
+
+1. Define Snake core types and provider/dispatch contracts.
+2. Implement one UI 1.0 SnakeProvider / context-menu portal and one SnakeTrigger.
+3. Implement robust right-click + long-press gesture handling, including duplicate WebView contextmenu suppression.
+4. Implement viewport-aware floating positioning and shared UI 1.0 context-menu styling.
+5. Migrate Locations to Snake and delete the temporary location-specific long-press/menu runtime.
+6. Keep unapproved location mutation interfaces on the universal Placeholder surface.
+7. Reuse the same Snake runtime for Inventory as the second real entity family. Inventory must supply inventory-specific actions without any location action knowledge leaking into Snake.
+8. Add universal Confirm / Picker / Editor surfaces only as real product flows require them.
+9. Migrate other UI 1.0 entities incrementally. Never create a parallel long-press framework.
+
+## Architectural invariants
+
+These are hard requirements:
+
+1. **One interaction runtime.** Long press/right click is implemented once for UI 1.0.
+2. **Object supplies actions.** Snake does not invent domain actions.
+3. **Snake dispatches, owner executes.** Canonical mutation still belongs to the named owner/control plane.
+4. **Universal surfaces are domain-agnostic.**
+5. **Unapproved interfaces stay placeholders.**
+6. **No direct React -> arbitrary Supabase gameplay writes.**
+7. **No giant entity-type switch inside Snake.**
+8. **No duplicate entity-specific modal families when a reusable schema-driven surface fits.**
+9. **One physical gesture causes one Snake invocation.**
+10. **A new entity family should mostly add an action provider, not a new interaction framework.**

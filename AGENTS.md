@@ -42,6 +42,7 @@ Before auditing or changing gameplay, classes, resources, rests, preparation, in
 - `docs/ENGINE_CONTRACTS.md`
 - `docs/ENGINE_CLOSURE_DEFINITION.md`
 - `docs/ORACLE_ENGINE_CONTRACT.md`
+- `docs/SNAKE_INTERACTION_CONTRACT.md` when changing UI actions, long-press/right-click behavior, contextual actions, reusable dialogs/editors/pickers or UI command dispatch
 
 The named-engine ownership boundaries are intentional:
 
@@ -53,6 +54,7 @@ The named-engine ownership boundaries are intentional:
 - **LARISA — Location / World Engine:** owns world topology, sections/links, discovery, placement, scenes, chronology and NPC habitats. Time has no automatic mechanical consequences.
 - **CHASOVOY — Reference / Definition Engine:** owns reusable class/subclass/spell/item/feat/condition definitions and revisions. Concrete instances/state remain with their runtime owner.
 - **TOBIK — Roll Engine:** owns authoritative dice planning/resolution and returns structured results; it never applies HP or judges the scene.
+- **SNAKE — UI Interaction / Action Agent:** owns no canonical domain state. It centralizes right-click/long-press interaction, reusable action surfaces and dispatch of a selected typed action into the already-authoritative GENA / Oracle / owner path. Snake does not infer business behavior from entity names/types and MUST follow `docs/SNAKE_INTERACTION_CONTRACT.md`.
 
 ### Mandatory command-path split
 
@@ -205,6 +207,29 @@ Before adding a write path:
 
 Architecture rules that materially affect future implementation must live in repository instructions/docs adjacent to the relevant code, not only in chat, commit messages or temporary plans. Keep short pointer comments in central implementation files so an agent opening the code is directed to the full contract.
 
+
+
+## Snake interaction architecture — mandatory for UI 1.0
+
+UI 1.0 must use **Snake** as the planned universal interaction/action layer.
+
+Read `docs/SNAKE_INTERACTION_CONTRACT.md` before implementing or changing:
+
+- long press or right-click behavior;
+- contextual object actions;
+- context menus;
+- reusable confirm/editor/picker/detail windows;
+- action dispatch from UI into gameplay/GM owners;
+- entity-specific menus for locations, inventory, characters, messages or future objects.
+
+Core rules:
+
+- the object/domain integration supplies the available action manifest;
+- Snake owns gesture/presentation/orchestration, not domain mechanics or canonical state;
+- Snake dispatches the selected action into the existing GENA / Oracle / explicit owner path;
+- reusable windows are schema-driven and domain-agnostic;
+- if an action's dedicated UI is not explicitly designed yet, use the universal Placeholder surface instead of inventing a one-off form;
+- do not copy the current location-specific long-press/menu implementation into another feature; it is temporary and scheduled for migration to Snake.
 
 
 ## Working fallback / connection placeholder — mandatory

@@ -16,6 +16,7 @@
 | **SHAPOKLYAK** | PC/NPC identity, assignment, lifecycle/visibility and canonical character mechanics/runtime state: base sheet facts, explicit HP, spells/options/features, preparation, suppressions, template assignments and persistent character resources | reusable definitions, inventory instances, world topology, dice, derived CE totals, session history |
 | **LARISA** | locations/world hierarchy, links/maps, discovery, character/scene placement, scene participants, descriptive chronology and NPC habitats | definitions, character mechanics/resources, inventory, HP, scene rulings |
 | **TOBIK** | authoritative dice planning/resolution for a requested roll | durable domain state, resources, HP, inventory, hit/miss scene decisions, scene legality |
+| **SNAKE** | no canonical persistence; universal UI interaction/action orchestration: context invocation, reusable surfaces and dispatch into the declared control/owner path | domain rules/state, owner storage, CE calculation, permission invention, arbitrary Supabase writes |
 
 `engine_command_receipts`, `EngineEventBus` and `CharacterResolutionBus` are shared infrastructure, not domain owners.
 
@@ -122,6 +123,20 @@ Larisa owns world hierarchy/topology, placement, discovery, scenes, descriptive 
 
 Tobik/the authoritative Roll Engine owns requested randomness and structured roll output. It never applies HP or scene legality.
 
+### Snake — UI interaction/action agent
+
+Snake is the planned UI 1.0 interaction/control layer. It owns no canonical domain state. Entity/domain integrations provide available action manifests; Snake presents them through reusable surfaces and dispatches the chosen typed action into the already-authoritative path.
+
+Examples:
+
+~~~text
+Player inventory action -> Snake -> GENA -> Cheburashka
+GM location action -> Snake -> Oracle -> Larisa
+approved narrow self-owned action -> Snake -> explicit owner facade
+~~~
+
+Snake must not infer mechanics from entity names/types, implement domain mutations, or turn a generic string command into unrestricted backend reflection. Full contract: docs/SNAKE_INTERACTION_CONTRACT.md.
+
 ## Communication laws
 
 1. UI calls a control/owner contract and renders canonical/resolved state. UI is never engine-to-engine transport.
@@ -134,6 +149,7 @@ Tobik/the authoritative Roll Engine owns requested randomness and structured rol
 8. CE has no outbound arrows: no callbacks, polling, events or persistence.
 9. One user intention keeps the same `commandId` through authoritative execution/invalidation where idempotency matters.
 10. Supabase Realtime is a cross-client refresh transport, not a canonical command path.
+11. Snake is UI interaction transport/orchestration, not a canonical owner: it may select/present/dispatch an action but cannot bypass the GENA / Oracle / owner laws that action requires.
 
 ## Canonical item sequences
 
