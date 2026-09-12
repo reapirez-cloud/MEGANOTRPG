@@ -130,8 +130,8 @@ test("Rogue Stage 1 matrix assigns all 61 features stable keys and runtime owner
 })
 
 test("Rogue Stage 1 is the closed checkpoint and Stage 2 is the canonical next step", () => {
-  assert.match(plan, /Stage 1 — source freeze, literary closure and executable specification[\s\S]*?Status:\s*`COMPLETE_2026_09_12`/)
-  assert.match(plan, /Stage 2 — clean class foundation and 1–20 progression[\s\S]*?Status:\s*`NOT_STARTED`/)
+  assert.match(plan, /Stage 1 — source freeze, literary closure and executable specification[\s\S]*?Status:\*\*\s*`COMPLETE_2026_09_12`/)
+  assert.match(plan, /Stage 2 — clean class foundation and 1–20 progression[\s\S]*?Status:\*\*\s*`NOT_STARTED`/)
   assert.match(ledger, /stage_1_source_freeze_and_text_closure: COMPLETE_2026_09_12/)
   assert.match(ledger, /stage_2_foundation_1_20: NOT_STARTED/)
   assert.match(queue, /Next Rogue stage: \*\*Stage 2 — clean class foundation and 1–20 progression\*\*/)
