@@ -11,11 +11,25 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Replaced the UI 1.0 «Что нового» placeholder with a full campaign chronology: date-grouped editorial stream, sticky day labels, a narrow time rail and source-specific composition without uniform feed cards.
+- The chronology renders the full available publication copy for GM/campaign updates, diary posts, achievements and moments, preserves non-art media attachments, and deliberately excludes standalone art feed items.
+- Added progressive loading for older history while keeping the newest events first.
+
 ### Runtime and architecture changes
+
+- Added a dedicated UI 1.0 chronology data adapter that resolves campaign membership, author/profile identity, character identity and signed campaign-media URLs without importing legacy UI contexts.
+- Supabase Realtime remains a refresh signal rather than the only source of truth: every feed change triggers a fresh chronology query.
+- Added stable future source presentation/connection slots for GM notes, world, zone, NPC, lore and system events. The current database still constrains feed source types to diary/art/achievement/update/moment, so future source kinds remain intentionally unpersisted until a dedicated migration is approved.
 
 ### Tests / verification
 
+- Added UI 1.0 chronology contract coverage for non-art aggregation, full copy rendering, author/character lookup, Realtime refresh, sticky date grouping and future source connection slots.
+- Expanded Playwright smoke coverage so «Что нового» must open as the real chronology screen before returning to Home.
+
 ### Known incomplete work
+
+- Dedicated new-UI detail pages for diary entries, achievements, zones, NPCs and GM publications are not implemented yet. Each chronology event already carries a stable source-type/source-id connection slot so those links can be attached later without changing the chronology layout.
+- The database source-type constraint still needs a deliberate migration before native world/zone/NPC/GM-note events can be emitted as first-class feed types.
 
 ---
 
@@ -26,7 +40,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 **Status:** RELEASED
 **Branch:** `dev` → `main`
 **Base main:** `6b2c4372be73d9df0c27704fed02c7361d817e64`
-**Started:** 2026-09-12\n**Released:** 2026-09-12\n**Release identity:** `main / 2026-09-12-B`
+**Started:** 2026-09-12
+**Released:** 2026-09-12
+**Release identity:** `main / 2026-09-12-B`
 
 ### Player-facing changes
 

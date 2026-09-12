@@ -9,6 +9,9 @@ const entry = fs.readFileSync("src/ui-v1-isolated/main.tsx", "utf8")
 const app = fs.readFileSync("src/ui-v1-isolated/UiV1App.tsx", "utf8")
 const styles = fs.readFileSync("src/ui-v1-isolated/styles.css", "utf8")
 const legacyApp = fs.readFileSync("src/App.tsx", "utf8")
+const whatsNew = fs.readFileSync("src/ui-v1-isolated/WhatsNew.tsx", "utf8")
+const chronicleData = fs.readFileSync("src/ui-v1-isolated/useChronicleData.ts", "utf8")
+const chronicleStyles = fs.readFileSync("src/ui-v1-isolated/whats-new.css", "utf8")
 
 test("UI v1 is now the default application entry", () => {
   assert.match(html, /src\/ui-v1-isolated\/main\.tsx/)
@@ -113,4 +116,30 @@ test("home puts real latest events before section previews", () => {
   assert.match(homeData, /neq\("source_type", "art"\)/)
   assert.match(homeData, /postgres_changes/)
   assert.match(homeData, /meganotrpg:v1:campaign-id/)
+})
+
+
+test("What’s New is a real chronology screen rather than a placeholder", () => {
+  assert.match(app, /route\.section === "whats-new"\) return <WhatsNew \/>/)
+  assert.match(whatsNew, /Хроника кампании/)
+  assert.match(whatsNew, /Что нового/)
+  assert.match(whatsNew, /groupEvents/)
+  assert.match(chronicleStyles, /position:\s*sticky/)
+  assert.match(chronicleStyles, /grid-template-columns:\s*56px minmax\(0, 1fr\)/)
+})
+
+test("chronicle aggregates full non-art feed content and keeps future connection slots", () => {
+  assert.match(chronicleData, /from\("feed_items"\)/)
+  assert.match(chronicleData, /neq\("source_type", "art"\)/)
+  assert.match(chronicleData, /title, body, media_url, published_at/)
+  assert.match(chronicleData, /from\("characters"\)/)
+  assert.match(chronicleData, /from\("profiles"\)/)
+  assert.match(chronicleData, /from\("campaign_members"\)/)
+  assert.match(chronicleData, /postgres_changes/)
+  assert.doesNotMatch(whatsNew, /slice\(/)
+  assert.match(whatsNew, /ChronicleSourceAction/)
+  assert.match(whatsNew, /data-source-type/)
+  assert.match(whatsNew, /gm_note/)
+  assert.match(whatsNew, /zone/)
+  assert.match(whatsNew, /npc/)
 })

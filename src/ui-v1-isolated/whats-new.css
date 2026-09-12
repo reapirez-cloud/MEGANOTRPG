@@ -1,0 +1,321 @@
+.u1-chronicle {
+  height: 100%;
+  overflow-y: auto;
+  padding:
+    calc(24px + var(--u1-safe-top))
+    18px
+    calc(118px + var(--u1-safe-bottom));
+  scrollbar-width: none;
+}
+
+.u1-chronicle::-webkit-scrollbar {
+  display: none;
+}
+
+.u1-chronicle__header {
+  padding-top: 4px;
+}
+
+.u1-chronicle__header > span {
+  display: block;
+  color: var(--u1-text-muted);
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 720;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.u1-chronicle__header h1 {
+  margin: 10px 0 0;
+  color: var(--u1-text);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: clamp(44px, 12vw, 66px);
+  line-height: .86;
+  font-weight: 560;
+  letter-spacing: -.055em;
+  text-transform: uppercase;
+}
+
+.u1-chronicle__header p {
+  margin: 14px 0 0;
+  color: var(--u1-text-faint);
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 560;
+}
+
+.u1-chronicle__rule {
+  height: 1px;
+  margin: 24px 0 0;
+  background: var(--u1-line);
+}
+
+.u1-chronicle__stream {
+  display: grid;
+}
+
+.u1-chronicle-day {
+  position: relative;
+}
+
+.u1-chronicle-day__label {
+  position: sticky;
+  z-index: 6;
+  top: 0;
+  margin: 0;
+  padding: 20px 0 10px 68px;
+  background:
+    linear-gradient(
+      180deg,
+      var(--u1-canvas) 0%,
+      rgba(9, 10, 11, .96) 72%,
+      rgba(9, 10, 11, .84) 88%,
+      transparent 100%
+    );
+  color: var(--u1-text-muted);
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 720;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  backdrop-filter: blur(6px);
+}
+
+.u1-chronicle-day__events {
+  display: grid;
+}
+
+.u1-chronicle-entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.u1-chronicle-entry__time {
+  padding-top: 21px;
+  color: var(--u1-text-faint);
+  font-size: 10px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.u1-chronicle-entry__content {
+  position: relative;
+  min-width: 0;
+  padding: 18px 0 22px;
+  border-bottom: 1px solid var(--u1-line-soft);
+}
+
+.u1-chronicle-entry__content::before {
+  content: "";
+  position: absolute;
+  top: 23px;
+  left: -8px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(163, 168, 173, .44);
+}
+
+.u1-chronicle-entry__kicker {
+  min-height: 13px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--u1-text-muted);
+  font-size: 9px;
+  line-height: 1.15;
+  font-weight: 720;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.u1-chronicle-entry__author {
+  overflow: hidden;
+  color: var(--u1-text-faint);
+  font-weight: 580;
+  letter-spacing: .02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
+}
+
+.u1-chronicle-entry h2 {
+  margin: 9px 0 0;
+  color: var(--u1-text);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: clamp(20px, 5.5vw, 29px);
+  line-height: 1.02;
+  font-weight: 610;
+  letter-spacing: -.025em;
+  text-wrap: balance;
+}
+
+.u1-chronicle-entry__body {
+  margin: 10px 0 0;
+  color: var(--u1-text-soft);
+  font-size: 13px;
+  line-height: 1.58;
+  font-weight: 430;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.u1-chronicle-entry--diary .u1-chronicle-entry__body {
+  color: rgba(239, 238, 233, .86);
+  font-size: 14px;
+  line-height: 1.62;
+}
+
+.u1-chronicle-entry--gm h2 {
+  font-size: clamp(22px, 6.1vw, 32px);
+}
+
+.u1-chronicle-entry--gm .u1-chronicle-entry__kicker {
+  color: var(--u1-stone);
+}
+
+.u1-chronicle-entry--achievement .u1-chronicle-entry__content {
+  padding-top: 21px;
+  padding-bottom: 25px;
+}
+
+.u1-chronicle-entry--achievement h2 {
+  color: #f3f0e8;
+}
+
+.u1-chronicle-entry__achievement-mark {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  transform: rotate(45deg);
+  border: 1px solid rgba(179, 176, 169, .72);
+  box-shadow: 0 0 12px rgba(179, 176, 169, .09);
+}
+
+.u1-chronicle-entry--world .u1-chronicle-entry__kicker,
+.u1-chronicle-entry--system .u1-chronicle-entry__kicker {
+  color: var(--u1-steel);
+}
+
+.u1-chronicle-entry__media {
+  margin: 16px 0 0;
+  overflow: hidden;
+  border-radius: 7px;
+  background: var(--u1-surface-1);
+}
+
+.u1-chronicle-entry__media img {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+}
+
+.u1-chronicle-entry__empty-copy {
+  margin: 10px 0 0;
+  color: var(--u1-text-faint);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.u1-chronicle-entry__source-slot {
+  display: none;
+}
+
+.u1-chronicle__older {
+  width: calc(100% - 68px);
+  min-height: 54px;
+  margin: 22px 0 0 68px;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--u1-line);
+  border-bottom: 1px solid var(--u1-line);
+  background: transparent;
+  color: var(--u1-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.u1-chronicle__older:disabled {
+  opacity: .5;
+}
+
+.u1-chronicle__state {
+  margin: 32px 0 0 68px;
+  padding: 18px 0;
+  border-top: 1px solid var(--u1-line);
+  border-bottom: 1px solid var(--u1-line-soft);
+}
+
+.u1-chronicle__state strong {
+  display: block;
+  color: var(--u1-text-soft);
+  font-size: 14px;
+  font-weight: 640;
+}
+
+.u1-chronicle__state p {
+  max-width: 34ch;
+  margin: 8px 0 0;
+  color: var(--u1-text-faint);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.u1-chronicle__state button {
+  margin-top: 16px;
+  padding: 0 0 5px;
+  border: 0;
+  border-bottom: 1px solid var(--u1-line);
+  background: transparent;
+  color: var(--u1-text-soft);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.u1-chronicle__loading {
+  margin: 22px 0 0 68px;
+}
+
+.u1-chronicle__loading span {
+  display: block;
+  height: 92px;
+  border-bottom: 1px solid var(--u1-line-soft);
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.025), transparent 58%);
+  animation: u1-chronicle-pulse 1.35s ease-in-out infinite alternate;
+}
+
+@keyframes u1-chronicle-pulse {
+  from { opacity: .35; }
+  to { opacity: .72; }
+}
+
+@media (min-width: 620px) {
+  .u1-chronicle {
+    padding-inline: 28px;
+  }
+
+  .u1-chronicle-entry {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .u1-chronicle-day__label {
+    padding-left: 80px;
+  }
+
+  .u1-chronicle__older,
+  .u1-chronicle__state,
+  .u1-chronicle__loading {
+    margin-left: 80px;
+  }
+}

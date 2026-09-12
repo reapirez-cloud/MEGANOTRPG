@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "motion/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useHomeData, type HomeEvent } from "./useHomeData"
+import { WhatsNew } from "./WhatsNew"
 
 type RootSpace = "home" | "workspace" | "chats"
 type SectionId =
@@ -404,6 +405,8 @@ function Placeholder({
 
 function Screen({ route }: { route: Route }) {
   if (route.type === "section") {
+    if (route.section === "whats-new") return <WhatsNew />
+
     const copy = sectionCopy[route.section]
     return <Placeholder {...copy} backToHome />
   }
