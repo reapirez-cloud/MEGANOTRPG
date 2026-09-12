@@ -83,11 +83,20 @@ test("Rogue corrections do not regress to the supplied inaccurate rule blocks", 
   assert.match(stroke.mechanics, /короткого или долгого отдыха/i)
 })
 
-test("missing Gemini prose is explicit instead of silently inventing Voss copy", () => {
-  for (const name of ["Точный прицел", "Скользкий ум"]) {
-    const feature = rogueFeature(name)
-    assert.equal(feature.explanation, "")
-    assert.equal(feature.voss, "")
-    assert.match(feature.translationNote ?? "", /Перевода способности пока нет/)
+test("Rogue base literary layer is complete after the Stage 1 closure", () => {
+  const steadyAim = rogueFeature("Точный прицел")
+  assert.match(steadyAim.explanation, /Юстин умел не двигаться/)
+  assert.match(steadyAim.voss ?? "", /Неподвижная мишень/)
+  assert.equal(steadyAim.translationNote, undefined)
+
+  const slipperyMind = rogueFeature("Скользкий ум")
+  assert.match(slipperyMind.explanation, /пытались купить, запугать, околдовать/)
+  assert.match(slipperyMind.voss ?? "", /пол там давно стал каменным/)
+  assert.equal(slipperyMind.translationNote, undefined)
+
+  for (const feature of rogue.features ?? []) {
+    assert.ok(feature.explanation.trim(), `${feature.level}/${feature.name} has no Voss explanation`)
+    assert.ok(feature.voss?.trim(), `${feature.level}/${feature.name} has no Voss comment`)
+    assert.doesNotMatch(feature.translationNote ?? "", /TRANSLATION_MISSING|Перевода способности пока нет/)
   }
 })
