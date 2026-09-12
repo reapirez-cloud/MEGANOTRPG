@@ -16,7 +16,7 @@ test("UI v1 is now the default application entry", () => {
   assert.match(legacyHtml, /src\/main\.tsx/)
   assert.match(entry, /\.\/UiV1App/)
   assert.match(entry, /\.\/styles\.css/)
-  assert.doesNotMatch(entry + app, /\.\.\/App|pages\/|components\/app|CharacterContext|supabase/i)
+  assert.doesNotMatch(entry + app, /\.\.\/App|pages\/|components\/app|CharacterContext/i)
 })
 
 test("UI v1 does not load the legacy stylesheet graph", () => {
@@ -32,7 +32,7 @@ test("UI v1 start page keeps the approved grayscale visual direction", () => {
   assert.match(styles, /--u1-steel:/)
   assert.match(styles, /--u1-stone:/)
   assert.doesNotMatch(styles, /145, 104, 185|72, 105, 113|76, 122, 101/)
-  assert.match(app, /Главная\s*<br\s*\/>\s*картина/)
+  assert.doesNotMatch(app, /Главная\s*<br\s*\/>\s*картина/)\n  assert.match(app, /Последние события/)
 })
 
 test("every deferred UI v1 destination has a stable placeholder route", () => {
@@ -92,4 +92,24 @@ test("dock uses local glow instead of a selected-state frame", () => {
   assert.match(styles, /text-shadow:\s*0 0 13px/)
   assert.match(styles, /data-active="home"/)
   assert.doesNotMatch(styles, /\.u1-dock__selection[\s\S]*?box-shadow:\s*inset 0 0 0 1px/)
+})
+
+
+test("dock navigation is icon-only and keeps accessible names", () => {
+  assert.match(app, /aria-label=\{item\.label\}/)
+  assert.match(app, /u1-dock__glyph/)
+  assert.doesNotMatch(app, /u1-dock__label/)
+  assert.match(styles, /nav-icons\/me\.svg/)
+  assert.match(styles, /nav-icons\/home\.svg/)
+  assert.match(styles, /nav-icons\/chats\.svg/)
+})
+
+test("home puts real latest events before section previews", () => {
+  const homeData = fs.readFileSync("src/ui-v1-isolated/useHomeData.ts", "utf8")
+  assert.match(app, /<LatestEvents events=\{events\}/)
+  assert.ok(app.indexOf("<LatestEvents") < app.indexOf('<section className="u1-grid"'))
+  assert.match(homeData, /from\("feed_items"\)/)
+  assert.match(homeData, /neq\("source_type", "art"\)/)
+  assert.match(homeData, /postgres_changes/)
+  assert.match(homeData, /meganotrpg:v1:campaign-id/)
 })

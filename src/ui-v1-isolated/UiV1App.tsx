@@ -1,6 +1,8 @@
 import { AnimatePresence, motion } from "motion/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import { useHomeData, type HomeEvent } from "./useHomeData"
+
 type RootSpace = "home" | "workspace" | "chats"
 type SectionId =
   | "whats-new"
@@ -163,10 +165,10 @@ function Dock({
   onNavigate: (space: RootSpace) => void
 }) {
   const active = activeRoot(route)
-  const items: Array<{ id: RootSpace; label: string; path: string }> = [
-    { id: "workspace", label: "Я", path: "workspace" },
-    { id: "home", label: "Главная", path: "home" },
-    { id: "chats", label: "Чаты", path: "chats" },
+  const items: Array<{ id: RootSpace; label: string; icon: "me" | "home" | "chats" }> = [
+    { id: "workspace", label: "Я", icon: "me" },
+    { id: "home", label: "Главная", icon: "home" },
+    { id: "chats", label: "Чаты", icon: "chats" },
   ]
 
   return (
@@ -182,6 +184,7 @@ function Dock({
             type="button"
             className={`u1-dock__item u1-dock__item--${item.id}`}
             data-selected={selected || undefined}
+            aria-label={item.label}
             aria-current={selected ? "page" : undefined}
             onClick={() => onNavigate(item.id)}
           >
@@ -193,8 +196,10 @@ function Dock({
                 transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
               />
             )}
-            <span className="u1-dock__label">{item.label}</span>
-            {item.id === "home" && <span className="u1-dock__home-mark" aria-hidden="true" />}
+            <span
+              className={`u1-dock__glyph u1-dock__glyph--${item.icon}`}
+              aria-hidden="true"
+            />
           </button>
         )
       })}
@@ -227,13 +232,111 @@ function SectionPreview({ item }: { item: PreviewItem }) {
   )
 }
 
+const eventTypeLabel: Record<HomeEvent["source_type"], string> = {
+  achievement: "Достижение",
+  diary: "Дневник",
+  moment: "Событие",
+  update: "Обновление",
+}
+
+function formatEventTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ""
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+    .format(date)
+    .replace(".", "")
+}
+
+function eventHeadline(event: HomeEvent) {
+  const title = event.title.trim()
+  if (title) return title
+
+  const body = event.body.trim()
+  if (!body) return "Новое событие"
+  return body.length > 84 ? `${body.slice(0, 81)}…` : body
+}
+
+function LatestEvents({
+  events,
+  loading,
+  error,
+}: {
+  events: HomeEvent[]
+  loading: boolean
+  error: string | null
+}) {
+  return (
+    <section className="u1-latest" aria-labelledby="u1-latest-title">
+      <div className="u1-latest__head">
+        <h1 id="u1-latest-title">Последние события</h1>
+        <button type="button" onClick={() => go("home/whats-new")}>
+          Все
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="u1-latest__skeleton" aria-label="Загрузка событий">
+          <span />
+          <span />
+          <span />
+        </div>
+      ) : error ? (
+        <button
+          type="button"
+          className="u1-latest__empty"
+          onClick={() => go("home/whats-new")}
+        >
+          Хроника временно недоступна
+        </button>
+      ) : events.length === 0 ? (
+        <div className="u1-latest__empty">События появятся здесь</div>
+      ) : (
+        <div className="u1-latest__list">
+          {events.map((event) => (
+            <button
+              key={event.id}
+              type="button"
+              className="u1-latest__event"
+              onClick={() => go("home/whats-new")}
+            >
+              <span className="u1-latest__meta">
+                <strong>{eventTypeLabel[event.source_type]}</strong>
+                <small>{formatEventTime(event.published_at)}</small>
+              </span>
+              <span className="u1-latest__copy">
+                <strong>{eventHeadline(event)}</strong>
+                {event.title.trim() && event.body.trim() && (
+                  <small>
+                    {event.body.length > 96
+                      ? `${event.body.slice(0, 93)}…`
+                      : event.body}
+                  </small>
+                )}
+              </span>
+              <span className="u1-latest__arrow" aria-hidden="true">↗</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function Home() {
+  const { campaignTitle, events, loading, error } = useHomeData()
+
   return (
     <main className="u1-home">
       <header className="u1-header">
         <div className="u1-brand">
           <span>MEGANOT / CAMPAIGN</span>
-          <strong>Мунтар</strong>
+          <strong>{campaignTitle || "Мунтар"}</strong>
         </div>
 
         <button
@@ -251,15 +354,7 @@ function Home() {
 
       <div className="u1-rule" aria-hidden="true" />
 
-      <section className="u1-intro">
-        <span>Сейчас в кампании</span>
-        <h1>
-          Главная
-          <br />
-          картина
-        </h1>
-        <p>Короткий вход во всё важное, без панели управления на пол-экрана.</p>
-      </section>
+      <LatestEvents events={events} loading={loading} error={error} />
 
       <section className="u1-grid" aria-label="Разделы кампании">
         <SectionPreview item={previewItems[0]} />
@@ -273,18 +368,6 @@ function Home() {
         <div className="u1-grid__row u1-grid__row--second">
           <SectionPreview item={previewItems[4]} />
           <SectionPreview item={previewItems[5]} />
-        </div>
-      </section>
-
-      <section className="u1-events-placeholder" aria-label="Последние события">
-        <div className="u1-events-placeholder__head">
-          <span>Последние события</span>
-          <small>Подключение позже</small>
-        </div>
-        <div className="u1-events-placeholder__rail" aria-hidden="true">
-          <span />
-          <span />
-          <span />
         </div>
       </section>
     </main>

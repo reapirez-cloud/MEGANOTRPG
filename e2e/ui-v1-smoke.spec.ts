@@ -4,7 +4,7 @@ test("isolated UI v1 opens the new start page and placeholder routes", async ({ 
   await page.goto("/ui-v1.html#/home")
 
   await expect(page.getByText("Мунтар", { exact: true })).toBeVisible()
-  await expect(page.getByRole("heading", { name: /Главная\s+картина/i })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Последние события" })).toBeVisible()
   await expect(page.getByRole("button", { name: /Что нового/i })).toBeVisible()
 
   await page.getByRole("button", { name: /Мир/i }).click()

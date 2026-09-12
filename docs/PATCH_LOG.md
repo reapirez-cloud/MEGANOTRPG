@@ -4,12 +4,17 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ## Active patch — 2026-09-12-B
 
-**Status:** OPEN
-**Branch:** `dev`
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `6b2c4372be73d9df0c27704fed02c7361d817e64`
-**Started:** 2026-09-12
+**Started:** 2026-09-12\n**Released:** 2026-09-12\n**Release identity:** `main / 2026-09-12-B`
 
 ### Player-facing changes
+
+- Replaced all visible Dock labels with three custom MEGANOT line icons: personal identity on the left, a wide portal/horizon mark for Home across the 50% center slot, and a dialogue glyph for Chats. Accessible names remain on the buttons while visible text is gone.
+- Removed the oversized «Главная картина» intro from Home. The screen now opens on compact «Последние события» so the newest campaign activity is visible without scrolling past navigation previews.
+- Connected the Home event strip to the real campaign feed: it shows the three newest non-art events across moments, diary entries, achievements and GM/campaign updates, and refreshes through Supabase Realtime.
+
 
 - Added mobile-first root navigation gestures to UI 1.0: deliberate horizontal swipes move between Я / Главная / Чаты while vertical scrolling remains native.
 - Added restrained soft haptics for root navigation, preferring Telegram HapticFeedback when available and falling back to a short browser vibration on supported devices.
@@ -20,9 +25,21 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added a UI 1.0-only Home data adapter. It resolves the remembered campaign membership, reads the campaign title and recent feed rows, and does not import legacy page/UI context.
+- Added portable SVG source assets for the three navigation marks so the same geometry can be imported into Figma later without raster recreation.
+
+
 ### Tests / verification
 
+- Added repository assertions for icon-only navigation, stable accessible labels, Home ordering, feed integration, art exclusion and Realtime subscription.
+- Updated Playwright expectations to the new «Последние события» Home hierarchy.
+
+
 ### Known incomplete work
+
+- The same navigation SVGs still need to be imported/rebuilt as editable Figma components; the Figma MCP Starter plan hit its tool-call limit during this change, so no false claim of a completed Figma write is recorded.
+- The full «Что нового» chronology screen remains a connected placeholder; this patch only surfaces the latest real feed events on Home.
+
 
 ---
 
