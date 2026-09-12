@@ -117,6 +117,16 @@ export class MemoryLarisaStorage implements LarisaStorage {
       return { kind: command.kind, characterIds: [], locationIds: [command.locationId], sceneIds: [], details: { event: command.event } }
     }
 
+    if (command.kind === "world.campaign_announcement_publish") {
+      return {
+        kind: command.kind,
+        characterIds: [],
+        locationIds: [],
+        sceneIds: [],
+        details: { announcementId: `announcement-${command.context.commandId}`, kind: "announcement" },
+      }
+    }
+
     if (command.kind === "world.location_section_create") {
       const sectionId = `section-${command.context.commandId}`
       this.sectionLocations.set(sectionId, command.locationId)
