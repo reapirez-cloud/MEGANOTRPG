@@ -633,3 +633,14 @@ Telegram BackButton и системные возможности платфор�
 ---
 
 _Этот документ намеренно датирован. Он должен помогать продолжать работу в рамках текущего этапа, а не заставлять будущих разработчиков вечно жить в сентябре 2026 года._
+
+
+## UI v1 foundation dependencies
+
+Installed on 2026-09-12 for the new MEGANOT UI v1.0 foundation:
+
+- Motion for React via `motion`
+- Radix UI primitives: Dialog, Dropdown Menu, Popover, Tooltip
+- React Router v7 via `react-router`
+
+These dependencies belong to the new UI v1.0 foundation. They are not a continuation of the legacy UI version chain. Storybook and Playwright remain deferred until the new App Shell exists.
