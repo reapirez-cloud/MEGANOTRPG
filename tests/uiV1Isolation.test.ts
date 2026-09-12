@@ -13,6 +13,10 @@ const whatsNew = fs.readFileSync("src/ui-v1-isolated/WhatsNew.tsx", "utf8")
 const chronicleData = fs.readFileSync("src/ui-v1-isolated/useChronicleData.ts", "utf8")
 const chronicleStyles = fs.readFileSync("src/ui-v1-isolated/whats-new.css", "utf8")
 const worldPreviewAsset = "public/ui-v1/world/world-preview.webp"
+const sectionScreens = fs.readFileSync("src/ui-v1-isolated/SectionScreens.tsx", "utf8")
+const sectionData = fs.readFileSync("src/ui-v1-isolated/useUiV1SectionData.ts", "utf8")
+const sectionRegistry = fs.readFileSync("src/ui-v1-isolated/sectionRegistry.ts", "utf8")
+const sectionStyles = fs.readFileSync("src/ui-v1-isolated/section-screens.css", "utf8")
 
 test("World preview artwork is committed with UI v1", () => {
   assert.equal(fs.existsSync(worldPreviewAsset), true)
@@ -45,12 +49,13 @@ test("UI v1 start page keeps the approved grayscale visual direction", () => {
   assert.match(app, /Последние события/)
 })
 
-test("every deferred UI v1 destination has a stable placeholder route", () => {
+test("UI v1 routes real content sections without importing legacy screens", () => {
   for (const path of [
     "workspace",
     "chats",
     "whats-new",
     "world",
+    "knowledge-base",
     "society-news",
     "achievements",
     "art",
@@ -59,8 +64,11 @@ test("every deferred UI v1 destination has a stable placeholder route", () => {
     assert.match(app, new RegExp(path))
   }
 
-  assert.match(app, /function Placeholder/)
-  assert.doesNotMatch(app, /<Feed|<World|<Chats|<GmWorkspace|<CharacterProfileV2/)
+  assert.match(app, /<WorldSectionScreen subsection=\{route\.subsection\}/)
+  assert.match(app, /<KnowledgeBaseScreen subsection=\{route\.subsection\}/)
+  assert.match(app, /<SocietyNewsScreen \/>/)
+  assert.match(app, /<AchievementsScreen \/>/)
+  assert.doesNotMatch(app + sectionScreens, /src\/pages|components\/world|ReferenceGuide|CharacterContext/)
 })
 
 
@@ -139,6 +147,43 @@ test("home puts campaign destinations before the compact recent-event stream", (
   assert.match(homeData, /meganotrpg:v1:campaign-id/)
 })
 
+
+test("World and Knowledge Base use extensible registries and keep Map intentionally shallow", () => {
+  assert.match(sectionRegistry, /worldHubSections/)
+  assert.match(sectionRegistry, /knowledgeBaseSections/)
+  assert.match(sectionRegistry, /id: "locations"/)
+  assert.match(sectionRegistry, /id: "characters"/)
+  assert.match(sectionRegistry, /id: "lore"/)
+  assert.match(sectionRegistry, /id: "map"/)
+  assert.match(sectionRegistry, /id: "spells"/)
+  assert.match(sectionRegistry, /id: "classes"/)
+  assert.match(sectionRegistry, /id: "invocations"/)
+  assert.match(sectionRegistry, /id: "bestiary"/)
+  assert.match(sectionScreens, /Саму карту сейчас намеренно не строим/)
+  assert.doesNotMatch(sectionScreens, /WorldMapView/)
+  assert.match(sectionStyles, /min-height:\s*clamp\(138px, 34vw, 184px\)/)
+})
+
+test("Achievements render as narrow title-only previews and remain character-linked", () => {
+  assert.match(sectionData, /from\("achievements"\)/)
+  assert.match(sectionData, /character_id/)
+  assert.match(sectionScreens, /className="u1-achievement-tile"/)
+  assert.match(sectionScreens, /<strong>\{item\.title\}<\/strong>/)
+  assert.doesNotMatch(sectionScreens, /achievement.*description|Что даёт|За что получено/is)
+  assert.match(sectionStyles, /min-height:\s*clamp\(82px, 23vw, 100px\)/)
+})
+
+test("Society News uses manager-only announcements backed by campaign_updates", () => {
+  const homeData = fs.readFileSync("src/ui-v1-isolated/useHomeData.ts", "utf8")
+  assert.match(sectionData, /from\("campaign_updates"\)/)
+  assert.match(sectionData, /eq\("kind", "announcement"\)/)
+  assert.match(sectionData, /membership\.role === "gm" \|\| membership\.is_owner === true/)
+  assert.match(sectionScreens, /news\.canManage \? \(/)
+  assert.match(sectionScreens, /aria-label="Новая публикация"/)
+  assert.match(homeData, /from\("campaign_updates"\)/)
+  assert.match(homeData, /eq\("kind", "announcement"\)/)
+  assert.doesNotMatch(homeData, /gm_note|gm_post/)
+})
 
 test("What’s New is a real chronology screen rather than a placeholder", () => {
   assert.match(app, /route\.section === "whats-new"\) return <WhatsNew \/>/)

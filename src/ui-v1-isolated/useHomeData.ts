@@ -13,7 +13,12 @@ export type HomeEvent = {
   published_at: string
 }
 
-export type HomeSocietyNews = HomeEvent
+export type HomeSocietyNews = {
+  id: string
+  title: string
+  body: string
+  published_at: string
+}
 
 export type HomeArtPreview = {
   id: string
@@ -173,10 +178,10 @@ export function useHomeData(): HomeData {
 
       const refreshSocietyNews = async () => {
         const { data, error: newsError } = await supabase
-          .from("feed_items")
-          .select("id, source_type, title, body, media_url, published_at")
+          .from("campaign_updates")
+          .select("id, title, body, published_at")
           .eq("campaign_id", campaignId)
-          .in("source_type", ["gm_note", "gm_post", "announcement"])
+          .eq("kind", "announcement")
           .order("published_at", { ascending: false })
           .limit(1)
 

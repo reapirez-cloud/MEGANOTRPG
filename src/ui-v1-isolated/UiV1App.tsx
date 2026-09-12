@@ -3,6 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useHomeData, type HomeArtPreview, type HomeEvent, type HomeSocietyNews } from "./useHomeData"
 import { WhatsNew } from "./WhatsNew"
+import {
+  AchievementsScreen,
+  KnowledgeBaseScreen,
+  SocietyNewsScreen,
+  WorldSectionScreen,
+} from "./SectionScreens"
 
 type RootSpace = "home" | "workspace" | "chats"
 type SectionId =
@@ -16,7 +22,7 @@ type SectionId =
 
 type Route =
   | { type: "root"; space: RootSpace }
-  | { type: "section"; section: SectionId }
+  | { type: "section"; section: SectionId; subsection?: string }
 
 const sectionIds: SectionId[] = [
   "whats-new",
@@ -73,9 +79,14 @@ function parseRoute(): Route {
   if (path === "workspace") return { type: "root", space: "workspace" }
   if (path === "chats") return { type: "root", space: "chats" }
 
-  const section = path.startsWith("home/") ? path.slice("home/".length) : ""
+  const sectionPath = path.startsWith("home/") ? path.slice("home/".length) : ""
+  const [section, subsection] = sectionPath.split("/")
   if (sectionIds.includes(section as SectionId)) {
-    return { type: "section", section: section as SectionId }
+    return {
+      type: "section",
+      section: section as SectionId,
+      subsection: subsection || undefined,
+    }
   }
 
   return { type: "root", space: "home" }
@@ -113,7 +124,9 @@ function softHaptic() {
 }
 
 function routeKey(route: Route) {
-  return route.type === "root" ? `root:${route.space}` : `section:${route.section}`
+  return route.type === "root"
+    ? `root:${route.space}`
+    : `section:${route.section}:${route.subsection || "index"}`
 }
 
 function activeRoot(route: Route): RootSpace {
@@ -312,7 +325,7 @@ function formatEventTime(value: string) {
     .replace(".", "")
 }
 
-function eventHeadline(event: HomeEvent) {
+function eventHeadline(event: Pick<HomeEvent, "title" | "body">) {
   const title = event.title.trim()
   if (title) return title
 
@@ -470,6 +483,10 @@ function Placeholder({
 function Screen({ route }: { route: Route }) {
   if (route.type === "section") {
     if (route.section === "whats-new") return <WhatsNew />
+    if (route.section === "world") return <WorldSectionScreen subsection={route.subsection} />
+    if (route.section === "knowledge-base") return <KnowledgeBaseScreen subsection={route.subsection} />
+    if (route.section === "society-news") return <SocietyNewsScreen />
+    if (route.section === "achievements") return <AchievementsScreen />
 
     const copy = sectionCopy[route.section]
     return <Placeholder {...copy} backToHome />

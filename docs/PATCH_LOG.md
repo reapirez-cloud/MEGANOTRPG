@@ -11,6 +11,12 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Replaced the UI 1.0 placeholders for «Мир», «База знаний», «Новости общества» and «Достижения» with real isolated section screens while leaving Home composition unchanged.
+- «Мир» now opens an extensible four-tile hub for Локации / Персонажи / Лор / Карта. Existing visible locations, characters and lore are read from current Supabase data; Map is intentionally only a connected destination and no map implementation was started.
+- «База знаний» now opens an extensible tile hub backed by the existing class, invocation, spell and bestiary sources. Live catalogs get lightweight searchable lists; future categories can be added through the section registry without rewriting routing.
+- «Достижения» now renders only narrow visual preview strips with the achievement title. Character linkage remains in the data contract through `character_id`; no detail screen or mechanics were added ahead of scope.
+- «Новости общества» now uses the existing `campaign_updates(kind = announcement)` model. GM/owner users alone see the + publish control; players receive a read-only chronology.
+
 - Attached the approved coastal grimdark panorama to the UI 1.0 «Мир» entry. The Home preview now uses the real campaign artwork instead of the dark fallback.
 
 - Removed the duplicated «Что нового» hero from UI 1.0 Home. The chronology now has one Home entry point: «Последние события» / «Все», instead of two controls opening the same destination.
@@ -31,6 +37,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added progressive loading for older history while keeping the newest events first.
 
 ### Runtime and architecture changes
+
+- Added data-driven UI 1.0 registries for World and Knowledge Base sections. Unknown/new subsection routes degrade to isolated connection placeholders, so future tiles such as «Предметы» can be introduced without changing the root router.
+- Added an isolated campaign-scope/data adapter for section screens instead of importing legacy CharacterContext or legacy World/Reference components.
+- Corrected Home society-news lookup to read the canonical `campaign_updates` announcement source instead of querying impossible `feed_items.source_type` values. Existing `feed_items` Realtime acts only as a refresh signal for announcement and achievement lists.
 
 - Added the optimized World preview asset at `public/ui-v1/world/world-preview.webp` (640×213 WebP, ~21 KB). Supabase `campaigns.cover_url` is the connection point, so the existing isolated Home cover pipeline owns rendering instead of a one-off hardcoded image branch.
 
