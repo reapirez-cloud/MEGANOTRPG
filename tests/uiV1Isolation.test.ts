@@ -103,9 +103,9 @@ test("dock navigation is icon-only and keeps accessible names", () => {
   assert.match(app, /aria-label=\{item\.label\}/)
   assert.match(app, /u1-dock__glyph/)
   assert.doesNotMatch(app, /u1-dock__label/)
-  assert.match(styles, /nav-icons\/me\.svg/)
-  assert.match(styles, /nav-icons\/home\.svg/)
-  assert.match(styles, /nav-icons\/chats\.svg/)
+  assert.match(styles, /nav-icons\\/me\\.png/)
+  assert.match(styles, /nav-icons\\/home\\.png/)
+  assert.match(styles, /nav-icons\\/chats\\.png/)
 })
 
 test("home puts real latest events before section previews", () => {
@@ -142,4 +142,12 @@ test("chronicle aggregates full non-art feed content and keeps future connection
   assert.match(whatsNew, /gm_note/)
   assert.match(whatsNew, /zone/)
   assert.match(whatsNew, /npc/)
+})
+
+
+test("dock no longer references SVG navigation assets", () => {
+  assert.doesNotMatch(styles, /nav-icons\/[^"')]+\.svg/)
+  assert.match(styles, /nav-icons\/me\.png/)
+  assert.match(styles, /nav-icons\/home\.png/)
+  assert.match(styles, /nav-icons\/chats\.png/)
 })
