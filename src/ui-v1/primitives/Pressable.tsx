@@ -1,9 +1,9 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react"
-import { motion } from "motion/react"
+import type { ReactNode } from "react"
+import { motion, type HTMLMotionProps } from "motion/react"
 
 import { mgMotion } from "../motion/presets"
 
-type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
+type Props = Omit<HTMLMotionProps<"button">, "children"> & {
   children: ReactNode
 }
 
