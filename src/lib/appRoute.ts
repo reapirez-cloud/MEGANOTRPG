@@ -22,6 +22,7 @@ export type AppRoute =
   | { type: "home-section"; section: HomeSection }
   | { type: "world" }
   | { type: "workspace-characters" }
+  | { type: "legacy-root"; target: "chats" | "workspace" }
   | { type: "chat"; id: string }
   | {
       type: "character"
@@ -76,6 +77,8 @@ export function parseAppLocation(pathname: string, search = ""): AppRoute {
   if (path === "/gallery") return { type: "gallery" }
   if (path === "/world") return { type: "world" }
   if (path === "/workspace/characters") return { type: "workspace-characters" }
+  if (path === "/legacy/chats") return { type: "legacy-root", target: "chats" }
+  if (path === "/legacy/workspace") return { type: "legacy-root", target: "workspace" }
 
   const homeSection = parts[0] === "home" ? parts[1] : null
   if (
@@ -147,6 +150,7 @@ export function characterReturnPath(route: Extract<AppRoute, { type: "character"
 export function dockSpaceForRoute(route: AppRoute): RootSpace {
   if (route.type === "chat") return "chats"
   if (route.type === "workspace-characters") return "workspace"
+  if (route.type === "legacy-root") return route.target
 
   if (route.type === "space") return route.space
 

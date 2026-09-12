@@ -7,7 +7,8 @@ const reference = fs.readFileSync("src/components/reference/ReferenceGuide.tsx",
 const druid = fs.readFileSync("src/data/classes/druidReference.ts", "utf8")
 const clarity = fs.readFileSync("supabase/migrations/20260828010000_druid_rule_clarity.sql", "utf8")
 
-test("rules reference has an actual app entry point and campaign catalog", () => {
+test("rules reference remains reachable through the explicit legacy workspace bridge", () => {
+  assert.match(app, /route\.type === "legacy-root" && route\.target === "workspace"/)
   assert.match(app, /const openReference = useCallback\(\(\) => setReferenceOpen\(true\)/)
   assert.match(app, /onClick=\{openReference\}>Справочник<\/button>/)
   assert.match(app, /<ReferenceGuide/)

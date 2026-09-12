@@ -33,6 +33,7 @@ At this stage:
 - `/home` is the active UI 1.0 implementation;
 - `/chats` is connected through a UI 1.0 placeholder until the Chats stage;
 - `/workspace` ("Я") is connected through a UI 1.0 placeholder until the Workspace stage;
-- legacy/deep screens remain compatibility bridges only where working behavior still needs to survive.
+- legacy/deep screens remain compatibility bridges only where working behavior still needs to survive;
+- working legacy root surfaces are preserved explicitly at `/legacy/chats` and `/legacy/workspace`, never through the new Dock.
 
 Do not mount deferred legacy root UIs inside the new shell just to avoid an empty destination.

@@ -13,7 +13,8 @@ test("UI v1 shell owns global navigation without the obsolete root bars", () => 
   assert.doesNotMatch(app, /import BottomNav/)
   assert.doesNotMatch(app, /import TopBar/)
   assert.match(app, /<MeganotAppShell/)
-  assert.match(app, /canManage && \([\s\S]*?<GmWorkspace/)
+  assert.match(app, /route\.type === "legacy-root" && route\.target === "workspace"[\s\S]*?canManage && \([\s\S]*?<GmWorkspace/)
+  assert.doesNotMatch(app, /route\.space === "workspace"[\s\S]*?<GmWorkspace/)
   assert.doesNotMatch(routeModel, /components\/app\/BottomNav/)
 })
 

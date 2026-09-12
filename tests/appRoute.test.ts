@@ -75,3 +75,15 @@ test("Home sub-sections have distinct UI v1 routes", () => {
     section: "updates",
   })
 })
+
+
+test("explicit legacy compatibility roots preserve working screens outside the new Dock", () => {
+  assert.deepEqual(parseAppRoute("#/legacy/chats"), {
+    type: "legacy-root",
+    target: "chats",
+  })
+  assert.deepEqual(parseAppRoute("#/legacy/workspace"), {
+    type: "legacy-root",
+    target: "workspace",
+  })
+})
