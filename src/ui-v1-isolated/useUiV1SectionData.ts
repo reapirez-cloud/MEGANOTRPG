@@ -43,6 +43,12 @@ export type KnowledgeCatalogRow = {
   meta: string
 }
 
+type CampaignMembership = {
+  campaign_id: string
+  role: string
+  is_owner: boolean
+}
+
 type CampaignScope = {
   campaignId: string
   userId: string
@@ -79,7 +85,7 @@ export function useUiV1CampaignScope(): CampaignScope {
       }
 
       const userId = authData.user.id
-      let membership: { campaign_id: string; role: string; is_owner: boolean } | null = null
+      let membership: CampaignMembership | null = null
       const remembered =
         window.localStorage.getItem("meganotrpg:v1:campaign-id") ||
         window.localStorage.getItem("meganotrpg:campaign-id") ||
@@ -93,7 +99,7 @@ export function useUiV1CampaignScope(): CampaignScope {
           .eq("user_id", userId)
           .maybeSingle()
 
-        membership = data as typeof membership
+        membership = data as CampaignMembership | null
       }
 
       if (!membership) {
@@ -110,7 +116,7 @@ export function useUiV1CampaignScope(): CampaignScope {
           return
         }
 
-        membership = (data?.[0] || null) as typeof membership
+        membership = (data?.[0] || null) as CampaignMembership | null
       }
 
       if (!membership) {

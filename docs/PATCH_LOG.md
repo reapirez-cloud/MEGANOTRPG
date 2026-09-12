@@ -13,6 +13,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Fixed the UI 1.0 campaign-membership typing regression that narrowed `membership` to `null` inside the fallback branch and caused production TypeScript builds to fail before Vercel deployment.
+
 ### Tests / verification
 
 ### Known incomplete work
