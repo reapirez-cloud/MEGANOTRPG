@@ -11,19 +11,26 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Normalized the UI 1.0 World vocabulary to **Зоны / NPC / Лор / Карта**. The stable technical route/storage names remain compatible, while the World NPC list now excludes player characters.
+
 ### Runtime and architecture changes
 
 - Added the canonical planned **Snake** UI interaction/action-agent contract. Snake owns no domain state: entity integrations supply action manifests, Snake owns universal interaction surfaces/gesture handling and dispatches selected actions into the existing GENA / Oracle / explicit-owner paths.
 - Defined universal schema-driven UI surfaces (ContextMenu, Confirm, Editor, Picker, Detail, Notice/Error, Placeholder) so UI 1.0 does not grow separate modal/menu families for locations, inventory, NPCs and other entity types. Deferred domain interfaces must remain universal placeholders until explicitly designed.
-- Marked the current location-specific long-press implementation as temporary and forbidden as a copy pattern; Locations are the first planned Snake migration target and Inventory the second reuse proof.
+- Marked the current location-specific long-press implementation as temporary and forbidden as a copy pattern; Zones are the first planned Snake migration target and Inventory the second reuse proof.
+- Added `docs/UI_V1_CURRENT_STATE_2026-09-13.md` as the canonical redesign status snapshot and made `AGENTS.md` point future agents there before UI 1.0 work. Older redesign stage files are now explicitly historical/superseded where their implementation claims no longer match the isolated app.
+- Corrected Society News publication from a direct React -> Supabase write to the named-engine path `UI -> Oracle -> Larisa -> campaign_updates`. Larisa now owns the explicit descriptive campaign-announcement command and emits a campaign-scoped engine event.
+- Clarified that the old Stage 2 Foundation claims about `MotionConfig`, `LayerHost` and Meganot Radix wrappers are not current isolated-tree capabilities after the hard-isolation reset.
 
 ### Tests / verification
 
 - Added repository contract coverage ensuring Snake remains discoverable, entity-agnostic, non-owning, placeholder-aware and explicitly referenced from the temporary location long-press seam.
+- Extended Oracle/UI 1.0 contract tests so campaign announcements must dispatch through Oracle -> Larisa, World labels remain canonical, the NPC surface stays NPC-only, and historical redesign documents cannot silently masquerade as current implementation truth.
 
 ### Known incomplete work
 
-- Snake is documented/planned but not implemented yet. The current location long-press menu still has the known touch timer + synthetic contextmenu double-invocation defect and must be replaced by Snake rather than patched into a reusable pattern.
+- Snake is documented/planned but not implemented yet. The current Zone long-press menu still has the known touch timer + synthetic contextmenu double-invocation defect and must be replaced by Snake rather than patched into a reusable pattern.
+- Workspace, Chats, Map, the dedicated Art/gallery surface and several detail/editor flows remain intentional UI 1.0 placeholders. Their status is now centralized in `docs/UI_V1_CURRENT_STATE_2026-09-13.md` rather than being ambiguous debt.
 
 ---
 

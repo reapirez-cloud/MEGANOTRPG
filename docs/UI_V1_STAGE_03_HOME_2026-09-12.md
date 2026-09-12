@@ -2,7 +2,9 @@
 
 > Date: 2026-09-12
 >
-> Status: IMPLEMENTED FIRST PASS ON `dev`
+> Status: IMPLEMENTED FIRST PASS ON `dev` — **HISTORICAL STAGE RECORD**
+>
+> Home v3 decisions below remain the basis of the current Home, but implementation status, terminology and next-step ordering are owned by `docs/UI_V1_CURRENT_STATE_2026-09-13.md`.
 
 This stage fixes the first real visual direction for Home.
 

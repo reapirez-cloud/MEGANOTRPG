@@ -2,7 +2,11 @@
 
 > Date: 2026-09-12
 >
-> Status: IMPLEMENTED ON `dev`
+> Status: **HISTORICAL / PARTIALLY INVALIDATED BY THE HARD-ISOLATION RESET**
+>
+> The bullets below describe the Stage 2 implementation/design intent **before the isolated UI tree was reset**. Do not infer from this document that the current `src/ui-v1-isolated/**` tree still contains `MotionConfig`, `LayerHost`, Meganot Radix wrappers or the earlier shared motion/material primitives. The current isolated entry does not mount those facilities today.
+>
+> Treat those items as historical design intent unless current code reintroduces them. Current implementation truth lives in `docs/UI_V1_CURRENT_STATE_2026-09-13.md` and the code itself.
 >
 > Scope: UI foundation only. This is not the final Home visual design.
 

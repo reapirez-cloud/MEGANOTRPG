@@ -259,6 +259,23 @@ For UI 1.0, this means a real route plus a new-UI placeholder. For data/runtime 
 
 If the missing dependency later becomes available, replace the placeholder at the seam. Do not rebuild the parent workflow unless its contract truly needs to change.
 
+## UI 1.0 current-state authority — read first
+
+Before changing UI 1.0, read `docs/UI_V1_CURRENT_STATE_2026-09-13.md`.
+
+That file is the canonical implementation-status snapshot for the current redesign stage. When an older stage/plan document conflicts with current code, `AGENTS.md`, the named-engine contracts or the current-state snapshot, the newer/current sources win. Historical redesign files record how decisions evolved; they are not proof that an old component, route or foundation primitive still exists.
+
+Canonical player-facing World terminology for the current redesign is:
+
+- **Зоны** — technical storage/engine names may remain `locations`;
+- **NPC** — the current stable subsection id may remain `characters` for route compatibility, but the World surface is NPC-only;
+- **Лор**;
+- **Карта**.
+
+Do not reintroduce `Локации / Персонажи` as player-facing World labels merely because legacy code or technical table names use those words.
+
+GM-authored campaign announcements are descriptive chronology owned by **Larisa** and must follow `GM UI -> Oracle -> Larisa -> canonical storage`. UI 1.0 must not insert directly into `campaign_updates`.
+
 ## UI 1.0 incremental integration — mandatory
 
 MEGANOT UI 1.0 is being built incrementally over working application behavior.

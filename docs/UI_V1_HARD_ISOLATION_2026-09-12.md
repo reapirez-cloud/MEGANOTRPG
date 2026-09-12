@@ -2,7 +2,13 @@
 
 > Date: 2026-09-12
 >
-> Status: ACTIVE ARCHITECTURE
+> Status: **SUPERSEDED HISTORICAL RECORD**
+>
+> This file records the hard-isolation reset as it happened on 12 September 2026. Its **isolation principle remains valid**, but its entrypoint listing is no longer current.
+>
+> Current authority: `AGENTS.md` + `docs/UI_V1_CURRENT_STATE_2026-09-13.md` + actual code.
+>
+> Current entrypoints are `index.html -> src/ui-v1-isolated/main.tsx` for UI 1.0 and `legacy.html -> src/main.tsx` for the legacy app. `ui-v1.html` is only a compatibility alias.
 
 The previous attempt mounted the new shell into the legacy application and therefore inherited legacy screens and the legacy CSS graph. That approach is rejected.
 
