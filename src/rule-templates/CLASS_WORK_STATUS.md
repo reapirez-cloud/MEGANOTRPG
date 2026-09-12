@@ -538,6 +538,37 @@ Base Warlock, all 28 supported Eldritch Invocations and all nine supported runti
 
 ---
 
+## Rogue (`class:rogue`)
+
+**Text:** `IN_PROGRESS_BASE_2_LITERARY_GAPS`  
+**Mechanics/runtime:** `NOT_STARTED`
+
+- `authoring_started: 2026-09-10`
+- `base_authoring_source: src/data/classes/rogueReferenceCurrent.ts`
+- `subclass_authoring_sources: src/data/classes/rogueSubclassReferenceWave1.ts; src/data/classes/rogueSubclassReferenceWave2.ts; src/data/classes/rogueSubclassReferenceWave3.ts`
+- `current_dev_text: all nine supported subclass feature packs are authored and visible through the public reference overlay; only base Rogue Steady Aim / Точный прицел and Slippery Mind / Скользкий ум still have explicit missing literary prose`
+- `exact_reference_rules: BASE_2024_READY_PLUS_9_SUBCLASS_PACKS_READY_2026_09_12`
+- `subclass_reference_roster: thief, assassin, arcane-trickster, soulknife, swashbuckler, inquisitive, mastermind, scout, phantom`
+- `wave3_reference_scope: Mastermind and Scout use legacy Xanathar rules; Phantom uses the published Tasha’s Cauldron of Everything rules`
+- `reference_visibility: BASE_AND_ALL_9_SUBCLASSES_REFERENCE_ONLY`
+- `dev_runtime: ABSENT`
+- `production_runtime: ABSENT`
+- `production_template_audit: no active class:rogue or Rogue subclass rule_templates found in the connected Supabase project as of 2026-09-12`
+- `runtime_boundary: reference mechanics are documentation only; no CE contribution, persistent resource, choice runtime, spell runtime or executable class action is claimed by this authoring pass`
+- `wave3_regression: tests/rogueSubclassReferenceWave3.test.ts`
+
+Known source-copy corrections locked by Wave 3 regression:
+- Master of Intrigue does not invent an Insight-vs-Deception contest for detecting the imitated accent.
+- Soul of Deceit makes truth-detection report truthfulness at the Rogue's choice rather than automatically for every statement.
+- Scout Sudden Strike permits the Bonus Action attack against any legal target; only a second Sneak Attack in the same turn must be against a different target.
+- Phantom Wails from the Grave rolls half the Rogue's Sneak Attack dice (rounded up) for the secondary Necrotic damage.
+- Tasha's Tokens of the Departed has no extra Undead/Construct exclusion, and the queried spirit is not required to tell the truth.
+- Tasha's Death's Friend grants its fallback Soul Trinket at the end of a Long Rest when none are held; it does not use Initiative as that trigger.
+
+Rogue must remain mechanically `NOT_STARTED` until a clean `class:rogue` template/runtime package is built through the shared Chasovoy → Shapoklyak/CE path, regression-gated, deployed and audited. The next text closure is limited to the two explicit base-class literary gaps above.
+
+---
+
 ## Legacy builtin catalog reset
 
 **Status:** `REMOVED_2026_08_29`
