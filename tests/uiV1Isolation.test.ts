@@ -160,7 +160,7 @@ test("Location navigator keeps the full ancestor chain and separates direct chil
   assert.match(app, /\.\.\.tail/)
   assert.match(sectionScreens, /<LocationNavigator/)
   assert.match(locationNavigator, /u1-location-path/)
-  assert.match(locationNavigator, /Подзоны/)
+  assert.match(locationNavigator, /Вложенные локации/)
   assert.match(locationNavigator, /Переходы/)
   assert.match(locationNavigator, /location\.parent_location_id === selected\.id/)
   assert.match(locationNavigator, /source_location_id === selected\.id/)

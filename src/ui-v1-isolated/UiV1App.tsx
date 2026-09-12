@@ -43,7 +43,7 @@ const sectionCopy: Record<SectionId, { eyebrow: string; title: string; body: str
   world: {
     eyebrow: "Будущий раздел",
     title: "Мир",
-    body: "Зоны, NPC, лор и карта будут собраны здесь как новая самостоятельная система. Пока это точка подключения.",
+    body: "Локации, персонажи, лор и карта собраны здесь как самостоятельные части мира.",
   },
   "knowledge-base": {
     eyebrow: "Будущий раздел",
@@ -204,7 +204,7 @@ function WorldPreview({ coverUrl }: { coverUrl: string | null }) {
       <span className="u1-entry-scrim u1-entry-scrim--soft" aria-hidden="true" />
       <span className="u1-world-entry__copy">
         <strong>Мир</strong>
-        <small>Зоны · NPC · Лор · Карта</small>
+        <small>Локации · Персонажи · Лор · Карта</small>
       </span>
     </motion.button>
   )

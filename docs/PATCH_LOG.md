@@ -12,6 +12,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Player-facing changes
 
 - Finalized the immersive UI 1.0 World vocabulary as **Локации / Персонажи / Лор / Карта**. Player-controlled characters / PCs are called **Игроки** on party/workspace surfaces; technical `npc` / `locations` identifiers remain internal where useful.
+- Removed the remaining player-visible `Зона` / `NPC` wording from UI 1.0 Home, location hierarchy, character cards and chronology labels while preserving technical `zone` / `npc` source identifiers internally.
 - The temporary **Зоны / NPC** wording from the first cleanup pass was superseded in the same active patch by the final immersive terms **Локации / Персонажи**.
 
 ### Runtime and architecture changes

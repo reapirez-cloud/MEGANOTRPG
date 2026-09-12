@@ -18,8 +18,8 @@ const futureSourceLabels: Record<string, string> = {
   gm_post: "GM / Хроника",
   announcement: "GM / Объявление",
   world: "Мир",
-  zone: "Мир / Зона",
-  npc: "Мир / NPC",
+  zone: "Мир / Локация",
+  npc: "Мир / Персонаж",
   lore: "Мир / Лор",
   system: "Система",
 }
@@ -105,7 +105,7 @@ function ChronicleSourceAction({ event }: { event: ChronicleEvent }) {
   if (!event.sourceId) return null
 
   // Stable connection slot: when the new UI receives dedicated diary,
-  // achievement, world/NPC/zone or update detail screens, this component
+  // achievement, world-character/location or update detail screens, this component
   // becomes the route adapter without changing the chronology layout.
   return (
     <span

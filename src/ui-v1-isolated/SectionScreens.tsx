@@ -169,7 +169,7 @@ export function WorldSectionScreen({
           {world.characters.map((item) => (
             <article className="u1-simple-row" key={item.id}>
               <strong>{item.name}</strong>
-              <small>{item.character_class || (item.character_type === "npc" ? "NPC" : "Персонаж")}</small>
+              <small>{item.character_class || "Персонаж"}</small>
             </article>
           ))}
           {!world.characters.length && <EmptyState>Персонажей пока нет.</EmptyState>}

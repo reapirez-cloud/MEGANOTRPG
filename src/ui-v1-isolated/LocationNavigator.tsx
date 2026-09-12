@@ -598,7 +598,7 @@ export function LocationNavigator({
 
               {children.length > 0 && (
                 <section className="u1-location-branch" aria-labelledby="u1-location-children">
-                  <h2 id="u1-location-children">Подзоны</h2>
+                  <h2 id="u1-location-children">Вложенные локации</h2>
                   <div className="u1-location-child-list">
                     <AnimatePresence mode="popLayout" initial={false}>
                       {children.map((location) => renderNode(location, "child"))}
