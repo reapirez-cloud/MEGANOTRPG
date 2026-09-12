@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react"
 
+import { LocationNavigator } from "./LocationNavigator"
+
 import { classReference } from "../data/classReference"
 import { warlockInvocationsReference } from "../data/classes/warlockInvocationsReference"
 import {
@@ -113,7 +115,13 @@ function FutureConnection({
   )
 }
 
-export function WorldSectionScreen({ subsection }: { subsection?: string }) {
+export function WorldSectionScreen({
+  subsection,
+  path = [],
+}: {
+  subsection?: string
+  path?: string[]
+}) {
   const world = useUiV1WorldData()
 
   if (!subsection) {
@@ -128,6 +136,15 @@ export function WorldSectionScreen({ subsection }: { subsection?: string }) {
 
   const registered = worldHubSections.find((item) => item.id === subsection)
   if (!registered) return <FutureConnection title="Мир" backTo="home/world" />
+
+  if (subsection === "locations") {
+    return (
+      <LocationNavigator
+        selectedLocationId={path[0]}
+        detail={path[1] === "detail"}
+      />
+    )
+  }
 
   if (subsection === "map") {
     return (
@@ -147,16 +164,6 @@ export function WorldSectionScreen({ subsection }: { subsection?: string }) {
         <EmptyState>Загрузка…</EmptyState>
       ) : world.error ? (
         <EmptyState>Раздел временно недоступен.</EmptyState>
-      ) : subsection === "locations" ? (
-        <div className="u1-simple-list">
-          {world.locations.map((item) => (
-            <article className="u1-simple-row" key={item.id}>
-              <strong>{item.name}</strong>
-              {item.summary && <small>{item.summary}</small>}
-            </article>
-          ))}
-          {!world.locations.length && <EmptyState>Локаций пока нет.</EmptyState>}
-        </div>
       ) : subsection === "characters" ? (
         <div className="u1-simple-list">
           {world.characters.map((item) => (

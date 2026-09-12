@@ -17,6 +17,8 @@ const sectionScreens = fs.readFileSync("src/ui-v1-isolated/SectionScreens.tsx", 
 const sectionData = fs.readFileSync("src/ui-v1-isolated/useUiV1SectionData.ts", "utf8")
 const sectionRegistry = fs.readFileSync("src/ui-v1-isolated/sectionRegistry.ts", "utf8")
 const sectionStyles = fs.readFileSync("src/ui-v1-isolated/section-screens.css", "utf8")
+const locationNavigator = fs.readFileSync("src/ui-v1-isolated/LocationNavigator.tsx", "utf8")
+const locationData = fs.readFileSync("src/ui-v1-isolated/useUiV1Locations.ts", "utf8")
 
 test("World preview artwork is committed with UI v1", () => {
   assert.equal(fs.existsSync(worldPreviewAsset), true)
@@ -64,7 +66,7 @@ test("UI v1 routes real content sections without importing legacy screens", () =
     assert.match(app, new RegExp(path))
   }
 
-  assert.match(app, /<WorldSectionScreen subsection=\{route\.subsection\}/)
+  assert.match(app, /<WorldSectionScreen subsection=\{route\.subsection\} path=\{route\.tail\}/)
   assert.match(app, /<KnowledgeBaseScreen subsection=\{route\.subsection\}/)
   assert.match(app, /<SocietyNewsScreen \/>/)
   assert.match(app, /<AchievementsScreen \/>/)
@@ -147,6 +149,45 @@ test("home puts campaign destinations before the compact recent-event stream", (
   assert.match(homeData, /meganotrpg:v1:campaign-id/)
 })
 
+
+test("Location navigator keeps the full ancestor chain and separates direct children from transitions", () => {
+  assert.match(app, /tail: string\[\]/)
+  assert.match(app, /\.\.\.tail/)
+  assert.match(sectionScreens, /<LocationNavigator/)
+  assert.match(locationNavigator, /u1-location-path/)
+  assert.match(locationNavigator, /Подзоны/)
+  assert.match(locationNavigator, /Переходы/)
+  assert.match(locationNavigator, /location\.parent_location_id === selected\.id/)
+  assert.match(locationNavigator, /source_location_id === selected\.id/)
+  assert.match(locationNavigator, /layoutId=\{\`ui-v1-location:/)
+  assert.match(sectionStyles, /u1-location-tile\[data-mode="child"\][\s\S]*?width:\s*90%/)
+  assert.doesNotMatch(locationNavigator, /WorldMapView/)
+})
+
+test("Location management uses Oracle to reach Larisa and keeps manager actions extensible", () => {
+  assert.match(locationData, /oracle\.world\.createLocation/)
+  assert.match(locationData, /oracle\.world\.updateLocation/)
+  assert.match(locationData, /oracle\.world\.deleteLocation/)
+  assert.match(locationData, /oracle\.world\.createLocationSection/)
+  assert.match(locationData, /oracle\.world\.createLocationLink/)
+  assert.match(locationData, /createEngineCommandContext/)
+  assert.match(locationData, /authority: "gm"/)
+  assert.match(locationNavigator, /type LocationAction =/)
+  assert.match(locationNavigator, /Открыть зону/)
+  assert.match(locationNavigator, /Добавить подзону/)
+  assert.match(locationNavigator, /Добавить переход/)
+  assert.match(locationNavigator, /Редактировать/)
+  assert.match(locationNavigator, /Удалить/)
+  assert.match(locationNavigator, /managerOnly/)
+})
+
+test("Location previews support long press, a reserved detail icon seam and root-zone creation", () => {
+  assert.match(locationNavigator, /}, 520\)/)
+  assert.match(locationNavigator, /u1-location-open-button/)
+  assert.match(locationNavigator, /\/detail/)
+  assert.match(locationNavigator, /Добавить главную зону/)
+  assert.match(sectionStyles, /u1-location-open-button__glyph/)
+})
 
 test("World and Knowledge Base use extensible registries and keep Map intentionally shallow", () => {
   assert.match(sectionRegistry, /worldHubSections/)

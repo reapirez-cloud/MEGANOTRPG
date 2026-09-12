@@ -11,6 +11,12 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Rebuilt UI 1.0 «Мир → Локации» as a contextual hierarchy navigator instead of a flat list. Root zones appear first; selecting a zone preserves the full ancestor chain at 100% width, removes unrelated siblings and shows only the selected zone's direct children at 90% width below it.
+- Added a separate «Переходы» group beneath «Подзоны». Selecting a transition rebuilds the navigator around the target zone's real parent chain, keeping containment and travel topology visually distinct.
+- Added a reserved right-side open control on every location preview (ready for the user's later PNG asset) plus a long-press action sheet. Long press exposes «Открыть зону» for everyone and manager-only «Добавить подзону / Добавить переход / Редактировать / Удалить» actions.
+- Added a GM/owner + control for creating new root zones. Creation/editing, transition creation and cascade-aware deletion confirmations are functional; the full location-detail screen remains an explicit UI 1.0 connection seam rather than being designed early.
+- Kept «Карта» intentionally untouched as its own future destination.
+
 - Replaced the UI 1.0 placeholders for «Мир», «База знаний», «Новости общества» and «Достижения» with real isolated section screens while leaving Home composition unchanged.
 - «Мир» now opens an extensible four-tile hub for Локации / Персонажи / Лор / Карта. Existing visible locations, characters and lore are read from current Supabase data; Map is intentionally only a connected destination and no map implementation was started.
 - «База знаний» now opens an extensible tile hub backed by the existing class, invocation, spell and bestiary sources. Live catalogs get lightweight searchable lists; future categories can be added through the section registry without rewriting routing.
@@ -37,6 +43,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added progressive loading for older history while keeping the newest events first.
 
 ### Runtime and architecture changes
+
+- Extended UI 1.0 section routing with stable tail segments so selection lives at `#/home/world/locations/<id>` and the future detail surface at `#/home/world/locations/<id>/detail`. The section-level Motion key stays stable across depth changes so a child preview can animate from 90% width into the 100% ancestor path.
+- Added an isolated location adapter that reads parent ids, signed preview art, visible sections and RLS-filtered location links. Existing Supabase RLS remains the authority for which zones and transitions a player is allowed to see.
+- All new GM world mutations follow the existing canonical command path `UI → Oracle → Larisa`: location create/update/delete and transition section/link creation do not bypass the world owner with direct React table writes.
 
 - Added data-driven UI 1.0 registries for World and Knowledge Base sections. Unknown/new subsection routes degrade to isolated connection placeholders, so future tiles such as «Предметы» can be introduced without changing the root router.
 - Added an isolated campaign-scope/data adapter for section screens instead of importing legacy CharacterContext or legacy World/Reference components.

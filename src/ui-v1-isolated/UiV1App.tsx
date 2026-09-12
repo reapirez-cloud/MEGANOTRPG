@@ -22,7 +22,7 @@ type SectionId =
 
 type Route =
   | { type: "root"; space: RootSpace }
-  | { type: "section"; section: SectionId; subsection?: string }
+  | { type: "section"; section: SectionId; subsection?: string; tail: string[] }
 
 const sectionIds: SectionId[] = [
   "whats-new",
@@ -80,12 +80,13 @@ function parseRoute(): Route {
   if (path === "chats") return { type: "root", space: "chats" }
 
   const sectionPath = path.startsWith("home/") ? path.slice("home/".length) : ""
-  const [section, subsection] = sectionPath.split("/")
+  const [section, subsection, ...tail] = sectionPath.split("/").filter(Boolean)
   if (sectionIds.includes(section as SectionId)) {
     return {
       type: "section",
       section: section as SectionId,
       subsection: subsection || undefined,
+      tail,
     }
   }
 
@@ -483,7 +484,7 @@ function Placeholder({
 function Screen({ route }: { route: Route }) {
   if (route.type === "section") {
     if (route.section === "whats-new") return <WhatsNew />
-    if (route.section === "world") return <WorldSectionScreen subsection={route.subsection} />
+    if (route.section === "world") return <WorldSectionScreen subsection={route.subsection} path={route.tail} />
     if (route.section === "knowledge-base") return <KnowledgeBaseScreen subsection={route.subsection} />
     if (route.section === "society-news") return <SocietyNewsScreen />
     if (route.section === "achievements") return <AchievementsScreen />
