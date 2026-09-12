@@ -8,6 +8,7 @@ type RootSpace = "home" | "workspace" | "chats"
 type SectionId =
   | "whats-new"
   | "world"
+  | "knowledge-base"
   | "society-news"
   | "achievements"
   | "art"
@@ -20,6 +21,7 @@ type Route =
 const sectionIds: SectionId[] = [
   "whats-new",
   "world",
+  "knowledge-base",
   "society-news",
   "achievements",
   "art",
@@ -36,6 +38,11 @@ const sectionCopy: Record<SectionId, { eyebrow: string; title: string; body: str
     eyebrow: "Будущий раздел",
     title: "Мир",
     body: "Зоны, NPC, лор и карта будут собраны здесь как новая самостоятельная система. Пока это точка подключения.",
+  },
+  "knowledge-base": {
+    eyebrow: "Будущий раздел",
+    title: "База знаний",
+    body: "Правила, предметы, заклинания и бестиарий будут собраны здесь как отдельная справочная система нового интерфейса. Пока это чистая точка подключения.",
   },
   "society-news": {
     eyebrow: "Будущий раздел",
@@ -170,40 +177,6 @@ function EntryMedia({ src }: { src: string | null }) {
   return <img className="u1-entry-media" src={src} alt="" loading="lazy" aria-hidden="true" />
 }
 
-function WhatsNewHero({
-  event,
-  imageUrl,
-  loading,
-}: {
-  event: HomeEvent | null
-  imageUrl: string | null
-  loading: boolean
-}) {
-  return (
-    <motion.button
-      type="button"
-      className="u1-home-hero"
-      onClick={() => go("home/whats-new")}
-      whileTap={{ scale: 0.992 }}
-      transition={{ duration: 0.14 }}
-    >
-      <EntryMedia src={imageUrl} />
-      <span className="u1-entry-scrim" aria-hidden="true" />
-      <span className="u1-home-hero__copy">
-        <small>Хроника кампании</small>
-        <strong>Что нового</strong>
-        <span>
-          {loading
-            ? "Загружаю последние события…"
-            : event
-              ? eventHeadline(event)
-              : "Кампания только начинается"}
-        </span>
-      </span>
-    </motion.button>
-  )
-}
-
 function WorldPreview({ coverUrl }: { coverUrl: string | null }) {
   return (
     <motion.button
@@ -220,6 +193,22 @@ function WorldPreview({ coverUrl }: { coverUrl: string | null }) {
         <small>Зоны · NPC · Лор · Карта</small>
       </span>
     </motion.button>
+  )
+}
+
+function KnowledgeBaseEntry() {
+  return (
+    <button
+      type="button"
+      className="u1-knowledge-entry"
+      onClick={() => go("home/knowledge-base")}
+    >
+      <span className="u1-knowledge-entry__label">База знаний</span>
+      <span className="u1-knowledge-entry__topics">
+        Правила <i aria-hidden="true">·</i> Предметы <i aria-hidden="true">·</i> Заклинания <i aria-hidden="true">·</i> Бестиарий
+      </span>
+      <span className="u1-knowledge-entry__arrow" aria-hidden="true">→</span>
+    </button>
   )
 }
 
@@ -411,9 +400,6 @@ function Home() {
     error,
   } = useHomeData()
 
-  const latestEvent = events[0] || null
-  const heroImageUrl = latestEvent?.media_url || campaignCoverUrl
-
   return (
     <main className="u1-home">
       <header className="u1-header">
@@ -438,8 +424,8 @@ function Home() {
       <div className="u1-rule" aria-hidden="true" />
 
       <section className="u1-home-sections" aria-label="Разделы кампании">
-        <WhatsNewHero event={latestEvent} imageUrl={heroImageUrl} loading={loading} />
         <WorldPreview coverUrl={campaignCoverUrl} />
+        <KnowledgeBaseEntry />
         <SocietyNewsEntry news={societyNews} />
         <AchievementEntry
           count={achievementCount}

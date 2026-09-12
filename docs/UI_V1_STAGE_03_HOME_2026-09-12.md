@@ -56,3 +56,21 @@ The active Home direction is now:
 - **«Обновления» are removed from Home entirely.** The stable route may remain for future relocation, but application changelog/update tracking is not treated as a primary player destination.
 
 Home should no longer be composed from one reusable tile shape with decorative filler. Each entry type should express the nature of its content.
+
+
+## Home v3 — World first, chronology only once
+
+> Decision update: 2026-09-12
+
+The «Что нового» hero was removed after live review. It consumed too much vertical space without a distinct job and duplicated the same chronology already exposed by «Последние события».
+
+The active Home order is now:
+
+1. **«Мир»** — first and primary visual destination, deliberately restrained in height;
+2. **«База знаний»** — compact dedicated entry for rules, items, spells and bestiary;
+3. **«Новости общества»** — editorial row;
+4. **«Достижения»** — compact campaign-history row;
+5. **«Арты»** — small live gallery strip;
+6. **«Последние события»** — compact chronology preview, with «Все» as the single Home entry into the full chronology.
+
+«Что нового» remains a real deep chronology screen, not a Home tile. «Обновления» remain absent from Home.

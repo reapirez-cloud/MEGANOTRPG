@@ -11,6 +11,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Removed the duplicated «Что нового» hero from UI 1.0 Home. The chronology now has one Home entry point: «Последние события» / «Все», instead of two controls opening the same destination.
+- Promoted «Мир» to the first Home destination while keeping its visual footprint restrained rather than replacing one oversized hero with another.
+- Added «База знаний» as the second Home destination with a compact preview for rules, items, spells and bestiary plus its own isolated placeholder route for later implementation.
+
 - Rebuilt UI 1.0 Home around mixed content types instead of six oversized preview tiles: «Что нового» is the single hero, «Мир» is a shorter visual entry, society news and achievements are editorial rows, and «Арты» is a compact live thumbnail strip.
 - Removed «Обновления» from Home entirely and stopped surfacing `update` feed rows in Home's recent-event preview; the existing deep route remains only as a future relocation seam.
 - Moved «Последние события» below the main campaign destinations and reduced it to a compact three-item chronology preview.
