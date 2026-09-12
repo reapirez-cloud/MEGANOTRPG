@@ -26,6 +26,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 - Added repository contract coverage ensuring Snake remains discoverable, entity-agnostic, non-owning, placeholder-aware and explicitly referenced from the temporary location long-press seam.
 - Extended Oracle/UI 1.0 contract tests so campaign announcements must dispatch through Oracle -> Larisa, World labels remain canonical, the NPC surface stays NPC-only, and historical redesign documents cannot silently masquerade as current implementation truth.
+- Updated the UI 1.0 Playwright smoke assertions to the canonical **Зоны / NPC** vocabulary so end-to-end verification matches the actual interface instead of historical labels.
 
 ### Known incomplete work
 
