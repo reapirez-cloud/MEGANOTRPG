@@ -53,3 +53,13 @@ test("Snake supports dynamic branch navigation instead of flat action catalogs",
   assert.match(snake, /Branch.*Command/is)
   assert.match(snake, /path stack/i)
 })
+
+test("new manageable UI objects must ship with Snake coverage in the same work unit", () => {
+  assert.match(agents, /Snake completeness gate — mandatory at creation time/)
+  assert.match(agents, /register the rendered object with `SnakeTrigger`/)
+  assert.match(agents, /every context-appropriate management action/)
+  assert.match(agents, /Do not finish a new management surface/)
+  assert.match(snake, /Creation-time completeness law/)
+  assert.match(snake, /designed together with a manageable object/i)
+  assert.match(snake, /working visible controls.*long-press\/right-click action manifest/is)
+})
