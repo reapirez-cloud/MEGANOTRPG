@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client"
 import UiV1App from "./UiV1App"
 import { SnakeProvider } from "./SnakeProvider"
 import "./styles.css"
-import "./snake.css"
+import "./snake.css"\nimport "./workspace.css"
 
 const root = document.getElementById("ui-v1-root")
 
