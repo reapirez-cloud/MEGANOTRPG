@@ -999,6 +999,7 @@ export function createWorkshopDefinitionActions({
         const next = definitionInputFromSnake(definition.kind, input)
         const response = await operations.reviseDefinition(definition.id, {
           ...next,
+          data: { ...definition.data, ...(next.data || {}) },
           mechanics: definition.mechanics,
         })
         return actionResult(response.ok, response.error, "Новая ревизия сохранена.")
@@ -1103,10 +1104,53 @@ export function draftDefinitionFields(kind: ChasovoyDefinitionKind) {
           { value: "equipment", label: "Экипировка" },
           { value: "consumable", label: "Расходник" },
           { value: "tool", label: "Инструмент" },
+          { value: "book", label: "Книга" },
+          { value: "trinket", label: "Безделушка" },
           { value: "quest", label: "Квестовый" },
+          { value: "material", label: "Материал" },
+          { value: "currency", label: "Валюта" },
+          { value: "container", label: "Контейнер" },
           { value: "other", label: "Прочее" },
         ],
       },
+      { id: "quantity", label: "Количество по умолчанию", type: "number" as const },
+      { id: "weight", label: "Вес", type: "number" as const },
+      {
+        id: "equipment_slot",
+        label: "Слот экипировки",
+        type: "select" as const,
+        options: [
+          { value: "other", label: "Другое" },
+          { value: "main_hand", label: "Основная рука" },
+          { value: "off_hand", label: "Вторая рука" },
+          { value: "two_hands", label: "Две руки" },
+          { value: "head", label: "Голова" },
+          { value: "neck", label: "Шея" },
+          { value: "shoulders", label: "Плечи" },
+          { value: "chest", label: "Корпус" },
+          { value: "hands", label: "Кисти" },
+          { value: "wrists", label: "Запястья" },
+          { value: "waist", label: "Пояс" },
+          { value: "legs", label: "Ноги" },
+          { value: "feet", label: "Ступни" },
+          { value: "back", label: "Спина" },
+          { value: "ring_left", label: "Левое кольцо" },
+          { value: "ring_right", label: "Правое кольцо" },
+          { value: "ammo", label: "Боеприпасы" },
+        ],
+      },
+      {
+        id: "usage_mode",
+        label: "Расходование",
+        type: "select" as const,
+        options: [
+          { value: "none", label: "Не расходуется" },
+          { value: "quantity", label: "Количество" },
+          { value: "charges", label: "Заряды" },
+        ],
+      },
+      { id: "charges_max", label: "Максимум зарядов", type: "number" as const },
+      { id: "image_url", label: "Путь / URL арта", type: "text" as const },
     ]
   }
 
@@ -1136,8 +1180,20 @@ export function definitionInputFromSnake(
 
   if (kind === "item") {
     data.category = String(values.category || "other")
-    data.quantity = 1
-    data.usage_mode = "none"
+    data.quantity = Math.max(1, Math.floor(Number(values.quantity || 1)))
+    if (values.weight !== "" && values.weight !== undefined) {
+      data.weight = Number(values.weight || 0)
+    }
+    data.equipment_slot = String(values.equipment_slot || "other")
+    data.usage_mode = String(values.usage_mode || "none")
+    if (String(values.usage_mode || "none") === "charges") {
+      data.charges_max = Math.max(1, Math.floor(Number(values.charges_max || 1)))
+      data.charges_current = data.charges_max
+    } else {
+      data.charges_max = null
+      data.charges_current = null
+    }
+    data.image_url = String(values.image_url || "")
   }
 
   if (kind === "spell") {
