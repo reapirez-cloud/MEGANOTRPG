@@ -87,6 +87,11 @@ export type WorkshopOperations = {
     type: "pc" | "npc",
     input: { name: string; characterClass?: string; level?: number; bio?: string },
   ) => Promise<WorkshopMutationResult & { id?: string }>
+  updateCharacter: (
+    characterId: string,
+    input: { name: string; characterClass: string; level: number; bio: string },
+  ) => Promise<WorkshopMutationResult>
+  deleteCharacter: (characterId: string) => Promise<WorkshopMutationResult>
   publishCharacter: (
     characterId: string,
     visibilityMode?: "always" | "discover",
@@ -532,6 +537,34 @@ export function useGMWorkshopData() {
       } catch (reason) {
         return { ok: false, error: errorMessage(reason, "Не удалось создать черновик персонажа.") }
       }
+    },
+
+    async updateCharacter(characterId, input) {
+      const character = state.characters.find((item) => item.id === characterId)
+      if (!character) return { ok: false, error: "Персонаж не найден." }
+
+      return mutate(
+        () => oracle.characters.update(context(), characterId, {
+          name: input.name.trim(),
+          character_class: input.characterClass.trim() || "Персонаж",
+          level: Math.max(1, Math.min(30, input.level || 1)),
+          bio: input.bio.trim(),
+          avatar_url: character.avatarUrl,
+          assigned_user_id: character.assignedUserId,
+          character_type: character.characterType,
+          visibility: character.publicationState === "draft" ? "private" : "campaign",
+          visibility_mode: character.visibilityMode,
+          publication_state: character.publicationState,
+        }),
+        "Не удалось сохранить персонажа.",
+      )
+    },
+
+    deleteCharacter(characterId) {
+      return mutate(
+        () => oracle.characters.delete(context(), characterId),
+        "Не удалось удалить персонажа.",
+      )
     },
 
     publishCharacter(characterId, visibilityMode) {
