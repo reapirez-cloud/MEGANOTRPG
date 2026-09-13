@@ -280,18 +280,17 @@ test("chronicle aggregates full non-art feed content and keeps future connection
 })
 
 
-test("dock no longer references SVG navigation assets", () => {
-  assert.doesNotMatch(styles, /nav-icons\/[^"')]+\.svg/)
-  assert.match(styles, /nav-icons\/me\.png/)
-  assert.match(styles, /nav-icons\/home\.png/)
+test("dock uses the unified navigation asset family", () => {
+  assert.match(styles, /nav-icons\/me\.svg/)
+  assert.match(styles, /nav-icons\/home\.svg/)
   assert.match(styles, /nav-icons\/chats\.png/)
+  assert.doesNotMatch(styles, /nav-icons\/(?:me|home)\.png/)
 })
 
 
-test("PNG navigation assets replace the SVG masks", () => {
-  assert.match(styles, /nav-icons\/me\.png/)
-  assert.match(styles, /nav-icons\/home\.png/)
+test("navigation assets render directly without legacy SVG masks", () => {
+  assert.match(styles, /nav-icons\/me\.svg/)
+  assert.match(styles, /nav-icons\/home\.svg/)
   assert.match(styles, /nav-icons\/chats\.png/)
-  assert.doesNotMatch(styles, /nav-icons\/(?:me|home|chats)\.svg/)
   assert.doesNotMatch(styles, /mask-image:\s*url\("\/ui-v1\/nav-icons\//)
 })
