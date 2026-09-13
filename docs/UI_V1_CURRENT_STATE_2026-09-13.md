@@ -48,10 +48,10 @@ Root spaces also support deliberate horizontal swipe navigation.
 Current status:
 
 - **Главная** — implemented;
-- **Я / Workspace** — UI 1.0 placeholder;
+- **Я / Workspace** — implemented first identity-space pass;
 - **Чаты** — UI 1.0 placeholder.
 
-The avatar on Home currently routes to Workspace. A richer Personal Reveal remains a future interaction pattern, not a currently implemented primitive.
+The top-right `VI` circle is reserved for the future player profile and no longer routes to Workspace. Profile UI remains deliberately unimplemented.
 
 ## Current visual language decision — 2026-09-13
 
@@ -69,6 +69,17 @@ Core rule:
 Do not create per-section themes merely for variety.
 
 The current Society News composer is a temporary first-pass modal and is not a visual reference for Snake windows.
+
+## Workspace / Я — current composition
+
+`Я` is the current campaign identity surface, not an account dashboard.
+
+- player: GM-assigned active PC is the large bottom artwork board; other assigned PCs are view-only;
+- GM/owner: `Рассказчик` is permanently available above campaign characters as a speaking identity;
+- GM voice selection is separate from `campaign_members.active_character_id` and currently persists only as UI/session state;
+- tapping an active character board enters the stable future character-view route;
+- managers get a 70/30 campaign / `Управление` strip above the active board;
+- character-view and management destinations remain isolated connection seams and do not fall back to legacy UI.
 
 ## Home — current composition
 
@@ -188,7 +199,7 @@ C. chronology/basic content sections      DONE / partial by section
 D. World                                  PARTIAL, usable first pass
 E. Snake interaction runtime              DONE core + Locations proof #1
 F. Inventory as Snake proof #2            NEXT architecture proof
-G. Workspace: Player + GM                 AFTER interaction foundation
+G. Workspace identity shell                DONE first pass, pulled forward by explicit design decision
 H. Character UI / Sheet / Inventory UI    AFTER Workspace foundation
 I. Chats UI 1.0                           DEFERRED
 J. remaining surfaces + atmosphere/polish DEFERRED
@@ -200,7 +211,8 @@ Do not create local context menus or modal families beside Snake. New entity fam
 
 Intentionally deferred at this snapshot:
 
-- Workspace UI 1.0;
+- Workspace management deep screen;
+- Workspace character-detail / new Character UI;
 - Chats UI 1.0;
 - Map UI;
 - dedicated Art/gallery UI 1.0;
