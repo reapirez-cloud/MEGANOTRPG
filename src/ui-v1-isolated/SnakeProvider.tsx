@@ -152,7 +152,7 @@ function SnakeEditor({
 
   function submit() {
     const missing = request.fields.find((field) => {
-      if (!field.required) return false
+      if (!("required" in field) || !field.required) return false
       const value = values[field.id]
       return value === undefined || value === null || String(value).trim() === ""
     })
