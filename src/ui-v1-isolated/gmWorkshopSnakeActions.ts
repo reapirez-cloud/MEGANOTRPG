@@ -129,14 +129,212 @@ export function createWorkshopPcUnassignAction({
 export function createWorkshopCharacterActions({
   character,
   members,
+  templates,
+  assignments,
+  locations,
+  npcHabitats,
   operations,
   onOpen,
 }: {
   character: WorkshopCharacter
   members: WorkshopMember[]
+  templates: RuleTemplate[]
+  assignments: CharacterTemplateAssignment[]
+  locations: WorkshopLocation[]
+  npcHabitats: WorkshopNpcHabitat[]
   operations: WorkshopOperations
   onOpen: () => void
 }): SnakeAction[] {
+  const characterAssignments = assignments.filter(
+    (assignment) => assignment.character_id === character.id,
+  )
+  const assignedTemplateIds = new Set(
+    characterAssignments.map((assignment) => assignment.template_id),
+  )
+  const classTemplates = templates.filter(
+    (template) => template.kind === "class" && template.is_active,
+  )
+  const subclassTemplates = templates.filter(
+    (template) => template.kind === "subclass" && template.is_active,
+  )
+  const classAssignments = characterAssignments
+    .map((assignment) => ({
+      assignment,
+      template: templates.find((template) => template.id === assignment.template_id) || null,
+    }))
+    .filter((entry) => entry.template?.kind === "class") as Array<{
+      assignment: CharacterTemplateAssignment
+      template: RuleTemplate
+    }>
+  const subclassAssignments = characterAssignments
+    .map((assignment) => ({
+      assignment,
+      template: templates.find((template) => template.id === assignment.template_id) || null,
+    }))
+    .filter((entry) => entry.template?.kind === "subclass") as Array<{
+      assignment: CharacterTemplateAssignment
+      template: RuleTemplate
+    }>
+
+  const classChildren: SnakeAction[] = []
+
+  const availableClasses = classTemplates.filter(
+    (template) => !assignedTemplateIds.has(template.id),
+  )
+  classChildren.push({
+    id: "add-class",
+    label: classAssignments.length ? "Добавить ещё класс" : "Выбрать класс",
+    enabled: availableClasses.length > 0,
+    disabledReason: "Все доступные классы уже назначены.",
+    surface: {
+      kind: "editor",
+      eyebrow: "Character Engine",
+      title: classAssignments.length ? "Добавить класс" : "Выбрать класс персонажа",
+      fields: [
+        {
+          id: "templateId",
+          label: "Класс",
+          type: "select",
+          required: true,
+          options: availableClasses.map((template) => ({
+            value: template.id,
+            label: template.name,
+          })),
+        },
+        { id: "level", label: "Уровень класса", type: "number", required: true },
+      ],
+      initialValues: {
+        templateId: availableClasses[0]?.id || "",
+        level: 1,
+      },
+      submitLabel: "Назначить класс",
+    },
+    execute: async ({ input }) => {
+      const templateId = String(input?.templateId || "")
+      const level = Math.max(1, Math.min(30, Number(input?.level || 1)))
+      const response = await operations.assignTemplate(character.id, templateId, level)
+      return actionResult(response.ok, response.error, "Класс назначен через Character Engine.")
+    },
+  })
+
+  for (const entry of classAssignments) {
+    const classLevel = Math.max(1, entry.assignment.template_level || 1)
+    const currentSubclass = subclassAssignments.find(
+      (subclass) => subclass.template.parent_template_id === entry.template.id,
+    ) || null
+    const availableSubclasses = subclassTemplates.filter(
+      (template) =>
+        template.parent_template_id === entry.template.id &&
+        classLevel >= (template.unlock_level || 1) &&
+        template.id !== currentSubclass?.template.id,
+    )
+
+    const subclassChildren: SnakeAction[] = []
+    if (currentSubclass) {
+      subclassChildren.push({
+        id: "remove-subclass-" + currentSubclass.assignment.id,
+        label: "Снять " + currentSubclass.template.name,
+        tone: "danger",
+        surface: {
+          kind: "confirm",
+          eyebrow: "Character Engine",
+          title: "Снять подкласс?",
+          body: currentSubclass.template.name + " перестанет давать персонажу свои механики.",
+          confirmLabel: "Снять подкласс",
+        },
+        execute: async () => {
+          const response = await operations.removeTemplateAssignment(
+            character.id,
+            currentSubclass.assignment.id,
+          )
+          return actionResult(response.ok, response.error, "Подкласс снят.")
+        },
+      })
+    }
+    if (availableSubclasses.length > 0) {
+      subclassChildren.push({
+        id: "choose-subclass-" + entry.template.id,
+        label: currentSubclass ? "Сменить подкласс" : "Выбрать подкласс",
+        surface: {
+          kind: "picker",
+          eyebrow: entry.template.name,
+          title: "Подкласс",
+          items: availableSubclasses.map((template) => ({
+            id: template.id,
+            label: template.name,
+            description: "Открывается с " + (template.unlock_level || 1) + " уровня класса",
+          })),
+          submitLabel: currentSubclass ? "Сменить" : "Выбрать",
+        },
+        execute: async ({ input }) => {
+          const templateId = selection(input)
+          const response = await operations.assignTemplate(character.id, templateId, classLevel)
+          return actionResult(response.ok, response.error, "Подкласс назначен.")
+        },
+      })
+    }
+
+    classChildren.push({
+      id: "class-" + entry.assignment.id,
+      label: entry.template.name + " · " + classLevel + " ур.",
+      kind: "branch",
+      children: [
+        {
+          id: "level-" + entry.assignment.id,
+          label: "Изменить уровень",
+          surface: {
+            kind: "editor",
+            eyebrow: "Character Engine",
+            title: entry.template.name,
+            fields: [
+              { id: "level", label: "Уровень класса", type: "number", required: true },
+            ],
+            initialValues: { level: classLevel },
+            submitLabel: "Сохранить уровень",
+          },
+          execute: async ({ input }) => {
+            const level = Math.max(1, Math.min(30, Number(input?.level || classLevel)))
+            const response = await operations.assignTemplate(
+              character.id,
+              entry.template.id,
+              level,
+            )
+            return actionResult(response.ok, response.error, "Уровень класса изменён.")
+          },
+        },
+        ...(subclassChildren.length
+          ? [{
+              id: "subclass-" + entry.template.id,
+              label: currentSubclass
+                ? "Подкласс · " + currentSubclass.template.name
+                : "Подкласс",
+              kind: "branch" as const,
+              children: subclassChildren,
+            }]
+          : []),
+        {
+          id: "remove-class-" + entry.assignment.id,
+          label: "Снять класс",
+          tone: "danger",
+          surface: {
+            kind: "confirm",
+            eyebrow: "Character Engine",
+            title: "Снять «" + entry.template.name + "»?",
+            body: "Класс и его механики будут сняты с персонажа. Общий уровень пересчитается из оставшихся классов.",
+            confirmLabel: "Снять класс",
+          },
+          execute: async () => {
+            const response = await operations.removeTemplateAssignment(
+              character.id,
+              entry.assignment.id,
+            )
+            return actionResult(response.ok, response.error, "Класс снят.")
+          },
+        },
+      ],
+    })
+  }
+
   const actions: SnakeAction[] = [
     {
       id: "open",
@@ -147,6 +345,12 @@ export function createWorkshopCharacterActions({
       },
     },
     createWorkshopCharacterEditAction({ character, operations }),
+    {
+      id: "classes",
+      label: "Классы",
+      kind: "branch",
+      children: classChildren,
+    },
   ]
 
   if (character.publicationState === "draft") {
@@ -162,7 +366,7 @@ export function createWorkshopCharacterActions({
               {
                 id: "discover",
                 label: "При встрече",
-                description: "Не появится в БД игрока до личной встречи.",
+                description: "Не появится у игроков до личной встречи.",
               },
               {
                 id: "always",
@@ -247,72 +451,145 @@ export function createWorkshopCharacterActions({
                     : "Персонаж выбран активным.",
                 )
               },
-            }]
+            } satisfies SnakeAction]
           : []),
       ],
     })
   } else {
-    actions.push({
-      id: "visibility",
-      label: "Видимость",
+    const activeLocations = locations.filter((location) => location.lifecycleState === "active")
+    const habitatSet = new Set(
+      npcHabitats
+        .filter((link) => link.npcCharacterId === character.id)
+        .map((link) => link.locationId),
+    )
+
+    actions.push(
+      {
+        id: "visibility",
+        label: "Видимость",
+        kind: "branch",
+        children: [
+          {
+            id: "discover",
+            label: "При встрече",
+            enabled: character.visibilityMode !== "discover",
+            disabledReason: "Уже выбран режим «При встрече».",
+            execute: async () => {
+              const response = await operations.setNpcVisibility(character.id, "discover")
+              return actionResult(response.ok, response.error, "NPC будет открыт после встречи.")
+            },
+          },
+          {
+            id: "always",
+            label: "Видно сразу",
+            enabled: character.visibilityMode !== "always",
+            disabledReason: "NPC уже виден сразу.",
+            execute: async () => {
+              const response = await operations.setNpcVisibility(character.id, "always")
+              return actionResult(response.ok, response.error, "NPC виден сразу.")
+            },
+          },
+        ],
+      },
+      {
+        id: "habitats",
+        label: "Обычные зоны",
+        kind: "branch",
+        children: activeLocations.map((location) => {
+          const attached = habitatSet.has(location.id)
+          return {
+            id: "habitat-" + location.id,
+            label: (attached ? "✓ " : "") + location.name,
+            execute: async () => {
+              const response = await operations.setNpcHabitat(
+                character.id,
+                location.id,
+                !attached,
+              )
+              return actionResult(
+                response.ok,
+                response.error,
+                attached ? "Зона снята с NPC." : "Зона добавлена NPC.",
+              )
+            },
+          } satisfies SnakeAction
+        }),
+      },
+    )
+  }
+
+  actions.push(
+    {
+      id: "state",
+      label: "Состояние",
       kind: "branch",
       children: [
         {
-          id: "discover",
-          label: "При встрече",
-          enabled: character.visibilityMode !== "discover",
-          disabledReason: "Уже выбран режим «При встрече».",
-          execute: async () => {
-            const response = await operations.setNpcVisibility(character.id, "discover")
-            return actionResult(response.ok, response.error, "NPC будет открыт после встречи.")
+          id: character.lifeState === "dead" ? "revive" : "kill",
+          label: character.lifeState === "dead" ? "Вернуть в живые" : "Отметить мёртвым",
+          tone: character.lifeState === "dead" ? "normal" : "danger",
+          surface: {
+            kind: "confirm",
+            eyebrow: "Состояние персонажа",
+            title: character.lifeState === "dead"
+              ? "Вернуть «" + character.name + "»?"
+              : "«" + character.name + "» погиб?",
+            body: character.lifeState === "dead"
+              ? "Персонаж снова сможет участвовать в активной кампании."
+              : "Персонаж останется в истории и каталоге, но перестанет быть доступен как активный PC.",
+            confirmLabel: character.lifeState === "dead" ? "Вернуть" : "Отметить мёртвым",
           },
-        },
-        {
-          id: "always",
-          label: "Видно сразу",
-          enabled: character.visibilityMode !== "always",
-          disabledReason: "NPC уже виден сразу.",
           execute: async () => {
-            const response = await operations.setNpcVisibility(character.id, "always")
-            return actionResult(response.ok, response.error, "NPC виден сразу.")
+            const nextState = character.lifeState === "dead" ? "alive" : "dead"
+            const response = await operations.setCharacterLifeState(character.id, nextState)
+            return actionResult(
+              response.ok,
+              response.error,
+              nextState === "dead" ? "Персонаж отмечен мёртвым." : "Персонаж снова жив.",
+            )
           },
         },
       ],
-    })
-  }
-
-  actions.push({
-    id: "state",
-    label: "Состояние",
-    kind: "branch",
-    children: [
-      {
-        id: character.lifeState === "dead" ? "revive" : "kill",
-        label: character.lifeState === "dead" ? "Вернуть в живые" : "Отметить мёртвым",
-        tone: character.lifeState === "dead" ? "normal" : "danger",
-        surface: {
-          kind: "confirm",
-          eyebrow: "Состояние персонажа",
-          title: character.lifeState === "dead"
-            ? "Вернуть «" + character.name + "»?"
-            : "«" + character.name + "» погиб?",
-          body: character.lifeState === "dead"
-            ? "Персонаж снова сможет участвовать в активной кампании."
-            : "Персонаж останется в истории и каталоге, но перестанет быть доступен как активный PC.",
-          confirmLabel: character.lifeState === "dead" ? "Вернуть" : "Отметить мёртвым",
+    },
+    {
+      id: "publication",
+      label: "Публикация",
+      kind: "branch",
+      children: [
+        {
+          id: "return-draft",
+          label: "Вернуть в Черновик",
+          surface: {
+            kind: "confirm",
+            eyebrow: "Публикация",
+            title: "Вернуть «" + character.name + "» в Черновик?",
+            body: "Персонаж исчезнет из обычной кампании. Назначение игроку и активный статус будут сняты.",
+            confirmLabel: "Вернуть в Черновик",
+          },
+          execute: async () => {
+            const response = await operations.returnCharacterToDraft(character.id)
+            return actionResult(response.ok, response.error, "Персонаж возвращён в Черновик.")
+          },
         },
-        execute: async () => {
-          const next = character.lifeState === "dead" ? "alive" : "dead"
-          const response = await operations.setCharacterLifeState(character.id, next)
-          return actionResult(
-            response.ok,
-            response.error,
-            next === "dead" ? "Персонаж отмечен мёртвым." : "Персонаж снова жив.",
-          )
+        {
+          id: "delete-character",
+          label: "Удалить персонажа",
+          tone: "danger",
+          surface: {
+            kind: "confirm",
+            eyebrow: "Персонаж",
+            title: "Удалить «" + character.name + "» навсегда?",
+            body: "Будут удалены персонаж и связанные с ним данные. Это действие нельзя отменить.",
+            confirmLabel: "Удалить навсегда",
+          },
+          execute: async () => {
+            const response = await operations.deleteCharacter(character.id)
+            return actionResult(response.ok, response.error, "Персонаж удалён.")
+          },
         },
-      },
-    ],
-  })
+      ],
+    },
+  )
 
   return actions
 }
