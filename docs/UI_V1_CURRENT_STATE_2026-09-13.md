@@ -284,6 +284,12 @@ Assignment must never silently call `set_campaign_active_character`.
 
 Unassigning a PC clears that character as the old player's active PC when necessary through the canonical Shapoklyak update path. Dead characters remain historical catalog entries and cannot be active.
 
+Party members are also Snake entities. Long press / right click on a member exposes member inspection, assignment of a free PC, active-character selection/clearing, and owner-only role change. The invitation block exposes copy/new-code actions through Snake as well.
+
+### Character management law
+
+Every character row in Draft, Party and the unified Character catalog uses the same `createWorkshopCharacterActions` provider. It covers open, basic identity edit, draft publication/deletion, PC access/assignment/active state, NPC visibility and alive/dead state as applicable. The surface must not grow route-specific copies of these commands.
+
 ### Library law
 
 Campaign-authored item/spell/feature/effect definitions live in Chasovoy:
@@ -295,3 +301,5 @@ Issuing an active definition creates runtime state through its canonical owner p
 ### Materials law
 
 GM materials remain private per `campaign_id + workspace_user_id` and keep the existing private `campaign-media` Storage path. Upload deletion must remove both the database row and its Storage object.
+
+Folders and material rows are Snake entities. Folder long press / right click exposes open, rename and delete. Note/file rows expose open, note edit where applicable, and delete. Creation toolbar controls remain ordinary explicit commands because they create objects rather than represent an existing manageable object.
