@@ -158,6 +158,7 @@ Canonical contract: `docs/SNAKE_INTERACTION_CONTRACT.md`.
 Current implementation includes:
 
 - `src/snake-engine/**` generic action/entity/result contracts;
+- modular UI runtime: orchestration/context, interaction/gesture handling and reusable surfaces are split under `src/ui-v1-isolated/snake/**` so adding entity families does not grow one provider monolith;
 - one UI 1.0 `SnakeProvider` and reusable `SnakeTrigger`;
 - right-click + touch long-press with synthetic Telegram/Android contextmenu suppression;
 - viewport-aware universal floating context menu;

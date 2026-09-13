@@ -24,6 +24,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Reduced the UI 1.0 bottom content reservation to match the thinner persistent navigation instead of leaving the old oversized empty footer.
 ### Runtime and architecture changes
 
+- Refactored the UI 1.0 Snake runtime before Inventory proof #2: the provider is now orchestration-only, gesture/context-menu logic lives under `snake/interaction`, reusable windows/forms live under `snake/surfaces`, and shared session/context types live under `snake/**`. Public imports from `SnakeProvider.tsx` remain compatible, so existing Location consumers keep the same API and behavior.
 - Section pages now own their scroll container so history restoration is deterministic; root Я / Главная / Чаты swipe navigation remains unchanged and edge-back only claims gestures beginning at the left edge on nested section routes.
 - Centralized Snake motion in the shared runtime: the invocation coordinate now drives menu transform-origin, window entry uses clipped cold reveal rather than generic scale-pop, and reduced-motion disables the non-essential effects.
 - Added generic Snake Flow surfaces: each step may use Editor, Picker, Confirm or Detail content, may request its own window size, preserves an in-memory draft across Back/Next, and sends one combined payload to the action executor only on the final step.
@@ -33,6 +34,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Supabase schema/data were intentionally unchanged for this navigation-only UI task; the connected project was confirmed `ACTIVE_HEALTHY` before implementation.
 ### Tests / verification
 
+- Updated UI 1.0 regression coverage to verify the full modular Snake runtime instead of requiring gestures, portals and every surface implementation to remain inside one monolithic `SnakeProvider.tsx`; added a guard that keeps the provider orchestration-sized.
 - Home Art/detail-view/edge-back head `b07e9cb5e1c7b541a07fb8f1a3c0b73cab7158d0` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34757458193`.
 - Iconless bottom-rail head `4175af281a666d139a030829c9d4c98672882f59` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34756989028`.
 - Snake invocation/window motion head `4ac0fb47529bf279fdd99a058ac18cd4f1c481e3` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34756586309`.

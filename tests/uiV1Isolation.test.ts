@@ -20,6 +20,27 @@ const sectionStyles = fs.readFileSync("src/ui-v1-isolated/section-screens.css", 
 const locationNavigator = fs.readFileSync("src/ui-v1-isolated/LocationNavigator.tsx", "utf8")
 const locationData = fs.readFileSync("src/ui-v1-isolated/useUiV1Locations.ts", "utf8")
 const snakeProvider = fs.readFileSync("src/ui-v1-isolated/SnakeProvider.tsx", "utf8")
+const snakeContextMenu = fs.readFileSync("src/ui-v1-isolated/snake/interaction/SnakeContextMenu.tsx", "utf8")
+const snakeTrigger = fs.readFileSync("src/ui-v1-isolated/snake/interaction/SnakeTrigger.tsx", "utf8")
+const snakePositioning = fs.readFileSync("src/ui-v1-isolated/snake/interaction/positioning.ts", "utf8")
+const snakeEditorSurface = fs.readFileSync("src/ui-v1-isolated/snake/surfaces/SnakeEditorSurface.tsx", "utf8")
+const snakePickerSurface = fs.readFileSync("src/ui-v1-isolated/snake/surfaces/SnakePickerSurface.tsx", "utf8")
+const snakeWindowFrame = fs.readFileSync("src/ui-v1-isolated/snake/surfaces/SnakeWindowFrame.tsx", "utf8")
+const snakeFlowWindow = fs.readFileSync("src/ui-v1-isolated/snake/surfaces/SnakeFlowWindow.tsx", "utf8")
+const snakeSingleWindow = fs.readFileSync("src/ui-v1-isolated/snake/surfaces/SnakeSingleWindow.tsx", "utf8")
+const snakeWindowHost = fs.readFileSync("src/ui-v1-isolated/snake/surfaces/SnakeWindowHost.tsx", "utf8")
+const snakeUiRuntime = [
+  snakeProvider,
+  snakeContextMenu,
+  snakeTrigger,
+  snakePositioning,
+  snakeEditorSurface,
+  snakePickerSurface,
+  snakeWindowFrame,
+  snakeFlowWindow,
+  snakeSingleWindow,
+  snakeWindowHost,
+].join("\n")
 const snakeTypes = fs.readFileSync("src/snake-engine/types.ts", "utf8")
 const snakeAgent = fs.readFileSync("src/snake-engine/agent.ts", "utf8")
 const locationSnakeActions = fs.readFileSync("src/ui-v1-isolated/locationSnakeActions.ts", "utf8")
@@ -208,24 +229,40 @@ test("Location management now supplies actions to Snake and remains placeholder-
   assert.doesNotMatch(snakeProvider, /if \(.*location|switch \(.*type/is)
 })
 
+test("Snake UI runtime is split into orchestration, interaction and reusable surfaces", () => {
+  assert.match(snakeProvider, /SnakeContextMenu/)
+  assert.match(snakeProvider, /SnakeWindowHost/)
+  assert.doesNotMatch(snakeProvider, /window\.setTimeout|createPortal|kind === "editor"|Math\.hypot/)
+  assert.match(snakeTrigger, /window\.setTimeout/)
+  assert.match(snakeTrigger, /consumedUntilRef/)
+  assert.match(snakeContextMenu, /createPortal/)
+  assert.match(snakePositioning, /positionSnakeMenu/)
+  assert.match(snakeEditorSurface, /SnakeEditorSurface/)
+  assert.match(snakePickerSurface, /SnakePickerSurface/)
+  assert.match(snakeFlowWindow, /SnakeFlowWindow/)
+  assert.match(snakeSingleWindow, /SnakeSingleWindow/)
+  assert.match(snakeWindowHost, /createPortal/)
+  assert.ok(snakeProvider.split("\n").length < 220)
+})
+
 test("Snake owns long press, right click, duplicate suppression and universal windows", () => {
   assert.match(entry, /SnakeProvider/)
   assert.match(entry, /\.\/snake\.css/)
-  assert.match(snakeProvider, /window\.setTimeout\(\(\) =>/)
-  assert.match(snakeProvider, /}, 520\)/)
-  assert.match(snakeProvider, /consumedUntilRef/)
-  assert.match(snakeProvider, /onContextMenu=\{contextMenu\}/)
-  assert.match(snakeProvider, /Math\.hypot/)
-  assert.match(snakeProvider, /--u1-snake-origin-x/)
-  assert.match(snakeProvider, /request\.point\.x - nextPosition\.x/)
-  assert.match(snakeProvider, /createPortal/)
-  assert.match(snakeProvider, /kind === "editor"/)
-  assert.match(snakeProvider, /kind === "picker"/)
-  assert.match(snakeProvider, /kind === "confirm"/)
-  assert.match(snakeProvider, /kind === "placeholder"/)
-  assert.match(snakeProvider, /SnakeFlowWindow/)
-  assert.match(snakeProvider, /data-width=\{size\.width\}/)
-  assert.match(snakeProvider, /data-height=\{size\.height\}/)
+  assert.match(snakeUiRuntime, /window\.setTimeout\(\(\) =>/)
+  assert.match(snakeUiRuntime, /}, 520\)/)
+  assert.match(snakeUiRuntime, /consumedUntilRef/)
+  assert.match(snakeUiRuntime, /onContextMenu=\{contextMenu\}/)
+  assert.match(snakeUiRuntime, /Math\.hypot/)
+  assert.match(snakeUiRuntime, /--u1-snake-origin-x/)
+  assert.match(snakeUiRuntime, /point\.x - position\.x/)
+  assert.match(snakeUiRuntime, /createPortal/)
+  assert.match(snakeUiRuntime, /kind === "editor"/)
+  assert.match(snakeUiRuntime, /kind === "picker"/)
+  assert.match(snakeUiRuntime, /kind === "confirm"/)
+  assert.match(snakeUiRuntime, /kind === "placeholder"/)
+  assert.match(snakeUiRuntime, /SnakeFlowWindow/)
+  assert.match(snakeUiRuntime, /data-width=\{size\.width\}/)
+  assert.match(snakeUiRuntime, /data-height=\{size\.height\}/)
   assert.match(snakeTypes, /type SnakeSurfaceRequest/)
   assert.match(snakeTypes, /type SnakeFlowRequest/)
   assert.match(snakeTypes, /type SnakeFlowStep/)
