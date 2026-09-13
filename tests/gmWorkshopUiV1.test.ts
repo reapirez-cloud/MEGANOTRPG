@@ -20,6 +20,11 @@ const migration = fs.readFileSync(
   "supabase/migrations/20260913150723_gm_workshop_character_drafts_v1.sql",
   "utf8",
 )
+const partyAdminMigration = fs.readFileSync(
+  "supabase/migrations/20260913193451_gm_party_member_and_invite_admin_v1.sql",
+  "utf8",
+)
+const characterView = fs.readFileSync("src/ui-v1-isolated/CharacterView.tsx", "utf8")
 
 test("UI 1.0 management route is the real GM Workshop and uses destination panels instead of legacy tabs", () => {
   assert.match(app, /<GMWorkshop/)
@@ -78,6 +83,29 @@ test("Party exposes every published PC and reuses Snake for assignment, unlink a
   assert.match(actions, /assignedMember\.userId/)
 })
 
+test("Workshop character creation uses real class templates instead of a free-text class field", () => {
+  assert.match(draft, /classTemplateId/)
+  assert.match(draft, /data\.classTemplates\.map/)
+  assert.doesNotMatch(draft, /id: "characterClass"/)
+  assert.match(data, /oracle\.characters\.assignTemplate/)
+  assert.match(actions, /id: "classes"/)
+  assert.match(actions, /label: "Выбрать класс"|label: classAssignments\.length \? "Добавить ещё класс" : "Выбрать класс"/)
+  assert.match(actions, /Выбрать подкласс/)
+  assert.match(actions, /removeTemplateAssignment/)
+})
+
+test("Character View is a real GM control surface instead of a placeholder route", () => {
+  assert.match(app, /<CharacterView/)
+  assert.match(characterView, /Редактировать лист/)
+  assert.match(characterView, /Короткий отдых/)
+  assert.match(characterView, /Долгий отдых/)
+  assert.match(characterView, /Инвентарь/)
+  assert.match(characterView, /Заклинания/)
+  assert.match(characterView, /Особенности/)
+  assert.match(characterView, /transferItem/)
+  assert.match(characterView, /SnakeTrigger/)
+})
+
 test("Workshop member and invite management are first-class Snake actions", () => {
   assert.match(party, /createWorkshopMemberActions/)
   assert.match(party, /type: "campaign-member"/)
@@ -89,6 +117,15 @@ test("Workshop member and invite management are first-class Snake actions", () =
   assert.match(actions, /createWorkshopInviteActions/)
   assert.match(actions, /id: "copy-invite"/)
   assert.match(actions, /id: "create-invite"/)
+  assert.match(actions, /id: "revoke-invite"/)
+  assert.match(actions, /id: "remove-member"/)
+  assert.match(party, /История приглашений/)
+  assert.match(data, /oracle\.campaign\.setMemberRole/)
+  assert.match(data, /oracle\.campaign\.removeMember/)
+  assert.match(data, /oracle\.campaign\.createInvite/)
+  assert.match(data, /oracle\.campaign\.revokeInvite/)
+  assert.match(partyAdminMigration, /remove_campaign_member_v1/)
+  assert.match(partyAdminMigration, /revoke_campaign_invite_v1/)
 })
 
 test("Workshop character Snake provider covers the current management lifecycle", () => {
