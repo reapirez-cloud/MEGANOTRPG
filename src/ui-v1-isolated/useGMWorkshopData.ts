@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
+import { deleteCampaignMediaObject, uploadCampaignFile } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
 import { oracle } from "../oracle-engine/runtime.ts"
 import { chasovoy } from "../reference-engine/runtime.ts"
@@ -54,6 +55,7 @@ export type WorkshopMaterial = {
   title: string
   body: string
   fileUrl: string | null
+  storagePath: string | null
   originalName: string | null
   mimeType: string | null
   updatedAt: string
@@ -136,7 +138,17 @@ export type WorkshopOperations = {
     body: string,
     folderId?: string | null,
   ) => Promise<WorkshopMutationResult>
+  updateNote: (
+    id: string,
+    title: string,
+    body: string,
+  ) => Promise<WorkshopMutationResult>
+  uploadMaterial: (
+    file: File,
+    folderId?: string | null,
+  ) => Promise<WorkshopMutationResult>
   createFolder: (name: string) => Promise<WorkshopMutationResult>
+  renameFolder: (id: string, name: string) => Promise<WorkshopMutationResult>
   deleteMaterial: (id: string) => Promise<WorkshopMutationResult>
   deleteFolder: (id: string) => Promise<WorkshopMutationResult>
 }
@@ -449,17 +461,21 @@ export function useGMWorkshopData() {
         name: folder.name,
         sortOrder: folder.sort_order,
       })),
-      materials: (materialsResult.data || []).map((material) => ({
+      materials: await Promise.all((materialsResult.data || []).map(async (material) => ({
         id: material.id,
         folderId: material.folder_id,
         kind: material.kind as "note" | "upload",
         title: material.title,
         body: material.body,
-        fileUrl: material.file_url,
+        fileUrl:
+          (await resolveCampaignMediaUrl(material.file_url)) ||
+          material.file_url ||
+          null,
+        storagePath: material.file_url,
         originalName: material.original_name,
         mimeType: material.mime_type,
         updatedAt: material.updated_at,
-      })),
+      }))),
       invite: activeInvite ? {
         code: activeInvite.code,
         maxUses: activeInvite.max_uses,
@@ -734,13 +750,16 @@ export function useGMWorkshopData() {
     },
 
     async createNote(title, body, folderId = null) {
+      const cleanTitle = title.trim()
+      if (!cleanTitle) return { ok: false, error: "Нужно название заметки." }
+
       const { error } = await supabase.from("gm_workspace_files").insert({
         campaign_id: state.campaignId,
         workspace_user_id: state.userId,
         folder_id: folderId,
         created_by: state.userId,
         kind: "note",
-        title: title.trim(),
+        title: cleanTitle,
         body: body.trim(),
         updated_at: new Date().toISOString(),
       })
@@ -749,18 +768,84 @@ export function useGMWorkshopData() {
       return { ok: true }
     },
 
+    async updateNote(id, title, body) {
+      const cleanTitle = title.trim()
+      if (!cleanTitle) return { ok: false, error: "Нужно название заметки." }
+
+      const { error } = await supabase
+        .from("gm_workspace_files")
+        .update({
+          title: cleanTitle,
+          body: body.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .eq("campaign_id", state.campaignId)
+        .eq("workspace_user_id", state.userId)
+
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+
+    async uploadMaterial(file, folderId = null) {
+      const upload = await uploadCampaignFile(file, "gm-private", state.campaignId)
+      if (!upload.ok) return { ok: false, error: upload.error }
+
+      const { error } = await supabase.from("gm_workspace_files").insert({
+        campaign_id: state.campaignId,
+        workspace_user_id: state.userId,
+        folder_id: folderId,
+        created_by: state.userId,
+        kind: "upload",
+        title: file.name.replace(/\.[^.]+$/, "") || file.name,
+        file_url: upload.url,
+        original_name: file.name,
+        mime_type: file.type || null,
+        updated_at: new Date().toISOString(),
+      })
+
+      if (error) {
+        await deleteCampaignMediaObject(upload.url)
+        return { ok: false, error: error.message }
+      }
+
+      await load()
+      return { ok: true }
+    },
+
     async createFolder(name) {
+      const cleanName = name.trim()
+      if (!cleanName) return { ok: false, error: "Нужно название папки." }
+
       const { error } = await supabase.from("gm_workspace_folders").insert({
         campaign_id: state.campaignId,
         workspace_user_id: state.userId,
-        name: name.trim(),
+        name: cleanName,
       })
       if (error) return { ok: false, error: error.message }
       await load()
       return { ok: true }
     },
 
+    async renameFolder(id, name) {
+      const cleanName = name.trim()
+      if (!cleanName) return { ok: false, error: "Нужно название папки." }
+
+      const { error } = await supabase
+        .from("gm_workspace_folders")
+        .update({ name: cleanName })
+        .eq("id", id)
+        .eq("campaign_id", state.campaignId)
+        .eq("workspace_user_id", state.userId)
+
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+
     async deleteMaterial(id) {
+      const material = state.materials.find((item) => item.id === id) || null
       const { error } = await supabase
         .from("gm_workspace_files")
         .delete()
@@ -768,6 +853,11 @@ export function useGMWorkshopData() {
         .eq("campaign_id", state.campaignId)
         .eq("workspace_user_id", state.userId)
       if (error) return { ok: false, error: error.message }
+
+      if (material?.kind === "upload" && material.storagePath) {
+        await deleteCampaignMediaObject(material.storagePath)
+      }
+
       await load()
       return { ok: true }
     },
