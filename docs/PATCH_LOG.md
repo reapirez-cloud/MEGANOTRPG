@@ -2,7 +2,9 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-13-C
+## Released patches
+
+## Patch — 2026-09-13-C
 
 **Status:** RELEASED
 **Branch:** `dev` → `main`
@@ -44,8 +46,6 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Workspace, Chats, Map, the dedicated Art/gallery surface and several detail/editor flows remain intentional UI 1.0 placeholders. Their status is now centralized in `docs/UI_V1_CURRENT_STATE_2026-09-13.md` rather than being ambiguous debt.
 
 ---
-
-## Released patches
 
 ## Patch — 2026-09-13-B
 
