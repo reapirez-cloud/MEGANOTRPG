@@ -1,10 +1,13 @@
 import { useState } from "react"
 
-import type { SnakeAction } from "../snake-engine"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import { openSourceAction } from "./GMWorkshopCommon"
 import {
   createWorkshopCharacterActions,
+  createWorkshopInviteActions,
+  createWorkshopMemberActions,
+  createWorkshopMemberAssignAction,
+  createWorkshopMemberRoleAction,
   createWorkshopPcUnassignAction,
 } from "./gmWorkshopSnakeActions"
 import {
@@ -31,82 +34,29 @@ export default function GMWorkshopParty({
   )
 
   function assignFree(target: WorkshopMember) {
-    const action: SnakeAction = {
-      id: "assign-free-pc",
-      label: "Назначить свободного PC",
-      enabled: freePc.length > 0,
-      surface: {
-        kind: "picker",
-        eyebrow: "Партия",
-        title: "Назначить персонажа · " + target.displayName,
-        items: freePc.map((character) => ({
-          id: character.id,
-          label: character.name,
-          description: character.characterClass + " · " + character.level,
-        })),
-        submitLabel: "Назначить",
-      },
-      execute: async ({ input }) => {
-        const characterId =
-          typeof input?.selection === "string" ? input.selection : ""
-        const response = await data.operations.assignCharacter(
-          characterId,
-          target.userId,
-        )
-        return response.ok
-          ? {
-              type: "success",
-              notice: "Персонаж назначен. Активность выбирается отдельно.",
-            }
-          : {
-              type: "error",
-              message: response.error || "Не удалось назначить персонажа.",
-            }
-      },
-    }
-
     openSourceAction(
       snake,
       { type: "campaign-member", id: target.userId },
-      action,
+      createWorkshopMemberAssignAction({
+        member: target,
+        freePc,
+        operations: data.operations,
+      }),
     )
   }
 
+  const inviteActions = createWorkshopInviteActions({
+    invite: data.invite,
+    campaignId: data.campaignId,
+    operations: data.operations,
+  })
+
   function createInvite() {
-    const action: SnakeAction = {
-      id: "create-invite",
-      label: "Новый код",
-      surface: {
-        kind: "confirm",
-        eyebrow: "Партия",
-        title: data.invite ? "Создать новый код?" : "Создать приглашение?",
-        body: "Код рассчитан на вход игроков в эту кампанию.",
-        confirmLabel: "Создать",
-      },
-      execute: async () => {
-        const response = await data.operations.createInvite()
-        if (!response.ok) {
-          return {
-            type: "error",
-            message: response.error || "Не удалось создать приглашение.",
-          }
-        }
-
-        if (response.code && navigator.clipboard?.writeText) {
-          try {
-            await navigator.clipboard.writeText(response.code)
-          } catch {
-            // Код остаётся видимым в разделе Партия.
-          }
-        }
-
-        return { type: "success", notice: "Код приглашения создан." }
-      },
-    }
-
+    const action = inviteActions.find((item) => item.id === "create-invite")
+    if (!action) return
     openSourceAction(
       snake,
-      { type: "campaign", id: data.campaignId },
+      { type: "campaign-invite", id: data.invite?.code || data.campaignId },
       action,
     )
   }
@@ -118,6 +68,13 @@ export default function GMWorkshopParty({
     const active =
       assigned.find((character) => character.id === member.activeCharacterId) ||
       null
+    const memberActions = createWorkshopMemberActions({
+      member,
+      characters: data.campaignCharacters,
+      operations: data.operations,
+      canChangeRole: data.isOwner,
+      onOpen: () => {},
+    })
 
     return (
       <div className="u1-gm-workshop__section">
@@ -129,21 +86,26 @@ export default function GMWorkshopParty({
           ← Партия
         </button>
 
-        <section className="u1-gm-member-focus">
-          <span>
-            {member.isOwner
-              ? "Владелец"
-              : member.role === "gm"
-                ? "GM"
-                : "Игрок"}
-          </span>
-          <h1>{member.displayName}</h1>
-          <small>
-            {active
-              ? "Активный: " + active.name
-              : "Активный персонаж не выбран"}
-          </small>
-        </section>
+        <SnakeTrigger
+          entity={{ type: "campaign-member", id: member.userId }}
+          actions={memberActions}
+        >
+          <section className="u1-gm-member-focus">
+            <span>
+              {member.isOwner
+                ? "Владелец"
+                : member.role === "gm"
+                  ? "GM"
+                  : "Игрок"}
+            </span>
+            <h1>{member.displayName}</h1>
+            <small>
+              {active
+                ? "Активный: " + active.name
+                : "Активный персонаж не выбран"}
+            </small>
+          </section>
+        </SnakeTrigger>
 
         <section className="u1-gm-workblock">
           <header>
@@ -225,9 +187,13 @@ export default function GMWorkshopParty({
               </div>
               <button
                 type="button"
-                onClick={() => void data.operations.setMemberRole(
-                  member.userId,
-                  member.role === "gm" ? "player" : "gm",
+                onClick={() => openSourceAction(
+                  snake,
+                  { type: "campaign-member", id: member.userId },
+                  createWorkshopMemberRoleAction({
+                    member,
+                    operations: data.operations,
+                  }),
                 )}
               >
                 {member.role === "gm" ? "Сделать игроком" : "Сделать GM"}
@@ -241,8 +207,12 @@ export default function GMWorkshopParty({
 
   return (
     <div className="u1-gm-workshop__section">
-      <section className="u1-gm-invite">
-        <span>Приглашение</span>
+      <SnakeTrigger
+        entity={{ type: "campaign-invite", id: data.invite?.code || data.campaignId }}
+        actions={inviteActions}
+      >
+        <section className="u1-gm-invite">
+          <span>Приглашение</span>
         <strong>{data.invite?.code || "Код не создан"}</strong>
         <small>
           {data.invite
@@ -267,7 +237,8 @@ export default function GMWorkshopParty({
             {data.invite ? "Новый код" : "Создать код"}
           </button>
         </div>
-      </section>
+        </section>
+      </SnakeTrigger>
 
       <section className="u1-gm-workblock">
         <header>
@@ -348,13 +319,25 @@ export default function GMWorkshopParty({
             (character) => character.id === item.activeCharacterId,
           )
 
+          const memberActions = createWorkshopMemberActions({
+            member: item,
+            characters: data.campaignCharacters,
+            operations: data.operations,
+            canChangeRole: data.isOwner,
+            onOpen: () => setSelectedMemberId(item.userId),
+          })
+
           return (
-            <button
-              type="button"
-              className="u1-gm-member-row"
+            <SnakeTrigger
               key={item.userId}
-              onClick={() => setSelectedMemberId(item.userId)}
+              entity={{ type: "campaign-member", id: item.userId }}
+              actions={memberActions}
             >
+              <button
+                type="button"
+                className="u1-gm-member-row"
+                onClick={() => setSelectedMemberId(item.userId)}
+              >
               <span className="u1-gm-member-row__mark">
                 {item.displayName.trim().slice(0, 1).toUpperCase() || "?"}
               </span>
@@ -374,8 +357,9 @@ export default function GMWorkshopParty({
                         : "без PC")}
                 </small>
               </span>
-              <i aria-hidden="true">→</i>
-            </button>
+                <i aria-hidden="true">→</i>
+              </button>
+            </SnakeTrigger>
           )
         })}
       </div>
