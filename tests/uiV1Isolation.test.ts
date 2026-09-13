@@ -395,7 +395,7 @@ test("Workspace is a real role-aware identity surface instead of a dashboard pla
   assert.match(workspace, /Рассказчик/)
   assert.match(workspace, /Голос мира/)
   assert.match(workspace, /Управление/)
-  assert.match(workspace, /Другие персонажи/)
+  assert.match(workspace, /Персонажи игроков/)
   assert.match(workspaceData, /from\("campaign_members"\)/)
   assert.match(workspaceData, /from\("characters"\)/)
   assert.match(workspaceData, /life_state/)
