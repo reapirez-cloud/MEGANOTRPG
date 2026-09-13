@@ -309,17 +309,8 @@ test("chronicle aggregates full non-art feed content and keeps future connection
 })
 
 
-test("dock uses the unified navigation asset family", () => {
-  assert.match(styles, /nav-icons\/me\.png/)
-  assert.match(styles, /nav-icons\/home\.png/)
-  assert.match(styles, /nav-icons\/chats\.png/)
-  assert.doesNotMatch(styles, /nav-icons\/(?:me|home|chats)\.svg/)
-})
-
-
-test("navigation assets render directly without legacy SVG masks", () => {
-  assert.match(styles, /nav-icons\/me\.png/)
-  assert.match(styles, /nav-icons\/home\.png/)
-  assert.match(styles, /nav-icons\/chats\.png/)
+test("dock no longer depends on navigation image assets", () => {
+  assert.doesNotMatch(app + styles, /nav-icons\/(?:me|home|chats)\.(?:png|svg)/)
   assert.doesNotMatch(styles, /mask-image:\s*url\("\/ui-v1\/nav-icons\//)
+  assert.match(styles, /\.u1-dock::after/)
 })
