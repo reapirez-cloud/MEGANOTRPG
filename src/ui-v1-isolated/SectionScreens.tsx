@@ -205,7 +205,7 @@ function ClassCatalogPanels({
   rows,
   query,
 }: {
-  rows: Array<{ id: string; title: string; meta: string; art: string }>
+  rows: Array<{ id: string; title: string; meta: string; art?: string }>
   query: string
 }) {
   const normalized = query.trim().toLocaleLowerCase("ru")
@@ -227,7 +227,7 @@ function ClassCatalogPanels({
           <span className="u1-class-panel__texture" aria-hidden="true" />
           <img
             className="u1-class-panel__image"
-            src={row.art}
+            src={row.art || `/ui-v1/classes/${row.id}.webp`}
             alt=""
             loading="lazy"
             decoding="async"
