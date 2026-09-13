@@ -32,17 +32,28 @@ export default function GMWorkshopDraft({
         size: { width: "wide", height: "tall" },
         fields: [
           { id: "name", label: "Имя", type: "text", required: true },
-          { id: "characterClass", label: "Класс / роль", type: "text" },
-          { id: "level", label: "Уровень", type: "number" },
+          {
+            id: "classTemplateId",
+            label: "Класс",
+            type: "select",
+            options: [
+              { value: "", label: "Без класса" },
+              ...data.classTemplates.map((template) => ({
+                value: template.id,
+                label: template.name,
+              })),
+            ],
+          },
+          { id: "level", label: "Уровень класса", type: "number" },
           { id: "bio", label: "Описание", type: "textarea" },
         ],
-        initialValues: { level: 1 },
+        initialValues: { classTemplateId: "", level: 1 },
         submitLabel: "Создать в Черновике",
       },
       execute: async ({ input }) => {
         const response = await data.operations.createDraftCharacter(type, {
           name: String(input?.name || ""),
-          characterClass: String(input?.characterClass || ""),
+          classTemplateId: String(input?.classTemplateId || "") || null,
           level: Number(input?.level || 1),
           bio: String(input?.bio || ""),
         })
