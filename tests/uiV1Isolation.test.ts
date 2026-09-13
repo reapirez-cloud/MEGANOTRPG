@@ -79,19 +79,19 @@ test("UI v1 routes real content sections without importing legacy screens", () =
 })
 
 
-test("UI v1 dock is a slim floating glass rail instead of the old raised crown", () => {
+test("UI v1 dock is an ultra-thin floating glass rail instead of a conventional tab bar", () => {
   assert.match(app, /u1-dock__glass/)
   assert.doesNotMatch(app, /u1-dock__crown|u1-dock__hull/)
   assert.match(styles, /\.u1-dock__glass/)
-  assert.match(styles, /height:\s*34px/)
-  assert.match(styles, /backdrop-filter:\s*blur\(14px\)/)
+  assert.match(styles, /height:\s*18px/)
+  assert.match(styles, /height:\s*44px/)
+  assert.match(styles, /backdrop-filter:\s*blur\(12px\)/)
 })
 
 
-test("dock active state is a restrained cold filament and mobile tap flash is disabled", () => {
-  assert.doesNotMatch(app, /layoutId="ui-v1-dock-selection"/)
-  assert.match(app, /u1-dock__filament/)
-  assert.match(app, /scaleX: 0\.45/)
+test("dock active state is carried only by PNG light and never by a detached filament", () => {
+  assert.doesNotMatch(app + styles, /u1-dock__filament|layoutId="ui-v1-dock-selection"/)
+  assert.match(styles, /drop-shadow\(0 0 3px rgba\(220, 233, 238, 0\.72\)\)/)
   assert.match(styles, /-webkit-tap-highlight-color:\s*transparent/)
 })
 
@@ -122,10 +122,9 @@ test("root spaces support deliberate horizontal swipe navigation with soft hapti
   assert.match(styles, /touch-action:\s*pan-y/)
 })
 
-test("dock uses local cold light instead of a selected-state bubble", () => {
-  assert.match(styles, /drop-shadow\(0 0 4px rgba\(218, 229, 233, 0\.46\)\)/)
-  assert.match(styles, /\.u1-dock__filament/)
-  assert.doesNotMatch(styles, /\.u1-dock__selection|\.u1-dock__crown/)
+test("dock uses cold PNG glow instead of a selected-state bubble or line", () => {
+  assert.match(styles, /drop-shadow\(0 0 9px rgba\(202, 220, 226, 0\.24\)\)/)
+  assert.doesNotMatch(styles, /\.u1-dock__selection|\.u1-dock__crown|\.u1-dock__filament/)
 })
 
 
@@ -133,8 +132,8 @@ test("dock navigation is icon-only and keeps accessible names", () => {
   assert.match(app, /aria-label=\{item\.label\}/)
   assert.match(app, /u1-dock__glyph/)
   assert.doesNotMatch(app, /u1-dock__label/)
-  assert.match(styles, /nav-icons\/me\.svg/)
-  assert.match(styles, /nav-icons\/home\.svg/)
+  assert.match(styles, /nav-icons\/me\.png/)
+  assert.match(styles, /nav-icons\/home\.png/)
   assert.match(styles, /nav-icons\/chats\.png/)
 })
 
@@ -281,16 +280,16 @@ test("chronicle aggregates full non-art feed content and keeps future connection
 
 
 test("dock uses the unified navigation asset family", () => {
-  assert.match(styles, /nav-icons\/me\.svg/)
-  assert.match(styles, /nav-icons\/home\.svg/)
+  assert.match(styles, /nav-icons\/me\.png/)
+  assert.match(styles, /nav-icons\/home\.png/)
   assert.match(styles, /nav-icons\/chats\.png/)
-  assert.doesNotMatch(styles, /nav-icons\/(?:me|home)\.png/)
+  assert.doesNotMatch(styles, /nav-icons\/(?:me|home|chats)\.svg/)
 })
 
 
 test("navigation assets render directly without legacy SVG masks", () => {
-  assert.match(styles, /nav-icons\/me\.svg/)
-  assert.match(styles, /nav-icons\/home\.svg/)
+  assert.match(styles, /nav-icons\/me\.png/)
+  assert.match(styles, /nav-icons\/home\.png/)
   assert.match(styles, /nav-icons\/chats\.png/)
   assert.doesNotMatch(styles, /mask-image:\s*url\("\/ui-v1\/nav-icons\//)
 })

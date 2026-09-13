@@ -11,25 +11,12 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Replaced the mixed navigation assets with a new **all-PNG cold geometric pack**: compact `Я`, compact `Чаты`, and a deliberately very wide `Главная` whose horizontal lines nearly bridge the side controls.
+- Reduced the visible floating glass navigation rail from **34px to 18px** while preserving **44px invisible hit targets**. Removed the detached lower filament entirely; active state now comes only from the PNG's cold glow/brightness.
+- Reduced the UI 1.0 bottom content reservation to match the thinner persistent navigation instead of leaving the old oversized empty footer.
 ### Runtime and architecture changes
 
-### Tests / verification
-
-### Known incomplete work
-
----
-
-## Active patch — 2026-09-13-D
-
-**Status:** OPEN
-**Branch:** `dev`
-**Base main:** `6789d1fdecc97699c2f6b34f597cf3c19182dd6a`
-**Started:** 2026-09-13
-
-### Player-facing changes
-
-### Runtime and architecture changes
-
+- Supabase schema/data were intentionally unchanged for this navigation-only UI task; the connected project was confirmed `ACTIVE_HEALTHY` before implementation.
 ### Tests / verification
 
 ### Known incomplete work

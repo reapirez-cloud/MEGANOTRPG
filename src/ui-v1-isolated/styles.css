@@ -18,6 +18,7 @@
   --u1-stone: #b3b0a9;
   --u1-safe-top: env(safe-area-inset-top, 0px);
   --u1-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --u1-dock-space: calc(34px + var(--u1-safe-bottom));
   font-family:
     "IBM Plex Sans",
     "Segoe UI Variable Text",
@@ -100,7 +101,7 @@ button {
   padding:
     calc(22px + var(--u1-safe-top))
     18px
-    calc(118px + var(--u1-safe-bottom));
+    calc(var(--u1-dock-space) + 18px);
   scrollbar-width: none;
 }
 
@@ -655,15 +656,15 @@ button {
 .u1-dock {
   position: absolute;
   z-index: 20;
-  left: 22px;
-  right: 22px;
-  bottom: max(14px, calc(var(--u1-safe-bottom) + 6px));
-  height: 34px;
+  left: 18px;
+  right: 18px;
+  bottom: max(12px, calc(var(--u1-safe-bottom) + 6px));
+  height: 18px;
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-columns: 52px minmax(0, 1fr) 52px;
   align-items: center;
   gap: 0;
-  padding: 0 4px;
+  padding: 0 3px;
   isolation: isolate;
   overflow: visible;
 }
@@ -672,16 +673,16 @@ button {
   position: absolute;
   z-index: 0;
   inset: 0;
-  border: 1px solid rgba(224, 231, 234, 0.13);
-  border-radius: 17px;
+  border: 1px solid rgba(224, 231, 234, 0.10);
+  border-radius: 9px;
   background:
-    linear-gradient(180deg, rgba(224, 231, 234, 0.035), rgba(224, 231, 234, 0.008)),
-    rgba(8, 10, 11, 0.34);
+    linear-gradient(180deg, rgba(224, 231, 234, 0.026), rgba(224, 231, 234, 0.004)),
+    rgba(8, 10, 11, 0.20);
   box-shadow:
-    0 7px 24px rgba(0, 0, 0, 0.30),
-    inset 0 1px 0 rgba(245, 249, 250, 0.035);
-  -webkit-backdrop-filter: blur(14px) saturate(0.72);
-  backdrop-filter: blur(14px) saturate(0.72);
+    0 4px 14px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(245, 249, 250, 0.025);
+  -webkit-backdrop-filter: blur(12px) saturate(0.66);
+  backdrop-filter: blur(12px) saturate(0.66);
   pointer-events: none;
 }
 
@@ -689,8 +690,8 @@ button {
   position: relative;
   z-index: 2;
   min-width: 0;
-  height: 48px;
-  margin-block: -7px;
+  height: 44px;
+  margin-block: -13px;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -704,20 +705,19 @@ button {
 }
 
 .u1-dock__item--home {
-  padding-inline: 2px;
+  padding-inline: 0;
 }
 
 .u1-dock__glyph {
   position: relative;
   z-index: 3;
   display: block;
-  width: 28px;
-  height: 26px;
+  height: 16px;
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
-  opacity: 0.56;
-  filter: grayscale(1) brightness(0.82);
+  opacity: 0.38;
+  filter: grayscale(1) brightness(0.78);
   transition:
     opacity 180ms ease,
     filter 180ms ease,
@@ -725,46 +725,34 @@ button {
 }
 
 .u1-dock__glyph--me {
-  background-image: url("/ui-v1/nav-icons/me.svg");
+  width: 24px;
+  background-image: url("/ui-v1/nav-icons/me.png");
 }
 
 .u1-dock__glyph--home {
-  width: 34px;
-  background-image: url("/ui-v1/nav-icons/home.svg");
+  width: calc(100% + 24px);
+  max-width: none;
+  background-image: url("/ui-v1/nav-icons/home.png");
+  background-size: 100% 100%;
 }
 
 .u1-dock__glyph--chats {
+  width: 30px;
   background-image: url("/ui-v1/nav-icons/chats.png");
 }
 
 .u1-dock__item[data-selected] .u1-dock__glyph {
-  opacity: 0.98;
+  opacity: 1;
   filter:
     grayscale(1)
-    brightness(1.34)
-    drop-shadow(0 0 4px rgba(218, 229, 233, 0.46))
-    drop-shadow(0 0 10px rgba(202, 220, 226, 0.16));
-  transform: translateY(-1px);
-}
-
-.u1-dock__filament {
-  position: absolute;
-  z-index: 1;
-  left: 50%;
-  bottom: 5px;
-  width: 28px;
-  height: 1px;
-  transform: translateX(-50%);
-  transform-origin: center;
-  background: rgba(226, 236, 240, 0.82);
-  box-shadow:
-    0 0 4px rgba(220, 233, 238, 0.62),
-    0 0 10px rgba(204, 223, 230, 0.20);
-  pointer-events: none;
+    brightness(1.38)
+    drop-shadow(0 0 3px rgba(220, 233, 238, 0.72))
+    drop-shadow(0 0 9px rgba(202, 220, 226, 0.24));
+  transform: scale(1.025);
 }
 
 .u1-dock__item:active .u1-dock__glyph {
-  transform: translateY(0) scale(0.96);
+  transform: scale(0.97);
 }
 
 .u1-dock__item:focus-visible {
@@ -774,9 +762,9 @@ button {
 .u1-dock__item:focus-visible::after {
   content: "";
   position: absolute;
-  inset: 7px 12%;
-  border: 1px solid rgba(222, 232, 236, 0.38);
-  border-radius: 12px;
+  inset: 8px 12%;
+  border: 1px solid rgba(222, 232, 236, 0.32);
+  border-radius: 10px;
   pointer-events: none;
 }
 

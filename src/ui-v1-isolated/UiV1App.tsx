@@ -165,14 +165,6 @@ function Dock({
             aria-current={selected ? "page" : undefined}
             onClick={() => onNavigate(item.id)}
           >
-            {selected && (
-              <motion.span
-                className="u1-dock__filament"
-                initial={{ opacity: 0, scaleX: 0.45 }}
-                animate={{ opacity: 1, scaleX: 1 }}
-                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-              />
-            )}
             <span
               className={`u1-dock__glyph u1-dock__glyph--${item.icon}`}
               aria-hidden="true"

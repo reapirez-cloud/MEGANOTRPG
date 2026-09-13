@@ -352,5 +352,5 @@ Navigation must be persistent without consuming meaningful reading space.
 - No tall central crown, large side wings or oversized selected-button bubble.
 - Home may remain wider in allocation than side destinations, but not taller.
 - Selected state should come primarily from the PNG treatment, opacity/light and a restrained cold glow, not from a large raised container.
-- Target implementation should explore roughly a 48–54px visual rail with approximately 38–44px usable PNG control height, plus safe-area handling outside/under the visual rail rather than inflating the rail itself.
+- Current implementation target is an **18px visible glass rail** with **44px invisible hit targets**. The side PNGs stay low and compact; the Home PNG is deliberately much wider and its lines should visually approach the side icons. Do not add a detached underline/filament: selected state is carried by PNG opacity/brightness/cold glow.
 - Glass is an explicit exception to the otherwise mostly opaque surface language: use restrained transparency and blur here because the purpose is to preserve visibility of content beneath navigation.
