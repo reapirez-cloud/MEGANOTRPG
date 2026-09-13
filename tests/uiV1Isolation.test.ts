@@ -24,6 +24,7 @@ const sectionStyles = fs.readFileSync("src/ui-v1-isolated/section-screens.css", 
 const locationNavigator = fs.readFileSync("src/ui-v1-isolated/LocationNavigator.tsx", "utf8")
 const locationData = fs.readFileSync("src/ui-v1-isolated/useUiV1Locations.ts", "utf8")
 const snakeProvider = fs.readFileSync("src/ui-v1-isolated/SnakeProvider.tsx", "utf8")
+const snakeMenuRuntime = fs.readFileSync("src/ui-v1-isolated/snake/menuRuntime.ts", "utf8")
 const snakeContextMenu = fs.readFileSync("src/ui-v1-isolated/snake/interaction/SnakeContextMenu.tsx", "utf8")
 const snakeTrigger = fs.readFileSync("src/ui-v1-isolated/snake/interaction/SnakeTrigger.tsx", "utf8")
 const snakePositioning = fs.readFileSync("src/ui-v1-isolated/snake/interaction/positioning.ts", "utf8")
@@ -35,6 +36,7 @@ const snakeSingleWindow = fs.readFileSync("src/ui-v1-isolated/snake/surfaces/Sna
 const snakeWindowHost = fs.readFileSync("src/ui-v1-isolated/snake/surfaces/SnakeWindowHost.tsx", "utf8")
 const snakeUiRuntime = [
   snakeProvider,
+  snakeMenuRuntime,
   snakeContextMenu,
   snakeTrigger,
   snakePositioning,
@@ -274,9 +276,11 @@ test("Snake owns long press, right click, duplicate suppression and universal wi
   assert.match(snakeTypes, /"compact"[\s\S]*?"wide"[\s\S]*?"full"/)
   assert.match(snakeAgent, /class SnakeAgent/)
   assert.match(snakeAgent, /resolveBranch/)
+  assert.match(snakeMenuRuntime, /resolveBranch/)
+  assert.match(snakeMenuRuntime, /frames\.slice\(0, -1\)/)
   assert.match(snakeTypes, /SnakeActionPathEntry/)
   assert.match(snakeTypes, /SnakeBranchResolver/)
-  assert.match(snakeProvider, /frames:/)
+  assert.match(snakeMenuRuntime, /frames:/)
   assert.match(snakeContextMenu, /data-branch/)
   assert.match(snakeStyles, /\.u1-snake-menu/)
   assert.match(snakeStyles, /\.u1-snake-window/)

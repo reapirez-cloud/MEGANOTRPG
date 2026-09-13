@@ -16,7 +16,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
-- Extended Snake from flat action manifests to generic dynamic Branch/Command navigation. Branches resolve only the next action level from entity + current path, preserve one context-menu surface, maintain a transient Back stack, and forward the branch path into terminal command/surface execution.
+- Extended Snake from flat action manifests to generic dynamic Branch/Command navigation. Branches resolve only the next action level from entity + current path, preserve one context-menu surface, maintain a transient Back stack, and forward the branch path into terminal command/surface execution. The branch-stack runtime is isolated in `snake/menuRuntime.ts` so `SnakeProvider` remains orchestration-sized instead of regrowing into a monolith.
 - Character-specific avatar choices live in `characterSnakeActions.ts`; Snake core remains entity-agnostic and contains no character/avatar switch. No Supabase schema or canonical gameplay state was changed.
 - Workspace stat previews read existing RLS-protected `character_sheets` fields and proficiency ranks; no new persistence path was introduced.
 

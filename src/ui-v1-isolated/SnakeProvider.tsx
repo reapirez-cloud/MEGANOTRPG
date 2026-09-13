@@ -12,14 +12,13 @@ import {
   type SnakeActionInput,
   type SnakeActionPathEntry,
   type SnakeEntityRef,
-  type SnakeMenuRequest,
   type SnakeSurfaceRequest,
 } from "../snake-engine"
 import { SnakeContext, type SnakeContextValue } from "./snake/SnakeContext"
 import { SnakeContextMenu } from "./snake/interaction/SnakeContextMenu"
+import { useSnakeMenuRuntime } from "./snake/menuRuntime"
 import { SnakeWindowHost } from "./snake/surfaces/SnakeWindowHost"
 import type {
-  SnakeMenuSession,
   SnakeSurfaceSession,
   SnakeSurfaceSource,
 } from "./snake/runtime"
@@ -28,12 +27,9 @@ export { useSnake } from "./snake/SnakeContext"
 export { SnakeTrigger } from "./snake/interaction/SnakeTrigger"
 
 export function SnakeProvider({ children }: { children: ReactNode }) {
-  const [menu, setMenu] = useState<SnakeMenuSession | null>(null)
   const [surface, setSurface] = useState<SnakeSurfaceSession | null>(null)
   const [busy, setBusy] = useState(false)
-  const [menuBusy, setMenuBusy] = useState(false)
   const surfaceIdRef = useRef(0)
-  const menuIdRef = useRef(0)
 
   function openSurface(
     request: SnakeSurfaceRequest,
@@ -107,131 +103,63 @@ export function SnakeProvider({ children }: { children: ReactNode }) {
     await execute(action, entity, undefined, path)
   }
 
-  async function invokeMenuAction(
-    action: SnakeAction,
-    session: SnakeMenuSession,
-  ) {
-    const frame = session.frames[session.frames.length - 1]
-    if (!frame) return
-
-    if (snakeAgent.isBranch(action)) {
-      setMenuBusy(true)
-      try {
-        const next = await snakeAgent.resolveBranch(
-          action,
-          session.entity,
-          frame.path,
-        )
-
-        setMenu((current) => {
-          if (!current || current.id !== session.id) return current
-          if (next.actions.length === 0) return current
-          return {
-            ...current,
-            frames: [
-              ...current.frames,
-              {
-                id: action.id,
-                title: action.label,
-                actions: next.actions,
-                path: next.path,
-              },
-            ],
-          }
-        })
-      } catch (reason) {
-        setMenu(null)
-        openSurface({
-          kind: "notice",
-          title: "Действие недоступно",
-          body: reason instanceof Error
-            ? reason.message
-            : "Не удалось открыть следующий уровень.",
-          tone: "error",
-        })
-      } finally {
-        setMenuBusy(false)
-      }
-      return
-    }
-
-    setMenu(null)
-    await invokeCommand(action, session.entity, frame.path)
-  }
+  const menu = useSnakeMenuRuntime({
+    onCommand: invokeCommand,
+    onError(message) {
+      openSurface({
+        kind: "notice",
+        title: "Действие недоступно",
+        body: message,
+        tone: "error",
+      })
+    },
+  })
 
   const value = useMemo<SnakeContextValue>(
     () => ({
-      openMenu(request: SnakeMenuRequest) {
-        const actions = snakeAgent.availableActions(request.actions)
-        if (actions.length === 0) return
-
-        menuIdRef.current += 1
-        setMenu({
-          id: menuIdRef.current,
-          entity: request.entity,
-          point: request.point,
-          frames: [{
-            id: "root",
-            title: request.title,
-            actions,
-            path: [],
-          }],
-        })
-      },
-      closeMenu() {
-        if (!menuBusy) setMenu(null)
-      },
+      openMenu: menu.openMenu,
+      closeMenu: menu.closeMenu,
       openSurface,
       closeSurface() {
         if (!busy) setSurface(null)
       },
     }),
-    [busy, menuBusy],
+    [busy, menu.closeMenu, menu.openMenu],
   )
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return
-      if (busy || menuBusy) return
+      if (busy || menu.busy) return
 
       if (surface) {
         setSurface(null)
         return
       }
 
-      setMenu(null)
+      menu.closeMenu()
     }
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [busy, menuBusy, surface])
-
-  const menuFrame = menu?.frames[menu.frames.length - 1] || null
+  }, [busy, menu, surface])
 
   return (
     <SnakeContext.Provider value={value}>
       {children}
-      {menu && menuFrame && (
+      {menu.menu && menu.frame && (
         <SnakeContextMenu
           request={{
-            entity: menu.entity,
-            point: menu.point,
-            title: menuFrame.title,
-            actions: menuFrame.actions,
+            entity: menu.menu.entity,
+            point: menu.menu.point,
+            title: menu.frame.title,
+            actions: menu.frame.actions,
           }}
-          canGoBack={menu.frames.length > 1}
-          busy={menuBusy}
-          onBack={() => {
-            if (menuBusy) return
-            setMenu((current) => {
-              if (!current || current.frames.length <= 1) return current
-              return { ...current, frames: current.frames.slice(0, -1) }
-            })
-          }}
-          onClose={() => {
-            if (!menuBusy) setMenu(null)
-          }}
-          onAction={(action) => void invokeMenuAction(action, menu)}
+          canGoBack={menu.menu.frames.length > 1}
+          busy={menu.busy}
+          onBack={menu.back}
+          onClose={menu.closeMenu}
+          onAction={(action) => void menu.invoke(action)}
         />
       )}
       {surface && (
