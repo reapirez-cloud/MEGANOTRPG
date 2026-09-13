@@ -197,8 +197,19 @@ export type WorkshopOperations = {
     file: File,
     folderId?: string | null,
   ) => Promise<WorkshopMutationResult>
-  createFolder: (name: string) => Promise<WorkshopMutationResult>
+  createFolder: (
+    name: string,
+    parentId?: string | null,
+  ) => Promise<WorkshopMutationResult>
   renameFolder: (id: string, name: string) => Promise<WorkshopMutationResult>
+  moveFolder: (
+    id: string,
+    parentId: string | null,
+  ) => Promise<WorkshopMutationResult>
+  moveMaterial: (
+    id: string,
+    folderId: string | null,
+  ) => Promise<WorkshopMutationResult>
   deleteMaterial: (id: string) => Promise<WorkshopMutationResult>
   deleteFolder: (id: string) => Promise<WorkshopMutationResult>
 }
@@ -1100,13 +1111,17 @@ export function useGMWorkshopData() {
       return { ok: true }
     },
 
-    async createFolder(name) {
+    async createFolder(name, parentId = null) {
       const cleanName = name.trim()
       if (!cleanName) return { ok: false, error: "Нужно название папки." }
+      if (parentId && !state.folders.some((folder) => folder.id === parentId)) {
+        return { ok: false, error: "Родительская папка не найдена." }
+      }
 
       const { error } = await supabase.from("gm_workspace_folders").insert({
         campaign_id: state.campaignId,
         workspace_user_id: state.userId,
+        parent_id: parentId,
         name: cleanName,
       })
       if (error) return { ok: false, error: error.message }
@@ -1121,6 +1136,65 @@ export function useGMWorkshopData() {
       const { error } = await supabase
         .from("gm_workspace_folders")
         .update({ name: cleanName })
+        .eq("id", id)
+        .eq("campaign_id", state.campaignId)
+        .eq("workspace_user_id", state.userId)
+
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+
+    async moveFolder(id, parentId) {
+      const folder = state.folders.find((item) => item.id === id)
+      if (!folder) return { ok: false, error: "Папка не найдена." }
+      if (parentId === id) return { ok: false, error: "Папку нельзя вложить саму в себя." }
+
+      const children = new Map<string, string[]>()
+      for (const item of state.folders) {
+        if (!item.parentId) continue
+        const list = children.get(item.parentId) || []
+        list.push(item.id)
+        children.set(item.parentId, list)
+      }
+      const descendants = new Set<string>()
+      const stack = [...(children.get(id) || [])]
+      while (stack.length) {
+        const next = stack.pop()!
+        if (descendants.has(next)) continue
+        descendants.add(next)
+        stack.push(...(children.get(next) || []))
+      }
+      if (parentId && descendants.has(parentId)) {
+        return { ok: false, error: "Папку нельзя переместить внутрь её собственной ветки." }
+      }
+      if (parentId && !state.folders.some((item) => item.id === parentId)) {
+        return { ok: false, error: "Папка назначения не найдена." }
+      }
+
+      const { error } = await supabase
+        .from("gm_workspace_folders")
+        .update({ parent_id: parentId })
+        .eq("id", id)
+        .eq("campaign_id", state.campaignId)
+        .eq("workspace_user_id", state.userId)
+
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+
+    async moveMaterial(id, folderId) {
+      if (folderId && !state.folders.some((folder) => folder.id === folderId)) {
+        return { ok: false, error: "Папка назначения не найдена." }
+      }
+
+      const { error } = await supabase
+        .from("gm_workspace_files")
+        .update({
+          folder_id: folderId,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", id)
         .eq("campaign_id", state.campaignId)
         .eq("workspace_user_id", state.userId)
