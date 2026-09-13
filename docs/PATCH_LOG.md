@@ -19,6 +19,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Supabase schema/data were intentionally unchanged for this navigation-only UI task; the connected project was confirmed `ACTIVE_HEALTHY` before implementation.
 ### Tests / verification
 
+- Final navigation code head `c9764cabcc9b022e5a3f35bb012fa734bb3547d2` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34751804750`.
 ### Known incomplete work
 
 ---
