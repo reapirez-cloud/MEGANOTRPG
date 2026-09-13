@@ -41,7 +41,9 @@ Root spaces are:
 25%   50%    25%
 ```
 
-The central Home space is visually dominant. Root spaces also support deliberate horizontal swipe navigation.
+The central Home space remains wider in information hierarchy, but the earlier tall raised-center dock geometry is superseded. The current visual direction is a **maximally slim translucent glass rail** that preserves space for PNG navigation artwork without obscuring reading content underneath. Home may be wider, but should not rise into a large crown/bulge.
+
+Root spaces also support deliberate horizontal swipe navigation.
 
 Current status:
 
@@ -50,6 +52,23 @@ Current status:
 - **Чаты** — UI 1.0 placeholder.
 
 The avatar on Home currently routes to Workspace. A richer Personal Reveal remains a future interaction pattern, not a currently implemented primitive.
+
+## Current visual language decision — 2026-09-13
+
+The baseline UI direction is **dead cold light** rather than warm graphite/gold gothic ornament.
+
+Core rule:
+
+- global MEGANOT chrome stays coherent: graphite / iron / cold steel / pale bone;
+- sparse cold glow is allowed as part of interaction and hierarchy;
+- campaign artwork may contribute local color without recoloring the application shell;
+- semantic danger/status colors remain local signals, not themes;
+- class surfaces are the intentional future exception: each class may temporarily override scoped accent/light tokens to express its own character while preserving the MEGANOT shell, structure, typography and navigation;
+- leaving class context restores the normal app palette.
+
+Do not create per-section themes merely for variety.
+
+The current Society News composer is a temporary first-pass modal and is not a visual reference for Snake windows.
 
 ## Home — current composition
 

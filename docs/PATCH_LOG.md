@@ -17,6 +17,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Updated the canonical UI 1.0 visual contract: the global app direction is now **dead cold light** over graphite/iron, with sparse cold glow rather than warm ornamental gothic styling. Future class surfaces may temporarily override scoped accent/light tokens to express class identity; ordinary sections keep the shared MEGANOT palette.
+- Superseded the oversized raised-center bottom dock direction with a planned **maximally slim translucent glass navigation rail** that preserves room for PNG navigation artwork while minimizing obstruction of reading content.
 - Added the canonical planned **Snake** UI interaction/action-agent contract. Snake owns no domain state: entity integrations supply action manifests, Snake owns universal interaction surfaces/gesture handling and dispatches selected actions into the existing GENA / Oracle / explicit-owner paths.
 - Defined universal schema-driven UI surfaces (ContextMenu, Confirm, Editor, Picker, Detail, Notice/Error, Placeholder) so UI 1.0 does not grow separate modal/menu families for locations, inventory, NPCs and other entity types. Deferred domain interfaces must remain universal placeholders until explicitly designed.
 - Marked the current location-specific long-press implementation as temporary and forbidden as a copy pattern; Locations are the first planned Snake migration target and Inventory the second reuse proof.

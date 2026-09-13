@@ -327,22 +327,30 @@ The purpose of this separation is to allow UI 1.0 to be designed as a genuinely 
 
 ## UI 1.0 visual direction — current product decision
 
-The current MEGANOT UI 1.0 visual direction is intentionally grayscale and editorial.
+The current MEGANOT UI 1.0 base visual language is **dead cold light**: restrained graphite/iron surfaces, cold pale text and sparse cold illumination. The app shell itself stays coherent and low-chroma rather than changing theme per section.
 
-- Base palette: graphite, charcoal, steel and stone grays with warm off-white text.
-- Avoid decorative purple/blue/green AI gradients as a default visual language.
-- The interface should feel like a modern campaign journal/archive, not a generic admin dashboard.
+- Base palette: near-black graphite, charcoal/iron, cold steel and pale bone/off-white text.
+- Avoid decorative purple/blue/green AI gradients, warm fantasy-gold theming, ornamental gothic skinning and gratuitous color variation as default product language.
+- Light/glow is allowed and encouraged when it feels cold, sparse, structural and intentional rather than cute, soft or decorative.
+- The interface should feel severe, bleak and premium, not like a generic admin dashboard and not like a fantasy game launcher skin.
 - Home uses asymmetric hierarchy and unequal section weight instead of a uniform card grid.
-- Section titles live on their visual preview and must remain readable through a built-in dark scrim/contrast treatment.
-- Use color later only when it comes from campaign artwork, semantic states, or a deliberate product decision.
+- Campaign artwork may introduce local color inside content, but must not automatically recolor global chrome.
+- Semantic states may use restrained local color (danger, death, poison, warning, success) without becoming full app themes.
+- **Class surfaces are the deliberate palette exception.** When class UI is implemented, each class may temporarily override scoped accent/light tokens to express its unique character. Class theming must remain inside the class context and must not replace the global app background, geometry, typography or navigation language.
+- Leaving a class surface returns to the normal MEGANOT palette.
 - Deferred destinations always receive a clean UI 1.0 placeholder and stable route before their real implementation.
 
 
 ### UI 1.0 navigation shape
 
-Navigation shape is part of the product identity, not generic component chrome.
+Navigation must be persistent without consuming meaningful reading space.
 
-- The bottom dock must not collapse back into a flat rounded rectangle with three equal-looking buttons.
-- Current direction: lower side wings with a physically raised central Home crown/bulge.
-- Preserve the 25 / 50 / 25 information hierarchy while allowing the central geometry to rise above the side controls.
-- Avoid generic floating-tab-bar patterns copied from design-system defaults; the dock should remain recognizable as MEGANOT even without labels.
+- Supersede the earlier raised Home crown / oversized dock direction.
+- Current direction: **one maximally slim horizontal glass rail** near the bottom edge.
+- The rail must remain translucent enough that underlying text/art is still visually continuous, while preserving sufficient contrast for controls.
+- Keep dedicated space for the three PNG navigation buttons; the PNG artwork carries most of the identity, not a large surrounding hull.
+- No tall central crown, large side wings or oversized selected-button bubble.
+- Home may remain wider in allocation than side destinations, but not taller.
+- Selected state should come primarily from the PNG treatment, opacity/light and a restrained cold glow, not from a large raised container.
+- Target implementation should explore roughly a 48–54px visual rail with approximately 38–44px usable PNG control height, plus safe-area handling outside/under the visual rail rather than inflating the rail itself.
+- Glass is an explicit exception to the otherwise mostly opaque surface language: use restrained transparency and blur here because the purpose is to preserve visibility of content beneath navigation.
