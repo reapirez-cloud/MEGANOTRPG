@@ -280,7 +280,9 @@ PC ownership and active identity are deliberately separate:
 
 Assignment must never silently call `set_campaign_active_character`.
 
-Dead characters remain historical catalog entries and cannot be active.
+`Партия` also keeps one manager-facing list of **all published PCs**, including already assigned characters. An assigned PC must remain visible there so GM/owner can explicitly detach it from its current player. Character rows in Party reuse the same Snake character action provider as the unified character catalog: long press / right click exposes the dynamic `Доступ` branch for assign/transfer/unassign and active-character control instead of growing a second action system.
+
+Unassigning a PC clears that character as the old player's active PC when necessary through the canonical Shapoklyak update path. Dead characters remain historical catalog entries and cannot be active.
 
 ### Library law
 

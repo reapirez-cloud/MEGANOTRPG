@@ -65,6 +65,19 @@ test("PC assignment and active identity remain separate commands", () => {
   assert.match(migration, /Dead character cannot be active/)
 })
 
+test("Party exposes every published PC and reuses Snake for assignment, unlink and active state", () => {
+  assert.match(party, /Все персонажи игроков/)
+  assert.match(party, /publishedPc\.map/)
+  assert.match(party, /SnakeTrigger/)
+  assert.match(party, /createWorkshopCharacterActions/)
+  assert.match(party, /createWorkshopPcUnassignAction/)
+  assert.match(party, />\s*Отвязать\s*</)
+  assert.match(actions, /id: "unassign"/)
+  assert.match(actions, /id: "active"/)
+  assert.match(actions, /operations\.setActiveCharacter/)
+  assert.match(actions, /assignedMember\.userId/)
+})
+
 test("published NPC visibility supports immediate visibility or encounter discovery", () => {
   assert.match(actions, /label: "При встрече"/)
   assert.match(actions, /label: "Видно сразу"/)

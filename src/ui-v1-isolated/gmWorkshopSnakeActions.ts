@@ -23,6 +23,30 @@ function actionResult(ok: boolean, error: string | undefined, notice: string) {
     : { type: "error" as const, message: error || "Действие не выполнено." }
 }
 
+export function createWorkshopPcUnassignAction({
+  character,
+  operations,
+}: {
+  character: WorkshopCharacter
+  operations: WorkshopOperations
+}): SnakeAction {
+  return {
+    id: "unassign",
+    label: "Снять назначение",
+    surface: {
+      kind: "confirm",
+      eyebrow: "Доступ к PC",
+      title: "Снять «" + character.name + "» с игрока?",
+      body: "Если этот PC был активным, активный выбор игрока будет снят.",
+      confirmLabel: "Снять",
+    },
+    execute: async () => {
+      const response = await operations.assignCharacter(character.id, null)
+      return actionResult(response.ok, response.error, "Персонаж снова свободен.")
+    },
+  }
+}
+
 export function createWorkshopCharacterActions({
   character,
   members,
@@ -87,6 +111,11 @@ export function createWorkshopCharacterActions({
   }
 
   if (character.characterType === "pc") {
+    const assignedMember = character.assignedUserId
+      ? members.find((member) => member.userId === character.assignedUserId) || null
+      : null
+    const isActive = assignedMember?.activeCharacterId === character.id
+
     actions.push({
       id: "access",
       label: "Доступ",
@@ -118,19 +147,24 @@ export function createWorkshopCharacterActions({
           },
         },
         ...(character.assignedUserId
+          ? [createWorkshopPcUnassignAction({ character, operations })]
+          : []),
+        ...(assignedMember && character.lifeState === "alive"
           ? [{
-              id: "unassign",
-              label: "Снять назначение",
-              surface: {
-                kind: "confirm" as const,
-                eyebrow: "Доступ к PC",
-                title: "Снять персонажа с игрока?",
-                body: "Если этот PC был активным, активный выбор игрока будет снят.",
-                confirmLabel: "Снять",
-              },
+              id: "active",
+              label: isActive ? "Снять активность" : "Сделать активным",
               execute: async () => {
-                const response = await operations.assignCharacter(character.id, null)
-                return actionResult(response.ok, response.error, "Персонаж снова свободен.")
+                const response = await operations.setActiveCharacter(
+                  assignedMember.userId,
+                  isActive ? null : character.id,
+                )
+                return actionResult(
+                  response.ok,
+                  response.error,
+                  isActive
+                    ? "Активный персонаж снят."
+                    : "Персонаж выбран активным.",
+                )
               },
             }]
           : []),

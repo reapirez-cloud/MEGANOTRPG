@@ -1,8 +1,12 @@
 import { useState } from "react"
 
 import type { SnakeAction } from "../snake-engine"
-import { useSnake } from "./SnakeProvider"
+import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import { openSourceAction } from "./GMWorkshopCommon"
+import {
+  createWorkshopCharacterActions,
+  createWorkshopPcUnassignAction,
+} from "./gmWorkshopSnakeActions"
 import {
   useGMWorkshopData,
   type WorkshopMember,
@@ -159,36 +163,48 @@ export default function GMWorkshopParty({
           <div className="u1-gm-list">
             {assigned.map((character) => {
               const isActive = member.activeCharacterId === character.id
+              const actions = createWorkshopCharacterActions({
+                character,
+                members: data.members,
+                operations: data.operations,
+                onOpen: () => onOpenCharacter(character.id),
+              })
 
               return (
-                <div className="u1-gm-party-character" key={character.id}>
-                  <button
-                    type="button"
-                    onClick={() => onOpenCharacter(character.id)}
-                  >
-                    <strong>{character.name}</strong>
-                    <small>
-                      {character.lifeState === "dead"
-                        ? "Мёртв"
-                        : isActive
-                          ? "Активный"
-                          : character.characterClass + " · " + character.level}
-                    </small>
-                  </button>
-
-                  {character.lifeState === "alive" && (
+                <SnakeTrigger
+                  key={character.id}
+                  entity={{ type: "character", id: character.id }}
+                  actions={actions}
+                >
+                  <div className="u1-gm-party-character">
                     <button
                       type="button"
-                      data-active={isActive || undefined}
-                      onClick={() => void data.operations.setActiveCharacter(
-                        member.userId,
-                        isActive ? null : character.id,
-                      )}
+                      onClick={() => onOpenCharacter(character.id)}
                     >
-                      {isActive ? "Снять активность" : "Сделать активным"}
+                      <strong>{character.name}</strong>
+                      <small>
+                        {character.lifeState === "dead"
+                          ? "Мёртв"
+                          : isActive
+                            ? "Активный"
+                            : character.characterClass + " · " + character.level}
+                      </small>
                     </button>
-                  )}
-                </div>
+
+                    {character.lifeState === "alive" && (
+                      <button
+                        type="button"
+                        data-active={isActive || undefined}
+                        onClick={() => void data.operations.setActiveCharacter(
+                          member.userId,
+                          isActive ? null : character.id,
+                        )}
+                      >
+                        {isActive ? "Снять активность" : "Сделать активным"}
+                      </button>
+                    )}
+                  </div>
+                </SnakeTrigger>
               )
             })}
 
@@ -250,6 +266,76 @@ export default function GMWorkshopParty({
           <button type="button" onClick={createInvite}>
             {data.invite ? "Новый код" : "Создать код"}
           </button>
+        </div>
+      </section>
+
+      <section className="u1-gm-workblock">
+        <header>
+          <div>
+            <span>Все персонажи игроков</span>
+            <small>{publishedPc.length}</small>
+          </div>
+        </header>
+
+        <div className="u1-gm-list">
+          {publishedPc.map((character) => {
+            const owner = character.assignedUserId
+              ? data.members.find((item) => item.userId === character.assignedUserId) || null
+              : null
+            const isActive = owner?.activeCharacterId === character.id
+            const actions = createWorkshopCharacterActions({
+              character,
+              members: data.members,
+              operations: data.operations,
+              onOpen: () => onOpenCharacter(character.id),
+            })
+
+            return (
+              <SnakeTrigger
+                key={character.id}
+                entity={{ type: "character", id: character.id }}
+                actions={actions}
+              >
+                <div className="u1-gm-party-character">
+                  <button
+                    type="button"
+                    onClick={() => onOpenCharacter(character.id)}
+                  >
+                    <strong>{character.name}</strong>
+                    <small>
+                      {owner
+                        ? owner.displayName + (isActive ? " · активен" : " · назначен")
+                        : "Свободен"}
+                      {" · "}
+                      {character.characterClass} · {character.level}
+                    </small>
+                  </button>
+
+                  {owner && (
+                    <button
+                      type="button"
+                      onClick={() => openSourceAction(
+                        snake,
+                        { type: "character", id: character.id },
+                        createWorkshopPcUnassignAction({
+                          character,
+                          operations: data.operations,
+                        }),
+                      )}
+                    >
+                      Отвязать
+                    </button>
+                  )}
+                </div>
+              </SnakeTrigger>
+            )
+          })}
+
+          {!publishedPc.length && (
+            <div className="u1-gm-empty">
+              В кампанию ещё не отправлен ни один персонаж игрока.
+            </div>
+          )}
         </div>
       </section>
 
