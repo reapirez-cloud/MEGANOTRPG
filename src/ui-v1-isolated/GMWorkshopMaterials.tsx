@@ -19,24 +19,36 @@ export default function GMWorkshopMaterials({
     typeof folderId === "string" && folderId !== "root" ? folderId : null
 
   const folderMeta = useMemo(() => {
-    const byId = new Map(data.folders.map((folder) => [folder.id, folder]))
-    const depthOf = (id: string) => {
-      let depth = 0
-      let current = byId.get(id)
-      const seen = new Set<string>()
-      while (current?.parentId && !seen.has(current.parentId)) {
-        seen.add(current.parentId)
-        depth += 1
-        current = byId.get(current.parentId)
-      }
-      return depth
+    const children = new Map<string | null, typeof data.folders>()
+    for (const folder of data.folders) {
+      const siblings = children.get(folder.parentId) || []
+      siblings.push(folder)
+      children.set(folder.parentId, siblings)
     }
-    return data.folders
-      .map((folder) => ({ folder, depth: depthOf(folder.id) }))
-      .sort((a, b) =>
-        a.depth - b.depth ||
-        a.folder.name.localeCompare(b.folder.name, "ru")
+    for (const siblings of children.values()) {
+      siblings.sort((a, b) =>
+        a.sortOrder - b.sortOrder ||
+        a.name.localeCompare(b.name, "ru") ||
+        a.id.localeCompare(b.id)
       )
+    }
+
+    const result: Array<{ folder: (typeof data.folders)[number]; depth: number }> = []
+    const seen = new Set<string>()
+    const visit = (parentId: string | null, depth: number) => {
+      for (const folder of children.get(parentId) || []) {
+        if (seen.has(folder.id)) continue
+        seen.add(folder.id)
+        result.push({ folder, depth })
+        visit(folder.id, depth + 1)
+      }
+    }
+    visit(null, 0)
+
+    for (const folder of data.folders) {
+      if (!seen.has(folder.id)) result.push({ folder, depth: 0 })
+    }
+    return result
   }, [data.folders])
 
   const visible = data.materials.filter((material) => {
@@ -187,6 +199,15 @@ export default function GMWorkshopMaterials({
         !descendants.has(candidate.id),
     )
 
+    const siblings = data.folders
+      .filter((candidate) => candidate.parentId === folder.parentId)
+      .sort((a, b) =>
+        a.sortOrder - b.sortOrder ||
+        a.name.localeCompare(b.name, "ru") ||
+        a.id.localeCompare(b.id)
+      )
+    const siblingIndex = siblings.findIndex((candidate) => candidate.id === folder.id)
+
     return [
       {
         id: "open-folder",
@@ -259,6 +280,30 @@ export default function GMWorkshopMaterials({
                 type: "error",
                 message: response.error || "Не удалось переместить папку.",
               }
+        },
+      },
+      {
+        id: "move-up",
+        label: "Поднять выше",
+        enabled: siblingIndex > 0,
+        disabledReason: "Папка уже первая на этом уровне.",
+        execute: async () => {
+          const response = await data.operations.reorderFolder(folder.id, "up")
+          return response.ok
+            ? { type: "success", notice: "Порядок папок изменён." }
+            : { type: "error", message: response.error || "Не удалось изменить порядок." }
+        },
+      },
+      {
+        id: "move-down",
+        label: "Опустить ниже",
+        enabled: siblingIndex >= 0 && siblingIndex < siblings.length - 1,
+        disabledReason: "Папка уже последняя на этом уровне.",
+        execute: async () => {
+          const response = await data.operations.reorderFolder(folder.id, "down")
+          return response.ok
+            ? { type: "success", notice: "Порядок папок изменён." }
+            : { type: "error", message: response.error || "Не удалось изменить порядок." }
         },
       },
       {
@@ -405,7 +450,29 @@ export default function GMWorkshopMaterials({
                     return { type: "success" as const }
                   },
                 }]
-              : []),
+              : [{
+                  id: "rename-material",
+                  label: "Переименовать",
+                  surface: {
+                    kind: "editor" as const,
+                    eyebrow: "Материалы · файл",
+                    title: material.title,
+                    fields: [
+                      { id: "title", label: "Название", type: "text" as const, required: true },
+                    ],
+                    initialValues: { title: material.title },
+                    submitLabel: "Сохранить",
+                  },
+                  execute: async ({ input }: { input: Record<string, unknown> }) => {
+                    const response = await data.operations.renameMaterial(
+                      material.id,
+                      String(input?.title || ""),
+                    )
+                    return response.ok
+                      ? { type: "success" as const, notice: "Файл переименован." }
+                      : { type: "error" as const, message: response.error || "Не удалось переименовать файл." }
+                  },
+                }]),
             {
               id: "move-material",
               label: "Переместить",
