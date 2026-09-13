@@ -17,6 +17,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Upgraded Library administration with type-specific item/spell editing, item issue quantity, reversible archive, and feature/effect-to-item unlink in addition to link.
 - Upgraded Party administration with owner-only member removal, configurable invite limits/expiry, invite revocation and invite history/status.
 - Upgraded GM Materials into a movable folder tree: nested folder creation, folder moves with cycle protection, and note/file movement between folders/root.
+- Closed the remaining Materials organization gaps: uploaded files can be renamed, sibling folders can be reordered, and the visible folder rail now follows the actual parent/child tree instead of grouping folders only by depth.
+- Custom Library definitions now expose validated mechanics JSON instead of silently saving item/feature/effect mechanics as an empty array.
 - Replaced Location Snake placeholders with real create/edit/transition/archive/delete flows routed through Oracle -> Larisa.
 - Completed a full Snake pass across the current GM Workshop: campaign members now have long-press/right-click management for PC assignment, active-character selection and owner-only role changes; the invitation block exposes copy/new-code actions; character rows gain basic edit plus safe draft deletion; definitions gain explicit inspect; folders/materials gain open actions alongside their existing edit/rename/delete controls.
 - Expanded `Я → Управление → Партия` with a persistent **Все персонажи игроков** roster. It shows free and already assigned PCs together, keeps the owning player / active state visible, and gives managers an explicit `Отвязать` action instead of hiding bound PCs inside individual member pages.
@@ -33,6 +35,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Extended GM Workshop regression coverage for real mechanics editing plus material rename/reorder and the completed folder tree.
 - Updated the previously placeholder-only Location contract test to require real Oracle/Larisa execution, and added GM Workshop regressions for real class binding, Character View, Party administration and material movement.
 - Supabase migration `gm_party_member_and_invite_admin_v1` was applied successfully to project `msjvdnrpzuavqjcndeqj`.
 - Added contract coverage for the mandatory creation-time Snake completeness rule and expanded GM Workshop regressions across members, invitations, character edit/draft deletion, definitions, folders and materials.
