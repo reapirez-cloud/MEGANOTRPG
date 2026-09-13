@@ -4,6 +4,7 @@ import { cheburashka } from "../inventory-engine/runtime.ts"
 import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { oracle } from "../oracle-engine/runtime.ts"
 import { supabase } from "../lib/supabase"
+import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
 import type {
   CharacterFeature,
   CharacterSheet,
@@ -111,7 +112,7 @@ export function useUiV1CharacterControl(characterId: string) {
         characterType: row.character_type === "npc" ? "npc" : "pc",
         assignedUserId: row.assigned_user_id,
         lifeState: row.life_state === "dead" ? "dead" : "alive",
-        avatarUrl: row.avatar_url || null,
+        avatarUrl: (await resolveCampaignMediaUrl(row.avatar_url)) || row.avatar_url || null,
       })
       setSheet((sheetResult.data || null) as CharacterSheet | null)
       setInventory(inventoryRows)
