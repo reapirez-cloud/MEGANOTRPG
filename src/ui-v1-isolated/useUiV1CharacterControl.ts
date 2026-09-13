@@ -1,0 +1,262 @@
+import { useCallback, useEffect, useState } from "react"
+
+import { cheburashka } from "../inventory-engine/runtime.ts"
+import { createEngineCommandContext } from "../engine-contracts/index.ts"
+import { oracle } from "../oracle-engine/runtime.ts"
+import { supabase } from "../lib/supabase"
+import type {
+  CharacterFeature,
+  CharacterSheet,
+  CharacterSpell,
+  InventoryInput,
+  InventoryItem,
+} from "../types/characterSheet"
+import type {
+  CharacterTemplateAssignment,
+  RuleTemplate,
+} from "../rule-templates/types.ts"
+import { useUiV1CampaignScope } from "./useUiV1SectionData"
+
+export type UiV1Character = {
+  id: string
+  name: string
+  characterClass: string
+  level: number
+  bio: string
+  characterType: "pc" | "npc"
+  assignedUserId: string | null
+  lifeState: "alive" | "dead"
+  avatarUrl: string | null
+}
+
+type Result = { ok: boolean; error?: string }
+
+function errorMessage(reason: unknown, fallback: string) {
+  return reason instanceof Error && reason.message ? reason.message : fallback
+}
+
+export function useUiV1CharacterControl(characterId: string) {
+  const scope = useUiV1CampaignScope()
+  const [character, setCharacter] = useState<UiV1Character | null>(null)
+  const [sheet, setSheet] = useState<CharacterSheet | null>(null)
+  const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [spells, setSpells] = useState<CharacterSpell[]>([])
+  const [features, setFeatures] = useState<CharacterFeature[]>([])
+  const [assignments, setAssignments] = useState<CharacterTemplateAssignment[]>([])
+  const [templates, setTemplates] = useState<RuleTemplate[]>([])
+  const [resources, setResources] = useState<Array<{
+    resource_key: string
+    current_value: number
+    max_value: number
+  }>>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    if (!scope.campaignId || !characterId) return
+    setLoading(true)
+    setError(null)
+
+    try {
+      const [
+        characterResult,
+        sheetResult,
+        spellsResult,
+        featuresResult,
+        assignmentsResult,
+        templatesResult,
+        resourcesResult,
+      ] = await Promise.all([
+        supabase.from("characters")
+          .select("id,name,character_class,level,bio,character_type,assigned_user_id,life_state,avatar_url")
+          .eq("campaign_id", scope.campaignId)
+          .eq("id", characterId)
+          .maybeSingle(),
+        supabase.from("character_sheets").select("*").eq("character_id", characterId).maybeSingle(),
+        supabase.from("character_spells").select("*").eq("character_id", characterId)
+          .order("spell_level").order("sort_order"),
+        supabase.from("character_features").select("*").eq("character_id", characterId)
+          .order("sort_order").order("created_at"),
+        supabase.from("character_template_assignments")
+          .select("id,character_id,template_id,template_level,selected_choices,assigned_at,updated_at")
+          .eq("character_id", characterId),
+        supabase.from("rule_templates")
+          .select("id,campaign_id,kind,slug,name,description,version,mechanics,choices,parent_template_id,unlock_level,catalog_key,catalog_revision,source_kind,source_label,is_builtin,mechanical_summary,author_description,author_comment,rules_meta,is_active,created_by,created_at,updated_at")
+          .eq("campaign_id", scope.campaignId),
+        supabase.from("character_resource_states")
+          .select("resource_key,current_value,max_value")
+          .eq("character_id", characterId)
+          .order("resource_key"),
+      ])
+
+      const firstError =
+        characterResult.error ||
+        sheetResult.error ||
+        spellsResult.error ||
+        featuresResult.error ||
+        assignmentsResult.error ||
+        templatesResult.error ||
+        resourcesResult.error
+      if (firstError) throw new Error(firstError.message)
+      if (!characterResult.data) throw new Error("Персонаж не найден.")
+
+      const inventoryRows = await cheburashka.listCharacterItems(characterId)
+      const row = characterResult.data
+      setCharacter({
+        id: row.id,
+        name: row.name,
+        characterClass: row.character_class || "",
+        level: row.level || 1,
+        bio: row.bio || "",
+        characterType: row.character_type === "npc" ? "npc" : "pc",
+        assignedUserId: row.assigned_user_id,
+        lifeState: row.life_state === "dead" ? "dead" : "alive",
+        avatarUrl: row.avatar_url || null,
+      })
+      setSheet((sheetResult.data || null) as CharacterSheet | null)
+      setInventory(inventoryRows)
+      setSpells((spellsResult.data || []) as CharacterSpell[])
+      setFeatures((featuresResult.data || []) as CharacterFeature[])
+      setAssignments((assignmentsResult.data || []) as CharacterTemplateAssignment[])
+      setTemplates((templatesResult.data || []) as RuleTemplate[])
+      setResources((resourcesResult.data || []).map((item) => ({
+        resource_key: item.resource_key,
+        current_value: Number(item.current_value || 0),
+        max_value: Number(item.max_value || 0),
+      })))
+    } catch (reason) {
+      setError(errorMessage(reason, "Не удалось загрузить персонажа."))
+    } finally {
+      setLoading(false)
+    }
+  }, [characterId, scope.campaignId])
+
+  useEffect(() => {
+    if (!scope.campaignId) {
+      if (!scope.loading) setLoading(false)
+      return
+    }
+    void load()
+  }, [load, scope.campaignId, scope.loading])
+
+  const context = useCallback(() => createEngineCommandContext({
+    campaignId: scope.campaignId,
+    requestedBy: scope.userId,
+    authority: "gm",
+    actorCharacterId: characterId,
+  }), [characterId, scope.campaignId, scope.userId])
+
+  const gm = useCallback(async (
+    action: () => Promise<unknown>,
+    fallback: string,
+  ): Promise<Result> => {
+    if (!scope.canManage) return { ok: false, error: "Недостаточно прав." }
+    try {
+      await action()
+      await load()
+      return { ok: true }
+    } catch (reason) {
+      return { ok: false, error: errorMessage(reason, fallback) }
+    }
+  }, [load, scope.canManage])
+
+  const updateSheet = useCallback((patch: Partial<CharacterSheet>) => gm(
+    () => oracle.characters.updateSheet(context(), characterId, patch),
+    "Не удалось обновить лист.",
+  ), [characterId, context, gm])
+
+  const setHp = useCallback((currentHp: number, maxHp: number, tempHp: number) => gm(
+    () => oracle.characters.setHp(context(), characterId, currentHp, { maxHp, tempHp }),
+    "Не удалось изменить HP.",
+  ), [characterId, context, gm])
+
+  const recover = useCallback((trigger: "short_rest" | "long_rest" | "dawn") => gm(
+    () => oracle.characters.recover(context(), characterId, trigger),
+    "Не удалось восстановить персонажа.",
+  ), [characterId, context, gm])
+
+  const setEquipped = useCallback((item: InventoryItem, equipped: boolean) => gm(
+    () => oracle.inventory.setEquipped(
+      context(),
+      characterId,
+      item.id,
+      equipped,
+      item.equipment_slot,
+    ),
+    "Не удалось изменить экипировку.",
+  ), [characterId, context, gm])
+
+  const updateItem = useCallback((item: InventoryItem, patch: Partial<InventoryInput>) => {
+    const input: InventoryInput = {
+      name: patch.name ?? item.name,
+      quantity: patch.quantity ?? item.quantity,
+      weight: patch.weight !== undefined ? patch.weight : item.weight,
+      equipped: patch.equipped ?? item.equipped,
+      category: patch.category ?? item.category,
+      equipment_slot: patch.equipment_slot !== undefined ? patch.equipment_slot : item.equipment_slot,
+      image_url: patch.image_url !== undefined ? patch.image_url : item.image_url,
+      description: patch.description ?? item.description,
+      definition_id: item.definition_id ?? null,
+      definition_revision: item.definition_revision ?? null,
+      mechanics: patch.mechanics ?? item.mechanics ?? [],
+      usage_mode: patch.usage_mode ?? item.usage_mode,
+      charges_current: patch.charges_current !== undefined ? patch.charges_current : item.charges_current,
+      charges_max: patch.charges_max !== undefined ? patch.charges_max : item.charges_max,
+      item_state: patch.item_state ?? item.item_state ?? {},
+    }
+    return gm(
+      () => oracle.inventory.update(context(), characterId, item.id, input),
+      "Не удалось изменить предмет.",
+    )
+  }, [characterId, context, gm])
+
+  const removeItem = useCallback((itemId: string) => gm(
+    () => oracle.inventory.remove(context(), characterId, itemId),
+    "Не удалось удалить предмет.",
+  ), [characterId, context, gm])
+
+  const transferItem = useCallback((itemId: string, targetCharacterId: string, amount: number) => gm(
+    () => oracle.inventory.transfer(context(), characterId, targetCharacterId, itemId, amount),
+    "Не удалось передать предмет.",
+  ), [characterId, context, gm])
+
+  const setSpellPrepared = useCallback((spellId: string, prepared: boolean) => gm(
+    () => oracle.characters.setSpellPrepared(context(), characterId, spellId, prepared),
+    "Не удалось изменить подготовку заклинания.",
+  ), [characterId, context, gm])
+
+  const deleteSpell = useCallback((spellId: string) => gm(
+    () => oracle.characters.deleteSpell(context(), characterId, spellId),
+    "Не удалось удалить заклинание.",
+  ), [characterId, context, gm])
+
+  const deleteFeature = useCallback((featureId: string) => gm(
+    () => oracle.characters.deleteFeature(context(), characterId, featureId),
+    "Не удалось удалить особенность.",
+  ), [characterId, context, gm])
+
+  return {
+    ...scope,
+    character,
+    sheet,
+    inventory,
+    spells,
+    features,
+    assignments,
+    templates,
+    resources,
+    loading: scope.loading || loading,
+    error: scope.error || error,
+    refresh: load,
+    updateSheet,
+    setHp,
+    recover,
+    setEquipped,
+    updateItem,
+    removeItem,
+    transferItem,
+    setSpellPrepared,
+    deleteSpell,
+    deleteFeature,
+  }
+}
