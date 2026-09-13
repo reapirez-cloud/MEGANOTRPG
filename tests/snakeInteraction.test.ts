@@ -1,7 +1,8 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { SnakeAgent, type SnakeAction } from "../src/snake-engine/index.ts"
+import { SnakeAgent } from "../src/snake-engine/agent.ts"
+import type { SnakeAction } from "../src/snake-engine/types.ts"
 
 test("Snake hides hidden actions without learning entity business rules", () => {
   const agent = new SnakeAgent()

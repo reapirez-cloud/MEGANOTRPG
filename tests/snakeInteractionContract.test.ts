@@ -38,9 +38,10 @@ test("Snake defines reusable surfaces and the placeholder boundary", () => {
   assert.match(snake, /must not invent a domain form/i)
 })
 
-test("current location long-press logic is explicitly temporary", () => {
-  assert.match(locations, /SNAKE_INTERACTION_CONTRACT\.md/)
-  assert.match(locations, /Do not copy this location-specific long-press\/context-menu logic/)
-  assert.match(snake, /current UI 1\.0 location-specific long-press implementation.*not.*pattern to copy/is)
+test("Locations are the first real Snake consumer and no longer own long-press runtime", () => {
+  assert.match(locations, /SnakeTrigger/)
+  assert.match(locations, /createLocationSnakeActions/)
+  assert.doesNotMatch(locations, /timerRef|window\.setTimeout|LocationInlineMenu|toggleActions/)
+  assert.match(snake, /Locations.*migrated to Snake/is)
   assert.match(snake, /One physical gesture causes one Snake invocation/i)
 })

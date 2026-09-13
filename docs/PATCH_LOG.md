@@ -11,14 +11,20 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Added the first universal Snake window runtime (Placeholder, Confirm, Editor, Picker, Detail and Notice/Error modes) so future interaction forms share one recognizable window system instead of entity-specific modal families.
+- Location right-click / long-press actions now use the shared Snake floating context menu instead of the old inline expanding tray; unapproved management actions open the shared Snake Placeholder window.
 - Replaced the mixed navigation assets with a new **all-PNG cold geometric pack**: compact `Я`, compact `Чаты`, and a deliberately very wide `Главная` whose horizontal lines nearly bridge the side controls.
 - Reduced the visible floating glass navigation rail from **34px to 18px** while preserving **44px invisible hit targets**. Removed the detached lower filament entirely; active state now comes only from the PNG's cold glow/brightness.
 - Reduced the UI 1.0 bottom content reservation to match the thinner persistent navigation instead of leaving the old oversized empty footer.
 ### Runtime and architecture changes
 
+- Migrated Locations as Snake proof #1 and removed LocationNavigator's local long-press timer, inline action menu and local placeholder machinery. Inventory is now the required proof #2.
+- Explicitly made universal windows surfaces owned by Snake rather than a second dispatch agent: Snake retains entity/action context, gathers input through a surface, then forwards normalized input to the domain adapter that calls GENA, Oracle or an approved owner facade.
+- Implemented Snake as the UI 1.0 interaction/action agent: generic entity/action/result contracts, one provider, one trigger, one-gesture/one-invocation handling, viewport-aware menu positioning and typed domain-provided executors.
 - Supabase schema/data were intentionally unchanged for this navigation-only UI task; the connected project was confirmed `ACTIVE_HEALTHY` before implementation.
 ### Tests / verification
 
+- Added Snake agent regression coverage for hidden/disabled actions and forwarding entity + surface input to a domain-provided executor; updated UI contracts to reject a return of the old Location long-press runtime.
 - Final navigation code head `c9764cabcc9b022e5a3f35bb012fa734bb3547d2` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34751804750`.
 ### Known incomplete work
 

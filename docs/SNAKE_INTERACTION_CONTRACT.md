@@ -1,6 +1,6 @@
 # SNAKE Interaction Engine Contract
 
-> Status: **PLANNED ARCHITECTURE — canonical interaction boundary for UI 1.0**
+> Status: **IMPLEMENTED CORE — canonical interaction boundary for UI 1.0**
 >
 > Snake is a named UI interaction/control agent. It is **not** a canonical gameplay-state owner and it does not replace GENA, Oracle, Shapoklyak, Cheburashka, Larisa, Chasovoy, Tobik or CE.
 >
@@ -19,6 +19,28 @@ if npc -> npc menu
 ~~~
 
 The domain-specific layer supplies the available actions. Snake provides one reusable interaction runtime.
+
+## Window ownership law
+
+**Universal windows are Snake surfaces, not a second agent.**
+
+Do not create a parallel "Window agent" that receives the same domain commands, stores its own action state or dispatches independently. That would duplicate Snake's orchestration role.
+
+The interaction sequence is:
+
+~~~text
+object/domain provider
+-> Snake action
+-> optional Snake surface (Context / Confirm / Editor / Picker / Detail / Placeholder)
+-> user input
+-> Snake action executor / typed adapter
+-> GENA / Oracle / approved owner facade
+~~~
+
+The window gathers interaction input. Snake keeps the action/entity context. On submit, Snake forwards the normalized input to the action executor supplied by the domain integration. The window itself never decides which engine owns the command.
+
+The current implementation uses typed domain-provided executor callbacks rather than an unrestricted string-to-engine reflection layer. This preserves the same execution-boundary law while making it impossible for the generic Snake core to dynamically call arbitrary engine methods.
+
 
 ## Why Snake exists
 
@@ -390,33 +412,37 @@ The visual component does not own:
 
 Those stay centralized.
 
-## Current location implementation is temporary
+## Current implementation status
 
-The current UI 1.0 location-specific long-press implementation predates this contract and is **not** the pattern to copy.
+Snake core is implemented in `src/snake-engine/**` and mounted once for UI 1.0 through `SnakeProvider`.
 
-Known defect in that temporary implementation:
+Implemented now:
 
-~~~text
-touch long-press timer opens the menu
-+ Telegram/Android may emit contextmenu for the same gesture
-+ current toggle semantics can immediately close it
-~~~
+- generic entity/action contracts;
+- one `SnakeProvider` and one `SnakeTrigger`;
+- right-click and touch long-press recognition;
+- consumed-touch suppression for the synthetic Telegram/Android `contextmenu` duplicate;
+- viewport-aware floating context menu positioning;
+- one universal Snake window system with Placeholder, Confirm, Editor, Picker, Detail and Notice/Error modes;
+- typed domain-provided execution callbacks; Snake does not dynamically reflect into named engines;
+- Locations migrated to Snake as the first real entity family;
+- the old LocationNavigator timer / inline action tray / local placeholder runtime removed.
 
-The correct fix is migration to the Snake context-menu runtime, not duplication of another local workaround.
+Location mutation forms remain intentionally unapproved. Their actions therefore open the universal Snake Placeholder surface. When a real create/edit/delete flow is designed, the location action provider changes the surface/action adapter; Snake itself does not become location-aware.
 
-Do not copy LocationNavigator long-press/menu code into inventory, characters, chats, achievements or any other future surface.
+Inventory is the next required unrelated entity family and must prove the runtime is genuinely generic.
 
-## Planned implementation sequence
+## Implementation sequence / progress
 
-1. Define Snake core types and provider/dispatch contracts.
-2. Implement one UI 1.0 SnakeProvider / context-menu portal and one SnakeTrigger.
-3. Implement robust right-click + long-press gesture handling, including duplicate WebView contextmenu suppression.
-4. Implement viewport-aware floating positioning and shared UI 1.0 context-menu styling.
-5. Migrate Locations to Snake and delete the temporary location-specific long-press/menu runtime.
-6. Keep unapproved location mutation interfaces on the universal Placeholder surface.
-7. Reuse the same Snake runtime for Inventory as the second real entity family. Inventory must supply inventory-specific actions without any location action knowledge leaking into Snake.
-8. Add universal Confirm / Picker / Editor surfaces only as real product flows require them.
-9. Migrate other UI 1.0 entities incrementally. Never create a parallel long-press framework.
+1. **DONE** — Snake core types and typed provider/dispatch contracts.
+2. **DONE** — one UI 1.0 SnakeProvider / context-menu portal and one SnakeTrigger.
+3. **DONE** — right-click + long-press handling with duplicate WebView contextmenu suppression.
+4. **DONE** — viewport-aware floating positioning and shared UI 1.0 context-menu styling.
+5. **DONE** — Locations migrated to Snake; temporary location-specific long-press/menu runtime deleted.
+6. **DONE** — unapproved Location mutation interfaces stay on the universal Placeholder surface.
+7. **NEXT PROOF** — reuse Snake for Inventory as the second unrelated entity family. Inventory supplies inventory actions; no Location knowledge may leak into Snake.
+8. **FOUNDATION DONE / REAL FLOWS INCREMENTAL** — universal Confirm / Picker / Editor / Detail / Notice window modes exist; domain flows should activate them only when explicitly designed.
+9. **ONGOING** — migrate other UI 1.0 entities incrementally. Never create a parallel long-press or modal framework.
 
 ## Architectural invariants
 

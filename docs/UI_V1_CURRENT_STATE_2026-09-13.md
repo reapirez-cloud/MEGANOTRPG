@@ -151,18 +151,24 @@ React must not directly write canonical GM state merely because RLS would allow 
 
 ## Snake — current status
 
-**Snake is planned and documented, not implemented.**
+**Snake core is implemented and Locations are migrated to it.**
 
 Canonical contract: `docs/SNAKE_INTERACTION_CONTRACT.md`.
 
-The existing Zone long-press/context action implementation is temporary and must not be copied. Snake is intended to centralize long press/right click, one-gesture/one-invocation handling, viewport-aware context menus, reusable Confirm/Editor/Picker/Detail/Notice/Placeholder surfaces and typed dispatch into GENA/Oracle/explicit-owner paths.
+Current implementation includes:
 
-Planned proof sequence remains:
+- `src/snake-engine/**` generic action/entity/result contracts;
+- one UI 1.0 `SnakeProvider` and reusable `SnakeTrigger`;
+- right-click + touch long-press with synthetic Telegram/Android contextmenu suppression;
+- viewport-aware universal floating context menu;
+- one Snake-owned universal window system: Placeholder / Confirm / Editor / Picker / Detail / Notice/Error;
+- domain-provided typed executors rather than a generic arbitrary engine RPC;
+- Location actions supplied by `locationSnakeActions.ts`, outside Snake;
+- the old LocationNavigator local timer / inline menu removed.
 
-1. Snake core/provider/trigger/context menu;
-2. migrate Locations and delete their local long-press runtime;
-3. use Inventory as the second unrelated entity family proving Snake is generic;
-4. add further universal surfaces only when real flows require them.
+Window ownership rule: universal windows are **surfaces of Snake**, not a separate agent. The flow is `domain action -> Snake surface -> user input -> Snake executor -> GENA / Oracle / approved owner`.
+
+Location CRUD interfaces that have not yet been designed still open Snake Placeholder. The next architecture proof is **Inventory as the second unrelated entity family**.
 
 ## Foundation note — do not trust the old Stage 2 capability list
 
@@ -179,15 +185,15 @@ A. UI 1.0 shell/isolation                 DONE
 B. Home                                   DONE first production pass
 C. chronology/basic content sections      DONE / partial by section
 D. World                                  PARTIAL, usable first pass
-E. Snake interaction runtime              NEXT major architecture stage
-F. Inventory as Snake proof #2            AFTER Snake/Location migration
+E. Snake interaction runtime              DONE core + Locations proof #1
+F. Inventory as Snake proof #2            NEXT architecture proof
 G. Workspace: Player + GM                 AFTER interaction foundation
 H. Character UI / Sheet / Inventory UI    AFTER Workspace foundation
 I. Chats UI 1.0                           DEFERRED
 J. remaining surfaces + atmosphere/polish DEFERRED
 ```
 
-Do not start a heavy Workspace/Character/Inventory redesign by creating local context menus and modal families before Snake exists.
+Do not create local context menus or modal families beside Snake. New entity families should add action providers and reuse Snake surfaces.
 
 ## Intentional placeholders are not bugs
 
