@@ -405,6 +405,22 @@ export function useGMWorkshopData() {
         .order("created_at", { ascending: false })
         .limit(20),
       chasovoy.listDefinitions({ scope: "campaign", campaignId }),
+      supabase.from("rule_templates")
+        .select("id,campaign_id,kind,slug,name,description,version,mechanics,choices,parent_template_id,unlock_level,catalog_key,catalog_revision,source_kind,source_label,is_builtin,mechanical_summary,author_description,author_comment,rules_meta,is_active,created_by,created_at,updated_at")
+        .eq("campaign_id", campaignId)
+        .in("kind", ["class", "subclass"])
+        .order("kind")
+        .order("name"),
+      supabase.from("character_template_assignments")
+        .select("id,character_id,template_id,template_level,selected_choices,assigned_at,updated_at")
+        .in("character_id", (charactersResult.data || []).map((character) => character.id)),
+      supabase.from("locations")
+        .select("id,parent_location_id,name,lifecycle_state")
+        .eq("campaign_id", campaignId)
+        .order("sort_order"),
+      supabase.from("location_npc_habitats")
+        .select("npc_character_id,location_id")
+        .eq("campaign_id", campaignId),
     ])
 
     const [
@@ -415,6 +431,10 @@ export function useGMWorkshopData() {
       materialsResult,
       invitesResult,
       definitionsResult,
+      templatesResult,
+      assignmentsResult,
+      locationsResult,
+      habitatsResult,
     ] = results
 
     const firstError =
@@ -423,7 +443,11 @@ export function useGMWorkshopData() {
       charactersResult.error ||
       foldersResult.error ||
       materialsResult.error ||
-      invitesResult.error
+      invitesResult.error ||
+      templatesResult.error ||
+      assignmentsResult.error ||
+      locationsResult.error ||
+      habitatsResult.error
 
     if (firstError) {
       setState({
@@ -471,6 +495,7 @@ export function useGMWorkshopData() {
           (await resolveCampaignMediaUrl(character.avatar_url)) ||
           character.avatar_url ||
           null,
+        avatarStoragePath: character.avatar_url || null,
         characterType: character.character_type as "pc" | "npc",
         visibilityMode: (character.visibility_mode || "always") as WorkshopCharacter["visibilityMode"],
         publicationState: (character.publication_state || "campaign") as WorkshopCharacter["publicationState"],
@@ -505,6 +530,18 @@ export function useGMWorkshopData() {
       })),
       characters,
       definitions: definitionsResult,
+      templates: (templatesResult.data || []) as RuleTemplate[],
+      templateAssignments: (assignmentsResult.data || []) as CharacterTemplateAssignment[],
+      locations: (locationsResult.data || []).map((location) => ({
+        id: location.id,
+        parentId: location.parent_location_id,
+        name: location.name,
+        lifecycleState: location.lifecycle_state === "archived" ? "archived" : "active",
+      })),
+      npcHabitats: (habitatsResult.data || []).map((link) => ({
+        npcCharacterId: link.npc_character_id,
+        locationId: link.location_id,
+      })),
       folders: (foldersResult.data || []).map((folder) => ({
         id: folder.id,
         parentId: folder.parent_id,
