@@ -122,6 +122,7 @@ export type WorkshopOperations = {
     characterId: string,
     visibilityMode?: "always" | "discover",
   ) => Promise<WorkshopMutationResult>
+  returnCharacterToDraft: (characterId: string) => Promise<WorkshopMutationResult>
   setCharacterLifeState: (
     characterId: string,
     state: "alive" | "dead",
@@ -718,6 +719,13 @@ export function useGMWorkshopData() {
       return mutate(
         () => oracle.characters.setPublicationState(context(), characterId, "campaign", visibilityMode),
         "Не удалось отправить персонажа в кампанию.",
+      )
+    },
+
+    returnCharacterToDraft(characterId) {
+      return mutate(
+        () => oracle.characters.setPublicationState(context(), characterId, "draft", "private"),
+        "Не удалось вернуть персонажа в черновик.",
       )
     },
 
