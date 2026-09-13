@@ -740,8 +740,8 @@ button {
   opacity: 1;
   filter:
     brightness(1.38)
-    drop-shadow(0 0 3px rgba(223, 234, 238, 0.62))
-    drop-shadow(0 0 9px rgba(205, 224, 231, 0.24));
+    drop-shadow(0 0 3px rgba(220, 233, 238, 0.72))
+    drop-shadow(0 0 9px rgba(202, 220, 226, 0.24));
   transform: translateY(-1px);
 }
 
