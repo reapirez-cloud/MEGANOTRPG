@@ -10,9 +10,15 @@ import type {
 import type {
   WorkshopCharacter,
   WorkshopInvite,
+  WorkshopLocation,
   WorkshopMember,
+  WorkshopNpcHabitat,
   WorkshopOperations,
 } from "./useGMWorkshopData"
+import type {
+  CharacterTemplateAssignment,
+  RuleTemplate,
+} from "../rule-templates/types.ts"
 
 function selection(input: SnakeActionInput) {
   return typeof input?.selection === "string" ? input.selection : ""
@@ -41,23 +47,29 @@ export function createWorkshopCharacterEditAction({
       size: { width: "wide", height: "tall" },
       fields: [
         { id: "name", label: "Имя", type: "text", required: true },
-        { id: "characterClass", label: "Класс / роль", type: "text" },
-        { id: "level", label: "Уровень", type: "number" },
+        {
+          id: "characterType",
+          label: "Тип",
+          type: "select",
+          options: [
+            { value: "pc", label: "PC" },
+            { value: "npc", label: "NPC" },
+          ],
+        },
         { id: "bio", label: "Описание", type: "textarea" },
       ],
       initialValues: {
         name: character.name,
-        characterClass: character.characterClass,
-        level: character.level,
+        characterType: character.characterType,
         bio: character.bio,
       },
       submitLabel: "Сохранить",
     },
     execute: async ({ input }) => {
+      const nextType = input?.characterType === "npc" ? "npc" : "pc"
       const response = await operations.updateCharacter(character.id, {
         name: String(input?.name || character.name),
-        characterClass: String(input?.characterClass || character.characterClass),
-        level: Number(input?.level || character.level),
+        characterType: nextType,
         bio: String(input?.bio || ""),
       })
       return actionResult(response.ok, response.error, "Персонаж сохранён.")
