@@ -8,6 +8,7 @@ export type {
   CharacterTemplateAssignmentInput,
   EntityKind,
   EntityLifeState,
+  EntityPublicationState,
   EntityMutation,
   EntityRecoveryTrigger,
   EntityVisibility,

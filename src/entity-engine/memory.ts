@@ -175,12 +175,31 @@ export class MemoryShapoklyakStorage implements ShapoklyakStorage {
       after = { ...before, ...command.input, assigned_user_id: command.input.character_type === "npc" ? null : command.input.assigned_user_id, updated_at: command.context.occurredAt }
     } else if (command.kind === "entity.set_life_state") {
       after = { ...before, life_state: command.lifeState, died_at: command.lifeState === "dead" ? command.context.occurredAt : null, updated_at: command.context.occurredAt }
+    } else if (command.kind === "entity.set_publication_state") {
+      after = {
+        ...before,
+        publication_state: command.publicationState,
+        assigned_user_id: command.publicationState === "draft" ? null : before.assigned_user_id,
+        visibility: command.publicationState === "draft" ? "private" : "campaign",
+        visibility_mode: command.publicationState === "draft"
+          ? "private"
+          : command.visibilityMode || (before.character_type === "npc" ? "discover" : "always"),
+        updated_at: command.context.occurredAt,
+      }
     } else if (command.kind === "entity.set_visibility") {
       after = { ...before, visibility_mode: command.visibilityMode, visibility: command.visibilityMode === "private" ? "private" : "campaign", updated_at: command.context.occurredAt }
     } else {
       throw new EngineCommandError("entity.unsupported_command", `Unsupported Shapoklyak command: ${command satisfies never}`)
     }
     this.entities.set(characterId, after)
-    return { kind: command.kind, characterIds: [characterId], before, after: copy(after), requiresResolution: command.kind !== "entity.set_visibility" }
+    return {
+      kind: command.kind,
+      characterIds: [characterId],
+      before,
+      after: copy(after),
+      requiresResolution:
+        command.kind !== "entity.set_visibility" &&
+        command.kind !== "entity.set_publication_state",
+    }
   }
 }
