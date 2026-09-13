@@ -45,6 +45,7 @@ export function useUiV1CharacterControl(characterId: string) {
   const [features, setFeatures] = useState<CharacterFeature[]>([])
   const [assignments, setAssignments] = useState<CharacterTemplateAssignment[]>([])
   const [templates, setTemplates] = useState<RuleTemplate[]>([])
+  const [transferTargets, setTransferTargets] = useState<Array<{ id: string; name: string }>>([])
   const [resources, setResources] = useState<Array<{
     resource_key: string
     current_value: number
@@ -67,6 +68,7 @@ export function useUiV1CharacterControl(characterId: string) {
         assignmentsResult,
         templatesResult,
         resourcesResult,
+        transferTargetsResult,
       ] = await Promise.all([
         supabase.from("characters")
           .select("id,name,character_class,level,bio,character_type,assigned_user_id,life_state,avatar_url")
@@ -88,6 +90,13 @@ export function useUiV1CharacterControl(characterId: string) {
           .select("resource_key,current_value,max_value")
           .eq("character_id", characterId)
           .order("resource_key"),
+        supabase.from("characters")
+          .select("id,name")
+          .eq("campaign_id", scope.campaignId)
+          .neq("id", characterId)
+          .eq("publication_state", "campaign")
+          .eq("life_state", "alive")
+          .order("name"),
       ])
 
       const firstError =
@@ -97,7 +106,8 @@ export function useUiV1CharacterControl(characterId: string) {
         featuresResult.error ||
         assignmentsResult.error ||
         templatesResult.error ||
-        resourcesResult.error
+        resourcesResult.error ||
+        transferTargetsResult.error
       if (firstError) throw new Error(firstError.message)
       if (!characterResult.data) throw new Error("Персонаж не найден.")
 
@@ -124,6 +134,10 @@ export function useUiV1CharacterControl(characterId: string) {
         resource_key: item.resource_key,
         current_value: Number(item.current_value || 0),
         max_value: Number(item.max_value || 0),
+      })))
+      setTransferTargets((transferTargetsResult.data || []).map((item) => ({
+        id: item.id,
+        name: item.name,
       })))
     } catch (reason) {
       setError(errorMessage(reason, "Не удалось загрузить персонажа."))
@@ -276,6 +290,7 @@ export function useUiV1CharacterControl(characterId: string) {
     assignments,
     templates,
     resources,
+    transferTargets,
     loading: scope.loading || loading,
     error: scope.error || error,
     refresh: load,
