@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 
 import type { SnakeAction } from "../snake-engine"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
@@ -11,6 +11,7 @@ export default function GMWorkshopMaterials({
   data: ReturnType<typeof useGMWorkshopData>
 }) {
   const snake = useSnake()
+  const uploadRef = useRef<HTMLInputElement | null>(null)
   const [folderId, setFolderId] = useState<string | null | "root">(null)
   const [query, setQuery] = useState("")
   const needle = query.trim().toLocaleLowerCase("ru-RU")
@@ -102,6 +103,124 @@ export default function GMWorkshopMaterials({
     )
   }
 
+  function openNoteEditor(material: ReturnType<typeof useGMWorkshopData>["materials"][number]) {
+    const action: SnakeAction = {
+      id: "edit-note",
+      label: "Редактировать заметку",
+      surface: {
+        kind: "editor",
+        eyebrow: "Материалы · только GM",
+        title: material.title,
+        size: { width: "wide", height: "tall" },
+        fields: [
+          { id: "title", label: "Название", type: "text", required: true },
+          { id: "body", label: "Текст", type: "textarea" },
+        ],
+        initialValues: {
+          title: material.title,
+          body: material.body,
+        },
+        submitLabel: "Сохранить",
+      },
+      execute: async ({ input }) => {
+        const response = await data.operations.updateNote(
+          material.id,
+          String(input?.title || ""),
+          String(input?.body || ""),
+        )
+
+        return response.ok
+          ? { type: "success", notice: "Заметка обновлена." }
+          : {
+              type: "error",
+              message: response.error || "Не удалось обновить заметку.",
+            }
+      },
+    }
+
+    openSourceAction(
+      snake,
+      { type: "gm-material", id: material.id },
+      action,
+    )
+  }
+
+  function folderActions(folder: ReturnType<typeof useGMWorkshopData>["folders"][number]): SnakeAction[] {
+    return [
+      {
+        id: "rename-folder",
+        label: "Переименовать",
+        surface: {
+          kind: "editor",
+          eyebrow: "Материалы · только GM",
+          title: folder.name,
+          fields: [
+            { id: "name", label: "Название", type: "text", required: true },
+          ],
+          initialValues: { name: folder.name },
+          submitLabel: "Сохранить",
+        },
+        execute: async ({ input }) => {
+          const response = await data.operations.renameFolder(
+            folder.id,
+            String(input?.name || ""),
+          )
+
+          return response.ok
+            ? { type: "success", notice: "Папка переименована." }
+            : {
+                type: "error",
+                message: response.error || "Не удалось переименовать папку.",
+              }
+        },
+      },
+      {
+        id: "delete-folder",
+        label: "Удалить папку",
+        tone: "danger",
+        surface: {
+          kind: "confirm",
+          eyebrow: "Материалы",
+          title: "Удалить «" + folder.name + "»?",
+          body: "Материалы останутся и перейдут в «Без папки».",
+          confirmLabel: "Удалить",
+        },
+        execute: async () => {
+          const response = await data.operations.deleteFolder(folder.id)
+          if (response.ok && folderId === folder.id) setFolderId("root")
+
+          return response.ok
+            ? { type: "success", notice: "Папка удалена." }
+            : {
+                type: "error",
+                message: response.error || "Не удалось удалить папку.",
+              }
+        },
+      },
+    ]
+  }
+
+  async function uploadFile(file: File | null) {
+    if (!file) return
+
+    const response = await data.operations.uploadMaterial(
+      file,
+      typeof folderId === "string" && folderId !== "root"
+        ? folderId
+        : null,
+    )
+
+    if (!response.ok) {
+      snake.openSurface({
+        kind: "notice",
+        eyebrow: "Материалы",
+        title: "Файл не загружен",
+        body: response.error || "Не удалось загрузить файл.",
+        tone: "danger",
+      })
+    }
+  }
+
   return (
     <div className="u1-gm-workshop__section">
       <label className="u1-gm-search">
@@ -116,6 +235,19 @@ export default function GMWorkshopMaterials({
       <div className="u1-gm-material-tools">
         <button type="button" onClick={createNote}>+ Заметка</button>
         <button type="button" onClick={createFolder}>+ Папка</button>
+        <button type="button" onClick={() => uploadRef.current?.click()}>+ Файл</button>
+        <input
+          ref={uploadRef}
+          className="u1-gm-material-upload"
+          type="file"
+          tabIndex={-1}
+          aria-hidden="true"
+          onChange={(event) => {
+            const file = event.target.files?.[0] || null
+            event.target.value = ""
+            void uploadFile(file)
+          }}
+        />
       </div>
 
       <div className="u1-gm-folder-rail">
@@ -134,49 +266,84 @@ export default function GMWorkshopMaterials({
           Без папки
         </button>
         {data.folders.map((folder) => (
-          <button
-            type="button"
+          <SnakeTrigger
             key={folder.id}
-            data-active={folderId === folder.id || undefined}
-            onClick={() => setFolderId(folder.id)}
+            entity={{ type: "gm-folder", id: folder.id }}
+            actions={folderActions(folder)}
           >
-            {folder.name}
-          </button>
+            <button
+              type="button"
+              data-active={folderId === folder.id || undefined}
+              onClick={() => setFolderId(folder.id)}
+            >
+              {folder.name}
+            </button>
+          </SnakeTrigger>
         ))}
       </div>
 
       <div className="u1-gm-list">
         {visible.map((material) => {
-          const action: SnakeAction = {
-            id: "delete-material",
-            label: "Удалить",
-            tone: "danger",
-            surface: {
-              kind: "confirm",
-              eyebrow: "Материалы",
-              title: "Удалить «" + material.title + "»?",
-              body: "Материал будет удалён из личного рабочего пространства GM.",
-              confirmLabel: "Удалить",
+          const actions: SnakeAction[] = [
+            ...(material.kind === "note"
+              ? [{
+                  id: "edit-note",
+                  label: "Редактировать",
+                  execute: () => {
+                    openNoteEditor(material)
+                    return { type: "success" as const }
+                  },
+                }]
+              : []),
+            {
+              id: "delete-material",
+              label: "Удалить",
+              tone: "danger",
+              surface: {
+                kind: "confirm",
+                eyebrow: "Материалы",
+                title: "Удалить «" + material.title + "»?",
+                body: material.kind === "upload"
+                  ? "Запись и файл в приватном Storage будут удалены."
+                  : "Заметка будет удалена из личного рабочего пространства GM.",
+                confirmLabel: "Удалить",
+              },
+              execute: async () => {
+                const response = await data.operations.deleteMaterial(material.id)
+                return response.ok
+                  ? { type: "success", notice: "Материал удалён." }
+                  : {
+                      type: "error",
+                      message:
+                        response.error || "Не удалось удалить материал.",
+                    }
+              },
             },
-            execute: async () => {
-              const response = await data.operations.deleteMaterial(material.id)
-              return response.ok
-                ? { type: "success", notice: "Материал удалён." }
-                : {
-                    type: "error",
-                    message:
-                      response.error || "Не удалось удалить материал.",
-                  }
-            },
-          }
+          ]
 
           return (
             <SnakeTrigger
               key={material.id}
               entity={{ type: "gm-material", id: material.id }}
-              actions={[action]}
+              actions={actions}
             >
-              <article className="u1-gm-material-row">
+              <button
+                type="button"
+                className="u1-gm-material-row"
+                onClick={() => {
+                  if (material.kind === "upload" && material.fileUrl) {
+                    window.open(material.fileUrl, "_blank", "noopener,noreferrer")
+                    return
+                  }
+
+                  snake.openSurface({
+                    kind: "detail",
+                    eyebrow: "Материалы · только GM",
+                    title: material.title,
+                    body: material.body || "Пустая заметка.",
+                  })
+                }}
+              >
                 <span>
                   <strong>{material.title}</strong>
                   <small>
@@ -186,7 +353,8 @@ export default function GMWorkshopMaterials({
                   </small>
                   {material.body && <p>{material.body}</p>}
                 </span>
-              </article>
+                {material.kind === "upload" && <i aria-hidden="true">↗</i>}
+              </button>
             </SnakeTrigger>
           )
         })}
