@@ -78,6 +78,7 @@ export class ShapoklyakEngine {
       "entity.update",
       "entity.delete",
       "entity.set_life_state",
+      "entity.set_publication_state",
       "entity.set_visibility",
       "entity.reveal_npc",
       "entity.set_hp",

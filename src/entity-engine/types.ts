@@ -6,6 +6,7 @@ export type EntityKind = "pc" | "npc"
 export type EntityVisibility = "campaign" | "private"
 export type EntityVisibilityMode = "always" | "discover" | "private"
 export type EntityLifeState = "alive" | "dead"
+export type EntityPublicationState = "draft" | "campaign"
 export type EntityRecoveryTrigger = "short_rest" | "long_rest" | "dawn"
 
 export type CharacterEntity = {
@@ -20,6 +21,7 @@ export type CharacterEntity = {
   character_type: EntityKind
   visibility: EntityVisibility
   visibility_mode?: EntityVisibilityMode
+  publication_state?: EntityPublicationState
   life_state?: EntityLifeState
   died_at?: string | null
   created_by: string | null
@@ -36,6 +38,8 @@ export type CharacterEntityInput = {
   assigned_user_id: string | null
   character_type: EntityKind
   visibility: EntityVisibility
+  visibility_mode?: EntityVisibilityMode
+  publication_state?: EntityPublicationState
 }
 
 export type CharacterSheetPatch = Partial<Omit<CharacterSheet, "character_id" | "created_at" | "updated_at">>
@@ -54,6 +58,7 @@ export type ShapoklyakCommand =
   | { kind: "entity.set_active"; context: EngineCommandContext; userId: string; characterId: string | null }
   | { kind: "entity.set_avatar"; context: EngineCommandContext; characterId: string; avatarUrl: string | null }
   | { kind: "entity.set_life_state"; context: EngineCommandContext; characterId: string; lifeState: EntityLifeState }
+  | { kind: "entity.set_publication_state"; context: EngineCommandContext; characterId: string; publicationState: EntityPublicationState; visibilityMode?: EntityVisibilityMode }
   | { kind: "entity.set_visibility"; context: EngineCommandContext; characterId: string; visibilityMode: EntityVisibilityMode }
   | { kind: "entity.reveal_npc"; context: EngineCommandContext; viewerCharacterId: string; npcCharacterId: string; discovered: boolean }
   | { kind: "entity.set_hp"; context: EngineCommandContext; characterId: string; currentHp: number; maxHp?: number; tempHp?: number }

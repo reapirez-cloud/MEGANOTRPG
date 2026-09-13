@@ -134,6 +134,8 @@ export class ChasovoyEngine {
           mechanics: command.input.mechanics ?? [],
           data: command.input.data ?? {},
         }, command.context)
+      } else if (command.kind === "definition.set_status") {
+        after = await this.storage.setDefinitionStatus(command.definitionId, command.status, command.context)
       } else {
         after = await this.storage.archiveDefinition(command.definitionId, command.context)
       }

@@ -43,6 +43,7 @@ export class OracleEngine {
       setActive: (context, userId, characterId) => direct(context, () => dependencies.shapoklyak.execute({ kind: "entity.set_active", context, userId, characterId })),
       setAvatar: (context, characterId, avatarUrl) => direct(context, () => dependencies.shapoklyak.execute({ kind: "entity.set_avatar", context, characterId, avatarUrl })),
       setLifeState: (context, characterId, lifeState) => direct(context, () => dependencies.shapoklyak.execute({ kind: "entity.set_life_state", context, characterId, lifeState })),
+      setPublicationState: (context, characterId, publicationState, visibilityMode) => direct(context, () => dependencies.shapoklyak.execute({ kind: "entity.set_publication_state", context, characterId, publicationState, ...(visibilityMode ? { visibilityMode } : {}) })),
       setVisibility: (context, characterId, visibilityMode) => direct(context, () => dependencies.shapoklyak.execute({ kind: "entity.set_visibility", context, characterId, visibilityMode })),
       revealNpc: (context, viewerCharacterId, npcCharacterId, discovered = true) => direct(context, () => dependencies.shapoklyak.execute({ kind: "entity.reveal_npc", context, viewerCharacterId, npcCharacterId, discovered })),
       setHp: (context, characterId, currentHp, options = {}) => direct(context, () => dependencies.shapoklyak.execute({
@@ -105,6 +106,7 @@ export class OracleEngine {
       create: (context, input) => direct(context, () => dependencies.chasovoy.execute({ kind: "definition.create", context, input })),
       revise: (context, definitionId, input) => direct(context, () => dependencies.chasovoy.execute({ kind: "definition.revise", context, definitionId, input })),
       archive: (context, definitionId) => direct(context, () => dependencies.chasovoy.execute({ kind: "definition.archive", context, definitionId })),
+      setStatus: (context, definitionId, status) => direct(context, () => dependencies.chasovoy.execute({ kind: "definition.set_status", context, definitionId, status })),
     }
   }
 }
