@@ -616,10 +616,22 @@ export function useGMWorkshopData() {
     refresh: load,
 
     async createDraftCharacter(type, input) {
+      let createdId: string | null = null
       try {
+        const classTemplate = input.classTemplateId
+          ? state.templates.find((template) =>
+              template.id === input.classTemplateId &&
+              template.kind === "class" &&
+              template.is_active
+            ) || null
+          : null
+        if (input.classTemplateId && !classTemplate) {
+          return { ok: false, error: "Выбранный класс недоступен." }
+        }
+
         const result = await oracle.characters.create(context(), {
           name: input.name.trim(),
-          character_class: input.characterClass?.trim() || "Персонаж",
+          character_class: classTemplate?.name || "",
           level: Math.max(1, Math.min(30, input.level || 1)),
           bio: input.bio?.trim() || "",
           avatar_url: null,
@@ -629,9 +641,27 @@ export function useGMWorkshopData() {
           visibility_mode: "private",
           publication_state: "draft",
         })
+        createdId = result.value.after?.id || null
+
+        if (createdId && classTemplate) {
+          await oracle.characters.assignTemplate(context(), createdId, {
+            templateId: classTemplate.id,
+            templateLevel: Math.max(1, Math.min(30, input.level || 1)),
+            selectedChoices: {},
+          })
+        }
+
         await load()
-        return { ok: true, id: result.value.after?.id }
+        return { ok: true, id: createdId || undefined }
       } catch (reason) {
+        if (createdId) {
+          try {
+            await oracle.characters.delete(context(), createdId)
+          } catch {
+            // Creation compensation is best-effort; original failure is returned below.
+          }
+        }
+        await load()
         return { ok: false, error: errorMessage(reason, "Не удалось создать черновик персонажа.") }
       }
     },
@@ -643,17 +673,37 @@ export function useGMWorkshopData() {
       return mutate(
         () => oracle.characters.update(context(), characterId, {
           name: input.name.trim(),
-          character_class: input.characterClass.trim() || "Персонаж",
-          level: Math.max(1, Math.min(30, input.level || 1)),
+          character_class: character.characterClass,
+          level: character.level,
           bio: input.bio.trim(),
-          avatar_url: character.avatarUrl,
-          assigned_user_id: character.assignedUserId,
-          character_type: character.characterType,
+          avatar_url: character.avatarStoragePath,
+          assigned_user_id: input.characterType === "pc" ? character.assignedUserId : null,
+          character_type: input.characterType,
           visibility: character.publicationState === "draft" ? "private" : "campaign",
-          visibility_mode: character.visibilityMode,
+          visibility_mode: input.characterType === "npc"
+            ? character.visibilityMode
+            : character.publicationState === "draft" ? "private" : "always",
           publication_state: character.publicationState,
         }),
         "Не удалось сохранить персонажа.",
+      )
+    },
+
+    assignTemplate(characterId, templateId, templateLevel) {
+      return mutate(
+        () => oracle.characters.assignTemplate(context(), characterId, {
+          templateId,
+          templateLevel,
+          selectedChoices: {},
+        }),
+        "Не удалось назначить класс или подкласс.",
+      )
+    },
+
+    removeTemplateAssignment(characterId, assignmentId) {
+      return mutate(
+        () => oracle.characters.removeTemplateAssignment(context(), characterId, assignmentId),
+        "Не удалось снять класс или подкласс.",
       )
     },
 
@@ -685,6 +735,13 @@ export function useGMWorkshopData() {
       )
     },
 
+    setNpcHabitat(characterId, locationId, attached) {
+      return mutate(
+        () => oracle.world.setNpcHabitat(context(), characterId, locationId, attached),
+        "Не удалось изменить обычную зону NPC.",
+      )
+    },
+
     async assignCharacter(characterId, userId) {
       const character = state.characters.find((item) => item.id === characterId)
       if (!character) return { ok: false, error: "Персонаж не найден." }
@@ -695,7 +752,7 @@ export function useGMWorkshopData() {
           character_class: character.characterClass,
           level: character.level,
           bio: character.bio,
-          avatar_url: character.avatarUrl,
+          avatar_url: character.avatarStoragePath,
           assigned_user_id: userId,
           character_type: character.characterType,
           visibility: character.publicationState === "draft" ? "private" : "campaign",
@@ -790,6 +847,13 @@ export function useGMWorkshopData() {
       )
     },
 
+    restoreDefinition(definitionId) {
+      return mutate(
+        () => oracle.definitions.setStatus(context(), definitionId, "active"),
+        "Не удалось вернуть определение из архива.",
+      )
+    },
+
     async cloneDefinition(definition) {
       try {
         const result = await oracle.definitions.create(context(), {
@@ -814,10 +878,10 @@ export function useGMWorkshopData() {
       }
     },
 
-    issueDefinition(definition, characterId) {
+    issueDefinition(definition, characterId, quantity) {
       if (definition.kind === "item") {
         return mutate(
-          () => oracle.inventory.create(context(), characterId, itemInput(definition)),
+          () => oracle.inventory.create(context(), characterId, itemInput(definition, quantity)),
           "Не удалось выдать предмет.",
         )
       }
@@ -876,6 +940,49 @@ export function useGMWorkshopData() {
           },
         }),
         "Не удалось привязать механику к предмету.",
+      )
+    },
+
+    async unlinkDefinitionFromItem(definition, itemDefinitionId) {
+      const item = state.definitions.find((candidate) =>
+        candidate.id === itemDefinitionId &&
+        candidate.kind === "item"
+      )
+      if (!item) return { ok: false, error: "Предмет не найден." }
+
+      const rawLinked = item.data.linked_definition_ids
+      const linked = Array.isArray(rawLinked)
+        ? rawLinked.filter((value): value is string => typeof value === "string")
+        : []
+      if (!linked.includes(definition.id)) return { ok: true }
+
+      const linkedMechanicIds = new Set(
+        (Array.isArray(definition.mechanics) ? definition.mechanics : [])
+          .map((mechanic) =>
+            mechanic && typeof mechanic === "object" && "id" in mechanic
+              ? String((mechanic as { id?: unknown }).id || "")
+              : ""
+          )
+          .filter(Boolean),
+      )
+      const nextMechanics = (Array.isArray(item.mechanics) ? item.mechanics : [])
+        .filter((mechanic) => {
+          if (!mechanic || typeof mechanic !== "object" || !("id" in mechanic)) return true
+          return !linkedMechanicIds.has(String((mechanic as { id?: unknown }).id || ""))
+        })
+
+      return mutate(
+        () => oracle.definitions.revise(context(), item.id, {
+          name: item.name,
+          summary: item.summary,
+          rulesText: item.rulesText,
+          mechanics: nextMechanics as ChasovoyJson,
+          data: {
+            ...item.data,
+            linked_definition_ids: linked.filter((id) => id !== definition.id),
+          },
+        }),
+        "Не удалось отвязать механику от предмета.",
       )
     },
 
@@ -1011,6 +1118,9 @@ export function useGMWorkshopData() {
     campaignCharacters: state.characters.filter((character) => character.publicationState === "campaign"),
     draftDefinitions: state.definitions.filter((definition) => definition.status === "draft"),
     activeDefinitions: state.definitions.filter((definition) => definition.status === "active"),
+    archivedDefinitions: state.definitions.filter((definition) => definition.status === "archived"),
+    classTemplates: state.templates.filter((template) => template.kind === "class" && template.is_active),
+    subclassTemplates: state.templates.filter((template) => template.kind === "subclass" && template.is_active),
     operations,
   }
 }
