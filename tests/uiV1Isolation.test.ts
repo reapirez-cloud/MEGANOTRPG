@@ -23,6 +23,11 @@ const approvedPanelAssets = [
   "public/ui-v1/panels/world-characters.webp",
   "public/ui-v1/panels/world-lore.webp",
   "public/ui-v1/panels/art.webp",
+  "public/ui-v1/panels/kb-spells.webp",
+  "public/ui-v1/panels/kb-classes.webp",
+  "public/ui-v1/panels/kb-invocations.webp",
+  "public/ui-v1/panels/kb-bestiary.webp",
+  "public/ui-v1/panels/kb-chaos.webp",
 ]
 const sectionScreens = fs.readFileSync("src/ui-v1-isolated/SectionScreens.tsx", "utf8")
 const sectionData = fs.readFileSync("src/ui-v1-isolated/useUiV1SectionData.ts", "utf8")
@@ -165,6 +170,14 @@ test("the five supplied artworks are wired to World, Locations, Characters, Lore
   assert.match(sectionRegistry, /image: "\/ui-v1\/panels\/world-lore\.webp"/)
   assert.match(sectionScreens, /className="u1-hub-card__image"/)
   assert.match(sectionStyles, /\.u1-hub-card__image/)
+})
+
+test("the five supplied Knowledge Base artworks are wired to their exact panels", () => {
+  assert.match(sectionRegistry, /id: "spells"[\s\S]*?image: "\/ui-v1\/panels\/kb-spells\.webp"/)
+  assert.match(sectionRegistry, /id: "classes"[\s\S]*?image: "\/ui-v1\/panels\/kb-classes\.webp"/)
+  assert.match(sectionRegistry, /id: "invocations"[\s\S]*?image: "\/ui-v1\/panels\/kb-invocations\.webp"/)
+  assert.match(sectionRegistry, /id: "bestiary"[\s\S]*?image: "\/ui-v1\/panels\/kb-bestiary\.webp"/)
+  assert.match(sectionRegistry, /id: "chaos"[\s\S]*?image: "\/ui-v1\/panels\/kb-chaos\.webp"[\s\S]*?state: "placeholder"/)
 })
 
 test("left-edge back gesture uses browser history and restores the previous scroll position", () => {

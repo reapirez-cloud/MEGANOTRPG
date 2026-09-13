@@ -24,9 +24,9 @@ export const worldHubSections: HubSection[] = [
 ]
 
 export const knowledgeBaseSections: HubSection[] = [
-  { id: "spells", title: "Заклинания", caption: "Каталог заклинаний и точные правила", tone: "steel", state: "live" },
-  { id: "classes", title: "Классы", caption: "Классы, прогрессия и подклассы", tone: "stone", state: "live" },
-  { id: "invocations", title: "Инвокации", caption: "Таинственные воззвания колдуна", tone: "night", state: "live" },
-  { id: "bestiary", title: "Бестиарий", caption: "Существа и их игровые характеристики", tone: "ash", state: "live" },
-  { id: "chaos", title: "Болезни, безумия и дикая магия", caption: "Отдельные справочные таблицы и эффекты", tone: "steel", state: "placeholder" },
+  { id: "spells", title: "Заклинания", caption: "Каталог заклинаний и точные правила", tone: "steel", image: "/ui-v1/panels/kb-spells.webp", state: "live" },
+  { id: "classes", title: "Классы", caption: "Классы, прогрессия и подклассы", tone: "stone", image: "/ui-v1/panels/kb-classes.webp", state: "live" },
+  { id: "invocations", title: "Инвокации", caption: "Таинственные воззвания колдуна", tone: "night", image: "/ui-v1/panels/kb-invocations.webp", state: "live" },
+  { id: "bestiary", title: "Бестиарий", caption: "Существа и их игровые характеристики", tone: "ash", image: "/ui-v1/panels/kb-bestiary.webp", state: "live" },
+  { id: "chaos", title: "Болезни, безумия и дикая магия", caption: "Отдельные справочные таблицы и эффекты", tone: "steel", image: "/ui-v1/panels/kb-chaos.webp", state: "placeholder" },
 ]

@@ -11,6 +11,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Added the second supplied grayscale panel set to Knowledge Base in the exact requested order: `Заклинания`, `Классы`, `Инвокации`, `Бестиарий`, and `Болезни, безумия и дикая магия`. The existing `chaos` destination remains a placeholder functionally, but now carries its approved artwork like the other knowledge panels.
+
 - Added the supplied grayscale grimdark artwork to the five requested UI 1.0 destinations: `Мир`, `Локации`, `Персонажи`, `Лор` and `Арты`. The authored wide compositions are now local panel assets rather than generic textures or arbitrary campaign uploads.
 
 - Replaced the `Я → Управление` placeholder with the first complete **GM Workshop** in UI 1.0. The root is destination-based rather than tab-based and opens `Черновик`, `Партия`, `Персонажи`, `Библиотека`, and `Материалы` as separate work surfaces.
@@ -25,6 +27,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added five optimized local Knowledge Base WebP assets under `public/ui-v1/panels` and wired them through the existing data-driven `knowledgeBaseSections` registry. Supabase schema/data/state remain unchanged because these are static UI assets.
+
 - Stored the five new panel illustrations as optimized local WebP assets under `public/ui-v1/panels` and extended the data-driven World hub registry with an optional artwork field; no Supabase schema/state or legacy visual dependency was introduced.
 
 - Added canonical `characters.publication_state = draft | campaign` instead of overloading the old `visibility/private` concept. `private.can_view_character` now exposes drafts only to campaign managers, publishing and assignment are separate RPC/engine operations, and active-character selection rejects drafts.
@@ -37,6 +41,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added shared Workspace identity-selection rules: manager authority is explicitly separated from character ownership; the speaker pool is limited to own living assigned characters plus living unassigned NPCs, while foreign active PCs are derived from `campaign_members.active_character_id` for view-only inspection. Stored speaker identity is revalidated on load.
 
 ### Tests / verification
+
+- Extended the UI 1.0 artwork regression to require all ten approved panel assets to remain lightweight and added exact Knowledge Base image-to-destination mapping checks.
 
 - Added UI 1.0 regression coverage that requires all five approved panel assets to exist, stay lightweight, and remain wired to their exact destinations.
 
