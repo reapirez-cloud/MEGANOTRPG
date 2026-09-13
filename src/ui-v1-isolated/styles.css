@@ -658,10 +658,10 @@ button {
   z-index: 20;
   left: 18px;
   right: 18px;
-  bottom: max(12px, calc(var(--u1-safe-bottom) + 6px));
+  bottom: max(13px, calc(var(--u1-safe-bottom) + 5px));
   height: 18px;
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) 52px;
+  grid-template-columns: minmax(44px, 0.55fr) 2.9fr minmax(44px, 0.55fr);
   align-items: center;
   gap: 0;
   padding: 0 3px;
@@ -673,16 +673,16 @@ button {
   position: absolute;
   z-index: 0;
   inset: 0;
-  border: 1px solid rgba(224, 231, 234, 0.10);
+  border: 1px solid rgba(222, 232, 236, 0.12);
   border-radius: 9px;
   background:
-    linear-gradient(180deg, rgba(224, 231, 234, 0.026), rgba(224, 231, 234, 0.004)),
-    rgba(8, 10, 11, 0.20);
+    linear-gradient(180deg, rgba(232, 239, 242, 0.028), rgba(232, 239, 242, 0.004)),
+    rgba(7, 9, 10, 0.24);
   box-shadow:
-    0 4px 14px rgba(0, 0, 0, 0.22),
-    inset 0 1px 0 rgba(245, 249, 250, 0.025);
-  -webkit-backdrop-filter: blur(12px) saturate(0.66);
-  backdrop-filter: blur(12px) saturate(0.66);
+    0 5px 18px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(244, 249, 250, 0.035);
+  -webkit-backdrop-filter: blur(12px) saturate(0.68);
+  backdrop-filter: blur(12px) saturate(0.68);
   pointer-events: none;
 }
 
@@ -704,20 +704,16 @@ button {
   cursor: pointer;
 }
 
-.u1-dock__item--home {
-  padding-inline: 0;
-}
-
 .u1-dock__glyph {
   position: relative;
   z-index: 3;
   display: block;
-  height: 16px;
+  height: 24px;
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
-  opacity: 0.38;
-  filter: grayscale(1) brightness(0.78);
+  opacity: 0.50;
+  filter: brightness(0.76);
   transition:
     opacity 180ms ease,
     filter 180ms ease,
@@ -725,34 +721,32 @@ button {
 }
 
 .u1-dock__glyph--me {
-  width: 24px;
+  width: 32px;
   background-image: url("/ui-v1/nav-icons/me.png");
 }
 
 .u1-dock__glyph--home {
-  width: calc(100% + 24px);
-  max-width: none;
+  width: calc(100% - 2px);
+  max-width: 256px;
   background-image: url("/ui-v1/nav-icons/home.png");
-  background-size: 100% 100%;
 }
 
 .u1-dock__glyph--chats {
-  width: 30px;
+  width: 42px;
   background-image: url("/ui-v1/nav-icons/chats.png");
 }
 
 .u1-dock__item[data-selected] .u1-dock__glyph {
   opacity: 1;
   filter:
-    grayscale(1)
     brightness(1.38)
-    drop-shadow(0 0 3px rgba(220, 233, 238, 0.72))
-    drop-shadow(0 0 9px rgba(202, 220, 226, 0.24));
-  transform: scale(1.025);
+    drop-shadow(0 0 3px rgba(223, 234, 238, 0.62))
+    drop-shadow(0 0 9px rgba(205, 224, 231, 0.24));
+  transform: translateY(-1px);
 }
 
 .u1-dock__item:active .u1-dock__glyph {
-  transform: scale(0.97);
+  transform: translateY(0) scale(0.97);
 }
 
 .u1-dock__item:focus-visible {
@@ -762,9 +756,10 @@ button {
 .u1-dock__item:focus-visible::after {
   content: "";
   position: absolute;
-  inset: 8px 12%;
+  width: 32px;
+  height: 28px;
   border: 1px solid rgba(222, 232, 236, 0.32);
-  border-radius: 10px;
+  border-radius: 8px;
   pointer-events: none;
 }
 
