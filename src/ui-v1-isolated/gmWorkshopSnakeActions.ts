@@ -863,25 +863,57 @@ export function createWorkshopDefinitionActions({
       label: "Выдать персонажу",
       enabled: living.length > 0,
       disabledReason: "Нет живых персонажей кампании.",
-      surface: {
-        kind: "picker",
-        eyebrow: "Выдать",
-        title: definition.name,
-        items: living.map((character) => ({
-          id: character.id,
-          label: character.name,
-          description:
-            (character.characterType === "pc" ? "PC" : "NPC") +
-            " · " +
-            character.characterClass +
-            " " +
-            character.level,
-        })),
-        submitLabel: "Выдать",
-      },
+      surface: definition.kind === "item"
+        ? {
+            kind: "editor",
+            eyebrow: "Выдать предмет",
+            title: definition.name,
+            fields: [
+              {
+                id: "characterId",
+                label: "Персонаж",
+                type: "select",
+                required: true,
+                options: living.map((character) => ({
+                  value: character.id,
+                  label:
+                    character.name +
+                    " · " +
+                    (character.characterType === "pc" ? "PC" : "NPC"),
+                })),
+              },
+              { id: "quantity", label: "Количество", type: "number", required: true },
+            ],
+            initialValues: {
+              characterId: living[0]?.id || "",
+              quantity: 1,
+            },
+            submitLabel: "Выдать",
+          }
+        : {
+            kind: "picker",
+            eyebrow: "Выдать",
+            title: definition.name,
+            items: living.map((character) => ({
+              id: character.id,
+              label: character.name,
+              description:
+                (character.characterType === "pc" ? "PC" : "NPC") +
+                " · " +
+                character.characterClass +
+                " " +
+                character.level,
+            })),
+            submitLabel: "Выдать",
+          },
       execute: async ({ input }) => {
-        const characterId = selection(input)
-        const response = await operations.issueDefinition(definition, characterId)
+        const characterId = definition.kind === "item"
+          ? String(input?.characterId || "")
+          : selection(input)
+        const quantity = definition.kind === "item"
+          ? Math.max(1, Math.floor(Number(input?.quantity || 1)))
+          : undefined
+        const response = await operations.issueDefinition(definition, characterId, quantity)
         return actionResult(response.ok, response.error, "Выдано персонажу.")
       },
     })
@@ -894,17 +926,24 @@ export function createWorkshopDefinitionActions({
       const items = definitions.filter(
         (candidate) => candidate.kind === "item" && candidate.status === "active",
       )
+      const linkedItems = items.filter((item) => {
+        const linked = item.data.linked_definition_ids
+        return Array.isArray(linked) && linked.includes(definition.id)
+      })
+      const unlinkedItems = items.filter(
+        (item) => !linkedItems.some((linked) => linked.id === item.id),
+      )
 
       actions.push({
         id: "link-item",
         label: "Привязать к предмету",
-        enabled: items.length > 0,
-        disabledReason: "В библиотеке нет активных предметов.",
+        enabled: unlinkedItems.length > 0,
+        disabledReason: "Нет непривязанных активных предметов.",
         surface: {
           kind: "picker",
           eyebrow: "Привязать механику",
           title: definition.name,
-          items: items.map((item) => ({
+          items: unlinkedItems.map((item) => ({
             id: item.id,
             label: item.name,
             description: item.summary || "Предмет",
@@ -917,6 +956,29 @@ export function createWorkshopDefinitionActions({
           return actionResult(response.ok, response.error, "Механика привязана к предмету.")
         },
       })
+
+      if (linkedItems.length > 0) {
+        actions.push({
+          id: "unlink-item",
+          label: "Отвязать от предмета",
+          surface: {
+            kind: "picker",
+            eyebrow: "Отвязать механику",
+            title: definition.name,
+            items: linkedItems.map((item) => ({
+              id: item.id,
+              label: item.name,
+              description: item.summary || "Предмет",
+            })),
+            submitLabel: "Отвязать",
+          },
+          execute: async ({ input }) => {
+            const itemId = selection(input)
+            const response = await operations.unlinkDefinitionFromItem(definition, itemId)
+            return actionResult(response.ok, response.error, "Механика отвязана от предмета.")
+          },
+        })
+      }
     }
   }
 
@@ -929,23 +991,14 @@ export function createWorkshopDefinitionActions({
         eyebrow: definition.status === "draft" ? "Черновик" : "Библиотека",
         title: definition.name,
         size: { width: "wide", height: "tall" },
-        fields: [
-          { id: "name", label: "Название", type: "text", required: true },
-          { id: "summary", label: "Коротко", type: "text" },
-          { id: "rulesText", label: "Описание / правила", type: "textarea" },
-        ],
-        initialValues: {
-          name: definition.name,
-          summary: definition.summary,
-          rulesText: definition.rulesText,
-        },
+        fields: draftDefinitionFields(definition.kind),
+        initialValues: definitionInitialValues(definition),
+        submitLabel: "Сохранить ревизию",
       },
       execute: async ({ input }) => {
+        const next = definitionInputFromSnake(definition.kind, input)
         const response = await operations.reviseDefinition(definition.id, {
-          name: String(input?.name || definition.name),
-          summary: String(input?.summary || ""),
-          rulesText: String(input?.rulesText || ""),
-          data: definition.data,
+          ...next,
           mechanics: definition.mechanics,
         })
         return actionResult(response.ok, response.error, "Новая ревизия сохранена.")
@@ -961,7 +1014,23 @@ export function createWorkshopDefinitionActions({
     },
   )
 
-  if (definition.status !== "archived") {
+  if (definition.status === "archived") {
+    actions.push({
+      id: "restore",
+      label: "Вернуть в библиотеку",
+      surface: {
+        kind: "confirm",
+        eyebrow: "Архив",
+        title: "Вернуть «" + definition.name + "»?",
+        body: "Определение снова станет активным и доступным для выдачи.",
+        confirmLabel: "Вернуть",
+      },
+      execute: async () => {
+        const response = await operations.restoreDefinition(definition.id)
+        return actionResult(response.ok, response.error, "Определение возвращено в библиотеку.")
+      },
+    })
+  } else {
     actions.push({
       id: "archive",
       label: "Архивировать",
@@ -981,6 +1050,39 @@ export function createWorkshopDefinitionActions({
   }
 
   return actions
+}
+
+export function definitionInitialValues(definition: ChasovoyDefinition) {
+  const values: Record<string, unknown> = {
+    name: definition.name,
+    summary: definition.summary,
+    rulesText: definition.rulesText,
+  }
+
+  if (definition.kind === "item") {
+    values.category = String(definition.data.category || "other")
+    values.quantity = Number(definition.data.quantity || 1)
+    values.weight = typeof definition.data.weight === "number" ? definition.data.weight : ""
+    values.equipment_slot = String(definition.data.equipment_slot || "other")
+    values.usage_mode = String(definition.data.usage_mode || "none")
+    values.charges_max = typeof definition.data.charges_max === "number"
+      ? definition.data.charges_max
+      : ""
+    values.image_url = String(definition.data.image_url || "")
+  }
+
+  if (definition.kind === "spell") {
+    values.spell_level = Number(definition.data.spell_level || 0)
+    values.school = String(definition.data.school || "Особая")
+    values.casting_time = String(definition.data.casting_time || "1 действие")
+    values.spell_range = String(definition.data.spell_range || "На себя")
+    values.duration = String(definition.data.duration || "Мгновенно")
+    values.components = String(definition.data.components || "")
+    values.concentration = Boolean(definition.data.concentration)
+    values.ritual = Boolean(definition.data.ritual)
+  }
+
+  return values
 }
 
 export function draftDefinitionFields(kind: ChasovoyDefinitionKind) {
