@@ -411,9 +411,6 @@ export function useGMWorkshopData() {
         .in("kind", ["class", "subclass"])
         .order("kind")
         .order("name"),
-      supabase.from("character_template_assignments")
-        .select("id,character_id,template_id,template_level,selected_choices,assigned_at,updated_at")
-        .in("character_id", (charactersResult.data || []).map((character) => character.id)),
       supabase.from("locations")
         .select("id,parent_location_id,name,lifecycle_state")
         .eq("campaign_id", campaignId)
@@ -432,7 +429,6 @@ export function useGMWorkshopData() {
       invitesResult,
       definitionsResult,
       templatesResult,
-      assignmentsResult,
       locationsResult,
       habitatsResult,
     ] = results
@@ -445,7 +441,6 @@ export function useGMWorkshopData() {
       materialsResult.error ||
       invitesResult.error ||
       templatesResult.error ||
-      assignmentsResult.error ||
       locationsResult.error ||
       habitatsResult.error
 
@@ -458,6 +453,26 @@ export function useGMWorkshopData() {
         isOwner: ownMembership.is_owner === true,
         loading: false,
         error: firstError.message,
+      })
+      return
+    }
+
+    const characterIds = (charactersResult.data || []).map((character) => character.id)
+    const assignmentsResult = characterIds.length
+      ? await supabase.from("character_template_assignments")
+          .select("id,character_id,template_id,template_level,selected_choices,assigned_at,updated_at")
+          .in("character_id", characterIds)
+      : { data: [], error: null }
+
+    if (assignmentsResult.error) {
+      setState({
+        ...EMPTY_STATE,
+        campaignId,
+        userId,
+        canManage,
+        isOwner: ownMembership.is_owner === true,
+        loading: false,
+        error: assignmentsResult.error.message,
       })
       return
     }
