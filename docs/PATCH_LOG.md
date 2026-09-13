@@ -26,6 +26,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Supabase schema/data were intentionally unchanged for this navigation-only UI task; the connected project was confirmed `ACTIVE_HEALTHY` before implementation.
 ### Tests / verification
 
+- Adaptive multi-step Snake Window head `0a77a617b71e890047fb1d73746f8db5316479d0` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34754989500`.
 - Snake core + Location migration code head `9fcbaf595910c52e8ca6fbef3b4806f45850f8b4` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34752526317`.
 - Added Snake agent regression coverage for hidden/disabled actions and forwarding entity + surface input to a domain-provided executor; updated UI contracts to reject a return of the old Location long-press runtime.
 - Final navigation code head `c9764cabcc9b022e5a3f35bb012fa734bb3547d2` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34751804750`.
