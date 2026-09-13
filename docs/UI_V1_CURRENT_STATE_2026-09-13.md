@@ -206,7 +206,6 @@ Intentionally deferred at this snapshot:
 - many entity detail/editor/create flows;
 - Personal Reveal;
 - final atmospheric application background;
-- full shared interaction foundation required by Snake.
 
 A placeholder is acceptable only when it preserves the final route/connection seam and does not fake persistence or silently embed legacy UI.
 

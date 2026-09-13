@@ -256,7 +256,7 @@ test("UI v1 documentation has one explicit current-state authority", () => {
   assert.match(currentStateDoc, /CANONICAL CURRENT STATE/)
   assert.match(currentStateDoc, /Локации \/ Персонажи \/ Лор \/ Карта/)
   assert.match(currentStateDoc, /index\.html -> src\/ui-v1-isolated\/main\.tsx/)
-  assert.match(currentStateDoc, /Snake.*planned.*not implemented/is)
+  assert.match(currentStateDoc, /Snake core is implemented and Locations are migrated to it/is)
   assert.match(historicalIsolationDoc, /SUPERSEDED HISTORICAL RECORD/)
   assert.match(historicalFoundationDoc, /PARTIALLY INVALIDATED BY THE HARD-ISOLATION RESET/)
   assert.match(historicalVisualDirectionDoc, /PARTIALLY SUPERSEDED DESIGN DIRECTION/)
