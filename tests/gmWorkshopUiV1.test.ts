@@ -154,9 +154,17 @@ test("Workshop definitions, folders and materials expose reversible management t
   assert.match(materials, /id: "open-material"/)
   assert.match(materials, /id: "edit-note"/)
   assert.match(materials, /id: "move-material"/)
+  assert.match(materials, /id: "rename-material"/)
+  assert.match(materials, /id: "move-up"/)
+  assert.match(materials, /id: "move-down"/)
   assert.match(materials, /id: "delete-material"/)
   assert.match(data, /moveFolder/)
   assert.match(data, /moveMaterial/)
+  assert.match(data, /renameMaterial/)
+  assert.match(data, /reorderFolder/)
+  assert.match(actions, /id: "mechanicsJson"/)
+  assert.match(actions, /JSON\.parse\(rawMechanics\)/)
+  assert.match(actions, /Механики должны быть JSON-массивом/)
 })
 
 test("published NPC visibility supports immediate visibility or encounter discovery", () => {
