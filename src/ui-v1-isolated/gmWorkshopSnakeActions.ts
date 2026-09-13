@@ -1043,13 +1043,19 @@ export function createWorkshopDefinitionActions({
         submitLabel: "Сохранить ревизию",
       },
       execute: async ({ input }) => {
-        const next = definitionInputFromSnake(definition.kind, input)
-        const response = await operations.reviseDefinition(definition.id, {
-          ...next,
-          data: { ...definition.data, ...(next.data || {}) },
-          mechanics: definition.mechanics,
-        })
-        return actionResult(response.ok, response.error, "Новая ревизия сохранена.")
+        try {
+          const next = definitionInputFromSnake(definition.kind, input)
+          const response = await operations.reviseDefinition(definition.id, {
+            ...next,
+            data: { ...definition.data, ...(next.data || {}) },
+          })
+          return actionResult(response.ok, response.error, "Новая ревизия сохранена.")
+        } catch (reason) {
+          return {
+            type: "error",
+            message: reason instanceof Error ? reason.message : "Не удалось разобрать механику.",
+          }
+        }
       },
     },
     {
@@ -1105,6 +1111,7 @@ export function definitionInitialValues(definition: ChasovoyDefinition) {
     name: definition.name,
     summary: definition.summary,
     rulesText: definition.rulesText,
+    mechanicsJson: JSON.stringify(definition.mechanics ?? [], null, 2),
   }
 
   if (definition.kind === "item") {
@@ -1138,6 +1145,12 @@ export function draftDefinitionFields(kind: ChasovoyDefinitionKind) {
     { id: "name", label: "Название", type: "text" as const, required: true },
     { id: "summary", label: "Коротко", type: "text" as const },
     { id: "rulesText", label: "Описание / правила", type: "textarea" as const },
+    {
+      id: "mechanicsJson",
+      label: "Механики (JSON)",
+      type: "textarea" as const,
+      placeholder: "[]",
+    },
   ]
 
   if (kind === "item") {
@@ -1254,11 +1267,22 @@ export function definitionInputFromSnake(
     data.ritual = Boolean(values.ritual)
   }
 
+  const rawMechanics = String(values.mechanicsJson || "[]").trim() || "[]"
+  let mechanics: ChasovoyJson
+  try {
+    mechanics = JSON.parse(rawMechanics) as ChasovoyJson
+  } catch {
+    throw new Error("Механики должны быть корректным JSON.")
+  }
+  if (!Array.isArray(mechanics)) {
+    throw new Error("Механики должны быть JSON-массивом.")
+  }
+
   return {
     name: String(values.name || ""),
     summary: String(values.summary || ""),
     rulesText: String(values.rulesText || ""),
     data,
-    mechanics: [] as ChasovoyJson,
+    mechanics,
   }
 }
