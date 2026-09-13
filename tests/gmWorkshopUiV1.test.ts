@@ -78,6 +78,43 @@ test("Party exposes every published PC and reuses Snake for assignment, unlink a
   assert.match(actions, /assignedMember\.userId/)
 })
 
+test("Workshop member and invite management are first-class Snake actions", () => {
+  assert.match(party, /createWorkshopMemberActions/)
+  assert.match(party, /type: "campaign-member"/)
+  assert.match(party, /type: "campaign-invite"/)
+  assert.match(actions, /createWorkshopMemberAssignAction/)
+  assert.match(actions, /createWorkshopMemberRoleAction/)
+  assert.match(actions, /id: "active-character"/)
+  assert.match(actions, /id: "clear-active"/)
+  assert.match(actions, /createWorkshopInviteActions/)
+  assert.match(actions, /id: "copy-invite"/)
+  assert.match(actions, /id: "create-invite"/)
+})
+
+test("Workshop character Snake provider covers the current management lifecycle", () => {
+  assert.match(actions, /createWorkshopCharacterEditAction/)
+  assert.match(actions, /id: "edit-character"/)
+  assert.match(actions, /createWorkshopDraftCharacterDeleteAction/)
+  assert.match(actions, /id: "delete-draft-character"/)
+  assert.match(actions, /id: "access"/)
+  assert.match(actions, /id: "visibility"/)
+  assert.match(actions, /id: "state"/)
+  assert.match(data, /updateCharacter/)
+  assert.match(data, /oracle\.characters\.update/)
+  assert.match(data, /deleteCharacter/)
+  assert.match(data, /oracle\.characters\.delete/)
+})
+
+test("Workshop definitions, folders and materials expose open plus management actions through Snake", () => {
+  assert.match(actions, /id: "open-definition"/)
+  assert.match(materials, /id: "open-folder"/)
+  assert.match(materials, /id: "rename-folder"/)
+  assert.match(materials, /id: "delete-folder"/)
+  assert.match(materials, /id: "open-material"/)
+  assert.match(materials, /id: "edit-note"/)
+  assert.match(materials, /id: "delete-material"/)
+})
+
 test("published NPC visibility supports immediate visibility or encounter discovery", () => {
   assert.match(actions, /label: "При встрече"/)
   assert.match(actions, /label: "Видно сразу"/)
