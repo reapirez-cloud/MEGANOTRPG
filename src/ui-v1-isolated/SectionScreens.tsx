@@ -201,6 +201,53 @@ export function WorldSectionScreen({
   )
 }
 
+function ClassCatalogPanels({
+  rows,
+  query,
+}: {
+  rows: Array<{ id: string; title: string; meta: string; art: string }>
+  query: string
+}) {
+  const normalized = query.trim().toLocaleLowerCase("ru")
+  const visible = useMemo(
+    () => normalized
+      ? rows.filter((row) => `${row.title} ${row.meta}`.toLocaleLowerCase("ru").includes(normalized))
+      : rows,
+    [normalized, rows],
+  )
+
+  return (
+    <div className="u1-class-panel-list">
+      {visible.map((row) => (
+        <article
+          className="u1-class-panel"
+          data-class-id={row.id}
+          key={row.id}
+        >
+          <span className="u1-class-panel__texture" aria-hidden="true" />
+          <img
+            className="u1-class-panel__image"
+            src={row.art}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            aria-hidden="true"
+            onError={(event) => {
+              event.currentTarget.hidden = true
+            }}
+          />
+          <span className="u1-class-panel__scrim" aria-hidden="true" />
+          <span className="u1-class-panel__copy">
+            <strong>{row.title}</strong>
+            <small>{row.meta}</small>
+          </span>
+        </article>
+      ))}
+      {!visible.length && <EmptyState>Ничего не найдено.</EmptyState>}
+    </div>
+  )
+}
+
 function CatalogRows({
   rows,
   query,
@@ -252,6 +299,7 @@ export function KnowledgeBaseScreen({ subsection }: { subsection?: string }) {
           id: entry.id,
           title: entry.name,
           meta: `${entry.subclasses.length} подклассов`,
+          art: `/ui-v1/classes/${entry.id}.webp`,
         }))
       : subsection === "invocations"
         ? warlockInvocationsReference.map((entry, index) => ({
@@ -277,7 +325,9 @@ export function KnowledgeBaseScreen({ subsection }: { subsection?: string }) {
         />
       </label>
 
-      {staticRows ? (
+      {subsection === "classes" && staticRows ? (
+        <ClassCatalogPanels rows={staticRows} query={query} />
+      ) : staticRows ? (
         <CatalogRows rows={staticRows} query={query} />
       ) : catalog.loading ? (
         <EmptyState>Загрузка…</EmptyState>
