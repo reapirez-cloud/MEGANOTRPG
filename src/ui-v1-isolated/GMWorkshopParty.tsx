@@ -385,6 +385,7 @@ export default function GMWorkshopParty({
             characters: data.campaignCharacters,
             operations: data.operations,
             canChangeRole: data.isOwner,
+            canRemoveMember: data.isOwner,
             onOpen: () => setSelectedMemberId(item.userId),
           })
 
