@@ -59,7 +59,7 @@ test("PC assignment and active identity remain separate commands", () => {
   assert.match(data, /oracle\.characters\.update/)
   assert.match(data, /setActiveCharacter/)
   assert.match(data, /oracle\.characters\.setActive/)
-  assert.match(party, /Персонаж назначен\. Активность выбирается отдельно/)
+  assert.match(actions, /Персонаж назначен\. Активность выбирается отдельно/)
   assert.match(party, /Сделать активным/)
   assert.match(migration, /publication_state = 'campaign'/)
   assert.match(migration, /Dead character cannot be active/)
