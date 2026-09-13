@@ -271,6 +271,39 @@ long-press timer -> open(menu, point)
 synthetic contextmenu for consumed gesture -> preventDefault, no second open
 ~~~
 
+## Adaptive size and sequential flow law
+
+Snake Window is one universal shell, not one fixed modal size.
+
+A surface may request a controlled window size:
+
+~~~text
+width: compact | narrow | standard | wide | full
+height: content | tall | full
+~~~
+
+The domain chooses the size required by the interaction. Snake only applies the shared geometry and responsive limits. Do not infer window size from entity type inside Snake.
+
+Complex creation/editing flows must not put every field into one giant form. Use one Snake **Flow** surface with ordered steps.
+
+Conceptual example:
+
+~~~text
+Create NPC
+-> Basics
+-> Appearance
+-> Mechanics
+-> Relations
+-> Review
+-> final submit
+~~~
+
+A Flow keeps one window shell on screen. The current step may change the window size. Back/Next moves between steps without opening a second modal and without losing already entered draft values.
+
+Snake accumulates step output in one in-memory draft for the duration of the interaction. Only the final step submits the combined payload to the domain-provided executor. Snake does not persist the draft as canonical state.
+
+If the flow is cancelled, the transient draft is discarded unless the domain explicitly provides a separate approved draft-persistence feature.
+
 ## Universal windows are schema-driven
 
 An editor is not a location editor or item editor at the framework level.
@@ -423,7 +456,7 @@ Implemented now:
 - right-click and touch long-press recognition;
 - consumed-touch suppression for the synthetic Telegram/Android `contextmenu` duplicate;
 - viewport-aware floating context menu positioning;
-- one universal Snake window system with Placeholder, Confirm, Editor, Picker, Detail and Notice/Error modes;
+- one adaptive universal Snake window system with Placeholder, Confirm, Editor, Picker, Detail, Notice/Error and multi-step Flow modes;
 - typed domain-provided execution callbacks; Snake does not dynamically reflect into named engines;
 - Locations migrated to Snake as the first real entity family;
 - the old LocationNavigator timer / inline action tray / local placeholder runtime removed.

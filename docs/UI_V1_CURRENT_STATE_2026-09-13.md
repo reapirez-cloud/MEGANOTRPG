@@ -161,7 +161,7 @@ Current implementation includes:
 - one UI 1.0 `SnakeProvider` and reusable `SnakeTrigger`;
 - right-click + touch long-press with synthetic Telegram/Android contextmenu suppression;
 - viewport-aware universal floating context menu;
-- one Snake-owned universal window system: Placeholder / Confirm / Editor / Picker / Detail / Notice/Error;
+- one Snake-owned adaptive universal window system: Placeholder / Confirm / Editor / Picker / Detail / Notice/Error / Flow; windows support controlled compact-to-full sizing and Flow steps accumulate one transient draft before final dispatch;
 - domain-provided typed executors rather than a generic arbitrary engine RPC;
 - Location actions supplied by `locationSnakeActions.ts`, outside Snake;
 - the old LocationNavigator local timer / inline menu removed.

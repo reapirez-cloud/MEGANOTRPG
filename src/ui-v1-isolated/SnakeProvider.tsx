@@ -16,10 +16,15 @@ import {
   snakeAgent,
   type SnakeAction,
   type SnakeActionInput,
+  type SnakeEditorRequest,
   type SnakeEntityRef,
+  type SnakeFlowRequest,
+  type SnakeFlowStep,
   type SnakeMenuRequest,
+  type SnakePickerRequest,
   type SnakePoint,
   type SnakeSurfaceRequest,
+  type SnakeWindowSize,
 } from "../snake-engine"
 
 type SnakeSurfaceSession = {
@@ -132,6 +137,17 @@ function SnakeContextMenu({
   )
 }
 
+function validateRequiredFields(
+  fields: SnakeEditorRequest["fields"],
+  values: Record<string, unknown>,
+) {
+  return fields.find((field) => {
+    if (!("required" in field) || !field.required) return false
+    const value = values[field.id]
+    return value === undefined || value === null || String(value).trim() === ""
+  })
+}
+
 function SnakeEditor({
   request,
   busy,
@@ -139,10 +155,10 @@ function SnakeEditor({
   onSubmit,
   onCancel,
 }: {
-  request: Extract<SnakeSurfaceRequest, { kind: "editor" }>
+  request: SnakeEditorRequest
   busy: boolean
   error?: string
-  onSubmit: (input: SnakeActionInput) => void
+  onSubmit: (input: Record<string, unknown>) => void
   onCancel: () => void
 }) {
   const [values, setValues] = useState<Record<string, unknown>>(
@@ -151,11 +167,7 @@ function SnakeEditor({
   const [validation, setValidation] = useState<string | null>(null)
 
   function submit() {
-    const missing = request.fields.find((field) => {
-      if (!("required" in field) || !field.required) return false
-      const value = values[field.id]
-      return value === undefined || value === null || String(value).trim() === ""
-    })
+    const missing = validateRequiredFields(request.fields, values)
 
     if (missing) {
       setValidation(`Заполните поле «${missing.label}».`)
@@ -283,13 +295,15 @@ function SnakePicker({
   onSubmit,
   onCancel,
 }: {
-  request: Extract<SnakeSurfaceRequest, { kind: "picker" }>
+  request: SnakePickerRequest
   busy: boolean
   error?: string
-  onSubmit: (input: SnakeActionInput) => void
+  onSubmit: (input: { selection: string }) => void
   onCancel: () => void
 }) {
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(
+    request.initialSelection || null,
+  )
 
   return (
     <>
@@ -327,7 +341,265 @@ function SnakePicker({
   )
 }
 
-function SnakeWindow({
+function defaultWindowSize(request: SnakeSurfaceRequest): Required<SnakeWindowSize> {
+  const fallbackWidth =
+    request.kind === "confirm" ||
+    request.kind === "notice" ||
+    request.kind === "placeholder"
+      ? "compact"
+      : request.kind === "detail"
+        ? "wide"
+        : "standard"
+
+  return {
+    width: request.size?.width || fallbackWidth,
+    height: request.size?.height || "content",
+  }
+}
+
+function WindowFrame({
+  id,
+  eyebrow,
+  title,
+  size,
+  busy,
+  onClose,
+  children,
+  stepMeta,
+}: {
+  id: number
+  eyebrow?: string
+  title: string
+  size: Required<SnakeWindowSize>
+  busy: boolean
+  onClose: () => void
+  children: ReactNode
+  stepMeta?: string
+}) {
+  const closeRef = useRef<HTMLButtonElement | null>(null)
+
+  useEffect(() => {
+    closeRef.current?.focus()
+  }, [id, title])
+
+  return (
+    <section
+      className="u1-snake-window"
+      data-width={size.width}
+      data-height={size.height}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={`u1-snake-window-title-${id}`}
+    >
+      <header className="u1-snake-window__head">
+        <div>
+          <span className="u1-snake-window__meta">
+            {eyebrow && <i>{eyebrow}</i>}
+            {stepMeta && <b>{stepMeta}</b>}
+          </span>
+          <h2 id={`u1-snake-window-title-${id}`}>{title}</h2>
+        </div>
+        <button
+          ref={closeRef}
+          type="button"
+          aria-label="Закрыть"
+          onClick={onClose}
+          disabled={busy}
+        >
+          ×
+        </button>
+      </header>
+      <div className="u1-snake-window__body">{children}</div>
+    </section>
+  )
+}
+
+function SnakeFlowWindow({
+  session,
+  request,
+  busy,
+  onClose,
+  onSubmit,
+}: {
+  session: SnakeSurfaceSession
+  request: SnakeFlowRequest
+  busy: boolean
+  onClose: () => void
+  onSubmit: (input: Record<string, unknown>) => void
+}) {
+  const [stepIndex, setStepIndex] = useState(0)
+  const [draft, setDraft] = useState<Record<string, unknown>>(
+    request.initialValues || {},
+  )
+
+  const step = request.steps[stepIndex]
+  const isFirst = stepIndex === 0
+  const isLast = stepIndex === request.steps.length - 1
+
+  if (!step) {
+    return (
+      <WindowFrame
+        id={session.id}
+        eyebrow={request.eyebrow}
+        title={request.title}
+        size={defaultWindowSize(request)}
+        busy={busy}
+        onClose={onClose}
+      >
+        <p>Для этого процесса не настроены шаги.</p>
+        <footer className="u1-snake-window__footer">
+          <button type="button" data-primary onClick={onClose}>Закрыть</button>
+        </footer>
+      </WindowFrame>
+    )
+  }
+
+  const size: Required<SnakeWindowSize> = {
+    width: step.size?.width || request.size?.width || "standard",
+    height: step.size?.height || request.size?.height || "content",
+  }
+
+  function back() {
+    if (isFirst) {
+      onClose()
+      return
+    }
+    setStepIndex((current) => Math.max(0, current - 1))
+  }
+
+  function advance(input?: Record<string, unknown>) {
+    const nextDraft = input ? { ...draft, ...input } : draft
+    if (input) setDraft(nextDraft)
+
+    if (isLast) {
+      onSubmit(nextDraft)
+      return
+    }
+
+    setStepIndex((current) => current + 1)
+  }
+
+  const backLabel = isFirst
+    ? request.cancelLabel || "Отмена"
+    : request.backLabel || "Назад"
+  const nextLabel = isLast
+    ? request.submitLabel || "Завершить"
+    : step.nextLabel || request.nextLabel || "Далее"
+
+  const editorRequest: SnakeEditorRequest | null =
+    step.kind === "editor"
+      ? {
+          kind: "editor",
+          title: step.title,
+          fields: step.fields,
+          initialValues: draft,
+          submitLabel: nextLabel,
+          cancelLabel: backLabel,
+        }
+      : null
+
+  const pickerKey =
+    step.kind === "picker" ? step.valueKey || "selection" : "selection"
+
+  const pickerRequest: SnakePickerRequest | null =
+    step.kind === "picker"
+      ? {
+          kind: "picker",
+          title: step.title,
+          items: step.items,
+          initialSelection:
+            typeof draft[pickerKey] === "string"
+              ? String(draft[pickerKey])
+              : undefined,
+          submitLabel: nextLabel,
+          cancelLabel: backLabel,
+        }
+      : null
+
+  return (
+    <WindowFrame
+      id={session.id}
+      eyebrow={step.eyebrow || request.eyebrow || request.title}
+      title={step.title}
+      size={size}
+      busy={busy}
+      onClose={onClose}
+      stepMeta={`${String(stepIndex + 1).padStart(2, "0")} / ${String(request.steps.length).padStart(2, "0")}`}
+    >
+      <div className="u1-snake-flow-step" key={step.id}>
+        {editorRequest && (
+          <SnakeEditor
+            key={step.id}
+            request={editorRequest}
+            busy={busy}
+            error={session.error}
+            onSubmit={advance}
+            onCancel={back}
+          />
+        )}
+
+        {pickerRequest && (
+          <SnakePicker
+            key={step.id}
+            request={pickerRequest}
+            busy={busy}
+            error={session.error}
+            onSubmit={({ selection }) => advance({ [pickerKey]: selection })}
+            onCancel={back}
+          />
+        )}
+
+        {step.kind === "confirm" && (
+          <>
+            {step.body && <p>{step.body}</p>}
+            {session.error && (
+              <div className="u1-snake-window__error">{session.error}</div>
+            )}
+            <footer className="u1-snake-window__footer">
+              <button type="button" onClick={back} disabled={busy}>
+                {backLabel}
+              </button>
+              <button
+                type="button"
+                data-primary
+                disabled={busy}
+                onClick={() =>
+                  advance({ [step.valueKey || "confirmed"]: true })
+                }
+              >
+                {busy ? "…" : nextLabel}
+              </button>
+            </footer>
+          </>
+        )}
+
+        {step.kind === "detail" && (
+          <>
+            {step.mediaUrl && (
+              <img className="u1-snake-window__media" src={step.mediaUrl} alt="" />
+            )}
+            {step.body && <p>{step.body}</p>}
+            <footer className="u1-snake-window__footer">
+              <button type="button" onClick={back} disabled={busy}>
+                {backLabel}
+              </button>
+              <button
+                type="button"
+                data-primary
+                disabled={busy}
+                onClick={() => advance()}
+              >
+                {busy ? "…" : nextLabel}
+              </button>
+            </footer>
+          </>
+        )}
+      </div>
+    </WindowFrame>
+  )
+}
+
+function SnakeSingleWindow({
   session,
   busy,
   onClose,
@@ -339,12 +611,118 @@ function SnakeWindow({
   onSubmit: (input?: SnakeActionInput) => void
 }) {
   const request = session.request
-  const closeRef = useRef<HTMLButtonElement | null>(null)
+  if (request.kind === "flow") return null
 
-  useEffect(() => {
-    closeRef.current?.focus()
-  }, [session.id])
+  const size = defaultWindowSize(request)
 
+  return (
+    <WindowFrame
+      id={session.id}
+      eyebrow={request.eyebrow}
+      title={request.title}
+      size={size}
+      busy={busy}
+      onClose={onClose}
+    >
+      {request.kind === "placeholder" && (
+        <>
+          <p>
+            {request.body ||
+              "Интерфейс этой функции будет спроектирован отдельным этапом."}
+          </p>
+          <footer className="u1-snake-window__footer">
+            <button type="button" data-primary onClick={onClose}>
+              Закрыть
+            </button>
+          </footer>
+        </>
+      )}
+
+      {request.kind === "confirm" && (
+        <>
+          {request.body && <p>{request.body}</p>}
+          {session.error && (
+            <div className="u1-snake-window__error">{session.error}</div>
+          )}
+          <footer className="u1-snake-window__footer">
+            <button type="button" onClick={onClose} disabled={busy}>
+              {request.cancelLabel || "Отмена"}
+            </button>
+            <button
+              type="button"
+              data-primary
+              disabled={busy}
+              onClick={() => onSubmit({ confirmed: true })}
+            >
+              {busy ? "…" : request.confirmLabel || "Подтвердить"}
+            </button>
+          </footer>
+        </>
+      )}
+
+      {request.kind === "editor" && (
+        <SnakeEditor
+          key={session.id}
+          request={request}
+          busy={busy}
+          error={session.error}
+          onSubmit={onSubmit}
+          onCancel={onClose}
+        />
+      )}
+
+      {request.kind === "picker" && (
+        <SnakePicker
+          key={session.id}
+          request={request}
+          busy={busy}
+          error={session.error}
+          onSubmit={onSubmit}
+          onCancel={onClose}
+        />
+      )}
+
+      {request.kind === "detail" && (
+        <>
+          {request.mediaUrl && (
+            <img className="u1-snake-window__media" src={request.mediaUrl} alt="" />
+          )}
+          {request.body && <p>{request.body}</p>}
+          <footer className="u1-snake-window__footer">
+            <button type="button" data-primary onClick={onClose}>
+              Закрыть
+            </button>
+          </footer>
+        </>
+      )}
+
+      {request.kind === "notice" && (
+        <>
+          {request.body && (
+            <p data-tone={request.tone || "normal"}>{request.body}</p>
+          )}
+          <footer className="u1-snake-window__footer">
+            <button type="button" data-primary onClick={onClose}>
+              Закрыть
+            </button>
+          </footer>
+        </>
+      )}
+    </WindowFrame>
+  )
+}
+
+function SnakeWindow({
+  session,
+  busy,
+  onClose,
+  onSubmit,
+}: {
+  session: SnakeSurfaceSession
+  busy: boolean
+  onClose: () => void
+  onSubmit: (input?: SnakeActionInput) => void
+}) {
   return createPortal(
     <div
       className="u1-snake-window-layer"
@@ -352,115 +730,22 @@ function SnakeWindow({
         if (event.target === event.currentTarget && !busy) onClose()
       }}
     >
-      <section
-        className="u1-snake-window"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`u1-snake-window-title-${session.id}`}
-      >
-        <header className="u1-snake-window__head">
-          <div>
-            {request.eyebrow && <span>{request.eyebrow}</span>}
-            <h2 id={`u1-snake-window-title-${session.id}`}>{request.title}</h2>
-          </div>
-          <button
-            ref={closeRef}
-            type="button"
-            aria-label="Закрыть"
-            onClick={onClose}
-            disabled={busy}
-          >
-            ×
-          </button>
-        </header>
-
-        <div className="u1-snake-window__body">
-          {request.kind === "placeholder" && (
-            <>
-              <p>
-                {request.body ||
-                  "Интерфейс этой функции будет спроектирован отдельным этапом."}
-              </p>
-              <footer className="u1-snake-window__footer">
-                <button type="button" data-primary onClick={onClose}>
-                  Закрыть
-                </button>
-              </footer>
-            </>
-          )}
-
-          {request.kind === "confirm" && (
-            <>
-              {request.body && <p>{request.body}</p>}
-              {session.error && (
-                <div className="u1-snake-window__error">{session.error}</div>
-              )}
-              <footer className="u1-snake-window__footer">
-                <button type="button" onClick={onClose} disabled={busy}>
-                  {request.cancelLabel || "Отмена"}
-                </button>
-                <button
-                  type="button"
-                  data-primary
-                  disabled={busy}
-                  onClick={() => onSubmit({ confirmed: true })}
-                >
-                  {busy ? "…" : request.confirmLabel || "Подтвердить"}
-                </button>
-              </footer>
-            </>
-          )}
-
-          {request.kind === "editor" && (
-            <SnakeEditor
-              key={session.id}
-              request={request}
-              busy={busy}
-              error={session.error}
-              onSubmit={onSubmit}
-              onCancel={onClose}
-            />
-          )}
-
-          {request.kind === "picker" && (
-            <SnakePicker
-              key={session.id}
-              request={request}
-              busy={busy}
-              error={session.error}
-              onSubmit={onSubmit}
-              onCancel={onClose}
-            />
-          )}
-
-          {request.kind === "detail" && (
-            <>
-              {request.mediaUrl && (
-                <img className="u1-snake-window__media" src={request.mediaUrl} alt="" />
-              )}
-              {request.body && <p>{request.body}</p>}
-              <footer className="u1-snake-window__footer">
-                <button type="button" data-primary onClick={onClose}>
-                  Закрыть
-                </button>
-              </footer>
-            </>
-          )}
-
-          {request.kind === "notice" && (
-            <>
-              {request.body && (
-                <p data-tone={request.tone || "normal"}>{request.body}</p>
-              )}
-              <footer className="u1-snake-window__footer">
-                <button type="button" data-primary onClick={onClose}>
-                  Закрыть
-                </button>
-              </footer>
-            </>
-          )}
-        </div>
-      </section>
+      {session.request.kind === "flow" ? (
+        <SnakeFlowWindow
+          session={session}
+          request={session.request}
+          busy={busy}
+          onClose={onClose}
+          onSubmit={onSubmit}
+        />
+      ) : (
+        <SnakeSingleWindow
+          session={session}
+          busy={busy}
+          onClose={onClose}
+          onSubmit={onSubmit}
+        />
+      )}
     </div>,
     document.body,
   )

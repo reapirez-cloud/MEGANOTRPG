@@ -10,6 +10,23 @@ export type SnakePoint = {
 
 export type SnakeActionTone = "normal" | "danger"
 
+export type SnakeWindowWidth =
+  | "compact"
+  | "narrow"
+  | "standard"
+  | "wide"
+  | "full"
+
+export type SnakeWindowHeight =
+  | "content"
+  | "tall"
+  | "full"
+
+export type SnakeWindowSize = {
+  width?: SnakeWindowWidth
+  height?: SnakeWindowHeight
+}
+
 export type SnakeFieldOption = {
   value: string
   label: string
@@ -43,52 +60,102 @@ export type SnakePickerItem = {
   disabled?: boolean
 }
 
-export type SnakeSurfaceRequest =
-  | {
-      kind: "placeholder"
-      title: string
-      eyebrow?: string
-      body?: string
-    }
-  | {
-      kind: "confirm"
-      title: string
-      eyebrow?: string
-      body?: string
-      confirmLabel?: string
-      cancelLabel?: string
-    }
-  | {
+type SnakeWindowRequestBase = {
+  title: string
+  eyebrow?: string
+  size?: SnakeWindowSize
+}
+
+export type SnakePlaceholderRequest = SnakeWindowRequestBase & {
+  kind: "placeholder"
+  body?: string
+}
+
+export type SnakeConfirmRequest = SnakeWindowRequestBase & {
+  kind: "confirm"
+  body?: string
+  confirmLabel?: string
+  cancelLabel?: string
+}
+
+export type SnakeEditorRequest = SnakeWindowRequestBase & {
+  kind: "editor"
+  fields: SnakeFieldSchema[]
+  initialValues?: Record<string, unknown>
+  submitLabel?: string
+  cancelLabel?: string
+}
+
+export type SnakePickerRequest = SnakeWindowRequestBase & {
+  kind: "picker"
+  items: SnakePickerItem[]
+  initialSelection?: string
+  submitLabel?: string
+  cancelLabel?: string
+}
+
+export type SnakeDetailRequest = SnakeWindowRequestBase & {
+  kind: "detail"
+  body?: string
+  mediaUrl?: string
+}
+
+export type SnakeNoticeRequest = SnakeWindowRequestBase & {
+  kind: "notice"
+  body?: string
+  tone?: "normal" | "error"
+}
+
+type SnakeFlowStepBase = {
+  id: string
+  title: string
+  eyebrow?: string
+  size?: SnakeWindowSize
+}
+
+export type SnakeFlowStep =
+  | (SnakeFlowStepBase & {
       kind: "editor"
-      title: string
-      eyebrow?: string
       fields: SnakeFieldSchema[]
-      initialValues?: Record<string, unknown>
-      submitLabel?: string
-      cancelLabel?: string
-    }
-  | {
+      nextLabel?: string
+    })
+  | (SnakeFlowStepBase & {
       kind: "picker"
-      title: string
-      eyebrow?: string
       items: SnakePickerItem[]
-      submitLabel?: string
-      cancelLabel?: string
-    }
-  | {
+      valueKey?: string
+      nextLabel?: string
+    })
+  | (SnakeFlowStepBase & {
+      kind: "confirm"
+      body?: string
+      valueKey?: string
+      nextLabel?: string
+    })
+  | (SnakeFlowStepBase & {
       kind: "detail"
-      title: string
-      eyebrow?: string
       body?: string
       mediaUrl?: string
-    }
-  | {
-      kind: "notice"
-      title: string
-      eyebrow?: string
-      body?: string
-      tone?: "normal" | "error"
-    }
+      nextLabel?: string
+    })
+
+export type SnakeFlowRequest = SnakeWindowRequestBase & {
+  kind: "flow"
+  steps: SnakeFlowStep[]
+  initialValues?: Record<string, unknown>
+  nextLabel?: string
+  backLabel?: string
+  cancelLabel?: string
+  submitLabel?: string
+}
+
+export type SnakeSurfaceRequest =
+  | SnakePlaceholderRequest
+  | SnakeConfirmRequest
+  | SnakeEditorRequest
+  | SnakePickerRequest
+  | SnakeDetailRequest
+  | SnakeNoticeRequest
+  | SnakeFlowRequest
 
 export type SnakeActionInput = Record<string, unknown> | undefined
 

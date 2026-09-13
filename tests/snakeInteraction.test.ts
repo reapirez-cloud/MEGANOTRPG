@@ -63,3 +63,28 @@ test("Snake refuses disabled actions before an executor can run", async () => {
   assert.equal(executed, false)
   assert.deepEqual(result, { type: "error", message: "No authority" })
 })
+
+
+test("Snake flow contracts can accumulate multi-step draft into one final executor payload", async () => {
+  const agent = new SnakeAgent()
+  let payload: unknown = null
+
+  const action: SnakeAction = {
+    id: "create",
+    label: "Create",
+    execute: ({ input }) => {
+      payload = input
+      return { type: "success" }
+    },
+  }
+
+  const draft = {
+    name: "Мара",
+    role: "Стражник",
+    factionId: "harbor-watch",
+  }
+
+  await agent.execute(action, { type: "character", id: "draft" }, draft)
+
+  assert.deepEqual(payload, draft)
+})

@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Snake windows now adapt from compact to full-size layouts by context, and complex interactions can run as one sequential multi-step window with Back/Next instead of a single overloaded form.
 - Added the first universal Snake window runtime (Placeholder, Confirm, Editor, Picker, Detail and Notice/Error modes) so future interaction forms share one recognizable window system instead of entity-specific modal families.
 - Location right-click / long-press actions now use the shared Snake floating context menu instead of the old inline expanding tray; unapproved management actions open the shared Snake Placeholder window.
 - Replaced the mixed navigation assets with a new **all-PNG cold geometric pack**: compact `Я`, compact `Чаты`, and a deliberately very wide `Главная` whose horizontal lines nearly bridge the side controls.
@@ -18,6 +19,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Reduced the UI 1.0 bottom content reservation to match the thinner persistent navigation instead of leaving the old oversized empty footer.
 ### Runtime and architecture changes
 
+- Added generic Snake Flow surfaces: each step may use Editor, Picker, Confirm or Detail content, may request its own window size, preserves an in-memory draft across Back/Next, and sends one combined payload to the action executor only on the final step.
 - Migrated Locations as Snake proof #1 and removed LocationNavigator's local long-press timer, inline action menu and local placeholder machinery. Inventory is now the required proof #2.
 - Explicitly made universal windows surfaces owned by Snake rather than a second dispatch agent: Snake retains entity/action context, gathers input through a surface, then forwards normalized input to the domain adapter that calls GENA, Oracle or an approved owner facade.
 - Implemented Snake as the UI 1.0 interaction/action agent: generic entity/action/result contracts, one provider, one trigger, one-gesture/one-invocation handling, viewport-aware menu positioning and typed domain-provided executors.
