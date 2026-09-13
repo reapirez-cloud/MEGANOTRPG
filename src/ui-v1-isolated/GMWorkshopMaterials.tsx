@@ -463,7 +463,7 @@ export default function GMWorkshopMaterials({
                     initialValues: { title: material.title },
                     submitLabel: "Сохранить",
                   },
-                  execute: async ({ input }: { input: Record<string, unknown> }) => {
+                  execute: async ({ input }) => {
                     const response = await data.operations.renameMaterial(
                       material.id,
                       String(input?.title || ""),
