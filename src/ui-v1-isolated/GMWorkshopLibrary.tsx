@@ -4,6 +4,7 @@ import { WorkshopDefinitionRows } from "./GMWorkshopCommon"
 import { useGMWorkshopData } from "./useGMWorkshopData"
 
 type LibraryFilter = "all" | "item" | "spell" | "feature" | "condition"
+type LibraryScope = "active" | "archived"
 
 export default function GMWorkshopLibrary({
   data,
@@ -12,9 +13,11 @@ export default function GMWorkshopLibrary({
 }) {
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<LibraryFilter>("all")
+  const [scope, setScope] = useState<LibraryScope>("active")
   const needle = query.trim().toLocaleLowerCase("ru-RU")
+  const source = scope === "active" ? data.activeDefinitions : data.archivedDefinitions
 
-  const visible = data.activeDefinitions.filter((definition) => {
+  const visible = source.filter((definition) => {
     if (filter === "item" && definition.kind !== "item") return false
     if (filter === "spell" && definition.kind !== "spell") return false
     if (
@@ -45,6 +48,23 @@ export default function GMWorkshopLibrary({
 
   return (
     <div className="u1-gm-workshop__section">
+      <div className="u1-gm-filter-rail">
+        <button
+          type="button"
+          data-active={scope === "active" || undefined}
+          onClick={() => setScope("active")}
+        >
+          Рабочая база · {data.activeDefinitions.length}
+        </button>
+        <button
+          type="button"
+          data-active={scope === "archived" || undefined}
+          onClick={() => setScope("archived")}
+        >
+          Архив · {data.archivedDefinitions.length}
+        </button>
+      </div>
+
       <label className="u1-gm-search">
         <span>⌕</span>
         <input
