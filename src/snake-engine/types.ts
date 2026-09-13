@@ -10,6 +10,11 @@ export type SnakePoint = {
 
 export type SnakeActionTone = "normal" | "danger"
 
+export type SnakeActionPathEntry = {
+  id: string
+  label: string
+}
+
 export type SnakeWindowWidth =
   | "compact"
   | "narrow"
@@ -164,9 +169,19 @@ export type SnakeActionResult =
   | { type: "error"; message: string }
   | { type: "surface"; request: SnakeSurfaceRequest }
 
+export type SnakeBranchResolverContext = {
+  entity: SnakeEntityRef
+  path: SnakeActionPathEntry[]
+}
+
+export type SnakeBranchResolver = (
+  context: SnakeBranchResolverContext,
+) => SnakeAction[] | Promise<SnakeAction[]>
+
 export type SnakeActionExecutionContext = {
   entity: SnakeEntityRef
   input: SnakeActionInput
+  path: SnakeActionPathEntry[]
 }
 
 export type SnakeActionExecutor = (
@@ -176,11 +191,13 @@ export type SnakeActionExecutor = (
 export type SnakeAction = {
   id: string
   label: string
+  kind?: "command" | "branch"
   enabled?: boolean
   hidden?: boolean
   tone?: SnakeActionTone
   group?: string
   disabledReason?: string
+  children?: SnakeAction[] | SnakeBranchResolver
   surface?: SnakeSurfaceRequest
   execute?: SnakeActionExecutor
 }
@@ -189,4 +206,5 @@ export type SnakeMenuRequest = {
   entity: SnakeEntityRef
   actions: SnakeAction[]
   point: SnakePoint
+  title?: string
 }

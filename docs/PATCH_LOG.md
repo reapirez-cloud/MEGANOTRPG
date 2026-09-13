@@ -11,11 +11,22 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Upgraded the active character board in `Я`: HP and all six ability scores now live directly on the artwork. Each stat is tappable and expands its related skill bonuses inside the same portrait board; this local stat interaction does not invoke Snake.
+- Added the first character Snake interaction: long-press/right-click on the active character board exposes `Аватар`; choosing it keeps the same Snake menu open and replaces its contents with `Аватар персонажа` and `Аватар панели`. Both avatar editors remain explicit placeholders until their separate persistence/editor design is approved.
+
 ### Runtime and architecture changes
+
+- Extended Snake from flat action manifests to generic dynamic Branch/Command navigation. Branches resolve only the next action level from entity + current path, preserve one context-menu surface, maintain a transient Back stack, and forward the branch path into terminal command/surface execution.
+- Character-specific avatar choices live in `characterSnakeActions.ts`; Snake core remains entity-agnostic and contains no character/avatar switch. No Supabase schema or canonical gameplay state was changed.
+- Workspace stat previews read existing RLS-protected `character_sheets` fields and proficiency ranks; no new persistence path was introduced.
 
 ### Tests / verification
 
+- Added Snake agent coverage for dynamic branch resolution and terminal path forwarding, plus UI 1.0 guards for local stat expansion and the character Avatar branch.
+
 ### Known incomplete work
+
+- `Аватар персонажа` and `Аватар панели` intentionally stop at universal Snake placeholders. The main character avatar already has canonical storage; the separate panel-avatar storage/editor has not been designed or added yet.
 
 ---
 

@@ -45,3 +45,11 @@ test("Locations are the first real Snake consumer and no longer own long-press r
   assert.match(snake, /Locations.*migrated to Snake/is)
   assert.match(snake, /One physical gesture causes one Snake invocation/i)
 })
+
+
+test("Snake supports dynamic branch navigation instead of flat action catalogs", () => {
+  assert.match(snake, /Dynamic branch law/i)
+  assert.match(snake, /current interaction level/i)
+  assert.match(snake, /Branch.*Command/is)
+  assert.match(snake, /path stack/i)
+})

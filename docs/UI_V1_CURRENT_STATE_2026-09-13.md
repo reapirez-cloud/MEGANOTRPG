@@ -171,6 +171,7 @@ Current implementation includes:
 - `src/snake-engine/**` generic action/entity/result contracts;
 - modular UI runtime: orchestration/context, interaction/gesture handling and reusable surfaces are split under `src/ui-v1-isolated/snake/**` so adding entity families does not grow one provider monolith;
 - one UI 1.0 `SnakeProvider` and reusable `SnakeTrigger`;
+- dynamic Branch/Command navigation with a transient branch stack: the domain resolves only the current level's children, Back restores the previous level, and terminal commands receive the selected path;
 - right-click + touch long-press with synthetic Telegram/Android contextmenu suppression;
 - viewport-aware universal floating context menu;
 - one Snake-owned adaptive universal window system: Placeholder / Confirm / Editor / Picker / Detail / Notice/Error / Flow; windows support controlled compact-to-full sizing and Flow steps accumulate one transient draft before final dispatch;

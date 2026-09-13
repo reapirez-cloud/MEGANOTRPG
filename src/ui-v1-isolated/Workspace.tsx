@@ -1,7 +1,14 @@
-import type { CSSProperties } from "react"
+import { useState, type CSSProperties } from "react"
 
 import PlayerProfileMark from "./PlayerProfileMark"
-import { useWorkspaceData, type WorkspaceCharacter } from "./useWorkspaceData"
+import { SnakeTrigger } from "./SnakeProvider"
+import { createCharacterSnakeActions } from "./characterSnakeActions"
+import {
+  useWorkspaceData,
+  type WorkspaceAbilityKey,
+  type WorkspaceAbilitySummary,
+  type WorkspaceCharacter,
+} from "./useWorkspaceData"
 
 type Props = {
   onOpenCharacter: (characterId: string) => void
@@ -11,6 +18,10 @@ type Props = {
 function mediaStyle(url: string | null): CSSProperties | undefined {
   if (!url) return undefined
   return { "--u1-workspace-media": `url("${url}")` } as CSSProperties
+}
+
+function signed(value: number) {
+  return value >= 0 ? `+${value}` : String(value)
 }
 
 function CharacterStrip({ character, onClick }: { character: WorkspaceCharacter; onClick: () => void }) {
@@ -50,54 +61,142 @@ function NarratorStrip({ coverUrl, selected, onClick }: { coverUrl: string | nul
   )
 }
 
+function StatReveal({ ability }: { ability: WorkspaceAbilitySummary }) {
+  return (
+    <section
+      className="u1-active-identity__stat-reveal"
+      id={`workspace-stat-${ability.key}`}
+      aria-label={ability.label}
+    >
+      <header>
+        <strong>{ability.label}</strong>
+        <span>{ability.score}</span>
+        <small>{signed(ability.modifier)}</small>
+      </header>
+
+      {ability.skills.length ? (
+        <div className="u1-active-identity__skills">
+          {ability.skills.map((skill) => (
+            <div key={skill.id} data-rank={skill.rank || undefined}>
+              <span>{skill.label}</span>
+              <strong>{signed(skill.bonus)}</strong>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="u1-active-identity__skills-empty">
+          К этой характеристике навыков нет.
+        </div>
+      )}
+    </section>
+  )
+}
+
 function ActiveIdentity({
   character,
   narrator,
   coverUrl,
+  canEditAvatar,
   onOpenCharacter,
 }: {
   character: WorkspaceCharacter | null
   narrator: boolean
   coverUrl: string | null
+  canEditAvatar: boolean
   onOpenCharacter: (characterId: string) => void
 }) {
+  const [selectedAbility, setSelectedAbility] =
+    useState<WorkspaceAbilityKey | null>(null)
+
   const style = mediaStyle(character?.avatarUrl || (narrator ? coverUrl : null))
-  const content = (
-    <>
+  const selectedStat = character?.sheet?.abilities.find(
+    (ability) => ability.key === selectedAbility,
+  ) || null
+
+  const panel = (
+    <div
+      className="u1-active-identity"
+      data-narrator={narrator || undefined}
+      data-stat-open={selectedAbility || undefined}
+      style={style}
+    >
       <span className="u1-active-identity__media" aria-hidden="true" />
       <span className="u1-active-identity__veil" aria-hidden="true" />
-      <span className="u1-active-identity__copy">
-        <strong>{narrator ? "Рассказчик" : character?.name || "Персонаж не выбран"}</strong>
-        <small>
-          {narrator
-            ? "Голос мира"
-            : character
-              ? `${character.characterClass || "Без класса"} · ${character.level}`
-              : "ГМ ещё не назначил активного персонажа"}
-        </small>
-      </span>
-      {character && <span className="u1-active-identity__open" aria-hidden="true">↗</span>}
-    </>
+
+      {character && (
+        <button
+          type="button"
+          className="u1-active-identity__open-zone"
+          onClick={() => onOpenCharacter(character.id)}
+          aria-label={`Открыть персонажа ${character.name}`}
+        />
+      )}
+
+      <div className="u1-active-identity__body">
+        <div className="u1-active-identity__headline">
+          <div>
+            <strong>
+              {narrator ? "Рассказчик" : character?.name || "Персонаж не выбран"}
+            </strong>
+            <small>
+              {narrator
+                ? "Голос мира"
+                : character
+                  ? `${character.characterClass || "Без класса"} · ${character.level}`
+                  : "ГМ ещё не назначил активного персонажа"}
+            </small>
+          </div>
+
+          {character?.sheet && (
+            <div className="u1-active-identity__hp">
+              <span>НР</span>
+              <strong>{character.sheet.currentHp} / {character.sheet.maxHp}</strong>
+            </div>
+          )}
+        </div>
+
+        {character?.sheet && (
+          <div className="u1-active-identity__stats" aria-label="Характеристики персонажа">
+            {character.sheet.abilities.map((ability) => {
+              const open = selectedAbility === ability.key
+              return (
+                <button
+                  type="button"
+                  key={ability.key}
+                  data-active={open || undefined}
+                  aria-expanded={open}
+                  aria-controls={`workspace-stat-${ability.key}`}
+                  onClick={() => {
+                    setSelectedAbility((current) =>
+                      current === ability.key ? null : ability.key,
+                    )
+                  }}
+                >
+                  <strong>{ability.score}</strong>
+                  <span>{ability.short}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {selectedStat && <StatReveal ability={selectedStat} />}
+      </div>
+    </div>
   )
 
-  if (character) {
-    return (
-      <button
-        type="button"
-        className="u1-active-identity"
-        style={style}
-        onClick={() => onOpenCharacter(character.id)}
-        aria-label={`Открыть персонажа ${character.name}`}
-      >
-        {content}
-      </button>
-    )
-  }
+  if (!character) return panel
+
+  const actions = createCharacterSnakeActions({ canEditAvatar })
+  if (!actions.length) return panel
 
   return (
-    <div className="u1-active-identity" data-narrator={narrator || undefined} style={style}>
-      {content}
-    </div>
+    <SnakeTrigger
+      entity={{ type: "character", id: character.id }}
+      actions={actions}
+    >
+      {panel}
+    </SnakeTrigger>
   )
 }
 
@@ -150,9 +249,11 @@ export default function Workspace({ onOpenCharacter, onOpenManagement }: Props) 
         )}
 
         <ActiveIdentity
+          key={data.activeCharacter?.id || (data.narratorSelected ? "narrator" : "empty")}
           character={data.activeCharacter}
           narrator={data.narratorSelected}
           coverUrl={data.campaignCoverUrl}
+          canEditAvatar={data.canEditActiveAvatar}
           onOpenCharacter={onOpenCharacter}
         />
       </footer>
