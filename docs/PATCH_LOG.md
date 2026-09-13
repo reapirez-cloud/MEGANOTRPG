@@ -10,6 +10,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 **Started:** 2026-09-13
 
 ### Player-facing changes
+- Added the first real UI 1.0 Workspace identity surface: player active-character board, GM/owner Narrator + character voice chooser, and a separate 70/30 campaign / Управление strip. The VI circle is now reserved for the future player profile and no longer duplicates Workspace navigation.
 
 - Added an Android-style left-edge Back gesture for nested UI 1.0 pages. It returns through real browser history and restores the previous page to its recorded scroll position instead of rebuilding the parent screen at the top.
 - Location viewing is now a true in-interface detail page: optional artwork appears as a wide top hero only when present, followed by summary, full description and authored location sections. The temporary detail placeholder copy is gone.
