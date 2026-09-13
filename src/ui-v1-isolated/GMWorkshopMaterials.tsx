@@ -1,6 +1,9 @@
 import { useMemo, useRef, useState } from "react"
 
-import type { SnakeAction } from "../snake-engine"
+import type {
+  SnakeAction,
+  SnakeActionExecutionContext,
+} from "../snake-engine"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import { openSourceAction } from "./GMWorkshopCommon"
 import { useGMWorkshopData } from "./useGMWorkshopData"
@@ -463,7 +466,7 @@ export default function GMWorkshopMaterials({
                     initialValues: { title: material.title },
                     submitLabel: "Сохранить",
                   },
-                  execute: async ({ input }) => {
+                  execute: async ({ input }: SnakeActionExecutionContext) => {
                     const response = await data.operations.renameMaterial(
                       material.id,
                       String(input?.title || ""),
