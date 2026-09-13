@@ -148,6 +148,14 @@ export default function GMWorkshopMaterials({
   function folderActions(folder: ReturnType<typeof useGMWorkshopData>["folders"][number]): SnakeAction[] {
     return [
       {
+        id: "open-folder",
+        label: "Открыть папку",
+        execute: () => {
+          setFolderId(folder.id)
+          return { type: "success" }
+        },
+      },
+      {
         id: "rename-folder",
         label: "Переименовать",
         surface: {
@@ -285,6 +293,30 @@ export default function GMWorkshopMaterials({
       <div className="u1-gm-list">
         {visible.map((material) => {
           const actions: SnakeAction[] = [
+            material.kind === "upload"
+              ? {
+                  id: "open-material",
+                  label: "Открыть файл",
+                  enabled: Boolean(material.fileUrl),
+                  disabledReason: "У файла нет доступного адреса.",
+                  execute: () => {
+                    if (!material.fileUrl) {
+                      return { type: "error" as const, message: "Файл недоступен." }
+                    }
+                    window.open(material.fileUrl, "_blank", "noopener,noreferrer")
+                    return { type: "success" as const }
+                  },
+                }
+              : {
+                  id: "open-material",
+                  label: "Открыть заметку",
+                  surface: {
+                    kind: "detail",
+                    eyebrow: "Материалы · только GM",
+                    title: material.title,
+                    body: material.body || "Пустая заметка.",
+                  },
+                },
             ...(material.kind === "note"
               ? [{
                   id: "edit-note",
