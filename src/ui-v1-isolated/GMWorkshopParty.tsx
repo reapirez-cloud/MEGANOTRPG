@@ -128,6 +128,10 @@ export default function GMWorkshopParty({
               const actions = createWorkshopCharacterActions({
                 character,
                 members: data.members,
+                templates: data.templates,
+                assignments: data.templateAssignments,
+                locations: data.locations,
+                npcHabitats: data.npcHabitats,
                 operations: data.operations,
                 onOpen: () => onOpenCharacter(character.id),
               })
