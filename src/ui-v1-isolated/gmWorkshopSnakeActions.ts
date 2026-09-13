@@ -9,6 +9,7 @@ import type {
 } from "../reference-engine/index.ts"
 import type {
   WorkshopCharacter,
+  WorkshopInvite,
   WorkshopMember,
   WorkshopOperations,
 } from "./useGMWorkshopData"
@@ -21,6 +22,72 @@ function actionResult(ok: boolean, error: string | undefined, notice: string) {
   return ok
     ? { type: "success" as const, notice }
     : { type: "error" as const, message: error || "Действие не выполнено." }
+}
+
+export function createWorkshopCharacterEditAction({
+  character,
+  operations,
+}: {
+  character: WorkshopCharacter
+  operations: WorkshopOperations
+}): SnakeAction {
+  return {
+    id: "edit-character",
+    label: "Редактировать",
+    surface: {
+      kind: "editor",
+      eyebrow: character.publicationState === "draft" ? "Черновик" : "Персонаж",
+      title: character.name,
+      size: { width: "wide", height: "tall" },
+      fields: [
+        { id: "name", label: "Имя", type: "text", required: true },
+        { id: "characterClass", label: "Класс / роль", type: "text" },
+        { id: "level", label: "Уровень", type: "number" },
+        { id: "bio", label: "Описание", type: "textarea" },
+      ],
+      initialValues: {
+        name: character.name,
+        characterClass: character.characterClass,
+        level: character.level,
+        bio: character.bio,
+      },
+      submitLabel: "Сохранить",
+    },
+    execute: async ({ input }) => {
+      const response = await operations.updateCharacter(character.id, {
+        name: String(input?.name || character.name),
+        characterClass: String(input?.characterClass || character.characterClass),
+        level: Number(input?.level || character.level),
+        bio: String(input?.bio || ""),
+      })
+      return actionResult(response.ok, response.error, "Персонаж сохранён.")
+    },
+  }
+}
+
+export function createWorkshopDraftCharacterDeleteAction({
+  character,
+  operations,
+}: {
+  character: WorkshopCharacter
+  operations: WorkshopOperations
+}): SnakeAction {
+  return {
+    id: "delete-draft-character",
+    label: "Удалить черновик",
+    tone: "danger",
+    surface: {
+      kind: "confirm",
+      eyebrow: "Черновик",
+      title: "Удалить «" + character.name + "»?",
+      body: "Черновик будет удалён без публикации в кампанию.",
+      confirmLabel: "Удалить",
+    },
+    execute: async () => {
+      const response = await operations.deleteCharacter(character.id)
+      return actionResult(response.ok, response.error, "Черновик удалён.")
+    },
+  }
 }
 
 export function createWorkshopPcUnassignAction({
@@ -67,6 +134,7 @@ export function createWorkshopCharacterActions({
         return { type: "success" }
       },
     },
+    createWorkshopCharacterEditAction({ character, operations }),
   ]
 
   if (character.publicationState === "draft") {
@@ -107,6 +175,7 @@ export function createWorkshopCharacterActions({
         return actionResult(response.ok, response.error, "Персонаж отправлен в кампанию.")
       },
     })
+    actions.push(createWorkshopDraftCharacterDeleteAction({ character, operations }))
     return actions
   }
 
@@ -236,6 +305,225 @@ export function createWorkshopCharacterActions({
   return actions
 }
 
+export function createWorkshopMemberAssignAction({
+  member,
+  freePc,
+  operations,
+}: {
+  member: WorkshopMember
+  freePc: WorkshopCharacter[]
+  operations: WorkshopOperations
+}): SnakeAction {
+  return {
+    id: "assign-free-pc",
+    label: "Назначить свободного PC",
+    enabled: freePc.length > 0,
+    disabledReason: "Нет свободных живых PC.",
+    surface: {
+      kind: "picker",
+      eyebrow: "Партия",
+      title: "Назначить персонажа · " + member.displayName,
+      items: freePc.map((character) => ({
+        id: character.id,
+        label: character.name,
+        description: character.characterClass + " · " + character.level,
+      })),
+      submitLabel: "Назначить",
+    },
+    execute: async ({ input }) => {
+      const characterId = selection(input)
+      const response = await operations.assignCharacter(characterId, member.userId)
+      return actionResult(
+        response.ok,
+        response.error,
+        "Персонаж назначен. Активность выбирается отдельно.",
+      )
+    },
+  }
+}
+
+export function createWorkshopMemberRoleAction({
+  member,
+  operations,
+}: {
+  member: WorkshopMember
+  operations: WorkshopOperations
+}): SnakeAction {
+  const nextRole = member.role === "gm" ? "player" : "gm"
+  return {
+    id: "change-role",
+    label: nextRole === "gm" ? "Сделать GM" : "Сделать игроком",
+    surface: {
+      kind: "confirm",
+      eyebrow: "Партия · роль",
+      title: member.displayName,
+      body: nextRole === "gm"
+        ? "Игрок получит полномочия GM в кампании. Владение кампанией это не меняет."
+        : "У участника будут сняты полномочия GM. Владение кампанией это не меняет.",
+      confirmLabel: nextRole === "gm" ? "Сделать GM" : "Сделать игроком",
+    },
+    execute: async () => {
+      const response = await operations.setMemberRole(member.userId, nextRole)
+      return actionResult(response.ok, response.error, "Роль участника изменена.")
+    },
+  }
+}
+
+export function createWorkshopMemberActions({
+  member,
+  characters,
+  operations,
+  canChangeRole,
+  onOpen,
+}: {
+  member: WorkshopMember
+  characters: WorkshopCharacter[]
+  operations: WorkshopOperations
+  canChangeRole: boolean
+  onOpen: () => void
+}): SnakeAction[] {
+  const assigned = characters.filter(
+    (character) =>
+      character.publicationState === "campaign" &&
+      character.characterType === "pc" &&
+      character.assignedUserId === member.userId,
+  )
+  const freePc = characters.filter(
+    (character) =>
+      character.publicationState === "campaign" &&
+      character.characterType === "pc" &&
+      character.lifeState === "alive" &&
+      !character.assignedUserId,
+  )
+  const livingAssigned = assigned.filter((character) => character.lifeState === "alive")
+
+  const characterChildren: SnakeAction[] = [
+    createWorkshopMemberAssignAction({ member, freePc, operations }),
+  ]
+
+  if (livingAssigned.length > 0) {
+    characterChildren.push({
+      id: "active-character",
+      label: "Активный персонаж",
+      kind: "branch",
+      children: [
+        ...livingAssigned.map((character): SnakeAction => ({
+          id: "active-" + character.id,
+          label: member.activeCharacterId === character.id
+            ? "✓ " + character.name
+            : character.name,
+          enabled: member.activeCharacterId !== character.id,
+          disabledReason: "Этот персонаж уже активен.",
+          execute: async () => {
+            const response = await operations.setActiveCharacter(
+              member.userId,
+              character.id,
+            )
+            return actionResult(response.ok, response.error, "Активный персонаж изменён.")
+          },
+        })),
+        ...(member.activeCharacterId
+          ? [{
+              id: "clear-active",
+              label: "Снять активность",
+              execute: async () => {
+                const response = await operations.setActiveCharacter(member.userId, null)
+                return actionResult(response.ok, response.error, "Активный персонаж снят.")
+              },
+            } satisfies SnakeAction]
+          : []),
+      ],
+    })
+  }
+
+  const actions: SnakeAction[] = [
+    {
+      id: "open-member",
+      label: "Открыть участника",
+      execute: () => {
+        onOpen()
+        return { type: "success" }
+      },
+    },
+    {
+      id: "characters",
+      label: "Персонажи",
+      kind: "branch",
+      children: characterChildren,
+    },
+  ]
+
+  if (canChangeRole && !member.isOwner) {
+    actions.push(createWorkshopMemberRoleAction({ member, operations }))
+  }
+
+  return actions
+}
+
+export function createWorkshopInviteActions({
+  invite,
+  campaignId,
+  operations,
+}: {
+  invite: WorkshopInvite | null
+  campaignId: string
+  operations: WorkshopOperations
+}): SnakeAction[] {
+  void campaignId
+  const actions: SnakeAction[] = []
+
+  if (invite) {
+    actions.push({
+      id: "copy-invite",
+      label: "Копировать код",
+      execute: async () => {
+        if (!navigator.clipboard?.writeText) {
+          return { type: "error", message: "Буфер обмена недоступен." }
+        }
+        try {
+          await navigator.clipboard.writeText(invite.code)
+          return { type: "success", notice: "Код скопирован." }
+        } catch {
+          return { type: "error", message: "Не удалось скопировать код." }
+        }
+      },
+    })
+  }
+
+  actions.push({
+    id: "create-invite",
+    label: invite ? "Создать новый код" : "Создать код",
+    surface: {
+      kind: "confirm",
+      eyebrow: "Партия",
+      title: invite ? "Создать новый код?" : "Создать приглашение?",
+      body: "Код рассчитан на вход игроков в эту кампанию.",
+      confirmLabel: "Создать",
+    },
+    execute: async () => {
+      const response = await operations.createInvite()
+      if (!response.ok) {
+        return {
+          type: "error",
+          message: response.error || "Не удалось создать приглашение.",
+        }
+      }
+
+      if (response.code && navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(response.code)
+        } catch {
+          // Новый код всё равно остаётся видимым в Party.
+        }
+      }
+
+      return actionResult(true, undefined, "Код приглашения создан.")
+    },
+  })
+
+  return actions
+}
+
 export function createWorkshopDefinitionActions({
   definition,
   definitions,
@@ -251,7 +539,18 @@ export function createWorkshopDefinitionActions({
     character.publicationState === "campaign" &&
     character.lifeState === "alive"
   )
-  const actions: SnakeAction[] = []
+  const actions: SnakeAction[] = [
+    {
+      id: "open-definition",
+      label: "Открыть",
+      surface: {
+        kind: "detail",
+        eyebrow: definition.status === "draft" ? "Черновик" : "Библиотека",
+        title: definition.name,
+        body: definition.rulesText || definition.summary || "Описание пока не заполнено.",
+      },
+    },
+  ]
 
   if (definition.status === "draft") {
     actions.push({
