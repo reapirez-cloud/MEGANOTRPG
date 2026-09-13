@@ -6,6 +6,7 @@ import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import {
   createLocationCreateAction,
   createLocationSnakeActions,
+  createLocationTransitionActions,
 } from "./locationSnakeActions"
 import { openSourceAction } from "./GMWorkshopCommon"
 import {
@@ -420,19 +421,33 @@ export function LocationNavigator({
                       const target = locationById.get(transition.target_location_id)
                       if (!target) return null
 
+                      const actions = createLocationTransitionActions({
+                        link: transition,
+                        target,
+                        locations: world.locations,
+                        canManage: world.canManage,
+                        operations: world,
+                        onOpen: () => navigate(`home/world/locations/${target.id}`),
+                      })
+
                       return (
-                        <button
-                          type="button"
-                          className="u1-location-transition"
+                        <SnakeTrigger
                           key={transition.id}
-                          onClick={() => navigate(`home/world/locations/${target.id}`)}
+                          entity={{ type: "location-transition", id: transition.id }}
+                          actions={actions}
                         >
-                          <span aria-hidden="true">→</span>
-                          <span>
-                            <small>{transition.label.trim() || "Переход"}</small>
-                            <strong>{target.name}</strong>
-                          </span>
-                        </button>
+                          <button
+                            type="button"
+                            className="u1-location-transition"
+                            onClick={() => navigate(`home/world/locations/${target.id}`)}
+                          >
+                            <span aria-hidden="true">→</span>
+                            <span>
+                              <small>{transition.label.trim() || "Переход"}</small>
+                              <strong>{target.name}</strong>
+                            </span>
+                          </button>
+                        </SnakeTrigger>
                       )
                     })}
                   </div>
