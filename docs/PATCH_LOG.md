@@ -2,12 +2,14 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-13-D
+## Patch — 2026-09-13-D
 
-**Status:** OPEN
-**Branch:** `dev`
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `6789d1fdecc97699c2f6b34f597cf3c19182dd6a`
 **Started:** 2026-09-13
+**Released:** 2026-09-13
+**Release identity:** `main / 2026-09-13-D`
 
 ### Player-facing changes
 - Added the first real UI 1.0 Workspace identity surface: player active-character board, GM/owner Narrator + character voice chooser, and a separate 70/30 campaign / Управление strip. The VI circle is now reserved for the future player profile and no longer duplicates Workspace navigation.
@@ -34,6 +36,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Implemented Snake as the UI 1.0 interaction/action agent: generic entity/action/result contracts, one provider, one trigger, one-gesture/one-invocation handling, viewport-aware menu positioning and typed domain-provided executors.
 - Supabase schema/data were intentionally unchanged for this navigation-only UI task; the connected project was confirmed `ACTIVE_HEALTHY` before implementation.
 ### Tests / verification
+
+- Final Workspace release head `da19b39a01fa4cc44100c5c981a4d04925a3869f` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34759639311`.
 
 - Updated UI 1.0 regression coverage to verify the full modular Snake runtime instead of requiring gestures, portals and every surface implementation to remain inside one monolithic `SnakeProvider.tsx`; added a guard that keeps the provider orchestration-sized.
 - Home Art/detail-view/edge-back head `b07e9cb5e1c7b541a07fb8f1a3c0b73cab7158d0` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34757458193`.
