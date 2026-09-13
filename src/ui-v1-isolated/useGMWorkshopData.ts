@@ -14,6 +14,10 @@ import {
 } from "../reference-engine/index.ts"
 import type { StoredMechanics } from "../types/characterMechanics"
 import type { InventoryCategory, InventoryInput, SpellInput } from "../types/characterSheet"
+import type {
+  CharacterTemplateAssignment,
+  RuleTemplate,
+} from "../rule-templates/types.ts"
 
 export type WorkshopSection = "draft" | "party" | "characters" | "library" | "materials"
 
@@ -25,6 +29,7 @@ export type WorkshopCharacter = {
   level: number
   bio: string
   avatarUrl: string | null
+  avatarStoragePath: string | null
   characterType: "pc" | "npc"
   visibilityMode: "always" | "discover" | "private"
   publicationState: "draft" | "campaign"
@@ -61,6 +66,18 @@ export type WorkshopMaterial = {
   updatedAt: string
 }
 
+export type WorkshopLocation = {
+  id: string
+  parentId: string | null
+  name: string
+  lifecycleState: "active" | "archived"
+}
+
+export type WorkshopNpcHabitat = {
+  npcCharacterId: string
+  locationId: string
+}
+
 export type WorkshopInvite = {
   code: string
   maxUses: number
@@ -85,11 +102,20 @@ export type WorkshopOperations = {
   refresh: () => Promise<void>
   createDraftCharacter: (
     type: "pc" | "npc",
-    input: { name: string; characterClass?: string; level?: number; bio?: string },
+    input: { name: string; classTemplateId?: string | null; level?: number; bio?: string },
   ) => Promise<WorkshopMutationResult & { id?: string }>
   updateCharacter: (
     characterId: string,
-    input: { name: string; characterClass: string; level: number; bio: string },
+    input: { name: string; characterType: "pc" | "npc"; bio: string },
+  ) => Promise<WorkshopMutationResult>
+  assignTemplate: (
+    characterId: string,
+    templateId: string,
+    templateLevel: number | null,
+  ) => Promise<WorkshopMutationResult>
+  removeTemplateAssignment: (
+    characterId: string,
+    assignmentId: string,
   ) => Promise<WorkshopMutationResult>
   deleteCharacter: (characterId: string) => Promise<WorkshopMutationResult>
   publishCharacter: (
@@ -103,6 +129,11 @@ export type WorkshopOperations = {
   setNpcVisibility: (
     characterId: string,
     mode: "always" | "discover",
+  ) => Promise<WorkshopMutationResult>
+  setNpcHabitat: (
+    characterId: string,
+    locationId: string,
+    attached: boolean,
   ) => Promise<WorkshopMutationResult>
   assignCharacter: (
     characterId: string,
@@ -127,14 +158,20 @@ export type WorkshopOperations = {
   ) => Promise<WorkshopMutationResult>
   publishDefinition: (definitionId: string) => Promise<WorkshopMutationResult>
   archiveDefinition: (definitionId: string) => Promise<WorkshopMutationResult>
+  restoreDefinition: (definitionId: string) => Promise<WorkshopMutationResult>
   cloneDefinition: (
     definition: ChasovoyDefinition,
   ) => Promise<WorkshopMutationResult & { id?: string }>
   issueDefinition: (
     definition: ChasovoyDefinition,
     characterId: string,
+    quantity?: number,
   ) => Promise<WorkshopMutationResult>
   linkDefinitionToItem: (
+    definition: ChasovoyDefinition,
+    itemDefinitionId: string,
+  ) => Promise<WorkshopMutationResult>
+  unlinkDefinitionFromItem: (
     definition: ChasovoyDefinition,
     itemDefinitionId: string,
   ) => Promise<WorkshopMutationResult>
@@ -168,6 +205,10 @@ type WorkshopState = {
   members: WorkshopMember[]
   characters: WorkshopCharacter[]
   definitions: ChasovoyDefinition[]
+  templates: RuleTemplate[]
+  templateAssignments: CharacterTemplateAssignment[]
+  locations: WorkshopLocation[]
+  npcHabitats: WorkshopNpcHabitat[]
   folders: WorkshopFolder[]
   materials: WorkshopMaterial[]
   invite: WorkshopInvite | null
@@ -185,6 +226,10 @@ const EMPTY_STATE: WorkshopState = {
   members: [],
   characters: [],
   definitions: [],
+  templates: [],
+  templateAssignments: [],
+  locations: [],
+  npcHabitats: [],
   folders: [],
   materials: [],
   invite: null,
@@ -232,7 +277,7 @@ const INVENTORY_CATEGORIES: InventoryCategory[] = [
   "other",
 ]
 
-function itemInput(definition: ChasovoyDefinition): InventoryInput {
+function itemInput(definition: ChasovoyDefinition, quantityOverride?: number): InventoryInput {
   const rawCategory = jsonString(definition.data, "category", "other")
   const category = INVENTORY_CATEGORIES.includes(rawCategory as InventoryCategory)
     ? rawCategory as InventoryCategory
@@ -243,7 +288,7 @@ function itemInput(definition: ChasovoyDefinition): InventoryInput {
 
   return {
     name: definition.name,
-    quantity: Math.max(1, jsonNumber(definition.data, "quantity", 1)),
+    quantity: Math.max(1, Math.floor(quantityOverride ?? jsonNumber(definition.data, "quantity", 1))),
     weight: typeof definition.data.weight === "number" ? definition.data.weight : null,
     equipped: false,
     category,
