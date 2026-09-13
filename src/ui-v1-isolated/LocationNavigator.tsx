@@ -3,7 +3,11 @@ import { useMemo } from "react"
 
 import type { SnakeAction, SnakeEntityRef } from "../snake-engine"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
-import { createLocationSnakeActions } from "./locationSnakeActions"
+import {
+  createLocationCreateAction,
+  createLocationSnakeActions,
+} from "./locationSnakeActions"
+import { openSourceAction } from "./GMWorkshopCommon"
 import {
   useUiV1Locations,
   type UiV1Location,
@@ -323,7 +327,9 @@ export function LocationNavigator({
   function renderNode(location: UiV1Location, mode: TileMode) {
     const actions = createLocationSnakeActions({
       location,
+      locations: world.locations,
       canManage: world.canManage,
+      operations: world,
       onOpen: () => openDetail(location),
     })
 
@@ -348,14 +354,18 @@ export function LocationNavigator({
             type="button"
             className="u1-section-add"
             aria-label="Добавить главную локацию"
-            onClick={() =>
-              snake.openSurface({
-                kind: "placeholder",
-                eyebrow: "Локация",
-                title: "Создание главной локации",
-                body: "Интерфейс этой функции будет спроектирован отдельным этапом.",
+            onClick={() => {
+              const action = createLocationCreateAction({
+                parentLocationId: null,
+                title: "Новая главная локация",
+                operations: world,
               })
-            }
+              openSourceAction(
+                snake,
+                { type: "location-root", id: world.campaignId },
+                action,
+              )
+            }}
           >
             +
           </button>
