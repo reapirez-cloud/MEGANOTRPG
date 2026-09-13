@@ -134,14 +134,29 @@ function LocationNode({
   )
 }
 
-function LocationDetailConnection({ location }: { location: UiV1Location }) {
+function LocationDetailConnection({
+  location,
+  sections,
+}: {
+  location: UiV1Location
+  sections: Array<{ id: string; title: string; body: string }>
+}) {
+  const hasText = Boolean(
+    location.summary.trim() ||
+    location.description.trim() ||
+    sections.some((section) => section.title.trim() || section.body.trim()),
+  )
+
   return (
     <main className="u1-section-page">
       <header className="u1-section-head">
         <button
           type="button"
           className="u1-section-head__back"
-          onClick={() => navigate(`home/world/locations/${location.id}`)}
+          onClick={() => {
+            if (window.history.length > 1) window.history.back()
+            else navigate(`home/world/locations/${location.id}`)
+          }}
           aria-label="Назад"
         >
           ←
@@ -150,11 +165,39 @@ function LocationDetailConnection({ location }: { location: UiV1Location }) {
         <span className="u1-section-head__action" />
       </header>
 
-      <section className="u1-location-detail-seam">
-        {location.display_image_url && <img src={location.display_image_url} alt="" draggable={false} />}
-        {location.summary && <p>{location.summary}</p>}
-        <span>Карточка локации подключена отдельным маршрутом. Полное наполнение спроектируем своим этапом.</span>
-      </section>
+      <article className="u1-entity-detail">
+        {location.display_image_url && (
+          <div className="u1-entity-detail__hero">
+            <img
+              src={location.display_image_url}
+              alt=""
+              draggable={false}
+            />
+            <span aria-hidden="true" />
+          </div>
+        )}
+
+        <div className="u1-entity-detail__copy">
+          {location.summary.trim() && (
+            <p className="u1-entity-detail__lead">{location.summary}</p>
+          )}
+
+          {location.description.trim() && (
+            <p className="u1-entity-detail__body">{location.description}</p>
+          )}
+
+          {sections.map((section) => (
+            <section className="u1-entity-detail__section" key={section.id}>
+              {section.title.trim() && <h2>{section.title}</h2>}
+              {section.body.trim() && <p>{section.body}</p>}
+            </section>
+          ))}
+
+          {!hasText && (
+            <p className="u1-entity-detail__empty">Описание пока не добавлено.</p>
+          )}
+        </div>
+      </article>
     </main>
   )
 }
@@ -254,7 +297,12 @@ export function LocationNavigator({
   }
 
   if (selected && detail) {
-    return <LocationDetailConnection location={selected} />
+    return (
+      <LocationDetailConnection
+        location={selected}
+        sections={world.sections.filter((section) => section.location_id === selected.id)}
+      />
+    )
   }
 
   const backTo = selected

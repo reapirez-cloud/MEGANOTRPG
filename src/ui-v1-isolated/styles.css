@@ -186,7 +186,8 @@ button {
   cursor: pointer;
 }
 
-.u1-world-entry {
+.u1-world-entry,
+.u1-art-entry {
   min-height: clamp(138px, 34vw, 184px);
   border-radius: 10px;
 }
@@ -204,6 +205,13 @@ button {
   background:
     radial-gradient(circle at 72% 20%, rgba(255,255,255,.075), transparent 28%),
     linear-gradient(145deg, #1a1d20 0%, #111315 58%, #0d0f11 100%);
+}
+
+.u1-entry-media--art-fallback {
+  background:
+    linear-gradient(112deg, rgba(231, 236, 237, .045), transparent 34%),
+    radial-gradient(circle at 76% 24%, rgba(170, 180, 184, .11), transparent 24%),
+    linear-gradient(150deg, #202225 0%, #111416 54%, #090a0b 100%);
 }
 
 .u1-entry-scrim {
@@ -242,13 +250,15 @@ button {
   text-shadow: 0 1px 10px rgba(0,0,0,.9);
 }
 
-.u1-world-entry__copy {
+.u1-world-entry__copy,
+.u1-art-entry__copy {
   position: absolute;
   left: 16px;
   bottom: 14px;
 }
 
-.u1-world-entry__copy strong {
+.u1-world-entry__copy strong,
+.u1-art-entry__copy strong {
   display: block;
   color: #f5f4ef;
   font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
@@ -260,10 +270,17 @@ button {
   text-shadow: 0 2px 14px rgba(0,0,0,.92);
 }
 
-.u1-world-entry__copy small {
+.u1-world-entry__copy small,
+.u1-art-entry__copy small {
+  display: block;
   margin-top: 6px;
-  text-transform: none;
+  color: rgba(239, 238, 233, .66);
+  font-size: 9px;
+  line-height: 1.2;
+  font-weight: 680;
   letter-spacing: .02em;
+  text-transform: none;
+  text-shadow: 0 1px 10px rgba(0,0,0,.9);
 }
 
 .u1-knowledge-entry {
@@ -374,74 +391,6 @@ button {
   font-size: 24px;
   line-height: 1;
   font-weight: 560;
-}
-
-.u1-art-entry {
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.u1-art-entry__head {
-  min-height: 48px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 10px;
-  padding: 0 0 10px;
-  border-bottom: 1px solid var(--u1-line);
-}
-
-.u1-art-entry__head strong {
-  color: var(--u1-text);
-  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
-  font-size: 22px;
-  line-height: 1;
-  font-weight: 600;
-  letter-spacing: -.025em;
-  text-transform: uppercase;
-}
-
-.u1-art-entry__head small {
-  padding-bottom: 1px;
-  color: var(--u1-text-faint);
-  font-size: 9px;
-  line-height: 1;
-}
-
-.u1-art-entry__head > span {
-  color: var(--u1-text-faint);
-  font-size: 14px;
-}
-
-.u1-art-entry__strip {
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
-}
-
-.u1-art-entry__thumb {
-  min-width: 0;
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  border-radius: 6px;
-  background: var(--u1-surface-1);
-}
-
-.u1-art-entry__thumb img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.u1-art-entry__thumb--empty {
-  background:
-    linear-gradient(145deg, rgba(255,255,255,.04), transparent 58%),
-    var(--u1-surface-1);
 }
 
 .u1-latest {

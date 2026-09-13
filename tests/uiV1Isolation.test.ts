@@ -109,14 +109,27 @@ test("home uses mixed editorial entry types instead of a uniform preview grid", 
   assert.match(app, /function KnowledgeBaseEntry/)
   assert.match(app, /function SocietyNewsEntry/)
   assert.match(app, /function AchievementEntry/)
-  assert.match(app, /function ArtPreviewStrip/)
+  assert.match(app, /function ArtEntry/)
+  assert.doesNotMatch(app, /ArtPreviewStrip|artPreviews/)
   assert.doesNotMatch(app, /go\("home\/updates"\)/)
   assert.match(styles, /min-height:\s*clamp\(138px, 34vw, 184px\)/)
   assert.match(styles, /\.u1-knowledge-entry/)
   assert.match(styles, /\.u1-editorial-entry/)
-  assert.match(styles, /\.u1-art-entry__strip/)
+  assert.match(styles, /\.u1-art-entry__copy/)
+  assert.match(styles, /u1-entry-media--art-fallback/)
 })
 
+
+test("left-edge back gesture uses browser history and restores the previous scroll position", () => {
+  assert.match(app, /event\.clientX <= 26/)
+  assert.match(app, /window\.history\.back\(\)/)
+  assert.match(app, /restoreAfterBackRef/)
+  assert.match(app, /scrollPositionsRef/)
+  assert.match(app, /currentScrollRoot/)
+  assert.match(app, /target\.scrollTop = top/)
+  assert.match(app, /requiredDistance = Math\.min\(120, window\.innerWidth \* 0\.28\)/)
+  assert.match(sectionStyles, /height:\s*100%[\s\S]*?overflow-y:\s*auto/)
+})
 
 test("root spaces support deliberate horizontal swipe navigation with soft haptics", () => {
   assert.match(app, /rootSpaceOrder: RootSpace\[\] = \["workspace", "home", "chats"\]/)
@@ -154,7 +167,7 @@ test("home puts campaign destinations before the compact recent-event stream", (
   assert.match(homeData, /from\("feed_items"\)/)
   assert.match(homeData, /neq\("source_type", "art"\)/)
   assert.match(homeData, /neq\("source_type", "update"\)/)
-  assert.match(homeData, /from\("campaign_art_items"\)/)
+  assert.doesNotMatch(homeData, /from\("campaign_art_items"\)|artPreviews|refreshArtPreviews/)
   assert.match(homeData, /from\("achievements"\)/)
   assert.match(homeData, /cover_url/)
   assert.match(homeData, /postgres_changes/)
@@ -174,6 +187,11 @@ test("Location navigator keeps the full ancestor chain and separates direct chil
   assert.match(locationNavigator, /layoutId=\{\`ui-v1-location:/)
   assert.match(sectionStyles, /u1-location-tile\[data-mode="child"\][\s\S]*?width:\s*90%/)
   assert.doesNotMatch(locationNavigator, /WorldMapView/)
+  assert.match(locationNavigator, /u1-entity-detail/)
+  assert.match(locationNavigator, /world\.sections\.filter/)
+  assert.match(locationNavigator, /location\.description/)
+  assert.match(sectionStyles, /\.u1-entity-detail__hero/)
+  assert.match(sectionStyles, /\.u1-entity-detail__section/)
 })
 
 test("Location management now supplies actions to Snake and remains placeholder-only", () => {

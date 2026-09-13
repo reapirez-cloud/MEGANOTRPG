@@ -11,6 +11,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Added an Android-style left-edge Back gesture for nested UI 1.0 pages. It returns through real browser history and restores the previous page to its recorded scroll position instead of rebuilding the parent screen at the top.
+- Location viewing is now a true in-interface detail page: optional artwork appears as a wide top hero only when present, followed by summary, full description and authored location sections. The temporary detail placeholder copy is gone.
+- Replaced the Home Art latest-image strip with one atmospheric hero destination matching the World entry grammar; it now uses a neutral authored texture slot rather than arbitrary cropped campaign uploads.
 - Removed visible icons from the floating bottom navigation entirely. The 18px glass rail now uses three equal invisible hit zones and one smoother cold radial glow that moves between left / center / right to indicate Я / Главная / Чаты without a line, dot or bubble.
 - Snake context menus now unfold smoothly from the exact long-press/right-click point, including after viewport flip/clamp; universal windows now reveal from darkness with a restrained cold-edge ignition and smoother Flow resizing.
 - Snake windows now adapt from compact to full-size layouts by context, and complex interactions can run as one sequential multi-step window with Back/Next instead of a single overloaded form.
@@ -21,6 +24,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Reduced the UI 1.0 bottom content reservation to match the thinner persistent navigation instead of leaving the old oversized empty footer.
 ### Runtime and architecture changes
 
+- Section pages now own their scroll container so history restoration is deterministic; root Я / Главная / Чаты swipe navigation remains unchanged and edge-back only claims gestures beginning at the left edge on nested section routes.
 - Centralized Snake motion in the shared runtime: the invocation coordinate now drives menu transform-origin, window entry uses clipped cold reveal rather than generic scale-pop, and reduced-motion disables the non-essential effects.
 - Added generic Snake Flow surfaces: each step may use Editor, Picker, Confirm or Detail content, may request its own window size, preserves an in-memory draft across Back/Next, and sends one combined payload to the action executor only on the final step.
 - Migrated Locations as Snake proof #1 and removed LocationNavigator's local long-press timer, inline action menu and local placeholder machinery. Inventory is now the required proof #2.

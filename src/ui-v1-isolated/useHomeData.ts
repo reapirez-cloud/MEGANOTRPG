@@ -20,17 +20,10 @@ export type HomeSocietyNews = {
   published_at: string
 }
 
-export type HomeArtPreview = {
-  id: string
-  title: string
-  imageUrl: string
-}
-
 type HomeData = {
   campaignTitle: string
   campaignCoverUrl: string | null
   events: HomeEvent[]
-  artPreviews: HomeArtPreview[]
   achievementCount: number
   latestAchievementTitle: string | null
   societyNews: HomeSocietyNews | null
@@ -45,7 +38,6 @@ export function useHomeData(): HomeData {
   const [campaignTitle, setCampaignTitle] = useState(FALLBACK_CAMPAIGN_TITLE)
   const [campaignCoverUrl, setCampaignCoverUrl] = useState<string | null>(null)
   const [events, setEvents] = useState<HomeEvent[]>([])
-  const [artPreviews, setArtPreviews] = useState<HomeArtPreview[]>([])
   const [achievementCount, setAchievementCount] = useState(0)
   const [latestAchievementTitle, setLatestAchievementTitle] = useState<string | null>(null)
   const [societyNews, setSocietyNews] = useState<HomeSocietyNews | null>(null)
@@ -141,27 +133,6 @@ export function useHomeData(): HomeData {
         if (!cancelled) setEvents(resolved)
       }
 
-      const refreshArtPreviews = async () => {
-        const { data, error: artError } = await supabase
-          .from("campaign_art_items")
-          .select("id, title, image_url")
-          .eq("campaign_id", campaignId)
-          .order("created_at", { ascending: false })
-          .limit(3)
-
-        if (cancelled || artError) return
-
-        const resolved = await Promise.all(
-          (data || []).map(async (row: { id: string; title: string | null; image_url: string }) => ({
-            id: row.id,
-            title: row.title || "Арт кампании",
-            imageUrl: (await resolveCampaignMediaUrl(row.image_url)) || row.image_url,
-          })),
-        )
-
-        if (!cancelled) setArtPreviews(resolved)
-      }
-
       const refreshAchievements = async () => {
         const { data, count, error: achievementError } = await supabase
           .from("achievements")
@@ -198,7 +169,6 @@ export function useHomeData(): HomeData {
       const [campaignResult] = await Promise.all([
         campaignRequest,
         refreshEvents(),
-        refreshArtPreviews(),
         refreshAchievements(),
         refreshSocietyNews(),
       ])
@@ -236,18 +206,6 @@ export function useHomeData(): HomeData {
           {
             event: "*",
             schema: "public",
-            table: "campaign_art_items",
-            filter: `campaign_id=eq.${campaignId}`,
-          },
-          () => {
-            void refreshArtPreviews()
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
             table: "achievements",
             filter: `campaign_id=eq.${campaignId}`,
           },
@@ -272,7 +230,6 @@ export function useHomeData(): HomeData {
     campaignTitle,
     campaignCoverUrl,
     events,
-    artPreviews,
     achievementCount,
     latestAchievementTitle,
     societyNews,

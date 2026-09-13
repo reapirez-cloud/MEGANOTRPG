@@ -1,8 +1,15 @@
 .u1-section-page {
   width: min(100%, 680px);
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
   margin: 0 auto;
   padding: 18px 14px calc(var(--u1-dock-space) + 24px);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.u1-section-page::-webkit-scrollbar {
+  display: none;
 }
 
 .u1-section-head {
@@ -755,34 +762,89 @@
   color: #c89a9a;
 }
 
-.u1-location-detail-seam {
+.u1-entity-detail {
   margin-top: 18px;
-  display: grid;
-  gap: 12px;
+  padding-bottom: 18px;
 }
 
-.u1-location-detail-seam img {
+.u1-entity-detail__hero {
+  position: relative;
   width: 100%;
-  max-height: 240px;
+  max-height: min(42dvh, 330px);
+  aspect-ratio: 16 / 7;
+  overflow: hidden;
+  border: 1px solid var(--u1-line-soft);
   border-radius: 10px;
+  background: #0d0f10;
+}
+
+.u1-entity-detail__hero img {
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
 }
 
-.u1-location-detail-seam p {
-  margin: 0;
-  color: var(--u1-text-soft);
-  font-size: 13px;
-  line-height: 1.55;
+.u1-entity-detail__hero > span {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, transparent 54%, rgba(7,8,9,.52) 100%),
+    linear-gradient(90deg, rgba(4,5,6,.16), transparent 48%);
+  pointer-events: none;
 }
 
-.u1-location-detail-seam > span {
-  padding: 18px 0;
+.u1-entity-detail__copy {
+  padding: 18px 2px 0;
+  display: grid;
+  gap: 18px;
+}
+
+.u1-entity-detail__lead,
+.u1-entity-detail__body,
+.u1-entity-detail__section p,
+.u1-entity-detail__empty {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.u1-entity-detail__lead {
+  color: var(--u1-text-soft);
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 580;
+}
+
+.u1-entity-detail__body,
+.u1-entity-detail__section p {
+  color: var(--u1-text-muted);
+  font-size: 12px;
+  line-height: 1.68;
+}
+
+.u1-entity-detail__section {
+  padding-top: 16px;
   border-top: 1px solid var(--u1-line);
+  display: grid;
+  gap: 8px;
+}
+
+.u1-entity-detail__section h2 {
+  margin: 0;
+  color: var(--u1-text-soft);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: 17px;
+  line-height: 1.1;
+  font-weight: 620;
+  letter-spacing: -.018em;
+  text-transform: uppercase;
+}
+
+.u1-entity-detail__empty {
   color: var(--u1-text-faint);
   font-size: 11px;
   line-height: 1.5;
 }
-
 
 /* Location interaction gestures are owned by Snake. */
 .u1-location-node {

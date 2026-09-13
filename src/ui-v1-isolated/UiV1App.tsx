@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "motion/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { useHomeData, type HomeArtPreview, type HomeEvent, type HomeSocietyNews } from "./useHomeData"
+import { useHomeData, type HomeEvent, type HomeSocietyNews } from "./useHomeData"
 import { WhatsNew } from "./WhatsNew"
 import {
   AchievementsScreen,
@@ -251,35 +251,20 @@ function AchievementEntry({
   )
 }
 
-function ArtPreviewStrip({ items }: { items: HomeArtPreview[] }) {
+function ArtEntry() {
   return (
     <motion.button
       type="button"
       className="u1-art-entry"
       onClick={() => go("home/art")}
-      whileTap={{ scale: 0.994 }}
+      whileTap={{ scale: 0.992 }}
       transition={{ duration: 0.14 }}
     >
-      <span className="u1-art-entry__head">
+      <span className="u1-entry-media u1-entry-media--art-fallback" aria-hidden="true" />
+      <span className="u1-entry-scrim u1-entry-scrim--soft" aria-hidden="true" />
+      <span className="u1-art-entry__copy">
         <strong>Арты</strong>
-        <small>{items.length ? "Последние работы" : "Галерея кампании"}</small>
-        <span aria-hidden="true">→</span>
-      </span>
-
-      <span className="u1-art-entry__strip" aria-hidden="true">
-        {items.length > 0 ? (
-          items.slice(0, 3).map((item) => (
-            <span className="u1-art-entry__thumb" key={item.id}>
-              <img src={item.imageUrl} alt="" loading="lazy" />
-            </span>
-          ))
-        ) : (
-          <>
-            <span className="u1-art-entry__thumb u1-art-entry__thumb--empty" />
-            <span className="u1-art-entry__thumb u1-art-entry__thumb--empty" />
-            <span className="u1-art-entry__thumb u1-art-entry__thumb--empty" />
-          </>
-        )}
+        <small>Галерея кампании</small>
       </span>
     </motion.button>
   )
@@ -392,7 +377,6 @@ function Home() {
     campaignTitle,
     campaignCoverUrl,
     events,
-    artPreviews,
     achievementCount,
     latestAchievementTitle,
     societyNews,
@@ -431,7 +415,7 @@ function Home() {
           count={achievementCount}
           latestTitle={latestAchievementTitle}
         />
-        <ArtPreviewStrip items={artPreviews} />
+        <ArtEntry />
       </section>
 
       <LatestEvents events={events} loading={loading} error={error} />
@@ -511,10 +495,22 @@ type SwipeState = {
   startedAt: number
 }
 
+type EdgeBackState = SwipeState
+
+function currentScrollRoot() {
+  return document.querySelector<HTMLElement>(
+    ".u1-view .u1-home, .u1-view .u1-section-page, .u1-view .u1-placeholder",
+  )
+}
+
 export default function UiV1App() {
   const [route, setRoute] = useState<Route>(() => parseRoute())
   const swipeRef = useRef<SwipeState | null>(null)
+  const edgeBackRef = useRef<EdgeBackState | null>(null)
   const suppressClickUntilRef = useRef(0)
+  const scrollPositionsRef = useRef(new Map<string, number>())
+  const currentHashRef = useRef(window.location.hash || "#/home")
+  const restoreAfterBackRef = useRef(false)
 
   const navigateRoot = useCallback((space: RootSpace) => {
     if (route.type === "root" && route.space === space) return
@@ -524,8 +520,25 @@ export default function UiV1App() {
   }, [route])
 
   const onPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (route.type !== "root" || event.pointerType === "mouse") return
+    if (event.pointerType === "mouse") return
 
+    if (route.type === "section" && event.clientX <= 26) {
+      swipeRef.current = null
+      edgeBackRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        lastX: event.clientX,
+        lastY: event.clientY,
+        startedAt: performance.now(),
+      }
+      event.currentTarget.setPointerCapture?.(event.pointerId)
+      return
+    }
+
+    if (route.type !== "root") return
+
+    edgeBackRef.current = null
     swipeRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -539,6 +552,13 @@ export default function UiV1App() {
   }, [route])
 
   const onPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const edgeBack = edgeBackRef.current
+    if (edgeBack?.pointerId === event.pointerId) {
+      edgeBack.lastX = event.clientX
+      edgeBack.lastY = event.clientY
+      return
+    }
+
     const swipe = swipeRef.current
     if (!swipe || swipe.pointerId !== event.pointerId) return
 
@@ -547,6 +567,33 @@ export default function UiV1App() {
   }, [])
 
   const finishSwipe = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const edgeBack = edgeBackRef.current
+    edgeBackRef.current = null
+
+    if (edgeBack?.pointerId === event.pointerId) {
+      const deltaX = edgeBack.lastX - edgeBack.startX
+      const deltaY = edgeBack.lastY - edgeBack.startY
+      const elapsed = performance.now() - edgeBack.startedAt
+      const requiredDistance = Math.min(120, window.innerWidth * 0.28)
+      const isIntentionalBack =
+        deltaX >= requiredDistance &&
+        deltaX > Math.abs(deltaY) * 1.4 &&
+        elapsed <= 1000
+
+      if (!isIntentionalBack) return
+
+      const scrollRoot = currentScrollRoot()
+      if (scrollRoot) {
+        scrollPositionsRef.current.set(currentHashRef.current, scrollRoot.scrollTop)
+      }
+
+      restoreAfterBackRef.current = true
+      suppressClickUntilRef.current = performance.now() + 360
+      softHaptic()
+      window.history.back()
+      return
+    }
+
     const swipe = swipeRef.current
     swipeRef.current = null
 
@@ -577,6 +624,7 @@ export default function UiV1App() {
 
   const cancelSwipe = useCallback(() => {
     swipeRef.current = null
+    edgeBackRef.current = null
   }, [])
 
   const suppressSwipeClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
@@ -591,7 +639,30 @@ export default function UiV1App() {
       window.history.replaceState(null, "", "#/home")
     }
 
-    const sync = () => setRoute(parseRoute())
+    currentHashRef.current = window.location.hash || "#/home"
+
+    const sync = () => {
+      const previousHash = currentHashRef.current
+      const scrollRoot = currentScrollRoot()
+      if (scrollRoot) {
+        scrollPositionsRef.current.set(previousHash, scrollRoot.scrollTop)
+      }
+
+      const nextHash = window.location.hash || "#/home"
+      const shouldRestore = restoreAfterBackRef.current
+      restoreAfterBackRef.current = false
+      currentHashRef.current = nextHash
+      setRoute(parseRoute())
+
+      if (shouldRestore) {
+        const top = scrollPositionsRef.current.get(nextHash) || 0
+        window.setTimeout(() => {
+          const target = currentScrollRoot()
+          if (target) target.scrollTop = top
+        }, 230)
+      }
+    }
+
     window.addEventListener("hashchange", sync)
     return () => window.removeEventListener("hashchange", sync)
   }, [])

@@ -95,6 +95,34 @@ Current implementation:
 
 The invariant is stronger than before: the visible navigation object should feel closer to a designed gesture rail than to a conventional bottom tab bar.
 
+## Content viewing
+
+Entity/content viewing is a page-continuation pattern, not a Snake modal.
+
+- Snake windows are for actions and data entry.
+- Opening readable content navigates forward inside the main interface.
+- If the entity has artwork, the artwork appears as a natural wide hero panel at the top of the detail page.
+- If there is no artwork, no empty media placeholder is rendered.
+- Summary, description and authored content sections continue below in the normal page flow.
+
+Location detail is the first implemented reference for this pattern.
+
+## Back gesture
+
+Nested UI 1.0 pages support an Android-like left-edge back gesture.
+
+- gesture starts only from the left edge;
+- it calls browser history back instead of constructing a parent URL;
+- the outgoing page scroll position is remembered;
+- returning through the edge gesture restores the previous page to that same scroll position;
+- root Я / Главная / Чаты horizontal navigation remains unchanged.
+
+## Home Art entry
+
+The Home Art destination no longer previews the latest uploaded artwork. The cropped three-image strip broke the visual language.
+
+It now uses the same atmospheric hero-entry grammar as Мир, with a neutral built-in texture until a dedicated art-section cover is authored.
+
 ## Experiment rule
 
 UI 1.0 is still early enough for visual experiments.
