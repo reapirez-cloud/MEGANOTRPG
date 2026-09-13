@@ -702,30 +702,46 @@ export function useGMWorkshopData() {
       if (!character) return { ok: false, error: "Персонаж не найден." }
 
       return mutate(
-        () => oracle.characters.update(context(), characterId, {
-          name: input.name.trim(),
-          character_class: character.characterClass,
-          level: character.level,
-          bio: input.bio.trim(),
-          avatar_url: character.avatarStoragePath,
-          assigned_user_id: input.characterType === "pc" ? character.assignedUserId : null,
-          character_type: input.characterType,
-          visibility: character.publicationState === "draft" ? "private" : "campaign",
-          visibility_mode: input.characterType === "npc"
-            ? character.visibilityMode
-            : character.publicationState === "draft" ? "private" : "always",
-          publication_state: character.publicationState,
-        }),
+        async () => {
+          if (character.characterType === "npc" && input.characterType === "pc") {
+            const habitatIds = state.npcHabitats
+              .filter((link) => link.npcCharacterId === characterId)
+              .map((link) => link.locationId)
+            for (const locationId of habitatIds) {
+              await oracle.world.setNpcHabitat(context(), characterId, locationId, false)
+            }
+          }
+
+          await oracle.characters.update(context(), characterId, {
+            name: input.name.trim(),
+            character_class: character.characterClass,
+            level: character.level,
+            bio: input.bio.trim(),
+            avatar_url: character.avatarStoragePath,
+            assigned_user_id: input.characterType === "pc" ? character.assignedUserId : null,
+            character_type: input.characterType,
+            visibility: character.publicationState === "draft" ? "private" : "campaign",
+            visibility_mode: input.characterType === "npc"
+              ? character.visibilityMode
+              : character.publicationState === "draft" ? "private" : "always",
+            publication_state: character.publicationState,
+          })
+        },
         "Не удалось сохранить персонажа.",
       )
     },
 
     assignTemplate(characterId, templateId, templateLevel) {
+      const existing = state.templateAssignments.find(
+        (assignment) =>
+          assignment.character_id === characterId &&
+          assignment.template_id === templateId,
+      )
       return mutate(
         () => oracle.characters.assignTemplate(context(), characterId, {
           templateId,
           templateLevel,
-          selectedChoices: {},
+          selectedChoices: existing?.selected_choices || {},
         }),
         "Не удалось назначить класс или подкласс.",
       )
