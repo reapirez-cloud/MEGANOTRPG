@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 
 import type { SnakeAction } from "../snake-engine"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
@@ -15,6 +15,29 @@ export default function GMWorkshopMaterials({
   const [folderId, setFolderId] = useState<string | null | "root">(null)
   const [query, setQuery] = useState("")
   const needle = query.trim().toLocaleLowerCase("ru-RU")
+  const currentFolderId =
+    typeof folderId === "string" && folderId !== "root" ? folderId : null
+
+  const folderMeta = useMemo(() => {
+    const byId = new Map(data.folders.map((folder) => [folder.id, folder]))
+    const depthOf = (id: string) => {
+      let depth = 0
+      let current = byId.get(id)
+      const seen = new Set<string>()
+      while (current?.parentId && !seen.has(current.parentId)) {
+        seen.add(current.parentId)
+        depth += 1
+        current = byId.get(current.parentId)
+      }
+      return depth
+    }
+    return data.folders
+      .map((folder) => ({ folder, depth: depthOf(folder.id) }))
+      .sort((a, b) =>
+        a.depth - b.depth ||
+        a.folder.name.localeCompare(b.folder.name, "ru")
+      )
+  }, [data.folders])
 
   const visible = data.materials.filter((material) => {
     if (folderId === "root" && material.folderId) return false
@@ -86,6 +109,7 @@ export default function GMWorkshopMaterials({
       execute: async ({ input }) => {
         const response = await data.operations.createFolder(
           String(input?.name || ""),
+          currentFolderId,
         )
         return response.ok
           ? { type: "success", notice: "Папка создана." }
@@ -146,6 +170,23 @@ export default function GMWorkshopMaterials({
   }
 
   function folderActions(folder: ReturnType<typeof useGMWorkshopData>["folders"][number]): SnakeAction[] {
+    const descendants = new Set<string>()
+    const stack = data.folders
+      .filter((item) => item.parentId === folder.id)
+      .map((item) => item.id)
+    while (stack.length) {
+      const id = stack.pop()!
+      if (descendants.has(id)) continue
+      descendants.add(id)
+      stack.push(...data.folders.filter((item) => item.parentId === id).map((item) => item.id))
+    }
+
+    const moveTargets = data.folders.filter(
+      (candidate) =>
+        candidate.id !== folder.id &&
+        !descendants.has(candidate.id),
+    )
+
     return [
       {
         id: "open-folder",
@@ -179,6 +220,44 @@ export default function GMWorkshopMaterials({
             : {
                 type: "error",
                 message: response.error || "Не удалось переименовать папку.",
+              }
+        },
+      },
+      {
+        id: "move-folder",
+        label: "Переместить",
+        surface: {
+          kind: "picker",
+          eyebrow: "Материалы · папка",
+          title: "Куда переместить «" + folder.name + "»?",
+          items: [
+            {
+              id: "__root__",
+              label: "Без родительской папки",
+              description: "Верхний уровень",
+            },
+            ...moveTargets.map((target) => ({
+              id: target.id,
+              label: target.name,
+              description: target.parentId ? "Вложенная папка" : "Верхний уровень",
+            })),
+          ],
+          initialSelection: folder.parentId || "__root__",
+          submitLabel: "Переместить",
+        },
+        execute: async ({ input }) => {
+          const selected = typeof input?.selection === "string"
+            ? input.selection
+            : "__root__"
+          const response = await data.operations.moveFolder(
+            folder.id,
+            selected === "__root__" ? null : selected,
+          )
+          return response.ok
+            ? { type: "success", notice: "Папка перемещена." }
+            : {
+                type: "error",
+                message: response.error || "Не удалось переместить папку.",
               }
         },
       },
@@ -273,7 +352,7 @@ export default function GMWorkshopMaterials({
         >
           Без папки
         </button>
-        {data.folders.map((folder) => (
+        {folderMeta.map(({ folder, depth }) => (
           <SnakeTrigger
             key={folder.id}
             entity={{ type: "gm-folder", id: folder.id }}
@@ -284,7 +363,7 @@ export default function GMWorkshopMaterials({
               data-active={folderId === folder.id || undefined}
               onClick={() => setFolderId(folder.id)}
             >
-              {folder.name}
+              {"↳".repeat(depth)}{depth ? " " : ""}{folder.name}
             </button>
           </SnakeTrigger>
         ))}
@@ -327,6 +406,43 @@ export default function GMWorkshopMaterials({
                   },
                 }]
               : []),
+            {
+              id: "move-material",
+              label: "Переместить",
+              surface: {
+                kind: "picker",
+                eyebrow: "Материалы",
+                title: "Куда переместить «" + material.title + "»?",
+                items: [
+                  {
+                    id: "__root__",
+                    label: "Без папки",
+                    description: "Корень рабочего пространства",
+                  },
+                  ...folderMeta.map(({ folder, depth }) => ({
+                    id: folder.id,
+                    label: "↳".repeat(depth) + (depth ? " " : "") + folder.name,
+                  })),
+                ],
+                initialSelection: material.folderId || "__root__",
+                submitLabel: "Переместить",
+              },
+              execute: async ({ input }) => {
+                const selected = typeof input?.selection === "string"
+                  ? input.selection
+                  : "__root__"
+                const response = await data.operations.moveMaterial(
+                  material.id,
+                  selected === "__root__" ? null : selected,
+                )
+                return response.ok
+                  ? { type: "success", notice: "Материал перемещён." }
+                  : {
+                      type: "error",
+                      message: response.error || "Не удалось переместить материал.",
+                    }
+              },
+            },
             {
               id: "delete-material",
               label: "Удалить",
