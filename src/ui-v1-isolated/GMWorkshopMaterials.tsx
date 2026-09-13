@@ -177,7 +177,7 @@ export default function GMWorkshopMaterials({
       {
         id: "delete-folder",
         label: "Удалить папку",
-        tone: "danger",
+        tone: "error",
         surface: {
           kind: "confirm",
           eyebrow: "Материалы",
