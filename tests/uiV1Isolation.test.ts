@@ -17,7 +17,13 @@ const legacyApp = fs.readFileSync("src/App.tsx", "utf8")
 const whatsNew = fs.readFileSync("src/ui-v1-isolated/WhatsNew.tsx", "utf8")
 const chronicleData = fs.readFileSync("src/ui-v1-isolated/useChronicleData.ts", "utf8")
 const chronicleStyles = fs.readFileSync("src/ui-v1-isolated/whats-new.css", "utf8")
-const worldPreviewAsset = "public/ui-v1/world/world-preview.webp"
+const approvedPanelAssets = [
+  "public/ui-v1/panels/world.webp",
+  "public/ui-v1/panels/world-locations.webp",
+  "public/ui-v1/panels/world-characters.webp",
+  "public/ui-v1/panels/world-lore.webp",
+  "public/ui-v1/panels/art.webp",
+]
 const sectionScreens = fs.readFileSync("src/ui-v1-isolated/SectionScreens.tsx", "utf8")
 const sectionData = fs.readFileSync("src/ui-v1-isolated/useUiV1SectionData.ts", "utf8")
 const sectionRegistry = fs.readFileSync("src/ui-v1-isolated/sectionRegistry.ts", "utf8")
@@ -59,9 +65,11 @@ const historicalFoundationDoc = fs.readFileSync("docs/UI_V1_STAGE_02_FOUNDATION_
 const historicalVisualDirectionDoc = fs.readFileSync("docs/UI_V1_VISUAL_DIRECTION_2026-09-12.md", "utf8")
 const characterUxAuditDoc = fs.readFileSync("docs/CHARACTER_UX_REDESIGN_AUDIT.md", "utf8")
 
-test("World preview artwork is committed with UI v1", () => {
-  assert.equal(fs.existsSync(worldPreviewAsset), true)
-  assert.ok(fs.statSync(worldPreviewAsset).size < 100_000)
+test("approved UI v1 panel artwork is committed and lightweight", () => {
+  for (const asset of approvedPanelAssets) {
+    assert.equal(fs.existsSync(asset), true, asset)
+    assert.ok(fs.statSync(asset).size < 20_000, asset)
+  }
 })
 
 test("UI v1 is now the default application entry", () => {
@@ -145,9 +153,19 @@ test("home uses mixed editorial entry types instead of a uniform preview grid", 
   assert.match(styles, /\.u1-knowledge-entry/)
   assert.match(styles, /\.u1-editorial-entry/)
   assert.match(styles, /\.u1-art-entry__copy/)
-  assert.match(styles, /u1-entry-media--art-fallback/)
+  assert.match(app, /\/ui-v1\/panels\/art\.webp/)
 })
 
+
+test("the five supplied artworks are wired to World, Locations, Characters, Lore and Art", () => {
+  assert.match(app, /\/ui-v1\/panels\/world\.webp/)
+  assert.match(app, /\/ui-v1\/panels\/art\.webp/)
+  assert.match(sectionRegistry, /image: "\/ui-v1\/panels\/world-locations\.webp"/)
+  assert.match(sectionRegistry, /image: "\/ui-v1\/panels\/world-characters\.webp"/)
+  assert.match(sectionRegistry, /image: "\/ui-v1\/panels\/world-lore\.webp"/)
+  assert.match(sectionScreens, /className="u1-hub-card__image"/)
+  assert.match(sectionStyles, /\.u1-hub-card__image/)
+})
 
 test("left-edge back gesture uses browser history and restores the previous scroll position", () => {
   assert.match(app, /event\.clientX <= 26/)

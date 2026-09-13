@@ -61,7 +61,17 @@ function HubCard({
       data-tone={item.tone}
       onClick={onOpen}
     >
-      <span className="u1-hub-card__texture" aria-hidden="true" />
+      {item.image ? (
+        <img
+          className="u1-hub-card__image"
+          src={item.image}
+          alt=""
+          decoding="async"
+          aria-hidden="true"
+        />
+      ) : (
+        <span className="u1-hub-card__texture" aria-hidden="true" />
+      )}
       <span className="u1-hub-card__scrim" aria-hidden="true" />
       <span className="u1-hub-card__copy">
         <strong>{item.title}</strong>

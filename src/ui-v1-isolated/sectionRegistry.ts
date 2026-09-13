@@ -3,6 +3,7 @@ export type HubSection = {
   title: string
   caption: string
   tone: "stone" | "ash" | "steel" | "night"
+  image?: string
   state?: "live" | "placeholder"
 }
 
@@ -14,11 +15,11 @@ export type HubSection = {
  * land on a clean connection placeholder until their content screen is built.
  */
 export const worldHubSections: HubSection[] = [
-  { id: "locations", title: "Локации", caption: "Места и вложенные области мира", tone: "stone", state: "live" },
+  { id: "locations", title: "Локации", caption: "Места и вложенные области мира", tone: "stone", image: "/ui-v1/panels/world-locations.webp", state: "live" },
   // Keep the stable technical route id "characters"; the player-facing World surface contains world characters.
   // Player-controlled characters are presented elsewhere as "Игроки"; storage may still use character_type = "npc".
-  { id: "characters", title: "Персонажи", caption: "Известные персонажи и жители мира", tone: "ash", state: "live" },
-  { id: "lore", title: "Лор", caption: "Статьи, записи и сведения о мире", tone: "steel", state: "live" },
+  { id: "characters", title: "Персонажи", caption: "Известные персонажи и жители мира", tone: "ash", image: "/ui-v1/panels/world-characters.webp", state: "live" },
+  { id: "lore", title: "Лор", caption: "Статьи, записи и сведения о мире", tone: "steel", image: "/ui-v1/panels/world-lore.webp", state: "live" },
   { id: "map", title: "Карта", caption: "Отдельный раздел карты мира", tone: "night", state: "placeholder" },
 ]
 

@@ -202,7 +202,7 @@ function EntryMedia({ src }: { src: string | null }) {
   return <img className="u1-entry-media" src={src} alt="" loading="lazy" aria-hidden="true" />
 }
 
-function WorldPreview({ coverUrl }: { coverUrl: string | null }) {
+function WorldPreview() {
   return (
     <motion.button
       type="button"
@@ -211,7 +211,7 @@ function WorldPreview({ coverUrl }: { coverUrl: string | null }) {
       whileTap={{ scale: 0.992 }}
       transition={{ duration: 0.14 }}
     >
-      <EntryMedia src={coverUrl} />
+      <EntryMedia src="/ui-v1/panels/world.webp" />
       <span className="u1-entry-scrim u1-entry-scrim--soft" aria-hidden="true" />
       <span className="u1-world-entry__copy">
         <strong>Мир</strong>
@@ -285,7 +285,7 @@ function ArtEntry() {
       whileTap={{ scale: 0.992 }}
       transition={{ duration: 0.14 }}
     >
-      <span className="u1-entry-media u1-entry-media--art-fallback" aria-hidden="true" />
+      <EntryMedia src="/ui-v1/panels/art.webp" />
       <span className="u1-entry-scrim u1-entry-scrim--soft" aria-hidden="true" />
       <span className="u1-art-entry__copy">
         <strong>Арты</strong>
@@ -400,7 +400,6 @@ function LatestEvents({
 function Home() {
   const {
     campaignTitle,
-    campaignCoverUrl,
     events,
     achievementCount,
     latestAchievementTitle,
@@ -423,7 +422,7 @@ function Home() {
       <div className="u1-rule" aria-hidden="true" />
 
       <section className="u1-home-sections" aria-label="Разделы кампании">
-        <WorldPreview coverUrl={campaignCoverUrl} />
+        <WorldPreview />
         <KnowledgeBaseEntry />
         <SocietyNewsEntry news={societyNews} />
         <AchievementEntry

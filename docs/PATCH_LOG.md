@@ -11,6 +11,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Added the supplied grayscale grimdark artwork to the five requested UI 1.0 destinations: `Мир`, `Локации`, `Персонажи`, `Лор` and `Арты`. The authored wide compositions are now local panel assets rather than generic textures or arbitrary campaign uploads.
+
 - Replaced the `Я → Управление` placeholder with the first complete **GM Workshop** in UI 1.0. The root is destination-based rather than tab-based and opens `Черновик`, `Партия`, `Персонажи`, `Библиотека`, and `Материалы` as separate work surfaces.
 - Added a GM-only **Черновик** for future PC/NPC and reusable item/spell/feature/effect definitions. Draft characters are not assignable, active, visible in ordinary Workspace/World surfaces, or readable by players; publishing is an explicit separate action.
 - Added a unified **Персонажи** catalog for PC + NPC with search, semantic filters (`Все`, `Персонажи игроков`, `Персонажи мира`, `Свободные`, `Мёртвые`) and a small local recent-character rail instead of separate PC/NPC tabs.
@@ -23,6 +25,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Stored the five new panel illustrations as optimized local WebP assets under `public/ui-v1/panels` and extended the data-driven World hub registry with an optional artwork field; no Supabase schema/state or legacy visual dependency was introduced.
+
 - Added canonical `characters.publication_state = draft | campaign` instead of overloading the old `visibility/private` concept. `private.can_view_character` now exposes drafts only to campaign managers, publishing and assignment are separate RPC/engine operations, and active-character selection rejects drafts.
 - Extended Shapoklyak/Oracle with publication-state commands and Chasovoy/Oracle with explicit definition status transitions. Memory and Supabase storage implementations share the same command contracts.
 - UI 1.0 ordinary `Я` and `Мир` character reads explicitly request only `publication_state = campaign`, providing a second UI boundary on top of RLS.
@@ -33,6 +37,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added shared Workspace identity-selection rules: manager authority is explicitly separated from character ownership; the speaker pool is limited to own living assigned characters plus living unassigned NPCs, while foreign active PCs are derived from `campaign_members.active_character_id` for view-only inspection. Stored speaker identity is revalidated on load.
 
 ### Tests / verification
+
+- Added UI 1.0 regression coverage that requires all five approved panel assets to exist, stay lightweight, and remain wired to their exact destinations.
 
 - GitHub Actions run #2286 (`34765497148`) passed Build, Lint, repository Test, Storybook build and Playwright smoke after completing the draft lifecycle storage contracts.
 - Added dedicated GM Workshop regression coverage for route composition, draft RLS/lifecycle, separate assignment vs active identity, NPC discovery visibility, unified character search, engine-owned library writes and private material upload/cleanup.
