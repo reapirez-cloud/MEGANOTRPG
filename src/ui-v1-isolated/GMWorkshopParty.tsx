@@ -73,6 +73,7 @@ export default function GMWorkshopParty({
       characters: data.campaignCharacters,
       operations: data.operations,
       canChangeRole: data.isOwner,
+      canRemoveMember: data.isOwner,
       onOpen: () => {},
     })
 
@@ -243,6 +244,58 @@ export default function GMWorkshopParty({
         </div>
         </section>
       </SnakeTrigger>
+
+      {data.invites.length > 0 && (
+        <section className="u1-gm-workblock u1-gm-workblock--compact">
+          <header>
+            <div>
+              <span>История приглашений</span>
+              <small>{data.invites.length}</small>
+            </div>
+          </header>
+          <div className="u1-gm-list">
+            {data.invites.map((invite) => {
+              const expired = Boolean(
+                invite.expiresAt &&
+                new Date(invite.expiresAt).getTime() <= Date.now()
+              )
+              const exhausted = invite.usesCount >= invite.maxUses
+              const status = invite.revokedAt
+                ? "отозван"
+                : expired
+                  ? "истёк"
+                  : exhausted
+                    ? "исчерпан"
+                    : "активен"
+              const actions = createWorkshopInviteActions({
+                invite,
+                campaignId: data.campaignId,
+                operations: data.operations,
+              })
+              return (
+                <SnakeTrigger
+                  key={invite.code}
+                  entity={{ type: "campaign-invite", id: invite.code }}
+                  actions={actions}
+                >
+                  <button type="button" className="u1-gm-member-row">
+                    <span className="u1-gm-member-row__mark">#</span>
+                    <span>
+                      <strong>{invite.code}</strong>
+                      <small>
+                        {status} · {invite.usesCount}/{invite.maxUses}
+                        {invite.expiresAt
+                          ? " · до " + new Date(invite.expiresAt).toLocaleDateString("ru-RU")
+                          : ""}
+                      </small>
+                    </span>
+                  </button>
+                </SnakeTrigger>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       <section className="u1-gm-workblock">
         <header>
