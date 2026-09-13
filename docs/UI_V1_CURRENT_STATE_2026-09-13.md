@@ -300,10 +300,10 @@ Campaign-authored item/spell/feature/effect definitions live in Chasovoy:
 
 `draft → active → archived`
 
-Issuing an active definition creates runtime state through its canonical owner path via Oracle, not by turning the definition row itself into a character instance. Item issue supports quantity. Definition editors expose type-specific spell/item fields; archive is reversible; linked feature/effect mechanics can be both attached to and detached from item definitions.
+Issuing an active definition creates runtime state through its canonical owner path via Oracle, not by turning the definition row itself into a character instance. Item issue supports quantity. Definition editors expose type-specific spell/item fields; custom item/spell/feature/effect mechanics can be edited as validated JSON arrays instead of being forced to empty mechanics; archive is reversible; linked feature/effect mechanics can be both attached to and detached from item definitions.
 
 ### Materials law
 
 GM materials remain private per `campaign_id + workspace_user_id` and keep the existing private `campaign-media` Storage path. Upload deletion must remove both the database row and its Storage object.
 
-Folders and material rows are Snake entities. Folders support nesting, rename, movement with cycle protection and delete; new folders inherit the current folder as parent. Note/file rows support open, note edit where applicable, movement between folders/root, and delete. Upload deletion removes both the database row and the private Storage object. Creation toolbar controls remain ordinary explicit commands because they create objects rather than represent an existing manageable object.
+Folders and material rows are Snake entities. Folders support nesting, rename, movement with cycle protection, sibling ordering and delete; new folders inherit the current folder as parent. Note/file rows support open, note edit where applicable, uploaded-file title rename, movement between folders/root, and delete. Upload deletion removes both the database row and the private Storage object. Creation toolbar controls remain ordinary explicit commands because they create objects rather than represent an existing manageable object.
