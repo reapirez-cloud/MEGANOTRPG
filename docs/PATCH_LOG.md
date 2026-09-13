@@ -33,6 +33,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Supabase schema/data were intentionally unchanged for this navigation-only UI task; the connected project was confirmed `ACTIVE_HEALTHY` before implementation.
 ### Tests / verification
 
+- Home Art/detail-view/edge-back head `b07e9cb5e1c7b541a07fb8f1a3c0b73cab7158d0` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34757458193`.
 - Iconless bottom-rail head `4175af281a666d139a030829c9d4c98672882f59` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34756989028`.
 - Snake invocation/window motion head `4ac0fb47529bf279fdd99a058ac18cd4f1c481e3` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34756586309`.
 - Adaptive multi-step Snake Window head `0a77a617b71e890047fb1d73746f8db5316479d0` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34754989500`.
