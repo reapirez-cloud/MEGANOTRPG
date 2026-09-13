@@ -23,11 +23,9 @@ const migration = fs.readFileSync(
 
 test("UI 1.0 management route is the real GM Workshop and uses destination panels instead of legacy tabs", () => {
   assert.match(app, /<GMWorkshop/)
-  assert.match(app, /workspace\/manage\/draft/)
-  assert.match(app, /workspace\/manage\/party/)
-  assert.match(app, /workspace\/manage\/characters/)
-  assert.match(app, /workspace\/manage\/library/)
-  assert.match(app, /workspace\/manage\/materials/)
+  assert.match(app, /const workshopSections: WorkshopSection\[\] = \["draft", "party", "characters", "library", "materials"\]/)
+  assert.match(app, /path\.startsWith\("workspace\/manage\/"\)/)
+  assert.match(app, /"workspace\/manage\/" \+ section/)
   assert.match(entry, /\.\/gm-workshop\.css/)
   assert.match(shell, /GMWorkshopMain/)
   assert.match(main, /title="Черновик"/)
