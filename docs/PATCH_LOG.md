@@ -4,10 +4,12 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ## Active patch — 2026-09-13-C
 
-**Status:** OPEN
-**Branch:** `dev`
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `d1bca7c46d5a9e8967cbac50bd9190d87abf6508`
 **Started:** 2026-09-13
+**Released:** 2026-09-13
+**Release identity:** `main / 2026-09-13-C`
 
 ### Player-facing changes
 
@@ -31,6 +33,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Final pre-release code head `577c6417f4cc18eb9b103da9f82ed803fb8aabda` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `34750736704`.
 - Added repository contract coverage ensuring Snake remains discoverable, entity-agnostic, non-owning, placeholder-aware and explicitly referenced from the temporary location long-press seam.
 - Extended Oracle/UI 1.0 contract tests so campaign announcements must dispatch through Oracle -> Larisa, World labels remain canonical, the NPC surface stays NPC-only, and historical redesign documents cannot silently masquerade as current implementation truth.
 - Updated the UI 1.0 Playwright smoke assertions to the final **Локации / Персонажи** vocabulary so end-to-end verification matches the actual interface.
