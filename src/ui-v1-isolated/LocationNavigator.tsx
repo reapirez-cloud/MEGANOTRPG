@@ -1,6 +1,9 @@
 import { AnimatePresence, motion } from "motion/react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo } from "react"
 
+import type { SnakeAction, SnakeEntityRef } from "../snake-engine"
+import { SnakeTrigger, useSnake } from "./SnakeProvider"
+import { createLocationSnakeActions } from "./locationSnakeActions"
 import {
   useUiV1Locations,
   type UiV1Location,
@@ -39,68 +42,17 @@ function EmptyState({ children }: { children: React.ReactNode }) {
 
 type TileMode = "root" | "path" | "child"
 
-// TEMPORARY UI1 interaction seam.
-// Do not copy this location-specific long-press/context-menu logic to another feature.
-// It must be replaced by the universal Snake interaction runtime described in
-// docs/SNAKE_INTERACTION_CONTRACT.md.
-
 function LocationTile({
   item,
   mode,
   onNavigate,
   onOpen,
-  onLongPress,
 }: {
   item: UiV1Location
   mode: TileMode
   onNavigate: () => void
   onOpen: () => void
-  onLongPress: () => void
 }) {
-  const timerRef = useRef<number | null>(null)
-  const startRef = useRef<{ x: number; y: number } | null>(null)
-  const longPressedRef = useRef(false)
-
-  function clearLongPress() {
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current)
-      timerRef.current = null
-    }
-  }
-
-  function handlePointerDown(event: React.PointerEvent<HTMLButtonElement>) {
-    if (event.pointerType === "mouse" && event.button !== 0) return
-
-    longPressedRef.current = false
-    startRef.current = { x: event.clientX, y: event.clientY }
-    clearLongPress()
-    timerRef.current = window.setTimeout(() => {
-      longPressedRef.current = true
-      onLongPress()
-    }, 520)
-  }
-
-  function handlePointerMove(event: React.PointerEvent<HTMLButtonElement>) {
-    const start = startRef.current
-    if (!start) return
-
-    const distance = Math.hypot(event.clientX - start.x, event.clientY - start.y)
-    if (distance > 10) clearLongPress()
-  }
-
-  function handlePointerEnd() {
-    clearLongPress()
-    startRef.current = null
-  }
-
-  function handleClick() {
-    if (longPressedRef.current) {
-      longPressedRef.current = false
-      return
-    }
-    onNavigate()
-  }
-
   return (
     <motion.article
       layout
@@ -111,10 +63,6 @@ function LocationTile({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 7, scale: 0.985 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      onContextMenu={(event) => {
-        event.preventDefault()
-        onLongPress()
-      }}
     >
       {item.display_image_url ? (
         <img
@@ -132,12 +80,7 @@ function LocationTile({
       <button
         type="button"
         className="u1-location-tile__main"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerEnd}
-        onPointerCancel={handlePointerEnd}
-        onPointerLeave={handlePointerEnd}
-        onClick={handleClick}
+        onClick={onNavigate}
       >
         <strong>{item.name}</strong>
       </button>
@@ -154,199 +97,40 @@ function LocationTile({
   )
 }
 
-type LocationAction = {
-  id: string
-  label: string
-  managerOnly?: boolean
-  danger?: boolean
-  placeholderTitle?: string
-  run?: () => void
-}
-
-function InlineFeaturePlaceholder({
-  title,
-  onBack,
-}: {
-  title: string
-  onBack: () => void
-}) {
-  return (
-    <motion.div
-      className="u1-location-inline-placeholder"
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 3 }}
-    >
-      <strong>{title}</strong>
-      <span>Интерфейс этой функции будет спроектирован отдельным этапом.</span>
-      <button type="button" onClick={onBack}>← К действиям</button>
-    </motion.div>
-  )
-}
-
-function LocationInlineMenu({
-  location,
-  canManage,
-  placeholderTitle,
-  onOpen,
-  onPlaceholder,
-  onBack,
-}: {
-  location: UiV1Location
-  canManage: boolean
-  placeholderTitle: string | null
-  onOpen: () => void
-  onPlaceholder: (title: string) => void
-  onBack: () => void
-}) {
-  const actions: LocationAction[] = [
-    { id: "open", label: "Открыть локацию", run: onOpen },
-    { id: "add-child", label: "Добавить вложенную локацию", managerOnly: true, placeholderTitle: "Добавление вложенной локации" },
-    { id: "add-transition", label: "Добавить переход", managerOnly: true, placeholderTitle: "Добавление перехода" },
-    { id: "edit", label: "Редактировать", managerOnly: true, placeholderTitle: "Редактирование локации" },
-    { id: "delete", label: "Удалить", managerOnly: true, danger: true, placeholderTitle: "Удаление локации" },
-  ]
-
-  return (
-    <motion.div
-      className="u1-location-inline-menu"
-      role="group"
-      aria-label={`Действия с локацией: ${location.name}`}
-      initial={{ height: 0, opacity: 0, y: -6 }}
-      animate={{ height: "auto", opacity: 1, y: 0 }}
-      exit={{ height: 0, opacity: 0, y: -6 }}
-      transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-    >
-      <AnimatePresence mode="wait" initial={false}>
-        {placeholderTitle ? (
-          <InlineFeaturePlaceholder
-            key={placeholderTitle}
-            title={placeholderTitle}
-            onBack={onBack}
-          />
-        ) : (
-          <motion.div
-            key="actions"
-            className="u1-location-inline-menu__actions"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            {actions
-              .filter((action) => !action.managerOnly || canManage)
-              .map((action, index) => (
-                <motion.button
-                  type="button"
-                  key={action.id}
-                  data-danger={action.danger || undefined}
-                  initial={{ opacity: 0, x: -5 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.025, duration: 0.16 }}
-                  onClick={() => {
-                    if (action.run) {
-                      action.run()
-                      return
-                    }
-                    if (action.placeholderTitle) {
-                      onPlaceholder(action.placeholderTitle)
-                    }
-                  }}
-                >
-                  {action.label}
-                </motion.button>
-              ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  )
-}
-
 function LocationNode({
   item,
   mode,
-  expanded,
-  placeholderTitle,
-  canManage,
+  actions,
   onNavigate,
   onOpen,
-  onLongPress,
-  onPlaceholder,
-  onBack,
 }: {
   item: UiV1Location
   mode: TileMode
-  expanded: boolean
-  placeholderTitle: string | null
-  canManage: boolean
+  actions: SnakeAction[]
   onNavigate: () => void
   onOpen: () => void
-  onLongPress: () => void
-  onPlaceholder: (title: string) => void
-  onBack: () => void
 }) {
-  const ref = useRef<HTMLDivElement | null>(null)
-
-  useEffect(() => {
-    if (!expanded) return
-
-    const frame = window.requestAnimationFrame(() => {
-      ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" })
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [expanded])
+  const entity: SnakeEntityRef = {
+    type: "location",
+    id: item.id,
+  }
 
   return (
     <motion.div
-      ref={ref}
       layout
       className="u1-location-node"
       data-location-node-id={item.id}
       data-mode={mode}
-      data-expanded={expanded || undefined}
     >
-      <LocationTile
-        item={item}
-        mode={mode}
-        onNavigate={onNavigate}
-        onOpen={onOpen}
-        onLongPress={onLongPress}
-      />
-
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <LocationInlineMenu
-            location={item}
-            canManage={canManage}
-            placeholderTitle={placeholderTitle}
-            onOpen={onOpen}
-            onPlaceholder={onPlaceholder}
-            onBack={onBack}
-          />
-        )}
-      </AnimatePresence>
+      <SnakeTrigger entity={entity} actions={actions}>
+        <LocationTile
+          item={item}
+          mode={mode}
+          onNavigate={onNavigate}
+          onOpen={onOpen}
+        />
+      </SnakeTrigger>
     </motion.div>
-  )
-}
-
-function RootFeaturePlaceholder({
-  title,
-  onClose,
-}: {
-  title: string
-  onClose: () => void
-}) {
-  return (
-    <motion.section
-      className="u1-location-root-placeholder"
-      initial={{ opacity: 0, height: 0, y: -5 }}
-      animate={{ opacity: 1, height: "auto", y: 0 }}
-      exit={{ opacity: 0, height: 0, y: -5 }}
-    >
-      <strong>{title}</strong>
-      <span>Интерфейс этой функции будет спроектирован отдельным этапом.</span>
-      <button type="button" onClick={onClose}>Закрыть</button>
-    </motion.section>
   )
 }
 
@@ -383,12 +167,7 @@ export function LocationNavigator({
   detail?: boolean
 }) {
   const world = useUiV1Locations()
-  const [actionTargetId, setActionTargetId] = useState<string | null>(null)
-  const [inlinePlaceholder, setInlinePlaceholder] = useState<{
-    locationId: string
-    title: string
-  } | null>(null)
-  const [rootPlaceholder, setRootPlaceholder] = useState<string | null>(null)
+  const snake = useSnake()
 
   const locationById = useMemo(
     () => new Map(world.locations.map((location) => [location.id, location])),
@@ -490,55 +269,30 @@ export function LocationNavigator({
 
   function navigateInto(location: UiV1Location) {
     if (location.id === selected?.id) return
-    setActionTargetId(null)
-    setInlinePlaceholder(null)
     navigate(`home/world/locations/${location.id}`)
   }
 
-  function toggleActions(location: UiV1Location) {
-    setRootPlaceholder(null)
-    setInlinePlaceholder(null)
-    setActionTargetId((current) => current === location.id ? null : location.id)
-  }
-
   function renderNode(location: UiV1Location, mode: TileMode) {
-    const expanded = actionTargetId === location.id
-    const placeholderTitle =
-      inlinePlaceholder?.locationId === location.id
-        ? inlinePlaceholder.title
-        : null
+    const actions = createLocationSnakeActions({
+      location,
+      canManage: world.canManage,
+      onOpen: () => openDetail(location),
+    })
 
     return (
       <LocationNode
         key={location.id}
         item={location}
         mode={mode}
-        expanded={expanded}
-        placeholderTitle={placeholderTitle}
-        canManage={world.canManage}
+        actions={actions}
         onNavigate={() => navigateInto(location)}
         onOpen={() => openDetail(location)}
-        onLongPress={() => toggleActions(location)}
-        onPlaceholder={(title) => {
-          setActionTargetId(location.id)
-          setInlinePlaceholder({ locationId: location.id, title })
-        }}
-        onBack={() => setInlinePlaceholder(null)}
       />
     )
   }
 
   return (
-    <main
-      className="u1-section-page"
-      onPointerDownCapture={(event) => {
-        if (!actionTargetId) return
-        const target = event.target as HTMLElement
-        if (target.closest(`[data-location-node-id="${actionTargetId}"]`)) return
-        setActionTargetId(null)
-        setInlinePlaceholder(null)
-      }}
-    >
+    <main className="u1-section-page">
       <LocationHeader
         backTo={backTo}
         action={world.canManage ? (
@@ -546,30 +300,23 @@ export function LocationNavigator({
             type="button"
             className="u1-section-add"
             aria-label="Добавить главную локацию"
-            onClick={() => {
-              setActionTargetId(null)
-              setInlinePlaceholder(null)
-              setRootPlaceholder("Создание главной локации")
-            }}
+            onClick={() =>
+              snake.openSurface({
+                kind: "placeholder",
+                eyebrow: "Локация",
+                title: "Создание главной локации",
+                body: "Интерфейс этой функции будет спроектирован отдельным этапом.",
+              })
+            }
           >
             +
           </button>
         ) : null}
       />
 
-      <AnimatePresence initial={false}>
-        {rootPlaceholder && (
-          <RootFeaturePlaceholder
-            title={rootPlaceholder}
-            onClose={() => setRootPlaceholder(null)}
-          />
-        )}
-      </AnimatePresence>
-
       <section
         className="u1-location-navigator"
         aria-label="Навигация по локациям"
-        data-menu-open={Boolean(actionTargetId) || undefined}
       >
         <AnimatePresence mode="popLayout" initial={false}>
           {!selected ? (
@@ -620,11 +367,7 @@ export function LocationNavigator({
                           type="button"
                           className="u1-location-transition"
                           key={transition.id}
-                          onClick={() => {
-                            setActionTargetId(null)
-                            setInlinePlaceholder(null)
-                            navigate(`home/world/locations/${target.id}`)
-                          }}
+                          onClick={() => navigate(`home/world/locations/${target.id}`)}
                         >
                           <span aria-hidden="true">→</span>
                           <span>
