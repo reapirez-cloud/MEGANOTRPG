@@ -79,17 +79,19 @@ test("UI v1 routes real content sections without importing legacy screens", () =
 })
 
 
-test("UI v1 dock has a raised central crown instead of a flat rectangular bar", () => {
-  assert.match(app, /u1-dock__crown/)
-  assert.match(styles, /\.u1-dock__crown/)
-  assert.match(styles, /height:\s*78px/)
-  assert.match(styles, /margin-top:\s*-11px/)
+test("UI v1 dock is a slim floating glass rail instead of the old raised crown", () => {
+  assert.match(app, /u1-dock__glass/)
+  assert.doesNotMatch(app, /u1-dock__crown|u1-dock__hull/)
+  assert.match(styles, /\.u1-dock__glass/)
+  assert.match(styles, /height:\s*34px/)
+  assert.match(styles, /backdrop-filter:\s*blur\(14px\)/)
 })
 
 
-test("dock active state stays inside its own segment and mobile tap flash is disabled", () => {
+test("dock active state is a restrained cold filament and mobile tap flash is disabled", () => {
   assert.doesNotMatch(app, /layoutId="ui-v1-dock-selection"/)
-  assert.match(app, /initial=\{\{ opacity: 0, scale: 0\.96 \}\}/)
+  assert.match(app, /u1-dock__filament/)
+  assert.match(app, /scaleX: 0\.45/)
   assert.match(styles, /-webkit-tap-highlight-color:\s*transparent/)
 })
 
@@ -120,11 +122,10 @@ test("root spaces support deliberate horizontal swipe navigation with soft hapti
   assert.match(styles, /touch-action:\s*pan-y/)
 })
 
-test("dock uses local glow instead of a selected-state frame", () => {
-  assert.match(styles, /radial-gradient\(/)
-  assert.match(styles, /text-shadow:\s*0 0 13px/)
-  assert.match(styles, /data-active="home"/)
-  assert.doesNotMatch(styles, /\.u1-dock__selection[\s\S]*?box-shadow:\s*inset 0 0 0 1px/)
+test("dock uses local cold light instead of a selected-state bubble", () => {
+  assert.match(styles, /drop-shadow\(0 0 4px rgba\(218, 229, 233, 0\.46\)\)/)
+  assert.match(styles, /\.u1-dock__filament/)
+  assert.doesNotMatch(styles, /\.u1-dock__selection|\.u1-dock__crown/)
 })
 
 

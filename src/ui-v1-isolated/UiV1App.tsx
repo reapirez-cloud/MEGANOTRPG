@@ -151,8 +151,7 @@ function Dock({
 
   return (
     <nav className="u1-dock" aria-label="Основная навигация" data-active={active}>
-      <span className="u1-dock__hull" aria-hidden="true" />
-      <span className="u1-dock__crown" aria-hidden="true" />
+      <span className="u1-dock__glass" aria-hidden="true" />
       {items.map((item) => {
         const selected = item.id === active
 
@@ -168,10 +167,10 @@ function Dock({
           >
             {selected && (
               <motion.span
-                className="u1-dock__selection"
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+                className="u1-dock__filament"
+                initial={{ opacity: 0, scaleX: 0.45 }}
+                animate={{ opacity: 1, scaleX: 1 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
               />
             )}
             <span

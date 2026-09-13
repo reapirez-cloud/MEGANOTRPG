@@ -82,13 +82,16 @@ Current direction:
 - Home may be wider than the side destinations, but not taller;
 - selected state comes primarily from PNG opacity/light/treatment and a restrained cold glow.
 
-Initial sizing target for implementation experiments:
+Implemented first experiment:
 
-- visual rail: approximately **48–54 px** high;
-- usable PNG control height: approximately **38–44 px**;
-- safe-area spacing handled outside/under the visual rail instead of making the visible rail unnecessarily tall.
+- visible glass rail: **34 px** high;
+- invisible/touch button hit area: **48 px** high;
+- current PNG render slots: approximately **26 px** high, with Home allowed a slightly wider slot;
+- the rail floats above the bottom safe area instead of sitting on the viewport edge;
+- content remains visible through restrained cold glass;
+- active state is a thin cold-light filament plus PNG brightness/glow, never a large bubble.
 
-The exact dimensions are experimental, not frozen. The invariant is that persistent navigation must not consume a large portion of the reading viewport.
+The dimensions are still experimental, but the key invariant is now stronger: the visible navigation object should feel closer to an iPhone gesture rail than to a conventional bottom tab bar.
 
 ## Experiment rule
 
