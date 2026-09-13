@@ -17,7 +17,11 @@ function fail(error: { message: string } | null, fallback: string): never {
 }
 
 export class SupabaseCampaignAdministrationGateway implements CampaignAdministrationGateway {
-  constructor(private readonly client: SupabaseClient) {}
+  private readonly client: SupabaseClient
+
+  constructor(client: SupabaseClient) {
+    this.client = client
+  }
 
   async setMemberRole(campaignId: string, userId: string, role: "gm" | "player") {
     const { error } = await this.client.rpc("set_campaign_member_role", {
