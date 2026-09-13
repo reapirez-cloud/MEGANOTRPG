@@ -725,12 +725,12 @@ button {
 }
 
 .u1-dock__glyph--me {
-  background-image: url("/ui-v1/nav-icons/me.png");
+  background-image: url("/ui-v1/nav-icons/me.svg");
 }
 
 .u1-dock__glyph--home {
   width: 34px;
-  background-image: url("/ui-v1/nav-icons/home.png");
+  background-image: url("/ui-v1/nav-icons/home.svg");
 }
 
 .u1-dock__glyph--chats {

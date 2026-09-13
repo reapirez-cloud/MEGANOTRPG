@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Reworked the `Я` and `Главная` navigation glyphs as narrow aggressive geometric SVG marks keyed to the existing `Чаты` icon language, then wired them into the slim glass rail; the favored Chats asset remains the visual reference rather than being replaced by a softer icon-pack style.
 - Rebuilt the UI 1.0 bottom navigation as a **34px floating translucent glass rail** with 48px invisible hit targets, narrow PNG slots and a restrained cold-light active filament; removed the previous tall hull/Home crown geometry.
 - Finalized the immersive UI 1.0 World vocabulary as **Локации / Персонажи / Лор / Карта**. Player-controlled characters / PCs are called **Игроки** on party/workspace surfaces; technical `npc` / `locations` identifiers remain internal where useful.
 - Removed the remaining player-visible `Зона` / `NPC` wording from UI 1.0 Home, location hierarchy, character cards and chronology labels while preserving technical `zone` / `npc` source identifiers internally.
