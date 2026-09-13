@@ -663,12 +663,14 @@ export function createWorkshopMemberActions({
   characters,
   operations,
   canChangeRole,
+  canRemoveMember,
   onOpen,
 }: {
   member: WorkshopMember
   characters: WorkshopCharacter[]
   operations: WorkshopOperations
   canChangeRole: boolean
+  canRemoveMember: boolean
   onOpen: () => void
 }): SnakeAction[] {
   const assigned = characters.filter(
@@ -746,6 +748,25 @@ export function createWorkshopMemberActions({
     actions.push(createWorkshopMemberRoleAction({ member, operations }))
   }
 
+  if (canRemoveMember && !member.isOwner) {
+    actions.push({
+      id: "remove-member",
+      label: "Удалить из кампании",
+      tone: "danger",
+      surface: {
+        kind: "confirm",
+        eyebrow: "Партия",
+        title: "Удалить «" + member.displayName + "» из кампании?",
+        body: "Все назначенные этому участнику PC станут свободными. Сам участник потеряет доступ к кампании.",
+        confirmLabel: "Удалить участника",
+      },
+      execute: async () => {
+        const response = await operations.removeMember(member.userId)
+        return actionResult(response.ok, response.error, "Участник удалён из кампании.")
+      },
+    })
+  }
+
   return actions
 }
 
@@ -779,18 +800,44 @@ export function createWorkshopInviteActions({
     })
   }
 
+  if (invite && !invite.revokedAt) {
+    actions.push({
+      id: "revoke-invite",
+      label: "Отозвать код",
+      tone: "danger",
+      surface: {
+        kind: "confirm",
+        eyebrow: "Партия",
+        title: "Отозвать код " + invite.code + "?",
+        body: "После отзыва по этому коду больше нельзя будет вступить в кампанию.",
+        confirmLabel: "Отозвать",
+      },
+      execute: async () => {
+        const response = await operations.revokeInvite(invite.code)
+        return actionResult(response.ok, response.error, "Код отозван.")
+      },
+    })
+  }
+
   actions.push({
     id: "create-invite",
     label: invite ? "Создать новый код" : "Создать код",
     surface: {
-      kind: "confirm",
+      kind: "editor",
       eyebrow: "Партия",
-      title: invite ? "Создать новый код?" : "Создать приглашение?",
-      body: "Код рассчитан на вход игроков в эту кампанию.",
-      confirmLabel: "Создать",
+      title: invite ? "Новый код приглашения" : "Создать приглашение",
+      fields: [
+        { id: "maxUses", label: "Лимит использований", type: "number", required: true },
+        { id: "expiresDays", label: "Срок действия, дней", type: "number", required: true },
+      ],
+      initialValues: { maxUses: 20, expiresDays: 30 },
+      submitLabel: "Создать код",
     },
-    execute: async () => {
-      const response = await operations.createInvite()
+    execute: async ({ input }) => {
+      const response = await operations.createInvite(
+        Math.max(1, Math.min(500, Math.floor(Number(input?.maxUses || 20)))),
+        Math.max(1, Math.min(365, Math.floor(Number(input?.expiresDays || 30)))),
+      )
       if (!response.ok) {
         return {
           type: "error",
@@ -802,7 +849,7 @@ export function createWorkshopInviteActions({
         try {
           await navigator.clipboard.writeText(response.code)
         } catch {
-          // Новый код всё равно остаётся видимым в Party.
+          // Новый код остаётся видимым в Party.
         }
       }
 
