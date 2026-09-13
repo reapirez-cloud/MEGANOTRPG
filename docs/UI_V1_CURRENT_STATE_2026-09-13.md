@@ -127,7 +127,7 @@ Current World status:
 - World Characters list — implemented first pass; technically filtered to non-player characters;
 - Lore list — implemented first pass;
 - Map — intentional placeholder until its own design stage;
-- dedicated detail/edit/create interfaces — deferred unless explicitly designed.
+- location detail plus GM create/edit/transition/archive/delete flows — implemented through Snake -> Oracle -> Larisa.
 
 ## Knowledge Base
 
@@ -184,7 +184,7 @@ Current implementation includes:
 
 Window ownership rule: universal windows are **surfaces of Snake**, not a separate agent. The flow is `domain action -> Snake surface -> user input -> Snake executor -> GENA / Oracle / approved owner`.
 
-Location CRUD interfaces that have not yet been designed still open Snake Placeholder. The next architecture proof is **Inventory as the second unrelated entity family**.
+Location CRUD is now a real Snake execution path through Oracle -> Larisa. Inventory is also registered as an unrelated Snake-managed entity family in the new Character View, proving Snake reuse beyond world topology.
 
 ## Foundation note — do not trust the old Stage 2 capability list
 
@@ -202,9 +202,9 @@ B. Home                                   DONE first production pass
 C. chronology/basic content sections      DONE / partial by section
 D. World                                  PARTIAL, usable first pass
 E. Snake interaction runtime              DONE core + Locations proof #1
-F. Inventory as Snake proof #2            NEXT architecture proof
-G. Workspace identity shell                DONE first pass, pulled forward by explicit design decision
-H. Character UI / Sheet / Inventory UI    AFTER Workspace foundation
+F. Inventory as Snake proof #2            DONE first working pass in Character View
+G. Workspace identity shell                DONE first pass
+H. Character UI / Sheet / Inventory UI    DONE first working GM-control pass
 I. Chats UI 1.0                           DEFERRED
 J. remaining surfaces + atmosphere/polish DEFERRED
 ```
@@ -215,8 +215,6 @@ Do not create local context menus or modal families beside Snake. New entity fam
 
 Intentionally deferred at this snapshot:
 
-- Workspace management deep screen;
-- Workspace character-detail / new Character UI;
 - Chats UI 1.0;
 - Map UI;
 - dedicated Art/gallery UI 1.0;
@@ -265,6 +263,8 @@ The old `GmWorkspace.tsx` may be consulted only for working behavior that has no
 - `draft`: GM-only, unassigned, private, cannot become active, absent from ordinary `Я` and `Мир` reads.
 - `campaign`: published into campaign state; PC assignment and active selection remain separate later actions.
 
+Character class/level is not free-text Workshop state. Creation selects an active class template and assigns it through Shapoklyak/Character Engine; later class/subclass/level changes use the same template-assignment path. `characters.character_class` and total level are projections synchronized from those assignments.
+
 Publishing an NPC requires choosing either:
 
 - `discover` — players learn it through the existing discovery/encounter relation.
@@ -284,11 +284,15 @@ Assignment must never silently call `set_campaign_active_character`.
 
 Unassigning a PC clears that character as the old player's active PC when necessary through the canonical Shapoklyak update path. Dead characters remain historical catalog entries and cannot be active.
 
-Party members are also Snake entities. Long press / right click on a member exposes member inspection, assignment of a free PC, active-character selection/clearing, and owner-only role change. The invitation block exposes copy/new-code actions through Snake as well.
+Party members are also Snake entities. Long press / right click on a member exposes member inspection, assignment of a free PC, active-character selection/clearing, owner-only role change and owner-only removal from the campaign. Member removal frees their assigned PCs before deleting campaign membership.
+
+Invitations are first-class managed records: GM/owner can create codes with explicit use-count and expiry limits, copy or revoke active codes, and inspect recent invite history with active/expired/exhausted/revoked state.
 
 ### Character management law
 
-Every character row in Draft, Party and the unified Character catalog uses the same `createWorkshopCharacterActions` provider. It covers open, basic identity edit, draft publication/deletion, PC access/assignment/active state, NPC visibility and alive/dead state as applicable. The surface must not grow route-specific copies of these commands.
+Every character row in Draft, Party and the unified Character catalog uses the same `createWorkshopCharacterActions` provider. It covers open, basic identity edit, canonical class/subclass assignment and class-level changes, draft publication/deletion, PC access/assignment/active state, NPC visibility, ordinary NPC habitats and alive/dead state.
+
+Published characters may be returned to Draft or permanently deleted through explicit Snake confirmations. The stable Character View route is real: GM can inspect/edit the sheet, HP, recovery, inventory instances, spell preparation/details, features and item transfers through Oracle and the canonical owners.
 
 ### Library law
 
@@ -296,10 +300,10 @@ Campaign-authored item/spell/feature/effect definitions live in Chasovoy:
 
 `draft → active → archived`
 
-Issuing an active definition creates runtime state through its canonical owner path via Oracle, not by turning the definition row itself into a character instance.
+Issuing an active definition creates runtime state through its canonical owner path via Oracle, not by turning the definition row itself into a character instance. Item issue supports quantity. Definition editors expose type-specific spell/item fields; archive is reversible; linked feature/effect mechanics can be both attached to and detached from item definitions.
 
 ### Materials law
 
 GM materials remain private per `campaign_id + workspace_user_id` and keep the existing private `campaign-media` Storage path. Upload deletion must remove both the database row and its Storage object.
 
-Folders and material rows are Snake entities. Folder long press / right click exposes open, rename and delete. Note/file rows expose open, note edit where applicable, and delete. Creation toolbar controls remain ordinary explicit commands because they create objects rather than represent an existing manageable object.
+Folders and material rows are Snake entities. Folders support nesting, rename, movement with cycle protection and delete; new folders inherit the current folder as parent. Note/file rows support open, note edit where applicable, movement between folders/root, and delete. Upload deletion removes both the database row and the private Storage object. Creation toolbar controls remain ordinary explicit commands because they create objects rather than represent an existing manageable object.
