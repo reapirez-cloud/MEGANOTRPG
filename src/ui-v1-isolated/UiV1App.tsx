@@ -5,6 +5,7 @@ import { useHomeData, type HomeEvent, type HomeSocietyNews } from "./useHomeData
 import { WhatsNew } from "./WhatsNew"
 import Workspace from "./Workspace"
 import GMWorkshop from "./GMWorkshop"
+import CharacterView from "./CharacterView"
 import type { WorkshopSection } from "./useGMWorkshopData"
 import PlayerProfileMark from "./PlayerProfileMark"
 import {
@@ -494,10 +495,12 @@ function Screen({ route }: { route: Route }) {
     }
 
     return (
-      <Placeholder
-        eyebrow="Персонаж"
-        title="Лист"
-        body="Переход из активной личности уже подключён. Новый лист персонажа появится здесь без возврата к legacy-интерфейсу."
+      <CharacterView
+        characterId={route.characterId}
+        onBack={() => {
+          if (window.history.length > 1) window.history.back()
+          else go("workspace")
+        }}
       />
     )
   }
