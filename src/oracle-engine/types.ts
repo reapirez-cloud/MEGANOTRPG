@@ -27,6 +27,13 @@ import type { DayPeriod } from "../world-state/types.ts"
 /** Oracle is the GM's imperative control plane. Every method targets one explicit owner directly. */
 export type OracleContext = EngineCommandContext
 
+export type OracleCampaignCommands = {
+  setMemberRole(context: OracleContext, userId: string, role: "gm" | "player"): Promise<void>
+  removeMember(context: OracleContext, userId: string): Promise<void>
+  createInvite(context: OracleContext, input: { maxUses: number; expiresDays: number }): Promise<string>
+  revokeInvite(context: OracleContext, code: string): Promise<void>
+}
+
 export type OracleEntityResult = Promise<EngineCommandResult<EntityMutation>>
 export type OracleInventoryResult = Promise<EngineCommandResult<InventoryMutation>>
 export type OracleWorldResult = Promise<EngineCommandResult<WorldMutation>>
