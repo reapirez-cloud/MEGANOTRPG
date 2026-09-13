@@ -94,9 +94,11 @@ test("UI v1 dock is an ultra-thin floating glass rail instead of a conventional 
 })
 
 
-test("dock active state is carried only by PNG light and never by a detached filament", () => {
+test("dock active state is carried by a moving cold glass glow without icons or a detached filament", () => {
   assert.doesNotMatch(app + styles, /u1-dock__filament|layoutId="ui-v1-dock-selection"/)
-  assert.match(styles, /drop-shadow\(0 0 3px rgba\(220, 233, 238, 0\.72\)\)/)
+  assert.match(styles, /\.u1-dock::after/)
+  assert.match(styles, /radial-gradient/)
+  assert.match(styles, /left 230ms cubic-bezier/)
   assert.match(styles, /-webkit-tap-highlight-color:\s*transparent/)
 })
 
@@ -127,19 +129,19 @@ test("root spaces support deliberate horizontal swipe navigation with soft hapti
   assert.match(styles, /touch-action:\s*pan-y/)
 })
 
-test("dock uses cold PNG glow instead of a selected-state bubble or line", () => {
-  assert.match(styles, /drop-shadow\(0 0 9px rgba\(202, 220, 226, 0\.24\)\)/)
+test("dock uses one restrained cold glow that moves between left, center and right", () => {
+  assert.match(styles, /data-active="home"/)
+  assert.match(styles, /data-active="chats"/)
+  assert.match(styles, /rgba\(232, 242, 246, 0\.40\)/)
   assert.doesNotMatch(styles, /\.u1-dock__selection|\.u1-dock__crown|\.u1-dock__filament/)
 })
 
 
-test("dock navigation is icon-only and keeps accessible names", () => {
+test("dock navigation is deliberately iconless while keeping accessible names", () => {
   assert.match(app, /aria-label=\{item\.label\}/)
-  assert.match(app, /u1-dock__glyph/)
-  assert.doesNotMatch(app, /u1-dock__label/)
-  assert.match(styles, /nav-icons\/me\.png/)
-  assert.match(styles, /nav-icons\/home\.png/)
-  assert.match(styles, /nav-icons\/chats\.png/)
+  assert.doesNotMatch(app + styles, /u1-dock__glyph|nav-icons\//)
+  assert.doesNotMatch(app, /icon:\s*"me"|icon:\s*"home"|icon:\s*"chats"/)
+  assert.match(styles, /grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/)
 })
 
 test("home puts campaign destinations before the compact recent-event stream", () => {

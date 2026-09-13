@@ -75,22 +75,23 @@ Current direction:
 - one narrow horizontal rectangular rail;
 - glass/translucent specifically so content can remain visible underneath;
 - as little vertical obstruction as practical;
-- preserve physical space for the three PNG navigation assets;
+- no visible navigation icons or labels inside the rail;
 - no tall central crown;
 - no large wings;
 - no giant selected-state bubble;
-- Home may be wider than the side destinations, but not taller;
-- selected state comes primarily from PNG opacity/light/treatment and a restrained cold glow.
+- the rail is split into three equal invisible interaction zones: left / center / right;
+- selected state is communicated only by restrained cold illumination inside the glass.
 
 Current implementation:
 
 - visible glass rail: **18 px** high;
 - invisible/touch button hit area: **44 px** high;
-- all three navigation assets are transparent PNGs from one cold geometric family;
-- side PNGs stay compact and low; the Home PNG is deliberately very wide so its horizontal lines visually approach the side icons instead of leaving dead space;
+- there are no visible icons inside the rail; the three destinations remain accessible buttons with screen-reader labels;
+- the rail uses three equal hit zones corresponding to Я / Главная / Чаты;
+- one soft cold glow moves between left, center and right to show the current root space;
+- the glow lives inside the glass as a radial illumination, not as an underline, filament, dot or bubble;
 - the rail floats above the bottom safe area and remains translucent;
-- there is **no detached active underline/filament**;
-- selected state is expressed only through the PNG itself: opacity, brightness and cold glow.
+- there is **no detached active underline/filament**.
 
 The invariant is stronger than before: the visible navigation object should feel closer to a designed gesture rail than to a conventional bottom tab bar.
 

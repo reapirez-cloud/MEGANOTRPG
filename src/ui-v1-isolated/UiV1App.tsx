@@ -143,10 +143,10 @@ function Dock({
   onNavigate: (space: RootSpace) => void
 }) {
   const active = activeRoot(route)
-  const items: Array<{ id: RootSpace; label: string; icon: "me" | "home" | "chats" }> = [
-    { id: "workspace", label: "Я", icon: "me" },
-    { id: "home", label: "Главная", icon: "home" },
-    { id: "chats", label: "Чаты", icon: "chats" },
+  const items: Array<{ id: RootSpace; label: string }> = [
+    { id: "workspace", label: "Я" },
+    { id: "home", label: "Главная" },
+    { id: "chats", label: "Чаты" },
   ]
 
   return (
@@ -164,12 +164,7 @@ function Dock({
             aria-label={item.label}
             aria-current={selected ? "page" : undefined}
             onClick={() => onNavigate(item.id)}
-          >
-            <span
-              className={`u1-dock__glyph u1-dock__glyph--${item.icon}`}
-              aria-hidden="true"
-            />
-          </button>
+          />
         )
       })}
     </nav>

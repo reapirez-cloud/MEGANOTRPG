@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Removed visible icons from the floating bottom navigation entirely. The 18px glass rail now uses three equal invisible hit zones and one smoother cold radial glow that moves between left / center / right to indicate Я / Главная / Чаты without a line, dot or bubble.
 - Snake context menus now unfold smoothly from the exact long-press/right-click point, including after viewport flip/clamp; universal windows now reveal from darkness with a restrained cold-edge ignition and smoother Flow resizing.
 - Snake windows now adapt from compact to full-size layouts by context, and complex interactions can run as one sequential multi-step window with Back/Next instead of a single overloaded form.
 - Added the first universal Snake window runtime (Placeholder, Confirm, Editor, Picker, Detail and Notice/Error modes) so future interaction forms share one recognizable window system instead of entity-specific modal families.
