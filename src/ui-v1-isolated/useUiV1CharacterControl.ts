@@ -220,6 +220,26 @@ export function useUiV1CharacterControl(characterId: string) {
     "Не удалось передать предмет.",
   ), [characterId, context, gm])
 
+  const updateSpell = useCallback((spell: CharacterSpell, patch: Partial<CharacterSpell>) => gm(
+    () => oracle.characters.updateSpell(context(), characterId, spell.id, {
+      name: patch.name ?? spell.name,
+      spell_level: patch.spell_level ?? spell.spell_level,
+      school: patch.school ?? spell.school,
+      casting_time: patch.casting_time ?? spell.casting_time,
+      spell_range: patch.spell_range ?? spell.spell_range,
+      duration: patch.duration ?? spell.duration,
+      components: patch.components ?? spell.components,
+      concentration: patch.concentration ?? spell.concentration,
+      ritual: patch.ritual ?? spell.ritual,
+      prepared: patch.prepared ?? spell.prepared,
+      cast_mode: patch.cast_mode ?? spell.cast_mode,
+      slot_level: patch.slot_level !== undefined ? patch.slot_level : spell.slot_level,
+      description: patch.description ?? spell.description,
+      source: patch.source ?? spell.source,
+    }),
+    "Не удалось изменить заклинание.",
+  ), [characterId, context, gm])
+
   const setSpellPrepared = useCallback((spellId: string, prepared: boolean) => gm(
     () => oracle.characters.setSpellPrepared(context(), characterId, spellId, prepared),
     "Не удалось изменить подготовку заклинания.",
@@ -228,6 +248,16 @@ export function useUiV1CharacterControl(characterId: string) {
   const deleteSpell = useCallback((spellId: string) => gm(
     () => oracle.characters.deleteSpell(context(), characterId, spellId),
     "Не удалось удалить заклинание.",
+  ), [characterId, context, gm])
+
+  const updateFeature = useCallback((feature: CharacterFeature, patch: Partial<CharacterFeature>) => gm(
+    () => oracle.characters.updateFeature(context(), characterId, feature.id, {
+      kind: patch.kind ?? feature.kind,
+      name: patch.name ?? feature.name,
+      description: patch.description ?? feature.description,
+      mechanics: patch.mechanics ?? feature.mechanics ?? [],
+    }),
+    "Не удалось изменить особенность.",
   ), [characterId, context, gm])
 
   const deleteFeature = useCallback((featureId: string) => gm(
@@ -255,8 +285,10 @@ export function useUiV1CharacterControl(characterId: string) {
     updateItem,
     removeItem,
     transferItem,
+    updateSpell,
     setSpellPrepared,
     deleteSpell,
+    updateFeature,
     deleteFeature,
   }
 }
