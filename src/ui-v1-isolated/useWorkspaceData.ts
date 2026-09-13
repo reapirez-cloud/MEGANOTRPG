@@ -76,6 +76,7 @@ type CharacterRow = {
   avatar_url: string | null
   character_type: "pc" | "npc"
   visibility: "campaign" | "private"
+  publication_state: "draft" | "campaign"
   life_state: "alive" | "dead" | null
   died_at: string | null
 }
@@ -289,8 +290,9 @@ export function useWorkspaceData(): WorkspaceData {
           .maybeSingle(),
         supabase
           .from("characters")
-          .select("id, assigned_user_id, name, character_class, level, avatar_url, character_type, visibility, life_state, died_at")
+          .select("id, assigned_user_id, name, character_class, level, avatar_url, character_type, visibility, publication_state, life_state, died_at")
           .eq("campaign_id", nextCampaignId)
+          .eq("publication_state", "campaign")
           .order("created_at", { ascending: true }),
         supabase
           .from("campaign_members")
