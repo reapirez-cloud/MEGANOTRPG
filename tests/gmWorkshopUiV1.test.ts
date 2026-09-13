@@ -142,14 +142,20 @@ test("Workshop character Snake provider covers the current management lifecycle"
   assert.match(data, /oracle\.characters\.delete/)
 })
 
-test("Workshop definitions, folders and materials expose open plus management actions through Snake", () => {
+test("Workshop definitions, folders and materials expose reversible management through Snake", () => {
   assert.match(actions, /id: "open-definition"/)
+  assert.match(actions, /id: "restore"/)
+  assert.match(actions, /id: "unlink-item"/)
   assert.match(materials, /id: "open-folder"/)
   assert.match(materials, /id: "rename-folder"/)
+  assert.match(materials, /id: "move-folder"/)
   assert.match(materials, /id: "delete-folder"/)
   assert.match(materials, /id: "open-material"/)
   assert.match(materials, /id: "edit-note"/)
+  assert.match(materials, /id: "move-material"/)
   assert.match(materials, /id: "delete-material"/)
+  assert.match(data, /moveFolder/)
+  assert.match(data, /moveMaterial/)
 })
 
 test("published NPC visibility supports immediate visibility or encounter discovery", () => {
