@@ -706,3 +706,110 @@ button.u1-active-identity {
     animation: none;
   }
 }
+
+
+/* Workspace player-character shelf: foreign PCs are view-only, never speaker choices. */
+.u1-player-characters {
+  border-top: 1px solid rgba(225, 235, 239, 0.12);
+  border-bottom: 1px solid rgba(225, 235, 239, 0.08);
+}
+
+.u1-player-characters__trigger {
+  width: 100%;
+  min-height: 58px;
+  padding: 8px 2px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.u1-player-characters__trigger > span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.u1-player-characters__trigger strong {
+  color: var(--u1-text-soft);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 400;
+}
+
+.u1-player-characters__trigger small {
+  color: var(--u1-text-faint);
+  font-size: 8px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.u1-player-characters__trigger b {
+  flex: 0 0 auto;
+  color: rgba(221, 232, 236, 0.38);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 400;
+}
+
+.u1-player-characters[data-open] .u1-player-characters__trigger b {
+  color: rgba(231, 239, 241, 0.72);
+}
+
+.u1-player-characters__list {
+  padding: 0 0 8px;
+  display: grid;
+  gap: 7px;
+  animation: u1-workspace-player-list-in 160ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.u1-player-characters__empty {
+  min-height: 48px;
+  padding: 4px 2px 10px;
+  display: flex;
+  align-items: center;
+  color: var(--u1-text-faint);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.u1-actor-strip[data-dead] .u1-actor-strip__media {
+  filter: grayscale(0.88) saturate(0.12) contrast(1.04) brightness(0.62);
+}
+
+.u1-actor-strip[data-dead] .u1-actor-strip__shade {
+  background:
+    linear-gradient(90deg, rgba(4, 6, 7, 0.22), rgba(4, 6, 7, 0.62) 55%, rgba(4, 6, 7, 0.97) 78%),
+    linear-gradient(180deg, rgba(220, 228, 230, 0.015), rgba(0, 0, 0, 0.34));
+}
+
+.u1-actor-strip[data-dead] .u1-actor-strip__copy strong {
+  color: rgba(219, 222, 219, 0.68);
+}
+
+@keyframes u1-workspace-player-list-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+    clip-path: inset(0 0 72% 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    clip-path: inset(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u1-player-characters__list {
+    animation: none;
+  }
+}

@@ -74,9 +74,12 @@ The current Society News composer is a temporary first-pass modal and is not a v
 
 `Я` is the current campaign identity surface, not an account dashboard.
 
-- player: GM-assigned active PC is the large bottom artwork board; other assigned PCs are view-only;
-- GM/owner: `Рассказчик` is permanently available above campaign characters as a speaking identity;
-- GM voice selection is separate from `campaign_members.active_character_id` and currently persists only as UI/session state;
+- player: GM-assigned active PC is the large bottom artwork board;
+- `Персонажи игроков` is a collapsible view-only shelf of the **living active PCs of other campaign members**; tapping one opens that character but never selects it as the current voice;
+- `Мои персонажи` contains PCs assigned to the current user. Living characters stay first; dead owned characters remain visible and are automatically sorted to the bottom;
+- GM/owner: `Рассказчик` remains available as a speaking identity; manager authority does **not** grant the right to take another player's assigned character as a Workspace voice;
+- manager speaker candidates are restricted to the current user's living assigned characters plus living unassigned NPCs. Unassigned PCs and characters assigned to another user stay out of the Workspace voice picker and belong to management/workshop flows;
+- GM voice selection is separate from `campaign_members.active_character_id`, persists only as UI/session state, and is revalidated against the protected speaker pool on load so stale local state cannot reclaim another player's character;
 - tapping an active character board enters the stable future character-view route;
 - managers get a 70/30 campaign / `Управление` strip above the active board;
 - character-view and management destinations remain isolated connection seams and do not fall back to legacy UI.

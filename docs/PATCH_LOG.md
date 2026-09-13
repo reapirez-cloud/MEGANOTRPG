@@ -13,16 +13,19 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 - Upgraded the active character board in `Я`: HP and all six ability scores now live directly on the artwork. Each stat is tappable and expands its related skill bonuses inside the same portrait board; this local stat interaction does not invoke Snake.
 - Added the first character Snake interaction: long-press/right-click on the active character board exposes `Аватар`; choosing it keeps the same Snake menu open and replaces its contents with `Аватар персонажа` and `Аватар панели`. Both avatar editors remain explicit placeholders until their separate persistence/editor design is approved.
+- Reworked Workspace character discovery around ownership: `Персонажи игроков` now expands into view-only active PCs of other members, while `Мои персонажи` lists the current user's assigned PCs with dead characters automatically sorted to the bottom. Managers can no longer select another player's assigned PC as their speaking identity.
 
 ### Runtime and architecture changes
 
 - Extended Snake from flat action manifests to generic dynamic Branch/Command navigation. Branches resolve only the next action level from entity + current path, preserve one context-menu surface, maintain a transient Back stack, and forward the branch path into terminal command/surface execution. The branch-stack runtime is isolated in `snake/menuRuntime.ts` so `SnakeProvider` remains orchestration-sized instead of regrowing into a monolith.
 - Character-specific avatar choices live in `characterSnakeActions.ts`; Snake core remains entity-agnostic and contains no character/avatar switch. No Supabase schema or canonical gameplay state was changed.
 - Workspace stat previews read existing RLS-protected `character_sheets` fields and proficiency ranks; no new persistence path was introduced.
+- Added shared Workspace identity-selection rules: manager authority is explicitly separated from character ownership; the speaker pool is limited to own living assigned characters plus living unassigned NPCs, while foreign active PCs are derived from `campaign_members.active_character_id` for view-only inspection. Stored speaker identity is revalidated on load.
 
 ### Tests / verification
 
 - Added Snake agent coverage for dynamic branch resolution and terminal path forwarding, plus UI 1.0 guards for local stat expansion and the character Avatar branch.
+- Added Workspace ownership regression tests proving that GM/owner cannot claim another user's assigned PC, dead PCs sort after living owned PCs, unassigned PCs stay out of the speaker picker, and the player shelf accepts only another member's living active PC with matching assignment.
 
 ### Known incomplete work
 

@@ -24,20 +24,85 @@ function signed(value: number) {
   return value >= 0 ? `+${value}` : String(value)
 }
 
-function CharacterStrip({ character, onClick }: { character: WorkspaceCharacter; onClick: () => void }) {
+function CharacterStrip({
+  character,
+  selected = false,
+  onClick,
+}: {
+  character: WorkspaceCharacter
+  selected?: boolean
+  onClick: () => void
+}) {
   return (
-    <button type="button" className="u1-actor-strip" style={mediaStyle(character.avatarUrl)} onClick={onClick}>
+    <button
+      type="button"
+      className="u1-actor-strip"
+      data-selected={selected || undefined}
+      data-dead={character.lifeState === "dead" || undefined}
+      style={mediaStyle(character.avatarUrl)}
+      onClick={onClick}
+    >
       <span className="u1-actor-strip__media" aria-hidden="true" />
       <span className="u1-actor-strip__shade" aria-hidden="true" />
       <span className="u1-actor-strip__copy">
         <strong>{character.name}</strong>
         <small>
+          {character.lifeState === "dead" && <>Мёртв · </>}
           {character.characterClass || (character.characterType === "npc" ? "Персонаж мира" : "Без класса")}
           {" · "}
           {character.level}
         </small>
       </span>
     </button>
+  )
+}
+
+function PlayerCharactersPanel({
+  characters,
+  onOpenCharacter,
+}: {
+  characters: WorkspaceCharacter[]
+  onOpenCharacter: (characterId: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <section className="u1-player-characters" data-open={open || undefined}>
+      <button
+        type="button"
+        className="u1-player-characters__trigger"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span>
+          <strong>Персонажи игроков</strong>
+          <small>
+            {characters.length
+              ? `Активные · ${characters.length}`
+              : "Нет активных"}
+          </small>
+        </span>
+        <b aria-hidden="true">{String(characters.length).padStart(2, "0")}</b>
+      </button>
+
+      {open && (
+        <div className="u1-player-characters__list">
+          {characters.length ? (
+            characters.map((character) => (
+              <CharacterStrip
+                key={character.id}
+                character={character}
+                onClick={() => onOpenCharacter(character.id)}
+              />
+            ))
+          ) : (
+            <div className="u1-player-characters__empty">
+              У других игроков сейчас нет активных персонажей.
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -215,26 +280,71 @@ export default function Workspace({ onOpenCharacter, onOpenManagement }: Props) 
         <PlayerProfileMark />
       </header>
 
-      <section className="u1-workspace__actors" aria-label={data.canManage ? "Выбор текущего голоса" : "Мои персонажи"}>
+      <section className="u1-workspace__actors" aria-label="Персонажи и текущий голос">
         {data.loading ? (
           <div className="u1-workspace__loading" aria-label="Загрузка персонажей"><span /><span /><span /></div>
         ) : data.error ? (
           <div className="u1-workspace__error">{data.error}</div>
-        ) : data.canManage ? (
+        ) : (
           <>
-            <NarratorStrip coverUrl={data.campaignCoverUrl} selected={data.narratorSelected} onClick={() => data.selectSpeaker(null)} />
-            {data.otherCharacters.map((character) => (
-              <CharacterStrip key={character.id} character={character} onClick={() => data.selectSpeaker(character.id)} />
-            ))}
+            {data.canManage && (
+              <NarratorStrip
+                coverUrl={data.campaignCoverUrl}
+                selected={data.narratorSelected}
+                onClick={() => data.selectSpeaker(null)}
+              />
+            )}
+
+            <PlayerCharactersPanel
+              characters={data.playerCharacters}
+              onOpenCharacter={onOpenCharacter}
+            />
+
+            {data.ownCharacters.length > 0 && (
+              <>
+                <div className="u1-workspace__section-label">
+                  <span>Мои персонажи</span><i aria-hidden="true" />
+                </div>
+                {data.ownCharacters.map((character) => (
+                  <CharacterStrip
+                    key={character.id}
+                    character={character}
+                    selected={
+                      data.canManage &&
+                      data.activeCharacter?.id === character.id
+                    }
+                    onClick={() => {
+                      if (
+                        data.canManage &&
+                        character.lifeState === "alive"
+                      ) {
+                        data.selectSpeaker(character.id)
+                        return
+                      }
+                      onOpenCharacter(character.id)
+                    }}
+                  />
+                ))}
+              </>
+            )}
+
+            {data.canManage && data.worldSpeakerCharacters.length > 0 && (
+              <>
+                <div className="u1-workspace__section-label">
+                  <span>Персонажи мира</span><i aria-hidden="true" />
+                </div>
+                {data.worldSpeakerCharacters.map((character) => (
+                  <CharacterStrip
+                    key={character.id}
+                    character={character}
+                    selected={data.activeCharacter?.id === character.id}
+                    onClick={() => data.selectSpeaker(character.id)}
+                  />
+                ))}
+              </>
+            )}
           </>
-        ) : data.otherCharacters.length ? (
-          <>
-            <div className="u1-workspace__section-label"><span>Другие персонажи</span><i aria-hidden="true" /></div>
-            {data.otherCharacters.map((character) => (
-              <CharacterStrip key={character.id} character={character} onClick={() => onOpenCharacter(character.id)} />
-            ))}
-          </>
-        ) : null}
+        )}
       </section>
 
       <footer className="u1-workspace__footer">
