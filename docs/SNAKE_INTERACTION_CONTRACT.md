@@ -271,6 +271,23 @@ long-press timer -> open(menu, point)
 synthetic contextmenu for consumed gesture -> preventDefault, no second open
 ~~~
 
+## Motion law
+
+Snake owns interaction motion as part of the universal interaction language.
+
+Context menus must visually originate from the physical invocation point. Snake uses the tap/right-click coordinate both for viewport-aware placement and as the menu transform origin. If the menu flips or clamps near a viewport edge, the visual origin is recalculated inside the final menu rectangle so the menu still appears to emerge from the user's finger/cursor.
+
+Snake windows should appear from darkness rather than pop like generic mobile modals:
+
+- restrained opacity + small vertical travel;
+- clipped reveal instead of large scale pop;
+- a short cold edge ignition on entry;
+- no spring/bounce motion;
+- adaptive width changes between Flow steps transition smoothly;
+- `prefers-reduced-motion` disables these non-essential transitions.
+
+Entity integrations must not add their own competing menu/window entrance animations.
+
 ## Adaptive size and sequential flow law
 
 Snake Window is one universal shell, not one fixed modal size.

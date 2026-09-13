@@ -8,6 +8,7 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
+  type CSSProperties,
   type ReactNode,
 } from "react"
 import { createPortal } from "react-dom"
@@ -62,6 +63,7 @@ function SnakeContextMenu({
 }) {
   const ref = useRef<HTMLDivElement | null>(null)
   const [position, setPosition] = useState(request.point)
+  const [origin, setOrigin] = useState({ x: 0, y: 0 })
 
   useLayoutEffect(() => {
     const menu = ref.current
@@ -83,9 +85,15 @@ function SnakeContextMenu({
       y = request.point.y - rect.height
     }
 
-    setPosition({
+    const nextPosition = {
       x: clamp(x, padding, viewportWidth - rect.width - padding),
       y: clamp(y, padding, viewportHeight - rect.height - padding),
+    }
+
+    setPosition(nextPosition)
+    setOrigin({
+      x: clamp(request.point.x - nextPosition.x, 0, rect.width),
+      y: clamp(request.point.y - nextPosition.y, 0, rect.height),
     })
   }, [request])
 
@@ -107,7 +115,12 @@ function SnakeContextMenu({
       className="u1-snake-menu"
       role="menu"
       aria-label="Действия"
-      style={{ left: position.x, top: position.y }}
+      style={{
+        left: position.x,
+        top: position.y,
+        "--u1-snake-origin-x": `${origin.x}px`,
+        "--u1-snake-origin-y": `${origin.y}px`,
+      } as CSSProperties}
     >
       {request.actions.map((action, index) => {
         const separator =
