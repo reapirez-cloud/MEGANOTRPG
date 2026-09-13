@@ -1,6 +1,6 @@
 import type { SnakeAction } from "../snake-engine"
 import type { VisibilityMode } from "../types/world"
-import type { UiV1Location } from "./useUiV1Locations"
+import type { UiV1Location, UiV1LocationLink } from "./useUiV1Locations"
 
 type LocationOperations = {
   createLocation: (
@@ -19,6 +19,13 @@ type LocationOperations = {
     label: string,
     visibilityMode: VisibilityMode,
   ) => Promise<{ ok: boolean; error?: string }>
+  updateTransition: (
+    link: UiV1LocationLink,
+    targetLocationId: string,
+    label: string,
+    visibilityMode: VisibilityMode,
+  ) => Promise<{ ok: boolean; error?: string }>
+  deleteTransition: (linkId: string) => Promise<{ ok: boolean; error?: string }>
 }
 
 function result(response: { ok: boolean; error?: string }, notice: string) {
@@ -225,6 +232,101 @@ export function createLocationSnakeActions({
       execute: async () => {
         const response = await operations.deleteLocation(location.id)
         return result(response, "Локация удалена.")
+      },
+    },
+  )
+
+  return actions
+}
+
+
+export function createLocationTransitionActions({
+  link,
+  target,
+  locations,
+  canManage,
+  operations,
+  onOpen,
+}: {
+  link: UiV1LocationLink
+  target: UiV1Location
+  locations: UiV1Location[]
+  canManage: boolean
+  operations: LocationOperations
+  onOpen: () => void
+}): SnakeAction[] {
+  const actions: SnakeAction[] = [
+    {
+      id: "open-transition",
+      label: "Перейти",
+      execute: () => {
+        onOpen()
+        return { type: "success" }
+      },
+    },
+  ]
+
+  if (!canManage) return actions
+
+  const targets = locations.filter((location) => location.id !== link.source_location_id)
+  actions.push(
+    {
+      id: "edit-transition",
+      label: "Редактировать переход",
+      surface: {
+        kind: "editor",
+        eyebrow: "Мир · Переход",
+        title: link.label.trim() || target.name,
+        fields: [
+          {
+            id: "targetLocationId",
+            label: "Куда",
+            type: "select",
+            required: true,
+            options: targets.map((location) => ({
+              value: location.id,
+              label: location.name,
+            })),
+          },
+          { id: "label", label: "Название перехода", type: "text" },
+          {
+            id: "visibilityMode",
+            label: "Видимость",
+            type: "select",
+            options: visibilityOptions,
+          },
+        ],
+        initialValues: {
+          targetLocationId: link.target_location_id,
+          label: link.label,
+          visibilityMode: link.visibility_mode,
+        },
+        submitLabel: "Сохранить переход",
+      },
+      execute: async ({ input }) => {
+        const response = await operations.updateTransition(
+          link,
+          String(input?.targetLocationId || link.target_location_id),
+          String(input?.label ?? link.label),
+          String(input?.visibilityMode || link.visibility_mode) as VisibilityMode,
+        )
+        return result(response, "Переход сохранён.")
+      },
+    },
+    {
+      id: "delete-transition",
+      label: "Удалить переход",
+      tone: "danger",
+      surface: {
+        kind: "confirm",
+        eyebrow: "Мир · Переход",
+        title: "Удалить переход?",
+        body: (link.label.trim() || "Переход") + " → " + target.name,
+        confirmLabel: "Удалить",
+      },
+      execute: async () => {
+        const response = await operations.deleteTransition(link.id)
+        return result(response, "Переход удалён.")
       },
     },
   )
