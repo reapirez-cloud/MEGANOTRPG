@@ -245,6 +245,23 @@ Core rules:
 - do not copy the current location-specific long-press/menu implementation into another feature; it is temporary and scheduled for migration to Snake.
 
 
+### Snake completeness gate — mandatory at creation time
+
+When an agent creates or extends a **manageable UI 1.0 object** (character, member, definition, folder, material, inventory item, location, message or another persistent/domain object), Snake support is part of that same implementation task, not later polish.
+
+In the same work unit the agent MUST:
+
+1. register the rendered object with `SnakeTrigger` for long press / right click unless the object is deliberately read-only;
+2. create or extend the domain action provider with every context-appropriate management action already available for that object in the ordinary UI;
+3. reuse the same typed operation/executor path for visible shortcut buttons and Snake actions instead of inventing a second mutation path;
+4. include an `Открыть / Просмотреть` action when ordinary tap opens or inspects the object;
+5. add/update regression coverage proving the object is Snake-registered and its key management actions remain exposed;
+6. update `docs/SNAKE_INTERACTION_CONTRACT.md` / current-state docs when the new object family changes the interaction contract.
+
+Pure navigation, search/filter controls and creation toolbar buttons do not need to become Snake entities by themselves. **The object they create/manage does.**
+
+Do not finish a new management surface and leave “we will add long press later” as follow-up debt.
+
 ## Working fallback / connection placeholder — mandatory
 
 If a requested feature, data source, route, external service, subsystem, asset pipeline, or runtime dependency cannot be connected safely in the current task, agents MUST leave a **working connection placeholder** instead of faking completion, silently dropping the feature, or wiring the new UI back into legacy behavior.
