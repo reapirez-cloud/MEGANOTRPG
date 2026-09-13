@@ -235,5 +235,19 @@ export function useUiV1Locations() {
     archiveLocation,
     deleteLocation,
     createTransition,
+    updateTransition: (link: UiV1LocationLink, targetLocationId: string, label: string, visibilityMode: VisibilityMode) => mutate(
+      () => oracle.world.updateLocationLink(
+        gmContext(),
+        link.id,
+        targetLocationId,
+        label.trim(),
+        visibilityMode,
+      ),
+      "Не удалось изменить переход.",
+    ),
+    deleteTransition: (linkId: string) => mutate(
+      () => oracle.world.deleteLocationLink(gmContext(), linkId),
+      "Не удалось удалить переход.",
+    ),
   }
 }
