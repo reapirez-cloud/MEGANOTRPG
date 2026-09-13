@@ -210,6 +210,11 @@ export type WorkshopOperations = {
     id: string,
     folderId: string | null,
   ) => Promise<WorkshopMutationResult>
+  renameMaterial: (id: string, title: string) => Promise<WorkshopMutationResult>
+  reorderFolder: (
+    id: string,
+    direction: "up" | "down",
+  ) => Promise<WorkshopMutationResult>
   deleteMaterial: (id: string) => Promise<WorkshopMutationResult>
   deleteFolder: (id: string) => Promise<WorkshopMutationResult>
 }
@@ -1216,6 +1221,60 @@ export function useGMWorkshopData() {
         .eq("workspace_user_id", state.userId)
 
       if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+
+    async renameMaterial(id, title) {
+      const cleanTitle = title.trim()
+      if (!cleanTitle) return { ok: false, error: "Нужно название материала." }
+
+      const { error } = await supabase
+        .from("gm_workspace_files")
+        .update({
+          title: cleanTitle,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .eq("campaign_id", state.campaignId)
+        .eq("workspace_user_id", state.userId)
+
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+
+    async reorderFolder(id, direction) {
+      const folder = state.folders.find((item) => item.id === id)
+      if (!folder) return { ok: false, error: "Папка не найдена." }
+
+      const siblings = state.folders
+        .filter((item) => item.parentId === folder.parentId)
+        .sort((a, b) =>
+          a.sortOrder - b.sortOrder ||
+          a.name.localeCompare(b.name, "ru") ||
+          a.id.localeCompare(b.id)
+        )
+      const index = siblings.findIndex((item) => item.id === id)
+      const targetIndex = direction === "up" ? index - 1 : index + 1
+      if (index < 0 || targetIndex < 0 || targetIndex >= siblings.length) {
+        return { ok: true }
+      }
+
+      const ordered = [...siblings]
+      ;[ordered[index], ordered[targetIndex]] = [ordered[targetIndex], ordered[index]]
+
+      for (let position = 0; position < ordered.length; position += 1) {
+        const item = ordered[position]
+        const { error } = await supabase
+          .from("gm_workspace_folders")
+          .update({ sort_order: position })
+          .eq("id", item.id)
+          .eq("campaign_id", state.campaignId)
+          .eq("workspace_user_id", state.userId)
+        if (error) return { ok: false, error: error.message }
+      }
+
       await load()
       return { ok: true }
     },
