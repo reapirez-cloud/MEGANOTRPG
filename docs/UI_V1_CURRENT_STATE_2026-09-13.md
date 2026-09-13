@@ -240,3 +240,56 @@ Useful as decision history, not current capability truth:
 `CHARACTER_UX_REDESIGN_AUDIT.md` is **deferred future-stage design input**, not a historical dead document and not the current implementation queue. Use it when the sequence reaches Workspace/Character work.
 
 Focused engine/interaction contracts such as `SNAKE_INTERACTION_CONTRACT.md` remain authoritative for their specific boundaries unless explicitly superseded later.
+
+
+## GM Workshop / `Я → Управление` — current implementation
+
+This surface is now real UI 1.0, not a placeholder.
+
+### Root destinations
+
+The Workshop root is intentionally **not** a tab bar. It presents five work destinations in this order:
+
+1. **Черновик** — GM-only safe authoring zone.
+2. **Партия** — members, invitations, assignment and active-PC control.
+3. **Персонажи** — one searchable PC + NPC catalog.
+4. **Библиотека** — reusable campaign definitions.
+5. **Материалы** — private GM notes, folders and uploads.
+
+The old `GmWorkspace.tsx` may be consulted only for working behavior that has not yet been ported. Its visual grammar, five-tab navigation, PC/NPC split tabs, sheets and old `Только я` concept are not visual/product donors for UI 1.0.
+
+### Draft law
+
+`characters.publication_state` is the canonical character authoring lifecycle:
+
+- `draft`: GM-only, unassigned, private, cannot become active, absent from ordinary `Я` and `Мир` reads.
+- `campaign`: published into campaign state; PC assignment and active selection remain separate later actions.
+
+Publishing an NPC requires choosing either:
+
+- `discover` — players learn it through the existing discovery/encounter relation.
+- `always` — immediately visible as a known world character.
+
+This is not the legacy `visibility = private` / «Только я» feature. Do not collapse these concepts again.
+
+### Party law
+
+PC ownership and active identity are deliberately separate:
+
+`publish PC → assign to member → optionally make active`
+
+Assignment must never silently call `set_campaign_active_character`.
+
+Dead characters remain historical catalog entries and cannot be active.
+
+### Library law
+
+Campaign-authored item/spell/feature/effect definitions live in Chasovoy:
+
+`draft → active → archived`
+
+Issuing an active definition creates runtime state through its canonical owner path via Oracle, not by turning the definition row itself into a character instance.
+
+### Materials law
+
+GM materials remain private per `campaign_id + workspace_user_id` and keep the existing private `campaign-media` Storage path. Upload deletion must remove both the database row and its Storage object.
