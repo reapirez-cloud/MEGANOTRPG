@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useHomeData, type HomeEvent, type HomeSocietyNews } from "./useHomeData"
 import { WhatsNew } from "./WhatsNew"
+import Workspace from "./Workspace"
+import PlayerProfileMark from "./PlayerProfileMark"
 import {
   AchievementsScreen,
   KnowledgeBaseScreen,
@@ -23,6 +25,8 @@ type SectionId =
 type Route =
   | { type: "root"; space: RootSpace }
   | { type: "section"; section: SectionId; subsection?: string; tail: string[] }
+  | { type: "workspace"; page: "character"; characterId: string }
+  | { type: "workspace"; page: "manage" }
 
 const sectionIds: SectionId[] = [
   "whats-new",
@@ -77,6 +81,11 @@ function parseRoute(): Route {
   const path = raw.split("?")[0]
 
   if (path === "workspace") return { type: "root", space: "workspace" }
+  if (path === "workspace/manage") return { type: "workspace", page: "manage" }
+  if (path.startsWith("workspace/character/")) {
+    const characterId = path.slice("workspace/character/".length)
+    if (characterId) return { type: "workspace", page: "character", characterId }
+  }
   if (path === "chats") return { type: "root", space: "chats" }
 
   const sectionPath = path.startsWith("home/") ? path.slice("home/".length) : ""
@@ -125,13 +134,18 @@ function softHaptic() {
 }
 
 function routeKey(route: Route) {
-  return route.type === "root"
-    ? `root:${route.space}`
-    : `section:${route.section}:${route.subsection || "index"}`
+  if (route.type === "root") return `root:${route.space}`
+  if (route.type === "section") {
+    return `section:${route.section}:${route.subsection || "index"}`
+  }
+  return route.page === "character"
+    ? `workspace:character:${route.characterId}`
+    : "workspace:manage"
 }
 
 function activeRoot(route: Route): RootSpace {
   if (route.type === "root") return route.space
+  if (route.type === "workspace") return "workspace"
   return "home"
 }
 
@@ -392,17 +406,7 @@ function Home() {
           <strong>{campaignTitle || "Мунтар"}</strong>
         </div>
 
-        <button
-          className="u1-avatar"
-          type="button"
-          aria-label="Открыть пространство Я"
-          onClick={() => {
-            softHaptic()
-            go("workspace")
-          }}
-        >
-          VI
-        </button>
+        <PlayerProfileMark />
       </header>
 
       <div className="u1-rule" aria-hidden="true" />
@@ -463,14 +467,33 @@ function Screen({ route }: { route: Route }) {
     return <Placeholder {...copy} backToHome />
   }
 
+  if (route.type === "workspace") {
+    if (route.page === "manage") {
+      return (
+        <Placeholder
+          eyebrow="Рабочее пространство мастера"
+          title="Управление"
+          body="Маршрут уже отделён от личного пространства персонажа. Сам интерфейс управления партией и кампанией будет собран отдельным этапом."
+        />
+      )
+    }
+
+    return (
+      <Placeholder
+        eyebrow="Персонаж"
+        title="Лист"
+        body="Переход из активной личности уже подключён. Новый лист персонажа появится здесь без возврата к legacy-интерфейсу."
+      />
+    )
+  }
+
   if (route.space === "home") return <Home />
 
   if (route.space === "workspace") {
     return (
-      <Placeholder
-        eyebrow="Будущее пространство"
-        title="Я"
-        body="Здесь будет новый интерфейс игрока и отдельное управление мастера. Сейчас только финальный маршрут и заглушка, без старого UI."
+      <Workspace
+        onOpenCharacter={(characterId) => go(`workspace/character/${characterId}`)}
+        onOpenManagement={() => go("workspace/manage")}
       />
     )
   }
@@ -499,7 +522,7 @@ type EdgeBackState = SwipeState
 
 function currentScrollRoot() {
   return document.querySelector<HTMLElement>(
-    ".u1-view .u1-home, .u1-view .u1-section-page, .u1-view .u1-placeholder",
+    ".u1-view .u1-workspace__actors, .u1-view .u1-home, .u1-view .u1-section-page, .u1-view .u1-placeholder",
   )
 }
 
@@ -522,7 +545,7 @@ export default function UiV1App() {
   const onPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse") return
 
-    if (route.type === "section" && event.clientX <= 26) {
+    if (route.type !== "root" && event.clientX <= 26) {
       swipeRef.current = null
       edgeBackRef.current = {
         pointerId: event.pointerId,
