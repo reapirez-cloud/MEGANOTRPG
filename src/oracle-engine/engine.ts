@@ -3,7 +3,9 @@ import type { ShapoklyakEngine } from "../entity-engine/index.ts"
 import type { CheburashkaEngine } from "../inventory-engine/index.ts"
 import type { LarisaEngine } from "../location-engine/index.ts"
 import type { ChasovoyEngine } from "../reference-engine/index.ts"
+import type { CampaignAdministrationGateway } from "./campaignAdmin.ts"
 import type {
+  OracleCampaignCommands,
   OracleCharacterCommands,
   OracleDefinitionCommands,
   OracleInventoryCommands,
@@ -15,6 +17,7 @@ export type OracleDependencies = {
   cheburashka: Pick<CheburashkaEngine, "execute">
   larisa: Pick<LarisaEngine, "execute">
   chasovoy: Pick<ChasovoyEngine, "execute">
+  campaignAdmin: CampaignAdministrationGateway
 }
 
 function assertOracleAuthority(context: EngineCommandContext): void {
@@ -25,6 +28,7 @@ function assertOracleAuthority(context: EngineCommandContext): void {
 
 /** Oracle is the GM's hands. It stores nothing and never routes through Gena. */
 export class OracleEngine {
+  readonly campaign: OracleCampaignCommands
   readonly characters: OracleCharacterCommands
   readonly inventory: OracleInventoryCommands
   readonly world: OracleWorldCommands
@@ -34,6 +38,25 @@ export class OracleEngine {
     const direct = <T>(context: EngineCommandContext, action: () => T): T => {
       assertOracleAuthority(context)
       return action()
+    }
+
+    this.campaign = {
+      setMemberRole: (context, userId, role) => direct(
+        context,
+        () => dependencies.campaignAdmin.setMemberRole(context.campaignId, userId, role),
+      ),
+      removeMember: (context, userId) => direct(
+        context,
+        () => dependencies.campaignAdmin.removeMember(context.campaignId, userId),
+      ),
+      createInvite: (context, input) => direct(
+        context,
+        () => dependencies.campaignAdmin.createInvite(context.campaignId, input),
+      ),
+      revokeInvite: (context, code) => direct(
+        context,
+        () => dependencies.campaignAdmin.revokeInvite(context.campaignId, code),
+      ),
     }
 
     this.characters = {
