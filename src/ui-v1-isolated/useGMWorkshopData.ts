@@ -1,0 +1,886 @@
+import { useCallback, useEffect, useMemo, useState } from "react"
+
+import { createEngineCommandContext } from "../engine-contracts/index.ts"
+import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
+import { deleteCampaignMediaObject, uploadCampaignFile } from "../lib/mediaUpload"
+import { supabase } from "../lib/supabase"
+import { oracle } from "../oracle-engine/runtime.ts"
+import { chasovoy } from "../reference-engine/runtime.ts"
+import {
+  normalizeDefinitionSlug,
+  type ChasovoyDefinition,
+  type ChasovoyDefinitionKind,
+  type ChasovoyJson,
+} from "../reference-engine/index.ts"
+import type { StoredMechanics } from "../types/characterMechanics"
+import type { InventoryCategory, InventoryInput, SpellInput } from "../types/characterSheet"
+
+export type WorkshopSection = "draft" | "party" | "characters" | "library" | "materials"
+
+export type WorkshopCharacter = {
+  id: string
+  assignedUserId: string | null
+  name: string
+  characterClass: string
+  level: number
+  bio: string
+  avatarUrl: string | null
+  characterType: "pc" | "npc"
+  visibilityMode: "always" | "discover" | "private"
+  publicationState: "draft" | "campaign"
+  lifeState: "alive" | "dead"
+  diedAt: string | null
+  createdAt: string
+}
+
+export type WorkshopMember = {
+  userId: string
+  displayName: string
+  role: "gm" | "player"
+  isOwner: boolean
+  activeCharacterId: string | null
+}
+
+export type WorkshopFolder = {
+  id: string
+  parentId: string | null
+  name: string
+  sortOrder: number
+}
+
+export type WorkshopMaterial = {
+  id: string
+  folderId: string | null
+  kind: "note" | "upload"
+  title: string
+  body: string
+  fileUrl: string | null
+  storagePath: string | null
+  originalName: string | null
+  mimeType: string | null
+  updatedAt: string
+}
+
+export type WorkshopInvite = {
+  code: string
+  maxUses: number
+  usesCount: number
+  expiresAt: string | null
+}
+
+export type DraftDefinitionInput = {
+  name: string
+  summary?: string
+  rulesText?: string
+  data?: Record<string, ChasovoyJson>
+  mechanics?: ChasovoyJson
+}
+
+export type WorkshopMutationResult = {
+  ok: boolean
+  error?: string
+}
+
+export type WorkshopOperations = {
+  refresh: () => Promise<void>
+  createDraftCharacter: (
+    type: "pc" | "npc",
+    input: { name: string; characterClass?: string; level?: number; bio?: string },
+  ) => Promise<WorkshopMutationResult & { id?: string }>
+  publishCharacter: (
+    characterId: string,
+    visibilityMode?: "always" | "discover",
+  ) => Promise<WorkshopMutationResult>
+  setCharacterLifeState: (
+    characterId: string,
+    state: "alive" | "dead",
+  ) => Promise<WorkshopMutationResult>
+  setNpcVisibility: (
+    characterId: string,
+    mode: "always" | "discover",
+  ) => Promise<WorkshopMutationResult>
+  assignCharacter: (
+    characterId: string,
+    userId: string | null,
+  ) => Promise<WorkshopMutationResult>
+  setActiveCharacter: (
+    userId: string,
+    characterId: string | null,
+  ) => Promise<WorkshopMutationResult>
+  setMemberRole: (
+    userId: string,
+    role: "gm" | "player",
+  ) => Promise<WorkshopMutationResult>
+  createInvite: () => Promise<WorkshopMutationResult & { code?: string }>
+  createDraftDefinition: (
+    kind: ChasovoyDefinitionKind,
+    input: DraftDefinitionInput,
+  ) => Promise<WorkshopMutationResult & { id?: string }>
+  reviseDefinition: (
+    definitionId: string,
+    input: DraftDefinitionInput,
+  ) => Promise<WorkshopMutationResult>
+  publishDefinition: (definitionId: string) => Promise<WorkshopMutationResult>
+  archiveDefinition: (definitionId: string) => Promise<WorkshopMutationResult>
+  cloneDefinition: (
+    definition: ChasovoyDefinition,
+  ) => Promise<WorkshopMutationResult & { id?: string }>
+  issueDefinition: (
+    definition: ChasovoyDefinition,
+    characterId: string,
+  ) => Promise<WorkshopMutationResult>
+  linkDefinitionToItem: (
+    definition: ChasovoyDefinition,
+    itemDefinitionId: string,
+  ) => Promise<WorkshopMutationResult>
+  createNote: (
+    title: string,
+    body: string,
+    folderId?: string | null,
+  ) => Promise<WorkshopMutationResult>
+  updateNote: (
+    id: string,
+    title: string,
+    body: string,
+  ) => Promise<WorkshopMutationResult>
+  uploadMaterial: (
+    file: File,
+    folderId?: string | null,
+  ) => Promise<WorkshopMutationResult>
+  createFolder: (name: string) => Promise<WorkshopMutationResult>
+  renameFolder: (id: string, name: string) => Promise<WorkshopMutationResult>
+  deleteMaterial: (id: string) => Promise<WorkshopMutationResult>
+  deleteFolder: (id: string) => Promise<WorkshopMutationResult>
+}
+
+type WorkshopState = {
+  campaignId: string
+  campaignTitle: string
+  campaignCoverUrl: string | null
+  userId: string
+  canManage: boolean
+  isOwner: boolean
+  members: WorkshopMember[]
+  characters: WorkshopCharacter[]
+  definitions: ChasovoyDefinition[]
+  folders: WorkshopFolder[]
+  materials: WorkshopMaterial[]
+  invite: WorkshopInvite | null
+  loading: boolean
+  error: string | null
+}
+
+const EMPTY_STATE: WorkshopState = {
+  campaignId: "",
+  campaignTitle: "",
+  campaignCoverUrl: null,
+  userId: "",
+  canManage: false,
+  isOwner: false,
+  members: [],
+  characters: [],
+  definitions: [],
+  folders: [],
+  materials: [],
+  invite: null,
+  loading: true,
+  error: null,
+}
+
+function rememberedCampaignId() {
+  return (
+    window.localStorage.getItem("meganotrpg:v1:campaign-id") ||
+    window.localStorage.getItem("meganotrpg:campaign-id") ||
+    ""
+  )
+}
+
+function errorMessage(reason: unknown, fallback: string) {
+  return reason instanceof Error && reason.message ? reason.message : fallback
+}
+
+function jsonString(data: Record<string, ChasovoyJson>, key: string, fallback = "") {
+  const value = data[key]
+  return typeof value === "string" ? value : fallback
+}
+
+function jsonNumber(data: Record<string, ChasovoyJson>, key: string, fallback = 0) {
+  const value = data[key]
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback
+}
+
+function jsonBoolean(data: Record<string, ChasovoyJson>, key: string, fallback = false) {
+  const value = data[key]
+  return typeof value === "boolean" ? value : fallback
+}
+
+const INVENTORY_CATEGORIES: InventoryCategory[] = [
+  "equipment",
+  "consumable",
+  "tool",
+  "book",
+  "trinket",
+  "quest",
+  "material",
+  "currency",
+  "container",
+  "other",
+]
+
+function itemInput(definition: ChasovoyDefinition): InventoryInput {
+  const rawCategory = jsonString(definition.data, "category", "other")
+  const category = INVENTORY_CATEGORIES.includes(rawCategory as InventoryCategory)
+    ? rawCategory as InventoryCategory
+    : "other"
+  const mechanics = Array.isArray(definition.mechanics)
+    ? definition.mechanics as unknown as StoredMechanics
+    : []
+
+  return {
+    name: definition.name,
+    quantity: Math.max(1, jsonNumber(definition.data, "quantity", 1)),
+    weight: typeof definition.data.weight === "number" ? definition.data.weight : null,
+    equipped: false,
+    category,
+    equipment_slot: category === "equipment"
+      ? (jsonString(definition.data, "equipment_slot") || null) as InventoryInput["equipment_slot"]
+      : null,
+    image_url: jsonString(definition.data, "image_url") || null,
+    description: definition.rulesText || definition.summary,
+    definition_id: definition.id,
+    definition_revision: definition.revision,
+    mechanics,
+    usage_mode: (jsonString(definition.data, "usage_mode", "none") || "none") as InventoryInput["usage_mode"],
+    charges_current: typeof definition.data.charges_current === "number" ? definition.data.charges_current : null,
+    charges_max: typeof definition.data.charges_max === "number" ? definition.data.charges_max : null,
+    item_state: {
+      source_definition_id: definition.id,
+      source_definition_revision: definition.revision,
+    },
+  }
+}
+
+function spellInput(definition: ChasovoyDefinition): SpellInput {
+  const level = Math.max(0, Math.min(9, jsonNumber(definition.data, "spell_level", 0)))
+  return {
+    name: definition.name,
+    spell_level: level,
+    school: jsonString(definition.data, "school", "Особая"),
+    casting_time: jsonString(definition.data, "casting_time", "1 действие"),
+    spell_range: jsonString(definition.data, "spell_range", "На себя"),
+    duration: jsonString(definition.data, "duration", "Мгновенно"),
+    components: jsonString(definition.data, "components", ""),
+    concentration: jsonBoolean(definition.data, "concentration"),
+    ritual: jsonBoolean(definition.data, "ritual"),
+    prepared: false,
+    cast_mode: level === 0 ? "cantrip" : "slot",
+    slot_level: level === 0 ? null : level,
+    description: definition.rulesText || definition.summary,
+    source: "GM Library",
+  }
+}
+
+export function useGMWorkshopData() {
+  const [state, setState] = useState<WorkshopState>(EMPTY_STATE)
+
+  const load = useCallback(async () => {
+    setState((current) => ({ ...current, loading: true, error: null }))
+
+    const { data: authData, error: authError } = await supabase.auth.getUser()
+    if (authError || !authData.user) {
+      setState({ ...EMPTY_STATE, loading: false, error: authError?.message || "Сессия не найдена" })
+      return
+    }
+
+    const userId = authData.user.id
+    const { data: ownRows, error: ownError } = await supabase
+      .from("campaign_members")
+      .select("campaign_id, role, is_owner, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true })
+
+    if (ownError) {
+      setState({ ...EMPTY_STATE, userId, loading: false, error: ownError.message })
+      return
+    }
+
+    const remembered = rememberedCampaignId()
+    const ownMembership =
+      (ownRows || []).find((row) => row.campaign_id === remembered) ||
+      ownRows?.[0] ||
+      null
+
+    if (!ownMembership) {
+      setState({ ...EMPTY_STATE, userId, loading: false, error: "Кампания не найдена" })
+      return
+    }
+
+    const campaignId = ownMembership.campaign_id
+    const canManage = ownMembership.role === "gm" || ownMembership.is_owner === true
+    window.localStorage.setItem("meganotrpg:v1:campaign-id", campaignId)
+
+    if (!canManage) {
+      setState({
+        ...EMPTY_STATE,
+        campaignId,
+        userId,
+        canManage: false,
+        loading: false,
+        error: "Мастерская доступна только GM или владельцу кампании.",
+      })
+      return
+    }
+
+    const results = await Promise.all([
+      supabase.from("campaigns").select("title, cover_url").eq("id", campaignId).maybeSingle(),
+      supabase.from("campaign_members").select("user_id, role, is_owner, active_character_id").eq("campaign_id", campaignId).order("created_at"),
+      supabase.from("characters")
+        .select("id,assigned_user_id,name,character_class,level,bio,avatar_url,character_type,visibility_mode,publication_state,life_state,died_at,created_at")
+        .eq("campaign_id", campaignId)
+        .order("created_at"),
+      supabase.from("gm_workspace_folders")
+        .select("id,parent_id,name,sort_order")
+        .eq("campaign_id", campaignId)
+        .eq("workspace_user_id", userId)
+        .order("sort_order"),
+      supabase.from("gm_workspace_files")
+        .select("id,folder_id,kind,title,body,file_url,original_name,mime_type,updated_at")
+        .eq("campaign_id", campaignId)
+        .eq("workspace_user_id", userId)
+        .order("updated_at", { ascending: false }),
+      supabase.from("campaign_invites")
+        .select("code,max_uses,uses_count,expires_at,created_at")
+        .eq("campaign_id", campaignId)
+        .is("revoked_at", null)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      chasovoy.listDefinitions({ scope: "campaign", campaignId }),
+    ])
+
+    const [
+      campaignResult,
+      membersResult,
+      charactersResult,
+      foldersResult,
+      materialsResult,
+      invitesResult,
+      definitionsResult,
+    ] = results
+
+    const firstError =
+      campaignResult.error ||
+      membersResult.error ||
+      charactersResult.error ||
+      foldersResult.error ||
+      materialsResult.error ||
+      invitesResult.error
+
+    if (firstError) {
+      setState({
+        ...EMPTY_STATE,
+        campaignId,
+        userId,
+        canManage,
+        isOwner: ownMembership.is_owner === true,
+        loading: false,
+        error: firstError.message,
+      })
+      return
+    }
+
+    const memberRows = membersResult.data || []
+    const memberIds = memberRows.map((row) => row.user_id)
+    const { data: profiles, error: profileError } = memberIds.length
+      ? await supabase.from("profiles").select("user_id,display_name").in("user_id", memberIds)
+      : { data: [], error: null }
+
+    if (profileError) {
+      setState({
+        ...EMPTY_STATE,
+        campaignId,
+        userId,
+        canManage,
+        isOwner: ownMembership.is_owner === true,
+        loading: false,
+        error: profileError.message,
+      })
+      return
+    }
+
+    const profileMap = new Map((profiles || []).map((profile) => [profile.user_id, profile.display_name]))
+    const rawCharacters = charactersResult.data || []
+    const characters: WorkshopCharacter[] = await Promise.all(
+      rawCharacters.map(async (character) => ({
+        id: character.id,
+        assignedUserId: character.assigned_user_id,
+        name: character.name,
+        characterClass: character.character_class,
+        level: character.level,
+        bio: character.bio,
+        avatarUrl:
+          (await resolveCampaignMediaUrl(character.avatar_url)) ||
+          character.avatar_url ||
+          null,
+        characterType: character.character_type as "pc" | "npc",
+        visibilityMode: (character.visibility_mode || "always") as WorkshopCharacter["visibilityMode"],
+        publicationState: (character.publication_state || "campaign") as WorkshopCharacter["publicationState"],
+        lifeState: (character.life_state || "alive") as WorkshopCharacter["lifeState"],
+        diedAt: character.died_at,
+        createdAt: character.created_at,
+      })),
+    )
+
+    const now = Date.now()
+    const activeInvite = (invitesResult.data || []).find((item) => {
+      const validDate = !item.expires_at || new Date(item.expires_at).getTime() > now
+      return validDate && item.uses_count < item.max_uses
+    }) || null
+
+    setState({
+      campaignId,
+      campaignTitle: campaignResult.data?.title || "Кампания",
+      campaignCoverUrl:
+        (await resolveCampaignMediaUrl(campaignResult.data?.cover_url || null)) ||
+        campaignResult.data?.cover_url ||
+        null,
+      userId,
+      canManage,
+      isOwner: ownMembership.is_owner === true,
+      members: memberRows.map((member) => ({
+        userId: member.user_id,
+        displayName: profileMap.get(member.user_id) || "Игрок",
+        role: member.role === "gm" ? "gm" : "player",
+        isOwner: Boolean(member.is_owner),
+        activeCharacterId: member.active_character_id,
+      })),
+      characters,
+      definitions: definitionsResult,
+      folders: (foldersResult.data || []).map((folder) => ({
+        id: folder.id,
+        parentId: folder.parent_id,
+        name: folder.name,
+        sortOrder: folder.sort_order,
+      })),
+      materials: await Promise.all((materialsResult.data || []).map(async (material) => ({
+        id: material.id,
+        folderId: material.folder_id,
+        kind: material.kind as "note" | "upload",
+        title: material.title,
+        body: material.body,
+        fileUrl:
+          (await resolveCampaignMediaUrl(material.file_url)) ||
+          material.file_url ||
+          null,
+        storagePath: material.file_url,
+        originalName: material.original_name,
+        mimeType: material.mime_type,
+        updatedAt: material.updated_at,
+      }))),
+      invite: activeInvite ? {
+        code: activeInvite.code,
+        maxUses: activeInvite.max_uses,
+        usesCount: activeInvite.uses_count,
+        expiresAt: activeInvite.expires_at,
+      } : null,
+      loading: false,
+      error: null,
+    })
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const context = useCallback(() => createEngineCommandContext({
+    campaignId: state.campaignId,
+    requestedBy: state.userId,
+    authority: "gm",
+  }), [state.campaignId, state.userId])
+
+  const mutate = useCallback(async (
+    action: () => Promise<unknown>,
+    fallback: string,
+  ): Promise<WorkshopMutationResult> => {
+    try {
+      await action()
+      await load()
+      return { ok: true }
+    } catch (reason) {
+      return { ok: false, error: errorMessage(reason, fallback) }
+    }
+  }, [load])
+
+  const operations = useMemo<WorkshopOperations>(() => ({
+    refresh: load,
+
+    async createDraftCharacter(type, input) {
+      try {
+        const result = await oracle.characters.create(context(), {
+          name: input.name.trim(),
+          character_class: input.characterClass?.trim() || "Персонаж",
+          level: Math.max(1, Math.min(30, input.level || 1)),
+          bio: input.bio?.trim() || "",
+          avatar_url: null,
+          assigned_user_id: null,
+          character_type: type,
+          visibility: "private",
+          visibility_mode: "private",
+          publication_state: "draft",
+        })
+        await load()
+        return { ok: true, id: result.value.after?.id }
+      } catch (reason) {
+        return { ok: false, error: errorMessage(reason, "Не удалось создать черновик персонажа.") }
+      }
+    },
+
+    publishCharacter(characterId, visibilityMode) {
+      return mutate(
+        () => oracle.characters.setPublicationState(context(), characterId, "campaign", visibilityMode),
+        "Не удалось отправить персонажа в кампанию.",
+      )
+    },
+
+    setCharacterLifeState(characterId, lifeState) {
+      return mutate(
+        () => oracle.characters.setLifeState(context(), characterId, lifeState),
+        "Не удалось изменить состояние персонажа.",
+      )
+    },
+
+    setNpcVisibility(characterId, mode) {
+      return mutate(
+        () => oracle.characters.setVisibility(context(), characterId, mode),
+        "Не удалось изменить видимость персонажа.",
+      )
+    },
+
+    async assignCharacter(characterId, userId) {
+      const character = state.characters.find((item) => item.id === characterId)
+      if (!character) return { ok: false, error: "Персонаж не найден." }
+
+      return mutate(
+        () => oracle.characters.update(context(), characterId, {
+          name: character.name,
+          character_class: character.characterClass,
+          level: character.level,
+          bio: character.bio,
+          avatar_url: character.avatarUrl,
+          assigned_user_id: userId,
+          character_type: character.characterType,
+          visibility: character.publicationState === "draft" ? "private" : "campaign",
+          visibility_mode: character.visibilityMode,
+          publication_state: character.publicationState,
+        }),
+        "Не удалось назначить персонажа.",
+      )
+    },
+
+    setActiveCharacter(userId, characterId) {
+      return mutate(
+        () => oracle.characters.setActive(context(), userId, characterId),
+        "Не удалось изменить активного персонажа.",
+      )
+    },
+
+    async setMemberRole(userId, role) {
+      if (!state.isOwner) return { ok: false, error: "Роли меняет только владелец кампании." }
+      const { error } = await supabase.rpc("set_campaign_member_role", {
+        p_campaign_id: state.campaignId,
+        p_user_id: userId,
+        p_role: role,
+      })
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+
+    async createInvite() {
+      const { data, error } = await supabase.rpc("create_campaign_invite", {
+        p_campaign_id: state.campaignId,
+        p_max_uses: 20,
+        p_expires_days: 30,
+      })
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true, code: String(data) }
+    },
+
+    async createDraftDefinition(kind, input) {
+      try {
+        const name = input.name.trim()
+        const result = await oracle.definitions.create(context(), {
+          kind,
+          scope: "campaign",
+          campaignId: state.campaignId,
+          slug: (normalizeDefinitionSlug(name) || "draft") + "-" + Date.now().toString(36),
+          visibility: "gm",
+          status: "draft",
+          sourceKind: "custom",
+          name,
+          summary: input.summary?.trim() || "",
+          rulesText: input.rulesText?.trim() || "",
+          mechanics: input.mechanics ?? [],
+          data: input.data ?? {},
+        })
+        await load()
+        return { ok: true, id: result.value.after.id }
+      } catch (reason) {
+        return { ok: false, error: errorMessage(reason, "Не удалось создать черновик.") }
+      }
+    },
+
+    reviseDefinition(definitionId, input) {
+      const current = state.definitions.find((definition) => definition.id === definitionId)
+      if (!current) return Promise.resolve({ ok: false, error: "Определение не найдено." })
+
+      return mutate(
+        () => oracle.definitions.revise(context(), definitionId, {
+          name: input.name.trim(),
+          summary: input.summary?.trim() || "",
+          rulesText: input.rulesText?.trim() || "",
+          mechanics: input.mechanics ?? current.mechanics,
+          data: input.data ?? current.data,
+        }),
+        "Не удалось сохранить новую ревизию.",
+      )
+    },
+
+    publishDefinition(definitionId) {
+      return mutate(
+        () => oracle.definitions.setStatus(context(), definitionId, "active"),
+        "Не удалось отправить заготовку в кампанию.",
+      )
+    },
+
+    archiveDefinition(definitionId) {
+      return mutate(
+        () => oracle.definitions.archive(context(), definitionId),
+        "Не удалось архивировать определение.",
+      )
+    },
+
+    async cloneDefinition(definition) {
+      try {
+        const result = await oracle.definitions.create(context(), {
+          kind: definition.kind,
+          scope: "campaign",
+          campaignId: state.campaignId,
+          slug: (normalizeDefinitionSlug(definition.name) || "copy") + "-copy-" + Date.now().toString(36),
+          visibility: "gm",
+          status: "draft",
+          sourceKind: "custom",
+          sourceLabel: "Копия: " + definition.name,
+          name: definition.name + " · копия",
+          summary: definition.summary,
+          rulesText: definition.rulesText,
+          mechanics: definition.mechanics,
+          data: definition.data,
+        })
+        await load()
+        return { ok: true, id: result.value.after.id }
+      } catch (reason) {
+        return { ok: false, error: errorMessage(reason, "Не удалось создать копию.") }
+      }
+    },
+
+    issueDefinition(definition, characterId) {
+      if (definition.kind === "item") {
+        return mutate(
+          () => oracle.inventory.create(context(), characterId, itemInput(definition)),
+          "Не удалось выдать предмет.",
+        )
+      }
+
+      if (definition.kind === "spell") {
+        return mutate(
+          () => oracle.characters.createSpell(context(), characterId, spellInput(definition)),
+          "Не удалось выдать заклинание.",
+        )
+      }
+
+      if (definition.kind === "feature" || definition.kind === "condition" || definition.kind === "feat") {
+        const mechanics = Array.isArray(definition.mechanics)
+          ? definition.mechanics as unknown as StoredMechanics
+          : []
+        return mutate(
+          () => oracle.characters.createFeature(context(), characterId, {
+            kind: "feature",
+            name: definition.name,
+            description: definition.rulesText || definition.summary,
+            mechanics,
+          }),
+          "Не удалось выдать способность или эффект.",
+        )
+      }
+
+      return Promise.resolve({ ok: false, error: "Этот тип пока нельзя выдать персонажу." })
+    },
+
+    async linkDefinitionToItem(definition, itemDefinitionId) {
+      const item = state.definitions.find((candidate) =>
+        candidate.id === itemDefinitionId &&
+        candidate.kind === "item" &&
+        candidate.status === "active"
+      )
+      if (!item) return { ok: false, error: "Предмет не найден." }
+
+      const rawLinked = item.data.linked_definition_ids
+      const linked = Array.isArray(rawLinked)
+        ? rawLinked.filter((value): value is string => typeof value === "string")
+        : []
+      if (linked.includes(definition.id)) return { ok: true }
+
+      const itemMechanics = Array.isArray(item.mechanics) ? item.mechanics : []
+      const linkedMechanics = Array.isArray(definition.mechanics) ? definition.mechanics : []
+
+      return mutate(
+        () => oracle.definitions.revise(context(), item.id, {
+          name: item.name,
+          summary: item.summary,
+          rulesText: item.rulesText,
+          mechanics: [...itemMechanics, ...linkedMechanics] as ChasovoyJson,
+          data: {
+            ...item.data,
+            linked_definition_ids: [...linked, definition.id],
+          },
+        }),
+        "Не удалось привязать механику к предмету.",
+      )
+    },
+
+    async createNote(title, body, folderId = null) {
+      const cleanTitle = title.trim()
+      if (!cleanTitle) return { ok: false, error: "Нужно название заметки." }
+
+      const { error } = await supabase.from("gm_workspace_files").insert({
+        campaign_id: state.campaignId,
+        workspace_user_id: state.userId,
+        folder_id: folderId,
+        created_by: state.userId,
+        kind: "note",
+        title: cleanTitle,
+        body: body.trim(),
+        updated_at: new Date().toISOString(),
+      })
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+
+    async updateNote(id, title, body) {
+      const cleanTitle = title.trim()
+      if (!cleanTitle) return { ok: false, error: "Нужно название заметки." }
+
+      const { error } = await supabase
+        .from("gm_workspace_files")
+        .update({
+          title: cleanTitle,
+          body: body.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .eq("campaign_id", state.campaignId)
+        .eq("workspace_user_id", state.userId)
+
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+
+    async uploadMaterial(file, folderId = null) {
+      const upload = await uploadCampaignFile(file, "gm-private", state.campaignId)
+      if (!upload.ok) return { ok: false, error: upload.error }
+
+      const { error } = await supabase.from("gm_workspace_files").insert({
+        campaign_id: state.campaignId,
+        workspace_user_id: state.userId,
+        folder_id: folderId,
+        created_by: state.userId,
+        kind: "upload",
+        title: file.name.replace(/\.[^.]+$/, "") || file.name,
+        file_url: upload.url,
+        original_name: file.name,
+        mime_type: file.type || null,
+        updated_at: new Date().toISOString(),
+      })
+
+      if (error) {
+        await deleteCampaignMediaObject(upload.url)
+        return { ok: false, error: error.message }
+      }
+
+      await load()
+      return { ok: true }
+    },
+
+    async createFolder(name) {
+      const cleanName = name.trim()
+      if (!cleanName) return { ok: false, error: "Нужно название папки." }
+
+      const { error } = await supabase.from("gm_workspace_folders").insert({
+        campaign_id: state.campaignId,
+        workspace_user_id: state.userId,
+        name: cleanName,
+      })
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+
+    async renameFolder(id, name) {
+      const cleanName = name.trim()
+      if (!cleanName) return { ok: false, error: "Нужно название папки." }
+
+      const { error } = await supabase
+        .from("gm_workspace_folders")
+        .update({ name: cleanName })
+        .eq("id", id)
+        .eq("campaign_id", state.campaignId)
+        .eq("workspace_user_id", state.userId)
+
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+
+    async deleteMaterial(id) {
+      const material = state.materials.find((item) => item.id === id) || null
+      const { error } = await supabase
+        .from("gm_workspace_files")
+        .delete()
+        .eq("id", id)
+        .eq("campaign_id", state.campaignId)
+        .eq("workspace_user_id", state.userId)
+      if (error) return { ok: false, error: error.message }
+
+      if (material?.kind === "upload" && material.storagePath) {
+        await deleteCampaignMediaObject(material.storagePath)
+      }
+
+      await load()
+      return { ok: true }
+    },
+
+    async deleteFolder(id) {
+      const { error } = await supabase
+        .from("gm_workspace_folders")
+        .delete()
+        .eq("id", id)
+        .eq("campaign_id", state.campaignId)
+        .eq("workspace_user_id", state.userId)
+      if (error) return { ok: false, error: error.message }
+      await load()
+      return { ok: true }
+    },
+  }), [context, load, mutate, state])
+
+  return {
+    ...state,
+    draftCharacters: state.characters.filter((character) => character.publicationState === "draft"),
+    campaignCharacters: state.characters.filter((character) => character.publicationState === "campaign"),
+    draftDefinitions: state.definitions.filter((definition) => definition.status === "draft"),
+    activeDefinitions: state.definitions.filter((definition) => definition.status === "active"),
+    operations,
+  }
+}

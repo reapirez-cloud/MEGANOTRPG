@@ -86,6 +86,7 @@ export type ChasovoyCommand =
   | { kind: "definition.create"; context: EngineCommandContext; input: ChasovoyCreateInput }
   | { kind: "definition.revise"; context: EngineCommandContext; definitionId: string; input: ChasovoyRevisionInput }
   | { kind: "definition.archive"; context: EngineCommandContext; definitionId: string }
+  | { kind: "definition.set_status"; context: EngineCommandContext; definitionId: string; status: ChasovoyDefinitionStatus }
 
 export type ChasovoyMutation = {
   kind: ChasovoyCommand["kind"]
@@ -103,4 +104,5 @@ export interface ChasovoyStorage {
   createDefinition(input: ChasovoyCreateInput, context: ChasovoyMutationContext): Promise<ChasovoyDefinition>
   reviseDefinition(definitionId: string, input: ChasovoyRevisionInput, context: ChasovoyMutationContext): Promise<ChasovoyDefinition>
   archiveDefinition(definitionId: string, context: ChasovoyMutationContext): Promise<ChasovoyDefinition>
+  setDefinitionStatus(definitionId: string, status: ChasovoyDefinitionStatus, context: ChasovoyMutationContext): Promise<ChasovoyDefinition>
 }

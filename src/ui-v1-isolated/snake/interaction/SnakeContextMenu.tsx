@@ -12,10 +12,16 @@ import { positionSnakeMenu } from "./positioning"
 
 export function SnakeContextMenu({
   request,
+  canGoBack,
+  busy,
+  onBack,
   onClose,
   onAction,
 }: {
   request: SnakeMenuRequest
+  canGoBack: boolean
+  busy: boolean
+  onBack: () => void
   onClose: () => void
   onAction: (action: SnakeAction) => void
 }) {
@@ -41,21 +47,22 @@ export function SnakeContextMenu({
   useEffect(() => {
     const closeOnPointerDown = (event: PointerEvent) => {
       if (ref.current?.contains(event.target as Node)) return
-      onClose()
+      if (!busy) onClose()
     }
 
     window.addEventListener("pointerdown", closeOnPointerDown, true)
     return () => window.removeEventListener("pointerdown", closeOnPointerDown, true)
-  }, [onClose])
+  }, [busy, onClose])
 
   let previousGroup: string | undefined
+  const levelKey = `${request.title || "root"}:${request.actions.map((action) => action.id).join("|")}`
 
   return createPortal(
     <div
       ref={ref}
       className="u1-snake-menu"
       role="menu"
-      aria-label="Действия"
+      aria-label={request.title || "Действия"}
       style={{
         left: position.x,
         top: position.y,
@@ -63,31 +70,51 @@ export function SnakeContextMenu({
         "--u1-snake-origin-y": `${origin.y}px`,
       } as CSSProperties}
     >
-      {request.actions.map((action, index) => {
-        const separator =
-          index > 0 &&
-          action.group !== undefined &&
-          action.group !== previousGroup
-        previousGroup = action.group
+      {canGoBack && (
+        <header className="u1-snake-menu__head">
+          <button
+            type="button"
+            aria-label="Назад"
+            disabled={busy}
+            onClick={onBack}
+          >
+            ←
+          </button>
+          <strong>{request.title}</strong>
+        </header>
+      )}
 
-        return (
-          <div className="u1-snake-menu__row" key={action.id}>
-            {separator && (
-              <span className="u1-snake-menu__separator" aria-hidden="true" />
-            )}
-            <button
-              type="button"
-              role="menuitem"
-              disabled={action.enabled === false}
-              data-tone={action.tone || "normal"}
-              title={action.enabled === false ? action.disabledReason : undefined}
-              onClick={() => onAction(action)}
-            >
-              {action.label}
-            </button>
-          </div>
-        )
-      })}
+      <div className="u1-snake-menu__level" key={levelKey}>
+        {request.actions.map((action, index) => {
+          const separator =
+            index > 0 &&
+            action.group !== undefined &&
+            action.group !== previousGroup
+          previousGroup = action.group
+          const branch = action.kind === "branch" || Boolean(action.children)
+
+          return (
+            <div className="u1-snake-menu__row" key={action.id}>
+              {separator && (
+                <span className="u1-snake-menu__separator" aria-hidden="true" />
+              )}
+              <button
+                type="button"
+                role="menuitem"
+                disabled={busy || action.enabled === false}
+                data-tone={action.tone || "normal"}
+                data-branch={branch || undefined}
+                aria-haspopup={branch ? "menu" : undefined}
+                title={action.enabled === false ? action.disabledReason : undefined}
+                onClick={() => onAction(action)}
+              >
+                <span>{action.label}</span>
+                {branch && <i aria-hidden="true">›</i>}
+              </button>
+            </div>
+          )
+        })}
+      </div>
     </div>,
     document.body,
   )

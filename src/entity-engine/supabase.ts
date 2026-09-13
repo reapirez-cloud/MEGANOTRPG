@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { EngineCommandError } from "../engine-contracts/index.ts"
 import type { CharacterEntity, EntityMutation, ShapoklyakCommand, ShapoklyakStorage } from "./types.ts"
 
-const fields = "id,campaign_id,assigned_user_id,name,character_class,level,bio,avatar_url,character_type,visibility,visibility_mode,life_state,died_at,created_by,created_at,updated_at"
+const fields = "id,campaign_id,assigned_user_id,name,character_class,level,bio,avatar_url,character_type,visibility,visibility_mode,publication_state,life_state,died_at,created_by,created_at,updated_at"
 const narrativeFields = "race,background,alignment,proficiencies,languages,senses,personality_traits,ideals,bonds,flaws,backstory,notes"
 
 function fail(error: { message: string } | null, fallback: string): never {
@@ -47,7 +47,7 @@ export class SupabaseShapoklyakStorage implements ShapoklyakStorage {
 
   async execute(command: ShapoklyakCommand): Promise<EntityMutation> {
     if (command.kind === "entity.create") {
-      const { data, error } = await this.client.rpc("create_campaign_character", {
+      const { data, error } = await this.client.rpc("create_campaign_character_v2", {
         p_campaign_id: command.context.campaignId,
         p_name: command.input.name.trim(),
         p_character_class: command.input.character_class.trim() || "Персонаж",
@@ -56,7 +56,8 @@ export class SupabaseShapoklyakStorage implements ShapoklyakStorage {
         p_avatar_url: command.input.avatar_url?.trim() || null,
         p_assigned_user_id: command.input.assigned_user_id,
         p_character_type: command.input.character_type,
-        p_visibility: command.input.visibility,
+        p_publication_state: command.input.publication_state ?? "campaign",
+        p_visibility_mode: command.input.visibility_mode ?? (command.input.character_type === "npc" ? "discover" : "always"),
       })
       if (error) fail(error, "Could not create character")
       const after = await this.getEntity(String(data))
@@ -79,7 +80,7 @@ export class SupabaseShapoklyakStorage implements ShapoklyakStorage {
     if (!before) throw new EngineCommandError("entity.not_found", "Character was not found")
 
     if (command.kind === "entity.update") {
-      const { error } = await this.client.rpc("update_campaign_character", {
+      const { error } = await this.client.rpc("update_campaign_character_v2", {
         p_character_id: command.characterId,
         p_name: command.input.name.trim(),
         p_character_class: command.input.character_class.trim() || "Персонаж",
@@ -88,7 +89,6 @@ export class SupabaseShapoklyakStorage implements ShapoklyakStorage {
         p_avatar_url: command.input.avatar_url?.trim() || null,
         p_assigned_user_id: command.input.assigned_user_id,
         p_character_type: command.input.character_type,
-        p_visibility: command.input.visibility,
       })
       if (error) fail(error, "Could not update character")
       return { kind: command.kind, characterIds: [command.characterId], before, after: await this.getEntity(command.characterId), requiresResolution: true }
@@ -113,6 +113,16 @@ export class SupabaseShapoklyakStorage implements ShapoklyakStorage {
       const { error } = await this.client.rpc("set_character_life_state", { p_character_id: command.characterId, p_life_state: command.lifeState })
       if (error) fail(error, "Could not change character life state")
       return { kind: command.kind, characterIds: [command.characterId], before, after: await this.getEntity(command.characterId), requiresResolution: true }
+    }
+
+    if (command.kind === "entity.set_publication_state") {
+      const { error } = await this.client.rpc("set_character_publication_state_v1", {
+        p_character_id: command.characterId,
+        p_publication_state: command.publicationState,
+        p_visibility_mode: command.visibilityMode ?? null,
+      })
+      if (error) fail(error, "Could not change character publication state")
+      return { kind: command.kind, characterIds: [command.characterId], before, after: await this.getEntity(command.characterId), requiresResolution: false }
     }
 
     if (command.kind === "entity.set_visibility") {

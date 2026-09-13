@@ -7,6 +7,7 @@ import type {
   ChasovoyDefinitionRef,
   ChasovoyMutationContext,
   ChasovoyRevisionInput,
+  ChasovoyDefinitionStatus,
   ChasovoyStorage,
 } from "./types.ts"
 
@@ -122,6 +123,17 @@ export class SupabaseChasovoyStorage implements ChasovoyStorage {
     if (error) fail(error, "Could not revise definition")
     const result = await this.getDefinition({ id: definitionId })
     if (!result) fail(null, "Revised definition could not be loaded")
+    return result
+  }
+
+  async setDefinitionStatus(definitionId: string, status: ChasovoyDefinitionStatus, _context: ChasovoyMutationContext) {
+    const { error } = await this.client.rpc("set_reference_definition_status_v1", {
+      p_definition_id: definitionId,
+      p_status: status,
+    })
+    if (error) fail(error, "Could not change definition status")
+    const result = await this.getDefinition({ id: definitionId })
+    if (!result) fail(null, "Updated definition could not be loaded")
     return result
   }
 

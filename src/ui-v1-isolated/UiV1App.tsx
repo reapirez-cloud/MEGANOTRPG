@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useHomeData, type HomeEvent, type HomeSocietyNews } from "./useHomeData"
 import { WhatsNew } from "./WhatsNew"
 import Workspace from "./Workspace"
+import GMWorkshop from "./GMWorkshop"
+import type { WorkshopSection } from "./useGMWorkshopData"
 import PlayerProfileMark from "./PlayerProfileMark"
 import {
   AchievementsScreen,
@@ -26,7 +28,9 @@ type Route =
   | { type: "root"; space: RootSpace }
   | { type: "section"; section: SectionId; subsection?: string; tail: string[] }
   | { type: "workspace"; page: "character"; characterId: string }
-  | { type: "workspace"; page: "manage" }
+  | { type: "workspace"; page: "manage"; section?: WorkshopSection }
+
+const workshopSections: WorkshopSection[] = ["draft", "party", "characters", "library", "materials"]
 
 const sectionIds: SectionId[] = [
   "whats-new",
@@ -82,6 +86,13 @@ function parseRoute(): Route {
 
   if (path === "workspace") return { type: "root", space: "workspace" }
   if (path === "workspace/manage") return { type: "workspace", page: "manage" }
+  if (path.startsWith("workspace/manage/")) {
+    const workshopSection = path.slice("workspace/manage/".length) as WorkshopSection
+    if (workshopSections.includes(workshopSection)) {
+      return { type: "workspace", page: "manage", section: workshopSection }
+    }
+    return { type: "workspace", page: "manage" }
+  }
   if (path.startsWith("workspace/character/")) {
     const characterId = path.slice("workspace/character/".length)
     if (characterId) return { type: "workspace", page: "character", characterId }
@@ -140,7 +151,7 @@ function routeKey(route: Route) {
   }
   return route.page === "character"
     ? `workspace:character:${route.characterId}`
-    : "workspace:manage"
+    : "workspace:manage:" + (route.section || "index")
 }
 
 function activeRoot(route: Route): RootSpace {
@@ -191,7 +202,7 @@ function EntryMedia({ src }: { src: string | null }) {
   return <img className="u1-entry-media" src={src} alt="" loading="lazy" aria-hidden="true" />
 }
 
-function WorldPreview({ coverUrl }: { coverUrl: string | null }) {
+function WorldPreview() {
   return (
     <motion.button
       type="button"
@@ -200,7 +211,7 @@ function WorldPreview({ coverUrl }: { coverUrl: string | null }) {
       whileTap={{ scale: 0.992 }}
       transition={{ duration: 0.14 }}
     >
-      <EntryMedia src={coverUrl} />
+      <EntryMedia src="/ui-v1/panels/world.webp" />
       <span className="u1-entry-scrim u1-entry-scrim--soft" aria-hidden="true" />
       <span className="u1-world-entry__copy">
         <strong>Мир</strong>
@@ -274,7 +285,7 @@ function ArtEntry() {
       whileTap={{ scale: 0.992 }}
       transition={{ duration: 0.14 }}
     >
-      <span className="u1-entry-media u1-entry-media--art-fallback" aria-hidden="true" />
+      <EntryMedia src="/ui-v1/panels/art.webp" />
       <span className="u1-entry-scrim u1-entry-scrim--soft" aria-hidden="true" />
       <span className="u1-art-entry__copy">
         <strong>Арты</strong>
@@ -389,7 +400,6 @@ function LatestEvents({
 function Home() {
   const {
     campaignTitle,
-    campaignCoverUrl,
     events,
     achievementCount,
     latestAchievementTitle,
@@ -412,7 +422,7 @@ function Home() {
       <div className="u1-rule" aria-hidden="true" />
 
       <section className="u1-home-sections" aria-label="Разделы кампании">
-        <WorldPreview coverUrl={campaignCoverUrl} />
+        <WorldPreview />
         <KnowledgeBaseEntry />
         <SocietyNewsEntry news={societyNews} />
         <AchievementEntry
@@ -470,10 +480,15 @@ function Screen({ route }: { route: Route }) {
   if (route.type === "workspace") {
     if (route.page === "manage") {
       return (
-        <Placeholder
-          eyebrow="Рабочее пространство мастера"
-          title="Управление"
-          body="Маршрут уже отделён от личного пространства персонажа. Сам интерфейс управления партией и кампанией будет собран отдельным этапом."
+        <GMWorkshop
+          section={route.section}
+          onNavigate={(section) =>
+            go(section ? "workspace/manage/" + section : "workspace/manage")
+          }
+          onOpenCharacter={(characterId) =>
+            go("workspace/character/" + characterId)
+          }
+          onBack={() => go("workspace")}
         />
       )
     }
@@ -522,7 +537,7 @@ type EdgeBackState = SwipeState
 
 function currentScrollRoot() {
   return document.querySelector<HTMLElement>(
-    ".u1-view .u1-workspace__actors, .u1-view .u1-home, .u1-view .u1-section-page, .u1-view .u1-placeholder",
+    ".u1-view .u1-workspace__actors, .u1-view .u1-gm-workshop, .u1-view .u1-home, .u1-view .u1-section-page, .u1-view .u1-placeholder",
   )
 }
 

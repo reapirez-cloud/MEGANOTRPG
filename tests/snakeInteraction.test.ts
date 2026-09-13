@@ -40,6 +40,7 @@ test("Snake forwards entity and window input to the domain-provided executor", a
   assert.deepEqual(received, {
     entity: { type: "location", id: "loc-1" },
     input: { name: "Old Port" },
+    path: [],
   })
 })
 
@@ -87,4 +88,63 @@ test("Snake flow contracts can accumulate multi-step draft into one final execut
   await agent.execute(action, { type: "character", id: "draft" }, draft)
 
   assert.deepEqual(payload, draft)
+})
+
+
+test("Snake resolves branch children from the current interaction path", async () => {
+  const agent = new SnakeAgent()
+  let observedPath: unknown = null
+
+  const action: SnakeAction = {
+    id: "avatar",
+    label: "Аватар",
+    kind: "branch",
+    children: ({ path }) => {
+      observedPath = path
+      return [
+        { id: "character-avatar", label: "Аватар персонажа" },
+        { id: "panel-avatar", label: "Аватар панели" },
+      ]
+    },
+  }
+
+  const next = await agent.resolveBranch(
+    action,
+    { type: "character", id: "char-1" },
+    [],
+  )
+
+  assert.deepEqual(observedPath, [{ id: "avatar", label: "Аватар" }])
+  assert.deepEqual(next.path, [{ id: "avatar", label: "Аватар" }])
+  assert.deepEqual(
+    next.actions.map((entry) => entry.id),
+    ["character-avatar", "panel-avatar"],
+  )
+})
+
+test("Snake forwards the nested branch path to a terminal command", async () => {
+  const agent = new SnakeAgent()
+  let path: unknown = null
+
+  await agent.execute(
+    {
+      id: "replace",
+      label: "Заменить",
+      execute: (context) => {
+        path = context.path
+        return { type: "success" }
+      },
+    },
+    { type: "character", id: "char-1" },
+    undefined,
+    [
+      { id: "avatar", label: "Аватар" },
+      { id: "panel-avatar", label: "Аватар панели" },
+    ],
+  )
+
+  assert.deepEqual(path, [
+    { id: "avatar", label: "Аватар" },
+    { id: "panel-avatar", label: "Аватар панели" },
+  ])
 })

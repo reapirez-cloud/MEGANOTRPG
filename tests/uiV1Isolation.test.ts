@@ -11,12 +11,24 @@ const styles = fs.readFileSync("src/ui-v1-isolated/styles.css", "utf8")
 const workspace = fs.readFileSync("src/ui-v1-isolated/Workspace.tsx", "utf8")
 const workspaceData = fs.readFileSync("src/ui-v1-isolated/useWorkspaceData.ts", "utf8")
 const workspaceStyles = fs.readFileSync("src/ui-v1-isolated/workspace.css", "utf8")
+const workspaceIdentityRules = fs.readFileSync("src/ui-v1-isolated/workspaceIdentityRules.ts", "utf8")
 const profileMark = fs.readFileSync("src/ui-v1-isolated/PlayerProfileMark.tsx", "utf8")
 const legacyApp = fs.readFileSync("src/App.tsx", "utf8")
 const whatsNew = fs.readFileSync("src/ui-v1-isolated/WhatsNew.tsx", "utf8")
 const chronicleData = fs.readFileSync("src/ui-v1-isolated/useChronicleData.ts", "utf8")
 const chronicleStyles = fs.readFileSync("src/ui-v1-isolated/whats-new.css", "utf8")
-const worldPreviewAsset = "public/ui-v1/world/world-preview.webp"
+const approvedPanelAssets = [
+  "public/ui-v1/panels/world.webp",
+  "public/ui-v1/panels/world-locations.webp",
+  "public/ui-v1/panels/world-characters.webp",
+  "public/ui-v1/panels/world-lore.webp",
+  "public/ui-v1/panels/art.webp",
+  "public/ui-v1/panels/kb-spells.webp",
+  "public/ui-v1/panels/kb-classes.webp",
+  "public/ui-v1/panels/kb-invocations.webp",
+  "public/ui-v1/panels/kb-bestiary.webp",
+  "public/ui-v1/panels/kb-chaos.webp",
+]
 const sectionScreens = fs.readFileSync("src/ui-v1-isolated/SectionScreens.tsx", "utf8")
 const sectionData = fs.readFileSync("src/ui-v1-isolated/useUiV1SectionData.ts", "utf8")
 const sectionRegistry = fs.readFileSync("src/ui-v1-isolated/sectionRegistry.ts", "utf8")
@@ -24,6 +36,7 @@ const sectionStyles = fs.readFileSync("src/ui-v1-isolated/section-screens.css", 
 const locationNavigator = fs.readFileSync("src/ui-v1-isolated/LocationNavigator.tsx", "utf8")
 const locationData = fs.readFileSync("src/ui-v1-isolated/useUiV1Locations.ts", "utf8")
 const snakeProvider = fs.readFileSync("src/ui-v1-isolated/SnakeProvider.tsx", "utf8")
+const snakeMenuRuntime = fs.readFileSync("src/ui-v1-isolated/snake/menuRuntime.ts", "utf8")
 const snakeContextMenu = fs.readFileSync("src/ui-v1-isolated/snake/interaction/SnakeContextMenu.tsx", "utf8")
 const snakeTrigger = fs.readFileSync("src/ui-v1-isolated/snake/interaction/SnakeTrigger.tsx", "utf8")
 const snakePositioning = fs.readFileSync("src/ui-v1-isolated/snake/interaction/positioning.ts", "utf8")
@@ -35,6 +48,7 @@ const snakeSingleWindow = fs.readFileSync("src/ui-v1-isolated/snake/surfaces/Sna
 const snakeWindowHost = fs.readFileSync("src/ui-v1-isolated/snake/surfaces/SnakeWindowHost.tsx", "utf8")
 const snakeUiRuntime = [
   snakeProvider,
+  snakeMenuRuntime,
   snakeContextMenu,
   snakeTrigger,
   snakePositioning,
@@ -48,6 +62,7 @@ const snakeUiRuntime = [
 const snakeTypes = fs.readFileSync("src/snake-engine/types.ts", "utf8")
 const snakeAgent = fs.readFileSync("src/snake-engine/agent.ts", "utf8")
 const locationSnakeActions = fs.readFileSync("src/ui-v1-isolated/locationSnakeActions.ts", "utf8")
+const characterSnakeActions = fs.readFileSync("src/ui-v1-isolated/characterSnakeActions.ts", "utf8")
 const snakeStyles = fs.readFileSync("src/ui-v1-isolated/snake.css", "utf8")
 const currentStateDoc = fs.readFileSync("docs/UI_V1_CURRENT_STATE_2026-09-13.md", "utf8")
 const historicalIsolationDoc = fs.readFileSync("docs/UI_V1_HARD_ISOLATION_2026-09-12.md", "utf8")
@@ -55,9 +70,11 @@ const historicalFoundationDoc = fs.readFileSync("docs/UI_V1_STAGE_02_FOUNDATION_
 const historicalVisualDirectionDoc = fs.readFileSync("docs/UI_V1_VISUAL_DIRECTION_2026-09-12.md", "utf8")
 const characterUxAuditDoc = fs.readFileSync("docs/CHARACTER_UX_REDESIGN_AUDIT.md", "utf8")
 
-test("World preview artwork is committed with UI v1", () => {
-  assert.equal(fs.existsSync(worldPreviewAsset), true)
-  assert.ok(fs.statSync(worldPreviewAsset).size < 100_000)
+test("approved UI v1 panel artwork is committed and lightweight", () => {
+  for (const asset of approvedPanelAssets) {
+    assert.equal(fs.existsSync(asset), true, asset)
+    assert.ok(fs.statSync(asset).size < 20_000, asset)
+  }
 })
 
 test("UI v1 is now the default application entry", () => {
@@ -141,9 +158,27 @@ test("home uses mixed editorial entry types instead of a uniform preview grid", 
   assert.match(styles, /\.u1-knowledge-entry/)
   assert.match(styles, /\.u1-editorial-entry/)
   assert.match(styles, /\.u1-art-entry__copy/)
-  assert.match(styles, /u1-entry-media--art-fallback/)
+  assert.match(app, /\/ui-v1\/panels\/art\.webp/)
 })
 
+
+test("the five supplied artworks are wired to World, Locations, Characters, Lore and Art", () => {
+  assert.match(app, /\/ui-v1\/panels\/world\.webp/)
+  assert.match(app, /\/ui-v1\/panels\/art\.webp/)
+  assert.match(sectionRegistry, /image: "\/ui-v1\/panels\/world-locations\.webp"/)
+  assert.match(sectionRegistry, /image: "\/ui-v1\/panels\/world-characters\.webp"/)
+  assert.match(sectionRegistry, /image: "\/ui-v1\/panels\/world-lore\.webp"/)
+  assert.match(sectionScreens, /className="u1-hub-card__image"/)
+  assert.match(sectionStyles, /\.u1-hub-card__image/)
+})
+
+test("the five supplied Knowledge Base artworks are wired to their exact panels", () => {
+  assert.match(sectionRegistry, /id: "spells"[\s\S]*?image: "\/ui-v1\/panels\/kb-spells\.webp"/)
+  assert.match(sectionRegistry, /id: "classes"[\s\S]*?image: "\/ui-v1\/panels\/kb-classes\.webp"/)
+  assert.match(sectionRegistry, /id: "invocations"[\s\S]*?image: "\/ui-v1\/panels\/kb-invocations\.webp"/)
+  assert.match(sectionRegistry, /id: "bestiary"[\s\S]*?image: "\/ui-v1\/panels\/kb-bestiary\.webp"/)
+  assert.match(sectionRegistry, /id: "chaos"[\s\S]*?image: "\/ui-v1\/panels\/kb-chaos\.webp"[\s\S]*?state: "placeholder"/)
+})
 
 test("left-edge back gesture uses browser history and restores the previous scroll position", () => {
   assert.match(app, /event\.clientX <= 26/)
@@ -272,6 +307,13 @@ test("Snake owns long press, right click, duplicate suppression and universal wi
   assert.match(snakeTypes, /type SnakeFlowStep/)
   assert.match(snakeTypes, /"compact"[\s\S]*?"wide"[\s\S]*?"full"/)
   assert.match(snakeAgent, /class SnakeAgent/)
+  assert.match(snakeAgent, /resolveBranch/)
+  assert.match(snakeMenuRuntime, /resolveBranch/)
+  assert.match(snakeMenuRuntime, /frames\.slice\(0, -1\)/)
+  assert.match(snakeTypes, /SnakeActionPathEntry/)
+  assert.match(snakeTypes, /SnakeBranchResolver/)
+  assert.match(snakeMenuRuntime, /frames:/)
+  assert.match(snakeContextMenu, /data-branch/)
   assert.match(snakeStyles, /\.u1-snake-menu/)
   assert.match(snakeStyles, /\.u1-snake-window/)
   assert.match(snakeStyles, /data-width="compact"/)
@@ -384,9 +426,11 @@ test("Workspace is a real role-aware identity surface instead of a dashboard pla
   assert.match(workspace, /Рассказчик/)
   assert.match(workspace, /Голос мира/)
   assert.match(workspace, /Управление/)
-  assert.match(workspace, /Другие персонажи/)
+  assert.match(workspace, /Персонажи игроков/)
   assert.match(workspaceData, /from\("campaign_members"\)/)
   assert.match(workspaceData, /from\("characters"\)/)
+  assert.match(workspaceData, /life_state/)
+  assert.match(workspaceData, /from\("campaign_members"\)/)
   assert.match(workspaceData, /active_character_id/)
   assert.match(workspaceData, /membership\?\.role === "gm" \|\| membership\?\.is_owner === true/)
   assert.match(workspaceData, /meganotrpg:v1:speaking-identity:/)
@@ -400,4 +444,41 @@ test("VI is reserved for the future player profile and no longer duplicates Work
   assert.match(profileMark, /aria-disabled="true"/)
   assert.doesNotMatch(profileMark, /onClick|workspace/)
   assert.match(app, /<PlayerProfileMark \/>/)
+})
+
+
+test("Workspace stats expand locally while character long-press uses dynamic Snake branches", () => {
+  assert.match(workspaceData, /from\("character_sheets"\)/)
+  assert.match(workspaceData, /skill_proficiencies/)
+  assert.match(workspaceData, /Скрытность/)
+  assert.match(workspace, /u1-active-identity__stats/)
+  assert.match(workspace, /u1-active-identity__stat-reveal/)
+  assert.match(workspace, /aria-expanded=\{open\}/)
+  assert.match(workspace, /<SnakeTrigger/)
+  assert.match(workspace, /createCharacterSnakeActions/)
+  assert.match(characterSnakeActions, /label: "Аватар"/)
+  assert.match(characterSnakeActions, /kind: "branch"/)
+  assert.match(characterSnakeActions, /Аватар персонажа/)
+  assert.match(characterSnakeActions, /Аватар панели/)
+  assert.doesNotMatch(workspace, /window\.setTimeout|onContextMenu|timerRef/)
+  assert.match(workspaceStyles, /u1-active-identity__stats/)
+  assert.match(workspaceStyles, /u1-active-identity__stat-reveal/)
+})
+
+
+test("Workspace protects player character ownership and separates view-only party PCs from speaker choices", () => {
+  assert.match(workspace, /Персонажи игроков/)
+  assert.match(workspace, /Мои персонажи/)
+  assert.match(workspace, /Персонажи мира/)
+  assert.match(workspace, /data-dead/)
+  assert.match(workspaceData, /playerCharacters/)
+  assert.match(workspaceData, /ownCharacters/)
+  assert.match(workspaceData, /worldSpeakerCharacters/)
+  assert.match(workspaceData, /canSelectWorkspaceSpeaker/)
+  assert.match(workspaceData, /activeOtherPlayerCharacterIds/)
+  assert.match(workspaceIdentityRules, /assignedUserId !== currentUserId/)
+  assert.match(workspaceIdentityRules, /characterType === "npc" && character\.assignedUserId === null/)
+  assert.match(workspaceIdentityRules, /lifeState !== "alive"/)
+  assert.match(workspaceStyles, /u1-player-characters/)
+  assert.match(workspaceStyles, /u1-actor-strip\[data-dead\]/)
 })

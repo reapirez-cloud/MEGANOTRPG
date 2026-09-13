@@ -10,12 +10,13 @@ import {
   snakeAgent,
   type SnakeAction,
   type SnakeActionInput,
+  type SnakeActionPathEntry,
   type SnakeEntityRef,
-  type SnakeMenuRequest,
   type SnakeSurfaceRequest,
 } from "../snake-engine"
 import { SnakeContext, type SnakeContextValue } from "./snake/SnakeContext"
 import { SnakeContextMenu } from "./snake/interaction/SnakeContextMenu"
+import { useSnakeMenuRuntime } from "./snake/menuRuntime"
 import { SnakeWindowHost } from "./snake/surfaces/SnakeWindowHost"
 import type {
   SnakeSurfaceSession,
@@ -26,7 +27,6 @@ export { useSnake } from "./snake/SnakeContext"
 export { SnakeTrigger } from "./snake/interaction/SnakeTrigger"
 
 export function SnakeProvider({ children }: { children: ReactNode }) {
-  const [menu, setMenu] = useState<SnakeMenuRequest | null>(null)
   const [surface, setSurface] = useState<SnakeSurfaceSession | null>(null)
   const [busy, setBusy] = useState(false)
   const surfaceIdRef = useRef(0)
@@ -41,6 +41,7 @@ export function SnakeProvider({ children }: { children: ReactNode }) {
       request,
       action: source?.action,
       entity: source?.entity,
+      path: source?.path,
     })
   }
 
@@ -48,9 +49,10 @@ export function SnakeProvider({ children }: { children: ReactNode }) {
     action: SnakeAction,
     entity: SnakeEntityRef,
     input?: SnakeActionInput,
+    path: SnakeActionPathEntry[] = [],
   ) {
     setBusy(true)
-    const result = await snakeAgent.execute(action, entity, input)
+    const result = await snakeAgent.execute(action, entity, input, path)
     setBusy(false)
 
     if (result.type === "error") {
@@ -71,7 +73,7 @@ export function SnakeProvider({ children }: { children: ReactNode }) {
     }
 
     if (result.type === "surface") {
-      openSurface(result.request, { action, entity })
+      openSurface(result.request, { action, entity, path })
       return
     }
 
@@ -86,62 +88,78 @@ export function SnakeProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function invokeAction(action: SnakeAction, entity: SnakeEntityRef) {
-    setMenu(null)
-
+  async function invokeCommand(
+    action: SnakeAction,
+    entity: SnakeEntityRef,
+    path: SnakeActionPathEntry[],
+  ) {
     if (action.enabled === false) return
 
     if (action.surface) {
-      openSurface(action.surface, { action, entity })
+      openSurface(action.surface, { action, entity, path })
       return
     }
 
-    await execute(action, entity)
+    await execute(action, entity, undefined, path)
   }
+
+  const menu = useSnakeMenuRuntime({
+    onCommand: invokeCommand,
+    onError(message) {
+      openSurface({
+        kind: "notice",
+        title: "Действие недоступно",
+        body: message,
+        tone: "error",
+      })
+    },
+  })
 
   const value = useMemo<SnakeContextValue>(
     () => ({
-      openMenu(request) {
-        const actions = snakeAgent.availableActions(request.actions)
-        if (actions.length === 0) return
-        setMenu({ ...request, actions })
-      },
-      closeMenu() {
-        setMenu(null)
-      },
+      openMenu: menu.openMenu,
+      closeMenu: menu.closeMenu,
       openSurface,
       closeSurface() {
         if (!busy) setSurface(null)
       },
     }),
-    [busy],
+    [busy, menu.closeMenu, menu.openMenu],
   )
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return
-      if (busy) return
+      if (busy || menu.busy) return
 
       if (surface) {
         setSurface(null)
         return
       }
 
-      setMenu(null)
+      menu.closeMenu()
     }
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [busy, surface])
+  }, [busy, menu, surface])
 
   return (
     <SnakeContext.Provider value={value}>
       {children}
-      {menu && (
+      {menu.menu && menu.frame && (
         <SnakeContextMenu
-          request={menu}
-          onClose={() => setMenu(null)}
-          onAction={(action) => void invokeAction(action, menu.entity)}
+          request={{
+            entity: menu.menu.entity,
+            point: menu.menu.point,
+            title: menu.frame.title,
+            actions: menu.frame.actions,
+          }}
+          canGoBack={menu.menu.frames.length > 1}
+          busy={menu.busy}
+          onBack={menu.back}
+          onClose={menu.closeMenu}
+          onAction={(action) => void menu.invoke(action)}
         />
       )}
       {surface && (
@@ -156,7 +174,12 @@ export function SnakeProvider({ children }: { children: ReactNode }) {
               setSurface(null)
               return
             }
-            void execute(surface.action, surface.entity, input)
+            void execute(
+              surface.action,
+              surface.entity,
+              input,
+              surface.path || [],
+            )
           }}
         />
       )}

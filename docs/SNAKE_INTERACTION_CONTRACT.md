@@ -166,6 +166,42 @@ Instance B:
 
 Snake does not need to know that A is a sword or B is a potion.
 
+## Dynamic branch law
+
+Snake actions are not required to form one flat catalog.
+
+An action may be either:
+
+~~~text
+Command -> terminal action or Snake surface
+Branch  -> resolves the next set of currently relevant actions
+~~~
+
+A Branch keeps the same Snake context-menu surface open. Selecting it replaces the visible action set with the next interaction level instead of closing one menu and opening another.
+
+The next action set may be computed dynamically by the domain provider from:
+
+- the current entity reference;
+- viewer/domain capability state already captured by the provider;
+- the current Snake branch path.
+
+Snake keeps only a transient **path stack** for the open interaction. It does not persist that path as domain state.
+
+Conceptual example:
+
+~~~text
+character panel
+-> Avatar
+   -> Character avatar
+   -> Panel avatar
+~~~
+
+At the root level Snake only needs to know that `Avatar` is a Branch. After selection, the character action provider resolves the two avatar choices. Snake does not hard-code either choice and does not learn character semantics.
+
+This is the required answer to large entity action catalogs: **show only the current interaction level**. Do not flatten every possible descendant action into one menu.
+
+Back pops one branch frame and restores the previous action set. A terminal Command may open a universal Snake surface or dispatch through its typed domain adapter. When a terminal surface later submits, Snake forwards the branch path together with the normalized input so the domain adapter can retain context without a giant global action list.
+
 ## Capability-driven design
 
 Where a domain already exposes stable capabilities, action providers should prefer those capabilities over UI-name/type guessing.
@@ -474,6 +510,7 @@ Implemented now:
 - consumed-touch suppression for the synthetic Telegram/Android `contextmenu` duplicate;
 - viewport-aware floating context menu positioning;
 - one adaptive universal Snake window system with Placeholder, Confirm, Editor, Picker, Detail, Notice/Error and multi-step Flow modes;
+- dynamic Branch/Command context navigation: branches resolve only the next relevant action level, keep the same menu open, maintain a transient back-stack/path and forward that path to terminal commands;
 - typed domain-provided execution callbacks; Snake does not dynamically reflect into named engines;
 - Locations migrated to Snake as the first real entity family;
 - the old LocationNavigator timer / inline action tray / local placeholder runtime removed.

@@ -6,6 +6,7 @@ import type {
   ChasovoyDefinitionRef,
   ChasovoyMutationContext,
   ChasovoyRevisionInput,
+  ChasovoyDefinitionStatus,
   ChasovoyStorage,
 } from "./types.ts"
 
@@ -157,6 +158,20 @@ export class MemoryChasovoyStorage implements ChasovoyStorage {
       data: copy(input.data ?? {}),
       updatedAt: context.occurredAt,
     })
+    return current(stored)!
+  }
+
+  async setDefinitionStatus(
+    definitionId: string,
+    status: ChasovoyDefinitionStatus,
+    context: ChasovoyMutationContext,
+  ) {
+    const stored = this.definitions.get(definitionId)
+    if (!stored) throw new EngineCommandError("definition.not_found", "Definition was not found")
+    stored.identity.status = status
+    stored.identity.visibility = status === "active" ? "campaign" : "gm"
+    const latest = stored.revisions[stored.revisions.length - 1]
+    if (latest) latest.updatedAt = context.occurredAt
     return current(stored)!
   }
 

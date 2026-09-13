@@ -313,6 +313,7 @@ export function useUiV1WorldData() {
           .select("id, name, character_class, character_type")
           .eq("campaign_id", scope.campaignId)
           .eq("character_type", "npc")
+          .eq("publication_state", "campaign")
           .order("name", { ascending: true }),
         supabase
           .from("world_articles")

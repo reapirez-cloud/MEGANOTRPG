@@ -103,6 +103,19 @@ Do not:
 
 Only owner/admin may change another member's campaign role. Being a GM does not automatically make someone the owner. Private `Только я` data must continue to respect its separate creator/visibility rules even between managers.
 
+### Workspace identity ownership law
+
+For UI 1.0 `Я / Workspace`, manager authority must never be treated as character ownership.
+
+- A PC with `assigned_user_id = another user` is **view-only** from Workspace, even for GM/owner.
+- Other players' PCs may appear only through the `Персонажи игроков` view shelf when they are that member's current `campaign_members.active_character_id`; tapping opens the character, it does not select a speaking identity.
+- Workspace speaking identity may use the current user's living assigned character(s), `Рассказчик`, or living unassigned NPCs.
+- Unassigned PCs stay in management/workshop flows rather than becoming accidental voices.
+- Dead owned PCs remain visible under `Мои персонажи` and sort after living PCs, but they are not valid speaking identities.
+- Persisted/local speaking identity must be revalidated against these rules every load. GM/owner status is not permission to bypass them.
+
+Keep these restrictions in shared Workspace selection rules/tests, not as a visual-only filter.
+
 ### Mandatory character-resolution path
 
 Character-affecting owner commit:

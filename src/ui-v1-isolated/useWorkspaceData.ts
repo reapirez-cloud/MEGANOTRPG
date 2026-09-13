@@ -2,6 +2,42 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
 import { supabase } from "../lib/supabase"
+import {
+  activeOtherPlayerCharacterIds,
+  canSelectWorkspaceSpeaker,
+  sortOwnedWorkspaceCharacters,
+  type WorkspaceIdentityMembership,
+} from "./workspaceIdentityRules"
+
+export type WorkspaceAbilityKey =
+  | "strength"
+  | "dexterity"
+  | "constitution"
+  | "intelligence"
+  | "wisdom"
+  | "charisma"
+
+export type WorkspaceSkillSummary = {
+  id: string
+  label: string
+  bonus: number
+  rank: number
+}
+
+export type WorkspaceAbilitySummary = {
+  key: WorkspaceAbilityKey
+  short: string
+  label: string
+  score: number
+  modifier: number
+  skills: WorkspaceSkillSummary[]
+}
+
+export type WorkspaceSheetPreview = {
+  currentHp: number
+  maxHp: number
+  abilities: WorkspaceAbilitySummary[]
+}
 
 export type WorkspaceCharacter = {
   id: string
@@ -12,14 +48,23 @@ export type WorkspaceCharacter = {
   avatarUrl: string | null
   characterType: "pc" | "npc"
   visibility: "campaign" | "private"
+  lifeState: "alive" | "dead"
+  diedAt: string | null
+  sheet: WorkspaceSheetPreview | null
 }
 
 type MembershipRow = {
   campaign_id: string
+  user_id: string
   role: string
   is_owner: boolean
   active_character_id: string | null
   created_at: string
+}
+
+type CampaignMembershipRow = {
+  user_id: string
+  active_character_id: string | null
 }
 
 type CharacterRow = {
@@ -31,6 +76,23 @@ type CharacterRow = {
   avatar_url: string | null
   character_type: "pc" | "npc"
   visibility: "campaign" | "private"
+  publication_state: "draft" | "campaign"
+  life_state: "alive" | "dead" | null
+  died_at: string | null
+}
+
+type CharacterSheetPreviewRow = {
+  character_id: string
+  current_hp: number
+  max_hp: number
+  strength: number
+  dexterity: number
+  constitution: number
+  intelligence: number
+  wisdom: number
+  charisma: number
+  proficiency_bonus: number
+  skill_proficiencies: unknown
 }
 
 type WorkspaceData = {
@@ -38,8 +100,11 @@ type WorkspaceData = {
   campaignTitle: string
   campaignCoverUrl: string | null
   canManage: boolean
+  canEditActiveAvatar: boolean
   activeCharacter: WorkspaceCharacter | null
-  otherCharacters: WorkspaceCharacter[]
+  playerCharacters: WorkspaceCharacter[]
+  ownCharacters: WorkspaceCharacter[]
+  worldSpeakerCharacters: WorkspaceCharacter[]
   narratorSelected: boolean
   loading: boolean
   error: string | null
@@ -50,6 +115,44 @@ const CAMPAIGN_STORAGE_KEYS = [
   "meganotrpg:v1:campaign-id",
   "meganotrpg:campaign-id",
 ] as const
+
+const ABILITY_META: Array<{
+  key: WorkspaceAbilityKey
+  short: string
+  label: string
+}> = [
+  { key: "strength", short: "СИЛ", label: "Сила" },
+  { key: "dexterity", short: "ЛВК", label: "Ловкость" },
+  { key: "constitution", short: "ТЕЛ", label: "Телосложение" },
+  { key: "intelligence", short: "ИНТ", label: "Интеллект" },
+  { key: "wisdom", short: "МДР", label: "Мудрость" },
+  { key: "charisma", short: "ХАР", label: "Харизма" },
+]
+
+const SKILLS: Array<{
+  id: string
+  label: string
+  ability: WorkspaceAbilityKey
+}> = [
+  { id: "athletics", label: "Атлетика", ability: "strength" },
+  { id: "acrobatics", label: "Акробатика", ability: "dexterity" },
+  { id: "sleight_of_hand", label: "Ловкость рук", ability: "dexterity" },
+  { id: "stealth", label: "Скрытность", ability: "dexterity" },
+  { id: "arcana", label: "Магия", ability: "intelligence" },
+  { id: "history", label: "История", ability: "intelligence" },
+  { id: "investigation", label: "Расследование", ability: "intelligence" },
+  { id: "nature", label: "Природа", ability: "intelligence" },
+  { id: "religion", label: "Религия", ability: "intelligence" },
+  { id: "animal_handling", label: "Уход за животными", ability: "wisdom" },
+  { id: "insight", label: "Проницательность", ability: "wisdom" },
+  { id: "medicine", label: "Медицина", ability: "wisdom" },
+  { id: "perception", label: "Внимательность", ability: "wisdom" },
+  { id: "survival", label: "Выживание", ability: "wisdom" },
+  { id: "deception", label: "Обман", ability: "charisma" },
+  { id: "intimidation", label: "Запугивание", ability: "charisma" },
+  { id: "performance", label: "Выступление", ability: "charisma" },
+  { id: "persuasion", label: "Убеждение", ability: "charisma" },
+]
 
 function rememberedCampaignId() {
   for (const key of CAMPAIGN_STORAGE_KEYS) {
@@ -63,12 +166,71 @@ function speakerStorageKey(campaignId: string, userId: string) {
   return `meganotrpg:v1:speaking-identity:${campaignId}:${userId}`
 }
 
+function modifier(score: number) {
+  return Math.floor((score - 10) / 2)
+}
+
+function skillRanks(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {}
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([, rank]) => typeof rank === "number" && Number.isFinite(rank))
+      .map(([key, rank]) => [key, Math.max(0, Math.min(2, Number(rank)))]),
+  )
+}
+
+function abilityScore(
+  row: CharacterSheetPreviewRow,
+  key: WorkspaceAbilityKey,
+) {
+  return row[key]
+}
+
+function sheetPreview(
+  row: CharacterSheetPreviewRow | undefined,
+): WorkspaceSheetPreview | null {
+  if (!row) return null
+
+  const ranks = skillRanks(row.skill_proficiencies)
+  const proficiencyBonus = Number.isFinite(row.proficiency_bonus)
+    ? row.proficiency_bonus
+    : 0
+
+  return {
+    currentHp: row.current_hp,
+    maxHp: row.max_hp,
+    abilities: ABILITY_META.map((ability) => {
+      const score = abilityScore(row, ability.key)
+      const abilityModifier = modifier(score)
+
+      return {
+        ...ability,
+        score,
+        modifier: abilityModifier,
+        skills: SKILLS
+          .filter((skill) => skill.ability === ability.key)
+          .map((skill) => {
+            const rank = ranks[skill.id] || 0
+            return {
+              id: skill.id,
+              label: skill.label,
+              rank,
+              bonus: abilityModifier + rank * proficiencyBonus,
+            }
+          }),
+      }
+    }),
+  }
+}
+
 export function useWorkspaceData(): WorkspaceData {
   const [campaignId, setCampaignId] = useState("")
   const [campaignTitle, setCampaignTitle] = useState("Мунтар")
   const [campaignCoverUrl, setCampaignCoverUrl] = useState<string | null>(null)
   const [userId, setUserId] = useState("")
   const [membership, setMembership] = useState<MembershipRow | null>(null)
+  const [campaignMemberships, setCampaignMemberships] = useState<CampaignMembershipRow[]>([])
   const [characters, setCharacters] = useState<WorkspaceCharacter[]>([])
   const [speakerCharacterId, setSpeakerCharacterId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -93,7 +255,7 @@ export function useWorkspaceData(): WorkspaceData {
       const nextUserId = authData.user.id
       const { data: memberships, error: membershipError } = await supabase
         .from("campaign_members")
-        .select("campaign_id, role, is_owner, active_character_id, created_at")
+        .select("campaign_id, user_id, role, is_owner, active_character_id, created_at")
         .eq("user_id", nextUserId)
         .order("created_at", { ascending: true })
 
@@ -120,7 +282,7 @@ export function useWorkspaceData(): WorkspaceData {
       const nextCampaignId = nextMembership.campaign_id
       window.localStorage.setItem("meganotrpg:v1:campaign-id", nextCampaignId)
 
-      const [campaignResult, characterResult] = await Promise.all([
+      const [campaignResult, characterResult, campaignMembersResult] = await Promise.all([
         supabase
           .from("campaigns")
           .select("title, cover_url")
@@ -128,14 +290,22 @@ export function useWorkspaceData(): WorkspaceData {
           .maybeSingle(),
         supabase
           .from("characters")
-          .select("id, assigned_user_id, name, character_class, level, avatar_url, character_type, visibility")
+          .select("id, assigned_user_id, name, character_class, level, avatar_url, character_type, visibility, publication_state, life_state, died_at")
           .eq("campaign_id", nextCampaignId)
+          .eq("publication_state", "campaign")
           .order("created_at", { ascending: true }),
+        supabase
+          .from("campaign_members")
+          .select("user_id, active_character_id")
+          .eq("campaign_id", nextCampaignId),
       ])
 
       if (cancelled) return
 
-      const firstError = campaignResult.error || characterResult.error
+      const firstError =
+        campaignResult.error ||
+        characterResult.error ||
+        campaignMembersResult.error
       if (firstError) {
         setError(firstError.message)
         setLoading(false)
@@ -143,6 +313,27 @@ export function useWorkspaceData(): WorkspaceData {
       }
 
       const rawCharacters = (characterResult.data || []) as CharacterRow[]
+      const characterIds = rawCharacters.map((character) => character.id)
+
+      const sheetResult = characterIds.length
+        ? await supabase
+            .from("character_sheets")
+            .select("character_id,current_hp,max_hp,strength,dexterity,constitution,intelligence,wisdom,charisma,proficiency_bonus,skill_proficiencies")
+            .in("character_id", characterIds)
+        : { data: [] as CharacterSheetPreviewRow[], error: null }
+
+      if (cancelled) return
+      if (sheetResult.error) {
+        setError(sheetResult.error.message)
+        setLoading(false)
+        return
+      }
+
+      const sheetsByCharacter = new Map(
+        ((sheetResult.data || []) as CharacterSheetPreviewRow[])
+          .map((sheet) => [sheet.character_id, sheet] as const),
+      )
+
       const resolvedCharacters = await Promise.all(
         rawCharacters.map(async (character) => ({
           id: character.id,
@@ -155,6 +346,9 @@ export function useWorkspaceData(): WorkspaceData {
             character.avatar_url,
           characterType: character.character_type,
           visibility: character.visibility,
+          lifeState: character.life_state === "dead" ? "dead" as const : "alive" as const,
+          diedAt: character.died_at,
+          sheet: sheetPreview(sheetsByCharacter.get(character.id)),
         })),
       )
 
@@ -162,16 +356,21 @@ export function useWorkspaceData(): WorkspaceData {
 
       const nextCanManage =
         nextMembership.role === "gm" || nextMembership.is_owner === true
+      const nextSpeakerCandidates = resolvedCharacters.filter(
+        (character) => canSelectWorkspaceSpeaker(character, nextUserId),
+      )
 
       let nextSpeakerCharacterId: string | null = null
       if (nextCanManage) {
-        const stored = window.localStorage.getItem(
-          speakerStorageKey(nextCampaignId, nextUserId),
-        )
+        const key = speakerStorageKey(nextCampaignId, nextUserId)
+        const stored = window.localStorage.getItem(key)
+
         if (stored?.startsWith("character:")) {
           const candidate = stored.slice("character:".length)
-          if (resolvedCharacters.some((character) => character.id === candidate)) {
+          if (nextSpeakerCandidates.some((character) => character.id === candidate)) {
             nextSpeakerCharacterId = candidate
+          } else {
+            window.localStorage.setItem(key, "narrator")
           }
         }
       }
@@ -185,6 +384,7 @@ export function useWorkspaceData(): WorkspaceData {
           null,
       )
       setMembership(nextMembership)
+      setCampaignMemberships((campaignMembersResult.data || []) as CampaignMembershipRow[])
       setCharacters(resolvedCharacters)
       setSpeakerCharacterId(nextSpeakerCharacterId)
       setLoading(false)
@@ -202,18 +402,51 @@ export function useWorkspaceData(): WorkspaceData {
 
   const ownCharacters = useMemo(
     () =>
-      characters.filter(
-        (character) =>
-          character.characterType === "pc" &&
-          character.assignedUserId === userId,
+      sortOwnedWorkspaceCharacters(
+        characters.filter(
+          (character) =>
+            character.characterType === "pc" &&
+            character.assignedUserId === userId,
+        ),
       ),
     [characters, userId],
   )
 
+  const speakerCharacters = useMemo(
+    () =>
+      characters.filter(
+        (character) => canSelectWorkspaceSpeaker(character, userId),
+      ),
+    [characters, userId],
+  )
+
+  const worldSpeakerCharacters = useMemo(
+    () =>
+      speakerCharacters.filter(
+        (character) => character.characterType === "npc",
+      ),
+    [speakerCharacters],
+  )
+
+  const playerCharacters = useMemo(() => {
+    const memberships: WorkspaceIdentityMembership[] = campaignMemberships.map(
+      (item) => ({
+        userId: item.user_id,
+        activeCharacterId: item.active_character_id,
+      }),
+    )
+    const ids = new Set(
+      activeOtherPlayerCharacterIds(characters, memberships, userId),
+    )
+    return characters.filter((character) => ids.has(character.id))
+  }, [campaignMemberships, characters, userId])
+
   const activeCharacter = useMemo(() => {
     if (canManage) {
       if (!speakerCharacterId) return null
-      return characters.find((character) => character.id === speakerCharacterId) || null
+      return speakerCharacters.find(
+        (character) => character.id === speakerCharacterId,
+      ) || null
     }
 
     if (!membership?.active_character_id) return null
@@ -222,21 +455,19 @@ export function useWorkspaceData(): WorkspaceData {
     ) || null
   }, [
     canManage,
-    characters,
     membership?.active_character_id,
     ownCharacters,
     speakerCharacterId,
+    speakerCharacters,
   ])
-
-  const otherCharacters = useMemo(() => {
-    const source = canManage ? characters : ownCharacters
-    return source.filter((character) => character.id !== activeCharacter?.id)
-  }, [activeCharacter?.id, canManage, characters, ownCharacters])
 
   const selectSpeaker = useCallback(
     (characterId: string | null) => {
       if (!canManage || !campaignId || !userId) return
-      if (characterId && !characters.some((character) => character.id === characterId)) return
+      if (
+        characterId &&
+        !speakerCharacters.some((character) => character.id === characterId)
+      ) return
 
       setSpeakerCharacterId(characterId)
       window.localStorage.setItem(
@@ -244,7 +475,7 @@ export function useWorkspaceData(): WorkspaceData {
         characterId ? `character:${characterId}` : "narrator",
       )
     },
-    [campaignId, canManage, characters, userId],
+    [campaignId, canManage, speakerCharacters, userId],
   )
 
   return {
@@ -252,8 +483,14 @@ export function useWorkspaceData(): WorkspaceData {
     campaignTitle,
     campaignCoverUrl,
     canManage,
+    canEditActiveAvatar: Boolean(
+      activeCharacter &&
+      (canManage || activeCharacter.assignedUserId === userId),
+    ),
     activeCharacter,
-    otherCharacters,
+    playerCharacters,
+    ownCharacters,
+    worldSpeakerCharacters,
     narratorSelected: canManage && activeCharacter === null,
     loading,
     error,

@@ -74,9 +74,12 @@ The current Society News composer is a temporary first-pass modal and is not a v
 
 `Я` is the current campaign identity surface, not an account dashboard.
 
-- player: GM-assigned active PC is the large bottom artwork board; other assigned PCs are view-only;
-- GM/owner: `Рассказчик` is permanently available above campaign characters as a speaking identity;
-- GM voice selection is separate from `campaign_members.active_character_id` and currently persists only as UI/session state;
+- player: GM-assigned active PC is the large bottom artwork board;
+- `Персонажи игроков` is a collapsible view-only shelf of the **living active PCs of other campaign members**; tapping one opens that character but never selects it as the current voice;
+- `Мои персонажи` contains PCs assigned to the current user. Living characters stay first; dead owned characters remain visible and are automatically sorted to the bottom;
+- GM/owner: `Рассказчик` remains available as a speaking identity; manager authority does **not** grant the right to take another player's assigned character as a Workspace voice;
+- manager speaker candidates are restricted to the current user's living assigned characters plus living unassigned NPCs. Unassigned PCs and characters assigned to another user stay out of the Workspace voice picker and belong to management/workshop flows;
+- GM voice selection is separate from `campaign_members.active_character_id`, persists only as UI/session state, and is revalidated against the protected speaker pool on load so stale local state cannot reclaim another player's character;
 - tapping an active character board enters the stable future character-view route;
 - managers get a 70/30 campaign / `Управление` strip above the active board;
 - character-view and management destinations remain isolated connection seams and do not fall back to legacy UI.
@@ -171,6 +174,7 @@ Current implementation includes:
 - `src/snake-engine/**` generic action/entity/result contracts;
 - modular UI runtime: orchestration/context, interaction/gesture handling and reusable surfaces are split under `src/ui-v1-isolated/snake/**` so adding entity families does not grow one provider monolith;
 - one UI 1.0 `SnakeProvider` and reusable `SnakeTrigger`;
+- dynamic Branch/Command navigation with a transient branch stack: the domain resolves only the current level's children, Back restores the previous level, and terminal commands receive the selected path;
 - right-click + touch long-press with synthetic Telegram/Android contextmenu suppression;
 - viewport-aware universal floating context menu;
 - one Snake-owned adaptive universal window system: Placeholder / Confirm / Editor / Picker / Detail / Notice/Error / Flow; windows support controlled compact-to-full sizing and Flow steps accumulate one transient draft before final dispatch;
@@ -236,3 +240,56 @@ Useful as decision history, not current capability truth:
 `CHARACTER_UX_REDESIGN_AUDIT.md` is **deferred future-stage design input**, not a historical dead document and not the current implementation queue. Use it when the sequence reaches Workspace/Character work.
 
 Focused engine/interaction contracts such as `SNAKE_INTERACTION_CONTRACT.md` remain authoritative for their specific boundaries unless explicitly superseded later.
+
+
+## GM Workshop / `Я → Управление` — current implementation
+
+This surface is now real UI 1.0, not a placeholder.
+
+### Root destinations
+
+The Workshop root is intentionally **not** a tab bar. It presents five work destinations in this order:
+
+1. **Черновик** — GM-only safe authoring zone.
+2. **Партия** — members, invitations, assignment and active-PC control.
+3. **Персонажи** — one searchable PC + NPC catalog.
+4. **Библиотека** — reusable campaign definitions.
+5. **Материалы** — private GM notes, folders and uploads.
+
+The old `GmWorkspace.tsx` may be consulted only for working behavior that has not yet been ported. Its visual grammar, five-tab navigation, PC/NPC split tabs, sheets and old `Только я` concept are not visual/product donors for UI 1.0.
+
+### Draft law
+
+`characters.publication_state` is the canonical character authoring lifecycle:
+
+- `draft`: GM-only, unassigned, private, cannot become active, absent from ordinary `Я` and `Мир` reads.
+- `campaign`: published into campaign state; PC assignment and active selection remain separate later actions.
+
+Publishing an NPC requires choosing either:
+
+- `discover` — players learn it through the existing discovery/encounter relation.
+- `always` — immediately visible as a known world character.
+
+This is not the legacy `visibility = private` / «Только я» feature. Do not collapse these concepts again.
+
+### Party law
+
+PC ownership and active identity are deliberately separate:
+
+`publish PC → assign to member → optionally make active`
+
+Assignment must never silently call `set_campaign_active_character`.
+
+Dead characters remain historical catalog entries and cannot be active.
+
+### Library law
+
+Campaign-authored item/spell/feature/effect definitions live in Chasovoy:
+
+`draft → active → archived`
+
+Issuing an active definition creates runtime state through its canonical owner path via Oracle, not by turning the definition row itself into a character instance.
+
+### Materials law
+
+GM materials remain private per `campaign_id + workspace_user_id` and keep the existing private `campaign-media` Storage path. Upload deletion must remove both the database row and its Storage object.

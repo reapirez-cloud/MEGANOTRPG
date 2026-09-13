@@ -4,6 +4,7 @@ import type {
   CharacterSheetPatch,
   CharacterTemplateAssignmentInput,
   EntityLifeState,
+  EntityPublicationState,
   EntityMutation,
   EntityRecoveryTrigger,
   EntityVisibilityMode,
@@ -38,6 +39,7 @@ export type OracleCharacterCommands = {
   setActive(context: OracleContext, userId: string, characterId: string | null): OracleEntityResult
   setAvatar(context: OracleContext, characterId: string, avatarUrl: string | null): OracleEntityResult
   setLifeState(context: OracleContext, characterId: string, lifeState: EntityLifeState): OracleEntityResult
+  setPublicationState(context: OracleContext, characterId: string, publicationState: EntityPublicationState, visibilityMode?: EntityVisibilityMode): OracleEntityResult
   setVisibility(context: OracleContext, characterId: string, visibilityMode: EntityVisibilityMode): OracleEntityResult
   revealNpc(context: OracleContext, viewerCharacterId: string, npcCharacterId: string, discovered?: boolean): OracleEntityResult
   setHp(context: OracleContext, characterId: string, currentHp: number, options?: { maxHp?: number; tempHp?: number }): OracleEntityResult
@@ -96,4 +98,5 @@ export type OracleDefinitionCommands = {
   create(context: OracleContext, input: ChasovoyCreateInput): OracleDefinitionResult
   revise(context: OracleContext, definitionId: string, input: ChasovoyRevisionInput): OracleDefinitionResult
   archive(context: OracleContext, definitionId: string): OracleDefinitionResult
+  setStatus(context: OracleContext, definitionId: string, status: "draft" | "active" | "archived"): OracleDefinitionResult
 }
