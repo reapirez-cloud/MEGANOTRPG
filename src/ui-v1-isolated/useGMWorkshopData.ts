@@ -83,6 +83,8 @@ export type WorkshopInvite = {
   maxUses: number
   usesCount: number
   expiresAt: string | null
+  revokedAt: string | null
+  createdAt: string
 }
 
 export type DraftDefinitionInput = {
@@ -148,7 +150,12 @@ export type WorkshopOperations = {
     userId: string,
     role: "gm" | "player",
   ) => Promise<WorkshopMutationResult>
-  createInvite: () => Promise<WorkshopMutationResult & { code?: string }>
+  removeMember: (userId: string) => Promise<WorkshopMutationResult>
+  createInvite: (
+    maxUses?: number,
+    expiresDays?: number,
+  ) => Promise<WorkshopMutationResult & { code?: string }>
+  revokeInvite: (code: string) => Promise<WorkshopMutationResult>
   createDraftDefinition: (
     kind: ChasovoyDefinitionKind,
     input: DraftDefinitionInput,
@@ -213,6 +220,7 @@ type WorkshopState = {
   folders: WorkshopFolder[]
   materials: WorkshopMaterial[]
   invite: WorkshopInvite | null
+  invites: WorkshopInvite[]
   loading: boolean
   error: string | null
 }
@@ -234,6 +242,7 @@ const EMPTY_STATE: WorkshopState = {
   folders: [],
   materials: [],
   invite: null,
+  invites: [],
   loading: true,
   error: null,
 }
@@ -400,9 +409,8 @@ export function useGMWorkshopData() {
         .eq("workspace_user_id", userId)
         .order("updated_at", { ascending: false }),
       supabase.from("campaign_invites")
-        .select("code,max_uses,uses_count,expires_at,created_at")
+        .select("code,max_uses,uses_count,expires_at,revoked_at,created_at")
         .eq("campaign_id", campaignId)
-        .is("revoked_at", null)
         .order("created_at", { ascending: false })
         .limit(20),
       chasovoy.listDefinitions({ scope: "campaign", campaignId }),
@@ -522,9 +530,10 @@ export function useGMWorkshopData() {
     )
 
     const now = Date.now()
-    const activeInvite = (invitesResult.data || []).find((item) => {
+    const inviteRows = invitesResult.data || []
+    const activeInvite = inviteRows.find((item) => {
       const validDate = !item.expires_at || new Date(item.expires_at).getTime() > now
-      return validDate && item.uses_count < item.max_uses
+      return !item.revoked_at && validDate && item.uses_count < item.max_uses
     }) || null
 
     setState({
@@ -584,7 +593,17 @@ export function useGMWorkshopData() {
         maxUses: activeInvite.max_uses,
         usesCount: activeInvite.uses_count,
         expiresAt: activeInvite.expires_at,
+        revokedAt: activeInvite.revoked_at,
+        createdAt: activeInvite.created_at,
       } : null,
+      invites: inviteRows.map((item) => ({
+        code: item.code,
+        maxUses: item.max_uses,
+        usesCount: item.uses_count,
+        expiresAt: item.expires_at,
+        revokedAt: item.revoked_at,
+        createdAt: item.created_at,
+      })),
       loading: false,
       error: null,
     })
@@ -780,25 +799,47 @@ export function useGMWorkshopData() {
 
     async setMemberRole(userId, role) {
       if (!state.isOwner) return { ok: false, error: "Роли меняет только владелец кампании." }
-      const { error } = await supabase.rpc("set_campaign_member_role", {
-        p_campaign_id: state.campaignId,
-        p_user_id: userId,
-        p_role: role,
-      })
-      if (error) return { ok: false, error: error.message }
-      await load()
-      return { ok: true }
+      try {
+        await oracle.campaign.setMemberRole(context(), userId, role)
+        await load()
+        return { ok: true }
+      } catch (reason) {
+        return { ok: false, error: errorMessage(reason, "Не удалось изменить роль участника.") }
+      }
     },
 
-    async createInvite() {
-      const { data, error } = await supabase.rpc("create_campaign_invite", {
-        p_campaign_id: state.campaignId,
-        p_max_uses: 20,
-        p_expires_days: 30,
-      })
-      if (error) return { ok: false, error: error.message }
-      await load()
-      return { ok: true, code: String(data) }
+    async removeMember(userId) {
+      if (!state.isOwner) return { ok: false, error: "Удалять участников может только владелец кампании." }
+      try {
+        await oracle.campaign.removeMember(context(), userId)
+        await load()
+        return { ok: true }
+      } catch (reason) {
+        return { ok: false, error: errorMessage(reason, "Не удалось удалить участника.") }
+      }
+    },
+
+    async createInvite(maxUses = 20, expiresDays = 30) {
+      try {
+        const code = await oracle.campaign.createInvite(context(), {
+          maxUses: Math.max(1, Math.min(500, Math.floor(maxUses))),
+          expiresDays: Math.max(1, Math.min(365, Math.floor(expiresDays))),
+        })
+        await load()
+        return { ok: true, code }
+      } catch (reason) {
+        return { ok: false, error: errorMessage(reason, "Не удалось создать приглашение.") }
+      }
+    },
+
+    async revokeInvite(code) {
+      try {
+        await oracle.campaign.revokeInvite(context(), code)
+        await load()
+        return { ok: true }
+      } catch (reason) {
+        return { ok: false, error: errorMessage(reason, "Не удалось отозвать приглашение.") }
+      }
     },
 
     async createDraftDefinition(kind, input) {
