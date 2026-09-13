@@ -2,61 +2,6 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-13-E
-
-**Status:** OPEN
-**Branch:** `dev`
-**Base main:** `3e19cbae6ba7e1d3fde046e98e915e8c4341cd75`
-**Started:** 2026-09-13
-
-### Player-facing changes
-
-- Added the second supplied grayscale panel set to Knowledge Base in the exact requested order: `Заклинания`, `Классы`, `Инвокации`, `Бестиарий`, and `Болезни, безумия и дикая магия`. The existing `chaos` destination remains a placeholder functionally, but now carries its approved artwork like the other knowledge panels.
-
-- Added the supplied grayscale grimdark artwork to the five requested UI 1.0 destinations: `Мир`, `Локации`, `Персонажи`, `Лор` and `Арты`. The authored wide compositions are now local panel assets rather than generic textures or arbitrary campaign uploads.
-
-- Replaced the `Я → Управление` placeholder with the first complete **GM Workshop** in UI 1.0. The root is destination-based rather than tab-based and opens `Черновик`, `Партия`, `Персонажи`, `Библиотека`, and `Материалы` as separate work surfaces.
-- Added a GM-only **Черновик** for future PC/NPC and reusable item/spell/feature/effect definitions. Draft characters are not assignable, active, visible in ordinary Workspace/World surfaces, or readable by players; publishing is an explicit separate action.
-- Added a unified **Персонажи** catalog for PC + NPC with search, semantic filters (`Все`, `Персонажи игроков`, `Персонажи мира`, `Свободные`, `Мёртвые`) and a small local recent-character rail instead of separate PC/NPC tabs.
-- Added **Партия** management with invite-code creation/copy, member focus, free-PC assignment/transfer and a separate explicit active-character action. Assigning a PC never silently makes it active.
-- Added **Библиотека** workflows for reusable campaign definitions: publish draft definitions, revise/clone/archive, issue item/spell/feature/effect runtime copies to characters, and link mechanics into item definitions.
-- Rebuilt **Материалы** on the existing private GM storage model: notes, note editing, folders, folder rename/delete, file upload/open/delete, and Storage object cleanup. The old cabinet is used only as a behavior source, not as visual/navigation input.
-- Upgraded the active character board in `Я`: HP and all six ability scores now live directly on the artwork. Each stat is tappable and expands its related skill bonuses inside the same portrait board; this local stat interaction does not invoke Snake.
-- Added the first character Snake interaction: long-press/right-click on the active character board exposes `Аватар`; choosing it keeps the same Snake menu open and replaces its contents with `Аватар персонажа` and `Аватар панели`. Both avatar editors remain explicit placeholders until their separate persistence/editor design is approved.
-- Reworked Workspace character discovery around ownership: `Персонажи игроков` now expands into view-only active PCs of other members, while `Мои персонажи` lists the current user's assigned PCs with dead characters automatically sorted to the bottom. Managers can no longer select another player's assigned PC as their speaking identity.
-
-### Runtime and architecture changes
-
-- Added five optimized local Knowledge Base WebP assets under `public/ui-v1/panels` and wired them through the existing data-driven `knowledgeBaseSections` registry. Supabase schema/data/state remain unchanged because these are static UI assets.
-
-- Stored the five new panel illustrations as optimized local WebP assets under `public/ui-v1/panels` and extended the data-driven World hub registry with an optional artwork field; no Supabase schema/state or legacy visual dependency was introduced.
-
-- Added canonical `characters.publication_state = draft | campaign` instead of overloading the old `visibility/private` concept. `private.can_view_character` now exposes drafts only to campaign managers, publishing and assignment are separate RPC/engine operations, and active-character selection rejects drafts.
-- Extended Shapoklyak/Oracle with publication-state commands and Chasovoy/Oracle with explicit definition status transitions. Memory and Supabase storage implementations share the same command contracts.
-- UI 1.0 ordinary `Я` and `Мир` character reads explicitly request only `publication_state = campaign`, providing a second UI boundary on top of RLS.
-- GM Workshop logic is split into a data/action hook plus separate section modules; Snake owns context actions and universal Editor/Picker/Confirm/Detail/Notice surfaces rather than the Workshop inventing its own modal family.
-- Extended Snake from flat action manifests to generic dynamic Branch/Command navigation. Branches resolve only the next action level from entity + current path, preserve one context-menu surface, maintain a transient Back stack, and forward the branch path into terminal command/surface execution. The branch-stack runtime is isolated in `snake/menuRuntime.ts` so `SnakeProvider` remains orchestration-sized instead of regrowing into a monolith.
-- Character-specific avatar choices live in `characterSnakeActions.ts`; Snake core remains entity-agnostic and contains no character/avatar switch. No Supabase schema or canonical gameplay state was changed.
-- Workspace stat previews read existing RLS-protected `character_sheets` fields and proficiency ranks; no new persistence path was introduced.
-- Added shared Workspace identity-selection rules: manager authority is explicitly separated from character ownership; the speaker pool is limited to own living assigned characters plus living unassigned NPCs, while foreign active PCs are derived from `campaign_members.active_character_id` for view-only inspection. Stored speaker identity is revalidated on load.
-
-### Tests / verification
-
-- Extended the UI 1.0 artwork regression to require all ten approved panel assets to remain lightweight and added exact Knowledge Base image-to-destination mapping checks.
-
-- Added UI 1.0 regression coverage that requires all five approved panel assets to exist, stay lightweight, and remain wired to their exact destinations.
-
-- GitHub Actions run #2286 (`34765497148`) passed Build, Lint, repository Test, Storybook build and Playwright smoke after completing the draft lifecycle storage contracts.
-- Added dedicated GM Workshop regression coverage for route composition, draft RLS/lifecycle, separate assignment vs active identity, NPC discovery visibility, unified character search, engine-owned library writes and private material upload/cleanup.
-- Supabase migration `20260913150723_gm_workshop_character_drafts_v1` is applied; security advisors were re-run after DDL. Existing project-wide advisor warnings remain tracked separately.
-- Added Snake agent coverage for dynamic branch resolution and terminal path forwarding, plus UI 1.0 guards for local stat expansion and the character Avatar branch.
-- Added Workspace ownership regression tests proving that GM/owner cannot claim another user's assigned PC, dead PCs sort after living owned PCs, unassigned PCs stay out of the speaker picker, and the player shelf accepts only another member's living active PC with matching assignment.
-
-### Known incomplete work
-
-- `Аватар персонажа` and `Аватар панели` intentionally stop at universal Snake placeholders. The main character avatar already has canonical storage; the separate panel-avatar storage/editor has not been designed or added yet.
-
----
 
 ## Patch — 2026-09-13-D
 
@@ -108,6 +53,66 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ---
 
 ## Released patches
+
+## Patch — 2026-09-13-E
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
+**Base main:** `3e19cbae6ba7e1d3fde046e98e915e8c4341cd75`
+**Started:** 2026-09-13
+**Released:** 2026-09-13
+**Release identity:** `main / 2026-09-13-E`
+
+### Player-facing changes
+
+- Added the second supplied grayscale panel set to Knowledge Base in the exact requested order: `Заклинания`, `Классы`, `Инвокации`, `Бестиарий`, and `Болезни, безумия и дикая магия`. The existing `chaos` destination remains a placeholder functionally, but now carries its approved artwork like the other knowledge panels.
+
+- Added the supplied grayscale grimdark artwork to the five requested UI 1.0 destinations: `Мир`, `Локации`, `Персонажи`, `Лор` and `Арты`. The authored wide compositions are now local panel assets rather than generic textures or arbitrary campaign uploads.
+
+- Replaced the `Я → Управление` placeholder with the first complete **GM Workshop** in UI 1.0. The root is destination-based rather than tab-based and opens `Черновик`, `Партия`, `Персонажи`, `Библиотека`, and `Материалы` as separate work surfaces.
+- Added a GM-only **Черновик** for future PC/NPC and reusable item/spell/feature/effect definitions. Draft characters are not assignable, active, visible in ordinary Workspace/World surfaces, or readable by players; publishing is an explicit separate action.
+- Added a unified **Персонажи** catalog for PC + NPC with search, semantic filters (`Все`, `Персонажи игроков`, `Персонажи мира`, `Свободные`, `Мёртвые`) and a small local recent-character rail instead of separate PC/NPC tabs.
+- Added **Партия** management with invite-code creation/copy, member focus, free-PC assignment/transfer and a separate explicit active-character action. Assigning a PC never silently makes it active.
+- Added **Библиотека** workflows for reusable campaign definitions: publish draft definitions, revise/clone/archive, issue item/spell/feature/effect runtime copies to characters, and link mechanics into item definitions.
+- Rebuilt **Материалы** on the existing private GM storage model: notes, note editing, folders, folder rename/delete, file upload/open/delete, and Storage object cleanup. The old cabinet is used only as a behavior source, not as visual/navigation input.
+- Upgraded the active character board in `Я`: HP and all six ability scores now live directly on the artwork. Each stat is tappable and expands its related skill bonuses inside the same portrait board; this local stat interaction does not invoke Snake.
+- Added the first character Snake interaction: long-press/right-click on the active character board exposes `Аватар`; choosing it keeps the same Snake menu open and replaces its contents with `Аватар персонажа` and `Аватар панели`. Both avatar editors remain explicit placeholders until their separate persistence/editor design is approved.
+- Reworked Workspace character discovery around ownership: `Персонажи игроков` now expands into view-only active PCs of other members, while `Мои персонажи` lists the current user's assigned PCs with dead characters automatically sorted to the bottom. Managers can no longer select another player's assigned PC as their speaking identity.
+
+### Runtime and architecture changes
+
+- Added five optimized local Knowledge Base WebP assets under `public/ui-v1/panels` and wired them through the existing data-driven `knowledgeBaseSections` registry. Supabase schema/data/state remain unchanged because these are static UI assets.
+
+- Stored the five new panel illustrations as optimized local WebP assets under `public/ui-v1/panels` and extended the data-driven World hub registry with an optional artwork field; no Supabase schema/state or legacy visual dependency was introduced.
+
+- Added canonical `characters.publication_state = draft | campaign` instead of overloading the old `visibility/private` concept. `private.can_view_character` now exposes drafts only to campaign managers, publishing and assignment are separate RPC/engine operations, and active-character selection rejects drafts.
+- Extended Shapoklyak/Oracle with publication-state commands and Chasovoy/Oracle with explicit definition status transitions. Memory and Supabase storage implementations share the same command contracts.
+- UI 1.0 ordinary `Я` and `Мир` character reads explicitly request only `publication_state = campaign`, providing a second UI boundary on top of RLS.
+- GM Workshop logic is split into a data/action hook plus separate section modules; Snake owns context actions and universal Editor/Picker/Confirm/Detail/Notice surfaces rather than the Workshop inventing its own modal family.
+- Extended Snake from flat action manifests to generic dynamic Branch/Command navigation. Branches resolve only the next action level from entity + current path, preserve one context-menu surface, maintain a transient Back stack, and forward the branch path into terminal command/surface execution. The branch-stack runtime is isolated in `snake/menuRuntime.ts` so `SnakeProvider` remains orchestration-sized instead of regrowing into a monolith.
+- Character-specific avatar choices live in `characterSnakeActions.ts`; Snake core remains entity-agnostic and contains no character/avatar switch. No Supabase schema or canonical gameplay state was changed.
+- Workspace stat previews read existing RLS-protected `character_sheets` fields and proficiency ranks; no new persistence path was introduced.
+- Added shared Workspace identity-selection rules: manager authority is explicitly separated from character ownership; the speaker pool is limited to own living assigned characters plus living unassigned NPCs, while foreign active PCs are derived from `campaign_members.active_character_id` for view-only inspection. Stored speaker identity is revalidated on load.
+
+### Tests / verification
+
+- Final accumulated `dev` code head `1bd1aa2ed705bf7cdebd5867fd0ef6284633e32a` passed Build, Lint, repository tests, Storybook build and Playwright smoke in GitHub Actions run `34773499437` before release closure.
+
+- Extended the UI 1.0 artwork regression to require all ten approved panel assets to remain lightweight and added exact Knowledge Base image-to-destination mapping checks.
+
+- Added UI 1.0 regression coverage that requires all five approved panel assets to exist, stay lightweight, and remain wired to their exact destinations.
+
+- GitHub Actions run #2286 (`34765497148`) passed Build, Lint, repository Test, Storybook build and Playwright smoke after completing the draft lifecycle storage contracts.
+- Added dedicated GM Workshop regression coverage for route composition, draft RLS/lifecycle, separate assignment vs active identity, NPC discovery visibility, unified character search, engine-owned library writes and private material upload/cleanup.
+- Supabase migration `20260913150723_gm_workshop_character_drafts_v1` is applied; security advisors were re-run after DDL. Existing project-wide advisor warnings remain tracked separately.
+- Added Snake agent coverage for dynamic branch resolution and terminal path forwarding, plus UI 1.0 guards for local stat expansion and the character Avatar branch.
+- Added Workspace ownership regression tests proving that GM/owner cannot claim another user's assigned PC, dead PCs sort after living owned PCs, unassigned PCs stay out of the speaker picker, and the player shelf accepts only another member's living active PC with matching assignment.
+
+### Known incomplete work
+
+- `Аватар персонажа` and `Аватар панели` intentionally stop at universal Snake placeholders. The main character avatar already has canonical storage; the separate panel-avatar storage/editor has not been designed or added yet.
+
+---
 
 ## Patch — 2026-09-13-C
 
