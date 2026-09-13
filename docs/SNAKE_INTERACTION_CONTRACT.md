@@ -202,6 +202,25 @@ This is the required answer to large entity action catalogs: **show only the cur
 
 Back pops one branch frame and restores the previous action set. A terminal Command may open a universal Snake surface or dispatch through its typed domain adapter. When a terminal surface later submits, Snake forwards the branch path together with the normalized input so the domain adapter can retain context without a giant global action list.
 
+## Creation-time completeness law
+
+**Snake is designed together with a manageable object, not retrofitted after the visible UI ships.**
+
+Whenever UI 1.0 adds a persistent/domain object or adds a new management capability to an existing object, that same change must answer all of these questions:
+
+- what does ordinary tap/click do;
+- what entity reference is registered with `SnakeTrigger`;
+- which current-level Branch/Command actions long press / right click exposes;
+- which typed domain operation each command dispatches to;
+- which visible shortcut buttons reuse the same operation/executor path;
+- which regression test prevents the Snake registration/action manifest from disappearing later.
+
+If ordinary tap opens or inspects the object, Snake should normally expose an equivalent **Open / Inspect** command as well. If the object is intentionally read-only, document that exception instead of silently omitting Snake.
+
+Pure navigation controls, filters, searches and “create new …” toolbar buttons are not domain entities and do not need their own context menu. The created/manageable rows/cards/objects do.
+
+A management implementation is incomplete when the object has working visible controls but its long-press/right-click action manifest is missing the same management capability.
+
 ## Capability-driven design
 
 Where a domain already exposes stable capabilities, action providers should prefer those capabilities over UI-name/type guessing.
