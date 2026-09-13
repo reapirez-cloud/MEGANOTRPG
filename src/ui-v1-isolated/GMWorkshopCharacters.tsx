@@ -202,6 +202,10 @@ export default function GMWorkshopCharacters({
           const actions = createWorkshopCharacterActions({
             character,
             members: data.members,
+            templates: data.templates,
+            assignments: data.templateAssignments,
+            locations: data.locations,
+            npcHabitats: data.npcHabitats,
             operations: data.operations,
             onOpen: () => openCharacter(character),
           })
