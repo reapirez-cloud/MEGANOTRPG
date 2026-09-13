@@ -11,12 +11,22 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Replaced the `Я → Управление` placeholder with the first complete **GM Workshop** in UI 1.0. The root is destination-based rather than tab-based and opens `Черновик`, `Партия`, `Персонажи`, `Библиотека`, and `Материалы` as separate work surfaces.
+- Added a GM-only **Черновик** for future PC/NPC and reusable item/spell/feature/effect definitions. Draft characters are not assignable, active, visible in ordinary Workspace/World surfaces, or readable by players; publishing is an explicit separate action.
+- Added a unified **Персонажи** catalog for PC + NPC with search, semantic filters (`Все`, `Персонажи игроков`, `Персонажи мира`, `Свободные`, `Мёртвые`) and a small local recent-character rail instead of separate PC/NPC tabs.
+- Added **Партия** management with invite-code creation/copy, member focus, free-PC assignment/transfer and a separate explicit active-character action. Assigning a PC never silently makes it active.
+- Added **Библиотека** workflows for reusable campaign definitions: publish draft definitions, revise/clone/archive, issue item/spell/feature/effect runtime copies to characters, and link mechanics into item definitions.
+- Rebuilt **Материалы** on the existing private GM storage model: notes, note editing, folders, folder rename/delete, file upload/open/delete, and Storage object cleanup. The old cabinet is used only as a behavior source, not as visual/navigation input.
 - Upgraded the active character board in `Я`: HP and all six ability scores now live directly on the artwork. Each stat is tappable and expands its related skill bonuses inside the same portrait board; this local stat interaction does not invoke Snake.
 - Added the first character Snake interaction: long-press/right-click on the active character board exposes `Аватар`; choosing it keeps the same Snake menu open and replaces its contents with `Аватар персонажа` and `Аватар панели`. Both avatar editors remain explicit placeholders until their separate persistence/editor design is approved.
 - Reworked Workspace character discovery around ownership: `Персонажи игроков` now expands into view-only active PCs of other members, while `Мои персонажи` lists the current user's assigned PCs with dead characters automatically sorted to the bottom. Managers can no longer select another player's assigned PC as their speaking identity.
 
 ### Runtime and architecture changes
 
+- Added canonical `characters.publication_state = draft | campaign` instead of overloading the old `visibility/private` concept. `private.can_view_character` now exposes drafts only to campaign managers, publishing and assignment are separate RPC/engine operations, and active-character selection rejects drafts.
+- Extended Shapoklyak/Oracle with publication-state commands and Chasovoy/Oracle with explicit definition status transitions. Memory and Supabase storage implementations share the same command contracts.
+- UI 1.0 ordinary `Я` and `Мир` character reads explicitly request only `publication_state = campaign`, providing a second UI boundary on top of RLS.
+- GM Workshop logic is split into a data/action hook plus separate section modules; Snake owns context actions and universal Editor/Picker/Confirm/Detail/Notice surfaces rather than the Workshop inventing its own modal family.
 - Extended Snake from flat action manifests to generic dynamic Branch/Command navigation. Branches resolve only the next action level from entity + current path, preserve one context-menu surface, maintain a transient Back stack, and forward the branch path into terminal command/surface execution. The branch-stack runtime is isolated in `snake/menuRuntime.ts` so `SnakeProvider` remains orchestration-sized instead of regrowing into a monolith.
 - Character-specific avatar choices live in `characterSnakeActions.ts`; Snake core remains entity-agnostic and contains no character/avatar switch. No Supabase schema or canonical gameplay state was changed.
 - Workspace stat previews read existing RLS-protected `character_sheets` fields and proficiency ranks; no new persistence path was introduced.
@@ -24,6 +34,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- GitHub Actions run #2286 (`34765497148`) passed Build, Lint, repository Test, Storybook build and Playwright smoke after completing the draft lifecycle storage contracts.
+- Added dedicated GM Workshop regression coverage for route composition, draft RLS/lifecycle, separate assignment vs active identity, NPC discovery visibility, unified character search, engine-owned library writes and private material upload/cleanup.
+- Supabase migration `20260913150723_gm_workshop_character_drafts_v1` is applied; security advisors were re-run after DDL. Existing project-wide advisor warnings remain tracked separately.
 - Added Snake agent coverage for dynamic branch resolution and terminal path forwarding, plus UI 1.0 guards for local stat expansion and the character Avatar branch.
 - Added Workspace ownership regression tests proving that GM/owner cannot claim another user's assigned PC, dead PCs sort after living owned PCs, unassigned PCs stay out of the speaker picker, and the player shelf accepts only another member's living active PC with matching assignment.
 
