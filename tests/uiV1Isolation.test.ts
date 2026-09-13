@@ -495,3 +495,14 @@ test("Workspace protects player character ownership and separates view-only part
   assert.match(workspaceStyles, /u1-player-characters/)
   assert.match(workspaceStyles, /u1-actor-strip\[data-dead\]/)
 })
+
+
+test("Knowledge Base classes use panoramic 3:1 art-ready panels", () => {
+  assert.match(sectionScreens, /function ClassCatalogPanels/)
+  assert.match(sectionScreens, /\/ui-v1\/classes\/\$\{entry\.id\}\.webp/)
+  assert.match(sectionScreens, /className="u1-class-panel__image"/)
+  assert.match(sectionScreens, /subsection === "classes"[\s\S]*?<ClassCatalogPanels/)
+  assert.match(sectionStyles, /\.u1-class-panel/)
+  assert.match(sectionStyles, /aspect-ratio:\s*3\s*\/\s*1/)
+  assert.match(sectionStyles, /object-fit:\s*cover/)
+})
