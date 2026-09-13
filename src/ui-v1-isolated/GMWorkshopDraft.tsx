@@ -83,13 +83,20 @@ export default function GMWorkshopDraft({
         submitLabel: "Создать в Черновике",
       },
       execute: async ({ input }) => {
-        const response = await data.operations.createDraftDefinition(
-          kind,
-          definitionInputFromSnake(kind, input),
-        )
-        return response.ok
-          ? { type: "success", notice: "Заготовка создана." }
-          : { type: "error", message: response.error || "Не удалось создать заготовку." }
+        try {
+          const response = await data.operations.createDraftDefinition(
+            kind,
+            definitionInputFromSnake(kind, input),
+          )
+          return response.ok
+            ? { type: "success", notice: "Заготовка создана." }
+            : { type: "error", message: response.error || "Не удалось создать заготовку." }
+        } catch (reason) {
+          return {
+            type: "error",
+            message: reason instanceof Error ? reason.message : "Не удалось разобрать механику.",
+          }
+        }
       },
     }
 
