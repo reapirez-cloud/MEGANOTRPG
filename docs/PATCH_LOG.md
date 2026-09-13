@@ -11,18 +11,30 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Replaced free-text character class entry with real active class-template selection. Character creation now binds the selected class through Shapoklyak/Character Engine; later class/subclass/level changes use the same canonical template-assignment path and keep projected class/total level synchronized.
+- Replaced the UI 1.0 character-route placeholder with a real Character View for GM control: sheet editing, HP, recovery, inventory equip/edit/transfer/delete, spell edit/preparation/delete, feature edit/delete and canonical class management through Snake.
+- Finished the missing published-character lifecycle actions: return to Draft, permanent delete with confirmation, ordinary NPC habitat zones, and reusable Snake actions across Draft/Party/catalog/Character View.
+- Upgraded Library administration with type-specific item/spell editing, item issue quantity, reversible archive, and feature/effect-to-item unlink in addition to link.
+- Upgraded Party administration with owner-only member removal, configurable invite limits/expiry, invite revocation and invite history/status.
+- Upgraded GM Materials into a movable folder tree: nested folder creation, folder moves with cycle protection, and note/file movement between folders/root.
+- Replaced Location Snake placeholders with real create/edit/transition/archive/delete flows routed through Oracle -> Larisa.
 - Completed a full Snake pass across the current GM Workshop: campaign members now have long-press/right-click management for PC assignment, active-character selection and owner-only role changes; the invitation block exposes copy/new-code actions; character rows gain basic edit plus safe draft deletion; definitions gain explicit inspect; folders/materials gain open actions alongside their existing edit/rename/delete controls.
 - Expanded `Я → Управление → Партия` with a persistent **Все персонажи игроков** roster. It shows free and already assigned PCs together, keeps the owning player / active state visible, and gives managers an explicit `Отвязать` action instead of hiding bound PCs inside individual member pages.
 - Added Snake long-press / right-click actions to Party PC rows, including the per-member assigned-character list. The existing dynamic `Доступ` branch now supports assign/transfer, unassign, and make-active / clear-active without a second Party-specific context-menu system.
 
 ### Runtime and architecture changes
 
+- Added Oracle campaign-administration commands behind a dedicated gateway for member role/removal and invite create/revoke. Applied and committed migration `20260913193451_gm_party_member_and_invite_admin_v1.sql`; member removal frees assigned PCs before deleting campaign membership.
+- Character class truth now comes from `rule_templates` + `character_template_assignments`; Workshop no longer mutates class/level as independent free text.
+- Character and inventory mutations in the new Character View route through Oracle -> Shapoklyak/Cheburashka. Location mutations route through Oracle -> Larisa. Chasovoy remains the reusable-definition owner.
 - Added a repository-level **Snake completeness gate** to `AGENTS.md` and the canonical Snake contract: every new manageable UI 1.0 object must be Snake-registered and receive its context-appropriate action manifest in the same implementation task, with shared typed executors and regression coverage. Pure navigation/search/filter/create-toolbar controls are the explicit exception.
 - Centralized member/invite actions beside the existing character/definition providers in `gmWorkshopSnakeActions.ts`; no new canonical state owner or Supabase schema was introduced.
 - Reused the canonical `createWorkshopCharacterActions` provider throughout Party. The visible unlink control opens the same universal Snake Confirm surface, while the domain action continues through Workshop operations → Oracle → Shapoklyak. The existing character-update RPC already clears a stale `active_character_id` when an assigned PC is detached or transferred, so no new Supabase schema or migration was needed.
 
 ### Tests / verification
 
+- Updated the previously placeholder-only Location contract test to require real Oracle/Larisa execution, and added GM Workshop regressions for real class binding, Character View, Party administration and material movement.
+- Supabase migration `gm_party_member_and_invite_admin_v1` was applied successfully to project `msjvdnrpzuavqjcndeqj`.
 - Added contract coverage for the mandatory creation-time Snake completeness rule and expanded GM Workshop regressions across members, invitations, character edit/draft deletion, definitions, folders and materials.
 - Extended GM Workshop regression coverage to require the all-PC Party roster, SnakeTrigger wiring, reusable character action provider, explicit unlink action, and Snake active-character command.
 
