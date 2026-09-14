@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "motion/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
+import AgentShell from "../ai/AgentShell"
 
 import { useHomeData, type HomeEvent, type HomeSocietyNews } from "./useHomeData"
 import { WhatsNew } from "./WhatsNew"
@@ -799,6 +800,8 @@ export default function UiV1App() {
 
         <Dock route={route} onNavigate={navigateRoot} />
       </div>
+
+      <AgentShell />
     </div>
   )
 }
