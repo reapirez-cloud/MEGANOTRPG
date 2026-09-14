@@ -41,6 +41,7 @@ export default function GMWorkshopDraft({
           summary: draft.summary,
           revision: draft.current_revision,
           warnings: draft.validation_warnings,
+          recentRevisions: draft.recent_revisions,
           nodes: draft.content.nodes,
           relations: draft.content.relations,
         })),
@@ -78,6 +79,17 @@ export default function GMWorkshopDraft({
             ),
           ]
         : []),
+      ...(draft.recent_revisions?.length
+        ? [
+            "",
+            "История ревизий:",
+            ...draft.recent_revisions.map((revision) =>
+              "• r" +
+              revision.revision +
+              (revision.change_summary ? " · " + revision.change_summary : "")
+            ),
+          ]
+        : []),
       ...(draft.validation_warnings.length
         ? [
             "",
@@ -87,6 +99,7 @@ export default function GMWorkshopDraft({
         : []),
       "",
       "Это только AI-черновик. Канонические сущности ещё не созданы.",
+      "Чтобы изменить его, открой Восса и опиши правку обычным текстом.",
     ].filter((line) => line !== undefined)
 
     snake.openSurface(
@@ -231,6 +244,9 @@ export default function GMWorkshopDraft({
                   {" · "}
                   {draft.content.relations?.length || 0} связей
                   {draft.summary ? " · " + draft.summary : ""}
+                  {draft.recent_revisions?.[0]?.change_summary
+                    ? " · " + draft.recent_revisions[0].change_summary
+                    : ""}
                 </small>
               </span>
               <b>AI r{draft.current_revision}</b>
