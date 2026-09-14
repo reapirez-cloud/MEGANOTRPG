@@ -1888,6 +1888,57 @@ For real development work, Voss uses real technical vocabulary such as GitHub, A
 
 A stylistic field anecdote never creates campaign canon. Campaign truth still comes only from the authorised application context and tools.
 
+## Voss runtime role after the assistant-scope cut
+
+Voss is a world-facing GM/player companion, not a mechanics authoring agent.
+
+His intended scope is:
+
+- read every MEGANOT surface the current user is authorised to see;
+- use characters, locations, classes/subclasses, references, lore, visible chats, campaign memory, achievements, feed and art as grounded context;
+- help a player or GM who is lost understand what is happening and what reasonable next steps exist;
+- create ordinary GM content through the AI Draft workflow: locations, NPC/PC characters, items, class/reference presentation, lore and linked content;
+- generate and attach images through the existing media flow;
+- help stage atmospheric scenes, character art and comic-like visual sequences on explicit request;
+- keep Developer Mode available for application/infrastructure work by the System Owner.
+
+Voss **does not author game mechanics**.
+
+The Mechanics Compiler remains in the repository as an external/internal subsystem for deliberate development work, but the Voss runtime no longer receives `compile_mechanics` or `apply_mechanics_compilation` tools. Mechanics-authoring requests also withhold content-draft and Developer Mode write tools for that request, and Voss draft validation rejects executable `mechanics` payloads.
+
+Existing mechanics remain readable so Voss can explain how a class, spell, item or character currently works.
+
+### Maximum reasoning
+
+CheapVibeCode model calls use each confirmed model's highest advertised reasoning effort:
+
+```text
+deepseek-v4.1-flash -> max
+grok-4.6            -> xhigh
+```
+
+These are provider request settings, not user-facing model names.
+
+### Visible campaign surface
+
+Voss read access remains permission-scoped by the same Supabase RLS as the user.
+
+The read layer now includes:
+
+- compact campaign overview;
+- visible chat rooms and recent messages;
+- full-text search across visible current-campaign chat messages;
+- characters and character state;
+- locations and transitions;
+- classes/subclasses and reference definitions;
+- world articles;
+- achievements;
+- feed items;
+- campaign art;
+- GM workspace material when the user has GM authority.
+
+A private room, hidden character or creator-only entity does not become visible merely because Voss is reading it.
+
 ## Public model choice, attachments and Voss shell
 
 The normal Voss model is now a **per-user** preference, not a campaign-global switch.
