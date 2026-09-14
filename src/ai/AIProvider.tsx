@@ -61,6 +61,46 @@ export type AIConversationMessage = {
   model_id: string | null
 }
 
+export type AIDraftNode = {
+  key: string
+  entity_type: "location" | "character" | "definition"
+  entity_subtype?: string
+  name: string
+  summary: string
+  payload: Record<string, unknown>
+}
+
+export type AIDraftRelation = {
+  kind: string
+  from_key: string
+  to_key?: string
+  to_existing?: {
+    entity_type: "location" | "character" | "definition"
+    id: string
+    label?: string
+  }
+  label?: string
+  data?: Record<string, unknown>
+}
+
+export type AIDraft = {
+  id: string
+  draft_type: "bundle" | "location" | "character" | "definition"
+  title: string
+  summary: string
+  status: "review" | "archived"
+  schema_version: number
+  current_revision: number
+  content: {
+    schemaVersion?: number
+    nodes?: AIDraftNode[]
+    relations?: AIDraftRelation[]
+  }
+  validation_warnings: string[]
+  created_at: string
+  updated_at: string
+}
+
 type AIContextValue = {
   campaignId: string
   userId: string
@@ -68,6 +108,7 @@ type AIContextValue = {
   models: AIModel[]
   selectedModelId: string | null
   messages: AIConversationMessage[]
+  drafts: AIDraft[]
   loading: boolean
   sending: boolean
   error: string | null
@@ -82,6 +123,7 @@ type AIContextValue = {
   chooseModel: (modelId: string) => Promise<boolean>
   send: (message: string) => Promise<boolean>
   refreshConversation: () => Promise<void>
+  refreshDrafts: () => Promise<void>
 }
 
 const AIContext = createContext<AIContextValue | null>(null)
@@ -157,6 +199,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const [models, setModels] = useState<AIModel[]>([])
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
   const [messages, setMessages] = useState<AIConversationMessage[]>([])
+  const [drafts, setDrafts] = useState<AIDraft[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -225,6 +268,31 @@ export function AIProvider({ children }: { children: ReactNode }) {
       setError(reason instanceof Error ? reason.message : "Не удалось загрузить историю Восса.")
     }
   }, [campaignId, loadConversationFor, userId])
+
+  const loadDraftsFor = useCallback(async (nextCampaignId: string) => {
+    const { data, error: draftError } = await supabase
+      .from("ai_drafts")
+      .select("id,draft_type,title,summary,status,schema_version,current_revision,content,validation_warnings,created_at,updated_at")
+      .eq("campaign_id", nextCampaignId)
+      .eq("status", "review")
+      .order("updated_at", { ascending: false })
+      .limit(50)
+
+    if (draftError) throw draftError
+    setDrafts((data || []) as AIDraft[])
+  }, [])
+
+  const refreshDrafts = useCallback(async () => {
+    if (!campaignId || !canManage) {
+      setDrafts([])
+      return
+    }
+    try {
+      await loadDraftsFor(campaignId)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Не удалось загрузить AI-черновики.")
+    }
+  }, [campaignId, canManage, loadDraftsFor])
 
   useEffect(() => {
     const onHashChange = () => setRoute(window.location.hash || "#/home")
@@ -318,9 +386,14 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
       try {
         await loadConversationFor(nextCampaignId, nextUserId)
+        if (manager) {
+          await loadDraftsFor(nextCampaignId)
+        } else {
+          setDrafts([])
+        }
       } catch (reason) {
         if (!cancelled) {
-          setError(reason instanceof Error ? reason.message : "Не удалось загрузить историю Восса.")
+          setError(reason instanceof Error ? reason.message : "Не удалось загрузить AI-данные Восса.")
         }
       }
 
@@ -331,7 +404,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [loadConversationFor])
+  }, [loadConversationFor, loadDraftsFor])
 
   const chooseModel = useCallback(async (modelId: string) => {
     if (!canManage || !campaignId || !userId) return false
@@ -397,6 +470,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     try {
       await loadConversationFor(campaignId, userId)
+      if (canManage) await loadDraftsFor(campaignId)
     } catch {
       const now = new Date().toISOString()
       setMessages((current) => [
@@ -408,7 +482,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     setSending(false)
     return true
-  }, [campaignId, loadConversationFor, route, sending, userId, viewContext])
+  }, [campaignId, canManage, loadConversationFor, loadDraftsFor, route, sending, userId, viewContext])
 
   const value = useMemo<AIContextValue>(() => ({
     campaignId,
@@ -417,6 +491,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     models,
     selectedModelId,
     messages,
+    drafts,
     loading,
     sending,
     error,
@@ -427,16 +502,19 @@ export function AIProvider({ children }: { children: ReactNode }) {
     chooseModel,
     send,
     refreshConversation,
+    refreshDrafts,
   }), [
     campaignId,
     canManage,
     chooseModel,
     clearViewContextLayer,
+    drafts,
     error,
     loading,
     messages,
     models,
     refreshConversation,
+    refreshDrafts,
     route,
     selectedModelId,
     send,
