@@ -1,6 +1,6 @@
-# AI Agent Foundation — Voss Stages 1–11
+# AI Agent Foundation — Voss Stages 1–12
 
-> Status: **STAGES 1–11 IMPLEMENTED**
+> Status: **STAGES 1–12 IMPLEMENTED**
 >
 > This is the canonical starting point for AI inside MEGANOT RPG. Future AI work must extend this boundary instead of calling model APIs directly from React components.
 
@@ -1155,6 +1155,243 @@ This provides a short recovery window while still allowing generated clutter to 
 
 
 
+## Stage 12 — Mechanics Compiler
+
+Stage 12 gives Voss a safe path from natural-language mechanic design to the **existing** Character Engine contract.
+
+It does not create a second rules engine.
+
+The pipeline is:
+
+```text
+GM intent
+→ Voss structures candidate StoredMechanics
+→ deterministic Mechanics Compiler
+→ CE / GM / hybrid coverage check
+→ validation + target snapshot
+→ saved compilation artifact
+→ preview
+→ explicit GM apply
+```
+
+If the existing runtime cannot represent a required durable mechanic safely:
+
+```text
+unsupported
+→ do not fake it
+→ Developer Mode in Stage 13
+```
+
+### Existing DSL is the target
+
+The compiler accepts the established `StoredMechanics` families:
+
+```text
+numeric
+formula
+grant
+resource
+action
+spell
+```
+
+It does not invent arbitrary mechanic types or top-level fields.
+
+Every executable mechanic produced by the compiler requires:
+
+- stable `id`;
+- stable `sourceKey`;
+- valid existing CE targets/operations;
+- bounded JSON/formula structure.
+
+`sourceKey` is mandatory in compiled mechanics because suppression, provenance and debugging must remain stable.
+
+### CE / GM / hybrid boundary
+
+Every compilation contains explicit rule coverage.
+
+Each rule clause is classified as:
+
+```text
+ce      → persistent/deterministic state owned by the application
+gm      → scene/action/narrative legality adjudicated by the human GM
+hybrid  → CE owns the durable part; GM adjudicates the scene part
+```
+
+Examples of CE-owned state:
+
+- finite resources;
+- persistent grants;
+- numeric modifiers;
+- formulas;
+- persistent choices represented by an existing generic contract;
+- spell access and resource costs.
+
+Examples that are **not** silently promoted into runtime state:
+
+- target is visible/willing/reachable;
+- hit was confirmed;
+- saving throw failed;
+- weather/terrain/corpse/free space exists;
+- Action/Bonus Action/Reaction is still available;
+- once per turn/round when MEGANOT does not own a real turn tracker.
+
+The compiler explicitly rejects fake state patterns used to simulate those facts.
+
+GM-only coverage must have no executable mechanic ids. Hybrid coverage references only the durable part.
+
+### Resource policy
+
+Persistent compiler-created resources may recharge only from authoritative events currently owned by the app:
+
+```text
+short_rest
+long_rest
+dawn
+```
+
+A rule such as `once per long rest` may therefore be represented honestly by a finite resource.
+
+A rule such as `once per turn` must remain exact rule text until an authoritative turn runtime actually exists.
+
+### Validation
+
+The deterministic compiler validates, among other things:
+
+- mechanic family;
+- allowed fields;
+- numeric targets/operations;
+- formula syntax and depth;
+- conditions;
+- grants;
+- resources and recovery;
+- action costs/options/requirements/effects;
+- state mutations;
+- spell identity/preparation/methods;
+- spell catalog slug existence;
+- duplicate mechanic ids;
+- payload size/depth.
+
+Validation is performed after the model proposes structured data. Model output alone is never treated as executable truth.
+
+### Compilation artifacts
+
+Validated/unsupported results are stored in:
+
+`ai_mechanics_compilations`
+
+The artifact stores:
+
+- intent;
+- normalized mechanics;
+- CE/GM/hybrid coverage;
+- diagnostics;
+- unsupported requirements;
+- exact target snapshot;
+- compiler version;
+- apply result if later applied.
+
+The client may read only its own compilations. Direct client insert/update/delete is denied.
+
+Each compile also records an `agent_jobs.job_type = mechanics_compile` entry.
+
+### Compile does not apply
+
+`compile_mechanics` never changes canonical game state.
+
+A validated card is shown in the global Agent UI with:
+
+- title and compiler version;
+- validation state;
+- mechanic count;
+- CE / hybrid / GM coverage counts;
+- unsupported reasons and error count.
+
+The UI action **only prefills** an explicit natural-language apply request. It does not call an apply RPC directly.
+
+### Explicit apply
+
+`apply_mechanics_compilation` is available only to GM/owner through Voss.
+
+The server then calls the service-only apply gate.
+
+Current safe apply targets are:
+
+```text
+campaign reference_definition
+custom campaign rule_template
+custom campaign rule_template_level
+```
+
+The apply gate repeats authority checks and compares the saved target snapshot with the current target.
+
+If the target changed after compilation:
+
+```text
+mechanics_target_conflict
+→ no overwrite
+→ compile against the fresh target again
+```
+
+Reference definitions use their canonical revision system: applying mechanics creates a new revision while preserving the current name, summary, rules text and data.
+
+### Built-in classes and subclasses
+
+Built-in `rule_templates` are **preview-only** for the runtime compiler.
+
+The compiler may explain and validate proposed mechanics for them, but runtime apply raises:
+
+```text
+builtin_template_requires_developer_mode
+```
+
+Built-in class/subclass mechanics remain code/package work because the project requires class-package quality gates, parser→CE tests, low/mid/high-level checks and migration discipline.
+
+Stage 13 is the path for that work.
+
+### AI Draft cannot bypass the compiler
+
+Stage 12 closes the old AI Draft loophole.
+
+If a definition node contains non-empty executable `mechanics`, its payload must also contain:
+
+```text
+mechanics_compilation_id
+```
+
+Before publishing the draft, the application:
+
+1. reads that compiler artifact through RLS;
+2. requires status `validated` or already `applied`;
+3. requires the same campaign;
+4. compares the draft mechanics with the exact normalized compiler mechanics.
+
+Any mismatch stops publication.
+
+Therefore:
+
+```text
+AI Draft raw mechanics
+≠ shortcut around Mechanics Compiler
+```
+
+### Unsupported mechanics
+
+`unsupported_requirements` is intentional, not a failure to look clever.
+
+When a rule needs a reusable durable capability that the current CE contract genuinely lacks, Voss records that requirement and marks the compilation `unsupported`.
+
+It must not:
+
+- create arbitrary SQL;
+- hide the gap inside an opaque semantic effect that is expected to mutate authoritative state;
+- invent a source-specific mini-engine;
+- manufacture fake scene state;
+- claim the mechanic is finished.
+
+That gap becomes a candidate for Stage 13 Developer Mode, where code, tests and build validation can extend the generic runtime deliberately.
+
+
 ## Persistence
 
 Tables:
@@ -1165,18 +1402,18 @@ Tables:
 - `ai_messages` — durable user/assistant history with the view context that accompanied user messages;
 - `agent_jobs` — durable agent execution queue/journal;
 - `media_assets` — generated media lifecycle and review metadata;
-- `media_bindings` — explicit attachment from generated assets to canonical targets.
+- `media_bindings` — explicit attachment from generated assets to canonical targets;
+- `ai_mechanics_compilations` — validated mechanics previews, coverage, diagnostics, target snapshots and apply history.
 
 All public tables have RLS.
 
-## Current limitations after Stage 11
+## Current limitations after Stage 12
 
-Voss now has durable image jobs, semantic image profiles, exact 1–3 output generation, optional vision review, private generated-media storage, explicit attachment permissions and a three-day garbage lifecycle.
+Voss can now compile GM-authored mechanics into the existing CE DSL, preserve the CE/GM boundary, preview diagnostics and apply a validated artifact to narrowly supported **custom campaign** targets after explicit GM instruction.
 
-Stage 11 does **not** give Voss arbitrary canonical write access. Image attachment is a narrow permission-checked capability. Mechanics compilation and repository-writing tools remain unavailable.
+Stage 12 deliberately cannot mutate built-in class/subclass packages, invent missing runtime primitives or write repository code. Unsupported reusable mechanics must remain unsupported until Developer Mode extends the generic runtime with code and tests.
 
 ## Planned continuation
 
-12. Mechanics Compiler for structured runtime mechanics before code changes.
 13. Owner-only Developer Mode with repository patch/test/build/preview workflow.
 14. Full security/integration audit, READY certification and only then `dev → main`.
