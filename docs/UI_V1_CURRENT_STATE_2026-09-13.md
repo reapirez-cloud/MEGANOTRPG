@@ -120,6 +120,7 @@ Content law:
 
 - **Умения** is the authored/literary layer. Author-written class/subclass features create the player-facing rows. Character Engine runtime may enrich an authored feature with exact rules and facts, but raw runtime grants, resources, values and unlock markers must not automatically create story cards.
 - Each ability row shows level, real feature name and a short two-line preview of the existing Voss story. The preview is never an interface-written summary.
+- Druid literary content is sourced only through the current grimdark Voss router (`druidVossNarration.ts`). `druidReference.ts` is legacy rule-copy only and must never supply player-facing story/explanation text.
 - Opening an ability shows the full story first, then the exact rule, structured mechanical facts and Voss comment.
 - **Владения** is dry reference information derived from proficiency grants and proficiency choices: weapons, armor, saving throws, skills, tools and languages. No invented Voss prose belongs there.
 - **Механика** is the player-facing read model of runtime structure: resources, actions, progression markers, choices and scaling. Technical keys such as `sourceKey`, `grantOperation` or engine priorities remain internal.
