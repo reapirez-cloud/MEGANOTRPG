@@ -26,7 +26,7 @@ test("players are forced to the base model at the Edge Function boundary", () =>
 test("GM Workshop registers semantic screen context for Voss", () => {
   const workshop = read("src/ui-v1-isolated/GMWorkshop.tsx")
 
-  assert.match(workshop, /setViewContext/)
+  assert.match(workshop, /useAIViewContextLayer/)
   assert.match(workshop, /screen: "gm-workshop"/)
   assert.match(workshop, /facts:\s*\{/)
   assert.match(workshop, /\bvisible,\s*\n/)
