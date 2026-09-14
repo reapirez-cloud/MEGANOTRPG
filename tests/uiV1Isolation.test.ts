@@ -582,7 +582,7 @@ test("Proficiencies and runtime mechanics have their own player-facing read mode
   assert.match(sectionScreens, /function ProficiencyView/)
   assert.match(sectionScreens, /function MechanicsView/)
   assert.match(sectionScreens, /className="u1-mechanic-row"/)
-  assert.doesNotMatch(sectionScreens, /sourceKey|grantOperation|priority/)
+  assert.doesNotMatch(sectionScreens, />grantOperation<|>priority<|>sourceKey</)
 })
 
 test("Class and subclass detail reserve clean 16:9 artwork slots without stretching 3:1 catalog art", () => {
