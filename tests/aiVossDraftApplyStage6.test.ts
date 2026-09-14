@@ -49,25 +49,30 @@ test("Stage 6 records each successful apply step and canonical id", () => {
 test("failed apply runs are explicit about partial canonical creation", () => {
   const apply = read("src/ai/applyDraft.ts")
   const migration = read(
-    "supabase/migrations/20260914165931_ai_draft_apply_stage6.sql",
+    "supabase/migrations/20260914170507_ai_draft_apply_retry_safety_stage6.sql",
   )
 
   assert.match(migration, /partial_failed/)
+  assert.match(migration, /p_partial_hint/)
   assert.match(migration, /jsonb_array_length\(v_run\.completed_steps\) > 0/)
   assert.match(apply, /partial: completed > 0/)
+  assert.match(apply, /finish_ai_draft_apply_v2/)
   assert.doesNotMatch(apply, /oracle\.[\s\S]*rollback/i)
 })
 
 test("successful apply marks the exact reviewed draft as applied", () => {
   const migration = read(
+    "supabase/migrations/20260914170507_ai_draft_apply_retry_safety_stage6.sql",
+  )
+  const base = read(
     "supabase/migrations/20260914165931_ai_draft_apply_stage6.sql",
   )
 
   assert.match(migration, /status = 'applied'/)
   assert.match(migration, /status = 'review'/)
   assert.match(migration, /current_revision = v_run\.draft_revision/)
-  assert.match(migration, /applied_at/)
-  assert.match(migration, /applied_by/)
+  assert.match(base, /applied_at/)
+  assert.match(base, /applied_by/)
 })
 
 test("AI model still has no tool that can approve or apply a draft", () => {
@@ -87,4 +92,18 @@ test("GM Workshop requires an explicit confirmation before apply", () => {
   assert.match(workshop, /kind: "confirm"/)
   assert.match(workshop, /Утвердить и создать/)
   assert.match(workshop, /applyAIDraft/)
+})
+
+test("apply receipts must match the immutable plan before success", () => {
+  const hardening = read(
+    "supabase/migrations/20260914170359_ai_draft_apply_hardening_stage6.sql",
+  )
+  const retry = read(
+    "supabase/migrations/20260914170507_ai_draft_apply_retry_safety_stage6.sql",
+  )
+
+  assert.match(hardening, /ai_draft_step_not_planned/)
+  assert.match(hardening, /ai_draft_step_already_recorded/)
+  assert.match(hardening, /ai_draft_apply_incomplete/)
+  assert.match(retry, /where status in \('running','succeeded','partial_failed'\)/)
 })
