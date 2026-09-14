@@ -21,6 +21,9 @@ export type RouterModel = {
   supports_tools: boolean
   supports_json: boolean
   supports_streaming: boolean
+  supports_vision: boolean
+  model_kind: "agent" | "image" | "owner_override"
+  access_scope: "campaign" | "system_admin"
   context_window: number | null
   cost_tier: number
   reasoning_tier: number
@@ -142,12 +145,20 @@ function defaultMode(taskKey: VossTaskKey): RouteMode {
   return "primary"
 }
 
+function isCampaignAgent(model: RouterModel) {
+  return (
+    model.enabled &&
+    model.model_kind === "agent" &&
+    model.access_scope === "campaign"
+  )
+}
+
 function isEligible(
   model: RouterModel,
   taskKey: VossTaskKey,
   gmOnly = true,
 ) {
-  if (!model.enabled) return false
+  if (!isCampaignAgent(model)) return false
   if (gmOnly && !model.gm_selectable && !model.is_base) return false
   if (TASKS_REQUIRING_TOOLS.has(taskKey) && !model.supports_tools) return false
   return true
@@ -225,13 +236,13 @@ export async function resolveVossModel(
   const { data: rows, error } = await admin
     .from("ai_models")
     .select(
-      "id,provider_key,model_key,display_name,enabled,is_base,gm_selectable,supports_tools,supports_json,supports_streaming,context_window,cost_tier,reasoning_tier,latency_tier",
+      "id,provider_key,model_key,display_name,enabled,is_base,gm_selectable,supports_tools,supports_json,supports_streaming,supports_vision,model_kind,access_scope,context_window,cost_tier,reasoning_tier,latency_tier",
     )
     .eq("enabled", true)
 
   if (error) throw new Error(error.message)
 
-  const models = (rows || []) as RouterModel[]
+  const models = ((rows || []) as RouterModel[]).filter(isCampaignAgent)
   const base = models.find((model) => model.is_base)
   if (!base) throw new Error("No active base AI model configured")
 

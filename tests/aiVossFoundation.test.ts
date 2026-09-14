@@ -6,13 +6,15 @@ const read = (path: string) => readFileSync(new URL("../" + path, import.meta.ur
 
 test("Voss AI foundation keeps provider secrets server-side", () => {
   const provider = read("src/ai/AIProvider.tsx")
-  const edge = read("supabase/functions/voss-agent/index.ts")
+  const gateway = read("supabase/functions/voss-agent/provider-gateway.ts")
 
   assert.match(provider, /supabase\.functions\.invoke\("voss-agent"/)
+  assert.doesNotMatch(provider, /DEEPSEEK_API_KEY/)
   assert.doesNotMatch(provider, /AI_API_KEY/)
-  assert.match(edge, /AI_API_KEY/)
-  assert.match(edge, /AI_API_BASE_URL/)
-  assert.match(edge, /AI_DEFAULT_MODEL/)
+  assert.match(gateway, /DEEPSEEK_API_KEY/)
+  assert.match(gateway, /AI_API_KEY/)
+  assert.match(gateway, /AI_API_BASE_URL/)
+  assert.match(gateway, /AI_DEFAULT_MODEL/)
 })
 
 test("players are forced to the base model at the Edge Function boundary", () => {

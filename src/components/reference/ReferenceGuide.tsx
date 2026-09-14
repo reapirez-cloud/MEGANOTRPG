@@ -155,8 +155,12 @@ function classFundamentals(template: RuleTemplate | undefined) {
     .filter(Boolean)
 
   const hitDieFromMechanics = mechanics
-    .filter((mechanic) => mechanic.type === "grant" && mechanic.target === "feature")
-    .map((mechanic) => isRecord(mechanic.payload) ? mechanic.payload.hitDie : undefined)
+    .flatMap((mechanic) => {
+      if (mechanic.type !== "grant" || mechanic.target !== "feature") return []
+      const payload: unknown = mechanic.payload
+      const hitDie = isRecord(payload) ? payload.hitDie : undefined
+      return typeof hitDie === "number" ? [hitDie] : []
+    })
     .find((value): value is number => typeof value === "number")
 
   const primary = asStrings(traits.primary_abilities).length
@@ -173,7 +177,7 @@ function classFundamentals(template: RuleTemplate | undefined) {
     ...(typeof traits.hit_die === "string" ? [`Кость хитов: ${traits.hit_die}`] : hitDieFromMechanics ? [`Кость хитов: к${hitDieFromMechanics}`] : []),
     ...(primary.length ? [`Основные характеристики: ${primary.map((value) => abilityLabel[value] || value).join(" и ")}`] : []),
     ...((saves.length ? saves : proficiencyLabels("savingThrow")).length ? [`Спасброски: ${(saves.length ? saves : proficiencyLabels("savingThrow")).join(" и ")}`] : []),
-    [`Доспехи: ${(armor.length ? armor : proficiencyLabels("armor")).join(", ") || "нет"}`],
+    ...[`Доспехи: ${(armor.length ? armor : proficiencyLabels("armor")).join(", ") || "нет"}`],
     ...((weapons.length ? weapons : proficiencyLabels("weapon")).length ? [`Оружие: ${(weapons.length ? weapons : proficiencyLabels("weapon")).join(", ")}`] : []),
     ...(skillCount ? [`Навыки: выберите ${skillCount}`] : []),
   ]

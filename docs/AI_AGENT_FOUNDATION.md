@@ -1,6 +1,6 @@
-# AI Agent Foundation — Voss Stages 1–8
+# AI Agent Foundation — Voss Stages 1–9
 
-> Status: **STAGES 1–8 IMPLEMENTED**
+> Status: **STAGES 1–9 IMPLEMENTED**
 >
 > This is the canonical starting point for AI inside MEGANOT RPG. Future AI work must extend this boundary instead of calling model APIs directly from React components.
 
@@ -49,16 +49,18 @@ UI
 → supabase.functions.invoke("voss-agent")
 → authenticated Edge Function
 → role/model resolution
-→ external OpenAI-compatible provider
+→ Provider Gateway
+→ configured provider
 ```
 
-Server secrets:
+The Stage 9 gateway dispatches from `ai_models.provider_key`. Normal Voss traffic is limited to enabled `model_kind = agent` + `access_scope = campaign` rows.
 
-- `AI_API_BASE_URL`
-- `AI_API_KEY`
-- `AI_DEFAULT_MODEL`
+DeepSeek is the current campaign-agent provider. Its dedicated server secret is:
 
-The base row in `ai_models` uses `model_key = "__default__"`; the Edge Function resolves that to `AI_DEFAULT_MODEL`.
+- `DEEPSEEK_API_KEY`
+- optional `DEEPSEEK_API_BASE_URL`, defaulting to the official DeepSeek API base URL.
+
+The old `AI_API_KEY` / `AI_API_BASE_URL` / `AI_DEFAULT_MODEL` names remain only as migration compatibility for legacy `openai-compatible` rows. Provider failure never triggers a cross-provider fallback.
 
 ## Role law
 
@@ -736,6 +738,104 @@ Stage 8 works even with a one-model registry. With only the base model registere
 
 As additional DeepSeek/Kimi/etc. models are registered with accurate capability/tier metadata, routing starts using them without changes to the Voss agent.
 
+## Stage 9 — security and provider foundation
+
+Stage 9 reconciles the Stage 1–8 agent stack with production and establishes the boundary required by the later image and developer systems.
+
+### Source reconciliation
+
+The cumulative Stage 1–8 branch is integrated into `dev` before Stage 9 work. Production database migrations and source control therefore describe the same agent foundation again. `main` remains untouched until the later READY stage.
+
+### Real model registry
+
+The placeholder `__default__` base row is replaced in place so existing message and routing foreign keys remain valid.
+
+Current campaign-agent registry:
+
+```text
+DeepSeek V4 Flash          base, tools/json
+DeepSeek V4 Pro            GM-selectable, tools/json
+DeepSeek V4 Flash Vision   server-visible vision worker, not GM-selectable
+```
+
+The base model is now tool-capable, so Stage 3–7 read, draft and memory tools are no longer disabled by registry metadata.
+
+`ai_models` now also records:
+
+```text
+model_kind      agent | image | owner_override
+access_scope    campaign | system_admin
+supports_vision boolean
+```
+
+Normal Voss routing filters to:
+
+```text
+enabled
+AND model_kind = agent
+AND access_scope = campaign
+```
+
+This filter is enforced in both database policy and server routing. A future owner-only model cannot become an automatic fallback merely because the service-role client can see its row.
+
+### System authority is not campaign authority
+
+`GM`, campaign `owner`, and global `system_admin` are different authorities.
+
+System administrators are stored in the private-schema `private.system_admin_users` table and checked by `private.is_system_admin`.
+
+No campaign owner or GM is automatically promoted to system administrator. Stage 9 intentionally seeds no system administrators. Developer Mode will activate this authority only when Stage 13 introduces its explicit session gate.
+
+The service-only `public.is_system_admin_for_v1` RPC exists for trusted backend checks. Authenticated clients cannot execute it.
+
+### Hidden-model isolation
+
+Campaign model settings and per-task routes validate `selected_model_id` through `private.can_select_campaign_ai_model`.
+
+A GM therefore cannot bypass the UI by guessing the UUID of:
+
+- an image model;
+- a non-selectable worker;
+- a future `owner_override` model;
+- a `system_admin`-scoped model.
+
+The normal `ai_models` SELECT policy also refuses to expose those rows.
+
+### Strict “Только я”
+
+Owner-only data is literal ownership:
+
+```text
+created_by == auth.uid()
+```
+
+There is no GM, campaign-owner, admin or system-admin read override.
+
+Stage 9 applies that rule to the existing private character, location and location-link paths through shared private-schema guards. Private rows are readable and manageable only by their creator. Existing campaign-visible/discovery behavior is unchanged for non-private rows.
+
+### Provider Gateway
+
+`voss-agent` no longer contains provider-specific fetch configuration.
+
+```text
+router
+→ RouterModel
+→ provider-gateway
+→ provider_key dispatch
+→ provider response
+```
+
+The gateway:
+
+- validates that the chosen row is a campaign agent;
+- resolves provider secrets server-side;
+- sends OpenAI-compatible chat/tool payloads to DeepSeek;
+- preserves the legacy provider adapter only for migration compatibility;
+- returns provider errors to Voss without silently switching providers.
+
+Astra is deliberately not registered here. The future Owner-only override belongs to Developer Mode, not ordinary campaign routing.
+
+
 ## Persistence
 
 Tables:
@@ -747,20 +847,16 @@ Tables:
 
 All public tables have RLS.
 
-## Current limitations after Stage 8
+## Current limitations after Stage 9
 
-Voss now has read tools, durable campaign memory, structured AI Draft creation/editing and GM-approved canonical execution through Oracle.
+Voss now has a reconciled Stage 1–8 foundation, tool-capable DeepSeek routing, strict owner-only visibility and a provider boundary that can safely grow.
 
-The remaining architectural limitation is that Voss is still an **assistant**, not an autonomous GM:
-
-- no explicit AI-GM mode;
-- no autonomous scene/world progression;
-- no Director/Narrator split;
-- no NPC autonomy loop.
-
-The model still never receives unrestricted SQL or generic table-write access.
+Stage 9 deliberately does **not** add image jobs, mechanics compilation or repository-writing tools. The model still never receives unrestricted SQL or generic table-write access.
 
 ## Planned continuation
 
-9. Explicit AI-GM mode.
-10. Director / Narrator split for autonomous play.
+10. Global Agent UI and application-wide semantic integration.
+11. Unified Agent Jobs plus the image generation/review/attach system.
+12. Mechanics Compiler for structured runtime mechanics before code changes.
+13. Owner-only Developer Mode with repository patch/test/build/preview workflow.
+14. Full security/integration audit, READY certification and only then `dev → main`.
