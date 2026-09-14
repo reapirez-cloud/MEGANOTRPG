@@ -136,6 +136,162 @@ export const VOSS_DRAFT_TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "read_content_draft",
+      description:
+        "Read one existing GM-only AI draft before revising it. Returns the current revision, structured nodes, relations and validation warnings. This does not read canonical game state.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          draft_id: { type: "string" },
+        },
+        required: ["draft_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "revise_content_draft",
+      description:
+        "Create a new immutable revision of an existing AI draft using targeted changes. Read the draft first. This NEVER changes canonical MEGANOT state.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          draft_id: { type: "string" },
+          expected_revision: {
+            type: "integer",
+            minimum: 1,
+          },
+          change_summary: {
+            type: "string",
+            description: "Short human-readable summary of requested changes.",
+          },
+          title: { type: "string" },
+          summary: { type: "string" },
+          nodes_upsert: {
+            type: "array",
+            maxItems: 16,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                key: { type: "string" },
+                entity_type: {
+                  type: "string",
+                  enum: ["location", "character", "definition"],
+                },
+                entity_subtype: {
+                  type: "string",
+                  enum: [
+                    "npc",
+                    "pc",
+                    "item",
+                    "spell",
+                    "feature",
+                    "condition",
+                    "feat",
+                    "reference",
+                  ],
+                },
+                name: { type: "string" },
+                summary: { type: "string" },
+                payload: {
+                  type: "object",
+                  additionalProperties: true,
+                },
+              },
+              required: ["key", "entity_type", "name", "summary", "payload"],
+            },
+          },
+          node_keys_remove: {
+            type: "array",
+            maxItems: 16,
+            items: { type: "string" },
+          },
+          relations_add: {
+            type: "array",
+            maxItems: 24,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                kind: {
+                  type: "string",
+                  enum: [
+                    "parent_location",
+                    "location_transition",
+                    "npc_habitat",
+                    "inventory_owner",
+                    "depends_on",
+                  ],
+                },
+                from_key: { type: "string" },
+                to_key: { type: "string" },
+                to_existing: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    entity_type: {
+                      type: "string",
+                      enum: ["location", "character", "definition"],
+                    },
+                    id: { type: "string" },
+                    label: { type: "string" },
+                  },
+                  required: ["entity_type", "id"],
+                },
+                label: { type: "string" },
+                data: {
+                  type: "object",
+                  additionalProperties: true,
+                },
+              },
+              required: ["kind", "from_key"],
+            },
+          },
+          relations_remove: {
+            type: "array",
+            maxItems: 24,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                kind: {
+                  type: "string",
+                  enum: [
+                    "parent_location",
+                    "location_transition",
+                    "npc_habitat",
+                    "inventory_owner",
+                    "depends_on",
+                  ],
+                },
+                from_key: { type: "string" },
+                to_key: { type: "string" },
+                to_existing_id: { type: "string" },
+                label: { type: "string" },
+              },
+              required: ["kind", "from_key"],
+            },
+          },
+        },
+        required: [
+          "draft_id",
+          "expected_revision",
+          "change_summary",
+          "nodes_upsert",
+          "node_keys_remove",
+          "relations_add",
+          "relations_remove",
+        ],
+      },
+    },
+  },
 ] as const
 
 const NODE_TYPES = new Set(["location", "character", "definition"])
@@ -447,8 +603,319 @@ function validateDraft(args: JsonObject) {
   }
 }
 
+function relationSelector(raw: unknown) {
+  const row = asObject(raw)
+  const kindValue = text(row.kind, 40)
+  const fromKey = key(row.from_key)
+  if (!RELATION_KINDS.has(kindValue) || !fromKey) return null
+
+  return {
+    kind: kindValue,
+    from_key: fromKey,
+    to_key: key(row.to_key) || undefined,
+    to_existing_id: text(row.to_existing_id, 100) || undefined,
+    label: text(row.label, 240) || undefined,
+  }
+}
+
+function relationMatches(
+  relation: DraftRelation,
+  selector: ReturnType<typeof relationSelector>,
+) {
+  if (!selector) return false
+  if (relation.kind !== selector.kind) return false
+  if (relation.from_key !== selector.from_key) return false
+  if (selector.to_key && relation.to_key !== selector.to_key) return false
+  if (
+    selector.to_existing_id &&
+    relation.to_existing?.id !== selector.to_existing_id
+  ) return false
+  if (selector.label && relation.label !== selector.label) return false
+  return true
+}
+
+function relationSignature(relation: DraftRelation) {
+  return [
+    relation.kind,
+    relation.from_key,
+    relation.to_key || "",
+    relation.to_existing?.entity_type || "",
+    relation.to_existing?.id || "",
+    relation.label || "",
+  ].join("|")
+}
+
+async function loadDraft(
+  context: VossDraftToolContext,
+  draftId: string,
+) {
+  const { data, error } = await context.admin
+    .from("ai_drafts")
+    .select("id,campaign_id,created_by,agent_key,draft_type,title,summary,status,schema_version,current_revision,content,validation_warnings,created_at,updated_at")
+    .eq("id", draftId)
+    .eq("campaign_id", context.campaignId)
+    .eq("status", "review")
+    .maybeSingle()
+
+  if (error) return { error: error.message }
+  if (!data) return { not_found: true }
+  return { draft: data }
+}
+
+async function readContentDraft(
+  context: VossDraftToolContext,
+  args: JsonObject,
+) {
+  const draftId = text(args.draft_id, 100)
+  if (!draftId) return { error: "draft_id is required" }
+
+  const loaded = await loadDraft(context, draftId)
+  if ("error" in loaded || "not_found" in loaded) return loaded
+
+  const { data: revisions, error } = await context.admin
+    .from("ai_draft_revisions")
+    .select("revision,change_summary,operations,validation_warnings,created_by,created_at")
+    .eq("draft_id", draftId)
+    .order("revision", { ascending: false })
+    .limit(12)
+
+  if (error) return { error: error.message }
+
+  return {
+    draft: loaded.draft,
+    recent_revisions: revisions || [],
+    canonical_state_changed: false,
+  }
+}
+
+async function reviseContentDraft(
+  context: VossDraftToolContext,
+  args: JsonObject,
+) {
+  const draftId = text(args.draft_id, 100)
+  const expectedRevision = Math.floor(Number(args.expected_revision))
+  const changeSummary = text(args.change_summary, 2000)
+
+  if (!draftId) return { error: "draft_id is required" }
+  if (!Number.isFinite(expectedRevision) || expectedRevision < 1) {
+    return { error: "expected_revision must be a positive integer" }
+  }
+  if (!changeSummary) return { error: "change_summary is required" }
+
+  const loaded = await loadDraft(context, draftId)
+  if ("error" in loaded || "not_found" in loaded) return loaded
+
+  const draft = loaded.draft
+  if (draft.current_revision !== expectedRevision) {
+    return {
+      error: "draft_revision_conflict",
+      current_revision: draft.current_revision,
+      expected_revision: expectedRevision,
+      instruction: "Read the draft again before revising it.",
+    }
+  }
+
+  const currentContent = asObject(draft.content)
+  const currentNodesRaw = Array.isArray(currentContent.nodes)
+    ? currentContent.nodes
+    : []
+  const currentRelationsRaw = Array.isArray(currentContent.relations)
+    ? currentContent.relations
+    : []
+
+  const currentNodes = currentNodesRaw
+    .map(normalizeNode)
+    .filter((node): node is DraftNode => Boolean(node))
+  const currentRelations = currentRelationsRaw
+    .map(normalizeRelation)
+    .filter((relation): relation is DraftRelation => Boolean(relation))
+
+  const removeKeys = new Set(
+    (Array.isArray(args.node_keys_remove) ? args.node_keys_remove : [])
+      .slice(0, 16)
+      .map(key)
+      .filter(Boolean),
+  )
+
+  const upserts = (Array.isArray(args.nodes_upsert) ? args.nodes_upsert : [])
+    .slice(0, 16)
+    .map(normalizeNode)
+    .filter((node): node is DraftNode => Boolean(node))
+
+  const nodeMap = new Map(
+    currentNodes
+      .filter((node) => !removeKeys.has(node.key))
+      .map((node) => [node.key, node]),
+  )
+
+  for (const node of upserts) {
+    removeKeys.delete(node.key)
+    nodeMap.set(node.key, node)
+  }
+
+  if (!nodeMap.size) {
+    return { error: "A draft must contain at least one node" }
+  }
+
+  let relations = currentRelations.filter((relation) => {
+    if (removeKeys.has(relation.from_key)) return false
+    if (relation.to_key && removeKeys.has(relation.to_key)) return false
+    return true
+  })
+
+  const removeSelectors = (
+    Array.isArray(args.relations_remove) ? args.relations_remove : []
+  )
+    .slice(0, 24)
+    .map(relationSelector)
+    .filter((selector): selector is NonNullable<ReturnType<typeof relationSelector>> =>
+      Boolean(selector)
+    )
+
+  relations = relations.filter(
+    (relation) => !removeSelectors.some((selector) =>
+      relationMatches(relation, selector)
+    ),
+  )
+
+  const additions = (
+    Array.isArray(args.relations_add) ? args.relations_add : []
+  )
+    .slice(0, 24)
+    .map(normalizeRelation)
+    .filter((relation): relation is DraftRelation => Boolean(relation))
+
+  const relationMap = new Map(
+    relations.map((relation) => [relationSignature(relation), relation]),
+  )
+  for (const relation of additions) {
+    relationMap.set(relationSignature(relation), relation)
+  }
+  relations = [...relationMap.values()]
+
+  const nextArgs: JsonObject = {
+    draft_type: draft.draft_type,
+    title: text(args.title, 160) || draft.title,
+    summary:
+      typeof args.summary === "string"
+        ? text(args.summary, 4000)
+        : draft.summary,
+    nodes: [...nodeMap.values()],
+    relations,
+  }
+
+  const validated = validateDraft(nextArgs)
+  if ("error" in validated) return validated
+
+  const operations = [
+    ...(upserts.length
+      ? [{
+          kind: "nodes_upsert",
+          keys: upserts.map((node) => node.key),
+        }]
+      : []),
+    ...(removeKeys.size
+      ? [{
+          kind: "nodes_remove",
+          keys: [...removeKeys],
+        }]
+      : []),
+    ...(additions.length
+      ? [{
+          kind: "relations_add",
+          count: additions.length,
+        }]
+      : []),
+    ...(removeSelectors.length
+      ? [{
+          kind: "relations_remove",
+          count: removeSelectors.length,
+        }]
+      : []),
+    ...(nextArgs.title !== draft.title
+      ? [{ kind: "title_update" }]
+      : []),
+    ...(nextArgs.summary !== draft.summary
+      ? [{ kind: "summary_update" }]
+      : []),
+  ]
+
+  const nextRevision = expectedRevision + 1
+  const { error: revisionError } = await context.admin
+    .from("ai_draft_revisions")
+    .insert({
+      draft_id: draftId,
+      revision: nextRevision,
+      content: validated.content,
+      validation_warnings: validated.warnings,
+      created_by: context.userId,
+      change_summary: changeSummary,
+      operations,
+    })
+
+  if (revisionError) {
+    if (/duplicate|unique/i.test(revisionError.message)) {
+      return {
+        error: "draft_revision_conflict",
+        instruction: "Read the draft again before revising it.",
+      }
+    }
+    return { error: revisionError.message }
+  }
+
+  const { data: updated, error: updateError } = await context.admin
+    .from("ai_drafts")
+    .update({
+      title: validated.title,
+      summary: validated.summary,
+      current_revision: nextRevision,
+      content: validated.content,
+      validation_warnings: validated.warnings,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", draftId)
+    .eq("campaign_id", context.campaignId)
+    .eq("current_revision", expectedRevision)
+    .select("id,title,draft_type,status,current_revision,updated_at")
+    .maybeSingle()
+
+  if (updateError || !updated) {
+    await context.admin
+      .from("ai_draft_revisions")
+      .delete()
+      .eq("draft_id", draftId)
+      .eq("revision", nextRevision)
+
+    return {
+      error: updateError?.message || "draft_revision_conflict",
+      instruction: "Read the draft again before revising it.",
+    }
+  }
+
+  return {
+    draft: {
+      ...updated,
+      summary: validated.summary,
+      nodes: validated.content.nodes.length,
+      relations: validated.content.relations.length,
+      warnings: validated.warnings,
+      change_summary: changeSummary,
+    },
+    previous_revision: expectedRevision,
+    new_revision: nextRevision,
+    operations,
+    canonical_state_changed: false,
+    next_step:
+      "Новая ревизия сохранена только в AI Draft System. Канонические данные MEGANOT не изменены.",
+  }
+}
+
 export function isVossDraftTool(name: string) {
-  return name === "propose_content_draft"
+  return (
+    name === "propose_content_draft" ||
+    name === "read_content_draft" ||
+    name === "revise_content_draft"
+  )
 }
 
 export async function executeVossDraftTool(
@@ -457,7 +924,18 @@ export async function executeVossDraftTool(
   args: JsonObject,
 ) {
   if (!context.canManage) return { error: "GM authority required" }
-  if (name !== "propose_content_draft") return { error: "Unknown draft tool" }
+
+  if (name === "read_content_draft") {
+    return readContentDraft(context, args)
+  }
+
+  if (name === "revise_content_draft") {
+    return reviseContentDraft(context, args)
+  }
+
+  if (name !== "propose_content_draft") {
+    return { error: "Unknown draft tool" }
+  }
 
   const validated = validateDraft(args)
   if ("error" in validated) return validated
@@ -493,6 +971,8 @@ export async function executeVossDraftTool(
       content: validated.content,
       validation_warnings: validated.warnings,
       created_by: context.userId,
+      change_summary: "Первичная версия AI-черновика.",
+      operations: [{ kind: "draft_create" }],
     })
 
   if (revisionError) {
