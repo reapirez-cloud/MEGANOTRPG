@@ -43,7 +43,7 @@ export const VOSS_DRAFT_TOOLS = [
     function: {
       name: "propose_content_draft",
       description:
-        "Create a GM-only structured AI draft for future MEGANOT content. Use only when the GM explicitly asks to create/design/generate content. This NEVER changes canonical game state.",
+        "Create a GM-only structured AI draft for future MEGANOT content. Use only when the GM explicitly asks to create/design/generate content. This NEVER changes canonical game state. If a definition payload contains executable mechanics, those exact mechanics must come from compile_mechanics and payload.mechanics_compilation_id must contain that compilation id.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -157,7 +157,7 @@ export const VOSS_DRAFT_TOOLS = [
     function: {
       name: "revise_content_draft",
       description:
-        "Create a new immutable revision of an existing AI draft using targeted changes. Read the draft first. This NEVER changes canonical MEGANOT state.",
+        "Create a new immutable revision of an existing AI draft using targeted changes. Read the draft first. This NEVER changes canonical MEGANOT state. Any executable mechanics in a definition payload must be the exact output of a validated Mechanics Compiler artifact and carry payload.mechanics_compilation_id.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -401,6 +401,8 @@ function normalizePayload(
     summary: text(source.summary, 4000),
     rules_text: text(source.rules_text ?? source.rulesText, 16000),
     mechanics: sanitizeJson(source.mechanics),
+    mechanics_compilation_id:
+      text(source.mechanics_compilation_id, 100) || null,
     data: asObject(source.data),
     design_notes: text(source.design_notes, 6000),
   }
