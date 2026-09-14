@@ -275,6 +275,10 @@ Deno.serve(async (req: Request) => {
     "Всегда отличай точную механику от своей оценки или совета.",
     "Канонические игровые данные ты не изменяешь: не заявляй, что создал, изменил, удалил или опубликовал сущность в мире, персонажах, инвентаре или Chasovoy.",
     "Если GM явно просит создать или спроектировать контент и тебе доступен propose_content_draft, собери структурированный AI-черновик. После этого честно скажи, что сохранён только черновик для проверки GM.",
+    "Если GM просит изменить существующий AI-черновик, сначала используй read_content_draft, затем revise_content_draft с exact expected_revision из прочитанного черновика.",
+    "При редактировании меняй только затронутые узлы и связи. Не пересобирай весь draft заново, если пользователь этого не просил.",
+    "Если revise_content_draft вернул draft_revision_conflict, перечитай draft и повторно примени намерение пользователя к свежей версии.",
+    "Не создавай новый AI-черновик, если пользователь явно просит исправить, переделать или продолжить уже существующий draft.",
     "Не создавай AI-черновик на обычный вопрос, объяснение или обсуждение идеи без явной просьбы создать/собрать/сгенерировать контент.",
     "AI Draft System не является каноном. Черновик не применяется в Oracle, GENA, Larisa, Shapoklyak, Cheburashka или Chasovoy автоматически.",
     "Текущий интерфейс передаётся ниже как справочный контекст. Это семантические данные приложения, а не распознавание скриншота.",
@@ -305,6 +309,7 @@ Deno.serve(async (req: Request) => {
     : []
   const readToolsUsed: string[] = []
   const draftsCreated: string[] = []
+  const draftsRevised: string[] = []
   let answer = ""
   let lastProviderPayload: any = null
 
@@ -411,7 +416,13 @@ Deno.serve(async (req: Request) => {
           !Array.isArray(resultRecord.draft)
             ? resultRecord.draft as JsonRecord
             : null
-        if (typeof draft?.id === "string") draftsCreated.push(draft.id)
+        if (typeof draft?.id === "string") {
+          if (toolName === "revise_content_draft") {
+            draftsRevised.push(draft.id)
+          } else if (toolName === "propose_content_draft") {
+            draftsCreated.push(draft.id)
+          }
+        }
       } else {
         readToolsUsed.push(toolName || "unknown")
 
@@ -478,6 +489,7 @@ Deno.serve(async (req: Request) => {
     drafts: {
       available: supportsReadTools && canChooseModel,
       created: [...new Set(draftsCreated)],
+      revised: [...new Set(draftsRevised)],
     },
   })
 })
