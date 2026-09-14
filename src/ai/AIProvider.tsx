@@ -97,7 +97,7 @@ export type AIDraft = {
   draft_type: "bundle" | "location" | "character" | "definition"
   title: string
   summary: string
-  status: "review" | "archived"
+  status: "review" | "archived" | "applied"
   schema_version: number
   current_revision: number
   content: {

@@ -512,3 +512,28 @@ button.u1-gm-material-row {
   font-size: 7px;
   letter-spacing: .08em;
 }
+
+.u1-gm-ai-draft-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+.u1-gm-ai-draft-entry .u1-gm-definition-row {
+  min-width: 0;
+}
+.u1-gm-ai-draft-apply {
+  min-width: 86px;
+  padding: 0 12px;
+  border: 1px solid rgba(219,225,204,.13);
+  background: linear-gradient(180deg, rgba(218,226,204,.06), rgba(255,255,255,.015));
+  color: rgba(230,233,219,.7);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.u1-gm-ai-draft-apply:hover {
+  border-color: rgba(225,233,210,.24);
+  color: rgba(244,246,236,.9);
+}
