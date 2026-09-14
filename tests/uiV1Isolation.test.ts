@@ -12,7 +12,7 @@ const workspace = fs.readFileSync("src/ui-v1-isolated/Workspace.tsx", "utf8")
 const workspaceData = fs.readFileSync("src/ui-v1-isolated/useWorkspaceData.ts", "utf8")
 const workspaceStyles = fs.readFileSync("src/ui-v1-isolated/workspace.css", "utf8")
 const workspaceIdentityRules = fs.readFileSync("src/ui-v1-isolated/workspaceIdentityRules.ts", "utf8")
-const profileMark = fs.readFileSync("src/ui-v1-isolated/PlayerProfileMark.tsx", "utf8")
+const agentShell = fs.readFileSync("src/ai/AgentShell.tsx", "utf8")
 const legacyApp = fs.readFileSync("src/App.tsx", "utf8")
 const whatsNew = fs.readFileSync("src/ui-v1-isolated/WhatsNew.tsx", "utf8")
 const chronicleData = fs.readFileSync("src/ui-v1-isolated/useChronicleData.ts", "utf8")
@@ -473,11 +473,11 @@ test("Workspace is a real role-aware identity surface instead of a dashboard pla
   assert.match(workspaceStyles, /min-height:\s*clamp\(150px, 29vh, 226px\)/)
 })
 
-test("VI is reserved for the future player profile and no longer duplicates Workspace navigation", () => {
-  assert.match(profileMark, /aria-label="Профиль игрока"/)
-  assert.match(profileMark, /aria-disabled="true"/)
-  assert.doesNotMatch(profileMark, /onClick|workspace/)
-  assert.match(app, /<PlayerProfileMark \/>/)
+test("global AgentMark replaces the inactive VI profile placeholder", () => {
+  assert.doesNotMatch(app, /PlayerProfileMark/)
+  assert.match(app, /<AgentShell \/>/)
+  assert.match(agentShell, /className="u1-agent-orb"/)
+  assert.match(agentShell, /aria-label=\{open \? "Свернуть Восса" : "Открыть Восса"\}/)
 })
 
 

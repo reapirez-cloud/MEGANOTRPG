@@ -1,6 +1,10 @@
 import { useState } from "react"
 
-import type { SnakeEditorRequest } from "../../../snake-engine"
+import { useAIViewContextLayer } from "../../../ai/AIProvider"
+import type {
+  SnakeEditorRequest,
+  SnakeEntityRef,
+} from "../../../snake-engine"
 
 function validateRequiredFields(
   fields: SnakeEditorRequest["fields"],
@@ -17,12 +21,16 @@ export function SnakeEditorSurface({
   request,
   busy,
   error,
+  entity,
+  contextSource,
   onSubmit,
   onCancel,
 }: {
   request: SnakeEditorRequest
   busy: boolean
   error?: string
+  entity?: SnakeEntityRef
+  contextSource: string
   onSubmit: (input: Record<string, unknown>) => void
   onCancel: () => void
 }) {
@@ -30,6 +38,46 @@ export function SnakeEditorSurface({
     request.initialValues || {},
   )
   const [validation, setValidation] = useState<string | null>(null)
+
+  const initialValues = request.initialValues || {}
+  const dirty = JSON.stringify(values) !== JSON.stringify(initialValues)
+
+  useAIViewContextLayer(
+    contextSource,
+    {
+      screen: "snake-editor",
+      title: request.title,
+      text: dirty
+        ? "Открыт Snake Editor. В форме есть ещё не сохранённые изменения."
+        : "Открыт Snake Editor. Значения пока совпадают с сохранёнными.",
+      entity: entity
+        ? {
+            type: entity.type,
+            id: entity.id,
+            label: request.title,
+          }
+        : null,
+      facts: {
+        editor: {
+          eyebrow: request.eyebrow || null,
+          title: request.title,
+          fields: request.fields.map((field) => ({
+            id: field.id,
+            label: field.label,
+            type: field.type,
+            required: "required" in field ? Boolean(field.required) : false,
+          })),
+        },
+      },
+      draft: {
+        dirty,
+        editorTitle: request.title,
+        values,
+        initialValues,
+      },
+    },
+    100,
+  )
 
   function submit() {
     const missing = validateRequiredFields(request.fields, values)

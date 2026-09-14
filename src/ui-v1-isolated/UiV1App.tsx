@@ -1,13 +1,15 @@
 import { AnimatePresence, motion } from "motion/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import { useAIViewContextLayer } from "../ai/AIProvider"
+import AgentShell from "../ai/AgentShell"
+
 import { useHomeData, type HomeEvent, type HomeSocietyNews } from "./useHomeData"
 import { WhatsNew } from "./WhatsNew"
 import Workspace from "./Workspace"
 import GMWorkshop from "./GMWorkshop"
 import CharacterView from "./CharacterView"
 import type { WorkshopSection } from "./useGMWorkshopData"
-import PlayerProfileMark from "./PlayerProfileMark"
 import {
   AchievementsScreen,
   KnowledgeBaseScreen,
@@ -162,6 +164,65 @@ function activeRoot(route: Route): RootSpace {
   if (route.type === "root") return route.space
   if (route.type === "workspace") return "workspace"
   return "home"
+}
+
+function aiRouteContext(route: Route) {
+  if (route.type === "root") {
+    const titles: Record<RootSpace, string> = {
+      home: "Главная",
+      workspace: "Я",
+      chats: "Чаты",
+    }
+    return {
+      screen: "ui-root",
+      route: window.location.hash || "#/home",
+      title: titles[route.space],
+      text: "Открыт корневой раздел нового интерфейса MEGANOT RPG.",
+      facts: {
+        space: route.space,
+      },
+    }
+  }
+
+  if (route.type === "section") {
+    return {
+      screen: "section",
+      route: window.location.hash || "#/home",
+      title: sectionCopy[route.section]?.title || route.section,
+      text: "Открыт раздел кампании в UI 1.0.",
+      facts: {
+        section: route.section,
+        subsection: route.subsection || null,
+        path: route.tail,
+      },
+    }
+  }
+
+  if (route.page === "character") {
+    return {
+      screen: "character-route",
+      route: window.location.hash || "#/workspace",
+      title: "Персонаж",
+      text: "Открыта страница конкретного персонажа.",
+      entity: {
+        type: "character",
+        id: route.characterId,
+      },
+      facts: {
+        characterId: route.characterId,
+      },
+    }
+  }
+
+  return {
+    screen: "gm-workshop-route",
+    route: window.location.hash || "#/workspace/manage",
+    title: "Мастерская",
+    text: "Открыто рабочее пространство GM.",
+    facts: {
+      section: route.section || "index",
+    },
+  }
 }
 
 function Dock({
@@ -420,7 +481,6 @@ function Home() {
           <strong>{campaignTitle || "Мунтар"}</strong>
         </div>
 
-        <PlayerProfileMark />
       </header>
 
       <div className="u1-rule" aria-hidden="true" />
@@ -549,6 +609,7 @@ function currentScrollRoot() {
 
 export default function UiV1App() {
   const [route, setRoute] = useState<Route>(() => parseRoute())
+  useAIViewContextLayer("ui-route", aiRouteContext(route), 10)
   const swipeRef = useRef<SwipeState | null>(null)
   const edgeBackRef = useRef<EdgeBackState | null>(null)
   const suppressClickUntilRef = useRef(0)
@@ -737,6 +798,8 @@ export default function UiV1App() {
 
         <Dock route={route} onNavigate={navigateRoot} />
       </div>
+
+      <AgentShell />
     </div>
   )
 }

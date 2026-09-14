@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react"
 import { useMemo } from "react"
 
+import { useAIViewContextLayer } from "../ai/AIProvider"
 import type { SnakeAction, SnakeEntityRef } from "../snake-engine"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import {
@@ -274,6 +275,73 @@ export function LocationNavigator({
     ? locationById.get(selected.parent_location_id) || null
     : null
 
+  const selectedSections = selected
+    ? world.sections.filter((section) => section.location_id === selected.id)
+    : []
+
+  useAIViewContextLayer(
+    "location-navigator",
+    world.loading
+      ? null
+      : {
+          screen: detail ? "location-detail" : "location-navigator",
+          route: selected
+            ? "#/home/world/locations/" + selected.id + (detail ? "/detail" : "")
+            : "#/home/world/locations",
+          title: selected ? "Локации · " + selected.name : "Локации",
+          text: selected
+            ? "Сейчас открыта локация «" + selected.name + "»."
+            : "Открыт список корневых локаций кампании.",
+          entity: selected
+            ? {
+                type: "location",
+                id: selected.id,
+                label: selected.name,
+              }
+            : null,
+          facts: {
+            canManage: world.canManage,
+            selected: selected
+              ? {
+                  id: selected.id,
+                  name: selected.name,
+                  summary: selected.summary,
+                  description: selected.description,
+                  parentLocationId: selected.parent_location_id,
+                  sections: selectedSections.map((section) => ({
+                    id: section.id,
+                    title: section.title,
+                    body: section.body,
+                  })),
+                }
+              : null,
+            path: path.map((location) => ({
+              id: location.id,
+              name: location.name,
+            })),
+            roots: !selected
+              ? roots.slice(0, 30).map((location) => ({
+                  id: location.id,
+                  name: location.name,
+                  summary: location.summary,
+                }))
+              : [],
+            children: children.slice(0, 30).map((location) => ({
+              id: location.id,
+              name: location.name,
+              summary: location.summary,
+            })),
+            transitions: transitions.slice(0, 30).map((transition) => ({
+              id: transition.id,
+              label: transition.label,
+              targetLocationId: transition.target_location_id,
+              targetName: locationById.get(transition.target_location_id)?.name || null,
+            })),
+          },
+        },
+    selected ? 55 : 40,
+  )
+
   if (world.loading) {
     return (
       <main className="u1-section-page">
@@ -305,7 +373,7 @@ export function LocationNavigator({
     return (
       <LocationDetailConnection
         location={selected}
-        sections={world.sections.filter((section) => section.location_id === selected.id)}
+        sections={selectedSections}
       />
     )
   }
