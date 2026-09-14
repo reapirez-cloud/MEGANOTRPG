@@ -7,6 +7,7 @@ export type VossTaskKey =
   | "memory_write"
   | "workshop"
   | "draft_edit"
+  | "mechanics_compile"
 
 type RouteMode = "auto" | "primary" | "base" | "fixed"
 
@@ -58,11 +59,13 @@ const TASKS_REQUIRING_TOOLS = new Set<VossTaskKey>([
   "memory_write",
   "workshop",
   "draft_edit",
+  "mechanics_compile",
 ])
 
 const TASKS_PREFERRING_JSON = new Set<VossTaskKey>([
   "workshop",
   "draft_edit",
+  "mechanics_compile",
 ])
 
 function normalizedText(value: unknown) {
@@ -101,6 +104,13 @@ export function classifyVossTask(
     /(исправ|измени|изменить|передел|убери|удали|замени|добавь|дополни|сократи|переимен)/u.test(text)
   ) {
     return "draft_edit"
+  }
+
+  if (
+    /(механик|ce\b|character engine|ресурс|recharge|перезаряд|формул|бонус|модификатор|действи|action|грант|grant|sourcekey|spell access|доступ к заклин)/u.test(text) &&
+    /(создай|создать|сделай|сделать|добавь|добавить|исправ|измени|изменить|скомпилируй|скомпилировать|подключи|подключить|реализуй|реализовать|пусть\s+(?:да[её]т|получает|тратит|восстанавливает))/u.test(text)
+  ) {
+    return "mechanics_compile"
   }
 
   const creationVerb =
