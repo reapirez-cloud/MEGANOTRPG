@@ -669,6 +669,11 @@ export default function AgentShell() {
                 <b>r{drafts[0].current_revision}</b>
               </header>
               {drafts[0].summary && <p>{drafts[0].summary}</p>}
+              {drafts[0].recent_revisions?.[0]?.change_summary && (
+                <small className="u1-agent-system-note">
+                  {drafts[0].recent_revisions[0].change_summary}
+                </small>
+              )}
             </article>
           )}
 
