@@ -96,6 +96,19 @@ function mechanicsStatus(status: string) {
   return status
 }
 
+function devRunStatus(status: string) {
+  if (status === "proposed") return "Ждёт подтверждения"
+  if (status === "branch_applied") return "Ветка создана"
+  if (status === "checks_pending") return "Идут проверки"
+  if (status === "preview_ready") return "Preview готов"
+  if (status === "merge_ready") return "Готов к dev"
+  if (status === "merged_dev") return "Слит в dev"
+  if (status === "failed") return "Проверки не прошли"
+  if (status === "cancelled") return "Отменён"
+  if (status === "stale") return "Устарел"
+  return status
+}
+
 function recordField(value: unknown, key: string) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null
   const field = (value as Record<string, unknown>)[key]
@@ -106,18 +119,30 @@ export default function AgentShell() {
   const {
     campaignId,
     canManage,
+    isSystemAdmin,
     models,
+    ownerOverrideModels,
     selectedModelId,
     lastRoute,
     messages,
     drafts,
     jobs,
     mechanicsCompilations,
+    devSession,
+    devRuns,
+    developerCapabilities,
     loading,
     sending,
     error,
     viewContext,
     chooseModel,
+    openDeveloperMode,
+    closeDeveloperMode,
+    setDeveloperOverride,
+    applyDevRun,
+    refreshDevRun,
+    mergeDevRun,
+    cancelDevRun,
     send,
   } = useAI()
 
@@ -130,8 +155,11 @@ export default function AgentShell() {
     models.find((model) => model.is_base) ||
     null
   const routedModel =
-    models.find((model) => model.id === lastRoute?.modelId) ||
+    [...models, ...ownerOverrideModels].find(
+      (model) => model.id === lastRoute?.modelId,
+    ) ||
     selectedModel
+  const latestDevRun = devRuns[0] || null
 
   const prompts = useMemo(
     () => contextPrompts(viewContext, canManage),
@@ -167,7 +195,7 @@ export default function AgentShell() {
       const node = logRef.current
       if (node) node.scrollTop = node.scrollHeight
     })
-  }, [jobs, messages, open, sending])
+  }, [devRuns, jobs, messages, open, sending])
 
   if (!campaignId || loading) return null
 
@@ -291,6 +319,79 @@ export default function AgentShell() {
           </label>
         )}
 
+        {isSystemAdmin && (
+          <section
+            className="u1-agent-dev-session"
+            data-active={devSession ? "true" : undefined}
+          >
+            <header>
+              <div>
+                <span>OWNER · DEVELOPER MODE</span>
+                <strong>{devSession ? "Активен" : "Выключен"}</strong>
+              </div>
+              {devSession ? (
+                <button
+                  type="button"
+                  onClick={() => void closeDeveloperMode()}
+                  disabled={sending}
+                >
+                  Закрыть
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void openDeveloperMode(null)}
+                  disabled={sending}
+                >
+                  Открыть на 30 минут
+                </button>
+              )}
+            </header>
+
+            {devSession && (
+              <>
+                <div className="u1-agent-dev-session__meta">
+                  <small>base: dev</small>
+                  <small>
+                    repo: {developerCapabilities?.repositoryConfigured
+                      ? "подключён"
+                      : "нет server token"}
+                  </small>
+                  <small>
+                    до {new Date(devSession.expires_at).toLocaleTimeString("ru-RU", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </small>
+                </div>
+
+                <label>
+                  <span>Модель разработчика</span>
+                  <select
+                    value={devSession.owner_override_model_id || ""}
+                    onChange={(event) =>
+                      void setDeveloperOverride(event.target.value || null)
+                    }
+                    disabled={sending}
+                  >
+                    <option value="">DeepSeek · основная</option>
+                    {ownerOverrideModels.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.display_name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <small className="u1-agent-dev-session__law">
+                  Модель может читать repo и предложить patch. Ветка, PR и merge
+                  запускаются только кнопками ниже. main недоступен.
+                </small>
+              </>
+            )}
+          </section>
+        )}
+
         <div className="u1-agent-prompts" aria-label="Подсказки по текущему экрану">
           {prompts.map((prompt) => (
             <button
@@ -305,6 +406,118 @@ export default function AgentShell() {
         </div>
 
         <div className="u1-agent-log" ref={logRef} aria-live="polite">
+          {isSystemAdmin && latestDevRun && (
+            <article
+              className="u1-agent-dev-run"
+              data-status={latestDevRun.state}
+            >
+              <header>
+                <div>
+                  <span>DEVELOPER RUN · dev only</span>
+                  <strong>{latestDevRun.title}</strong>
+                </div>
+                <b>{devRunStatus(latestDevRun.state)}</b>
+              </header>
+
+              {latestDevRun.summary && <p>{latestDevRun.summary}</p>}
+
+              <div className="u1-agent-dev-run__stats">
+                <small>{latestDevRun.proposed_changes.length} файлов</small>
+                <small>CI: {latestDevRun.ci_state}</small>
+                <small>Preview: {latestDevRun.preview_state}</small>
+              </div>
+
+              {latestDevRun.diff_preview && (
+                <details className="u1-agent-dev-run__diff">
+                  <summary>Diff preview</summary>
+                  <pre>{latestDevRun.diff_preview.slice(0, 18000)}</pre>
+                </details>
+              )}
+
+              {latestDevRun.pr_url && (
+                <a
+                  href={latestDevRun.pr_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  PR #{latestDevRun.pr_number}
+                </a>
+              )}
+
+              {latestDevRun.error_message && (
+                <small className="u1-agent-dev-run__error">
+                  {latestDevRun.error_message}
+                </small>
+              )}
+
+              <div className="u1-agent-dev-run__actions">
+                {latestDevRun.state === "proposed" && (
+                  <button
+                    type="button"
+                    disabled={
+                      sending ||
+                      !devSession ||
+                      developerCapabilities?.repositoryConfigured !== true
+                    }
+                    onClick={() => {
+                      if (!window.confirm(
+                        "Создать отдельную preview-ветку и PR в dev? В main ничего не попадёт.",
+                      )) return
+                      void applyDevRun(latestDevRun.id)
+                    }}
+                  >
+                    Создать preview-ветку
+                  </button>
+                )}
+
+                {latestDevRun.head_sha &&
+                  latestDevRun.state !== "merged_dev" &&
+                  latestDevRun.state !== "cancelled" &&
+                  latestDevRun.state !== "stale" && (
+                    <button
+                      type="button"
+                      disabled={sending || !devSession}
+                      onClick={() => void refreshDevRun(latestDevRun.id)}
+                    >
+                      Обновить проверки
+                    </button>
+                  )}
+
+                {latestDevRun.state === "merge_ready" && (
+                  <button
+                    type="button"
+                    disabled={sending || !devSession}
+                    onClick={() => {
+                      if (!window.confirm(
+                        "CI и Preview зелёные. Слить этот PR в dev? main останется нетронут.",
+                      )) return
+                      void mergeDevRun(latestDevRun.id)
+                    }}
+                  >
+                    Слить в dev
+                  </button>
+                )}
+
+                {!["merged_dev", "cancelled"].includes(latestDevRun.state) && (
+                  <button
+                    type="button"
+                    disabled={sending || !devSession}
+                    onClick={() => void cancelDevRun(latestDevRun.id)}
+                  >
+                    Отменить run
+                  </button>
+                )}
+              </div>
+
+              {developerCapabilities?.repositoryConfigured === false && (
+                <small className="u1-agent-dev-run__error">
+                  Серверный GitHub executor не настроен: нужен GITHUB_DEV_TOKEN.
+                  Proposal сохраняется, но ветку создать нельзя.
+                </small>
+              )}
+            </article>
+          )}
+
           {canManage && mechanicsCompilations[0] && (
             <article
               className="u1-agent-mechanics-card"
