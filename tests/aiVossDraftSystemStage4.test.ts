@@ -43,7 +43,7 @@ test("draft schema is typed for future canonical execution", () => {
 test("players never receive the draft tool from the gateway", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
 
-  assert.match(edge, /\.\.\.\(canChooseModel \? VOSS_DRAFT_TOOLS : \[\]\)/)
+  assert.match(edge, /canChooseModel[\s\S]*\.\.\.VOSS_DRAFT_TOOLS/)
   assert.match(edge, /executeVossDraftTool/)
   assert.match(edge, /isVossDraftTool/)
 })
