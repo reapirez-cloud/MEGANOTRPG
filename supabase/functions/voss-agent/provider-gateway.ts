@@ -139,6 +139,12 @@ function legacyOpenAICompatibleConfig(model: RouterModel) {
   return { apiBase, apiKey, providerModel }
 }
 
+function reasoningEffortForModel(model: RouterModel) {
+  if (model.model_key === "deepseek-v4.1-flash") return "max"
+  if (model.model_key === "grok-4.6") return "xhigh"
+  return null
+}
+
 function providerConfig(
   model: RouterModel,
   allowOwnerOverride = false,
@@ -187,6 +193,9 @@ export async function requestChatCompletion(input: ChatRequest) {
         model: providerModel,
         messages: input.messages,
         temperature: input.temperature ?? 0.55,
+        ...(reasoningEffortForModel(input.model)
+          ? { reasoning_effort: reasoningEffortForModel(input.model) }
+          : {}),
         ...(input.tools?.length
           ? {
               tools: input.tools,
