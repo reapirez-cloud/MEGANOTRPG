@@ -107,3 +107,18 @@ test("Voss UI distinguishes the primary model from the routed model", () => {
   assert.match(dock, /ROUTER ·/)
   assert.match(dock, /routedModel/)
 })
+
+test("fixed task routes survive model deletion and fall back safely", () => {
+  const base = read(
+    "supabase/migrations/20260914173524_ai_model_router_stage8.sql",
+  )
+  const hardening = read(
+    "supabase/migrations/20260914174043_ai_model_router_fixed_fallback_stage8.sql",
+  )
+  const router = read("supabase/functions/voss-agent/model-router.ts")
+
+  assert.match(base, /on delete set null/)
+  assert.match(hardening, /drop constraint if exists ai_agent_model_routes_check/)
+  assert.match(router, /Configured fixed model is unavailable or lacks required capabilities/)
+  assert.match(router, /routeMode: "fallback"/)
+})
