@@ -40,19 +40,6 @@ function imageJobStatus(status: string) {
   return status
 }
 
-function devRunStatus(status: string) {
-  if (status === "proposed") return "Ждёт подтверждения"
-  if (status === "branch_applied") return "Ветка создана"
-  if (status === "checks_pending") return "Идут проверки"
-  if (status === "preview_ready") return "Preview готов"
-  if (status === "merge_ready") return "Готов к dev"
-  if (status === "merged_dev") return "Слит в dev"
-  if (status === "failed") return "Проверки не прошли"
-  if (status === "cancelled") return "Отменён"
-  if (status === "stale") return "Устарел"
-  return status
-}
-
 function recordField(value: unknown, key: string) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null
   const field = (value as Record<string, unknown>)[key]
@@ -120,31 +107,19 @@ export default function AgentShell() {
   const {
     campaignId,
     canManage,
-    isSystemAdmin,
     models,
-    ownerOverrideModels,
     selectedModelId,
     threads,
     activeThreadId,
     messages,
     drafts,
     jobs,
-    devSession,
-    devRuns,
-    developerCapabilities,
     loading,
     sending,
     error,
     chooseModel,
     uploadAttachment,
     removeAttachment,
-    openDeveloperMode,
-    closeDeveloperMode,
-    setDeveloperOverride,
-    applyDevRun,
-    refreshDevRun,
-    mergeDevRun,
-    cancelDevRun,
     createThread,
     switchThread,
     deleteThread,
@@ -157,6 +132,8 @@ export default function AgentShell() {
   const [draft, setDraft] = useState("")
   const [attachments, setAttachments] = useState<AIAttachment[]>([])
   const [uploading, setUploading] = useState(false)
+  const [pendingDeleteThreadId, setPendingDeleteThreadId] =
+    useState<string | null>(null)
   const [orbPosition, setOrbPosition] = useState(defaultOrbPosition)
 
   const logRef = useRef<HTMLDivElement | null>(null)
@@ -180,7 +157,10 @@ export default function AgentShell() {
       model.user_selectable ||
       (canManage && model.gm_selectable),
   )
-  const latestDevRun = devRuns[0] || null
+  const pendingDeleteThread =
+    pendingDeleteThreadId
+      ? threads.find((thread) => thread.id === pendingDeleteThreadId) || null
+      : null
 
   useEffect(() => {
     const onOpen = (event: Event) => {
@@ -204,6 +184,7 @@ export default function AgentShell() {
   useEffect(() => {
     if (!open) {
       setToolsOpen(false)
+      setPendingDeleteThreadId(null)
       return
     }
 
@@ -338,10 +319,17 @@ export default function AgentShell() {
           event.preventDefault()
           setOpen((current) => !current)
         }}
-        aria-label={open ? "Свернуть Восса" : "Открыть Восса"}
+        aria-label={
+          open
+            ? "Свернуть Восса"
+            : sending
+              ? "Восс работает в фоне"
+              : "Открыть Восса"
+        }
         aria-expanded={open}
         aria-controls="u1-agent-panel"
         data-open={open || undefined}
+        data-busy={sending || undefined}
       >
         <AgentMark />
         <span className="u1-agent-orb__state" aria-hidden="true" />
@@ -510,12 +498,7 @@ export default function AgentShell() {
                   <button
                     type="button"
                     className="u1-agent-thread-delete"
-                    onClick={() => {
-                      if (!window.confirm(
-                        `Удалить чат «${thread.title || "Новый чат"}»?`,
-                      )) return
-                      void deleteThread(thread.id)
-                    }}
+                    onClick={() => setPendingDeleteThreadId(thread.id)}
                     disabled={sending}
                     aria-label={`Удалить чат ${thread.title || "Новый чат"}`}
                   >
@@ -526,163 +509,51 @@ export default function AgentShell() {
             </div>
           </div>
 
-          {isSystemAdmin && (
-            <div className="u1-agent-tools-section u1-agent-dev-control">
-              <div className="u1-agent-dev-control__head">
-                <div>
-                  <span className="u1-agent-tools-section__label">
-                    Developer Mode
-                  </span>
-                  <strong>{devSession ? "Активен" : "Выключен"}</strong>
-                </div>
-                {devSession ? (
-                  <button
-                    type="button"
-                    onClick={() => void closeDeveloperMode()}
-                    disabled={sending}
-                  >
-                    Закрыть
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => void openDeveloperMode(null)}
-                    disabled={sending}
-                  >
-                    Открыть
-                  </button>
-                )}
-              </div>
-
-              {devSession && (
-                <>
-                  <small>
-                    dev · до{" "}
-                    {new Date(devSession.expires_at).toLocaleTimeString("ru-RU", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                    {" · "}
-                    {developerCapabilities?.repositoryConfigured
-                      ? "repo подключён"
-                      : "repo без server token"}
-                  </small>
-
-                  {ownerOverrideModels.length > 0 && (
-                    <label className="u1-agent-dev-model">
-                      <span>Модель разработчика</span>
-                      <select
-                        value={devSession.owner_override_model_id || ""}
-                        onChange={(event) =>
-                          void setDeveloperOverride(event.target.value || null)
-                        }
-                        disabled={sending}
-                      >
-                        <option value="">Основная модель</option>
-                        {ownerOverrideModels.map((model) => (
-                          <option key={model.id} value={model.id}>
-                            {model.display_name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
-                </>
-              )}
-            </div>
-          )}
         </section>
 
-        <div className="u1-agent-log" ref={logRef} aria-live="polite">
-          {isSystemAdmin && latestDevRun && (
-            <article
-              className="u1-agent-system-entry u1-agent-dev-run"
-              data-status={latestDevRun.state}
+        {pendingDeleteThread && (
+          <div
+            className="u1-agent-confirm-shade"
+            role="presentation"
+            onClick={() => setPendingDeleteThreadId(null)}
+          >
+            <section
+              className="u1-agent-confirm"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="u1-agent-delete-chat-title"
+              onClick={(event) => event.stopPropagation()}
             >
-              <header>
-                <div>
-                  <span>DEVELOPER RUN</span>
-                  <strong>{latestDevRun.title}</strong>
-                </div>
-                <b>{devRunStatus(latestDevRun.state)}</b>
-              </header>
-
-              {latestDevRun.summary && <p>{latestDevRun.summary}</p>}
-
-              <div className="u1-agent-system-meta">
-                <small>{latestDevRun.proposed_changes.length} файлов</small>
-                <small>CI: {latestDevRun.ci_state}</small>
-                <small>Preview: {latestDevRun.preview_state}</small>
+              <span>ЧАТЫ ВОССА</span>
+              <strong id="u1-agent-delete-chat-title">Удалить чат?</strong>
+              <p>
+                «{pendingDeleteThread.title || "Новый чат"}» исчезнет вместе с
+                его историей. Это действие нельзя отменить.
+              </p>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setPendingDeleteThreadId(null)}
+                >
+                  Оставить
+                </button>
+                <button
+                  type="button"
+                  data-danger
+                  onClick={async () => {
+                    const deleted =
+                      await deleteThread(pendingDeleteThread.id)
+                    if (deleted) setPendingDeleteThreadId(null)
+                  }}
+                >
+                  Удалить
+                </button>
               </div>
+            </section>
+          </div>
+        )}
 
-              {latestDevRun.diff_preview && (
-                <details className="u1-agent-dev-run__diff">
-                  <summary>Diff preview</summary>
-                  <pre>{latestDevRun.diff_preview.slice(0, 18000)}</pre>
-                </details>
-              )}
-
-              <div className="u1-agent-system-actions">
-                {latestDevRun.state === "proposed" && (
-                  <button
-                    type="button"
-                    disabled={
-                      sending ||
-                      !devSession ||
-                      developerCapabilities?.repositoryConfigured !== true
-                    }
-                    onClick={() => {
-                      if (!window.confirm(
-                        "Создать preview-ветку и PR в dev? main останется нетронут.",
-                      )) return
-                      void applyDevRun(latestDevRun.id)
-                    }}
-                  >
-                    Создать preview-ветку
-                  </button>
-                )}
-
-                {latestDevRun.head_sha &&
-                  !["merged_dev", "cancelled", "stale"].includes(
-                    latestDevRun.state,
-                  ) && (
-                    <button
-                      type="button"
-                      disabled={sending || !devSession}
-                      onClick={() => void refreshDevRun(latestDevRun.id)}
-                    >
-                      Проверки
-                    </button>
-                  )}
-
-                {latestDevRun.state === "merge_ready" && (
-                  <button
-                    type="button"
-                    disabled={sending || !devSession}
-                    onClick={() => {
-                      if (!window.confirm(
-                        "CI и Preview зелёные. Слить этот PR в dev?",
-                      )) return
-                      void mergeDevRun(latestDevRun.id)
-                    }}
-                  >
-                    Слить в dev
-                  </button>
-                )}
-
-                {!["merged_dev", "cancelled"].includes(latestDevRun.state) && (
-                  <button
-                    type="button"
-                    disabled={sending || !devSession}
-                    onClick={() => void cancelDevRun(latestDevRun.id)}
-                  >
-                    Отменить
-                  </button>
-                )}
-              </div>
-            </article>
-          )}
-
+        <div className="u1-agent-log" ref={logRef} aria-live="polite">
           {canManage && drafts[0] && (
             <article className="u1-agent-system-entry">
               <header>

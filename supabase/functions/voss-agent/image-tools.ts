@@ -71,7 +71,7 @@ export const VOSS_IMAGE_TOOLS = [
             type: "string",
             enum: ["icon", "ui_preview", "portrait", "panel", "hero_art", "master_art"],
             description:
-              "Semantic purpose. The server maps this to model, size and quality. Never request raw quality settings.",
+              "Semantic purpose. Use icon for inventory/item visuals and interface icons: it maps to low quality (50K). Every other purpose maps to high quality (150K). Never request raw quality settings.",
           },
           variants: {
             type: "integer",

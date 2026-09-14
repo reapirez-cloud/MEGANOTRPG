@@ -63,3 +63,36 @@ test("Voss class catalog and server errors use real sources instead of fake mode
   )
   assert.match(provider, /context\.clone\(\)\.json\(\)/)
 })
+
+
+test("Voss minimises without cancelling work, uses app chat confirmation, and hides Developer Mode", () => {
+  const shell = read("src/ai/AgentShell.tsx")
+  const provider = read("src/ai/AIProvider.tsx")
+  const css = read("src/ai/ai-voss.css")
+
+  assert.match(shell, /data-busy=\{sending \|\| undefined\}/)
+  assert.match(shell, /Восс работает в фоне/)
+  assert.match(shell, /u1-agent-confirm/)
+  assert.doesNotMatch(shell, /window\.confirm\(/)
+  assert.doesNotMatch(shell, /Developer Mode|DEVELOPER RUN/)
+  assert.match(provider, /threadMutationRef/)
+  assert.match(provider, /threadId = await createThread\(\)/)
+  assert.match(provider, /agentKey: "voss",[\s\S]*?threadId,[\s\S]*?message/)
+  assert.match(css, /u1-agent-background-work/)
+})
+
+test("Voss image policy uses low only for inventory/icons and high for every other profile", () => {
+  const profiles = read("supabase/functions/voss-agent/image-profiles.ts")
+  const tools = read("supabase/functions/voss-agent/image-tools.ts")
+  const edge = read("supabase/functions/voss-agent/index.ts")
+
+  assert.match(profiles, /tiny_icon[\s\S]*?quality: "low"/)
+  assert.match(profiles, /ui_preview[\s\S]*?quality: "high"/)
+  assert.match(profiles, /portrait[\s\S]*?quality: "high"/)
+  assert.match(profiles, /panel[\s\S]*?quality: "high"/)
+  assert.match(profiles, /hero_art[\s\S]*?quality: "high"/)
+  assert.match(profiles, /master_art[\s\S]*?quality: "high"/)
+  assert.match(tools, /inventory\/item visuals[\s\S]*?50K/)
+  assert.match(edge, /purpose=icon[\s\S]*?low \/ 50K/)
+  assert.match(edge, /Medium не используй/)
+})

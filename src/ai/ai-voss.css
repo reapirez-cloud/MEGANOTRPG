@@ -868,6 +868,87 @@
   cursor: default;
 }
 
+.u1-agent-orb[data-busy] .u1-agent-orb__state {
+  opacity: 1;
+  animation: u1-agent-background-work 1.25s ease-in-out infinite;
+}
+
+@keyframes u1-agent-background-work {
+  0%, 100% {
+    transform: scale(0.78);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(1.28);
+    opacity: 0.95;
+  }
+}
+
+.u1-agent-confirm-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3, 3, 3, 0.74);
+  backdrop-filter: blur(2px);
+}
+
+.u1-agent-confirm {
+  width: min(310px, 100%);
+  padding: 16px;
+  border: 1px solid rgba(190, 168, 127, 0.22);
+  background:
+    linear-gradient(145deg, rgba(28, 26, 22, 0.98), rgba(11, 11, 10, 0.99));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.58);
+}
+
+.u1-agent-confirm > span {
+  display: block;
+  margin-bottom: 7px;
+  color: rgba(183, 163, 125, 0.44);
+  font-size: 7px;
+  letter-spacing: 0.18em;
+}
+
+.u1-agent-confirm > strong {
+  display: block;
+  color: rgba(232, 224, 208, 0.88);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.u1-agent-confirm > p {
+  margin: 8px 0 14px;
+  color: rgba(190, 182, 164, 0.58);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.u1-agent-confirm > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.u1-agent-confirm button {
+  padding: 7px 10px;
+  border: 1px solid rgba(184, 168, 137, 0.15);
+  background: rgba(255, 255, 255, 0.015);
+  color: rgba(218, 210, 193, 0.64);
+  font: inherit;
+  font-size: 8px;
+  cursor: pointer;
+}
+
+.u1-agent-confirm button[data-danger] {
+  border-color: rgba(162, 91, 78, 0.32);
+  color: rgba(220, 153, 136, 0.72);
+  background: rgba(104, 42, 32, 0.09);
+}
+
 .u1-agent-thread-section {
   gap: 7px;
 }

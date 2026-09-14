@@ -38,8 +38,9 @@ test("image profiles map semantic cost and quality onto CheapVibeCode GPT Image 
   const tools = read("supabase/functions/voss-agent/image-tools.ts")
 
   assert.match(profiles, /tiny_icon[\s\S]*?quality: "low"/)
-  assert.match(profiles, /ui_preview[\s\S]*?quality: "medium"/)
+  assert.match(profiles, /ui_preview[\s\S]*?quality: "high"/)
   assert.match(profiles, /portrait[\s\S]*?quality: "high"/)
+  assert.match(profiles, /panel[\s\S]*?quality: "high"/)
   assert.match(profiles, /hero_art[\s\S]*?quality: "high"/)
   assert.match(profiles, /master_art[\s\S]*?quality: "high"/)
   assert.match(profiles, /model: "gpt-image-2"/)

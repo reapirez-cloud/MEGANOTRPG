@@ -41,7 +41,7 @@ const PROFILES: Record<ImageProfileKey, ImageProfile> = {
     size: "1024x1024",
     width: 1024,
     height: 1024,
-    quality: "medium",
+    quality: "high",
   },
   portrait: {
     key: "portrait",
@@ -59,7 +59,7 @@ const PROFILES: Record<ImageProfileKey, ImageProfile> = {
     size: "1536x1024",
     width: 1536,
     height: 1024,
-    quality: "medium",
+    quality: "high",
   },
   hero_art: {
     key: "hero_art",

@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -477,6 +478,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [viewLayers, setViewLayers] = useState<Record<string, StoredViewLayer>>({})
   const [route, setRoute] = useState(window.location.hash || "#/home")
+  const threadMutationRef = useRef(false)
 
   const viewContext = useMemo(
     () => composeViewContext(viewLayers, route),
@@ -1083,35 +1085,65 @@ export function AIProvider({ children }: { children: ReactNode }) {
   }, [loadConversationFor, loadDevRunsFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor])
 
   const createThread = useCallback(async () => {
-    if (!campaignId || !userId) return null
-    setError(null)
+    if (!campaignId || !userId || threadMutationRef.current) return null
 
-    const { data, error: createError } = await supabase
-      .from("ai_threads")
-      .insert({
-        campaign_id: campaignId,
-        user_id: userId,
-        agent_key: "voss",
-        title: "Новый чат",
-      })
-      .select("id,title,created_at,updated_at")
-      .single()
-
-    if (createError || !data?.id) {
-      setError(createError?.message || "Не удалось создать чат.")
-      return null
+    const reusable = threads.find((thread) => thread.title === "Новый чат")
+    if (reusable) {
+      setActiveThreadId(reusable.id)
+      try {
+        const loadedThreadId =
+          await loadConversationFor(campaignId, userId, reusable.id)
+        await loadJobsFor(campaignId, userId, loadedThreadId)
+      } catch (reason) {
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Не удалось открыть новый чат.",
+        )
+        return null
+      }
+      return reusable.id
     }
 
-    const thread = data as AIThread
-    setThreads((current) => [
-      thread,
-      ...current.filter((item) => item.id !== thread.id),
-    ])
-    setActiveThreadId(thread.id)
-    setMessages([])
-    setJobs([])
-    return thread.id
-  }, [campaignId, userId])
+    threadMutationRef.current = true
+    setError(null)
+
+    try {
+      const { data, error: createError } = await supabase
+        .from("ai_threads")
+        .insert({
+          campaign_id: campaignId,
+          user_id: userId,
+          agent_key: "voss",
+          title: "Новый чат",
+        })
+        .select("id,title,created_at,updated_at")
+        .single()
+
+      if (createError || !data?.id) {
+        setError(createError?.message || "Не удалось создать чат.")
+        return null
+      }
+
+      const thread = data as AIThread
+      setThreads((current) => [
+        thread,
+        ...current.filter((item) => item.id !== thread.id),
+      ])
+      setActiveThreadId(thread.id)
+      setMessages([])
+      setJobs([])
+      return thread.id
+    } finally {
+      threadMutationRef.current = false
+    }
+  }, [
+    campaignId,
+    loadConversationFor,
+    loadJobsFor,
+    threads,
+    userId,
+  ])
 
   const switchThread = useCallback(async (threadId: string) => {
     if (!campaignId || !userId || !threadId) return false
@@ -1140,36 +1172,77 @@ export function AIProvider({ children }: { children: ReactNode }) {
   ])
 
   const deleteThread = useCallback(async (threadId: string) => {
-    if (!campaignId || !userId || !threadId) return false
+    if (
+      !campaignId ||
+      !userId ||
+      !threadId ||
+      threadMutationRef.current
+    ) return false
+
+    threadMutationRef.current = true
     setError(null)
 
-    const { error: deleteError } = await supabase
-      .from("ai_threads")
-      .delete()
-      .eq("id", threadId)
-      .eq("campaign_id", campaignId)
-      .eq("user_id", userId)
-      .eq("agent_key", "voss")
-
-    if (deleteError) {
-      setError(deleteError.message)
-      return false
-    }
-
-    const preferred =
-      threads.find((item) => item.id !== threadId)?.id || null
     try {
-      const loadedThreadId =
-        await loadConversationFor(campaignId, userId, preferred)
-      await loadJobsFor(campaignId, userId, loadedThreadId)
+      const { error: deleteError } = await supabase
+        .from("ai_threads")
+        .delete()
+        .eq("id", threadId)
+        .eq("campaign_id", campaignId)
+        .eq("user_id", userId)
+        .eq("agent_key", "voss")
+
+      if (deleteError) {
+        setError(deleteError.message)
+        return false
+      }
+
+      const remaining = threads.filter((item) => item.id !== threadId)
+      if (remaining.length > 0) {
+        const loadedThreadId =
+          await loadConversationFor(campaignId, userId, remaining[0].id)
+        await loadJobsFor(campaignId, userId, loadedThreadId)
+        return true
+      }
+
+      const { data: replacement, error: replacementError } = await supabase
+        .from("ai_threads")
+        .insert({
+          campaign_id: campaignId,
+          user_id: userId,
+          agent_key: "voss",
+          title: "Новый чат",
+        })
+        .select("id,title,created_at,updated_at")
+        .single()
+
+      if (replacementError || !replacement?.id) {
+        setThreads([])
+        setActiveThreadId(null)
+        setMessages([])
+        setJobs([])
+        setError(
+          replacementError?.message ||
+          "Чат удалён, но новый чат создать не удалось.",
+        )
+        return true
+      }
+
+      const nextThread = replacement as AIThread
+      setThreads([nextThread])
+      setActiveThreadId(nextThread.id)
+      setMessages([])
+      setJobs([])
+      return true
     } catch (reason) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Чат удалён, но список не удалось обновить.",
+          : "Не удалось удалить чат.",
       )
+      return false
+    } finally {
+      threadMutationRef.current = false
     }
-    return true
   }, [
     campaignId,
     loadConversationFor,
@@ -1282,6 +1355,12 @@ export function AIProvider({ children }: { children: ReactNode }) {
         : "")
     if (!campaignId || !userId || !message || sending) return false
 
+    let threadId = activeThreadId
+    if (!threadId) {
+      threadId = await createThread()
+      if (!threadId) return false
+    }
+
     setSending(true)
     setError(null)
 
@@ -1296,7 +1375,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
       body: {
         campaignId,
         agentKey: "voss",
-        ...(activeThreadId ? { threadId: activeThreadId } : {}),
+        threadId,
         message,
         viewContext: context,
         attachments: attachments.map((attachment) => ({
@@ -1341,7 +1420,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
       const responseThreadId =
         typeof data.threadId === "string"
           ? data.threadId
-          : activeThreadId
+          : threadId
       const loadedThreadId =
         await loadConversationFor(campaignId, userId, responseThreadId)
       await loadJobsFor(campaignId, userId, loadedThreadId)
@@ -1374,7 +1453,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     setSending(false)
     return true
-  }, [activeThreadId, campaignId, canManage, devSession, devSessionToken, isSystemAdmin, loadConversationFor, loadDevRunsFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor, route, sending, userId, viewContext])
+  }, [activeThreadId, campaignId, canManage, createThread, devSession, devSessionToken, isSystemAdmin, loadConversationFor, loadDevRunsFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor, route, sending, userId, viewContext])
 
   const value = useMemo<AIContextValue>(() => ({
     campaignId,
