@@ -1,6 +1,6 @@
-# AI Agent Foundation — Voss Stages 1–3
+# AI Agent Foundation — Voss Stages 1–4
 
-> Status: **STAGES 1–3 IMPLEMENTED**
+> Status: **STAGES 1–4 IMPLEMENTED**
 >
 > This is the canonical starting point for AI inside MEGANOT RPG. Future AI work must extend this boundary instead of calling model APIs directly from React components.
 
@@ -166,6 +166,95 @@ Each read-tool call is audited in `ai_read_tool_runs`. The audit row stores the 
 
 Tool output is untrusted campaign content. Lore, notes and entity descriptions must never be interpreted as instructions for the agent.
 
+## Stage 4 — AI Draft System
+
+Voss may now create **GM-only structured proposals** when a GM explicitly asks to create/design/generate content.
+
+The only Stage 4 creation tool is:
+
+```text
+propose_content_draft
+```
+
+This tool does **not** call Oracle, GENA or any canonical engine. It writes only to:
+
+- `ai_drafts` — current review snapshot;
+- `ai_draft_revisions` — immutable revision history.
+
+Players never receive the draft tool. It is exposed only when:
+
+```text
+campaign role = GM / owner
+AND
+selected model supports_tools = true
+```
+
+A draft contains typed nodes and relations.
+
+Supported node domains:
+
+```text
+location
+character (npc / pc)
+definition (item / spell / feature / condition / feat / reference)
+```
+
+Supported relation kinds:
+
+```text
+parent_location
+location_transition
+npc_habitat
+inventory_owner
+depends_on
+```
+
+Payloads are normalized into a future-executable shape. The model cannot invent arbitrary top-level domain fields and expect Stage 6 to execute them.
+
+Examples:
+
+```text
+location.payload
+  description
+  visibility_mode
+  sections[]
+
+character.payload
+  character_type
+  character_class
+  class_template_id
+  level
+  bio
+  visibility_mode
+  design_notes
+
+definition.payload
+  definition_kind
+  visibility
+  summary
+  rules_text
+  mechanics
+  data
+  design_notes
+```
+
+The AI can reference either another new node in the same draft or an existing campaign entity when building relations.
+
+The validator checks:
+
+- node count and relation count;
+- unique node keys;
+- compatible relation endpoints;
+- bounded text/JSON size;
+- entity/subtype compatibility;
+- missing useful descriptions/rules as warnings.
+
+Draft creation returns `canonical_state_changed: false`.
+
+The GM Workshop and Voss dock show these proposals with a visible **AI DRAFT / НЕ КАНОН** label.
+
+Stage 4 intentionally does not provide edit, approve or apply actions yet. Natural-language draft editing is Stage 5; canonical execution through Oracle is Stage 6.
+
 ## Persistence
 
 Tables:
@@ -177,7 +266,7 @@ Tables:
 
 All public tables have RLS.
 
-## Current limitations after Stage 3
+## Current limitations after Stage 4
 
 Voss currently has no domain write tools.
 
@@ -198,7 +287,6 @@ The model must never receive unrestricted SQL or generic table-write access.
 
 ## Planned continuation
 
-4. AI Draft system for zones, NPCs, items and reusable mechanics.
 5. Natural-language draft editing.
 6. Approved draft execution through Oracle and canonical engines.
 7. Campaign event memory / retrieval / summaries.
