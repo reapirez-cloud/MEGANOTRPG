@@ -167,6 +167,39 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(220,232,235,.12) transparent;
 }
+.u1-voss-draft-card {
+  margin: 0 0 14px;
+  padding: 10px 11px;
+  border: 1px solid rgba(225,233,223,.13);
+  background:
+    linear-gradient(90deg, rgba(220,229,214,.05), transparent 72%),
+    rgba(255,255,255,.01);
+  display: grid;
+  gap: 5px;
+}
+.u1-voss-draft-card > span {
+  color: rgba(211,220,190,.48);
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+.u1-voss-draft-card strong {
+  color: rgba(238,239,232,.82);
+  font-family: Georgia,"Times New Roman",serif;
+  font-size: 12px;
+  font-weight: 400;
+}
+.u1-voss-draft-card p {
+  margin: 0;
+  color: rgba(200,208,201,.48);
+  font-size: 7px;
+  line-height: 1.45;
+}
+.u1-voss-draft-card small {
+  color: rgba(198,209,198,.36);
+  font-size: 6px;
+  letter-spacing: .05em;
+}
 .u1-voss-empty {
   min-height: 100%;
   display: grid;
