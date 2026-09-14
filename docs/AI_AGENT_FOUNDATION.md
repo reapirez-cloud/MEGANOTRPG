@@ -1,6 +1,6 @@
-# AI Agent Foundation — Voss Stages 1–13
+# AI Agent Foundation — Voss Stages 1–14
 
-> Status: **STAGES 1–13 IMPLEMENTED**
+> Status: **STAGES 1–14 IMPLEMENTED · READY**
 >
 > This is the canonical starting point for AI inside MEGANOT RPG. Future AI work must extend this boundary instead of calling model APIs directly from React components.
 
@@ -1810,7 +1810,7 @@ Tables:
 
 All public tables have RLS.
 
-## Current limitations after Stage 13
+## Current limitations after Stage 14
 
 Voss can now inspect repository source and prepare bounded code changes during an active system-admin Developer Mode session. The model still cannot approve its own patch, create a branch/PR, mark checks successful, merge into `dev`, or touch `main`.
 
@@ -1818,6 +1818,8 @@ Repository mutation is operational only when the server has `GITHUB_DEV_TOKEN` (
 
 The optional Astra owner override is wired but remains disabled until a real compatible Astra endpoint and credentials are configured. DeepSeek remains the Developer Mode default.
 
-## Planned continuation
+## Stage 14 READY certification
 
-14. Full security/integration audit, READY certification and only then `dev → main`.
+The final audit is recorded in `docs/AI_AGENT_READY_AUDIT.md`.
+
+After the Stage 14 branch and final `dev → main` pull request both pass Build, Lint, tests, Storybook and Playwright smoke, the Agent Platform may be promoted to `main`.
