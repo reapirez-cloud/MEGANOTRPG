@@ -395,7 +395,7 @@ async function readCampaignTimeline(
   context: VossMemoryToolContext,
   args: JsonObject,
 ) {
-  const order = args.order === "desc" ? "desc" : "asc"
+  const order = args.order === "asc" ? "asc" : "desc"
   const limit = boundedInt(args.limit, 50, 1, 100)
   const from = validIso(args.from)
   const to = validIso(args.to)
