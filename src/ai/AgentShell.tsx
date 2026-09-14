@@ -293,6 +293,46 @@ export default function AgentShell() {
         </div>
 
         <div className="u1-agent-log" ref={logRef} aria-live="polite">
+          {canManage && drafts[0] && (
+            <article className="u1-agent-draft-card">
+              <span>AI DRAFT · НЕ КАНОН</span>
+              <strong>{drafts[0].title}</strong>
+              {drafts[0].summary && <p>{drafts[0].summary}</p>}
+              <small>
+                {drafts[0].content.nodes?.length || 0} сущн.
+                {" · "}
+                {drafts[0].content.relations?.length || 0} связей
+                {" · r"}
+                {drafts[0].current_revision}
+              </small>
+              {drafts[0].recent_revisions?.[0]?.change_summary && (
+                <em>{drafts[0].recent_revisions[0].change_summary}</em>
+              )}
+            </article>
+          )}
+
+          {!messages.length && (
+            <div className="u1-agent-empty">
+              <strong>Спрашивай по тому, что открыто.</strong>
+              <p>
+                Восс получает семантический контекст текущего экрана, может дочитывать
+                разрешённые данные, использовать память кампании и собирать GM-черновики.
+                Канон сам не меняется.
+              </p>
+            </div>
+          )}
+
+          {messages.map((message) => (
+            <article
+              key={message.id}
+              className="u1-agent-message"
+              data-role={message.role}
+            >
+              <small>{message.role === "assistant" ? "ВОСС" : "ВЫ"}</small>
+              <p>{message.body}</p>
+            </article>
+          ))}
+
           {jobs.slice(0, 6).map((job) => {
             const reviewSummary = recordField(
               (job.result as Record<string, unknown>).review,
@@ -384,45 +424,6 @@ export default function AgentShell() {
             )
           })}
 
-          {canManage && drafts[0] && (
-            <article className="u1-agent-draft-card">
-              <span>AI DRAFT · НЕ КАНОН</span>
-              <strong>{drafts[0].title}</strong>
-              {drafts[0].summary && <p>{drafts[0].summary}</p>}
-              <small>
-                {drafts[0].content.nodes?.length || 0} сущн.
-                {" · "}
-                {drafts[0].content.relations?.length || 0} связей
-                {" · r"}
-                {drafts[0].current_revision}
-              </small>
-              {drafts[0].recent_revisions?.[0]?.change_summary && (
-                <em>{drafts[0].recent_revisions[0].change_summary}</em>
-              )}
-            </article>
-          )}
-
-          {!messages.length && (
-            <div className="u1-agent-empty">
-              <strong>Спрашивай по тому, что открыто.</strong>
-              <p>
-                Восс получает семантический контекст текущего экрана, может дочитывать
-                разрешённые данные, использовать память кампании и собирать GM-черновики.
-                Канон сам не меняется.
-              </p>
-            </div>
-          )}
-
-          {messages.map((message) => (
-            <article
-              key={message.id}
-              className="u1-agent-message"
-              data-role={message.role}
-            >
-              <small>{message.role === "assistant" ? "ВОСС" : "ВЫ"}</small>
-              <p>{message.body}</p>
-            </article>
-          ))}
 
           {sending && (
             <div className="u1-agent-thinking">Восс разбирается…</div>
