@@ -100,6 +100,66 @@ function mechanics(value: unknown): StoredMechanics {
   return Array.isArray(value) ? value as StoredMechanics : []
 }
 
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return "[" + value.map(stableJson).join(",") + "]"
+  }
+  if (value && typeof value === "object") {
+    const row = value as Record<string, unknown>
+    return "{" + Object.keys(row).sort().map((key) =>
+      JSON.stringify(key) + ":" + stableJson(row[key])
+    ).join(",") + "}"
+  }
+  return JSON.stringify(value)
+}
+
+async function verifyCompiledMechanics(
+  node: AIDraftNode,
+  campaignId: string,
+) {
+  if (node.entity_type !== "definition") return
+
+  const payload = object(node.payload)
+  const rawMechanics = Array.isArray(payload.mechanics)
+    ? payload.mechanics
+    : []
+
+  if (!rawMechanics.length) return
+
+  const compilationId = string(payload.mechanics_compilation_id)
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      .test(compilationId)
+  ) {
+    throw new Error(
+      "Исполняемая механика AI Draft должна сначала пройти Mechanics Compiler.",
+    )
+  }
+
+  const { data, error } = await supabase
+    .from("ai_mechanics_compilations")
+    .select("id,campaign_id,status,mechanics")
+    .eq("id", compilationId)
+    .maybeSingle()
+
+  if (
+    error ||
+    !data ||
+    data.campaign_id !== campaignId ||
+    !["validated", "applied"].includes(data.status)
+  ) {
+    throw new Error(
+      "Mechanics Compiler не подтвердил исполняемую механику этого AI Draft.",
+    )
+  }
+
+  if (stableJson(data.mechanics) !== stableJson(rawMechanics)) {
+    throw new Error(
+      "Механика AI Draft отличается от проверенного результата Mechanics Compiler. Скомпилируй её заново.",
+    )
+  }
+}
+
 function chasovoyJson(value: unknown): ChasovoyJson {
   if (
     value === null ||
@@ -282,6 +342,8 @@ async function preflight(
     ) {
       throw new Error("Тип определения «" + (node.entity_subtype || "") + "» пока нельзя применить.")
     }
+
+    await verifyCompiledMechanics(node, campaignId)
   }
 
   topologicalLocations(draft)
