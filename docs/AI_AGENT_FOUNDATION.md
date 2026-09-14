@@ -1848,6 +1848,98 @@ Developer runs are readable only by their creating system administrator.
 Direct authenticated clients cannot insert/update/delete the journal.
 
 
+## Public model choice, attachments and Voss shell
+
+The normal Voss model is now a **per-user** preference, not a campaign-global switch.
+
+Public campaign models may set:
+
+```text
+user_selectable = true
+```
+
+The confirmed public choices are:
+
+```text
+DeepSeek V4.1 Flash
+Grok 4.6
+```
+
+Grok uses the same CheapVibeCode/OpenAI-compatible gateway and model id:
+
+```text
+grok-4.6
+```
+
+Its registry contract is tool-capable, JSON-capable, multimodal and 500K context.
+
+Selecting Grok never grants GM authority. Draft writes, memory writes, Mechanics Compiler apply paths and Developer Mode remain gated by the existing role/system-admin checks.
+
+Per-user selection is stored in:
+
+```text
+ai_user_agent_settings
+```
+
+### User attachments
+
+The Voss tool drawer can attach up to four user files to the next request.
+
+Uploads go to the private bucket:
+
+```text
+ai-attachments
+```
+
+Path contract:
+
+```text
+<campaign>/<user>/<random>/<safe-name>
+```
+
+Storage RLS requires both campaign membership and path ownership.
+
+The browser never sends provider secrets and never embeds file bytes into application storage tables.
+
+The Edge Function re-checks the path before service-role download.
+
+Supported request attachments are:
+
+- PNG / JPEG / WebP images;
+- plain text;
+- Markdown / JSON / CSV;
+- common source/code/config formats.
+
+Text/code is decoded as bounded request context. Images are sent as multimodal `image_url` content only when the selected model advertises vision support.
+
+Files are user data, never system instructions. Prompt-injection rules therefore apply to file contents exactly as they do to lore/database content.
+
+After a successful request, the browser removes the temporary upload.
+
+### Voss interface law
+
+The Voss shell is conversation-first.
+
+The chat body must not contain:
+
+- a redundant “what I can see” context explainer;
+- context prompt tiles;
+- a giant empty-state coaching block;
+- model selectors;
+- Developer Mode controls.
+
+Those controls belong to the dedicated left tool drawer, which contains:
+
+- public model choice;
+- file attachment;
+- system-admin Developer Mode controls.
+
+The launcher is a small draggable orb. It may be moved around the viewport and snaps to the nearest edge after dragging.
+
+The semantic screen context is still passed to Voss internally; hiding the context explainer does **not** remove contextual awareness.
+
+The visual layer follows MEGANOT rather than generic dashboard/chat-card styling: square/angled controls, restrained bone/graphite/aged-metal accents, plain conversational text and thin system evidence lines instead of rounded SaaS cards.
+
 ## Persistence
 
 Tables:
