@@ -50,7 +50,10 @@ function imageApiKey() {
 }
 
 function apiBase() {
-  return (getEnv("OPENAI_IMAGE_API_BASE_URL") || "https://api.openai.com/v1")
+  return (
+    getEnv("OPENAI_IMAGE_API_BASE_URL", "AI_API_BASE_URL") ||
+    "https://api.openai.com/v1"
+  )
     .replace(/\/+$/, "")
 }
 
