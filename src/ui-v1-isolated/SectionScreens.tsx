@@ -343,9 +343,27 @@ function ClassModeTabs({
   )
 }
 
-function ReferenceHeroPlaceholder({ kind }: { kind: "class" | "subclass" | "feature" }) {
+function ReferenceHeroPlaceholder({
+  kind,
+  art,
+}: {
+  kind: "class" | "subclass" | "feature"
+  art?: string
+}) {
   return (
     <div className="u1-reference-hero-placeholder" data-kind={kind} aria-hidden="true">
+      {art && (
+        <img
+          className="u1-reference-hero-placeholder__image"
+          src={art}
+          alt=""
+          decoding="async"
+          aria-hidden="true"
+          onError={(event) => {
+            event.currentTarget.hidden = true
+          }}
+        />
+      )}
       <span className="u1-reference-hero-placeholder__wash" />
       <span className="u1-reference-hero-placeholder__line" />
     </div>
@@ -617,15 +635,14 @@ function ClassDetailScreen({
   )
 }
 
-const subclassPreviewArtIds = new Set([
-  "druid:moon",
-])
+type SubclassArtKind = "preview" | "hero"
 
-function subclassPreviewArtPath(entry: ClassReferenceEntry, subclass: ClassReferenceSubclass) {
-  const key = `${entry.id}:${subclass.id}`
-  return subclassPreviewArtIds.has(key)
-    ? `/ui-v1/subclasses/${entry.id}/${subclass.id}-preview.webp`
-    : undefined
+function subclassArtPath(
+  entry: ClassReferenceEntry,
+  subclass: ClassReferenceSubclass,
+  kind: SubclassArtKind,
+) {
+  return `/ui-v1/subclasses/${entry.id}/${subclass.id}-${kind}.webp`
 }
 
 function SubclassCatalogScreen({
@@ -641,7 +658,7 @@ function SubclassCatalogScreen({
     id: subclass.id,
     title: subclass.name,
     meta: undefined,
-    art: subclassPreviewArtPath(entry, subclass),
+    art: subclassArtPath(entry, subclass, "preview"),
   }))
 
   return (
@@ -690,7 +707,10 @@ function SubclassDetailScreen({
         active="subclasses"
         onBeforeNavigate={() => setMode("features")}
       />
-      <ReferenceHeroPlaceholder kind="subclass" />
+      <ReferenceHeroPlaceholder
+        kind="subclass"
+        art={subclassArtPath(entry, subclass, "hero")}
+      />
       <ReferenceDetailTabs active={mode} onChange={setMode} />
 
       {mode === "features" ? (
