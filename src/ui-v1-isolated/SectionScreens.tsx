@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 
+import { useAIViewContextLayer } from "../ai/AIProvider"
 import { LocationNavigator } from "./LocationNavigator"
 
 import { classReference, type ClassReferenceEntry, type ClassReferenceSubclass } from "../data/classReference"
@@ -142,6 +143,43 @@ export function WorldSectionScreen({
   path?: string[]
 }) {
   const world = useUiV1WorldData()
+
+  useAIViewContextLayer(
+    "world-section",
+    world.loading
+      ? null
+      : {
+          screen: "world",
+          route: window.location.hash || "#/home/world",
+          title: subsection
+            ? "Мир · " + (worldHubSections.find((item) => item.id === subsection)?.title || subsection)
+            : "Мир",
+          text: subsection
+            ? "Открыт подраздел мира кампании."
+            : "Открыт корневой раздел мира кампании.",
+          facts: {
+            subsection: subsection || "index",
+            path,
+            characters: subsection === "characters"
+              ? world.characters.slice(0, 30).map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                  class: item.character_class,
+                  type: item.character_type,
+                }))
+              : [],
+            lore: subsection === "lore"
+              ? world.lore.slice(0, 30).map((item) => ({
+                  id: item.id,
+                  title: item.title,
+                  summary: item.summary,
+                }))
+              : [],
+            locationCount: world.locations.length,
+          },
+        },
+    30,
+  )
 
   if (!subsection) {
     return (
@@ -561,6 +599,32 @@ function FeatureDetailScreen({
   feature: UiV1ReferenceFeature
   backTo: string
 }) {
+  useAIViewContextLayer(
+    "reference-feature",
+    {
+      screen: "reference-feature",
+      route: window.location.hash,
+      title: sourceTitle + " · " + feature.name,
+      text: "Открыто конкретное умение из справочника классов MEGANOT RPG.",
+      entity: {
+        type: "class-feature",
+        id: feature.sourceKey,
+        label: feature.name,
+      },
+      facts: {
+        sourceTitle,
+        sourceKind,
+        level: feature.level,
+        name: feature.name,
+        vossExplanation: feature.vossExplanation,
+        vossComment: feature.vossComment,
+        exactRule: feature.rule,
+        mechanics: feature.facts,
+      },
+    },
+    75,
+  )
+
   return (
     <main className="u1-section-page">
       <SectionHeader title={sourceTitle} backTo={backTo} />
@@ -604,6 +668,43 @@ function ClassDetailScreen({
   presentation: UiV1ReferencePresentation
 }) {
   const [mode, setMode] = useState<ReferenceDetailMode>("features")
+
+  useAIViewContextLayer(
+    "reference-class",
+    {
+      screen: "reference-class",
+      route: window.location.hash,
+      title: "Класс · " + entry.name,
+      text: "Открыта страница класса «" + entry.name + "», вкладка «" + mode + "».",
+      entity: {
+        type: "class",
+        id: entry.id,
+        label: entry.name,
+      },
+      facts: {
+        classId: entry.id,
+        name: entry.name,
+        mode,
+        vossExplanation: presentation.vossExplanation,
+        vossComment: presentation.vossComment,
+        subclasses: entry.subclasses.map((subclass) => ({
+          id: subclass.id,
+          name: subclass.name,
+        })),
+        features: presentation.storyFeatures.slice(0, 40).map((feature) => ({
+          sourceKey: feature.sourceKey,
+          level: feature.level,
+          name: feature.name,
+          explanation: feature.vossExplanation,
+          rule: feature.rule,
+          mechanics: feature.facts,
+        })),
+        proficiencies: presentation.proficiencies,
+        mechanics: presentation.mechanics,
+      },
+    },
+    60,
+  )
 
   return (
     <main className="u1-section-page">
@@ -661,6 +762,29 @@ function SubclassCatalogScreen({
     art: subclassArtPath(entry, subclass, "preview"),
   }))
 
+  useAIViewContextLayer(
+    "reference-subclass-catalog",
+    {
+      screen: "reference-subclass-catalog",
+      route: window.location.hash,
+      title: entry.name + " · Подклассы",
+      text: "Открыт список подклассов класса «" + entry.name + "».",
+      entity: {
+        type: "class",
+        id: entry.id,
+        label: entry.name,
+      },
+      facts: {
+        query,
+        subclasses: entry.subclasses.map((subclass) => ({
+          id: subclass.id,
+          name: subclass.name,
+        })),
+      },
+    },
+    55,
+  )
+
   return (
     <main className="u1-section-page">
       <SectionHeader title={entry.name} backTo="home/knowledge-base/classes" />
@@ -695,6 +819,45 @@ function SubclassDetailScreen({
   presentation: UiV1ReferencePresentation
 }) {
   const [mode, setMode] = useState<ReferenceDetailMode>("features")
+
+  useAIViewContextLayer(
+    "reference-subclass",
+    {
+      screen: "reference-subclass",
+      route: window.location.hash,
+      title: entry.name + " · " + subclass.name,
+      text: "Открыта страница подкласса «" + subclass.name + "», вкладка «" + mode + "».",
+      entity: {
+        type: "subclass",
+        id: entry.id + ":" + subclass.id,
+        label: subclass.name,
+      },
+      facts: {
+        class: {
+          id: entry.id,
+          name: entry.name,
+        },
+        subclass: {
+          id: subclass.id,
+          name: subclass.name,
+        },
+        mode,
+        vossExplanation: presentation.vossExplanation,
+        vossComment: presentation.vossComment,
+        features: presentation.storyFeatures.slice(0, 40).map((feature) => ({
+          sourceKey: feature.sourceKey,
+          level: feature.level,
+          name: feature.name,
+          explanation: feature.vossExplanation,
+          rule: feature.rule,
+          mechanics: feature.facts,
+        })),
+        proficiencies: presentation.proficiencies,
+        mechanics: presentation.mechanics,
+      },
+    },
+    65,
+  )
 
   return (
     <main className="u1-section-page">
@@ -740,6 +903,27 @@ export function KnowledgeBaseScreen({ subsection, path = [] }: { subsection?: st
   const catalog = useUiV1KnowledgeCatalog(subsection)
   const rules = useRuleTemplates(subsection === "classes" ? catalog.campaignId : "")
   const [query, setQuery] = useState("")
+
+  useAIViewContextLayer(
+    "knowledge-base",
+    {
+      screen: "knowledge-base",
+      route: window.location.hash || "#/home/knowledge-base",
+      title: subsection
+        ? "База знаний · " + (knowledgeBaseSections.find((item) => item.id === subsection)?.title || subsection)
+        : "База знаний",
+      text: subsection
+        ? "Открыт каталог базы знаний MEGANOT RPG."
+        : "Открыта главная страница базы знаний MEGANOT RPG.",
+      facts: {
+        subsection: subsection || "index",
+        path,
+        query,
+        catalogRows: catalog.rows.slice(0, 30),
+      },
+    },
+    35,
+  )
 
   if (!subsection) {
     return (
@@ -952,6 +1136,36 @@ export function SocietyNewsScreen() {
     }
     return result
   }, [news.items])
+
+  useAIViewContextLayer(
+    "society-news",
+    {
+      screen: "society-news",
+      route: "#/home/society-news",
+      title: composerOpen ? "Новости общества · Новая публикация" : "Новости общества",
+      text: composerOpen
+        ? "GM сейчас редактирует новую публикацию общества."
+        : "Открыта лента новостей общества.",
+      facts: {
+        canManage: news.canManage,
+        recentNews: news.items.slice(0, 20).map((item) => ({
+          id: item.id,
+          title: item.title,
+          body: item.body,
+          publishedAt: item.published_at,
+        })),
+      },
+      draft: composerOpen
+        ? {
+            dirty: Boolean(title.trim() || body.trim()),
+            editorTitle: "Новая публикация",
+            values: { title, body },
+            initialValues: { title: "", body: "" },
+          }
+        : undefined,
+    },
+    composerOpen ? 80 : 40,
+  )
 
   async function publish() {
     const cleanTitle = title.trim()
