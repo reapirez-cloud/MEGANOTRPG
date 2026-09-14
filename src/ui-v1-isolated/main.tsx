@@ -1,8 +1,11 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 
+import { AIProvider } from "../ai/AIProvider"
+import VossDock from "../ai/VossDock"
 import UiV1App from "./UiV1App"
 import { SnakeProvider } from "./SnakeProvider"
+import "../ai/ai-voss.css"
 import "./styles.css"
 import "./snake.css"
 import "./workspace.css"
@@ -16,8 +19,11 @@ if (!root) {
 
 createRoot(root).render(
   <StrictMode>
-    <SnakeProvider>
-      <UiV1App />
-    </SnakeProvider>
+    <AIProvider>
+      <SnakeProvider>
+        <UiV1App />
+      </SnakeProvider>
+      <VossDock />
+    </AIProvider>
   </StrictMode>,
 )
