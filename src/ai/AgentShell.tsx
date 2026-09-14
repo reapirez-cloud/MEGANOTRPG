@@ -150,7 +150,7 @@ export default function AgentShell() {
     if (accepted) setDraft("")
   }
 
-  function usePrompt(prompt: string) {
+  function prefillPrompt(prompt: string) {
     setDraft(prompt)
   }
 
@@ -267,7 +267,7 @@ export default function AgentShell() {
             <button
               key={prompt}
               type="button"
-              onClick={() => usePrompt(prompt)}
+              onClick={() => prefillPrompt(prompt)}
               disabled={sending}
             >
               {prompt}
