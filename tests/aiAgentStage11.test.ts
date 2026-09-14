@@ -78,6 +78,16 @@ test("two requested images remain two provider outputs and two user-visible vari
   assert.match(shell, /Показаны все запрошенные варианты/)
 })
 
+test("CheapVibeCode can use one shared API key and base URL for chat and images", () => {
+  const gateway = read("supabase/functions/voss-agent/provider-gateway.ts")
+  const imageProvider = read("supabase/functions/voss-agent/image-provider.ts")
+
+  assert.match(gateway, /"DEEPSEEK_API_KEY"[\s\S]*"AI_API_KEY"/)
+  assert.match(gateway, /getEnv\("DEEPSEEK_API_BASE_URL", "AI_API_BASE_URL"\)/)
+  assert.match(imageProvider, /"OPENAI_IMAGE_API_KEY", "OPENAI_API_KEY", "AI_API_KEY"/)
+  assert.match(imageProvider, /getEnv\("OPENAI_IMAGE_API_BASE_URL", "AI_API_BASE_URL"\)/)
+})
+
 test("CheapVibeCode image storage detects the real returned binary format", () => {
   const tools = read("supabase/functions/voss-agent/image-tools.ts")
 
