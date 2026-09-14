@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 
 import { LocationNavigator } from "./LocationNavigator"
 
-import { classReference } from "../data/classReference"
+import { classReference, type ClassReferenceEntry, type ClassReferenceSubclass } from "../data/classReference"
 import { warlockInvocationsReference } from "../data/classes/warlockInvocationsReference"
 import {
   knowledgeBaseSections,
@@ -204,9 +204,11 @@ export function WorldSectionScreen({
 function ClassCatalogPanels({
   rows,
   query,
+  onOpen,
 }: {
   rows: Array<{ id: string; title: string; meta: string; art?: string }>
   query: string
+  onOpen: (id: string) => void
 }) {
   const normalized = query.trim().toLocaleLowerCase("ru")
   const visible = useMemo(
@@ -219,29 +221,34 @@ function ClassCatalogPanels({
   return (
     <div className="u1-class-panel-list">
       {visible.map((row) => (
-        <article
+        <button
+          type="button"
           className="u1-class-panel"
           data-class-id={row.id}
           key={row.id}
+          onClick={() => onOpen(row.id)}
+          aria-label={`Открыть: ${row.title}`}
         >
           <span className="u1-class-panel__texture" aria-hidden="true" />
-          <img
-            className="u1-class-panel__image"
-            src={row.art || `/ui-v1/classes/${row.id}.webp`}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            aria-hidden="true"
-            onError={(event) => {
-              event.currentTarget.hidden = true
-            }}
-          />
+          {row.art && (
+            <img
+              className="u1-class-panel__image"
+              src={row.art}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              aria-hidden="true"
+              onError={(event) => {
+                event.currentTarget.hidden = true
+              }}
+            />
+          )}
           <span className="u1-class-panel__scrim" aria-hidden="true" />
           <span className="u1-class-panel__copy">
             <strong>{row.title}</strong>
             <small>{row.meta}</small>
           </span>
-        </article>
+        </button>
       ))}
       {!visible.length && <EmptyState>Ничего не найдено.</EmptyState>}
     </div>
@@ -276,7 +283,112 @@ function CatalogRows({
   )
 }
 
-export function KnowledgeBaseScreen({ subsection }: { subsection?: string }) {
+
+function ReferenceCopyBlock({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="u1-reference-copy__block">
+      <span>{label}</span>
+      <p>{children}</p>
+    </section>
+  )
+}
+
+function ClassDetailScreen({ entry }: { entry: ClassReferenceEntry }) {
+  return (
+    <main className="u1-section-page">
+      <SectionHeader title={entry.name} backTo="home/knowledge-base/classes" />
+      <button
+        type="button"
+        className="u1-class-subclasses-tab"
+        onClick={() => navigate(`home/knowledge-base/classes/${entry.id}/subclasses`)}
+      >
+        <span>Подклассы</span>
+        <small>{entry.subclasses.length}</small>
+        <i aria-hidden="true">→</i>
+      </button>
+
+      <section className="u1-reference-copy">
+        <p className="u1-reference-copy__lead">{entry.tagline}</p>
+        <ReferenceCopyBlock label="Описание класса">{entry.description}</ReferenceCopyBlock>
+        {entry.mechanics && (
+          <ReferenceCopyBlock label="Коротко о правилах">{entry.mechanics}</ReferenceCopyBlock>
+        )}
+      </section>
+    </main>
+  )
+}
+
+function SubclassCatalogScreen({
+  entry,
+  query,
+  setQuery,
+}: {
+  entry: ClassReferenceEntry
+  query: string
+  setQuery: (value: string) => void
+}) {
+  const rows = entry.subclasses.map((subclass) => ({
+    id: subclass.id,
+    title: subclass.name,
+    meta: subclass.summary,
+  }))
+
+  return (
+    <main className="u1-section-page">
+      <SectionHeader title="Подклассы" backTo={`home/knowledge-base/classes/${entry.id}`} />
+      <div className="u1-class-catalog-context">{entry.name}</div>
+      <label className="u1-catalog-search">
+        <span>Поиск</span>
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Найти подкласс…"
+        />
+      </label>
+      <ClassCatalogPanels
+        rows={rows}
+        query={query}
+        onOpen={(subclassId) =>
+          navigate(`home/knowledge-base/classes/${entry.id}/subclasses/${subclassId}`)
+        }
+      />
+    </main>
+  )
+}
+
+function SubclassDetailScreen({
+  entry,
+  subclass,
+}: {
+  entry: ClassReferenceEntry
+  subclass: ClassReferenceSubclass
+}) {
+  return (
+    <main className="u1-section-page">
+      <SectionHeader
+        title={subclass.name}
+        backTo={`home/knowledge-base/classes/${entry.id}/subclasses`}
+      />
+      <section className="u1-reference-copy">
+        <p className="u1-reference-copy__lead">{subclass.summary}</p>
+        {subclass.explanation && (
+          <ReferenceCopyBlock label="Описание подкласса">{subclass.explanation}</ReferenceCopyBlock>
+        )}
+        {subclass.mechanics && (
+          <ReferenceCopyBlock label="Коротко о правилах">{subclass.mechanics}</ReferenceCopyBlock>
+        )}
+      </section>
+    </main>
+  )
+}
+
+export function KnowledgeBaseScreen({ subsection, path = [] }: { subsection?: string; path?: string[] }) {
   const catalog = useUiV1KnowledgeCatalog(subsection)
   const [query, setQuery] = useState("")
 
@@ -313,6 +425,33 @@ export function KnowledgeBaseScreen({ subsection }: { subsection?: string }) {
     return <FutureConnection title={registered.title} backTo="home/knowledge-base" />
   }
 
+  if (subsection === "classes" && path.length) {
+    const selectedClass = classReference.find((entry) => entry.id === path[0])
+    if (!selectedClass) {
+      return <FutureConnection title="Классы" backTo="home/knowledge-base/classes" />
+    }
+
+    if (path[1] === "subclasses") {
+      if (path[2]) {
+        const selectedSubclass = selectedClass.subclasses.find((subclass) => subclass.id === path[2])
+        if (!selectedSubclass) {
+          return (
+            <FutureConnection
+              title="Подклассы"
+              backTo={`home/knowledge-base/classes/${selectedClass.id}/subclasses`}
+            />
+          )
+        }
+
+        return <SubclassDetailScreen entry={selectedClass} subclass={selectedSubclass} />
+      }
+
+      return <SubclassCatalogScreen entry={selectedClass} query={query} setQuery={setQuery} />
+    }
+
+    return <ClassDetailScreen entry={selectedClass} />
+  }
+
   return (
     <main className="u1-section-page">
       <SectionHeader title={registered.title} backTo="home/knowledge-base" />
@@ -326,7 +465,7 @@ export function KnowledgeBaseScreen({ subsection }: { subsection?: string }) {
       </label>
 
       {subsection === "classes" && staticRows ? (
-        <ClassCatalogPanels rows={staticRows} query={query} />
+        <ClassCatalogPanels rows={staticRows} query={query} onOpen={(classId) => navigate(`home/knowledge-base/classes/${classId}`)} />
       ) : staticRows ? (
         <CatalogRows rows={staticRows} query={query} />
       ) : catalog.loading ? (
