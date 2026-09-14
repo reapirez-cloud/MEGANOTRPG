@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 
+import { useAIViewContextLayer } from "../ai/AIProvider"
 import { SnakeTrigger } from "./SnakeProvider"
 import {
   visibilityLabel,
@@ -147,6 +148,31 @@ export default function GMWorkshopCharacters({
       ).length,
     ],
   ]
+
+  useAIViewContextLayer(
+    "gm-workshop-characters",
+    {
+      screen: "gm-workshop-characters",
+      title: "Мастерская · Персонажи",
+      text: "GM просматривает каталог персонажей с текущими фильтрами.",
+      facts: {
+        query,
+        filter,
+        recentIds,
+        visibleCharacters: visible.slice(0, 30).map((character) => ({
+          id: character.id,
+          name: character.name,
+          type: character.characterType,
+          class: character.characterClass,
+          level: character.level,
+          lifeState: character.lifeState,
+          assignedUserId: character.assignedUserId,
+          visibilityMode: character.visibilityMode,
+        })),
+      },
+    },
+    45,
+  )
 
   return (
     <div className="u1-gm-workshop__section">

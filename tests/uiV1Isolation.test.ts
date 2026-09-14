@@ -42,6 +42,7 @@ const approvedClassPanelAssets = [
   "public/ui-v1/classes/monk.webp",
 ]
 const sectionScreens = fs.readFileSync("src/ui-v1-isolated/SectionScreens.tsx", "utf8")
+const classReferencePresentation = fs.readFileSync("src/ui-v1-isolated/classReferencePresentation.ts", "utf8")
 const sectionData = fs.readFileSync("src/ui-v1-isolated/useUiV1SectionData.ts", "utf8")
 const sectionRegistry = fs.readFileSync("src/ui-v1-isolated/sectionRegistry.ts", "utf8")
 const sectionStyles = fs.readFileSync("src/ui-v1-isolated/section-screens.css", "utf8")
@@ -320,7 +321,8 @@ test("Snake owns long press, right click, duplicate suppression and universal wi
   assert.match(entry, /SnakeProvider/)
   assert.match(entry, /\.\/snake\.css/)
   assert.match(snakeUiRuntime, /window\.setTimeout\(\(\) =>/)
-  assert.match(snakeUiRuntime, /}, 520\)/)
+  assert.match(snakeUiRuntime, /const longPressMs = 520/)
+  assert.match(snakeUiRuntime, /}, longPressMs\)/)
   assert.match(snakeUiRuntime, /consumedUntilRef/)
   assert.match(snakeUiRuntime, /onContextMenu=\{contextMenu\}/)
   assert.match(snakeUiRuntime, /Math\.hypot/)
@@ -479,6 +481,20 @@ test("VI is reserved for the future player profile and no longer duplicates Work
 })
 
 
+test("Snake touch context menu cannot bypass the long-press threshold", () => {
+  const snakeTrigger = fs.readFileSync("src/ui-v1-isolated/snake/interaction/SnakeTrigger.tsx", "utf8")
+  const snakeContract = fs.readFileSync("docs/SNAKE_INTERACTION_CONTRACT.md", "utf8")
+  assert.match(snakeTrigger, /const longPressMs = 520/)
+  assert.match(snakeTrigger, /touchGestureRef/)
+  assert.match(snakeTrigger, /now - touch\.startedAt < longPressMs/)
+  assert.match(snakeTrigger, /if \(isRecentTouch\)/)
+  assert.match(snakeTrigger, /event\.stopPropagation\(\)/)
+  assert.match(snakeTrigger, /const wasPendingLongPress = timerRef\.current !== null/)
+  assert.match(snakeTrigger, /touchGestureRef\.current\.cancelled = true/)
+  assert.match(snakeTrigger, /useEffect\(\(\) => \{[\s\S]*?window\.clearTimeout/)
+  assert.match(snakeContract, /contextmenu.*never sufficient evidence.*long press/i)
+})
+
 test("Workspace stats expand locally while character long-press uses dynamic Snake branches", () => {
   assert.match(workspaceData, /from\("character_sheets"\)/)
   assert.match(workspaceData, /skill_proficiencies/)
@@ -525,3 +541,100 @@ test("Knowledge Base classes use panoramic 3:1 art-ready panels", () => {
   assert.match(sectionStyles, /aspect-ratio:\s*3\s*\/\s*1/)
   assert.match(sectionStyles, /object-fit:\s*cover/)
 })
+
+test("Knowledge Base class pages keep the class/subclass axis and add content modes", () => {
+  assert.match(app, /<KnowledgeBaseScreen subsection=\{route\.subsection\} path=\{route\.tail\}/)
+  assert.match(sectionScreens, /function ClassModeTabs/)
+  assert.match(sectionScreens, /className="u1-class-mode-tabs"/)
+  assert.match(sectionScreens, /Класс/)
+  assert.match(sectionScreens, /Подклассы <small>\{entry\.subclasses\.length\}<\/small>/)
+  assert.match(sectionScreens, /type ReferenceDetailMode = "features" \| "proficiencies" \| "mechanics"/)
+  assert.match(sectionScreens, /label: "Умения"/)
+  assert.match(sectionScreens, /label: "Владения"/)
+  assert.match(sectionScreens, /label: "Механика"/)
+  assert.match(sectionStyles, /\.u1-reference-detail-tabs/)
+})
+
+test("Knowledge Base story features are authored first instead of exposing every Character Engine grant", () => {
+  assert.match(classReferencePresentation, /storyFeatures:/)
+  assert.match(classReferencePresentation, /authoredClassFeatures/)
+  assert.match(classReferencePresentation, /authored\.length[\s\S]*?authored\.map/)
+  assert.match(classReferencePresentation, /runtimeStoryFeatures/)
+  assert.match(classReferencePresentation, /genericProgressionMarker/)
+  assert.match(classReferencePresentation, /ability-score-improvement/)
+  assert.match(classReferencePresentation, /epic-boon/)
+  assert.match(classReferencePresentation, /key\.endsWith\("-subclass"\)/)
+  assert.match(sectionScreens, /presentation\.storyFeatures/)
+  assert.doesNotMatch(sectionScreens, /presentation\.features/)
+})
+
+test("UI v1 Druid stories cannot fall back to legacy druidReference prose", () => {
+  assert.doesNotMatch(classReferencePresentation, /classes\/druidReference/)
+  assert.match(classReferencePresentation, /getDruidBaseVossNarration/)
+  assert.match(classReferencePresentation, /getDruidSubclassFeatureVossNarration/)
+})
+
+test("Feature list previews authored Voss story while full rules stay in feature detail", () => {
+  assert.match(sectionScreens, /className="u1-feature-row__story"/)
+  assert.match(sectionScreens, /\{feature\.vossExplanation\}/)
+  assert.match(sectionStyles, /\.u1-feature-row__story/)
+  assert.match(sectionStyles, /-webkit-line-clamp:\s*2/)
+  assert.match(sectionScreens, /<ReferenceCopyBlock label="Восс объясняет">/)
+  assert.match(sectionScreens, /<ReferenceCopyBlock label="Точное правило">/)
+  assert.match(sectionScreens, /<ReferenceCopyBlock label="Комментарий Восса">/)
+  assert.match(sectionScreens, /<span>Механика<\/span>/)
+})
+
+test("Voss comment is visible beside the story instead of hidden below mechanics", () => {
+  assert.match(sectionScreens, /function VossCommentBlock/)
+  assert.match(sectionScreens, /<VossCommentBlock text=\{presentation\.vossComment\} \/>/)
+  assert.doesNotMatch(sectionScreens, /VossCommentDisclosure|<details className="u1-voss-comment/)
+  assert.match(
+    sectionScreens,
+    /label="Восс объясняет"[\s\S]*?label="Комментарий Восса"[\s\S]*?label="Точное правило"/,
+  )
+  assert.match(sectionStyles, /\.u1-voss-comment-block/)
+})
+
+test("Class reference keeps runtime data mounted while switching class and subclass routes", () => {
+  assert.match(app, /route\.section === "knowledge-base" && route\.subsection === "classes"/)
+  assert.match(app, /return "section:knowledge-base:classes"/)
+  assert.match(sectionScreens, /onBeforeNavigate=\{\(\) => setMode\("features"\)\}/)
+})
+
+test("Class overview Voss prose is compact by default and explicitly expandable", () => {
+  assert.match(sectionScreens, /function ExpandableVossIntro/)
+  assert.match(sectionScreens, /Показать полностью ↓/)
+  assert.match(sectionScreens, /Свернуть ↑/)
+  assert.match(sectionStyles, /\.u1-voss-intro:not\(\[data-expanded\]\) \.u1-voss-intro__text/)
+  assert.match(sectionStyles, /-webkit-line-clamp:\s*4/)
+  assert.match(sectionScreens, /<ReferenceDetailTabs active=\{mode\}/)
+})
+
+test("Proficiencies and runtime mechanics have their own player-facing read models", () => {
+  assert.match(classReferencePresentation, /proficiencies: buildProficiencies/)
+  assert.match(classReferencePresentation, /mechanics: mechanics\.length \? mechanics : mechanicsFallback/)
+  assert.match(classReferencePresentation, /mechanic\.target !== "proficiency"/)
+  assert.match(classReferencePresentation, /choice\.target !== "proficiency"/)
+  assert.match(classReferencePresentation, /classifyProficiency/)
+  assert.match(sectionScreens, /function ProficiencyView/)
+  assert.match(sectionScreens, /function MechanicsView/)
+  assert.match(sectionScreens, /className="u1-mechanic-row"/)
+  assert.doesNotMatch(sectionScreens, />grantOperation<|>priority<|>sourceKey</)
+})
+
+test("Class and subclass detail reserve clean 16:9 artwork slots without stretching 3:1 catalog art", () => {
+  assert.match(sectionScreens, /function ReferenceHeroPlaceholder/)
+  assert.match(sectionScreens, /kind="class"/)
+  assert.match(sectionScreens, /kind="subclass"/)
+  assert.match(sectionScreens, /kind="feature"/)
+  assert.match(sectionStyles, /\.u1-reference-hero-placeholder/)
+  assert.match(sectionStyles, /aspect-ratio:\s*16\s*\/\s*9/)
+  assert.doesNotMatch(sectionScreens, /subclassDetailArtPath|classHeroFallbackPath|u1-subclass-hero/)
+})
+
+test("Subclass art cards stay minimal", () => {
+  assert.match(sectionScreens, /title: subclass\.name,[\s\S]*?meta: undefined/)
+  assert.doesNotMatch(sectionScreens, /meta: subclass\.summary/)
+})
+

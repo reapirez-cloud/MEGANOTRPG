@@ -70,6 +70,8 @@ export function SnakeSingleWindow({
           request={request}
           busy={busy}
           error={session.error}
+          entity={session.entity}
+          contextSource={"snake-editor:" + session.id}
           onSubmit={onSubmit}
           onCancel={onClose}
         />

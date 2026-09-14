@@ -1,4 +1,3 @@
-import { druidReference } from "./druidReference.ts"
 import {
   druidClassVossComment as currentDruidClassVossComment,
   getDruidBaseVossNarration as getCurrentDruidBaseVossNarration,
@@ -40,13 +39,6 @@ export function getDruidBaseVossComment(level: number, name: string) {
   return normalizeVossWorldToneDeep(getDruidLechBaseVossComment(level, name))
 }
 
-// The Druid class view still reads base-feature comments from druidReference directly.
-// Keep only the authored literary comment field synchronized here; mechanics stay untouched.
-for (const feature of druidReference.features) {
-  const authoredComment = getDruidLechBaseVossComment(feature.level, feature.name)
-  if (authoredComment) feature.voss = normalizeVossWorldToneDeep(authoredComment)
-  feature.explanation = normalizeVossWorldToneDeep(feature.explanation)
-}
 
 const subclassAliases: Record<string, string> = {
   "circle-of-stars": "stars",

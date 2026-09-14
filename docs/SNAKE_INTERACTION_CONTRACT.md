@@ -305,6 +305,7 @@ Required behavior:
 - native selection/copy/touch-callout must not race the Snake gesture;
 - mouse right-click must not wait for the touch long-press timer;
 - ordinary primary click/tap remains the object's normal action.
+- on touch/WebView, a `contextmenu` event is never sufficient evidence of a long press by itself: it may open Snake only when it correlates to a tracked touch gesture that has already met the long-press threshold; a short-tap synthetic `contextmenu` must be suppressed.
 
 ### One gesture = one invocation
 

@@ -101,6 +101,41 @@ Current Home order is:
 
 Home reads real Supabase data for campaign identity/cover, chronology, art previews, achievements and society announcements. Realtime is a refresh signal, not canonical storage.
 
+## Classes and subclasses — visual law
+
+The Knowledge Base class family deliberately separates **catalogue previews**, **story reading** and **system reference**:
+
+- class catalogue panels: **3:1**;
+- subclass catalogue panels: **3:1**;
+- catalogue art cards stay minimal: art + title, with factual service metadata only when genuinely useful;
+- class detail, subclass detail and feature detail reserve a dedicated **16:9** artwork slot;
+- the 16:9 slots may remain intentional visual placeholders until suitable artwork exists; never stretch or crop the 3:1 catalogue art to fake a finished hero.
+
+Class and subclass detail use two independent navigation axes:
+
+1. **КЛАСС / ПОДКЛАССЫ** answers which reference object is being viewed.
+2. **УМЕНИЯ / ВЛАДЕНИЯ / МЕХАНИКА** answers which kind of information the player wants.
+
+Content law:
+
+- **Умения** is the authored/literary layer. Author-written class/subclass features create the player-facing rows. Character Engine runtime may enrich an authored feature with exact rules and facts, but raw runtime grants, resources, values and unlock markers must not automatically create story cards.
+- Each ability row shows level, real feature name and a short two-line preview of the existing Voss story. The preview is never an interface-written summary.
+- Druid literary content is sourced only through the current grimdark Voss router (`druidVossNarration.ts`). `druidReference.ts` is legacy rule-copy only and must never supply player-facing story/explanation text.
+- Opening an ability shows the full story first, then the exact rule, structured mechanical facts and Voss comment.
+- **Владения** is dry reference information derived from proficiency grants and proficiency choices: weapons, armor, saving throws, skills, tools and languages. No invented Voss prose belongs there.
+- **Механика** is the player-facing read model of runtime structure: resources, actions, progression markers, choices and scaling. Technical keys such as `sourceKey`, `grantOperation` or engine priorities remain internal.
+- Generic progression markers such as hit die, subclass unlock, Ability Score Improvement and Epic Boon belong to mechanics/progression, not the literary ability feed.
+- If a class/subclass has no certified runtime package, the mechanics view may fall back to the exact authored rule/facts instead of pretending executable support exists.
+
+Long overview prose must never block navigation:
+
+- the **УМЕНИЯ / ВЛАДЕНИЯ / МЕХАНИКА** switch sits immediately after the 16:9 slot;
+- class/subclass Voss introduction is clamped to roughly four lines by default;
+- the full introduction is revealed only through an explicit **Показать полностью** action;
+- class-level Voss comments stay behind a compact disclosure rather than becoming another mandatory scroll wall.
+
+The implementation must reuse UI 1.0 visual rules already present in the application: current canvas/material tokens, typography, radii, thin separators, spacing rhythm and restrained grayscale hierarchy. The generated concept image is a structural reference, not a new visual theme. Do not import gold fantasy chrome, ornamental card stacks, new gradients, or independent component styling merely to imitate a render.
+
 ## World — canonical player-facing terminology
 
 The current user-facing World vocabulary is **Локации / Персонажи / Лор / Карта**:
@@ -176,6 +211,7 @@ Current implementation includes:
 - one UI 1.0 `SnakeProvider` and reusable `SnakeTrigger`;
 - dynamic Branch/Command navigation with a transient branch stack: the domain resolves only the current level's children, Back restores the previous level, and terminal commands receive the selected path;
 - right-click + touch long-press with synthetic Telegram/Android contextmenu suppression;
+- ordinary object tap/click is never a Snake invocation: touch must survive the centralized long-press threshold, pointer release before the threshold permanently cancels that gesture, and delayed WebView `contextmenu` from a short tap is suppressed; explicit management affordances such as a visible `•••` button may intentionally open Snake on click;
 - viewport-aware universal floating context menu;
 - one Snake-owned adaptive universal window system: Placeholder / Confirm / Editor / Picker / Detail / Notice/Error / Flow; windows support controlled compact-to-full sizing and Flow steps accumulate one transient draft before final dispatch;
 - domain-provided typed executors rather than a generic arbitrary engine RPC;

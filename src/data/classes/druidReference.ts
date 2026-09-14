@@ -1,3 +1,16 @@
+/**
+ * LEGACY / RULE-COPY ONLY.
+ *
+ * Do not use `explanation`, `authorDescription`, `authorComment` or `voss`
+ * from this file as player-facing Voss stories. Those short texts predate the
+ * current grimdark narrative layer and repeatedly leaked back into the UI.
+ *
+ * Current literary sources live behind `druidVossNarration.ts`
+ * (Lech + current grimdark subclass packs). Keep this module only while its
+ * exact rule/mechanics copy is still referenced elsewhere; remove it once
+ * those rule consumers are migrated.
+ */
+
 export type DruidReferenceFeature = {
   level: number
   name: string

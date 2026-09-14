@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 
+import { useAIViewContextLayer } from "../ai/AIProvider"
 import type { SnakeAction } from "../snake-engine"
 import type { CharacterSheet, InventoryItem } from "../types/characterSheet"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
@@ -53,6 +54,117 @@ export default function CharacterView({
   const control = useUiV1CharacterControl(characterId)
   const workshop = useGMWorkshopData()
   const snake = useSnake()
+
+  useAIViewContextLayer(
+    "character-view",
+    control.loading
+      ? null
+      : {
+          screen: "character",
+          route: "#/workspace/character/" + characterId,
+          title: control.character
+            ? "Персонаж · " + control.character.name
+            : "Персонаж",
+          text: control.character
+            ? "Открыт полный лист персонажа «" + control.character.name + "»."
+            : "Страница персонажа открыта, но данные персонажа недоступны.",
+          entity: control.character
+            ? {
+                type: "character",
+                id: control.character.id,
+                label: control.character.name,
+              }
+            : {
+                type: "character",
+                id: characterId,
+              },
+          facts: control.character
+            ? {
+                character: {
+                  id: control.character.id,
+                  name: control.character.name,
+                  class: control.character.characterClass,
+                  level: control.character.level,
+                  type: control.character.characterType,
+                  lifeState: control.character.lifeState,
+                  bio: control.character.bio,
+                },
+                sheet: control.sheet
+                  ? {
+                      race: control.sheet.race,
+                      background: control.sheet.background,
+                      alignment: control.sheet.alignment,
+                      abilities: {
+                        strength: control.sheet.strength,
+                        dexterity: control.sheet.dexterity,
+                        constitution: control.sheet.constitution,
+                        intelligence: control.sheet.intelligence,
+                        wisdom: control.sheet.wisdom,
+                        charisma: control.sheet.charisma,
+                      },
+                      armorClass: control.sheet.armor_class,
+                      initiativeBonus: control.sheet.initiative_bonus,
+                      speed: control.sheet.speed,
+                      proficiencyBonus: control.sheet.proficiency_bonus,
+                      passivePerception: control.sheet.passive_perception,
+                      hp: {
+                        current: control.sheet.current_hp,
+                        max: control.sheet.max_hp,
+                        temp: control.sheet.temp_hp,
+                      },
+                      proficiencies: control.sheet.proficiencies,
+                      languages: control.sheet.languages,
+                      senses: control.sheet.senses,
+                    }
+                  : null,
+                resources: control.resources.slice(0, 30),
+                inventory: control.inventory.slice(0, 40).map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                  category: item.category,
+                  quantity: item.quantity,
+                  equipped: item.equipped,
+                  description: item.description,
+                  usageMode: item.usage_mode,
+                  chargesCurrent: item.charges_current,
+                  chargesMax: item.charges_max,
+                })),
+                spells: control.spells.slice(0, 40).map((spell) => ({
+                  id: spell.id,
+                  name: spell.name,
+                  level: spell.spell_level,
+                  school: spell.school,
+                  prepared: spell.prepared,
+                  concentration: spell.concentration,
+                  ritual: spell.ritual,
+                  description: spell.description,
+                })),
+                features: control.features.slice(0, 40).map((feature) => ({
+                  id: feature.id,
+                  name: feature.name,
+                  kind: feature.kind,
+                  description: feature.description,
+                })),
+                templateAssignments: control.assignments.slice(0, 20).map((assignment) => {
+                  const template = control.templates.find(
+                    (item) => item.id === assignment.template_id,
+                  )
+                  return {
+                    assignmentId: assignment.id,
+                    templateId: assignment.template_id,
+                    kind: template?.kind || null,
+                    name: template?.name || null,
+                    level: assignment.template_level,
+                  }
+                }),
+              }
+            : {
+                characterId,
+                error: control.error,
+              },
+        },
+    60,
+  )
 
   if (control.loading) {
     return <main className="u1-character-view"><div className="u1-character-view__empty">Загрузка персонажа…</div></main>

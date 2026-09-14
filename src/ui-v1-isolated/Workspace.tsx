@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from "react"
 
+import { useAIViewContextLayer } from "../ai/AIProvider"
 import PlayerProfileMark from "./PlayerProfileMark"
 import { SnakeTrigger } from "./SnakeProvider"
 import { createCharacterSnakeActions } from "./characterSnakeActions"
@@ -267,6 +268,74 @@ function ActiveIdentity({
 
 export default function Workspace({ onOpenCharacter, onOpenManagement }: Props) {
   const data = useWorkspaceData()
+
+  useAIViewContextLayer(
+    "workspace",
+    data.loading
+      ? null
+      : {
+          screen: "workspace",
+          route: "#/workspace",
+          title: data.canManage ? "Я · рабочее пространство GM" : "Я · персонажи",
+          text: data.narratorSelected
+            ? "Сейчас выбран Рассказчик как активный голос кампании."
+            : data.activeCharacter
+              ? "Сейчас выбран активный персонаж «" + data.activeCharacter.name + "»."
+              : "Активный персонаж сейчас не выбран.",
+          entity: data.activeCharacter
+            ? {
+                type: "character",
+                id: data.activeCharacter.id,
+                label: data.activeCharacter.name,
+              }
+            : null,
+          facts: {
+            campaignTitle: data.campaignTitle,
+            canManage: data.canManage,
+            narratorSelected: data.narratorSelected,
+            activeCharacter: data.activeCharacter
+              ? {
+                  id: data.activeCharacter.id,
+                  name: data.activeCharacter.name,
+                  class: data.activeCharacter.characterClass,
+                  level: data.activeCharacter.level,
+                  lifeState: data.activeCharacter.lifeState,
+                  hp: data.activeCharacter.sheet
+                    ? {
+                        current: data.activeCharacter.sheet.currentHp,
+                        max: data.activeCharacter.sheet.maxHp,
+                      }
+                    : null,
+                  abilities: data.activeCharacter.sheet?.abilities.map((ability) => ({
+                    key: ability.key,
+                    score: ability.score,
+                    modifier: ability.modifier,
+                  })) || [],
+                }
+              : null,
+            playerCharacters: data.playerCharacters.slice(0, 20).map((character) => ({
+              id: character.id,
+              name: character.name,
+              class: character.characterClass,
+              level: character.level,
+            })),
+            ownCharacters: data.ownCharacters.slice(0, 20).map((character) => ({
+              id: character.id,
+              name: character.name,
+              class: character.characterClass,
+              level: character.level,
+              lifeState: character.lifeState,
+            })),
+            worldCharacters: data.worldSpeakerCharacters.slice(0, 20).map((character) => ({
+              id: character.id,
+              name: character.name,
+              class: character.characterClass,
+              level: character.level,
+            })),
+          },
+        },
+    35,
+  )
 
   return (
     <main className="u1-workspace" data-manager={data.canManage || undefined}>

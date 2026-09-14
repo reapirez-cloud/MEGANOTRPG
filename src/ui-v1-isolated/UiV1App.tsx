@@ -1,6 +1,8 @@
 import { AnimatePresence, motion } from "motion/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import { useAIViewContextLayer } from "../ai/AIProvider"
+
 import { useHomeData, type HomeEvent, type HomeSocietyNews } from "./useHomeData"
 import { WhatsNew } from "./WhatsNew"
 import Workspace from "./Workspace"
@@ -148,7 +150,10 @@ function softHaptic() {
 function routeKey(route: Route) {
   if (route.type === "root") return `root:${route.space}`
   if (route.type === "section") {
-    return `section:${route.section}:${route.subsection || "index"}`
+    if (route.section === "knowledge-base" && route.subsection === "classes") {
+      return "section:knowledge-base:classes"
+    }
+    return `section:${route.section}:${route.subsection || "index"}:${route.tail.join("/")}`
   }
   return route.page === "character"
     ? `workspace:character:${route.characterId}`
@@ -159,6 +164,65 @@ function activeRoot(route: Route): RootSpace {
   if (route.type === "root") return route.space
   if (route.type === "workspace") return "workspace"
   return "home"
+}
+
+function aiRouteContext(route: Route) {
+  if (route.type === "root") {
+    const titles: Record<RootSpace, string> = {
+      home: "Главная",
+      workspace: "Я",
+      chats: "Чаты",
+    }
+    return {
+      screen: "ui-root",
+      route: window.location.hash || "#/home",
+      title: titles[route.space],
+      text: "Открыт корневой раздел нового интерфейса MEGANOT RPG.",
+      facts: {
+        space: route.space,
+      },
+    }
+  }
+
+  if (route.type === "section") {
+    return {
+      screen: "section",
+      route: window.location.hash || "#/home",
+      title: sectionCopy[route.section]?.title || route.section,
+      text: "Открыт раздел кампании в UI 1.0.",
+      facts: {
+        section: route.section,
+        subsection: route.subsection || null,
+        path: route.tail,
+      },
+    }
+  }
+
+  if (route.page === "character") {
+    return {
+      screen: "character-route",
+      route: window.location.hash || "#/workspace",
+      title: "Персонаж",
+      text: "Открыта страница конкретного персонажа.",
+      entity: {
+        type: "character",
+        id: route.characterId,
+      },
+      facts: {
+        characterId: route.characterId,
+      },
+    }
+  }
+
+  return {
+    screen: "gm-workshop-route",
+    route: window.location.hash || "#/workspace/manage",
+    title: "Мастерская",
+    text: "Открыто рабочее пространство GM.",
+    facts: {
+      section: route.section || "index",
+    },
+  }
 }
 
 function Dock({
@@ -470,7 +534,7 @@ function Screen({ route }: { route: Route }) {
   if (route.type === "section") {
     if (route.section === "whats-new") return <WhatsNew />
     if (route.section === "world") return <WorldSectionScreen subsection={route.subsection} path={route.tail} />
-    if (route.section === "knowledge-base") return <KnowledgeBaseScreen subsection={route.subsection} />
+    if (route.section === "knowledge-base") return <KnowledgeBaseScreen subsection={route.subsection} path={route.tail} />
     if (route.section === "society-news") return <SocietyNewsScreen />
     if (route.section === "achievements") return <AchievementsScreen />
 
@@ -546,6 +610,7 @@ function currentScrollRoot() {
 
 export default function UiV1App() {
   const [route, setRoute] = useState<Route>(() => parseRoute())
+  useAIViewContextLayer("ui-route", aiRouteContext(route), 10)
   const swipeRef = useRef<SwipeState | null>(null)
   const edgeBackRef = useRef<EdgeBackState | null>(null)
   const suppressClickUntilRef = useRef(0)
