@@ -83,6 +83,16 @@ export type AIDraftRelation = {
   data?: Record<string, unknown>
 }
 
+export type AIDraftRevision = {
+  draft_id: string
+  revision: number
+  change_summary: string
+  operations: Array<Record<string, unknown>>
+  validation_warnings: string[]
+  recent_revisions?: AIDraftRevision[]
+  created_at: string
+}
+
 export type AIDraft = {
   id: string
   draft_type: "bundle" | "location" | "character" | "definition"
@@ -279,7 +289,34 @@ export function AIProvider({ children }: { children: ReactNode }) {
       .limit(50)
 
     if (draftError) throw draftError
-    setDrafts((data || []) as AIDraft[])
+
+    const draftRows = (data || []) as AIDraft[]
+    const ids = draftRows.map((draft) => draft.id)
+
+    let revisionRows: AIDraftRevision[] = []
+    if (ids.length) {
+      const { data: revisions, error: revisionError } = await supabase
+        .from("ai_draft_revisions")
+        .select("draft_id,revision,change_summary,operations,validation_warnings,created_at")
+        .in("draft_id", ids)
+        .order("revision", { ascending: false })
+        .limit(300)
+
+      if (revisionError) throw revisionError
+      revisionRows = (revisions || []) as AIDraftRevision[]
+    }
+
+    const byDraft = new Map<string, AIDraftRevision[]>()
+    for (const revision of revisionRows) {
+      const current = byDraft.get(revision.draft_id) || []
+      if (current.length < 12) current.push(revision)
+      byDraft.set(revision.draft_id, current)
+    }
+
+    setDrafts(draftRows.map((draft) => ({
+      ...draft,
+      recent_revisions: byDraft.get(draft.id) || [],
+    })))
   }, [])
 
   const refreshDrafts = useCallback(async () => {
