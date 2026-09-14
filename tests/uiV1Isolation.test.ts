@@ -488,7 +488,9 @@ test("Snake touch context menu cannot bypass the long-press threshold", () => {
   assert.match(snakeTrigger, /now - touch\.startedAt < longPressMs/)
   assert.match(snakeTrigger, /if \(isRecentTouch\)/)
   assert.match(snakeTrigger, /event\.stopPropagation\(\)/)
-  assert.match(snakeTrigger, /useEffect\(\(\) => \{[\s\S]*?clearTimer/)
+  assert.match(snakeTrigger, /const wasPendingLongPress = timerRef\.current !== null/)
+  assert.match(snakeTrigger, /touchGestureRef\.current\.cancelled = true/)
+  assert.match(snakeTrigger, /useEffect\(\(\) => \{[\s\S]*?window\.clearTimeout/)
   assert.match(snakeContract, /contextmenu.*never sufficient evidence.*long press/i)
 })
 
