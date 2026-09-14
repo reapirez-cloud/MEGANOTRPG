@@ -17,6 +17,11 @@ import {
   VOSS_MEMORY_WRITE_TOOLS,
 } from "./memory-tools.ts"
 import {
+  executeVossImageTool,
+  isVossImageTool,
+  VOSS_IMAGE_TOOLS,
+} from "./image-tools.ts"
+import {
   recordVossRouteRun,
   resolveVossModel,
 } from "./model-router.ts"
@@ -295,6 +300,14 @@ Deno.serve(async (req: Request) => {
     "Не делай вывод о скрытых событиях из отсутствия результатов: memory tools уже фильтруются правами пользователя.",
     "remember_campaign_fact и save_campaign_summary доступны только GM. Используй их только если GM явно просит запомнить, зафиксировать или сохранить вывод/сводку. Обычный вопрос или просьба пересказать историю не является разрешением что-либо сохранять.",
     "Не расширяй видимость производной памяти относительно её источников. Инструмент дополнительно проверяет это на сервере.",
+    "Изображения генерируй только когда пользователь явно просит создать, нарисовать, сгенерировать, переделать или отредактировать изображение/арт/аватар/иконку. Не запускай генерацию как инициативное украшательство ответа.",
+    "Для изображений используй generate_image. Передавай semantic purpose, а не сырые параметры качества: сервер сам выбирает Image Profile, модель, размер и качество под назначение.",
+    "variants — ТОЧНОЕ число финальных альтернатив, которое попросил пользователь. Если пользователь попросил 3 картинки, variants ОБЯЗАН быть 3. Нельзя самовольно уменьшать количество.",
+    "После генерации пользователь должен получить ВСЕ запрошенные финальные варианты. Vision-review может отметить лучший, составить рейтинг и комментарии, но не имеет права скрывать, отбрасывать или заменять остальные варианты. Если пользователь попросил 3, интерфейс показывает все 3.",
+    "Генерация изображения и прикрепление к сущности — разные действия. Не прикрепляй результат автоматически без явной просьбы пользователя. Если вариантов больше одного, никогда не выбирай и не прикрепляй вариант сам: сначала покажи все варианты и дождись выбора пользователя.",
+    "Если пользователь говорит «вторую», «первую», «последний арт» или похожим образом ссылается на прошлую генерацию, используй list_recent_image_jobs и разреши ссылку по job + variant_index. Не угадывай asset id.",
+    "attach_generated_image используй только после явной просьбы применить конкретный результат. Сервер повторно проверяет права на целевую сущность.",
+    "Ненужную генерацию можно пометить через mark_generated_image_garbage. Физическое удаление разрешено только после трёх дней через purge_generated_image_garbage.",
     "",
     "ТЕКУЩИЙ КОНТЕКСТ ИНТЕРФЕЙСА:",
     contextText,
@@ -311,6 +324,7 @@ Deno.serve(async (req: Request) => {
     ? [
         ...VOSS_READ_TOOLS,
         ...VOSS_MEMORY_READ_TOOLS,
+        ...VOSS_IMAGE_TOOLS,
         ...(canChooseModel
           ? [
               ...VOSS_DRAFT_TOOLS,
@@ -325,6 +339,9 @@ Deno.serve(async (req: Request) => {
   const memorySummariesStored: string[] = []
   const draftsCreated: string[] = []
   const draftsRevised: string[] = []
+  const imageToolsUsed: string[] = []
+  const imageJobsQueued: string[] = []
+  const mediaAttachments: string[] = []
   let answer = ""
   let lastProviderPayload: any = null
 
@@ -384,44 +401,79 @@ Deno.serve(async (req: Request) => {
 
       const draftTool = isVossDraftTool(toolName)
       const memoryTool = isVossMemoryTool(toolName)
+      const imageTool = isVossImageTool(toolName)
       const memoryWriteTool = memoryTool && isVossMemoryWriteTool(toolName)
-      const result = draftTool
-        ? await executeVossDraftTool(
+      const result = imageTool
+        ? await executeVossImageTool(
             {
+              userClient,
               admin,
               campaignId,
               userId: user.id,
               threadId,
-              canManage: canChooseModel,
+              viewContext,
             },
             toolName,
             args,
           )
-        : memoryTool
-          ? await executeVossMemoryTool(
+        : draftTool
+          ? await executeVossDraftTool(
               {
-                client: userClient,
                 admin,
                 campaignId,
                 userId: user.id,
-                modelId: resolvedModel.id,
+                threadId,
                 canManage: canChooseModel,
               },
               toolName,
               args,
             )
-          : await executeVossReadTool(
-              {
-                client: userClient,
-                campaignId,
-                userId: user.id,
-                canManage: canChooseModel,
-              },
-              toolName,
-              args,
-            )
+          : memoryTool
+            ? await executeVossMemoryTool(
+                {
+                  client: userClient,
+                  admin,
+                  campaignId,
+                  userId: user.id,
+                  modelId: resolvedModel.id,
+                  canManage: canChooseModel,
+                },
+                toolName,
+                args,
+              )
+            : await executeVossReadTool(
+                {
+                  client: userClient,
+                  campaignId,
+                  userId: user.id,
+                  canManage: canChooseModel,
+                },
+                toolName,
+                args,
+              )
 
-      if (draftTool) {
+      if (imageTool) {
+        imageToolsUsed.push(toolName || "unknown")
+        const resultRecord =
+          result && typeof result === "object" && !Array.isArray(result)
+            ? result as JsonRecord
+            : {}
+
+        if (
+          toolName === "generate_image" &&
+          typeof resultRecord.job_id === "string"
+        ) {
+          imageJobsQueued.push(resultRecord.job_id)
+        }
+
+        if (
+          toolName === "attach_generated_image" &&
+          resultRecord.attached === true &&
+          typeof resultRecord.asset_id === "string"
+        ) {
+          mediaAttachments.push(resultRecord.asset_id)
+        }
+      } else if (draftTool) {
         const resultRecord =
           result && typeof result === "object" && !Array.isArray(result)
             ? result as JsonRecord
@@ -488,7 +540,7 @@ Deno.serve(async (req: Request) => {
         tool_call_id: toolCallId,
         content: toolContent(
           result,
-          draftTool || memoryTool ? 70000 : 18000,
+          imageTool || draftTool || memoryTool ? 70000 : 18000,
         ),
       })
     }
@@ -553,6 +605,13 @@ Deno.serve(async (req: Request) => {
       used: [...new Set(memoryToolsUsed)],
       factsStored: [...new Set(memoryFactsStored)],
       summariesStored: [...new Set(memorySummariesStored)],
+    },
+    images: {
+      available: supportsReadTools,
+      used: [...new Set(imageToolsUsed)],
+      jobsQueued: [...new Set(imageJobsQueued)],
+      attachments: [...new Set(mediaAttachments)],
+      presentationRule: "show_all_requested_outputs",
     },
   })
 })
