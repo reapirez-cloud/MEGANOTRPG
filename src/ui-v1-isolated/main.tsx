@@ -2,7 +2,6 @@ import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 
 import { AIProvider } from "../ai/AIProvider"
-import VossDock from "../ai/VossDock"
 import UiV1App from "./UiV1App"
 import { SnakeProvider } from "./SnakeProvider"
 import "../ai/ai-voss.css"
@@ -23,7 +22,6 @@ createRoot(root).render(
       <SnakeProvider>
         <UiV1App />
       </SnakeProvider>
-      <VossDock />
     </AIProvider>
   </StrictMode>,
 )
