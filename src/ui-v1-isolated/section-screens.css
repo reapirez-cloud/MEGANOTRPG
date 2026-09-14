@@ -1512,23 +1512,23 @@
   left: 2px;
 }
 
-.u1-voss-comment-disclosure {
-  margin-top: 18px;
-  padding: 10px 0 0;
+.u1-voss-comment-block {
+  margin-top: 12px;
+  padding: 12px 0 0;
   border-top: 1px solid var(--u1-line-soft);
 }
 
-.u1-voss-comment-disclosure > summary {
+.u1-voss-comment-block > span {
+  display: block;
   color: var(--u1-text-faint);
   font-size: 9px;
   font-weight: 720;
   letter-spacing: .095em;
   text-transform: uppercase;
-  cursor: pointer;
 }
 
-.u1-voss-comment-disclosure p {
-  margin: 10px 0 0;
+.u1-voss-comment-block p {
+  margin: 8px 0 0;
   color: var(--u1-text-soft);
   font-size: 12px;
   line-height: 1.58;
