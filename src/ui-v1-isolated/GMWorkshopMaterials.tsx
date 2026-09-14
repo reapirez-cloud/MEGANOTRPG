@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react"
 
+import { useAIViewContextLayer } from "../ai/AIProvider"
 import type {
   SnakeAction,
   SnakeActionExecutionContext,
@@ -67,6 +68,49 @@ export default function GMWorkshopMaterials({
       .toLocaleLowerCase("ru-RU")
       .includes(needle)
   })
+  const currentFolder = currentFolderId
+    ? data.folders.find((folder) => folder.id === currentFolderId) || null
+    : null
+
+  useAIViewContextLayer(
+    "gm-workshop-materials",
+    {
+      screen: "gm-workshop-materials",
+      title: currentFolder
+        ? "Материалы · " + currentFolder.name
+        : "Мастерская · Материалы",
+      text: currentFolder
+        ? "GM открыл папку материалов «" + currentFolder.name + "»."
+        : "GM просматривает материалы рабочего пространства.",
+      entity: currentFolder
+        ? {
+            type: "gm-folder",
+            id: currentFolder.id,
+            label: currentFolder.name,
+          }
+        : null,
+      facts: {
+        query,
+        folderId: currentFolderId,
+        folders: folderMeta.slice(0, 40).map(({ folder, depth }) => ({
+          id: folder.id,
+          name: folder.name,
+          parentId: folder.parentId,
+          depth,
+        })),
+        visibleMaterials: visible.slice(0, 30).map((material) => ({
+          id: material.id,
+          kind: material.kind,
+          title: material.title,
+          body: material.body,
+          folderId: material.folderId,
+          originalName: material.originalName,
+        })),
+      },
+    },
+    currentFolder ? 50 : 45,
+  )
+
 
   function createNote() {
     const action: SnakeAction = {
