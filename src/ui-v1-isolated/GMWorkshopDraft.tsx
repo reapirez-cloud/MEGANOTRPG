@@ -3,6 +3,7 @@ import {
   useAIViewContextLayer,
   type AIDraft,
 } from "../ai/AIProvider"
+import { applyAIDraft } from "../ai/applyDraft"
 import type { SnakeAction } from "../snake-engine"
 import type { ChasovoyDefinitionKind } from "../reference-engine/index.ts"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
@@ -25,7 +26,12 @@ export default function GMWorkshopDraft({
   onOpenCharacter: (characterId: string) => void
 }) {
   const snake = useSnake()
-  const { drafts: aiDrafts } = useAI()
+  const {
+    campaignId,
+    userId,
+    drafts: aiDrafts,
+    refreshDrafts,
+  } = useAI()
 
   useAIViewContextLayer(
     "gm-workshop-ai-drafts",
@@ -114,6 +120,65 @@ export default function GMWorkshopDraft({
         entity: { type: "ai-draft", id: draft.id },
         path: [],
       },
+    )
+  }
+
+  function approveAIDraft(draft: AIDraft) {
+    const warningText = draft.validation_warnings.length
+      ? "\n\nПредупреждения:\n" +
+        draft.validation_warnings.map((warning) => "• " + warning).join("\n")
+      : ""
+
+    const action: SnakeAction = {
+      id: "apply-ai-draft-" + draft.id,
+      label: "Применить",
+      tone: "danger",
+      surface: {
+        kind: "confirm",
+        eyebrow: "AI DRAFT · УТВЕРЖДЕНИЕ",
+        title: "Создать канонический контент?",
+        body:
+          "Будет применена ровно ревизия r" +
+          draft.current_revision +
+          " черновика «" +
+          draft.title +
+          "».\n\n" +
+          "Создание пойдёт через Oracle и владельцев домена. " +
+          "Если один из поздних шагов упадёт, уже успешно созданные сущности не будут скрыто удаляться: run получит статус PARTIAL_FAILED для ручной проверки." +
+          warningText,
+        confirmLabel: "Утвердить и создать",
+        cancelLabel: "Отмена",
+        size: { width: "wide", height: "content" },
+      },
+      execute: async () => {
+        const result = await applyAIDraft(draft, campaignId, userId)
+        await Promise.all([
+          refreshDrafts(),
+          data.operations.refresh(),
+        ])
+
+        if (result.ok) {
+          return {
+            type: "success",
+            notice: "AI Draft применён через Oracle. Канонический контент создан.",
+          }
+        }
+
+        return {
+          type: "error",
+          message:
+            (result.partial
+              ? "Применение остановлено после частичного создания. Проверь apply-run вручную. "
+              : "") +
+            result.error,
+        }
+      },
+    }
+
+    openSourceAction(
+      snake,
+      { type: "ai-draft", id: draft.id },
+      action,
     )
   }
 
@@ -229,28 +294,36 @@ export default function GMWorkshopDraft({
 
         <div className="u1-gm-list">
           {aiDrafts.map((draft) => (
-            <button
-              type="button"
-              className="u1-gm-definition-row u1-gm-ai-draft-row"
-              key={draft.id}
-              onClick={() => openAIDraft(draft)}
-            >
-              <span>
-                <strong>{draft.title}</strong>
-                <small>
-                  {draft.draft_type}
-                  {" · "}
-                  {draft.content.nodes?.length || 0} сущн.
-                  {" · "}
-                  {draft.content.relations?.length || 0} связей
-                  {draft.summary ? " · " + draft.summary : ""}
-                  {draft.recent_revisions?.[0]?.change_summary
-                    ? " · " + draft.recent_revisions[0].change_summary
-                    : ""}
-                </small>
-              </span>
-              <b>AI r{draft.current_revision}</b>
-            </button>
+            <div className="u1-gm-ai-draft-entry" key={draft.id}>
+              <button
+                type="button"
+                className="u1-gm-definition-row u1-gm-ai-draft-row"
+                onClick={() => openAIDraft(draft)}
+              >
+                <span>
+                  <strong>{draft.title}</strong>
+                  <small>
+                    {draft.draft_type}
+                    {" · "}
+                    {draft.content.nodes?.length || 0} сущн.
+                    {" · "}
+                    {draft.content.relations?.length || 0} связей
+                    {draft.summary ? " · " + draft.summary : ""}
+                    {draft.recent_revisions?.[0]?.change_summary
+                      ? " · " + draft.recent_revisions[0].change_summary
+                      : ""}
+                  </small>
+                </span>
+                <b>AI r{draft.current_revision}</b>
+              </button>
+              <button
+                type="button"
+                className="u1-gm-ai-draft-apply"
+                onClick={() => approveAIDraft(draft)}
+              >
+                Применить
+              </button>
+            </div>
           ))}
           {!aiDrafts.length && (
             <div className="u1-gm-empty">
