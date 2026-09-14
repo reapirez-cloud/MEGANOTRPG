@@ -194,6 +194,62 @@ function asObject(value: unknown): JsonObject {
     : {}
 }
 
+function visibility(value: unknown, fallback: "always" | "discover" | "private" = "discover") {
+  const candidate = text(value, 24)
+  return ["always", "discover", "private"].includes(candidate)
+    ? candidate
+    : fallback
+}
+
+function normalizePayload(
+  entityType: DraftNode["entity_type"],
+  subtype: DraftNode["entity_subtype"] | undefined,
+  raw: unknown,
+): JsonObject {
+  const source = asObject(raw)
+
+  if (entityType === "location") {
+    const rawSections = Array.isArray(source.sections) ? source.sections.slice(0, 16) : []
+    return {
+      description: text(source.description, 12000),
+      visibility_mode: visibility(source.visibility_mode),
+      sections: rawSections.map((section) => {
+        const row = asObject(section)
+        return {
+          title: text(row.title, 160),
+          body: text(row.body, 12000),
+        }
+      }).filter((section) => section.title || section.body),
+    }
+  }
+
+  if (entityType === "character") {
+    const level = Math.max(1, Math.min(20, Number(source.level) || 1))
+    return {
+      character_type: subtype === "pc" ? "pc" : "npc",
+      character_class: text(source.character_class, 120),
+      class_template_id: text(source.class_template_id, 100) || null,
+      level,
+      bio: text(source.bio, 12000),
+      visibility_mode: visibility(
+        source.visibility_mode,
+        subtype === "pc" ? "private" : "discover",
+      ),
+      design_notes: text(source.design_notes, 6000),
+    }
+  }
+
+  return {
+    definition_kind: subtype || "reference",
+    visibility: text(source.visibility, 24) === "campaign" ? "campaign" : "gm",
+    summary: text(source.summary, 4000),
+    rules_text: text(source.rules_text ?? source.rulesText, 16000),
+    mechanics: sanitizeJson(source.mechanics),
+    data: asObject(source.data),
+    design_notes: text(source.design_notes, 6000),
+  }
+}
+
 function normalizeNode(raw: unknown): DraftNode | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null
   const row = raw as JsonObject
@@ -213,13 +269,18 @@ function normalizeNode(raw: unknown): DraftNode | null {
     subtype = "reference"
   }
 
+  const typedEntity = entityType as DraftNode["entity_type"]
+  const typedSubtype = subtype
+    ? subtype as DraftNode["entity_subtype"]
+    : undefined
+
   return {
     key: nodeKey,
-    entity_type: entityType as DraftNode["entity_type"],
-    ...(subtype ? { entity_subtype: subtype as DraftNode["entity_subtype"] } : {}),
+    entity_type: typedEntity,
+    ...(typedSubtype ? { entity_subtype: typedSubtype } : {}),
     name,
     summary: text(row.summary, 2000),
-    payload: asObject(row.payload),
+    payload: normalizePayload(typedEntity, typedSubtype, row.payload),
   }
 }
 
