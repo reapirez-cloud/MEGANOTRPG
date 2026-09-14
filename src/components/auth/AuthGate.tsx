@@ -33,10 +33,6 @@ function isLocalDevelopment() {
   )
 }
 
-function allowLegacyBrowserSession() {
-  return import.meta.env.VITE_ALLOW_LEGACY_BROWSER_SESSION === "true"
-}
-
 export default function AuthGate({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<Phase>("loading")
   const [user, setUser] = useState<User | null>(null)
@@ -108,6 +104,15 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
     setTelegramUser(payload.telegram_user)
 
+    // Never let a previous Telegram account survive into the next login.
+    // UI 1.0 and the classic shell share Supabase local storage, so a stale
+    // browser session must be cleared before accepting the freshly signed
+    // Telegram identity.
+    const { error: signOutError } = await supabase.auth.signOut({ scope: "local" })
+    if (signOutError) {
+      console.warn("Could not clear previous local Supabase session:", signOutError.message)
+    }
+
     const { data, error: verifyError } = await supabase.auth.verifyOtp({
       token_hash: payload.token_hash,
       type: "email",
@@ -115,6 +120,22 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
     if (verifyError || !data.user) {
       setError(verifyError?.message || "Не удалось открыть сессию Supabase.")
+      setPhase("error")
+      return
+    }
+
+    const sessionTelegramId = String(
+      data.user.user_metadata?.telegram_id || "",
+    )
+    const currentTelegramId = String(payload.telegram_user.id)
+
+    if (!sessionTelegramId || sessionTelegramId !== currentTelegramId) {
+      await supabase.auth.signOut({ scope: "local" })
+      setUser(null)
+      setProfile(null)
+      setError(
+        "Telegram-аккаунт и сессия приложения не совпали. Закрой Mini App и открой его снова.",
+      )
       setPhase("error")
       return
     }
@@ -131,7 +152,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   async function bootstrapLegacy() {
     const localDevelopment = isLocalDevelopment()
-    const legacyAllowed = allowLegacyBrowserSession()
 
     const {
       data: { session },
@@ -144,15 +164,17 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       return
     }
 
-    if (session?.user && (localDevelopment || legacyAllowed)) {
+    // Localhost keeps its developer convenience. Anywhere else, a stored
+    // Supabase session without freshly verified Telegram initData is invalid.
+    if (session?.user && localDevelopment) {
       await loadProfile(session.user)
       return
     }
 
-    if (session?.user && !localDevelopment && !legacyAllowed) {
+    if (session?.user && !localDevelopment) {
       const { error: signOutError } = await supabase.auth.signOut({ scope: "local" })
       if (signOutError) {
-        console.warn("Could not clear legacy browser session:", signOutError.message)
+        console.warn("Could not clear stale browser session:", signOutError.message)
       }
     }
 
@@ -274,12 +296,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             <strong>@DND_MEGABOTPROPLUS_BOT</strong>{" "}
             и нажми кнопку запуска приложения.
           </p>
-
-          {allowLegacyBrowserSession() && (
-            <div className="auth-note">
-              Временный legacy-режим браузерных сессий включён настройкой окружения.
-            </div>
-          )}
 
           <button
             type="button"
