@@ -10,7 +10,6 @@ import Workspace from "./Workspace"
 import GMWorkshop from "./GMWorkshop"
 import CharacterView from "./CharacterView"
 import type { WorkshopSection } from "./useGMWorkshopData"
-import PlayerProfileMark from "./PlayerProfileMark"
 import {
   AchievementsScreen,
   KnowledgeBaseScreen,
@@ -482,7 +481,6 @@ function Home() {
           <strong>{campaignTitle || "Мунтар"}</strong>
         </div>
 
-        <PlayerProfileMark />
       </header>
 
       <div className="u1-rule" aria-hidden="true" />
