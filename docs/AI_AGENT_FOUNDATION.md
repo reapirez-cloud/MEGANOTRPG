@@ -55,12 +55,22 @@ UI
 
 The Stage 9 gateway dispatches from `ai_models.provider_key`. Normal Voss traffic is limited to enabled `model_kind = agent` + `access_scope = campaign` rows.
 
-DeepSeek is the current campaign-agent provider. Its dedicated server secret is:
+DeepSeek is the current campaign-agent provider.
 
-- `DEEPSEEK_API_KEY`
-- optional `DEEPSEEK_API_BASE_URL`, defaulting to the official DeepSeek API base URL.
+For the current CheapVibeCode installation, chat and images share:
 
-The old `AI_API_KEY` / `AI_API_BASE_URL` / `AI_DEFAULT_MODEL` names remain only as migration compatibility for legacy `openai-compatible` rows. Provider failure never triggers a cross-provider fallback.
+- `AI_API_KEY`
+- `AI_API_BASE_URL`
+
+Provider-specific `DEEPSEEK_API_KEY` / `DEEPSEEK_API_BASE_URL` remain optional overrides. Provider failure never triggers a cross-provider fallback.
+
+The confirmed base campaign model is:
+
+```text
+deepseek-v4.1-flash
+```
+
+It is registered as tool-capable, JSON-capable and multimodal with image input and a 1,000,000-token context window. The older speculative `deepseek-v4-flash`, `deepseek-v4-pro` and separate `deepseek-v4-flash-vision-exp` rows are not active runtime choices.
 
 ## Role law
 
