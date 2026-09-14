@@ -22,15 +22,21 @@
   transition:
     transform 170ms cubic-bezier(.22,1,.36,1),
     border-color 170ms ease,
-    box-shadow 170ms ease;
+    box-shadow 170ms ease,
+    opacity 140ms ease;
 }
 
-.u1-agent-orb:hover,
-.u1-agent-orb[data-open] {
+.u1-agent-orb:hover {
   border-color: rgba(228, 239, 242, 0.28);
   box-shadow:
     0 14px 34px rgba(0, 0, 0, 0.46),
     0 0 24px rgba(231, 241, 244, 0.05);
+}
+
+.u1-agent-orb[data-open] {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.92);
 }
 
 .u1-agent-orb:active {
