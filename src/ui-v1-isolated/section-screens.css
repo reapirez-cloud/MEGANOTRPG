@@ -334,7 +334,8 @@
 .u1-subclass-hero {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 3 / 1;
+  min-height: 104px;
   margin: 16px 0 0;
   border: 1px solid var(--u1-line-soft);
   border-radius: 10px;
