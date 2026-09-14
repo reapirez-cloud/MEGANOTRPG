@@ -1017,25 +1017,23 @@ master_art   → premium final/master output
 
 Tiny UI assets therefore do not consume master-art quality by accident.
 
-Reference-heavy generation may promote the provider model while preserving the semantic size/quality contract.
+Reference-based generation keeps the same `gpt-image-2` model while preserving the semantic size/quality contract.
 
 ### Exact variant count
 
-`generate_image.variants` is an exact user contract:
+`generate_image.variants` is an exact provider-bounded contract:
 
 ```text
 requested 1 → deliver 1
-requested 2 → deliver 2
-requested 3 → deliver 3
+requested alternatives / 2 → deliver 2
+maximum per job → 2
 ```
 
-If the user explicitly requests three images, Voss must call:
+Voss must never promise or submit three variants in one image job.
 
-```text
-variants = 3
-```
+Generation sends `n=1` or `n=2` to the CheapVibeCode generation endpoint. Reference-based edits use one normal edit request per final variant for compatibility with the provider's multipart contract.
 
-The provider receives the requested count in one batch. If it returns fewer images, the worker requests the missing count again up to the bounded retry limit.
+If the provider returns fewer images, the worker retries the missing count up to the bounded retry limit.
 
 The job is complete only when `completed_outputs == requested_outputs`.
 
