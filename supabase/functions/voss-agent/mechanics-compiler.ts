@@ -1,3 +1,7 @@
+// Mirrors the canonical CE/GM boundary documented in
+// src/rule-templates/CLASS_INTEGRATION_NOTES.md and GM_ADJUDICATION_BOUNDARY.md.
+// Keep this compiler restrictive: unsupported durable mechanics escalate to Developer Mode.
+
 export const MECHANICS_COMPILER_VERSION = 1
 
 type JsonRecord = Record<string, unknown>
@@ -396,7 +400,8 @@ function numericTarget(value: unknown) {
   ) return target
 
   if (
-    /^(resources|values)\.[a-zA-Z0-9:._-]+(\.max)?$/.test(target) ||
+    /^resources\.[a-zA-Z0-9:._-]+\.max$/.test(target) ||
+    /^values\.[a-zA-Z0-9:._-]+$/.test(target) ||
     /^actions\.[a-zA-Z0-9:._-]+\.(attackBonus|damage\.[a-zA-Z0-9:._-]+\.modifier)$/.test(target) ||
     /^spells\.[a-zA-Z0-9:._-]+\.access\.[a-zA-Z0-9:._-]+\.method\.[a-zA-Z0-9:._-]+\.(attackBonus|saveDc)$/.test(target)
   ) return target
