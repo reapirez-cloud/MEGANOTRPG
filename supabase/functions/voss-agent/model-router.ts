@@ -20,6 +20,7 @@ export type RouterModel = {
   enabled: boolean
   is_base: boolean
   gm_selectable: boolean
+  user_selectable: boolean
   supports_tools: boolean
   supports_json: boolean
   supports_streaming: boolean
@@ -163,10 +164,7 @@ export function classifyVossTask(
   return "general"
 }
 
-function defaultMode(taskKey: VossTaskKey): RouteMode {
-  if (taskKey === "reference_read" || taskKey === "memory_read") {
-    return "auto"
-  }
+function defaultMode(_taskKey: VossTaskKey): RouteMode {
   return "primary"
 }
 
@@ -178,13 +176,24 @@ function isCampaignAgent(model: RouterModel) {
   )
 }
 
+function selectableByUser(
+  model: RouterModel,
+  canManage: boolean,
+) {
+  return (
+    model.is_base ||
+    model.user_selectable ||
+    (canManage && model.gm_selectable)
+  )
+}
+
 function isEligible(
   model: RouterModel,
   taskKey: VossTaskKey,
-  gmOnly = true,
+  managerOnly = true,
 ) {
   if (!isCampaignAgent(model)) return false
-  if (gmOnly && !model.gm_selectable && !model.is_base) return false
+  if (managerOnly && !model.gm_selectable && !model.is_base) return false
   if (TASKS_REQUIRING_TOOLS.has(taskKey) && !model.supports_tools) return false
   return true
 }
@@ -268,7 +277,7 @@ export async function resolveVossModel(
   const { data: rows, error } = await admin
     .from("ai_models")
     .select(
-      "id,provider_key,model_key,display_name,enabled,is_base,gm_selectable,supports_tools,supports_json,supports_streaming,supports_vision,model_kind,access_scope,context_window,cost_tier,reasoning_tier,latency_tier",
+      "id,provider_key,model_key,display_name,enabled,is_base,gm_selectable,user_selectable,supports_tools,supports_json,supports_streaming,supports_vision,model_kind,access_scope,context_window,cost_tier,reasoning_tier,latency_tier",
     )
     .eq("enabled", true)
 
@@ -309,7 +318,7 @@ export async function resolveVossModel(
       models.find(
         (model) =>
           model.id === input.selectedModelId &&
-          (model.gm_selectable || model.is_base) &&
+          selectableByUser(model, true) &&
           model.supports_tools,
       ) ||
       [...models]
@@ -332,23 +341,25 @@ export async function resolveVossModel(
     }
   }
 
-  if (!input.canManage) {
-    return {
-      taskKey,
-      model: base,
-      routeMode: "base_lock",
-      reason: "Player requests are permanently locked to the base model.",
-      degraded:
-        TASKS_REQUIRING_TOOLS.has(taskKey) && !base.supports_tools,
-    }
-  }
-
   const primary =
     models.find(
       (model) =>
         model.id === input.selectedModelId &&
-        (model.gm_selectable || model.is_base),
+        selectableByUser(model, input.canManage),
     ) || base
+
+  if (!input.canManage) {
+    return {
+      taskKey,
+      model: primary,
+      routeMode: "primary",
+      reason: primary.id === base.id
+        ? "Player uses the default campaign model."
+        : "Player uses their explicitly selected public campaign model.",
+      degraded:
+        TASKS_REQUIRING_TOOLS.has(taskKey) && !primary.supports_tools,
+    }
+  }
 
   const { data: routeData, error: routeError } = await admin
     .from("ai_agent_model_routes")
@@ -378,7 +389,7 @@ export async function resolveVossModel(
     const fixed = models.find(
       (model) =>
         model.id === route?.selected_model_id &&
-        (model.gm_selectable || model.is_base),
+        selectableByUser(model, true),
     ) || null
 
     if (fixed && isEligible(fixed, taskKey, false)) {
@@ -408,7 +419,7 @@ export async function resolveVossModel(
         taskKey,
         model: primary,
         routeMode: "primary",
-        reason: "Task uses the GM-selected primary model.",
+        reason: "Task uses the user's selected primary model.",
         degraded: false,
       }
     }

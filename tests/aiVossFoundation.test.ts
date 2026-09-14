@@ -17,16 +17,21 @@ test("Voss AI foundation keeps provider secrets server-side", () => {
   assert.match(gateway, /AI_DEFAULT_MODEL/)
 })
 
-test("players are forced to the base model at the Edge Function boundary", () => {
+test("players can select public campaign models without gaining GM authority", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
   const router = read("supabase/functions/voss-agent/model-router.ts")
+  const migration = read(
+    "supabase/migrations/20260915004500_voss_grok_user_models_attachments.sql",
+  )
 
-  assert.match(edge, /membership\.role === "gm" \|\| membership\.is_owner === true/)
-  assert.match(edge, /resolveVossModel/)
-  assert.match(router, /if \(!input\.canManage\)/)
-  assert.match(router, /model: base/)
-  assert.match(router, /routeMode: "base_lock"/)
-  assert.match(router, /gm_selectable/)
+  assert.match(edge, /const canManage = membership\.role === "gm" \|\| membership\.is_owner === true/)
+  assert.match(edge, /ai_user_agent_settings/)
+  assert.match(router, /user_selectable/)
+  assert.match(router, /Player uses their explicitly selected public campaign model/)
+  assert.match(router, /routeMode: "primary"/)
+  assert.match(migration, /'grok-4\.6'/)
+  assert.match(migration, /user_selectable = true/)
+  assert.match(migration, /ai_user_agent_settings/)
 })
 
 test("GM Workshop registers semantic screen context for Voss", () => {
