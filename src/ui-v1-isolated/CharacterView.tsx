@@ -145,18 +145,6 @@ export default function CharacterView({
                   kind: feature.kind,
                   description: feature.description,
                 })),
-                activeEffects: control.features
-                  .filter((feature) =>
-                    feature.kind === "condition" ||
-                    feature.kind === "effect",
-                  )
-                  .slice(0, 20)
-                  .map((feature) => ({
-                    id: feature.id,
-                    name: feature.name,
-                    kind: feature.kind,
-                    description: feature.description,
-                  })),
                 templateAssignments: control.assignments.slice(0, 20).map((assignment) => {
                   const template = control.templates.find(
                     (item) => item.id === assignment.template_id,
