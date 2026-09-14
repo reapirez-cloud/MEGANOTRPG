@@ -36,6 +36,9 @@ export default function VossDock() {
     models.find((model) => model.id === selectedModelId) ||
     models.find((model) => model.is_base) ||
     null
+  const routedModel =
+    models.find((model) => model.id === lastRoute?.modelId) ||
+    selectedModel
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -91,7 +94,7 @@ export default function VossDock() {
         <span>Сейчас вижу</span>
         <strong>{viewContext?.title || viewContext?.screen || "текущий экран"}</strong>
         <small className="u1-voss-context__tools">
-          {selectedModel?.supports_tools ? "READ · MEMORY · ДОСТУПНЫ" : "READ · MEMORY · НЕТ"}
+          {routedModel?.supports_tools ? "READ · MEMORY · ДОСТУПНЫ" : "READ · MEMORY · НЕТ"}
         </small>
         {viewContext?.entity && (
           <small className="u1-voss-context__entity">
