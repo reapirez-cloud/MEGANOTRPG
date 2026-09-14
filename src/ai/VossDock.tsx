@@ -118,6 +118,9 @@ export default function VossDock() {
               {" · r"}
               {drafts[0].current_revision}
             </small>
+            {drafts[0].recent_revisions?.[0]?.change_summary && (
+              <em>{drafts[0].recent_revisions[0].change_summary}</em>
+            )}
           </article>
         )}
         {!messages.length && (
