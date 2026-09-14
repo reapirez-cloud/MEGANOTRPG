@@ -60,14 +60,14 @@ test("AI draft tables are manager-readable and client read-only", () => {
   assert.doesNotMatch(migration, /grant update on public\.ai_drafts to authenticated/i)
 })
 
-test("GM Workshop and Voss dock surface structured AI drafts", () => {
+test("GM Workshop and global AgentShell surface structured AI drafts", () => {
   const workshop = read("src/ui-v1-isolated/GMWorkshopDraft.tsx")
-  const dock = read("src/ai/VossDock.tsx")
+  const shell = read("src/ai/AgentShell.tsx")
   const provider = read("src/ai/AIProvider.tsx")
 
   assert.match(workshop, /Черновики Восса/)
   assert.match(workshop, /AI DRAFT · НЕ КАНОН/)
-  assert.match(dock, /u1-voss-draft-card/)
+  assert.match(shell, /u1-agent-draft-card/)
   assert.match(provider, /from\("ai_drafts"\)/)
   assert.match(provider, /refreshDrafts/)
 })

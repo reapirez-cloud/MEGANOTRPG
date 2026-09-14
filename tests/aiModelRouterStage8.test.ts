@@ -98,14 +98,14 @@ test("Voss gateway records and returns the actual route decision", () => {
 
 test("Voss UI distinguishes the primary model from the routed model", () => {
   const provider = read("src/ai/AIProvider.tsx")
-  const dock = read("src/ai/VossDock.tsx")
+  const shell = read("src/ai/AgentShell.tsx")
 
   assert.match(provider, /lastRoute/)
   assert.match(provider, /reasoning_tier/)
   assert.match(provider, /latency_tier/)
-  assert.match(dock, /Основная модель/)
-  assert.match(dock, /ROUTER ·/)
-  assert.match(dock, /routedModel/)
+  assert.match(shell, /Основная модель/)
+  assert.match(shell, /lastRoute\.task\.toUpperCase/)
+  assert.match(shell, /routedModel/)
 })
 
 test("fixed task routes survive model deletion and fall back safely", () => {

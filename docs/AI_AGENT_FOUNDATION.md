@@ -1,6 +1,6 @@
-# AI Agent Foundation — Voss Stages 1–9
+# AI Agent Foundation — Voss Stages 1–10
 
-> Status: **STAGES 1–9 IMPLEMENTED**
+> Status: **STAGES 1–10 IMPLEMENTED**
 >
 > This is the canonical starting point for AI inside MEGANOT RPG. Future AI work must extend this boundary instead of calling model APIs directly from React components.
 
@@ -836,6 +836,106 @@ The gateway:
 Astra is deliberately not registered here. The future Owner-only override belongs to Developer Mode, not ordinary campaign routing.
 
 
+## Stage 10 — global Agent UI
+
+Stage 10 turns the existing Voss conversation surface into one application-wide agent shell instead of a local floating widget.
+
+### One global mount
+
+The agent is mounted exactly once inside `UiV1App`:
+
+```text
+AIProvider
+→ SnakeProvider
+→ UiV1App
+   → screens / routes
+   → AgentShell
+```
+
+The entry point no longer mounts a second Voss widget outside the application tree. The old `VossDock` module remains only as a compatibility re-export and must not be mounted independently.
+
+### Global agent mark
+
+The old home-screen `VI` profile placeholder is removed.
+
+A single geometric `AgentMark` / orb is fixed at the top-right application edge and is visible across routes. It does not add item-level AI buttons to characters, locations, items or class cards.
+
+This is deliberate:
+
+```text
+one global agent entry
++ current semantic context
+≠ hundreds of local "generate / ask AI" buttons
+```
+
+### Responsive shell
+
+Desktop:
+
+```text
+right-side panel
+≈ 350–430 px
+full application height
+```
+
+Mobile:
+
+```text
+bottom sheet
+≈ 76dvh
+max 82dvh
+safe-area aware
+```
+
+The panel is dismissible by the close control, backdrop and Escape. It remains mounted while the user navigates, so an open Voss conversation can immediately observe the newly composed semantic context.
+
+### Semantic context shortcuts
+
+The shell reads the same composed `AIViewContext` that is sent to `voss-agent`.
+
+Prompt suggestions adapt to:
+
+- current entity;
+- exact screen kind;
+- class/subclass/feature reference pages;
+- character views;
+- world/location views;
+- Workspace;
+- GM Workshop;
+- unsaved Snake/editor values.
+
+Suggested prompts only fill the composer. They do **not** call the model automatically.
+
+Stage 10 intentionally contains no image-generation shortcut. Image intent will become an agent tool in Stage 11, where quota, job state, review and attachment permissions exist.
+
+### Global invocation bridge
+
+`agentUiBridge.ts` exposes one browser event:
+
+```text
+meganot:agent:open
+```
+
+Internal UI systems may request that the existing global shell open and may optionally prefill a prompt. They must not mount another agent panel.
+
+This gives Snake and future contextual surfaces one shared agent entry point without coupling them to AgentShell internals.
+
+### Existing capabilities preserved
+
+The new shell still exposes:
+
+- current semantic screen/entity state;
+- unsaved-draft warning;
+- GM primary-model selection;
+- actual router/model result;
+- campaign conversation history;
+- durable memory access through the server;
+- latest GM AI Draft summary;
+- explicit send-only composer.
+
+Stage 10 changes the interaction shell, not the authority boundary. Voss still cannot approve drafts, mutate canonical state directly or bypass RLS.
+
+
 ## Persistence
 
 Tables:
@@ -847,15 +947,14 @@ Tables:
 
 All public tables have RLS.
 
-## Current limitations after Stage 9
+## Current limitations after Stage 10
 
-Voss now has a reconciled Stage 1–8 foundation, tool-capable DeepSeek routing, strict owner-only visibility and a provider boundary that can safely grow.
+Voss now has one application-wide responsive Agent UI over the existing semantic context, memory, draft and model-routing foundation.
 
-Stage 9 deliberately does **not** add image jobs, mechanics compilation or repository-writing tools. The model still never receives unrestricted SQL or generic table-write access.
+Stage 10 deliberately does **not** add image execution, generic background jobs, mechanics compilation or repository-writing tools. Prompt shortcuts cannot bypass the existing send/action boundaries.
 
 ## Planned continuation
 
-10. Global Agent UI and application-wide semantic integration.
 11. Unified Agent Jobs plus the image generation/review/attach system.
 12. Mechanics Compiler for structured runtime mechanics before code changes.
 13. Owner-only Developer Mode with repository patch/test/build/preview workflow.
