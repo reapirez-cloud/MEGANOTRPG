@@ -1,3 +1,4 @@
+import { useAI, type AIDraft } from "../ai/AIProvider"
 import type { SnakeAction } from "../snake-engine"
 import type { ChasovoyDefinitionKind } from "../reference-engine/index.ts"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
@@ -20,6 +21,62 @@ export default function GMWorkshopDraft({
   onOpenCharacter: (characterId: string) => void
 }) {
   const snake = useSnake()
+  const { drafts: aiDrafts } = useAI()
+
+  function openAIDraft(draft: AIDraft) {
+    const nodes = draft.content.nodes || []
+    const relations = draft.content.relations || []
+    const lines = [
+      draft.summary,
+      "",
+      ...nodes.map((node) =>
+        "[" +
+        node.entity_type +
+        (node.entity_subtype ? " / " + node.entity_subtype : "") +
+        "] " +
+        node.name +
+        (node.summary ? " — " + node.summary : "")
+      ),
+      ...(relations.length
+        ? [
+            "",
+            "Связи:",
+            ...relations.map((relation) =>
+              "• " +
+              relation.kind +
+              ": " +
+              relation.from_key +
+              " → " +
+              (relation.to_key || relation.to_existing?.label || relation.to_existing?.id || "?") +
+              (relation.label ? " · " + relation.label : "")
+            ),
+          ]
+        : []),
+      ...(draft.validation_warnings.length
+        ? [
+            "",
+            "Предупреждения:",
+            ...draft.validation_warnings.map((warning) => "• " + warning),
+          ]
+        : []),
+      "",
+      "Это только AI-черновик. Канонические сущности ещё не созданы.",
+    ].filter((line) => line !== undefined)
+
+    snake.openSurface(
+      {
+        kind: "detail",
+        eyebrow: "AI DRAFT · НЕ КАНОН · r" + draft.current_revision,
+        title: draft.title,
+        body: lines.join("\n"),
+        size: { width: "wide", height: "tall" },
+      },
+      {
+        entity: { type: "ai-draft", id: draft.id },
+        path: [],
+      },
+    )
+  }
 
   function createCharacter(type: "pc" | "npc") {
     const action: SnakeAction = {
@@ -120,6 +177,45 @@ export default function GMWorkshopDraft({
           Здесь можно собирать будущих PC и NPC, тестировать предметы и механики.
           Публикация всегда отдельное действие.
         </p>
+      </section>
+
+      <section className="u1-gm-workblock">
+        <header>
+          <div>
+            <span>Черновики Восса</span>
+            <small>{aiDrafts.length}</small>
+          </div>
+          <b className="u1-gm-ai-draft-badge">AI · REVIEW</b>
+        </header>
+
+        <div className="u1-gm-list">
+          {aiDrafts.map((draft) => (
+            <button
+              type="button"
+              className="u1-gm-definition-row u1-gm-ai-draft-row"
+              key={draft.id}
+              onClick={() => openAIDraft(draft)}
+            >
+              <span>
+                <strong>{draft.title}</strong>
+                <small>
+                  {draft.draft_type}
+                  {" · "}
+                  {draft.content.nodes?.length || 0} сущн.
+                  {" · "}
+                  {draft.content.relations?.length || 0} связей
+                  {draft.summary ? " · " + draft.summary : ""}
+                </small>
+              </span>
+              <b>AI r{draft.current_revision}</b>
+            </button>
+          ))}
+          {!aiDrafts.length && (
+            <div className="u1-gm-empty">
+              Восс пока ничего не собрал. Попроси его создать зону, NPC, предмет или связанный набор.
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="u1-gm-workblock">
