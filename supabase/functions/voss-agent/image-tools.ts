@@ -86,7 +86,7 @@ export const VOSS_IMAGE_TOOLS = [
                 type: "string",
                 enum: ["character", "location", "reference_definition", "campaign_gallery"],
               },
-              id: { type: ["string", "null"] },
+              id: { type: "string" },
               field: { type: "string" },
             },
           },
@@ -139,7 +139,7 @@ export const VOSS_IMAGE_TOOLS = [
             type: "string",
             enum: ["character", "location", "reference_definition", "campaign_gallery"],
           },
-          target_id: { type: ["string", "null"] },
+          target_id: { type: "string" },
           target_field: { type: "string" },
           title: { type: "string" },
           caption: { type: "string" },
@@ -441,6 +441,29 @@ async function attachGenerated(ctx: ImageToolContext, args: JsonRecord) {
   const target = attachTargetFromArgs(args, ctx.viewContext)
   if (!target) return { error: "generated_media_target_required" }
 
+  const { data: attachJob, error: attachJobError } = await ctx.admin
+    .from("agent_jobs")
+    .insert({
+      campaign_id: ctx.campaignId,
+      thread_id: ctx.threadId,
+      requested_by: ctx.userId,
+      agent_key: "voss",
+      job_type: "image_attach",
+      status: "running",
+      input: {
+        asset_id: assetId,
+        target,
+      },
+      requested_outputs: 1,
+      started_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single()
+
+  if (attachJobError || !attachJob?.id) {
+    return { error: attachJobError?.message || "image_attach_job_failed" }
+  }
+
   const { data, error } = await ctx.admin.rpc(
     "attach_generated_media_v1",
     {
@@ -454,9 +477,35 @@ async function attachGenerated(ctx: ImageToolContext, args: JsonRecord) {
     },
   )
 
-  if (error) return { error: error.message }
+  if (error) {
+    await ctx.admin
+      .from("agent_jobs")
+      .update({
+        status: "failed",
+        error_code: "media_attach_failed",
+        error_message: error.message,
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", attachJob.id)
+
+    return { error: error.message }
+  }
+
+  await ctx.admin
+    .from("agent_jobs")
+    .update({
+      status: "completed",
+      completed_outputs: 1,
+      result: record(data),
+      completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", attachJob.id)
+
   return {
     attached: true,
+    attach_job_id: attachJob.id,
     ...record(data),
   }
 }
@@ -1038,8 +1087,47 @@ export async function processAgentImageJob({
       return
     }
 
+    const { data: reviewJob, error: reviewJobError } = await admin
+      .from("agent_jobs")
+      .insert({
+        campaign_id: job.campaign_id,
+        thread_id: job.thread_id,
+        requested_by: job.requested_by,
+        agent_key: "voss",
+        job_type: "image_review",
+        status: "running",
+        input: {
+          source_job_id: job.id,
+          asset_ids: outputs.map((output) => output.assetId),
+        },
+        requested_outputs: 1,
+        started_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single()
+
     const review = record(await reviewOutputs(admin, outputs, prompt))
     await applyReview(admin, outputs, review)
+
+    if (!reviewJobError && reviewJob?.id) {
+      await admin
+        .from("agent_jobs")
+        .update({
+          status: review.status === "failed" ? "failed" : "completed",
+          completed_outputs: review.status === "failed" ? 0 : 1,
+          result: review,
+          error_code:
+            review.status === "failed" ? "image_review_failed" : null,
+          error_message:
+            review.status === "failed"
+              ? stringValue(review.error, 1200) || "Image review failed"
+              : null,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", reviewJob.id)
+    }
+
     const attachment = await maybeAutoAttach(admin, job, outputs)
 
     await admin
