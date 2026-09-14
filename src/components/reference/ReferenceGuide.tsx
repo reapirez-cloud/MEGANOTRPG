@@ -146,7 +146,8 @@ function asStrings(value: unknown) {
 
 function classFundamentals(template: RuleTemplate | undefined) {
   if (!template) return []
-  const traits = isRecord(template.rules_meta?.core_traits) ? template.rules_meta?.core_traits : {}
+  const candidateTraits = template.rules_meta?.core_traits
+  const traits: Record<string, unknown> = isRecord(candidateTraits) ? candidateTraits : {}
   const mechanics = template.mechanics || []
   const proficiencyLabels = (kind: "savingThrow" | "armor" | "weapon") => mechanics
     .filter((mechanic) => mechanic.type === "grant" && mechanic.target === "proficiency" && mechanic.key.startsWith(`${kind}:`))
