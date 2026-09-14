@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom"
 
+import { useAIViewContextLayer } from "../../../ai/AIProvider"
 import type { SnakeActionInput } from "../../../snake-engine"
 import type { SnakeSurfaceSession } from "../runtime"
 import { SnakeFlowWindow } from "./SnakeFlowWindow"
@@ -16,6 +17,29 @@ export function SnakeWindowHost({
   onClose: () => void
   onSubmit: (input?: SnakeActionInput) => void
 }) {
+  useAIViewContextLayer(
+    "snake-surface",
+    {
+      screen: "snake-surface",
+      title: session.request.title,
+      text: "Открыто универсальное окно Snake поверх текущего экрана.",
+      entity: session.entity
+        ? {
+            type: session.entity.type,
+            id: session.entity.id,
+            label: session.request.title,
+          }
+        : null,
+      facts: {
+        surfaceKind: session.request.kind,
+        eyebrow: session.request.eyebrow || null,
+        actionId: session.action?.id || null,
+        pathDepth: session.path?.length || 0,
+      },
+    },
+    90,
+  )
+
   return createPortal(
     <div
       className="u1-snake-window-layer"
