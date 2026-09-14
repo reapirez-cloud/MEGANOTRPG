@@ -324,6 +324,17 @@ function ClassDetailScreen({ entry }: { entry: ClassReferenceEntry }) {
   )
 }
 
+const subclassPreviewArtIds = new Set([
+  "druid:moon",
+])
+
+function subclassPreviewArtPath(entry: ClassReferenceEntry, subclass: ClassReferenceSubclass) {
+  const key = `${entry.id}:${subclass.id}`
+  return subclassPreviewArtIds.has(key)
+    ? `/ui-v1/subclasses/${entry.id}/${subclass.id}-preview.webp`
+    : undefined
+}
+
 function SubclassCatalogScreen({
   entry,
   query,
@@ -337,6 +348,7 @@ function SubclassCatalogScreen({
     id: subclass.id,
     title: subclass.name,
     meta: subclass.summary,
+    art: subclassPreviewArtPath(entry, subclass),
   }))
 
   return (
