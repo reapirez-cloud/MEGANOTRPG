@@ -511,6 +511,14 @@ A correction creates a new fact and can explicitly supersede the old one. Old me
 
 A summary helps retrieval but never replaces the underlying event evidence.
 
+If a source event is edited or deleted, derived memory is invalidated automatically:
+
+- active facts referencing that event become `retracted`;
+- active summaries referencing that event become `invalidated`;
+- normal retrieval ignores invalidated summaries and non-active facts.
+
+This keeps "delete/edit the source" meaningful instead of leaving an AI echo of removed text behind.
+
 ### Voss memory tools
 
 Read tools available to any user whose selected/base model supports tools:
