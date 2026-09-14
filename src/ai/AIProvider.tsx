@@ -51,6 +51,23 @@ export type AIModel = {
   supports_tools: boolean
   supports_json: boolean
   cost_tier: number
+  reasoning_tier: number
+  latency_tier: number
+}
+
+export type AIRouteInfo = {
+  task:
+    | "general"
+    | "reference_read"
+    | "memory_read"
+    | "memory_write"
+    | "workshop"
+    | "draft_edit"
+  mode: "base_lock" | "auto" | "primary" | "base" | "fixed" | "fallback"
+  reason: string
+  degraded: boolean
+  modelId: string
+  modelName: string
 }
 
 export type AIConversationMessage = {
@@ -117,6 +134,7 @@ type AIContextValue = {
   canManage: boolean
   models: AIModel[]
   selectedModelId: string | null
+  lastRoute: AIRouteInfo | null
   messages: AIConversationMessage[]
   drafts: AIDraft[]
   loading: boolean
@@ -208,6 +226,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const [canManage, setCanManage] = useState(false)
   const [models, setModels] = useState<AIModel[]>([])
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
+  const [lastRoute, setLastRoute] = useState<AIRouteInfo | null>(null)
   const [messages, setMessages] = useState<AIConversationMessage[]>([])
   const [drafts, setDrafts] = useState<AIDraft[]>([])
   const [loading, setLoading] = useState(true)
@@ -386,7 +405,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
       const { data: modelRows, error: modelError } = await supabase
         .from("ai_models")
-        .select("id,model_key,display_name,is_base,gm_selectable,supports_tools,supports_json,cost_tier")
+        .select("id,model_key,display_name,is_base,gm_selectable,supports_tools,supports_json,cost_tier,reasoning_tier,latency_tier")
         .order("is_base", { ascending: false })
         .order("cost_tier", { ascending: true })
         .order("display_name", { ascending: true })
@@ -505,6 +524,17 @@ export function AIProvider({ children }: { children: ReactNode }) {
       return false
     }
 
+    if (data?.routing && data?.model?.id && data?.model?.name) {
+      setLastRoute({
+        task: data.routing.task,
+        mode: data.routing.mode,
+        reason: data.routing.reason || "",
+        degraded: data.routing.degraded === true,
+        modelId: data.model.id,
+        modelName: data.model.name,
+      })
+    }
+
     try {
       await loadConversationFor(campaignId, userId)
       if (canManage) await loadDraftsFor(campaignId)
@@ -527,6 +557,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     canManage,
     models,
     selectedModelId,
+    lastRoute,
     messages,
     drafts,
     loading,
@@ -548,6 +579,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     drafts,
     error,
     loading,
+    lastRoute,
     messages,
     models,
     refreshConversation,
