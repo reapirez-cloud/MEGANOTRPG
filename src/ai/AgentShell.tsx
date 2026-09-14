@@ -1,72 +1,24 @@
 import {
   useEffect,
-  useMemo,
   useRef,
   useState,
+  type ChangeEvent,
   type FormEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react"
 
 import {
   useAI,
-  type AIViewContext,
+  type AIAttachment,
 } from "./AIProvider"
 import {
   AGENT_OPEN_EVENT,
   type AgentOpenDetail,
 } from "./agentUiBridge"
 
-function uniquePrompts(values: Array<string | null | undefined>) {
-  return [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])]
-    .slice(0, 4)
-}
-
-function contextPrompts(
-  viewContext: AIViewContext | null,
-  canManage: boolean,
-) {
-  const screen = viewContext?.screen || ""
-  const entity = viewContext?.entity
-  const label = entity?.label || viewContext?.title || ""
-  const prompts: Array<string | null> = []
-
-  if (viewContext?.draft?.dirty) {
-    prompts.push("Проверь текущие несохранённые поля и скажи, что я мог упустить.")
-  }
-
-  if (entity) {
-    prompts.push(
-      label
-        ? `Объясни, что сейчас важно в «${label}».`
-        : "Объясни, что сейчас важно в открытой сущности.",
-    )
-  }
-
-  if (/reference-(?:class|subclass|feature)|knowledge-base/u.test(screen)) {
-    prompts.push("Объясни открытую механику простыми словами и отдельно назови точное правило.")
-    if (canManage && entity) {
-      prompts.push("Проверь, можно ли выразить открытую механику через CE, и собери безопасную компиляцию без применения.")
-    }
-  } else if (/character/u.test(screen)) {
-    prompts.push("Что в этом персонаже сейчас требует внимания?")
-  } else if (/location|world/u.test(screen)) {
-    prompts.push("Что известно об этом месте и какие связи с ним уже есть в кампании?")
-  } else if (/workspace/u.test(screen)) {
-    prompts.push("Что на этом экране сейчас самое важное?")
-  }
-
-  prompts.push("Что из прошлого кампании связано с тем, что сейчас открыто?")
-
-  if (canManage && /gm-workshop/u.test(screen)) {
-    prompts.push("Собери структурированный AI-черновик по открытому материалу.")
-  } else if (canManage && entity) {
-    prompts.push("Предложи GM-варианты развития этого элемента, не меняя канон.")
-  }
-
-  return uniquePrompts([
-    ...prompts,
-    "Коротко разложи текущий экран: факты, риски и следующие действия.",
-  ])
-}
+const ORB_SIZE = 40
+const ORB_MARGIN = 10
+const ORB_STORAGE_KEY = "meganotrpg:voss-orb-position"
 
 function AgentMark() {
   return (
@@ -115,6 +67,63 @@ function recordField(value: unknown, key: string) {
   return typeof field === "string" && field.trim() ? field.trim() : null
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), Math.max(min, max))
+}
+
+function defaultOrbPosition() {
+  if (typeof window === "undefined") return { x: 10, y: 120 }
+  try {
+    const stored = window.localStorage.getItem(ORB_STORAGE_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      if (Number.isFinite(parsed?.x) && Number.isFinite(parsed?.y)) {
+        return {
+          x: clamp(parsed.x, ORB_MARGIN, window.innerWidth - ORB_SIZE - ORB_MARGIN),
+          y: clamp(parsed.y, ORB_MARGIN, window.innerHeight - ORB_SIZE - ORB_MARGIN),
+        }
+      }
+    }
+  } catch {
+    // Position persistence is convenience only.
+  }
+
+  return {
+    x: Math.max(ORB_MARGIN, window.innerWidth - ORB_SIZE - ORB_MARGIN),
+    y: clamp(
+      Math.round(window.innerHeight * 0.33),
+      ORB_MARGIN,
+      window.innerHeight - ORB_SIZE - ORB_MARGIN,
+    ),
+  }
+}
+
+function snapOrb(position: { x: number; y: number }) {
+  const maxX = window.innerWidth - ORB_SIZE - ORB_MARGIN
+  const maxY = window.innerHeight - ORB_SIZE - ORB_MARGIN
+  const x = clamp(position.x, ORB_MARGIN, maxX)
+  const y = clamp(position.y, ORB_MARGIN, maxY)
+
+  const distances = [
+    { edge: "left", value: x },
+    { edge: "right", value: window.innerWidth - (x + ORB_SIZE) },
+    { edge: "top", value: y },
+    { edge: "bottom", value: window.innerHeight - (y + ORB_SIZE) },
+  ].sort((left, right) => left.value - right.value)
+
+  const edge = distances[0]?.edge
+  if (edge === "left") return { x: ORB_MARGIN, y }
+  if (edge === "right") return { x: maxX, y }
+  if (edge === "top") return { x, y: ORB_MARGIN }
+  return { x, y: maxY }
+}
+
+function readableBytes(bytes: number) {
+  if (bytes < 1024) return bytes + " Б"
+  if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " КБ"
+  return (bytes / (1024 * 1024)).toFixed(1) + " МБ"
+}
+
 export default function AgentShell() {
   const {
     campaignId,
@@ -123,7 +132,6 @@ export default function AgentShell() {
     models,
     ownerOverrideModels,
     selectedModelId,
-    lastRoute,
     messages,
     drafts,
     jobs,
@@ -134,8 +142,9 @@ export default function AgentShell() {
     loading,
     sending,
     error,
-    viewContext,
     chooseModel,
+    uploadAttachment,
+    removeAttachment,
     openDeveloperMode,
     closeDeveloperMode,
     setDeveloperOverride,
@@ -147,24 +156,34 @@ export default function AgentShell() {
   } = useAI()
 
   const [open, setOpen] = useState(false)
+  const [toolsOpen, setToolsOpen] = useState(false)
   const [draft, setDraft] = useState("")
+  const [attachments, setAttachments] = useState<AIAttachment[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [orbPosition, setOrbPosition] = useState(defaultOrbPosition)
+
   const logRef = useRef<HTMLDivElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const dragRef = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    originX: number
+    originY: number
+    moved: boolean
+  } | null>(null)
 
   const selectedModel =
     models.find((model) => model.id === selectedModelId) ||
     models.find((model) => model.is_base) ||
     null
-  const routedModel =
-    [...models, ...ownerOverrideModels].find(
-      (model) => model.id === lastRoute?.modelId,
-    ) ||
-    selectedModel
-  const latestDevRun = devRuns[0] || null
-
-  const prompts = useMemo(
-    () => contextPrompts(viewContext, canManage),
-    [canManage, viewContext],
+  const selectableModels = models.filter(
+    (model) =>
+      model.is_base ||
+      model.user_selectable ||
+      (canManage && model.gm_selectable),
   )
+  const latestDevRun = devRuns[0] || null
 
   useEffect(() => {
     const onOpen = (event: Event) => {
@@ -178,16 +197,31 @@ export default function AgentShell() {
   }, [])
 
   useEffect(() => {
-    if (!open) return
+    const onResize = () => {
+      setOrbPosition((current) => snapOrb(current))
+    }
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [])
+
+  useEffect(() => {
+    if (!open) {
+      setToolsOpen(false)
+      return
+    }
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return
+      if (toolsOpen) {
+        setToolsOpen(false)
+        return
+      }
       setOpen(false)
     }
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [open])
+  }, [open, toolsOpen])
 
   useEffect(() => {
     if (!open) return
@@ -202,13 +236,95 @@ export default function AgentShell() {
   async function submit(event: FormEvent) {
     event.preventDefault()
     const text = draft.trim()
-    if (!text || sending) return
-    const accepted = await send(text)
-    if (accepted) setDraft("")
+    if ((!text && !attachments.length) || sending || uploading) return
+    const accepted = await send(text, attachments)
+    if (accepted) {
+      setDraft("")
+      setAttachments([])
+    }
   }
 
   function prefillPrompt(prompt: string) {
     setDraft(prompt)
+  }
+
+  async function onFilesSelected(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files || [])
+    event.target.value = ""
+    if (!files.length) return
+
+    setUploading(true)
+    try {
+      const remaining = Math.max(0, 4 - attachments.length)
+      for (const file of files.slice(0, remaining)) {
+        const uploaded = await uploadAttachment(file)
+        if (uploaded) {
+          setAttachments((current) => [...current, uploaded].slice(0, 4))
+        }
+      }
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function discardAttachment(attachment: AIAttachment) {
+    setAttachments((current) =>
+      current.filter((item) => item.storagePath !== attachment.storagePath)
+    )
+    await removeAttachment(attachment)
+  }
+
+  function orbPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: orbPosition.x,
+      originY: orbPosition.y,
+      moved: false,
+    }
+  }
+
+  function orbPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    const deltaX = event.clientX - drag.startX
+    const deltaY = event.clientY - drag.startY
+    if (Math.hypot(deltaX, deltaY) > 4) drag.moved = true
+
+    setOrbPosition({
+      x: clamp(
+        drag.originX + deltaX,
+        ORB_MARGIN,
+        window.innerWidth - ORB_SIZE - ORB_MARGIN,
+      ),
+      y: clamp(
+        drag.originY + deltaY,
+        ORB_MARGIN,
+        window.innerHeight - ORB_SIZE - ORB_MARGIN,
+      ),
+    })
+  }
+
+  function orbPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    dragRef.current = null
+
+    if (!drag.moved) {
+      setOpen((current) => !current)
+      return
+    }
+
+    const next = snapOrb(orbPosition)
+    setOrbPosition(next)
+    try {
+      window.localStorage.setItem(ORB_STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      // Position persistence is convenience only.
+    }
   }
 
   return (
@@ -216,7 +332,15 @@ export default function AgentShell() {
       <button
         type="button"
         className="u1-agent-orb"
-        onClick={() => setOpen((current) => !current)}
+        style={{ left: orbPosition.x, top: orbPosition.y }}
+        onPointerDown={orbPointerDown}
+        onPointerMove={orbPointerMove}
+        onPointerUp={orbPointerUp}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return
+          event.preventDefault()
+          setOpen((current) => !current)
+        }}
         aria-label={open ? "Свернуть Восса" : "Открыть Восса"}
         aria-expanded={open}
         aria-controls="u1-agent-panel"
@@ -231,7 +355,7 @@ export default function AgentShell() {
           type="button"
           className="u1-agent-backdrop"
           onClick={() => setOpen(false)}
-          aria-label="Закрыть панель Восса"
+          aria-label="Закрыть Восса"
           tabIndex={-1}
         />
       )}
@@ -239,181 +363,188 @@ export default function AgentShell() {
       <aside
         id="u1-agent-panel"
         className="u1-agent-panel"
-        aria-label="Восс, агент MEGANOT RPG"
+        aria-label="Восс"
         aria-hidden={!open}
         data-open={open || undefined}
       >
         <header className="u1-agent-panel__header">
+          <button
+            type="button"
+            className="u1-agent-tools-trigger"
+            onClick={() => setToolsOpen((current) => !current)}
+            aria-label="Инструменты Восса"
+            aria-expanded={toolsOpen}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+
           <div className="u1-agent-panel__identity">
             <AgentMark />
             <div>
-              <span>MEGANOT / AGENT</span>
+              <span>MEGANOT</span>
               <strong>Восс</strong>
-              <small>{viewContext?.title || "Помощник кампании"}</small>
             </div>
           </div>
 
-          <button
-            type="button"
-            className="u1-agent-panel__close"
-            onClick={() => setOpen(false)}
-            aria-label="Свернуть Восса"
-          >
-            ×
-          </button>
+          <div className="u1-agent-panel__header-actions">
+            <small>{selectedModel?.display_name || "AI"}</small>
+            <button
+              type="button"
+              className="u1-agent-panel__close"
+              onClick={() => setOpen(false)}
+              aria-label="Свернуть Восса"
+            >
+              ×
+            </button>
+          </div>
         </header>
 
-        <section className="u1-agent-context" aria-label="Контекст агента">
-          <div className="u1-agent-context__head">
-            <span>Сейчас вижу</span>
-            <small>
-              {routedModel?.supports_tools ? "READ · MEMORY · ON" : "CONTEXT ONLY"}
-            </small>
+        <div
+          className="u1-agent-tools-shade"
+          data-open={toolsOpen || undefined}
+          onClick={() => setToolsOpen(false)}
+        />
+
+        <section
+          className="u1-agent-tools-drawer"
+          data-open={toolsOpen || undefined}
+          aria-hidden={!toolsOpen}
+        >
+          <header>
+            <span>ИНСТРУМЕНТЫ ВОССА</span>
+            <button
+              type="button"
+              onClick={() => setToolsOpen(false)}
+              aria-label="Закрыть инструменты"
+            >
+              ×
+            </button>
+          </header>
+
+          <div className="u1-agent-tools-section">
+            <span className="u1-agent-tools-section__label">Модель</span>
+            <div className="u1-agent-model-list">
+              {selectableModels.map((model) => (
+                <button
+                  type="button"
+                  key={model.id}
+                  className="u1-agent-model-choice"
+                  data-selected={model.id === selectedModelId || undefined}
+                  onClick={() => void chooseModel(model.id)}
+                  disabled={sending}
+                >
+                  <strong>{model.display_name}</strong>
+                  <small>
+                    {model.supports_vision ? "текст · изображения" : "текст"}
+                    {model.supports_tools ? " · инструменты" : ""}
+                  </small>
+                </button>
+              ))}
+            </div>
           </div>
 
-          <strong>
-            {viewContext?.title || viewContext?.screen || "Текущий экран"}
-          </strong>
-
-          {viewContext?.entity && (
-            <small className="u1-agent-context__entity">
-              {viewContext.entity.type}
-              {" · "}
-              {viewContext.entity.label || viewContext.entity.id}
-            </small>
-          )}
-
-          {viewContext?.draft?.dirty && (
-            <b>НЕ СОХРАНЕНО · ВИЖУ ТЕКУЩИЕ ПОЛЯ</b>
-          )}
-
-          {lastRoute && (
-            <small className="u1-agent-route" title={lastRoute.reason}>
-              {lastRoute.task.toUpperCase()}
-              {" · "}
-              {lastRoute.modelName}
-              {" · "}
-              {lastRoute.mode.toUpperCase()}
-              {lastRoute.degraded ? " · DEGRADED" : ""}
-            </small>
-          )}
-        </section>
-
-        {canManage && models.length > 0 && (
-          <label className="u1-agent-model">
-            <span>Основная модель</span>
-            <select
-              value={selectedModelId || ""}
-              onChange={(event) => void chooseModel(event.target.value)}
-              disabled={sending}
+          <div className="u1-agent-tools-section">
+            <span className="u1-agent-tools-section__label">Файл</span>
+            <button
+              type="button"
+              className="u1-agent-file-action"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending || uploading || attachments.length >= 4}
             >
-              {models
-                .filter((model) => model.gm_selectable || model.is_base)
-                .map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.display_name}
-                    {model.is_base ? " · база" : ""}
-                  </option>
-                ))}
-            </select>
-          </label>
-        )}
-
-        {isSystemAdmin && (
-          <section
-            className="u1-agent-dev-session"
-            data-active={devSession ? "true" : undefined}
-          >
-            <header>
+              <span aria-hidden="true">＋</span>
               <div>
-                <span>OWNER · DEVELOPER MODE</span>
-                <strong>{devSession ? "Активен" : "Выключен"}</strong>
+                <strong>{uploading ? "Загрузка…" : "Вставить файл"}</strong>
+                <small>текст, код или изображение · до 12 МБ</small>
               </div>
-              {devSession ? (
-                <button
-                  type="button"
-                  onClick={() => void closeDeveloperMode()}
-                  disabled={sending}
-                >
-                  Закрыть
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => void openDeveloperMode(null)}
-                  disabled={sending}
-                >
-                  Открыть на 30 минут
-                </button>
-              )}
-            </header>
+            </button>
+            <input
+              ref={fileInputRef}
+              className="u1-agent-file-input"
+              type="file"
+              multiple
+              accept="image/png,image/jpeg,image/webp,text/*,.md,.markdown,.json,.csv,.ts,.tsx,.js,.jsx,.mjs,.cjs,.css,.scss,.html,.xml,.sql,.yaml,.yml,.toml,.ini,.py,.java,.kt,.go,.rs,.php,.rb,.sh"
+              onChange={(event) => void onFilesSelected(event)}
+            />
+          </div>
 
-            {devSession && (
-              <>
-                <div className="u1-agent-dev-session__meta">
-                  <small>base: dev</small>
+          {isSystemAdmin && (
+            <div className="u1-agent-tools-section u1-agent-dev-control">
+              <div className="u1-agent-dev-control__head">
+                <div>
+                  <span className="u1-agent-tools-section__label">
+                    Developer Mode
+                  </span>
+                  <strong>{devSession ? "Активен" : "Выключен"}</strong>
+                </div>
+                {devSession ? (
+                  <button
+                    type="button"
+                    onClick={() => void closeDeveloperMode()}
+                    disabled={sending}
+                  >
+                    Закрыть
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void openDeveloperMode(null)}
+                    disabled={sending}
+                  >
+                    Открыть
+                  </button>
+                )}
+              </div>
+
+              {devSession && (
+                <>
                   <small>
-                    repo: {developerCapabilities?.repositoryConfigured
-                      ? "подключён"
-                      : "нет server token"}
-                  </small>
-                  <small>
-                    до {new Date(devSession.expires_at).toLocaleTimeString("ru-RU", {
+                    dev · до{" "}
+                    {new Date(devSession.expires_at).toLocaleTimeString("ru-RU", {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
+                    {" · "}
+                    {developerCapabilities?.repositoryConfigured
+                      ? "repo подключён"
+                      : "repo без server token"}
                   </small>
-                </div>
 
-                <label>
-                  <span>Модель разработчика</span>
-                  <select
-                    value={devSession.owner_override_model_id || ""}
-                    onChange={(event) =>
-                      void setDeveloperOverride(event.target.value || null)
-                    }
-                    disabled={sending}
-                  >
-                    <option value="">DeepSeek · основная</option>
-                    {ownerOverrideModels.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {model.display_name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <small className="u1-agent-dev-session__law">
-                  Модель может читать repo и предложить patch. Ветка, PR и merge
-                  запускаются только кнопками ниже. main недоступен.
-                </small>
-              </>
-            )}
-          </section>
-        )}
-
-        <div className="u1-agent-prompts" aria-label="Подсказки по текущему экрану">
-          {prompts.map((prompt) => (
-            <button
-              key={prompt}
-              type="button"
-              onClick={() => prefillPrompt(prompt)}
-              disabled={sending}
-            >
-              {prompt}
-            </button>
-          ))}
-        </div>
+                  {ownerOverrideModels.length > 0 && (
+                    <label className="u1-agent-dev-model">
+                      <span>Модель разработчика</span>
+                      <select
+                        value={devSession.owner_override_model_id || ""}
+                        onChange={(event) =>
+                          void setDeveloperOverride(event.target.value || null)
+                        }
+                        disabled={sending}
+                      >
+                        <option value="">Основная модель</option>
+                        {ownerOverrideModels.map((model) => (
+                          <option key={model.id} value={model.id}>
+                            {model.display_name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </section>
 
         <div className="u1-agent-log" ref={logRef} aria-live="polite">
           {isSystemAdmin && latestDevRun && (
             <article
-              className="u1-agent-dev-run"
+              className="u1-agent-system-entry u1-agent-dev-run"
               data-status={latestDevRun.state}
             >
               <header>
                 <div>
-                  <span>DEVELOPER RUN · dev only</span>
+                  <span>DEVELOPER RUN</span>
                   <strong>{latestDevRun.title}</strong>
                 </div>
                 <b>{devRunStatus(latestDevRun.state)}</b>
@@ -421,7 +552,7 @@ export default function AgentShell() {
 
               {latestDevRun.summary && <p>{latestDevRun.summary}</p>}
 
-              <div className="u1-agent-dev-run__stats">
+              <div className="u1-agent-system-meta">
                 <small>{latestDevRun.proposed_changes.length} файлов</small>
                 <small>CI: {latestDevRun.ci_state}</small>
                 <small>Preview: {latestDevRun.preview_state}</small>
@@ -434,23 +565,7 @@ export default function AgentShell() {
                 </details>
               )}
 
-              {latestDevRun.pr_url && (
-                <a
-                  href={latestDevRun.pr_url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  PR #{latestDevRun.pr_number}
-                </a>
-              )}
-
-              {latestDevRun.error_message && (
-                <small className="u1-agent-dev-run__error">
-                  {latestDevRun.error_message}
-                </small>
-              )}
-
-              <div className="u1-agent-dev-run__actions">
+              <div className="u1-agent-system-actions">
                 {latestDevRun.state === "proposed" && (
                   <button
                     type="button"
@@ -461,7 +576,7 @@ export default function AgentShell() {
                     }
                     onClick={() => {
                       if (!window.confirm(
-                        "Создать отдельную preview-ветку и PR в dev? В main ничего не попадёт.",
+                        "Создать preview-ветку и PR в dev? main останется нетронут.",
                       )) return
                       void applyDevRun(latestDevRun.id)
                     }}
@@ -471,15 +586,15 @@ export default function AgentShell() {
                 )}
 
                 {latestDevRun.head_sha &&
-                  latestDevRun.state !== "merged_dev" &&
-                  latestDevRun.state !== "cancelled" &&
-                  latestDevRun.state !== "stale" && (
+                  !["merged_dev", "cancelled", "stale"].includes(
+                    latestDevRun.state,
+                  ) && (
                     <button
                       type="button"
                       disabled={sending || !devSession}
                       onClick={() => void refreshDevRun(latestDevRun.id)}
                     >
-                      Обновить проверки
+                      Проверки
                     </button>
                   )}
 
@@ -489,7 +604,7 @@ export default function AgentShell() {
                     disabled={sending || !devSession}
                     onClick={() => {
                       if (!window.confirm(
-                        "CI и Preview зелёные. Слить этот PR в dev? main останется нетронут.",
+                        "CI и Preview зелёные. Слить этот PR в dev?",
                       )) return
                       void mergeDevRun(latestDevRun.id)
                     }}
@@ -504,28 +619,23 @@ export default function AgentShell() {
                     disabled={sending || !devSession}
                     onClick={() => void cancelDevRun(latestDevRun.id)}
                   >
-                    Отменить run
+                    Отменить
                   </button>
                 )}
               </div>
-
-              {developerCapabilities?.repositoryConfigured === false && (
-                <small className="u1-agent-dev-run__error">
-                  Серверный GitHub executor не настроен: нужен GITHUB_DEV_TOKEN.
-                  Proposal сохраняется, но ветку создать нельзя.
-                </small>
-              )}
             </article>
           )}
 
           {canManage && mechanicsCompilations[0] && (
             <article
-              className="u1-agent-mechanics-card"
+              className="u1-agent-system-entry"
               data-status={mechanicsCompilations[0].status}
             >
               <header>
                 <div>
-                  <span>MECHANICS COMPILER · v{mechanicsCompilations[0].compiler_version}</span>
+                  <span>
+                    MECHANICS COMPILER · v{mechanicsCompilations[0].compiler_version}
+                  </span>
                   <strong>{mechanicsCompilations[0].title}</strong>
                 </div>
                 <b>{mechanicsStatus(mechanicsCompilations[0].status)}</b>
@@ -533,89 +643,40 @@ export default function AgentShell() {
 
               <p>{mechanicsCompilations[0].intent_text}</p>
 
-              <div className="u1-agent-mechanics-card__stats">
-                <small>
-                  {mechanicsCompilations[0].mechanics.length} мех.
-                </small>
-                <small>
-                  {mechanicsCompilations[0].coverage.filter((row) => row.owner === "ce").length} CE
-                </small>
-                <small>
-                  {mechanicsCompilations[0].coverage.filter((row) => row.owner === "hybrid").length} hybrid
-                </small>
-                <small>
-                  {mechanicsCompilations[0].coverage.filter((row) => row.owner === "gm").length} GM
-                </small>
-              </div>
-
-              {mechanicsCompilations[0].unsupported_reasons.length > 0 && (
-                <div className="u1-agent-mechanics-card__blocked">
-                  {mechanicsCompilations[0].unsupported_reasons.slice(0, 3).map((reason) => (
-                    <span key={reason}>{reason}</span>
-                  ))}
-                </div>
-              )}
-
-              {mechanicsCompilations[0].diagnostics.some(
-                (item) => item.severity === "error",
-              ) && (
-                <small className="u1-agent-mechanics-card__diagnostic">
-                  Ошибок компиляции:{" "}
-                  {mechanicsCompilations[0].diagnostics.filter(
-                    (item) => item.severity === "error",
-                  ).length}
-                </small>
-              )}
-
               {mechanicsCompilations[0].status === "validated" && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    prefillPrompt(
-                      `Примени компиляцию механик ${mechanicsCompilations[0].id}.`,
-                    )
-                  }
-                  disabled={sending}
-                >
-                  Подготовить применение
-                </button>
-              )}
-
-              {mechanicsCompilations[0].status === "unsupported" && (
-                <small className="u1-agent-mechanics-card__law">
-                  Нельзя применять · пробел должен быть исправлен или передан в Developer Mode
-                </small>
+                <div className="u1-agent-system-actions">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      prefillPrompt(
+                        `Примени компиляцию механик ${mechanicsCompilations[0].id}.`,
+                      )
+                    }
+                    disabled={sending}
+                  >
+                    Подготовить применение
+                  </button>
+                </div>
               )}
             </article>
           )}
 
           {canManage && drafts[0] && (
-            <article className="u1-agent-draft-card">
-              <span>AI DRAFT · НЕ КАНОН</span>
-              <strong>{drafts[0].title}</strong>
+            <article className="u1-agent-system-entry">
+              <header>
+                <div>
+                  <span>AI DRAFT · НЕ КАНОН</span>
+                  <strong>{drafts[0].title}</strong>
+                </div>
+                <b>r{drafts[0].current_revision}</b>
+              </header>
               {drafts[0].summary && <p>{drafts[0].summary}</p>}
-              <small>
-                {drafts[0].content.nodes?.length || 0} сущн.
-                {" · "}
-                {drafts[0].content.relations?.length || 0} связей
-                {" · r"}
-                {drafts[0].current_revision}
-              </small>
               {drafts[0].recent_revisions?.[0]?.change_summary && (
-                <em>{drafts[0].recent_revisions[0].change_summary}</em>
+                <small className="u1-agent-system-note">
+                  {drafts[0].recent_revisions[0].change_summary}
+                </small>
               )}
             </article>
-          )}
-
-          {!messages.length && (
-            <div className="u1-agent-empty">
-              <strong>Спрашивай по тому, что открыто.</strong>
-              <p>
-                Восс получает семантический контекст текущего экрана, может дочитывать
-                разрешённые данные, использовать память кампании и собирать GM-черновики.
-                Канон сам не меняется.
-              </p>
-            </div>
           )}
 
           {messages.map((message) => (
@@ -640,11 +701,10 @@ export default function AgentShell() {
                 key={job.id}
                 className="u1-agent-image-job"
                 data-status={job.status}
-                data-output-count={job.outputs.length}
               >
                 <header>
                   <div>
-                    <span>IMAGE JOB</span>
+                    <span>ИЗОБРАЖЕНИЕ</span>
                     <strong>{imageJobStatus(job.status)}</strong>
                   </div>
                   <small>
@@ -668,7 +728,6 @@ export default function AgentShell() {
                             `Используй вариант ${asset.variant_index} из последней генерации.`,
                           )
                         }
-                        aria-label={`Выбрать вариант ${asset.variant_index}`}
                       >
                         {asset.url ? (
                           <img
@@ -679,11 +738,9 @@ export default function AgentShell() {
                         ) : (
                           <span className="u1-agent-image-option__placeholder" />
                         )}
-                        <span className="u1-agent-image-option__meta">
-                          <b>Вариант {asset.variant_index}</b>
-                          {asset.review.preferred === true && (
-                            <em>Выбор Восса</em>
-                          )}
+                        <span>
+                          Вариант {asset.variant_index}
+                          {asset.review.preferred === true ? " · выбор Восса" : ""}
                         </span>
                       </button>
                     ))}
@@ -691,40 +748,51 @@ export default function AgentShell() {
                 )}
 
                 {(job.status === "queued" || job.status === "running") && (
-                  <p className="u1-agent-image-job__progress">
-                    Генерируется {job.requested_outputs === 1
-                      ? "изображение"
-                      : `${job.requested_outputs} варианта`}.
-                    Уже готовы: {job.completed_outputs}.
+                  <p>
+                    Генерация · готово {job.completed_outputs} из{" "}
+                    {job.requested_outputs}
                   </p>
                 )}
 
-                {reviewSummary && (
-                  <p className="u1-agent-image-job__review">
-                    {reviewSummary}
-                  </p>
-                )}
+                {reviewSummary && <p>{reviewSummary}</p>}
 
                 {job.status === "failed" && (
                   <p className="u1-agent-image-job__error">
                     {job.error_message || "Генерация не завершилась."}
                   </p>
                 )}
-
-                {job.requested_outputs > 1 && job.status === "completed" && (
-                  <small className="u1-agent-image-job__law">
-                    Показаны все запрошенные варианты · выбор Восса не скрывает остальные
-                  </small>
-                )}
               </article>
             )
           })}
 
-
           {sending && (
-            <div className="u1-agent-thinking">Восс разбирается…</div>
+            <div className="u1-agent-thinking">
+              <AgentMark />
+              <span>Восс разбирается…</span>
+            </div>
           )}
         </div>
+
+        {attachments.length > 0 && (
+          <div className="u1-agent-attachments">
+            {attachments.map((attachment) => (
+              <div key={attachment.storagePath} className="u1-agent-attachment">
+                <div>
+                  <strong>{attachment.name}</strong>
+                  <small>{readableBytes(attachment.size)}</small>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void discardAttachment(attachment)}
+                  disabled={sending}
+                  aria-label={`Убрать ${attachment.name}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {error && (
           <div className="u1-agent-error" role="status">
@@ -736,7 +804,7 @@ export default function AgentShell() {
           <textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="Спроси про то, что сейчас открыто…"
+            placeholder="Восс…"
             maxLength={8000}
             rows={2}
             disabled={sending}
@@ -744,10 +812,14 @@ export default function AgentShell() {
           />
           <button
             type="submit"
-            disabled={!draft.trim() || sending}
+            disabled={
+              (!draft.trim() && !attachments.length) ||
+              sending ||
+              uploading
+            }
             aria-label="Отправить Воссу"
           >
-            ↑
+            <span aria-hidden="true">↑</span>
           </button>
         </form>
       </aside>

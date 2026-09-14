@@ -19,13 +19,14 @@ test("Stage 8 introduces task-aware model routing", () => {
   assert.match(router, /resolveVossModel/)
 })
 
-test("player requests are hard-locked to the base model", () => {
+test("players stay role-limited while using an explicitly selected public model", () => {
   const router = read("supabase/functions/voss-agent/model-router.ts")
 
   assert.match(router, /if \(!input\.canManage\)/)
-  assert.match(router, /routeMode: "base_lock"/)
-  assert.match(router, /model: base/)
-  assert.match(router, /Player requests are permanently locked to the base model/)
+  assert.match(router, /selectableByUser/)
+  assert.match(router, /model: primary/)
+  assert.match(router, /routeMode: "primary"/)
+  assert.match(router, /Player uses their explicitly selected public campaign model/)
 })
 
 test("read-heavy auto routing prefers cheaper faster compatible models", () => {
@@ -96,16 +97,18 @@ test("Voss gateway records and returns the actual route decision", () => {
   assert.match(edge, /routeDecision\.degraded/)
 })
 
-test("Voss UI distinguishes the primary model from the routed model", () => {
+test("Voss keeps route telemetry internally while the chat UI shows only the chosen model", () => {
   const provider = read("src/ai/AIProvider.tsx")
   const shell = read("src/ai/AgentShell.tsx")
 
   assert.match(provider, /lastRoute/)
   assert.match(provider, /reasoning_tier/)
   assert.match(provider, /latency_tier/)
-  assert.match(shell, /Основная модель/)
-  assert.match(shell, /lastRoute\.task\.toUpperCase/)
-  assert.match(shell, /routedModel/)
+  assert.match(shell, /selectedModel/)
+  assert.match(shell, /selectableModels/)
+  assert.match(shell, /u1-agent-model-choice/)
+  assert.doesNotMatch(shell, /lastRoute\.task\.toUpperCase/)
+  assert.doesNotMatch(shell, /routedModel/)
 })
 
 test("fixed task routes survive model deletion and fall back safely", () => {

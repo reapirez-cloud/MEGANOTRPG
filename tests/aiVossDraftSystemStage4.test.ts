@@ -43,7 +43,8 @@ test("draft schema is typed for future canonical execution", () => {
 test("players never receive the draft tool from the gateway", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
 
-  assert.match(edge, /canChooseModel[\s\S]*\.\.\.VOSS_DRAFT_TOOLS/)
+  assert.match(edge, /const canManage = membership\.role === "gm" \|\| membership\.is_owner === true/)
+  assert.match(edge, /\.\.\.\(canManage[\s\S]*\.\.\.VOSS_DRAFT_TOOLS/)
   assert.match(edge, /executeVossDraftTool/)
   assert.match(edge, /isVossDraftTool/)
 })
@@ -67,7 +68,8 @@ test("GM Workshop and global AgentShell surface structured AI drafts", () => {
 
   assert.match(workshop, /Черновики Восса/)
   assert.match(workshop, /AI DRAFT · НЕ КАНОН/)
-  assert.match(shell, /u1-agent-draft-card/)
+  assert.match(shell, /AI DRAFT · НЕ КАНОН/)
+  assert.match(shell, /u1-agent-system-entry/)
   assert.match(provider, /from\("ai_drafts"\)/)
   assert.match(provider, /refreshDrafts/)
 })

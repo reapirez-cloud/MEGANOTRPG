@@ -17,43 +17,59 @@ test("Stage 10 mounts exactly one global agent shell inside UiV1App", () => {
   assert.equal((app.match(/<AgentShell\s*\/>/g) || []).length, 1)
 })
 
-test("Stage 10 replaces the old VI profile mark with the global agent orb", () => {
-  const app = read("src/ui-v1-isolated/UiV1App.tsx")
+test("global Voss launcher is draggable and snaps to the nearest viewport edge", () => {
   const shell = read("src/ai/AgentShell.tsx")
   const styles = read("src/ai/ai-voss.css")
 
-  assert.doesNotMatch(app, /PlayerProfileMark/)
   assert.match(shell, /className="u1-agent-orb"/)
-  assert.match(shell, /aria-controls="u1-agent-panel"/)
+  assert.match(shell, /onPointerDown=\{orbPointerDown\}/)
+  assert.match(shell, /onPointerMove=\{orbPointerMove\}/)
+  assert.match(shell, /onPointerUp=\{orbPointerUp\}/)
+  assert.match(shell, /function snapOrb/)
+  assert.match(shell, /ORB_STORAGE_KEY/)
   assert.match(styles, /\.u1-agent-orb\s*\{[\s\S]*?position:\s*fixed/)
-  assert.match(styles, /top:\s*calc\(/)
-  assert.match(styles, /right:\s*max\(/)
-  assert.doesNotMatch(styles, /u1-voss-launcher/)
+  assert.match(styles, /touch-action:\s*none/)
+  assert.doesNotMatch(styles, /\.u1-agent-orb\s*\{[\s\S]*?top:\s*calc\(/)
 })
 
-test("desktop agent is a right side panel and mobile agent is a bottom sheet", () => {
+test("desktop agent is a MEGANOT side layer and mobile agent remains a bottom layer", () => {
   const styles = read("src/ai/ai-voss.css")
 
   assert.match(styles, /\.u1-agent-panel\s*\{[\s\S]*?right:\s*0;[\s\S]*?bottom:\s*0;/)
-  assert.match(styles, /width:\s*min\(430px, 38vw\)/)
+  assert.match(styles, /width:\s*min\(460px, 40vw\)/)
   assert.match(styles, /@media \(max-width: 720px\)/)
-  assert.match(styles, /height:\s*min\(76dvh, 720px\)/)
-  assert.match(styles, /max-height:\s*82dvh/)
-  assert.match(styles, /transform:\s*translateY\(104%\)/)
-  assert.match(styles, /border-radius:\s*14px 14px 0 0/)
+  assert.match(styles, /height:\s*min\(80dvh, 760px\)/)
+  assert.match(styles, /transform:\s*translateY\(103%\)/)
+  assert.doesNotMatch(styles, /border-radius:\s*14px 14px 0 0/)
 })
 
-test("agent suggestions are semantic and never auto-send on tap", () => {
+test("chat body has no context explainer, prompt tiles or giant empty-state coaching", () => {
   const shell = read("src/ai/AgentShell.tsx")
+  const styles = read("src/ai/ai-voss.css")
 
-  assert.match(shell, /viewContext\?\.draft\?\.dirty/)
-  assert.match(shell, /viewContext\?\.entity/)
-  assert.match(shell, /reference-\(\?:class\|subclass\|feature\)/)
-  assert.match(shell, /gm-workshop/)
-  assert.match(shell, /onClick=\{\(\) => prefillPrompt\(prompt\)\}/)
-  assert.match(shell, /setDraft\(prompt\)/)
-  assert.doesNotMatch(shell, /onClick=\{\(\) => send\(prompt\)\}/)
-  assert.doesNotMatch(shell, /generate_image|Сгенерировать изображение|Генерировать арт/i)
+  assert.doesNotMatch(shell, /Сейчас вижу/)
+  assert.doesNotMatch(shell, /Что из прошлого кампании/)
+  assert.doesNotMatch(shell, /Спрашивай по тому, что открыто/)
+  assert.doesNotMatch(shell, /contextPrompts/)
+  assert.doesNotMatch(shell, /u1-agent-prompts/)
+  assert.doesNotMatch(shell, /u1-agent-context/)
+  assert.doesNotMatch(styles, /\.u1-agent-prompts/)
+  assert.doesNotMatch(styles, /\.u1-agent-context/)
+})
+
+test("model, file and Developer Mode controls live in a dedicated Snake-like tool drawer", () => {
+  const shell = read("src/ai/AgentShell.tsx")
+  const styles = read("src/ai/ai-voss.css")
+
+  assert.match(shell, /u1-agent-tools-trigger/)
+  assert.match(shell, /u1-agent-tools-drawer/)
+  assert.match(shell, /selectableModels\.map/)
+  assert.match(shell, /Вставить файл/)
+  assert.match(shell, /fileInputRef/)
+  assert.match(shell, /Developer Mode/)
+  assert.match(styles, /\.u1-agent-tools-drawer/)
+  assert.match(styles, /transform:\s*translateX\(-104%\)/)
+  assert.doesNotMatch(shell, /className="u1-agent-model"/)
 })
 
 test("agent shell can be opened globally without adding duplicate buttons", () => {
@@ -67,15 +83,15 @@ test("agent shell can be opened globally without adding duplicate buttons", () =
   assert.match(shell, /detail\?\.prompt/)
 })
 
-test("agent panel preserves context, routing and GM model controls", () => {
+test("conversation keeps canonical system artifacts without turning them into dashboard widgets", () => {
   const shell = read("src/ai/AgentShell.tsx")
+  const styles = read("src/ai/ai-voss.css")
 
-  assert.match(shell, /viewContext\?\.title/)
-  assert.match(shell, /viewContext\?\.entity/)
-  assert.match(shell, /lastRoute\.task\.toUpperCase\(\)/)
-  assert.match(shell, /lastRoute\.modelName/)
-  assert.match(shell, /models[\s\S]*?gm_selectable/)
-  assert.match(shell, /chooseModel/)
   assert.match(shell, /AI DRAFT · НЕ КАНОН/)
+  assert.match(shell, /MECHANICS COMPILER/)
+  assert.match(shell, /DEVELOPER RUN/)
+  assert.match(styles, /\.u1-agent-system-entry/)
+  assert.match(styles, /border-left:/)
+  assert.doesNotMatch(styles, /border-radius:\s*1[024]px/)
   assert.match(shell, /Escape/)
 })

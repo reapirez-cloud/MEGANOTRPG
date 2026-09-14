@@ -49,6 +49,7 @@ export type AIModel = {
   display_name: string
   is_base: boolean
   gm_selectable: boolean
+  user_selectable: boolean
   supports_tools: boolean
   supports_json: boolean
   cost_tier: number
@@ -82,6 +83,13 @@ export type AIConversationMessage = {
   body: string
   created_at: string
   model_id: string | null
+}
+
+export type AIAttachment = {
+  name: string
+  storagePath: string
+  mimeType: string
+  size: number
 }
 
 export type AIDraftNode = {
@@ -284,6 +292,8 @@ type AIContextValue = {
   ) => void
   clearViewContextLayer: (source: string) => void
   chooseModel: (modelId: string) => Promise<boolean>
+  uploadAttachment: (file: File) => Promise<AIAttachment | null>
+  removeAttachment: (attachment: AIAttachment) => Promise<void>
   openDeveloperMode: (ownerOverrideModelId?: string | null) => Promise<boolean>
   closeDeveloperMode: () => Promise<void>
   setDeveloperOverride: (ownerOverrideModelId: string | null) => Promise<boolean>
@@ -291,7 +301,7 @@ type AIContextValue = {
   refreshDevRun: (runId: string) => Promise<boolean>
   mergeDevRun: (runId: string) => Promise<boolean>
   cancelDevRun: (runId: string) => Promise<boolean>
-  send: (message: string) => Promise<boolean>
+  send: (message: string, attachments?: AIAttachment[]) => Promise<boolean>
   refreshConversation: () => Promise<void>
   refreshDrafts: () => Promise<void>
   refreshJobs: () => Promise<void>
@@ -314,6 +324,24 @@ function normalizeFunctionError(message: string) {
     return "Восс пока не получил доступ к модели. Проверь серверные настройки AI-провайдера."
   }
   return message || "Восс не смог ответить."
+}
+
+const MAX_AI_ATTACHMENT_BYTES = 12 * 1024 * 1024
+
+function safeAttachmentName(name: string) {
+  const clean = name
+    .normalize("NFKC")
+    .replace(/[^\p{L}\p{N}._-]+/gu, "_")
+    .replace(/^_+|_+$/g, "")
+  return (clean || "attachment").slice(0, 120)
+}
+
+function modelSelectableForUser(model: AIModel, canManage: boolean) {
+  return (
+    model.is_base ||
+    model.user_selectable ||
+    (canManage && model.gm_selectable)
+  )
 }
 
 function composeViewContext(
@@ -887,7 +915,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
       const { data: modelRows, error: modelError } = await supabase
         .from("ai_models")
-        .select("id,model_key,display_name,is_base,gm_selectable,supports_tools,supports_json,supports_vision,cost_tier,reasoning_tier,latency_tier,model_kind,access_scope")
+        .select("id,model_key,display_name,is_base,gm_selectable,user_selectable,supports_tools,supports_json,supports_vision,cost_tier,reasoning_tier,latency_tier,model_kind,access_scope")
         .order("is_base", { ascending: false })
         .order("cost_tier", { ascending: true })
         .order("display_name", { ascending: true })
@@ -913,19 +941,21 @@ export function AIProvider({ children }: { children: ReactNode }) {
       const baseModel = nextModels.find((model) => model.is_base) || null
       let nextSelectedModelId = baseModel?.id || null
 
-      if (manager) {
-        const { data: settings, error: settingsError } = await supabase
-          .from("ai_agent_settings")
-          .select("selected_model_id")
-          .eq("campaign_id", nextCampaignId)
-          .eq("agent_key", "voss")
-          .maybeSingle()
+      const { data: settings, error: settingsError } = await supabase
+        .from("ai_user_agent_settings")
+        .select("selected_model_id")
+        .eq("campaign_id", nextCampaignId)
+        .eq("user_id", nextUserId)
+        .eq("agent_key", "voss")
+        .maybeSingle()
 
-        if (!settingsError && settings?.selected_model_id) {
-          const selected = nextModels.find((model) =>
-            model.id === settings.selected_model_id && model.gm_selectable)
-          if (selected) nextSelectedModelId = selected.id
-        }
+      if (!settingsError && settings?.selected_model_id) {
+        const selected = nextModels.find(
+          (model) =>
+            model.id === settings.selected_model_id &&
+            modelSelectableForUser(model, manager),
+        )
+        if (selected) nextSelectedModelId = selected.id
       }
 
       setSelectedModelId(nextSelectedModelId)
@@ -961,21 +991,25 @@ export function AIProvider({ children }: { children: ReactNode }) {
   }, [loadConversationFor, loadDevRunsFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor])
 
   const chooseModel = useCallback(async (modelId: string) => {
-    if (!canManage || !campaignId || !userId) return false
-    const model = models.find((item) => item.id === modelId && item.gm_selectable)
+    if (!campaignId || !userId) return false
+    const model = models.find(
+      (item) =>
+        item.id === modelId &&
+        modelSelectableForUser(item, canManage),
+    )
     if (!model) return false
 
     setError(null)
     const { error: settingsError } = await supabase
-      .from("ai_agent_settings")
+      .from("ai_user_agent_settings")
       .upsert({
         campaign_id: campaignId,
+        user_id: userId,
         agent_key: "voss",
         selected_model_id: modelId,
-        updated_by: userId,
         updated_at: new Date().toISOString(),
       }, {
-        onConflict: "campaign_id,agent_key",
+        onConflict: "campaign_id,user_id,agent_key",
       })
 
     if (settingsError) {
@@ -987,8 +1021,59 @@ export function AIProvider({ children }: { children: ReactNode }) {
     return true
   }, [campaignId, canManage, models, userId])
 
-  const send = useCallback(async (rawMessage: string) => {
-    const message = rawMessage.trim()
+  const uploadAttachment = useCallback(async (file: File) => {
+    if (!campaignId || !userId) return null
+    if (file.size <= 0 || file.size > MAX_AI_ATTACHMENT_BYTES) {
+      setError("Файл должен быть не пустым и не больше 12 МБ.")
+      return null
+    }
+
+    const safeName = safeAttachmentName(file.name)
+    const storagePath =
+      campaignId + "/" +
+      userId + "/" +
+      crypto.randomUUID() + "/" +
+      safeName
+
+    setError(null)
+    const { error: uploadError } = await supabase.storage
+      .from("ai-attachments")
+      .upload(storagePath, file, {
+        upsert: false,
+        contentType: file.type || "application/octet-stream",
+        cacheControl: "3600",
+      })
+
+    if (uploadError) {
+      setError(uploadError.message)
+      return null
+    }
+
+    return {
+      name: file.name || safeName,
+      storagePath,
+      mimeType: file.type || "application/octet-stream",
+      size: file.size,
+    } satisfies AIAttachment
+  }, [campaignId, userId])
+
+  const removeAttachment = useCallback(async (attachment: AIAttachment) => {
+    if (!attachment.storagePath) return
+    const { error: removeError } = await supabase.storage
+      .from("ai-attachments")
+      .remove([attachment.storagePath])
+    if (removeError) setError(removeError.message)
+  }, [])
+
+  const send = useCallback(async (
+    rawMessage: string,
+    attachments: AIAttachment[] = [],
+  ) => {
+    const message =
+      rawMessage.trim() ||
+      (attachments.length
+        ? "Изучи прикреплённые файлы и используй их как контекст запроса."
+        : "")
     if (!campaignId || !userId || !message || sending) return false
 
     setSending(true)
@@ -1007,6 +1092,12 @@ export function AIProvider({ children }: { children: ReactNode }) {
         agentKey: "voss",
         message,
         viewContext: context,
+        attachments: attachments.map((attachment) => ({
+          name: attachment.name,
+          storagePath: attachment.storagePath,
+          mimeType: attachment.mimeType,
+          size: attachment.size,
+        })),
         ...(devSession && devSessionToken
           ? {
               devSessionId: devSession.id,
@@ -1058,6 +1149,17 @@ export function AIProvider({ children }: { children: ReactNode }) {
       ])
     }
 
+    if (attachments.length) {
+      await Promise.all(
+        attachments.map(async (attachment) => {
+          await supabase.storage
+            .from("ai-attachments")
+            .remove([attachment.storagePath])
+            .catch(() => undefined)
+        }),
+      )
+    }
+
     setSending(false)
     return true
   }, [campaignId, canManage, devSession, devSessionToken, isSystemAdmin, loadConversationFor, loadDevRunsFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor, route, sending, userId, viewContext])
@@ -1086,6 +1188,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
     setViewContextLayer,
     clearViewContextLayer,
     chooseModel,
+    uploadAttachment,
+    removeAttachment,
     openDeveloperMode,
     closeDeveloperMode,
     setDeveloperOverride,
@@ -1122,6 +1226,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     models,
     openDeveloperMode,
     ownerOverrideModels,
+    removeAttachment,
     refreshConversation,
     refreshDrafts,
     refreshJobs,
@@ -1134,6 +1239,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     sending,
     setDeveloperOverride,
     setViewContextLayer,
+    uploadAttachment,
     userId,
     viewContext,
   ])
