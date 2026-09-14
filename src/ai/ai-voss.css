@@ -336,6 +336,114 @@
   scrollbar-color: rgba(220, 232, 235, 0.12) transparent;
 }
 
+.u1-agent-mechanics-card {
+  margin: 0 0 14px;
+  padding: 10px 11px;
+  border: 1px solid rgba(220, 231, 234, 0.12);
+  background:
+    linear-gradient(125deg, rgba(217, 230, 234, 0.042), transparent 70%),
+    rgba(255, 255, 255, 0.008);
+  display: grid;
+  gap: 7px;
+}
+
+.u1-agent-mechanics-card[data-status="unsupported"] {
+  border-color: rgba(190, 132, 104, 0.22);
+}
+
+.u1-agent-mechanics-card[data-status="applied"] {
+  border-color: rgba(168, 196, 172, 0.19);
+}
+
+.u1-agent-mechanics-card > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.u1-agent-mechanics-card > header > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.u1-agent-mechanics-card > header span {
+  color: rgba(197, 211, 215, 0.4);
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.u1-agent-mechanics-card > header strong {
+  color: rgba(238, 240, 236, 0.82);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.u1-agent-mechanics-card > header b {
+  flex: 0 0 auto;
+  color: rgba(211, 221, 216, 0.55);
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.u1-agent-mechanics-card > p {
+  margin: 0;
+  color: rgba(201, 211, 211, 0.5);
+  font-size: 7px;
+  line-height: 1.48;
+}
+
+.u1-agent-mechanics-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.u1-agent-mechanics-card__stats small {
+  padding: 3px 5px;
+  border: 1px solid rgba(220, 231, 234, 0.08);
+  color: rgba(206, 216, 215, 0.48);
+  font-size: 6px;
+}
+
+.u1-agent-mechanics-card__blocked {
+  display: grid;
+  gap: 4px;
+}
+
+.u1-agent-mechanics-card__blocked span {
+  color: rgba(224, 176, 147, 0.68);
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.u1-agent-mechanics-card__diagnostic,
+.u1-agent-mechanics-card__law {
+  color: rgba(213, 176, 154, 0.56);
+  font-size: 6px;
+  line-height: 1.4;
+}
+
+.u1-agent-mechanics-card > button {
+  width: fit-content;
+  padding: 6px 8px;
+  border: 1px solid rgba(220, 232, 235, 0.11);
+  background: rgba(220, 232, 235, 0.025);
+  color: rgba(229, 235, 232, 0.68);
+  font: inherit;
+  font-size: 7px;
+  cursor: pointer;
+}
+
+.u1-agent-mechanics-card > button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .u1-agent-draft-card {
   margin: 0 0 14px;
   padding: 10px 11px;
