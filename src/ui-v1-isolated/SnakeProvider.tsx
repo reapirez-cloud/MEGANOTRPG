@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react"
 
+import { useAIViewContextLayer } from "../ai/AIProvider"
 import {
   snakeAgent,
   type SnakeAction,
@@ -114,6 +115,31 @@ export function SnakeProvider({ children }: { children: ReactNode }) {
       })
     },
   })
+
+  useAIViewContextLayer(
+    "snake-menu",
+    menu.menu
+      ? {
+          screen: "snake-menu",
+          title: menu.frame?.title || "Контекстное меню",
+          text: "Открыто контекстное меню Snake для выбранной сущности.",
+          entity: {
+            type: menu.menu.entity.type,
+            id: menu.menu.entity.id,
+            label: menu.frame?.title,
+          },
+          facts: {
+            actions: menu.frame?.actions.map((action) => ({
+              id: action.id,
+              label: action.label,
+              enabled: action.enabled !== false,
+            })) || [],
+            depth: menu.menu.frames.length,
+          },
+        }
+      : null,
+    85,
+  )
 
   const value = useMemo<SnakeContextValue>(
     () => ({
