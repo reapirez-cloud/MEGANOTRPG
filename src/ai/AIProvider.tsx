@@ -48,6 +48,8 @@ export type AIModel = {
   display_name: string
   is_base: boolean
   gm_selectable: boolean
+  supports_tools: boolean
+  supports_json: boolean
   cost_tier: number
 }
 
@@ -279,7 +281,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
       const { data: modelRows, error: modelError } = await supabase
         .from("ai_models")
-        .select("id,model_key,display_name,is_base,gm_selectable,cost_tier")
+        .select("id,model_key,display_name,is_base,gm_selectable,supports_tools,supports_json,cost_tier")
         .order("is_base", { ascending: false })
         .order("cost_tier", { ascending: true })
         .order("display_name", { ascending: true })
