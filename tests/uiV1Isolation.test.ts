@@ -553,6 +553,12 @@ test("Knowledge Base story features are authored first instead of exposing every
   assert.doesNotMatch(sectionScreens, /presentation\.features/)
 })
 
+test("UI v1 Druid stories cannot fall back to legacy druidReference prose", () => {
+  assert.doesNotMatch(classReferencePresentation, /classes\/druidReference/)
+  assert.match(classReferencePresentation, /getDruidBaseVossNarration/)
+  assert.match(classReferencePresentation, /getDruidSubclassFeatureVossNarration/)
+})
+
 test("Feature list previews authored Voss story while full rules stay in feature detail", () => {
   assert.match(sectionScreens, /className="u1-feature-row__story"/)
   assert.match(sectionScreens, /\{feature\.vossExplanation\}/)
