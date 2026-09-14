@@ -124,6 +124,8 @@ export default function AgentShell() {
     models,
     ownerOverrideModels,
     selectedModelId,
+    threads,
+    activeThreadId,
     messages,
     drafts,
     jobs,
@@ -143,6 +145,10 @@ export default function AgentShell() {
     refreshDevRun,
     mergeDevRun,
     cancelDevRun,
+    createThread,
+    switchThread,
+    deleteThread,
+    saveGeneratedAsset,
     send,
   } = useAI()
 
@@ -460,6 +466,66 @@ export default function AgentShell() {
             />
           </div>
 
+          <div className="u1-agent-tools-section u1-agent-thread-section">
+            <div className="u1-agent-thread-section__head">
+              <span className="u1-agent-tools-section__label">Чаты</span>
+              <button
+                type="button"
+                className="u1-agent-thread-new"
+                onClick={() => void createThread()}
+                disabled={sending}
+                aria-label="Новый чат с Воссом"
+              >
+                ＋
+              </button>
+            </div>
+
+            <div className="u1-agent-thread-list">
+              {threads.length === 0 && (
+                <small className="u1-agent-thread-empty">
+                  Здесь пока пусто.
+                </small>
+              )}
+
+              {threads.map((thread) => (
+                <div
+                  key={thread.id}
+                  className="u1-agent-thread-row"
+                  data-active={thread.id === activeThreadId || undefined}
+                >
+                  <button
+                    type="button"
+                    className="u1-agent-thread-choice"
+                    onClick={() => void switchThread(thread.id)}
+                    disabled={sending}
+                  >
+                    <strong>{thread.title || "Новый чат"}</strong>
+                    <small>
+                      {new Date(thread.updated_at).toLocaleDateString("ru-RU", {
+                        day: "2-digit",
+                        month: "2-digit",
+                      })}
+                    </small>
+                  </button>
+                  <button
+                    type="button"
+                    className="u1-agent-thread-delete"
+                    onClick={() => {
+                      if (!window.confirm(
+                        `Удалить чат «${thread.title || "Новый чат"}»?`,
+                      )) return
+                      void deleteThread(thread.id)
+                    }}
+                    disabled={sending}
+                    aria-label={`Удалить чат ${thread.title || "Новый чат"}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {isSystemAdmin && (
             <div className="u1-agent-tools-section u1-agent-dev-control">
               <div className="u1-agent-dev-control__head">
@@ -673,33 +739,78 @@ export default function AgentShell() {
                     className="u1-agent-image-grid"
                     data-count={job.outputs.length}
                   >
-                    {job.outputs.map((asset) => (
-                      <button
-                        type="button"
-                        key={asset.id}
-                        className="u1-agent-image-option"
-                        data-preferred={asset.review.preferred === true || undefined}
-                        onClick={() =>
-                          prefillPrompt(
-                            `Используй вариант ${asset.variant_index} из последней генерации.`,
-                          )
-                        }
-                      >
-                        {asset.url ? (
-                          <img
-                            src={asset.url}
-                            alt={`Вариант ${asset.variant_index}`}
-                            loading="lazy"
-                          />
-                        ) : (
-                          <span className="u1-agent-image-option__placeholder" />
-                        )}
-                        <span>
-                          Вариант {asset.variant_index}
-                          {asset.review.preferred === true ? " · выбор Восса" : ""}
-                        </span>
-                      </button>
-                    ))}
+                    {job.outputs.map((asset) => {
+                      const saved =
+                        asset.status === "attached" ||
+                        Boolean(asset.saved_at) ||
+                        !asset.expires_at
+
+                      return (
+                        <div
+                          key={asset.id}
+                          className="u1-agent-image-card"
+                          data-saved={saved || undefined}
+                        >
+                          <button
+                            type="button"
+                            className="u1-agent-image-option"
+                            data-preferred={asset.review.preferred === true || undefined}
+                            onClick={() =>
+                              prefillPrompt(
+                                `Используй вариант ${asset.variant_index} из последней генерации.`,
+                              )
+                            }
+                          >
+                            {asset.url ? (
+                              <img
+                                src={asset.url}
+                                alt={`Вариант ${asset.variant_index}`}
+                                loading="lazy"
+                              />
+                            ) : (
+                              <span className="u1-agent-image-option__placeholder" />
+                            )}
+                            <span>
+                              Вариант {asset.variant_index}
+                              {asset.review.preferred === true ? " · выбор Восса" : ""}
+                            </span>
+                          </button>
+
+                          <div className="u1-agent-image-actions">
+                            {saved ? (
+                              <span>Сохранено</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => void saveGeneratedAsset(asset.id)}
+                                disabled={sending}
+                              >
+                                Сохранить
+                              </button>
+                            )}
+                            {asset.url && (
+                              <a
+                                href={asset.url}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Открыть
+                              </a>
+                            )}
+                          </div>
+
+                          {!saved && asset.expires_at && (
+                            <small className="u1-agent-image-expiry">
+                              Удалится после{" "}
+                              {new Date(asset.expires_at).toLocaleDateString(
+                                "ru-RU",
+                                { day: "2-digit", month: "2-digit" },
+                              )}
+                            </small>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
 

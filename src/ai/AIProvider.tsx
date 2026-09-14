@@ -85,6 +85,13 @@ export type AIConversationMessage = {
   model_id: string | null
 }
 
+export type AIThread = {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+}
+
 export type AIAttachment = {
   name: string
   storagePath: string
@@ -151,12 +158,15 @@ export type AIMediaAsset = {
   profile: string
   storage_path: string
   review: Record<string, unknown>
+  saved_at: string | null
+  expires_at: string | null
   created_at: string
   url: string | null
 }
 
 export type AIAgentJob = {
   id: string
+  thread_id: string | null
   status: "queued" | "running" | "waiting_for_user" | "completed" | "failed" | "cancelled"
   input: Record<string, unknown>
   result: Record<string, unknown>
@@ -273,6 +283,8 @@ type AIContextValue = {
   ownerOverrideModels: AIModel[]
   selectedModelId: string | null
   lastRoute: AIRouteInfo | null
+  threads: AIThread[]
+  activeThreadId: string | null
   messages: AIConversationMessage[]
   drafts: AIDraft[]
   jobs: AIAgentJob[]
@@ -301,6 +313,10 @@ type AIContextValue = {
   refreshDevRun: (runId: string) => Promise<boolean>
   mergeDevRun: (runId: string) => Promise<boolean>
   cancelDevRun: (runId: string) => Promise<boolean>
+  createThread: () => Promise<string | null>
+  switchThread: (threadId: string) => Promise<boolean>
+  deleteThread: (threadId: string) => Promise<boolean>
+  saveGeneratedAsset: (assetId: string) => Promise<boolean>
   send: (message: string, attachments?: AIAttachment[]) => Promise<boolean>
   refreshConversation: () => Promise<void>
   refreshDrafts: () => Promise<void>
@@ -319,9 +335,53 @@ function rememberedCampaignId() {
   )
 }
 
-function normalizeFunctionError(message: string) {
+async function normalizeFunctionError(
+  invokeError: unknown,
+  data: unknown,
+) {
+  const payload =
+    data && typeof data === "object" && !Array.isArray(data)
+      ? data as Record<string, unknown>
+      : {}
+
+  const direct =
+    (typeof payload.detail === "string" && payload.detail.trim()) ||
+    (typeof payload.error === "string" && payload.error.trim())
+  if (direct) return direct
+
+  const errorRecord =
+    invokeError && typeof invokeError === "object"
+      ? invokeError as Record<string, unknown>
+      : {}
+  const context = errorRecord.context
+
+  if (typeof Response !== "undefined" && context instanceof Response) {
+    try {
+      const responsePayload = await context.clone().json()
+      if (responsePayload && typeof responsePayload === "object") {
+        const record = responsePayload as Record<string, unknown>
+        const responseMessage =
+          (typeof record.detail === "string" && record.detail.trim()) ||
+          (typeof record.error === "string" && record.error.trim())
+        if (responseMessage) return responseMessage
+      }
+    } catch {
+      // Fall through to the transport error.
+    }
+  }
+
+  const message =
+    typeof errorRecord.message === "string"
+      ? errorRecord.message.trim()
+      : invokeError instanceof Error
+        ? invokeError.message.trim()
+        : ""
+
+  if (/failed to send|network|fetch/i.test(message)) {
+    return "Нет связи с сервером Восса."
+  }
   if (/non-2xx|edge function/i.test(message)) {
-    return "Восс пока не получил доступ к модели. Проверь серверные настройки AI-провайдера."
+    return "Восс получил серверную ошибку. Детали сохранены на стороне функции."
   }
   return message || "Восс не смог ответить."
 }
@@ -402,6 +462,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const [ownerOverrideModels, setOwnerOverrideModels] = useState<AIModel[]>([])
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
   const [lastRoute, setLastRoute] = useState<AIRouteInfo | null>(null)
+  const [threads, setThreads] = useState<AIThread[]>([])
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
   const [messages, setMessages] = useState<AIConversationMessage[]>([])
   const [drafts, setDrafts] = useState<AIDraft[]>([])
   const [jobs, setJobs] = useState<AIAgentJob[]>([])
@@ -444,40 +506,60 @@ export function AIProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const loadConversationFor = useCallback(async (nextCampaignId: string, nextUserId: string) => {
-    const { data: thread, error: threadError } = await supabase
+  const loadConversationFor = useCallback(async (
+    nextCampaignId: string,
+    nextUserId: string,
+    preferredThreadId: string | null = null,
+  ) => {
+    const { data: threadRows, error: threadError } = await supabase
       .from("ai_threads")
-      .select("id")
+      .select("id,title,created_at,updated_at")
       .eq("campaign_id", nextCampaignId)
       .eq("user_id", nextUserId)
       .eq("agent_key", "voss")
-      .maybeSingle()
+      .order("updated_at", { ascending: false })
+      .limit(60)
 
     if (threadError) throw threadError
-    if (!thread?.id) {
+
+    const nextThreads = (threadRows || []) as AIThread[]
+    setThreads(nextThreads)
+
+    const thread =
+      (preferredThreadId
+        ? nextThreads.find((item) => item.id === preferredThreadId)
+        : null) ||
+      nextThreads[0] ||
+      null
+
+    const nextThreadId = thread?.id || null
+    setActiveThreadId(nextThreadId)
+
+    if (!nextThreadId) {
       setMessages([])
-      return
+      return null
     }
 
     const { data: rows, error: messageError } = await supabase
       .from("ai_messages")
       .select("id,role,body,created_at,model_id")
-      .eq("thread_id", thread.id)
+      .eq("thread_id", nextThreadId)
       .order("id", { ascending: true })
       .limit(120)
 
     if (messageError) throw messageError
     setMessages((rows || []) as AIConversationMessage[])
+    return nextThreadId
   }, [])
 
   const refreshConversation = useCallback(async () => {
     if (!campaignId || !userId) return
     try {
-      await loadConversationFor(campaignId, userId)
+      await loadConversationFor(campaignId, userId, activeThreadId)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Не удалось загрузить историю Восса.")
     }
-  }, [campaignId, loadConversationFor, userId])
+  }, [activeThreadId, campaignId, loadConversationFor, userId])
 
   const loadDraftsFor = useCallback(async (nextCampaignId: string) => {
     const { data, error: draftError } = await supabase
@@ -534,12 +616,19 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const loadJobsFor = useCallback(async (
     nextCampaignId: string,
     nextUserId: string,
+    nextThreadId: string | null,
   ) => {
+    if (!nextThreadId) {
+      setJobs([])
+      return
+    }
+
     const { data: jobRows, error: jobError } = await supabase
       .from("agent_jobs")
-      .select("id,status,input,result,requested_outputs,completed_outputs,error_code,error_message,created_at,updated_at")
+      .select("id,thread_id,status,input,result,requested_outputs,completed_outputs,error_code,error_message,created_at,updated_at")
       .eq("campaign_id", nextCampaignId)
       .eq("requested_by", nextUserId)
+      .eq("thread_id", nextThreadId)
       .eq("job_type", "image_generate")
       .order("created_at", { ascending: false })
       .limit(12)
@@ -556,13 +645,15 @@ export function AIProvider({ children }: { children: ReactNode }) {
       profile: string
       storage_path: string
       review: Record<string, unknown>
+      saved_at: string | null
+      expires_at: string | null
       created_at: string
     }> = []
 
     if (ids.length) {
       const { data: assets, error: assetError } = await supabase
         .from("media_assets")
-        .select("id,source_job_id,variant_index,status,purpose,profile,storage_path,review,created_at")
+        .select("id,source_job_id,variant_index,status,purpose,profile,storage_path,review,saved_at,expires_at,created_at")
         .in("source_job_id", ids)
         .order("variant_index", { ascending: true })
 
@@ -603,7 +694,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      await loadJobsFor(campaignId, userId)
+      await loadJobsFor(campaignId, userId, activeThreadId)
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -611,7 +702,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
           : "Не удалось загрузить задачи Восса.",
       )
     }
-  }, [campaignId, loadJobsFor, userId])
+  }, [activeThreadId, campaignId, loadJobsFor, userId])
 
   const hasActiveJobs = useMemo(
     () => jobs.some((job) =>
@@ -623,14 +714,14 @@ export function AIProvider({ children }: { children: ReactNode }) {
   )
 
   useEffect(() => {
-    if (!campaignId || !userId || !hasActiveJobs) return
+    if (!campaignId || !userId || !activeThreadId || !hasActiveJobs) return
 
     const timer = window.setInterval(() => {
-      void loadJobsFor(campaignId, userId)
+      void loadJobsFor(campaignId, userId, activeThreadId)
     }, 2200)
 
     return () => window.clearInterval(timer)
-  }, [campaignId, hasActiveJobs, loadJobsFor, userId])
+  }, [activeThreadId, campaignId, hasActiveJobs, loadJobsFor, userId])
 
   const loadMechanicsCompilationsFor = useCallback(async (
     nextCampaignId: string,
@@ -961,8 +1052,9 @@ export function AIProvider({ children }: { children: ReactNode }) {
       setSelectedModelId(nextSelectedModelId)
 
       try {
-        await loadConversationFor(nextCampaignId, nextUserId)
-        await loadJobsFor(nextCampaignId, nextUserId)
+        const initialThreadId =
+          await loadConversationFor(nextCampaignId, nextUserId)
+        await loadJobsFor(nextCampaignId, nextUserId, initialThreadId)
         if (manager) {
           await loadDraftsFor(nextCampaignId)
           await loadMechanicsCompilationsFor(nextCampaignId, nextUserId)
@@ -989,6 +1081,120 @@ export function AIProvider({ children }: { children: ReactNode }) {
       cancelled = true
     }
   }, [loadConversationFor, loadDevRunsFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor])
+
+  const createThread = useCallback(async () => {
+    if (!campaignId || !userId) return null
+    setError(null)
+
+    const { data, error: createError } = await supabase
+      .from("ai_threads")
+      .insert({
+        campaign_id: campaignId,
+        user_id: userId,
+        agent_key: "voss",
+        title: "Новый чат",
+      })
+      .select("id,title,created_at,updated_at")
+      .single()
+
+    if (createError || !data?.id) {
+      setError(createError?.message || "Не удалось создать чат.")
+      return null
+    }
+
+    const thread = data as AIThread
+    setThreads((current) => [
+      thread,
+      ...current.filter((item) => item.id !== thread.id),
+    ])
+    setActiveThreadId(thread.id)
+    setMessages([])
+    setJobs([])
+    return thread.id
+  }, [campaignId, userId])
+
+  const switchThread = useCallback(async (threadId: string) => {
+    if (!campaignId || !userId || !threadId) return false
+    if (threadId === activeThreadId) return true
+
+    setError(null)
+    try {
+      const loadedThreadId =
+        await loadConversationFor(campaignId, userId, threadId)
+      await loadJobsFor(campaignId, userId, loadedThreadId)
+      return loadedThreadId === threadId
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Не удалось переключить чат.",
+      )
+      return false
+    }
+  }, [
+    activeThreadId,
+    campaignId,
+    loadConversationFor,
+    loadJobsFor,
+    userId,
+  ])
+
+  const deleteThread = useCallback(async (threadId: string) => {
+    if (!campaignId || !userId || !threadId) return false
+    setError(null)
+
+    const { error: deleteError } = await supabase
+      .from("ai_threads")
+      .delete()
+      .eq("id", threadId)
+      .eq("campaign_id", campaignId)
+      .eq("user_id", userId)
+      .eq("agent_key", "voss")
+
+    if (deleteError) {
+      setError(deleteError.message)
+      return false
+    }
+
+    const preferred =
+      threads.find((item) => item.id !== threadId)?.id || null
+    try {
+      const loadedThreadId =
+        await loadConversationFor(campaignId, userId, preferred)
+      await loadJobsFor(campaignId, userId, loadedThreadId)
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Чат удалён, но список не удалось обновить.",
+      )
+    }
+    return true
+  }, [
+    campaignId,
+    loadConversationFor,
+    loadJobsFor,
+    threads,
+    userId,
+  ])
+
+  const saveGeneratedAsset = useCallback(async (assetId: string) => {
+    if (!campaignId || !userId || !assetId) return false
+    setError(null)
+
+    const { error: saveError } = await supabase.rpc(
+      "save_my_generated_media_v1",
+      { p_asset_id: assetId },
+    )
+
+    if (saveError) {
+      setError(saveError.message)
+      return false
+    }
+
+    await loadJobsFor(campaignId, userId, activeThreadId)
+    return true
+  }, [activeThreadId, campaignId, loadJobsFor, userId])
 
   const chooseModel = useCallback(async (modelId: string) => {
     if (!campaignId || !userId) return false
@@ -1090,6 +1296,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
       body: {
         campaignId,
         agentKey: "voss",
+        ...(activeThreadId ? { threadId: activeThreadId } : {}),
         message,
         viewContext: context,
         attachments: attachments.map((attachment) => ({
@@ -1107,14 +1314,14 @@ export function AIProvider({ children }: { children: ReactNode }) {
       },
     })
 
-    if (invokeError) {
-      setError(normalizeFunctionError(invokeError.message))
+    if (invokeError || data?.error) {
+      setError(await normalizeFunctionError(invokeError, data))
       setSending(false)
       return false
     }
 
     if (!data?.answer) {
-      setError(data?.error || "Восс вернул пустой ответ.")
+      setError("Восс вернул пустой ответ.")
       setSending(false)
       return false
     }
@@ -1131,8 +1338,13 @@ export function AIProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      await loadConversationFor(campaignId, userId)
-      await loadJobsFor(campaignId, userId)
+      const responseThreadId =
+        typeof data.threadId === "string"
+          ? data.threadId
+          : activeThreadId
+      const loadedThreadId =
+        await loadConversationFor(campaignId, userId, responseThreadId)
+      await loadJobsFor(campaignId, userId, loadedThreadId)
       if (canManage) {
         await loadDraftsFor(campaignId)
         await loadMechanicsCompilationsFor(campaignId, userId)
@@ -1162,7 +1374,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     setSending(false)
     return true
-  }, [campaignId, canManage, devSession, devSessionToken, isSystemAdmin, loadConversationFor, loadDevRunsFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor, route, sending, userId, viewContext])
+  }, [activeThreadId, campaignId, canManage, devSession, devSessionToken, isSystemAdmin, loadConversationFor, loadDevRunsFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor, route, sending, userId, viewContext])
 
   const value = useMemo<AIContextValue>(() => ({
     campaignId,
@@ -1173,6 +1385,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
     ownerOverrideModels,
     selectedModelId,
     lastRoute,
+    threads,
+    activeThreadId,
     messages,
     drafts,
     jobs,
@@ -1197,6 +1411,10 @@ export function AIProvider({ children }: { children: ReactNode }) {
     refreshDevRun,
     mergeDevRun,
     cancelDevRun,
+    createThread,
+    switchThread,
+    deleteThread,
+    saveGeneratedAsset,
     send,
     refreshConversation,
     refreshDrafts,
@@ -1204,13 +1422,16 @@ export function AIProvider({ children }: { children: ReactNode }) {
     refreshMechanicsCompilations,
     refreshDevRuns,
   }), [
+    activeThreadId,
     applyDevRun,
     campaignId,
     canManage,
     cancelDevRun,
     chooseModel,
+    createThread,
     closeDeveloperMode,
     clearViewContextLayer,
+    deleteThread,
     developerCapabilities,
     devRuns,
     devSession,
@@ -1234,11 +1455,14 @@ export function AIProvider({ children }: { children: ReactNode }) {
     refreshDevRun,
     refreshDevRuns,
     route,
+    saveGeneratedAsset,
     selectedModelId,
     send,
     sending,
     setDeveloperOverride,
     setViewContextLayer,
+    switchThread,
+    threads,
     uploadAttachment,
     userId,
     viewContext,

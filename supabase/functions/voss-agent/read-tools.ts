@@ -15,7 +15,7 @@ export const VOSS_READ_TOOLS = [
     function: {
       name: "search_entities",
       description:
-        "Find visible MEGANOT entities by name. Use this before a read_* tool when the user names an entity but its id is unknown.",
+        "Find visible MEGANOT entities by name. For generic queries класс/classes or подкласс/subclasses, rule_template search lists that template kind instead of treating the word as a name. Use this before a read_* tool when an entity id is unknown.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -46,6 +46,19 @@ export const VOSS_READ_TOOLS = [
           },
         },
         required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_classes_and_subclasses",
+      description:
+        "List every active class and subclass template visible in the current campaign, grouped by class. Use this for questions like which classes/subclasses exist, what is available, or what is missing. Do not use name search for a complete class catalog.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {},
       },
     },
   },
@@ -207,6 +220,17 @@ function cleanSearch(value: unknown) {
     .trim()
 }
 
+function templateKindFromGenericSearch(query: string) {
+  const normalized = query.toLocaleLowerCase("ru-RU").replace(/\s+/g, " ").trim()
+  if (["класс", "классы", "классов", "class", "classes"].includes(normalized)) {
+    return "class"
+  }
+  if (["подкласс", "подклассы", "подклассов", "subclass", "subclasses"].includes(normalized)) {
+    return "subclass"
+  }
+  return null
+}
+
 function boundedLimit(value: unknown) {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return 6
@@ -277,19 +301,32 @@ async function searchEntities(
 
   if (types.has("rule_template")) {
     jobs.push(
-      context.client
-        .from("rule_templates")
-        .select("id,kind,slug,name,description,parent_template_id,unlock_level,mechanical_summary,is_active")
-        .eq("campaign_id", context.campaignId)
-        .ilike("name", pattern)
-        .order("kind")
-        .order("name")
-        .limit(limit)
-        .then(({ data, error }) => ({
+      (async () => {
+        const templateKind = templateKindFromGenericSearch(query)
+        const baseQuery = context.client
+          .from("rule_templates")
+          .select("id,kind,slug,name,description,parent_template_id,unlock_level,mechanical_summary,is_active")
+          .eq("campaign_id", context.campaignId)
+          .eq("is_active", true)
+
+        const { data, error } = templateKind
+          ? await baseQuery
+            .eq("kind", templateKind)
+            .order("kind")
+            .order("name")
+            .limit(limit)
+          : await baseQuery
+            .ilike("name", pattern)
+            .order("kind")
+            .order("name")
+            .limit(limit)
+
+        return {
           type: "rule_template",
           rows: data || [],
           error: error?.message,
-        })),
+        }
+      })(),
     )
   }
 
@@ -376,6 +413,56 @@ async function searchEntities(
   return {
     query,
     groups: groups.filter((group) => group.rows.length || group.error),
+  }
+}
+
+async function listClassesAndSubclasses(
+  context: VossReadToolContext,
+) {
+  const { data, error } = await context.client
+    .from("rule_templates")
+    .select("id,kind,slug,name,parent_template_id,unlock_level")
+    .eq("campaign_id", context.campaignId)
+    .in("kind", ["class", "subclass"])
+    .eq("is_active", true)
+    .order("kind")
+    .order("name")
+    .limit(200)
+
+  if (error) return { error: error.message }
+
+  const rows = data || []
+  const classes = rows.filter((row) => row.kind === "class")
+  const subclasses = rows.filter((row) => row.kind === "subclass")
+  const byParent = new Map<string, typeof subclasses>()
+
+  for (const subclass of subclasses) {
+    const parentId = subclass.parent_template_id || ""
+    const current = byParent.get(parentId) || []
+    current.push(subclass)
+    byParent.set(parentId, current)
+  }
+
+  return {
+    class_count: classes.length,
+    subclass_count: subclasses.length,
+    classes: classes.map((entry) => ({
+      id: entry.id,
+      slug: entry.slug,
+      name: entry.name,
+      subclasses: (byParent.get(entry.id) || []).map((subclass) => ({
+        id: subclass.id,
+        slug: subclass.slug,
+        name: subclass.name,
+        unlock_level: subclass.unlock_level,
+      })),
+    })),
+    unlinked_subclasses: (byParent.get("") || []).map((subclass) => ({
+      id: subclass.id,
+      slug: subclass.slug,
+      name: subclass.name,
+      unlock_level: subclass.unlock_level,
+    })),
   }
 }
 
@@ -887,6 +974,7 @@ export async function executeVossReadTool(
   args: JsonObject,
 ) {
   if (name === "search_entities") return searchEntities(context, args)
+  if (name === "list_classes_and_subclasses") return listClassesAndSubclasses(context)
   if (name === "read_character") return readCharacter(context, args)
   if (name === "read_location") return readLocation(context, args)
   if (name === "read_rule_template") return readRuleTemplate(context, args)

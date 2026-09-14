@@ -44,6 +44,7 @@ type StoredOutput = {
 const IMAGE_TOOL_NAMES = new Set([
   "generate_image",
   "list_recent_image_jobs",
+  "save_generated_image",
   "attach_generated_image",
   "mark_generated_image_garbage",
   "purge_generated_image_garbage",
@@ -118,6 +119,23 @@ export const VOSS_IMAGE_TOOLS = [
         additionalProperties: false,
         properties: {
           limit: { type: "integer", minimum: 1, maximum: 10 },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "save_generated_image",
+      description:
+        "Keep one generated image permanently in MEGANOT without attaching it to a specific entity. Unsaved generated images expire after three days. Use this when the user explicitly says to save/keep a generated variant.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          asset_id: { type: "string" },
+          job_id: { type: "string" },
+          variant_index: { type: "integer", minimum: 1, maximum: 2 },
         },
       },
     },
@@ -434,6 +452,57 @@ async function resolveAssetId(ctx: ImageToolContext, args: JsonRecord) {
   return data?.id ? String(data.id) : ""
 }
 
+async function saveGenerated(ctx: ImageToolContext, args: JsonRecord) {
+  const assetId = await resolveAssetId(ctx, args)
+  if (!assetId) return { error: "generated_media_asset_required" }
+
+  const { data: asset, error: readError } = await ctx.admin
+    .from("media_assets")
+    .select("id,status,review,garbage_marked_at,saved_at,expires_at")
+    .eq("id", assetId)
+    .eq("created_by", ctx.userId)
+    .maybeSingle()
+
+  if (readError) return { error: readError.message }
+  if (!asset) return { error: "media_asset_not_found" }
+
+  if (
+    asset.status === "garbage" &&
+    asset.garbage_marked_at &&
+    new Date(asset.garbage_marked_at).getTime() <= Date.now() - 3 * 24 * 60 * 60 * 1000
+  ) {
+    return { error: "media_asset_expired" }
+  }
+
+  const review = record(asset.review)
+  const restoredStatus =
+    asset.status === "garbage"
+      ? review.status === "completed" ? "reviewed" : "generated"
+      : asset.status
+
+  const savedAt = asset.saved_at || new Date().toISOString()
+  const { error: saveError } = await ctx.admin
+    .from("media_assets")
+    .update({
+      status: restoredStatus,
+      saved_at: savedAt,
+      expires_at: null,
+      garbage_marked_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", assetId)
+    .eq("created_by", ctx.userId)
+
+  if (saveError) return { error: saveError.message }
+
+  return {
+    asset_id: assetId,
+    saved: true,
+    saved_at: savedAt,
+    expires_at: null,
+  }
+}
+
 async function attachGenerated(ctx: ImageToolContext, args: JsonRecord) {
   const assetId = await resolveAssetId(ctx, args)
   if (!assetId) return { error: "generated_media_asset_required" }
@@ -599,6 +668,7 @@ export async function executeVossImageTool(
 ) {
   if (name === "generate_image") return reserveImageJob(ctx, args)
   if (name === "list_recent_image_jobs") return recentJobs(ctx, args)
+  if (name === "save_generated_image") return saveGenerated(ctx, args)
   if (name === "attach_generated_image") return attachGenerated(ctx, args)
   if (name === "mark_generated_image_garbage") return markGarbage(ctx, args)
   if (name === "purge_generated_image_garbage") return purgeGarbage(ctx)
@@ -729,6 +799,7 @@ async function insertOutput(
     review: {
       revised_prompt: output.revisedPrompt,
     },
+    expires_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
   })
 
   if (insertError) {
@@ -810,8 +881,11 @@ async function reviewOutputs(
     })
   }
 
-  const base = (Deno.env.get("DEEPSEEK_API_BASE_URL") || "https://api.deepseek.com")
-    .replace(/\/+$/, "")
+  const base = (
+    Deno.env.get("DEEPSEEK_API_BASE_URL") ||
+    Deno.env.get("AI_API_BASE_URL") ||
+    "https://api.deepseek.com"
+  ).replace(/\/+$/, "")
 
   try {
     const response = await fetch(base + "/chat/completions", {
@@ -964,17 +1038,37 @@ async function maybeAutoAttach(
   }
 }
 
-async function cleanupOldGarbage(admin: SupabaseClient, userId: string) {
-  const threshold = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-  const { data: assets } = await admin
-    .from("media_assets")
-    .select("id,storage_bucket,storage_path")
-    .eq("created_by", userId)
-    .eq("status", "garbage")
-    .lte("garbage_marked_at", threshold)
-    .limit(20)
+async function cleanupExpiredMedia(admin: SupabaseClient, userId: string) {
+  const garbageThreshold = new Date(
+    Date.now() - 3 * 24 * 60 * 60 * 1000,
+  ).toISOString()
+  const now = new Date().toISOString()
 
-  for (const asset of (assets || []) as any[]) {
+  const [{ data: expired }, { data: garbage }] = await Promise.all([
+    admin
+      .from("media_assets")
+      .select("id,storage_bucket,storage_path")
+      .eq("created_by", userId)
+      .in("status", ["generated", "reviewed", "rejected"])
+      .is("saved_at", null)
+      .not("expires_at", "is", null)
+      .lte("expires_at", now)
+      .limit(20),
+    admin
+      .from("media_assets")
+      .select("id,storage_bucket,storage_path")
+      .eq("created_by", userId)
+      .eq("status", "garbage")
+      .lte("garbage_marked_at", garbageThreshold)
+      .limit(20),
+  ])
+
+  const byId = new Map<string, any>()
+  for (const asset of [...(expired || []), ...(garbage || [])] as any[]) {
+    byId.set(String(asset.id), asset)
+  }
+
+  for (const asset of byId.values()) {
     const bucket = String(asset.storage_bucket || "campaign-media")
     const path = String(asset.storage_path)
     const { error } = await admin.storage.from(bucket).remove([path])
@@ -1192,7 +1286,7 @@ export async function processAgentImageJob({
       })
       .eq("id", jobId)
 
-    await cleanupOldGarbage(admin, String(job.requested_by))
+    await cleanupExpiredMedia(admin, String(job.requested_by))
   } catch (error) {
     await failJob(admin, jobId, error, outputs.length, outputs)
   }

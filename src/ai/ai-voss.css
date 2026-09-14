@@ -868,6 +868,155 @@
   cursor: default;
 }
 
+.u1-agent-thread-section {
+  gap: 7px;
+}
+
+.u1-agent-thread-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.u1-agent-thread-new {
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border: 1px solid rgba(187, 171, 138, 0.13);
+  background: transparent;
+  color: rgba(222, 211, 189, 0.62);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.u1-agent-thread-list {
+  max-height: 220px;
+  overflow-y: auto;
+  display: grid;
+  gap: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(169, 158, 136, 0.14) transparent;
+}
+
+.u1-agent-thread-row {
+  min-width: 0;
+  border-left: 1px solid rgba(187, 173, 144, 0.08);
+  background: linear-gradient(90deg, rgba(193, 174, 136, 0.012), transparent 76%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 25px;
+  align-items: stretch;
+}
+
+.u1-agent-thread-row[data-active] {
+  border-left-color: rgba(213, 190, 144, 0.52);
+  background: linear-gradient(90deg, rgba(156, 126, 70, 0.11), transparent 84%);
+}
+
+.u1-agent-thread-choice,
+.u1-agent-thread-delete {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.u1-agent-thread-choice {
+  min-width: 0;
+  padding: 7px 6px 7px 9px;
+  text-align: left;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.u1-agent-thread-choice strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(228, 221, 206, 0.72);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 9px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-agent-thread-choice small,
+.u1-agent-thread-empty {
+  color: rgba(170, 160, 141, 0.36);
+  font-size: 6px;
+}
+
+.u1-agent-thread-empty {
+  padding: 5px 1px;
+}
+
+.u1-agent-thread-delete {
+  color: rgba(197, 174, 151, 0.28);
+  font-size: 15px;
+}
+
+.u1-agent-thread-delete:hover {
+  color: rgba(210, 139, 122, 0.68);
+}
+
+.u1-agent-thread-choice:disabled,
+.u1-agent-thread-delete:disabled,
+.u1-agent-thread-new:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+.u1-agent-image-card {
+  min-width: 0;
+  border: 1px solid rgba(181, 166, 137, 0.08);
+  background: #080807;
+}
+
+.u1-agent-image-card .u1-agent-image-option {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgba(181, 166, 137, 0.08);
+}
+
+.u1-agent-image-card[data-saved] {
+  border-color: rgba(206, 183, 137, 0.22);
+}
+
+.u1-agent-image-actions {
+  min-height: 27px;
+  padding: 4px 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.u1-agent-image-actions button,
+.u1-agent-image-actions a {
+  padding: 3px 5px;
+  border: 1px solid rgba(183, 165, 130, 0.12);
+  background: transparent;
+  color: rgba(218, 207, 186, 0.62);
+  font: inherit;
+  font-size: 6px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.u1-agent-image-actions > span {
+  color: rgba(177, 184, 154, 0.55);
+  font-size: 6px;
+}
+
+.u1-agent-image-expiry {
+  display: block;
+  padding: 0 6px 5px;
+  color: rgba(178, 151, 128, 0.38);
+  font-size: 6px;
+}
+
 @media (max-width: 720px) {
   .u1-agent-backdrop {
     background: rgba(0, 0, 0, 0.38);
