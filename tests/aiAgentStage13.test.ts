@@ -191,11 +191,11 @@ test("Voss receives developer tools only with an active system-admin session", (
   assert.match(edge, /devSessionToken/)
 })
 
-test("Developer Mode tells Voss to try Mechanics Compiler before repository work", () => {
+test("Developer Mode remains dev-only and does not restore mechanics authoring", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
 
-  assert.match(edge, /В Developer Mode сначала используй Mechanics Compiler/)
-  assert.match(edge, /компилятор честно вернул unsupported/)
+  assert.match(edge, /Developer Mode нужен только для работ с приложением и инфраструктурой/)
+  assert.match(edge, /не отменяет запрет Воссу проектировать или внедрять игровые механики/)
   assert.match(edge, /Developer Mode никогда не сливает в main/)
   assert.match(edge, /Owner override.*никогда не выбирается автоматически/)
 })
