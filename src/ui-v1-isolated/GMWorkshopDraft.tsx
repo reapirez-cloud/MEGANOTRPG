@@ -168,9 +168,10 @@ export default function GMWorkshopDraft({
           type: "error",
           message:
             (result.partial
-              ? "Применение остановлено после частичного создания. Проверь apply-run вручную. "
+              ? "Применение остановлено после частичного создания. Ничего автоматически не откатывалось. "
               : "") +
-            result.error,
+            result.error +
+            (result.runId ? " · apply-run: " + result.runId : ""),
         }
       },
     }
