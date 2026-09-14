@@ -1,6 +1,6 @@
-# AI Agent Foundation — Voss Stages 1–10
+# AI Agent Foundation — Voss Stages 1–11
 
-> Status: **STAGES 1–10 IMPLEMENTED**
+> Status: **STAGES 1–11 IMPLEMENTED**
 >
 > This is the canonical starting point for AI inside MEGANOT RPG. Future AI work must extend this boundary instead of calling model APIs directly from React components.
 
@@ -936,6 +936,225 @@ The new shell still exposes:
 Stage 10 changes the interaction shell, not the authority boundary. Voss still cannot approve drafts, mutate canonical state directly or bypass RLS.
 
 
+## Stage 11 — Agent Jobs and generated media
+
+Stage 11 adds the first long-running agent execution path.
+
+The core rule is:
+
+```text
+agent intent
+→ agent_job
+→ provider worker
+→ durable outputs
+→ optional review
+→ explicit attachment
+```
+
+Generation is not attachment.
+
+### Unified Agent Jobs
+
+`agent_jobs` is the shared execution journal for present and future agent work.
+
+The job type contract already reserves:
+
+```text
+image_generate
+image_review
+image_attach
+draft_create
+draft_revise
+draft_apply
+mechanics_compile
+dev_patch
+dev_test
+dev_build
+dev_preview
+dev_deploy
+```
+
+Current Stage 11 execution uses `image_generate`, `image_review` and `image_attach`.
+
+Job states:
+
+```text
+queued
+running
+waiting_for_user
+completed
+failed
+cancelled
+```
+
+Clients may read their own jobs but cannot forge job rows or statuses directly.
+
+### Semantic Image Profiles
+
+The agent never selects raw quality simply because a user mentioned an image.
+
+It supplies a semantic purpose:
+
+```text
+icon
+ui_preview
+portrait
+panel
+hero_art
+master_art
+```
+
+The server maps this to an Image Profile:
+
+```text
+tiny_icon    → cheap/fast icon generation
+ui_preview   → economical UI preview
+portrait     → portrait-quality output
+panel        → wide UI panel
+hero_art     → high-quality atmospheric art
+master_art   → premium final/master output
+```
+
+Tiny UI assets therefore do not consume master-art quality by accident.
+
+Reference-heavy generation may promote the provider model while preserving the semantic size/quality contract.
+
+### Exact variant count
+
+`generate_image.variants` is an exact user contract:
+
+```text
+requested 1 → deliver 1
+requested 2 → deliver 2
+requested 3 → deliver 3
+```
+
+If the user explicitly requests three images, Voss must call:
+
+```text
+variants = 3
+```
+
+The provider receives the requested count in one batch. If it returns fewer images, the worker requests the missing count again up to the bounded retry limit.
+
+The job is complete only when `completed_outputs == requested_outputs`.
+
+### Review never filters outputs
+
+DeepSeek Vision may review the finished alternatives and store:
+
+- preferred variant;
+- complete ranking;
+- short comparison;
+- per-variant notes.
+
+This review is advisory.
+
+The non-negotiable presentation law is:
+
+```text
+show_all_requested_outputs
+```
+
+If three images were requested, the Agent UI renders all three. A preferred variant receives a small `Выбор Восса` mark, but no generated alternative is hidden, discarded or replaced by the reviewer.
+
+### Generated media lifecycle
+
+`media_assets` stores durable generated outputs.
+
+States:
+
+```text
+generated
+reviewed
+attached
+rejected
+garbage
+```
+
+Runtime generated files live in the existing private `campaign-media` bucket:
+
+```text
+<campaign>/<creator>/ai-assets/<asset>/image.webp
+```
+
+An unattached asset is creator-visible only.
+
+After attachment, `media_bindings` delegates visibility to the canonical target. Character and location images therefore inherit their target visibility instead of becoming campaign-global simply because the file exists.
+
+### Generate != attach
+
+`generate_image` never implies a canonical media change.
+
+`attach_generated_image` is a separate explicit action with another server-side permission check.
+
+Current targets include:
+
+- character media;
+- location media;
+- campaign reference-definition media slots;
+- campaign gallery.
+
+Legacy fields are synchronized where a canonical column already exists:
+
+```text
+character avatar → characters.avatar_url
+location image   → locations.image_url
+```
+
+Other semantic slots remain explicit `media_bindings` rather than forcing unrelated schema columns into every domain table.
+
+If more than one variant was generated, Voss is forbidden to choose and attach one by itself. The user chooses first.
+
+### Player quota
+
+Player generation is limited to:
+
+```text
+10 generated outputs / day
+```
+
+Variants consume outputs. One request for three variants consumes three.
+
+The reservation RPC locks the user's daily quota before inserting the job, so simultaneous requests cannot trivially bypass the limit.
+
+GM/campaign owner has no application-level daily image quota.
+
+Provider-side quotas and billing still apply independently.
+
+### Natural-language follow-up
+
+The UI does not add a separate image-generation button to every entity.
+
+Users continue talking to the global agent:
+
+```text
+сделай ему портрет
+сделай три варианта
+поставь вторую
+удали мусор
+```
+
+For references such as `вторая`, Voss first reads recent image jobs and resolves the exact `job + variant_index`.
+
+The Agent UI polls active jobs, resolves private storage paths to signed URLs and shows all job outputs as they become available.
+
+### Garbage lifecycle
+
+Unused generated media is not deleted immediately.
+
+```text
+mark garbage
+→ wait at least 3 days
+→ purge storage object + media row
+```
+
+Attached media cannot be marked garbage.
+
+This provides a short recovery window while still allowing generated clutter to be cleaned deliberately.
+
+
+
 ## Persistence
 
 Tables:
@@ -943,19 +1162,21 @@ Tables:
 - `ai_models` — provider/model registry;
 - `ai_agent_settings` — campaign-level agent model selection;
 - `ai_threads` — one durable Voss thread per campaign/user;
-- `ai_messages` — durable user/assistant history with the view context that accompanied user messages.
+- `ai_messages` — durable user/assistant history with the view context that accompanied user messages;
+- `agent_jobs` — durable agent execution queue/journal;
+- `media_assets` — generated media lifecycle and review metadata;
+- `media_bindings` — explicit attachment from generated assets to canonical targets.
 
 All public tables have RLS.
 
-## Current limitations after Stage 10
+## Current limitations after Stage 11
 
-Voss now has one application-wide responsive Agent UI over the existing semantic context, memory, draft and model-routing foundation.
+Voss now has durable image jobs, semantic image profiles, exact 1–3 output generation, optional vision review, private generated-media storage, explicit attachment permissions and a three-day garbage lifecycle.
 
-Stage 10 deliberately does **not** add image execution, generic background jobs, mechanics compilation or repository-writing tools. Prompt shortcuts cannot bypass the existing send/action boundaries.
+Stage 11 does **not** give Voss arbitrary canonical write access. Image attachment is a narrow permission-checked capability. Mechanics compilation and repository-writing tools remain unavailable.
 
 ## Planned continuation
 
-11. Unified Agent Jobs plus the image generation/review/attach system.
 12. Mechanics Compiler for structured runtime mechanics before code changes.
 13. Owner-only Developer Mode with repository patch/test/build/preview workflow.
 14. Full security/integration audit, READY certification and only then `dev → main`.

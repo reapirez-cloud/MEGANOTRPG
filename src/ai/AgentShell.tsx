@@ -75,6 +75,22 @@ function AgentMark() {
   )
 }
 
+function imageJobStatus(status: string) {
+  if (status === "queued") return "В очереди"
+  if (status === "running") return "Генерация"
+  if (status === "waiting_for_user") return "Ждёт выбора"
+  if (status === "completed") return "Готово"
+  if (status === "failed") return "Ошибка"
+  if (status === "cancelled") return "Отменено"
+  return status
+}
+
+function recordField(value: unknown, key: string) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const field = (value as Record<string, unknown>)[key]
+  return typeof field === "string" && field.trim() ? field.trim() : null
+}
+
 export default function AgentShell() {
   const {
     campaignId,
@@ -84,6 +100,7 @@ export default function AgentShell() {
     lastRoute,
     messages,
     drafts,
+    jobs,
     loading,
     sending,
     error,
@@ -138,7 +155,7 @@ export default function AgentShell() {
       const node = logRef.current
       if (node) node.scrollTop = node.scrollHeight
     })
-  }, [messages, open, sending])
+  }, [jobs, messages, open, sending])
 
   if (!campaignId || loading) return null
 
@@ -315,6 +332,98 @@ export default function AgentShell() {
               <p>{message.body}</p>
             </article>
           ))}
+
+          {jobs.slice(0, 6).map((job) => {
+            const reviewSummary = recordField(
+              (job.result as Record<string, unknown>).review,
+              "summary",
+            )
+
+            return (
+              <article
+                key={job.id}
+                className="u1-agent-image-job"
+                data-status={job.status}
+                data-output-count={job.outputs.length}
+              >
+                <header>
+                  <div>
+                    <span>IMAGE JOB</span>
+                    <strong>{imageJobStatus(job.status)}</strong>
+                  </div>
+                  <small>
+                    {job.completed_outputs}/{job.requested_outputs}
+                  </small>
+                </header>
+
+                {job.outputs.length > 0 && (
+                  <div
+                    className="u1-agent-image-grid"
+                    data-count={job.outputs.length}
+                  >
+                    {job.outputs.map((asset) => (
+                      <button
+                        type="button"
+                        key={asset.id}
+                        className="u1-agent-image-option"
+                        data-preferred={asset.review.preferred === true || undefined}
+                        onClick={() =>
+                          prefillPrompt(
+                            `Используй вариант ${asset.variant_index} из последней генерации.`,
+                          )
+                        }
+                        aria-label={`Выбрать вариант ${asset.variant_index}`}
+                      >
+                        {asset.url ? (
+                          <img
+                            src={asset.url}
+                            alt={`Вариант ${asset.variant_index}`}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="u1-agent-image-option__placeholder" />
+                        )}
+                        <span className="u1-agent-image-option__meta">
+                          <b>Вариант {asset.variant_index}</b>
+                          {asset.review.preferred === true && (
+                            <em>Выбор Восса</em>
+                          )}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {(job.status === "queued" || job.status === "running") && (
+                  <p className="u1-agent-image-job__progress">
+                    Генерируется {job.requested_outputs === 1
+                      ? "изображение"
+                      : `${job.requested_outputs} варианта`}.
+                    Уже готовы: {job.completed_outputs}.
+                  </p>
+                )}
+
+                {reviewSummary && (
+                  <p className="u1-agent-image-job__review">
+                    {reviewSummary}
+                  </p>
+                )}
+
+                {job.status === "failed" && (
+                  <p className="u1-agent-image-job__error">
+                    {job.error_message || "Генерация не завершилась."}
+                  </p>
+                )}
+
+                {job.requested_outputs > 1 && job.status === "completed" && (
+                  <small className="u1-agent-image-job__law">
+                    Показаны все запрошенные варианты · выбор Восса не скрывает остальные
+                  </small>
+                )}
+              </article>
+            )
+          })}
+
 
           {sending && (
             <div className="u1-agent-thinking">Восс разбирается…</div>
