@@ -6,7 +6,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 **Status:** OPEN
 **Branch:** `dev`
-**Base main:** `pending 2026-09-14-F release`
+**Base main:** `14b3d7d556bb41c1b8ffce7ffbd94deb55c1e57b`
 **Started:** 2026-09-14
 
 ### Player-facing changes
