@@ -190,8 +190,8 @@ generate != attach
 
 Generation:
 
-- accepts exactly 1–3 final variants;
-- preserves three outputs when three were requested;
+- accepts exactly 1–2 final variants;
+- preserves both outputs when two alternatives were requested;
 - maps semantic purpose to server-side profile/quality;
 - limits normal players to ten requested outputs per day;
 - does not expose provider secrets.

@@ -33,7 +33,7 @@ test("player image quota counts outputs while GM and owner remain app-unlimited"
   assert.match(migration, /pg_advisory_xact_lock/)
 })
 
-test("image profiles choose semantic cost and quality instead of exposing raw controls", () => {
+test("image profiles map semantic cost and quality onto CheapVibeCode GPT Image 2", () => {
   const profiles = read("supabase/functions/voss-agent/image-profiles.ts")
   const tools = read("supabase/functions/voss-agent/image-tools.ts")
 
@@ -41,32 +41,53 @@ test("image profiles choose semantic cost and quality instead of exposing raw co
   assert.match(profiles, /ui_preview[\s\S]*?quality: "medium"/)
   assert.match(profiles, /portrait[\s\S]*?quality: "high"/)
   assert.match(profiles, /hero_art[\s\S]*?quality: "high"/)
-  assert.match(profiles, /master_art[\s\S]*?quality: "xhigh"/)
-  assert.match(profiles, /gpt-image-2\.5-flare/)
-  assert.match(profiles, /gpt-image-2\.5-sunburst/)
+  assert.match(profiles, /master_art[\s\S]*?quality: "high"/)
+  assert.match(profiles, /model: "gpt-image-2"/)
+  assert.doesNotMatch(profiles, /gpt-image-2\.5-/)
+  assert.doesNotMatch(profiles, /quality: "xhigh"|quality: "max"/)
   assert.match(tools, /Semantic purpose/)
   assert.doesNotMatch(tools, /name: "quality"/)
 })
 
-test("three requested images remain three provider outputs and three user-visible variants", () => {
+test("two requested images remain two provider outputs and two user-visible variants", () => {
   const provider = read("supabase/functions/voss-agent/image-provider.ts")
   const tools = read("supabase/functions/voss-agent/image-tools.ts")
   const edge = read("supabase/functions/voss-agent/index.ts")
   const shell = read("src/ai/AgentShell.tsx")
+  const contract = read(
+    "supabase/migrations/20260914234500_cheapvibecode_image_contract.sql",
+  )
 
-  assert.match(provider, /n: input\.count/)
-  assert.match(tools, /enum: \[1, 2, 3\]/)
-  assert.match(tools, /variants === 3/)
-  assert.match(tools, /All three final outputs must be presented/)
+  assert.match(provider, /Math\.max\(1, Math\.min\(2/)
+  assert.match(provider, /n: count/)
+  assert.match(provider, /response_format: "b64_json"/)
+  assert.doesNotMatch(provider, /output_compression|background: "auto"/)
+  assert.match(tools, /enum: \[1, 2\]/)
+  assert.match(tools, /variants === 2/)
+  assert.match(tools, /Present both final outputs/)
   assert.match(tools, /while \(outputs\.length < requested && attempts < 3\)/)
   assert.match(tools, /missing = requested - outputs\.length/)
   assert.match(tools, /outputs\.length < requested/)
   assert.match(tools, /presentation_rule: "show_all_requested_outputs"/)
-  assert.match(edge, /Если пользователь попросил 3 картинки, variants ОБЯЗАН быть 3/)
-  assert.match(edge, /интерфейс показывает все 3/)
+  assert.match(edge, /лимита: 1 или 2/)
+  assert.match(edge, /интерфейс показывает оба результата/)
+  assert.match(contract, /requested_outputs between 1 and 2/)
+  assert.match(contract, /variant_index between 1 and 2/)
   assert.match(shell, /job\.outputs\.map\(\(asset\) =>/)
   assert.doesNotMatch(shell, /job\.outputs\.filter\([^)]*preferred/)
   assert.match(shell, /Показаны все запрошенные варианты/)
+})
+
+test("CheapVibeCode image storage detects the real returned binary format", () => {
+  const tools = read("supabase/functions/voss-agent/image-tools.ts")
+
+  assert.match(tools, /detectImageEncoding/)
+  assert.match(tools, /image\/png/)
+  assert.match(tools, /image\/jpeg/)
+  assert.match(tools, /image\/webp/)
+  assert.match(tools, /contentType: encoding\.mimeType/)
+  assert.match(tools, /mime_type: encoding\.mimeType/)
+  assert.doesNotMatch(tools, /assetId \+ "\/image\.webp"/)
 })
 
 test("vision review ranks alternatives but cannot suppress them", () => {
@@ -124,16 +145,20 @@ test("generated garbage is marked first and purged only after three days", () =>
   assert.match(tools, /\.storage[\s\S]*?\.remove\(/)
 })
 
-test("image models stay hidden from the ordinary campaign model selector", () => {
+test("CheapVibeCode image model stays hidden from the ordinary campaign model selector", () => {
   const migration = read(
-    "supabase/migrations/20260914190600_agent_jobs_and_generated_media_stage11.sql",
+    "supabase/migrations/20260914235500_cheapvibecode_image_registry.sql",
   )
   const stage9 = read(
     "supabase/migrations/20260914182800_ai_agent_security_provider_foundation_stage9.sql",
   )
 
-  assert.match(migration, /model_kind[\s\S]*?'image'/)
-  assert.match(migration, /gm_selectable[\s\S]*?false/)
+  assert.match(migration, /'cheapvibecode-image'/)
+  assert.match(migration, /'gpt-image-2'/)
+  assert.match(migration, /'image'/)
+  assert.match(migration, /gm_selectable[\s\S]*false/)
+  assert.match(migration, /gpt-image-2\.5-flare/)
+  assert.match(migration, /gpt-image-2\.5-sunburst/)
   assert.match(stage9, /model_kind = 'agent'/)
   assert.match(stage9, /access_scope = 'campaign'/)
 })

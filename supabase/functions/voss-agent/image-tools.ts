@@ -56,7 +56,7 @@ export const VOSS_IMAGE_TOOLS = [
     function: {
       name: "generate_image",
       description:
-        "Generate 1-3 image variants through the queued image system. If the user asks for three images, variants MUST be 3. Review may rank outputs but never removes requested variants from the user-visible result.",
+        "Generate 1-2 image variants through the queued image system. If the user asks for alternatives, use 2. Review may rank outputs but never removes requested variants from the user-visible result.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -74,9 +74,9 @@ export const VOSS_IMAGE_TOOLS = [
           },
           variants: {
             type: "integer",
-            enum: [1, 2, 3],
+            enum: [1, 2],
             description:
-              "Exact number of final alternatives requested by the user. Preserve 3 when the user asks for 3.",
+              "Exact number of final alternatives requested by the user. This provider integration supports at most 2 final variants per job.",
           },
           target: {
             type: "object",
@@ -134,7 +134,7 @@ export const VOSS_IMAGE_TOOLS = [
         properties: {
           asset_id: { type: "string" },
           job_id: { type: "string" },
-          variant_index: { type: "integer", minimum: 1, maximum: 3 },
+          variant_index: { type: "integer", minimum: 1, maximum: 2 },
           target_type: {
             type: "string",
             enum: ["character", "location", "reference_definition", "campaign_gallery"],
@@ -297,7 +297,7 @@ async function visibleReferenceIds(
 }
 
 function exactVariants(args: JsonRecord) {
-  return intBetween(args.variants, 1, 3, 1)
+  return intBetween(args.variants, 1, 2, 1)
 }
 
 async function reserveImageJob(
@@ -370,9 +370,9 @@ async function reserveImageJob(
     attach_when_ready: attachWhenReady,
     presentation_rule: "show_all_requested_outputs",
     instruction:
-      variants === 3
-        ? "The user requested 3 images. All three final outputs must be presented; review ranking is advisory only."
-        : "Present every final output from this job.",
+      variants === 2
+        ? "The user requested alternatives. Present both final outputs; review ranking is advisory only."
+        : "Present the final output from this job.",
   }
 }
 
@@ -615,6 +615,38 @@ function decodeBase64(value: string) {
   return bytes
 }
 
+function detectImageEncoding(bytes: Uint8Array) {
+  const isPng =
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+
+  if (isPng) return { mimeType: "image/png", extension: "png" }
+
+  const isJpeg =
+    bytes.length >= 3 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff
+
+  if (isJpeg) return { mimeType: "image/jpeg", extension: "jpg" }
+
+  const isWebp =
+    bytes.length >= 12 &&
+    String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+    String.fromCharCode(...bytes.slice(8, 12)) === "WEBP"
+
+  if (isWebp) return { mimeType: "image/webp", extension: "webp" }
+
+  throw new Error("image_provider_returned_unknown_binary_format")
+}
+
 async function loadReferences(
   admin: SupabaseClient,
   ids: string[],
@@ -637,8 +669,14 @@ async function loadReferences(
     if (downloadError || !blob) continue
     references.push({
       bytes: new Uint8Array(await blob.arrayBuffer()),
-      mimeType: String(asset.mime_type || "image/webp"),
-      fileName: String(asset.id) + ".webp",
+      mimeType: String(asset.mime_type || "image/png"),
+      fileName:
+        String(asset.id) +
+        (String(asset.mime_type) === "image/jpeg"
+          ? ".jpg"
+          : String(asset.mime_type) === "image/webp"
+            ? ".webp"
+            : ".png"),
     })
   }
 
@@ -653,17 +691,18 @@ async function insertOutput(
   profile: ReturnType<typeof imageProfileForPurpose>,
 ): Promise<StoredOutput> {
   const assetId = crypto.randomUUID()
+  const bytes = decodeBase64(output.b64Json)
+  const encoding = detectImageEncoding(bytes)
   const path =
     String(job.campaign_id) + "/" +
     String(job.requested_by) + "/ai-assets/" +
-    assetId + "/image.webp"
+    assetId + "/image." + encoding.extension
 
-  const bytes = decodeBase64(output.b64Json)
   const { error: uploadError } = await admin.storage
     .from("campaign-media")
     .upload(path, bytes, {
       upsert: false,
-      contentType: "image/webp",
+      contentType: encoding.mimeType,
       cacheControl: "3600",
     })
 
@@ -675,14 +714,14 @@ async function insertOutput(
     campaign_id: job.campaign_id,
     created_by: job.requested_by,
     source_job_id: job.id,
-    provider_key: "openai-image",
+    provider_key: "cheapvibecode-image",
     model_key: profile.model,
     purpose: input.purpose,
     profile: profile.key,
     status: "generated",
     storage_bucket: "campaign-media",
     storage_path: path,
-    mime_type: "image/webp",
+    mime_type: encoding.mimeType,
     width: profile.width,
     height: profile.height,
     variant_index: variantIndex,
@@ -765,7 +804,8 @@ async function reviewOutputs(
     content.push({
       type: "image_url",
       image_url: {
-        url: "data:image/webp;base64," + output.b64Json,
+        url: "data:" + detectImageEncoding(decodeBase64(output.b64Json)).mimeType +
+          ";base64," + output.b64Json,
       },
     })
   }
@@ -1004,7 +1044,7 @@ export async function processAgentImageJob({
   const purpose = normalizeImagePurpose(input.purpose)
   const refs = referenceIds(input.reference_asset_ids)
   const profile = imageProfileForPurpose(purpose, refs.length > 0)
-  const requested = intBetween(job.requested_outputs, 1, 3, 1)
+  const requested = intBetween(job.requested_outputs, 1, 2, 1)
   const outputs: StoredOutput[] = []
 
   try {

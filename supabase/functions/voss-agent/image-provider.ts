@@ -38,9 +38,9 @@ function getEnv(...names: string[]) {
 }
 
 function imageApiKey() {
-  const value = getEnv("OPENAI_IMAGE_API_KEY", "OPENAI_API_KEY")
+  const value = getEnv("OPENAI_IMAGE_API_KEY", "OPENAI_API_KEY", "AI_API_KEY")
   if (!value) {
-    throw new ImageProviderError("OpenAI image provider is not configured", {
+    throw new ImageProviderError("Image provider is not configured", {
       code: "image_provider_not_configured",
       status: 503,
       detail: "OPENAI_IMAGE_API_KEY is missing",
@@ -108,6 +108,7 @@ export async function requestImageBatch(input: {
 }) {
   const apiKey = imageApiKey()
   const references = input.references || []
+  const count = Math.max(1, Math.min(2, Math.trunc(input.count)))
 
   let response: Response
   try {
@@ -121,40 +122,48 @@ export async function requestImageBatch(input: {
         body: JSON.stringify({
           model: input.profile.model,
           prompt: input.prompt,
-          n: input.count,
+          n: count,
           size: input.profile.size,
           quality: input.profile.quality,
-          output_format: input.profile.outputFormat,
-          output_compression: input.profile.outputCompression,
-          background: "auto",
+          response_format: "b64_json",
         }),
       })
     } else {
-      const form = new FormData()
-      form.append("model", input.profile.model)
-      form.append("prompt", input.prompt)
-      form.append("n", String(input.count))
-      form.append("size", input.profile.size)
-      form.append("quality", input.profile.quality)
-      form.append("output_format", input.profile.outputFormat)
-      form.append("output_compression", String(input.profile.outputCompression))
-      form.append("background", "auto")
+      const images: GeneratedImagePayload[] = []
+      const usages: unknown[] = []
 
-      for (const reference of references.slice(0, 4)) {
-        form.append(
-          "image[]",
-          new Blob([reference.bytes], { type: reference.mimeType }),
-          reference.fileName,
-        )
+      for (let variant = 0; variant < count; variant += 1) {
+        const form = new FormData()
+        form.append("model", input.profile.model)
+        form.append("prompt", input.prompt)
+        form.append("size", input.profile.size)
+        form.append("quality", input.profile.quality)
+
+        for (const reference of references.slice(0, 4)) {
+          form.append(
+            "image",
+            new Blob([reference.bytes], { type: reference.mimeType }),
+            reference.fileName,
+          )
+        }
+
+        response = await fetch(apiBase() + "/images/edits", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + apiKey,
+          },
+          body: form,
+        })
+
+        const parsed = await parseImageResponse(response)
+        if (parsed.images[0]) images.push(parsed.images[0])
+        if (parsed.usage) usages.push(parsed.usage)
       }
 
-      response = await fetch(apiBase() + "/images/edits", {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer " + apiKey,
-        },
-        body: form,
-      })
+      return {
+        images,
+        usage: usages.length ? usages : null,
+      }
     }
   } catch (error) {
     throw new ImageProviderError("Image provider request failed", {
