@@ -7,7 +7,7 @@ import { compileStoredMechanics } from "../supabase/functions/voss-agent/mechani
 const read = (path: string) =>
   readFileSync(new URL("../" + path, import.meta.url), "utf8")
 
-test("Stage 12 persists compiler artifacts and adds mechanics_compile routing", () => {
+test("Stage 12 historical migration persists compiler artifacts", () => {
   const migration = read(
     "supabase/migrations/20260914201500_mechanics_compiler_stage12.sql",
   )
@@ -196,16 +196,16 @@ test("compiler validates action costs and ordinary durable resource flow", () =>
   assert.equal(result.diagnostics.filter((item) => item.severity === "error").length, 0)
 })
 
-test("Mechanics Compiler tool separates compile from explicit apply", () => {
+test("Mechanics Compiler remains available as an external subsystem but is not exposed to Voss", () => {
   const tools = read("supabase/functions/voss-agent/mechanics-tools.ts")
   const edge = read("supabase/functions/voss-agent/index.ts")
 
   assert.match(tools, /name: "compile_mechanics"/)
-  assert.match(tools, /canonical_state_changed: false/)
   assert.match(tools, /name: "apply_mechanics_compilation"/)
-  assert.match(tools, /apply_ai_mechanics_compilation_v1/)
-  assert.match(edge, /compile_mechanics никогда не применяет механику/)
-  assert.match(edge, /apply_mechanics_compilation используй только после явной команды GM/)
+  assert.doesNotMatch(edge, /VOSS_MECHANICS_TOOLS/)
+  assert.doesNotMatch(edge, /executeVossMechanicsTool/)
+  assert.doesNotMatch(edge, /isVossMechanicsTool/)
+  assert.match(edge, /Новые игровые механики ты не проектируешь и не внедряешь/)
 })
 
 test("coverage must distinguish CE, GM and hybrid without fake runtime mechanics", () => {
@@ -217,29 +217,24 @@ test("coverage must distinguish CE, GM and hybrid without fake runtime mechanics
   assert.match(tools, /GM-only adjudication must not be represented by executable mechanics/)
 })
 
-test("unsupported durable capabilities escalate rather than being disguised", () => {
+test("compiler subsystem still detects unsupported durable capabilities", () => {
   const tools = read("supabase/functions/voss-agent/mechanics-tools.ts")
-  const edge = read("supabase/functions/voss-agent/index.ts")
 
   assert.match(tools, /unsupported_requirements/)
   assert.match(tools, /status = hasErrors \|\| unsupported\.length/)
   assert.match(tools, /needs_developer_mode/)
-  assert.match(edge, /Не маскируй пробел generic semantic effect/)
-  assert.match(edge, /needs_developer_mode=true/)
 })
 
-test("built-in class and subclass packages are preview-only until Developer Mode", () => {
+test("historical compiler still protects built-in class and subclass packages", () => {
   const migration = read(
     "supabase/migrations/20260914201500_mechanics_compiler_stage12.sql",
   )
   const tools = read("supabase/functions/voss-agent/mechanics-tools.ts")
-  const edge = read("supabase/functions/voss-agent/index.ts")
 
   assert.match(migration, /if v_template\.is_builtin then/)
   assert.match(migration, /builtin_template_requires_developer_mode/)
   assert.match(tools, /builtin_preview_only/)
   assert.match(tools, /Built-in class\/subclass mechanics may be previewed/)
-  assert.match(edge, /Built-in class\/subclass rule templates можно компилировать только как preview/)
 })
 
 test("apply gate detects stale targets instead of overwriting newer mechanics", () => {
@@ -259,38 +254,32 @@ test("apply gate detects stale targets instead of overwriting newer mechanics", 
   )
 })
 
-test("AI Draft cannot publish executable mechanics that bypassed the compiler", () => {
+test("Voss content drafts reject mechanics while canonical apply keeps compiler provenance checks", () => {
   const draftTools = read("supabase/functions/voss-agent/draft-tools.ts")
   const applyDraft = read("src/ai/applyDraft.ts")
-  const edge = read("supabase/functions/voss-agent/index.ts")
 
-  assert.match(draftTools, /mechanics_compilation_id/)
+  assert.match(draftTools, /containsMechanicsPayload/)
+  assert.match(draftTools, /Voss does not author mechanics in content drafts/)
   assert.match(applyDraft, /verifyCompiledMechanics/)
   assert.match(applyDraft, /from\("ai_mechanics_compilations"\)/)
   assert.match(applyDraft, /\["validated", "applied"\]\.includes\(data\.status\)/)
   assert.match(applyDraft, /stableJson\(data\.mechanics\) !== stableJson\(rawMechanics\)/)
-  assert.match(edge, /payload черновика положи ровно compilation\.mechanics/)
 })
 
-test("mechanics authoring routes to a tool-capable structured task", () => {
+test("Voss router no longer exposes mechanics authoring as a task", () => {
   const router = read("supabase/functions/voss-agent/model-router.ts")
-  const migration = read(
-    "supabase/migrations/20260914201500_mechanics_compiler_stage12.sql",
-  )
+  const edge = read("supabase/functions/voss-agent/index.ts")
 
-  assert.match(router, /\| "mechanics_compile"/)
-  assert.match(router, /TASKS_REQUIRING_TOOLS[\s\S]*?"mechanics_compile"/)
-  assert.match(router, /TASKS_PREFERRING_JSON[\s\S]*?"mechanics_compile"/)
-  assert.match(router, /return "mechanics_compile"/)
-  assert.match(migration, /ai_messages_task_key_check[\s\S]*?'mechanics_compile'/)
+  assert.doesNotMatch(router, /\| "mechanics_compile"/)
+  assert.doesNotMatch(router, /return "mechanics_compile"/)
+  assert.match(edge, /isMechanicsAuthoringRequest/)
+  assert.match(edge, /!mechanicsAuthoringRequested \? VOSS_DRAFT_TOOLS/)
 })
 
-test("Agent UI shows compiler result but never applies it on card click", () => {
+test("Voss chat no longer presents Mechanics Compiler controls", () => {
   const shell = read("src/ai/AgentShell.tsx")
 
-  assert.match(shell, /MECHANICS COMPILER · v/)
-  assert.match(shell, /mechanicsStatus/)
-  assert.match(shell, /Подготовить применение/)
-  assert.match(shell, /prefillPrompt\([\s\S]*?Примени компиляцию механик/)
-  assert.doesNotMatch(shell, /onClick=\{[^}]*apply_ai_mechanics_compilation_v1/)
+  assert.doesNotMatch(shell, /MECHANICS COMPILER/)
+  assert.doesNotMatch(shell, /mechanicsStatus/)
+  assert.doesNotMatch(shell, /Примени компиляцию механик/)
 })

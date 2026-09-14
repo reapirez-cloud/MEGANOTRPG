@@ -40,14 +40,6 @@ function imageJobStatus(status: string) {
   return status
 }
 
-function mechanicsStatus(status: string) {
-  if (status === "validated") return "Проверено"
-  if (status === "unsupported") return "Нужна доработка"
-  if (status === "applied") return "Применено"
-  if (status === "rejected") return "Отклонено"
-  return status
-}
-
 function devRunStatus(status: string) {
   if (status === "proposed") return "Ждёт подтверждения"
   if (status === "branch_applied") return "Ветка создана"
@@ -135,7 +127,6 @@ export default function AgentShell() {
     messages,
     drafts,
     jobs,
-    mechanicsCompilations,
     devSession,
     devRuns,
     developerCapabilities,
@@ -623,41 +614,6 @@ export default function AgentShell() {
                   </button>
                 )}
               </div>
-            </article>
-          )}
-
-          {canManage && mechanicsCompilations[0] && (
-            <article
-              className="u1-agent-system-entry"
-              data-status={mechanicsCompilations[0].status}
-            >
-              <header>
-                <div>
-                  <span>
-                    MECHANICS COMPILER · v{mechanicsCompilations[0].compiler_version}
-                  </span>
-                  <strong>{mechanicsCompilations[0].title}</strong>
-                </div>
-                <b>{mechanicsStatus(mechanicsCompilations[0].status)}</b>
-              </header>
-
-              <p>{mechanicsCompilations[0].intent_text}</p>
-
-              {mechanicsCompilations[0].status === "validated" && (
-                <div className="u1-agent-system-actions">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      prefillPrompt(
-                        `Примени компиляцию механик ${mechanicsCompilations[0].id}.`,
-                      )
-                    }
-                    disabled={sending}
-                  >
-                    Подготовить применение
-                  </button>
-                </div>
-              )}
             </article>
           )}
 

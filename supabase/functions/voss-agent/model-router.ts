@@ -7,7 +7,6 @@ export type VossTaskKey =
   | "memory_write"
   | "workshop"
   | "draft_edit"
-  | "mechanics_compile"
   | "developer"
 
 type RouteMode = "auto" | "primary" | "base" | "fixed"
@@ -62,14 +61,12 @@ const TASKS_REQUIRING_TOOLS = new Set<VossTaskKey>([
   "memory_write",
   "workshop",
   "draft_edit",
-  "mechanics_compile",
   "developer",
 ])
 
 const TASKS_PREFERRING_JSON = new Set<VossTaskKey>([
   "workshop",
   "draft_edit",
-  "mechanics_compile",
   "developer",
 ])
 
@@ -122,17 +119,10 @@ export function classifyVossTask(
     return "draft_edit"
   }
 
-  if (
-    /(механик|ce\b|character engine|ресурс|recharge|перезаряд|формул|бонус|модификатор|действи|action|грант|grant|sourcekey|spell access|доступ к заклин)/u.test(text) &&
-    /(создай|создать|сделай|сделать|добавь|добавить|исправ|измени|изменить|скомпилируй|скомпилировать|подключи|подключить|реализуй|реализовать|пусть\s+(?:да[её]т|получает|тратит|восстанавливает))/u.test(text)
-  ) {
-    return "mechanics_compile"
-  }
-
   const creationVerb =
     /(создай|создать|сделай|сделать|добавь|добавить|придумай|спроектируй|собери|сгенерируй|подготовь)/u.test(text)
   const contentNoun =
-    /(зон|локац|нпс|npc|персонаж|предмет|оруж|брон|заклин|эффект|состояни|болезн|монстр|противник|механик|награ|достижен|трактир|подземел|квест)/u.test(text)
+    /(зон|локац|нпс|npc|персонаж|предмет|оруж|брон|заклин|эффект|состояни|болезн|монстр|противник|награ|достижен|трактир|подземел|квест|класс|подкласс|лор|стать|сцен)/u.test(text)
 
   if (creationVerb && contentNoun) {
     return "workshop"

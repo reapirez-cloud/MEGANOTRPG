@@ -145,6 +145,56 @@ export const VOSS_READ_TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "read_campaign_overview",
+      description:
+        "Read a compact overview of the current campaign surface visible to this user: characters, locations, chats, world articles, achievements, feed, art and class/subclass templates. Use this when the user is lost or asks what exists/where to go next.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          limit: { type: "integer", minimum: 4, maximum: 40 },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "read_chat_room",
+      description:
+        "Read one visible MEGANOT chat room and its recent messages. Access is always limited by the current user's chat permissions.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          room_id: { type: "string" },
+          limit: { type: "integer", minimum: 1, maximum: 60 },
+        },
+        required: ["room_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_chat_messages",
+      description:
+        "Search text in chat messages from rooms visible to the current user inside the current campaign. Use for names, clues, promises, plans and remembered phrases.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          query: { type: "string" },
+          room_id: { type: "string" },
+          limit: { type: "integer", minimum: 1, maximum: 30 },
+        },
+        required: ["query"],
+      },
+    },
+  },
 ] as const
 
 function cleanSearch(value: unknown) {
@@ -661,6 +711,176 @@ async function readWorkspaceFile(
   return data || { not_found: true }
 }
 
+async function readCampaignOverview(
+  context: VossReadToolContext,
+  args: JsonObject,
+) {
+  const requestedLimit = Number(args.limit)
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.max(4, Math.min(40, Math.floor(requestedLimit)))
+    : 12
+
+  const [
+    characters,
+    locations,
+    rooms,
+    articles,
+    achievements,
+    feed,
+    art,
+    templates,
+  ] = await Promise.all([
+    context.client
+      .from("characters")
+      .select("id,name,character_class,level,character_type,life_state,publication_state,visibility_mode")
+      .eq("campaign_id", context.campaignId)
+      .order("name")
+      .limit(limit),
+    context.client
+      .from("locations")
+      .select("id,name,summary,parent_location_id,visibility_mode,lifecycle_state")
+      .eq("campaign_id", context.campaignId)
+      .order("sort_order")
+      .order("name")
+      .limit(limit),
+    context.client
+      .from("chat_rooms")
+      .select("id,slug,title,category,room_type,character_id,location_id,room_state,scene_state,campaign_day,day_period,updated_at")
+      .eq("campaign_id", context.campaignId)
+      .order("updated_at", { ascending: false })
+      .limit(limit),
+    context.client
+      .from("world_articles")
+      .select("id,title,summary,section_id,updated_at")
+      .eq("campaign_id", context.campaignId)
+      .order("updated_at", { ascending: false })
+      .limit(limit),
+    context.client
+      .from("achievements")
+      .select("id,character_id,title,description,awarded_at")
+      .eq("campaign_id", context.campaignId)
+      .order("awarded_at", { ascending: false })
+      .limit(limit),
+    context.client
+      .from("feed_items")
+      .select("id,source_type,source_id,character_id,title,body,published_at")
+      .eq("campaign_id", context.campaignId)
+      .order("published_at", { ascending: false })
+      .limit(limit),
+    context.client
+      .from("campaign_art_items")
+      .select("id,character_id,title,caption,kind,created_at")
+      .eq("campaign_id", context.campaignId)
+      .order("created_at", { ascending: false })
+      .limit(limit),
+    context.client
+      .from("rule_templates")
+      .select("id,kind,slug,name,description,parent_template_id,unlock_level,is_active")
+      .eq("campaign_id", context.campaignId)
+      .in("kind", ["class", "subclass"])
+      .eq("is_active", true)
+      .order("kind")
+      .order("name")
+      .limit(Math.min(80, limit * 2)),
+  ])
+
+  const firstError =
+    characters.error ||
+    locations.error ||
+    rooms.error ||
+    articles.error ||
+    achievements.error ||
+    feed.error ||
+    art.error ||
+    templates.error
+  if (firstError) return { error: firstError.message }
+
+  return {
+    characters: characters.data || [],
+    locations: locations.data || [],
+    chat_rooms: rooms.data || [],
+    world_articles: articles.data || [],
+    achievements: achievements.data || [],
+    feed: feed.data || [],
+    art: art.data || [],
+    classes_and_subclasses: templates.data || [],
+  }
+}
+
+async function readChatRoom(
+  context: VossReadToolContext,
+  args: JsonObject,
+) {
+  const roomId = typeof args.room_id === "string" ? args.room_id : ""
+  if (!roomId) return { error: "room_id is required" }
+  const limit = Math.max(1, Math.min(60, Number(args.limit) || 30))
+
+  const { data: room, error: roomError } = await context.client
+    .from("chat_rooms")
+    .select("id,campaign_id,slug,title,category,room_type,character_id,location_id,room_state,scene_state,campaign_day,day_period,updated_at")
+    .eq("campaign_id", context.campaignId)
+    .eq("id", roomId)
+    .maybeSingle()
+  if (roomError) return { error: roomError.message }
+  if (!room) return { not_found: true }
+
+  const { data: messages, error: messageError } = await context.client
+    .from("chat_messages")
+    .select("id,room_id,author_name,body,user_id,character_id,attachment_kind,event_kind,event_payload,created_at,edited_at")
+    .eq("room_id", roomId)
+    .order("id", { ascending: false })
+    .limit(limit)
+  if (messageError) return { error: messageError.message }
+
+  return {
+    room,
+    messages: [...(messages || [])].reverse(),
+  }
+}
+
+async function searchChatMessages(
+  context: VossReadToolContext,
+  args: JsonObject,
+) {
+  const query = cleanSearch(args.query)
+  if (!query) return { error: "search query is empty" }
+  const limit = Math.max(1, Math.min(30, Number(args.limit) || 16))
+
+  const { data: rooms, error: roomError } = await context.client
+    .from("chat_rooms")
+    .select("id,title")
+    .eq("campaign_id", context.campaignId)
+    .limit(200)
+  if (roomError) return { error: roomError.message }
+
+  let roomRows = rooms || []
+  const requestedRoomId =
+    typeof args.room_id === "string" ? args.room_id.trim() : ""
+  if (requestedRoomId) {
+    roomRows = roomRows.filter((room) => room.id === requestedRoomId)
+  }
+  const roomIds = roomRows.map((room) => room.id)
+  if (!roomIds.length) return { query, messages: [] }
+
+  const { data: messages, error } = await context.client
+    .from("chat_messages")
+    .select("id,room_id,author_name,body,user_id,character_id,event_kind,event_payload,created_at")
+    .in("room_id", roomIds)
+    .ilike("body", "%" + query + "%")
+    .order("id", { ascending: false })
+    .limit(limit)
+  if (error) return { error: error.message }
+
+  const roomById = new Map(roomRows.map((room) => [room.id, room.title]))
+  return {
+    query,
+    messages: (messages || []).map((message) => ({
+      ...message,
+      room_title: roomById.get(message.room_id) || null,
+    })),
+  }
+}
+
 export async function executeVossReadTool(
   context: VossReadToolContext,
   name: string,
@@ -675,5 +895,8 @@ export async function executeVossReadTool(
   }
   if (name === "read_world_article") return readWorldArticle(context, args)
   if (name === "read_workspace_file") return readWorkspaceFile(context, args)
+  if (name === "read_campaign_overview") return readCampaignOverview(context, args)
+  if (name === "read_chat_room") return readChatRoom(context, args)
+  if (name === "search_chat_messages") return searchChatMessages(context, args)
   return { error: "Unknown read tool" }
 }
