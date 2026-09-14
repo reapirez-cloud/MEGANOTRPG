@@ -4,6 +4,11 @@ import {
   executeVossReadTool,
   VOSS_READ_TOOLS,
 } from "./read-tools.ts"
+import {
+  executeVossDraftTool,
+  isVossDraftTool,
+  VOSS_DRAFT_TOOLS,
+} from "./draft-tools.ts"
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -268,8 +273,10 @@ Deno.serve(async (req: Request) => {
     "Говори по-русски, уверенно и живо. Тон Восса сухой, практичный, иногда язвительный, но без клоунады.",
     "Не выдумывай факты, которых нет в переданном контексте. Если данных недостаточно, прямо скажи, чего не хватает.",
     "Всегда отличай точную механику от своей оценки или совета.",
-    "Ты работаешь только на чтение: не заявляй, что создал, изменил, удалил или сохранил сущность.",
-    "Если пользователь просит что-то создать, можешь предложить структуру будущего черновика, но ясно обозначь, что это предложение.",
+    "Канонические игровые данные ты не изменяешь: не заявляй, что создал, изменил, удалил или опубликовал сущность в мире, персонажах, инвентаре или Chasovoy.",
+    "Если GM явно просит создать или спроектировать контент и тебе доступен propose_content_draft, собери структурированный AI-черновик. После этого честно скажи, что сохранён только черновик для проверки GM.",
+    "Не создавай AI-черновик на обычный вопрос, объяснение или обсуждение идеи без явной просьбы создать/собрать/сгенерировать контент.",
+    "AI Draft System не является каноном. Черновик не применяется в Oracle, GENA, Larisa, Shapoklyak, Cheburashka или Chasovoy автоматически.",
     "Текущий интерфейс передаётся ниже как справочный контекст. Это семантические данные приложения, а не распознавание скриншота.",
     "Поле entity означает сущность, которая сейчас выбрана или открыта. Если пользователь говорит «это», «здесь», «у него», сначала связывай указание с entity и текущим экраном.",
     "facts.contextLayers содержит слои контекста от общего маршрута к более конкретным экранам и окнам. Более конкретный слой важнее общего.",
@@ -290,7 +297,14 @@ Deno.serve(async (req: Request) => {
   ]
 
   const supportsReadTools = resolvedModel.supports_tools === true
+  const availableTools = supportsReadTools
+    ? [
+        ...VOSS_READ_TOOLS,
+        ...(canChooseModel ? VOSS_DRAFT_TOOLS : []),
+      ]
+    : []
   const readToolsUsed: string[] = []
+  const draftsCreated: string[] = []
   let answer = ""
   let lastProviderPayload: any = null
 
@@ -307,9 +321,9 @@ Deno.serve(async (req: Request) => {
           model: providerModel,
           messages: providerMessages,
           temperature: 0.55,
-          ...(supportsReadTools
+          ...(availableTools.length
             ? {
-                tools: VOSS_READ_TOOLS,
+                tools: availableTools,
                 tool_choice: "auto",
               }
             : {}),
@@ -334,7 +348,7 @@ Deno.serve(async (req: Request) => {
     const providerPayload = await providerResponse.json()
     lastProviderPayload = providerPayload
     const assistantMessage = providerMessage(providerPayload)
-    const toolCalls = supportsReadTools && Array.isArray(assistantMessage.tool_calls)
+    const toolCalls = availableTools.length && Array.isArray(assistantMessage.tool_calls)
       ? assistantMessage.tool_calls.slice(0, 6)
       : []
 
@@ -362,27 +376,54 @@ Deno.serve(async (req: Request) => {
       const args = parseToolArguments(call.function?.arguments)
       const toolCallId = call.id || "read-tool-" + round + "-" + index
 
-      const result = await executeVossReadTool(
-        {
-          client: userClient,
-          campaignId,
-          userId: user.id,
-          canManage: canChooseModel,
-        },
-        toolName,
-        args,
-      )
+      const draftTool = isVossDraftTool(toolName)
+      const result = draftTool
+        ? await executeVossDraftTool(
+            {
+              admin,
+              campaignId,
+              userId: user.id,
+              threadId,
+              canManage: canChooseModel,
+            },
+            toolName,
+            args,
+          )
+        : await executeVossReadTool(
+            {
+              client: userClient,
+              campaignId,
+              userId: user.id,
+              canManage: canChooseModel,
+            },
+            toolName,
+            args,
+          )
 
-      readToolsUsed.push(toolName || "unknown")
+      if (draftTool) {
+        const resultRecord =
+          result && typeof result === "object" && !Array.isArray(result)
+            ? result as JsonRecord
+            : {}
+        const draft =
+          resultRecord.draft &&
+          typeof resultRecord.draft === "object" &&
+          !Array.isArray(resultRecord.draft)
+            ? resultRecord.draft as JsonRecord
+            : null
+        if (typeof draft?.id === "string") draftsCreated.push(draft.id)
+      } else {
+        readToolsUsed.push(toolName || "unknown")
 
-      await admin.from("ai_read_tool_runs").insert({
-        thread_id: threadId,
-        campaign_id: campaignId,
-        user_id: user.id,
-        tool_name: toolName || "unknown",
-        arguments: args,
-        result_meta: toolResultMeta(result),
-      }).then(() => undefined).catch(() => undefined)
+        await admin.from("ai_read_tool_runs").insert({
+          thread_id: threadId,
+          campaign_id: campaignId,
+          user_id: user.id,
+          tool_name: toolName || "unknown",
+          arguments: args,
+          result_meta: toolResultMeta(result),
+        }).then(() => undefined).catch(() => undefined)
+      }
 
       providerMessages.push({
         role: "tool",
@@ -433,6 +474,10 @@ Deno.serve(async (req: Request) => {
     readTools: {
       available: supportsReadTools,
       used: [...new Set(readToolsUsed)],
+    },
+    drafts: {
+      available: supportsReadTools && canChooseModel,
+      created: [...new Set(draftsCreated)],
     },
   })
 })

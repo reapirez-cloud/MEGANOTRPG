@@ -9,6 +9,7 @@ export default function VossDock() {
     models,
     selectedModelId,
     messages,
+    drafts,
     loading,
     sending,
     error,
@@ -105,12 +106,26 @@ export default function VossDock() {
       </div>
 
       <div className="u1-voss-log" ref={logRef}>
+        {canManage && drafts[0] && (
+          <article className="u1-voss-draft-card">
+            <span>AI DRAFT · НЕ КАНОН</span>
+            <strong>{drafts[0].title}</strong>
+            {drafts[0].summary && <p>{drafts[0].summary}</p>}
+            <small>
+              {drafts[0].content.nodes?.length || 0} сущн.
+              {" · "}
+              {drafts[0].content.relations?.length || 0} связей
+              {" · r"}
+              {drafts[0].current_revision}
+            </small>
+          </article>
+        )}
         {!messages.length && (
           <div className="u1-voss-empty">
             <strong>Спрашивай по тому, что открыто.</strong>
             <p>
-              Я вижу текущий экран, выбранную сущность и незаписанные поля редакторов.
-              Пока только читаю и объясняю: менять канонические данные мне ещё не разрешено.
+              Я вижу текущий экран, могу дочитывать доступные данные и собирать для GM
+              структурированные AI-черновики. Канонические данные всё ещё не меняю.
             </p>
           </div>
         )}

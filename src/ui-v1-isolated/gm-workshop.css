@@ -497,3 +497,18 @@ button.u1-gm-material-row {
   font-size: 12px;
   font-style: normal;
 }
+
+.u1-gm-ai-draft-badge {
+  color: rgba(211,220,190,.48);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+.u1-gm-ai-draft-row {
+  background: linear-gradient(90deg, rgba(220,229,214,.035), transparent 72%);
+}
+.u1-gm-ai-draft-row > b {
+  color: rgba(211,220,190,.48);
+  font-size: 7px;
+  letter-spacing: .08em;
+}
