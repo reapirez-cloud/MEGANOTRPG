@@ -54,6 +54,9 @@ export type AIModel = {
   cost_tier: number
   reasoning_tier: number
   latency_tier: number
+  supports_vision: boolean
+  model_kind: "agent" | "image" | "owner_override"
+  access_scope: "campaign" | "system_admin"
 }
 
 export type AIRouteInfo = {
@@ -65,7 +68,8 @@ export type AIRouteInfo = {
     | "workshop"
     | "draft_edit"
     | "mechanics_compile"
-  mode: "base_lock" | "auto" | "primary" | "base" | "fixed" | "fallback"
+    | "developer"
+  mode: "base_lock" | "auto" | "primary" | "base" | "fixed" | "fallback" | "owner_override"
   reason: string
   degraded: boolean
   modelId: string
@@ -190,17 +194,84 @@ export type AIMechanicsCompilation = {
   updated_at: string
 }
 
+export type AIDevSession = {
+  id: string
+  campaign_id: string
+  status: "active" | "revoked" | "expired"
+  base_branch: "dev"
+  owner_override_model_id: string | null
+  created_at?: string
+  expires_at: string
+  last_used_at?: string
+  closed_at?: string | null
+}
+
+export type AIDevRun = {
+  id: string
+  session_id: string
+  campaign_id: string
+  created_by: string
+  agent_job_id: string | null
+  title: string
+  request_text: string
+  summary: string
+  base_branch: "dev"
+  base_sha: string
+  branch_name: string | null
+  state:
+    | "proposed"
+    | "branch_applied"
+    | "checks_pending"
+    | "preview_ready"
+    | "merge_ready"
+    | "merged_dev"
+    | "failed"
+    | "cancelled"
+    | "stale"
+  proposed_changes: Array<Record<string, unknown>>
+  diff_preview: string
+  pr_number: number | null
+  pr_url: string | null
+  head_sha: string | null
+  ci_state: "unknown" | "pending" | "success" | "failure"
+  ci_url: string | null
+  preview_state: "none" | "unknown" | "pending" | "success" | "failure"
+  preview_url: string | null
+  checks: Array<Record<string, unknown>>
+  error_code: string | null
+  error_message: string | null
+  created_at: string
+  updated_at: string
+  branch_applied_at: string | null
+  merged_at: string | null
+}
+
+export type AIDeveloperCapabilities = {
+  systemAdmin: boolean
+  sessionId: string
+  repository: string
+  baseBranch: "dev"
+  repositoryConfigured: boolean
+  mutationTargets: string[]
+  forbiddenTargets: string[]
+}
+
 type AIContextValue = {
   campaignId: string
   userId: string
   canManage: boolean
+  isSystemAdmin: boolean
   models: AIModel[]
+  ownerOverrideModels: AIModel[]
   selectedModelId: string | null
   lastRoute: AIRouteInfo | null
   messages: AIConversationMessage[]
   drafts: AIDraft[]
   jobs: AIAgentJob[]
   mechanicsCompilations: AIMechanicsCompilation[]
+  devSession: AIDevSession | null
+  devRuns: AIDevRun[]
+  developerCapabilities: AIDeveloperCapabilities | null
   loading: boolean
   sending: boolean
   error: string | null
@@ -213,11 +284,19 @@ type AIContextValue = {
   ) => void
   clearViewContextLayer: (source: string) => void
   chooseModel: (modelId: string) => Promise<boolean>
+  openDeveloperMode: (ownerOverrideModelId?: string | null) => Promise<boolean>
+  closeDeveloperMode: () => Promise<void>
+  setDeveloperOverride: (ownerOverrideModelId: string | null) => Promise<boolean>
+  applyDevRun: (runId: string) => Promise<boolean>
+  refreshDevRun: (runId: string) => Promise<boolean>
+  mergeDevRun: (runId: string) => Promise<boolean>
+  cancelDevRun: (runId: string) => Promise<boolean>
   send: (message: string) => Promise<boolean>
   refreshConversation: () => Promise<void>
   refreshDrafts: () => Promise<void>
   refreshJobs: () => Promise<void>
   refreshMechanicsCompilations: () => Promise<void>
+  refreshDevRuns: () => Promise<void>
 }
 
 const AIContext = createContext<AIContextValue | null>(null)
@@ -290,13 +369,19 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const [campaignId, setCampaignId] = useState("")
   const [userId, setUserId] = useState("")
   const [canManage, setCanManage] = useState(false)
+  const [isSystemAdmin, setIsSystemAdmin] = useState(false)
   const [models, setModels] = useState<AIModel[]>([])
+  const [ownerOverrideModels, setOwnerOverrideModels] = useState<AIModel[]>([])
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
   const [lastRoute, setLastRoute] = useState<AIRouteInfo | null>(null)
   const [messages, setMessages] = useState<AIConversationMessage[]>([])
   const [drafts, setDrafts] = useState<AIDraft[]>([])
   const [jobs, setJobs] = useState<AIAgentJob[]>([])
   const [mechanicsCompilations, setMechanicsCompilations] = useState<AIMechanicsCompilation[]>([])
+  const [devSession, setDevSession] = useState<AIDevSession | null>(null)
+  const [devSessionToken, setDevSessionToken] = useState("")
+  const [devRuns, setDevRuns] = useState<AIDevRun[]>([])
+  const [developerCapabilities, setDeveloperCapabilities] = useState<AIDeveloperCapabilities | null>(null)
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -552,6 +637,190 @@ export function AIProvider({ children }: { children: ReactNode }) {
     }
   }, [campaignId, canManage, loadMechanicsCompilationsFor, userId])
 
+  const loadDevRunsFor = useCallback(async (
+    nextCampaignId: string,
+    nextUserId: string,
+  ) => {
+    const { data, error: devRunError } = await supabase
+      .from("ai_dev_runs")
+      .select("id,session_id,campaign_id,created_by,agent_job_id,title,request_text,summary,base_branch,base_sha,branch_name,state,proposed_changes,diff_preview,pr_number,pr_url,head_sha,ci_state,ci_url,preview_state,preview_url,checks,error_code,error_message,created_at,updated_at,branch_applied_at,merged_at")
+      .eq("campaign_id", nextCampaignId)
+      .eq("created_by", nextUserId)
+      .order("created_at", { ascending: false })
+      .limit(12)
+
+    if (devRunError) throw devRunError
+    setDevRuns((data || []) as AIDevRun[])
+  }, [])
+
+  const refreshDevRuns = useCallback(async () => {
+    if (!campaignId || !userId || !isSystemAdmin) {
+      setDevRuns([])
+      return
+    }
+    try {
+      await loadDevRunsFor(campaignId, userId)
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Не удалось загрузить Developer Mode runs.",
+      )
+    }
+  }, [campaignId, isSystemAdmin, loadDevRunsFor, userId])
+
+  const callDeveloperMode = useCallback(async (
+    action: "capabilities" | "apply" | "status" | "merge" | "cancel",
+    runId?: string,
+  ) => {
+    if (!devSession || !devSessionToken) {
+      return { ok: false as const, data: null, error: "Developer Mode session is not active." }
+    }
+
+    const { data, error: invokeError } = await supabase.functions.invoke(
+      "developer-mode",
+      {
+        body: {
+          action,
+          sessionId: devSession.id,
+          sessionToken: devSessionToken,
+          ...(runId ? { runId } : {}),
+        },
+      },
+    )
+
+    if (invokeError || data?.error) {
+      const message =
+        data?.detail ||
+        data?.error ||
+        invokeError?.message ||
+        "Developer Mode action failed."
+      setError(String(message))
+      return { ok: false as const, data, error: String(message) }
+    }
+
+    return { ok: true as const, data, error: null }
+  }, [devSession, devSessionToken])
+
+  const openDeveloperMode = useCallback(async (
+    ownerOverrideModelId: string | null = null,
+  ) => {
+    if (!campaignId || !isSystemAdmin) return false
+    setError(null)
+
+    const { data, error: sessionError } = await supabase.rpc(
+      "open_ai_dev_session_v1",
+      {
+        p_campaign_id: campaignId,
+        p_owner_override_model_id: ownerOverrideModelId,
+      },
+    )
+
+    if (sessionError || !data?.id || !data?.token) {
+      setError(sessionError?.message || "Не удалось открыть Developer Mode.")
+      return false
+    }
+
+    const token = String(data.token)
+    const session: AIDevSession = {
+      id: String(data.id),
+      campaign_id: String(data.campaign_id),
+      status: "active",
+      base_branch: "dev",
+      owner_override_model_id:
+        data.owner_override_model_id ? String(data.owner_override_model_id) : null,
+      expires_at: String(data.expires_at),
+    }
+
+    setDevSession(session)
+    setDevSessionToken(token)
+
+    const { data: capabilities, error: capabilityError } =
+      await supabase.functions.invoke("developer-mode", {
+        body: {
+          action: "capabilities",
+          sessionId: session.id,
+          sessionToken: token,
+        },
+      })
+
+    if (!capabilityError && capabilities && !capabilities.error) {
+      setDeveloperCapabilities(capabilities as AIDeveloperCapabilities)
+    } else {
+      setDeveloperCapabilities(null)
+    }
+
+    await loadDevRunsFor(campaignId, userId)
+    return true
+  }, [campaignId, isSystemAdmin, loadDevRunsFor, userId])
+
+  const closeDeveloperMode = useCallback(async () => {
+    const current = devSession
+    setDevSession(null)
+    setDevSessionToken("")
+    setDeveloperCapabilities(null)
+    if (!current?.id) return
+
+    const { error: closeError } = await supabase.rpc(
+      "close_ai_dev_session_v1",
+      { p_session_id: current.id },
+    )
+    if (closeError) setError(closeError.message)
+  }, [devSession])
+
+  const setDeveloperOverride = useCallback(async (
+    ownerOverrideModelId: string | null,
+  ) => {
+    if (!devSession || !isSystemAdmin) return false
+    const { data, error: overrideError } = await supabase.rpc(
+      "set_ai_dev_session_override_v1",
+      {
+        p_session_id: devSession.id,
+        p_owner_override_model_id: ownerOverrideModelId,
+      },
+    )
+    if (overrideError || !data?.id) {
+      setError(overrideError?.message || "Не удалось изменить Developer Mode model override.")
+      return false
+    }
+    setDevSession((current) => current
+      ? {
+          ...current,
+          owner_override_model_id:
+            data.owner_override_model_id ? String(data.owner_override_model_id) : null,
+          expires_at: String(data.expires_at || current.expires_at),
+        }
+      : current
+    )
+    return true
+  }, [devSession, isSystemAdmin])
+
+  const applyDevRun = useCallback(async (runId: string) => {
+    const result = await callDeveloperMode("apply", runId)
+    if (result.ok && campaignId && userId) {
+      await loadDevRunsFor(campaignId, userId)
+    }
+    return result.ok
+  }, [callDeveloperMode, campaignId, loadDevRunsFor, userId])
+
+  const refreshDevRun = useCallback(async (runId: string) => {
+    const result = await callDeveloperMode("status", runId)
+    if (campaignId && userId) await loadDevRunsFor(campaignId, userId)
+    return result.ok
+  }, [callDeveloperMode, campaignId, loadDevRunsFor, userId])
+
+  const mergeDevRun = useCallback(async (runId: string) => {
+    const result = await callDeveloperMode("merge", runId)
+    if (campaignId && userId) await loadDevRunsFor(campaignId, userId)
+    return result.ok
+  }, [callDeveloperMode, campaignId, loadDevRunsFor, userId])
+
+  const cancelDevRun = useCallback(async (runId: string) => {
+    const result = await callDeveloperMode("cancel", runId)
+    if (campaignId && userId) await loadDevRunsFor(campaignId, userId)
+    return result.ok
+  }, [callDeveloperMode, campaignId, loadDevRunsFor, userId])
+
   useEffect(() => {
     const onHashChange = () => setRoute(window.location.hash || "#/home")
     window.addEventListener("hashchange", onHashChange)
@@ -605,9 +874,20 @@ export function AIProvider({ children }: { children: ReactNode }) {
       setUserId(nextUserId)
       setCanManage(manager)
 
+      const { data: systemAdminStatus, error: systemAdminError } =
+        await supabase.rpc("my_system_admin_status_v1")
+      const systemAdmin = !systemAdminError && systemAdminStatus === true
+      setIsSystemAdmin(systemAdmin)
+      if (!systemAdmin) {
+        setDevSession(null)
+        setDevSessionToken("")
+        setDeveloperCapabilities(null)
+        setDevRuns([])
+      }
+
       const { data: modelRows, error: modelError } = await supabase
         .from("ai_models")
-        .select("id,model_key,display_name,is_base,gm_selectable,supports_tools,supports_json,cost_tier,reasoning_tier,latency_tier")
+        .select("id,model_key,display_name,is_base,gm_selectable,supports_tools,supports_json,supports_vision,cost_tier,reasoning_tier,latency_tier,model_kind,access_scope")
         .order("is_base", { ascending: false })
         .order("cost_tier", { ascending: true })
         .order("display_name", { ascending: true })
@@ -619,8 +899,16 @@ export function AIProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const nextModels = (modelRows || []) as AIModel[]
+      const allModels = (modelRows || []) as AIModel[]
+      const nextModels = allModels.filter((model) =>
+        model.model_kind === "agent" && model.access_scope === "campaign"
+      )
+      const nextOwnerOverrides = allModels.filter((model) =>
+        model.model_kind === "owner_override" &&
+        model.access_scope === "system_admin"
+      )
       setModels(nextModels)
+      setOwnerOverrideModels(systemAdmin ? nextOwnerOverrides : [])
 
       const baseModel = nextModels.find((model) => model.is_base) || null
       let nextSelectedModelId = baseModel?.id || null
@@ -652,6 +940,11 @@ export function AIProvider({ children }: { children: ReactNode }) {
           setDrafts([])
           setMechanicsCompilations([])
         }
+        if (systemAdmin) {
+          await loadDevRunsFor(nextCampaignId, nextUserId)
+        } else {
+          setDevRuns([])
+        }
       } catch (reason) {
         if (!cancelled) {
           setError(reason instanceof Error ? reason.message : "Не удалось загрузить AI-данные Восса.")
@@ -665,7 +958,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [loadConversationFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor])
+  }, [loadConversationFor, loadDevRunsFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor])
 
   const chooseModel = useCallback(async (modelId: string) => {
     if (!canManage || !campaignId || !userId) return false
@@ -714,6 +1007,12 @@ export function AIProvider({ children }: { children: ReactNode }) {
         agentKey: "voss",
         message,
         viewContext: context,
+        ...(devSession && devSessionToken
+          ? {
+              devSessionId: devSession.id,
+              devSessionToken,
+            }
+          : {}),
       },
     })
 
@@ -747,6 +1046,9 @@ export function AIProvider({ children }: { children: ReactNode }) {
         await loadDraftsFor(campaignId)
         await loadMechanicsCompilationsFor(campaignId, userId)
       }
+      if (isSystemAdmin) {
+        await loadDevRunsFor(campaignId, userId)
+      }
     } catch {
       const now = new Date().toISOString()
       setMessages((current) => [
@@ -758,19 +1060,24 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     setSending(false)
     return true
-  }, [campaignId, canManage, loadConversationFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor, route, sending, userId, viewContext])
+  }, [campaignId, canManage, devSession, devSessionToken, isSystemAdmin, loadConversationFor, loadDevRunsFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor, route, sending, userId, viewContext])
 
   const value = useMemo<AIContextValue>(() => ({
     campaignId,
     userId,
     canManage,
+    isSystemAdmin,
     models,
+    ownerOverrideModels,
     selectedModelId,
     lastRoute,
     messages,
     drafts,
     jobs,
     mechanicsCompilations,
+    devSession,
+    devRuns,
+    developerCapabilities,
     loading,
     sending,
     error,
@@ -779,32 +1086,53 @@ export function AIProvider({ children }: { children: ReactNode }) {
     setViewContextLayer,
     clearViewContextLayer,
     chooseModel,
+    openDeveloperMode,
+    closeDeveloperMode,
+    setDeveloperOverride,
+    applyDevRun,
+    refreshDevRun,
+    mergeDevRun,
+    cancelDevRun,
     send,
     refreshConversation,
     refreshDrafts,
     refreshJobs,
     refreshMechanicsCompilations,
+    refreshDevRuns,
   }), [
+    applyDevRun,
     campaignId,
     canManage,
+    cancelDevRun,
     chooseModel,
+    closeDeveloperMode,
     clearViewContextLayer,
+    developerCapabilities,
+    devRuns,
+    devSession,
     drafts,
     error,
+    isSystemAdmin,
     jobs,
     loading,
     mechanicsCompilations,
     lastRoute,
     messages,
+    mergeDevRun,
     models,
+    openDeveloperMode,
+    ownerOverrideModels,
     refreshConversation,
     refreshDrafts,
     refreshJobs,
     refreshMechanicsCompilations,
+    refreshDevRun,
+    refreshDevRuns,
     route,
     selectedModelId,
     send,
     sending,
+    setDeveloperOverride,
     setViewContextLayer,
     userId,
     viewContext,
