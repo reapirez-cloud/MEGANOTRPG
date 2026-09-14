@@ -625,6 +625,14 @@
   line-height: 1.5;
 }
 
+.u1-agent-system-note {
+  padding-right: 11px;
+  color: rgba(177, 166, 146, 0.42);
+  font-size: 6px;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+}
+
 .u1-agent-system-meta {
   display: flex;
   flex-wrap: wrap;
