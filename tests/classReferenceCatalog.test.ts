@@ -31,3 +31,15 @@ test("Druid resource exchanges are explicit instead of relying on vague prose", 
   assert.match(druid, /1 форма → ячейка 2 уровня; 2 формы → одна ячейка 4 уровня/)
   assert.match(clarity, /уровень ячейки не влияет на обмен/i)
 })
+
+
+test("class reference reads CE catalog mechanics even for literary-first classes", () => {
+  assert.match(reference, /function classFundamentals\(template: RuleTemplate \| undefined\)/)
+  assert.match(reference, /const classFundamentalsList = classFundamentals\(classTemplate\)/)
+  assert.match(reference, /<span>Основа класса<\/span>/)
+  assert.match(reference, /Спасброски:/)
+  assert.match(reference, /Доспехи:/)
+  assert.match(reference, /Оружие:/)
+  assert.doesNotMatch(reference, /if \(!selectedClass \|\| selectedClass\.referenceOnly\) return undefined/)
+  assert.doesNotMatch(reference, /if \(!selectedClass \|\| !selectedSubclass \|\| selectedClass\.referenceOnly\) return undefined/)
+})
