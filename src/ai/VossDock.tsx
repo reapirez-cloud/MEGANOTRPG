@@ -88,6 +88,9 @@ export default function VossDock() {
       <div className="u1-voss-context">
         <span>Сейчас вижу</span>
         <strong>{viewContext?.title || viewContext?.screen || "текущий экран"}</strong>
+        <small className="u1-voss-context__tools">
+          {selectedModel?.supports_tools ? "READ-TOOLS · ДОСТУПНЫ" : "READ-TOOLS · НЕТ"}
+        </small>
         {viewContext?.entity && (
           <small className="u1-voss-context__entity">
             {viewContext.entity.type}

@@ -1,6 +1,6 @@
-# AI Agent Foundation — Voss Stages 1–2
+# AI Agent Foundation — Voss Stages 1–3
 
-> Status: **STAGES 1–2 IMPLEMENTED**
+> Status: **STAGES 1–3 IMPLEMENTED**
 >
 > This is the canonical starting point for AI inside MEGANOT RPG. Future AI work must extend this boundary instead of calling model APIs directly from React components.
 
@@ -125,6 +125,47 @@ route
 
 If `draft.dirty = true`, `draft.values` is the user's current unsaved state and takes precedence over older saved values from lower layers.
 
+## Stage 3 — read tools
+
+Voss may now ask the server to read additional visible data when the current screen context is insufficient.
+
+The allowed read tools are explicit and finite:
+
+```text
+search_entities
+read_character
+read_location
+read_rule_template
+read_reference_definition
+read_world_article
+read_workspace_file
+```
+
+There is deliberately no generic SQL tool, generic table reader, storage browser or write-capable tool.
+
+The model does not choose a database table. It chooses one named capability with a typed argument object.
+
+Read execution uses the authenticated user's Supabase client:
+
+```text
+LLM tool request
+→ voss-agent allowlist
+→ userClient
+→ existing RLS
+→ bounded result
+→ LLM
+```
+
+This means the AI cannot read more than the same authenticated user is allowed to read. GM workspace reads additionally require GM/owner authority and remain scoped to that GM's workspace.
+
+The service-role client is used only for AI infrastructure such as conversation persistence and the read-tool audit log. It is not passed into the domain read-tool executor.
+
+Models must have `ai_models.supports_tools = true` before the gateway exposes read tools to them. Models without native tool support continue to receive Stage 2 screen context only.
+
+Each read-tool call is audited in `ai_read_tool_runs`. The audit row stores the tool name, arguments and small result metadata, not a duplicate copy of the full domain payload.
+
+Tool output is untrusted campaign content. Lore, notes and entity descriptions must never be interpreted as instructions for the agent.
+
 ## Persistence
 
 Tables:
@@ -136,7 +177,7 @@ Tables:
 
 All public tables have RLS.
 
-## Current limitations after Stage 2
+## Current limitations after Stage 3
 
 Voss currently has no domain write tools.
 
@@ -157,7 +198,6 @@ The model must never receive unrestricted SQL or generic table-write access.
 
 ## Planned continuation
 
-3. Read tools for classes, subclasses, character resolved state and GM Workshop entities. Screen context is not treated as the full database.
 4. AI Draft system for zones, NPCs, items and reusable mechanics.
 5. Natural-language draft editing.
 6. Approved draft execution through Oracle and canonical engines.
