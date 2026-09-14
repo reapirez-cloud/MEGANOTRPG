@@ -101,6 +101,17 @@ Current Home order is:
 
 Home reads real Supabase data for campaign identity/cover, chronology, art previews, achievements and society announcements. Realtime is a refresh signal, not canonical storage.
 
+## Classes and subclasses — visual law
+
+The Knowledge Base class family uses one restrained panoramic image grammar:
+
+- class catalog panels: **3:1**;
+- subclass catalog panels: **3:1**;
+- subclass detail header artwork: **the same 3:1 preview language**;
+- do not introduce a separate 16:9 cinematic/graphic-novel hero for subclass detail.
+
+The purpose is visual continuity and editorial restraint. Class and subclass screens should feel like one designed product, not a sequence of independently generated showcase blocks. Prefer repetition of a small number of strong layout rules over adding new hero treatments, glow systems, decorative cards or AI-looking spectacle.
+
 ## World — canonical player-facing terminology
 
 The current user-facing World vocabulary is **Локации / Персонажи / Лор / Карта**:
