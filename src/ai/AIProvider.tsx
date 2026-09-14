@@ -89,7 +89,6 @@ export type AIDraftRevision = {
   change_summary: string
   operations: Array<Record<string, unknown>>
   validation_warnings: string[]
-  recent_revisions?: AIDraftRevision[]
   created_at: string
 }
 
@@ -107,6 +106,7 @@ export type AIDraft = {
     relations?: AIDraftRelation[]
   }
   validation_warnings: string[]
+  recent_revisions?: AIDraftRevision[]
   created_at: string
   updated_at: string
 }
