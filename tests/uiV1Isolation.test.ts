@@ -537,3 +537,15 @@ test("Knowledge Base class pages expose subclasses first and reuse the panoramic
   assert.match(sectionStyles, /\.u1-class-subclasses-tab/)
   assert.match(sectionStyles, /\.u1-reference-copy/)
 })
+
+test("Knowledge Base subclass detail uses a 16:9 atmospheric hero with class-art fallback", () => {
+  assert.match(sectionScreens, /function subclassHeroArtPath/)
+  assert.match(sectionScreens, /\/ui-v1\/subclasses\/\$\{entry\.id\}\/\$\{subclass\.id\}\.webp/)
+  assert.match(sectionScreens, /function classHeroFallbackPath/)
+  assert.match(sectionScreens, /\/ui-v1\/classes\/\$\{entry\.id\}\.webp/)
+  assert.match(sectionScreens, /className="u1-subclass-hero"/)
+  assert.match(sectionScreens, /data\.fallback === "class"/)
+  assert.match(sectionStyles, /\.u1-subclass-hero/)
+  assert.match(sectionStyles, /aspect-ratio:\s*16\s*\/\s*9/)
+  assert.match(sectionStyles, /\.u1-subclass-hero__image[\s\S]*?object-fit:\s*cover/)
+})
