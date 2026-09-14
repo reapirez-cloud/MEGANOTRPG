@@ -34,6 +34,8 @@ test("Druid resource exchanges are explicit instead of relying on vague prose", 
 
 
 test("class reference reads CE catalog mechanics even for literary-first classes", () => {
+  assert.match(reference, /function classListMeta\(entry: ClassReferenceEntry, templates: RuleTemplate\[\]\)/)
+  assert.match(reference, /classListMeta\(entry, templates\)/)
   assert.match(reference, /function classFundamentals\(template: RuleTemplate \| undefined\)/)
   assert.match(reference, /const classFundamentalsList = classFundamentals\(classTemplate\)/)
   assert.match(reference, /<span>Основа класса<\/span>/)
