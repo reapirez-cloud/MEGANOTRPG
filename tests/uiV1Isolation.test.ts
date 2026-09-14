@@ -29,6 +29,13 @@ const approvedPanelAssets = [
   "public/ui-v1/panels/kb-bestiary.webp",
   "public/ui-v1/panels/kb-chaos.webp",
 ]
+const approvedClassPanelAssets = [
+  "public/ui-v1/classes/fighter.webp",
+  "public/ui-v1/classes/warlock.webp",
+  "public/ui-v1/classes/cleric.webp",
+  "public/ui-v1/classes/druid.webp",
+  "public/ui-v1/classes/bard.webp",
+]
 const sectionScreens = fs.readFileSync("src/ui-v1-isolated/SectionScreens.tsx", "utf8")
 const sectionData = fs.readFileSync("src/ui-v1-isolated/useUiV1SectionData.ts", "utf8")
 const sectionRegistry = fs.readFileSync("src/ui-v1-isolated/sectionRegistry.ts", "utf8")
@@ -74,6 +81,13 @@ test("approved UI v1 panel artwork is committed and lightweight", () => {
   for (const asset of approvedPanelAssets) {
     assert.equal(fs.existsSync(asset), true, asset)
     assert.ok(fs.statSync(asset).size < 20_000, asset)
+  }
+})
+
+test("approved class preview artwork is committed for the supplied class cards", () => {
+  for (const asset of approvedClassPanelAssets) {
+    assert.equal(fs.existsSync(asset), true, asset)
+    assert.ok(fs.statSync(asset).size < 100_000, asset)
   }
 })
 
