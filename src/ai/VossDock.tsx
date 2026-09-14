@@ -90,7 +90,7 @@ export default function VossDock() {
         <span>Сейчас вижу</span>
         <strong>{viewContext?.title || viewContext?.screen || "текущий экран"}</strong>
         <small className="u1-voss-context__tools">
-          {selectedModel?.supports_tools ? "READ-TOOLS · ДОСТУПНЫ" : "READ-TOOLS · НЕТ"}
+          {selectedModel?.supports_tools ? "READ · MEMORY · ДОСТУПНЫ" : "READ · MEMORY · НЕТ"}
         </small>
         {viewContext?.entity && (
           <small className="u1-voss-context__entity">
@@ -127,8 +127,9 @@ export default function VossDock() {
           <div className="u1-voss-empty">
             <strong>Спрашивай по тому, что открыто.</strong>
             <p>
-              Я вижу текущий экран, могу дочитывать доступные данные и собирать для GM
-              структурированные AI-черновики. Канонические данные всё ещё не меняю.
+              Я вижу текущий экран, могу дочитывать доступные данные, вспоминать историю
+              кампании и собирать для GM структурированные AI-черновики. Канон меняется
+              только после явного подтверждения GM.
             </p>
           </div>
         )}
@@ -151,7 +152,7 @@ export default function VossDock() {
         <textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="Спроси про открытый экран, механику или идею…"
+          placeholder="Спроси про экран, механику, идею или прошлые события…"
           maxLength={8000}
           rows={2}
           disabled={sending}
