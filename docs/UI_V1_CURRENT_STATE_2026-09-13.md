@@ -211,6 +211,7 @@ Current implementation includes:
 - one UI 1.0 `SnakeProvider` and reusable `SnakeTrigger`;
 - dynamic Branch/Command navigation with a transient branch stack: the domain resolves only the current level's children, Back restores the previous level, and terminal commands receive the selected path;
 - right-click + touch long-press with synthetic Telegram/Android contextmenu suppression;
+- ordinary object tap/click is never a Snake invocation: touch must survive the centralized long-press threshold, pointer release before the threshold permanently cancels that gesture, and delayed WebView `contextmenu` from a short tap is suppressed; explicit management affordances such as a visible `•••` button may intentionally open Snake on click;
 - viewport-aware universal floating context menu;
 - one Snake-owned adaptive universal window system: Placeholder / Confirm / Editor / Picker / Detail / Notice/Error / Flow; windows support controlled compact-to-full sizing and Flow steps accumulate one transient draft before final dispatch;
 - domain-provided typed executors rather than a generic arbitrary engine RPC;
