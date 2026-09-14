@@ -1056,6 +1056,28 @@ show_all_requested_outputs
 
 If two alternatives were requested, the Agent UI renders both. A preferred variant receives a small `Выбор Восса` mark, but no generated alternative is hidden, discarded or replaced by the reviewer.
 
+### CheapVibeCode shared gateway configuration
+
+When chat and images use the same CheapVibeCode account, the entire Agent Platform may be configured with only:
+
+```text
+AI_API_KEY
+AI_API_BASE_URL
+```
+
+Both DeepSeek chat and GPT Image read these shared values.
+
+Provider-specific environment variables remain optional overrides:
+
+```text
+DEEPSEEK_API_KEY
+DEEPSEEK_API_BASE_URL
+OPENAI_IMAGE_API_KEY
+OPENAI_IMAGE_API_BASE_URL
+```
+
+This keeps one-key installations simple without removing the ability to split providers later.
+
 ### CheapVibeCode image provider contract
 
 The active image worker uses CheapVibeCode's OpenAI-compatible image endpoints.
