@@ -480,6 +480,18 @@ test("VI is reserved for the future player profile and no longer duplicates Work
 })
 
 
+test("Snake touch context menu cannot bypass the long-press threshold", () => {
+  const snakeTrigger = fs.readFileSync("src/ui-v1-isolated/snake/interaction/SnakeTrigger.tsx", "utf8")
+  const snakeContract = fs.readFileSync("docs/SNAKE_INTERACTION_CONTRACT.md", "utf8")
+  assert.match(snakeTrigger, /const longPressMs = 520/)
+  assert.match(snakeTrigger, /touchGestureRef/)
+  assert.match(snakeTrigger, /now - touch\.startedAt < longPressMs/)
+  assert.match(snakeTrigger, /if \(isRecentTouch\)/)
+  assert.match(snakeTrigger, /event\.stopPropagation\(\)/)
+  assert.match(snakeTrigger, /useEffect\(\(\) => \{[\s\S]*?clearTimer/)
+  assert.match(snakeContract, /contextmenu.*never sufficient evidence.*long press/i)
+})
+
 test("Workspace stats expand locally while character long-press uses dynamic Snake branches", () => {
   assert.match(workspaceData, /from\("character_sheets"\)/)
   assert.match(workspaceData, /skill_proficiencies/)
