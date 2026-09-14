@@ -715,7 +715,10 @@ async function readCampaignOverview(
   context: VossReadToolContext,
   args: JsonObject,
 ) {
-  const limit = Math.max(4, Math.min(40, boundedLimit(args.limit) || 12))
+  const requestedLimit = Number(args.limit)
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.max(4, Math.min(40, Math.floor(requestedLimit)))
+    : 12
 
   const [
     characters,
