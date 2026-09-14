@@ -163,12 +163,13 @@ test("AI drafts cannot self-approve and executable mechanics require compiler pr
   assert.match(applyDraft, /stableJson\(data\.mechanics\) !== stableJson\(rawMechanics\)/)
 })
 
-test("Mechanics Compiler remains the first path before Developer Mode", () => {
+test("Mechanics Compiler remains in the repository but Voss cannot invoke it", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
   const compiler = read("supabase/functions/voss-agent/mechanics-compiler.ts")
 
-  assert.match(edge, /В Developer Mode сначала используй Mechanics Compiler/)
-  assert.match(edge, /компилятор честно вернул unsupported/)
+  assert.doesNotMatch(edge, /VOSS_MECHANICS_TOOLS/)
+  assert.doesNotMatch(edge, /executeVossMechanicsTool/)
+  assert.match(edge, /Developer Mode нужен только для работ с приложением и инфраструктурой/)
   assert.match(compiler, /unsupported/i)
   assert.match(compiler, /sourceKey/)
 })
