@@ -425,10 +425,16 @@ async function recordStep(
   if (error) throw new Error(error.message)
 }
 
-async function finishRun(runId: string, succeeded: boolean, errorMessage?: string) {
-  const { data, error } = await supabase.rpc("finish_ai_draft_apply_v1", {
+async function finishRun(
+  runId: string,
+  succeeded: boolean,
+  partialHint: boolean,
+  errorMessage?: string,
+) {
+  const { data, error } = await supabase.rpc("finish_ai_draft_apply_v2", {
     p_run_id: runId,
     p_succeeded: succeeded,
+    p_partial_hint: partialHint,
     p_error: errorMessage || null,
   })
   if (error) throw new Error(error.message)
@@ -529,9 +535,9 @@ export async function applyAIDraft(
 
       const ref: CanonicalRef = { type: "location", id: locationId }
       entityMap[node.key] = ref
+      completed += 1
       const locationStep = steps.find((step) => step.key === "location:" + node.key)!
       await recordStep(runId, locationStep, { key: node.key, ref })
-      completed += 1
 
       const sections = Array.isArray(payload.sections)
         ? payload.sections.map(object)
@@ -549,12 +555,12 @@ export async function applyAIDraft(
         const sectionId = String(sectionResult.value.details.sectionId || "")
         if (!sectionId) throw new Error("Larisa не вернула ID секции локации.")
         sectionIds.push(sectionId)
+        completed += 1
         await recordStep(
           runId,
           steps.find((step) => step.key === "section:" + node.key + ":" + index)!,
           { key: "section:" + node.key + ":" + index, ref: { type: "section", id: sectionId } },
         )
-        completed += 1
       }
 
       const needsTransitionAnchor =
@@ -572,12 +578,12 @@ export async function applyAIDraft(
         const sectionId = String(sectionResult.value.details.sectionId || "")
         if (!sectionId) throw new Error("Larisa не вернула ID секции переходов.")
         sectionIds.push(sectionId)
+        completed += 1
         await recordStep(
           runId,
           steps.find((step) => step.key === "section:" + node.key + ":transitions")!,
           { key: "section:" + node.key + ":transitions", ref: { type: "section", id: sectionId } },
         )
-        completed += 1
       }
 
       sectionMap.set(node.key, sectionIds)
@@ -610,12 +616,12 @@ export async function applyAIDraft(
 
       const ref: CanonicalRef = { type: "character", id: characterId }
       entityMap[node.key] = ref
+      completed += 1
       await recordStep(
         runId,
         steps.find((step) => step.key === "character:" + node.key)!,
         { key: node.key, ref },
       )
-      completed += 1
 
       const templateId = string(payload.class_template_id)
       if (templateId) {
@@ -628,11 +634,11 @@ export async function applyAIDraft(
             selectedChoices: {},
           },
         )
+        completed += 1
         await recordStep(
           runId,
           steps.find((step) => step.key === "template:" + node.key)!,
         )
-        completed += 1
       }
     }
 
@@ -666,12 +672,12 @@ export async function applyAIDraft(
 
       const ref: CanonicalRef = { type: "definition", id: definitionId }
       entityMap[node.key] = ref
+      completed += 1
       await recordStep(
         runId,
         steps.find((step) => step.key === "definition:" + node.key)!,
         { key: node.key, ref },
       )
-      completed += 1
     }
 
     for (const relation of draft.content.relations || []) {
@@ -691,6 +697,7 @@ export async function applyAIDraft(
           relation.label || "Переход",
           visibility(object(relation.data).visibility_mode),
         )
+        completed += 1
         await recordStep(
           runId,
           steps.find((step) =>
@@ -699,7 +706,6 @@ export async function applyAIDraft(
             (relation.to_key || relation.to_existing?.id || "")
           )!,
         )
-        completed += 1
       }
 
       if (relation.kind === "npc_habitat") {
@@ -714,11 +720,11 @@ export async function applyAIDraft(
           locationId,
           true,
         )
+        completed += 1
         await recordStep(
           runId,
           steps.find((step) => step.key === "habitat:" + relation.from_key)!,
         )
-        completed += 1
       }
 
       if (relation.kind === "inventory_owner") {
@@ -743,6 +749,7 @@ export async function applyAIDraft(
         const itemId = result.value.itemId
         if (!itemId) throw new Error("Чебурашка не вернула ID выданного предмета.")
 
+        completed += 1
         await recordStep(
           runId,
           steps.find((step) => step.key === "inventory:" + relation.from_key)!,
@@ -751,17 +758,16 @@ export async function applyAIDraft(
             ref: { type: "item", id: itemId },
           },
         )
-        completed += 1
       }
     }
 
-    await finishRun(runId, true)
+    await finishRun(runId, true, false)
     return { ok: true, runId, entityMap }
   } catch (reason) {
     const message = reason instanceof Error ? reason.message : String(reason)
     if (runId) {
       try {
-        await finishRun(runId, false, message)
+        await finishRun(runId, false, completed > 0, message)
       } catch {
         // The canonical error remains the useful failure. The run can be inspected manually.
       }
