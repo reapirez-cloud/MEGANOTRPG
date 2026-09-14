@@ -439,8 +439,21 @@ For the one-time manual Stage 14 promotion only, release certification may proce
 - Storybook build passes;
 - Playwright Chromium install passes;
 - Playwright smoke passes;
-- Vercel's failing status points only to the provider `build-rate-limit` upgrade target rather than an application deployment/build log;
+- the Stage 14 feature-preview attempt is confirmed as rejected before build by the provider `build-rate-limit`, rather than by application build logs;
+- if the final `dev → main` PR emits no Vercel preview/check context for the `dev` head, that absence is recorded instead of being mislabeled as success;
 - the exception is recorded in this READY audit.
+
+Observed release evidence:
+
+```text
+Stage 14 feature PR:
+Vercel preview contexts → failure before build
+reason/target            → Hobby build-rate-limit
+
+Final dev → main PR:
+Vercel preview context   → not emitted
+GitHub verify            → success on exact head SHA
+```
 
 This exception does not modify application code, Developer Mode policy, or future preview requirements.
 
@@ -463,7 +476,7 @@ Stage 14 marks the platform READY when all of the following are true:
 - Supabase Agent Platform FK advisor debt is cleared;
 - repository Build/Lint/Test/Storybook/Playwright smoke passes on the Stage 14 PR;
 - the final `dev → main` SHA passes the same GitHub checks;
-- Vercel preview succeeds, or the documented Stage 14-only pre-build `build-rate-limit` infrastructure exception applies.
+- Vercel preview succeeds, or the documented Stage 14-only preview-infrastructure exception applies exactly as recorded above.
 
 When the final PR satisfies those checks:
 
