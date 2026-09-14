@@ -80,7 +80,7 @@ function deepSeekConfig(model: RouterModel) {
     "AI_API_KEY",
   )
   const apiBase = normalizedBaseUrl(
-    getEnv("DEEPSEEK_API_BASE_URL"),
+    getEnv("DEEPSEEK_API_BASE_URL", "AI_API_BASE_URL"),
     "https://api.deepseek.com",
   )
 
