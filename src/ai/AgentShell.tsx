@@ -633,7 +633,9 @@ export default function AgentShell() {
             >
               <header>
                 <div>
-                  <span>MECHANICS COMPILER</span>
+                  <span>
+                    MECHANICS COMPILER · v{mechanicsCompilations[0].compiler_version}
+                  </span>
                   <strong>{mechanicsCompilations[0].title}</strong>
                 </div>
                 <b>{mechanicsStatus(mechanicsCompilations[0].status)}</b>
