@@ -1,5 +1,6 @@
 import { useState } from "react"
 
+import { useAIViewContextLayer } from "../ai/AIProvider"
 import { WorkshopDefinitionRows } from "./GMWorkshopCommon"
 import { useGMWorkshopData } from "./useGMWorkshopData"
 
@@ -45,6 +46,29 @@ export default function GMWorkshopLibrary({
     ["feature", "Способности"],
     ["condition", "Эффекты"],
   ]
+
+  useAIViewContextLayer(
+    "gm-workshop-library",
+    {
+      screen: "gm-workshop-library",
+      title: "Мастерская · Библиотека",
+      text: "GM просматривает рабочую библиотеку определений.",
+      facts: {
+        query,
+        filter,
+        scope,
+        visibleDefinitions: visible.slice(0, 30).map((definition) => ({
+          id: definition.id,
+          kind: definition.kind,
+          name: definition.name,
+          summary: definition.summary,
+          rulesText: definition.rulesText,
+          status: definition.status,
+        })),
+      },
+    },
+    45,
+  )
 
   return (
     <div className="u1-gm-workshop__section">

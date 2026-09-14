@@ -10,17 +10,36 @@ import {
 
 import { supabase } from "../lib/supabase"
 
+export type AIViewEntity = {
+  type: string
+  id: string
+  label?: string
+}
+
+export type AIViewDraft = {
+  dirty: boolean
+  editorTitle?: string
+  values: Record<string, unknown>
+  initialValues?: Record<string, unknown>
+}
+
 export type AIViewContext = {
   screen: string
   route?: string
   title?: string
   text?: string
-  entity?: {
-    type: string
-    id: string
-    label?: string
-  } | null
+  entity?: AIViewEntity | null
   facts?: Record<string, unknown>
+  draft?: AIViewDraft
+}
+
+export type AIViewContextLayer = Omit<AIViewContext, "screen"> & {
+  screen?: string
+}
+
+type StoredViewLayer = {
+  priority: number
+  context: AIViewContextLayer
 }
 
 export type AIModel = {
@@ -52,7 +71,12 @@ type AIContextValue = {
   error: string | null
   viewContext: AIViewContext | null
   route: string
-  setViewContext: (context: AIViewContext | null) => void
+  setViewContextLayer: (
+    source: string,
+    context: AIViewContextLayer,
+    priority?: number,
+  ) => void
+  clearViewContextLayer: (source: string) => void
   chooseModel: (modelId: string) => Promise<boolean>
   send: (message: string) => Promise<boolean>
   refreshConversation: () => Promise<void>
@@ -75,6 +99,55 @@ function normalizeFunctionError(message: string) {
   return message || "Восс не смог ответить."
 }
 
+function composeViewContext(
+  layers: Record<string, StoredViewLayer>,
+  fallbackRoute: string,
+): AIViewContext | null {
+  const ordered = Object.entries(layers)
+    .sort(([leftSource, left], [rightSource, right]) =>
+      left.priority - right.priority ||
+      leftSource.localeCompare(rightSource),
+    )
+
+  if (!ordered.length) return null
+
+  const descending = [...ordered].reverse()
+  const firstValue = <K extends keyof AIViewContextLayer>(key: K) => {
+    for (const [, layer] of descending) {
+      const value = layer.context[key]
+      if (value !== undefined && value !== null && value !== "") return value
+    }
+    return undefined
+  }
+
+  const primaryFacts = firstValue("facts") as Record<string, unknown> | undefined
+  const textParts = ordered
+    .map(([, layer]) => layer.context.text?.trim())
+    .filter((value): value is string => Boolean(value))
+
+  const contextLayers = ordered.map(([source, layer]) => ({
+    source,
+    priority: layer.priority,
+    screen: layer.context.screen,
+    title: layer.context.title,
+    entity: layer.context.entity || undefined,
+    facts: layer.context.facts,
+  }))
+
+  return {
+    screen: String(firstValue("screen") || "meganot"),
+    route: String(firstValue("route") || fallbackRoute),
+    title: firstValue("title") as string | undefined,
+    text: [...new Set(textParts)].join("\n\n") || undefined,
+    entity: (firstValue("entity") as AIViewEntity | null | undefined) || null,
+    draft: firstValue("draft") as AIViewDraft | undefined,
+    facts: {
+      ...(primaryFacts || {}),
+      contextLayers,
+    },
+  }
+}
+
 export function AIProvider({ children }: { children: ReactNode }) {
   const [campaignId, setCampaignId] = useState("")
   const [userId, setUserId] = useState("")
@@ -85,8 +158,36 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [viewContext, setViewContext] = useState<AIViewContext | null>(null)
+  const [viewLayers, setViewLayers] = useState<Record<string, StoredViewLayer>>({})
   const [route, setRoute] = useState(window.location.hash || "#/home")
+
+  const viewContext = useMemo(
+    () => composeViewContext(viewLayers, route),
+    [route, viewLayers],
+  )
+
+  const setViewContextLayer = useCallback((
+    source: string,
+    context: AIViewContextLayer,
+    priority = 0,
+  ) => {
+    const cleanSource = source.trim()
+    if (!cleanSource) return
+
+    setViewLayers((current) => ({
+      ...current,
+      [cleanSource]: { priority, context },
+    }))
+  }, [])
+
+  const clearViewContextLayer = useCallback((source: string) => {
+    setViewLayers((current) => {
+      if (!(source in current)) return current
+      const next = { ...current }
+      delete next[source]
+      return next
+    })
+  }, [])
 
   const loadConversationFor = useCallback(async (nextCampaignId: string, nextUserId: string) => {
     const { data: thread, error: threadError } = await supabase
@@ -319,7 +420,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
     error,
     viewContext,
     route,
-    setViewContext,
+    setViewContextLayer,
+    clearViewContextLayer,
     chooseModel,
     send,
     refreshConversation,
@@ -327,6 +429,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     campaignId,
     canManage,
     chooseModel,
+    clearViewContextLayer,
     error,
     loading,
     messages,
@@ -336,6 +439,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     selectedModelId,
     send,
     sending,
+    setViewContextLayer,
     userId,
     viewContext,
   ])
@@ -348,4 +452,37 @@ export function useAI() {
   const value = useContext(AIContext)
   if (!value) throw new Error("useAI must be used inside AIProvider")
   return value
+}
+
+// oxlint-disable-next-line react/only-export-components
+export function useAIViewContextLayer(
+  source: string,
+  context: AIViewContextLayer | null,
+  priority = 0,
+) {
+  const { setViewContextLayer, clearViewContextLayer } = useAI()
+  const contextJson = JSON.stringify(context)
+
+  useEffect(() => {
+    if (contextJson === "null") {
+      clearViewContextLayer(source)
+      return
+    }
+
+    setViewContextLayer(
+      source,
+      JSON.parse(contextJson) as AIViewContextLayer,
+      priority,
+    )
+  }, [
+    clearViewContextLayer,
+    contextJson,
+    priority,
+    setViewContextLayer,
+    source,
+  ])
+
+  useEffect(() => {
+    return () => clearViewContextLayer(source)
+  }, [clearViewContextLayer, source])
 }

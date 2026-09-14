@@ -88,6 +88,16 @@ export default function VossDock() {
       <div className="u1-voss-context">
         <span>Сейчас вижу</span>
         <strong>{viewContext?.title || viewContext?.screen || "текущий экран"}</strong>
+        {viewContext?.entity && (
+          <small className="u1-voss-context__entity">
+            {viewContext.entity.type}
+            {" · "}
+            {viewContext.entity.label || viewContext.entity.id}
+          </small>
+        )}
+        {viewContext?.draft?.dirty && (
+          <b>НЕ СОХРАНЕНО · ВИЖУ ТЕКУЩИЕ ПОЛЯ</b>
+        )}
         {viewContext?.text && <small>{viewContext.text}</small>}
       </div>
 
@@ -96,8 +106,8 @@ export default function VossDock() {
           <div className="u1-voss-empty">
             <strong>Спрашивай по тому, что открыто.</strong>
             <p>
-              На первом этапе я читаю контекст интерфейса и отвечаю. Ничего сам не меняю
-              и не сохраняю без отдельного будущего режима черновиков.
+              Я вижу текущий экран, выбранную сущность и незаписанные поля редакторов.
+              Пока только читаю и объясняю: менять канонические данные мне ещё не разрешено.
             </p>
           </div>
         )}

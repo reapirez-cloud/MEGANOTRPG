@@ -1,6 +1,6 @@
-# AI Agent Foundation — Voss Stage 1
+# AI Agent Foundation — Voss Stages 1–2
 
-> Status: **IMPLEMENTED FOUNDATION**
+> Status: **STAGES 1–2 IMPLEMENTED**
 >
 > This is the canonical starting point for AI inside MEGANOT RPG. Future AI work must extend this boundary instead of calling model APIs directly from React components.
 
@@ -95,14 +95,35 @@ Screens register an `AIViewContext`:
 }
 ```
 
-The GM Workshop currently registers:
+Stage 2 expands this into a prioritized context stack.
 
-- current workshop section;
-- campaign title;
-- useful counts;
-- a bounded textual list of visible relevant rows.
+Current semantic context providers include:
 
-Future screens should register semantic state, including unsaved form values when useful. Do not send raw DOM HTML.
+- root UI route;
+- GM Workshop section plus local filters and visible rows;
+- selected party member;
+- current materials folder;
+- Workspace speaker / active character;
+- full Character View state: sheet, HP, resources, inventory, spells, features and template assignments;
+- World sections and location hierarchy/detail;
+- class, subclass and exact feature reference pages;
+- Society News composer draft;
+- Snake context menu and active Snake surface;
+- every Snake Editor, including current unsaved field values.
+
+The AI never reads DOM HTML or screenshots for this. The application registers structured context.
+
+More specific layers override general ones:
+
+```text
+route
+→ section
+→ opened entity
+→ Snake surface
+→ unsaved Snake editor draft
+```
+
+If `draft.dirty = true`, `draft.values` is the user's current unsaved state and takes precedence over older saved values from lower layers.
 
 ## Persistence
 
@@ -115,7 +136,7 @@ Tables:
 
 All public tables have RLS.
 
-## Stage 1 limitations
+## Current limitations after Stage 2
 
 Voss currently has no domain write tools.
 
@@ -136,8 +157,11 @@ The model must never receive unrestricted SQL or generic table-write access.
 
 ## Planned continuation
 
-1. Read tools for classes, subclasses, character resolved state and GM Workshop entities.
-2. AI Draft system.
-3. Natural-language draft editing.
-4. Campaign event memory / retrieval / summaries.
-5. Explicit AI-GM mode and Director/Narrator split.
+3. Read tools for classes, subclasses, character resolved state and GM Workshop entities. Screen context is not treated as the full database.
+4. AI Draft system for zones, NPCs, items and reusable mechanics.
+5. Natural-language draft editing.
+6. Approved draft execution through Oracle and canonical engines.
+7. Campaign event memory / retrieval / summaries.
+8. Model routing by task.
+9. Explicit AI-GM mode.
+10. Director / Narrator split for autonomous play.

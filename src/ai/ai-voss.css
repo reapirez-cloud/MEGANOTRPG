@@ -145,6 +145,20 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.u1-voss-context__entity {
+  color: rgba(221,229,229,.66) !important;
+  letter-spacing: .03em;
+}
+.u1-voss-context b {
+  width: fit-content;
+  padding: 3px 5px;
+  border: 1px solid rgba(222,232,234,.12);
+  background: rgba(222,232,234,.035);
+  color: rgba(231,219,186,.72);
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: .09em;
+}
 
 .u1-voss-log {
   min-height: 0;

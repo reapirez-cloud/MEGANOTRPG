@@ -133,6 +133,8 @@ export function SnakeFlowWindow({
             request={editorRequest}
             busy={busy}
             error={session.error}
+            entity={session.entity}
+            contextSource={"snake-editor:" + session.id + ":" + step.id}
             onSubmit={advance}
             onCancel={back}
           />
