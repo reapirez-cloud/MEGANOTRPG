@@ -49,7 +49,7 @@ test("node removal also drops dangling relations before validation", () => {
 
 test("revision metadata is persisted and visible in UI", () => {
   const migration = read(
-    "supabase/migrations/20260914164022_ai_draft_revision_editing_stage5.sql",
+    "supabase/migrations/20260914164528_ai_draft_revision_editing_stage5.sql",
   )
   const provider = read("src/ai/AIProvider.tsx")
   const workshop = read("src/ui-v1-isolated/GMWorkshopDraft.tsx")
