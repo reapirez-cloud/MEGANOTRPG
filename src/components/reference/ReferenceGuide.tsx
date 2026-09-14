@@ -157,7 +157,8 @@ function classFundamentals(template: RuleTemplate | undefined) {
   const hitDieFromMechanics = mechanics
     .flatMap((mechanic) => {
       if (mechanic.type !== "grant" || mechanic.target !== "feature") return []
-      const hitDie = isRecord(mechanic.payload) ? mechanic.payload.hitDie : undefined
+      const payload: unknown = mechanic.payload
+      const hitDie = isRecord(payload) ? payload.hitDie : undefined
       return typeof hitDie === "number" ? [hitDie] : []
     })
     .find((value): value is number => typeof value === "number")
