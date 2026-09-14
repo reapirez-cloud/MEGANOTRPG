@@ -8,6 +8,7 @@ export default function VossDock() {
     canManage,
     models,
     selectedModelId,
+    lastRoute,
     messages,
     drafts,
     loading,
@@ -71,7 +72,7 @@ export default function VossDock() {
 
       {canManage && models.length > 0 && (
         <label className="u1-voss-model">
-          <span>Модель</span>
+          <span>Основная модель</span>
           <select
             value={selectedModelId || ""}
             onChange={(event) => void chooseModel(event.target.value)}
@@ -103,6 +104,14 @@ export default function VossDock() {
           <b>НЕ СОХРАНЕНО · ВИЖУ ТЕКУЩИЕ ПОЛЯ</b>
         )}
         {viewContext?.text && <small>{viewContext.text}</small>}
+        {lastRoute && (
+          <small className="u1-voss-route">
+            ROUTER · {lastRoute.task.toUpperCase()} · {lastRoute.modelName}
+            {" · "}
+            {lastRoute.mode.toUpperCase()}
+            {lastRoute.degraded ? " · DEGRADED" : ""}
+          </small>
+        )}
       </div>
 
       <div className="u1-voss-log" ref={logRef}>
