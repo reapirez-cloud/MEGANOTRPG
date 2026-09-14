@@ -527,21 +527,62 @@ test("Knowledge Base classes use panoramic 3:1 art-ready panels", () => {
   assert.match(sectionStyles, /object-fit:\s*cover/)
 })
 
-test("Knowledge Base class pages use one class/subclass tab system and real feature progression", () => {
+test("Knowledge Base class pages keep the class/subclass axis and add content modes", () => {
   assert.match(app, /<KnowledgeBaseScreen subsection=\{route\.subsection\} path=\{route\.tail\}/)
   assert.match(sectionScreens, /function ClassModeTabs/)
   assert.match(sectionScreens, /className="u1-class-mode-tabs"/)
   assert.match(sectionScreens, /Класс/)
   assert.match(sectionScreens, /Подклассы <small>\{entry\.subclasses\.length\}<\/small>/)
-  assert.match(sectionScreens, /function FeatureProgression/)
-  assert.match(sectionScreens, /className="u1-feature-row"/)
-  assert.match(sectionScreens, /Все уровни/)
-  assert.match(sectionScreens, /useRuleTemplates\(subsection === "classes" \? catalog\.campaignId : ""\)/)
-  assert.match(classReferencePresentation, /buildClassPresentation/)
-  assert.match(classReferencePresentation, /RuleTemplateLevel/)
-  assert.match(classReferencePresentation, /author_description/)
-  assert.match(classReferencePresentation, /authorExplanation/)
-  assert.doesNotMatch(sectionScreens, /Описание класса|Коротко о правилах/)
+  assert.match(sectionScreens, /type ReferenceDetailMode = "features" \| "proficiencies" \| "mechanics"/)
+  assert.match(sectionScreens, /label: "Умения"/)
+  assert.match(sectionScreens, /label: "Владения"/)
+  assert.match(sectionScreens, /label: "Механика"/)
+  assert.match(sectionStyles, /\.u1-reference-detail-tabs/)
+})
+
+test("Knowledge Base story features are authored first instead of exposing every Character Engine grant", () => {
+  assert.match(classReferencePresentation, /storyFeatures:/)
+  assert.match(classReferencePresentation, /authoredClassFeatures/)
+  assert.match(classReferencePresentation, /authored\.length[\s\S]*?authored\.map/)
+  assert.match(classReferencePresentation, /runtimeStoryFeatures/)
+  assert.match(classReferencePresentation, /genericProgressionMarker/)
+  assert.match(classReferencePresentation, /ability-score-improvement/)
+  assert.match(classReferencePresentation, /epic-boon/)
+  assert.match(classReferencePresentation, /key\.endsWith\("-subclass"\)/)
+  assert.match(sectionScreens, /presentation\.storyFeatures/)
+  assert.doesNotMatch(sectionScreens, /presentation\.features/)
+})
+
+test("Feature list previews authored Voss story while full rules stay in feature detail", () => {
+  assert.match(sectionScreens, /className="u1-feature-row__story"/)
+  assert.match(sectionScreens, /\{feature\.vossExplanation\}/)
+  assert.match(sectionStyles, /\.u1-feature-row__story/)
+  assert.match(sectionStyles, /-webkit-line-clamp:\s*2/)
+  assert.match(sectionScreens, /<ReferenceCopyBlock label="Восс объясняет">/)
+  assert.match(sectionScreens, /<ReferenceCopyBlock label="Точное правило">/)
+  assert.match(sectionScreens, /<ReferenceCopyBlock label="Комментарий Восса">/)
+  assert.match(sectionScreens, /<span>Механика<\/span>/)
+})
+
+test("Class overview Voss prose is compact by default and explicitly expandable", () => {
+  assert.match(sectionScreens, /function ExpandableVossIntro/)
+  assert.match(sectionScreens, /Показать полностью ↓/)
+  assert.match(sectionScreens, /Свернуть ↑/)
+  assert.match(sectionStyles, /\.u1-voss-intro:not\(\[data-expanded\]\) \.u1-voss-intro__text/)
+  assert.match(sectionStyles, /-webkit-line-clamp:\s*4/)
+  assert.match(sectionScreens, /<ReferenceDetailTabs active=\{mode\}/)
+})
+
+test("Proficiencies and runtime mechanics have their own player-facing read models", () => {
+  assert.match(classReferencePresentation, /proficiencies: buildProficiencies/)
+  assert.match(classReferencePresentation, /mechanics: mechanics\.length \? mechanics : mechanicsFallback/)
+  assert.match(classReferencePresentation, /mechanic\.target !== "proficiency"/)
+  assert.match(classReferencePresentation, /choice\.target !== "proficiency"/)
+  assert.match(classReferencePresentation, /classifyProficiency/)
+  assert.match(sectionScreens, /function ProficiencyView/)
+  assert.match(sectionScreens, /function MechanicsView/)
+  assert.match(sectionScreens, /className="u1-mechanic-row"/)
+  assert.doesNotMatch(sectionScreens, /sourceKey|grantOperation|priority/)
 })
 
 test("Class and subclass detail reserve clean 16:9 artwork slots without stretching 3:1 catalog art", () => {
@@ -554,13 +595,8 @@ test("Class and subclass detail reserve clean 16:9 artwork slots without stretch
   assert.doesNotMatch(sectionScreens, /subclassDetailArtPath|classHeroFallbackPath|u1-subclass-hero/)
 })
 
-test("Subclass art cards stay minimal and feature detail keeps Voss separate from exact mechanics", () => {
+test("Subclass art cards stay minimal", () => {
   assert.match(sectionScreens, /title: subclass\.name,[\s\S]*?meta: undefined/)
   assert.doesNotMatch(sectionScreens, /meta: subclass\.summary/)
-  assert.match(sectionScreens, /<ReferenceCopyBlock label="Восс объясняет">/)
-  assert.match(sectionScreens, /<ReferenceCopyBlock label="Точное правило">/)
-  assert.match(sectionScreens, /<ReferenceCopyBlock label="Комментарий Восса">/)
-  assert.match(sectionScreens, /<span>Механика<\/span>/)
-  assert.match(classReferencePresentation, /featureRule/)
-  assert.match(classReferencePresentation, /mechanicFacts/)
 })
+

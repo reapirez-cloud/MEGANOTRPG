@@ -20,6 +20,8 @@ import {
 import {
   buildClassPresentation,
   buildSubclassPresentation,
+  type UiV1MechanicGroup,
+  type UiV1ProficiencyGroup,
   type UiV1ReferenceFeature,
   type UiV1ReferencePresentation,
 } from "./classReferencePresentation"
@@ -342,6 +344,70 @@ function ReferenceHeroPlaceholder({ kind }: { kind: "class" | "subclass" | "feat
   )
 }
 
+type ReferenceDetailMode = "features" | "proficiencies" | "mechanics"
+
+function ReferenceDetailTabs({
+  active,
+  onChange,
+}: {
+  active: ReferenceDetailMode
+  onChange: (mode: ReferenceDetailMode) => void
+}) {
+  const tabs: Array<{ id: ReferenceDetailMode; label: string }> = [
+    { id: "features", label: "Умения" },
+    { id: "proficiencies", label: "Владения" },
+    { id: "mechanics", label: "Механика" },
+  ]
+
+  return (
+    <nav className="u1-reference-detail-tabs" aria-label="Содержание класса">
+      {tabs.map((tab) => (
+        <button
+          type="button"
+          key={tab.id}
+          data-active={active === tab.id || undefined}
+          onClick={() => onChange(tab.id)}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </nav>
+  )
+}
+
+function ExpandableVossIntro({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false)
+  if (!text) return null
+
+  const canExpand = text.length > 260
+
+  return (
+    <section className="u1-voss-intro" data-expanded={expanded || undefined}>
+      <span>Восс объясняет</span>
+      <div className="u1-voss-intro__text-wrap">
+        <p className="u1-voss-intro__text">{text}</p>
+        {!expanded && canExpand && <i className="u1-voss-intro__fade" aria-hidden="true" />}
+      </div>
+      {canExpand && (
+        <button type="button" onClick={() => setExpanded((value) => !value)}>
+          {expanded ? "Свернуть ↑" : "Показать полностью ↓"}
+        </button>
+      )}
+    </section>
+  )
+}
+
+function VossCommentDisclosure({ text }: { text: string }) {
+  if (!text) return null
+
+  return (
+    <details className="u1-voss-comment-disclosure">
+      <summary>Комментарий Восса</summary>
+      <p>{text}</p>
+    </details>
+  )
+}
+
 function FeatureProgression({
   title,
   features,
@@ -388,7 +454,9 @@ function FeatureProgression({
               <span className="u1-feature-row__level">{String(feature.level).padStart(2, "0")}</span>
               <span className="u1-feature-row__copy">
                 <strong>{feature.name}</strong>
-                {feature.meta && <small>{feature.meta}</small>}
+                {feature.vossExplanation && (
+                  <small className="u1-feature-row__story">{feature.vossExplanation}</small>
+                )}
               </span>
               <i aria-hidden="true">›</i>
             </button>
@@ -397,6 +465,61 @@ function FeatureProgression({
       ) : (
         <EmptyState>Для выбранного уровня умений нет.</EmptyState>
       )}
+    </section>
+  )
+}
+
+function ProficiencyView({ groups }: { groups: UiV1ProficiencyGroup[] }) {
+  if (!groups.length) {
+    return <EmptyState>Этот класс или подкласс не добавляет отдельных владений.</EmptyState>
+  }
+
+  return (
+    <section className="u1-proficiency-view" aria-label="Владения">
+      {groups.map((group) => (
+        <section className="u1-proficiency-group" key={group.id}>
+          <span>{group.title}</span>
+          <div>
+            {group.items.map((item) => <p key={item}>{item}</p>)}
+          </div>
+        </section>
+      ))}
+    </section>
+  )
+}
+
+function mechanicLevelLabel(group: UiV1MechanicGroup) {
+  if (!group.levels.length) return ""
+  if (group.levels.length === 1) return group.levels[0] + " уровень"
+  return "Уровни " + group.levels.join(", ")
+}
+
+function MechanicsView({ groups }: { groups: UiV1MechanicGroup[] }) {
+  if (!groups.length) {
+    return <EmptyState>Для этого материала пока нет отдельного runtime-представления механики.</EmptyState>
+  }
+
+  return (
+    <section className="u1-mechanics-view" aria-label="Механика">
+      {groups.map((group) => (
+        <details className="u1-mechanic-row" key={group.id}>
+          <summary>
+            <span>
+              <strong>{group.title}</strong>
+              {group.levels.length > 0 && <small>{mechanicLevelLabel(group)}</small>}
+            </span>
+            <i aria-hidden="true">+</i>
+          </summary>
+          <div className="u1-mechanic-row__body">
+            {group.summary && <p>{group.summary}</p>}
+            {group.facts.length > 0 && (
+              <ul>
+                {group.facts.map((fact) => <li key={fact}>{fact}</li>)}
+              </ul>
+            )}
+          </div>
+        </details>
+      ))}
     </section>
   )
 }
@@ -454,23 +577,30 @@ function ClassDetailScreen({
   entry: ClassReferenceEntry
   presentation: UiV1ReferencePresentation
 }) {
+  const [mode, setMode] = useState<ReferenceDetailMode>("features")
+
   return (
     <main className="u1-section-page">
       <SectionHeader title={entry.name} backTo="home/knowledge-base/classes" />
       <ClassModeTabs entry={entry} active="class" />
       <ReferenceHeroPlaceholder kind="class" />
+      <ReferenceDetailTabs active={mode} onChange={setMode} />
 
-      {presentation.vossExplanation && (
-        <div className="u1-reference-copy u1-reference-copy--intro">
-          <ReferenceCopyBlock label="Восс объясняет">{presentation.vossExplanation}</ReferenceCopyBlock>
-        </div>
+      {mode === "features" ? (
+        <>
+          <ExpandableVossIntro text={presentation.vossExplanation} />
+          <FeatureProgression
+            title="Умения класса"
+            features={presentation.storyFeatures}
+            onOpen={(index) => navigate(`home/knowledge-base/classes/${entry.id}/features/${index}`)}
+          />
+          <VossCommentDisclosure text={presentation.vossComment} />
+        </>
+      ) : mode === "proficiencies" ? (
+        <ProficiencyView groups={presentation.proficiencies} />
+      ) : (
+        <MechanicsView groups={presentation.mechanics} />
       )}
-
-      <FeatureProgression
-        title="Умения класса"
-        features={presentation.features}
-        onOpen={(index) => navigate(`home/knowledge-base/classes/${entry.id}/features/${index}`)}
-      />
     </main>
   )
 }
@@ -535,6 +665,8 @@ function SubclassDetailScreen({
   subclass: ClassReferenceSubclass
   presentation: UiV1ReferencePresentation
 }) {
+  const [mode, setMode] = useState<ReferenceDetailMode>("features")
+
   return (
     <main className="u1-section-page">
       <SectionHeader
@@ -543,22 +675,27 @@ function SubclassDetailScreen({
       />
       <ClassModeTabs entry={entry} active="subclasses" />
       <ReferenceHeroPlaceholder kind="subclass" />
+      <ReferenceDetailTabs active={mode} onChange={setMode} />
 
-      {presentation.vossExplanation && (
-        <div className="u1-reference-copy u1-reference-copy--intro">
-          <ReferenceCopyBlock label="Восс объясняет">{presentation.vossExplanation}</ReferenceCopyBlock>
-        </div>
+      {mode === "features" ? (
+        <>
+          <ExpandableVossIntro text={presentation.vossExplanation} />
+          <FeatureProgression
+            title="Умения подкласса"
+            features={presentation.storyFeatures}
+            onOpen={(index) =>
+              navigate(
+                `home/knowledge-base/classes/${entry.id}/subclasses/${subclass.id}/features/${index}`,
+              )
+            }
+          />
+          <VossCommentDisclosure text={presentation.vossComment} />
+        </>
+      ) : mode === "proficiencies" ? (
+        <ProficiencyView groups={presentation.proficiencies} />
+      ) : (
+        <MechanicsView groups={presentation.mechanics} />
       )}
-
-      <FeatureProgression
-        title="Умения подкласса"
-        features={presentation.features}
-        onOpen={(index) =>
-          navigate(
-            `home/knowledge-base/classes/${entry.id}/subclasses/${subclass.id}/features/${index}`,
-          )
-        }
-      />
     </main>
   )
 }
@@ -610,7 +747,7 @@ export function KnowledgeBaseScreen({ subsection, path = [] }: { subsection?: st
     const classPresentation = buildClassPresentation(selectedClass, rules.templates, rules.levels)
 
     if (path[1] === "features") {
-      const feature = classPresentation.features[Number(path[2])]
+      const feature = classPresentation.storyFeatures[Number(path[2])]
       if (!feature) {
         return <FutureConnection title={selectedClass.name} backTo={`home/knowledge-base/classes/${selectedClass.id}`} />
       }
@@ -645,7 +782,7 @@ export function KnowledgeBaseScreen({ subsection, path = [] }: { subsection?: st
         )
 
         if (path[3] === "features") {
-          const feature = subclassPresentation.features[Number(path[4])]
+          const feature = subclassPresentation.storyFeatures[Number(path[4])]
           if (!feature) {
             return (
               <FutureConnection

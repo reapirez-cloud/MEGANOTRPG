@@ -103,17 +103,37 @@ Home reads real Supabase data for campaign identity/cover, chronology, art previ
 
 ## Classes and subclasses — visual law
 
-The Knowledge Base class family now deliberately separates **catalogue previews** from **reading/detail artwork**:
+The Knowledge Base class family deliberately separates **catalogue previews**, **story reading** and **system reference**:
 
 - class catalogue panels: **3:1**;
 - subclass catalogue panels: **3:1**;
-- catalogue art cards stay minimal: art + title, with only factual service metadata when it is genuinely useful;
+- catalogue art cards stay minimal: art + title, with factual service metadata only when genuinely useful;
 - class detail, subclass detail and feature detail reserve a dedicated **16:9** artwork slot;
 - the 16:9 slots may remain intentional visual placeholders until suitable artwork exists; never stretch or crop the 3:1 catalogue art to fake a finished hero.
 
-Class and subclass detail share one navigation grammar: **КЛАСС / ПОДКЛАССЫ**. Both use the same level-oriented feature progression component. Feature lists show only factual structure (level, real feature name and objective mechanic metadata). Narrative prose belongs to **Восс объясняет / Комментарий Восса** and must come from authored reference/runtime data rather than interface-written summaries.
+Class and subclass detail use two independent navigation axes:
 
-The product direction is editorial restraint rather than decorative variety: a small number of repeated layout rules, strong typography, thin separators, dark material surfaces and deliberate empty space. Avoid adding explanatory captions to artwork, card-inside-card nesting, gratuitous glow or invented prose merely to make a surface look populated.
+1. **КЛАСС / ПОДКЛАССЫ** answers which reference object is being viewed.
+2. **УМЕНИЯ / ВЛАДЕНИЯ / МЕХАНИКА** answers which kind of information the player wants.
+
+Content law:
+
+- **Умения** is the authored/literary layer. Author-written class/subclass features create the player-facing rows. Character Engine runtime may enrich an authored feature with exact rules and facts, but raw runtime grants, resources, values and unlock markers must not automatically create story cards.
+- Each ability row shows level, real feature name and a short two-line preview of the existing Voss story. The preview is never an interface-written summary.
+- Opening an ability shows the full story first, then the exact rule, structured mechanical facts and Voss comment.
+- **Владения** is dry reference information derived from proficiency grants and proficiency choices: weapons, armor, saving throws, skills, tools and languages. No invented Voss prose belongs there.
+- **Механика** is the player-facing read model of runtime structure: resources, actions, progression markers, choices and scaling. Technical keys such as `sourceKey`, `grantOperation` or engine priorities remain internal.
+- Generic progression markers such as hit die, subclass unlock, Ability Score Improvement and Epic Boon belong to mechanics/progression, not the literary ability feed.
+- If a class/subclass has no certified runtime package, the mechanics view may fall back to the exact authored rule/facts instead of pretending executable support exists.
+
+Long overview prose must never block navigation:
+
+- the **УМЕНИЯ / ВЛАДЕНИЯ / МЕХАНИКА** switch sits immediately after the 16:9 slot;
+- class/subclass Voss introduction is clamped to roughly four lines by default;
+- the full introduction is revealed only through an explicit **Показать полностью** action;
+- class-level Voss comments stay behind a compact disclosure rather than becoming another mandatory scroll wall.
+
+The implementation must reuse UI 1.0 visual rules already present in the application: current canvas/material tokens, typography, radii, thin separators, spacing rhythm and restrained grayscale hierarchy. The generated concept image is a structural reference, not a new visual theme. Do not import gold fantasy chrome, ornamental card stacks, new gradients, or independent component styling merely to imitate a render.
 
 ## World — canonical player-facing terminology
 
