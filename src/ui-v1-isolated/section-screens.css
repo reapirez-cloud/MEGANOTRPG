@@ -331,6 +331,78 @@
   text-transform: uppercase;
 }
 
+.u1-subclass-hero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 16px 0 0;
+  border: 1px solid var(--u1-line-soft);
+  border-radius: 10px;
+  overflow: hidden;
+  isolation: isolate;
+  background: #0d0f10;
+}
+
+.u1-subclass-hero__texture,
+.u1-subclass-hero__image,
+.u1-subclass-hero__scrim {
+  position: absolute;
+  inset: 0;
+}
+
+.u1-subclass-hero__texture {
+  z-index: -4;
+  background:
+    radial-gradient(circle at 74% 22%, rgba(204, 208, 209, .13), transparent 28%),
+    linear-gradient(145deg, #222527 0%, #121517 52%, #090b0c 100%);
+}
+
+.u1-subclass-hero__image {
+  z-index: -4;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.u1-subclass-hero__scrim {
+  z-index: -3;
+  background:
+    linear-gradient(180deg, rgba(5,6,7,.05) 0%, rgba(5,6,7,.16) 48%, rgba(5,6,7,.78) 100%),
+    linear-gradient(90deg, rgba(5,6,7,.32), transparent 62%);
+}
+
+.u1-subclass-hero__caption {
+  position: absolute;
+  left: 15px;
+  right: 15px;
+  bottom: 14px;
+  display: grid;
+  gap: 4px;
+}
+
+.u1-subclass-hero__caption small {
+  color: rgba(239, 238, 233, .58);
+  font-size: 9px;
+  line-height: 1.2;
+  font-weight: 680;
+  letter-spacing: .075em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 8px rgba(0,0,0,.92);
+}
+
+.u1-subclass-hero__caption strong {
+  color: #f3f2ed;
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: clamp(23px, 6vw, 34px);
+  line-height: .96;
+  font-weight: 620;
+  letter-spacing: -.035em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 14px rgba(0,0,0,.95);
+}
+
 .u1-reference-copy {
   margin-top: 24px;
   display: grid;
