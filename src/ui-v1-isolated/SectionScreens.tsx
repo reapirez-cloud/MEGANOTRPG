@@ -362,6 +362,14 @@ function SubclassCatalogScreen({
   )
 }
 
+function subclassHeroArtPath(entry: ClassReferenceEntry, subclass: ClassReferenceSubclass) {
+  return `/ui-v1/subclasses/${entry.id}/${subclass.id}.webp`
+}
+
+function classHeroFallbackPath(entry: ClassReferenceEntry) {
+  return `/ui-v1/classes/${entry.id}.webp`
+}
+
 function SubclassDetailScreen({
   entry,
   subclass,
@@ -375,6 +383,33 @@ function SubclassDetailScreen({
         title={subclass.name}
         backTo={`home/knowledge-base/classes/${entry.id}/subclasses`}
       />
+
+      <figure className="u1-subclass-hero">
+        <span className="u1-subclass-hero__texture" aria-hidden="true" />
+        <img
+          className="u1-subclass-hero__image"
+          src={subclassHeroArtPath(entry, subclass)}
+          alt=""
+          loading="eager"
+          decoding="async"
+          aria-hidden="true"
+          onError={(event) => {
+            if (event.currentTarget.dataset.fallback === "class") {
+              event.currentTarget.hidden = true
+              return
+            }
+
+            event.currentTarget.dataset.fallback = "class"
+            event.currentTarget.src = classHeroFallbackPath(entry)
+          }}
+        />
+        <span className="u1-subclass-hero__scrim" aria-hidden="true" />
+        <figcaption className="u1-subclass-hero__caption">
+          <small>{entry.name} · Подкласс</small>
+          <strong>{subclass.name}</strong>
+        </figcaption>
+      </figure>
+
       <section className="u1-reference-copy">
         <p className="u1-reference-copy__lead">{subclass.summary}</p>
         {subclass.explanation && (
