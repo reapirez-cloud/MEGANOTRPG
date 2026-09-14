@@ -570,6 +570,23 @@ test("Feature list previews authored Voss story while full rules stay in feature
   assert.match(sectionScreens, /<span>Механика<\/span>/)
 })
 
+test("Voss comment is visible beside the story instead of hidden below mechanics", () => {
+  assert.match(sectionScreens, /function VossCommentBlock/)
+  assert.match(sectionScreens, /<VossCommentBlock text=\{presentation\.vossComment\} \/>/)
+  assert.doesNotMatch(sectionScreens, /VossCommentDisclosure|<details className="u1-voss-comment/)
+  assert.match(
+    sectionScreens,
+    /label="Восс объясняет"[\s\S]*?label="Комментарий Восса"[\s\S]*?label="Точное правило"/,
+  )
+  assert.match(sectionStyles, /\.u1-voss-comment-block/)
+})
+
+test("Class reference keeps runtime data mounted while switching class and subclass routes", () => {
+  assert.match(app, /route\.section === "knowledge-base" && route\.subsection === "classes"/)
+  assert.match(app, /return "section:knowledge-base:classes"/)
+  assert.match(sectionScreens, /onBeforeNavigate=\{\(\) => setMode\("features"\)\}/)
+})
+
 test("Class overview Voss prose is compact by default and explicitly expandable", () => {
   assert.match(sectionScreens, /function ExpandableVossIntro/)
   assert.match(sectionScreens, /Показать полностью ↓/)
