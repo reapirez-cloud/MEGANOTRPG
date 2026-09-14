@@ -28,7 +28,8 @@ test("Paladin reference is runtime-backed instead of literary-only", () => {
 test("Reference guide can resolve Paladin subclass level mechanics", () => {
   assert.match(referenceGuide, /function buildTemplateFeatures\(/)
   assert.match(referenceGuide, /levels\.filter\(\(entry\) => entry\.template_id === template\.id\)/)
-  assert.match(referenceGuide, /if \(!selectedClass \|\| selectedClass\.referenceOnly\) return undefined/)
+  assert.match(referenceGuide, /if \(!selectedClass\) return undefined/)
+  assert.doesNotMatch(referenceGuide, /if \(!selectedClass \|\| selectedClass\.referenceOnly\) return undefined/)
   assert.match(referenceGuide, /selectedSubclass\.templateId/)
   assert.match(ruleTemplatesHook, /from\("rule_template_levels"\)/)
   assert.match(ruleTemplatesHook, /setLevels\(presented\.levels\)/)
