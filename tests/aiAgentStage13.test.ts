@@ -35,11 +35,11 @@ test("Developer Mode sessions are short-lived, token-hashed and not directly wri
   assert.match(migration, /validate_ai_dev_session_v1/)
   assert.match(
     migration,
-    /grant execute on function public\.validate_ai_dev_session_v1\(uuid,text,uuid\)[\s\S]*to service_role/,
+    /revoke all on function public\.validate_ai_dev_session_v1\(uuid,text,uuid\)\nfrom public, anon, authenticated;\ngrant execute on function public\.validate_ai_dev_session_v1\(uuid,text,uuid\)\nto service_role;/,
   )
   assert.doesNotMatch(
     migration,
-    /grant execute on function public\.validate_ai_dev_session_v1\(uuid,text,uuid\)[\s\S]*to authenticated/,
+    /grant execute on function public\.validate_ai_dev_session_v1\(uuid,text,uuid\)\nto authenticated;/,
   )
 })
 
