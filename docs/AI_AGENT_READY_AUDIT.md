@@ -414,6 +414,36 @@ Astra remains fail-closed/disabled until real provider configuration exists.
 
 These two environment-level configuration items do not weaken ACL when absent; they only make the optional capability unavailable.
 
+## Stage 14 preview infrastructure exception
+
+The Stage 13 Developer Mode runtime gate is unchanged:
+
+```text
+GitHub CI success
+AND
+Vercel preview success
+→ merge_ready
+```
+
+There is no rate-limit bypass inside Developer Mode.
+
+During the manual Stage 14 release audit, both GitHub-linked Vercel preview checks were rejected before a build started with the Vercel Hobby-plan `build-rate-limit` target.
+
+This is treated as an external release-infrastructure condition, not as a successful preview and not as an application build failure.
+
+For the one-time manual Stage 14 promotion only, release certification may proceed when all of the following are true:
+
+- the exact release SHA passes GitHub Build;
+- Lint passes;
+- the complete test suite passes;
+- Storybook build passes;
+- Playwright Chromium install passes;
+- Playwright smoke passes;
+- Vercel's failing status points only to the provider `build-rate-limit` upgrade target rather than an application deployment/build log;
+- the exception is recorded in this READY audit.
+
+This exception does not modify application code, Developer Mode policy, or future preview requirements.
+
 ## READY definition
 
 Stage 14 marks the platform READY when all of the following are true:
@@ -432,7 +462,8 @@ Stage 14 marks the platform READY when all of the following are true:
 - deployed Edge source matches repository source;
 - Supabase Agent Platform FK advisor debt is cleared;
 - repository Build/Lint/Test/Storybook/Playwright smoke passes on the Stage 14 PR;
-- final `dev → main` PR passes the same required checks.
+- the final `dev → main` SHA passes the same GitHub checks;
+- Vercel preview succeeds, or the documented Stage 14-only pre-build `build-rate-limit` infrastructure exception applies.
 
 When the final PR satisfies those checks:
 
