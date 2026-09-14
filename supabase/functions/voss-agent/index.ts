@@ -90,12 +90,12 @@ function parseToolArguments(raw: unknown): JsonRecord {
   }
 }
 
-function toolContent(value: unknown) {
+function toolContent(value: unknown, maxChars = 18000) {
   const raw = JSON.stringify(value)
-  if (raw.length <= 18000) return raw
+  if (raw.length <= maxChars) return raw
   return JSON.stringify({
     truncated: true,
-    preview: raw.slice(0, 18000),
+    preview: raw.slice(0, maxChars),
   })
 }
 
@@ -439,7 +439,7 @@ Deno.serve(async (req: Request) => {
       providerMessages.push({
         role: "tool",
         tool_call_id: toolCallId,
-        content: toolContent(result),
+        content: toolContent(result, draftTool ? 70000 : 18000),
       })
     }
   }
