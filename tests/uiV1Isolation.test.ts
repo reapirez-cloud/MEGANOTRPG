@@ -529,7 +529,7 @@ test("Knowledge Base classes use panoramic 3:1 art-ready panels", () => {
 test("Knowledge Base class pages expose subclasses first and reuse the panoramic panels", () => {
   assert.match(app, /<KnowledgeBaseScreen subsection=\{route\.subsection\} path=\{route\.tail\}/)
   assert.match(sectionScreens, /className="u1-class-subclasses-tab"/)
-  assert.match(sectionScreens, />Подклассы<\\/span>/)
+  assert.match(sectionScreens, /<span>Подклассы<\/span>/)
   assert.match(sectionScreens, /home\/knowledge-base\/classes\/\$\{entry\.id\}\/subclasses/)
   assert.match(sectionScreens, /function SubclassCatalogScreen/)
   assert.match(sectionScreens, /<ClassCatalogPanels[\s\S]*?rows=\{rows\}[\s\S]*?subclasses\/\$\{subclassId\}/)
