@@ -89,8 +89,13 @@ export function SnakeTrigger({
   }
 
   function pointerEnd() {
+    const wasPendingLongPress = timerRef.current !== null
     clearTimer()
     startRef.current = null
+
+    if (wasPendingLongPress && touchGestureRef.current) {
+      touchGestureRef.current.cancelled = true
+    }
   }
 
   function contextMenu(event: ReactMouseEvent<HTMLSpanElement>) {
@@ -123,7 +128,11 @@ export function SnakeTrigger({
   }
 
   useEffect(() => {
-    return () => clearTimer()
+    return () => {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current)
+      }
+    }
   }, [])
 
   return (
