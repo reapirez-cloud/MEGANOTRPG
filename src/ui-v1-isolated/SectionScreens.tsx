@@ -311,23 +311,31 @@ function ReferenceCopyBlock({
 function ClassModeTabs({
   entry,
   active,
+  onBeforeNavigate,
 }: {
   entry: ClassReferenceEntry
   active: "class" | "subclasses"
+  onBeforeNavigate?: () => void
 }) {
   return (
     <nav className="u1-class-mode-tabs" aria-label="Класс и подклассы">
       <button
         type="button"
         data-active={active === "class" || undefined}
-        onClick={() => navigate(`home/knowledge-base/classes/${entry.id}`)}
+        onClick={() => {
+          onBeforeNavigate?.()
+          navigate(`home/knowledge-base/classes/${entry.id}`)
+        }}
       >
         Класс
       </button>
       <button
         type="button"
         data-active={active === "subclasses" || undefined}
-        onClick={() => navigate(`home/knowledge-base/classes/${entry.id}/subclasses`)}
+        onClick={() => {
+          onBeforeNavigate?.()
+          navigate(`home/knowledge-base/classes/${entry.id}/subclasses`)
+        }}
       >
         Подклассы <small>{entry.subclasses.length}</small>
       </button>
@@ -397,14 +405,14 @@ function ExpandableVossIntro({ text }: { text: string }) {
   )
 }
 
-function VossCommentDisclosure({ text }: { text: string }) {
+function VossCommentBlock({ text }: { text: string }) {
   if (!text) return null
 
   return (
-    <details className="u1-voss-comment-disclosure">
-      <summary>Комментарий Восса</summary>
+    <section className="u1-voss-comment-block">
+      <span>Комментарий Восса</span>
       <p>{text}</p>
-    </details>
+    </section>
   )
 }
 
@@ -582,19 +590,23 @@ function ClassDetailScreen({
   return (
     <main className="u1-section-page">
       <SectionHeader title={entry.name} backTo="home/knowledge-base/classes" />
-      <ClassModeTabs entry={entry} active="class" />
+      <ClassModeTabs
+        entry={entry}
+        active="class"
+        onBeforeNavigate={() => setMode("features")}
+      />
       <ReferenceHeroPlaceholder kind="class" />
       <ReferenceDetailTabs active={mode} onChange={setMode} />
 
       {mode === "features" ? (
         <>
           <ExpandableVossIntro text={presentation.vossExplanation} />
+          <VossCommentBlock text={presentation.vossComment} />
           <FeatureProgression
             title="Умения класса"
             features={presentation.storyFeatures}
             onOpen={(index) => navigate(`home/knowledge-base/classes/${entry.id}/features/${index}`)}
           />
-          <VossCommentDisclosure text={presentation.vossComment} />
         </>
       ) : mode === "proficiencies" ? (
         <ProficiencyView groups={presentation.proficiencies} />
@@ -673,13 +685,18 @@ function SubclassDetailScreen({
         title={subclass.name}
         backTo={`home/knowledge-base/classes/${entry.id}/subclasses`}
       />
-      <ClassModeTabs entry={entry} active="subclasses" />
+      <ClassModeTabs
+        entry={entry}
+        active="subclasses"
+        onBeforeNavigate={() => setMode("features")}
+      />
       <ReferenceHeroPlaceholder kind="subclass" />
       <ReferenceDetailTabs active={mode} onChange={setMode} />
 
       {mode === "features" ? (
         <>
           <ExpandableVossIntro text={presentation.vossExplanation} />
+          <VossCommentBlock text={presentation.vossComment} />
           <FeatureProgression
             title="Умения подкласса"
             features={presentation.storyFeatures}
@@ -689,7 +706,6 @@ function SubclassDetailScreen({
               )
             }
           />
-          <VossCommentDisclosure text={presentation.vossComment} />
         </>
       ) : mode === "proficiencies" ? (
         <ProficiencyView groups={presentation.proficiencies} />
