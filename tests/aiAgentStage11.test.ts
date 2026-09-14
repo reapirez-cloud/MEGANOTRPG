@@ -75,7 +75,7 @@ test("two requested images remain two provider outputs and two user-visible vari
   assert.match(contract, /variant_index between 1 and 2/)
   assert.match(shell, /job\.outputs\.map\(\(asset\) =>/)
   assert.doesNotMatch(shell, /job\.outputs\.filter\([^)]*preferred/)
-  assert.match(shell, /Показаны все запрошенные варианты/)
+  assert.match(shell, /data-count=\{job\.outputs\.length\}/)
 })
 
 test("CheapVibeCode can use one shared API key and base URL for chat and images", () => {
