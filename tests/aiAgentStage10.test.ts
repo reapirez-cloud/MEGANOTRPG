@@ -88,7 +88,7 @@ test("conversation keeps canonical system artifacts without turning them into da
   const styles = read("src/ai/ai-voss.css")
 
   assert.match(shell, /AI DRAFT · НЕ КАНОН/)
-  assert.match(shell, /MECHANICS COMPILER/)
+  assert.doesNotMatch(shell, /MECHANICS COMPILER/)
   assert.match(shell, /DEVELOPER RUN/)
   assert.match(styles, /\.u1-agent-system-entry/)
   assert.match(styles, /border-left:/)
