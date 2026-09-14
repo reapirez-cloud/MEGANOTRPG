@@ -129,28 +129,41 @@ export async function requestImageBatch(input: {
         }),
       })
     } else {
-      const form = new FormData()
-      form.append("model", input.profile.model)
-      form.append("prompt", input.prompt)
-      form.append("n", String(count))
-      form.append("size", input.profile.size)
-      form.append("quality", input.profile.quality)
+      const images: GeneratedImagePayload[] = []
+      const usages: unknown[] = []
 
-      for (const reference of references.slice(0, 4)) {
-        form.append(
-          "image[]",
-          new Blob([reference.bytes], { type: reference.mimeType }),
-          reference.fileName,
-        )
+      for (let variant = 0; variant < count; variant += 1) {
+        const form = new FormData()
+        form.append("model", input.profile.model)
+        form.append("prompt", input.prompt)
+        form.append("size", input.profile.size)
+        form.append("quality", input.profile.quality)
+
+        for (const reference of references.slice(0, 4)) {
+          form.append(
+            "image",
+            new Blob([reference.bytes], { type: reference.mimeType }),
+            reference.fileName,
+          )
+        }
+
+        response = await fetch(apiBase() + "/images/edits", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + apiKey,
+          },
+          body: form,
+        })
+
+        const parsed = await parseImageResponse(response)
+        if (parsed.images[0]) images.push(parsed.images[0])
+        if (parsed.usage) usages.push(parsed.usage)
       }
 
-      response = await fetch(apiBase() + "/images/edits", {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer " + apiKey,
-        },
-        body: form,
-      })
+      return {
+        images,
+        usage: usages.length ? usages : null,
+      }
     }
   } catch (error) {
     throw new ImageProviderError("Image provider request failed", {
