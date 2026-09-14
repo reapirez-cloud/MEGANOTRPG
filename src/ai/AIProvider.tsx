@@ -64,6 +64,7 @@ export type AIRouteInfo = {
     | "memory_write"
     | "workshop"
     | "draft_edit"
+    | "mechanics_compile"
   mode: "base_lock" | "auto" | "primary" | "base" | "fixed" | "fallback"
   reason: string
   degraded: boolean
@@ -156,6 +157,39 @@ export type AIAgentJob = {
   outputs: AIMediaAsset[]
 }
 
+export type AIMechanicsDiagnostic = {
+  severity: "error" | "warning" | "info"
+  code: string
+  path: string
+  message: string
+}
+
+export type AIMechanicsCoverage = {
+  rule: string
+  owner: "ce" | "gm" | "hybrid"
+  mechanic_ids: string[]
+  note?: string
+}
+
+export type AIMechanicsCompilation = {
+  id: string
+  title: string
+  intent_text: string
+  target_kind: "preview" | "reference_definition" | "rule_template" | "rule_template_level"
+  target_id: string | null
+  target_level: number | null
+  status: "validated" | "unsupported" | "applied" | "rejected"
+  mechanics: Array<Record<string, unknown>>
+  coverage: AIMechanicsCoverage[]
+  diagnostics: AIMechanicsDiagnostic[]
+  unsupported_reasons: string[]
+  compiler_version: number
+  applied_at: string | null
+  applied_result: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
 type AIContextValue = {
   campaignId: string
   userId: string
@@ -166,6 +200,7 @@ type AIContextValue = {
   messages: AIConversationMessage[]
   drafts: AIDraft[]
   jobs: AIAgentJob[]
+  mechanicsCompilations: AIMechanicsCompilation[]
   loading: boolean
   sending: boolean
   error: string | null
@@ -182,6 +217,7 @@ type AIContextValue = {
   refreshConversation: () => Promise<void>
   refreshDrafts: () => Promise<void>
   refreshJobs: () => Promise<void>
+  refreshMechanicsCompilations: () => Promise<void>
 }
 
 const AIContext = createContext<AIContextValue | null>(null)
@@ -260,6 +296,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<AIConversationMessage[]>([])
   const [drafts, setDrafts] = useState<AIDraft[]>([])
   const [jobs, setJobs] = useState<AIAgentJob[]>([])
+  const [mechanicsCompilations, setMechanicsCompilations] = useState<AIMechanicsCompilation[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -482,6 +519,39 @@ export function AIProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(timer)
   }, [campaignId, hasActiveJobs, loadJobsFor, userId])
 
+  const loadMechanicsCompilationsFor = useCallback(async (
+    nextCampaignId: string,
+    nextUserId: string,
+  ) => {
+    const { data, error: compilationError } = await supabase
+      .from("ai_mechanics_compilations")
+      .select("id,title,intent_text,target_kind,target_id,target_level,status,mechanics,coverage,diagnostics,unsupported_reasons,compiler_version,applied_at,applied_result,created_at,updated_at")
+      .eq("campaign_id", nextCampaignId)
+      .eq("created_by", nextUserId)
+      .order("created_at", { ascending: false })
+      .limit(12)
+
+    if (compilationError) throw compilationError
+    setMechanicsCompilations((data || []) as AIMechanicsCompilation[])
+  }, [])
+
+  const refreshMechanicsCompilations = useCallback(async () => {
+    if (!campaignId || !userId || !canManage) {
+      setMechanicsCompilations([])
+      return
+    }
+
+    try {
+      await loadMechanicsCompilationsFor(campaignId, userId)
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Не удалось загрузить компиляции механик.",
+      )
+    }
+  }, [campaignId, canManage, loadMechanicsCompilationsFor, userId])
+
   useEffect(() => {
     const onHashChange = () => setRoute(window.location.hash || "#/home")
     window.addEventListener("hashchange", onHashChange)
@@ -577,8 +647,10 @@ export function AIProvider({ children }: { children: ReactNode }) {
         await loadJobsFor(nextCampaignId, nextUserId)
         if (manager) {
           await loadDraftsFor(nextCampaignId)
+          await loadMechanicsCompilationsFor(nextCampaignId, nextUserId)
         } else {
           setDrafts([])
+          setMechanicsCompilations([])
         }
       } catch (reason) {
         if (!cancelled) {
@@ -593,7 +665,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [loadConversationFor, loadDraftsFor, loadJobsFor])
+  }, [loadConversationFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor])
 
   const chooseModel = useCallback(async (modelId: string) => {
     if (!canManage || !campaignId || !userId) return false
@@ -671,7 +743,10 @@ export function AIProvider({ children }: { children: ReactNode }) {
     try {
       await loadConversationFor(campaignId, userId)
       await loadJobsFor(campaignId, userId)
-      if (canManage) await loadDraftsFor(campaignId)
+      if (canManage) {
+        await loadDraftsFor(campaignId)
+        await loadMechanicsCompilationsFor(campaignId, userId)
+      }
     } catch {
       const now = new Date().toISOString()
       setMessages((current) => [
@@ -683,7 +758,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     setSending(false)
     return true
-  }, [campaignId, canManage, loadConversationFor, loadDraftsFor, loadJobsFor, route, sending, userId, viewContext])
+  }, [campaignId, canManage, loadConversationFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor, route, sending, userId, viewContext])
 
   const value = useMemo<AIContextValue>(() => ({
     campaignId,
@@ -695,6 +770,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     messages,
     drafts,
     jobs,
+    mechanicsCompilations,
     loading,
     sending,
     error,
@@ -707,6 +783,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     refreshConversation,
     refreshDrafts,
     refreshJobs,
+    refreshMechanicsCompilations,
   }), [
     campaignId,
     canManage,
@@ -716,12 +793,14 @@ export function AIProvider({ children }: { children: ReactNode }) {
     error,
     jobs,
     loading,
+    mechanicsCompilations,
     lastRoute,
     messages,
     models,
     refreshConversation,
     refreshDrafts,
     refreshJobs,
+    refreshMechanicsCompilations,
     route,
     selectedModelId,
     send,
