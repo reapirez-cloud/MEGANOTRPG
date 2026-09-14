@@ -200,6 +200,12 @@
   font-size: 6px;
   letter-spacing: .05em;
 }
+.u1-voss-draft-card em {
+  color: rgba(211,220,190,.52);
+  font-size: 7px;
+  font-style: normal;
+  line-height: 1.4;
+}
 .u1-voss-empty {
   min-height: 100%;
   display: grid;
