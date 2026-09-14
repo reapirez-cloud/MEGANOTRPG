@@ -53,13 +53,13 @@ test("revision metadata is persisted and visible in UI", () => {
   )
   const provider = read("src/ai/AIProvider.tsx")
   const workshop = read("src/ui-v1-isolated/GMWorkshopDraft.tsx")
-  const dock = read("src/ai/VossDock.tsx")
+  const shell = read("src/ai/AgentShell.tsx")
 
   assert.match(migration, /change_summary/)
   assert.match(migration, /operations jsonb/)
   assert.match(provider, /recent_revisions/)
   assert.match(workshop, /История ревизий/)
-  assert.match(dock, /change_summary/)
+  assert.match(shell, /change_summary/)
 })
 
 test("Voss prompt requires reading the latest revision before editing", () => {
