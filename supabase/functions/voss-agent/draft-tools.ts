@@ -43,7 +43,7 @@ export const VOSS_DRAFT_TOOLS = [
     function: {
       name: "propose_content_draft",
       description:
-        "Create a GM-only structured AI draft for future MEGANOT content. Use only when the GM explicitly asks to create/design/generate content. This NEVER changes canonical game state. If a definition payload contains executable mechanics, those exact mechanics must come from compile_mechanics and payload.mechanics_compilation_id must contain that compilation id.",
+        "Create a GM-only structured AI draft for future MEGANOT content such as locations, characters, items, classes/reference definitions and related presentation text. Use only when the GM explicitly asks to create/design/generate content. This NEVER changes canonical game state. Voss does not author executable mechanics; do not include mechanics or mechanics_compilation_id in payloads.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -157,7 +157,7 @@ export const VOSS_DRAFT_TOOLS = [
     function: {
       name: "revise_content_draft",
       description:
-        "Create a new immutable revision of an existing AI draft using targeted changes. Read the draft first. This NEVER changes canonical MEGANOT state. Any executable mechanics in a definition payload must be the exact output of a validated Mechanics Compiler artifact and carry payload.mechanics_compilation_id.",
+        "Create a new immutable revision of an existing AI draft using targeted changes. Read the draft first. This NEVER changes canonical MEGANOT state. Voss does not author executable mechanics; revisions must not add mechanics or mechanics_compilation_id.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -493,6 +493,26 @@ function compatibleTarget(
   return relation.to_existing?.entity_type === expected
 }
 
+function containsMechanicsPayload(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false
+  if (Array.isArray(value)) return value.some(containsMechanicsPayload)
+
+  const row = value as JsonObject
+  for (const [key, nested] of Object.entries(row)) {
+    const normalized = key.toLocaleLowerCase("en-US")
+    if (
+      normalized === "mechanics" ||
+      normalized === "mechanics_compilation_id" ||
+      normalized === "storedmechanics" ||
+      normalized === "stored_mechanics"
+    ) {
+      return true
+    }
+    if (containsMechanicsPayload(nested)) return true
+  }
+  return false
+}
+
 function validateDraft(args: JsonObject) {
   const draftType = text(args.draft_type, 32)
   if (!["bundle", "location", "character", "definition"].includes(draftType)) {
@@ -511,6 +531,9 @@ function validateDraft(args: JsonObject) {
   const keys = new Set<string>()
   for (const node of nodes) {
     if (keys.has(node.key)) return { error: "Draft node keys must be unique" }
+    if (containsMechanicsPayload(node.payload)) {
+      return { error: "Voss does not author mechanics in content drafts" }
+    }
     keys.add(node.key)
   }
 
