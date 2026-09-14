@@ -50,7 +50,7 @@ test("agent suggestions are semantic and never auto-send on tap", () => {
   assert.match(shell, /viewContext\?\.entity/)
   assert.match(shell, /reference-\(\?:class\|subclass\|feature\)/)
   assert.match(shell, /gm-workshop/)
-  assert.match(shell, /onClick=\{\(\) => usePrompt\(prompt\)\}/)
+  assert.match(shell, /onClick=\{\(\) => prefillPrompt\(prompt\)\}/)
   assert.match(shell, /setDraft\(prompt\)/)
   assert.doesNotMatch(shell, /onClick=\{\(\) => send\(prompt\)\}/)
   assert.doesNotMatch(shell, /generate_image|Сгенерировать изображение|Генерировать арт/i)
