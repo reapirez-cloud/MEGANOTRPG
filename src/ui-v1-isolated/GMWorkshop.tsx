@@ -1,3 +1,6 @@
+import { useEffect } from "react"
+
+import { useAI } from "../ai/AIProvider"
 import GMWorkshopCharacters from "./GMWorkshopCharacters"
 import { WorkshopHeader } from "./GMWorkshopCommon"
 import GMWorkshopDraft from "./GMWorkshopDraft"
@@ -9,6 +12,15 @@ import {
   useGMWorkshopData,
   type WorkshopSection,
 } from "./useGMWorkshopData"
+
+function sectionLabel(section?: WorkshopSection) {
+  if (section === "draft") return "Черновик"
+  if (section === "party") return "Партия"
+  if (section === "characters") return "Персонажи"
+  if (section === "library") return "Библиотека"
+  if (section === "materials") return "Материалы"
+  return "Мастерская"
+}
 
 export default function GMWorkshop({
   section,
@@ -22,6 +34,97 @@ export default function GMWorkshop({
   onBack: () => void
 }) {
   const data = useGMWorkshopData()
+  const { setViewContext } = useAI()
+
+  useEffect(() => {
+    if (data.loading || !data.canManage) return
+
+    const visible =
+      section === "characters"
+        ? data.campaignCharacters.slice(0, 24).map((character) => ({
+            type: character.characterType,
+            id: character.id,
+            name: character.name,
+            class: character.characterClass,
+            level: character.level,
+            state: character.lifeState,
+          }))
+        : section === "library"
+          ? data.activeDefinitions.slice(0, 24).map((definition) => ({
+              type: definition.kind,
+              id: definition.id,
+              name: definition.name,
+              summary: definition.summary,
+            }))
+          : section === "draft"
+            ? [
+                ...data.draftCharacters.slice(0, 12).map((character) => ({
+                  type: "character-draft",
+                  id: character.id,
+                  name: character.name,
+                })),
+                ...data.draftDefinitions.slice(0, 12).map((definition) => ({
+                  type: "definition-draft",
+                  id: definition.id,
+                  name: definition.name,
+                  kind: definition.kind,
+                })),
+              ]
+            : section === "materials"
+              ? data.materials.slice(0, 24).map((material) => ({
+                  type: material.kind,
+                  id: material.id,
+                  title: material.title,
+                  folderId: material.folderId,
+                }))
+              : section === "party"
+                ? data.members.slice(0, 24).map((member) => ({
+                    type: "member",
+                    userId: member.userId,
+                    name: member.displayName,
+                    role: member.role,
+                    activeCharacterId: member.activeCharacterId,
+                  }))
+                : []
+
+    const label = sectionLabel(section)
+
+    setViewContext({
+      screen: "gm-workshop",
+      route: "#/workspace/manage" + (section ? "/" + section : ""),
+      title: "Мастерская · " + label,
+      text: "ГМ сейчас открыл раздел «" + label + "». Восс получает только смысловой текстовый контекст интерфейса, а не скриншот или DOM.",
+      facts: {
+        campaignTitle: data.campaignTitle,
+        section: section || "index",
+        counts: {
+          members: data.members.length,
+          campaignCharacters: data.campaignCharacters.length,
+          draftCharacters: data.draftCharacters.length,
+          activeDefinitions: data.activeDefinitions.length,
+          draftDefinitions: data.draftDefinitions.length,
+          locations: data.locations.length,
+          materials: data.materials.length,
+        },
+        visible,
+      },
+    })
+
+    return () => setViewContext(null)
+  }, [
+    data.activeDefinitions,
+    data.campaignCharacters,
+    data.campaignTitle,
+    data.canManage,
+    data.draftCharacters,
+    data.draftDefinitions,
+    data.loading,
+    data.locations,
+    data.materials,
+    data.members,
+    section,
+    setViewContext,
+  ])
 
   if (data.loading) {
     return (
