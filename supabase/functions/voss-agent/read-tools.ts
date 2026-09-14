@@ -116,6 +116,22 @@ export const VOSS_READ_TOOLS = [
   {
     type: "function",
     function: {
+      name: "read_world_article",
+      description:
+        "Read one visible world/lore article from the current campaign.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          article_id: { type: "string" },
+        },
+        required: ["article_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "read_workspace_file",
       description:
         "Read one GM workspace note/file metadata visible to the current user. File binary content is never returned.",
@@ -606,6 +622,24 @@ async function readReferenceDefinition(
   }
 }
 
+async function readWorldArticle(
+  context: VossReadToolContext,
+  args: JsonObject,
+) {
+  const articleId = typeof args.article_id === "string" ? args.article_id : ""
+  if (!articleId) return { error: "article_id is required" }
+
+  const { data, error } = await context.client
+    .from("world_articles")
+    .select("id,campaign_id,section_id,title,summary,body,sort_order,created_at,updated_at")
+    .eq("campaign_id", context.campaignId)
+    .eq("id", articleId)
+    .maybeSingle()
+
+  if (error) return { error: error.message }
+  return data || { not_found: true }
+}
+
 async function readWorkspaceFile(
   context: VossReadToolContext,
   args: JsonObject,
@@ -639,6 +673,7 @@ export async function executeVossReadTool(
   if (name === "read_reference_definition") {
     return readReferenceDefinition(context, args)
   }
+  if (name === "read_world_article") return readWorldArticle(context, args)
   if (name === "read_workspace_file") return readWorkspaceFile(context, args)
   return { error: "Unknown read tool" }
 }
