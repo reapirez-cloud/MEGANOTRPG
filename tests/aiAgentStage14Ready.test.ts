@@ -148,14 +148,14 @@ test("campaign content is data and cannot become hidden model instructions", () 
 test("AI drafts cannot self-approve and executable mechanics require compiler provenance", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
   const draftTools = read("supabase/functions/voss-agent/draft-tools.ts")
-  const stage12 = read(
-    "supabase/migrations/20260914201500_mechanics_compiler_stage12.sql",
-  )
+  const applyDraft = read("src/ai/applyDraft.ts")
 
   assert.match(edge, /У тебя нет и не должно быть инструмента approve\/apply/)
   assert.doesNotMatch(draftTools, /name: "apply_content_draft"/)
-  assert.match(stage12, /mechanics_compilation_id/)
-  assert.match(stage12, /mechanics_compilation/)
+  assert.match(applyDraft, /verifyCompiledMechanics/)
+  assert.match(applyDraft, /payload\.mechanics_compilation_id/)
+  assert.match(applyDraft, /Mechanics Compiler не подтвердил/)
+  assert.match(applyDraft, /stableJson\(data\.mechanics\) !== stableJson\(rawMechanics\)/)
 })
 
 test("Mechanics Compiler remains the first path before Developer Mode", () => {
