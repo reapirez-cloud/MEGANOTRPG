@@ -5,18 +5,28 @@ import test from "node:test"
 const read = (path: string) =>
   readFileSync(new URL("../" + path, import.meta.url), "utf8")
 
-test("Stage 9 registers real campaign agent models and capabilities", () => {
+test("Stage 9 establishes the campaign model registry foundation", () => {
   const migration = read(
     "supabase/migrations/20260914182800_ai_agent_security_provider_foundation_stage9.sql",
   )
 
-  assert.match(migration, /deepseek-v4-flash/)
-  assert.match(migration, /deepseek-v4-pro/)
-  assert.match(migration, /deepseek-v4-flash-vision-exp/)
   assert.match(migration, /supports_tools = true/)
   assert.match(migration, /supports_vision/)
   assert.match(migration, /model_kind/)
   assert.match(migration, /access_scope/)
+})
+
+test("current CheapVibeCode registry uses the confirmed DeepSeek V4.1 Flash id", () => {
+  const migration = read(
+    "supabase/migrations/20260915001000_cheapvibecode_deepseek_v41.sql",
+  )
+
+  assert.match(migration, /deepseek-v4\.1-flash/)
+  assert.match(migration, /DeepSeek V4\.1 Flash/)
+  assert.match(migration, /supports_vision = true/)
+  assert.match(migration, /context_window = 1000000/)
+  assert.match(migration, /model_key <> 'deepseek-v4\.1-flash'/)
+  assert.match(migration, /enabled = false/)
 })
 
 test("Stage 9 separates system admin authority from campaign management", () => {
