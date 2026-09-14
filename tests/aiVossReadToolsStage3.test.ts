@@ -40,7 +40,7 @@ test("Voss read-tool loop is bounded and provider-controlled capability is expli
   const edge = read("supabase/functions/voss-agent/index.ts")
 
   assert.match(edge, /for \(let round = 0; round < 5; round \+= 1\)/)
-  assert.match(edge, /toolCalls\.slice\(0, 6\)/)
+  assert.match(edge, /tool_calls\.slice\(0, 6\)/)
   assert.match(edge, /tool_choice: "auto"/)
   assert.match(edge, /AI read-tool loop exceeded safe round limit/)
 })
