@@ -576,7 +576,7 @@ export default function AgentShell() {
                     }
                     onClick={() => {
                       if (!window.confirm(
-                        "Создать preview-ветку и PR в dev? main не затрагивается.",
+                        "Создать preview-ветку и PR в dev? main останется нетронут.",
                       )) return
                       void applyDevRun(latestDevRun.id)
                     }}
