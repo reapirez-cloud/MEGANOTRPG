@@ -108,7 +108,7 @@ export default function VossDock() {
         )}
         {viewContext?.text && <small>{viewContext.text}</small>}
         {lastRoute && (
-          <small className="u1-voss-route">
+          <small className="u1-voss-route" title={lastRoute.reason}>
             ROUTER · {lastRoute.task.toUpperCase()} · {lastRoute.modelName}
             {" · "}
             {lastRoute.mode.toUpperCase()}
