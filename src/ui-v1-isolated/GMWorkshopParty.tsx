@@ -1,5 +1,6 @@
 import { useState } from "react"
 
+import { useAIViewContextLayer } from "../ai/AIProvider"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import { openSourceAction } from "./GMWorkshopCommon"
 import {
@@ -31,6 +32,54 @@ export default function GMWorkshopParty({
   )
   const freePc = publishedPc.filter(
     (character) => !character.assignedUserId && character.lifeState === "alive",
+  )
+
+  const assignedForContext = member
+    ? publishedPc.filter((character) => character.assignedUserId === member.userId)
+    : []
+
+  useAIViewContextLayer(
+    "gm-workshop-party",
+    {
+      screen: "gm-workshop-party",
+      title: member ? "Партия · " + member.displayName : "Мастерская · Партия",
+      text: member
+        ? "GM открыл конкретного участника партии."
+        : "GM просматривает состав партии.",
+      entity: member
+        ? {
+            type: "campaign-member",
+            id: member.userId,
+            label: member.displayName,
+          }
+        : null,
+      facts: {
+        selectedMember: member
+          ? {
+              userId: member.userId,
+              displayName: member.displayName,
+              role: member.role,
+              isOwner: member.isOwner,
+              activeCharacterId: member.activeCharacterId,
+            }
+          : null,
+        assignedCharacters: assignedForContext.map((character) => ({
+          id: character.id,
+          name: character.name,
+          class: character.characterClass,
+          level: character.level,
+          lifeState: character.lifeState,
+        })),
+        members: data.members.slice(0, 30).map((item) => ({
+          userId: item.userId,
+          displayName: item.displayName,
+          role: item.role,
+          isOwner: item.isOwner,
+          activeCharacterId: item.activeCharacterId,
+        })),
+      },
+    },
+    member ? 55 : 45,
   )
 
   function assignFree(target: WorkshopMember) {
