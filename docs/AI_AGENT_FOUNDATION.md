@@ -1,6 +1,6 @@
-# AI Agent Foundation — Voss Stages 1–12
+# AI Agent Foundation — Voss Stages 1–13
 
-> Status: **STAGES 1–12 IMPLEMENTED**
+> Status: **STAGES 1–13 IMPLEMENTED**
 >
 > This is the canonical starting point for AI inside MEGANOT RPG. Future AI work must extend this boundary instead of calling model APIs directly from React components.
 
@@ -1392,6 +1392,407 @@ It must not:
 That gap becomes a candidate for Stage 13 Developer Mode, where code, tests and build validation can extend the generic runtime deliberately.
 
 
+## Stage 13 — Owner-only Developer Mode
+
+Stage 13 adds a deliberately separate code-evolution path for MEGANOT.
+
+It is **not** an extension of GM authority.
+
+The authority chain is:
+
+```text
+system administrator
++ active short-lived developer session
++ tool-capable model
+→ repository read/search
+→ bounded patch proposal
+→ human review
+→ explicit UI approval
+→ isolated preview branch + PR to dev
+→ CI + preview checks
+→ second explicit UI approval
+→ merge to dev
+```
+
+There is no Developer Mode path to `main`.
+
+### System admin is not campaign owner
+
+The project already has a private system-administrator registry:
+
+```text
+private.system_admin_users
+```
+
+Developer Mode checks this registry directly.
+
+The application must **never** infer:
+
+```text
+GM = system admin
+campaign owner = system admin
+admin-looking role name = system admin
+```
+
+A system administrator is provisioned explicitly out of band.
+
+This keeps campaign authority and application/repository authority separate.
+
+### Short-lived developer session
+
+Developer Mode requires a server-created session in:
+
+```text
+ai_dev_sessions
+```
+
+The session:
+
+- belongs to one system administrator;
+- belongs to one campaign context;
+- is fixed to base branch `dev`;
+- lasts 30 minutes;
+- has an explicit active/revoked/expired state;
+- may optionally point at one manually selected owner-override model.
+
+Opening a new session revokes the previous active session for that user.
+
+The server returns a random developer token only once.
+
+The database stores only:
+
+```text
+SHA-256(token)
+```
+
+The browser keeps the raw token only in React memory for the current page lifetime. It is not written to localStorage or sessionStorage.
+
+The service-only validation RPC re-checks:
+
+- token hash;
+- user id;
+- active state;
+- expiration;
+- system-admin status.
+
+### Model policy
+
+Normal Developer Mode uses the existing campaign agent, currently DeepSeek.
+
+An owner-override model is a separate registry role:
+
+```text
+model_kind  = owner_override
+access_scope = system_admin
+```
+
+It is not GM-selectable and is not part of automatic routing.
+
+Stage 13 reserves an Astra-compatible owner override:
+
+```text
+Astra · Owner override
+```
+
+The registry entry is deliberately disabled until the server has a real compatible Astra endpoint and credentials.
+
+Required server environment before enabling it:
+
+```text
+ASTRA_API_KEY
+ASTRA_API_BASE_URL
+ASTRA_MODEL          optional
+```
+
+Selecting an owner override is always an explicit system-admin action on the active developer session.
+
+Provider errors never make Voss automatically jump from DeepSeek to Astra.
+
+### Mechanics Compiler remains first
+
+Developer Mode is not the first choice for an ordinary gameplay rule.
+
+For mechanics work:
+
+```text
+natural-language rule
+→ Mechanics Compiler
+→ existing CE DSL works?
+   yes → use Stage 12
+   no  → unsupported
+          ↓
+       Developer Mode candidate
+```
+
+The agent must not change application code merely because code generation is available.
+
+Repository work is appropriate when:
+
+- the current generic runtime genuinely lacks a reusable primitive;
+- application UI/infrastructure itself must change;
+- a built-in class/subclass package requires code/migration/test work;
+- another request is inherently repository-level rather than campaign-content-level.
+
+### Model-side repository tools
+
+The model receives only a small Developer Mode allowlist:
+
+```text
+read_repo_file
+list_repo_tree
+search_repo_code
+propose_dev_patch
+read_dev_run
+list_recent_dev_runs
+```
+
+The model has **no tool** for:
+
+- approving its own patch;
+- creating a repository branch;
+- creating a PR;
+- merging a PR;
+- deploying to main;
+- arbitrary shell execution;
+- arbitrary GitHub API requests;
+- editing GitHub Actions workflows;
+- reading or writing secrets.
+
+All repository model tools are fixed to:
+
+```text
+repository = reapirez-cloud/MEGANOTRPG
+base branch = dev
+```
+
+GitHub code search is only discovery. Search results are re-read from `dev` before Voss may treat them as verified source.
+
+### Protected paths
+
+Developer proposals reject secret/build/control-plane paths such as:
+
+- `.env*`;
+- `.git/**`;
+- `.github/workflows/**`;
+- secret-like paths;
+- PEM/private-key files;
+- generated `dist`, `coverage`, `node_modules`.
+
+Stage 13 is a source-code patch path, not a credential-management system.
+
+### Proposal is not repository mutation
+
+`propose_dev_patch` performs bounded validation and saves a developer run.
+
+Limits include:
+
+- at most 12 changed files per proposal;
+- text files only for writes;
+- bounded per-file and total content size;
+- current file contents are read before proposal;
+- protected paths are rejected;
+- current `dev` SHA is pinned.
+
+The proposal stores:
+
+- exact base SHA;
+- changed paths and operations;
+- before blob SHAs where available;
+- complete proposed replacement content;
+- compact human diff preview;
+- request and summary.
+
+It creates:
+
+```text
+agent_jobs.job_type = dev_patch
+status = waiting_for_user
+```
+
+and:
+
+```text
+ai_dev_runs.state = proposed
+```
+
+At this point:
+
+```text
+canonical_repository_changed = false
+```
+
+The model cannot promote the proposal itself.
+
+### First explicit approval: preview branch
+
+The system-admin UI shows the diff preview.
+
+Only a direct authenticated browser action can approve:
+
+```text
+Создать preview-ветку
+```
+
+The UI asks for confirmation and calls the separate `developer-mode` Edge Function.
+
+That endpoint validates the developer session again.
+
+Before any GitHub write it also checks:
+
+```text
+current dev SHA == proposal base SHA
+```
+
+If `dev` moved since the model prepared its proposal:
+
+```text
+developer_run_stale
+→ no branch
+→ no commit
+→ no overwrite
+→ model must re-read fresh dev
+```
+
+A successful approval creates:
+
+```text
+ai/voss/<run>
+→ commit
+→ PR
+→ base: dev
+```
+
+It never writes directly onto `dev`.
+
+### Server-only GitHub authority
+
+Repository mutation requires a server-side GitHub credential:
+
+```text
+GITHUB_DEV_TOKEN
+```
+
+`GITHUB_TOKEN` is accepted only as a compatibility environment name.
+
+The token is read only by Edge Functions.
+
+It is never:
+
+- sent to Voss;
+- returned to React;
+- stored in AI conversation history;
+- put into a developer run.
+
+If no server GitHub token is configured, Developer Mode can still create/review patch proposals, but branch/PR mutation is blocked with `developer_repo_not_configured`.
+
+This is intentional fail-closed behavior.
+
+### Test / build / preview journal
+
+After a preview branch and PR exist, Stage 13 journals:
+
+```text
+dev_test
+dev_build
+dev_preview
+```
+
+in `agent_jobs`.
+
+The executor reads the real GitHub Actions CI run and its job/step conclusions.
+
+Preview state is read from Vercel commit statuses.
+
+The run stores:
+
+- CI state and URL;
+- preview state and URL;
+- individual check results.
+
+The model cannot mark those checks successful itself.
+
+### Merge gate
+
+A run becomes:
+
+```text
+merge_ready
+```
+
+only when:
+
+```text
+GitHub CI = success
+AND
+Vercel preview = success
+```
+
+A failing CI or preview produces a failed developer run.
+
+A second direct system-admin confirmation is required for:
+
+```text
+Слить в dev
+```
+
+Before merge the server refreshes the checks again.
+
+The merge uses the exact expected PR head SHA.
+
+A successful merge journals:
+
+```text
+agent_jobs.job_type = dev_deploy
+target = dev
+main_untouched = true
+```
+
+This Stage 13 job name represents promotion of the reviewed change into the shared `dev` branch. It does not mean production/`main` deployment.
+
+### Main is outside Developer Mode
+
+Non-negotiable Stage 13 law:
+
+```text
+Developer Mode target = dev
+Developer Mode target ≠ main
+```
+
+No model tool, direct executor action or Agent UI control merges into `main`.
+
+The final `dev → main` decision belongs to Stage 14 after the full platform/security audit.
+
+### Developer run states
+
+`ai_dev_runs` records the workflow:
+
+```text
+proposed
+branch_applied
+checks_pending
+preview_ready
+merge_ready
+merged_dev
+failed
+cancelled
+stale
+```
+
+The row preserves:
+
+- originating developer session;
+- exact base SHA;
+- proposal;
+- branch/PR/head;
+- CI and preview evidence;
+- errors;
+- timestamps.
+
+Developer runs are readable only by their creating system administrator.
+
+Direct authenticated clients cannot insert/update/delete the journal.
+
+
 ## Persistence
 
 Tables:
@@ -1403,17 +1804,20 @@ Tables:
 - `agent_jobs` — durable agent execution queue/journal;
 - `media_assets` — generated media lifecycle and review metadata;
 - `media_bindings` — explicit attachment from generated assets to canonical targets;
-- `ai_mechanics_compilations` — validated mechanics previews, coverage, diagnostics, target snapshots and apply history.
+- `ai_mechanics_compilations` — validated mechanics previews, coverage, diagnostics, target snapshots and apply history;
+- `ai_dev_sessions` — short-lived owner-only Developer Mode sessions with hashed tokens;
+- `ai_dev_runs` — repository patch proposals, diff/branch/PR/check evidence and dev-merge journal.
 
 All public tables have RLS.
 
-## Current limitations after Stage 12
+## Current limitations after Stage 13
 
-Voss can now compile GM-authored mechanics into the existing CE DSL, preserve the CE/GM boundary, preview diagnostics and apply a validated artifact to narrowly supported **custom campaign** targets after explicit GM instruction.
+Voss can now inspect repository source and prepare bounded code changes during an active system-admin Developer Mode session. The model still cannot approve its own patch, create a branch/PR, mark checks successful, merge into `dev`, or touch `main`.
 
-Stage 12 deliberately cannot mutate built-in class/subclass packages, invent missing runtime primitives or write repository code. Unsupported reusable mechanics must remain unsupported until Developer Mode extends the generic runtime with code and tests.
+Repository mutation is operational only when the server has `GITHUB_DEV_TOKEN` (or the compatibility `GITHUB_TOKEN`) configured. Without it, Stage 13 intentionally remains proposal/review-only.
+
+The optional Astra owner override is wired but remains disabled until a real compatible Astra endpoint and credentials are configured. DeepSeek remains the Developer Mode default.
 
 ## Planned continuation
 
-13. Owner-only Developer Mode with repository patch/test/build/preview workflow.
 14. Full security/integration audit, READY certification and only then `dev → main`.

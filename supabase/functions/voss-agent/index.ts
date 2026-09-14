@@ -27,6 +27,11 @@ import {
   VOSS_MECHANICS_TOOLS,
 } from "./mechanics-tools.ts"
 import {
+  executeVossDeveloperTool,
+  isVossDeveloperTool,
+  VOSS_DEVELOPER_TOOLS,
+} from "./developer-tools.ts"
+import {
   recordVossRouteRun,
   resolveVossModel,
 } from "./model-router.ts"
@@ -103,9 +108,9 @@ function parseToolArguments(raw: unknown): JsonRecord {
   }
 
   if (typeof raw !== "string") return {}
-  // Structured draft/mechanics tools legitimately carry sizeable JSON payloads.
-  // Keep a hard ceiling, but do not truncate valid compiler input.
-  if (raw.length > 60000) return {}
+  // Structured draft/mechanics/developer tools may legitimately carry full text files.
+  // Keep a hard ceiling so the model still cannot turn one tool call into an unbounded upload.
+  if (raw.length > 300000) return {}
 
   try {
     const parsed = JSON.parse(raw)
@@ -182,6 +187,10 @@ Deno.serve(async (req: Request) => {
   const message = typeof body.message === "string" ? body.message.trim() : ""
   const agentKey = body.agentKey === "voss" ? "voss" : "voss"
   const viewContext = cleanContext(body.viewContext)
+  const requestedDevSessionId =
+    typeof body.devSessionId === "string" ? body.devSessionId : ""
+  const requestedDevSessionToken =
+    typeof body.devSessionToken === "string" ? body.devSessionToken : ""
 
   if (!campaignId) return reply({ error: "campaignId is required" }, 400)
   if (!message) return reply({ error: "message is required" }, 400)
@@ -198,6 +207,53 @@ Deno.serve(async (req: Request) => {
   if (!membership) return reply({ error: "Campaign access denied" }, 403)
 
   const canChooseModel = membership.role === "gm" || membership.is_owner === true
+
+  let isSystemAdmin = false
+  let developerMode = false
+  let devSessionId: string | null = null
+  let developerOwnerOverrideModelId: string | null = null
+
+  const { data: adminStatus } = await admin.rpc(
+    "is_system_admin_for_v1",
+    { p_user_id: user.id },
+  )
+  isSystemAdmin = adminStatus === true
+
+  if (
+    isSystemAdmin &&
+    requestedDevSessionId &&
+    requestedDevSessionToken
+  ) {
+    const { data: validDevSession } = await admin.rpc(
+      "validate_ai_dev_session_v1",
+      {
+        p_session_id: requestedDevSessionId,
+        p_token: requestedDevSessionToken,
+        p_user_id: user.id,
+      },
+    )
+
+    if (validDevSession === true) {
+      const { data: devSession } = await admin
+        .from("ai_dev_sessions")
+        .select("id,campaign_id,user_id,status,expires_at,owner_override_model_id")
+        .eq("id", requestedDevSessionId)
+        .maybeSingle()
+
+      if (
+        devSession &&
+        devSession.user_id === user.id &&
+        devSession.campaign_id === campaignId &&
+        devSession.status === "active" &&
+        new Date(devSession.expires_at).getTime() > Date.now()
+      ) {
+        developerMode = true
+        devSessionId = devSession.id
+        developerOwnerOverrideModelId =
+          devSession.owner_override_model_id || null
+      }
+    }
+  }
 
   let selectedModelId: string | null = null
   if (canChooseModel) {
@@ -218,6 +274,9 @@ Deno.serve(async (req: Request) => {
       selectedModelId,
       message,
       viewContext,
+      developerMode,
+      isSystemAdmin,
+      developerOwnerOverrideModelId,
     })
   } catch (error) {
     return reply({
@@ -324,6 +383,15 @@ Deno.serve(async (req: Request) => {
     "Built-in class/subclass rule templates можно компилировать только как preview. Runtime apply к ним запрещён: изменение встроенного пакета требует Developer Mode, кода и package tests.",
     "Если компилятор вернул unsupported или needs_developer_mode=true, честно объясни пробел. Не утверждай, что механика работает, и не пытайся обойти ограничение через AI Draft, raw JSON, SQL или другой инструмент.",
     "Если создаёшь AI Draft определения с исполняемой mechanics, сначала вызови compile_mechanics. В payload черновика положи ровно compilation.mechanics без изменений и mechanics_compilation_id = compilation.id. Иначе применение AI Draft будет отклонено.",
+    "Developer Mode существует только для системного администратора с активной короткой dev-сессией. GM, campaign owner и обычный пользователь сами по себе не получают этих инструментов.",
+    "В Developer Mode сначала используй Mechanics Compiler, если запрос можно выразить существующим CE DSL. Репозиторий трогай только когда компилятор честно вернул unsupported или запрос действительно относится к приложению/инфраструктуре.",
+    "Developer tools фиксированы на ветке dev. У тебя нет инструмента записи в main, изменения GitHub Actions workflows, секретов или произвольного выполнения shell-команд.",
+    "Перед propose_dev_patch прочитай затрагиваемые файлы. Не делай patch из догадок и не переписывай несвязанные части приложения.",
+    "propose_dev_patch только сохраняет предложение и diff-preview. Он НЕ создаёт ветку, commit или PR. Никогда не утверждай обратное.",
+    "Создание preview-ветки и PR выполняется только отдельным прямым кликом системного администратора в интерфейсе. У модели нет approval tool.",
+    "После preview-ветки обязательны GitHub CI и Vercel preview. Слияние в dev доступно только отдельным прямым кликом и только когда CI=success и preview=success.",
+    "Developer Mode никогда не сливает в main. Финальный dev→main относится к Stage 14 и остаётся отдельным процессом.",
+    "Owner override (например Astra) никогда не выбирается автоматически. Он используется только если системный администратор вручную назначил его активной dev-сессии.",
     "",
     "ТЕКУЩИЙ КОНТЕКСТ ИНТЕРФЕЙСА:",
     contextText,
@@ -346,6 +414,9 @@ Deno.serve(async (req: Request) => {
               ...VOSS_DRAFT_TOOLS,
               ...VOSS_MEMORY_WRITE_TOOLS,
               ...VOSS_MECHANICS_TOOLS,
+              ...(developerMode && isSystemAdmin
+                ? VOSS_DEVELOPER_TOOLS
+                : []),
             ]
           : []),
       ]
@@ -362,6 +433,8 @@ Deno.serve(async (req: Request) => {
   const mechanicsToolsUsed: string[] = []
   const mechanicsCompilations: string[] = []
   const mechanicsApplied: string[] = []
+  const developerToolsUsed: string[] = []
+  const developerRunsProposed: string[] = []
   let answer = ""
   let lastProviderPayload: any = null
 
@@ -373,6 +446,10 @@ Deno.serve(async (req: Request) => {
         messages: providerMessages,
         tools: availableTools,
         temperature: 0.55,
+        allowOwnerOverride:
+          developerMode &&
+          isSystemAdmin &&
+          routeDecision.routeMode === "owner_override",
       })
     } catch (error) {
       if (error instanceof ProviderGatewayError) {
@@ -423,9 +500,23 @@ Deno.serve(async (req: Request) => {
       const memoryTool = isVossMemoryTool(toolName)
       const imageTool = isVossImageTool(toolName)
       const mechanicsTool = isVossMechanicsTool(toolName)
+      const developerTool = isVossDeveloperTool(toolName)
       const memoryWriteTool = memoryTool && isVossMemoryWriteTool(toolName)
-      const result = mechanicsTool
-        ? await executeVossMechanicsTool(
+      const result = developerTool
+        ? await executeVossDeveloperTool(
+            {
+              admin,
+              campaignId,
+              userId: user.id,
+              threadId,
+              isSystemAdmin,
+              devSessionId,
+            },
+            toolName,
+            args,
+          )
+        : mechanicsTool
+          ? await executeVossMechanicsTool(
             {
               userClient,
               admin,
@@ -487,7 +578,25 @@ Deno.serve(async (req: Request) => {
                 args,
               )
 
-      if (mechanicsTool) {
+      if (developerTool) {
+        developerToolsUsed.push(toolName || "unknown")
+        const resultRecord =
+          result && typeof result === "object" && !Array.isArray(result)
+            ? result as JsonRecord
+            : {}
+        const run =
+          resultRecord.run &&
+          typeof resultRecord.run === "object" &&
+          !Array.isArray(resultRecord.run)
+            ? resultRecord.run as JsonRecord
+            : null
+        if (
+          toolName === "propose_dev_patch" &&
+          typeof run?.id === "string"
+        ) {
+          developerRunsProposed.push(run.id)
+        }
+      } else if (mechanicsTool) {
         mechanicsToolsUsed.push(toolName || "unknown")
         const resultRecord =
           result && typeof result === "object" && !Array.isArray(result)
@@ -603,7 +712,9 @@ Deno.serve(async (req: Request) => {
         tool_call_id: toolCallId,
         content: toolContent(
           result,
-          mechanicsTool || imageTool || draftTool || memoryTool ? 70000 : 18000,
+          developerTool || mechanicsTool || imageTool || draftTool || memoryTool
+            ? 180000
+            : 18000,
         ),
       })
     }
@@ -681,6 +792,19 @@ Deno.serve(async (req: Request) => {
       used: [...new Set(mechanicsToolsUsed)],
       compilations: [...new Set(mechanicsCompilations)],
       applied: [...new Set(mechanicsApplied)],
+    },
+    developer: {
+      systemAdmin: isSystemAdmin,
+      sessionActive: developerMode,
+      sessionId: developerMode ? devSessionId : null,
+      ownerOverrideActive:
+        developerMode && routeDecision.routeMode === "owner_override",
+      toolsAvailable:
+        supportsReadTools && developerMode && isSystemAdmin,
+      used: [...new Set(developerToolsUsed)],
+      runsProposed: [...new Set(developerRunsProposed)],
+      baseBranch: "dev",
+      mainWritable: false,
     },
   })
 })

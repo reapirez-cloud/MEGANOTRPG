@@ -61,7 +61,7 @@ test("campaign settings cannot reference hidden or owner-only models by UUID", (
   assert.match(migration, /private\.can_select_campaign_ai_model\(selected_model_id/)
 })
 
-test("provider gateway dispatches by provider and never performs cross-provider fallback", () => {
+test("provider gateway dispatches explicitly and never performs cross-provider fallback", () => {
   const gateway = read("supabase/functions/voss-agent/provider-gateway.ts")
   const edge = read("supabase/functions/voss-agent/index.ts")
 
@@ -70,7 +70,10 @@ test("provider gateway dispatches by provider and never performs cross-provider 
   assert.match(gateway, /DEEPSEEK_API_KEY/)
   assert.match(gateway, /https:\/\/api\.deepseek\.com/)
   assert.match(gateway, /Unsupported AI provider/)
-  assert.doesNotMatch(gateway, /astra/i)
+  assert.match(gateway, /case "astra-compatible"/)
+  assert.match(gateway, /allowOwnerOverride/)
+  assert.match(gateway, /owner_override_scope_denied/)
+  assert.doesNotMatch(gateway, /catch[\s\S]{0,800}astraConfig/)
   assert.match(edge, /requestChatCompletion/)
   assert.doesNotMatch(edge, /fetch\(apiBase \+ "\/chat\/completions"/)
 })

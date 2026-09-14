@@ -7,6 +7,7 @@ type ChatRequest = {
   messages: Array<Record<string, unknown>>
   tools?: Array<Record<string, unknown>>
   temperature?: number
+  allowOwnerOverride?: boolean
 }
 
 export class ProviderGatewayError extends Error {
@@ -45,14 +46,24 @@ function normalizedBaseUrl(value: string, fallback = "") {
   return (value || fallback).replace(/\/+$/, "")
 }
 
-function ensureCampaignAgent(model: RouterModel) {
-  if (
-    model.model_kind !== "agent" ||
-    model.access_scope !== "campaign" ||
-    !model.enabled
-  ) {
+function ensureGatewayModel(
+  model: RouterModel,
+  allowOwnerOverride = false,
+) {
+  const campaignAgent =
+    model.enabled &&
+    model.model_kind === "agent" &&
+    model.access_scope === "campaign"
+
+  const ownerOverride =
+    allowOwnerOverride &&
+    model.enabled &&
+    model.model_kind === "owner_override" &&
+    model.access_scope === "system_admin"
+
+  if (!campaignAgent && !ownerOverride) {
     throw new ProviderGatewayError(
-      "Model is not available to the campaign agent gateway",
+      "Model is not available to this AI gateway scope",
       {
         code: "ai_model_scope_denied",
         status: 403,
@@ -88,6 +99,25 @@ function deepSeekConfig(model: RouterModel) {
   }
 }
 
+function astraConfig(model: RouterModel) {
+  const apiKey = getEnv("ASTRA_API_KEY")
+  const apiBase = normalizedBaseUrl(getEnv("ASTRA_API_BASE_URL"))
+  const providerModel = getEnv("ASTRA_MODEL") || model.model_key
+
+  if (!apiBase || !apiKey || !providerModel) {
+    throw new ProviderGatewayError(
+      "Astra owner override is not configured",
+      {
+        code: "owner_override_not_configured",
+        status: 503,
+        detail: "ASTRA_API_KEY / ASTRA_API_BASE_URL are required before enabling the owner override registry row.",
+      },
+    )
+  }
+
+  return { apiBase, apiKey, providerModel }
+}
+
 function legacyOpenAICompatibleConfig(model: RouterModel) {
   const apiKey = getEnv("AI_API_KEY")
   const apiBase = normalizedBaseUrl(getEnv("AI_API_BASE_URL"))
@@ -109,14 +139,25 @@ function legacyOpenAICompatibleConfig(model: RouterModel) {
   return { apiBase, apiKey, providerModel }
 }
 
-function providerConfig(model: RouterModel) {
-  ensureCampaignAgent(model)
+function providerConfig(
+  model: RouterModel,
+  allowOwnerOverride = false,
+) {
+  ensureGatewayModel(model, allowOwnerOverride)
 
   switch (model.provider_key) {
     case "deepseek":
       return deepSeekConfig(model)
     case "openai-compatible":
       return legacyOpenAICompatibleConfig(model)
+    case "astra-compatible":
+      if (!allowOwnerOverride) {
+        throw new ProviderGatewayError("Owner override requires an active Developer Mode session", {
+          code: "owner_override_scope_denied",
+          status: 403,
+        })
+      }
+      return astraConfig(model)
     default:
       throw new ProviderGatewayError(
         "Unsupported AI provider: " + model.provider_key,
@@ -129,7 +170,10 @@ function providerConfig(model: RouterModel) {
 }
 
 export async function requestChatCompletion(input: ChatRequest) {
-  const { apiBase, apiKey, providerModel } = providerConfig(input.model)
+  const { apiBase, apiKey, providerModel } = providerConfig(
+    input.model,
+    input.allowOwnerOverride === true,
+  )
 
   let response: Response
   try {

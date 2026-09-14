@@ -8,6 +8,7 @@ export type VossTaskKey =
   | "workshop"
   | "draft_edit"
   | "mechanics_compile"
+  | "developer"
 
 type RouteMode = "auto" | "primary" | "base" | "fixed"
 
@@ -41,6 +42,7 @@ export type VossRouteDecision = {
     | "base"
     | "fixed"
     | "fallback"
+    | "owner_override"
   reason: string
   degraded: boolean
 }
@@ -60,12 +62,14 @@ const TASKS_REQUIRING_TOOLS = new Set<VossTaskKey>([
   "workshop",
   "draft_edit",
   "mechanics_compile",
+  "developer",
 ])
 
 const TASKS_PREFERRING_JSON = new Set<VossTaskKey>([
   "workshop",
   "draft_edit",
   "mechanics_compile",
+  "developer",
 ])
 
 function normalizedText(value: unknown) {
@@ -85,9 +89,20 @@ function contextText(viewContext: JsonRecord) {
 export function classifyVossTask(
   message: string,
   viewContext: JsonRecord,
+  developerMode = false,
 ): VossTaskKey {
   const text = normalizedText(message)
   const context = contextText(viewContext)
+
+  if (
+    developerMode &&
+    (
+      /(код|repo|репозитор|файл|typescript|react|sql|edge function|build|test|ci|preview|ветк|commit|pull request|pr\b|деплой|deploy)/u.test(text) ||
+      /(исправ|почини|реализ|добав|удали|измени|перепиш|рефактор|собери|протестир)/u.test(text)
+    )
+  ) {
+    return "developer"
+  }
 
   if (
     /(запомни|запомнить|зафиксируй|зафиксировать|добавь\s+в\s+память)/u.test(text) ||
@@ -239,9 +254,16 @@ export async function resolveVossModel(
     selectedModelId: string | null
     message: string
     viewContext: JsonRecord
+    developerMode?: boolean
+    isSystemAdmin?: boolean
+    developerOwnerOverrideModelId?: string | null
   },
 ): Promise<VossRouteDecision> {
-  const taskKey = classifyVossTask(input.message, input.viewContext)
+  const taskKey = classifyVossTask(
+    input.message,
+    input.viewContext,
+    input.developerMode === true,
+  )
 
   const { data: rows, error } = await admin
     .from("ai_models")
@@ -252,9 +274,63 @@ export async function resolveVossModel(
 
   if (error) throw new Error(error.message)
 
-  const models = ((rows || []) as RouterModel[]).filter(isCampaignAgent)
+  const registeredModels = (rows || []) as RouterModel[]
+  const models = registeredModels.filter(isCampaignAgent)
   const base = models.find((model) => model.is_base)
   if (!base) throw new Error("No active base AI model configured")
+
+  if (taskKey === "developer") {
+    if (input.developerMode !== true || input.isSystemAdmin !== true) {
+      throw new Error("Developer Mode authorization missing")
+    }
+
+    if (input.developerOwnerOverrideModelId) {
+      const override = registeredModels.find(
+        (model) =>
+          model.id === input.developerOwnerOverrideModelId &&
+          model.enabled &&
+          model.model_kind === "owner_override" &&
+          model.access_scope === "system_admin" &&
+          model.supports_tools,
+      )
+      if (!override) {
+        throw new Error("Owner override model is unavailable")
+      }
+      return {
+        taskKey,
+        model: override,
+        routeMode: "owner_override",
+        reason: "System administrator manually selected the Developer Mode owner override.",
+        degraded: false,
+      }
+    }
+
+    const primaryDeveloper =
+      models.find(
+        (model) =>
+          model.id === input.selectedModelId &&
+          (model.gm_selectable || model.is_base) &&
+          model.supports_tools,
+      ) ||
+      [...models]
+        .filter((model) => model.supports_tools)
+        .sort((left, right) =>
+          strongSort(left, right, true)
+        )[0] ||
+      null
+
+    if (!primaryDeveloper) {
+      throw new Error("No tool-capable campaign agent is available for Developer Mode")
+    }
+
+    return {
+      taskKey,
+      model: primaryDeveloper,
+      routeMode: "primary",
+      reason: "Developer Mode uses the normal DeepSeek/campaign agent unless the system admin manually selects an owner override.",
+      degraded: false,
+    }
+  }
 
   if (!input.canManage) {
     return {

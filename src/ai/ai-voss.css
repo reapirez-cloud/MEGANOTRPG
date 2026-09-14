@@ -291,6 +291,219 @@
   color: #e5e8e7;
 }
 
+.u1-agent-dev-session {
+  margin: 0 12px 9px;
+  padding: 9px 10px;
+  border: 1px solid rgba(224, 181, 126, 0.11);
+  background:
+    linear-gradient(110deg, rgba(191, 137, 82, 0.04), transparent 64%),
+    rgba(255, 255, 255, 0.006);
+  display: grid;
+  gap: 8px;
+}
+
+.u1-agent-dev-session[data-active="true"] {
+  border-color: rgba(224, 181, 126, 0.2);
+}
+
+.u1-agent-dev-session > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.u1-agent-dev-session > header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.u1-agent-dev-session > header span,
+.u1-agent-dev-session > label > span {
+  color: rgba(223, 186, 135, 0.43);
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.u1-agent-dev-session > header strong {
+  color: rgba(235, 222, 200, 0.72);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.u1-agent-dev-session button,
+.u1-agent-dev-run button {
+  padding: 5px 7px;
+  border: 1px solid rgba(224, 181, 126, 0.14);
+  background: rgba(224, 181, 126, 0.025);
+  color: rgba(235, 220, 197, 0.65);
+  font: inherit;
+  font-size: 6px;
+  cursor: pointer;
+}
+
+.u1-agent-dev-session button:disabled,
+.u1-agent-dev-run button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.u1-agent-dev-session__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.u1-agent-dev-session__meta small {
+  padding: 3px 5px;
+  border: 1px solid rgba(224, 181, 126, 0.08);
+  color: rgba(222, 204, 177, 0.42);
+  font-size: 6px;
+}
+
+.u1-agent-dev-session > label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.u1-agent-dev-session select {
+  min-width: 0;
+  border: 1px solid rgba(224, 181, 126, 0.11);
+  background: rgba(12, 13, 14, 0.92);
+  color: rgba(234, 224, 208, 0.68);
+  font: inherit;
+  font-size: 7px;
+  padding: 5px 6px;
+}
+
+.u1-agent-dev-session__law {
+  color: rgba(211, 190, 159, 0.4);
+  font-size: 6px;
+  line-height: 1.45;
+}
+
+.u1-agent-dev-run {
+  margin: 0 0 14px;
+  padding: 10px 11px;
+  border: 1px solid rgba(224, 181, 126, 0.16);
+  background:
+    linear-gradient(125deg, rgba(202, 145, 82, 0.045), transparent 70%),
+    rgba(255, 255, 255, 0.008);
+  display: grid;
+  gap: 8px;
+}
+
+.u1-agent-dev-run[data-status="merge_ready"],
+.u1-agent-dev-run[data-status="merged_dev"] {
+  border-color: rgba(157, 194, 161, 0.2);
+}
+
+.u1-agent-dev-run[data-status="failed"],
+.u1-agent-dev-run[data-status="stale"] {
+  border-color: rgba(188, 114, 95, 0.24);
+}
+
+.u1-agent-dev-run > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.u1-agent-dev-run > header > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.u1-agent-dev-run > header span {
+  color: rgba(223, 186, 135, 0.42);
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.u1-agent-dev-run > header strong {
+  color: rgba(239, 230, 215, 0.82);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.u1-agent-dev-run > header b {
+  flex: 0 0 auto;
+  color: rgba(223, 205, 176, 0.5);
+  font-size: 6px;
+  font-weight: 700;
+}
+
+.u1-agent-dev-run > p {
+  margin: 0;
+  color: rgba(211, 201, 184, 0.5);
+  font-size: 7px;
+  line-height: 1.5;
+}
+
+.u1-agent-dev-run__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.u1-agent-dev-run__stats small {
+  padding: 3px 5px;
+  border: 1px solid rgba(224, 181, 126, 0.08);
+  color: rgba(219, 202, 174, 0.42);
+  font-size: 6px;
+}
+
+.u1-agent-dev-run__diff {
+  border-top: 1px solid rgba(224, 181, 126, 0.07);
+  padding-top: 6px;
+}
+
+.u1-agent-dev-run__diff summary {
+  color: rgba(222, 201, 169, 0.48);
+  font-size: 6px;
+  cursor: pointer;
+}
+
+.u1-agent-dev-run__diff pre {
+  max-height: 210px;
+  margin: 7px 0 0;
+  padding: 7px;
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.22);
+  color: rgba(216, 210, 197, 0.58);
+  font: 6px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.u1-agent-dev-run > a {
+  width: fit-content;
+  color: rgba(214, 196, 167, 0.58);
+  font-size: 7px;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(224, 181, 126, 0.12);
+}
+
+.u1-agent-dev-run__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.u1-agent-dev-run__error {
+  color: rgba(224, 151, 126, 0.68);
+  font-size: 6px;
+  line-height: 1.45;
+}
+
 .u1-agent-prompts {
   padding: 9px 12px 10px;
   border-bottom: 1px solid rgba(224, 234, 237, 0.07);
