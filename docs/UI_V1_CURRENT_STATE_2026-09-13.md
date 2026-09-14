@@ -103,14 +103,17 @@ Home reads real Supabase data for campaign identity/cover, chronology, art previ
 
 ## Classes and subclasses — visual law
 
-The Knowledge Base class family uses one restrained panoramic image grammar:
+The Knowledge Base class family now deliberately separates **catalogue previews** from **reading/detail artwork**:
 
-- class catalog panels: **3:1**;
-- subclass catalog panels: **3:1**;
-- subclass detail header artwork: **the same 3:1 preview language**;
-- do not introduce a separate 16:9 cinematic/graphic-novel hero for subclass detail.
+- class catalogue panels: **3:1**;
+- subclass catalogue panels: **3:1**;
+- catalogue art cards stay minimal: art + title, with only factual service metadata when it is genuinely useful;
+- class detail, subclass detail and feature detail reserve a dedicated **16:9** artwork slot;
+- the 16:9 slots may remain intentional visual placeholders until suitable artwork exists; never stretch or crop the 3:1 catalogue art to fake a finished hero.
 
-The purpose is visual continuity and editorial restraint. Class and subclass screens should feel like one designed product, not a sequence of independently generated showcase blocks. Prefer repetition of a small number of strong layout rules over adding new hero treatments, glow systems, decorative cards or AI-looking spectacle.
+Class and subclass detail share one navigation grammar: **КЛАСС / ПОДКЛАССЫ**. Both use the same level-oriented feature progression component. Feature lists show only factual structure (level, real feature name and objective mechanic metadata). Narrative prose belongs to **Восс объясняет / Комментарий Восса** and must come from authored reference/runtime data rather than interface-written summaries.
+
+The product direction is editorial restraint rather than decorative variety: a small number of repeated layout rules, strong typography, thin separators, dark material surfaces and deliberate empty space. Avoid adding explanatory captions to artwork, card-inside-card nesting, gratuitous glow or invented prose merely to make a surface look populated.
 
 ## World — canonical player-facing terminology
 

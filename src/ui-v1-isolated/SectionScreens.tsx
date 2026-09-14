@@ -4,6 +4,7 @@ import { LocationNavigator } from "./LocationNavigator"
 
 import { classReference, type ClassReferenceEntry, type ClassReferenceSubclass } from "../data/classReference"
 import { warlockInvocationsReference } from "../data/classes/warlockInvocationsReference"
+import { useRuleTemplates } from "../hooks/useRuleTemplates"
 import {
   knowledgeBaseSections,
   worldHubSections,
@@ -16,6 +17,12 @@ import {
   useUiV1WorldData,
   type AchievementPreview,
 } from "./useUiV1SectionData"
+import {
+  buildClassPresentation,
+  buildSubclassPresentation,
+  type UiV1ReferenceFeature,
+  type UiV1ReferencePresentation,
+} from "./classReferencePresentation"
 import "./section-screens.css"
 
 function navigate(path: string) {
@@ -206,14 +213,14 @@ function ClassCatalogPanels({
   query,
   onOpen,
 }: {
-  rows: Array<{ id: string; title: string; meta: string; art?: string }>
+  rows: Array<{ id: string; title: string; meta?: string; art?: string }>
   query: string
   onOpen: (id: string) => void
 }) {
   const normalized = query.trim().toLocaleLowerCase("ru")
   const visible = useMemo(
     () => normalized
-      ? rows.filter((row) => `${row.title} ${row.meta}`.toLocaleLowerCase("ru").includes(normalized))
+      ? rows.filter((row) => `${row.title} ${row.meta || ""}`.toLocaleLowerCase("ru").includes(normalized))
       : rows,
     [normalized, rows],
   )
@@ -246,7 +253,7 @@ function ClassCatalogPanels({
           <span className="u1-class-panel__scrim" aria-hidden="true" />
           <span className="u1-class-panel__copy">
             <strong>{row.title}</strong>
-            <small>{row.meta}</small>
+            {row.meta && <small>{row.meta}</small>}
           </span>
         </button>
       ))}
@@ -299,27 +306,171 @@ function ReferenceCopyBlock({
   )
 }
 
-function ClassDetailScreen({ entry }: { entry: ClassReferenceEntry }) {
+function ClassModeTabs({
+  entry,
+  active,
+}: {
+  entry: ClassReferenceEntry
+  active: "class" | "subclasses"
+}) {
+  return (
+    <nav className="u1-class-mode-tabs" aria-label="Класс и подклассы">
+      <button
+        type="button"
+        data-active={active === "class" || undefined}
+        onClick={() => navigate(`home/knowledge-base/classes/${entry.id}`)}
+      >
+        Класс
+      </button>
+      <button
+        type="button"
+        data-active={active === "subclasses" || undefined}
+        onClick={() => navigate(`home/knowledge-base/classes/${entry.id}/subclasses`)}
+      >
+        Подклассы <small>{entry.subclasses.length}</small>
+      </button>
+    </nav>
+  )
+}
+
+function ReferenceHeroPlaceholder({ kind }: { kind: "class" | "subclass" | "feature" }) {
+  return (
+    <div className="u1-reference-hero-placeholder" data-kind={kind} aria-hidden="true">
+      <span className="u1-reference-hero-placeholder__wash" />
+      <span className="u1-reference-hero-placeholder__line" />
+    </div>
+  )
+}
+
+function FeatureProgression({
+  title,
+  features,
+  onOpen,
+}: {
+  title: string
+  features: UiV1ReferenceFeature[]
+  onOpen: (index: number) => void
+}) {
+  const [levelFilter, setLevelFilter] = useState("all")
+  const levelOptions = useMemo(
+    () => [...new Set(features.map((feature) => feature.level))].sort((a, b) => a - b),
+    [features],
+  )
+
+  const rows = features
+    .map((feature, index) => ({ feature, index }))
+    .filter(({ feature }) => levelFilter === "all" || feature.level === Number(levelFilter))
+
+  return (
+    <section className="u1-feature-section">
+      <div className="u1-feature-section__head">
+        <span>{title}</span>
+        <label className="u1-feature-level-filter">
+          <span className="sr-only">Уровень</span>
+          <select value={levelFilter} onChange={(event) => setLevelFilter(event.target.value)}>
+            <option value="all">Все уровни</option>
+            {levelOptions.map((level) => (
+              <option key={level} value={level}>Уровень {level}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {rows.length ? (
+        <div className="u1-feature-list">
+          {rows.map(({ feature, index }) => (
+            <button
+              type="button"
+              className="u1-feature-row"
+              key={feature.sourceKey + ":" + index}
+              onClick={() => onOpen(index)}
+            >
+              <span className="u1-feature-row__level">{String(feature.level).padStart(2, "0")}</span>
+              <span className="u1-feature-row__copy">
+                <strong>{feature.name}</strong>
+                {feature.meta && <small>{feature.meta}</small>}
+              </span>
+              <i aria-hidden="true">›</i>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <EmptyState>Для выбранного уровня умений нет.</EmptyState>
+      )}
+    </section>
+  )
+}
+
+function FeatureDetailScreen({
+  sourceTitle,
+  sourceKind,
+  feature,
+  backTo,
+}: {
+  sourceTitle: string
+  sourceKind: "Класс" | "Подкласс"
+  feature: UiV1ReferenceFeature
+  backTo: string
+}) {
+  return (
+    <main className="u1-section-page">
+      <SectionHeader title={sourceTitle} backTo={backTo} />
+      <ReferenceHeroPlaceholder kind="feature" />
+
+      <section className="u1-feature-detail">
+        <div className="u1-feature-detail__eyebrow">
+          {feature.level} уровень · {sourceKind}
+        </div>
+        <h2>{feature.name}</h2>
+
+        <div className="u1-reference-copy u1-reference-copy--feature">
+          {feature.vossExplanation && (
+            <ReferenceCopyBlock label="Восс объясняет">{feature.vossExplanation}</ReferenceCopyBlock>
+          )}
+          {feature.rule && (
+            <ReferenceCopyBlock label="Точное правило">{feature.rule}</ReferenceCopyBlock>
+          )}
+          {feature.facts.length > 0 && (
+            <section className="u1-feature-facts">
+              <span>Механика</span>
+              <ul>
+                {feature.facts.map((fact) => <li key={fact}>{fact}</li>)}
+              </ul>
+            </section>
+          )}
+          {feature.vossComment && (
+            <ReferenceCopyBlock label="Комментарий Восса">{feature.vossComment}</ReferenceCopyBlock>
+          )}
+        </div>
+      </section>
+    </main>
+  )
+}
+
+function ClassDetailScreen({
+  entry,
+  presentation,
+}: {
+  entry: ClassReferenceEntry
+  presentation: UiV1ReferencePresentation
+}) {
   return (
     <main className="u1-section-page">
       <SectionHeader title={entry.name} backTo="home/knowledge-base/classes" />
-      <button
-        type="button"
-        className="u1-class-subclasses-tab"
-        onClick={() => navigate(`home/knowledge-base/classes/${entry.id}/subclasses`)}
-      >
-        <span>Подклассы</span>
-        <small>{entry.subclasses.length}</small>
-        <i aria-hidden="true">→</i>
-      </button>
+      <ClassModeTabs entry={entry} active="class" />
+      <ReferenceHeroPlaceholder kind="class" />
 
-      <section className="u1-reference-copy">
-        <p className="u1-reference-copy__lead">{entry.tagline}</p>
-        <ReferenceCopyBlock label="Описание класса">{entry.description}</ReferenceCopyBlock>
-        {entry.mechanics && (
-          <ReferenceCopyBlock label="Коротко о правилах">{entry.mechanics}</ReferenceCopyBlock>
-        )}
-      </section>
+      {presentation.vossExplanation && (
+        <div className="u1-reference-copy u1-reference-copy--intro">
+          <ReferenceCopyBlock label="Восс объясняет">{presentation.vossExplanation}</ReferenceCopyBlock>
+        </div>
+      )}
+
+      <FeatureProgression
+        title="Умения класса"
+        features={presentation.features}
+        onOpen={(index) => navigate(`home/knowledge-base/classes/${entry.id}/features/${index}`)}
+      />
     </main>
   )
 }
@@ -347,14 +498,15 @@ function SubclassCatalogScreen({
   const rows = entry.subclasses.map((subclass) => ({
     id: subclass.id,
     title: subclass.name,
-    meta: subclass.summary,
+    meta: undefined,
     art: subclassPreviewArtPath(entry, subclass),
   }))
 
   return (
     <main className="u1-section-page">
-      <SectionHeader title="Подклассы" backTo={`home/knowledge-base/classes/${entry.id}`} />
-      <div className="u1-class-catalog-context">{entry.name}</div>
+      <SectionHeader title={entry.name} backTo="home/knowledge-base/classes" />
+      <ClassModeTabs entry={entry} active="subclasses" />
+      <h2 className="u1-subclass-catalog-title">Подклассы</h2>
       <label className="u1-catalog-search">
         <span>Поиск</span>
         <input
@@ -374,20 +526,14 @@ function SubclassCatalogScreen({
   )
 }
 
-function classHeroFallbackPath(entry: ClassReferenceEntry) {
-  return `/ui-v1/classes/${entry.id}.webp`
-}
-
-function subclassDetailArtPath(entry: ClassReferenceEntry, subclass: ClassReferenceSubclass) {
-  return subclassPreviewArtPath(entry, subclass) ?? classHeroFallbackPath(entry)
-}
-
 function SubclassDetailScreen({
   entry,
   subclass,
+  presentation,
 }: {
   entry: ClassReferenceEntry
   subclass: ClassReferenceSubclass
+  presentation: UiV1ReferencePresentation
 }) {
   return (
     <main className="u1-section-page">
@@ -395,48 +541,31 @@ function SubclassDetailScreen({
         title={subclass.name}
         backTo={`home/knowledge-base/classes/${entry.id}/subclasses`}
       />
+      <ClassModeTabs entry={entry} active="subclasses" />
+      <ReferenceHeroPlaceholder kind="subclass" />
 
-      <figure className="u1-subclass-hero">
-        <span className="u1-subclass-hero__texture" aria-hidden="true" />
-        <img
-          className="u1-subclass-hero__image"
-          src={subclassDetailArtPath(entry, subclass)}
-          alt=""
-          loading="eager"
-          decoding="async"
-          aria-hidden="true"
-          onError={(event) => {
-            if (event.currentTarget.dataset.fallback === "class") {
-              event.currentTarget.hidden = true
-              return
-            }
+      {presentation.vossExplanation && (
+        <div className="u1-reference-copy u1-reference-copy--intro">
+          <ReferenceCopyBlock label="Восс объясняет">{presentation.vossExplanation}</ReferenceCopyBlock>
+        </div>
+      )}
 
-            event.currentTarget.dataset.fallback = "class"
-            event.currentTarget.src = classHeroFallbackPath(entry)
-          }}
-        />
-        <span className="u1-subclass-hero__scrim" aria-hidden="true" />
-        <figcaption className="u1-subclass-hero__caption">
-          <small>{entry.name} · Подкласс</small>
-          <strong>{subclass.name}</strong>
-        </figcaption>
-      </figure>
-
-      <section className="u1-reference-copy">
-        <p className="u1-reference-copy__lead">{subclass.summary}</p>
-        {subclass.explanation && (
-          <ReferenceCopyBlock label="Описание подкласса">{subclass.explanation}</ReferenceCopyBlock>
-        )}
-        {subclass.mechanics && (
-          <ReferenceCopyBlock label="Коротко о правилах">{subclass.mechanics}</ReferenceCopyBlock>
-        )}
-      </section>
+      <FeatureProgression
+        title="Умения подкласса"
+        features={presentation.features}
+        onOpen={(index) =>
+          navigate(
+            `home/knowledge-base/classes/${entry.id}/subclasses/${subclass.id}/features/${index}`,
+          )
+        }
+      />
     </main>
   )
 }
 
 export function KnowledgeBaseScreen({ subsection, path = [] }: { subsection?: string; path?: string[] }) {
   const catalog = useUiV1KnowledgeCatalog(subsection)
+  const rules = useRuleTemplates(subsection === "classes" ? catalog.campaignId : "")
   const [query, setQuery] = useState("")
 
   if (!subsection) {
@@ -478,6 +607,24 @@ export function KnowledgeBaseScreen({ subsection, path = [] }: { subsection?: st
       return <FutureConnection title="Классы" backTo="home/knowledge-base/classes" />
     }
 
+    const classPresentation = buildClassPresentation(selectedClass, rules.templates, rules.levels)
+
+    if (path[1] === "features") {
+      const feature = classPresentation.features[Number(path[2])]
+      if (!feature) {
+        return <FutureConnection title={selectedClass.name} backTo={`home/knowledge-base/classes/${selectedClass.id}`} />
+      }
+
+      return (
+        <FeatureDetailScreen
+          sourceTitle={selectedClass.name}
+          sourceKind="Класс"
+          feature={feature}
+          backTo={`home/knowledge-base/classes/${selectedClass.id}`}
+        />
+      )
+    }
+
     if (path[1] === "subclasses") {
       if (path[2]) {
         const selectedSubclass = selectedClass.subclasses.find((subclass) => subclass.id === path[2])
@@ -490,13 +637,47 @@ export function KnowledgeBaseScreen({ subsection, path = [] }: { subsection?: st
           )
         }
 
-        return <SubclassDetailScreen entry={selectedClass} subclass={selectedSubclass} />
+        const subclassPresentation = buildSubclassPresentation(
+          selectedClass,
+          selectedSubclass,
+          rules.templates,
+          rules.levels,
+        )
+
+        if (path[3] === "features") {
+          const feature = subclassPresentation.features[Number(path[4])]
+          if (!feature) {
+            return (
+              <FutureConnection
+                title={selectedSubclass.name}
+                backTo={`home/knowledge-base/classes/${selectedClass.id}/subclasses/${selectedSubclass.id}`}
+              />
+            )
+          }
+
+          return (
+            <FeatureDetailScreen
+              sourceTitle={selectedSubclass.name}
+              sourceKind="Подкласс"
+              feature={feature}
+              backTo={`home/knowledge-base/classes/${selectedClass.id}/subclasses/${selectedSubclass.id}`}
+            />
+          )
+        }
+
+        return (
+          <SubclassDetailScreen
+            entry={selectedClass}
+            subclass={selectedSubclass}
+            presentation={subclassPresentation}
+          />
+        )
       }
 
       return <SubclassCatalogScreen entry={selectedClass} query={query} setQuery={setQuery} />
     }
 
-    return <ClassDetailScreen entry={selectedClass} />
+    return <ClassDetailScreen entry={selectedClass} presentation={classPresentation} />
   }
 
   return (
