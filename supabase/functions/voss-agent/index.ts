@@ -321,6 +321,7 @@ Deno.serve(async (req: Request) => {
     "compile_mechanics никогда не применяет механику. Он создаёт проверенный артефакт и preview. apply_mechanics_compilation используй только после явной команды GM применить/сохранить/подключить конкретную компиляцию.",
     "Built-in class/subclass rule templates можно компилировать только как preview. Runtime apply к ним запрещён: изменение встроенного пакета требует Developer Mode, кода и package tests.",
     "Если компилятор вернул unsupported или needs_developer_mode=true, честно объясни пробел. Не утверждай, что механика работает, и не пытайся обойти ограничение через AI Draft, raw JSON, SQL или другой инструмент.",
+    "Если создаёшь AI Draft определения с исполняемой mechanics, сначала вызови compile_mechanics. В payload черновика положи ровно compilation.mechanics без изменений и mechanics_compilation_id = compilation.id. Иначе применение AI Draft будет отклонено.",
     "",
     "ТЕКУЩИЙ КОНТЕКСТ ИНТЕРФЕЙСА:",
     contextText,
