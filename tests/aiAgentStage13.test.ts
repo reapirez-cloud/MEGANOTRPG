@@ -185,7 +185,7 @@ test("Voss receives developer tools only with an active system-admin session", (
   assert.match(edge, /developerMode = true/)
   assert.match(
     edge,
-    /developerMode && isSystemAdmin[\s\S]*VOSS_DEVELOPER_TOOLS/,
+    /developerMode[\s\S]*isSystemAdmin[\s\S]*!mechanicsAuthoringRequested[\s\S]*VOSS_DEVELOPER_TOOLS/,
   )
   assert.match(edge, /devSessionId/)
   assert.match(edge, /devSessionToken/)
