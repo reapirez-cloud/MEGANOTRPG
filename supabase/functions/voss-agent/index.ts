@@ -103,7 +103,9 @@ function parseToolArguments(raw: unknown): JsonRecord {
   }
 
   if (typeof raw !== "string") return {}
-  if (raw.length > 6000) return {}
+  // Structured draft/mechanics tools legitimately carry sizeable JSON payloads.
+  // Keep a hard ceiling, but do not truncate valid compiler input.
+  if (raw.length > 60000) return {}
 
   try {
     const parsed = JSON.parse(raw)
