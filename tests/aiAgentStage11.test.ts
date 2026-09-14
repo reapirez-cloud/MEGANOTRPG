@@ -145,16 +145,20 @@ test("generated garbage is marked first and purged only after three days", () =>
   assert.match(tools, /\.storage[\s\S]*?\.remove\(/)
 })
 
-test("image models stay hidden from the ordinary campaign model selector", () => {
+test("CheapVibeCode image model stays hidden from the ordinary campaign model selector", () => {
   const migration = read(
-    "supabase/migrations/20260914190600_agent_jobs_and_generated_media_stage11.sql",
+    "supabase/migrations/20260914235500_cheapvibecode_image_registry.sql",
   )
   const stage9 = read(
     "supabase/migrations/20260914182800_ai_agent_security_provider_foundation_stage9.sql",
   )
 
-  assert.match(migration, /model_kind[\s\S]*?'image'/)
-  assert.match(migration, /gm_selectable[\s\S]*?false/)
+  assert.match(migration, /'cheapvibecode-image'/)
+  assert.match(migration, /'gpt-image-2'/)
+  assert.match(migration, /'image'/)
+  assert.match(migration, /gm_selectable[\s\S]*false/)
+  assert.match(migration, /gpt-image-2\.5-flare/)
+  assert.match(migration, /gpt-image-2\.5-sunburst/)
   assert.match(stage9, /model_kind = 'agent'/)
   assert.match(stage9, /access_scope = 'campaign'/)
 })
