@@ -1,6 +1,6 @@
-# AI Agent Foundation — Voss Stages 1–7
+# AI Agent Foundation — Voss Stages 1–8
 
-> Status: **STAGES 1–7 IMPLEMENTED**
+> Status: **STAGES 1–8 IMPLEMENTED**
 >
 > This is the canonical starting point for AI inside MEGANOT RPG. Future AI work must extend this boundary instead of calling model APIs directly from React components.
 
@@ -583,6 +583,159 @@ domain read-tool → current canonical owner state
 
 If saved memory conflicts with current owner state, Voss must treat the owner state as current truth and memory as history.
 
+## Stage 8 — task-aware model routing
+
+Stage 8 separates the **agent** from the **model used for one request**.
+
+The server classifies every Voss request before the provider call into one task:
+
+```text
+general
+reference_read
+memory_read
+memory_write
+workshop
+draft_edit
+```
+
+The model never chooses its own route. Routing is deterministic server policy.
+
+### Player lock
+
+Player-originated requests are permanently:
+
+```text
+requester = player
+→ base model
+→ route_mode = base_lock
+```
+
+This rule ignores GM route preferences and campaign primary-model selection.
+
+If the base model lacks a capability required by the classified task, the request remains on the base model and is marked `degraded`. The router does not silently grant players a stronger model.
+
+### GM primary model
+
+`ai_agent_settings.selected_model_id` is now the GM's **primary model**, not a promise that every task must use it.
+
+The primary model is the normal default for:
+
+- general conversation;
+- explicit memory writes;
+- Workshop content creation;
+- AI Draft editing.
+
+If the primary model lacks a required capability such as tool calling, the server may select a compatible fallback.
+
+### Automatic economical reads
+
+Default automatic routing for:
+
+```text
+reference_read
+memory_read
+```
+
+selects the cheapest compatible model using:
+
+```text
+cost_tier ascending
+latency_tier ascending
+reasoning_tier descending
+```
+
+Only models that satisfy required capabilities are eligible.
+
+This lets inexpensive models handle retrieval/tool orchestration while preserving stronger models for heavier authoring/reasoning work.
+
+### Complex-task fallback
+
+Workshop and draft-edit tasks prefer the GM primary model.
+
+When fallback selection is required, compatible candidates are ranked using:
+
+```text
+reasoning_tier descending
+supports_json preferred
+cost_tier ascending
+latency_tier ascending
+```
+
+This prepares the same routing layer for the future AI-GM Director without coupling Voss to one provider or model name.
+
+### Registry metadata
+
+`ai_models` now also contains:
+
+```text
+reasoning_tier  1..5
+latency_tier    1..5
+```
+
+Existing metadata remains authoritative for capabilities:
+
+```text
+supports_tools
+supports_json
+supports_streaming
+cost_tier
+context_window
+```
+
+No provider/model names are hard-coded into routing logic.
+
+### Per-task route policy
+
+`ai_agent_model_routes` can override one campaign/agent/task route with:
+
+```text
+auto
+primary
+base
+fixed
+```
+
+`fixed` references one registered model.
+
+If a fixed or primary model is disabled or lacks a required capability, the router uses a safe fallback and records the reason.
+
+### Audit trail
+
+Every routing decision is recorded in `ai_model_route_runs`:
+
+- campaign;
+- user;
+- thread;
+- agent;
+- classified task;
+- actual model;
+- route mode;
+- reason;
+- degraded flag;
+- timestamp.
+
+Users can read their own route history; campaign managers can inspect campaign route history. Clients cannot insert route audit rows directly.
+
+Assistant messages also store their `task_key`.
+
+### UI
+
+The Voss panel continues to show the GM's **Основная модель** selector.
+
+After a request it also shows the actual route:
+
+```text
+ROUTER · MEMORY_READ · <model> · AUTO
+```
+
+This prevents the UI from pretending the primary-model selector means the same model handled every request.
+
+### Current registry state
+
+Stage 8 works even with a one-model registry. With only the base model registered, all routes resolve to that model and capability-heavy tasks may be marked degraded.
+
+As additional DeepSeek/Kimi/etc. models are registered with accurate capability/tier metadata, routing starts using them without changes to the Voss agent.
+
 ## Persistence
 
 Tables:
@@ -594,27 +747,20 @@ Tables:
 
 All public tables have RLS.
 
-## Current limitations after Stage 7
+## Current limitations after Stage 8
 
-Voss currently has no domain write tools.
+Voss now has read tools, durable campaign memory, structured AI Draft creation/editing and GM-approved canonical execution through Oracle.
 
-If asked to create a zone, NPC or item, he may propose a structure in prose, but he must not claim that it was created.
+The remaining architectural limitation is that Voss is still an **assistant**, not an autonomous GM:
 
-Future write flow:
+- no explicit AI-GM mode;
+- no autonomous scene/world progression;
+- no Director/Narrator split;
+- no NPC autonomy loop.
 
-```text
-Voss
-→ structured AI Draft
-→ validator
-→ GM preview / approval
-→ Oracle
-→ explicit canonical owner (Larisa / Shapoklyak / Chasovoy / ...)
-```
-
-The model must never receive unrestricted SQL or generic table-write access.
+The model still never receives unrestricted SQL or generic table-write access.
 
 ## Planned continuation
 
-8. Model routing by task.
 9. Explicit AI-GM mode.
 10. Director / Narrator split for autonomous play.
