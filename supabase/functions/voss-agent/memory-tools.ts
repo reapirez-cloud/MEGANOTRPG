@@ -369,8 +369,9 @@ async function searchCampaignMemory(
       .limit(limit),
     context.client
       .from("campaign_memory_summaries")
-      .select("id,title,summary,period_start,period_end,key_event_ids,visibility,room_id,created_at,updated_at")
+      .select("id,title,summary,period_start,period_end,key_event_ids,visibility,room_id,status,created_at,updated_at")
       .eq("campaign_id", context.campaignId)
+      .eq("status", "active")
       .ilike("summary", pattern)
       .order("period_end", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
