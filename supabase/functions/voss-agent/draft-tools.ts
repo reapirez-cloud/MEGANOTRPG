@@ -305,7 +305,7 @@ function normalizeRelation(raw: unknown): DraftRelation | null {
     const id = text(existing.id, 100)
     if (NODE_TYPES.has(entityType) && id) {
       toExisting = {
-        entity_type: entityType as DraftRelation["to_existing"]["entity_type"],
+        entity_type: entityType as "location" | "character" | "definition",
         id,
         ...(text(existing.label, 160)
           ? { label: text(existing.label, 160) }
