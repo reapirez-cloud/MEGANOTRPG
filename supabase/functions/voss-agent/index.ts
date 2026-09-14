@@ -20,6 +20,10 @@ import {
   recordVossRouteRun,
   resolveVossModel,
 } from "./model-router.ts"
+import {
+  ProviderGatewayError,
+  requestChatCompletion,
+} from "./provider-gateway.ts"
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -212,21 +216,6 @@ Deno.serve(async (req: Request) => {
 
   const resolvedModel = routeDecision.model
 
-  const apiBase = getEnv("AI_API_BASE_URL").replace(/\/+$/, "")
-  const apiKey = getEnv("AI_API_KEY")
-  const defaultModel = getEnv("AI_DEFAULT_MODEL")
-  const providerModel = resolvedModel.model_key === "__default__"
-    ? defaultModel
-    : resolvedModel.model_key
-
-  if (!apiBase || !apiKey || !providerModel) {
-    return reply({
-      error: "AI provider is not configured yet",
-      code: "ai_provider_not_configured",
-      model: resolvedModel.display_name,
-    }, 503)
-  }
-
   let threadId = ""
   const { data: existingThread, error: threadLookupError } = await admin
     .from("ai_threads")
@@ -340,43 +329,29 @@ Deno.serve(async (req: Request) => {
   let lastProviderPayload: any = null
 
   for (let round = 0; round < 5; round += 1) {
-    let providerResponse: Response
+    let providerPayload: any
     try {
-      providerResponse = await fetch(apiBase + "/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer " + apiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: providerModel,
-          messages: providerMessages,
-          temperature: 0.55,
-          ...(availableTools.length
-            ? {
-                tools: availableTools,
-                tool_choice: "auto",
-              }
-            : {}),
-        }),
+      providerPayload = await requestChatCompletion({
+        model: resolvedModel,
+        messages: providerMessages,
+        tools: availableTools,
+        temperature: 0.55,
       })
     } catch (error) {
+      if (error instanceof ProviderGatewayError) {
+        return reply({
+          error: error.message,
+          code: error.code,
+          providerStatus: error.providerStatus,
+          detail: error.detail,
+          model: resolvedModel.display_name,
+        }, error.status)
+      }
       return reply({
         error: "AI provider request failed",
         detail: error instanceof Error ? error.message : String(error),
       }, 502)
     }
-
-    if (!providerResponse.ok) {
-      const detail = (await providerResponse.text()).slice(0, 800)
-      return reply({
-        error: "AI provider returned an error",
-        providerStatus: providerResponse.status,
-        detail,
-      }, 502)
-    }
-
-    const providerPayload = await providerResponse.json()
     lastProviderPayload = providerPayload
     const assistantMessage = providerMessage(providerPayload)
     const toolCalls = availableTools.length && Array.isArray(assistantMessage.tool_calls)
