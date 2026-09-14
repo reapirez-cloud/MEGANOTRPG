@@ -136,6 +136,162 @@ export const VOSS_DRAFT_TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "read_content_draft",
+      description:
+        "Read one existing GM-only AI draft before revising it. Returns the current revision, structured nodes, relations and validation warnings. This does not read canonical game state.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          draft_id: { type: "string" },
+        },
+        required: ["draft_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "revise_content_draft",
+      description:
+        "Create a new immutable revision of an existing AI draft using targeted changes. Read the draft first. This NEVER changes canonical MEGANOT state.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          draft_id: { type: "string" },
+          expected_revision: {
+            type: "integer",
+            minimum: 1,
+          },
+          change_summary: {
+            type: "string",
+            description: "Short human-readable summary of requested changes.",
+          },
+          title: { type: "string" },
+          summary: { type: "string" },
+          nodes_upsert: {
+            type: "array",
+            maxItems: 16,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                key: { type: "string" },
+                entity_type: {
+                  type: "string",
+                  enum: ["location", "character", "definition"],
+                },
+                entity_subtype: {
+                  type: "string",
+                  enum: [
+                    "npc",
+                    "pc",
+                    "item",
+                    "spell",
+                    "feature",
+                    "condition",
+                    "feat",
+                    "reference",
+                  ],
+                },
+                name: { type: "string" },
+                summary: { type: "string" },
+                payload: {
+                  type: "object",
+                  additionalProperties: true,
+                },
+              },
+              required: ["key", "entity_type", "name", "summary", "payload"],
+            },
+          },
+          node_keys_remove: {
+            type: "array",
+            maxItems: 16,
+            items: { type: "string" },
+          },
+          relations_add: {
+            type: "array",
+            maxItems: 24,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                kind: {
+                  type: "string",
+                  enum: [
+                    "parent_location",
+                    "location_transition",
+                    "npc_habitat",
+                    "inventory_owner",
+                    "depends_on",
+                  ],
+                },
+                from_key: { type: "string" },
+                to_key: { type: "string" },
+                to_existing: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    entity_type: {
+                      type: "string",
+                      enum: ["location", "character", "definition"],
+                    },
+                    id: { type: "string" },
+                    label: { type: "string" },
+                  },
+                  required: ["entity_type", "id"],
+                },
+                label: { type: "string" },
+                data: {
+                  type: "object",
+                  additionalProperties: true,
+                },
+              },
+              required: ["kind", "from_key"],
+            },
+          },
+          relations_remove: {
+            type: "array",
+            maxItems: 24,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                kind: {
+                  type: "string",
+                  enum: [
+                    "parent_location",
+                    "location_transition",
+                    "npc_habitat",
+                    "inventory_owner",
+                    "depends_on",
+                  ],
+                },
+                from_key: { type: "string" },
+                to_key: { type: "string" },
+                to_existing_id: { type: "string" },
+                label: { type: "string" },
+              },
+              required: ["kind", "from_key"],
+            },
+          },
+        },
+        required: [
+          "draft_id",
+          "expected_revision",
+          "change_summary",
+          "nodes_upsert",
+          "node_keys_remove",
+          "relations_add",
+          "relations_remove",
+        ],
+      },
+    },
+  },
 ] as const
 
 const NODE_TYPES = new Set(["location", "character", "definition"])
