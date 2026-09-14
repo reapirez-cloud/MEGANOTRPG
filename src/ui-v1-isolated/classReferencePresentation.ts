@@ -13,7 +13,6 @@ import {
   getClericSubclassVossComment,
   getClericSubclassVossNarration,
 } from "../data/classes/clericVossNarration"
-import { druidReference } from "../data/classes/druidReference"
 import {
   druidClassVossComment,
   druidClassVossNarration,
@@ -395,9 +394,6 @@ function authoredFeatureView(
 }
 
 function authoredClassFeatures(entry: ClassReferenceEntry) {
-  if (entry.id === "druid") {
-    return druidReference.features as ClassReferenceSubclassFeature[]
-  }
   return entry.features || []
 }
 
