@@ -374,12 +374,12 @@ function SubclassCatalogScreen({
   )
 }
 
-function subclassHeroArtPath(entry: ClassReferenceEntry, subclass: ClassReferenceSubclass) {
-  return `/ui-v1/subclasses/${entry.id}/${subclass.id}.webp`
-}
-
 function classHeroFallbackPath(entry: ClassReferenceEntry) {
   return `/ui-v1/classes/${entry.id}.webp`
+}
+
+function subclassDetailArtPath(entry: ClassReferenceEntry, subclass: ClassReferenceSubclass) {
+  return subclassPreviewArtPath(entry, subclass) ?? classHeroFallbackPath(entry)
 }
 
 function SubclassDetailScreen({
@@ -400,7 +400,7 @@ function SubclassDetailScreen({
         <span className="u1-subclass-hero__texture" aria-hidden="true" />
         <img
           className="u1-subclass-hero__image"
-          src={subclassHeroArtPath(entry, subclass)}
+          src={subclassDetailArtPath(entry, subclass)}
           alt=""
           loading="eager"
           decoding="async"
