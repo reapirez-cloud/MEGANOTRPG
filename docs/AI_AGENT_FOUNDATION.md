@@ -1,6 +1,6 @@
-# AI Agent Foundation — Voss Stages 1–6
+# AI Agent Foundation — Voss Stages 1–7
 
-> Status: **STAGES 1–6 IMPLEMENTED**
+> Status: **STAGES 1–7 IMPLEMENTED**
 >
 > This is the canonical starting point for AI inside MEGANOT RPG. Future AI work must extend this boundary instead of calling model APIs directly from React components.
 
@@ -403,6 +403,178 @@ The row also receives `applied_at` and `applied_by`.
 
 Players still cannot approve AI Drafts, and the Voss model itself has no canonical execution capability.
 
+## Stage 7 — durable campaign memory
+
+Stage 7 adds a durable history layer for questions such as:
+
+```text
+Что было в прошлой сцене?
+Когда мы впервые встретили этого NPC?
+Почему группа не доверяет барону?
+Кто обещал вернуть артефакт?
+Что произошло перед закрытием той сцены?
+```
+
+The memory architecture deliberately separates **events**, **remembered facts** and **summaries**.
+
+### Durable event log
+
+`campaign_events` stores server-confirmed historical evidence.
+
+Current automatic sources:
+
+- game-category `chat_messages`;
+- structured gameplay chat events such as rolls/actions/spells;
+- `campaign_updates`;
+- successful AI Draft apply-runs.
+
+Flood chat is not ingested.
+
+Existing history is backfilled by the Stage 7 migration, so memory starts with previous campaign data instead of only future messages.
+
+Chat-memory rows stay synchronized with the source message:
+
+- insert → event appears;
+- edit → event text/payload updates;
+- delete → event disappears.
+
+The process-local `engineEventBus` remains deliberately ephemeral and is **not** treated as durable truth.
+
+### Provenance and confidence
+
+Each event stores:
+
+- event type;
+- source kind and source id;
+- occurrence time;
+- room/location/actor/participants where available;
+- compact summary;
+- structured payload;
+- importance;
+- confidence;
+- provenance metadata.
+
+A chat statement proves that the statement was recorded in the visible room. It does not automatically prove that the speaker's claim was objectively true.
+
+### Visibility / secrets
+
+Memory has its own RLS-aware visibility scopes:
+
+```text
+campaign
+gm
+room
+users
+characters
+```
+
+`room` delegates to the existing `private.can_read_chat_room` rule.
+
+`users` intentionally has **no GM/admin override**. This preserves the project rule that user-only / "Только я" information must not become visible merely because someone is an administrator.
+
+Facts and summaries use the same visibility contract.
+
+### Remembered facts
+
+`campaign_memory_facts` stores structured, derived memory such as:
+
+```text
+subject: Baron Kessler
+predicate: owes
+statement: "Барон обещал группе безопасный проход."
+sources: [event ids]
+confidence: 0.9
+```
+
+Facts are not canonical game state.
+
+They support explicit lifecycle:
+
+```text
+active
+superseded
+retracted
+```
+
+A correction creates a new fact and can explicitly supersede the old one. Old memory is not silently overwritten.
+
+### Saved summaries
+
+`campaign_memory_summaries` stores lossy recap caches:
+
+- title;
+- summary;
+- period start/end;
+- key source event ids;
+- visibility;
+- model and creator provenance.
+
+A summary helps retrieval but never replaces the underlying event evidence.
+
+### Voss memory tools
+
+Read tools available to any user whose selected/base model supports tools:
+
+```text
+search_campaign_memory
+read_campaign_timeline
+```
+
+The signed-in Supabase client performs these reads, so RLS filters memory before the model receives it.
+
+GM-only write tools:
+
+```text
+remember_campaign_fact
+save_campaign_summary
+```
+
+These write tools are not automatic. Voss may use them only when the GM explicitly asks to remember, fix or save something.
+
+A normal question such as "что было вчера?" does not authorize a memory write.
+
+### No visibility widening
+
+A derived fact/summary may not be published more broadly than its source events.
+
+Examples:
+
+```text
+GM-only source → campaign summary    BLOCKED
+private room source → campaign fact BLOCKED
+campaign source → GM summary        allowed
+same room sources → room summary    allowed
+```
+
+The Stage 7 tool validates this server-side before writing derived memory.
+
+### Current retrieval strategy
+
+Stage 7 uses:
+
+- structured timeline filters;
+- source type / room / location / character filters;
+- bounded lexical memory search;
+- saved fact and recap caches.
+
+Embeddings/vector retrieval are intentionally not canonical memory and are not required for Stage 7. They may be added later as an optional retrieval index.
+
+### Canonical-current-state rule
+
+For historical questions:
+
+```text
+campaign memory → evidence of what happened
+```
+
+For current-state questions:
+
+```text
+domain read-tool → current canonical owner state
+```
+
+If saved memory conflicts with current owner state, Voss must treat the owner state as current truth and memory as history.
+
 ## Persistence
 
 Tables:
@@ -414,7 +586,7 @@ Tables:
 
 All public tables have RLS.
 
-## Current limitations after Stage 6
+## Current limitations after Stage 7
 
 Voss currently has no domain write tools.
 
@@ -435,7 +607,6 @@ The model must never receive unrestricted SQL or generic table-write access.
 
 ## Planned continuation
 
-7. Campaign event memory / retrieval / summaries.
 8. Model routing by task.
 9. Explicit AI-GM mode.
 10. Director / Narrator split for autonomous play.
