@@ -35,6 +35,11 @@ const approvedClassPanelAssets = [
   "public/ui-v1/classes/cleric.webp",
   "public/ui-v1/classes/druid.webp",
   "public/ui-v1/classes/bard.webp",
+  "public/ui-v1/classes/paladin.webp",
+  "public/ui-v1/classes/sorcerer.webp",
+  "public/ui-v1/classes/wizard.webp",
+  "public/ui-v1/classes/rogue.webp",
+  "public/ui-v1/classes/monk.webp",
 ]
 const sectionScreens = fs.readFileSync("src/ui-v1-isolated/SectionScreens.tsx", "utf8")
 const sectionData = fs.readFileSync("src/ui-v1-isolated/useUiV1SectionData.ts", "utf8")

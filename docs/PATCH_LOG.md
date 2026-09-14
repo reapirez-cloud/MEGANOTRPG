@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Added the supplied panoramic grayscale previews to the UI 1.0 Class catalog for **Паладин**, **Чародей**, **Волшебник**, **Вор**, and **Монах**. The catalog now resolves this second set through the same stable class-id asset path as the first five previews.
 - Added the supplied panoramic grayscale previews to the UI 1.0 Class catalog for **Воин**, **Колдун**, **Жрец**, **Друид**, and **Бард**. Each file now uses the exact class id expected by the rendered card, so the artwork appears without a separate content mapping or remote dependency.
 - Replaced free-text character class entry with real active class-template selection. Character creation now binds the selected class through Shapoklyak/Character Engine; later class/subclass/level changes use the same canonical template-assignment path and keep projected class/total level synchronized.
 - Replaced the UI 1.0 character-route placeholder with a real Character View for GM control: sheet editing, HP, recovery, inventory equip/edit/transfer/delete, spell edit/preparation/delete, feature edit/delete and canonical class management through Snake.
