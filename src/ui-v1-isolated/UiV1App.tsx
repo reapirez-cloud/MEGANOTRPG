@@ -148,7 +148,7 @@ function softHaptic() {
 function routeKey(route: Route) {
   if (route.type === "root") return `root:${route.space}`
   if (route.type === "section") {
-    return `section:${route.section}:${route.subsection || "index"}`
+    return `section:${route.section}:${route.subsection || "index"}:${route.tail.join("/")}`
   }
   return route.page === "character"
     ? `workspace:character:${route.characterId}`
@@ -470,7 +470,7 @@ function Screen({ route }: { route: Route }) {
   if (route.type === "section") {
     if (route.section === "whats-new") return <WhatsNew />
     if (route.section === "world") return <WorldSectionScreen subsection={route.subsection} path={route.tail} />
-    if (route.section === "knowledge-base") return <KnowledgeBaseScreen subsection={route.subsection} />
+    if (route.section === "knowledge-base") return <KnowledgeBaseScreen subsection={route.subsection} path={route.tail} />
     if (route.section === "society-news") return <SocietyNewsScreen />
     if (route.section === "achievements") return <AchievementsScreen />
 
