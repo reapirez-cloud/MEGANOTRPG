@@ -1,4 +1,8 @@
-import { useAI, type AIDraft } from "../ai/AIProvider"
+import {
+  useAI,
+  useAIViewContextLayer,
+  type AIDraft,
+} from "../ai/AIProvider"
 import type { SnakeAction } from "../snake-engine"
 import type { ChasovoyDefinitionKind } from "../reference-engine/index.ts"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
@@ -22,6 +26,28 @@ export default function GMWorkshopDraft({
 }) {
   const snake = useSnake()
   const { drafts: aiDrafts } = useAI()
+
+  useAIViewContextLayer(
+    "gm-workshop-ai-drafts",
+    {
+      screen: "gm-workshop-ai-drafts",
+      title: "Мастерская · AI-черновики",
+      text: "Открыт раздел Черновика GM. Здесь отдельно показаны структурированные предложения Восса, которые ещё не являются каноном.",
+      facts: {
+        aiDrafts: aiDrafts.slice(0, 20).map((draft) => ({
+          id: draft.id,
+          type: draft.draft_type,
+          title: draft.title,
+          summary: draft.summary,
+          revision: draft.current_revision,
+          warnings: draft.validation_warnings,
+          nodes: draft.content.nodes,
+          relations: draft.content.relations,
+        })),
+      },
+    },
+    52,
+  )
 
   function openAIDraft(draft: AIDraft) {
     const nodes = draft.content.nodes || []
