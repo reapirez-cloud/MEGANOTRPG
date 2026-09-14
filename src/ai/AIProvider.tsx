@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react"
 
+import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
 import { supabase } from "../lib/supabase"
 
 export type AIViewEntity = {
@@ -128,6 +129,33 @@ export type AIDraft = {
   updated_at: string
 }
 
+export type AIMediaAsset = {
+  id: string
+  source_job_id: string | null
+  variant_index: number
+  status: "generated" | "reviewed" | "attached" | "rejected" | "garbage"
+  purpose: string
+  profile: string
+  storage_path: string
+  review: Record<string, unknown>
+  created_at: string
+  url: string | null
+}
+
+export type AIAgentJob = {
+  id: string
+  status: "queued" | "running" | "waiting_for_user" | "completed" | "failed" | "cancelled"
+  input: Record<string, unknown>
+  result: Record<string, unknown>
+  requested_outputs: number
+  completed_outputs: number
+  error_code: string | null
+  error_message: string | null
+  created_at: string
+  updated_at: string
+  outputs: AIMediaAsset[]
+}
+
 type AIContextValue = {
   campaignId: string
   userId: string
@@ -137,6 +165,7 @@ type AIContextValue = {
   lastRoute: AIRouteInfo | null
   messages: AIConversationMessage[]
   drafts: AIDraft[]
+  jobs: AIAgentJob[]
   loading: boolean
   sending: boolean
   error: string | null
@@ -152,6 +181,7 @@ type AIContextValue = {
   send: (message: string) => Promise<boolean>
   refreshConversation: () => Promise<void>
   refreshDrafts: () => Promise<void>
+  refreshJobs: () => Promise<void>
 }
 
 const AIContext = createContext<AIContextValue | null>(null)
@@ -229,6 +259,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const [lastRoute, setLastRoute] = useState<AIRouteInfo | null>(null)
   const [messages, setMessages] = useState<AIConversationMessage[]>([])
   const [drafts, setDrafts] = useState<AIDraft[]>([])
+  const [jobs, setJobs] = useState<AIAgentJob[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -350,6 +381,107 @@ export function AIProvider({ children }: { children: ReactNode }) {
     }
   }, [campaignId, canManage, loadDraftsFor])
 
+  const loadJobsFor = useCallback(async (
+    nextCampaignId: string,
+    nextUserId: string,
+  ) => {
+    const { data: jobRows, error: jobError } = await supabase
+      .from("agent_jobs")
+      .select("id,status,input,result,requested_outputs,completed_outputs,error_code,error_message,created_at,updated_at")
+      .eq("campaign_id", nextCampaignId)
+      .eq("requested_by", nextUserId)
+      .eq("job_type", "image_generate")
+      .order("created_at", { ascending: false })
+      .limit(12)
+
+    if (jobError) throw jobError
+
+    const ids = (jobRows || []).map((job) => job.id)
+    let assetRows: Array<{
+      id: string
+      source_job_id: string | null
+      variant_index: number
+      status: AIMediaAsset["status"]
+      purpose: string
+      profile: string
+      storage_path: string
+      review: Record<string, unknown>
+      created_at: string
+    }> = []
+
+    if (ids.length) {
+      const { data: assets, error: assetError } = await supabase
+        .from("media_assets")
+        .select("id,source_job_id,variant_index,status,purpose,profile,storage_path,review,created_at")
+        .in("source_job_id", ids)
+        .order("variant_index", { ascending: true })
+
+      if (assetError) throw assetError
+      assetRows = (assets || []) as typeof assetRows
+    }
+
+    const resolvedAssets = await Promise.all(
+      assetRows.map(async (asset): Promise<AIMediaAsset> => ({
+        ...asset,
+        url:
+          (await resolveCampaignMediaUrl(asset.storage_path)) ||
+          null,
+      })),
+    )
+
+    const assetsByJob = new Map<string, AIMediaAsset[]>()
+    for (const asset of resolvedAssets) {
+      if (!asset.source_job_id) continue
+      const current = assetsByJob.get(asset.source_job_id) || []
+      current.push(asset)
+      assetsByJob.set(asset.source_job_id, current)
+    }
+
+    setJobs(
+      (jobRows || []).map((job) => ({
+        ...(job as Omit<AIAgentJob, "outputs">),
+        outputs: (assetsByJob.get(job.id) || [])
+          .sort((left, right) => left.variant_index - right.variant_index),
+      })),
+    )
+  }, [])
+
+  const refreshJobs = useCallback(async () => {
+    if (!campaignId || !userId) {
+      setJobs([])
+      return
+    }
+
+    try {
+      await loadJobsFor(campaignId, userId)
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Не удалось загрузить задачи Восса.",
+      )
+    }
+  }, [campaignId, loadJobsFor, userId])
+
+  const hasActiveJobs = useMemo(
+    () => jobs.some((job) =>
+      job.status === "queued" ||
+      job.status === "running" ||
+      job.status === "waiting_for_user"
+    ),
+    [jobs],
+  )
+
+  useEffect(() => {
+    if (!campaignId || !userId || !hasActiveJobs) return
+
+    const timer = window.setInterval(() => {
+      void loadJobsFor(campaignId, userId)
+    }, 2200)
+
+    return () => window.clearInterval(timer)
+  }, [campaignId, hasActiveJobs, loadJobsFor, userId])
+
   useEffect(() => {
     const onHashChange = () => setRoute(window.location.hash || "#/home")
     window.addEventListener("hashchange", onHashChange)
@@ -442,6 +574,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
       try {
         await loadConversationFor(nextCampaignId, nextUserId)
+        await loadJobsFor(nextCampaignId, nextUserId)
         if (manager) {
           await loadDraftsFor(nextCampaignId)
         } else {
@@ -460,7 +593,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [loadConversationFor, loadDraftsFor])
+  }, [loadConversationFor, loadDraftsFor, loadJobsFor])
 
   const chooseModel = useCallback(async (modelId: string) => {
     if (!canManage || !campaignId || !userId) return false
@@ -537,6 +670,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     try {
       await loadConversationFor(campaignId, userId)
+      await loadJobsFor(campaignId, userId)
       if (canManage) await loadDraftsFor(campaignId)
     } catch {
       const now = new Date().toISOString()
@@ -549,7 +683,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     setSending(false)
     return true
-  }, [campaignId, canManage, loadConversationFor, loadDraftsFor, route, sending, userId, viewContext])
+  }, [campaignId, canManage, loadConversationFor, loadDraftsFor, loadJobsFor, route, sending, userId, viewContext])
 
   const value = useMemo<AIContextValue>(() => ({
     campaignId,
@@ -560,6 +694,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     lastRoute,
     messages,
     drafts,
+    jobs,
     loading,
     sending,
     error,
@@ -571,6 +706,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     send,
     refreshConversation,
     refreshDrafts,
+    refreshJobs,
   }), [
     campaignId,
     canManage,
@@ -578,12 +714,14 @@ export function AIProvider({ children }: { children: ReactNode }) {
     clearViewContextLayer,
     drafts,
     error,
+    jobs,
     loading,
     lastRoute,
     messages,
     models,
     refreshConversation,
     refreshDrafts,
+    refreshJobs,
     route,
     selectedModelId,
     send,
