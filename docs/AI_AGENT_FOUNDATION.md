@@ -1,6 +1,6 @@
-# AI Agent Foundation — Voss Stages 1–5
+# AI Agent Foundation — Voss Stages 1–6
 
-> Status: **STAGES 1–5 IMPLEMENTED**
+> Status: **STAGES 1–6 IMPLEMENTED**
 >
 > This is the canonical starting point for AI inside MEGANOT RPG. Future AI work must extend this boundary instead of calling model APIs directly from React components.
 
@@ -298,6 +298,111 @@ The GM Workshop displays recent revision summaries, and the Voss dock shows the 
 
 Stage 5 still has no canonical execution path. `revise_content_draft` writes only to the AI Draft System.
 
+## Stage 6 — explicit approval and canonical execution
+
+Stage 6 introduces the first path from an AI Draft into canonical MEGANOT state.
+
+The authority boundary is deliberately asymmetric:
+
+```text
+Voss model
+→ may create/revise AI Drafts
+→ CANNOT approve/apply
+
+GM UI
+→ explicit confirmation
+→ exact draft revision lock
+→ application service
+→ Oracle
+→ canonical owner engines
+```
+
+The model is never given an `approve` or `apply` tool.
+
+The Stage 6 executor lives in `src/ai/applyDraft.ts`. It does not write canonical domain tables directly. Canonical mutations are executed only through:
+
+- `oracle.world.*` → Larisa;
+- `oracle.characters.*` → Shapoklyak;
+- `oracle.definitions.*` → Chasovoy;
+- `oracle.inventory.*` → Cheburashka.
+
+Supabase access from the executor is used for preflight reads and the AI apply-run journal only.
+
+### Apply order
+
+The executor plans the whole run before the first mutation.
+
+```text
+1. preflight / visibility / existing-target checks
+2. parent locations before child locations
+3. location sections
+4. characters
+5. class template assignments
+6. Chasovoy definitions
+7. location transitions
+8. NPC habitats
+9. item issuance through Cheburashka
+10. mark exact AI Draft revision APPLIED
+```
+
+`parent_location` is folded into location creation. A transition uses an existing first section or an automatically-created `Переходы` section when the source location has no sections.
+
+`depends_on` is intentionally blocked from canonical application because no canonical engine currently owns that generic relation. The GM must remove or replace it before applying the draft.
+
+### Apply-run journal
+
+`ai_draft_apply_runs` records:
+
+- exact `draft_id` and `draft_revision`;
+- the immutable planned step list;
+- each completed step;
+- canonical ids returned by owner engines;
+- requesting GM;
+- final status and error.
+
+Possible statuses:
+
+```text
+running
+succeeded
+failed
+partial_failed
+```
+
+The exact draft revision is locked before the first canonical mutation. A successful apply is allowed only when every planned step has a matching receipt.
+
+A clean `failed` run may be retried for the same draft revision. `running`, `succeeded` and `partial_failed` runs block blind retries of that revision.
+
+### Partial failure policy
+
+The Stage 6 executor does **not** silently roll back already-created canonical entities. Cross-engine application is not one database transaction, and fake best-effort rollback would be more dangerous than an explicit partial state.
+
+If a later step fails after any owner engine has succeeded:
+
+```text
+status = partial_failed
+draft remains review
+created canonical ids remain in the apply-run journal
+GM gets the run id
+automatic retry is blocked
+```
+
+Even if the canonical engine call succeeds but the following receipt write fails because of a network problem, the client sends `partial_hint=true` so the run is not mislabeled as a clean retryable failure.
+
+This makes partial creation visible and inspectable instead of manufacturing duplicate locations/items on the next click.
+
+### Final draft state
+
+Only a fully completed run can move:
+
+```text
+ai_drafts.status: review → applied
+```
+
+The row also receives `applied_at` and `applied_by`.
+
+Players still cannot approve AI Drafts, and the Voss model itself has no canonical execution capability.
+
 ## Persistence
 
 Tables:
@@ -309,7 +414,7 @@ Tables:
 
 All public tables have RLS.
 
-## Current limitations after Stage 5
+## Current limitations after Stage 6
 
 Voss currently has no domain write tools.
 
@@ -330,7 +435,6 @@ The model must never receive unrestricted SQL or generic table-write access.
 
 ## Planned continuation
 
-6. Approved draft execution through Oracle and canonical engines.
 7. Campaign event memory / retrieval / summaries.
 8. Model routing by task.
 9. Explicit AI-GM mode.
