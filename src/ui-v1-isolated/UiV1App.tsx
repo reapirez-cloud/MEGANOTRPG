@@ -148,6 +148,9 @@ function softHaptic() {
 function routeKey(route: Route) {
   if (route.type === "root") return `root:${route.space}`
   if (route.type === "section") {
+    if (route.section === "knowledge-base" && route.subsection === "classes") {
+      return "section:knowledge-base:classes"
+    }
     return `section:${route.section}:${route.subsection || "index"}:${route.tail.join("/")}`
   }
   return route.page === "character"
