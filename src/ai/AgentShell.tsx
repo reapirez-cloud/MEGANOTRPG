@@ -43,6 +43,9 @@ function contextPrompts(
 
   if (/reference-(?:class|subclass|feature)|knowledge-base/u.test(screen)) {
     prompts.push("Объясни открытую механику простыми словами и отдельно назови точное правило.")
+    if (canManage && entity) {
+      prompts.push("Проверь, можно ли выразить открытую механику через CE, и собери безопасную компиляцию без применения.")
+    }
   } else if (/character/u.test(screen)) {
     prompts.push("Что в этом персонаже сейчас требует внимания?")
   } else if (/location|world/u.test(screen)) {
@@ -85,6 +88,14 @@ function imageJobStatus(status: string) {
   return status
 }
 
+function mechanicsStatus(status: string) {
+  if (status === "validated") return "Проверено"
+  if (status === "unsupported") return "Нужна доработка"
+  if (status === "applied") return "Применено"
+  if (status === "rejected") return "Отклонено"
+  return status
+}
+
 function recordField(value: unknown, key: string) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null
   const field = (value as Record<string, unknown>)[key]
@@ -101,6 +112,7 @@ export default function AgentShell() {
     messages,
     drafts,
     jobs,
+    mechanicsCompilations,
     loading,
     sending,
     error,
@@ -293,6 +305,77 @@ export default function AgentShell() {
         </div>
 
         <div className="u1-agent-log" ref={logRef} aria-live="polite">
+          {canManage && mechanicsCompilations[0] && (
+            <article
+              className="u1-agent-mechanics-card"
+              data-status={mechanicsCompilations[0].status}
+            >
+              <header>
+                <div>
+                  <span>MECHANICS COMPILER · v{mechanicsCompilations[0].compiler_version}</span>
+                  <strong>{mechanicsCompilations[0].title}</strong>
+                </div>
+                <b>{mechanicsStatus(mechanicsCompilations[0].status)}</b>
+              </header>
+
+              <p>{mechanicsCompilations[0].intent_text}</p>
+
+              <div className="u1-agent-mechanics-card__stats">
+                <small>
+                  {mechanicsCompilations[0].mechanics.length} мех.
+                </small>
+                <small>
+                  {mechanicsCompilations[0].coverage.filter((row) => row.owner === "ce").length} CE
+                </small>
+                <small>
+                  {mechanicsCompilations[0].coverage.filter((row) => row.owner === "hybrid").length} hybrid
+                </small>
+                <small>
+                  {mechanicsCompilations[0].coverage.filter((row) => row.owner === "gm").length} GM
+                </small>
+              </div>
+
+              {mechanicsCompilations[0].unsupported_reasons.length > 0 && (
+                <div className="u1-agent-mechanics-card__blocked">
+                  {mechanicsCompilations[0].unsupported_reasons.slice(0, 3).map((reason) => (
+                    <span key={reason}>{reason}</span>
+                  ))}
+                </div>
+              )}
+
+              {mechanicsCompilations[0].diagnostics.some(
+                (item) => item.severity === "error",
+              ) && (
+                <small className="u1-agent-mechanics-card__diagnostic">
+                  Ошибок компиляции:{" "}
+                  {mechanicsCompilations[0].diagnostics.filter(
+                    (item) => item.severity === "error",
+                  ).length}
+                </small>
+              )}
+
+              {mechanicsCompilations[0].status === "validated" && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    prefillPrompt(
+                      `Примени компиляцию механик ${mechanicsCompilations[0].id}.`,
+                    )
+                  }
+                  disabled={sending}
+                >
+                  Подготовить применение
+                </button>
+              )}
+
+              {mechanicsCompilations[0].status === "unsupported" && (
+                <small className="u1-agent-mechanics-card__law">
+                  Нельзя применять · пробел должен быть исправлен или передан в Developer Mode
+                </small>
+              )}
+            </article>
+          )}
+
           {canManage && drafts[0] && (
             <article className="u1-agent-draft-card">
               <span>AI DRAFT · НЕ КАНОН</span>
