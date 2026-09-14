@@ -1056,7 +1056,32 @@ The non-negotiable presentation law is:
 show_all_requested_outputs
 ```
 
-If three images were requested, the Agent UI renders all three. A preferred variant receives a small `Выбор Восса` mark, but no generated alternative is hidden, discarded or replaced by the reviewer.
+If two alternatives were requested, the Agent UI renders both. A preferred variant receives a small `Выбор Восса` mark, but no generated alternative is hidden, discarded or replaced by the reviewer.
+
+### CheapVibeCode image provider contract
+
+The active image worker uses CheapVibeCode's OpenAI-compatible image endpoints.
+
+Runtime contract:
+
+```text
+model = gpt-image-2
+variants = 1 or 2
+quality = low | medium | high
+response_format = b64_json
+```
+
+The server does not send speculative OpenAI-only fields such as `output_compression` or `background`.
+
+Generation and edit endpoints are derived from:
+
+```text
+OPENAI_IMAGE_API_BASE_URL
+→ /images/generations
+→ /images/edits
+```
+
+The returned base64 payload is inspected by magic bytes before storage, so PNG/JPEG/WebP are persisted with their real MIME type and extension instead of being mislabeled.
 
 ### Generated media lifecycle
 
@@ -1075,7 +1100,7 @@ garbage
 Runtime generated files live in the existing private `campaign-media` bucket:
 
 ```text
-<campaign>/<creator>/ai-assets/<asset>/image.webp
+<campaign>/<creator>/ai-assets/<asset>/image.<detected-format>
 ```
 
 An unattached asset is creator-visible only.
@@ -1114,7 +1139,7 @@ Player generation is limited to:
 10 generated outputs / day
 ```
 
-Variants consume outputs. One request for three variants consumes three.
+Variants consume outputs. One request for two variants consumes two.
 
 The reservation RPC locks the user's daily quota before inserting the job, so simultaneous requests cannot trivially bypass the limit.
 
@@ -1130,7 +1155,7 @@ Users continue talking to the global agent:
 
 ```text
 сделай ему портрет
-сделай три варианта
+сделай два варианта
 поставь вторую
 удали мусор
 ```
