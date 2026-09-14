@@ -22,11 +22,6 @@ import {
   VOSS_IMAGE_TOOLS,
 } from "./image-tools.ts"
 import {
-  executeVossMechanicsTool,
-  isVossMechanicsTool,
-  VOSS_MECHANICS_TOOLS,
-} from "./mechanics-tools.ts"
-import {
   executeVossDeveloperTool,
   isVossDeveloperTool,
   VOSS_DEVELOPER_TOOLS,
@@ -87,6 +82,15 @@ function cleanContext(input: unknown): JsonRecord {
     truncated: true,
     text: raw.slice(0, 24000),
   }
+}
+
+function isMechanicsAuthoringRequest(message: string) {
+  const text = message.toLocaleLowerCase("ru-RU")
+  const mechanicSubject =
+    /(механик|character engine|\bce\b|ресурс|перезаряд|recharge|формул|модификатор|прогресси|триггер|storedmechanics|sourcekey|исполняем(?:ая|ые|ую)|runtime)/u.test(text)
+  const authoringIntent =
+    /(создай|создать|сделай|сделать|добавь|добавить|измени|изменить|исправ|реализ|подключ|скомпилир|напиши|спроектир|придумай)/u.test(text)
+  return mechanicSubject && authoringIntent
 }
 
 function providerMessage(payload: any): ProviderMessage {
@@ -303,6 +307,7 @@ Deno.serve(async (req: Request) => {
   const requestedDevSessionToken =
     typeof body.devSessionToken === "string" ? body.devSessionToken : ""
   const incomingAttachments = normalizeAttachments(body.attachments)
+  const mechanicsAuthoringRequested = isMechanicsAuthoringRequest(message)
 
   if (!campaignId) return reply({ error: "campaignId is required" }, 400)
   if (!message) return reply({ error: "message is required" }, 400)
@@ -519,17 +524,10 @@ Deno.serve(async (req: Request) => {
     "Если пользователь говорит «вторую», «первую», «последний арт» или похожим образом ссылается на прошлую генерацию, используй list_recent_image_jobs и разреши ссылку по job + variant_index. Не угадывай asset id.",
     "attach_generated_image используй только после явной просьбы применить конкретный результат. Сервер повторно проверяет права на целевую сущность.",
     "Ненужную генерацию можно пометить через mark_generated_image_garbage. Физическое удаление разрешено только после трёх дней через purge_generated_image_garbage.",
-    "Когда GM просит создать, изменить или подключить игровую механику, сначала используй Mechanics Compiler, а не придумывай код, SQL или новую runtime-систему.",
-    "compile_mechanics компилирует только в существующий StoredMechanics/Character Engine DSL: numeric, formula, grant, resource, action, spell. Не выдумывай новые type/field.",
-    "Перед компиляцией раздели каждую часть правила на CE-owned, GM-adjudicated или hybrid. CE-owned — только устойчивое детерминированное состояние, которым приложение реально владеет. GM-adjudicated — сцена, действие, реакция, попадание, провал спасброска, видимость цели, погода, наличие трупа, once-per-turn/round без реального turn tracker. Hybrid хранит в CE только устойчивую часть.",
-    "Никогда не создавай fake state вроде hit_confirmed, target_visible, reaction_available, once_per_turn или weather_raining, чтобы сделать механику якобы автоматической. Такие условия остаются точным текстом для ГМ.",
-    "Если существующий DSL не умеет выразить нужную долговечную возможность, добавь её в unsupported_requirements. Не маскируй пробел generic semantic effect или произвольным payload, если от него требуется реальное авторитетное состояние/исполнение.",
-    "compile_mechanics никогда не применяет механику. Он создаёт проверенный артефакт и preview. apply_mechanics_compilation используй только после явной команды GM применить/сохранить/подключить конкретную компиляцию.",
-    "Built-in class/subclass rule templates можно компилировать только как preview. Runtime apply к ним запрещён: изменение встроенного пакета требует Developer Mode, кода и package tests.",
-    "Если компилятор вернул unsupported или needs_developer_mode=true, честно объясни пробел. Не утверждай, что механика работает, и не пытайся обойти ограничение через AI Draft, raw JSON, SQL или другой инструмент.",
-    "Если создаёшь AI Draft определения с исполняемой mechanics, сначала вызови compile_mechanics. В payload черновика положи ровно compilation.mechanics без изменений и mechanics_compilation_id = compilation.id. Иначе применение AI Draft будет отклонено.",
+    "Новые игровые механики ты не проектируешь и не внедряешь. Можешь читать и объяснять уже существующие правила, но создание ресурсов, формул, прогрессий, runtime-эффектов и других механических правил оставляй разработчику вне Восса.",
+
     "Developer Mode существует только для системного администратора с активной короткой dev-сессией. GM, campaign owner и обычный пользователь сами по себе не получают этих инструментов.",
-    "В Developer Mode сначала используй Mechanics Compiler, если запрос можно выразить существующим CE DSL. Репозиторий трогай только когда компилятор честно вернул unsupported или запрос действительно относится к приложению/инфраструктуре.",
+    "Developer Mode нужен только для работ с приложением и инфраструктурой. Он не отменяет запрет Воссу проектировать или внедрять игровые механики.",
     "Developer tools фиксированы на ветке dev. У тебя нет инструмента записи в main, изменения GitHub Actions workflows, секретов или произвольного выполнения shell-команд.",
     "Перед propose_dev_patch прочитай затрагиваемые файлы. Не делай patch из догадок и не переписывай несвязанные части приложения.",
     "propose_dev_patch только сохраняет предложение и diff-preview. Он НЕ создаёт ветку, commit или PR. Никогда не утверждай обратное.",
@@ -596,10 +594,11 @@ Deno.serve(async (req: Request) => {
         ...VOSS_IMAGE_TOOLS,
         ...(canManage
           ? [
-              ...VOSS_DRAFT_TOOLS,
+              ...(!mechanicsAuthoringRequested ? VOSS_DRAFT_TOOLS : []),
               ...VOSS_MEMORY_WRITE_TOOLS,
-              ...VOSS_MECHANICS_TOOLS,
-              ...(developerMode && isSystemAdmin
+              ...(developerMode &&
+                isSystemAdmin &&
+                !mechanicsAuthoringRequested
                 ? VOSS_DEVELOPER_TOOLS
                 : []),
             ]
@@ -615,9 +614,6 @@ Deno.serve(async (req: Request) => {
   const imageToolsUsed: string[] = []
   const imageJobsQueued: string[] = []
   const mediaAttachments: string[] = []
-  const mechanicsToolsUsed: string[] = []
-  const mechanicsCompilations: string[] = []
-  const mechanicsApplied: string[] = []
   const developerToolsUsed: string[] = []
   const developerRunsProposed: string[] = []
   let answer = ""
@@ -684,7 +680,6 @@ Deno.serve(async (req: Request) => {
       const draftTool = isVossDraftTool(toolName)
       const memoryTool = isVossMemoryTool(toolName)
       const imageTool = isVossImageTool(toolName)
-      const mechanicsTool = isVossMechanicsTool(toolName)
       const developerTool = isVossDeveloperTool(toolName)
       const memoryWriteTool = memoryTool && isVossMemoryWriteTool(toolName)
       const result = developerTool
@@ -696,20 +691,6 @@ Deno.serve(async (req: Request) => {
               threadId,
               isSystemAdmin,
               devSessionId,
-            },
-            toolName,
-            args,
-          )
-        : mechanicsTool
-          ? await executeVossMechanicsTool(
-            {
-              userClient,
-              admin,
-              campaignId,
-              userId: user.id,
-              threadId,
-              canManage,
-              viewContext,
             },
             toolName,
             args,
@@ -780,34 +761,6 @@ Deno.serve(async (req: Request) => {
           typeof run?.id === "string"
         ) {
           developerRunsProposed.push(run.id)
-        }
-      } else if (mechanicsTool) {
-        mechanicsToolsUsed.push(toolName || "unknown")
-        const resultRecord =
-          result && typeof result === "object" && !Array.isArray(result)
-            ? result as JsonRecord
-            : {}
-
-        const compilation =
-          resultRecord.compilation &&
-          typeof resultRecord.compilation === "object" &&
-          !Array.isArray(resultRecord.compilation)
-            ? resultRecord.compilation as JsonRecord
-            : null
-
-        if (
-          toolName === "compile_mechanics" &&
-          typeof compilation?.id === "string"
-        ) {
-          mechanicsCompilations.push(compilation.id)
-        }
-
-        if (
-          toolName === "apply_mechanics_compilation" &&
-          resultRecord.applied === true &&
-          typeof resultRecord.compilation_id === "string"
-        ) {
-          mechanicsApplied.push(resultRecord.compilation_id)
         }
       } else if (imageTool) {
         imageToolsUsed.push(toolName || "unknown")
@@ -978,12 +931,6 @@ Deno.serve(async (req: Request) => {
       jobsQueued: [...new Set(imageJobsQueued)],
       attachments: [...new Set(mediaAttachments)],
       presentationRule: "show_all_requested_outputs",
-    },
-    mechanics: {
-      available: supportsReadTools && canManage,
-      used: [...new Set(mechanicsToolsUsed)],
-      compilations: [...new Set(mechanicsCompilations)],
-      applied: [...new Set(mechanicsApplied)],
     },
     developer: {
       systemAdmin: isSystemAdmin,
