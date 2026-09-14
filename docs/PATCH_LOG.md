@@ -13,6 +13,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 - Fixed the Class Reference so every class with a campaign catalog now shows its CE-owned foundation: hit die, primary abilities, saving throws, armor training, weapon training and skill-choice count. Monk and Sorcerer no longer lose their working CE catalog merely because their authored prose began as a reference-first package.
 - Added a compatibility fallback for older class templates whose foundation is represented only by canonical level-one mechanics instead of newer `core_traits` metadata. Fighter, Cleric and Druid therefore render the same essential facts without a second copy of rules data.
+- Corrected the class-list status too: a class is marked as a translation-only card only when no active CE catalog template exists, instead of inheriting that label forever from an old authored-data flag.
 
 ### Runtime and architecture changes
 
