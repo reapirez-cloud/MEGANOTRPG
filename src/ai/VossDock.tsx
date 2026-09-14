@@ -8,6 +8,7 @@ export default function VossDock() {
     canManage,
     models,
     selectedModelId,
+    lastRoute,
     messages,
     drafts,
     loading,
@@ -35,6 +36,9 @@ export default function VossDock() {
     models.find((model) => model.id === selectedModelId) ||
     models.find((model) => model.is_base) ||
     null
+  const routedModel =
+    models.find((model) => model.id === lastRoute?.modelId) ||
+    selectedModel
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -71,7 +75,7 @@ export default function VossDock() {
 
       {canManage && models.length > 0 && (
         <label className="u1-voss-model">
-          <span>Модель</span>
+          <span>Основная модель</span>
           <select
             value={selectedModelId || ""}
             onChange={(event) => void chooseModel(event.target.value)}
@@ -90,7 +94,7 @@ export default function VossDock() {
         <span>Сейчас вижу</span>
         <strong>{viewContext?.title || viewContext?.screen || "текущий экран"}</strong>
         <small className="u1-voss-context__tools">
-          {selectedModel?.supports_tools ? "READ · MEMORY · ДОСТУПНЫ" : "READ · MEMORY · НЕТ"}
+          {routedModel?.supports_tools ? "READ · MEMORY · ДОСТУПНЫ" : "READ · MEMORY · НЕТ"}
         </small>
         {viewContext?.entity && (
           <small className="u1-voss-context__entity">
@@ -103,6 +107,14 @@ export default function VossDock() {
           <b>НЕ СОХРАНЕНО · ВИЖУ ТЕКУЩИЕ ПОЛЯ</b>
         )}
         {viewContext?.text && <small>{viewContext.text}</small>}
+        {lastRoute && (
+          <small className="u1-voss-route" title={lastRoute.reason}>
+            ROUTER · {lastRoute.task.toUpperCase()} · {lastRoute.modelName}
+            {" · "}
+            {lastRoute.mode.toUpperCase()}
+            {lastRoute.degraded ? " · DEGRADED" : ""}
+          </small>
+        )}
       </div>
 
       <div className="u1-voss-log" ref={logRef}>

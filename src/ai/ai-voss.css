@@ -159,6 +159,12 @@
   font-weight: 700;
   letter-spacing: .09em;
 }
+.u1-voss-route {
+  color: rgba(204,215,202,.52) !important;
+  font-size: 6px !important;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
 
 .u1-voss-log {
   min-height: 0;

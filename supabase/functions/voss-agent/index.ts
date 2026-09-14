@@ -16,6 +16,10 @@ import {
   VOSS_MEMORY_READ_TOOLS,
   VOSS_MEMORY_WRITE_TOOLS,
 } from "./memory-tools.ts"
+import {
+  recordVossRouteRun,
+  resolveVossModel,
+} from "./model-router.ts"
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -190,32 +194,23 @@ Deno.serve(async (req: Request) => {
     selectedModelId = settings?.selected_model_id || null
   }
 
-  let modelQuery = admin
-    .from("ai_models")
-    .select("id,model_key,display_name,provider_key,gm_selectable,supports_tools")
-    .eq("enabled", true)
-
-  if (selectedModelId && canChooseModel) {
-    modelQuery = modelQuery.eq("id", selectedModelId).eq("gm_selectable", true)
-  } else {
-    modelQuery = modelQuery.eq("is_base", true)
+  let routeDecision
+  try {
+    routeDecision = await resolveVossModel(admin, {
+      campaignId,
+      canManage: canChooseModel,
+      selectedModelId,
+      message,
+      viewContext,
+    })
+  } catch (error) {
+    return reply({
+      error: "AI model routing failed",
+      detail: error instanceof Error ? error.message : String(error),
+    }, 500)
   }
 
-  const { data: model, error: modelError } = await modelQuery.maybeSingle()
-  if (modelError) return reply({ error: modelError.message }, 500)
-
-  let resolvedModel = model
-  if (!resolvedModel && selectedModelId) {
-    const { data: baseModel } = await admin
-      .from("ai_models")
-      .select("id,model_key,display_name,provider_key,gm_selectable,supports_tools")
-      .eq("enabled", true)
-      .eq("is_base", true)
-      .maybeSingle()
-    resolvedModel = baseModel
-  }
-
-  if (!resolvedModel) return reply({ error: "No active AI model configured" }, 503)
+  const resolvedModel = routeDecision.model
 
   const apiBase = getEnv("AI_API_BASE_URL").replace(/\/+$/, "")
   const apiKey = getEnv("AI_API_KEY")
@@ -259,6 +254,13 @@ Deno.serve(async (req: Request) => {
     if (createThreadError) return reply({ error: createThreadError.message }, 500)
     threadId = createdThread.id
   }
+
+  await recordVossRouteRun(admin, {
+    campaignId,
+    userId: user.id,
+    threadId,
+    decision: routeDecision,
+  })
 
   const { data: recentRows, error: historyError } = await admin
     .from("ai_messages")
@@ -537,6 +539,7 @@ Deno.serve(async (req: Request) => {
       role: "assistant",
       body: answer,
       model_id: resolvedModel.id,
+      task_key: routeDecision.taskKey,
       view_context: {},
     },
   ])
@@ -553,6 +556,12 @@ Deno.serve(async (req: Request) => {
     model: {
       id: resolvedModel.id,
       name: resolvedModel.display_name,
+    },
+    routing: {
+      task: routeDecision.taskKey,
+      mode: routeDecision.routeMode,
+      reason: routeDecision.reason,
+      degraded: routeDecision.degraded,
     },
     canChooseModel,
     readTools: {

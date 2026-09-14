@@ -17,10 +17,14 @@ test("Voss AI foundation keeps provider secrets server-side", () => {
 
 test("players are forced to the base model at the Edge Function boundary", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
+  const router = read("supabase/functions/voss-agent/model-router.ts")
 
   assert.match(edge, /membership\.role === "gm" \|\| membership\.is_owner === true/)
-  assert.match(edge, /\.eq\("is_base", true\)/)
-  assert.match(edge, /gm_selectable/)
+  assert.match(edge, /resolveVossModel/)
+  assert.match(router, /if \(!input\.canManage\)/)
+  assert.match(router, /model: base/)
+  assert.match(router, /routeMode: "base_lock"/)
+  assert.match(router, /gm_selectable/)
 })
 
 test("GM Workshop registers semantic screen context for Voss", () => {
