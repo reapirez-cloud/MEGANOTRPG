@@ -92,3 +92,17 @@ test("Voss treats summaries and remembered facts as derived memory, not canon", 
   assert.match(edge, /не заменяют каноническое текущее состояние/)
   assert.match(edge, /Обычный вопрос или просьба пересказать историю не является разрешением/)
 })
+
+test("derived memory is invalidated when a source event changes or disappears", () => {
+  const migration = read(
+    "supabase/migrations/20260914172710_campaign_memory_source_invalidation_stage7.sql",
+  )
+  const tools = read("supabase/functions/voss-agent/memory-tools.ts")
+
+  assert.match(migration, /invalidate_campaign_memory_from_event/)
+  assert.match(migration, /source_event_deleted/)
+  assert.match(migration, /source_event_changed/)
+  assert.match(migration, /status = 'retracted'/)
+  assert.match(migration, /status = 'invalidated'/)
+  assert.match(tools, /\.eq\("status", "active"\)/)
+})
