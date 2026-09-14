@@ -98,18 +98,23 @@ test("high-impact AI mutations that accept user ids remain service-role-only", (
   )
 })
 
-test("image generation keeps player quota and a separate attachment ACL", () => {
+test("image generation keeps player quota, two-variant cap and a separate attachment ACL", () => {
   const stage11 = read(
     "supabase/migrations/20260914190600_agent_jobs_and_generated_media_stage11.sql",
   )
+  const currentContract = read(
+    "supabase/migrations/20260914234500_cheapvibecode_image_contract.sql",
+  )
   const tools = read("supabase/functions/voss-agent/image-tools.ts")
 
-  assert.match(stage11, /p_requested_outputs not between 1 and 3/)
-  assert.match(stage11, /v_used \+ p_requested_outputs > 10/)
-  assert.match(stage11, /player_image_quota_exceeded/)
+  assert.match(currentContract, /p_requested_outputs not between 1 and 2/)
+  assert.match(currentContract, /requested_outputs between 1 and 2/)
+  assert.match(currentContract, /variant_index between 1 and 2/)
+  assert.match(currentContract, /v_used \+ p_requested_outputs > 10/)
+  assert.match(currentContract, /player_image_quota_exceeded/)
   assert.match(stage11, /private\.can_attach_media_target/)
   assert.match(stage11, /media_attach_denied/)
-  assert.match(tools, /variants MUST be 3/)
+  assert.match(tools, /Generate 1-2 image variants/)
   assert.match(tools, /Generation and attachment are separate permission checks/)
 })
 
