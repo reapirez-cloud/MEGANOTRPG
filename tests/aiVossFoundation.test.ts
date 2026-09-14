@@ -28,5 +28,6 @@ test("GM Workshop registers semantic screen context for Voss", () => {
 
   assert.match(workshop, /setViewContext/)
   assert.match(workshop, /screen: "gm-workshop"/)
-  assert.match(workshop, /visible:/)
+  assert.match(workshop, /facts:\s*\{/)
+  assert.match(workshop, /\bvisible,\s*\n/)
 })
