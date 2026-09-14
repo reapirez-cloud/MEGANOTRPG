@@ -558,6 +558,9 @@ function FeatureDetailScreen({
           {feature.vossExplanation && (
             <ReferenceCopyBlock label="Восс объясняет">{feature.vossExplanation}</ReferenceCopyBlock>
           )}
+          {feature.vossComment && (
+            <ReferenceCopyBlock label="Комментарий Восса">{feature.vossComment}</ReferenceCopyBlock>
+          )}
           {feature.rule && (
             <ReferenceCopyBlock label="Точное правило">{feature.rule}</ReferenceCopyBlock>
           )}
@@ -568,9 +571,6 @@ function FeatureDetailScreen({
                 {feature.facts.map((fact) => <li key={fact}>{fact}</li>)}
               </ul>
             </section>
-          )}
-          {feature.vossComment && (
-            <ReferenceCopyBlock label="Комментарий Восса">{feature.vossComment}</ReferenceCopyBlock>
           )}
         </div>
       </section>
