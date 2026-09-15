@@ -16,7 +16,7 @@ export type InventoryContainerProfile = {
   internal_grid_height: number
   cell_size_cm: number
   allow_nested_containers?: boolean
-  external_carry_slots?: number
+  external_carry_slots?: number | null
   specialized_capacity?: InventorySpecializedCapacity[]
 }
 
