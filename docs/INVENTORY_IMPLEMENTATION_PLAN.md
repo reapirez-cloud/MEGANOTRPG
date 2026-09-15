@@ -6,7 +6,7 @@
 >
 > Product contract: `docs/INVENTORY_PRODUCT_CONTRACT.md`
 >
-> Current checkpoint: **Stages 1–4 complete. Stage 5 is IN PROGRESS: the 5A inventory-profile foundation is implemented; authoring UI, starter physical library and full legacy adoption remain.**
+> Current checkpoint: **Stages 1–5 complete. Stage 6 is next: authoritative spatial placement + mobile inventory UX.**
 >
 > This file defines implementation order and completion boundaries. It does not by itself prove that a stage is implemented. Audits must verify source, live Supabase state where relevant, and real runtime behavior before changing a stage to complete.
 
@@ -20,7 +20,7 @@ The final inventory target is a physical, tactile inventory system built on Cheb
 | 2 | ✅ COMPLETE | Item lifecycle: use, consume, charges, recharge |
 | 3 | ✅ COMPLETE | Stack/instance state foundation |
 | 4 | ✅ COMPLETE | Nested holders / container tree |
-| 5 | 🟨 IN PROGRESS | Physical item definition + authoring language |
+| 5 | ✅ COMPLETE | Physical item definition + authoring language |
 | 6 | ⬜ TODO | Spatial runtime + mobile inventory UX |
 | 7 | ⬜ TODO | Weight, load and specialized capacity |
 | 8 | ⬜ TODO | Persistent world storage, chests and stashes |
@@ -29,7 +29,7 @@ The final inventory target is a physical, tactile inventory system built on Cheb
 | 11 | ⬜ TODO | Chasovoy adoption + legacy inventory migration |
 | 12 | ⬜ TODO | Final security/concurrency/E2E certification |
 
-There are **12 stages total**. Four are complete; eight remain.
+There are **12 stages total**. Five are complete; seven remain.
 
 ---
 
