@@ -6,7 +6,7 @@
 >
 > Branch: active implementation belongs on `dev`.
 >
-> Current implementation checkpoint when this contract was written: Cheburashka Stages 1–4 are complete (integrity, lifecycle, stacks/instances, nested holders). Spatial grids, carry sockets, weight, scene surfaces and trade are future work unless later code/tests prove otherwise.
+> Current implementation checkpoint when this contract was written: Cheburashka Stages 1–4 are complete (integrity, lifecycle, stacks/instances, nested holders). Spatial grids, hands/generic carry cells, weight, world storage, scene surfaces and trade are future work unless later code/tests prove otherwise.
 
 This document is the canonical product intent for MEGANOTRPG inventory UX. Audits must compare the current implementation to this contract. Do not replace it with a generic RPG inventory pattern merely because that pattern is easier or more familiar.
 
@@ -146,24 +146,25 @@ A bag may provide:
 
 The final inventory should show the two hand cells alongside carried bags and available external carry cells so an oversized item can be moved from the ground directly into a hand or external carry cell without forcing it into a bag.
 
-## 7. Equipment is distinct from storage
+## 7. Equipment is distinct from carried storage
 
-Equipment/held slots remain a separate placement mode and render as simple 1×1 targets.
+Equipment remains a separate placement/view mode from carried inventory.
 
-Examples include hands, armor slots, rings and other equipped positions.
+Examples include armor slots, rings, weapons and other actually equipped positions.
 
-An equipped item should not simultaneously occupy backpack grid space.
+The two permanent hand cells belong to carried-item interaction and remain visible near bags; they are not an excuse to duplicate the equipment model.
 
-Unequipping must have a real destination. If no compatible free destination exists, the UI should require the player to choose another valid holder/surface or cancel rather than making the item exist nowhere.
+An equipped item should not simultaneously occupy bag grid space.
 
-Location can matter to later gameplay UX:
+Unequipping must have a real destination:
+- a bag grid where the item fits;
+- one of the two hand cells;
+- an available generic external carry cell;
+- an accessible Surface.
 
-- potion in backpack: stored;
-- potion on belt: quick access;
-- dagger in scabbard: quick draw;
-- weapon in hand: already active.
+If no destination exists, cancel rather than making the item exist nowhere.
 
-Do not prebuild tactical action-economy simulation unless the application later explicitly owns that rule state.
+Do not infer combat speed, action economy, quick-draw rules or anatomical placement from where a carried item is stored. Those remain normal tabletop/GM adjudication unless a separate canonical game mechanic explicitly owns them.
 
 ## 8. Containers remain physical, nestable and individually openable
 
