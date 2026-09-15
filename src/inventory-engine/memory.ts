@@ -185,6 +185,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
 
     if (command.kind === "inventory.transfer") {
       const item = this.owned(command.itemId, command.fromCharacterId)
+      this.assertVersion(item, command.expectedVersion)
       const before = copy(item)
       if (command.amount > item.quantity) {
         throw new EngineCommandError(
