@@ -35,6 +35,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 - Removed the accidental UI 1.0 dependency on legacy CharacterContext. `useCharacterResourceStates` now reads `campaignId` / manager authority from AuthContext's authenticated campaign scope, so the shared CE runtime works in both UI 1.0 and legacy surfaces without breaking the hard-isolation contract. No Supabase schema/data migration was needed.
 
+- Removed the redundant UI 1.0 `CampaignAccessGate`. `AuthGate` is now the single authentication + membership + invite boundary, eliminating a second campaign lookup/source of truth and restoring the Playwright E2E auth bypass contract.
+
 - The character-sheet redesign is presentation-only over the existing shared `ResolvedCharacterContract`. Canonical HP, stats, resources and spell slots still come from the Character Runtime / CE path; no Supabase schema or ownership boundary was changed.
 
 - Added campaign-level `reference_art` media bindings. Mutation is enforced with `private.is_campaign_owner`, so ordinary GMs cannot change class/subclass art even though they can manage other campaign content.
@@ -56,6 +58,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Tests / verification
 
 - Added `uiV1CharacterRuntimeProvider.test.ts` to lock the shared runtime onto AuthContext campaign access and prevent UI 1.0 from regaining a legacy CharacterContext/CharacterProvider dependency.
+
+- Extended the UI 1.0 runtime regression to require a single AuthGate boundary and reject reintroduction of the redundant CampaignAccessGate.
 
 - Added `characterSheetOpusLayout.test.ts` to lock the 16:9 hero/inventory hierarchy, 50/50 core matrix, expandable abilities, resource-specific presentation, scroll-bounded spell slots and the no-second-runtime constraint.
 
