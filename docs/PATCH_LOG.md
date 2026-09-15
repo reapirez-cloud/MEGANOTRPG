@@ -11,6 +11,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Voss floating orb now tracks the finger directly during drag instead of easing toward every intermediate pointer position. Drag motion is compositor-driven and frame-synchronised; only the final edge snap keeps a short animation.
+
 - Admin/owner can now upload and reframe class and subclass artwork directly inside the Knowledge Base through Snake MediaPlayer. Long-pressing a class/subclass preview edits the 3:1 panel; long-pressing the page hero edits the 16:9 art.
 - Class detail pages now have the same 16:9 atmospheric hero-art slot as subclass pages. Existing bundled class/subclass preview art remains the fallback until the admin replaces it.
 
@@ -44,6 +46,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Class Reference now treats `rule_templates` as the canonical definition source whenever it is available; `referenceOnly` controls literary fallback, not permission to ignore an active CE class package.
 
 ### Tests / verification
+
+- Added `vossOrbDrag.test.ts` to prevent positional transitions or React-state-per-pointermove regressions from making the floating AI orb lag behind the finger again.
 
 - Added `snakeMediaComposition.test.ts` covering target masks, normalized crop submission, real character/panel avatar actions, media-binding presentation persistence and removal of the old Workspace avatar placeholders.
 
