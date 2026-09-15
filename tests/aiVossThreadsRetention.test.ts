@@ -45,7 +45,8 @@ test("generated media expires after three days unless saved or attached", () => 
   assert.match(edge, /срок хранения три дня/)
   assert.match(provider, /saveGeneratedAsset/)
   assert.match(provider, /save_my_generated_media_v1/)
-  assert.match(shell, />Сохранить</)
+  assert.match(shell, /saveGeneratedAsset\(asset\.id\)/)
+  assert.match(shell, /Сохранить/)
   assert.match(shell, /Удалится после/)
 })
 
