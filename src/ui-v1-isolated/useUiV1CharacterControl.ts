@@ -5,6 +5,7 @@ import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { oracle } from "../oracle-engine/runtime.ts"
 import { supabase } from "../lib/supabase"
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
+import { parseMediaPresentation, type MediaPresentation } from "../media/presentation"
 import type {
   CharacterFeature,
   CharacterSheet,
@@ -28,6 +29,9 @@ export type UiV1Character = {
   assignedUserId: string | null
   lifeState: "alive" | "dead"
   avatarUrl: string | null
+  avatarPresentation: MediaPresentation | null
+  panelAvatarUrl: string | null
+  panelAvatarPresentation: MediaPresentation | null
 }
 
 type Result = { ok: boolean; error?: string }
@@ -69,6 +73,7 @@ export function useUiV1CharacterControl(characterId: string) {
         templatesResult,
         resourcesResult,
         transferTargetsResult,
+        mediaResult,
       ] = await Promise.all([
         supabase.from("characters")
           .select("id,name,character_class,level,bio,character_type,assigned_user_id,life_state,avatar_url")
@@ -97,6 +102,9 @@ export function useUiV1CharacterControl(characterId: string) {
           .eq("publication_state", "campaign")
           .eq("life_state", "alive")
           .order("name"),
+        supabase.rpc("list_character_media_presentations_v1", {
+          p_campaign_id: scope.campaignId,
+        }),
       ])
 
       const firstError =
@@ -107,12 +115,36 @@ export function useUiV1CharacterControl(characterId: string) {
         assignmentsResult.error ||
         templatesResult.error ||
         resourcesResult.error ||
-        transferTargetsResult.error
+        transferTargetsResult.error ||
+        mediaResult.error
       if (firstError) throw new Error(firstError.message)
       if (!characterResult.data) throw new Error("Персонаж не найден.")
 
       const inventoryRows = await cheburashka.listCharacterItems(characterId)
       const row = characterResult.data
+      const mediaRows = (mediaResult.data || []) as Array<{
+        character_id: string
+        target_field: string
+        storage_path: string
+        presentation: unknown
+      }>
+      const avatarBinding =
+        mediaRows.find((item) =>
+          item.character_id === characterId &&
+          (item.target_field === "avatar" || item.target_field === "avatar_url")
+        ) || null
+      const panelBinding =
+        mediaRows.find((item) =>
+          item.character_id === characterId &&
+          item.target_field === "panel_avatar"
+        ) || null
+      const avatarSource = avatarBinding?.storage_path || row.avatar_url || null
+      const panelSource = panelBinding?.storage_path || avatarSource
+      const [avatarUrl, panelAvatarUrl] = await Promise.all([
+        resolveCampaignMediaUrl(avatarSource),
+        resolveCampaignMediaUrl(panelSource),
+      ])
+
       setCharacter({
         id: row.id,
         name: row.name,
@@ -122,7 +154,10 @@ export function useUiV1CharacterControl(characterId: string) {
         characterType: row.character_type === "npc" ? "npc" : "pc",
         assignedUserId: row.assigned_user_id,
         lifeState: row.life_state === "dead" ? "dead" : "alive",
-        avatarUrl: (await resolveCampaignMediaUrl(row.avatar_url)) || row.avatar_url || null,
+        avatarUrl: avatarUrl || avatarSource,
+        avatarPresentation: parseMediaPresentation(avatarBinding?.presentation),
+        panelAvatarUrl: panelAvatarUrl || panelSource,
+        panelAvatarPresentation: parseMediaPresentation(panelBinding?.presentation),
       })
       setSheet((sheetResult.data || null) as CharacterSheet | null)
       setInventory(inventoryRows)
