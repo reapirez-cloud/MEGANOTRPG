@@ -303,8 +303,8 @@ export function useUiV1CharacterControl(characterId: string) {
     "Не удалось удалить предмет.",
   ), [characterId, context, gm])
 
-  const transferItem = useCallback((itemId: string, targetCharacterId: string, amount: number) => gm(
-    () => oracle.inventory.transfer(context(), characterId, targetCharacterId, itemId, amount),
+  const transferItem = useCallback((item: InventoryItem, targetCharacterId: string, amount: number) => gm(
+    () => oracle.inventory.transfer(context(), characterId, targetCharacterId, item.id, amount, item.version),
     "Не удалось передать предмет.",
   ), [characterId, context, gm])
 
