@@ -328,7 +328,7 @@ Deno.serve(async (req: Request) => {
 
   const isOwner = membership.is_owner === true
   const actorRole = isOwner ? "owner" : membership.role
-  const canManage = membership.role === "gm" || isOwner
+  const canManage = membership.role === "gm" || membership.is_owner === true
   const canChooseModel = true
 
   let isSystemAdmin = false
