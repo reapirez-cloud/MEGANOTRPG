@@ -58,48 +58,53 @@ function CharacterStrip({
   )
 }
 
-function PlayerCharactersPanel({
+function CharacterShelf({
+  title,
+  caption,
   characters,
-  onOpenCharacter,
+  defaultOpen = false,
+  emptyText,
+  isSelected,
+  onCharacterClick,
 }: {
+  title: string
+  caption: string
   characters: WorkspaceCharacter[]
-  onOpenCharacter: (characterId: string) => void
+  defaultOpen?: boolean
+  emptyText: string
+  isSelected?: (character: WorkspaceCharacter) => boolean
+  onCharacterClick: (character: WorkspaceCharacter) => void
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
 
   return (
-    <section className="u1-player-characters" data-open={open || undefined}>
+    <section className="u1-character-shelf" data-open={open || undefined}>
       <button
         type="button"
-        className="u1-player-characters__trigger"
+        className="u1-character-shelf__trigger"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
         <span>
-          <strong>Персонажи игроков</strong>
-          <small>
-            {characters.length
-              ? `Активные · ${characters.length}`
-              : "Нет активных"}
-          </small>
+          <strong>{title}</strong>
+          <small>{characters.length ? `${caption} · ${characters.length}` : emptyText}</small>
         </span>
         <b aria-hidden="true">{String(characters.length).padStart(2, "0")}</b>
       </button>
 
       {open && (
-        <div className="u1-player-characters__list">
+        <div className="u1-character-shelf__list">
           {characters.length ? (
             characters.map((character) => (
               <CharacterStrip
                 key={character.id}
                 character={character}
-                onClick={() => onOpenCharacter(character.id)}
+                selected={isSelected?.(character)}
+                onClick={() => onCharacterClick(character)}
               />
             ))
           ) : (
-            <div className="u1-player-characters__empty">
-              У других игроков сейчас нет активных персонажей.
-            </div>
+            <div className="u1-character-shelf__empty">{emptyText}</div>
           )}
         </div>
       )}
@@ -364,53 +369,43 @@ export default function Workspace({ onOpenCharacter, onOpenManagement }: Props) 
               />
             )}
 
-            <PlayerCharactersPanel
+            <CharacterShelf
+              title="Персонажи игроков"
+              caption="Активные"
               characters={data.playerCharacters}
-              onOpenCharacter={onOpenCharacter}
+              emptyText="У других игроков сейчас нет активных персонажей."
+              onCharacterClick={(character) => onOpenCharacter(character.id)}
             />
 
             {data.ownCharacters.length > 0 && (
-              <>
-                <div className="u1-workspace__section-label">
-                  <span>Мои персонажи</span><i aria-hidden="true" />
-                </div>
-                {data.ownCharacters.map((character) => (
-                  <CharacterStrip
-                    key={character.id}
-                    character={character}
-                    selected={
-                      data.canManage &&
-                      data.activeCharacter?.id === character.id
-                    }
-                    onClick={() => {
-                      if (
-                        data.canManage &&
-                        character.lifeState === "alive"
-                      ) {
-                        data.selectSpeaker(character.id)
-                        return
-                      }
-                      onOpenCharacter(character.id)
-                    }}
-                  />
-                ))}
-              </>
+              <CharacterShelf
+                title="Мои персонажи"
+                caption={data.canManage ? "Голоса" : "Доступные"}
+                characters={data.ownCharacters}
+                defaultOpen={!data.canManage}
+                emptyText="Своих персонажей пока нет."
+                isSelected={(character) =>
+                  Boolean(data.canManage && data.activeCharacter?.id === character.id)
+                }
+                onCharacterClick={(character) => {
+                  if (data.canManage && character.lifeState === "alive") {
+                    data.selectSpeaker(character.id)
+                    return
+                  }
+                  onOpenCharacter(character.id)
+                }}
+              />
             )}
 
             {data.canManage && data.worldSpeakerCharacters.length > 0 && (
-              <>
-                <div className="u1-workspace__section-label">
-                  <span>Персонажи мира</span><i aria-hidden="true" />
-                </div>
-                {data.worldSpeakerCharacters.map((character) => (
-                  <CharacterStrip
-                    key={character.id}
-                    character={character}
-                    selected={data.activeCharacter?.id === character.id}
-                    onClick={() => data.selectSpeaker(character.id)}
-                  />
-                ))}
-              </>
+              <CharacterShelf
+                title="Персонажи мира"
+                caption="Голоса"
+                characters={data.worldSpeakerCharacters}
+                emptyText="Персонажей мира пока нет."
+                isSelected={(character) => data.activeCharacter?.id === character.id}
+                onCharacterClick={(character) => data.selectSpeaker(character.id)}
+              />
             )}
           </>
         )}

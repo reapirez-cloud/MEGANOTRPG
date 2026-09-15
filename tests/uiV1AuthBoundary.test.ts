@@ -4,6 +4,18 @@ import test from "node:test"
 
 const gate = fs.readFileSync("src/components/auth/AuthGate.tsx", "utf8")
 const entry = fs.readFileSync("src/ui-v1-isolated/main.tsx", "utf8")
+const html = fs.readFileSync("index.html", "utf8")
+const aliasHtml = fs.readFileSync("ui-v1.html", "utf8")
+
+test("Telegram Mini App SDK loads before the UI entry", () => {
+  for (const document of [html, aliasHtml]) {
+    assert.match(document, /telegram\.org\/js\/telegram-web-app\.js/)
+    assert.ok(
+      document.indexOf("telegram-web-app.js") <
+        document.indexOf("src/ui-v1-isolated/main.tsx"),
+    )
+  }
+})
 
 test("UI 1.0 cannot mount outside the Telegram auth boundary", () => {
   assert.match(entry, /import AuthGate from "\.\.\/components\/auth\/AuthGate"/)

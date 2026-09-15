@@ -28,6 +28,7 @@ export function SnakeTrigger({
   } | null>(null)
   const consumedUntilRef = useRef(0)
   const suppressClickUntilRef = useRef(0)
+  const lastMousePointerDownRef = useRef(0)
 
   const longPressMs = 520
   const touchContextWindowMs = 1800
@@ -49,12 +50,15 @@ export function SnakeTrigger({
   }
 
   function pointerDown(event: ReactPointerEvent<HTMLSpanElement>) {
-    if (event.button !== 0) return
-
     if (event.pointerType === "mouse") {
+      lastMousePointerDownRef.current = performance.now()
       touchGestureRef.current = null
+      startRef.current = null
+      clearTimer()
       return
     }
+
+    if (event.button !== 0) return
 
     clearTimer()
     const point = { x: event.clientX, y: event.clientY }
@@ -112,15 +116,20 @@ export function SnakeTrigger({
         point.y - (touch?.point.y || 0),
       ) < 36
 
+    // Touch menus are owned exclusively by the long-press timer above.
+    // Android WebViews may emit a synthetic contextmenu even after a quick tap;
+    // treating that event as permission to open Snake resurrects the exact bug
+    // this trigger is meant to prevent.
     if (isRecentTouch) {
       event.stopPropagation()
+      return
+    }
 
-      if (now < consumedUntilRef.current) return
-      if (!touch || touch.cancelled) return
-      if (now - touch.startedAt < longPressMs) return
+    const hasRecentMousePointer =
+      now - lastMousePointerDownRef.current <= 1200
 
-      markConsumed()
-      open(touch.point)
+    if (!hasRecentMousePointer) {
+      event.stopPropagation()
       return
     }
 
