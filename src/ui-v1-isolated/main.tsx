@@ -11,6 +11,7 @@ import "./styles.css"
 import "./snake.css"
 import "./workspace.css"
 import "./gm-workshop.css"
+import "./art-library.css"
 
 const root = document.getElementById("ui-v1-root")
 

@@ -55,6 +55,7 @@ type CampaignScope = {
   campaignId: string
   userId: string
   canManage: boolean
+  isOwner: boolean
   loading: boolean
   error: string | null
 }
@@ -64,6 +65,7 @@ export function useUiV1CampaignScope(): CampaignScope {
     campaignId: "",
     userId: "",
     canManage: false,
+    isOwner: false,
     loading: true,
     error: null,
   })
@@ -114,7 +116,7 @@ export function useUiV1CampaignScope(): CampaignScope {
 
         if (cancelled) return
         if (error) {
-          setState({ campaignId: "", userId, canManage: false, loading: false, error: error.message })
+          setState({ campaignId: "", userId, canManage: false, isOwner: false, loading: false, error: error.message })
           return
         }
 
@@ -122,7 +124,7 @@ export function useUiV1CampaignScope(): CampaignScope {
       }
 
       if (!membership) {
-        setState({ campaignId: "", userId, canManage: false, loading: false, error: "Кампания не найдена" })
+        setState({ campaignId: "", userId, canManage: false, isOwner: false, loading: false, error: "Кампания не найдена" })
         return
       }
 
@@ -131,6 +133,7 @@ export function useUiV1CampaignScope(): CampaignScope {
         campaignId: membership.campaign_id,
         userId,
         canManage: membership.role === "gm" || membership.is_owner === true,
+        isOwner: membership.is_owner === true,
         loading: false,
         error: null,
       })

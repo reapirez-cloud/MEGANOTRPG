@@ -6,6 +6,7 @@ import AgentShell from "../ai/AgentShell"
 
 import { useHomeData, type HomeEvent, type HomeSocietyNews } from "./useHomeData"
 import { WhatsNew } from "./WhatsNew"
+import ArtSection from "./ArtSection"
 import Workspace from "./Workspace"
 import GMWorkshop from "./GMWorkshop"
 import CharacterView from "./CharacterView"
@@ -536,6 +537,7 @@ function Screen({ route }: { route: Route }) {
     if (route.section === "knowledge-base") return <KnowledgeBaseScreen subsection={route.subsection} path={route.tail} />
     if (route.section === "society-news") return <SocietyNewsScreen />
     if (route.section === "achievements") return <AchievementsScreen />
+    if (route.section === "art") return <ArtSection subsection={route.subsection} />
 
     const copy = sectionCopy[route.section]
     return <Placeholder {...copy} backToHome />
@@ -603,7 +605,7 @@ type EdgeBackState = SwipeState
 
 function currentScrollRoot() {
   return document.querySelector<HTMLElement>(
-    ".u1-view .u1-workspace__actors, .u1-view .u1-gm-workshop, .u1-view .u1-home, .u1-view .u1-section-page, .u1-view .u1-placeholder",
+    ".u1-view .u1-workspace__actors, .u1-view .u1-gm-workshop, .u1-view .u1-art-library, .u1-view .u1-home, .u1-view .u1-section-page, .u1-view .u1-placeholder",
   )
 }
 
