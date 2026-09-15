@@ -21,6 +21,7 @@ type ImageToolContext = {
   userId: string
   threadId: string
   viewContext: JsonRecord
+  isOwner: boolean
 }
 
 type ImageWorkerContext = {
@@ -49,6 +50,7 @@ const IMAGE_TOOL_NAMES = new Set([
   "mark_generated_image_garbage",
   "purge_generated_image_garbage",
   "cancel_image_job",
+  "attach_system_media",
 ])
 
 export const VOSS_IMAGE_TOOLS = [
@@ -217,6 +219,33 @@ export const VOSS_IMAGE_TOOLS = [
     },
   },
 ]
+
+export const VOSS_OWNER_MEDIA_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "attach_system_media",
+      description:
+        "Attach an existing image from the owner's private System Materials library to an allowed MEGANOT target. This reuses the stored asset and does not generate a new image.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          asset_id: { type: "string" },
+          target_type: {
+            type: "string",
+            enum: ["character", "location", "reference_definition", "campaign_gallery"],
+          },
+          target_id: { type: "string" },
+          target_field: { type: "string" },
+          title: { type: "string" },
+          caption: { type: "string" },
+        },
+        required: ["asset_id", "target_type", "target_field"],
+      },
+    },
+  },
+] as const
 
 export function isVossImageTool(name: string) {
   return IMAGE_TOOL_NAMES.has(name)
@@ -661,6 +690,36 @@ async function cancelJob(ctx: ImageToolContext, args: JsonRecord) {
   return { job_id: jobId, status: data }
 }
 
+async function attachSystemMedia(ctx: ImageToolContext, args: JsonRecord) {
+  if (!ctx.isOwner) return { error: "owner_required" }
+
+  const assetId = uuidLike(args.asset_id)
+  if (!assetId) return { error: "system_media_asset_required" }
+
+  const target = attachTargetFromArgs(args, ctx.viewContext)
+  if (!target) return { error: "system_media_target_required" }
+
+  const { data, error } = await ctx.admin.rpc(
+    "attach_system_media_v1",
+    {
+      p_asset_id: assetId,
+      p_user_id: ctx.userId,
+      p_target_type: target.type,
+      p_target_id: target.id,
+      p_target_field: target.field,
+      p_title: stringValue(args.title, 160),
+      p_caption: stringValue(args.caption, 1000),
+    },
+  )
+
+  if (error) return { error: error.message }
+  return {
+    attached: true,
+    source: "system_materials",
+    ...record(data),
+  }
+}
+
 export async function executeVossImageTool(
   ctx: ImageToolContext,
   name: string,
@@ -673,6 +732,7 @@ export async function executeVossImageTool(
   if (name === "mark_generated_image_garbage") return markGarbage(ctx, args)
   if (name === "purge_generated_image_garbage") return purgeGarbage(ctx)
   if (name === "cancel_image_job") return cancelJob(ctx, args)
+  if (name === "attach_system_media") return attachSystemMedia(ctx, args)
   return { error: "unknown_image_tool" }
 }
 
