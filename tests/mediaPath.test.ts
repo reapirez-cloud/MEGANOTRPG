@@ -27,3 +27,8 @@ test("leaves unrelated external artwork URLs alone", () => {
   assert.equal(campaignMediaPath("https://images.example/art.jpg"), null)
   assert.equal(isExternalMedia("https://images.example/art.jpg"), true)
 })
+
+test("treats bundled root-relative UI art as public media instead of Storage", () => {
+  assert.equal(campaignMediaPath("/ui-v1/classes/fighter.webp"), null)
+  assert.equal(isExternalMedia("/ui-v1/classes/fighter.webp"), true)
+})
