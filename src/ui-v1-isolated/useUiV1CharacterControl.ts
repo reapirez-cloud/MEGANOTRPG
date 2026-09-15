@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from "react"
 import { cheburashka } from "../inventory-engine/runtime.ts"
 import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { oracle } from "../oracle-engine/runtime.ts"
+import { shapoklyak } from "../entity-engine/runtime.ts"
+import type { CharacterEntity } from "../entity-engine/index.ts"
 import { supabase } from "../lib/supabase"
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
 import { parseMediaPresentation, type MediaPresentation } from "../media/presentation"
@@ -43,6 +45,7 @@ function errorMessage(reason: unknown, fallback: string) {
 export function useUiV1CharacterControl(characterId: string) {
   const scope = useUiV1CampaignScope()
   const [character, setCharacter] = useState<UiV1Character | null>(null)
+  const [runtimeEntity, setRuntimeEntity] = useState<CharacterEntity | null>(null)
   const [sheet, setSheet] = useState<CharacterSheet | null>(null)
   const [inventory, setInventory] = useState<InventoryItem[]>([])
   const [spells, setSpells] = useState<CharacterSpell[]>([])
@@ -51,9 +54,11 @@ export function useUiV1CharacterControl(characterId: string) {
   const [templates, setTemplates] = useState<RuleTemplate[]>([])
   const [transferTargets, setTransferTargets] = useState<Array<{ id: string; name: string }>>([])
   const [resources, setResources] = useState<Array<{
-    resource_key: string
-    current_value: number
-    max_value: number
+    state_key: string
+    label: string | null
+    current: number
+    max_snapshot: number
+    recharge: unknown
   }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -76,7 +81,7 @@ export function useUiV1CharacterControl(characterId: string) {
         mediaResult,
       ] = await Promise.all([
         supabase.from("characters")
-          .select("id,name,character_class,level,bio,character_type,assigned_user_id,life_state,avatar_url")
+          .select("id,campaign_id,assigned_user_id,name,character_class,level,bio,avatar_url,character_type,visibility,visibility_mode,publication_state,life_state,died_at,created_by,created_at,updated_at")
           .eq("campaign_id", scope.campaignId)
           .eq("id", characterId)
           .maybeSingle(),
@@ -92,9 +97,9 @@ export function useUiV1CharacterControl(characterId: string) {
           .select("id,campaign_id,kind,slug,name,description,version,mechanics,choices,parent_template_id,unlock_level,catalog_key,catalog_revision,source_kind,source_label,is_builtin,mechanical_summary,author_description,author_comment,rules_meta,is_active,created_by,created_at,updated_at")
           .eq("campaign_id", scope.campaignId),
         supabase.from("character_resource_states")
-          .select("resource_key,current_value,max_value")
+          .select("state_key,label,current,max_snapshot,recharge")
           .eq("character_id", characterId)
-          .order("resource_key"),
+          .order("state_key"),
         supabase.from("characters")
           .select("id,name")
           .eq("campaign_id", scope.campaignId)
@@ -145,6 +150,7 @@ export function useUiV1CharacterControl(characterId: string) {
         resolveCampaignMediaUrl(panelSource),
       ])
 
+      setRuntimeEntity(row as CharacterEntity)
       setCharacter({
         id: row.id,
         name: row.name,
@@ -166,9 +172,11 @@ export function useUiV1CharacterControl(characterId: string) {
       setAssignments((assignmentsResult.data || []) as CharacterTemplateAssignment[])
       setTemplates((templatesResult.data || []) as RuleTemplate[])
       setResources((resourcesResult.data || []).map((item) => ({
-        resource_key: item.resource_key,
-        current_value: Number(item.current_value || 0),
-        max_value: Number(item.max_value || 0),
+        state_key: item.state_key,
+        label: item.label,
+        current: Number(item.current || 0),
+        max_snapshot: Number(item.max_snapshot || 0),
+        recharge: item.recharge,
       })))
       setTransferTargets((transferTargetsResult.data || []).map((item) => ({
         id: item.id,
@@ -195,6 +203,17 @@ export function useUiV1CharacterControl(characterId: string) {
     authority: "gm",
     actorCharacterId: characterId,
   }), [characterId, scope.campaignId, scope.userId])
+
+  const playerContext = useCallback(() => createEngineCommandContext({
+    campaignId: scope.campaignId,
+    requestedBy: scope.userId,
+    authority: "player",
+    actorCharacterId: characterId,
+  }), [characterId, scope.campaignId, scope.userId])
+
+  const canControlCharacter = Boolean(
+    character && (scope.canManage || character.assignedUserId === scope.userId),
+  )
 
   const gm = useCallback(async (
     action: () => Promise<unknown>,
@@ -225,16 +244,33 @@ export function useUiV1CharacterControl(characterId: string) {
     "Не удалось восстановить персонажа.",
   ), [characterId, context, gm])
 
-  const setEquipped = useCallback((item: InventoryItem, equipped: boolean) => gm(
-    () => oracle.inventory.setEquipped(
-      context(),
-      characterId,
-      item.id,
-      equipped,
-      item.equipment_slot,
-    ),
-    "Не удалось изменить экипировку.",
-  ), [characterId, context, gm])
+  const setEquipped = useCallback(async (item: InventoryItem, equipped: boolean): Promise<Result> => {
+    if (!canControlCharacter) return { ok: false, error: "Недостаточно прав." }
+    try {
+      if (scope.canManage) {
+        await oracle.inventory.setEquipped(
+          context(),
+          characterId,
+          item.id,
+          equipped,
+          item.equipment_slot,
+        )
+      } else {
+        await cheburashka.execute({
+          kind: "inventory.set_equipped",
+          context: playerContext(),
+          characterId,
+          itemId: item.id,
+          equipped,
+          equipmentSlot: item.equipment_slot,
+        })
+      }
+      await load()
+      return { ok: true }
+    } catch (reason) {
+      return { ok: false, error: errorMessage(reason, "Не удалось изменить экипировку.") }
+    }
+  }, [canControlCharacter, characterId, context, load, playerContext, scope.canManage])
 
   const updateItem = useCallback((item: InventoryItem, patch: Partial<InventoryInput>) => {
     const input: InventoryInput = {
@@ -290,10 +326,32 @@ export function useUiV1CharacterControl(characterId: string) {
     "Не удалось изменить заклинание.",
   ), [characterId, context, gm])
 
-  const setSpellPrepared = useCallback((spellId: string, prepared: boolean) => gm(
-    () => oracle.characters.setSpellPrepared(context(), characterId, spellId, prepared),
-    "Не удалось изменить подготовку заклинания.",
-  ), [characterId, context, gm])
+  const setSpellPrepared = useCallback(async (spellId: string, prepared: boolean): Promise<Result> => {
+    if (!canControlCharacter) return { ok: false, error: "Недостаточно прав." }
+    try {
+      if (scope.canManage) {
+        await oracle.characters.setSpellPrepared(context(), characterId, spellId, prepared)
+      } else {
+        await shapoklyak.execute({
+          kind: "entity.set_spell_prepared",
+          context: playerContext(),
+          characterId,
+          spellId,
+          prepared,
+        })
+      }
+      setSpells((current) =>
+        current.map((spell) =>
+          spell.id === spellId
+            ? { ...spell, prepared, updated_at: new Date().toISOString() }
+            : spell
+        ),
+      )
+      return { ok: true }
+    } catch (reason) {
+      return { ok: false, error: errorMessage(reason, "Не удалось изменить подготовку заклинания.") }
+    }
+  }, [canControlCharacter, characterId, context, playerContext, scope.canManage])
 
   const deleteSpell = useCallback((spellId: string) => gm(
     () => oracle.characters.deleteSpell(context(), characterId, spellId),
@@ -318,6 +376,8 @@ export function useUiV1CharacterControl(characterId: string) {
   return {
     ...scope,
     character,
+    runtimeEntity,
+    canControlCharacter,
     sheet,
     inventory,
     spells,
