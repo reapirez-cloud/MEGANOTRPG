@@ -39,3 +39,25 @@ Next Rogue stage: **Stage 2 — clean class foundation and 1–20 progression**.
 - Build the canonical `class:rogue` package, source-level progression, proficiencies, Expertise/Weapon Mastery choices, subclass unlock and structural feature identities through shared class/template infrastructure.
 - Do not redo Stage 1 unless the user explicitly changes the source/version scope.
 
+## Inventory / scene interaction follow-up
+
+**Status:** APPROVED_PRODUCT_DIRECTION_DEFERRED_IMPLEMENTATION  
+**Marked:** 2026-09-15  
+**Branch:** dev
+
+Canonical product contract: `docs/INVENTORY_PRODUCT_CONTRACT.md`.
+
+Current checkpoint:
+- Cheburashka Stages 1–4 are complete through nested holders.
+- Spatial grid/carry placement, weight, scene surfaces and trade are future implementation; do not report them as complete from documentation alone.
+- Inventory must keep a clean future integration point for scene/chat `accessible_surfaces`.
+
+Linked chat/scene debt:
+- build real game chats/scenes and participant membership;
+- support moving characters between chats/scenes as they change scene/location;
+- connect scenes to locations;
+- let GM create a Surface block in chat, publish loot and grant access to all/selected characters;
+- enforce server-authoritative "first successful take wins" synchronization for shared surface items;
+- add a dedicated Trade block in chat for PC↔NPC and PC↔PC, with NPC side controlled by GM, scoped inventory visibility, wanted-item highlighting, trade thread, double acceptance on the same revision and atomic exchange.
+
+Do not solve this debt by creating parallel inventory ownership or an abstract currency wallet.

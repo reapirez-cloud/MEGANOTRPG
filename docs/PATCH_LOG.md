@@ -33,6 +33,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added the canonical inventory product contract for future audits/implementation: physical grid shapes, socket/carry placement, equipment, physical currency, weight, scene/chat surfaces with atomic take, and dedicated two-party trade blocks. The contract explicitly marks Stages 1–4 as current and later mechanics as future work, and records the linked chat/scene movement debt without claiming it is implemented.
+
 - Removed the accidental UI 1.0 dependency on legacy CharacterContext. `useCharacterResourceStates` now reads `campaignId` / manager authority from AuthContext's authenticated campaign scope, so the shared CE runtime works in both UI 1.0 and legacy surfaces without breaking the hard-isolation contract. No Supabase schema/data migration was needed.
 
 - Removed the redundant UI 1.0 `CampaignAccessGate`. `AuthGate` is now the single authentication + membership + invite boundary, eliminating a second campaign lookup/source of truth and restoring the Playwright E2E auth bypass contract.

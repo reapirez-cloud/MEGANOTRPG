@@ -1,5 +1,8 @@
 import type { InventoryItem } from "../types/characterSheet.ts"
 
+// Product target for holders, spatial grids, carry sockets, scene surfaces and trade:
+// docs/INVENTORY_PRODUCT_CONTRACT.md. Current Stage 4 holder state is only the foundation.
+
 export type InventoryHolderProblem =
   | "self"
   | "missing"
