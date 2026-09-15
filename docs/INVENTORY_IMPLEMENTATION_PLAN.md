@@ -95,18 +95,27 @@ Stage 5+ must extend this model rather than creating a parallel inventory tree.
 
 This stage defines what a physical item **is** before the runtime starts arranging it.
 
-### Stage 5A checkpoint — inventory profile foundation ✅
+### Stage 5 completion ✅
 
-Implemented in `dev` / live Supabase foundation:
-- application-side default is `instance`; bulk stacking is explicit;
-- live DB default is `instance`, with a temporary compatibility bridge for the old production client when it omits `stack_mode` on `quantity > 1`;
-- `inventory_profile` has a server validator for packing, footprint masks, physical dimensions and container grids;
-- GM catalog saves/preserves the profile and issues multiple instances as separate objects;
-- Voss drafts must carry a valid profile before an item definition can be applied;
-- container internal grid dimensions are independent from UI viewport/zoom;
-- item mechanics remain independent, so containers can carry normal bonuses, resistances, curses and other CE mechanics.
+Implemented in `dev` and live Supabase:
+- canonical validated `inventory_profile` with instance-first packing;
+- strict Chasovoy item authoring v2 for campaign item create/revise;
+- starter physical item presets and a manual GM shape editor;
+- immutable system library of ordinary container sizes;
+- concrete instance naming for narrative placement without anatomical carry slots;
+- Voss create/revise flow for unusual or magical campaign items;
+- geometry-only AI revisions preserve existing item mechanics;
+- container logical dimensions remain independent from future UI viewport scale;
+- existing Chasovoy items were adopted into the profile contract;
+- legacy singleton stacks were safely normalized, while ambiguous quantity>1 stacks were preserved for Stage 11 review.
 
-Still required before Stage 5 is COMPLETE: standard pre-authored bag/container definitions, shape-authoring workflow, AI revision workflow for unusual containers, stricter post-rollout DB enforcement, and starter physical profiles for ordinary catalog content.
+Live migrations:
+- `20260915182537_cheburashka_stage5_inventory_profile_foundation`;
+- `20260915184110_cheburashka_stage5_complete_authoring_library`.
+
+Voss inventory authoring policy is live in `voss-agent v32`.
+
+Full historical inventory adoption remains Stage 11. Final security/concurrency/E2E certification remains Stage 12.
 
 ### 5.1 Canonical inventory profile in Chasovoy
 
@@ -222,38 +231,42 @@ Do not model:
 
 Narration decides that. The application only knows that an external carry cell exists.
 
-### 5.7 Manual GM shape editor
+### 5.7 Manual GM physical editor
 
-GM authoring needs a shape editor:
-- toggle cells;
-- preview bounds;
-- rotate preview;
+GM authoring supports:
+- toggle shape cells for ordinary non-container items;
+- preview bounds and rotate the authored shape;
 - set compact 1×1 vs shape;
-- set stack/instance and stack_max;
-- set container grid/capacity;
-- save into the Chasovoy item definition.
+- set instance vs explicit bulk stack and `stack_max`;
+- choose ordinary containers from the prepared container library;
+- use the deliberately simple 1×1 container for a minimal custom bag;
+- save the profile into the Chasovoy item definition.
+
+Arbitrary internal container width/height is not a normal GM form field. Non-standard or magical interior geometry is authored through Voss.
 
 ### 5.8 AI-assisted item authoring
 
-Voss must be able to create item drafts using the same inventory profile.
+Voss creates item drafts using the same inventory profile and may revise an existing campaign item definition identified by the GM.
 
-For unusual GM items such as a custom hybrid weapon:
+For unusual items or magical containers Voss may:
 - infer approximate physical dimensions;
 - draft a shape mask;
 - classify instance vs bulk stack;
-- propose container/capacity metadata where applicable;
-- let GM review/edit before canonical application.
+- author a non-standard internal grid from the GM's physical description;
+- preserve existing mechanics during geometry-only revision;
+- create a campaign variant instead of mutating an immutable system definition.
 
-Voss must never infer stackability merely from semantic category.
+Voss never infers stackability merely from semantic category and never stores ordinary bonuses, resistances or curses inside `container_profile`.
 
-### Stage 5 complete when
+### Stage 5 completion gate — PASSED ✅
 
-- the profile schema exists and is validated;
-- Chasovoy can persist/revise it;
-- GM can manually edit profiles/shapes;
-- Voss item drafts emit the same profile contract;
-- a starter library of ordinary item shapes/profiles exists;
-- tests lock the physical classification rules.
+- profile schema exists and is validated;
+- Chasovoy persists/revises it through strict item-authoring v2;
+- GM can manually edit ordinary item profiles/shapes and select prepared containers;
+- Voss item drafts/revisions emit the same profile contract;
+- starter ordinary item and container libraries exist;
+- migration preserves ambiguous legacy state rather than guessing;
+- regression tests lock physical classification, container authoring and AI revision rules.
 
 ---
 
