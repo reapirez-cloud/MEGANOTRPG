@@ -41,8 +41,8 @@ test("media player supports native viewing gestures without stealing domain acti
 
 test("AI view context follows the exact open media item and page", () => {
   assert.match(media, /useAIViewContextLayer\(\s*"snake-media"/)
-  assert.match(media, /mediaId: active\.id/)
-  assert.match(media, /mediaSource: active\.src/)
+  assert.match(media, /mediaId: active\?\.id/)
+  assert.match(media, /mediaSource: active\?\.src/)
   assert.match(media, /mediaIndex: index \+ 1/)
   assert.match(media, /mediaCount: count/)
   assert.match(media, /entity: session\.entity/)
