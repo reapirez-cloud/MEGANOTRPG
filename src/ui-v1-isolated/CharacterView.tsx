@@ -212,6 +212,11 @@ export default function CharacterView({
                   level: spell.spell_level,
                   prepared: spell.prepared,
                 })),
+                features: control.features.slice(0, 40).map((feature) => ({
+                  id: feature.id,
+                  name: feature.name,
+                  kind: feature.kind,
+                })),
               }
             : { characterId, error: control.error },
         },
