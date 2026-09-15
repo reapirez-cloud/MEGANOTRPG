@@ -543,6 +543,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
             input={resolved.input}
             contract={resolved.contract}
             classLabel={currentCharacter.character_class || "Класс не указан"}
+            spellcastingAbility={resolved.spellcastingAbility}
             canManage={canManage}
             features={data.features}
             onEditSheet={() => setEditor({ type: "sheet" })}

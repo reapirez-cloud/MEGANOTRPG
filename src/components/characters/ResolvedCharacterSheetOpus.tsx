@@ -130,6 +130,7 @@ type Props = {
   input: CharacterEngineInput
   contract: ResolvedCharacterContract
   classLabel: string
+  spellcastingAbility?: AbilityKey
   canManage: boolean
   features: CharacterFeature[]
   onEditSheet: () => void
@@ -145,6 +146,7 @@ export default function ResolvedCharacterSheetOpus({
   input,
   contract,
   classLabel,
+  spellcastingAbility,
   canManage,
   features,
   onEditSheet,
@@ -173,13 +175,9 @@ export default function ResolvedCharacterSheetOpus({
   const uniqueResources = contract.resources.filter((resource) => !/^spell_slot_\d+$/.test(resource.stateKey))
 
   const hasSpellcasting = contract.spells.length > 0 || spellSlots.length > 0
-  const spellcastingValues = Object.values(contract.spellcasting.byAbility)
-  const spellSaveDc = hasSpellcasting && spellcastingValues.length
-    ? Math.max(...spellcastingValues.map((entry) => entry.saveDc))
-    : null
-  const spellAttack = hasSpellcasting && spellcastingValues.length
-    ? Math.max(...spellcastingValues.map((entry) => entry.attackBonus))
-    : null
+  const activeSpellcasting = spellcastingAbility ? contract.spellcasting.byAbility[spellcastingAbility] : null
+  const spellSaveDc = hasSpellcasting && activeSpellcasting ? activeSpellcasting.saveDc : null
+  const spellAttack = hasSpellcasting && activeSpellcasting ? activeSpellcasting.attackBonus : null
 
   const healthPercent = contract.combat.maxHp.value > 0
     ? Math.min(100, Math.max(0, (contract.combat.currentHp / contract.combat.maxHp.value) * 100))
