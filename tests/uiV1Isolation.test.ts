@@ -177,7 +177,7 @@ test("dock active state is restrained and does not resurrect the floating glass 
   assert.match(styles, /\.u1-dock__item\[data-selected\]/)
   assert.match(styles, /\.u1-dock__item\[data-selected\]::before/)
   assert.doesNotMatch(app + styles, /u1-dock__glass|u1-dock__filament|layoutId="ui-v1-dock-selection"/)
-  assert.doesNotMatch(styles, /radial-gradient\([\s\S]*?u1-dock/)
+  assert.doesNotMatch(styles, /\.u1-dock::after|left 230ms cubic-bezier|filter:\s*blur\(1\.6px\)/)
 })
 
 test("home uses mixed editorial entry types instead of a uniform preview grid", () => {
