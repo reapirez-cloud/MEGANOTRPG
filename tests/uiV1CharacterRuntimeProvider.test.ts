@@ -6,11 +6,11 @@ const main = fs.readFileSync("src/ui-v1-isolated/main.tsx", "utf8")
 const characterView = fs.readFileSync("src/ui-v1-isolated/CharacterView.tsx", "utf8")
 const resourceHook = fs.readFileSync("src/hooks/useCharacterResourceStates.ts", "utf8")
 
-test("UI 1.0 keeps the character runtime inside the isolated auth boundary", () => {
-  assert.doesNotMatch(main, /CharacterContext|CharacterProvider/)
+test("UI 1.0 keeps one canonical auth/campaign boundary", () => {
+  assert.doesNotMatch(main, /CharacterContext|CharacterProvider|CampaignAccessGate/)
   assert.match(
     main,
-    /<AuthGate>[\s\S]*?<CampaignAccessGate>[\s\S]*?<AIProvider>[\s\S]*?<SnakeProvider>[\s\S]*?<UiV1App \/>/,
+    /<AuthGate>[\s\S]*?<AIProvider>[\s\S]*?<SnakeProvider>[\s\S]*?<UiV1App \/>/,
   )
 })
 
