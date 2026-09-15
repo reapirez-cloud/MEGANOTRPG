@@ -175,27 +175,24 @@ test("Developer Mode journals patch, test, build, preview and dev deploy jobs", 
   assert.match(edge, /target: "dev"/)
 })
 
-test("Voss receives developer tools only with an active system-admin session", () => {
+test("Voss never publishes repository-writing Developer Mode tools", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
 
   assert.match(edge, /is_system_admin_for_v1/)
   assert.match(edge, /validate_ai_dev_session_v1/)
   assert.match(edge, /developerMode = true/)
-  assert.match(
-    edge,
-    /developerMode[\s\S]*isSystemAdmin[\s\S]*!mechanicsAuthoringRequested[\s\S]*VOSS_DEVELOPER_TOOLS/,
-  )
-  assert.match(edge, /devSessionId/)
-  assert.match(edge, /devSessionToken/)
+  assert.doesNotMatch(edge, /VOSS_DEVELOPER_TOOLS/)
+  assert.match(edge, /toolsAvailable: false/)
+  assert.match(edge, /Код приложения, Git-ветки, CI, Vercel, миграции и исходники ты не изменяешь/)
 })
 
-test("Developer Mode remains dev-only and does not restore mechanics authoring", () => {
+test("Developer Mode infrastructure may remain dormant without becoming a Voss capability", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
+  const developerTools = read("supabase/functions/voss-agent/developer-tools.ts")
 
-  assert.match(edge, /Developer Mode нужен только для работ с приложением и инфраструктурой/)
-  assert.match(edge, /не отменяет запрет Воссу проектировать или внедрять игровые механики/)
-  assert.match(edge, /Developer Mode никогда не сливает в main/)
-  assert.match(edge, /Owner override.*никогда не выбирается автоматически/)
+  assert.match(developerTools, /propose_dev_patch/)
+  assert.match(edge, /Инфраструктурный Developer Mode может оставаться в кодовой базе/)
+  assert.doesNotMatch(edge, /Перед propose_dev_patch/)
 })
 
 test("browser keeps the raw dev session token in React memory, not localStorage", () => {
