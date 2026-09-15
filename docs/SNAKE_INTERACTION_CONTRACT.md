@@ -280,18 +280,24 @@ A reusable window may receive different title, fields, values, validation metada
 
 ## Media player contract
 
-Media viewing is a reusable Snake surface, not an Art-section modal.
+Media viewing and media composition are reusable Snake surfaces, not Art-, Avatar- or entity-specific modals.
 
 Required behavior:
 
 - fullscreen, media-first presentation with no card/modal chrome around the image;
-- single tap toggles the minimal controls;
+- the same surface supports `view` and target-aware `compose` behavior;
+- a compose target declares only its visible geometry (shape + aspect ratio), label and submit semantics; the domain executor still owns the mutation;
+- circle, square and arbitrary rectangular targets must show the exact final visible mask before submit;
+- crop state is stored as a normalized source rectangle in `media_bindings.presentation`, never as device pixels and never by destructively rewriting the source file;
+- single tap toggles the minimal controls in view mode;
 - horizontal swipe changes pages/items only while the image is at fit scale;
 - pinch zoom and double-tap zoom are local viewing gestures; a zoomed image pans instead of changing page;
 - left/right keyboard navigation is available on desktop;
 - opening media carries the originating Snake entity reference and current media/page facts into the AI view-context layer;
 - domain actions remain domain-provided Snake actions. The player never invents delete/edit/attach authority from the media type itself;
-- private campaign storage continues through the existing campaign-media resolver rather than exposing public object URLs.
+- image upload/file selection may be hosted by the media surface, but upload registration and target mutation execute through the supplied typed action/owner path;
+- private campaign storage continues through the existing campaign-media resolver rather than exposing public object URLs;
+- UI 1.0 must not add one-off avatar croppers, panel croppers, location croppers or similar image-editing modals. Any graphic view/crop/fit/apply operation goes through Snake MediaPlayer compose mode.
 
 Ordinary tap may open the MediaPlayer while long press / right click on the source object continues to open that object's Snake action manifest. These two interactions must not compete.
 
