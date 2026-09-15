@@ -15,11 +15,10 @@ test("Voss orb drag paints directly on animation frames instead of React state p
 })
 
 test("orb has no positional transition while the pointer is dragging it", () => {
-  assert.match(styles, /\.u1-agent-orb\[data-dragging\][\s\S]*?transition:/)
-  assert.doesNotMatch(
-    styles,
-    /\.u1-agent-orb\[data-dragging\][\s\S]*?transform\s+\d+ms/,
-  )
+  const draggingRule =
+    styles.match(/\.u1-agent-orb\[data-dragging\]\s*\{[^}]*\}/)?.[0] || ""
+  assert.match(draggingRule, /transition:/)
+  assert.doesNotMatch(draggingRule, /transform\s+\d+ms/)
   assert.doesNotMatch(styles, /left 180ms|top 180ms/)
 })
 
