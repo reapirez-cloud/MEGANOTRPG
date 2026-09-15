@@ -1,6 +1,8 @@
 .u1-agent-orb {
   position: fixed;
   z-index: 98;
+  left: 0;
+  top: 0;
   width: 40px;
   height: 40px;
   padding: 0;
@@ -18,10 +20,10 @@
   cursor: grab;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
+  will-change: transform;
   transition:
-    left 180ms cubic-bezier(.22,1,.36,1),
-    top 180ms cubic-bezier(.22,1,.36,1),
-    transform 120ms ease,
+    transform 135ms cubic-bezier(.2,.85,.3,1),
+    scale 70ms ease,
     border-color 120ms ease;
 }
 
@@ -32,8 +34,14 @@
 
 .u1-agent-orb:active {
   cursor: grabbing;
-  transform: scale(0.96);
-  transition: transform 70ms ease;
+  scale: 0.96;
+}
+
+.u1-agent-orb[data-dragging] {
+  cursor: grabbing;
+  transition:
+    scale 70ms ease,
+    border-color 120ms ease;
 }
 
 .u1-agent-orb__state {
