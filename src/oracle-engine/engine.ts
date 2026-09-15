@@ -96,9 +96,9 @@ export class OracleEngine {
 
     this.inventory = {
       create: (context, characterId, input) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.create", context, characterId, input })),
-      update: (context, characterId, itemId, input) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.update", context, characterId, itemId, input })),
-      remove: (context, characterId, itemId) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.remove", context, characterId, itemId })),
-      setEquipped: (context, characterId, itemId, equipped, equipmentSlot = null) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.set_equipped", context, characterId, itemId, equipped, equipmentSlot })),
+      update: (context, characterId, itemId, input, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.update", context, characterId, itemId, input, expectedVersion })),
+      remove: (context, characterId, itemId, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.remove", context, characterId, itemId, expectedVersion })),
+      setEquipped: (context, characterId, itemId, equipped, equipmentSlot = null, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.set_equipped", context, characterId, itemId, equipped, equipmentSlot, expectedVersion })),
       consume: (context, characterId, itemId, amount = 1) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.consume", context, characterId, itemId, amount })),
       transfer: (context, fromCharacterId, toCharacterId, itemId, amount) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.transfer", context, fromCharacterId, toCharacterId, itemId, amount })),
     }
