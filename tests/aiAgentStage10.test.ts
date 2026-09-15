@@ -57,7 +57,7 @@ test("chat body has no context explainer, prompt tiles or giant empty-state coac
   assert.doesNotMatch(styles, /\.u1-agent-context/)
 })
 
-test("model, file and Developer Mode controls live in a dedicated Snake-like tool drawer", () => {
+test("model and file controls live in a dedicated Snake-like tool drawer while Developer Mode stays hidden", () => {
   const shell = read("src/ai/AgentShell.tsx")
   const styles = read("src/ai/ai-voss.css")
 
@@ -66,7 +66,7 @@ test("model, file and Developer Mode controls live in a dedicated Snake-like too
   assert.match(shell, /selectableModels\.map/)
   assert.match(shell, /Вставить файл/)
   assert.match(shell, /fileInputRef/)
-  assert.match(shell, /Developer Mode/)
+  assert.doesNotMatch(shell, /Developer Mode|Создать preview-ветку|Слить в dev/)
   assert.match(styles, /\.u1-agent-tools-drawer/)
   assert.match(styles, /transform:\s*translateX\(-104%\)/)
   assert.doesNotMatch(shell, /className="u1-agent-model"/)
@@ -89,7 +89,7 @@ test("conversation keeps canonical system artifacts without turning them into da
 
   assert.match(shell, /AI DRAFT · НЕ КАНОН/)
   assert.doesNotMatch(shell, /MECHANICS COMPILER/)
-  assert.match(shell, /DEVELOPER RUN/)
+  assert.doesNotMatch(shell, /DEVELOPER RUN/)
   assert.match(styles, /\.u1-agent-system-entry/)
   assert.match(styles, /border-left:/)
   assert.doesNotMatch(styles, /border-radius:\s*1[024]px/)
