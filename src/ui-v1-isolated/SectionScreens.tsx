@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
+import CampaignMediaFrame from "../components/common/CampaignMediaFrame"
+import type { SnakeAction, SnakeActionInput } from "../snake-engine"
 import { LocationNavigator } from "./LocationNavigator"
+import { SnakeTrigger } from "./SnakeProvider"
 
 import { classReference, type ClassReferenceEntry, type ClassReferenceSubclass } from "../data/classReference"
 import { warlockInvocationsReference } from "../data/classes/warlockInvocationsReference"
@@ -26,10 +29,77 @@ import {
   type UiV1ReferenceFeature,
   type UiV1ReferencePresentation,
 } from "./classReferencePresentation"
+import {
+  classReferenceArtSlot,
+  subclassReferenceArtSlot,
+  useUiV1ReferenceMedia,
+  type UiV1ReferenceMedia,
+} from "./useUiV1ReferenceMedia"
 import "./section-screens.css"
 
 function navigate(path: string) {
   window.location.hash = `#/${path}`
+}
+
+function referenceArtActions({
+  slot,
+  title,
+  source,
+  media,
+  aspectRatio,
+  apply,
+}: {
+  slot: string
+  title: string
+  source: string | null
+  media: UiV1ReferenceMedia | null
+  aspectRatio: number
+  apply: (slot: string, input: SnakeActionInput) => Promise<{ ok: boolean; error?: string }>
+}): SnakeAction[] {
+  return [
+    {
+      id: "reference-art",
+      label: media ? "Изменить арт" : "Загрузить арт",
+      surface: {
+        kind: "media",
+        eyebrow: "Админ · графика",
+        title,
+        items: source
+          ? [{
+              id: slot,
+              src: source,
+              title,
+              facts: {
+                assetId: media?.assetId || null,
+                storagePath: media?.storagePath || null,
+              },
+            }]
+          : [],
+        compose: {
+          label:
+            Math.abs(aspectRatio - 3) < 0.001
+              ? "Панель · 3:1"
+              : "Арт страницы · 16:9",
+          shape: "rect",
+          aspectRatio,
+          allowFilePick: true,
+          requireFile: !media?.assetId,
+          fileLabel: media ? "Заменить файл" : "Загрузить файл",
+          submitLabel: "Сохранить арт",
+          initialPresentation: media?.presentation || null,
+        },
+      },
+      execute: async ({ input }) => {
+        const result = await apply(slot, input)
+        return result.ok
+          ? { type: "success" as const, notice: "Арт обновлён." }
+          : {
+              type: "error" as const,
+              message: result.error || "Не удалось сохранить арт.",
+            }
+      },
+    },
+  ]
 }
 
 function SectionHeader({
@@ -253,7 +323,15 @@ function ClassCatalogPanels({
   query,
   onOpen,
 }: {
-  rows: Array<{ id: string; title: string; meta?: string; art?: string }>
+  rows: Array<{
+    id: string
+    title: string
+    meta?: string
+    art?: string
+    media?: UiV1ReferenceMedia | null
+    actions?: SnakeAction[]
+    entityId?: string
+  }>
   query: string
   onOpen: (id: string) => void
 }) {
@@ -267,36 +345,50 @@ function ClassCatalogPanels({
 
   return (
     <div className="u1-class-panel-list">
-      {visible.map((row) => (
-        <button
-          type="button"
-          className="u1-class-panel"
-          data-class-id={row.id}
-          key={row.id}
-          onClick={() => onOpen(row.id)}
-          aria-label={`Открыть: ${row.title}`}
-        >
-          <span className="u1-class-panel__texture" aria-hidden="true" />
-          {row.art && (
-            <img
-              className="u1-class-panel__image"
-              src={row.art}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              aria-hidden="true"
-              onError={(event) => {
-                event.currentTarget.hidden = true
-              }}
-            />
-          )}
-          <span className="u1-class-panel__scrim" aria-hidden="true" />
-          <span className="u1-class-panel__copy">
-            <strong>{row.title}</strong>
-            {row.meta && <small>{row.meta}</small>}
+      {visible.map((row) => {
+        const panel = (
+          <button
+            type="button"
+            className="u1-class-panel"
+            data-class-id={row.id}
+            onClick={() => onOpen(row.id)}
+            aria-label={`Открыть: ${row.title}`}
+          >
+            <span className="u1-class-panel__texture" aria-hidden="true" />
+            {row.art && (
+              <CampaignMediaFrame
+                className="u1-class-panel__image"
+                value={row.art}
+                presentation={row.media?.presentation || null}
+                alt=""
+                aria-hidden="true"
+              />
+            )}
+            <span className="u1-class-panel__scrim" aria-hidden="true" />
+            <span className="u1-class-panel__copy">
+              <strong>{row.title}</strong>
+              {row.meta && <small>{row.meta}</small>}
+            </span>
+          </button>
+        )
+
+        return row.actions?.length ? (
+          <SnakeTrigger
+            key={row.id}
+            entity={{
+              type: "reference-art",
+              id: row.entityId || row.id,
+            }}
+            actions={row.actions}
+          >
+            {panel}
+          </SnakeTrigger>
+        ) : (
+          <span key={row.id} className="u1-class-panel__plain-wrap">
+            {panel}
           </span>
-        </button>
-      ))}
+        )
+      })}
       {!visible.length && <EmptyState>Ничего не найдено.</EmptyState>}
     </div>
   )
@@ -384,27 +476,44 @@ function ClassModeTabs({
 function ReferenceHeroPlaceholder({
   kind,
   art,
+  media,
+  actions,
+  entityId,
 }: {
   kind: "class" | "subclass" | "feature"
   art?: string
+  media?: UiV1ReferenceMedia | null
+  actions?: SnakeAction[]
+  entityId?: string
 }) {
-  return (
+  const hero = (
     <div className="u1-reference-hero-placeholder" data-kind={kind} aria-hidden="true">
       {art && (
-        <img
+        <CampaignMediaFrame
           className="u1-reference-hero-placeholder__image"
-          src={art}
+          value={art}
+          presentation={media?.presentation || null}
           alt=""
-          decoding="async"
           aria-hidden="true"
-          onError={(event) => {
-            event.currentTarget.hidden = true
-          }}
         />
       )}
       <span className="u1-reference-hero-placeholder__wash" />
       <span className="u1-reference-hero-placeholder__line" />
     </div>
+  )
+
+  if (!actions?.length) return hero
+
+  return (
+    <SnakeTrigger
+      entity={{
+        type: "reference-art",
+        id: entityId || kind,
+      }}
+      actions={actions}
+    >
+      {hero}
+    </SnakeTrigger>
   )
 }
 
@@ -663,11 +772,26 @@ function FeatureDetailScreen({
 function ClassDetailScreen({
   entry,
   presentation,
+  referenceMedia,
 }: {
   entry: ClassReferenceEntry
   presentation: UiV1ReferencePresentation
+  referenceMedia: ReturnType<typeof useUiV1ReferenceMedia>
 }) {
   const [mode, setMode] = useState<ReferenceDetailMode>("features")
+  const heroSlot = classReferenceArtSlot(entry.id, "hero")
+  const heroMedia = referenceMedia.get(heroSlot)
+  const heroSource = heroMedia?.storagePath || null
+  const heroActions = referenceMedia.isOwner
+    ? referenceArtActions({
+        slot: heroSlot,
+        title: entry.name + " · арт класса",
+        source: heroSource,
+        media: heroMedia,
+        aspectRatio: 16 / 9,
+        apply: referenceMedia.apply,
+      })
+    : []
 
   useAIViewContextLayer(
     "reference-class",
@@ -714,7 +838,13 @@ function ClassDetailScreen({
         active="class"
         onBeforeNavigate={() => setMode("features")}
       />
-      <ReferenceHeroPlaceholder kind="class" />
+      <ReferenceHeroPlaceholder
+        kind="class"
+        art={heroSource || undefined}
+        media={heroMedia}
+        actions={heroActions}
+        entityId={heroSlot}
+      />
       <ReferenceDetailTabs active={mode} onChange={setMode} />
 
       {mode === "features" ? (
@@ -750,17 +880,38 @@ function SubclassCatalogScreen({
   entry,
   query,
   setQuery,
+  referenceMedia,
 }: {
   entry: ClassReferenceEntry
   query: string
   setQuery: (value: string) => void
+  referenceMedia: ReturnType<typeof useUiV1ReferenceMedia>
 }) {
-  const rows = entry.subclasses.map((subclass) => ({
-    id: subclass.id,
-    title: subclass.name,
-    meta: undefined,
-    art: subclassArtPath(entry, subclass, "preview"),
-  }))
+  const rows = entry.subclasses.map((subclass) => {
+    const slot = subclassReferenceArtSlot(entry.id, subclass.id, "preview")
+    const media = referenceMedia.get(slot)
+    const fallback = subclassArtPath(entry, subclass, "preview")
+    const source = media?.storagePath || fallback
+
+    return {
+      id: subclass.id,
+      title: subclass.name,
+      meta: undefined,
+      art: source,
+      media,
+      entityId: slot,
+      actions: referenceMedia.isOwner
+        ? referenceArtActions({
+            slot,
+            title: subclass.name + " · превью",
+            source,
+            media,
+            aspectRatio: 3,
+            apply: referenceMedia.apply,
+          })
+        : undefined,
+    }
+  })
 
   useAIViewContextLayer(
     "reference-subclass-catalog",
@@ -813,12 +964,28 @@ function SubclassDetailScreen({
   entry,
   subclass,
   presentation,
+  referenceMedia,
 }: {
   entry: ClassReferenceEntry
   subclass: ClassReferenceSubclass
   presentation: UiV1ReferencePresentation
+  referenceMedia: ReturnType<typeof useUiV1ReferenceMedia>
 }) {
   const [mode, setMode] = useState<ReferenceDetailMode>("features")
+  const heroSlot = subclassReferenceArtSlot(entry.id, subclass.id, "hero")
+  const heroMedia = referenceMedia.get(heroSlot)
+  const heroFallback = subclassArtPath(entry, subclass, "hero")
+  const heroSource = heroMedia?.storagePath || heroFallback
+  const heroActions = referenceMedia.isOwner
+    ? referenceArtActions({
+        slot: heroSlot,
+        title: subclass.name + " · арт подкласса",
+        source: heroSource,
+        media: heroMedia,
+        aspectRatio: 16 / 9,
+        apply: referenceMedia.apply,
+      })
+    : []
 
   useAIViewContextLayer(
     "reference-subclass",
@@ -872,7 +1039,10 @@ function SubclassDetailScreen({
       />
       <ReferenceHeroPlaceholder
         kind="subclass"
-        art={subclassArtPath(entry, subclass, "hero")}
+        art={heroSource}
+        media={heroMedia}
+        actions={heroActions}
+        entityId={heroSlot}
       />
       <ReferenceDetailTabs active={mode} onChange={setMode} />
 
@@ -902,6 +1072,7 @@ function SubclassDetailScreen({
 export function KnowledgeBaseScreen({ subsection, path = [] }: { subsection?: string; path?: string[] }) {
   const catalog = useUiV1KnowledgeCatalog(subsection)
   const rules = useRuleTemplates(subsection === "classes" ? catalog.campaignId : "")
+  const referenceMedia = useUiV1ReferenceMedia()
   const [query, setQuery] = useState("")
 
   useAIViewContextLayer(
@@ -940,12 +1111,31 @@ export function KnowledgeBaseScreen({ subsection, path = [] }: { subsection?: st
 
   const staticRows =
     subsection === "classes"
-      ? classReference.map((entry) => ({
-          id: entry.id,
-          title: entry.name,
-          meta: `${entry.subclasses.length} подклассов`,
-          art: `/ui-v1/classes/${entry.id}.webp`,
-        }))
+      ? classReference.map((entry) => {
+          const slot = classReferenceArtSlot(entry.id, "preview")
+          const media = referenceMedia.get(slot)
+          const fallback = `/ui-v1/classes/${entry.id}.webp`
+          const source = media?.storagePath || fallback
+
+          return {
+            id: entry.id,
+            title: entry.name,
+            meta: `${entry.subclasses.length} подклассов`,
+            art: source,
+            media,
+            entityId: slot,
+            actions: referenceMedia.isOwner
+              ? referenceArtActions({
+                  slot,
+                  title: entry.name + " · превью класса",
+                  source,
+                  media,
+                  aspectRatio: 3,
+                  apply: referenceMedia.apply,
+                })
+              : undefined,
+          }
+        })
       : subsection === "invocations"
         ? warlockInvocationsReference.map((entry, index) => ({
             id: `${entry.level}:${entry.name}:${index}`,
@@ -1027,14 +1217,28 @@ export function KnowledgeBaseScreen({ subsection, path = [] }: { subsection?: st
             entry={selectedClass}
             subclass={selectedSubclass}
             presentation={subclassPresentation}
+            referenceMedia={referenceMedia}
           />
         )
       }
 
-      return <SubclassCatalogScreen entry={selectedClass} query={query} setQuery={setQuery} />
+      return (
+        <SubclassCatalogScreen
+          entry={selectedClass}
+          query={query}
+          setQuery={setQuery}
+          referenceMedia={referenceMedia}
+        />
+      )
     }
 
-    return <ClassDetailScreen entry={selectedClass} presentation={classPresentation} />
+    return (
+      <ClassDetailScreen
+        entry={selectedClass}
+        presentation={classPresentation}
+        referenceMedia={referenceMedia}
+      />
+    )
   }
 
   return (
