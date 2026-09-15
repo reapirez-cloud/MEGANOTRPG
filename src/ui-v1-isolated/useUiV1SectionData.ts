@@ -82,6 +82,7 @@ export function useUiV1CampaignScope(): CampaignScope {
           campaignId: "",
           userId: "",
           canManage: false,
+          isOwner: false,
           loading: false,
           error: authError?.message || "Сессия не найдена",
         })

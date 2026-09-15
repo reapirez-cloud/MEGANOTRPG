@@ -64,6 +64,7 @@ function uploadFolder(collection: ArtCollection) {
 
 export function useUiV1ArtData() {
   const scope = useUiV1CampaignScope()
+  const [campaignTitle, setCampaignTitle] = useState("")
   const [items, setItems] = useState<UiV1ArtItem[]>([])
   const [pages, setPages] = useState<UiV1ArtPage[]>([])
   const [generated, setGenerated] = useState<UiV1GeneratedAsset[]>([])
@@ -74,6 +75,13 @@ export function useUiV1ArtData() {
   const load = useCallback(async () => {
     if (!scope.campaignId) return
     setLoading(true)
+
+    const { data: campaignRow } = await supabase
+      .from("campaigns")
+      .select("title")
+      .eq("id", scope.campaignId)
+      .maybeSingle()
+    setCampaignTitle(campaignRow?.title || "")
 
     const { data: artRows, error: artError } = await supabase
       .from("campaign_art_items")
@@ -165,6 +173,7 @@ export function useUiV1ArtData() {
     setBusy(true)
     setError(null)
     const uploaded: string[] = []
+    const createdIds: string[] = []
 
     try {
       if (collection === "comics") {
@@ -190,6 +199,7 @@ export function useUiV1ArtData() {
           .single()
 
         if (insertError || !artItem) throw new Error(insertError?.message || "Не удалось создать комикс.")
+        createdIds.push(artItem.id)
 
         const { error: pagesError } = await supabase
           .from("campaign_art_pages")
@@ -211,7 +221,7 @@ export function useUiV1ArtData() {
           if (!result.ok) throw new Error(result.error)
           uploaded.push(result.url)
 
-          const { error: insertError } = await supabase
+          const { data: created, error: insertError } = await supabase
             .from("campaign_art_items")
             .insert({
               campaign_id: scope.campaignId,
@@ -222,13 +232,19 @@ export function useUiV1ArtData() {
               kind: "art",
               collection,
             })
-          if (insertError) throw new Error(insertError.message)
+            .select("id")
+            .single()
+          if (insertError || !created) throw new Error(insertError?.message || "Не удалось сохранить арт.")
+          createdIds.push(created.id)
         }
       }
 
       await load()
       return { ok: true }
     } catch (reason) {
+      if (createdIds.length) {
+        await supabase.from("campaign_art_items").delete().in("id", createdIds)
+      }
       await deleteCampaignMediaObjects(uploaded)
       const message = reason instanceof Error ? reason.message : "Не удалось загрузить арт."
       setError(message)
@@ -304,6 +320,7 @@ export function useUiV1ArtData() {
 
   return {
     ...scope,
+    campaignTitle,
     items,
     pages,
     generated,
