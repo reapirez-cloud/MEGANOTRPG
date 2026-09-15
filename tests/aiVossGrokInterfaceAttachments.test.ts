@@ -92,19 +92,15 @@ test("Voss UI no longer exposes redundant context and suggestion furniture", () 
   assert.match(shell, /selectableModels\.map/)
 })
 
-test("Developer Mode controls live in the tool drawer while run evidence stays in conversation", () => {
+test("tool drawer keeps ordinary Voss controls and omits Developer Mode furniture", () => {
   const shell = read("src/ai/AgentShell.tsx")
 
   const drawerIndex = shell.indexOf('className="u1-agent-tools-drawer"')
-  const developerIndex = shell.indexOf("Developer Mode")
   const logIndex = shell.indexOf('className="u1-agent-log"')
 
   assert.ok(drawerIndex >= 0)
-  assert.ok(developerIndex > drawerIndex)
-  assert.ok(developerIndex < logIndex)
-  assert.match(shell, /DEVELOPER RUN/)
-  assert.match(shell, /Создать preview-ветку/)
-  assert.match(shell, /Слить в dev/)
+  assert.ok(logIndex > drawerIndex)
+  assert.doesNotMatch(shell, /Developer Mode|DEVELOPER RUN|Создать preview-ветку|Слить в dev/)
 })
 
 test("floating Voss orb is movable and edge-snapped instead of hardcoded top-right", () => {
