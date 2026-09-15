@@ -11,6 +11,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Fixed the UI 1.0 character-sheet black screen introduced by the shared Character Runtime hookup: the new UI root now mounts the required CharacterProvider before CharacterView can resolve CE state.
+
 - Rebuilt the player character sheet into one continuous image-led RPG surface: 16:9 character art with Bio/Diary in the image, Inventory immediately below it, a 50/50 quick-stat/ability matrix, compact class-resource rows with resource-specific marks, vertically scrollable spell-slot rows, and quiet expandable abilities/defenses. The main sheet no longer carries the old permanent tab rail; class, magic, inventory, diary and art stay available as focused deeper screens.
 
 - Voss floating orb now tracks the finger directly during drag instead of easing toward every intermediate pointer position. Drag motion is compositor-driven and frame-synchronised; only the final edge snap keeps a short animation.
@@ -31,6 +33,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Restored the Character Runtime provider contract in the UI 1.0 entry tree. `useResolvedCharacterRuntime` can now reach the CharacterContext required by persistent resource state without bypassing Shapoklyak/CE ownership or adding a second storage path. No Supabase schema/data migration was needed.
+
 - The character-sheet redesign is presentation-only over the existing shared `ResolvedCharacterContract`. Canonical HP, stats, resources and spell slots still come from the Character Runtime / CE path; no Supabase schema or ownership boundary was changed.
 
 - Added campaign-level `reference_art` media bindings. Mutation is enforced with `private.is_campaign_owner`, so ordinary GMs cannot change class/subclass art even though they can manage other campaign content.
@@ -50,6 +54,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Class Reference now treats `rule_templates` as the canonical definition source whenever it is available; `referenceOnly` controls literary fallback, not permission to ignore an active CE class package.
 
 ### Tests / verification
+
+- Added `uiV1CharacterRuntimeProvider.test.ts` to lock the UI 1.0 provider ordering and prevent CharacterView from mounting the shared runtime outside CharacterProvider again.
 
 - Added `characterSheetOpusLayout.test.ts` to lock the 16:9 hero/inventory hierarchy, 50/50 core matrix, expandable abilities, resource-specific presentation, scroll-bounded spell slots and the no-second-runtime constraint.
 
