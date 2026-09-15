@@ -1,6 +1,7 @@
 import { EngineCommandError } from "../engine-contracts/index.ts"
 import type { InventoryInput, InventoryItem, ItemUsageMode } from "../types/characterSheet.ts"
 import type { CheburashkaCommand, CheburashkaStorage, InventoryMutation } from "./types.ts"
+import { inventoryStackMode } from "./stacking.ts"
 
 function copy<T>(value: T): T {
   return structuredClone(value)
@@ -30,6 +31,7 @@ function normalizeInput(input: InventoryInput) {
     usage_mode: mode,
     charges_current: chargesCurrent,
     charges_max: chargesMax,
+    stack_mode: inventoryStackMode({ ...input, usage_mode: mode }),
     item_state: copy(input.item_state ?? {}),
   }
 }
@@ -147,6 +149,12 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
           "Inventory quantity must be an integer >= 1",
         )
       }
+      if (input.stack_mode === "instance" && input.quantity !== 1) {
+        throw new EngineCommandError(
+          "inventory.instance_quantity",
+          "Inventory instance quantity must be 1",
+        )
+      }
 
       const item: InventoryItem = {
         id: `item-${command.context.commandId}`,
@@ -166,6 +174,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         usage_mode: input.usage_mode,
         charges_current: input.charges_current,
         charges_max: input.charges_max,
+        stack_mode: input.stack_mode,
         item_state: input.item_state,
         version: 1,
         sort_order: 0,
@@ -191,6 +200,12 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         throw new EngineCommandError(
           "inventory.insufficient_quantity",
           "Not enough items to transfer",
+        )
+      }
+      if (inventoryStackMode(item) === "instance" && command.amount !== item.quantity) {
+        throw new EngineCommandError(
+          "inventory.instance_split_forbidden",
+          "Inventory instance cannot be split",
         )
       }
 
@@ -253,6 +268,12 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
 
     if (command.kind === "inventory.update") {
       const input = normalizeInput(command.input)
+      if (input.stack_mode === "instance" && input.quantity !== 1) {
+        throw new EngineCommandError(
+          "inventory.instance_quantity",
+          "Inventory instance quantity must be 1",
+        )
+      }
       const after = this.stamp({
         ...item,
         ...input,

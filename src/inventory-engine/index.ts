@@ -6,6 +6,13 @@ export {
   inventoryItemIdFromSourceId,
 } from "./projection.ts"
 export { subscribeCheburashkaCharacterChanges } from "./realtime.ts"
+export {
+  forcedInventoryInstanceReason,
+  inventoryStackMode,
+  inventoryStackQuantityValid,
+  inventoryUsageMode,
+  isForcedInventoryInstance,
+} from "./stacking.ts"
 export type {
   CheburashkaCommand,
   CheburashkaStorage,

@@ -312,6 +312,7 @@ export function useUiV1CharacterControl(characterId: string) {
       usage_mode: patch.usage_mode ?? item.usage_mode,
       charges_current: patch.charges_current !== undefined ? patch.charges_current : item.charges_current,
       charges_max: patch.charges_max !== undefined ? patch.charges_max : item.charges_max,
+      stack_mode: patch.stack_mode ?? item.stack_mode,
       item_state: patch.item_state ?? item.item_state ?? {},
     }
     return gm(

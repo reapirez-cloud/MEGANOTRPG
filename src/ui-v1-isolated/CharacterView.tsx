@@ -10,6 +10,7 @@ import {
 import CampaignMediaFrame from "../components/common/CampaignMediaFrame"
 import { useResolvedCharacterRuntime } from "../hooks/useResolvedCharacterRuntime"
 import type { SnakeAction } from "../snake-engine"
+import { inventoryStackMode } from "../inventory-engine/stacking"
 import type { CharacterFeature, CharacterSheet, CharacterSpell, InventoryItem } from "../types/characterSheet"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import { openSourceAction } from "./GMWorkshopCommon"
@@ -107,6 +108,7 @@ function itemDetail(item: InventoryItem) {
   return [
     item.category ? "Категория: " + item.category : "",
     "Количество: " + item.quantity,
+    inventoryStackMode(item) === "instance" ? "Отдельный экземпляр." : "Стопка.",
     item.usage_mode === "charges"
       ? "Заряды: " + (item.charges_current ?? item.charges_max ?? 0) + "/" + (item.charges_max ?? 0)
       : item.usage_mode === "quantity" ? "Использование расходует 1 единицу." : "",
@@ -517,6 +519,7 @@ export default function CharacterView({
     }]
 
     const usageMode = item.usage_mode ?? (item.category === "consumable" ? "quantity" : "none")
+    const stackMode = inventoryStackMode(item)
     if (usageMode !== "none" && control.canControlCharacter) {
       const remaining = usageMode === "charges"
         ? item.charges_current ?? item.charges_max ?? 0
@@ -558,7 +561,7 @@ export default function CharacterView({
           title: item.name,
           fields: [
             { id: "name", label: "Название", type: "text", required: true },
-            { id: "quantity", label: "Количество", type: "number", required: true },
+            ...(stackMode === "instance" ? [] : [{ id: "quantity", label: "Количество", type: "number", required: true } as const]),
             { id: "weight", label: "Вес", type: "number" },
             { id: "description", label: "Описание", type: "textarea" },
           ],
@@ -573,7 +576,9 @@ export default function CharacterView({
         execute: async ({ input }) => {
           const response = await control.updateItem(item, {
             name: String(input?.name || item.name),
-            quantity: Math.max(1, Math.floor(number(input?.quantity, item.quantity))),
+            quantity: stackMode === "instance"
+              ? 1
+              : Math.max(1, Math.floor(number(input?.quantity, item.quantity))),
             weight: input?.weight === "" ? null : number(input?.weight, item.weight ?? 0),
             description: String(input?.description ?? item.description),
           })
@@ -601,17 +606,19 @@ export default function CharacterView({
                 label: target.name,
               })),
             },
-            { id: "amount", label: "Количество", type: "number", required: true },
+            ...(stackMode === "instance" ? [] : [{ id: "amount", label: "Количество", type: "number", required: true } as const]),
           ],
           initialValues: {
             target: control.transferTargets[0]?.id || "",
-            amount: 1,
+            ...(stackMode === "instance" ? {} : { amount: 1 }),
           },
           submitLabel: "Передать",
         },
         execute: async ({ input }) => {
           const target = String(input?.target || "")
-          const amount = Math.max(1, Math.min(item.quantity, Math.floor(number(input?.amount, 1))))
+          const amount = stackMode === "instance"
+            ? 1
+            : Math.max(1, Math.min(item.quantity, Math.floor(number(input?.amount, 1))))
           const response = await control.transferItem(item, target, amount)
           return response.ok
             ? { type: "success", notice: "Предмет передан." }

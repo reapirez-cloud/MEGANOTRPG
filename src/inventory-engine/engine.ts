@@ -7,6 +7,7 @@ import {
   type EngineEventPublisher,
 } from "../engine-contracts/index.ts"
 import { createInventoryMechanicalProjection } from "./projection.ts"
+import { inventoryStackMode } from "./stacking.ts"
 import type {
   CheburashkaCommand,
   CheburashkaStorage,
@@ -140,6 +141,12 @@ export class CheburashkaEngine {
       if (command.input.weight !== null && (!Number.isFinite(command.input.weight) || command.input.weight < 0)) {
         throw new EngineCommandError("inventory.invalid_weight", "Inventory weight cannot be negative")
       }
+      if (inventoryStackMode(command.input) === "instance" && command.input.quantity !== 1) {
+        throw new EngineCommandError(
+          "inventory.instance_quantity",
+          "Inventory instance quantity must be 1",
+        )
+      }
     }
 
     if (
@@ -161,6 +168,21 @@ export class CheburashkaEngine {
     }
 
     await this.assertPlayerItemAccess(command)
+
+    if (command.kind === "inventory.transfer") {
+      const source = await this.storage.getItem(command.itemId)
+      if (
+        source &&
+        source.character_id === command.fromCharacterId &&
+        inventoryStackMode(source) === "instance" &&
+        command.amount !== source.quantity
+      ) {
+        throw new EngineCommandError(
+          "inventory.instance_split_forbidden",
+          "Inventory instance cannot be split",
+        )
+      }
+    }
 
     const mutation = await this.storage.execute(command)
     const requiresResolution = changed(mutation)

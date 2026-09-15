@@ -4,6 +4,7 @@ export type SkillRank = 0 | 1 | 2
 export type InventoryCategory = "equipment" | "consumable" | "tool" | "book" | "trinket" | "quest" | "material" | "currency" | "container" | "other"
 export type EquipmentSlot = "main_hand" | "off_hand" | "two_hands" | "head" | "neck" | "shoulders" | "chest" | "hands" | "wrists" | "waist" | "legs" | "feet" | "back" | "ring_left" | "ring_right" | "ammo" | "other"
 export type ItemUsageMode = "none" | "quantity" | "charges"
+export type InventoryStackMode = "stack" | "instance"
 export type SpellSlotState = { max: number; used: number }
 
 export type CharacterSheet = {
@@ -28,6 +29,8 @@ export type InventoryItem = {
   mechanics?: StoredMechanics
   /** Cheburashka-owned persistent use state. Older rows are normalized by its adapter. */
   usage_mode?: ItemUsageMode; charges_current?: number | null; charges_max?: number | null
+  /** "stack" means quantity may be >1; "instance" is always one independently stateful object. */
+  stack_mode?: InventoryStackMode
   item_state?: Record<string, unknown>; version?: number
   sort_order: number; created_at: string; updated_at: string
 }
@@ -61,6 +64,7 @@ export type InventoryInput = {
   definition_id?: string | null; definition_revision?: number | null
   mechanics?: StoredMechanics
   usage_mode?: ItemUsageMode; charges_current?: number | null; charges_max?: number | null
+  stack_mode?: InventoryStackMode
   item_state?: Record<string, unknown>
 }
 export type SpellInput = {

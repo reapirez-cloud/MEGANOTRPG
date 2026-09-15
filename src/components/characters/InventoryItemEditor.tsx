@@ -10,9 +10,13 @@ import {
   type ItemRechargeRestore,
   type ItemRechargeTrigger,
 } from "../../inventory-engine/lifecycle"
+import {
+  inventoryStackMode,
+  isForcedInventoryInstance,
+} from "../../inventory-engine/stacking"
 import { mechanicSummary } from "../../lib/characterMechanics"
 import { deleteCampaignMediaObject, deleteCampaignMediaObjects } from "../../lib/mediaUpload"
-import type { EquipmentSlot, InventoryCategory, InventoryInput, InventoryItem, ItemUsageMode } from "../../types/characterSheet"
+import type { EquipmentSlot, InventoryCategory, InventoryInput, InventoryItem, InventoryStackMode, ItemUsageMode } from "../../types/characterSheet"
 import type { StoredMechanic, StoredMechanics } from "../../types/characterMechanics"
 
 type Props = {
@@ -111,6 +115,9 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
   const [usageMode, setUsageMode] = useState<ItemUsageMode>(
     item?.usage_mode ?? (item?.category === "consumable" ? "quantity" : "none"),
   )
+  const [stackMode, setStackMode] = useState<InventoryStackMode>(
+    item ? inventoryStackMode(item) : "stack",
+  )
   const [chargesMax, setChargesMax] = useState(String(item?.charges_max ?? 1))
   const [chargesCurrent, setChargesCurrent] = useState(String(item?.charges_current ?? item?.charges_max ?? 1))
   const [rechargeTrigger, setRechargeTrigger] = useState<ItemRechargeTrigger | "none">(initialRecharge.trigger ?? "none")
@@ -127,6 +134,8 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
   const [error, setError] = useState("")
 
   const currentPreset = presets.find((candidate) => candidate.id === preset) || presets[0]
+  const forcedInstance = isForcedInventoryInstance({ category, usage_mode: usageMode })
+  const effectiveStackMode: InventoryStackMode = forcedInstance ? "instance" : stackMode
 
   function normalizeActivation(list: StoredMechanics): StoredMechanics {
     return list.map((mechanic) =>
@@ -168,7 +177,10 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
     setCategory(selected.category)
     setEquipmentSlot(selected.slot)
     setEquipped(false)
-    if (!item) setUsageMode(next === "consumable" ? "quantity" : "none")
+    if (!item) {
+      setUsageMode(next === "consumable" ? "quantity" : "none")
+      setStackMode(next === "weapon" || next === "armor" || next === "artifact" ? "instance" : "stack")
+    }
     if (!item && mechanics.length === 0 && next === "weapon") setMechanics([weaponBase()])
     if (!item && preset === "weapon" && next !== "weapon" && mechanics.length === 1 && mechanics[0]?.type === "action" && mechanics[0].label === "Атака оружием") setMechanics([])
   }
@@ -210,7 +222,9 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
     )
     const result = await onSave({
       name: name.trim(),
-      quantity: Math.max(1, Number.parseInt(quantity || "1", 10) || 1),
+      quantity: effectiveStackMode === "instance"
+        ? 1
+        : Math.max(1, Number.parseInt(quantity || "1", 10) || 1),
       weight: item?.weight ?? null,
       category,
       equipment_slot: category === "equipment" ? equipmentSlot : null,
@@ -223,6 +237,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
       usage_mode: usageMode,
       charges_current: usageMode === "charges" ? currentCharges : null,
       charges_max: usageMode === "charges" ? maxCharges : null,
+      stack_mode: effectiveStackMode,
       item_state: itemState,
     })
     setSaving(false)
@@ -278,8 +293,10 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
             <input className="app-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} autoFocus placeholder={preset === "weapon" ? "Например: Длинный меч" : preset === "artifact" ? "Например: Сердце Пепла" : "Название предмета"} />
             <div className="v2-field-grid">
               <label><span className="field-label">Категория</span><select className="app-select" value={category} onChange={(e) => setCategory(e.target.value as InventoryCategory)}>{inventoryCategories.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
-              <label><span className="field-label">Количество</span><input className="app-input" type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></label>
+              <label><span className="field-label">Количество</span><input className="app-input" type="number" min="1" disabled={effectiveStackMode === "instance"} value={effectiveStackMode === "instance" ? "1" : quantity} onChange={(e) => setQuantity(e.target.value)} /></label>
             </div>
+            <label><span className="field-label">Хранение</span><select className="app-select" value={effectiveStackMode} disabled={forcedInstance} onChange={(e) => setStackMode(e.target.value as InventoryStackMode)}><option value="stack">Стопка одинаковых предметов</option><option value="instance">Отдельный экземпляр</option></select></label>
+            {forcedInstance && <div className="creation-activation-note">Этот тип предмета всегда отдельный экземпляр. Количество фиксировано на 1, чтобы состояние, экипировка или заряды не клонировались при разделении стопки.</div>}
             {category === "equipment" && <label><span className="field-label">Куда надевается</span><select className="app-select" value={equipmentSlot} onChange={(e) => setEquipmentSlot(e.target.value as EquipmentSlot)}>{equipmentSlots.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>}
             <div className="creation-wizard__intro"><span>↯</span><div><strong>Как предмет расходуется?</strong><small>Обычная вещь не тратится. Расходник уменьшает количество. Зарядный предмет тратит собственный счётчик.</small></div></div>
             <label><span className="field-label">Использование</span><select className="app-select" value={usageMode} onChange={(e) => setUsageMode(e.target.value as ItemUsageMode)}><option value="none">Не расходуется</option><option value="quantity">Расходует количество</option><option value="charges">Использует заряды</option></select></label>
@@ -332,9 +349,10 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
             <div className="creation-wizard__intro"><span>04</span><div><strong>Проверка</strong><small>ГМ видит всё. Игрок получит только разрешённую часть информации.</small></div></div>
             <div className="creation-review-card">
               <div className="creation-review-card__icon">{currentPreset.icon}</div>
-              <div><small>{currentPreset.title}</small><strong>{name.trim() || "Без названия"}</strong><span>{inventoryCategories.find((option) => option.value === category)?.label || category}{category === "equipment" ? ` · ${equipmentSlots.find((option) => option.value === equipmentSlot)?.label || equipmentSlot}` : ""} · ×{Math.max(0, Number.parseInt(quantity || "0", 10) || 0)}</span>{cursed && <b className="creation-review-curse">☠ Проклято</b>}</div>
+              <div><small>{currentPreset.title}</small><strong>{name.trim() || "Без названия"}</strong><span>{inventoryCategories.find((option) => option.value === category)?.label || category}{category === "equipment" ? ` · ${equipmentSlots.find((option) => option.value === equipmentSlot)?.label || equipmentSlot}` : ""} · ×{effectiveStackMode === "instance" ? 1 : Math.max(1, Number.parseInt(quantity || "1", 10) || 1)}</span>{cursed && <b className="creation-review-curse">☠ Проклято</b>}</div>
             </div>
             <div className="creation-review-block"><span>Описание</span><p>{description.trim() || "Без описания."}</p></div>
+            <div className="creation-review-block"><span>Хранение</span><p>{effectiveStackMode === "instance" ? "Отдельный экземпляр. Его нельзя частично делить при передаче." : "Стопка однородных предметов. Её можно делить при передаче."}</p></div>
             <div className="creation-review-block"><span>Использование</span><p>{usageMode === "none" ? "Не расходуется." : usageMode === "quantity" ? "При использовании расходуется 1 единица предмета." : `Заряды: ${Math.max(0, Math.min(Math.max(1, Number.parseInt(chargesMax || "1", 10) || 1), Number.parseInt(chargesCurrent || "0", 10) || 0))}/${Math.max(1, Number.parseInt(chargesMax || "1", 10) || 1)} · ${rechargeTrigger === "none" ? "без автоматического восстановления" : rechargeTrigger === "short_rest" ? "короткий отдых" : rechargeTrigger === "long_rest" ? "долгий отдых" : "рассвет"}.`}</p></div>
             {cursed && <>
               <div className="creation-review-block creation-review-block--curse"><span>Проклятие</span><p>{curseDescription.trim() || "Предмет отмечен как проклятый, описание проклятия не задано."}</p></div>

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { EngineCommandError } from "../engine-contracts/index.ts"
 import type { InventoryInput, InventoryItem, ItemUsageMode } from "../types/characterSheet.ts"
+import { inventoryStackMode } from "./stacking.ts"
 import type {
   CheburashkaCommand,
   CheburashkaStorage,
@@ -27,6 +28,12 @@ function fail(error: { message: string } | null, fallback: string): never {
   if (message.includes("Not enough item quantity")) {
     throw new EngineCommandError("inventory.insufficient_quantity", message)
   }
+  if (message.includes("Inventory instance quantity must be 1")) {
+    throw new EngineCommandError("inventory.instance_quantity", message)
+  }
+  if (message.includes("Inventory instance cannot be split")) {
+    throw new EngineCommandError("inventory.instance_split_forbidden", message)
+  }
   throw new EngineCommandError("inventory.persistence", message)
 }
 
@@ -44,6 +51,7 @@ function normalizeItem(value: unknown): InventoryItem {
     usage_mode: mode,
     charges_current: row.charges_current ?? null,
     charges_max: row.charges_max ?? null,
+    stack_mode: inventoryStackMode(row),
     item_state: row.item_state && typeof row.item_state === "object" ? row.item_state : {},
     version: Number(row.version ?? 0),
   }
@@ -71,6 +79,7 @@ function persistencePayload(input: InventoryInput): JsonRecord {
     usage_mode: mode,
     charges_current: current,
     charges_max: max,
+    stack_mode: inventoryStackMode({ ...input, usage_mode: mode }),
     item_state: input.item_state ?? {},
   }
 }

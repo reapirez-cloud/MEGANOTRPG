@@ -163,6 +163,9 @@ test("replaying the same command id is idempotent", async () => {
 test("partial transfer keeps Chasovoy definition provenance", async () => {
   const source = item("stack", {
     quantity: 3,
+    category: "material",
+    equipment_slot: null,
+    stack_mode: "stack",
     version: 5,
     definition_id: "00000000-0000-4000-8000-000000000099",
     definition_revision: 11,
