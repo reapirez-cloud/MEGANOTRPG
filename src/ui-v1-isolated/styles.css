@@ -636,18 +636,6 @@ button {
   color: rgba(239, 238, 233, 0.98);
 }
 
-.u1-dock__item[data-selected]::before {
-  content: "";
-  position: absolute;
-  top: -1px;
-  left: 50%;
-  width: 28px;
-  height: 1px;
-  transform: translateX(-50%);
-  background: rgba(239, 238, 233, 0.78);
-  box-shadow: 0 0 6px rgba(239, 238, 233, 0.12);
-  pointer-events: none;
-}
 
 .u1-dock__icon {
   width: 27px;
@@ -661,6 +649,11 @@ button {
 
 .u1-dock__item[data-selected] .u1-dock__icon {
   opacity: 1;
+}
+
+.u1-dock__item--chats .u1-dock__icon {
+  width: 31px;
+  height: 31px;
 }
 
 
