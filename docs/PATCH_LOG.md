@@ -11,6 +11,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Upgraded the universal Snake media player into the single graphic composition surface for UI 1.0. The same fullscreen player now previews exact circle, square or arbitrary-ratio target masks, supports pan/pinch/double-tap framing, accepts a replacement image, and submits the visible crop without destroying the original file.
+- Replaced the Workspace avatar placeholders with real media-player flows: **Аватар персонажа** uses a circular 1:1 target and **Аватар панели** uses a 3:1 target. Saved panel art is independent from the character portrait and falls back to the portrait when no dedicated panel image exists.
+- Workspace character strips and the active identity board now render stored media crops through one target-aware frame component, so the visible area matches what the player approved in the media editor.
+
 - Replaced the Art-section lightbox with a universal fullscreen MEGANOT media player: restrained image-first chrome, single-tap control hiding, swipe page navigation, pinch/double-tap zoom, zoom panning, desktop arrow-key navigation and private campaign-media rendering.
 - Comic pages, ordinary campaign art and owner-only generated media now open through the same player while long-press/right-click remains the source object's Snake management interaction.
 
@@ -20,6 +24,11 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added normalized `MediaPresentation` metadata (`shape + aspectRatio + source crop rectangle`) and persisted it on canonical `media_bindings`. Crops are resolution/device independent and reuse the original Storage object instead of creating derived copies.
+- Added authenticated manual-media registration, presentation binding and character-media read RPCs. Target permissions still come from the existing explicit media capability checks; the generic player never invents authority.
+- Character main-avatar writes keep the existing owner law: manager changes route through Oracle → Shapoklyak, while an assigned player uses Shapoklyak's narrow self-owned path. The 3:1 panel avatar is presentation-only media state and does not become a duplicate character identity field.
+- Added the repository-wide UI 1.0 rule that graphic view/crop/fit/apply operations must use Snake MediaPlayer compose mode rather than entity-specific croppers.
+
 - Added `SnakeMediaRequest` / `SnakeMediaSurface` as the canonical reusable media window. Snake remains the sole UI-surface owner; ArtSection no longer keeps a parallel modal/lightbox runtime.
 - The active media item/page publishes its source entity, media id/source, index/count, caption, zoom and domain facts into the AI view-context layer so the embedded agent can understand exactly what the user is viewing without gaining new mutation authority.
 
@@ -28,6 +37,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Class Reference now treats `rule_templates` as the canonical definition source whenever it is available; `referenceOnly` controls literary fallback, not permission to ignore an active CE class package.
 
 ### Tests / verification
+
+- Added `snakeMediaComposition.test.ts` covering target masks, normalized crop submission, real character/panel avatar actions, media-binding presentation persistence and removal of the old Workspace avatar placeholders.
 
 - Synced both stale dock-selection regressions with the already-approved icon-only active state; tests no longer demand the removed redundant top hairline. This is test-only and does not change the bottom navigation UI.
 - Added `snakeMediaPlayer.test.ts` covering universal Snake ownership, fullscreen minimal presentation, gesture navigation/zoom, removal of the old Art lightbox and AI context for the active media page.
