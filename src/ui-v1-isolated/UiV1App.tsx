@@ -351,7 +351,6 @@ function Dock({
               draggable={false}
               decoding="async"
             />
-            <span className="u1-dock__label">{item.label}</span>
           </button>
         )
       })}

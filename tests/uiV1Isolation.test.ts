@@ -166,7 +166,7 @@ test("UI v1 routes real content sections without importing legacy screens", () =
 
 test("UI v1 dock is a maximally thin edge-to-edge bottom navigation bar", () => {
   assert.doesNotMatch(app + styles, /u1-dock__glass|backdrop-filter:\s*blur\(12px\)/)
-  assert.match(styles, /--u1-dock-height:\s*46px/)
+  assert.match(styles, /--u1-dock-height:\s*44px/)
   assert.match(styles, /\.u1-dock \{[\s\S]*?left:\s*0;[\s\S]*?right:\s*0;[\s\S]*?bottom:\s*0;/)
   assert.match(styles, /border-top:\s*1px solid/)
   assert.match(styles, /min-height:\s*44px/)
@@ -241,13 +241,13 @@ test("dock selection uses a local hairline accent instead of a moving glow", () 
 })
 
 
-test("dock uses the approved transparent PNG icons with visible labels and accessible names", () => {
+test("dock uses only the approved transparent PNG icons while keeping accessible names", () => {
   assert.match(app, /aria-label=\{item\.label\}/)
   assert.match(app, /\/ui-v1\/nav-icons\/character\.png/)
   assert.match(app, /\/ui-v1\/nav-icons\/home\.png/)
   assert.match(app, /\/ui-v1\/nav-icons\/chats\.png/)
   assert.match(app, /className="u1-dock__icon"/)
-  assert.match(app, /className="u1-dock__label"/)
+  assert.doesNotMatch(app + styles, /u1-dock__label/)
   assert.match(styles, /grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/)
 })
 
