@@ -132,6 +132,7 @@ export default function AgentShell() {
   const [draft, setDraft] = useState("")
   const [attachments, setAttachments] = useState<AIAttachment[]>([])
   const [uploading, setUploading] = useState(false)
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const [pendingDeleteThreadId, setPendingDeleteThreadId] =
     useState<string | null>(null)
   const [orbPosition, setOrbPosition] = useState(defaultOrbPosition)
@@ -343,6 +344,31 @@ export default function AgentShell() {
           aria-label="Закрыть Восса"
           tabIndex={-1}
         />
+      )}
+
+      {previewImageUrl && (
+        <div
+          className="u1-agent-image-preview"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Просмотр изображения"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <button
+            type="button"
+            className="u1-agent-image-preview__close"
+            onClick={() => setPreviewImageUrl(null)}
+            aria-label="Закрыть изображение"
+          >
+            ×
+          </button>
+          <img
+            src={previewImageUrl}
+            alt="Сгенерированное изображение"
+            onClick={(event) => event.stopPropagation()}
+            draggable={false}
+          />
+        </div>
       )}
 
       <aside
@@ -660,13 +686,12 @@ export default function AgentShell() {
                               </button>
                             )}
                             {asset.url && (
-                              <a
-                                href={asset.url}
-                                target="_blank"
-                                rel="noreferrer"
+                              <button
+                                type="button"
+                                onClick={() => setPreviewImageUrl(asset.url)}
                               >
                                 Открыть
-                              </a>
+                              </button>
                             )}
                           </div>
 
