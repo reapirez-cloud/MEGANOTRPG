@@ -17,6 +17,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added a mandatory rolling-24h Vercel release-budget safety gate: warn at 80/100 estimated deployment usage, batch ordinary work on `dev`, preserve the final 20% for security/recovery hotfixes, and verify every connected production deployment after release.
+
 - Class Reference now treats `rule_templates` as the canonical definition source whenever it is available; `referenceOnly` controls literary fallback, not permission to ignore an active CE class package.
 
 ### Tests / verification

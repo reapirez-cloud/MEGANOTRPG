@@ -16,6 +16,19 @@ This branch rule has priority over older task-specific habits or prior requests 
 
 Active class / Character Engine work is done on `dev` unless the user explicitly authorizes promotion to `main`.
 
+## Release budget safety — mandatory
+
+Vercel release capacity is a safety resource, not disposable CI noise.
+
+- The connected Vercel team is currently on the Hobby plan. Treat the deployment-creation budget as **100 deployments in a rolling 24-hour window**.
+- MEGANOT currently reports **two Vercel project status contexts** for a normal `main` release. Conservatively assume one promotion to `main` can consume two deployment slots unless current Vercel evidence proves otherwise.
+- **Before every promotion to `main`**, count/estimate Vercel deployment usage over the previous 24 hours. Prefer Vercel deployment history when accessible. If the Vercel API cannot list deployments, use GitHub commit statuses on actual release-head commits and count each Vercel status context as a conservative deployment-attempt proxy.
+- When estimated usage reaches **80/100 or more** (20% or less remaining), explicitly warn the user **before** any further release.
+- In the warning zone, batch ordinary work on `dev` and avoid docs-only, cleanup-only, intermediate, or speculative production releases. Preserve the remaining budget for authentication, authorization, data-integrity, security, and production-recovery hotfixes unless the user explicitly overrides this rule.
+- Never allow a security hole to remain open merely because routine releases exhausted the quota. Release-budget awareness is part of the safety gate.
+- After every authorized production promotion, verify the Vercel status for every connected MEGANOT project. A release is not complete while any required production deployment is pending or failed.
+- `dev` remains non-deploying by repository configuration. Do not enable automatic `dev` deployments merely for convenience.
+
 ## Patch journal — mandatory release ledger
 
 `docs/PATCH_LOG.md` is the canonical journal for the patch currently accumulating on `dev`.
