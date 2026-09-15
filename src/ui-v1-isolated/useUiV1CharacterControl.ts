@@ -254,6 +254,7 @@ export function useUiV1CharacterControl(characterId: string) {
           item.id,
           equipped,
           item.equipment_slot,
+          item.version,
         )
       } else {
         await cheburashka.execute({
@@ -263,6 +264,7 @@ export function useUiV1CharacterControl(characterId: string) {
           itemId: item.id,
           equipped,
           equipmentSlot: item.equipment_slot,
+          expectedVersion: item.version,
         })
       }
       await load()
@@ -291,13 +293,13 @@ export function useUiV1CharacterControl(characterId: string) {
       item_state: patch.item_state ?? item.item_state ?? {},
     }
     return gm(
-      () => oracle.inventory.update(context(), characterId, item.id, input),
+      () => oracle.inventory.update(context(), characterId, item.id, input, item.version),
       "Не удалось изменить предмет.",
     )
   }, [characterId, context, gm])
 
-  const removeItem = useCallback((itemId: string) => gm(
-    () => oracle.inventory.remove(context(), characterId, itemId),
+  const removeItem = useCallback((item: InventoryItem) => gm(
+    () => oracle.inventory.remove(context(), characterId, item.id, item.version),
     "Не удалось удалить предмет.",
   ), [characterId, context, gm])
 
