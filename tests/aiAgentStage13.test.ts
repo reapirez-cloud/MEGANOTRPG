@@ -128,16 +128,14 @@ test("developer proposals are pinned to the exact dev SHA and become stale if de
   assert.match(edge, /state: "stale"/)
 })
 
-test("repository mutation is a direct authenticated UI action, not a model tool", () => {
+test("repository mutation remains authenticated backend infrastructure but is not exposed in Voss UI", () => {
   const edge = read("supabase/functions/developer-mode/index.ts")
   const shell = read("src/ai/AgentShell.tsx")
 
   assert.match(edge, /validate_ai_dev_session_v1/)
   assert.match(edge, /action === "apply"/)
   assert.match(edge, /applyRunToPreviewBranch/)
-  assert.match(shell, /Создать preview-ветку/)
-  assert.match(shell, /window\.confirm/)
-  assert.match(shell, /applyDevRun\(latestDevRun\.id\)/)
+  assert.doesNotMatch(shell, /Developer Mode|Создать preview-ветку|applyDevRun\(/)
 })
 
 test("preview application creates an isolated branch and PR against dev only", () => {
@@ -210,11 +208,9 @@ test("browser keeps the raw dev session token in React memory, not localStorage"
   assert.doesNotMatch(provider, /sessionStorage\.setItem\([^\n]*devSession/i)
 })
 
-test("Agent UI exposes no main merge action", () => {
+test("Agent UI exposes no repository merge actions", () => {
   const shell = read("src/ai/AgentShell.tsx")
 
-  assert.match(shell, /Слить в dev/)
-  assert.match(shell, /main останется нетронут/)
-  assert.doesNotMatch(shell, />\s*Слить в main\s*</)
+  assert.doesNotMatch(shell, /Слить в dev|Слить в main|Создать preview-ветку/)
   assert.doesNotMatch(shell, /merge.*main/i)
 })
