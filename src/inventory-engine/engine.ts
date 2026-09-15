@@ -37,12 +37,14 @@ function eventFor(command: CheburashkaCommand, mutation: InventoryMutation): Eng
       before: mutation.before,
       after: mutation.after,
       destinationItem: mutation.destinationItem ?? null,
+      relatedChanges: mutation.relatedChanges ?? [],
     },
   }
 }
 
 function changed(mutation: InventoryMutation): boolean {
   if (mutation.destinationItem) return true
+  if (mutation.relatedChanges?.length) return true
   if (mutation.before === null || mutation.after === null) return mutation.before !== mutation.after
   return (mutation.before.version ?? 0) !== (mutation.after.version ?? 0)
     || mutation.before.character_id !== mutation.after.character_id
@@ -55,7 +57,11 @@ function changed(mutation: InventoryMutation): boolean {
 function effectsFor(mutation: InventoryMutation, requiresResolution: boolean): EngineEffects {
   return {
     characterIds: mutation.affectedCharacterIds,
-    itemIds: [mutation.itemId, mutation.destinationItem?.id || ""].filter(Boolean),
+    itemIds: [...new Set([
+      mutation.itemId,
+      mutation.destinationItem?.id || "",
+      ...(mutation.relatedChanges || []).flatMap((change) => [change.before.id, change.after.id]),
+    ].filter(Boolean))],
     locationIds: [],
     sceneIds: [],
     resolveCharacterIds: requiresResolution ? mutation.affectedCharacterIds : [],
@@ -122,6 +128,28 @@ export class CheburashkaEngine {
   async execute(command: CheburashkaCommand): Promise<EngineCommandResult<InventoryMutation>> {
     if (["inventory.create", "inventory.update", "inventory.remove"].includes(command.kind) && !isGm(command)) {
       throw new EngineCommandError("inventory.gm_required", "Only GM authority can establish inventory contents")
+    }
+
+    if (command.kind === "inventory.create" || command.kind === "inventory.update") {
+      if (!command.input.name.trim()) {
+        throw new EngineCommandError("inventory.name_required", "Item name is required")
+      }
+      if (!Number.isInteger(command.input.quantity) || command.input.quantity < 1) {
+        throw new EngineCommandError("inventory.invalid_quantity", "Inventory quantity must be an integer >= 1")
+      }
+      if (command.input.weight !== null && (!Number.isFinite(command.input.weight) || command.input.weight < 0)) {
+        throw new EngineCommandError("inventory.invalid_weight", "Inventory weight cannot be negative")
+      }
+    }
+
+    if (
+      (command.kind === "inventory.update"
+        || command.kind === "inventory.remove"
+        || command.kind === "inventory.set_equipped")
+      && command.expectedVersion !== undefined
+      && (!Number.isInteger(command.expectedVersion) || command.expectedVersion < 1)
+    ) {
+      throw new EngineCommandError("inventory.invalid_version", "Expected inventory version must be an integer >= 1")
     }
 
     if (command.kind === "inventory.consume" || command.kind === "inventory.transfer") {
