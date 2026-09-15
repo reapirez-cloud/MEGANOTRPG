@@ -121,6 +121,7 @@ export type SnakeMediaComposeTarget = {
   shape: MediaPresentationShape
   aspectRatio: number
   allowFilePick?: boolean
+  requireFile?: boolean
   fileLabel?: string
   submitLabel?: string
   cancelLabel?: string
