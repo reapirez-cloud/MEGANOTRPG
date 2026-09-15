@@ -247,10 +247,10 @@ function Dock({
   const active = activeRoot(route)
   const swipeRef = useRef<DockSwipeState | null>(null)
   const suppressClickUntilRef = useRef(0)
-  const items: Array<{ id: RootSpace; label: string }> = [
-    { id: "workspace", label: "Я" },
-    { id: "home", label: "Главная" },
-    { id: "chats", label: "Чаты" },
+  const items: Array<{ id: RootSpace; label: string; icon: string }> = [
+    { id: "workspace", label: "Персонаж", icon: "/ui-v1/nav-icons/character.png" },
+    { id: "home", label: "Главная", icon: "/ui-v1/nav-icons/home.png" },
+    { id: "chats", label: "Чаты", icon: "/ui-v1/nav-icons/chats.png" },
   ]
 
   const onPointerDown = (event: React.PointerEvent<HTMLElement>) => {
@@ -330,7 +330,6 @@ function Dock({
       onPointerCancel={cancelSwipe}
       onClickCapture={suppressSwipeClick}
     >
-      <span className="u1-dock__glass" aria-hidden="true" />
       {items.map((item) => {
         const selected = item.id === active
 
@@ -343,7 +342,17 @@ function Dock({
             aria-label={item.label}
             aria-current={selected ? "page" : undefined}
             onClick={() => onNavigate(item.id)}
-          />
+          >
+            <img
+              className="u1-dock__icon"
+              src={item.icon}
+              alt=""
+              aria-hidden="true"
+              draggable={false}
+              decoding="async"
+            />
+            <span className="u1-dock__label">{item.label}</span>
+          </button>
         )
       })}
     </nav>

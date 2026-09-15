@@ -41,7 +41,7 @@ Root spaces are:
 25%   50%    25%
 ```
 
-The central Home space remains wider in information hierarchy, but the earlier tall raised-center dock geometry is superseded. The current visual direction is a **maximally slim translucent glass rail** that preserves space for PNG navigation artwork without obscuring reading content underneath. Home may be wider, but should not rise into a large crown/bulge.
+The central Home space remains wider in information hierarchy, but the earlier raised/floating dock geometry is superseded. The canonical navigation is now a **maximally slim edge-to-edge bottom bar** with three visible transparent PNG icons and labels: `Персонаж` → `Главная` → `Чаты`. The root swipe gesture lives on this bar only. Do not restore the floating glass rail, moving glow, iconless hit-zones, legacy `BottomNav.tsx`, or the retired `me.*`/SVG navigation assets.
 
 Root spaces also support deliberate horizontal swipe navigation.
 

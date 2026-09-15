@@ -90,39 +90,6 @@ button { color: inherit; }
 .icon-button svg { width: 22px; height: 22px; }
 .icon-button:active { background: #18181b; }
 
-.bottom-nav {
-  flex: 0 0 auto;
-  padding: 7px 8px calc(7px + env(safe-area-inset-bottom, 0px));
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  border-top: 1px solid var(--app-border);
-  background: rgba(12, 12, 14, 0.97);
-  backdrop-filter: blur(18px);
-}
-
-.bottom-nav__item {
-  min-height: 56px;
-  border: 0;
-  border-radius: 16px;
-  background: transparent;
-  color: #71717a;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  cursor: pointer;
-}
-
-.bottom-nav__item svg { width: 23px; height: 23px; }
-.bottom-nav__item span { font-size: 10px; font-weight: 600; }
-
-.bottom-nav__item--active {
-  color: #f5f3ff;
-  background: #18151f;
-}
-
 .page-stack { display: flex; flex-direction: column; gap: 16px; }
 .section { display: flex; flex-direction: column; gap: 10px; }
 

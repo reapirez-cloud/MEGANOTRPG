@@ -27,7 +27,6 @@ import "./character-sheet-modules.css"
 import "./character-profile-v5.css"
 import "./character-profile-opus.css"
 
-import BottomNav from "./components/app/BottomNav"
 import NotificationsSheet from "./components/app/NotificationsSheet"
 import TopBar from "./components/app/TopBar"
 import AuthGate from "./components/auth/AuthGate"
@@ -62,7 +61,7 @@ function Workspace(){
     {route.tab==="me"&&!canManage&&!activeCharacter&&<section className="me-empty surface"><span>◇</span><h2>{myCharacters.length?"Нет активного персонажа":"Персонаж ещё не назначен"}</h2><p>{myCharacters.length?"Активного героя выбирает ГМ в панели кампании.":"ГМ выдаст тебе персонажа — создавать героев игрок сам не может."}</p><button type="button" onClick={()=>navigate("#/characters")}>Открыть персонажей</button></section>}
   </main>
   {notificationsOpen&&<NotificationsSheet items={notifications.items} loading={notifications.loading} error={notifications.error} onClose={()=>setNotificationsOpen(false)} onMarkRead={notifications.markAllRead} onOpenFeed={()=>navigate("#/feed")}/>} {referenceOpen&&<ReferenceGuide campaignId={campaignId} character={activeCharacter?{id:activeCharacter.id,name:activeCharacter.name,character_class:activeCharacter.character_class}:null} canManage={canManage} onClose={()=>setReferenceOpen(false)} onCharacterChanged={()=>setCharacterRefreshKey((c)=>c+1)}/>} 
-  <BottomNav active={route.tab} onChange={(tab)=>navigate(mainRouteHash(tab))} meLabel={canManage?"Панель":"Я"}/></div>
+  </div>
 }
 function AppContent(){return <CharacterProvider><Workspace/></CharacterProvider>}
 export default function App(){return <AuthGate><AppContent/></AuthGate>}

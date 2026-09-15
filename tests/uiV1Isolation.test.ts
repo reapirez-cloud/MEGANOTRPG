@@ -14,6 +14,7 @@ const workspaceStyles = fs.readFileSync("src/ui-v1-isolated/workspace.css", "utf
 const workspaceIdentityRules = fs.readFileSync("src/ui-v1-isolated/workspaceIdentityRules.ts", "utf8")
 const agentShell = fs.readFileSync("src/ai/AgentShell.tsx", "utf8")
 const legacyApp = fs.readFileSync("src/App.tsx", "utf8")
+const legacyStyles = fs.readFileSync("src/App.css", "utf8")
 const whatsNew = fs.readFileSync("src/ui-v1-isolated/WhatsNew.tsx", "utf8")
 const chronicleData = fs.readFileSync("src/ui-v1-isolated/useChronicleData.ts", "utf8")
 const chronicleStyles = fs.readFileSync("src/ui-v1-isolated/whats-new.css", "utf8")
@@ -40,6 +41,11 @@ const approvedClassPanelAssets = [
   "public/ui-v1/classes/wizard.webp",
   "public/ui-v1/classes/rogue.webp",
   "public/ui-v1/classes/monk.webp",
+]
+const approvedNavAssets = [
+  "public/ui-v1/nav-icons/character.png",
+  "public/ui-v1/nav-icons/home.png",
+  "public/ui-v1/nav-icons/chats.png",
 ]
 const sectionScreens = fs.readFileSync("src/ui-v1-isolated/SectionScreens.tsx", "utf8")
 const classReferencePresentation = fs.readFileSync("src/ui-v1-isolated/classReferencePresentation.ts", "utf8")
@@ -97,6 +103,18 @@ test("approved class preview artwork is committed for the supplied class cards",
   }
 })
 
+test("approved navigation PNG artwork is committed and lightweight", () => {
+  for (const asset of approvedNavAssets) {
+    assert.equal(fs.existsSync(asset), true, asset)
+    assert.ok(fs.statSync(asset).size < 10_000, asset)
+  }
+})
+
+test("legacy bottom navigation is removed instead of kept as dead fallback code", () => {
+  assert.equal(fs.existsSync("src/components/app/BottomNav.tsx"), false)
+  assert.doesNotMatch(legacyApp + legacyStyles, /BottomNav|bottom-nav/)
+})
+
 test("UI v1 is now the default application entry", () => {
   assert.match(html, /src\/ui-v1-isolated\/main\.tsx/)
   assert.match(aliasHtml, /src\/ui-v1-isolated\/main\.tsx/)
@@ -146,22 +164,20 @@ test("UI v1 routes real content sections without importing legacy screens", () =
 })
 
 
-test("UI v1 dock is an ultra-thin floating glass rail instead of a conventional tab bar", () => {
-  assert.match(app, /u1-dock__glass/)
-  assert.doesNotMatch(app, /u1-dock__crown|u1-dock__hull/)
-  assert.match(styles, /\.u1-dock__glass/)
-  assert.match(styles, /height:\s*18px/)
-  assert.match(styles, /height:\s*44px/)
-  assert.match(styles, /backdrop-filter:\s*blur\(12px\)/)
+test("UI v1 dock is a maximally thin edge-to-edge bottom navigation bar", () => {
+  assert.doesNotMatch(app + styles, /u1-dock__glass|backdrop-filter:\s*blur\(12px\)/)
+  assert.match(styles, /--u1-dock-height:\s*46px/)
+  assert.match(styles, /\.u1-dock \{[\s\S]*?left:\s*0;[\s\S]*?right:\s*0;[\s\S]*?bottom:\s*0;/)
+  assert.match(styles, /border-top:\s*1px solid/)
+  assert.match(styles, /min-height:\s*44px/)
 })
 
 
-test("dock active state is carried by a moving cold glass glow without icons or a detached filament", () => {
-  assert.doesNotMatch(app + styles, /u1-dock__filament|layoutId="ui-v1-dock-selection"/)
-  assert.match(styles, /\.u1-dock::after/)
-  assert.match(styles, /radial-gradient/)
-  assert.match(styles, /left 230ms cubic-bezier/)
-  assert.match(styles, /-webkit-tap-highlight-color:\s*transparent/)
+test("dock active state is restrained and does not resurrect the floating glass treatment", () => {
+  assert.match(styles, /\.u1-dock__item\[data-selected\]/)
+  assert.match(styles, /\.u1-dock__item\[data-selected\]::before/)
+  assert.doesNotMatch(app + styles, /u1-dock__glass|u1-dock__filament|layoutId="ui-v1-dock-selection"/)
+  assert.doesNotMatch(styles, /radial-gradient\([\s\S]*?u1-dock/)
 })
 
 test("home uses mixed editorial entry types instead of a uniform preview grid", () => {
@@ -200,15 +216,10 @@ test("the five supplied Knowledge Base artworks are wired to their exact panels"
   assert.match(sectionRegistry, /id: "chaos"[\s\S]*?image: "\/ui-v1\/panels\/kb-chaos\.webp"[\s\S]*?state: "placeholder"/)
 })
 
-test("left-edge back gesture uses browser history and restores the previous scroll position", () => {
-  assert.match(app, /event\.clientX <= 26/)
-  assert.match(app, /window\.history\.back\(\)/)
-  assert.match(app, /restoreAfterBackRef/)
-  assert.match(app, /scrollPositionsRef/)
-  assert.match(app, /currentScrollRoot/)
-  assert.match(app, /target\.scrollTop = top/)
-  assert.match(app, /requiredDistance = Math\.min\(120, window\.innerWidth \* 0\.28\)/)
-  assert.match(sectionStyles, /height:\s*100%[\s\S]*?overflow-y:\s*auto/)
+test("root navigation gestures stay on the bottom bar instead of hijacking the screen edge", () => {
+  assert.doesNotMatch(app, /event\.clientX <= 26|restoreAfterBackRef|scrollPositionsRef|currentScrollRoot/)
+  assert.match(app, /className="u1-dock"[\s\S]*?onPointerDown=\{onPointerDown\}/)
+  assert.match(app, /className="u1-dock"[\s\S]*?onPointerUp=\{finishSwipe\}/)
 })
 
 test("root spaces support deliberate horizontal swipe navigation with soft haptics", () => {
@@ -222,18 +233,21 @@ test("root spaces support deliberate horizontal swipe navigation with soft hapti
   assert.match(styles, /touch-action:\s*pan-y/)
 })
 
-test("dock uses one restrained cold glow that moves between left, center and right", () => {
-  assert.match(styles, /data-active="home"/)
-  assert.match(styles, /data-active="chats"/)
-  assert.match(styles, /rgba\(232, 242, 246, 0\.40\)/)
-  assert.doesNotMatch(styles, /\.u1-dock__selection|\.u1-dock__crown|\.u1-dock__filament/)
+test("dock selection uses a local hairline accent instead of a moving glow", () => {
+  assert.match(styles, /\.u1-dock__item\[data-selected\]::before/)
+  assert.match(styles, /width:\s*28px/)
+  assert.match(styles, /height:\s*1px/)
+  assert.doesNotMatch(styles, /data-active="home"|data-active="chats"|left 230ms cubic-bezier/)
 })
 
 
-test("dock navigation is deliberately iconless while keeping accessible names", () => {
+test("dock uses the approved transparent PNG icons with visible labels and accessible names", () => {
   assert.match(app, /aria-label=\{item\.label\}/)
-  assert.doesNotMatch(app + styles, /u1-dock__glyph|nav-icons\//)
-  assert.doesNotMatch(app, /icon:\s*"me"|icon:\s*"home"|icon:\s*"chats"/)
+  assert.match(app, /\/ui-v1\/nav-icons\/character\.png/)
+  assert.match(app, /\/ui-v1\/nav-icons\/home\.png/)
+  assert.match(app, /\/ui-v1\/nav-icons\/chats\.png/)
+  assert.match(app, /className="u1-dock__icon"/)
+  assert.match(app, /className="u1-dock__label"/)
   assert.match(styles, /grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/)
 })
 
@@ -444,10 +458,14 @@ test("chronicle aggregates full non-art feed content and keeps future connection
 })
 
 
-test("dock no longer depends on navigation image assets", () => {
-  assert.doesNotMatch(app + styles, /nav-icons\/(?:me|home|chats)\.(?:png|svg)/)
-  assert.doesNotMatch(styles, /mask-image:\s*url\("\/ui-v1\/nav-icons\//)
-  assert.match(styles, /\.u1-dock::after/)
+test("dock depends only on the current three navigation PNG assets", () => {
+  for (const asset of approvedNavAssets) {
+    assert.equal(fs.existsSync(asset), true, asset)
+  }
+  assert.match(app, /nav-icons\/character\.png/)
+  assert.match(app, /nav-icons\/home\.png/)
+  assert.match(app, /nav-icons\/chats\.png/)
+  assert.doesNotMatch(app + styles, /nav-icons\/me\.|nav-icons\/.*\.svg/)
 })
 
 
