@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
+import CampaignMediaFrame from "../components/common/CampaignMediaFrame"
 import type { SnakeAction } from "../snake-engine"
 import type { CharacterSheet, InventoryItem } from "../types/characterSheet"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
@@ -468,7 +469,16 @@ export default function CharacterView({
 
       <SnakeTrigger entity={entity} actions={characterActions}>
         <section className="u1-character-view__hero" data-dead={character.lifeState === "dead" || undefined}>
-          {character.avatarUrl ? <img src={character.avatarUrl} alt="" /> : <span aria-hidden="true" />}
+          {character.panelAvatarUrl || character.avatarUrl ? (
+            <CampaignMediaFrame
+              value={character.panelAvatarUrl || character.avatarUrl}
+              presentation={character.panelAvatarPresentation}
+              alt=""
+              aria-hidden="true"
+            />
+          ) : (
+            <span aria-hidden="true" />
+          )}
           <div>
             <small>{character.characterType === "pc" ? "PC" : "NPC"} · {character.lifeState === "dead" ? "Мёртв" : "Жив"}</small>
             <h1>{character.name}</h1>
