@@ -31,7 +31,7 @@ The interaction sequence is:
 ~~~text
 object/domain provider
 -> Snake action
--> optional Snake surface (Context / Confirm / Editor / Picker / Detail / Placeholder)
+-> optional Snake surface (Context / Confirm / Editor / Picker / Detail / Media / Placeholder)
 -> user input
 -> Snake action executor / typed adapter
 -> GENA / Oracle / approved owner facade
@@ -257,6 +257,7 @@ ConfirmWindow
 EditorWindow
 PickerWindow
 DetailWindow
+MediaPlayer
 Notice / Error
 Placeholder
 ~~~
@@ -276,6 +277,23 @@ DeleteInventoryConfirmation
 when the difference can be expressed as data/schema/actions passed into a shared surface.
 
 A reusable window may receive different title, fields, values, validation metadata and submit action while preserving the same visual/behavioral contract.
+
+## Media player contract
+
+Media viewing is a reusable Snake surface, not an Art-section modal.
+
+Required behavior:
+
+- fullscreen, media-first presentation with no card/modal chrome around the image;
+- single tap toggles the minimal controls;
+- horizontal swipe changes pages/items only while the image is at fit scale;
+- pinch zoom and double-tap zoom are local viewing gestures; a zoomed image pans instead of changing page;
+- left/right keyboard navigation is available on desktop;
+- opening media carries the originating Snake entity reference and current media/page facts into the AI view-context layer;
+- domain actions remain domain-provided Snake actions. The player never invents delete/edit/attach authority from the media type itself;
+- private campaign storage continues through the existing campaign-media resolver rather than exposing public object URLs.
+
+Ordinary tap may open the MediaPlayer while long press / right click on the source object continues to open that object's Snake action manifest. These two interactions must not compete.
 
 ## Context menu contract
 

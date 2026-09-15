@@ -11,17 +11,25 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Replaced the Art-section lightbox with a universal fullscreen MEGANOT media player: restrained image-first chrome, single-tap control hiding, swipe page navigation, pinch/double-tap zoom, zoom panning, desktop arrow-key navigation and private campaign-media rendering.
+- Comic pages, ordinary campaign art and owner-only generated media now open through the same player while long-press/right-click remains the source object's Snake management interaction.
+
 - Fixed the Class Reference so every class with a campaign catalog now shows its CE-owned foundation: hit die, primary abilities, saving throws, armor training, weapon training and skill-choice count. Monk and Sorcerer no longer lose their working CE catalog merely because their authored prose began as a reference-first package.
 - Added a compatibility fallback for older class templates whose foundation is represented only by canonical level-one mechanics instead of newer `core_traits` metadata. Fighter, Cleric and Druid therefore render the same essential facts without a second copy of rules data.
 - Corrected the class-list status too: a class is marked as a translation-only card only when no active CE catalog template exists, instead of inheriting that label forever from an old authored-data flag.
 
 ### Runtime and architecture changes
 
+- Added `SnakeMediaRequest` / `SnakeMediaSurface` as the canonical reusable media window. Snake remains the sole UI-surface owner; ArtSection no longer keeps a parallel modal/lightbox runtime.
+- The active media item/page publishes its source entity, media id/source, index/count, caption, zoom and domain facts into the AI view-context layer so the embedded agent can understand exactly what the user is viewing without gaining new mutation authority.
+
 - Added a mandatory rolling-24h Vercel release-budget safety gate: warn at 80/100 estimated deployment usage, batch ordinary work on `dev`, preserve the final 20% for security/recovery hotfixes, and verify every connected production deployment after release.
 
 - Class Reference now treats `rule_templates` as the canonical definition source whenever it is available; `referenceOnly` controls literary fallback, not permission to ignore an active CE class package.
 
 ### Tests / verification
+
+- Added `snakeMediaPlayer.test.ts` covering universal Snake ownership, fullscreen minimal presentation, gesture navigation/zoom, removal of the old Art lightbox and AI context for the active media page.
 
 ### Known incomplete work
 

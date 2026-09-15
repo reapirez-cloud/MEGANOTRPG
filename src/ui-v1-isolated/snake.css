@@ -512,3 +512,212 @@
     animation: none;
   }
 }
+
+/* Universal MEGANOT media player. Snake owns the surface; the media stays visually dominant. */
+.u1-snake-window-layer[data-media="true"] {
+  padding: 0;
+  place-items: stretch;
+  background: #050607;
+}
+
+.u1-snake-media {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #050607;
+  color: var(--u1-text-soft);
+  isolation: isolate;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.u1-snake-media--empty {
+  display: grid;
+  place-items: center;
+  color: var(--u1-text-faint);
+  font-size: 11px;
+}
+
+.u1-snake-media__stage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  cursor: zoom-in;
+  touch-action: none;
+}
+
+.u1-snake-media[data-zoomed="true"] .u1-snake-media__stage {
+  cursor: grab;
+}
+
+.u1-snake-media__image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.u1-snake-media__top,
+.u1-snake-media__bottom {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  transition: opacity 140ms ease;
+  pointer-events: none;
+}
+
+.u1-snake-media__top {
+  top: 0;
+  min-height: 78px;
+  padding:
+    max(10px, env(safe-area-inset-top, 0px))
+    10px
+    18px
+    14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  background: linear-gradient(180deg, rgba(5, 6, 7, .78), rgba(5, 6, 7, 0));
+}
+
+.u1-snake-media__title {
+  min-width: 0;
+  padding-top: 5px;
+  display: grid;
+  gap: 2px;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .8);
+}
+
+.u1-snake-media__title i {
+  overflow: hidden;
+  color: rgba(215, 221, 220, .46);
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 650;
+  letter-spacing: .12em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.u1-snake-media__title strong {
+  overflow: hidden;
+  max-width: min(74vw, 760px);
+  color: rgba(240, 241, 237, .88);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(13px, 3.8vw, 17px);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-snake-media__close {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(226, 230, 228, .68);
+  font-size: 25px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.u1-snake-media__bottom {
+  bottom: 0;
+  min-height: 78px;
+  padding:
+    22px
+    14px
+    max(12px, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  background: linear-gradient(0deg, rgba(5, 6, 7, .82), rgba(5, 6, 7, 0));
+}
+
+.u1-snake-media__caption {
+  max-width: min(74vw, 760px);
+  overflow: hidden;
+  color: rgba(221, 224, 220, .6);
+  font-size: 10px;
+  line-height: 1.4;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .9);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.u1-snake-media__counter {
+  margin-left: auto;
+  color: rgba(220, 225, 223, .52);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+
+.u1-snake-media__nav {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  width: 52px;
+  height: 92px;
+  margin-top: -46px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(230, 233, 230, .46);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 34px;
+  font-weight: 300;
+  cursor: pointer;
+  transition: opacity 140ms ease, color 140ms ease;
+}
+
+.u1-snake-media__nav--prev { left: 0; }
+.u1-snake-media__nav--next { right: 0; }
+
+.u1-snake-media__nav:focus-visible,
+.u1-snake-media__nav:hover,
+.u1-snake-media__close:focus-visible,
+.u1-snake-media__close:hover {
+  outline: none;
+  color: rgba(245, 246, 242, .88);
+}
+
+.u1-snake-media[data-chrome="false"] .u1-snake-media__top,
+.u1-snake-media[data-chrome="false"] .u1-snake-media__bottom,
+.u1-snake-media[data-chrome="false"] .u1-snake-media__nav {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 700px) {
+  .u1-snake-media__nav {
+    width: 44px;
+    color: rgba(230, 233, 230, .36);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u1-snake-media__top,
+  .u1-snake-media__bottom,
+  .u1-snake-media__nav {
+    transition: none;
+  }
+}
