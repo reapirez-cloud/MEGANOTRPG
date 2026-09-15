@@ -80,8 +80,6 @@ button {
 
 .u1-stage {
   position: relative;
-  touch-action: pan-y;
-  overscroll-behavior-x: none;
   width: min(100%, 760px);
   height: 100%;
   margin: 0 auto;
@@ -616,6 +614,8 @@ button {
   padding: 0 3px;
   isolation: isolate;
   overflow: visible;
+  touch-action: pan-y;
+  overscroll-behavior-x: contain;
 }
 
 .u1-dock__glass {
