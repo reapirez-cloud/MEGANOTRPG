@@ -255,6 +255,7 @@ Core rules:
 - Snake dispatches the selected action into the existing GENA / Oracle / explicit owner path;
 - reusable windows are schema-driven and domain-agnostic;
 - if an action's dedicated UI is not explicitly designed yet, use the universal Placeholder surface instead of inventing a one-off form;
+- **all UI 1.0 graphic view/crop/fit/apply operations use the universal Snake MediaPlayer**. A domain supplies target geometry and the typed executor; do not add avatar/panel/location-specific croppers or destructive source-image rewrites. Persist target crop as normalized media presentation metadata.
 - do not copy the current location-specific long-press/menu implementation into another feature; it is temporary and scheduled for migration to Snake.
 
 
