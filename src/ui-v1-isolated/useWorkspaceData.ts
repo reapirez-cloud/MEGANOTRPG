@@ -59,6 +59,10 @@ export type WorkspaceCharacter = {
   panelAvatarSource: string | null
   panelAvatarAssetId: string | null
   panelAvatarPresentation: MediaPresentation | null
+  sheetHeroUrl: string | null
+  sheetHeroSource: string | null
+  sheetHeroAssetId: string | null
+  sheetHeroPresentation: MediaPresentation | null
   characterType: "pc" | "npc"
   visibility: "campaign" | "private"
   lifeState: "alive" | "dead"
@@ -110,13 +114,13 @@ type CharacterSheetPreviewRow = {
 
 type CharacterMediaBindingRow = {
   character_id: string
-  target_field: "avatar" | "avatar_url" | "panel_avatar"
+  target_field: "avatar" | "avatar_url" | "panel_avatar" | "sheet_hero"
   asset_id: string
   storage_path: string
   presentation: unknown
 }
 
-export type CharacterMediaSlot = "avatar" | "panel_avatar"
+export type CharacterMediaSlot = "avatar" | "panel_avatar" | "sheet_hero"
 
 type MutationResult = { ok: boolean; error?: string }
 
@@ -127,6 +131,7 @@ type WorkspaceData = {
   canManage: boolean
   canEditActiveAvatar: boolean
   activeCharacter: WorkspaceCharacter | null
+  characters: WorkspaceCharacter[]
   playerCharacters: WorkspaceCharacter[]
   ownCharacters: WorkspaceCharacter[]
   worldSpeakerCharacters: WorkspaceCharacter[]
@@ -383,13 +388,18 @@ export function useWorkspaceData(): WorkspaceData {
             null
           const panelBinding =
             mediaByKey.get(character.id + ":panel_avatar") || null
+          const sheetHeroBinding =
+            mediaByKey.get(character.id + ":sheet_hero") || null
           const avatarSource =
             avatarBinding?.storage_path || character.avatar_url || null
           const panelAvatarSource =
             panelBinding?.storage_path || avatarSource
-          const [avatarUrl, panelAvatarUrl] = await Promise.all([
+          const sheetHeroSource =
+            sheetHeroBinding?.storage_path || panelAvatarSource || avatarSource
+          const [avatarUrl, panelAvatarUrl, sheetHeroUrl] = await Promise.all([
             resolveCampaignMediaUrl(avatarSource),
             resolveCampaignMediaUrl(panelAvatarSource),
+            resolveCampaignMediaUrl(sheetHeroSource),
           ])
 
           return {
@@ -409,6 +419,12 @@ export function useWorkspaceData(): WorkspaceData {
             panelAvatarAssetId: panelBinding?.asset_id || null,
             panelAvatarPresentation: parseMediaPresentation(
               panelBinding?.presentation,
+            ),
+            sheetHeroUrl: sheetHeroUrl || sheetHeroSource,
+            sheetHeroSource,
+            sheetHeroAssetId: sheetHeroBinding?.asset_id || null,
+            sheetHeroPresentation: parseMediaPresentation(
+              sheetHeroBinding?.presentation,
             ),
             characterType: character.character_type,
             visibility: character.visibility,
@@ -604,7 +620,11 @@ export function useWorkspaceData(): WorkspaceData {
       if (file) {
         const upload = await uploadCampaignImage(
           file,
-          slot === "avatar" ? "avatars" : "panel-avatars",
+          slot === "avatar"
+            ? "avatars"
+            : slot === "panel_avatar"
+              ? "panel-avatars"
+              : "sheet-heroes",
           campaignId,
         )
         if (!upload.ok) return { ok: false, error: upload.error }
@@ -618,8 +638,8 @@ export function useWorkspaceData(): WorkspaceData {
             p_mime_type: upload.mimeType,
             p_width: upload.width,
             p_height: upload.height,
-            p_purpose: slot === "avatar" ? "portrait" : "panel",
-            p_profile: slot === "avatar" ? "portrait" : "panel",
+            p_purpose: slot === "avatar" ? "portrait" : slot === "panel_avatar" ? "panel" : "hero_art",
+            p_profile: slot === "avatar" ? "portrait" : slot === "panel_avatar" ? "panel" : "hero_art",
           },
         )
         if (registerError || !registered) {
@@ -651,8 +671,8 @@ export function useWorkspaceData(): WorkspaceData {
               p_mime_type: "image/webp",
               p_width: sourceWidth,
               p_height: sourceHeight,
-              p_purpose: slot === "avatar" ? "portrait" : "panel",
-              p_profile: slot === "avatar" ? "portrait" : "panel",
+              p_purpose: slot === "avatar" ? "portrait" : slot === "panel_avatar" ? "panel" : "hero_art",
+              p_profile: slot === "avatar" ? "portrait" : slot === "panel_avatar" ? "panel" : "hero_art",
             },
           )
           if (!registerError && registered) assetId = String(registered)
@@ -700,17 +720,36 @@ export function useWorkspaceData(): WorkspaceData {
         current.map((item) => {
           if (item.id !== characterId) return item
 
+          if (slot === "sheet_hero") {
+            return {
+              ...item,
+              sheetHeroUrl: resolvedUrl,
+              sheetHeroSource: storagePath,
+              sheetHeroAssetId: assetId,
+              sheetHeroPresentation: presentation,
+            }
+          }
+
           if (slot === "panel_avatar") {
+            const hasDedicatedSheetHero = Boolean(item.sheetHeroAssetId)
             return {
               ...item,
               panelAvatarUrl: resolvedUrl,
               panelAvatarSource: storagePath,
               panelAvatarAssetId: assetId,
               panelAvatarPresentation: presentation,
+              ...(hasDedicatedSheetHero
+                ? {}
+                : {
+                    sheetHeroUrl: resolvedUrl,
+                    sheetHeroSource: storagePath,
+                    sheetHeroPresentation: null,
+                  }),
             }
           }
 
           const hasDedicatedPanel = Boolean(item.panelAvatarAssetId)
+          const hasDedicatedSheetHero = Boolean(item.sheetHeroAssetId)
           return {
             ...item,
             avatarUrl: resolvedUrl,
@@ -724,6 +763,13 @@ export function useWorkspaceData(): WorkspaceData {
                   panelAvatarSource: storagePath,
                   panelAvatarPresentation: null,
                 }),
+            ...(!hasDedicatedPanel && !hasDedicatedSheetHero
+              ? {
+                  sheetHeroUrl: resolvedUrl,
+                  sheetHeroSource: storagePath,
+                  sheetHeroPresentation: null,
+                }
+              : {}),
           }
         }),
       )
@@ -750,6 +796,7 @@ export function useWorkspaceData(): WorkspaceData {
       (canManage || activeCharacter.assignedUserId === userId),
     ),
     activeCharacter,
+    characters,
     playerCharacters,
     ownCharacters,
     worldSpeakerCharacters,
