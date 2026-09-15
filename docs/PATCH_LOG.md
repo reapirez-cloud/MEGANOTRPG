@@ -33,6 +33,11 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Completed Inventory Stage 5 physical authoring: Chasovoy item definitions now use a validated physical profile and strict v2 create/revise RPCs; ordinary item authoring has reusable physical presets and a GM shape editor.
+- Added the immutable standard container library (simple 1×1, purse, pouch, bag, travel bag, backpack, large backpack/sack, quiver and two chest sizes). Standard containers are issued as concrete Cheburashka instances and can be renamed per instance for narrative placement without anatomical carry slots.
+- Voss can now create unusual/magical container profiles and revise existing campaign item definitions while preserving existing mechanics on geometry-only changes. System definitions remain immutable; altered standard bags become campaign variants. Live `voss-agent` was deployed as version 32.
+- Safely normalized legacy quantity-one stacks to instances. Ambiguous quantity>1 legacy stacks were preserved and marked for Stage 11 review rather than being silently split or merged.
+
 - Started Inventory Stage 5A: added the canonical Chasovoy `inventory_profile` contract for instance/bulk packing, shape masks, physical dimensions and container internal grids. Cheburashka and the GM item editor now default new items to independent instances; bulk stacks are explicit exceptions.
 - Added rollout-safe live Supabase validation for item physical profiles and changed the inventory DB default to `instance`. The old production client keeps a narrow compatibility path when it omits `stack_mode` on an existing multi-quantity item.
 - Separated container geometry from presentation: a magical 100×100 cm interior may be a 20×20 logical grid while the future mobile inventory keeps a readable fixed viewport and pans instead of shrinking cells. Container physical metadata remains separate from ordinary item mechanics, so bags can still carry bonuses, resistances, activated effects and curses through the existing mechanics/CE path.
@@ -63,6 +68,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Class Reference now treats `rule_templates` as the canonical definition source whenever it is available; `referenceOnly` controls literary fallback, not permission to ignore an active CE class package.
 
 ### Tests / verification
+
+- Live Supabase contains `20260915184110_cheburashka_stage5_complete_authoring_library`; strict v2 reference RPCs are authenticated-only, the system container definitions are present, and the inventory currently has zero quantity-one stacks. Three multi-quantity legacy stacks remain intentionally flagged for later review.
+- Added `inventoryStage5Completion.test.ts` covering prepared item/container profiles, GM shape authoring, system-definition immutability, narrative instance naming, strict v2 Chasovoy writes, Voss campaign-item revisions and non-destructive legacy migration.
 
 - Added Stage 5 inventory-profile regression coverage for instance-first defaults, explicit bulk stacks, large magical-container interiors without UI viewport metadata, and preservation of container geometry while ordinary mechanics are edited.
 - Applied live Supabase migration `20260915182537_cheburashka_stage5_inventory_profile_foundation` and verified the DB default / compatibility routing plus acceptance of a 20×20 magical-bag profile.
