@@ -11,6 +11,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Admin/owner can now upload and reframe class and subclass artwork directly inside the Knowledge Base through Snake MediaPlayer. Long-pressing a class/subclass preview edits the 3:1 panel; long-pressing the page hero edits the 16:9 art.
+- Class detail pages now have the same 16:9 atmospheric hero-art slot as subclass pages. Existing bundled class/subclass preview art remains the fallback until the admin replaces it.
+
 - Upgraded the universal Snake media player into the single graphic composition surface for UI 1.0. The same fullscreen player now previews exact circle, square or arbitrary-ratio target masks, supports pan/pinch/double-tap framing, accepts a replacement image, and submits the visible crop without destroying the original file.
 - Replaced the Workspace avatar placeholders with real media-player flows: **Аватар персонажа** uses a circular 1:1 target and **Аватар панели** uses a 3:1 target. Saved panel art is independent from the character portrait and falls back to the portrait when no dedicated panel image exists.
 - Workspace character strips and the active identity board now render stored media crops through one target-aware frame component, so the visible area matches what the player approved in the media editor.
@@ -23,6 +26,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Corrected the class-list status too: a class is marked as a translation-only card only when no active CE catalog template exists, instead of inheriting that label forever from an old authored-data flag.
 
 ### Runtime and architecture changes
+
+- Added campaign-level `reference_art` media bindings. Mutation is enforced with `private.is_campaign_owner`, so ordinary GMs cannot change class/subclass art even though they can manage other campaign content.
+- Reference art reuses normalized media presentation metadata and the universal Snake graphics surface; no class-specific uploader or cropper was introduced.
+- Root-relative bundled UI assets such as `/ui-v1/classes/*.webp` are now correctly treated as public app assets instead of private Storage paths.
 
 - Added normalized `MediaPresentation` metadata (`shape + aspectRatio + source crop rectangle`) and persisted it on canonical `media_bindings`. Crops are resolution/device independent and reuse the original Storage object instead of creating derived copies.
 - Added authenticated manual-media registration, presentation binding and character-media read RPCs. Target permissions still come from the existing explicit media capability checks; the generic player never invents authority.
