@@ -4,9 +4,12 @@ type JsonObject = Record<string, unknown>
 
 export type VossReadToolContext = {
   client: SupabaseClient
+  admin: SupabaseClient
   campaignId: string
   userId: string
+  role: string
   canManage: boolean
+  isOwner: boolean
 }
 
 export const VOSS_READ_TOOLS = [
@@ -205,6 +208,42 @@ export const VOSS_READ_TOOLS = [
           limit: { type: "integer", minimum: 1, maximum: 30 },
         },
         required: ["query"],
+      },
+    },
+  },
+] as const
+
+export const VOSS_OWNER_READ_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "search_system_media",
+      description:
+        "Search the campaign owner's private System Materials library by title or caption. Owner-only. Use this when the owner refers to an uploaded reference/art from System Materials.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          query: { type: "string" },
+          limit: { type: "integer", minimum: 1, maximum: 20 },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "inspect_system_media",
+      description:
+        "Load one owner-only System Materials image for actual visual inspection. The runtime will provide the image to the multimodal model after this tool succeeds.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          art_id: { type: "string" },
+          asset_id: { type: "string" },
+        },
       },
     },
   },
@@ -968,6 +1007,101 @@ async function searchChatMessages(
   }
 }
 
+async function searchSystemMedia(
+  context: VossReadToolContext,
+  args: JsonObject,
+) {
+  if (!context.isOwner) return { error: "owner_required" }
+
+  const query = cleanSearch(args.query)
+  if (!query) return { error: "search query is empty" }
+  const limit = Math.max(1, Math.min(20, Math.floor(Number(args.limit) || 12)))
+  const pattern = "%" + query + "%"
+
+  const { data: rows, error } = await context.admin
+    .from("campaign_art_items")
+    .select("id,asset_id,title,caption,image_url,created_at")
+    .eq("campaign_id", context.campaignId)
+    .eq("collection", "system")
+    .or("title.ilike." + pattern + ",caption.ilike." + pattern)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+
+  if (error) return { error: error.message }
+  const assetIds = (rows || [])
+    .map((row: any) => row.asset_id)
+    .filter((value: unknown): value is string => typeof value === "string")
+  const { data: assets, error: assetError } = assetIds.length
+    ? await context.admin
+      .from("media_assets")
+      .select("id,storage_bucket,storage_path,mime_type,width,height,purpose,profile,status,created_at")
+      .in("id", assetIds)
+    : { data: [], error: null }
+
+  if (assetError) return { error: assetError.message }
+  const byId = new Map((assets || []).map((asset: any) => [asset.id, asset]))
+
+  return {
+    query,
+    items: (rows || []).map((row: any) => ({
+      art_id: row.id,
+      asset_id: row.asset_id,
+      title: row.title,
+      caption: row.caption,
+      created_at: row.created_at,
+      asset: row.asset_id ? byId.get(row.asset_id) || null : null,
+    })),
+  }
+}
+
+async function inspectSystemMedia(
+  context: VossReadToolContext,
+  args: JsonObject,
+) {
+  if (!context.isOwner) return { error: "owner_required" }
+
+  const artId = typeof args.art_id === "string" ? args.art_id : ""
+  const assetId = typeof args.asset_id === "string" ? args.asset_id : ""
+  if (!artId && !assetId) return { error: "art_id_or_asset_id_required" }
+
+  let query = context.admin
+    .from("campaign_art_items")
+    .select("id,asset_id,title,caption,image_url,created_at")
+    .eq("campaign_id", context.campaignId)
+    .eq("collection", "system")
+
+  query = artId ? query.eq("id", artId) : query.eq("asset_id", assetId)
+  const { data: art, error } = await query.maybeSingle()
+  if (error) return { error: error.message }
+  if (!art || !art.asset_id) return { not_found: true }
+
+  const { data: asset, error: assetError } = await context.admin
+    .from("media_assets")
+    .select("id,storage_bucket,storage_path,mime_type,width,height,purpose,profile,status,created_at")
+    .eq("id", art.asset_id)
+    .eq("campaign_id", context.campaignId)
+    .maybeSingle()
+
+  if (assetError) return { error: assetError.message }
+  if (!asset) return { not_found: true }
+
+  return {
+    art_id: art.id,
+    asset_id: asset.id,
+    title: art.title,
+    caption: art.caption,
+    width: asset.width,
+    height: asset.height,
+    mime_type: asset.mime_type,
+    __vision_asset: {
+      bucket: asset.storage_bucket,
+      path: asset.storage_path,
+      mime_type: asset.mime_type,
+      title: art.title,
+    },
+  }
+}
+
 export async function executeVossReadTool(
   context: VossReadToolContext,
   name: string,
@@ -986,5 +1120,7 @@ export async function executeVossReadTool(
   if (name === "read_campaign_overview") return readCampaignOverview(context, args)
   if (name === "read_chat_room") return readChatRoom(context, args)
   if (name === "search_chat_messages") return searchChatMessages(context, args)
+  if (name === "search_system_media") return searchSystemMedia(context, args)
+  if (name === "inspect_system_media") return inspectSystemMedia(context, args)
   return { error: "Unknown read tool" }
 }
