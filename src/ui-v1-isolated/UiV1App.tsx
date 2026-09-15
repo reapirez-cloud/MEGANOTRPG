@@ -226,6 +226,17 @@ function aiRouteContext(route: Route) {
   }
 }
 
+const rootSpaceOrder: RootSpace[] = ["workspace", "home", "chats"]
+
+type DockSwipeState = {
+  pointerId: number
+  startX: number
+  startY: number
+  lastX: number
+  lastY: number
+  startedAt: number
+}
+
 function Dock({
   route,
   onNavigate,
@@ -234,14 +245,87 @@ function Dock({
   onNavigate: (space: RootSpace) => void
 }) {
   const active = activeRoot(route)
+  const swipeRef = useRef<DockSwipeState | null>(null)
+  const suppressClickUntilRef = useRef(0)
   const items: Array<{ id: RootSpace; label: string }> = [
     { id: "workspace", label: "Я" },
     { id: "home", label: "Главная" },
     { id: "chats", label: "Чаты" },
   ]
 
+  const onPointerDown = (event: React.PointerEvent<HTMLElement>) => {
+    if (event.pointerType === "mouse") return
+
+    swipeRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
+      startedAt: performance.now(),
+    }
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+
+  const onPointerMove = (event: React.PointerEvent<HTMLElement>) => {
+    const swipe = swipeRef.current
+    if (!swipe || swipe.pointerId !== event.pointerId) return
+
+    swipe.lastX = event.clientX
+    swipe.lastY = event.clientY
+  }
+
+  const finishSwipe = (event: React.PointerEvent<HTMLElement>) => {
+    const swipe = swipeRef.current
+    swipeRef.current = null
+
+    if (!swipe || swipe.pointerId !== event.pointerId) return
+
+    const deltaX = event.clientX - swipe.startX
+    const deltaY = event.clientY - swipe.startY
+    const elapsed = performance.now() - swipe.startedAt
+    const horizontalDistance = Math.abs(deltaX)
+    const verticalDistance = Math.abs(deltaY)
+
+    const isIntentionalSwipe =
+      horizontalDistance >= 54 &&
+      horizontalDistance > verticalDistance * 1.35 &&
+      elapsed <= 850
+
+    if (!isIntentionalSwipe) return
+
+    suppressClickUntilRef.current = performance.now() + 320
+    event.preventDefault()
+
+    const currentIndex = rootSpaceOrder.indexOf(active)
+    const direction = deltaX < 0 ? 1 : -1
+    const nextSpace = rootSpaceOrder[currentIndex + direction]
+
+    if (nextSpace) onNavigate(nextSpace)
+  }
+
+  const cancelSwipe = () => {
+    swipeRef.current = null
+  }
+
+  const suppressSwipeClick = (event: React.MouseEvent<HTMLElement>) => {
+    if (performance.now() >= suppressClickUntilRef.current) return
+
+    event.preventDefault()
+    event.stopPropagation()
+  }
+
   return (
-    <nav className="u1-dock" aria-label="Основная навигация" data-active={active}>
+    <nav
+      className="u1-dock"
+      aria-label="Основная навигация"
+      data-active={active}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={finishSwipe}
+      onPointerCancel={cancelSwipe}
+      onClickCapture={suppressSwipeClick}
+    >
       <span className="u1-dock__glass" aria-hidden="true" />
       {items.map((item) => {
         const selected = item.id === active
@@ -262,7 +346,7 @@ function Dock({
   )
 }
 
-function EntryMedia({ src }: { src: string | null }) {
+function EntryMediafunction EntryMedia({ src }: { src: string | null }) {
   if (!src) return <span className="u1-entry-media u1-entry-media--fallback" aria-hidden="true" />
 
   return <img className="u1-entry-media" src={src} alt="" loading="lazy" aria-hidden="true" />
@@ -532,7 +616,7 @@ function Placeholder({
 
 function Screen({ route }: { route: Route }) {
   if (route.type === "section") {
-    if (route.section === "whats-new") return <WhatsNew />
+    if (route.section === "whats-new") return <WhatsNew onBack={() => go("home")} />
     if (route.section === "world") return <WorldSectionScreen subsection={route.subsection} path={route.tail} />
     if (route.section === "knowledge-base") return <KnowledgeBaseScreen subsection={route.subsection} path={route.tail} />
     if (route.section === "society-news") return <SocietyNewsScreen />
@@ -590,34 +674,9 @@ function Screen({ route }: { route: Route }) {
   )
 }
 
-const rootSpaceOrder: RootSpace[] = ["workspace", "home", "chats"]
-
-type SwipeState = {
-  pointerId: number
-  startX: number
-  startY: number
-  lastX: number
-  lastY: number
-  startedAt: number
-}
-
-type EdgeBackState = SwipeState
-
-function currentScrollRoot() {
-  return document.querySelector<HTMLElement>(
-    ".u1-view .u1-workspace__actors, .u1-view .u1-gm-workshop, .u1-view .u1-art-library, .u1-view .u1-home, .u1-view .u1-section-page, .u1-view .u1-placeholder",
-  )
-}
-
-export default function UiV1App() {
+export default function UiV1App() {export default function UiV1App() {
   const [route, setRoute] = useState<Route>(() => parseRoute())
   useAIViewContextLayer("ui-route", aiRouteContext(route), 10)
-  const swipeRef = useRef<SwipeState | null>(null)
-  const edgeBackRef = useRef<EdgeBackState | null>(null)
-  const suppressClickUntilRef = useRef(0)
-  const scrollPositionsRef = useRef(new Map<string, number>())
-  const currentHashRef = useRef(window.location.hash || "#/home")
-  const restoreAfterBackRef = useRef(false)
 
   const navigateRoot = useCallback((space: RootSpace) => {
     if (route.type === "root" && route.space === space) return
@@ -626,149 +685,12 @@ export default function UiV1App() {
     go(space)
   }, [route])
 
-  const onPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === "mouse") return
-
-    if (route.type !== "root" && event.clientX <= 26) {
-      swipeRef.current = null
-      edgeBackRef.current = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        lastX: event.clientX,
-        lastY: event.clientY,
-        startedAt: performance.now(),
-      }
-      event.currentTarget.setPointerCapture?.(event.pointerId)
-      return
-    }
-
-    if (route.type !== "root") return
-
-    edgeBackRef.current = null
-    swipeRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      lastX: event.clientX,
-      lastY: event.clientY,
-      startedAt: performance.now(),
-    }
-
-    event.currentTarget.setPointerCapture?.(event.pointerId)
-  }, [route])
-
-  const onPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const edgeBack = edgeBackRef.current
-    if (edgeBack?.pointerId === event.pointerId) {
-      edgeBack.lastX = event.clientX
-      edgeBack.lastY = event.clientY
-      return
-    }
-
-    const swipe = swipeRef.current
-    if (!swipe || swipe.pointerId !== event.pointerId) return
-
-    swipe.lastX = event.clientX
-    swipe.lastY = event.clientY
-  }, [])
-
-  const finishSwipe = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const edgeBack = edgeBackRef.current
-    edgeBackRef.current = null
-
-    if (edgeBack?.pointerId === event.pointerId) {
-      const deltaX = edgeBack.lastX - edgeBack.startX
-      const deltaY = edgeBack.lastY - edgeBack.startY
-      const elapsed = performance.now() - edgeBack.startedAt
-      const requiredDistance = Math.min(120, window.innerWidth * 0.28)
-      const isIntentionalBack =
-        deltaX >= requiredDistance &&
-        deltaX > Math.abs(deltaY) * 1.4 &&
-        elapsed <= 1000
-
-      if (!isIntentionalBack) return
-
-      const scrollRoot = currentScrollRoot()
-      if (scrollRoot) {
-        scrollPositionsRef.current.set(currentHashRef.current, scrollRoot.scrollTop)
-      }
-
-      restoreAfterBackRef.current = true
-      suppressClickUntilRef.current = performance.now() + 360
-      softHaptic()
-      window.history.back()
-      return
-    }
-
-    const swipe = swipeRef.current
-    swipeRef.current = null
-
-    if (!swipe || swipe.pointerId !== event.pointerId || route.type !== "root") return
-
-    const deltaX = swipe.lastX - swipe.startX
-    const deltaY = swipe.lastY - swipe.startY
-    const elapsed = performance.now() - swipe.startedAt
-    const horizontalDistance = Math.abs(deltaX)
-    const verticalDistance = Math.abs(deltaY)
-
-    const isIntentionalSwipe =
-      horizontalDistance >= 54 &&
-      horizontalDistance > verticalDistance * 1.35 &&
-      elapsed <= 850
-
-    if (!isIntentionalSwipe) return
-
-    const currentIndex = rootSpaceOrder.indexOf(route.space)
-    const direction = deltaX < 0 ? 1 : -1
-    const nextSpace = rootSpaceOrder[currentIndex + direction]
-
-    if (!nextSpace) return
-
-    suppressClickUntilRef.current = performance.now() + 320
-    navigateRoot(nextSpace)
-  }, [navigateRoot, route])
-
-  const cancelSwipe = useCallback(() => {
-    swipeRef.current = null
-    edgeBackRef.current = null
-  }, [])
-
-  const suppressSwipeClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    if (performance.now() >= suppressClickUntilRef.current) return
-
-    event.preventDefault()
-    event.stopPropagation()
-  }, [])
-
-  useEffect(() => {
+  useEffect(() => {  useEffect(() => {
     if (!window.location.hash) {
       window.history.replaceState(null, "", "#/home")
     }
 
-    currentHashRef.current = window.location.hash || "#/home"
-
-    const sync = () => {
-      const previousHash = currentHashRef.current
-      const scrollRoot = currentScrollRoot()
-      if (scrollRoot) {
-        scrollPositionsRef.current.set(previousHash, scrollRoot.scrollTop)
-      }
-
-      const nextHash = window.location.hash || "#/home"
-      const shouldRestore = restoreAfterBackRef.current
-      restoreAfterBackRef.current = false
-      currentHashRef.current = nextHash
-      setRoute(parseRoute())
-
-      if (shouldRestore) {
-        const top = scrollPositionsRef.current.get(nextHash) || 0
-        window.setTimeout(() => {
-          const target = currentScrollRoot()
-          if (target) target.scrollTop = top
-        }, 230)
-      }
-    }
+    const sync = () => setRoute(parseRoute())
 
     window.addEventListener("hashchange", sync)
     return () => window.removeEventListener("hashchange", sync)
@@ -777,14 +699,7 @@ export default function UiV1App() {
   return (
     <div className="u1-app">
       <div className="u1-backdrop" aria-hidden="true" />
-      <div
-        className="u1-stage"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={finishSwipe}
-        onPointerCancel={cancelSwipe}
-        onClickCapture={suppressSwipeClick}
-      >
+      <div className="u1-stage">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={routeKey(route)}
