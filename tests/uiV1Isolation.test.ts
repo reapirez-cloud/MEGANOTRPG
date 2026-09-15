@@ -175,7 +175,8 @@ test("UI v1 dock is a maximally thin edge-to-edge bottom navigation bar", () => 
 
 test("dock active state is restrained and does not resurrect the floating glass treatment", () => {
   assert.match(styles, /\.u1-dock__item\[data-selected\]/)
-  assert.match(styles, /\.u1-dock__item\[data-selected\]::before/)
+  assert.match(styles, /\.u1-dock__item\[data-selected\] \.u1-dock__icon/)
+  assert.doesNotMatch(styles, /\.u1-dock__item\[data-selected\]::before/)
   assert.doesNotMatch(app + styles, /u1-dock__glass|u1-dock__filament|layoutId="ui-v1-dock-selection"/)
   assert.doesNotMatch(styles, /\.u1-dock::after|left 230ms cubic-bezier|filter:\s*blur\(1\.6px\)/)
 })
