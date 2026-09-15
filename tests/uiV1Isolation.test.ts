@@ -233,10 +233,10 @@ test("root spaces support deliberate horizontal swipe navigation with soft hapti
   assert.match(styles, /touch-action:\s*pan-y/)
 })
 
-test("dock selection uses a local hairline accent instead of a moving glow", () => {
-  assert.match(styles, /\.u1-dock__item\[data-selected\]::before/)
-  assert.match(styles, /width:\s*28px/)
-  assert.match(styles, /height:\s*1px/)
+test("dock selection stays icon-only without a redundant hairline accent", () => {
+  assert.match(styles, /\.u1-dock__item\[data-selected\]\s*\{[\s\S]*?color:/)
+  assert.match(styles, /\.u1-dock__item\[data-selected\] \.u1-dock__icon\s*\{[\s\S]*?opacity:\s*1/)
+  assert.doesNotMatch(styles, /\.u1-dock__item\[data-selected\]::before/)
   assert.doesNotMatch(styles, /data-active="home"|data-active="chats"|left 230ms cubic-bezier/)
 })
 
