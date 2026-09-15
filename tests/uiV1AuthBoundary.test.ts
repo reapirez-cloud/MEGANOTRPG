@@ -20,3 +20,9 @@ test("production never reuses a stale Supabase browser session without Telegram 
   assert.match(gate, /sessionTelegramId !== currentTelegramId/)
   assert.match(gate, /Telegram-аккаунт и сессия приложения не совпали/)
 })
+
+test("Playwright auth bypass is restricted to local Vite development", () => {
+  assert.match(gate, /import\.meta\.env\.DEV/)
+  assert.match(gate, /isLocalDevelopment\(\)/)
+  assert.match(gate, /VITE_E2E_AUTH_BYPASS === "true"/)
+})

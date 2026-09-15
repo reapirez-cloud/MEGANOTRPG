@@ -30,6 +30,7 @@ export default defineConfig({
         process.env.VITE_SUPABASE_URL ?? "http://127.0.0.1:54321",
       VITE_SUPABASE_PUBLISHABLE_KEY:
         process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "ui-v1-playwright-smoke-key",
+      VITE_E2E_AUTH_BYPASS: "true",
     },
   },
 });

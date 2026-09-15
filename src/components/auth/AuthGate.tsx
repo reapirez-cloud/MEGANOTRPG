@@ -33,6 +33,29 @@ function isLocalDevelopment() {
   )
 }
 
+function allowE2ETestAuthBypass() {
+  return (
+    import.meta.env.DEV &&
+    isLocalDevelopment() &&
+    import.meta.env.VITE_E2E_AUTH_BYPASS === "true"
+  )
+}
+
+const E2E_USER = {
+  id: "00000000-0000-4000-8000-000000000001",
+  app_metadata: {},
+  user_metadata: { app: "MEGANOTRPG", auth_source: "e2e" },
+  aud: "authenticated",
+  created_at: "2026-01-01T00:00:00.000Z",
+} as User
+
+const E2E_PROFILE: AppProfile = {
+  user_id: E2E_USER.id,
+  display_name: "Playwright",
+  created_at: E2E_USER.created_at,
+  updated_at: E2E_USER.created_at,
+}
+
 export default function AuthGate({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<Phase>("loading")
   const [user, setUser] = useState<User | null>(null)
@@ -43,6 +66,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
+    if (allowE2ETestAuthBypass()) return
     void bootstrap()
   }, [])
 
@@ -268,6 +292,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
     setProfile(data as AppProfile)
     setPhase("ready")
+  }
+
+  if (allowE2ETestAuthBypass()) {
+    return (
+      <AuthProvider user={E2E_USER} profile={E2E_PROFILE}>
+        {children}
+      </AuthProvider>
+    )
   }
 
   if (phase === "loading") {
