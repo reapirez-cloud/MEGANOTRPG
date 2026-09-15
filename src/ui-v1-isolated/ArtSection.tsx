@@ -344,7 +344,7 @@ export default function ArtSection({ subsection }: { subsection?: string }) {
       {selectedGeneration && (
         <button type="button" className="u1-art-lightbox" onClick={() => setSelectedGeneration(null)} aria-label="Закрыть изображение">
           <CampaignImage value={selectedGeneration.storage_path} alt="Сгенерированное изображение" />
-          <span>{selectedGeneration.purpose.replaceAll("_", " ")}</span>
+          <span>{selectedGeneration.purpose.split("_").join(" ")}</span>
         </button>
       )}
     </main>
