@@ -174,7 +174,7 @@ test("Mechanics Compiler remains in the repository but Voss cannot invoke it", (
   assert.match(compiler, /sourceKey/)
 })
 
-test("Developer Mode is human-approved, dev-only, and cannot self-promote", () => {
+test("Developer Mode backend remains human-approved and dev-only while its Voss UI stays removed", () => {
   const modelTools = read("supabase/functions/voss-agent/developer-tools.ts")
   const executor = read("supabase/functions/developer-mode/index.ts")
   const github = read("supabase/functions/developer-mode/github-dev.ts")
@@ -188,8 +188,7 @@ test("Developer Mode is human-approved, dev-only, and cannot self-promote", () =
   assert.match(executor, /validate_ai_dev_session_v1/)
   assert.match(executor, /remote\.ciState === "success"/)
   assert.match(executor, /remote\.previewState === "success"/)
-  assert.match(shell, /Создать preview-ветку/)
-  assert.match(shell, /Слить в dev/)
+  assert.doesNotMatch(shell, /Developer Mode|Создать preview-ветку|Слить в dev|Слить in main/)
   assert.doesNotMatch(shell, />\s*Слить в main\s*</)
 })
 
