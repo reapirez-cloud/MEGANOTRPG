@@ -7,7 +7,7 @@ import { useAuth } from "../../context/AuthContext"
 import { useCharacters } from "../../context/CharacterContext"
 import { createEngineCommandContext } from "../../engine-contracts/index.ts"
 import { categoryLabel, categoryOrder, equipmentSlots, inventoryCategories } from "../../lib/dndInventory"
-import { defaultInventoryProfile, inventoryProfileStackMode, readInventoryProfile } from "../../inventory-engine/profile.ts"
+import { defaultInventoryProfile, inventoryProfileStackMode, readInventoryProfile, type InventoryPhysicalProfile } from "../../inventory-engine/profile.ts"
 import { oracle } from "../../oracle-engine/runtime.ts"
 import { chasovoy } from "../../reference-engine/runtime.ts"
 import { normalizeDefinitionSlug } from "../../reference-engine/index.ts"
@@ -84,10 +84,11 @@ function definitionToItem(definition: ChasovoyDefinition): InventoryItem {
 function definitionData(
   input: InventoryInput,
   currentData: Record<string, ChasovoyJson> = {},
+  authoredProfile?: InventoryPhysicalProfile | null,
 ): Record<string, ChasovoyJson> {
   const stackMode = input.stack_mode === "stack" ? "stack" : "instance"
   const currentProfile = readInventoryProfile(currentData.inventory_profile)
-  const inventoryProfile = defaultInventoryProfile({ ...input, stack_mode: stackMode }, currentProfile)
+  const inventoryProfile = authoredProfile || defaultInventoryProfile({ ...input, stack_mode: stackMode }, currentProfile)
   return {
     ...currentData,
     quantity: stackMode === "stack" ? Math.max(1, input.quantity || 1) : 1,
@@ -123,6 +124,7 @@ export default function GmItemLibrary({ onError }: Props) {
   const [issueTarget, setIssueTarget] = useState<ChasovoyDefinition | null>(null)
   const [issueCharacterId, setIssueCharacterId] = useState("")
   const [issueQuantity, setIssueQuantity] = useState("1")
+  const [issueName, setIssueName] = useState("")
   const [saving, setSaving] = useState(false)
   const [localError, setLocalError] = useState("")
 
@@ -140,8 +142,11 @@ export default function GmItemLibrary({ onError }: Props) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const rows = await chasovoy.listDefinitions({ kind: "item", scope: "campaign", campaignId, status: "active" })
-      setDefinitions(rows)
+      const [campaignRows, systemRows] = await Promise.all([
+        chasovoy.listDefinitions({ kind: "item", scope: "campaign", campaignId, status: "active" }),
+        chasovoy.listDefinitions({ kind: "item", scope: "system", status: "active" }),
+      ])
+      setDefinitions([...systemRows, ...campaignRows])
       setLocalError("")
     } catch (reason) {
       reportError(errorMessage(reason, "Не удалось загрузить базу предметов."))
@@ -172,13 +177,13 @@ export default function GmItemLibrary({ onError }: Props) {
       })
   }, [definitions, filter, query])
 
-  async function saveDefinition(input: InventoryInput): Promise<{ ok: boolean; error?: string }> {
+  async function saveDefinition(input: InventoryInput, authoredProfile?: InventoryPhysicalProfile | null): Promise<{ ok: boolean; error?: string }> {
     setSaving(true)
     setLocalError("")
     try {
       const summary = input.description.trim().replace(/\s+/g, " ").slice(0, 180)
       const mechanics = (input.mechanics || []) as unknown as ChasovoyJson
-      const data = definitionData(input, editor && editor !== "new" ? editor.data : {})
+      const data = definitionData(input, editor && editor !== "new" ? editor.data : {}, authoredProfile)
       if (editor === "new") {
         const baseSlug = normalizeDefinitionSlug(input.name) || "item"
         await oracle.definitions.create(context(), {
@@ -222,6 +227,7 @@ export default function GmItemLibrary({ onError }: Props) {
     setIssueTarget(definition)
     setIssueCharacterId(firstPc?.id || characters[0]?.id || "")
     setIssueQuantity(String(definitionToItem(definition).quantity || 1))
+    setIssueName(definition.name)
     setLocalError("")
   }
 
@@ -237,7 +243,7 @@ export default function GmItemLibrary({ onError }: Props) {
       const copies = stackMode === "instance" ? quantity : 1
       for (let copy = 0; copy < copies; copy += 1) {
         await oracle.inventory.create(context(), issueCharacterId, {
-          name: template.name,
+          name: issueName.trim() || template.name,
           quantity: stackMode === "stack" ? quantity : 1,
           weight: template.weight,
           equipped: false,
@@ -284,8 +290,10 @@ export default function GmItemLibrary({ onError }: Props) {
 
   const menuActions: ContextAction[] = menuTarget ? [
     { id: "issue", icon: "↗", label: "Выдать персонажу", detail: "Создать экземпляр этого предмета в инвентаре", onSelect: () => openIssue(menuTarget) },
-    { id: "edit", icon: "✎", label: "Редактировать", detail: "Создать новую ревизию записи в базе", onSelect: () => setEditor(menuTarget) },
-    { id: "archive", icon: "×", label: "Убрать из базы", detail: "Существующие экземпляры у персонажей останутся", danger: true, onSelect: () => setArchiveTarget(menuTarget) },
+    ...(menuTarget.scope === "campaign" ? [
+      { id: "edit", icon: "✎", label: "Редактировать", detail: "Создать новую ревизию записи в базе", onSelect: () => setEditor(menuTarget) },
+      { id: "archive", icon: "×", label: "Убрать из базы", detail: "Существующие экземпляры у персонажей останутся", danger: true, onSelect: () => setArchiveTarget(menuTarget) },
+    ] satisfies ContextAction[] : []),
   ] : []
 
   const playerCharacters = characters.filter((character) => character.character_type === "pc")
@@ -307,9 +315,9 @@ export default function GmItemLibrary({ onError }: Props) {
       {filteredDefinitions.map((definition) => {
         const item = definitionToItem(definition)
         return <article className="gm-clean-row" key={definition.id}>
-          <button className="gm-clean-row__main" type="button" onClick={() => setEditor(definition)}>
+          <button className="gm-clean-row__main" type="button" onClick={() => definition.scope === "system" ? openIssue(definition) : setEditor(definition)}>
             <span className="gm-row-mark" aria-hidden="true">{item.category === "equipment" ? "◇" : item.category === "consumable" ? "◉" : "·"}</span>
-            <span className="gm-row-copy"><strong>{definition.name}</strong><small>{categoryLabel(item.category)}{definition.summary ? ` · ${definition.summary}` : ""}</small></span>
+            <span className="gm-row-copy"><strong>{definition.name}</strong><small>{definition.scope === "system" ? "Стандарт · " : ""}{categoryLabel(item.category)}{definition.summary ? ` · ${definition.summary}` : ""}</small></span>
           </button>
           <button className="gm-row-quick" type="button" onClick={() => openIssue(definition)}>Выдать</button>
           <button className="gm-row-more" type="button" onClick={() => setMenuTarget(definition)} aria-label={`Действия с предметом ${definition.name}`}>•••</button>
@@ -324,11 +332,13 @@ export default function GmItemLibrary({ onError }: Props) {
       campaignId={campaignId}
       onClose={() => setEditor(null)}
       onSave={saveDefinition}
+      enablePhysicalProfile
+      inventoryProfile={editor === "new" ? null : readInventoryProfile(editor.data.inventory_profile)}
     />}
 
-    {menuTarget && <ContextActionSheet title={menuTarget.name} subtitle="Предмет из базы кампании" actions={menuActions} onClose={() => setMenuTarget(null)} />}
+    {menuTarget && <ContextActionSheet title={menuTarget.name} subtitle={menuTarget.scope === "system" ? "Стандартный предмет MEGANOT" : "Предмет из базы кампании"} actions={menuActions} onClose={() => setMenuTarget(null)} />}
 
-    {issueTarget && <div className="sheet-backdrop" onMouseDown={() => { if (!saving) setIssueTarget(null) }}><form className="bottom-sheet v2-editor-sheet gm-short-sheet" onSubmit={issueItem} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Выдать предмет</span><h3>{issueTarget.name}</h3><p>Экземпляр появится в инвентаре выбранного персонажа.</p></div><button type="button" onClick={() => setIssueTarget(null)} disabled={saving}>×</button></header><section className="v2-form-section"><label className="field-label" htmlFor="gm-item-recipient">Персонаж</label><select id="gm-item-recipient" className="app-select" value={issueCharacterId} onChange={(event) => setIssueCharacterId(event.target.value)} disabled={saving}><option value="">Выбрать</option>{playerCharacters.length > 0 && <optgroup label="PC">{playerCharacters.map((character) => <option value={character.id} key={character.id}>{character.name}</option>)}</optgroup>}{npcCharacters.length > 0 && <optgroup label="NPC">{npcCharacters.map((character) => <option value={character.id} key={character.id}>{character.name}</option>)}</optgroup>}</select><label className="field-label" htmlFor="gm-item-quantity">Количество</label><input id="gm-item-quantity" className="app-input" type="number" min="1" value={issueQuantity} onChange={(event) => setIssueQuantity(event.target.value)} disabled={saving}/></section><button className="v2-primary-button v2-full-button" type="submit" disabled={saving || !issueCharacterId}>{saving ? "Выдаём…" : "Выдать"}</button></form></div>}
+    {issueTarget && <div className="sheet-backdrop" onMouseDown={() => { if (!saving) setIssueTarget(null) }}><form className="bottom-sheet v2-editor-sheet gm-short-sheet" onSubmit={issueItem} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><header className="v2-sheet-head"><div><span>Выдать предмет</span><h3>{issueTarget.name}</h3><p>Экземпляр появится в инвентаре выбранного персонажа.</p></div><button type="button" onClick={() => setIssueTarget(null)} disabled={saving}>×</button></header><section className="v2-form-section"><label className="field-label" htmlFor="gm-item-instance-name">Название экземпляра</label><input id="gm-item-instance-name" className="app-input" value={issueName} onChange={(event) => setIssueName(event.target.value)} maxLength={120} disabled={saving}/><small className="creation-optional">Здесь ГМ может записать нарративное место или роль: например «Рюкзак за спиной». Это не анатомический слот.</small><label className="field-label" htmlFor="gm-item-recipient">Персонаж</label><select id="gm-item-recipient" className="app-select" value={issueCharacterId} onChange={(event) => setIssueCharacterId(event.target.value)} disabled={saving}><option value="">Выбрать</option>{playerCharacters.length > 0 && <optgroup label="PC">{playerCharacters.map((character) => <option value={character.id} key={character.id}>{character.name}</option>)}</optgroup>}{npcCharacters.length > 0 && <optgroup label="NPC">{npcCharacters.map((character) => <option value={character.id} key={character.id}>{character.name}</option>)}</optgroup>}</select><label className="field-label" htmlFor="gm-item-quantity">Количество</label><input id="gm-item-quantity" className="app-input" type="number" min="1" value={issueQuantity} onChange={(event) => setIssueQuantity(event.target.value)} disabled={saving}/></section><button className="v2-primary-button v2-full-button" type="submit" disabled={saving || !issueCharacterId}>{saving ? "Выдаём…" : "Выдать"}</button></form></div>}
 
     {archiveTarget && <div className="sheet-backdrop" onMouseDown={() => { if (!saving) setArchiveTarget(null) }}><section className="bottom-sheet v2-confirm" onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle"/><span className="v2-confirm-icon">×</span><h3>Убрать «{archiveTarget.name}» из базы?</h3><p>Предмет исчезнет из каталога выдачи. Уже выданные экземпляры останутся у персонажей.</p><div><button type="button" onClick={() => setArchiveTarget(null)} disabled={saving}>Отмена</button><button className="is-danger" type="button" onClick={() => void archiveDefinition()} disabled={saving}>{saving ? "Убираем…" : "Убрать"}</button></div></section></div>}
   </section>
