@@ -209,6 +209,29 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
     } catch (reason) { return failure(reason, "Не удалось изменить экипировку.") }
   }, [canManage, characterId, gmContext, inventory, playerContext, reloadInventory])
 
+  const consumeInventoryItem = useCallback(async (itemId: string, amount = 1): Promise<Result> => {
+    const item = inventory.find((entry) => entry.id === itemId)
+    const version = Number(item?.version ?? 0)
+    if (!item || !Number.isInteger(version) || version < 1) return { ok: false, error: "Предмет уже изменился. Обнови инвентарь." }
+    try {
+      if (canManage) {
+        await oracle.inventory.consume(gmContext(), characterId, itemId, amount, version)
+      } else {
+        await cheburashka.execute({
+          kind: "inventory.consume",
+          context: playerContext(),
+          characterId,
+          itemId,
+          amount,
+          expectedVersion: version,
+        })
+      }
+      return reloadInventory()
+    } catch (reason) {
+      return failure(reason, "Не удалось использовать предмет.")
+    }
+  }, [canManage, characterId, gmContext, inventory, playerContext, reloadInventory])
+
   const setSpellcastingEnabled = useCallback(async (enabled: boolean): Promise<Result> => {
     if (!canManage) return { ok: false, error: "Доступ к магии изменяет ГМ или владелец." }
     try {
@@ -303,7 +326,7 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
   return {
     sheet, inventory, spells, spellOptions, features, posts, comments, arts,
     loading, error, reload: load, updateSheet,
-    addInventoryItem, updateInventoryItem, deleteInventoryItem, setInventoryEquipped,
+    addInventoryItem, updateInventoryItem, deleteInventoryItem, setInventoryEquipped, consumeInventoryItem,
     setSpellcastingEnabled, addSpell, updateSpell, deleteSpell,
     addSpellOption, updateSpellOption, deleteSpellOption, learnSpell, setSpellPrepared,
     addFeature, updateFeature, deleteFeature,

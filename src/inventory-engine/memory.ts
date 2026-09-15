@@ -345,13 +345,10 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
       (item.category === "consumable" ? "quantity" : "none")
 
     if (mode === "none") {
-      return this.finish(command, {
-        kind: command.kind,
-        itemId: item.id,
-        affectedCharacterIds: [command.characterId],
-        before,
-        after: copy(item),
-      })
+      throw new EngineCommandError(
+        "inventory.not_usable",
+        "Inventory item is not usable",
+      )
     }
 
     if (mode === "charges") {

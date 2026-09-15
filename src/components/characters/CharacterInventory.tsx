@@ -17,10 +17,12 @@ type Props = {
   items: InventoryItem[]
   canManage: boolean
   canEquip: boolean
+  canUse: boolean
   onCreate: () => void
   onEdit: (item: InventoryItem) => void
   onDelete: (itemId: string) => Result
   onSetEquipped: (itemId: string, equipped: boolean, equipmentSlot: EquipmentSlot | null) => Result
+  onUse: (itemId: string, amount?: number) => Result
   onFocusChange?: (focused: boolean) => void
   focusResetKey?: number
 }
@@ -88,8 +90,19 @@ function itemPreview(item: InventoryItem, canManage: boolean) {
   return "Без дополнительных механических эффектов"
 }
 
+function usageMode(item: InventoryItem) {
+  return item.usage_mode ?? (item.category === "consumable" ? "quantity" : "none")
+}
+
+function canSpendItem(item: InventoryItem) {
+  const mode = usageMode(item)
+  if (mode === "none") return false
+  if (mode === "charges") return (item.charges_current ?? item.charges_max ?? 0) > 0
+  return item.quantity > 0
+}
+
 function chargeLabel(item: InventoryItem) {
-  if (item.usage_mode !== "charges") return ""
+  if (usageMode(item) !== "charges") return ""
   if (item.charges_max == null) return "Заряды"
   return `Заряды ${item.charges_current ?? item.charges_max}/${item.charges_max}`
 }
@@ -122,7 +135,7 @@ function ItemBadges({ item, canManage }: { item: InventoryItem; canManage: boole
 }
 
 export default function CharacterInventory(props: Props) {
-  const { mode, items, canManage, canEquip, onCreate, onEdit, onDelete, onSetEquipped, onFocusChange, focusResetKey = 0 } = props
+  const { mode, items, canManage, canEquip, canUse, onCreate, onEdit, onDelete, onSetEquipped, onUse, onFocusChange, focusResetKey = 0 } = props
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState<InventoryCategory | null>(() => mode === "equipment" ? "equipment" : null)
   const [slot, setSlot] = useState<EquipmentSlot | null>(null)
@@ -201,9 +214,29 @@ export default function CharacterInventory(props: Props) {
     if (!result.ok) setError(result.error || "Не удалось удалить предмет.")
   }
 
+  async function useItem(item: InventoryItem) {
+    setError("")
+    const result = await onUse(item.id, 1)
+    if (!result.ok) {
+      setError(result.error || "Не удалось использовать предмет.")
+      return
+    }
+    setDetail(null)
+  }
+
   function actions(item: InventoryItem): ContextAction[] {
     return [
       { id: "open", label: "Просмотр", detail: "Описание, состояние и активные эффекты", icon: "↗", onSelect: () => setDetail(item) },
+      ...(usageMode(item) !== "none" && canUse ? [{
+        id: "use",
+        label: usageMode(item) === "charges" ? "Использовать заряд" : "Использовать",
+        detail: usageMode(item) === "charges"
+          ? `Осталось ${item.charges_current ?? item.charges_max ?? 0} из ${item.charges_max ?? 0}`
+          : `Осталось: ${item.quantity}`,
+        icon: "↯",
+        disabled: !canSpendItem(item),
+        onSelect: () => useItem(item),
+      } satisfies ContextAction] : []),
       ...(item.category === "equipment" && canEquip ? [{
         id: "equip",
         label: item.equipped ? "Снять" : "Надеть",
@@ -347,7 +380,7 @@ export default function CharacterInventory(props: Props) {
                   </span>
                   <span className="inventory-rpg__chevron">›</span>
                 </button>
-                {canManage && <button className="inventory-rpg__menu" type="button" onClick={() => setMenu(item)} aria-label={`Действия с ${item.name}`}>•••</button>}
+                {(canManage || (canUse && usageMode(item) !== "none")) && <button className="inventory-rpg__menu" type="button" onClick={() => setMenu(item)} aria-label={`Действия с ${item.name}`}>•••</button>}
               </article>
             ))}
           </div>
@@ -391,22 +424,26 @@ export default function CharacterInventory(props: Props) {
         item={detail}
         canManage={canManage}
         canEquip={canEquip}
+        canUse={canUse}
         onClose={() => setDetail(null)}
         onEdit={() => { setDetail(null); onEdit(detail) }}
         onToggle={() => toggleEquip(detail)}
+        onUse={() => void useItem(detail)}
       />}
       {actionSheet}
     </section>
   )
 }
 
-function InventoryDetail({ item, canManage, canEquip, onClose, onEdit, onToggle }: {
+function InventoryDetail({ item, canManage, canEquip, canUse, onClose, onEdit, onToggle, onUse }: {
   item: InventoryItem
   canManage: boolean
   canEquip: boolean
+  canUse: boolean
   onClose: () => void
   onEdit: () => void
   onToggle: () => void
+  onUse: () => void
 }) {
   const curse = itemCurseInfo(item)
   const showCurse = curse.cursed && (canManage || curse.showCurseToPlayer)
@@ -432,7 +469,7 @@ function InventoryDetail({ item, canManage, canEquip, onClose, onEdit, onToggle 
       <div className="inventory-detail-v5__facts">
         <div><small>Количество</small><strong>{item.quantity}</strong></div>
         <div><small>Вес / шт.</small><strong>{weight}</strong></div>
-        <div><small>Состояние</small><strong>{item.equipped ? "Надето" : "В рюкзаке"}</strong></div>
+        <div><small>{usageMode(item) === "charges" ? "Заряды" : "Состояние"}</small><strong>{usageMode(item) === "charges" ? `${item.charges_current ?? item.charges_max ?? 0}/${item.charges_max ?? 0}` : item.equipped ? "Надето" : "В рюкзаке"}</strong></div>
       </div>
 
       <ItemBadges item={item} canManage={canManage} />
@@ -466,9 +503,10 @@ function InventoryDetail({ item, canManage, canEquip, onClose, onEdit, onToggle 
         ) : <p>У предмета нет видимых механических эффектов.</p>}
       </section>
 
-      {(canManage || (item.category === "equipment" && canEquip)) && (
+      {(canManage || (item.category === "equipment" && canEquip) || (canUse && usageMode(item) !== "none")) && (
         <footer className="inventory-detail-v5__actions">
           {canManage && <button type="button" className="inventory-rpg-detail__edit" onClick={onEdit}>Редактировать</button>}
+          {canUse && usageMode(item) !== "none" && <button type="button" className="inventory-rpg-detail__equip" disabled={!canSpendItem(item)} onClick={onUse}>{usageMode(item) === "charges" ? "Использовать заряд" : "Использовать"}</button>}
           {item.category === "equipment" && canEquip && <button type="button" className={item.equipped ? "inventory-rpg-detail__equip is-remove" : "inventory-rpg-detail__equip"} onClick={onToggle}>{item.equipped ? "Снять" : "Надеть"}</button>}
         </footer>
       )}

@@ -18,6 +18,15 @@ function fail(error: { message: string } | null, fallback: string): never {
   if (message.includes("Inventory item not found")) {
     throw new EngineCommandError("inventory.not_found", message)
   }
+  if (message.includes("Inventory item is not usable")) {
+    throw new EngineCommandError("inventory.not_usable", message)
+  }
+  if (message.includes("Not enough item charges")) {
+    throw new EngineCommandError("inventory.insufficient_charges", message)
+  }
+  if (message.includes("Not enough item quantity")) {
+    throw new EngineCommandError("inventory.insufficient_quantity", message)
+  }
   throw new EngineCommandError("inventory.persistence", message)
 }
 

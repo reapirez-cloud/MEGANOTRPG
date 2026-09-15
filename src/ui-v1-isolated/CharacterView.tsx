@@ -107,6 +107,9 @@ function itemDetail(item: InventoryItem) {
   return [
     item.category ? "Категория: " + item.category : "",
     "Количество: " + item.quantity,
+    item.usage_mode === "charges"
+      ? "Заряды: " + (item.charges_current ?? item.charges_max ?? 0) + "/" + (item.charges_max ?? 0)
+      : item.usage_mode === "quantity" ? "Использование расходует 1 единицу." : "",
     item.equipped ? "Сейчас экипировано." : "",
     item.description || "Описание не добавлено.",
   ].filter(Boolean).join("\n\n")
@@ -513,6 +516,25 @@ export default function CharacterView({
       },
     }]
 
+    const usageMode = item.usage_mode ?? (item.category === "consumable" ? "quantity" : "none")
+    if (usageMode !== "none" && control.canControlCharacter) {
+      const remaining = usageMode === "charges"
+        ? item.charges_current ?? item.charges_max ?? 0
+        : item.quantity
+      actions.push({
+        id: "use-item",
+        label: usageMode === "charges" ? "Использовать заряд" : "Использовать",
+        enabled: remaining > 0,
+        disabledReason: usageMode === "charges" ? "Заряды закончились." : "Предмет закончился.",
+        execute: async () => {
+          const response = await control.useItem(item, 1)
+          return response.ok
+            ? { type: "success", notice: usageMode === "charges" ? "Заряд использован." : "Предмет использован." }
+            : { type: "error", message: response.error || "Не удалось использовать предмет." }
+        },
+      })
+    }
+
     if (item.category === "equipment" && control.canControlCharacter) {
       actions.push({
         id: "equip",
@@ -768,7 +790,7 @@ export default function CharacterView({
                       <strong>{item.name}</strong>
                       <small>{item.category}{item.equipped ? " · надето" : ""}</small>
                     </span>
-                    <b>×{item.quantity}</b>
+                    <b>{item.usage_mode === "charges" ? `${item.charges_current ?? item.charges_max ?? 0}/${item.charges_max ?? 0}` : `×${item.quantity}`}</b>
                   </button>
                 </SnakeTrigger>
               )

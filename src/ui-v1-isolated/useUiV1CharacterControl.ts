@@ -274,6 +274,28 @@ export function useUiV1CharacterControl(characterId: string) {
     }
   }, [canControlCharacter, characterId, context, load, playerContext, scope.canManage])
 
+  const useItem = useCallback(async (item: InventoryItem, amount = 1): Promise<Result> => {
+    if (!canControlCharacter) return { ok: false, error: "Недостаточно прав." }
+    try {
+      if (scope.canManage) {
+        await oracle.inventory.consume(context(), characterId, item.id, amount, item.version)
+      } else {
+        await cheburashka.execute({
+          kind: "inventory.consume",
+          context: playerContext(),
+          characterId,
+          itemId: item.id,
+          amount,
+          expectedVersion: item.version,
+        })
+      }
+      await load()
+      return { ok: true }
+    } catch (reason) {
+      return { ok: false, error: errorMessage(reason, "Не удалось использовать предмет.") }
+    }
+  }, [canControlCharacter, characterId, context, load, playerContext, scope.canManage])
+
   const updateItem = useCallback((item: InventoryItem, patch: Partial<InventoryInput>) => {
     const input: InventoryInput = {
       name: patch.name ?? item.name,
@@ -395,6 +417,7 @@ export function useUiV1CharacterControl(characterId: string) {
     setHp,
     recover,
     setEquipped,
+    useItem,
     updateItem,
     removeItem,
     transferItem,
