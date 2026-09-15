@@ -47,8 +47,9 @@ test("character and panel avatar actions use the same media player instead of pl
     actions,
     /id: "panel-avatar"[\s\S]*shape: "rect"[\s\S]*aspectRatio: 3/,
   )
+  assert.match(actions, /id: "sheet-hero"[\s\S]*shape: "rect"[\s\S]*aspectRatio: 16 \/ 9/)
   assert.match(workspace, /CampaignMediaFrame/)
-  assert.match(workspace, /applyMedia=\{data\.applyCharacterMedia\}/)\n  assert.match(actions, /id: "sheet-hero"[\\s\\S]*aspectRatio: 16 \\/ 9/)
+  assert.match(workspace, /applyMedia=\{data\.applyCharacterMedia\}/)
 })
 
 test("media presentation persists normalized crop metadata without destructive image copies", () => {
@@ -58,7 +59,9 @@ test("media presentation persists normalized crop metadata without destructive i
   assert.match(migration, /bind_media_presentation_v1/)
   assert.match(migration, /list_character_media_presentations_v1/)
   assert.match(workspaceData, /register_manual_media_v1/)
-  assert.match(workspaceData, /bind_media_presentation_v1/)\n  assert.match(workspaceData, /sheet_hero/)\n  assert.match(workspaceData, /hero_art/)
+  assert.match(workspaceData, /bind_media_presentation_v1/)
+  assert.match(workspaceData, /sheet_hero/)
+  assert.match(workspaceData, /hero_art/)
   assert.match(workspaceData, /oracle\.characters\.setAvatar/)
   assert.match(workspaceData, /shapoklyak\.execute/)
 })
