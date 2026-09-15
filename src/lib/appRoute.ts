@@ -1,4 +1,4 @@
-import type { MainTab } from "../components/app/BottomNav"
+export type MainTab = "feed" | "chats" | "world" | "characters" | "me"
 
 export type AppRoute =
   | { type: "main"; tab: MainTab }
