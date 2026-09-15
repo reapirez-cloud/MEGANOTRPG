@@ -11,7 +11,9 @@ export type UploadImageResult =
   | { ok: true; url: string; width: number; height: number; mimeType: string }
   | { ok: false; error: string }
 
-export type UploadFileResult = UploadImageResult
+export type UploadFileResult =
+  | { ok: true; url: string }
+  | { ok: false; error: string }
 
 function extensionFor(file: File) {
   const fromName = file.name
