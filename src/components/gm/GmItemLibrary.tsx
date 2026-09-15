@@ -228,6 +228,8 @@ export default function GmItemLibrary({ onError }: Props) {
         equipment_slot: template.category === "equipment" ? template.equipment_slot : null,
         image_url: template.image_url,
         description: template.description,
+        definition_id: issueTarget.id,
+        definition_revision: issueTarget.revision,
         mechanics: template.mechanics || [],
         usage_mode: template.usage_mode || "none",
         charges_current: template.charges_current ?? null,

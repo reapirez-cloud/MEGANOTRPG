@@ -187,6 +187,8 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
       equipped: category === "equipment" ? equipped : false,
       image_url: imageUrl || null,
       description,
+      definition_id: item?.definition_id ?? null,
+      definition_revision: item?.definition_revision ?? null,
       mechanics: finalMechanics(),
       // Charge semantics are Cheburashka state. Until the editor exposes them,
       // an ordinary description/mechanics edit must preserve them losslessly.
