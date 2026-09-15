@@ -74,7 +74,7 @@ test("owner-only membership administration is enforced in RPCs", () => {
     memberAdmin,
     /remove_campaign_member_v1[\s\S]*private\.is_campaign_owner\(p_campaign_id, auth\.uid\(\)\)/,
   )
-  assert.match(memberAdmin, /p_role not in \('gm', 'player'\)/)
+  assert.match(hardening, /p_role not in \('gm', 'player'\)/)
 })
 
 test("migration aborts if core RLS or anonymous-access invariants drift", () => {
