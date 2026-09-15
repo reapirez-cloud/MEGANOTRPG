@@ -214,7 +214,7 @@ export default function CharacterInventory(props: Props) {
     if (!result.ok) setError(result.error || "Не удалось удалить предмет.")
   }
 
-  async function useItem(item: InventoryItem) {
+  async function handleUseItem(item: InventoryItem) {
     setError("")
     const result = await onUse(item.id, 1)
     if (!result.ok) {
@@ -235,7 +235,7 @@ export default function CharacterInventory(props: Props) {
           : `Осталось: ${item.quantity}`,
         icon: "↯",
         disabled: !canSpendItem(item),
-        onSelect: () => useItem(item),
+        onSelect: () => handleUseItem(item),
       } satisfies ContextAction] : []),
       ...(item.category === "equipment" && canEquip ? [{
         id: "equip",
@@ -428,7 +428,7 @@ export default function CharacterInventory(props: Props) {
         onClose={() => setDetail(null)}
         onEdit={() => { setDetail(null); onEdit(detail) }}
         onToggle={() => toggleEquip(detail)}
-        onUse={() => void useItem(detail)}
+        onUse={() => void handleUseItem(detail)}
       />}
       {actionSheet}
     </section>
