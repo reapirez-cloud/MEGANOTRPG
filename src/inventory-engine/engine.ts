@@ -145,7 +145,9 @@ export class CheburashkaEngine {
     if (
       (command.kind === "inventory.update"
         || command.kind === "inventory.remove"
-        || command.kind === "inventory.set_equipped")
+        || command.kind === "inventory.set_equipped"
+        || command.kind === "inventory.consume"
+        || command.kind === "inventory.transfer")
       && command.expectedVersion !== undefined
       && (!Number.isInteger(command.expectedVersion) || command.expectedVersion < 1)
     ) {
