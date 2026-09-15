@@ -239,10 +239,16 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
     }
 
     if (command.kind === "inventory.consume") {
-      const { data, error } = await this.client.rpc("consume_inventory_item_v1", {
+      const expectedVersion = await this.expectedVersion(
+        command.itemId,
+        command.characterId,
+        command.expectedVersion,
+      )
+      const { data, error } = await this.client.rpc("consume_inventory_item_v2", {
         p_character_id: command.characterId,
         p_item_id: command.itemId,
         p_amount: command.amount,
+        p_expected_version: expectedVersion,
         p_command_id: command.context.commandId,
       })
 
@@ -250,11 +256,17 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
       return mutationFromRpc(command.kind, data)
     }
 
-    const { data, error } = await this.client.rpc("transfer_inventory_item_v1", {
+    const expectedVersion = await this.expectedVersion(
+      command.itemId,
+      command.fromCharacterId,
+      command.expectedVersion,
+    )
+    const { data, error } = await this.client.rpc("transfer_inventory_item_v2", {
       p_from_character_id: command.fromCharacterId,
       p_to_character_id: command.toCharacterId,
       p_item_id: command.itemId,
       p_amount: command.amount,
+      p_expected_version: expectedVersion,
       p_command_id: command.context.commandId,
     })
 
