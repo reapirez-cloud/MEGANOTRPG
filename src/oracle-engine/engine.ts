@@ -99,8 +99,8 @@ export class OracleEngine {
       update: (context, characterId, itemId, input, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.update", context, characterId, itemId, input, expectedVersion })),
       remove: (context, characterId, itemId, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.remove", context, characterId, itemId, expectedVersion })),
       setEquipped: (context, characterId, itemId, equipped, equipmentSlot = null, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.set_equipped", context, characterId, itemId, equipped, equipmentSlot, expectedVersion })),
-      consume: (context, characterId, itemId, amount = 1) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.consume", context, characterId, itemId, amount })),
-      transfer: (context, fromCharacterId, toCharacterId, itemId, amount) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.transfer", context, fromCharacterId, toCharacterId, itemId, amount })),
+      consume: (context, characterId, itemId, amount = 1, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.consume", context, characterId, itemId, amount, expectedVersion })),
+      transfer: (context, fromCharacterId, toCharacterId, itemId, amount, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.transfer", context, fromCharacterId, toCharacterId, itemId, amount, expectedVersion })),
     }
 
     this.world = {
