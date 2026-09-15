@@ -169,7 +169,7 @@ test("Mechanics Compiler remains in the repository but Voss cannot invoke it", (
 
   assert.doesNotMatch(edge, /VOSS_MECHANICS_TOOLS/)
   assert.doesNotMatch(edge, /executeVossMechanicsTool/)
-  assert.match(edge, /Developer Mode нужен только для работ с приложением и инфраструктурой/)
+  assert.match(edge, /Новые игровые механики ты не проектируешь и не внедряешь/)
   assert.match(compiler, /unsupported/i)
   assert.match(compiler, /sourceKey/)
 })
