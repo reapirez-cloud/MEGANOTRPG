@@ -180,3 +180,61 @@ begin
   end if;
 end;
 $access_contract$;
+
+-- 6) Campaign roles are mutated only through an owner-authorized RPC.
+-- GM authority is intentionally broad inside the campaign, but it cannot
+-- promote itself, promote another player, or mutate the owner row.
+create or replace function public.set_campaign_member_role(
+  p_campaign_id uuid,
+  p_user_id uuid,
+  p_role text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  if p_role not in ('gm', 'player') then
+    raise exception 'Unsupported role';
+  end if;
+
+  if not private.is_campaign_owner(p_campaign_id, auth.uid()) then
+    raise exception 'Only campaign owner can change roles';
+  end if;
+
+  if not exists (
+    select 1
+    from public.campaign_members cm
+    where cm.campaign_id = p_campaign_id
+      and cm.user_id = p_user_id
+  ) then
+    raise exception 'Target user is not a campaign member';
+  end if;
+
+  if exists (
+    select 1
+    from public.campaign_members cm
+    where cm.campaign_id = p_campaign_id
+      and cm.user_id = p_user_id
+      and cm.is_owner = true
+  ) then
+    raise exception 'Owner role is managed separately';
+  end if;
+
+  update public.campaign_members
+  set role = p_role
+  where campaign_id = p_campaign_id
+    and user_id = p_user_id;
+end;
+$function$;
+
+revoke all on function public.set_campaign_member_role(uuid, uuid, text)
+  from public, anon;
+grant execute on function public.set_campaign_member_role(uuid, uuid, text)
+  to authenticated;
+

@@ -67,7 +67,7 @@ test("server-only security tables stay outside the Data API", () => {
 
 test("owner-only membership administration is enforced in RPCs", () => {
   assert.match(
-    memberAdmin,
+    hardening,
     /set_campaign_member_role[\s\S]*private\.is_campaign_owner\(p_campaign_id, auth\.uid\(\)\)/,
   )
   assert.match(
