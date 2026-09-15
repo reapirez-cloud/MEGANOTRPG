@@ -532,6 +532,37 @@ async function finishRun(
   return String(data || "")
 }
 
+async function loadDefinitionRevision(definitionId: string) {
+  const { data: definition, error: definitionError } = await supabase
+    .from("reference_definitions")
+    .select("id,current_revision")
+    .eq("id", definitionId)
+    .maybeSingle()
+
+  if (definitionError || !definition) {
+    throw new Error("Не удалось прочитать текущее определение перед AI-ревизией.")
+  }
+
+  const { data: revision, error: revisionError } = await supabase
+    .from("reference_definition_revisions")
+    .select("name,summary,rules_text,mechanics,data")
+    .eq("definition_id", definitionId)
+    .eq("revision", definition.current_revision)
+    .maybeSingle()
+
+  if (revisionError || !revision) {
+    throw new Error("Не удалось прочитать текущую ревизию определения.")
+  }
+
+  return {
+    name: String(revision.name || ""),
+    summary: String(revision.summary || ""),
+    rulesText: String(revision.rules_text || ""),
+    mechanics: Array.isArray(revision.mechanics) ? revision.mechanics : [],
+    data: object(revision.data),
+  }
+}
+
 function inventoryInput(
   node: AIDraftNode,
   relation: AIDraftRelation,
@@ -747,12 +778,28 @@ export async function applyAIDraft(
       const kind = (node.entity_subtype || "reference") as ChasovoyDefinitionKind
 
       const existingDefinitionId = string(payload.existing_definition_id)
+      const incomingData = object(payload.data) as Record<string, ChasovoyJson>
+      const currentDefinition = existingDefinitionId
+        ? await loadDefinitionRevision(existingDefinitionId)
+        : null
+      const incomingMechanics = Array.isArray(payload.mechanics)
+        ? payload.mechanics
+        : []
       const definitionInput = {
-        name: node.name,
-        summary: string(payload.summary) || node.summary,
-        rulesText: string(payload.rules_text),
-        mechanics: chasovoyJson(payload.mechanics),
-        data: object(payload.data) as Record<string, ChasovoyJson>,
+        name: node.name || currentDefinition?.name || "Предмет",
+        summary: Object.prototype.hasOwnProperty.call(payload, "summary")
+          ? string(payload.summary)
+          : currentDefinition?.summary || node.summary,
+        rulesText: Object.prototype.hasOwnProperty.call(payload, "rules_text")
+          ? string(payload.rules_text)
+          : currentDefinition?.rulesText || "",
+        mechanics: incomingMechanics.length
+          ? chasovoyJson(incomingMechanics)
+          : chasovoyJson(currentDefinition?.mechanics || []),
+        data: {
+          ...(currentDefinition?.data || {}),
+          ...incomingData,
+        } as Record<string, ChasovoyJson>,
       }
 
       const result = existingDefinitionId
