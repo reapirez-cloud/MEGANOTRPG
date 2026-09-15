@@ -17,6 +17,8 @@ export type {
   SnakeFieldSchema,
   SnakeFlowRequest,
   SnakeFlowStep,
+  SnakeMediaItem,
+  SnakeMediaRequest,
   SnakeMenuRequest,
   SnakeNoticeRequest,
   SnakePickerItem,

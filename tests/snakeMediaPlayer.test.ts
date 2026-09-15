@@ -4,6 +4,7 @@ import test from "node:test"
 
 const art = fs.readFileSync("src/ui-v1-isolated/ArtSection.tsx", "utf8")
 const types = fs.readFileSync("src/snake-engine/types.ts", "utf8")
+const snakeIndex = fs.readFileSync("src/snake-engine/index.ts", "utf8")
 const host = fs.readFileSync("src/ui-v1-isolated/snake/surfaces/SnakeWindowHost.tsx", "utf8")
 const media = fs.readFileSync("src/ui-v1-isolated/snake/surfaces/SnakeMediaSurface.tsx", "utf8")
 const snakeStyles = fs.readFileSync("src/ui-v1-isolated/snake.css", "utf8")
@@ -12,6 +13,7 @@ const artStyles = fs.readFileSync("src/ui-v1-isolated/art-library.css", "utf8")
 test("Snake owns one universal media player instead of ArtSection owning a second lightbox", () => {
   assert.match(types, /kind: "media"/)
   assert.match(types, /items: SnakeMediaItem\[\]/)
+  assert.match(snakeIndex, /SnakeMediaRequest/)
   assert.match(host, /SnakeMediaSurface/)
   assert.match(host, /session\.request\.kind === "media"/)
   assert.match(art, /snake\.openSurface\([\s\S]*?kind: "media"/)
