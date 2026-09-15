@@ -335,7 +335,7 @@ export default function ResolvedCharacterSheetOpus({
                 <span className="opus-resource-line__icon" aria-hidden="true">{resourceIcon(resource)}</span>
                 <span className="opus-resource-line__copy">
                   <strong>{resourceLabel(resource)}</strong>
-                  <small>{resource.recharge.triggers.join(" · ").replaceAll("_", " ") || "ручное восстановление"}</small>
+                  <small>{resource.recharge.triggers.join(" · ").replace(/_/g, " ") || "ручное восстановление"}</small>
                 </span>
                 {resourcePips(resource)}
                 <span className="opus-resource-line__value">{resource.current}/{resource.max.value}</span>
