@@ -531,3 +531,16 @@ In particular:
 - no inventory complexity inside chat when a dedicated Surface or Trade block is clearer.
 
 The goal is physical, understandable interaction, not complexity as a feature.
+
+
+## Container viewport and magic-item invariants
+
+These rules are canonical and exist specifically to stop large or magical containers from destroying the mobile inventory UI:
+
+- A container's **internal logical grid** is physical inventory metadata. It does not set CSS cell size, zoom or how many cells are visible at once.
+- The mobile UI keeps a readable fixed cell scale / viewport and pans or scrolls across containers that are larger than the visible window.
+- Example: an interior described as 100×100 cm may become a 20×20 logical grid at the normal ~5 cm authoring scale. It still opens through the same readable mobile viewport; the app must not shrink all 20 cells across the phone screen.
+- Do not persist viewport size, zoom level or rendered pixel size in Chasovoy inventory definitions.
+- A carried bag/container can be represented compactly as a 1×1 carry object independently of the dimensions of its interior. Narrative placement belongs in the instance name/description, not anatomical slot fields.
+- Common bag/container physical profiles should be pre-authored and reused. Voss creates/revises a new profile primarily for unusual or magical containers requested by the GM.
+- Container physical metadata never replaces item mechanics. A bag may have ordinary bonuses, resistances, activated effects, curses or other valid mechanics through the normal item-mechanics/CE path.

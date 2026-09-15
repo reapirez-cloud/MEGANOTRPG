@@ -1,6 +1,7 @@
 import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { engineRuntime } from "../engine-runtime/runtime.ts"
 import { supabase } from "../lib/supabase"
+import { inventoryProfileStackMode, readInventoryProfile } from "../inventory-engine/profile.ts"
 import type { ChasovoyDefinitionKind, ChasovoyJson } from "../reference-engine/index.ts"
 import type {
   EquipmentSlot,
@@ -343,6 +344,11 @@ async function preflight(
       throw new Error("Тип определения «" + (node.entity_subtype || "") + "» пока нельзя применить.")
     }
 
+    if (node.entity_type === "definition" && node.entity_subtype === "item") {
+      const profile = readInventoryProfile(object(object(node.payload).data).inventory_profile)
+      if (!profile) throw new Error("Предмет «" + node.name + "» должен иметь валидный data.inventory_profile перед применением.")
+    }
+
     await verifyCompiledMechanics(node, campaignId)
   }
 
@@ -511,6 +517,13 @@ function inventoryInput(
   const payload = object(node.payload)
   const data = object(payload.data)
   const relationData = object(relation.data)
+  const inventoryProfile = readInventoryProfile(data.inventory_profile)
+  const stackMode = inventoryProfile
+    ? inventoryProfileStackMode(inventoryProfile)
+    : string(data.stack_mode) === "stack"
+      ? "stack"
+      : "instance"
+  const requestedQuantity = Math.max(1, Math.floor(number(relationData.quantity, 1)))
   const categoryRaw = string(relationData.category || data.category)
   const category = INVENTORY_CATEGORIES.has(categoryRaw as InventoryCategory)
     ? categoryRaw as InventoryCategory
@@ -534,7 +547,7 @@ function inventoryInput(
 
   return {
     name: node.name,
-    quantity: Math.max(1, Math.floor(number(relationData.quantity, 1))),
+    quantity: stackMode === "stack" ? requestedQuantity : 1,
     weight: data.weight == null ? null : Math.max(0, number(data.weight)),
     equipped: category === "equipment" && bool(relationData.equipped),
     category,
@@ -549,6 +562,7 @@ function inventoryInput(
       ? null
       : Math.max(0, Math.min(chargesMax, number(relationData.charges_current, chargesMax))),
     charges_max: chargesMax,
+    stack_mode: stackMode,
     item_state: object(relationData.item_state),
   }
 }
@@ -803,13 +817,20 @@ export async function applyAIDraft(
         }
 
         const characterId = resolveNodeOrExisting(relation, entityMap, "character")
-        const result = await engineRuntime.oracle.inventory.create(
-          makeContext(campaignId, userId),
-          characterId,
-          inventoryInput(itemNode, relation, definition.id),
-        )
-        const itemId = result.value.itemId
-        if (!itemId) throw new Error("Чебурашка не вернула ID выданного предмета.")
+        const input = inventoryInput(itemNode, relation, definition.id)
+        const requestedQuantity = Math.max(1, Math.floor(number(object(relation.data).quantity, 1)))
+        const copies = input.stack_mode === "instance" ? requestedQuantity : 1
+        let itemId = ""
+        for (let copy = 0; copy < copies; copy += 1) {
+          const result = await engineRuntime.oracle.inventory.create(
+            makeContext(campaignId, userId),
+            characterId,
+            input,
+          )
+          const createdId = result.value.itemId
+          if (!createdId) throw new Error("Чебурашка не вернула ID выданного предмета.")
+          if (!itemId) itemId = createdId
+        }
 
         completed += 1
         await recordStep(

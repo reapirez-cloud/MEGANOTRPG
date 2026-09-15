@@ -7,6 +7,7 @@ import { useAuth } from "../../context/AuthContext"
 import { useCharacters } from "../../context/CharacterContext"
 import { createEngineCommandContext } from "../../engine-contracts/index.ts"
 import { categoryLabel, categoryOrder, equipmentSlots, inventoryCategories } from "../../lib/dndInventory"
+import { defaultInventoryProfile, inventoryProfileStackMode, readInventoryProfile } from "../../inventory-engine/profile.ts"
 import { oracle } from "../../oracle-engine/runtime.ts"
 import { chasovoy } from "../../reference-engine/runtime.ts"
 import { normalizeDefinitionSlug } from "../../reference-engine/index.ts"
@@ -53,6 +54,9 @@ function readItemState(value: ChasovoyJson | undefined): Record<string, unknown>
 function definitionToItem(definition: ChasovoyDefinition): InventoryItem {
   const data = definition.data
   const category = readCategory(data.category)
+  const inventoryProfile = readInventoryProfile(data.inventory_profile)
+  const storedStackMode = data.stack_mode === "stack" ? "stack" : data.stack_mode === "instance" ? "instance" : null
+  const stackMode = inventoryProfile ? inventoryProfileStackMode(inventoryProfile) : storedStackMode ?? "instance"
   return {
     id: definition.id,
     character_id: "",
@@ -68,6 +72,7 @@ function definitionToItem(definition: ChasovoyDefinition): InventoryItem {
     usage_mode: readUsageMode(data.usage_mode),
     charges_current: readNumber(data.charges_current, null),
     charges_max: readNumber(data.charges_max, null),
+    stack_mode: stackMode,
     item_state: readItemState(data.item_state),
     version: definition.revision,
     sort_order: 0,
@@ -76,9 +81,16 @@ function definitionToItem(definition: ChasovoyDefinition): InventoryItem {
   }
 }
 
-function definitionData(input: InventoryInput): Record<string, ChasovoyJson> {
+function definitionData(
+  input: InventoryInput,
+  currentData: Record<string, ChasovoyJson> = {},
+): Record<string, ChasovoyJson> {
+  const stackMode = input.stack_mode === "stack" ? "stack" : "instance"
+  const currentProfile = readInventoryProfile(currentData.inventory_profile)
+  const inventoryProfile = defaultInventoryProfile({ ...input, stack_mode: stackMode }, currentProfile)
   return {
-    quantity: Math.max(1, input.quantity || 1),
+    ...currentData,
+    quantity: stackMode === "stack" ? Math.max(1, input.quantity || 1) : 1,
     weight: input.weight,
     category: input.category,
     equipment_slot: input.category === "equipment" ? input.equipment_slot : null,
@@ -86,6 +98,8 @@ function definitionData(input: InventoryInput): Record<string, ChasovoyJson> {
     usage_mode: input.usage_mode || "none",
     charges_current: input.charges_current ?? null,
     charges_max: input.charges_max ?? null,
+    stack_mode: stackMode,
+    inventory_profile: inventoryProfile as unknown as ChasovoyJson,
     item_state: (input.item_state || {}) as unknown as ChasovoyJson,
   }
 }
@@ -164,7 +178,7 @@ export default function GmItemLibrary({ onError }: Props) {
     try {
       const summary = input.description.trim().replace(/\s+/g, " ").slice(0, 180)
       const mechanics = (input.mechanics || []) as unknown as ChasovoyJson
-      const data = definitionData(input)
+      const data = definitionData(input, editor && editor !== "new" ? editor.data : {})
       if (editor === "new") {
         const baseSlug = normalizeDefinitionSlug(input.name) || "item"
         await oracle.definitions.create(context(), {
@@ -219,27 +233,32 @@ export default function GmItemLibrary({ onError }: Props) {
     setSaving(true)
     setLocalError("")
     try {
-      await oracle.inventory.create(context(), issueCharacterId, {
-        name: template.name,
-        quantity,
-        weight: template.weight,
-        equipped: false,
-        category: template.category,
-        equipment_slot: template.category === "equipment" ? template.equipment_slot : null,
-        image_url: template.image_url,
-        description: template.description,
-        definition_id: issueTarget.id,
-        definition_revision: issueTarget.revision,
-        mechanics: template.mechanics || [],
-        usage_mode: template.usage_mode || "none",
-        charges_current: template.charges_current ?? null,
-        charges_max: template.charges_max ?? null,
-        item_state: {
-          ...(template.item_state || {}),
-          source_definition_id: issueTarget.id,
-          source_definition_revision: issueTarget.revision,
-        },
-      })
+      const stackMode = template.stack_mode === "stack" ? "stack" : "instance"
+      const copies = stackMode === "instance" ? quantity : 1
+      for (let copy = 0; copy < copies; copy += 1) {
+        await oracle.inventory.create(context(), issueCharacterId, {
+          name: template.name,
+          quantity: stackMode === "stack" ? quantity : 1,
+          weight: template.weight,
+          equipped: false,
+          category: template.category,
+          equipment_slot: template.category === "equipment" ? template.equipment_slot : null,
+          image_url: template.image_url,
+          description: template.description,
+          definition_id: issueTarget.id,
+          definition_revision: issueTarget.revision,
+          mechanics: template.mechanics || [],
+          usage_mode: template.usage_mode || "none",
+          charges_current: template.charges_current ?? null,
+          charges_max: template.charges_max ?? null,
+          stack_mode: stackMode,
+          item_state: {
+            ...(template.item_state || {}),
+            source_definition_id: issueTarget.id,
+            source_definition_revision: issueTarget.revision,
+          },
+        })
+      }
       setIssueTarget(null)
     } catch (reason) {
       reportError(errorMessage(reason, "Не удалось выдать предмет персонажу."))

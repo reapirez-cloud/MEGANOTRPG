@@ -38,3 +38,12 @@ test("compact items and specialized ammunition capacity stay distinct", () => {
   assert.match(contract, /small potion: 1×1, instance/)
   assert.match(contract, /two permanent 1×1 hand slots/)
 })
+
+
+test("Voss keeps container geometry separate from the mobile viewport and normal mechanics", () => {
+  assert.match(promptPolicy, /container_profile.*internal_grid_width.*internal_grid_height.*cell_size_cm/si)
+  assert.match(promptPolicy, /НИКОГДА не определяет экранный размер клеток/)
+  assert.match(promptPolicy, /100×100 см.*20×20/si)
+  assert.match(promptPolicy, /бонус Силы, сопротивление, проклятие/)
+  assert.match(promptPolicy, /не кодируй такие эффекты в container_profile/)
+})

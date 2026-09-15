@@ -83,6 +83,12 @@ test("forced stateful categories resolve to independent instances", () => {
   assert.equal(inventoryStackMode(input({ category: "material", usage_mode: "quantity" })), "stack")
 })
 
+test("unspecified stack mode defaults to an independent instance", () => {
+  const candidate = input({ quantity: 1 })
+  delete candidate.stack_mode
+  assert.equal(inventoryStackMode(candidate), "instance")
+})
+
 test("forced instances cannot be created with quantity above one", async () => {
   const engine = new CheburashkaEngine(new MemoryCheburashkaStorage())
 

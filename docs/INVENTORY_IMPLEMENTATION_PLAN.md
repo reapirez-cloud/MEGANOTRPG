@@ -6,7 +6,7 @@
 >
 > Product contract: `docs/INVENTORY_PRODUCT_CONTRACT.md`
 >
-> Current checkpoint: **Stages 1–4 complete. Stages 5–12 remain.**
+> Current checkpoint: **Stages 1–4 complete. Stage 5 is IN PROGRESS: the 5A inventory-profile foundation is implemented; authoring UI, starter physical library and full legacy adoption remain.**
 >
 > This file defines implementation order and completion boundaries. It does not by itself prove that a stage is implemented. Audits must verify source, live Supabase state where relevant, and real runtime behavior before changing a stage to complete.
 
@@ -20,7 +20,7 @@ The final inventory target is a physical, tactile inventory system built on Cheb
 | 2 | ✅ COMPLETE | Item lifecycle: use, consume, charges, recharge |
 | 3 | ✅ COMPLETE | Stack/instance state foundation |
 | 4 | ✅ COMPLETE | Nested holders / container tree |
-| 5 | ⬜ TODO | Physical item definition + authoring language |
+| 5 | 🟨 IN PROGRESS | Physical item definition + authoring language |
 | 6 | ⬜ TODO | Spatial runtime + mobile inventory UX |
 | 7 | ⬜ TODO | Weight, load and specialized capacity |
 | 8 | ⬜ TODO | Persistent world storage, chests and stashes |
@@ -94,6 +94,19 @@ Stage 5+ must extend this model rather than creating a parallel inventory tree.
 # Stage 5 — Physical item definition + authoring language
 
 This stage defines what a physical item **is** before the runtime starts arranging it.
+
+### Stage 5A checkpoint — inventory profile foundation ✅
+
+Implemented in `dev` / live Supabase foundation:
+- application-side default is `instance`; bulk stacking is explicit;
+- live DB default is `instance`, with a temporary compatibility bridge for the old production client when it omits `stack_mode` on `quantity > 1`;
+- `inventory_profile` has a server validator for packing, footprint masks, physical dimensions and container grids;
+- GM catalog saves/preserves the profile and issues multiple instances as separate objects;
+- Voss drafts must carry a valid profile before an item definition can be applied;
+- container internal grid dimensions are independent from UI viewport/zoom;
+- item mechanics remain independent, so containers can carry normal bonuses, resistances, curses and other CE mechanics.
+
+Still required before Stage 5 is COMPLETE: standard pre-authored bag/container definitions, shape-authoring workflow, AI revision workflow for unusual containers, stricter post-rollout DB enforcement, and starter physical profiles for ordinary catalog content.
 
 ### 5.1 Canonical inventory profile in Chasovoy
 

@@ -116,7 +116,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
     item?.usage_mode ?? (item?.category === "consumable" ? "quantity" : "none"),
   )
   const [stackMode, setStackMode] = useState<InventoryStackMode>(
-    item ? inventoryStackMode(item) : "stack",
+    item ? inventoryStackMode(item) : "instance",
   )
   const [chargesMax, setChargesMax] = useState(String(item?.charges_max ?? 1))
   const [chargesCurrent, setChargesCurrent] = useState(String(item?.charges_current ?? item?.charges_max ?? 1))
@@ -179,7 +179,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
     setEquipped(false)
     if (!item) {
       setUsageMode(next === "consumable" ? "quantity" : "none")
-      setStackMode(next === "weapon" || next === "armor" || next === "artifact" ? "instance" : "stack")
+      setStackMode("instance")
     }
     if (!item && mechanics.length === 0 && next === "weapon") setMechanics([weaponBase()])
     if (!item && preset === "weapon" && next !== "weapon" && mechanics.length === 1 && mechanics[0]?.type === "action" && mechanics[0].label === "Атака оружием") setMechanics([])
@@ -295,7 +295,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
               <label><span className="field-label">Категория</span><select className="app-select" value={category} onChange={(e) => setCategory(e.target.value as InventoryCategory)}>{inventoryCategories.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
               <label><span className="field-label">Количество</span><input className="app-input" type="number" min="1" disabled={effectiveStackMode === "instance"} value={effectiveStackMode === "instance" ? "1" : quantity} onChange={(e) => setQuantity(e.target.value)} /></label>
             </div>
-            <label><span className="field-label">Хранение</span><select className="app-select" value={effectiveStackMode} disabled={forcedInstance} onChange={(e) => setStackMode(e.target.value as InventoryStackMode)}><option value="stack">Стопка одинаковых предметов</option><option value="instance">Отдельный экземпляр</option></select></label>
+            <label><span className="field-label">Хранение</span><select className="app-select" value={effectiveStackMode} disabled={forcedInstance} onChange={(e) => setStackMode(e.target.value as InventoryStackMode)}><option value="instance">Отдельный экземпляр</option><option value="stack">Однородная стопка (валюта, боеприпасы, сыпучее)</option></select></label>
             {forcedInstance && <div className="creation-activation-note">Этот тип предмета всегда отдельный экземпляр. Количество фиксировано на 1, чтобы состояние, экипировка или заряды не клонировались при разделении стопки.</div>}
             {category === "equipment" && <label><span className="field-label">Куда надевается</span><select className="app-select" value={equipmentSlot} onChange={(e) => setEquipmentSlot(e.target.value as EquipmentSlot)}>{equipmentSlots.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>}
             <div className="creation-wizard__intro"><span>↯</span><div><strong>Как предмет расходуется?</strong><small>Обычная вещь не тратится. Расходник уменьшает количество. Зарядный предмет тратит собственный счётчик.</small></div></div>

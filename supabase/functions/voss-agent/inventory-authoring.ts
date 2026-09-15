@@ -50,5 +50,10 @@ export const VOSS_INVENTORY_AUTHORING_RULES = [
   "малое лечебное зелье -> consumable + instance + compact_1x1;",
   "стрелы -> ammo + bulk_stack + 1x1; quiver capacity может быть 50.",
   "",
-  "В AI Draft для definition/item сохраняй эту неисполняемую классификацию в payload.data.inventory_profile, если пользователь не запретил: semantic_role, packing_mode(instance|bulk_stack), footprint_mode(compact_1x1|shape), stack_max|null, physical_dimensions_cm если они известны/разумно оценены, и краткий shape_note для будущего shape editor. Не добавляй executable mechanics ради этой классификации.",
+  "В AI Draft для definition/item сохраняй канонический payload.data.inventory_profile: semantic_role, packing_mode(instance|bulk_stack), footprint_mode(compact_1x1|shape), shape_mask, shape_width, shape_height, rotatable, stack_max|null, physical_dimensions_cm при наличии, weight_per_unit/base_value_cp при наличии.",
+  "Для container item внутреннее пространство задавай отдельно в inventory_profile.container_profile: internal_grid_width, internal_grid_height, cell_size_cm (обычно 5), allow_nested_containers, external_carry_slots и specialized_capacity при необходимости. Внутренняя сетка НИКОГДА не определяет экранный размер клеток.",
+  "Не записывай UI viewport, zoom или размер клетки интерфейса в inventory_profile. Даже сумка 100×100 см (20×20 логических клеток по 5 см) открывается через фиксированный мобильный viewport; UI панорамирует содержимое вместо уменьшения предметов до микроскопического размера.",
+  "Нарративное место сумки хранится в её имени/описании экземпляра, если GM этого хочет. Не создавай анатомические поля back/hip/shoulder. Для переноски сумка остаётся обычным container item и может отображаться компактно 1×1 независимо от размера внутреннего пространства.",
+  "Обычные размеры сумок должны переиспользовать заранее подготовленные definitions. Создавай новый контейнерный профиль прежде всего для необычных/магических сумок или явно нового типа, который попросил GM.",
+  "Физический inventory_profile не заменяет механику предмета. Магическая сумка может давать бонус Силы, сопротивление, проклятие и любые другие допустимые item mechanics через существующий Mechanics Compiler; не кодируй такие эффекты в container_profile.",
 ] as const

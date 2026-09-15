@@ -7,6 +7,18 @@ export {
 } from "./projection.ts"
 export { subscribeCheburashkaCharacterChanges } from "./realtime.ts"
 export {
+  defaultInventoryProfile,
+  inventoryProfileStackMode,
+  readInventoryProfile,
+} from "./profile.ts"
+export type {
+  InventoryContainerProfile,
+  InventoryFootprintMode,
+  InventoryPackingMode,
+  InventoryPhysicalProfile,
+  InventorySpecializedCapacity,
+} from "./profile.ts"
+export {
   inventoryChildren,
   inventoryContainerTargets,
   inventoryHolder,

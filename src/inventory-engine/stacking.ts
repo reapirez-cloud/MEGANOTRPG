@@ -44,7 +44,7 @@ export function inventoryStackMode(
   input: Pick<StackPolicySource, "category" | "usage_mode" | "stack_mode">,
 ): InventoryStackMode {
   if (isForcedInventoryInstance(input)) return "instance"
-  return input.stack_mode === "instance" ? "instance" : "stack"
+  return input.stack_mode === "stack" ? "stack" : "instance"
 }
 
 export function inventoryStackQuantityValid(
