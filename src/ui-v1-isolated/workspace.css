@@ -813,3 +813,16 @@ button.u1-active-identity {
     animation: none;
   }
 }
+
+/* Character graphics render through CampaignMediaFrame so saved Snake crops stay exact. */
+.u1-actor-strip__media > img,
+.u1-active-identity__media > img {
+  display: block;
+  user-select: none;
+  pointer-events: none;
+}
+
+.u1-actor-strip__media[data-media-presentation="true"],
+.u1-active-identity__media[data-media-presentation="true"] {
+  background: #0b0d0e;
+}
