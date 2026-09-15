@@ -7,6 +7,13 @@ export {
 } from "./projection.ts"
 export { subscribeCheburashkaCharacterChanges } from "./realtime.ts"
 export {
+  inventoryChildren,
+  inventoryContainerTargets,
+  inventoryHolder,
+  inventoryHolderProblem,
+  inventorySubtreeIds,
+} from "./holders.ts"
+export {
   forcedInventoryInstanceReason,
   inventoryStackMode,
   inventoryStackQuantityValid,

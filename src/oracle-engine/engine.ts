@@ -100,6 +100,7 @@ export class OracleEngine {
       remove: (context, characterId, itemId, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.remove", context, characterId, itemId, expectedVersion })),
       setEquipped: (context, characterId, itemId, equipped, equipmentSlot = null, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.set_equipped", context, characterId, itemId, equipped, equipmentSlot, expectedVersion })),
       consume: (context, characterId, itemId, amount = 1, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.consume", context, characterId, itemId, amount, expectedVersion })),
+      move: (context, characterId, itemId, holderItemId, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.move", context, characterId, itemId, holderItemId, expectedVersion })),
       transfer: (context, fromCharacterId, toCharacterId, itemId, amount, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.transfer", context, fromCharacterId, toCharacterId, itemId, amount, expectedVersion })),
     }
 

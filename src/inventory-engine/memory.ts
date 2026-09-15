@@ -1,6 +1,10 @@
 import { EngineCommandError } from "../engine-contracts/index.ts"
 import type { InventoryInput, InventoryItem, ItemUsageMode } from "../types/characterSheet.ts"
 import type { CheburashkaCommand, CheburashkaStorage, InventoryMutation } from "./types.ts"
+import {
+  inventoryHolderProblem,
+  inventorySubtreeIds,
+} from "./holders.ts"
 import { inventoryStackMode } from "./stacking.ts"
 
 function copy<T>(value: T): T {
@@ -175,6 +179,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         charges_current: input.charges_current,
         charges_max: input.charges_max,
         stack_mode: input.stack_mode,
+        holder_item_id: null,
         item_state: input.item_state,
         version: 1,
         sort_order: 0,
@@ -211,14 +216,37 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
 
       let sourceAfter: InventoryItem | null = null
       let destination: InventoryItem
+      const relatedChanges = []
 
       if (command.amount === item.quantity) {
+        const allItems = [...this.items.values()]
+        const descendantIds = item.category === "container"
+          ? inventorySubtreeIds(allItems, item.id)
+          : []
+
         destination = this.stamp({
           ...item,
           character_id: command.toCharacterId,
+          holder_item_id: null,
           equipped: false,
         })
         this.items.set(item.id, destination)
+
+        for (const descendantId of descendantIds) {
+          const descendant = this.items.get(descendantId)
+          if (!descendant) continue
+          const descendantBefore = copy(descendant)
+          const descendantAfter = this.stamp({
+            ...descendant,
+            character_id: command.toCharacterId,
+            equipped: false,
+          })
+          this.items.set(descendantId, descendantAfter)
+          relatedChanges.push({
+            before: descendantBefore,
+            after: copy(descendantAfter),
+          })
+        }
       } else {
         sourceAfter = this.stamp({
           ...item,
@@ -229,6 +257,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
           id: `${item.id}-to-${command.context.commandId}`,
           character_id: command.toCharacterId,
           quantity: command.amount,
+          holder_item_id: null,
           equipped: false,
           version: 1,
           created_at: command.context.occurredAt,
@@ -248,6 +277,45 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         before,
         after: sourceAfter ? copy(sourceAfter) : null,
         destinationItem: copy(destination),
+        ...(relatedChanges.length ? { relatedChanges } : {}),
+      })
+    }
+
+    if (command.kind === "inventory.move") {
+      const item = this.owned(command.itemId, command.characterId)
+      this.assertVersion(item, command.expectedVersion)
+      const before = copy(item)
+      const allItems = [...this.items.values()]
+      const problem = inventoryHolderProblem(allItems, item, command.holderItemId)
+      if (problem) {
+        throw new EngineCommandError(
+          `inventory.holder_${problem}`,
+          `Invalid inventory holder: ${problem}`,
+        )
+      }
+
+      if ((item.holder_item_id ?? null) === command.holderItemId) {
+        return this.finish(command, {
+          kind: command.kind,
+          itemId: item.id,
+          affectedCharacterIds: [command.characterId],
+          before,
+          after: copy(item),
+        })
+      }
+
+      const after = this.stamp({
+        ...item,
+        holder_item_id: command.holderItemId,
+        equipped: command.holderItemId ? false : item.equipped,
+      })
+      this.items.set(item.id, after)
+      return this.finish(command, {
+        kind: command.kind,
+        itemId: item.id,
+        affectedCharacterIds: [command.characterId],
+        before,
+        after: copy(after),
       })
     }
 
@@ -256,6 +324,12 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
     const before = copy(item)
 
     if (command.kind === "inventory.remove") {
+      if ([...this.items.values()].some((child) => (child.holder_item_id ?? null) === item.id)) {
+        throw new EngineCommandError(
+          "inventory.container_not_empty",
+          "Inventory container is not empty",
+        )
+      }
       this.items.delete(item.id)
       return this.finish(command, {
         kind: command.kind,
@@ -295,6 +369,12 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
     }
 
     if (command.kind === "inventory.set_equipped") {
+      if (command.equipped && item.holder_item_id) {
+        throw new EngineCommandError(
+          "inventory.contained_cannot_equip",
+          "Contained inventory item must be removed from its container before equipping",
+        )
+      }
       if (command.equipped && item.category !== "equipment") {
         throw new EngineCommandError(
           "inventory.not_equipment",

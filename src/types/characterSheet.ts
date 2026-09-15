@@ -31,6 +31,8 @@ export type InventoryItem = {
   usage_mode?: ItemUsageMode; charges_current?: number | null; charges_max?: number | null
   /** "stack" means quantity may be >1; "instance" is always one independently stateful object. */
   stack_mode?: InventoryStackMode
+  /** Parent Cheburashka container. Null means the character's root inventory. */
+  holder_item_id?: string | null
   item_state?: Record<string, unknown>; version?: number
   sort_order: number; created_at: string; updated_at: string
 }

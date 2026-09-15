@@ -46,6 +46,14 @@ export type CheburashkaCommand =
       expectedVersion?: number
     }
   | {
+      kind: "inventory.move"
+      context: EngineCommandContext
+      characterId: string
+      itemId: string
+      holderItemId: string | null
+      expectedVersion?: number
+    }
+  | {
       kind: "inventory.transfer"
       context: EngineCommandContext
       fromCharacterId: string

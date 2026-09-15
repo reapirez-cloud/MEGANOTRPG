@@ -296,6 +296,34 @@ export function useUiV1CharacterControl(characterId: string) {
     }
   }, [canControlCharacter, characterId, context, load, playerContext, scope.canManage])
 
+  const moveItem = useCallback(async (item: InventoryItem, holderItemId: string | null): Promise<Result> => {
+    if (!canControlCharacter) return { ok: false, error: "Недостаточно прав." }
+    try {
+      if (scope.canManage) {
+        await oracle.inventory.move(
+          context(),
+          characterId,
+          item.id,
+          holderItemId,
+          item.version,
+        )
+      } else {
+        await cheburashka.execute({
+          kind: "inventory.move",
+          context: playerContext(),
+          characterId,
+          itemId: item.id,
+          holderItemId,
+          expectedVersion: item.version,
+        })
+      }
+      await load()
+      return { ok: true }
+    } catch (reason) {
+      return { ok: false, error: errorMessage(reason, "Не удалось переместить предмет.") }
+    }
+  }, [canControlCharacter, characterId, context, load, playerContext, scope.canManage])
+
   const updateItem = useCallback((item: InventoryItem, patch: Partial<InventoryInput>) => {
     const input: InventoryInput = {
       name: patch.name ?? item.name,
@@ -419,6 +447,7 @@ export function useUiV1CharacterControl(characterId: string) {
     recover,
     setEquipped,
     useItem,
+    moveItem,
     updateItem,
     removeItem,
     transferItem,

@@ -10,6 +10,11 @@ import {
 import CampaignMediaFrame from "../components/common/CampaignMediaFrame"
 import { useResolvedCharacterRuntime } from "../hooks/useResolvedCharacterRuntime"
 import type { SnakeAction } from "../snake-engine"
+import {
+  inventoryChildren,
+  inventoryContainerTargets,
+  inventoryHolder,
+} from "../inventory-engine/holders"
 import { inventoryStackMode } from "../inventory-engine/stacking"
 import type { CharacterFeature, CharacterSheet, CharacterSpell, InventoryItem } from "../types/characterSheet"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
@@ -104,11 +109,21 @@ function grantLabel(grant: ResolvedGrant) {
   return label || titleFromKey(grant.key)
 }
 
-function itemDetail(item: InventoryItem) {
+function itemDetail(item: InventoryItem, inventory: readonly InventoryItem[]) {
+  const holder = inventoryHolder(inventory, item)
+  const children = item.category === "container"
+    ? inventoryChildren(inventory, item.id)
+    : []
   return [
     item.category ? "Категория: " + item.category : "",
     "Количество: " + item.quantity,
     inventoryStackMode(item) === "instance" ? "Отдельный экземпляр." : "Стопка.",
+    holder ? "Находится в: " + holder.name : "Находится в корневом инвентаре.",
+    item.category === "container"
+      ? children.length
+        ? "Внутри: " + children.map((child) => child.name + (child.quantity > 1 ? ` ×${child.quantity}` : "")).join(", ")
+        : "Контейнер пуст."
+      : "",
     item.usage_mode === "charges"
       ? "Заряды: " + (item.charges_current ?? item.charges_max ?? 0) + "/" + (item.charges_max ?? 0)
       : item.usage_mode === "quantity" ? "Использование расходует 1 единицу." : "",
@@ -165,6 +180,7 @@ export default function CharacterView({
   const snake = useSnake()
   const runtime = useResolvedCharacterRuntime(control.runtimeEntity)
   const [focus, setFocus] = useState<FocusSection>(null)
+  const [inventoryHolderId, setInventoryHolderId] = useState<string | null>(null)
   const [expandedAbility, setExpandedAbility] = useState<AbilityKey | null>(null)
 
   const contract = runtime.snapshot?.contract || null
@@ -210,6 +226,7 @@ export default function CharacterView({
                   name: item.name,
                   quantity: item.quantity,
                   equipped: item.equipped,
+                  holderItemId: item.holder_item_id ?? null,
                 })),
                 spells: control.spells.slice(0, 40).map((spell) => ({
                   id: spell.id,
@@ -513,13 +530,14 @@ export default function CharacterView({
         kind: "detail",
         eyebrow: "Инвентарь",
         title: item.name,
-        body: itemDetail(item),
+        body: itemDetail(item, control.inventory),
         mediaUrl: item.image_url || undefined,
       },
     }]
 
     const usageMode = item.usage_mode ?? (item.category === "consumable" ? "quantity" : "none")
     const stackMode = inventoryStackMode(item)
+    const containerTargets = inventoryContainerTargets(control.inventory, item)
     if (usageMode !== "none" && control.canControlCharacter) {
       const remaining = usageMode === "charges"
         ? item.charges_current ?? item.charges_max ?? 0
@@ -534,6 +552,54 @@ export default function CharacterView({
           return response.ok
             ? { type: "success", notice: usageMode === "charges" ? "Заряд использован." : "Предмет использован." }
             : { type: "error", message: response.error || "Не удалось использовать предмет." }
+        },
+      })
+    }
+
+    if (control.canControlCharacter && item.holder_item_id) {
+      const currentHolder = inventoryHolder(control.inventory, item)
+      const outsideHolderId = currentHolder?.holder_item_id ?? null
+      actions.push({
+        id: "remove-from-container",
+        label: "Вынуть из контейнера",
+        execute: async () => {
+          const response = await control.moveItem(item, outsideHolderId)
+          return response.ok
+            ? { type: "success", notice: "Предмет вынут из контейнера." }
+            : { type: "error", message: response.error || "Не удалось вынуть предмет." }
+        },
+      })
+    }
+
+    if (control.canControlCharacter && containerTargets.length) {
+      actions.push({
+        id: "move-to-container",
+        label: "Положить в контейнер",
+        surface: {
+          kind: "editor",
+          eyebrow: "Инвентарь",
+          title: "Куда положить «" + item.name + "»",
+          fields: [{
+            id: "holder",
+            label: "Контейнер",
+            type: "select",
+            required: true,
+            options: containerTargets.map((container) => ({
+              value: container.id,
+              label: container.name,
+            })),
+          }],
+          initialValues: {
+            holder: containerTargets[0]?.id || "",
+          },
+          submitLabel: "Положить",
+        },
+        execute: async ({ input }) => {
+          const holderItemId = String(input?.holder || "")
+          const response = await control.moveItem(item, holderItemId || null)
+          return response.ok
+            ? { type: "success", notice: "Предмет помещён в контейнер." }
+            : { type: "error", message: response.error || "Не удалось переместить предмет." }
         },
       })
     }
@@ -783,26 +849,69 @@ export default function CharacterView({
 
   function focusedContent() {
     if (focus === "inventory") {
+      const currentHolder = inventoryHolderId
+        ? control.inventory.find((item) => item.id === inventoryHolderId) ?? null
+        : null
+      const visibleInventory = inventoryChildren(control.inventory, inventoryHolderId)
+      const parentHolderId = currentHolder?.holder_item_id ?? null
+
       return (
-        <Section title="Инвентарь" meta={String(control.inventory.length)}>
+        <Section
+          title={currentHolder ? currentHolder.name : "Инвентарь"}
+          meta={String(visibleInventory.length)}
+        >
           <div className="u1-character-view__rows">
-            {control.inventory.map((item) => {
+            {currentHolder && (
+              <button
+                type="button"
+                className="u1-character-view__row"
+                onClick={() => setInventoryHolderId(parentHolderId)}
+              >
+                <span>
+                  <strong>← Назад</strong>
+                  <small>{parentHolderId ? "В родительский контейнер" : "В корневой инвентарь"}</small>
+                </span>
+                <b />
+              </button>
+            )}
+            {visibleInventory.map((item) => {
               const actions = inventoryActions(item)
               const inspect = actions[0]
               const itemEntity = { type: "inventory-item", id: item.id }
+              const childCount = item.category === "container"
+                ? inventoryChildren(control.inventory, item.id).length
+                : 0
               return (
                 <SnakeTrigger key={item.id} entity={itemEntity} actions={actions}>
-                  <button type="button" className="u1-character-view__row" onClick={() => openAction(inspect, itemEntity)}>
+                  <button
+                    type="button"
+                    className="u1-character-view__row"
+                    onClick={() => {
+                      if (item.category === "container") {
+                        setInventoryHolderId(item.id)
+                        return
+                      }
+                      openAction(inspect, itemEntity)
+                    }}
+                  >
                     <span>
                       <strong>{item.name}</strong>
-                      <small>{item.category}{item.equipped ? " · надето" : ""}</small>
+                      <small>
+                        {item.category}
+                        {item.equipped ? " · надето" : ""}
+                        {item.category === "container" ? ` · внутри: ${childCount}` : ""}
+                      </small>
                     </span>
                     <b>{item.usage_mode === "charges" ? `${item.charges_current ?? item.charges_max ?? 0}/${item.charges_max ?? 0}` : `×${item.quantity}`}</b>
                   </button>
                 </SnakeTrigger>
               )
             })}
-            {!control.inventory.length && <div className="u1-character-view__quiet">Инвентарь пуст.</div>}
+            {!visibleInventory.length && (
+              <div className="u1-character-view__quiet">
+                {currentHolder ? "Контейнер пуст." : "Инвентарь пуст."}
+              </div>
+            )}
           </div>
         </Section>
       )
@@ -904,6 +1013,11 @@ export default function CharacterView({
         <button
           type="button"
           onClick={() => {
+            if (focus === "inventory" && inventoryHolderId) {
+              const currentHolder = control.inventory.find((item) => item.id === inventoryHolderId)
+              setInventoryHolderId(currentHolder?.holder_item_id ?? null)
+              return
+            }
             if (focus) {
               setFocus(null)
               return
@@ -940,7 +1054,7 @@ export default function CharacterView({
             <SnakeTrigger entity={entity} actions={heroActions}>{hero}</SnakeTrigger>
           ) : hero}
 
-          <button className="u1-character-view__inventory-line" type="button" onClick={() => setFocus("inventory")}>
+          <button className="u1-character-view__inventory-line" type="button" onClick={() => { setInventoryHolderId(null); setFocus("inventory") }}>
             <i /><strong>ИНВЕНТАРЬ · {control.inventory.length} ПРЕДМЕТОВ</strong><i />
           </button>
 

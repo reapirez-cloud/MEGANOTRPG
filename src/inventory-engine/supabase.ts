@@ -34,6 +34,24 @@ function fail(error: { message: string } | null, fallback: string): never {
   if (message.includes("Inventory instance cannot be split")) {
     throw new EngineCommandError("inventory.instance_split_forbidden", message)
   }
+  if (message.includes("Inventory container is not empty") || message.includes("character_inventory_items_holder_item_id_fkey")) {
+    throw new EngineCommandError("inventory.container_not_empty", message)
+  }
+  if (message.includes("Inventory holder must be a container")) {
+    throw new EngineCommandError("inventory.holder_not_container", message)
+  }
+  if (message.includes("Inventory holder must belong to the same character")) {
+    throw new EngineCommandError("inventory.holder_different_character", message)
+  }
+  if (message.includes("Inventory holder not found")) {
+    throw new EngineCommandError("inventory.holder_missing", message)
+  }
+  if (message.includes("Inventory container cycle is not allowed") || message.includes("Inventory item cannot contain itself")) {
+    throw new EngineCommandError("inventory.holder_cycle", message)
+  }
+  if (message.includes("Inventory container nesting depth exceeds 16")) {
+    throw new EngineCommandError("inventory.holder_depth", message)
+  }
   throw new EngineCommandError("inventory.persistence", message)
 }
 
@@ -52,6 +70,7 @@ function normalizeItem(value: unknown): InventoryItem {
     charges_current: row.charges_current ?? null,
     charges_max: row.charges_max ?? null,
     stack_mode: inventoryStackMode(row),
+    holder_item_id: row.holder_item_id ?? null,
     item_state: row.item_state && typeof row.item_state === "object" ? row.item_state : {},
     version: Number(row.version ?? 0),
   }
@@ -271,6 +290,24 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
       })
 
       if (error) fail(error, "Could not consume inventory item")
+      return mutationFromRpc(command.kind, data)
+    }
+
+    if (command.kind === "inventory.move") {
+      const expectedVersion = await this.expectedVersion(
+        command.itemId,
+        command.characterId,
+        command.expectedVersion,
+      )
+      const { data, error } = await this.client.rpc("move_inventory_item_v1", {
+        p_character_id: command.characterId,
+        p_item_id: command.itemId,
+        p_holder_item_id: command.holderItemId,
+        p_expected_version: expectedVersion,
+        p_command_id: command.context.commandId,
+      })
+
+      if (error) fail(error, "Could not move inventory item")
       return mutationFromRpc(command.kind, data)
     }
 

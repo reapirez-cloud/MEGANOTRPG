@@ -7,6 +7,7 @@ import {
   type EngineEventPublisher,
 } from "../engine-contracts/index.ts"
 import { createInventoryMechanicalProjection } from "./projection.ts"
+import { inventoryHolderProblem } from "./holders.ts"
 import { inventoryStackMode } from "./stacking.ts"
 import type {
   CheburashkaCommand,
@@ -154,6 +155,7 @@ export class CheburashkaEngine {
         || command.kind === "inventory.remove"
         || command.kind === "inventory.set_equipped"
         || command.kind === "inventory.consume"
+        || command.kind === "inventory.move"
         || command.kind === "inventory.transfer")
       && command.expectedVersion !== undefined
       && (!Number.isInteger(command.expectedVersion) || command.expectedVersion < 1)
@@ -168,6 +170,45 @@ export class CheburashkaEngine {
     }
 
     await this.assertPlayerItemAccess(command)
+
+    if (command.kind === "inventory.remove") {
+      const items = await this.storage.listCharacterItems(command.characterId)
+      if (items.some((item) => (item.holder_item_id ?? null) === command.itemId)) {
+        throw new EngineCommandError(
+          "inventory.container_not_empty",
+          "Inventory container is not empty",
+        )
+      }
+    }
+
+    if (command.kind === "inventory.set_equipped" && command.equipped) {
+      const source = await this.storage.getItem(command.itemId)
+      if (source?.holder_item_id) {
+        throw new EngineCommandError(
+          "inventory.contained_cannot_equip",
+          "Contained inventory item must be removed from its container before equipping",
+        )
+      }
+    }
+
+    if (command.kind === "inventory.move") {
+      const source = await this.storage.getItem(command.itemId)
+      if (source && source.character_id === command.characterId) {
+        const items = await this.storage.listCharacterItems(command.characterId)
+        const problem = inventoryHolderProblem(items, source, command.holderItemId)
+        if (problem) {
+          const messages = {
+            self: "Inventory item cannot contain itself",
+            missing: "Inventory holder not found",
+            different_character: "Inventory holder must belong to the same character",
+            not_container: "Inventory holder must be a container",
+            cycle: "Inventory container cycle is not allowed",
+            depth: "Inventory container nesting depth exceeds 16",
+          } as const
+          throw new EngineCommandError(`inventory.holder_${problem}`, messages[problem])
+        }
+      }
+    }
 
     if (command.kind === "inventory.transfer") {
       const source = await this.storage.getItem(command.itemId)

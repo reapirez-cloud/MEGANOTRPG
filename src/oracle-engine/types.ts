@@ -76,6 +76,7 @@ export type OracleInventoryCommands = {
   remove(context: OracleContext, characterId: string, itemId: string, expectedVersion?: number): OracleInventoryResult
   setEquipped(context: OracleContext, characterId: string, itemId: string, equipped: boolean, equipmentSlot?: EquipmentSlot | null, expectedVersion?: number): OracleInventoryResult
   consume(context: OracleContext, characterId: string, itemId: string, amount?: number, expectedVersion?: number): OracleInventoryResult
+  move(context: OracleContext, characterId: string, itemId: string, holderItemId: string | null, expectedVersion?: number): OracleInventoryResult
   transfer(context: OracleContext, fromCharacterId: string, toCharacterId: string, itemId: string, amount: number, expectedVersion?: number): OracleInventoryResult
 }
 
