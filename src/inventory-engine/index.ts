@@ -19,6 +19,13 @@ export type {
   InventorySpecializedCapacity,
 } from "./profile.ts"
 export {
+  STANDARD_CONTAINER_PROFILE_PRESETS,
+  STANDARD_ITEM_PROFILE_PRESETS,
+  cloneInventoryProfile,
+  inventoryProfilePreset,
+} from "./profilePresets.ts"
+export type { InventoryProfilePreset } from "./profilePresets.ts"
+export {
   inventoryChildren,
   inventoryContainerTargets,
   inventoryHolder,
