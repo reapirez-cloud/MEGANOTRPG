@@ -228,6 +228,9 @@ export default function Art() {
       .insert({
         campaign_id: campaignId,
         uploaded_by: user.id,
+        character_id: null,
+        location_id: null,
+        collection: "world",
         title: title.trim() || fallbackTitle,
         caption: caption.trim(),
         image_url: uploaded[0],
