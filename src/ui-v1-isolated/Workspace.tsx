@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
+import CampaignMediaFrame from "../components/common/CampaignMediaFrame"
 import PlayerProfileMark from "./PlayerProfileMark"
 import { SnakeTrigger } from "./SnakeProvider"
 import { createCharacterSnakeActions } from "./characterSnakeActions"
@@ -40,10 +41,15 @@ function CharacterStrip({
       className="u1-actor-strip"
       data-selected={selected || undefined}
       data-dead={character.lifeState === "dead" || undefined}
-      style={mediaStyle(character.avatarUrl)}
       onClick={onClick}
     >
-      <span className="u1-actor-strip__media" aria-hidden="true" />
+      <CampaignMediaFrame
+        className="u1-actor-strip__media"
+        value={character.panelAvatarUrl || character.avatarUrl}
+        presentation={character.panelAvatarPresentation}
+        alt=""
+        aria-hidden="true"
+      />
       <span className="u1-actor-strip__shade" aria-hidden="true" />
       <span className="u1-actor-strip__copy">
         <strong>{character.name}</strong>
@@ -168,18 +174,20 @@ function ActiveIdentity({
   narrator,
   coverUrl,
   canEditAvatar,
+  applyMedia,
   onOpenCharacter,
 }: {
   character: WorkspaceCharacter | null
   narrator: boolean
   coverUrl: string | null
   canEditAvatar: boolean
+  applyMedia: ReturnType<typeof useWorkspaceData>["applyCharacterMedia"]
   onOpenCharacter: (characterId: string) => void
 }) {
   const [selectedAbility, setSelectedAbility] =
     useState<WorkspaceAbilityKey | null>(null)
 
-  const style = mediaStyle(character?.avatarUrl || (narrator ? coverUrl : null))
+  const style = mediaStyle(narrator ? coverUrl : null)
   const selectedStat = character?.sheet?.abilities.find(
     (ability) => ability.key === selectedAbility,
   ) || null
@@ -191,7 +199,17 @@ function ActiveIdentity({
       data-stat-open={selectedAbility || undefined}
       style={style}
     >
-      <span className="u1-active-identity__media" aria-hidden="true" />
+      {character ? (
+        <CampaignMediaFrame
+          className="u1-active-identity__media"
+          value={character.panelAvatarUrl || character.avatarUrl}
+          presentation={character.panelAvatarPresentation}
+          alt=""
+          aria-hidden="true"
+        />
+      ) : (
+        <span className="u1-active-identity__media" aria-hidden="true" />
+      )}
       <span className="u1-active-identity__veil" aria-hidden="true" />
 
       {character && (
@@ -258,7 +276,11 @@ function ActiveIdentity({
 
   if (!character) return panel
 
-  const actions = createCharacterSnakeActions({ canEditAvatar })
+  const actions = createCharacterSnakeActions({
+    canEditAvatar,
+    character,
+    applyMedia: (slot, input) => applyMedia(character.id, slot, input),
+  })
   if (!actions.length) return panel
 
   return (
@@ -428,6 +450,7 @@ export default function Workspace({ onOpenCharacter, onOpenManagement }: Props) 
           narrator={data.narratorSelected}
           coverUrl={data.campaignCoverUrl}
           canEditAvatar={data.canEditActiveAvatar}
+          applyMedia={data.applyCharacterMedia}
           onOpenCharacter={onOpenCharacter}
         />
       </footer>
