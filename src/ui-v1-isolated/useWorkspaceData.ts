@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 
+import { createEngineCommandContext } from "../engine-contracts/index.ts"
+import { shapoklyak } from "../entity-engine/runtime.ts"
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
+import { uploadCampaignImage } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
+import { parseMediaPresentation, type MediaPresentation } from "../media/presentation"
+import { oracle } from "../oracle-engine/runtime.ts"
+import type { SnakeActionInput } from "../snake-engine"
 import {
   activeOtherPlayerCharacterIds,
   canSelectWorkspaceSpeaker,
@@ -46,6 +52,13 @@ export type WorkspaceCharacter = {
   characterClass: string
   level: number
   avatarUrl: string | null
+  avatarSource: string | null
+  avatarAssetId: string | null
+  avatarPresentation: MediaPresentation | null
+  panelAvatarUrl: string | null
+  panelAvatarSource: string | null
+  panelAvatarAssetId: string | null
+  panelAvatarPresentation: MediaPresentation | null
   characterType: "pc" | "npc"
   visibility: "campaign" | "private"
   lifeState: "alive" | "dead"
@@ -95,6 +108,18 @@ type CharacterSheetPreviewRow = {
   skill_proficiencies: unknown
 }
 
+type CharacterMediaBindingRow = {
+  character_id: string
+  target_field: "avatar" | "avatar_url" | "panel_avatar"
+  asset_id: string
+  storage_path: string
+  presentation: unknown
+}
+
+export type CharacterMediaSlot = "avatar" | "panel_avatar"
+
+type MutationResult = { ok: boolean; error?: string }
+
 type WorkspaceData = {
   campaignId: string
   campaignTitle: string
@@ -109,6 +134,11 @@ type WorkspaceData = {
   loading: boolean
   error: string | null
   selectSpeaker: (characterId: string | null) => void
+  applyCharacterMedia: (
+    characterId: string,
+    slot: CharacterMediaSlot,
+    input: SnakeActionInput,
+  ) => Promise<MutationResult>
 }
 
 const CAMPAIGN_STORAGE_KEYS = [
@@ -282,7 +312,7 @@ export function useWorkspaceData(): WorkspaceData {
       const nextCampaignId = nextMembership.campaign_id
       window.localStorage.setItem("meganotrpg:v1:campaign-id", nextCampaignId)
 
-      const [campaignResult, characterResult, campaignMembersResult] = await Promise.all([
+      const [campaignResult, characterResult, campaignMembersResult, mediaResult] = await Promise.all([
         supabase
           .from("campaigns")
           .select("title, cover_url")
@@ -298,6 +328,9 @@ export function useWorkspaceData(): WorkspaceData {
           .from("campaign_members")
           .select("user_id, active_character_id")
           .eq("campaign_id", nextCampaignId),
+        supabase.rpc("list_character_media_presentations_v1", {
+          p_campaign_id: nextCampaignId,
+        }),
       ])
 
       if (cancelled) return
@@ -305,7 +338,8 @@ export function useWorkspaceData(): WorkspaceData {
       const firstError =
         campaignResult.error ||
         characterResult.error ||
-        campaignMembersResult.error
+        campaignMembersResult.error ||
+        mediaResult.error
       if (firstError) {
         setError(firstError.message)
         setLoading(false)
@@ -333,23 +367,57 @@ export function useWorkspaceData(): WorkspaceData {
         ((sheetResult.data || []) as CharacterSheetPreviewRow[])
           .map((sheet) => [sheet.character_id, sheet] as const),
       )
+      const mediaRows = (mediaResult.data || []) as CharacterMediaBindingRow[]
+      const mediaByKey = new Map(
+        mediaRows.map((row) => [
+          row.character_id + ":" + row.target_field,
+          row,
+        ] as const),
+      )
 
       const resolvedCharacters = await Promise.all(
-        rawCharacters.map(async (character) => ({
-          id: character.id,
-          assignedUserId: character.assigned_user_id,
-          name: character.name,
-          characterClass: character.character_class,
-          level: character.level,
-          avatarUrl:
-            (await resolveCampaignMediaUrl(character.avatar_url)) ||
-            character.avatar_url,
-          characterType: character.character_type,
-          visibility: character.visibility,
-          lifeState: character.life_state === "dead" ? "dead" as const : "alive" as const,
-          diedAt: character.died_at,
-          sheet: sheetPreview(sheetsByCharacter.get(character.id)),
-        })),
+        rawCharacters.map(async (character) => {
+          const avatarBinding =
+            mediaByKey.get(character.id + ":avatar") ||
+            mediaByKey.get(character.id + ":avatar_url") ||
+            null
+          const panelBinding =
+            mediaByKey.get(character.id + ":panel_avatar") || null
+          const avatarSource =
+            avatarBinding?.storage_path || character.avatar_url || null
+          const panelAvatarSource =
+            panelBinding?.storage_path || avatarSource
+          const [avatarUrl, panelAvatarUrl] = await Promise.all([
+            resolveCampaignMediaUrl(avatarSource),
+            resolveCampaignMediaUrl(panelAvatarSource),
+          ])
+
+          return {
+            id: character.id,
+            assignedUserId: character.assigned_user_id,
+            name: character.name,
+            characterClass: character.character_class,
+            level: character.level,
+            avatarUrl: avatarUrl || avatarSource,
+            avatarSource,
+            avatarAssetId: avatarBinding?.asset_id || null,
+            avatarPresentation: parseMediaPresentation(
+              avatarBinding?.presentation,
+            ),
+            panelAvatarUrl: panelAvatarUrl || panelAvatarSource,
+            panelAvatarSource,
+            panelAvatarAssetId: panelBinding?.asset_id || null,
+            panelAvatarPresentation: parseMediaPresentation(
+              panelBinding?.presentation,
+            ),
+            characterType: character.character_type,
+            visibility: character.visibility,
+            lifeState:
+              character.life_state === "dead" ? "dead" as const : "alive" as const,
+            diedAt: character.died_at,
+            sheet: sheetPreview(sheetsByCharacter.get(character.id)),
+          }
+        }),
       )
 
       if (cancelled) return
@@ -478,6 +546,200 @@ export function useWorkspaceData(): WorkspaceData {
     [campaignId, canManage, speakerCharacters, userId],
   )
 
+  const applyCharacterMedia = useCallback(async (
+    characterId: string,
+    slot: CharacterMediaSlot,
+    input: SnakeActionInput,
+  ): Promise<MutationResult> => {
+    if (!campaignId || !userId) {
+      return { ok: false, error: "Кампания ещё не загружена." }
+    }
+
+    const character = characters.find((item) => item.id === characterId)
+    if (!character) return { ok: false, error: "Персонаж не найден." }
+
+    const presentation = parseMediaPresentation(input?.presentation)
+    if (!presentation) {
+      return { ok: false, error: "Кадр изображения не определён." }
+    }
+
+    const facts =
+      input?.itemFacts &&
+      typeof input.itemFacts === "object" &&
+      !Array.isArray(input.itemFacts)
+        ? input.itemFacts as Record<string, unknown>
+        : {}
+
+    let assetId =
+      typeof facts.assetId === "string" ? facts.assetId : ""
+    let storagePath =
+      typeof facts.storagePath === "string" ? facts.storagePath : ""
+    const file =
+      typeof File !== "undefined" && input?.file instanceof File
+        ? input.file
+        : null
+
+    const setCanonicalAvatar = async (avatarUrl: string | null) => {
+      const context = createEngineCommandContext({
+        campaignId,
+        requestedBy: userId,
+        authority: canManage ? "gm" : "player",
+        actorCharacterId: characterId,
+      })
+
+      if (canManage) {
+        await oracle.characters.setAvatar(context, characterId, avatarUrl)
+        return
+      }
+
+      await shapoklyak.execute({
+        kind: "entity.set_avatar",
+        context,
+        characterId,
+        avatarUrl,
+      })
+    }
+
+    try {
+      if (file) {
+        const upload = await uploadCampaignImage(
+          file,
+          slot === "avatar" ? "avatars" : "panel-avatars",
+          campaignId,
+        )
+        if (!upload.ok) return { ok: false, error: upload.error }
+
+        storagePath = upload.url
+        const { data: registered, error: registerError } = await supabase.rpc(
+          "register_manual_media_v1",
+          {
+            p_campaign_id: campaignId,
+            p_storage_path: storagePath,
+            p_mime_type: upload.mimeType,
+            p_width: upload.width,
+            p_height: upload.height,
+            p_purpose: slot === "avatar" ? "portrait" : "panel",
+            p_profile: slot === "avatar" ? "portrait" : "panel",
+          },
+        )
+        if (registerError || !registered) {
+          return {
+            ok: false,
+            error:
+              registerError?.message ||
+              "Не удалось зарегистрировать изображение.",
+          }
+        }
+        assetId = String(registered)
+      } else if (!assetId && storagePath) {
+        const existing = await supabase
+          .from("media_assets")
+          .select("id")
+          .eq("storage_path", storagePath)
+          .maybeSingle()
+
+        if (!existing.error && existing.data?.id) {
+          assetId = String(existing.data.id)
+        } else {
+          const sourceWidth = Math.max(1, Number(input?.sourceWidth || 1))
+          const sourceHeight = Math.max(1, Number(input?.sourceHeight || 1))
+          const { data: registered, error: registerError } = await supabase.rpc(
+            "register_manual_media_v1",
+            {
+              p_campaign_id: campaignId,
+              p_storage_path: storagePath,
+              p_mime_type: "image/webp",
+              p_width: sourceWidth,
+              p_height: sourceHeight,
+              p_purpose: slot === "avatar" ? "portrait" : "panel",
+              p_profile: slot === "avatar" ? "portrait" : "panel",
+            },
+          )
+          if (!registerError && registered) assetId = String(registered)
+        }
+      }
+
+      if (!assetId || !storagePath) {
+        return {
+          ok: false,
+          error:
+            "Старый арт не зарегистрирован в медиасистеме. Выбери файл заново, и плеер сохранит оригинал правильно.",
+        }
+      }
+
+      if (slot === "avatar") {
+        await setCanonicalAvatar(storagePath)
+      }
+
+      const { error: bindError } = await supabase.rpc(
+        "bind_media_presentation_v1",
+        {
+          p_asset_id: assetId,
+          p_target_type: "character",
+          p_target_id: characterId,
+          p_target_field: slot,
+          p_presentation: presentation,
+        },
+      )
+
+      if (bindError) {
+        if (slot === "avatar") {
+          try {
+            await setCanonicalAvatar(character.avatarSource)
+          } catch {
+            // Keep the binding error as the actionable failure.
+          }
+        }
+        return { ok: false, error: bindError.message }
+      }
+
+      const resolvedUrl =
+        (await resolveCampaignMediaUrl(storagePath)) || storagePath
+
+      setCharacters((current) =>
+        current.map((item) => {
+          if (item.id !== characterId) return item
+
+          if (slot === "panel_avatar") {
+            return {
+              ...item,
+              panelAvatarUrl: resolvedUrl,
+              panelAvatarSource: storagePath,
+              panelAvatarAssetId: assetId,
+              panelAvatarPresentation: presentation,
+            }
+          }
+
+          const hasDedicatedPanel = Boolean(item.panelAvatarAssetId)
+          return {
+            ...item,
+            avatarUrl: resolvedUrl,
+            avatarSource: storagePath,
+            avatarAssetId: assetId,
+            avatarPresentation: presentation,
+            ...(hasDedicatedPanel
+              ? {}
+              : {
+                  panelAvatarUrl: resolvedUrl,
+                  panelAvatarSource: storagePath,
+                  panelAvatarPresentation: null,
+                }),
+          }
+        }),
+      )
+
+      return { ok: true }
+    } catch (reason) {
+      return {
+        ok: false,
+        error:
+          reason instanceof Error
+            ? reason.message
+            : "Не удалось применить изображение.",
+      }
+    }
+  }, [campaignId, canManage, characters, userId])
+
   return {
     campaignId,
     campaignTitle,
@@ -495,5 +757,6 @@ export function useWorkspaceData(): WorkspaceData {
     loading,
     error,
     selectSpeaker,
+    applyCharacterMedia,
   }
 }
