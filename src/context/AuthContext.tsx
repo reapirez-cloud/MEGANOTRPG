@@ -9,9 +9,18 @@ export type AppProfile = {
   updated_at: string
 }
 
+export type AppCampaignAccess = {
+  campaignId: string
+  role: "gm" | "player"
+  isOwner: boolean
+  canManage: boolean
+  activeCharacterId: string | null
+}
+
 type AuthContextValue = {
   user: User
   profile: AppProfile
+  campaign: AppCampaignAccess | null
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -19,14 +28,16 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({
   user,
   profile,
+  campaign = null,
   children,
 }: {
   user: User
   profile: AppProfile
+  campaign?: AppCampaignAccess | null
   children: ReactNode
 }) {
   return (
-    <AuthContext.Provider value={{ user, profile }}>
+    <AuthContext.Provider value={{ user, profile, campaign }}>
       {children}
     </AuthContext.Provider>
   )
