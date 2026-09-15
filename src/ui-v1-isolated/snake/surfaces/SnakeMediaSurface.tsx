@@ -680,7 +680,12 @@ export function SnakeMediaSurface({
             <button
               type="button"
               className="u1-snake-media__apply"
-              disabled={!sourceSrc || !naturalSize || !currentPresentation}
+              disabled={
+                !sourceSrc ||
+                !naturalSize ||
+                !currentPresentation ||
+                Boolean(compose?.requireFile && !selectedFile)
+              }
               onClick={submitComposition}
             >
               {compose?.submitLabel || "Применить"}
