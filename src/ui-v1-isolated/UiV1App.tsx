@@ -286,6 +286,11 @@ function Dock({
     const elapsed = performance.now() - swipe.startedAt
     const horizontalDistance = Math.abs(deltaX)
     const verticalDistance = Math.abs(deltaY)
+    const movedDistance = Math.hypot(deltaX, deltaY)
+
+    if (movedDistance >= 12) {
+      suppressClickUntilRef.current = performance.now() + 320
+    }
 
     const isIntentionalSwipe =
       horizontalDistance >= 54 &&
@@ -294,7 +299,6 @@ function Dock({
 
     if (!isIntentionalSwipe) return
 
-    suppressClickUntilRef.current = performance.now() + 320
     event.preventDefault()
 
     const currentIndex = rootSpaceOrder.indexOf(active)
