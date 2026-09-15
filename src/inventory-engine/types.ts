@@ -43,6 +43,7 @@ export type CheburashkaCommand =
       characterId: string
       itemId: string
       amount: number
+      expectedVersion?: number
     }
   | {
       kind: "inventory.transfer"
@@ -51,6 +52,7 @@ export type CheburashkaCommand =
       toCharacterId: string
       itemId: string
       amount: number
+      expectedVersion?: number
     }
 
 export type InventoryItemChange = {
