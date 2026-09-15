@@ -345,8 +345,30 @@ async function preflight(
     }
 
     if (node.entity_type === "definition" && node.entity_subtype === "item") {
-      const profile = readInventoryProfile(object(object(node.payload).data).inventory_profile)
+      const payload = object(node.payload)
+      const profile = readInventoryProfile(object(payload.data).inventory_profile)
       if (!profile) throw new Error("Предмет «" + node.name + "» должен иметь валидный data.inventory_profile перед применением.")
+
+      const existingDefinitionId = string(payload.existing_definition_id)
+      if (existingDefinitionId) {
+        const { data, error } = await supabase
+          .from("reference_definitions")
+          .select("id,kind,scope,campaign_id,status")
+          .eq("id", existingDefinitionId)
+          .maybeSingle()
+
+        if (
+          error ||
+          !data ||
+          data.kind !== "item" ||
+          data.scope !== "campaign" ||
+          data.campaign_id !== campaignId
+        ) {
+          throw new Error(
+            "AI Draft может ревизовать только campaign-item этой кампании. Системный предмет нужно оставить неизменным и создать campaign-вариант.",
+          )
+        }
+      }
     }
 
     await verifyCompiledMechanics(node, campaignId)
@@ -435,10 +457,11 @@ function plannedSteps(draft: AIDraft): ApplyStep[] {
     }
 
     if (node.entity_type === "definition") {
+      const existingDefinitionId = string(object(node.payload).existing_definition_id)
       steps.push({
         key: "definition:" + node.key,
-        kind: "definition.create",
-        label: "Создать определение «" + node.name + "»",
+        kind: existingDefinitionId ? "definition.revise" : "definition.create",
+        label: (existingDefinitionId ? "Изменить определение «" : "Создать определение «") + node.name + "»",
       })
     }
   }
@@ -723,28 +746,39 @@ export async function applyAIDraft(
       const payload = object(node.payload)
       const kind = (node.entity_subtype || "reference") as ChasovoyDefinitionKind
 
-      const result = await engineRuntime.oracle.definitions.create(
-        makeContext(campaignId, userId),
-        {
-          kind,
-          scope: "campaign",
-          campaignId,
-          slug: "ai-" + draft.id.slice(0, 8) + "-" + slugPart(node.key),
-          visibility: string(payload.visibility) === "campaign" ? "campaign" : "gm",
-          status: "active",
-          sourceKind: "custom",
-          sourceLabel: "Voss AI Draft",
-          externalId: "ai-draft:" + draft.id + ":" + node.key,
-          name: node.name,
-          summary: string(payload.summary) || node.summary,
-          rulesText: string(payload.rules_text),
-          mechanics: chasovoyJson(payload.mechanics),
-          data: object(payload.data) as Record<string, ChasovoyJson>,
-        },
-      )
+      const existingDefinitionId = string(payload.existing_definition_id)
+      const definitionInput = {
+        name: node.name,
+        summary: string(payload.summary) || node.summary,
+        rulesText: string(payload.rules_text),
+        mechanics: chasovoyJson(payload.mechanics),
+        data: object(payload.data) as Record<string, ChasovoyJson>,
+      }
 
-      const definitionId = result.value.definitionId || result.value.after?.id || ""
-      if (!definitionId) throw new Error("Часовой не вернул ID созданного определения.")
+      const result = existingDefinitionId
+        ? await engineRuntime.oracle.definitions.revise(
+            makeContext(campaignId, userId),
+            existingDefinitionId,
+            definitionInput,
+          )
+        : await engineRuntime.oracle.definitions.create(
+            makeContext(campaignId, userId),
+            {
+              kind,
+              scope: "campaign",
+              campaignId,
+              slug: "ai-" + draft.id.slice(0, 8) + "-" + slugPart(node.key),
+              visibility: string(payload.visibility) === "campaign" ? "campaign" : "gm",
+              status: "active",
+              sourceKind: "custom",
+              sourceLabel: "Voss AI Draft",
+              externalId: "ai-draft:" + draft.id + ":" + node.key,
+              ...definitionInput,
+            },
+          )
+
+      const definitionId = existingDefinitionId || result.value.definitionId || result.value.after?.id || ""
+      if (!definitionId) throw new Error("Часовой не вернул ID созданного или изменённого определения.")
 
       const ref: CanonicalRef = { type: "definition", id: definitionId }
       entityMap[node.key] = ref
