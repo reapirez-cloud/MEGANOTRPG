@@ -473,41 +473,42 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
       : null
 
   return (
-    <div className={`screen character-profile-screen character-profile-v2 character-profile-opus ${embedded ? "character-profile-screen--embedded" : ""}`}>
+    <div data-class-key={classId || "default"} className={`screen character-profile-screen character-profile-v2 character-profile-opus ${embedded ? "character-profile-screen--embedded" : ""}`}>
       {!embedded && <header className="screen-header"><button className="icon-button" type="button" onClick={handleProfileBack} aria-label="Назад">←</button><h1 className="screen-header__title">{fullName}</h1><span /></header>}
 
       <div className="profile-scroll character-profile-scroll">
         {tab === "sheet" && !sheetFocused && (
-          <section className="opus-hero">
+          <section className="opus-hero opus-hero--sheet">
             <div className="opus-hero__portrait-wrapper">
               <button
                 className="opus-hero__portrait"
                 type="button"
                 onClick={() => { setAvatarError(""); openTab("arts") }}
-                aria-label="Открыть арты персонажа"
+                aria-label={"Открыть арты персонажа " + currentCharacter.name}
                 style={{ padding: 0 }}
               >
                 {currentCharacter.avatar_url
-                  ? <CampaignImage value={currentCharacter.avatar_url} alt={`Портрет ${currentCharacter.name}`} />
+                  ? <CampaignImage value={currentCharacter.avatar_url} alt={"Портрет " + currentCharacter.name} />
                   : <div className="opus-hero__portrait-fallback">{currentCharacter.name.slice(0, 1).toUpperCase()}</div>}
               </button>
-            </div>
-            <div className="opus-hero__identity">
-              <h1 className="opus-hero__name">
-                {currentCharacter.name}
-                {active && <span className="opus-hero__active-badge">● Активен</span>}
-              </h1>
-              <div className="opus-hero__class">
-                <span className="opus-hero__class-icon">◇</span>
-                {currentCharacter.character_class || "Класс не указан"} · {currentCharacter.level} ур
+              <div className="opus-hero__veil" aria-hidden="true" />
+              <div className="opus-hero__meta">
+                <span className="opus-hero__class">◇ {currentCharacter.character_class || "Класс не указан"} · {currentCharacter.level} ур.</span>
+                <button className="opus-hero__diary" type="button" onClick={() => openTab("diary")}>ДНЕВНИК</button>
               </div>
-              {member && <p className="opus-hero__player">Игрок · {member.display_name}</p>}
-              {currentCharacter.bio && <p className="opus-hero__bio">{currentCharacter.bio}</p>}
+              <div className="opus-hero__bio-rail">
+                <span>БИО</span>
+                <p>{currentCharacter.bio || "История персонажа ещё не записана."}</p>
+              </div>
             </div>
+            <button className="opus-inventory-line" type="button" onClick={() => openTab("inventory")}>
+              <span />
+              <strong>ИНВЕНТАРЬ · {data.inventory.length} ПРЕДМЕТОВ</strong>
+              <span />
+            </button>
           </section>
         )}
-
-        <nav className="opus-tabs">
+        {tab !== "sheet" && (<nav className="opus-tabs">
           <div className="opus-tabs__rail">
             {[
               tabMeta.sheet,
@@ -531,7 +532,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
               )
             })}
           </div>
-        </nav>
+        </nav>)}
 
         {data.loading && <CharacterSectionState kind="loading" title="Загружаем данные персонажа" detail="Собираем лист, вещи, записи и галерею." />}
         {data.error && <CharacterSectionState compact kind="error" title="Часть данных не загрузилась" detail={data.error} />}
@@ -541,7 +542,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
           <ResolvedCharacterSheetOpus
             input={resolved.input}
             contract={resolved.contract}
-            narrative={sheet}
+            classLabel={currentCharacter.character_class || "Класс не указан"}
             canManage={canManage}
             features={data.features}
             onEditSheet={() => setEditor({ type: "sheet" })}
@@ -549,6 +550,7 @@ export default function CharacterProfileV2({ characterId, onBack, embedded = fal
             onAddFeature={() => setEditor({ type: "feature", feature: null })}
             onEditFeature={(feature) => setEditor({ type: "feature", feature })}
             onDeleteFeature={data.deleteFeature}
+            onOpenClass={() => openTab("class")}
             onOpenSpells={(level) => {
               setSpellLevelFilter(level ?? null)
               openTab("spells")

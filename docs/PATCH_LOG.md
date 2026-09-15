@@ -11,6 +11,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Rebuilt the player character sheet into one continuous image-led RPG surface: 16:9 character art with Bio/Diary in the image, Inventory immediately below it, a 50/50 quick-stat/ability matrix, compact class-resource rows with resource-specific marks, vertically scrollable spell-slot rows, and quiet expandable abilities/defenses. The main sheet no longer carries the old permanent tab rail; class, magic, inventory, diary and art stay available as focused deeper screens.
+
 - Voss floating orb now tracks the finger directly during drag instead of easing toward every intermediate pointer position. Drag motion is compositor-driven and frame-synchronised; only the final edge snap keeps a short animation.
 
 - Admin/owner can now upload and reframe class and subclass artwork directly inside the Knowledge Base through Snake MediaPlayer. Long-pressing a class/subclass preview edits the 3:1 panel; long-pressing the page hero edits the 16:9 art.
@@ -29,6 +31,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- The character-sheet redesign is presentation-only over the existing shared `ResolvedCharacterContract`. Canonical HP, stats, resources and spell slots still come from the Character Runtime / CE path; no Supabase schema or ownership boundary was changed.
+
 - Added campaign-level `reference_art` media bindings. Mutation is enforced with `private.is_campaign_owner`, so ordinary GMs cannot change class/subclass art even though they can manage other campaign content.
 - Reference art reuses normalized media presentation metadata and the universal Snake graphics surface; no class-specific uploader or cropper was introduced.
 - Root-relative bundled UI assets such as `/ui-v1/classes/*.webp` are now correctly treated as public app assets instead of private Storage paths.
@@ -46,6 +50,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Class Reference now treats `rule_templates` as the canonical definition source whenever it is available; `referenceOnly` controls literary fallback, not permission to ignore an active CE class package.
 
 ### Tests / verification
+
+- Added `characterSheetOpusLayout.test.ts` to lock the 16:9 hero/inventory hierarchy, 50/50 core matrix, expandable abilities, resource-specific presentation, scroll-bounded spell slots and the no-second-runtime constraint.
 
 - Added `vossOrbDrag.test.ts` to prevent positional transitions or React-state-per-pointermove regressions from making the floating AI orb lag behind the finger again.
 
