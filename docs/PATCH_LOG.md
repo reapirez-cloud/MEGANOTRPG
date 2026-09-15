@@ -33,6 +33,11 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Started Inventory Stage 5A: added the canonical Chasovoy `inventory_profile` contract for instance/bulk packing, shape masks, physical dimensions and container internal grids. Cheburashka and the GM item editor now default new items to independent instances; bulk stacks are explicit exceptions.
+- Added rollout-safe live Supabase validation for item physical profiles and changed the inventory DB default to `instance`. The old production client keeps a narrow compatibility path when it omits `stack_mode` on an existing multi-quantity item.
+- Separated container geometry from presentation: a magical 100×100 cm interior may be a 20×20 logical grid while the future mobile inventory keeps a readable fixed viewport and pans instead of shrinking cells. Container physical metadata remains separate from ordinary item mechanics, so bags can still carry bonuses, resistances, activated effects and curses through the existing mechanics/CE path.
+- Wired GM catalog and Voss AI Draft application to the same physical profile. Issuing quantity N of an instance definition now creates N independent objects instead of silently creating a stack; Voss item drafts must provide a valid physical profile before canonical application.
+
 - Replaced the earlier coarse inventory roadmap with a canonical 12-stage implementation plan. Stages 1–4 remain complete; Stage 5 now owns physical item profiles/shape authoring, Stage 6 spatial drag/grid/bags/hands/generic carry, Stage 7 weight/capacity, Stage 8 persistent chests/stashes, Stage 9 chats/scenes/Surfaces, Stage 10 Trade, Stage 11 Chasovoy adoption and Stage 12 certification. The product contract was also corrected to remove anatomical back/hip/shoulder simulation: ordinary bag packing is geometry-first, characters always have two 1×1 hands, and extra external carrying uses generic 1×1 cells.\n\n- Added the Voss physical item authoring policy to the live agent system prompt: semantic role is now separated from physical packing, stacking defaults to off, herbs/powders/ammunition/currency may use bounded 1×1 bulk stacks, ore chunks and other distinct ingredients remain individual shaped items, small potions/scrolls remain separate 1×1 instances, and ambiguous items default to instance. The same policy is locked in the inventory product contract and regression tests.\n\n- Added the canonical inventory product contract for future audits/implementation: physical grid shapes, socket/carry placement, equipment, physical currency, weight, scene/chat surfaces with atomic take, and dedicated two-party trade blocks. The contract explicitly marks Stages 1–4 as current and later mechanics as future work, and records the linked chat/scene movement debt without claiming it is implemented.
 
 - Removed the accidental UI 1.0 dependency on legacy CharacterContext. `useCharacterResourceStates` now reads `campaignId` / manager authority from AuthContext's authenticated campaign scope, so the shared CE runtime works in both UI 1.0 and legacy surfaces without breaking the hard-isolation contract. No Supabase schema/data migration was needed.
@@ -58,6 +63,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Class Reference now treats `rule_templates` as the canonical definition source whenever it is available; `referenceOnly` controls literary fallback, not permission to ignore an active CE class package.
 
 ### Tests / verification
+
+- Added Stage 5 inventory-profile regression coverage for instance-first defaults, explicit bulk stacks, large magical-container interiors without UI viewport metadata, and preservation of container geometry while ordinary mechanics are edited.
+- Applied live Supabase migration `20260915182537_cheburashka_stage5_inventory_profile_foundation` and verified the DB default / compatibility routing plus acceptance of a 20×20 magical-bag profile.
+- GitHub Actions do not currently report a run/status for direct `dev` head `c819636`; the isolated execution environment also cannot clone GitHub externally, so a full repository `npm test` / build result is not claimed for this work unit.
 
 - Added `uiV1CharacterRuntimeProvider.test.ts` to lock the shared runtime onto AuthContext campaign access and prevent UI 1.0 from regaining a legacy CharacterContext/CharacterProvider dependency.
 
