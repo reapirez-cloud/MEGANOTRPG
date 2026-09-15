@@ -14,6 +14,7 @@ export type ArtCollection =
 
 export type UiV1ArtItem = {
   id: string
+  asset_id: string | null
   uploaded_by: string | null
   character_id: string | null
   location_id: string | null
@@ -62,6 +63,18 @@ function uploadFolder(collection: ArtCollection) {
   return "gallery"
 }
 
+async function imageDimensions(file: File) {
+  if (typeof createImageBitmap !== "function") return { width: 1, height: 1 }
+  try {
+    const bitmap = await createImageBitmap(file)
+    const result = { width: Math.max(1, bitmap.width), height: Math.max(1, bitmap.height) }
+    bitmap.close()
+    return result
+  } catch {
+    return { width: 1, height: 1 }
+  }
+}
+
 export function useUiV1ArtData() {
   const scope = useUiV1CampaignScope()
   const [campaignTitle, setCampaignTitle] = useState("")
@@ -85,7 +98,7 @@ export function useUiV1ArtData() {
 
     const { data: artRows, error: artError } = await supabase
       .from("campaign_art_items")
-      .select("id,uploaded_by,character_id,location_id,title,caption,image_url,kind,collection,created_at")
+      .select("id,asset_id,uploaded_by,character_id,location_id,title,caption,image_url,kind,collection,created_at")
       .eq("campaign_id", scope.campaignId)
       .order("created_at", { ascending: false })
 
@@ -236,6 +249,22 @@ export function useUiV1ArtData() {
             .single()
           if (insertError || !created) throw new Error(insertError?.message || "Не удалось сохранить арт.")
           createdIds.push(created.id)
+
+          if (collection === "system") {
+            const dimensions = await imageDimensions(file)
+            const { error: registerError } = await supabase.rpc(
+              "register_system_media_v1",
+              {
+                p_campaign_id: scope.campaignId,
+                p_art_item_id: created.id,
+                p_storage_path: result.url,
+                p_mime_type: file.type || "image/webp",
+                p_width: dimensions.width,
+                p_height: dimensions.height,
+              },
+            )
+            if (registerError) throw new Error(registerError.message)
+          }
         }
       }
 
@@ -243,7 +272,13 @@ export function useUiV1ArtData() {
       return { ok: true }
     } catch (reason) {
       if (createdIds.length) {
-        await supabase.from("campaign_art_items").delete().in("id", createdIds)
+        if (collection === "system") {
+          for (const artItemId of createdIds) {
+            await supabase.rpc("delete_system_media_v1", { p_art_item_id: artItemId })
+          }
+        } else {
+          await supabase.from("campaign_art_items").delete().in("id", createdIds)
+        }
       }
       await deleteCampaignMediaObjects(uploaded)
       const message = reason instanceof Error ? reason.message : "Не удалось загрузить арт."
@@ -261,6 +296,27 @@ export function useUiV1ArtData() {
       item.image_url,
       ...pages.filter((page) => page.art_item_id === item.id).map((page) => page.image_url),
     ]
+
+    if (item.collection === "system") {
+      const { data, error: deleteError } = await supabase.rpc(
+        "delete_system_media_v1",
+        { p_art_item_id: item.id },
+      )
+      if (deleteError) {
+        const message = /system_media_in_use/i.test(deleteError.message)
+          ? "Этот системный материал уже используется. Сначала отвяжи его от объектов."
+          : deleteError.message
+        setBusy(false)
+        setError(message)
+        return { ok: false, error: message }
+      }
+
+      const payload = (data || {}) as { storage_path?: string }
+      await deleteCampaignMediaObjects([payload.storage_path || item.image_url])
+      await load()
+      setBusy(false)
+      return { ok: true }
+    }
 
     const { error: deleteError } = await supabase
       .from("campaign_art_items")
