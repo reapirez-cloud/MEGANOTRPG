@@ -289,7 +289,7 @@ export function SnakeMediaSurface({
       facts: {
         mediaId: active?.id || null,
         mediaSource: active?.src || null,
-        mediaIndex: count ? index + 1 : 0,
+        mediaIndex: index + 1,
         mediaCount: count,
         mediaTitle: active?.title || request.title,
         mediaCaption: active?.caption || null,
