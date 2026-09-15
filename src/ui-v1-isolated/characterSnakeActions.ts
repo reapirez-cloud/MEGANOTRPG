@@ -1,7 +1,7 @@
 import type { MediaPresentation } from "../media/presentation"
 import type { SnakeAction, SnakeActionInput } from "../snake-engine"
 
-export type CharacterMediaSlot = "avatar" | "panel_avatar"
+export type CharacterMediaSlot = "avatar" | "panel_avatar" | "sheet_hero"
 
 type CharacterMediaState = {
   id: string
@@ -14,6 +14,10 @@ type CharacterMediaState = {
   panelAvatarSource: string | null
   panelAvatarAssetId: string | null
   panelAvatarPresentation: MediaPresentation | null
+  sheetHeroUrl: string | null
+  sheetHeroSource: string | null
+  sheetHeroAssetId: string | null
+  sheetHeroPresentation: MediaPresentation | null
 }
 
 type MutationResult = { ok: boolean; error?: string }
@@ -129,6 +133,38 @@ export function createCharacterSnakeActions({
               result(
                 await applyMedia("panel_avatar", input),
                 "Аватар панели обновлён.",
+              ),
+          },
+          {
+            id: "sheet-hero",
+            label: "Арт листа",
+            surface: {
+              kind: "media",
+              eyebrow: "Персонаж · графика",
+              title: "Арт листа",
+              items: mediaItem(
+                "sheet-hero",
+                character.sheetHeroUrl || character.panelAvatarUrl || character.avatarUrl,
+                character.sheetHeroAssetId || character.panelAvatarAssetId || character.avatarAssetId,
+                character.sheetHeroSource || character.panelAvatarSource || character.avatarSource,
+                character.name,
+              ),
+              compose: {
+                label: "Лист персонажа · 16:9",
+                shape: "rect",
+                aspectRatio: 16 / 9,
+                allowFilePick: true,
+                fileLabel: "Другое изображение",
+                submitLabel: "Установить на лист",
+                initialPresentation: character.sheetHeroAssetId
+                  ? character.sheetHeroPresentation
+                  : null,
+              },
+            },
+            execute: async ({ input }) =>
+              result(
+                await applyMedia("sheet_hero", input),
+                "Арт листа обновлён.",
               ),
           },
         ]
