@@ -11,6 +11,7 @@ import { createRoot } from "react-dom/client"
 import { AIProvider } from "../ai/AIProvider"
 import AuthGate from "../components/auth/AuthGate"
 import { useAuth } from "../context/AuthContext"
+import { CharacterProvider } from "../context/CharacterContext"
 import { supabase } from "../lib/supabase"
 import UiV1App from "./UiV1App"
 import { SnakeProvider } from "./SnakeProvider"
@@ -200,11 +201,13 @@ createRoot(root).render(
   <StrictMode>
     <AuthGate>
       <CampaignAccessGate>
-        <AIProvider>
-          <SnakeProvider>
-            <UiV1App />
-          </SnakeProvider>
-        </AIProvider>
+        <CharacterProvider>
+          <AIProvider>
+            <SnakeProvider>
+              <UiV1App />
+            </SnakeProvider>
+          </AIProvider>
+        </CharacterProvider>
       </CampaignAccessGate>
     </AuthGate>
   </StrictMode>,
