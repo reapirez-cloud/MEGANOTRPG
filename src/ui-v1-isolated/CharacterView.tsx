@@ -590,7 +590,7 @@ export default function CharacterView({
         execute: async ({ input }) => {
           const target = String(input?.target || "")
           const amount = Math.max(1, Math.min(item.quantity, Math.floor(number(input?.amount, 1))))
-          const response = await control.transferItem(item.id, target, amount)
+          const response = await control.transferItem(item, target, amount)
           return response.ok
             ? { type: "success", notice: "Предмет передан." }
             : { type: "error", message: response.error || "Не удалось передать предмет." }
