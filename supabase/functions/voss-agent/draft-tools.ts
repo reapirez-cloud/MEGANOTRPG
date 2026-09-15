@@ -43,7 +43,7 @@ export const VOSS_DRAFT_TOOLS = [
     function: {
       name: "propose_content_draft",
       description:
-        "Create a GM-only structured AI draft for future MEGANOT content such as locations, characters, items, classes/reference definitions and related presentation text. Use only when the GM explicitly asks to create/design/generate content. This NEVER changes canonical game state. Voss does not author executable mechanics; do not include mechanics or mechanics_compilation_id in payloads.",
+        "Create a GM-only structured AI draft for future MEGANOT content such as locations, characters, items, classes/reference definitions and related presentation text. Use only when the GM explicitly asks to create/design/generate content. This NEVER changes canonical game state. Voss does not author executable mechanics; do not include mechanics or mechanics_compilation_id in payloads. For item definitions, non-executable physical storage metadata may be placed in payload.data.inventory_profile according to the inventory authoring policy in the system prompt.",
       parameters: {
         type: "object",
         additionalProperties: false,

@@ -225,6 +225,67 @@ If a future summary is added, it must be a derived read model, never a second cu
 
 Canonical money definitions may still use a `currency` category/tag for filtering and rules, but that must not turn them into non-physical state.
 
+## 9A. Stacking is a physical packing rule, not an item category
+
+The default is **instance**. Most items do not stack.
+
+A stack is reserved for obvious fungible bulk quantities where individual units intentionally lose identity: currency, ammunition and small homogeneous raw materials.
+
+Semantic role and packing are separate axes. In particular:
+
+| Example | Semantic role | Packing | Footprint | Default guidance |
+|---|---|---|---|---|
+| Малое лечебное зелье | consumable | instance | compact 1×1 | no stack |
+| Свиток | consumable/reference | instance | compact 1×1 | no stack |
+| Монеты одного номинала | currency | bulk stack | 1×1 | bounded stack; container may provide larger capacity |
+| Стрелы | ammo | bulk stack | 1×1 | ordinary bundle ~20; quiver may carry 50 |
+| Болты / пули | ammo | bulk stack | 1×1 | bounded type-specific stack |
+| Обычная трава / листья / семена | ingredient | bulk stack | 1×1 | stack only while individual pieces are interchangeable |
+| Порошок / соль / пыль / порох | ingredient/material | bulk stack | 1×1 | bulk material |
+| Кусок руды / самородок | ingredient/material | instance | shape | **not stackable** merely because it is an ingredient |
+| Измельчённая руда / минеральная пыль | ingredient/material | bulk stack | 1×1 | same semantic role, different physical packing |
+| Слиток / крупный кристалл | ingredient/material | instance | shape | separate physical object |
+| Рог / шкура / большая кость / орган / редкий клык | ingredient/material/trophy | instance | shape or compact 1×1 if genuinely tiny | preserve individual object |
+| Редкий/магический вариант обычно массового ресурса | any | instance | appropriate | provenance/state overrides stacking |
+| Оружие / броня / инструмент / контейнер | equipment/tool/container | instance | shape | never generic stacks |
+
+The authoring question is not “is this an ingredient?”. It is:
+
+> Would two units reasonably be treated as one homogeneous counted pile without losing meaningful physical identity?
+
+If not, they are separate instances.
+
+Examples that must remain distinct:
+
+```text
+лечебная трава          -> ingredient + bulk_stack
+кусок железной руды     -> ingredient + instance
+железная пыль           -> ingredient + bulk_stack
+целый редкий кристалл   -> ingredient/valuable + instance
+малое лечебное зелье    -> consumable + instance + 1×1
+стрелы                   -> ammo + bulk_stack + 1×1
+```
+
+When uncertain, choose **instance**.
+
+## 9B. Compact 1×1 and shape scale
+
+Small discrete items may deliberately use a 1×1 abstraction without becoming stackable.
+
+Canonical examples:
+
+- small potion: 1×1, instance;
+- scroll: 1×1, instance;
+- coin stack: 1×1, bulk stack;
+- ammunition stack: 1×1, bulk stack;
+- homogeneous herb/material stack: 1×1, bulk stack.
+
+For shaped items, one logical shape cell uses roughly **5 cm of linear size as an authoring guide**. This is not literal volumetric simulation; it provides enough resolution for swords, axes, bows, shields, spears and custom GM objects to have distinct footprints.
+
+Large items are allowed to be too large for a bag. The UI should show the real dragged shape exceeding the bag boundary and reject the drop. The item may still be carried in either of the two permanent 1×1 hand slots or in an available generic external 1×1 carry slot.
+
+Do not model anatomical placement such as back/hip/shoulder. The GM's narration decides where an externally carried object physically hangs.
+
 ## 10. Item value is guidance, not transaction truth
 
 Reusable item definitions may have an optional base reference value.
