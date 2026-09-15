@@ -6,7 +6,7 @@
 >
 > Branch: active implementation belongs on `dev`.
 >
-> Current implementation checkpoint when this contract was written: Cheburashka Stages 1–4 are complete (integrity, lifecycle, stacks/instances, nested holders). Spatial grids, hands/generic carry cells, weight, world storage, scene surfaces and trade are future work unless later code/tests prove otherwise.
+> Current implementation checkpoint: Cheburashka Stages 1–5 are complete (integrity, lifecycle, stacks/instances, nested holders, physical item/container definitions and authoring). Spatial placement/runtime UI, hands/generic carry cells, weight, world storage, scene surfaces and trade remain later stages unless code/tests prove otherwise.
 
 This document is the canonical product intent for MEGANOTRPG inventory UX. Audits must compare the current implementation to this contract. Do not replace it with a generic RPG inventory pattern merely because that pattern is easier or more familiar.
 
@@ -532,6 +532,17 @@ In particular:
 
 The goal is physical, understandable interaction, not complexity as a feature.
 
+
+## Stage 5 ordinary-container authoring law
+
+Ordinary container geometry is prepared content rather than freehand GM arithmetic.
+
+- MEGANOT ships reusable standard definitions for the common 1×1 container, purse, pouch, ordinary bag, travel bag, backpack, large backpack/sack, quiver and small/large chest.
+- The GM may issue one of those definitions and rename the concrete instance to express narrative placement or purpose.
+- A concrete instance name may say where the bag is carried. That remains prose and never becomes an anatomical storage slot.
+- Arbitrary or magical internal geometry is authored through Voss as a campaign item definition or campaign revision.
+- Voss may revise an existing campaign item's physical profile, but it must preserve ordinary item mechanics unless the mechanics themselves are separately changed through the normal mechanics-authoring path.
+- System container definitions are immutable. A magical or altered version of a standard bag becomes a campaign variant rather than mutating the shared system definition.
 
 ## Container viewport and magic-item invariants
 
