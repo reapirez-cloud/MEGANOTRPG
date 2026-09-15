@@ -346,8 +346,12 @@ async function preflight(
 
     if (node.entity_type === "definition" && node.entity_subtype === "item") {
       const payload = object(node.payload)
-      const profile = readInventoryProfile(object(payload.data).inventory_profile)
+      const itemData = object(payload.data)
+      const profile = readInventoryProfile(itemData.inventory_profile)
       if (!profile) throw new Error("Предмет «" + node.name + "» должен иметь валидный data.inventory_profile перед применением.")
+      if (string(itemData.category) === "container" && !profile.container_profile) {
+        throw new Error("Контейнер «" + node.name + "» должен иметь inventory_profile.container_profile.")
+      }
 
       const existingDefinitionId = string(payload.existing_definition_id)
       if (existingDefinitionId) {
