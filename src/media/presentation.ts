@@ -37,7 +37,14 @@ export function parseMediaPresentation(value: unknown): MediaPresentation | null
   const y = values.y
   const width = values.width
   const height = values.height
-  if (![x, y, width, height].every(finite)) return null
+  if (
+    !finite(x) ||
+    !finite(y) ||
+    !finite(width) ||
+    !finite(height)
+  ) {
+    return null
+  }
   if (
     x < 0 ||
     y < 0 ||
