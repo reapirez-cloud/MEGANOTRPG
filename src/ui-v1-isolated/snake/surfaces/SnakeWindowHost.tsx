@@ -55,6 +55,7 @@ export function SnakeWindowHost({
           session={session}
           request={session.request}
           onClose={onClose}
+          onSubmit={onSubmit}
         />
       ) : session.request.kind === "flow" ? (
         <SnakeFlowWindow
