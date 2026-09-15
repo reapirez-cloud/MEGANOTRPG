@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { useAuth } from "../context/AuthContext.tsx"
-import { useCharacters } from "../context/CharacterContext.tsx"
 import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { shapoklyak } from "../entity-engine/runtime.ts"
 import { clearCharacterResourceState, registerCharacterResourceState } from "../lib/resourceRuntime.ts"
@@ -10,8 +9,9 @@ import { oracle } from "../oracle-engine/runtime.ts"
 import type { CharacterResourceStateRow, ResourceSyncInput } from "../types/characterResources.ts"
 
 export function useCharacterResourceStates(characterId: string | null) {
-  const { user } = useAuth()
-  const { campaignId, canManage } = useCharacters()
+  const { user, campaign } = useAuth()
+  const campaignId = campaign?.campaignId || ""
+  const canManage = campaign?.canManage === true
   const [rows, setRows] = useState<CharacterResourceStateRow[]>([])
   const [loading, setLoading] = useState(Boolean(characterId))
   const [error, setError] = useState("")
