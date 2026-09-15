@@ -207,7 +207,7 @@ export default function AgentShell() {
       const node = logRef.current
       if (node) node.scrollTop = node.scrollHeight
     })
-  }, [devRuns, jobs, messages, open, sending])
+  }, [jobs, messages, open, sending])
 
   if (!campaignId || loading) return null
 

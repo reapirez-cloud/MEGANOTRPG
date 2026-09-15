@@ -283,7 +283,7 @@ export default function ArtSection({ subsection }: { subsection?: string }) {
                       <CampaignImage value={asset.storage_path} alt="" loading="lazy" />
                     </span>
                     <span className="u1-art-card__copy">
-                      <strong>{asset.purpose.replaceAll("_", " ")}</strong>
+                      <strong>{asset.purpose.split("_").join(" ")}</strong>
                       <small>{asset.status} · {asset.width}×{asset.height} · {formatTime(asset.created_at)}</small>
                     </span>
                   </button>
