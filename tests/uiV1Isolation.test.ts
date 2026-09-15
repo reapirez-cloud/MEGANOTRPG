@@ -433,7 +433,7 @@ test("UI v1 documentation has one explicit current-state authority", () => {
 })
 
 test("What’s New is a real chronology screen rather than a placeholder", () => {
-  assert.match(app, /route\.section === "whats-new"\) return <WhatsNew \/>/)
+  assert.match(app, /route\.section === "whats-new"\) return <WhatsNew(?:\s+onBack=\{[^\n]+\})? \/>/)
   assert.match(whatsNew, /Хроника кампании/)
   assert.match(whatsNew, /Что нового/)
   assert.match(whatsNew, /groupEvents/)
