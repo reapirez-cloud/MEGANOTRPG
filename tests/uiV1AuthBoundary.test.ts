@@ -3,6 +3,7 @@ import fs from "node:fs"
 import test from "node:test"
 
 const gate = fs.readFileSync("src/components/auth/AuthGate.tsx", "utf8")
+const context = fs.readFileSync("src/context/AuthContext.tsx", "utf8")
 const entry = fs.readFileSync("src/ui-v1-isolated/main.tsx", "utf8")
 const html = fs.readFileSync("index.html", "utf8")
 const aliasHtml = fs.readFileSync("ui-v1.html", "utf8")
@@ -17,10 +18,41 @@ test("Telegram Mini App SDK loads before the UI entry", () => {
   }
 })
 
-test("UI 1.0 cannot mount outside the Telegram auth boundary", () => {
+test("UI 1.0 cannot mount outside the complete app access boundary", () => {
   assert.match(entry, /import AuthGate from "\.\.\/components\/auth\/AuthGate"/)
   assert.match(entry, /<AuthGate>[\s\S]*<AIProvider>[\s\S]*<UiV1App \/>/)
   assert.match(entry, /\.\.\/auth\.css/)
+
+  assert.match(gate, /\.from\("campaign_members"\)/)
+  assert.match(gate, /\.eq\("user_id", currentUser\.id\)/)
+  assert.match(gate, /phase === "invite"/)
+  assert.match(gate, /"join_campaign_by_invite"/)
+  assert.match(gate, /phase !== "ready"/)
+  assert.match(gate, /<AuthProvider[\s\S]*campaign=\{campaign\}/)
+
+  assert.match(context, /export type AppCampaignAccess/)
+  assert.match(context, /role: "gm" \| "player"/)
+  assert.match(context, /canManage: boolean/)
+})
+
+test("remembered campaign id is only a hint after live membership lookup", () => {
+  const queryIndex = gate.indexOf('.from("campaign_members")')
+  const rememberedIndex = gate.indexOf("const remembered = rememberedCampaignId()")
+  const selectedIndex = gate.indexOf("rows.find")
+
+  assert.ok(queryIndex >= 0)
+  assert.ok(rememberedIndex > queryIndex)
+  assert.ok(selectedIndex > rememberedIndex)
+  assert.match(gate, /rows\.find\(\(row\) => row\.campaign_id === remembered\)/)
+})
+
+test("new users stay outside the app until invite redemption creates membership", () => {
+  assert.match(gate, /if \(!selected\) \{[\s\S]*setPhase\("invite"\)[\s\S]*return/)
+  assert.match(
+    gate,
+    /supabase\.rpc\([\s\S]*"join_campaign_by_invite"[\s\S]*p_code: code/,
+  )
+  assert.match(gate, /await resolveCampaignAccess\(user, profile\)/)
 })
 
 test("production never reuses a stale Supabase browser session without Telegram initData", () => {
@@ -33,8 +65,12 @@ test("production never reuses a stale Supabase browser session without Telegram 
   assert.match(gate, /Telegram-аккаунт и сессия приложения не совпали/)
 })
 
-test("Playwright auth bypass is restricted to local Vite development", () => {
+test("development bypasses cannot weaken production", () => {
   assert.match(gate, /import\.meta\.env\.DEV/)
   assert.match(gate, /isLocalDevelopment\(\)/)
   assert.match(gate, /VITE_E2E_AUTH_BYPASS === "true"/)
+  assert.match(
+    gate,
+    /isLocalDevelopment\(\) && currentUser\.is_anonymous === true/,
+  )
 })

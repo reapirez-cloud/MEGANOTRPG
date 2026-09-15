@@ -4,6 +4,7 @@ import { useAIViewContextLayer } from "../../../ai/AIProvider"
 import type { SnakeActionInput } from "../../../snake-engine"
 import type { SnakeSurfaceSession } from "../runtime"
 import { SnakeFlowWindow } from "./SnakeFlowWindow"
+import { SnakeMediaSurface } from "./SnakeMediaSurface"
 import { SnakeSingleWindow } from "./SnakeSingleWindow"
 
 export function SnakeWindowHost({
@@ -43,11 +44,20 @@ export function SnakeWindowHost({
   return createPortal(
     <div
       className="u1-snake-window-layer"
+      data-media={session.request.kind === "media" ? "true" : undefined}
       onPointerDown={(event) => {
         if (event.target === event.currentTarget && !busy) onClose()
       }}
     >
-      {session.request.kind === "flow" ? (
+      {session.request.kind === "media" ? (
+        <SnakeMediaSurface
+          key={session.id}
+          session={session}
+          request={session.request}
+          onClose={onClose}
+          onSubmit={onSubmit}
+        />
+      ) : session.request.kind === "flow" ? (
         <SnakeFlowWindow
           session={session}
           request={session.request}

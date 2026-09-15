@@ -1,3 +1,5 @@
+import type { MediaPresentation, MediaPresentationShape } from "../media/presentation"
+
 export type SnakeEntityRef = {
   type: string
   id: string
@@ -105,6 +107,34 @@ export type SnakeDetailRequest = SnakeWindowRequestBase & {
   mediaUrl?: string
 }
 
+export type SnakeMediaItem = {
+  id: string
+  src: string
+  title?: string
+  caption?: string
+  alt?: string
+  facts?: Record<string, unknown>
+}
+
+export type SnakeMediaComposeTarget = {
+  label?: string
+  shape: MediaPresentationShape
+  aspectRatio: number
+  allowFilePick?: boolean
+  requireFile?: boolean
+  fileLabel?: string
+  submitLabel?: string
+  cancelLabel?: string
+  initialPresentation?: MediaPresentation | null
+}
+
+export type SnakeMediaRequest = SnakeWindowRequestBase & {
+  kind: "media"
+  items: SnakeMediaItem[]
+  initialIndex?: number
+  compose?: SnakeMediaComposeTarget
+}
+
 export type SnakeNoticeRequest = SnakeWindowRequestBase & {
   kind: "notice"
   body?: string
@@ -159,6 +189,7 @@ export type SnakeSurfaceRequest =
   | SnakeEditorRequest
   | SnakePickerRequest
   | SnakeDetailRequest
+  | SnakeMediaRequest
   | SnakeNoticeRequest
   | SnakeFlowRequest
 

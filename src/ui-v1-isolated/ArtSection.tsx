@@ -1,10 +1,10 @@
-import { useMemo, useRef, useState } from "react"
+import { useMemo, useRef } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
 import CampaignImage from "../components/common/CampaignImage"
 import type { SnakeAction } from "../snake-engine"
 import { WorkshopPanel } from "./GMWorkshopCommon"
-import { SnakeTrigger } from "./SnakeProvider"
+import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import {
   useUiV1ArtData,
   type ArtCollection,
@@ -135,10 +135,8 @@ function generationActions(
 
 export default function ArtSection({ subsection }: { subsection?: string }) {
   const data = useUiV1ArtData()
+  const snake = useSnake()
   const fileRef = useRef<HTMLInputElement | null>(null)
-  const [selectedArt, setSelectedArt] = useState<UiV1ArtItem | null>(null)
-  const [selectedPage, setSelectedPage] = useState(0)
-  const [selectedGeneration, setSelectedGeneration] = useState<UiV1GeneratedAsset | null>(null)
   const current = sections.find((section) => section.id === subsection)
   const allowedSections = sections.filter((section) => !section.ownerOnly || data.isOwner)
 
@@ -149,14 +147,74 @@ export default function ArtSection({ subsection }: { subsection?: string }) {
     [current?.collection, data.items],
   )
 
-  const selectedArtImages = useMemo(() => {
-    if (!selectedArt) return []
+  const openArt = (item: UiV1ArtItem) => {
     const comicPages = data.pages
-      .filter((page) => page.art_item_id === selectedArt.id)
+      .filter((page) => page.art_item_id === item.id)
       .sort((a, b) => a.page_number - b.page_number)
-      .map((page) => page.image_url)
-    return comicPages.length ? comicPages : [selectedArt.image_url]
-  }, [data.pages, selectedArt])
+
+    const mediaItems = comicPages.length
+      ? comicPages.map((page) => ({
+          id: page.id,
+          src: page.image_url,
+          title: item.title,
+          caption: item.caption,
+          alt: item.title,
+          facts: {
+            artItemId: item.id,
+            kind: item.kind,
+            collection: item.collection,
+            pageNumber: page.page_number,
+          },
+        }))
+      : [{
+          id: item.id,
+          src: item.image_url,
+          title: item.title,
+          caption: item.caption,
+          alt: item.title,
+          facts: {
+            artItemId: item.id,
+            kind: item.kind,
+            collection: item.collection,
+          },
+        }]
+
+    snake.openSurface(
+      {
+        kind: "media",
+        eyebrow: item.kind === "comic" ? "Комикс" : current?.title,
+        title: item.title || current?.title || "Арт",
+        items: mediaItems,
+      },
+      { entity: { type: "campaign-art", id: item.id } },
+    )
+  }
+
+  const openGeneration = (asset: UiV1GeneratedAsset) => {
+    const title = asset.purpose.split("_").join(" ")
+    snake.openSurface(
+      {
+        kind: "media",
+        eyebrow: "Генерация",
+        title,
+        items: [{
+          id: asset.id,
+          src: asset.storage_path,
+          title,
+          facts: {
+            purpose: asset.purpose,
+            profile: asset.profile,
+            status: asset.status,
+            width: asset.width,
+            height: asset.height,
+            variantIndex: asset.variant_index,
+            createdAt: asset.created_at,
+          },
+        }],
+      },
+      { entity: { type: "generated-media", id: asset.id } },
+    )
+  }
 
   useAIViewContextLayer(
     "art-library",
@@ -277,7 +335,7 @@ export default function ArtSection({ subsection }: { subsection?: string }) {
                     type="button"
                     className="u1-art-card"
                     data-attached={(asset.has_active_binding || asset.status === "attached") || undefined}
-                    onClick={() => setSelectedGeneration(asset)}
+                    onClick={() => openGeneration(asset)}
                   >
                     <span className="u1-art-card__media">
                       <CampaignImage value={asset.storage_path} alt="" loading="lazy" />
@@ -302,10 +360,7 @@ export default function ArtSection({ subsection }: { subsection?: string }) {
             const actions = artActions(item, canDelete, () => data.deleteArt(item))
             return (
               <SnakeTrigger key={item.id} entity={{ type: "campaign-art", id: item.id }} actions={actions}>
-                <button type="button" className="u1-art-card" onClick={() => {
-                  setSelectedPage(0)
-                  setSelectedArt(item)
-                }}>
+                <button type="button" className="u1-art-card" onClick={() => openArt(item)}>
                   <span className="u1-art-card__media">
                     <CampaignImage value={item.image_url} alt={item.title} loading="lazy" />
                   </span>
@@ -326,27 +381,6 @@ export default function ArtSection({ subsection }: { subsection?: string }) {
         <Empty>{canUpload ? "Здесь пока пусто. Добавь первый материал через +." : "Здесь пока пусто."}</Empty>
       )}
 
-      {selectedArt && (
-        <div className="u1-art-lightbox" role="dialog" aria-modal="true" aria-label={selectedArt.title}>
-          <button type="button" className="u1-art-lightbox__close" onClick={() => setSelectedArt(null)} aria-label="Закрыть">×</button>
-          <CampaignImage value={selectedArtImages[selectedPage] || selectedArt.image_url} alt={selectedArt.title} />
-          <span>{selectedArt.title}</span>
-          {selectedArtImages.length > 1 && (
-            <div className="u1-art-lightbox__pages">
-              <button type="button" disabled={selectedPage === 0} onClick={() => setSelectedPage((page) => Math.max(0, page - 1))}>←</button>
-              <small>{selectedPage + 1} / {selectedArtImages.length}</small>
-              <button type="button" disabled={selectedPage === selectedArtImages.length - 1} onClick={() => setSelectedPage((page) => Math.min(selectedArtImages.length - 1, page + 1))}>→</button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {selectedGeneration && (
-        <button type="button" className="u1-art-lightbox" onClick={() => setSelectedGeneration(null)} aria-label="Закрыть изображение">
-          <CampaignImage value={selectedGeneration.storage_path} alt="Сгенерированное изображение" />
-          <span>{selectedGeneration.purpose.split("_").join(" ")}</span>
-        </button>
-      )}
     </main>
   )
 }

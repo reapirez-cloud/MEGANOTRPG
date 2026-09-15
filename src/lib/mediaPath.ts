@@ -4,8 +4,10 @@ export function campaignMediaPath(value: string | null | undefined) {
   const cleaned = value?.trim()
   if (!cleaned) return null
 
+  if (cleaned.startsWith("/")) return null
+
   if (!cleaned.includes("://") && !cleaned.startsWith("data:")) {
-    return cleaned.replace(/^\/+/, "")
+    return cleaned
   }
 
   try {

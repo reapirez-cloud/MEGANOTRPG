@@ -132,12 +132,18 @@ export default function AgentShell() {
   const [draft, setDraft] = useState("")
   const [attachments, setAttachments] = useState<AIAttachment[]>([])
   const [uploading, setUploading] = useState(false)
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const [pendingDeleteThreadId, setPendingDeleteThreadId] =
     useState<string | null>(null)
   const [orbPosition, setOrbPosition] = useState(defaultOrbPosition)
+  const [orbDragging, setOrbDragging] = useState(false)
 
   const logRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const orbRef = useRef<HTMLButtonElement | null>(null)
+  const orbPositionRef = useRef(orbPosition)
+  const orbFrameRef = useRef<number | null>(null)
+  const pendingOrbPositionRef = useRef(orbPosition)
   const dragRef = useRef<{
     pointerId: number
     startX: number
@@ -174,11 +180,27 @@ export default function AgentShell() {
   }, [])
 
   useEffect(() => {
+    orbPositionRef.current = orbPosition
+    pendingOrbPositionRef.current = orbPosition
+  }, [orbPosition])
+
+  useEffect(() => {
     const onResize = () => {
-      setOrbPosition((current) => snapOrb(current))
+      const next = snapOrb(orbPositionRef.current)
+      orbPositionRef.current = next
+      pendingOrbPositionRef.current = next
+      setOrbPosition(next)
     }
     window.addEventListener("resize", onResize)
     return () => window.removeEventListener("resize", onResize)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (orbFrameRef.current !== null) {
+        window.cancelAnimationFrame(orbFrameRef.current)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -252,14 +274,47 @@ export default function AgentShell() {
     await removeAttachment(attachment)
   }
 
+  function paintOrb(position: { x: number; y: number }) {
+    pendingOrbPositionRef.current = position
+
+    if (orbFrameRef.current !== null) return
+    orbFrameRef.current = window.requestAnimationFrame(() => {
+      orbFrameRef.current = null
+      const next = pendingOrbPositionRef.current
+      orbPositionRef.current = next
+      const node = orbRef.current
+      if (node) {
+        node.style.transform = `translate3d(${next.x}px, ${next.y}px, 0)`
+      }
+    })
+  }
+
+  function flushOrbFrame() {
+    if (orbFrameRef.current !== null) {
+      window.cancelAnimationFrame(orbFrameRef.current)
+      orbFrameRef.current = null
+    }
+
+    const next = pendingOrbPositionRef.current
+    orbPositionRef.current = next
+    const node = orbRef.current
+    if (node) {
+      node.style.transform = `translate3d(${next.x}px, ${next.y}px, 0)`
+    }
+    return next
+  }
+
   function orbPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
     event.currentTarget.setPointerCapture(event.pointerId)
+    const origin = orbPositionRef.current
+    pendingOrbPositionRef.current = origin
+    setOrbDragging(true)
     dragRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      originX: orbPosition.x,
-      originY: orbPosition.y,
+      originX: origin.x,
+      originY: origin.y,
       moved: false,
     }
   }
@@ -272,7 +327,7 @@ export default function AgentShell() {
     const deltaY = event.clientY - drag.startY
     if (Math.hypot(deltaX, deltaY) > 4) drag.moved = true
 
-    setOrbPosition({
+    paintOrb({
       x: clamp(
         drag.originX + deltaX,
         ORB_MARGIN,
@@ -289,15 +344,22 @@ export default function AgentShell() {
   function orbPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
     const drag = dragRef.current
     if (!drag || drag.pointerId !== event.pointerId) return
+
+    const current = flushOrbFrame()
     dragRef.current = null
+    setOrbDragging(false)
 
     if (!drag.moved) {
-      setOpen((current) => !current)
+      setOrbPosition(current)
+      setOpen((value) => !value)
       return
     }
 
-    const next = snapOrb(orbPosition)
+    const next = snapOrb(current)
+    orbPositionRef.current = next
+    pendingOrbPositionRef.current = next
     setOrbPosition(next)
+
     try {
       window.localStorage.setItem(ORB_STORAGE_KEY, JSON.stringify(next))
     } catch {
@@ -305,15 +367,30 @@ export default function AgentShell() {
     }
   }
 
+  function orbPointerCancel(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    const current = flushOrbFrame()
+    dragRef.current = null
+    setOrbDragging(false)
+    orbPositionRef.current = current
+    setOrbPosition(current)
+  }
+
   return (
     <>
       <button
+        ref={orbRef}
         type="button"
         className="u1-agent-orb"
-        style={{ left: orbPosition.x, top: orbPosition.y }}
+        style={{
+          transform: `translate3d(${orbPosition.x}px, ${orbPosition.y}px, 0)`,
+        }}
         onPointerDown={orbPointerDown}
         onPointerMove={orbPointerMove}
         onPointerUp={orbPointerUp}
+        onPointerCancel={orbPointerCancel}
         onKeyDown={(event) => {
           if (event.key !== "Enter" && event.key !== " ") return
           event.preventDefault()
@@ -330,6 +407,7 @@ export default function AgentShell() {
         aria-controls="u1-agent-panel"
         data-open={open || undefined}
         data-busy={sending || undefined}
+        data-dragging={orbDragging || undefined}
       >
         <AgentMark />
         <span className="u1-agent-orb__state" aria-hidden="true" />
@@ -343,6 +421,31 @@ export default function AgentShell() {
           aria-label="Закрыть Восса"
           tabIndex={-1}
         />
+      )}
+
+      {previewImageUrl && (
+        <div
+          className="u1-agent-image-preview"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Просмотр изображения"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <button
+            type="button"
+            className="u1-agent-image-preview__close"
+            onClick={() => setPreviewImageUrl(null)}
+            aria-label="Закрыть изображение"
+          >
+            ×
+          </button>
+          <img
+            src={previewImageUrl}
+            alt="Сгенерированное изображение"
+            onClick={(event) => event.stopPropagation()}
+            draggable={false}
+          />
+        </div>
       )}
 
       <aside
@@ -660,13 +763,12 @@ export default function AgentShell() {
                               </button>
                             )}
                             {asset.url && (
-                              <a
-                                href={asset.url}
-                                target="_blank"
-                                rel="noreferrer"
+                              <button
+                                type="button"
+                                onClick={() => setPreviewImageUrl(asset.url)}
                               >
                                 Открыть
-                              </a>
+                              </button>
                             )}
                           </div>
 

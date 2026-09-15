@@ -202,6 +202,8 @@ export function useUiV1ArtData() {
           .insert({
             campaign_id: scope.campaignId,
             uploaded_by: userData.user?.id || null,
+            character_id: null,
+            location_id: null,
             title: fileTitle(files[0]),
             caption: "",
             image_url: uploaded[0],
@@ -239,6 +241,8 @@ export function useUiV1ArtData() {
             .insert({
               campaign_id: scope.campaignId,
               uploaded_by: userData.user?.id || null,
+              character_id: null,
+              location_id: null,
               title: fileTitle(file),
               caption: "",
               image_url: result.url,

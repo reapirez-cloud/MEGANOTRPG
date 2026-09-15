@@ -21,7 +21,7 @@ test("stage 4 makes Back descend one navigation level at a time", () => {
 })
 
 test("focused or non-sheet character surfaces hide the large Opus identity hero", () => {
-  assert.match(profile, /\{tab === "sheet" && !sheetFocused && \([\s\S]*?<section className="opus-hero">/)
+  assert.match(profile, /\{tab === "sheet" && !sheetFocused && \([\s\S]*?<section className="opus-hero opus-hero--sheet">/)
   assert.doesNotMatch(profile, /profile-v3__hero--compact/)
   assert.match(opusStyles, /\.opus-hero\s*\{/)
   assert.match(opusStyles, /\.opus-hero__portrait\s*\{/)

@@ -50,6 +50,11 @@ export function SnakeTrigger({
   }
 
   function pointerDown(event: ReactPointerEvent<HTMLSpanElement>) {
+    const nativeTarget = event.target as HTMLElement
+    if (nativeTarget.closest("img")) {
+      event.preventDefault()
+    }
+
     if (event.pointerType === "mouse") {
       lastMousePointerDownRef.current = performance.now()
       touchGestureRef.current = null
@@ -147,6 +152,7 @@ export function SnakeTrigger({
   return (
     <span
       className="u1-snake-trigger"
+      draggable={false}
       onPointerDown={pointerDown}
       onPointerMove={pointerMove}
       onPointerUp={pointerEnd}

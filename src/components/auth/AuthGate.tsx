@@ -3,11 +3,16 @@ import type { FormEvent, ReactNode } from "react"
 import type { User } from "@supabase/supabase-js"
 
 import { supabase } from "../../lib/supabase"
-import { AuthProvider, type AppProfile } from "../../context/AuthContext"
+import {
+  AuthProvider,
+  type AppCampaignAccess,
+  type AppProfile,
+} from "../../context/AuthContext"
 
 type Phase =
   | "loading"
   | "profile"
+  | "invite"
   | "ready"
   | "telegram-required"
   | "error"
@@ -26,6 +31,16 @@ type TelegramAuthResponse = {
   error?: string
 }
 
+type MembershipRow = {
+  campaign_id: string
+  role: "gm" | "player"
+  is_owner: boolean
+  active_character_id: string | null
+  created_at: string
+}
+
+const CAMPAIGN_STORAGE_KEY = "meganotrpg:v1:campaign-id"
+
 function isLocalDevelopment() {
   return (
     window.location.hostname === "localhost" ||
@@ -39,6 +54,35 @@ function allowE2ETestAuthBypass() {
     isLocalDevelopment() &&
     import.meta.env.VITE_E2E_AUTH_BYPASS === "true"
   )
+}
+
+function rememberedCampaignId() {
+  try {
+    return window.localStorage.getItem(CAMPAIGN_STORAGE_KEY) || ""
+  } catch {
+    return ""
+  }
+}
+
+function rememberCampaignId(campaignId: string) {
+  try {
+    window.localStorage.setItem(CAMPAIGN_STORAGE_KEY, campaignId)
+  } catch {
+    // Storage is only a navigation hint. Membership is always rechecked in Supabase.
+  }
+}
+
+function campaignAccessFrom(row: MembershipRow): AppCampaignAccess {
+  const isOwner = row.is_owner === true
+  const role = row.role === "gm" ? "gm" : "player"
+
+  return {
+    campaignId: row.campaign_id,
+    role,
+    isOwner,
+    canManage: isOwner || role === "gm",
+    activeCharacterId: row.active_character_id,
+  }
 }
 
 const E2E_USER = {
@@ -60,18 +104,67 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<Phase>("loading")
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<AppProfile | null>(null)
+  const [campaign, setCampaign] = useState<AppCampaignAccess | null>(null)
   const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(null)
   const [error, setError] = useState("")
   const [name, setName] = useState("")
+  const [inviteCode, setInviteCode] = useState("")
   const [saving, setSaving] = useState(false)
+  const [joining, setJoining] = useState(false)
 
   useEffect(() => {
     if (allowE2ETestAuthBypass()) return
     void bootstrap()
   }, [])
 
+  async function resolveCampaignAccess(
+    currentUser: User,
+    currentProfile: AppProfile,
+  ) {
+    setUser(currentUser)
+    setProfile(currentProfile)
+    setCampaign(null)
+    setError("")
+
+    // Keep anonymous localhost development usable without weakening production.
+    if (isLocalDevelopment() && currentUser.is_anonymous === true) {
+      setPhase("ready")
+      return
+    }
+
+    const { data: memberships, error: membershipError } = await supabase
+      .from("campaign_members")
+      .select("campaign_id, role, is_owner, active_character_id, created_at")
+      .eq("user_id", currentUser.id)
+      .order("created_at", { ascending: true })
+
+    if (membershipError) {
+      setError(membershipError.message)
+      setPhase("error")
+      return
+    }
+
+    const rows = (memberships || []) as MembershipRow[]
+    const remembered = rememberedCampaignId()
+    const selected =
+      rows.find((row) => row.campaign_id === remembered) ||
+      rows[0] ||
+      null
+
+    if (!selected) {
+      setPhase("invite")
+      return
+    }
+
+    rememberCampaignId(selected.campaign_id)
+    setCampaign(campaignAccessFrom(selected))
+    setPhase("ready")
+  }
+
   async function loadProfile(currentUser: User, suggestedName = "") {
     setUser(currentUser)
+    setProfile(null)
+    setCampaign(null)
 
     const { data: existingProfile, error: profileError } = await supabase
       .from("profiles")
@@ -93,8 +186,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       return
     }
 
-    setProfile(existingProfile as AppProfile)
-    setPhase("ready")
+    await resolveCampaignAccess(currentUser, existingProfile as AppProfile)
   }
 
   async function bootstrapTelegram(initData: string) {
@@ -157,6 +249,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       await supabase.auth.signOut({ scope: "local" })
       setUser(null)
       setProfile(null)
+      setCampaign(null)
       setError(
         "Telegram-аккаунт и сессия приложения не совпали. Закрой Mini App и открой его снова.",
       )
@@ -229,12 +322,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
     setUser(null)
     setProfile(null)
+    setCampaign(null)
     setPhase("telegram-required")
   }
 
   async function bootstrap() {
     setPhase("loading")
     setError("")
+    setCampaign(null)
 
     const webApp = window.Telegram?.WebApp
 
@@ -290,8 +385,43 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       return
     }
 
-    setProfile(data as AppProfile)
-    setPhase("ready")
+    setPhase("loading")
+    await resolveCampaignAccess(user, data as AppProfile)
+  }
+
+  async function joinCampaign(event: FormEvent) {
+    event.preventDefault()
+
+    if (!user || !profile || joining) return
+
+    const code = inviteCode.trim().toUpperCase()
+    if (!code) {
+      setError("Введи код приглашения.")
+      return
+    }
+
+    setJoining(true)
+    setError("")
+
+    const { data: joinedCampaignId, error: joinError } = await supabase.rpc(
+      "join_campaign_by_invite",
+      { p_code: code },
+    )
+
+    setJoining(false)
+
+    if (joinError) {
+      setError(joinError.message || "Код не подошёл.")
+      return
+    }
+
+    if (typeof joinedCampaignId === "string" && joinedCampaignId) {
+      rememberCampaignId(joinedCampaignId)
+    }
+
+    setInviteCode("")
+    setPhase("loading")
+    await resolveCampaignAccess(user, profile)
   }
 
   if (allowE2ETestAuthBypass()) {
@@ -309,7 +439,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           <span className="auth-spinner" />
           <div className="auth-muted">
             {window.Telegram?.WebApp?.initData
-              ? "Проверяем Telegram…"
+              ? "Проверяем доступ…"
               : "Подключаем игрока…"}
           </div>
         </div>
@@ -403,25 +533,59 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             className="auth-primary"
             disabled={saving || name.trim().length < 2}
           >
-            {saving ? "Сохраняем…" : "Войти в кампанию"}
+            {saving ? "Сохраняем…" : "Продолжить"}
           </button>
-
-          <p className="auth-footnote">
-            {telegramUser
-              ? "В следующий раз Telegram узнает тебя автоматически."
-              : "Локальный режим нужен только для разработки."}
-          </p>
         </form>
       </div>
     )
   }
 
-  if (!user || !profile) {
+  if (phase === "invite") {
+    return (
+      <div className="auth-screen">
+        <form className="auth-card" onSubmit={joinCampaign}>
+          <div className="auth-eyebrow">MEGANOTRPG</div>
+          <h1 className="auth-title">Войти в кампанию</h1>
+          <p className="auth-muted">
+            Аккаунт подтверждён, но доступа к кампании ещё нет. Введи код,
+            который выдал GM или владелец кампании.
+          </p>
+
+          <label className="auth-label" htmlFor="campaign-invite-code">
+            Код приглашения
+          </label>
+
+          <input
+            id="campaign-invite-code"
+            className="auth-input"
+            value={inviteCode}
+            onChange={(event) => setInviteCode(event.target.value)}
+            placeholder="Например: A1B2C3D4E5F6"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+
+          {error && <div className="auth-error">{error}</div>}
+
+          <button
+            type="submit"
+            className="auth-primary"
+            disabled={joining || inviteCode.trim().length === 0}
+          >
+            {joining ? "Проверяем код…" : "Войти в кампанию"}
+          </button>
+        </form>
+      </div>
+    )
+  }
+
+  if (phase !== "ready" || !user || !profile) {
     return null
   }
 
   return (
-    <AuthProvider user={user} profile={profile}>
+    <AuthProvider user={user} profile={profile} campaign={campaign}>
       {children}
     </AuthProvider>
   )

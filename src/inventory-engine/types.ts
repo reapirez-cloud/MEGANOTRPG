@@ -19,12 +19,14 @@ export type CheburashkaCommand =
       characterId: string
       itemId: string
       input: InventoryInput
+      expectedVersion?: number
     }
   | {
       kind: "inventory.remove"
       context: EngineCommandContext
       characterId: string
       itemId: string
+      expectedVersion?: number
     }
   | {
       kind: "inventory.set_equipped"
@@ -33,6 +35,7 @@ export type CheburashkaCommand =
       itemId: string
       equipped: boolean
       equipmentSlot: EquipmentSlot | null
+      expectedVersion?: number
     }
   | {
       kind: "inventory.consume"
@@ -40,6 +43,7 @@ export type CheburashkaCommand =
       characterId: string
       itemId: string
       amount: number
+      expectedVersion?: number
     }
   | {
       kind: "inventory.transfer"
@@ -48,7 +52,13 @@ export type CheburashkaCommand =
       toCharacterId: string
       itemId: string
       amount: number
+      expectedVersion?: number
     }
+
+export type InventoryItemChange = {
+  before: InventoryItem
+  after: InventoryItem
+}
 
 export type InventoryMutation = {
   kind: CheburashkaCommand["kind"]
@@ -57,6 +67,7 @@ export type InventoryMutation = {
   before: InventoryItem | null
   after: InventoryItem | null
   destinationItem?: InventoryItem | null
+  relatedChanges?: InventoryItemChange[]
 }
 
 export type InventoryMechanicalProjection = {
@@ -72,4 +83,3 @@ export interface CheburashkaStorage {
   getItem(itemId: string): Promise<InventoryItem | null>
   execute(command: CheburashkaCommand): Promise<InventoryMutation>
 }
-

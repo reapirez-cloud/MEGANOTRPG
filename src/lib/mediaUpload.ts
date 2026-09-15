@@ -8,10 +8,12 @@ const RESIZE_THRESHOLD_BYTES = 2.5 * 1024 * 1024
 const MAX_IMAGE_DIMENSION = 2560
 
 export type UploadImageResult =
-  | { ok: true; url: string }
+  | { ok: true; url: string; width: number; height: number; mimeType: string }
   | { ok: false; error: string }
 
-export type UploadFileResult = UploadImageResult
+export type UploadFileResult =
+  | { ok: true; url: string }
+  | { ok: false; error: string }
 
 function extensionFor(file: File) {
   const fromName = file.name
@@ -163,6 +165,19 @@ export async function uploadCampaignImage(
     `${Date.now()}-${Math.random().toString(16).slice(2)}`
   const objectPath = `${campaignId}/${userData.user.id}/${safeFolder}/${id}.${extensionFor(optimized)}`
 
+  let width = 1
+  let height = 1
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(optimized)
+      width = Math.max(1, bitmap.width)
+      height = Math.max(1, bitmap.height)
+      bitmap.close()
+    } catch {
+      // Metadata is advisory; upload remains valid when the browser cannot decode dimensions here.
+    }
+  }
+
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
     .upload(objectPath, optimized, {
@@ -175,7 +190,13 @@ export async function uploadCampaignImage(
     return { ok: false, error: uploadError.message }
   }
 
-  return { ok: true, url: objectPath }
+  return {
+    ok: true,
+    url: objectPath,
+    width,
+    height,
+    mimeType: optimized.type || file.type || "image/webp",
+  }
 }
 
 export async function uploadCampaignFile(

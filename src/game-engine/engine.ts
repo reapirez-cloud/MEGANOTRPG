@@ -59,6 +59,7 @@ export class GenaEngine {
         characterId: command.characterId,
         itemId: command.itemId,
         amount: command.amount ?? 1,
+        expectedVersion: command.expectedVersion,
       })
       delegated = { value: { engine: "cheburashka", mutation: result.value }, events: result.events, effects: result.effects }
     } else if (command.kind === "inventory.transfer") {
@@ -69,6 +70,7 @@ export class GenaEngine {
         toCharacterId: command.toCharacterId,
         itemId: command.itemId,
         amount: command.amount,
+        expectedVersion: command.expectedVersion,
       })
       delegated = { value: { engine: "cheburashka", mutation: result.value }, events: result.events, effects: result.effects }
     } else {
