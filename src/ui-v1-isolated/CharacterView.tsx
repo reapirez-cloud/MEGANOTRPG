@@ -551,7 +551,7 @@ export default function CharacterView({
         execute: async ({ input }) => {
           const response = await control.updateItem(item, {
             name: String(input?.name || item.name),
-            quantity: Math.max(0, Math.floor(number(input?.quantity, item.quantity))),
+            quantity: Math.max(1, Math.floor(number(input?.quantity, item.quantity))),
             weight: input?.weight === "" ? null : number(input?.weight, item.weight ?? 0),
             description: String(input?.description ?? item.description),
           })
@@ -607,7 +607,7 @@ export default function CharacterView({
           confirmLabel: "Удалить",
         },
         execute: async () => {
-          const response = await control.removeItem(item.id)
+          const response = await control.removeItem(item)
           return response.ok
             ? { type: "success", notice: "Предмет удалён." }
             : { type: "error", message: response.error || "Не удалось удалить предмет." }
