@@ -2,6 +2,7 @@ import { useState } from "react"
 import type { FormEvent } from "react"
 import ImageUploadField from "../common/ImageUploadField"
 import ItemMechanicPresets from "./ItemMechanicPresets"
+import InventoryPhysicalProfileEditor from "./InventoryPhysicalProfileEditor"
 import MechanicsBuilder from "./MechanicsBuilder"
 import { equipmentSlots, inventoryCategories } from "../../lib/dndInventory"
 import {
@@ -14,6 +15,12 @@ import {
   inventoryStackMode,
   isForcedInventoryInstance,
 } from "../../inventory-engine/stacking"
+import {
+  defaultInventoryProfile,
+  inventoryProfileStackMode,
+  type InventoryPhysicalProfile,
+} from "../../inventory-engine/profile.ts"
+import { inventoryProfilePreset } from "../../inventory-engine/profilePresets.ts"
 import { mechanicSummary } from "../../lib/characterMechanics"
 import { deleteCampaignMediaObject, deleteCampaignMediaObjects } from "../../lib/mediaUpload"
 import type { EquipmentSlot, InventoryCategory, InventoryInput, InventoryItem, InventoryStackMode, ItemUsageMode } from "../../types/characterSheet"
@@ -23,7 +30,9 @@ type Props = {
   item: InventoryItem | null
   campaignId: string
   onClose: () => void
-  onSave: (input: InventoryInput) => Promise<{ ok: boolean; error?: string }>
+  onSave: (input: InventoryInput, inventoryProfile?: InventoryPhysicalProfile | null) => Promise<{ ok: boolean; error?: string }>
+  inventoryProfile?: InventoryPhysicalProfile | null
+  enablePhysicalProfile?: boolean
   onDelete?: () => Promise<{ ok: boolean; error?: string }>
 }
 
@@ -98,7 +107,7 @@ function presetForItem(item: InventoryItem | null): ItemPreset {
   return "artifact"
 }
 
-export default function InventoryItemEditor({ item, campaignId, onClose, onSave, onDelete }: Props) {
+export default function InventoryItemEditor({ item, campaignId, onClose, onSave, onDelete, inventoryProfile, enablePhysicalProfile = false }: Props) {
   const initialImageUrl = item?.image_url || ""
   const initialRecharge = readItemRecharge(item?.item_state)
   const storedMechanics = item?.mechanics || []
@@ -118,6 +127,13 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
   const [stackMode, setStackMode] = useState<InventoryStackMode>(
     item ? inventoryStackMode(item) : "instance",
   )
+  const [physicalProfile, setPhysicalProfile] = useState<InventoryPhysicalProfile>(() =>
+    inventoryProfile || defaultInventoryProfile({
+      category: item?.category || "other",
+      stack_mode: item ? inventoryStackMode(item) : "instance",
+      weight: item?.weight ?? null,
+    }),
+  )
   const [chargesMax, setChargesMax] = useState(String(item?.charges_max ?? 1))
   const [chargesCurrent, setChargesCurrent] = useState(String(item?.charges_current ?? item?.charges_max ?? 1))
   const [rechargeTrigger, setRechargeTrigger] = useState<ItemRechargeTrigger | "none">(initialRecharge.trigger ?? "none")
@@ -135,7 +151,8 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
 
   const currentPreset = presets.find((candidate) => candidate.id === preset) || presets[0]
   const forcedInstance = isForcedInventoryInstance({ category, usage_mode: usageMode })
-  const effectiveStackMode: InventoryStackMode = forcedInstance ? "instance" : stackMode
+  const profileStackMode = enablePhysicalProfile ? inventoryProfileStackMode(physicalProfile) : stackMode
+  const effectiveStackMode: InventoryStackMode = forcedInstance ? "instance" : profileStackMode
 
   function normalizeActivation(list: StoredMechanics): StoredMechanics {
     return list.map((mechanic) =>
@@ -171,10 +188,25 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
   const reviewMechanics = finalMechanics().slice(0, 7).map(mechanicSummary)
   const equippedOnlyCount = [...mechanics, ...curseMechanics].filter((mechanic) => mechanic.activation === "equipped").length
 
+  function changeCategory(next: InventoryCategory) {
+    setCategory(next)
+    if (!enablePhysicalProfile) return
+    if (next === "container" && !physicalProfile.container_profile) {
+      const starter = inventoryProfilePreset("container-simple-1x1")
+      if (starter) setPhysicalProfile(starter)
+      setStackMode("instance")
+      return
+    }
+    if (next !== "container" && physicalProfile.container_profile) {
+      setPhysicalProfile(defaultInventoryProfile({ category: next, stack_mode: "instance", weight: item?.weight ?? null }))
+      setStackMode("instance")
+    }
+  }
+
   function choosePreset(next: ItemPreset) {
     const selected = presets.find((candidate) => candidate.id === next) || presets[0]
     setPreset(next)
-    setCategory(selected.category)
+    changeCategory(selected.category)
     setEquipmentSlot(selected.slot)
     setEquipped(false)
     if (!item) {
@@ -220,6 +252,13 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
           }
         : { trigger: null, restore: "full", amount: null },
     )
+    const normalizedPhysicalProfile = enablePhysicalProfile
+      ? defaultInventoryProfile({
+          category,
+          stack_mode: effectiveStackMode,
+          weight: item?.weight ?? null,
+        }, physicalProfile)
+      : null
     const result = await onSave({
       name: name.trim(),
       quantity: effectiveStackMode === "instance"
@@ -239,7 +278,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
       charges_max: usageMode === "charges" ? maxCharges : null,
       stack_mode: effectiveStackMode,
       item_state: itemState,
-    })
+    }, normalizedPhysicalProfile)
     setSaving(false)
     if (!result.ok) { setError(result.error || "Не удалось сохранить предмет."); return }
     if (initialImageUrl && initialImageUrl !== imageUrl) void deleteCampaignMediaObject(initialImageUrl)
@@ -292,10 +331,11 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
             <label className="field-label">Название</label>
             <input className="app-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} autoFocus placeholder={preset === "weapon" ? "Например: Длинный меч" : preset === "artifact" ? "Например: Сердце Пепла" : "Название предмета"} />
             <div className="v2-field-grid">
-              <label><span className="field-label">Категория</span><select className="app-select" value={category} onChange={(e) => setCategory(e.target.value as InventoryCategory)}>{inventoryCategories.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
+              <label><span className="field-label">Категория</span><select className="app-select" value={category} onChange={(e) => changeCategory(e.target.value as InventoryCategory)}>{inventoryCategories.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
               <label><span className="field-label">Количество</span><input className="app-input" type="number" min="1" disabled={effectiveStackMode === "instance"} value={effectiveStackMode === "instance" ? "1" : quantity} onChange={(e) => setQuantity(e.target.value)} /></label>
             </div>
-            <label><span className="field-label">Хранение</span><select className="app-select" value={effectiveStackMode} disabled={forcedInstance} onChange={(e) => setStackMode(e.target.value as InventoryStackMode)}><option value="instance">Отдельный экземпляр</option><option value="stack">Однородная стопка (валюта, боеприпасы, сыпучее)</option></select></label>
+            {!enablePhysicalProfile && <label><span className="field-label">Хранение</span><select className="app-select" value={effectiveStackMode} disabled={forcedInstance} onChange={(e) => setStackMode(e.target.value as InventoryStackMode)}><option value="instance">Отдельный экземпляр</option><option value="stack">Однородная стопка (валюта, боеприпасы, сыпучее)</option></select></label>}
+            {enablePhysicalProfile && <InventoryPhysicalProfileEditor value={physicalProfile} category={category} onChange={(next) => { setPhysicalProfile(next); setStackMode(inventoryProfileStackMode(next)) }} />}
             {forcedInstance && <div className="creation-activation-note">Этот тип предмета всегда отдельный экземпляр. Количество фиксировано на 1, чтобы состояние, экипировка или заряды не клонировались при разделении стопки.</div>}
             {category === "equipment" && <label><span className="field-label">Куда надевается</span><select className="app-select" value={equipmentSlot} onChange={(e) => setEquipmentSlot(e.target.value as EquipmentSlot)}>{equipmentSlots.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>}
             <div className="creation-wizard__intro"><span>↯</span><div><strong>Как предмет расходуется?</strong><small>Обычная вещь не тратится. Расходник уменьшает количество. Зарядный предмет тратит собственный счётчик.</small></div></div>
