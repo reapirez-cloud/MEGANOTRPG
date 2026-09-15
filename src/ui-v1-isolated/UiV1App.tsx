@@ -346,7 +346,7 @@ function Dock({
   )
 }
 
-function EntryMediafunction EntryMedia({ src }: { src: string | null }) {
+function EntryMedia({ src }: { src: string | null }) {
   if (!src) return <span className="u1-entry-media u1-entry-media--fallback" aria-hidden="true" />
 
   return <img className="u1-entry-media" src={src} alt="" loading="lazy" aria-hidden="true" />
@@ -674,7 +674,7 @@ function Screen({ route }: { route: Route }) {
   )
 }
 
-export default function UiV1App() {export default function UiV1App() {
+export default function UiV1App() {
   const [route, setRoute] = useState<Route>(() => parseRoute())
   useAIViewContextLayer("ui-route", aiRouteContext(route), 10)
 
@@ -685,7 +685,7 @@ export default function UiV1App() {export default function UiV1App() {
     go(space)
   }, [route])
 
-  useEffect(() => {  useEffect(() => {
+  useEffect(() => {
     if (!window.location.hash) {
       window.history.replaceState(null, "", "#/home")
     }
