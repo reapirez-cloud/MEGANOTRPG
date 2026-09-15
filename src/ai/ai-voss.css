@@ -1161,3 +1161,36 @@
     transition: none;
   }
 }
+
+
+.u1-agent-image-preview {
+  position: fixed;
+  z-index: 140;
+  inset: 0;
+  padding: max(18px, env(safe-area-inset-top, 0px)) 14px max(20px, env(safe-area-inset-bottom, 0px));
+  background: rgba(4, 5, 6, .97);
+  display: grid;
+  place-items: center;
+}
+
+.u1-agent-image-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+
+.u1-agent-image-preview__close {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top, 0px));
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(8,9,10,.72);
+  color: rgba(240,242,238,.88);
+  font-size: 20px;
+  line-height: 1;
+}
