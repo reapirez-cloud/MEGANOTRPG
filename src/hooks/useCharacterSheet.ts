@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { createEngineCommandContext } from "../engine-contracts/index.ts"
+import { characterResolutionBus } from "../engine-runtime/runtimeSignals.ts"
 import { shapoklyak } from "../entity-engine/runtime.ts"
 import { cheburashka } from "../inventory-engine/runtime.ts"
 import { oracle } from "../oracle-engine/runtime.ts"
@@ -137,6 +138,10 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
     queueMicrotask(() => { if (!cancelled) void load() })
     return () => { cancelled = true }
   }, [load])
+
+  useEffect(() => characterResolutionBus.subscribe(characterId, (request) => {
+    if (request.source === "cheburashka") void reloadInventory()
+  }), [characterId, reloadInventory])
 
   const updateSheet = useCallback(async (input: Partial<CharacterSheet>): Promise<Result> => {
     const patch = { ...input }

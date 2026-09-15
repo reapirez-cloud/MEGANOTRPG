@@ -125,11 +125,14 @@ test("stage 2 UI exposes item use in both character surfaces", () => {
   const legacy = fs.readFileSync("src/components/characters/CharacterInventory.tsx", "utf8")
   const current = fs.readFileSync("src/ui-v1-isolated/CharacterView.tsx", "utf8")
   const editor = fs.readFileSync("src/components/characters/InventoryItemEditor.tsx", "utf8")
+  const hook = fs.readFileSync("src/hooks/useCharacterSheet.ts", "utf8")
 
   assert.match(legacy, /onUse: \(itemId: string, amount\?: number\)/)
   assert.match(current, /id: "use-item"/)
   assert.match(editor, /value=\{rechargeTrigger\}/)
   assert.match(editor, /value=\{usageMode\}/)
+  assert.match(hook, /characterResolutionBus\.subscribe\(characterId/)
+  assert.match(hook, /request\.source === "cheburashka"/)
 })
 
 test("rest recovery bridge is committed as a migration contract", () => {
