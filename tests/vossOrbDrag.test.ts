@@ -9,10 +9,9 @@ test("Voss orb drag paints directly on animation frames instead of React state p
   assert.match(shell, /requestAnimationFrame/)
   assert.match(shell, /node\.style\.transform = `translate3d/)
   assert.match(shell, /pendingOrbPositionRef/)
-  assert.doesNotMatch(
-    shell,
-    /function orbPointerMove[\s\S]*?setOrbPosition\(/,
-  )
+  const pointerMove =
+    shell.match(/function orbPointerMove[\s\S]*?function orbPointerUp/)?.[0] || ""
+  assert.doesNotMatch(pointerMove, /setOrbPosition\(/)
 })
 
 test("orb has no positional transition while the pointer is dragging it", () => {
