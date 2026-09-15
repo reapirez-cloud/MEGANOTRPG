@@ -170,7 +170,7 @@ function ChronicleEntry({ event }: { event: ChronicleEvent }) {
   )
 }
 
-export function WhatsNew() {
+export function WhatsNew({ onBack }: { onBack: () => void }) {
   const {
     campaignTitle,
     events,
@@ -187,7 +187,17 @@ export function WhatsNew() {
   return (
     <main className="u1-chronicle">
       <header className="u1-chronicle__header">
-        <span>Хроника кампании</span>
+        <div className="u1-chronicle__nav">
+          <button
+            type="button"
+            className="u1-chronicle__back"
+            onClick={onBack}
+            aria-label="Назад"
+          >
+            ←
+          </button>
+          <span>Хроника кампании</span>
+        </div>
         <h1>Что нового</h1>
         <p>{campaignTitle || "Кампания"}</p>
       </header>
