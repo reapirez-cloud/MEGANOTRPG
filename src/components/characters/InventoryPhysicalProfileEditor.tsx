@@ -106,8 +106,10 @@ export default function InventoryPhysicalProfileEditor({ value, category, onChan
 
   function toggleCell(x: number, y: number) {
     const rows = value.shape_mask.map((row) => row.split(""))
-    rows[y][x] = rows[y][x] === "1" ? "0" : "1"
-    patch({ shape_mask: ensureCell(rows.map((row) => row.join(""))) })
+    const row = rows[y]
+    if (!row || row[x] === undefined) return
+    row[x] = row[x] === "1" ? "0" : "1"
+    patch({ shape_mask: ensureCell(rows.map((cells) => cells.join(""))) })
   }
 
   function rotate() {
@@ -235,7 +237,7 @@ export default function InventoryPhysicalProfileEditor({ value, category, onChan
         </div>
         <div
           className="inventory-shape-grid"
-          style={{ gridTemplateColumns: "repeat(" + Math.min(value.shape_width, 20) + ", minmax(18px, 1fr))" }}
+          style={{ gridTemplateColumns: "repeat(" + value.shape_width + ", 18px)" }}
           aria-label="Редактор формы предмета"
         >
           {value.shape_mask.flatMap((row, y) =>
