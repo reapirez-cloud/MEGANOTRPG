@@ -30,6 +30,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Tests / verification
 
 - Added `snakeMediaPlayer.test.ts` covering universal Snake ownership, fullscreen minimal presentation, gesture navigation/zoom, removal of the old Art lightbox and AI context for the active media page.
+- Media sessions are keyed by Snake surface id so opening another asset always starts with fresh page/zoom state; page-arrow controls are suppressed while zoomed to avoid accidental navigation during image panning.
 
 ### Known incomplete work
 

@@ -51,6 +51,7 @@ export function SnakeWindowHost({
     >
       {session.request.kind === "media" ? (
         <SnakeMediaSurface
+          key={session.id}
           session={session}
           request={session.request}
           onClose={onClose}

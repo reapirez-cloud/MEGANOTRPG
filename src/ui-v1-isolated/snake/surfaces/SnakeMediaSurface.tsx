@@ -316,7 +316,7 @@ export function SnakeMediaSurface({
         </button>
       </header>
 
-      {count > 1 && index > 0 && (
+      {count > 1 && scale <= 1.02 && index > 0 && (
         <button
           type="button"
           className="u1-snake-media__nav u1-snake-media__nav--prev"
@@ -327,7 +327,7 @@ export function SnakeMediaSurface({
         </button>
       )}
 
-      {count > 1 && index < count - 1 && (
+      {count > 1 && scale <= 1.02 && index < count - 1 && (
         <button
           type="button"
           className="u1-snake-media__nav u1-snake-media__nav--next"
