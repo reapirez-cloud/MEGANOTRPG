@@ -71,9 +71,9 @@ The named-engine ownership boundaries are intentional:
 
 ### Inventory product contract — mandatory
 
-Before auditing or changing inventory UX, item placement, equipment/carry slots, containers, weight, currency, loot surfaces, trade or scene/chat item interaction, read `docs/INVENTORY_PRODUCT_CONTRACT.md`.
+Before auditing or changing inventory UX, item placement, equipment/carry slots, containers, weight, currency, loot surfaces, trade or scene/chat item interaction, read **both** `docs/INVENTORY_PRODUCT_CONTRACT.md` and `docs/INVENTORY_IMPLEMENTATION_PLAN.md`.
 
-That file is the approved product direction. Audits must distinguish current implementation from target behavior and must not silently replace the intended physical inventory model with a generic flat grid, abstract wallet or unrelated trade design.
+The product contract defines what the finished system must feel like; the implementation plan defines the canonical 12-stage delivery order and current checkpoint. Audits must distinguish current implementation from target behavior and must not silently replace the intended physical inventory model with a generic flat grid, abstract wallet, anatomical carry simulator or unrelated trade design.
 
 ### Mandatory command-path split
 

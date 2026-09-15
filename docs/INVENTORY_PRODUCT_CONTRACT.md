@@ -43,25 +43,30 @@ Do not create a second inventory truth in React, chat, trade UI or a scene compo
 
 ## 3. One physical item, different presentation by holder mode
 
-The application decides whether an item is spatial "Tetris" or a simple 1×1 slot from the **holder mode**, not from separate copies of the item.
+The application decides whether an item is spatial Tetris or a simple 1×1 representation from its current holder/placement mode, not from separate copies of the item.
 
-Target holder modes:
+Target holder/placement modes:
 
 ```text
 grid
-socket
+carry
 equipment
 surface
 ```
 
-Trade is **not** a holder mode. A trade offer references/reserves existing items until commit; ownership changes only when the trade transaction succeeds.
+A character always has two permanent 1×1 hand cells. Additional external carry cells are generic 1×1 cells supplied by carried/equipped gear where appropriate.
+
+Do not model anatomical destinations such as back, hip or shoulder. If the GM says the spear is tied behind the character's back, that is narrative truth; the application only needs to know that the spear occupies an available external carry cell.
+
+Trade is **not** a holder mode. A trade offer references existing items until commit; ownership changes only when the trade transaction succeeds.
 
 The same dagger may therefore be:
 
-- a shaped object in a backpack grid;
-- a 1×1 icon in a belt/scabbard socket;
-- a 1×1 equipped/held object;
-- an object on a scene surface.
+- a shaped object in a bag grid;
+- a simple 1×1 object in a hand;
+- a simple 1×1 object in a generic external carry cell;
+- an equipped item;
+- an item on a scene Surface.
 
 It remains the same Cheburashka item instance.
 
@@ -109,68 +114,37 @@ Authoritative validation must reject:
 
 Collision and placement cannot be CSS-only truth.
 
-## 5. Shape alone is not physical compatibility
+## 5. Geometry is the default packing rule
 
-A mathematically fitting object is not automatically a sensible object for a container.
+For ordinary grid containers, **geometry is the primary rule**.
 
-A normal bag must not accept a spear merely because an algorithm found coordinates for it.
+If a spear, bow or large shield is too large for a bag, its shape should visibly extend outside the grid and the drop is invalid. Do not add a redundant global rule saying "spears cannot go in bags" when the spatial model already makes that impossible.
 
-Reusable definitions should support explicit physical/carry tags or equivalent structured compatibility facts, for example:
+Conversely, if a deliberately huge weapon bag is authored with a grid large enough to contain the item, the system may allow it.
 
-```text
-dagger
-small_weapon
-long_weapon
-polearm
-shield
-bulky
-potion
-tool
-pouch
-bow
-```
+Specialized containers may still have explicit content rules where they add real product value.
 
-Holder definitions accept/reject structured tags/capabilities. Do **not** infer these rules from display names such as "spear", "меч" or "dagger".
+Canonical example:
+- a quiver is a specialized ammunition container and may provide capacity for up to 50 arrows.
 
-Examples:
+Avoid broad item-name heuristics and avoid anatomical carry taxonomies. Compatibility metadata should exist only for meaningful special-purpose storage, not as a second simulation layered over the grid.
 
-- dagger: may fit a grid, dagger socket, belt socket or hand;
-- longsword: may fit a compatible long scabbard/back carry slot/hand, but not an ordinary small bag;
-- spear: may fit a long/shoulder/back carry point or hand, not a normal backpack;
-- shield: may fit a compatible back point or hand, not a small pouch.
+## 6. Hands, bags and generic external carry
 
-## 6. Socket/carry holders: belt, back, scabbards, straps
+The carried-inventory surface has three simple concepts:
 
-Some storage is not a grid at all.
+1. **Two hands** — always available 1×1 cells.
+2. **Real bags/containers** — backpack, pouch, purse, chest, etc.; tapping one opens its own grid.
+3. **Generic external carry cells** — optional 1×1 cells provided by gear/content definitions.
 
-Belts, scabbards, quivers, back mounts, straps and similar carry equipment expose **socket/carry slots**. These render as whole 1×1 targets but have compatibility rules.
+External carry cells have no anatomical meaning. The application does not care whether the GM narrates an attached item as hanging from a belt, shoulder, back, pack frame or somewhere anatomically ridiculous.
 
-Example:
+A bag may provide:
+- its own internal grid;
+- zero or more generic external 1×1 carry cells;
+- an optional specialized capacity such as a quiver's arrow capacity.
 
-```text
-Military belt
-[ dagger ] [ potion ] [ pouch ] [ empty ]
-```
-
-Equipment may itself create additional carry capacity.
-
-Examples:
-
-- a belt adds small belt sockets and/or hip weapon sockets;
-- a backpack occupies a back slot, exposes a grid inside, and may expose external straps;
-- a quiver occupies a carry point and accepts ammunition;
-- a scabbard is a real item that can itself hold a compatible sword.
-
-A target model may therefore be:
-
-```text
-Character
-└─ Military belt
-   └─ Scabbard
-      └─ Longsword
-```
-
-The UI should flatten this where useful. The player should not be forced through three nested screens merely because the canonical model is precise.
+The final inventory should show the two hand cells alongside carried bags and available external carry cells so an oversized item can be moved from the ground directly into a hand or external carry cell without forcing it into a bag.
 
 ## 7. Equipment is distinct from storage
 
@@ -191,19 +165,25 @@ Location can matter to later gameplay UX:
 
 Do not prebuild tactical action-economy simulation unless the application later explicitly owns that rule state.
 
-## 8. Containers remain physical and nestable
+## 8. Containers remain physical, nestable and individually openable
 
 Stage 4 established canonical nested holder relationships. Preserve that foundation.
 
-A container may contain items and other compatible containers. Holder cycles remain forbidden.
+A bag is a real item with its own contents. It does not add abstract slots to one global inventory.
+
+Target interaction:
+- the two hands remain visible beside carried bags;
+- tap a backpack -> open the backpack grid;
+- tap a coin purse -> replace the open view with the coin purse;
+- tap another carried bag -> open that one instead;
+- tap a nested pouch inside the current bag -> descend into it;
+- Back returns to the parent holder.
+
+Only the active container needs its grid expanded at one time.
+
+Holder cycles remain forbidden.
 
 The final spatial model extends the existing holder tree; it does not replace it with a second parallel inventory structure.
-
-Container UI should feel like opening real storage:
-
-- open backpack -> see its grid;
-- open pouch inside it -> see the pouch;
-- back returns to the parent holder.
 
 Animation is presentation. The canonical relationship remains Cheburashka state.
 
@@ -508,22 +488,32 @@ When auditing inventory, an agent must:
 8. keep GM authority intact and avoid tactical simulation the app does not own;
 9. avoid automatic convenience features that erase the intended tactile container management unless explicitly requested.
 
-## 23. Planned inventory direction from the Stage 4 checkpoint
+## 23. Canonical implementation roadmap
 
-This sequence is product direction, not a rigid migration-number promise:
+The detailed implementation order is now canonical in:
 
-1. ✅ Cheburashka integrity/runtime closure
-2. ✅ Item lifecycle: use/consume/charges/recharge
-3. ✅ Stacks and stateful instances
-4. ✅ Nested containers / holder model
-5. ⬜ Spatial inventory: shape masks, grid placement, rotation, collisions, physical compatibility, carry/socket points, equipment integration
-6. ⬜ Weight, carrying load and capacity
-7. ⬜ Scene/chat surfaces, access and atomic take
-8. ⬜ Trade block/session, interest marks, trade thread, double acceptance and atomic exchange
-9. ⬜ Chasovoy definition adoption for canonical shapes/tags/weight/value/holder capabilities and legacy cleanup
-10. ⬜ Final certification against real DB/RLS/RPC/concurrency/E2E behavior
+`docs/INVENTORY_IMPLEMENTATION_PLAN.md`
 
-Chat/scenes/character movement are a linked product debt and may be implemented on their own roadmap when the supporting chat system is built.
+Current status:
+
+```text
+1  ✅ integrity/runtime closure
+2  ✅ item lifecycle
+3  ✅ stack/instance foundation
+4  ✅ nested holders
+5  ⬜ physical item definition + authoring language
+6  ⬜ spatial runtime + mobile inventory UX
+7  ⬜ weight, load and specialized capacity
+8  ⬜ persistent world storage / chests / stashes
+9  ⬜ chats/scenes + shared Surfaces
+10 ⬜ dedicated Trade block
+11 ⬜ Chasovoy adoption + legacy migration
+12 ⬜ final security/concurrency/E2E certification
+```
+
+There are 12 stages total. Stages 1–4 are complete; 5–12 remain.
+
+Audits must read both this product contract and the implementation plan.
 
 ## 24. Anti-overengineering rule
 
