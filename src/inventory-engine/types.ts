@@ -64,6 +64,26 @@ export type CheburashkaCommand =
       amount: number
       expectedVersion?: number
     }
+  | {
+      kind: "inventory.store_world"
+      context: EngineCommandContext
+      characterId: string
+      itemId: string
+      worldStorageId: string
+      amount: number
+      placement: Extract<InventoryPlacementTarget, { kind: "grid" }>
+      expectedVersion?: number
+    }
+  | {
+      kind: "inventory.take_world"
+      context: EngineCommandContext
+      worldStorageId: string
+      itemId: string
+      characterId: string
+      amount: number
+      placement: InventoryPlacementTarget
+      expectedVersion?: number
+    }
 
 export type InventoryItemChange = {
   before: InventoryItem
@@ -74,6 +94,8 @@ export type InventoryMutation = {
   kind: CheburashkaCommand["kind"]
   itemId: string
   affectedCharacterIds: string[]
+  affectedWorldStorageIds?: string[]
+  affectedLocationIds?: string[]
   before: InventoryItem | null
   after: InventoryItem | null
   destinationItem?: InventoryItem | null
@@ -100,6 +122,7 @@ export type InventoryMechanicalProjection = {
 
 export interface CheburashkaStorage {
   listCharacterItems(characterId: string): Promise<InventoryItem[]>
+  listWorldStorageItems(worldStorageId: string): Promise<InventoryItem[]>
   getItem(itemId: string): Promise<InventoryItem | null>
   execute(command: CheburashkaCommand): Promise<InventoryMutation>
 }
