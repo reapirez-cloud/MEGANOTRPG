@@ -1,9 +1,11 @@
 import { createContext, useContext } from "react"
 
 import type { SnakeMenuRequest, SnakeSurfaceRequest } from "../../snake-engine"
-import type { SnakeSurfaceSource } from "./runtime"
+import type { SnakeSurfaceSource, SnakeViewContext } from "./runtime"
 
 export type SnakeContextValue = {
+  viewContext: SnakeViewContext | null
+  setViewContext: (context: SnakeViewContext | null) => void
   openMenu: (request: SnakeMenuRequest) => void
   closeMenu: () => void
   openSurface: (
