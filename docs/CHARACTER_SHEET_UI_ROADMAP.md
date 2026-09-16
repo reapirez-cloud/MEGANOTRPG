@@ -235,9 +235,20 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - class-specific spell-slot visuals now have an explicit UI contract: `--cv-spell-accent`, `--cv-spell-accent-soft` and stable `class:<classKey>:spell_slot` media slot;
 - the current theme derives spell accents from each class accent, while Stage 12 may replace only the visual PNG without touching navigation or slot logic.
 
-### Stage 10 — Entity navigation
-- feature/resource/spell/item/effect links resolve to the correct entity and view;
-- no ad-hoc per-component navigation spaghetti.
+### Stage 10 — Entity navigation [DONE]
+- one shared `characterSheetEntityNavigation` layer owns entity targets for feature, resource, spell, item and effect;
+- UI components no longer decide destination architecture themselves; they emit a typed entity target and CharacterView performs the route/state transition;
+- CE provenance is parsed instead of names: `item:<id>` / `inventory_item` opens Inventory with the exact focused item; feature sources resolve to Features; effect/status/condition sources resolve to the effect-focused Features view;
+- resolved action resource costs/effects create real links back to the exact resource `stateKey`;
+- resolved spell casting resource options create real links back to their exact resource `stateKey`;
+- resource context can navigate to resolved actions and spells that actually consume that resource;
+- feature/action and spell Snake menus expose a compact “Связано” branch backed by the same entity router;
+- entity navigation to Features scrolls/highlights the matching resolved feature/action/source key;
+- entity navigation to Spells scrolls/highlights the exact spell key, while Stage 9 level focus remains available as a secondary hint;
+- entity navigation to Overview scrolls/highlights the exact resource;
+- item navigation already preserves `focusedItemId` inside the standalone Inventory interface so Stage 14 can attach the real grid without redesigning routing;
+- normal right-rail navigation clears transient entity focus, preventing stale cross-links from hijacking later visits;
+- selected feature/spell/resource/effect/item identities are synchronized in CharacterView state for Stage 11 Snake context.
 
 ### Stage 11 — Snake UI context
 - keep current section/entity context synchronized with AI context;
