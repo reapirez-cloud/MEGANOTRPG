@@ -6,7 +6,7 @@
 >
 > Product contract: `docs/INVENTORY_PRODUCT_CONTRACT.md`
 >
-> Current checkpoint: **Stages 1–5 complete. Stage 6 is next: authoritative spatial placement + mobile inventory UX.**
+> Current checkpoint: **Stages 1–6 complete. Stage 7 is next: weight, load and specialized capacity.**
 >
 > This file defines implementation order and completion boundaries. It does not by itself prove that a stage is implemented. Audits must verify source, live Supabase state where relevant, and real runtime behavior before changing a stage to complete.
 
@@ -21,7 +21,7 @@ The final inventory target is a physical, tactile inventory system built on Cheb
 | 3 | ✅ COMPLETE | Stack/instance state foundation |
 | 4 | ✅ COMPLETE | Nested holders / container tree |
 | 5 | ✅ COMPLETE | Physical item definition + authoring language |
-| 6 | ⬜ TODO | Spatial runtime + mobile inventory UX |
+| 6 | ✅ COMPLETE | Spatial runtime + mobile inventory UX |
 | 7 | ⬜ TODO | Weight, load and specialized capacity |
 | 8 | ⬜ TODO | Persistent world storage, chests and stashes |
 | 9 | ⬜ TODO | Chats/scenes + shared Surfaces |
@@ -29,7 +29,7 @@ The final inventory target is a physical, tactile inventory system built on Cheb
 | 11 | ⬜ TODO | Chasovoy adoption + legacy inventory migration |
 | 12 | ⬜ TODO | Final security/concurrency/E2E certification |
 
-There are **12 stages total**. Five are complete; seven remain.
+There are **12 stages total**. Six are complete; six remain.
 
 ---
 
@@ -274,6 +274,28 @@ Voss never infers stackability merely from semantic category and never stores or
 
 This stage turns Stage 5 definitions into real placement.
 
+### Stage 6 completion ✅
+
+Implemented in `dev` and live Supabase:
+- Cheburashka owns canonical `placement_kind`, grid x/y, rotation and optimistic item version;
+- `move_inventory_item_v2` validates bounds, exact authored masks, overlap, holder legality, nesting, two hand slots and generic external carry capacity under a per-character transaction lock;
+- table constraints prevent invalid hand indexes and prevent one instance from being both equipped and physically carried;
+- old production holder-only moves remain temporarily readable as `legacy` placement instead of breaking live `main`;
+- cross-character transfer resets the transferred root instance to physical root while preserving spatial placement inside a transferred container subtree;
+- UI 1.0 uses a fixed 46px inventory cell and approximately six visible columns; larger logical grids scroll/pan rather than shrinking cells;
+- drag-and-drop previews the real shape mask, reports invalid drops and commits only through Cheburashka;
+- the carry strip always exposes two hands, carried containers and currently available generic external cells;
+- one container is open at a time, nested containers can be opened, Back returns to the parent, and drag targets include parent/root destinations;
+- equipment uses the same canonical item instance; equipping clears physical placement atomically, while occupied equipment slots are rejected until the old item receives a real destination;
+- Snake exposes inspect/open/rotate/move-to-bag/move-to-hand/move-to-external/equip/unequip actions backed by the same spatial commands as drag.
+
+Live migrations:
+- `20260916044954_cheburashka_stage6_spatial_inventory`;
+- `20260916045859_cheburashka_stage6_equipment_transfer_bridge`;
+- `20260916050604_cheburashka_stage6_placement_constraint_hardening`.
+
+The transitional `legacy` placement exists only so the unreleased production client can continue holder-only writes safely. Full historical Chasovoy adoption remains Stage 11, and final concurrency/security/E2E certification remains Stage 12.
+
 ### 6.1 Authoritative grid placement
 
 Cheburashka must own:
@@ -362,15 +384,16 @@ Snake should expose context actions such as:
 - equip/unequip;
 - later place on surface / trade.
 
-### Stage 6 complete when
+### Stage 6 completion gate — PASSED ✅
 
 - grid placement/collision/rotation are server-authoritative;
-- mobile drag works;
-- carry strip exists;
-- two hands always exist;
-- generic external cells work;
-- bags open sequentially and nested bags work;
-- equipment transitions use the same canonical item.
+- mobile pointer drag uses the same Cheburashka move command as Snake;
+- carry strip exists with two permanent hands;
+- generic external cells derive from canonical item profiles;
+- bags open sequentially, large grids pan/scroll at fixed cell size, and nested Back works;
+- grid and drag previews render authored shape masks rather than bounding-box truth;
+- equipment transitions keep one canonical item and reject implicit displacement;
+- rollback smoke and regression tests cover the spatial invariants.
 
 ---
 
