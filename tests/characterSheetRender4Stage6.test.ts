@@ -58,7 +58,7 @@ test("render-4 final core remains a single 50\/50 class-tinted glass surface", (
   assert.match(coreCss, /u1-character-sheet-core\[data-expanded\]/)
 })
 
-test("render-4 final resources and slots preserve authored spent-state and four-level viewport", () => {
+test("render-4 final resources and slots preserve authored spent-state and horizontal two-level paging", () => {
   assert.match(
     overviewCss,
     /u1-character-overview__resource-icon\[data-state="spent"\]::after[\s\S]*var\(--u1-spent-cross\)/,
@@ -69,7 +69,19 @@ test("render-4 final resources and slots preserve authored spent-state and four-
   )
   assert.match(
     overviewCss,
-    /max-height:\s*calc\(var\(--slot-row-height\) \* 4\)/,
+    /u1-character-overview__section--resources,[\s\S]*u1-character-overview__section--slots[\s\S]*width:\s*100%/,
+  )
+  assert.match(
+    overviewCss,
+    /height:\s*calc\(var\(--slot-row-height\) \* 2\)/,
+  )
+  assert.match(
+    overviewCss,
+    /grid-template-rows:\s*repeat\(2, var\(--slot-row-height\)\)/,
+  )
+  assert.match(
+    overviewCss,
+    /scroll-snap-type:\s*x mandatory/,
   )
   assert.match(
     overviewCss,

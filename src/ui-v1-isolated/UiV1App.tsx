@@ -711,7 +711,14 @@ export default function UiV1App() {
   return (
     <div className="u1-app">
       <div className="u1-backdrop" aria-hidden="true" />
-      <div className="u1-stage">
+      <div
+        className="u1-stage"
+        data-character-sheet={
+          route.type === "workspace" && route.page === "character"
+            ? true
+            : undefined
+        }
+      >
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={routeKey(route)}

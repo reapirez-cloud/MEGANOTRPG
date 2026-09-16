@@ -1095,3 +1095,44 @@
   backdrop-filter: blur(17px) saturate(.94);
   -webkit-backdrop-filter: blur(17px) saturate(.94);
 }
+
+
+/* Character overview correction · full-width panels + horizontal spell-slot pages */
+.u1-character-overview__section--resources,
+.u1-character-overview__section--slots {
+  width: 100%;
+  max-width: none;
+  align-self: stretch;
+}
+
+.u1-character-overview__slot-viewport {
+  width: 100%;
+  height: calc(var(--slot-row-height) * 2);
+  max-height: none;
+  display: grid;
+  grid-template-rows: repeat(2, var(--slot-row-height));
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 0;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.u1-character-overview__slot-viewport::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.u1-character-overview__slot {
+  width: 100%;
+  min-width: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}

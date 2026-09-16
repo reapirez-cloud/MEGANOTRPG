@@ -55,14 +55,26 @@ test("stage 5 spent state desaturates the same icon and overlays the authored re
   )
 })
 
-test("stage 5 spell slot viewport shows four fixed rows and hands edge scroll back to the sheet", () => {
+test("stage 5 spell slots page horizontally in two-row views while vertical swipes stay with the sheet", () => {
   assert.match(
     overviewCss,
-    /max-height:\s*calc\(var\(--slot-row-height\) \* 4\)/,
+    /height:\s*calc\(var\(--slot-row-height\) \* 2\)/,
   )
   assert.match(
     overviewCss,
-    /u1-character-overview__slot-viewport[\s\S]*scroll-snap-type:\s*y mandatory/,
+    /grid-template-rows:\s*repeat\(2, var\(--slot-row-height\)\)/,
+  )
+  assert.match(
+    overviewCss,
+    /grid-auto-columns:\s*100%/,
+  )
+  assert.match(
+    overviewCss,
+    /u1-character-overview__slot-viewport[\s\S]*scroll-snap-type:\s*x mandatory/,
+  )
+  assert.match(
+    overviewCss,
+    /u1-character-overview__slot-viewport[\s\S]*overscroll-behavior-x:\s*contain/,
   )
   assert.match(
     overviewCss,

@@ -204,10 +204,22 @@ test("character sheet and inventory reserve safe sticky topbars and vertical tou
   }
 })
 
-test("compact spell-slot scrolling may hand control back to the parent sheet", () => {
+test("spell-slot carousel owns horizontal swipes but leaves vertical scrolling to the parent sheet", () => {
+  assert.match(
+    overviewCss,
+    /u1-character-overview__slot-viewport[\s\S]*scroll-snap-type:\s*x mandatory/,
+  )
+  assert.match(
+    overviewCss,
+    /u1-character-overview__slot-viewport[\s\S]*overscroll-behavior-x:\s*contain/,
+  )
   assert.match(
     overviewCss,
     /u1-character-overview__slot-viewport[\s\S]*overscroll-behavior-y:\s*auto/,
+  )
+  assert.match(
+    overviewCss,
+    /u1-character-overview__slot-viewport[\s\S]*touch-action:\s*pan-x pan-y/,
   )
 })
 

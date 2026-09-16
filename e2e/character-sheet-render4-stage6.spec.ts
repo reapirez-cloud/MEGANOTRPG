@@ -72,6 +72,8 @@ test("Render 4 fits hero, rail, 50/50 core and overview at 360/390/412", async (
         slotViewportHeight: slotViewportRect.height,
         slotRowHeight: slotRowRect.height,
         slotScrollHeight: slotViewport.scrollHeight,
+        slotClientWidth: slotViewport.clientWidth,
+        slotScrollWidth: slotViewport.scrollWidth,
       }
     })
 
@@ -89,11 +91,12 @@ test("Render 4 fits hero, rail, 50/50 core and overview at 360/390/412", async (
     expect(metrics.identityRight).toBeLessThanOrEqual(metrics.railLeft + 0.5)
 
     expect(Math.abs(metrics.leftWidth - metrics.rightWidth)).toBeLessThanOrEqual(2)
-    expect(metrics.resourcesWidth).toBeLessThan(metrics.coreWidth)
-    expect(metrics.slotsWidth).toBeLessThan(metrics.coreWidth)
+    expect(Math.abs(metrics.resourcesWidth - metrics.coreWidth)).toBeLessThanOrEqual(2)
+    expect(Math.abs(metrics.slotsWidth - metrics.coreWidth)).toBeLessThanOrEqual(2)
 
-    expect(Math.abs(metrics.slotViewportHeight - metrics.slotRowHeight * 4)).toBeLessThanOrEqual(2)
-    expect(metrics.slotScrollHeight).toBeGreaterThan(metrics.slotViewportHeight)
+    expect(Math.abs(metrics.slotViewportHeight - metrics.slotRowHeight * 2)).toBeLessThanOrEqual(2)
+    expect(metrics.slotScrollHeight).toBeLessThanOrEqual(metrics.slotViewportHeight + 1)
+    expect(metrics.slotScrollWidth).toBeGreaterThan(metrics.slotClientWidth)
   }
 })
 
@@ -181,7 +184,7 @@ test("Render 4 spent icons keep the same authored PNG and add the red cross over
   expect(values.overlayOpacity).toBeGreaterThan(0.9)
 })
 
-test("Render 4 rail and nine spell levels remain independently scrollable", async ({ page }) => {
+test("Render 4 rail scrolls vertically while nine spell levels page horizontally", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto("/e2e-character-sheet-stage16.html")
 
@@ -191,22 +194,26 @@ test("Render 4 rail and nine spell levels remain independently scrollable", asyn
     if (!rail || !slots) throw new Error("Nested scrollers missing")
 
     rail.scrollTop = rail.scrollHeight
-    slots.scrollTop = slots.scrollHeight
+    slots.scrollLeft = slots.scrollWidth
 
     return {
       railTop: rail.scrollTop,
       railMax: rail.scrollHeight - rail.clientHeight,
-      slotTop: slots.scrollTop,
-      slotMax: slots.scrollHeight - slots.clientHeight,
+      slotLeft: slots.scrollLeft,
+      slotMax: slots.scrollWidth - slots.clientWidth,
       railBehavior: getComputedStyle(rail).overscrollBehaviorY,
-      slotBehavior: getComputedStyle(slots).overscrollBehaviorY,
+      slotBehaviorX: getComputedStyle(slots).overscrollBehaviorX,
+      slotBehaviorY: getComputedStyle(slots).overscrollBehaviorY,
+      slotSnap: getComputedStyle(slots).scrollSnapType,
     }
   })
 
   expect(values.railTop).toBeGreaterThan(0)
   expect(Math.abs(values.railTop - values.railMax)).toBeLessThanOrEqual(1)
-  expect(values.slotTop).toBeGreaterThan(0)
-  expect(Math.abs(values.slotTop - values.slotMax)).toBeLessThanOrEqual(1)
+  expect(values.slotLeft).toBeGreaterThan(0)
+  expect(Math.abs(values.slotLeft - values.slotMax)).toBeLessThanOrEqual(1)
   expect(values.railBehavior).toBe("contain")
-  expect(values.slotBehavior).toBe("auto")
+  expect(values.slotBehaviorX).toBe("contain")
+  expect(values.slotBehaviorY).toBe("auto")
+  expect(values.slotSnap).toContain("x")
 })

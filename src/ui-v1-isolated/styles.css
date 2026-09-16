@@ -782,3 +782,19 @@ button {
   margin: 0;
   padding: 11px 12px;
 }
+
+
+/* Character sheet dock continuity · let the class backdrop reach the physical bottom */
+.u1-stage[data-character-sheet] .u1-dock {
+  border-top-color: rgba(235, 237, 239, .07);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(7, 8, 9, .22) 0%,
+      rgba(7, 8, 9, .42) 42%,
+      rgba(7, 8, 9, .62) 100%
+    );
+  box-shadow: 0 -12px 34px rgba(0,0,0,.14);
+  backdrop-filter: blur(10px) saturate(.88);
+  -webkit-backdrop-filter: blur(10px) saturate(.88);
+}
