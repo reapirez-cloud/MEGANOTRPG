@@ -1,0 +1,278 @@
+.u1-character-sheet-core {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  border-top: 1px solid var(--cv-line);
+  border-bottom: 1px solid var(--cv-line);
+  background: rgba(255, 255, 255, .012);
+}
+
+.u1-character-sheet-core__quick {
+  min-width: 0;
+  padding-right: 10px;
+  border-right: 1px solid var(--cv-line);
+}
+
+.u1-character-sheet-core__quick-row {
+  min-height: 38px;
+  border-bottom: 1px solid var(--cv-line-soft);
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.u1-character-sheet-core__quick-row:last-child {
+  border-bottom: 0;
+}
+
+.u1-character-sheet-core__quick-icon {
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--cv-line);
+  display: block;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.045), transparent 72%),
+    rgba(255,255,255,.018);
+}
+
+.u1-character-sheet-core__quick-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cv-text-muted);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-character-sheet-core__quick-row > strong {
+  color: var(--cv-text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.u1-character-sheet-core__abilities {
+  min-width: 0;
+  padding-left: 10px;
+}
+
+.u1-character-sheet-core__ability {
+  min-width: 0;
+  border-bottom: 1px solid var(--cv-line-soft);
+  opacity: 1;
+  transition:
+    opacity 140ms ease,
+    max-height 180ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.u1-character-sheet-core__ability:last-child {
+  border-bottom: 0;
+}
+
+.u1-character-sheet-core__ability[data-hidden] {
+  max-height: 0;
+  border-bottom-color: transparent;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.u1-character-sheet-core__ability:not([data-hidden]) {
+  max-height: 360px;
+}
+
+.u1-character-sheet-core__ability-head {
+  width: 100%;
+  min-height: 38px;
+  padding: 0;
+  border: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px 34px;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.u1-character-sheet-core__ability-head > span {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.u1-character-sheet-core__ability-head b {
+  flex: 0 0 auto;
+  color: var(--cv-text-soft);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.u1-character-sheet-core__ability-head small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cv-text-faint);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-character-sheet-core__ability-head > strong,
+.u1-character-sheet-core__ability-head > em {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.u1-character-sheet-core__ability-head > strong {
+  color: var(--cv-text);
+  font-size: 15px;
+}
+
+.u1-character-sheet-core__ability-head > em {
+  color: var(--cv-accent);
+  font-size: 13px;
+  font-style: normal;
+}
+
+.u1-character-sheet-core__ability[data-expanded] .u1-character-sheet-core__ability-head {
+  min-height: 43px;
+  border-bottom: 1px solid var(--cv-line-soft);
+}
+
+.u1-character-sheet-core__ability[data-expanded] .u1-character-sheet-core__ability-head b {
+  color: var(--cv-text);
+}
+
+.u1-character-sheet-core__ability-detail {
+  padding: 5px 0 9px;
+  animation: u1-character-core-reveal 160ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.u1-character-sheet-core__save,
+.u1-character-sheet-core__skill {
+  min-height: 29px;
+  display: grid;
+  align-items: center;
+  gap: 6px;
+}
+
+.u1-character-sheet-core__save {
+  grid-template-columns: minmax(0, 1fr) auto;
+  border-bottom: 1px solid var(--cv-line-soft);
+}
+
+.u1-character-sheet-core__save > span,
+.u1-character-sheet-core__skill > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cv-text-muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-character-sheet-core__save > strong,
+.u1-character-sheet-core__skill > strong {
+  color: var(--cv-text-soft);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.u1-character-sheet-core__save > small {
+  grid-column: 1 / -1;
+  margin-top: -5px;
+  padding-bottom: 5px;
+  color: var(--cv-text-faint);
+  font-size: 7px;
+}
+
+.u1-character-sheet-core__skills {
+  display: grid;
+}
+
+.u1-character-sheet-core__skill {
+  grid-template-columns: minmax(0, 1fr) auto 28px;
+  border-bottom: 1px solid rgba(235, 238, 239, .055);
+}
+
+.u1-character-sheet-core__skill:last-child {
+  border-bottom: 0;
+}
+
+.u1-character-sheet-core__skill > small {
+  color: var(--cv-accent);
+  font-size: 6px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.u1-character-sheet-core__no-skills {
+  padding: 10px 0 4px;
+  color: var(--cv-text-faint);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+@keyframes u1-character-core-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 340px) {
+  .u1-character-sheet-core__quick {
+    padding-right: 7px;
+  }
+
+  .u1-character-sheet-core__abilities {
+    padding-left: 7px;
+  }
+
+  .u1-character-sheet-core__quick-row {
+    grid-template-columns: 17px minmax(0, 1fr) auto;
+    gap: 5px;
+  }
+
+  .u1-character-sheet-core__quick-icon {
+    width: 13px;
+    height: 13px;
+  }
+
+  .u1-character-sheet-core__quick-label {
+    font-size: 8px;
+  }
+
+  .u1-character-sheet-core__ability-head {
+    grid-template-columns: minmax(0, 1fr) 25px 30px;
+    gap: 3px;
+  }
+
+  .u1-character-sheet-core__ability-head small {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u1-character-sheet-core__ability,
+  .u1-character-sheet-core__ability-detail {
+    animation: none;
+    transition: none;
+  }
+}
