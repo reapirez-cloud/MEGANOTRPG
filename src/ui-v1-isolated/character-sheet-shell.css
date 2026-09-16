@@ -1246,3 +1246,108 @@
     right: 45%;
   }
 }
+
+
+/* Background-first visual system · portrait owns its darkness */
+.u1-character-sheet {
+  --hero-portrait-left: 10%;
+  --hero-portrait-width: 44%;
+}
+
+.u1-character-sheet__portrait-media {
+  top: 2%;
+  left: var(--hero-portrait-left);
+  width: var(--hero-portrait-width);
+  height: 94%;
+  right: auto;
+  bottom: auto;
+  border-radius: 0;
+  overflow: hidden;
+  -webkit-mask-image:
+    radial-gradient(
+      ellipse 92% 96% at 48% 46%,
+      #000 0%,
+      #000 51%,
+      rgba(0,0,0,.98) 59%,
+      rgba(0,0,0,.82) 68%,
+      rgba(0,0,0,.48) 78%,
+      rgba(0,0,0,.18) 88%,
+      transparent 100%
+    );
+  mask-image:
+    radial-gradient(
+      ellipse 92% 96% at 48% 46%,
+      #000 0%,
+      #000 51%,
+      rgba(0,0,0,.98) 59%,
+      rgba(0,0,0,.82) 68%,
+      rgba(0,0,0,.48) 78%,
+      rgba(0,0,0,.18) 88%,
+      transparent 100%
+    );
+}
+
+.u1-character-sheet__portrait-media::before,
+.u1-character-sheet__portrait-media::after {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+}
+
+.u1-character-sheet__portrait-media::before {
+  background:
+    radial-gradient(
+      ellipse 72% 82% at 49% 43%,
+      rgba(0,0,0,0) 0%,
+      rgba(0,0,0,.02) 38%,
+      rgba(0,0,0,.18) 57%,
+      rgba(0,0,0,.48) 72%,
+      rgba(0,0,0,.82) 88%,
+      rgba(0,0,0,.98) 100%
+    );
+}
+
+.u1-character-sheet__portrait-media::after {
+  box-shadow:
+    inset 34px 0 44px -18px rgba(0,0,0,.92),
+    inset -38px 0 48px -18px rgba(0,0,0,.97),
+    inset 0 -54px 54px -22px rgba(0,0,0,.98),
+    inset 0 26px 34px -22px rgba(0,0,0,.7);
+}
+
+.u1-character-sheet__portrait-shade,
+.u1-character-sheet__hero-haze,
+.u1-character-sheet__masthead::after {
+  background: none !important;
+}
+
+.u1-character-sheet__identity {
+  left: var(--hero-portrait-left);
+  width: var(--hero-portrait-width);
+  right: auto;
+}
+
+.u1-character-sheet__identity::after {
+  left: 0;
+  right: 0;
+}
+
+.u1-character-sheet__identity::before {
+  right: 0;
+}
+
+@media (max-width: 359px) {
+  .u1-character-sheet {
+    --hero-portrait-left: 9%;
+    --hero-portrait-width: 46%;
+  }
+
+  .u1-character-sheet__portrait-media,
+  .u1-character-sheet__identity {
+    left: var(--hero-portrait-left);
+    width: var(--hero-portrait-width);
+    right: auto;
+  }
+}

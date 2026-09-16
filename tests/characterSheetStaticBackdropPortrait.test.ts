@@ -27,21 +27,29 @@ test("character sheet owns a fixed viewport backdrop instead of a scrolling root
   )
 })
 
-test("hero portrait is deliberately narrower than the hero and fades into darkness", () => {
+test("portrait and identity underline share one geometry and only the portrait owns the darkness", () => {
   assert.match(
     shellCss,
-    /u1-character-sheet__portrait-media[\s\S]*left:\s*9%[\s\S]*width:\s*52%/,
+    /--hero-portrait-left:\s*10%/,
   )
   assert.match(
     shellCss,
-    /u1-character-sheet__portrait-media[\s\S]*border-radius:/,
+    /--hero-portrait-width:\s*44%/,
   )
   assert.match(
     shellCss,
-    /u1-character-sheet__portrait-media[\s\S]*mask-image:[\s\S]*radial-gradient/,
+    /u1-character-sheet__portrait-media[\s\S]*left:\s*var\(--hero-portrait-left\)[\s\S]*width:\s*var\(--hero-portrait-width\)/,
   )
   assert.match(
     shellCss,
-    /u1-character-sheet__portrait-shade[\s\S]*rgba\(0,0,0,\.98\)/,
+    /u1-character-sheet__identity[\s\S]*left:\s*var\(--hero-portrait-left\)[\s\S]*width:\s*var\(--hero-portrait-width\)/,
+  )
+  assert.match(
+    shellCss,
+    /u1-character-sheet__portrait-media::before[\s\S]*rgba\(0,0,0,\.98\)/,
+  )
+  assert.match(
+    shellCss,
+    /u1-character-sheet__portrait-shade,[\s\S]*u1-character-sheet__masthead::after[\s\S]*background:\s*none !important/,
   )
 })

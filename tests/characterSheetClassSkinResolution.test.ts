@@ -45,7 +45,7 @@ test("William Kidd cleric assignment resolves to cleric instead of fallback", ()
   )
 })
 
-test("class glass no longer defaults to graphite-dominant surfaces", () => {
+test("background art owns the palette while panels remain neutral dark glass", () => {
   const theme = fs.readFileSync(
     "src/ui-v1-isolated/character-sheet-theme.css",
     "utf8",
@@ -59,15 +59,16 @@ test("class glass no longer defaults to graphite-dominant surfaces", () => {
     "utf8",
   )
 
-  assert.match(theme, /--cv-glass:/)
-  assert.match(theme, /var\(--cv-ambient-art\)/)
-  assert.match(core, /var\(--cv-glass\)/)
+  assert.match(theme, /--cv-panel-glass:\s*rgba\(5, 6, 7, \.46\)/)
+  assert.match(theme, /--cv-art-highlight:/)
+  assert.match(theme, /var\(--cv-class-art-wash\)/)
   assert.match(
-    overview,
-    /color-mix\(in srgb, var\(--cv-resource-accent\) 19%, rgba\(12,13,14,\.22\)\)/,
+    theme,
+    /u1-character-sheet__fixed-backdrop[\s\S]*var\(--cv-ambient-art\)/,
   )
+  assert.match(core, /background:\s*var\(--cv-panel-glass\)/)
   assert.match(
     overview,
-    /color-mix\(in srgb, var\(--cv-spell-accent\) 19%, rgba\(12,13,14,\.22\)\)/,
+    /u1-character-overview__section,[\s\S]*background:\s*var\(--cv-panel-glass\)/,
   )
 })

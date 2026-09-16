@@ -1136,3 +1136,67 @@
   scroll-snap-align: start;
   scroll-snap-stop: always;
 }
+
+
+/* Background-first overview · transparent dark glass, art supplies the palette */
+.u1-character-overview__section,
+.u1-character-overview__section--resources,
+.u1-character-overview__section--slots {
+  border: 0;
+  background: var(--cv-panel-glass);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.035),
+    inset 0 0 0 1px var(--cv-panel-edge),
+    0 10px 24px rgba(0,0,0,.09);
+  backdrop-filter: blur(12px) saturate(.82) brightness(.88);
+  -webkit-backdrop-filter: blur(12px) saturate(.82) brightness(.88);
+}
+
+.u1-character-overview__section::before,
+.u1-character-overview__section--resources::before,
+.u1-character-overview__section--slots::before {
+  background: none;
+}
+
+.u1-character-overview__section-head,
+.u1-character-overview__section--resources .u1-character-overview__section-head,
+.u1-character-overview__section--slots .u1-character-overview__section-head {
+  border-bottom-color: var(--cv-panel-line);
+  background: transparent;
+}
+
+.u1-character-overview__section--resources .u1-character-overview__section-head::after,
+.u1-character-overview__section--slots .u1-character-overview__section-head::after {
+  background: var(--cv-art-highlight);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--cv-art-highlight) 24%, transparent);
+}
+
+.u1-character-overview__section-head::before,
+.u1-character-overview__section--resources .u1-character-overview__section-head::before,
+.u1-character-overview__section--slots .u1-character-overview__section-head::before,
+.u1-character-overview__resource-head > b,
+.u1-character-overview__slot-level strong,
+.u1-character-overview__slot > b {
+  color: var(--cv-art-highlight);
+}
+
+.u1-character-overview__resource,
+.u1-character-overview__slot,
+.u1-character-overview__action,
+.u1-character-overview__protection,
+.u1-character-overview__protection-more {
+  border-color: var(--cv-panel-line);
+  background-color: transparent;
+}
+
+.u1-character-overview__resource:active,
+.u1-character-overview__slot:active,
+.u1-character-overview__resource:focus-visible,
+.u1-character-overview__slot:focus-visible {
+  background: rgba(255,255,255,.025);
+}
+
+.u1-character-overview__action[data-available] > i {
+  color: var(--cv-art-highlight);
+  text-shadow: 0 0 7px color-mix(in srgb, var(--cv-art-highlight) 72%, transparent);
+}

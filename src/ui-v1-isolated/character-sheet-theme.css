@@ -324,3 +324,35 @@
     auto,
     var(--cv-class-panel-art-size);
 }
+
+
+/* Background-first palette · art stays visible, panels stay neutral */
+.u1-character-sheet {
+  --cv-panel-glass: rgba(5, 6, 7, .46);
+  --cv-panel-glass-soft: rgba(5, 6, 7, .36);
+  --cv-panel-glass-strong: rgba(5, 6, 7, .56);
+  --cv-panel-edge: rgba(244, 242, 235, .10);
+  --cv-panel-line: rgba(244, 242, 235, .075);
+  --cv-art-highlight:
+    color-mix(in srgb, var(--cv-class-art-wash) 62%, #f0ece3 38%);
+}
+
+.u1-character-sheet__fixed-backdrop {
+  background-color: #111314;
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(5,6,7,.02) 0%,
+      rgba(5,6,7,.05) 44%,
+      rgba(5,6,7,.11) 76%,
+      rgba(5,6,7,.18) 100%
+    ),
+    var(--cv-ambient-art);
+  background-position:
+    center,
+    var(--cv-class-panel-art-position);
+  background-repeat: no-repeat;
+  background-size:
+    auto,
+    cover;
+}
