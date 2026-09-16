@@ -19,6 +19,8 @@ Inventory is the single exception: it opens a dedicated full interface because i
 
 The visual language is gray graphite with subtle transparent surfaces. Pure/near black is not the page canvas. Black is reserved for shadows, image veils and modal backdrops.
 
+The graphite system is the shared structural fallback. A later class-skin stage gives every class its own palette and atmospheric sheet-background underlay without changing the shared layout or interaction model.
+
 ## Navigation contract
 
 Sections rendered inside the sheet:
@@ -102,7 +104,8 @@ Future admin-only long press can replace:
 - sheet portrait;
 - global sheet icons;
 - class spell-slot PNG;
-- unique resource PNG.
+- unique resource PNG;
+- class sheet background underlay.
 
 Players can read the bound assets but cannot edit them.
 Authorization must be enforced server-side, not only by hiding buttons.
@@ -276,11 +279,26 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - atlas coordinates are isolated in `characterSheetVisualAssets.ts`; components only ask for a semantic slot and never know sprite coordinates;
 - Supabase is intentionally not required for the built-in fallback pack. Existing media registration/binding RPCs were verified and remain the override path for Stage 13 admin media editing.
 
+### Stage 12A — Class sheet skins [PLANNED]
+- every class gets a distinct sheet color identity while keeping the exact same CharacterSheet layout and interaction model;
+- class identity is visual only: no class may fork the shell, navigation structure, 50/50 core, Overview layout, Features layout or Spells layout;
+- each class receives its own palette derived through shared CSS variables rather than class-specific component CSS;
+- each class receives one atmospheric background underlay art for the character sheet;
+- the underlay is decorative only: it never owns pointer events, never changes content geometry and always remains behind graphite UI surfaces;
+- readability wins over artwork: contrast/veil treatment must keep text, charge states, spell states and Snake affordances readable at all supported mobile widths;
+- missing or invalid class art/palette falls back to the neutral graphite skin without changing layout;
+- the semantic media slot is fixed as `class:<classKey>:sheet_background`;
+- the class-skin contract is centralized in `CHARACTER_SHEET_CLASS_SKIN_CONTRACT`; components must not invent per-class styling ad hoc;
+- Stage 13 admin media editing must be able to replace/reset the class sheet background through the existing media system without touching Character Engine;
+- spell-slot and resource icon accents from Stage 12 must harmonize with the class palette rather than becoming separate unrelated color systems;
+- subclass may influence content, but does not fork the sheet layout or create a second skin system at this stage.
+
 ### Stage 13 — Admin media editing
 - long press → Snake media actions;
 - upload/replace/reset;
 - PNG transparency preserved;
-- portrait supports crop/presentation.
+- portrait supports crop/presentation;
+- class sheet background override/reset uses `class:<classKey>:sheet_background`.
 
 ### Stage 14 — Standalone Inventory interface
 - inventory no longer renders as a normal sheet section;
