@@ -1,8 +1,7 @@
-import {
-  SKILL_KEYS,
-  type AbilityKey,
-  type ResolvedCharacterContract,
-  type SkillKey,
+import type {
+  AbilityKey,
+  ResolvedCharacterContract,
+  SkillKey,
 } from "../character-engine/index.ts"
 import { CHARACTER_SHEET_MEDIA_SLOTS } from "./characterSheetUiContract"
 
@@ -48,6 +47,11 @@ function proficiencyMark(rank: number) {
   if (rank >= 2) return "×2"
   if (rank >= 1) return "●"
   return ""
+}
+
+function speedText(feet: number) {
+  const meters = Math.round(feet * 3) / 10
+  return `${String(meters).replace(".", ",")} м`
 }
 
 export default function CharacterSheetCore({
@@ -104,7 +108,7 @@ export default function CharacterSheetCore({
     {
       id: "speed",
       label: "Скорость",
-      value: `${contract.combat.speed.value} м`,
+      value: speedText(contract.combat.speed.value),
       iconSlot: CHARACTER_SHEET_MEDIA_SLOTS.quickStats.speed,
     },
     ...(spellcasting
