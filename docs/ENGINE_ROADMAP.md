@@ -76,7 +76,7 @@ Never insert GENA between Oracle and an owner.
 | Engine / control plane | Canonical responsibility |
 |---|---|
 | **CE — Character Engine** | deterministic `base + state + contributions -> resolved`; no storage |
-| **GENA — Game State / Session Engine** | normal gameplay orchestration, declarations/history, command correlation and authoritative execution routing; no domain state ownership |
+| **GENA — Game State / Session Engine** | normal gameplay orchestration, declarations/history, command correlation, Trade session/revision/acceptance state and authoritative execution routing; no ownership of character/inventory/world/definition state |
 | **ORACLE — GM Control Engine** | imperative GM command facade; owns no state and performs no gameplay-legality adjudication |
 | **TOBIK — Roll Engine** | authoritative dice planning/resolution facade; no HP/resource/world mutations |
 | **SHAPOKLYAK — Character Owner** | PC/NPC identity, assignment, lifecycle, visibility and canonical character mechanics/runtime state such as sheet facts, HP, spells, preparation, features, suppressions, template assignments and persistent character resources |
@@ -156,9 +156,11 @@ GENA may coordinate:
 - preparation/choice commands through the character-state boundary;
 - dice requests through Tobik/the authoritative Roll Engine;
 - idempotent command receipts where retries could duplicate a mutation;
+- dedicated Trade session state: two sides, explicit visibility, interest, offer revision, A/B acceptance, discussion/history and cancellation;
+- atomic Trade settlement by passing an explicit offer projection into Cheburashka rather than editing inventory as GENA state;
 - fresh character invalidation after successful mechanical mutations.
 
-GENA does **not** own character resources, spell rows, inventory rows, character identity, world topology or definitions. It orchestrates commands into the owner/storage boundary.
+GENA does **not** own character resources, spell rows, inventory rows, character identity, world topology or definitions. It may own true session/orchestration facts such as a Trade session/revision/acceptance ledger, then orchestrates physical settlement into the Cheburashka owner boundary.
 
 GENA must not:
 
@@ -180,6 +182,18 @@ Player uses item
 → CE resolves
 → shared surfaces refresh
 ```
+
+A Trade flow is:
+
+```text
+Trade presentation
+→ GENA TradeSession API
+→ explicit visibility / offer revision / both-side acceptance
+→ Cheburashka validates and atomically exchanges the offered item projection
+→ Trade event/history records the result
+```
+
+The offer never becomes an inventory owner or reservation lock.
 
 ## Oracle — GM control engine
 
