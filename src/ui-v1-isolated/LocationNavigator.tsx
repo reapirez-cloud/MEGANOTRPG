@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from "motion/react"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
 import type { SnakeAction, SnakeEntityRef } from "../snake-engine"
+import type { InventoryItem } from "../types/characterSheet"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import {
   createLocationCreateAction,
@@ -13,7 +14,12 @@ import { openSourceAction } from "./GMWorkshopCommon"
 import {
   useUiV1Locations,
   type UiV1Location,
+  type UiV1WorldStorage,
 } from "./useUiV1Locations"
+import {
+  createWorldStorageCreateAction,
+  createWorldStorageSnakeActions,
+} from "./worldStorageSnakeActions"
 
 function navigate(path: string) {
   window.location.hash = `#/${path}`
@@ -140,13 +146,130 @@ function LocationNode({
   )
 }
 
+function WorldStorageCard({
+  storage,
+  world,
+}: {
+  storage: UiV1WorldStorage
+  world: ReturnType<typeof useUiV1Locations>
+}) {
+  const snake = useSnake()
+  const [open, setOpen] = useState(false)
+  const [items, setItems] = useState<InventoryItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const actions = createWorldStorageSnakeActions({
+    storage,
+    locations: world.locations,
+    operations: world,
+  })
+
+  async function toggleOpen() {
+    if (open) {
+      setOpen(false)
+      return
+    }
+    setLoading(true)
+    try {
+      setItems(await world.loadStorageItems(storage.id))
+      setOpen(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <article className="u1-world-storage" data-operable={storage.can_operate || undefined}>
+      <SnakeTrigger
+        entity={{ type: "world-storage", id: storage.id }}
+        actions={actions}
+      >
+        <button type="button" className="u1-world-storage__head" onClick={() => void toggleOpen()}>
+          <span>
+            <small>{storage.storage_kind === "chest" ? "Сундук" : storage.storage_kind === "crate" ? "Ящик" : storage.storage_kind === "cache" ? "Схрон" : "Хранилище"}</small>
+            <strong>{storage.name}</strong>
+          </span>
+          <span>
+            <small>{storage.item_count} предметов</small>
+            <b>{loading ? "…" : open ? "−" : "+"}</b>
+          </span>
+        </button>
+      </SnakeTrigger>
+
+      {open && (
+        <div className="u1-world-storage__contents">
+          {items.filter((item) => item.id !== storage.root_item_id).map((item) => {
+            const itemActions: SnakeAction[] = [{
+              id: "inspect-world-item",
+              label: "Осмотреть",
+              surface: {
+                kind: "detail",
+                eyebrow: storage.name,
+                title: item.name,
+                body: [
+                  item.description,
+                  item.quantity > 1 ? "Количество: " + item.quantity : "",
+                ].filter(Boolean).join("\n\n"),
+              },
+            }]
+            if (storage.can_operate && world.activeCharacterId) {
+              itemActions.push({
+                id: "take-world-item",
+                label: "Забрать",
+                execute: async () => {
+                  const result = await world.takeItem(storage, item)
+                  if (result.ok) {
+                    setItems(await world.loadStorageItems(storage.id))
+                    return { type: "success", notice: "Предмет забран." }
+                  }
+                  return { type: "error", message: result.error || "Не удалось забрать предмет." }
+                },
+              })
+            }
+            return (
+              <SnakeTrigger
+                key={item.id}
+                entity={{ type: "world-storage-item", id: item.id }}
+                actions={itemActions}
+              >
+                <button
+                  type="button"
+                  className="u1-world-storage__item"
+                  onClick={() => openSourceAction(
+                    snake,
+                    { type: "world-storage-item", id: item.id },
+                    itemActions[0],
+                  )}
+                >
+                  <span>
+                    <strong>{item.name}</strong>
+                    {item.quantity > 1 && <small>×{item.quantity}</small>}
+                  </span>
+                  <b>›</b>
+                </button>
+              </SnakeTrigger>
+            )
+          })}
+          {!items.some((item) => item.id !== storage.root_item_id) && (
+            <div className="u1-world-storage__empty">Пусто.</div>
+          )}
+        </div>
+      )}
+    </article>
+  )
+}
+
 function LocationDetailConnection({
   location,
   sections,
+  world,
 }: {
   location: UiV1Location
   sections: Array<{ id: string; title: string; body: string }>
+  world: ReturnType<typeof useUiV1Locations>
 }) {
+  const snake = useSnake()
+  const storages = world.storages.filter((storage) => storage.location_id === location.id)
+  const canCreateStorage = world.canManage || Boolean(world.activeCharacterId)
   const hasText = Boolean(
     location.summary.trim() ||
     location.description.trim() ||
@@ -168,29 +291,38 @@ function LocationDetailConnection({
           ←
         </button>
         <h1>{location.name}</h1>
-        <span className="u1-section-head__action" />
+        <span className="u1-section-head__action">
+          {canCreateStorage && (
+            <button
+              type="button"
+              className="u1-section-add"
+              aria-label="Создать хранилище"
+              onClick={() => {
+                const action = createWorldStorageCreateAction({ location, operations: world })
+                openSourceAction(
+                  snake,
+                  { type: "location-storage-root", id: location.id },
+                  action,
+                )
+              }}
+            >
+              +
+            </button>
+          )}
+        </span>
       </header>
 
       <article className="u1-entity-detail">
         {location.display_image_url && (
           <div className="u1-entity-detail__hero">
-            <img
-              src={location.display_image_url}
-              alt=""
-              draggable={false}
-            />
+            <img src={location.display_image_url} alt="" draggable={false} />
             <span aria-hidden="true" />
           </div>
         )}
 
         <div className="u1-entity-detail__copy">
-          {location.summary.trim() && (
-            <p className="u1-entity-detail__lead">{location.summary}</p>
-          )}
-
-          {location.description.trim() && (
-            <p className="u1-entity-detail__body">{location.description}</p>
-          )}
+          {location.summary.trim() && <p className="u1-entity-detail__lead">{location.summary}</p>}
+          {location.description.trim() && <p className="u1-entity-detail__body">{location.description}</p>}
 
           {sections.map((section) => (
             <section className="u1-entity-detail__section" key={section.id}>
@@ -199,9 +331,21 @@ function LocationDetailConnection({
             </section>
           ))}
 
-          {!hasText && (
+          {!hasText && !storages.length && (
             <p className="u1-entity-detail__empty">Описание пока не добавлено.</p>
           )}
+
+          <section className="u1-entity-detail__section u1-world-storage-section">
+            <h2>Хранилища</h2>
+            <div className="u1-world-storage-list">
+              {storages.map((storage) => (
+                <WorldStorageCard key={storage.id} storage={storage} world={world} />
+              ))}
+              {!storages.length && (
+                <p className="u1-world-storage__empty">В этой локации пока нет постоянных хранилищ.</p>
+              )}
+            </div>
+          </section>
         </div>
       </article>
     </main>
@@ -337,6 +481,15 @@ export function LocationNavigator({
               targetLocationId: transition.target_location_id,
               targetName: locationById.get(transition.target_location_id)?.name || null,
             })),
+            storages: selected
+              ? world.storages.filter((storage) => storage.location_id === selected.id).map((storage) => ({
+                  id: storage.id,
+                  name: storage.name,
+                  kind: storage.storage_kind,
+                  itemCount: storage.item_count,
+                  canOperate: storage.can_operate,
+                }))
+              : [],
           },
         },
     selected ? 55 : 40,
@@ -374,6 +527,7 @@ export function LocationNavigator({
       <LocationDetailConnection
         location={selected}
         sections={selectedSections}
+        world={world}
       />
     )
   }
