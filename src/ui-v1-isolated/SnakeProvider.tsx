@@ -22,12 +22,14 @@ import { SnakeWindowHost } from "./snake/surfaces/SnakeWindowHost"
 import type {
   SnakeSurfaceSession,
   SnakeSurfaceSource,
+  SnakeViewContext,
 } from "./snake/runtime"
 
 export { useSnake } from "./snake/SnakeContext"
 export { SnakeTrigger } from "./snake/interaction/SnakeTrigger"
 
 export function SnakeProvider({ children }: { children: ReactNode }) {
+  const [viewContext, setViewContext] = useState<SnakeViewContext | null>(null)
   const [surface, setSurface] = useState<SnakeSurfaceSession | null>(null)
   const [busy, setBusy] = useState(false)
   const surfaceIdRef = useRef(0)
@@ -129,20 +131,68 @@ export function SnakeProvider({ children }: { children: ReactNode }) {
             label: menu.frame?.title,
           },
           facts: {
-            actions: menu.frame?.actions.map((action) => ({
-              id: action.id,
-              label: action.label,
-              enabled: action.enabled !== false,
-            })) || [],
-            depth: menu.menu.frames.length,
+            ...(viewContext?.facts || {}),
+            snakeView: {
+              screen: viewContext?.screen || null,
+              title: viewContext?.title || null,
+              entity: viewContext?.entity || null,
+            },
+            snakeMenu: {
+              actions: menu.frame?.actions.map((action) => ({
+                id: action.id,
+                label: action.label,
+                enabled: action.enabled !== false,
+              })) || [],
+              depth: menu.menu.frames.length,
+              path: menu.frame?.path || [],
+            },
           },
         }
       : null,
     85,
   )
 
+  useAIViewContextLayer(
+    "snake-surface",
+    surface
+      ? {
+          screen: "snake-surface",
+          route: viewContext?.route,
+          title: surface.request.title,
+          text: [
+            viewContext?.text,
+            "Открыто окно Snake для текущей сущности.",
+          ].filter(Boolean).join("\n\n"),
+          entity: surface.entity
+            ? {
+                type: surface.entity.type,
+                id: surface.entity.id,
+              }
+            : viewContext?.entity || null,
+          facts: {
+            ...(viewContext?.facts || {}),
+            snakeView: {
+              screen: viewContext?.screen || null,
+              title: viewContext?.title || null,
+              entity: viewContext?.entity || null,
+            },
+            snakeSurface: {
+              kind: surface.request.kind,
+              actionId: surface.action?.id || null,
+              actionLabel: surface.action?.label || null,
+              path: surface.path || [],
+              error: surface.error || null,
+            },
+          },
+        }
+      : null,
+    90,
+  )
+
   const value = useMemo<SnakeContextValue>(
     () => ({
+      viewContext,
+      setViewContext,
       openMenu: menu.openMenu,
       closeMenu: menu.closeMenu,
       openSurface,
@@ -150,7 +200,7 @@ export function SnakeProvider({ children }: { children: ReactNode }) {
         if (!busy) setSurface(null)
       },
     }),
-    [busy, menu.closeMenu, menu.openMenu],
+    [busy, menu.closeMenu, menu.openMenu, viewContext],
   )
 
   useEffect(() => {
