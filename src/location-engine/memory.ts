@@ -46,8 +46,19 @@ export class MemoryLarisaStorage implements LarisaStorage {
         throw new EngineCommandError("world.scene_not_found", "Target active scene was not found")
       }
 
+      const previousRoomIds = new Set(
+        this.snapshot.sceneParticipants
+          .filter((participant) => participant.character_id === command.characterId)
+          .map((participant) => participant.room_id),
+      )
       this.snapshot.sceneParticipants = this.snapshot.sceneParticipants
         .filter((participant) => participant.character_id !== command.characterId)
+      for (const surface of this.snapshot.sceneSurfaces) {
+        if (previousRoomIds.has(surface.room_id) && surface.room_id !== target?.room_id) {
+          surface.selected_character_ids = surface.selected_character_ids
+            .filter((id) => id !== command.characterId)
+        }
+      }
       if (target) {
         this.snapshot.sceneParticipants.push({
           room_id: target.room_id,
@@ -260,6 +271,28 @@ export class MemoryLarisaStorage implements LarisaStorage {
 
     if (command.kind === "world.set_scene_participants") {
       const selected = new Set(command.characterIds)
+      const removedFromTarget = this.snapshot.sceneParticipants
+        .filter((item) => item.room_id === command.roomId && !selected.has(item.character_id))
+        .map((item) => item.character_id)
+      const movedFromOther = this.snapshot.sceneParticipants
+        .filter((item) => item.room_id !== command.roomId && selected.has(item.character_id))
+        .map((item) => ({ characterId: item.character_id, roomId: item.room_id }))
+
+      for (const surface of this.snapshot.sceneSurfaces) {
+        if (surface.room_id === command.roomId) {
+          surface.selected_character_ids = surface.selected_character_ids
+            .filter((id) => !removedFromTarget.includes(id))
+        } else {
+          const leaving = new Set(
+            movedFromOther
+              .filter((entry) => entry.roomId === surface.room_id)
+              .map((entry) => entry.characterId),
+          )
+          surface.selected_character_ids = surface.selected_character_ids
+            .filter((id) => !leaving.has(id))
+        }
+      }
+
       const participants: SceneParticipant[] = command.characterIds.map((characterId) => ({ room_id: command.roomId, character_id: characterId }))
       this.snapshot.sceneParticipants = [
         ...this.snapshot.sceneParticipants.filter((item) =>
