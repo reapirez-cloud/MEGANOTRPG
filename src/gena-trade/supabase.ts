@@ -46,7 +46,11 @@ function sessionFromRow(row: Record<string, unknown>): TradeSessionSnapshot {
 }
 
 export class SupabaseTradeSessionClient implements TradeSessionClient {
-  constructor(private readonly client: SupabaseClient) {}
+  private readonly client: SupabaseClient
+
+  constructor(client: SupabaseClient) {
+    this.client = client
+  }
 
   async listForRoom(roomId: string): Promise<TradeSessionSnapshot[]> {
     const { data, error } = await this.client.rpc("list_trade_sessions_for_room_v1", {
