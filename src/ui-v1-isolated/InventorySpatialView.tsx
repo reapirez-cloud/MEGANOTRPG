@@ -4,11 +4,14 @@ import type { SnakeAction } from "../snake-engine"
 import type { InventoryItem } from "../types/characterSheet"
 import {
   firstAvailableGridPlacement,
+  createInventoryLoadProjection,
   inventoryExternalCarryCapacity,
   inventoryPhysicalProfile,
+  inventorySpecializedCapacityUsage,
   inventoryPlacementKind,
   inventoryPlacementProblem,
   rotateInventoryShape,
+  type InventoryLoadProjection,
   type InventoryPlacementTarget,
 } from "../inventory-engine"
 import { SnakeTrigger } from "./SnakeProvider"
@@ -21,6 +24,8 @@ type Result = { ok: boolean; error?: string }
 
 type Props = {
   items: InventoryItem[]
+  load?: InventoryLoadProjection | null
+  carryCapacityKg?: number | null
   activeHolderId: string | null
   canControl: boolean
   actionsForItem: (item: InventoryItem) => SnakeAction[]
@@ -83,6 +88,8 @@ function legacyItems(items: readonly InventoryItem[], holderId: string) {
 
 export default function InventorySpatialView({
   items,
+  load,
+  carryCapacityKg,
   activeHolderId,
   canControl,
   actionsForItem,
@@ -118,6 +125,24 @@ export default function InventorySpatialView({
   const externalCapacity = inventoryExternalCarryCapacity(items)
   const currentGridItems = activeHolder ? gridItems(items, activeHolder.id) : []
   const currentLegacyItems = activeHolder ? legacyItems(items, activeHolder.id) : []
+  const localLoad = useMemo(
+    () => createInventoryLoadProjection(items[0]?.character_id || "", items),
+    [items],
+  )
+  const resolvedLoad = load ?? localLoad
+  const specializedUsage = activeHolder
+    ? inventorySpecializedCapacityUsage(items, activeHolder)
+    : []
+  const capacityKg = typeof carryCapacityKg === "number" && Number.isFinite(carryCapacityKg)
+    ? Math.max(0, carryCapacityKg)
+    : null
+  const overloaded = capacityKg !== null && resolvedLoad.knownWeightKg > capacityKg
+  const loadText = capacityKg === null
+    ? `${resolvedLoad.knownWeightKg.toLocaleString("ru-RU")} кг`
+    : `${resolvedLoad.knownWeightKg.toLocaleString("ru-RU")} / ${capacityKg.toLocaleString("ru-RU")} кг`
+  const loadCompleteness = resolvedLoad.complete
+    ? ""
+    : ` · + ? (${resolvedLoad.unknownWeightItemIds.length} без веса)`
 
   function targetProblem(item: InventoryItem, target: DropTarget) {
     if (target.kind === "equipment") {
@@ -347,7 +372,10 @@ export default function InventorySpatialView({
   return (
     <div className="u1-inventory-space">
       <section className="u1-inventory-carry">
-        <header><span>ПЕРЕНОСКА</span><small>две руки · сумки · внешние ячейки</small></header>
+        <header data-overloaded={overloaded || undefined}>
+          <span>ПЕРЕНОСКА</span>
+          <small>{overloaded ? "ПЕРЕГРУЗ · " : ""}{loadText}{loadCompleteness}</small>
+        </header>
         <div className="u1-inventory-carry__rail">
           {[0, 1].map((handIndex) => {
             const item = itemInPlacement(items, "hand", handIndex)
@@ -446,6 +474,11 @@ export default function InventorySpatialView({
               <small>
                 {activeContainer.internal_grid_width}×{activeContainer.internal_grid_height}
                 {" · "}окно ≈ 6 клеток
+                {specializedUsage.length > 0 && (
+                  <>{" · "}{specializedUsage.map((entry) =>
+                    `${entry.semanticRole} ${entry.quantity}/${entry.maxQuantity}`
+                  ).join(" · ")}</>
+                )}
               </small>
             </div>
             <span>{currentGridItems.length}</span>

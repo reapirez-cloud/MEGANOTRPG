@@ -1008,6 +1008,8 @@ export default function CharacterView({
       return (
         <InventorySpatialView
           items={control.inventory}
+          load={runtime.snapshot?.inventoryLoad ?? null}
+          carryCapacityKg={contract?.carrying.capacityKg.value ?? null}
           activeHolderId={inventoryHolderId}
           canControl={control.canControlCharacter}
           actionsForItem={inventoryActions}

@@ -262,7 +262,9 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
       quantity: effectiveStackMode === "instance"
         ? 1
         : Math.max(1, Number.parseInt(quantity || "1", 10) || 1),
-      weight: item?.weight ?? null,
+      weight: enablePhysicalProfile
+        ? normalizedPhysicalProfile?.weight_per_unit ?? null
+        : item?.weight ?? null,
       category,
       equipment_slot: category === "equipment" ? equipmentSlot : null,
       equipped: item?.equipped ?? false,

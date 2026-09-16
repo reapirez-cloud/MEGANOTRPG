@@ -303,6 +303,21 @@ const INVENTORY_CATEGORIES: InventoryCategory[] = [
   "other",
 ]
 
+function definitionWeightKg(definition: ChasovoyDefinition): number | null {
+  const rawProfile = definition.data.inventory_profile
+  if (rawProfile && typeof rawProfile === "object" && !Array.isArray(rawProfile)) {
+    const weight = (rawProfile as Record<string, ChasovoyJson>).weight_per_unit
+    if (typeof weight === "number" && Number.isFinite(weight) && weight >= 0) return weight
+  }
+  const legacyWeight = definition.data.weight
+  return definition.data.weight_unit === "kg"
+    && typeof legacyWeight === "number"
+    && Number.isFinite(legacyWeight)
+    && legacyWeight >= 0
+    ? legacyWeight
+    : null
+}
+
 function itemInput(definition: ChasovoyDefinition, quantityOverride?: number): InventoryInput {
   const rawCategory = jsonString(definition.data, "category", "other")
   const category = INVENTORY_CATEGORIES.includes(rawCategory as InventoryCategory)
@@ -315,7 +330,7 @@ function itemInput(definition: ChasovoyDefinition, quantityOverride?: number): I
   return {
     name: definition.name,
     quantity: Math.max(1, Math.floor(quantityOverride ?? jsonNumber(definition.data, "quantity", 1))),
-    weight: typeof definition.data.weight === "number" ? definition.data.weight : null,
+    weight: definitionWeightKg(definition),
     equipped: false,
     category,
     equipment_slot: category === "equipment"

@@ -197,6 +197,21 @@ export default function InventoryPhysicalProfileEditor({ value, category, onChan
 
     <div className="v2-field-grid">
       <label>
+        <span className="field-label">Вес единицы, кг</span>
+        <input
+          className="app-input"
+          type="number"
+          min="0"
+          step="0.001"
+          value={value.weight_per_unit ?? ""}
+          onChange={(event) => {
+            const raw = event.target.value
+            patch({ weight_per_unit: raw === "" ? null : Math.max(0, Number(raw) || 0) })
+          }}
+          placeholder="Неизвестно"
+        />
+      </label>
+      <label>
         <span className="field-label">Смысловая роль</span>
         <input className="app-input" value={value.semantic_role} onChange={(event) => patch({ semantic_role: event.target.value.trimStart().slice(0, 80) || "other" })} />
       </label>
