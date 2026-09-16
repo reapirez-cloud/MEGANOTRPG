@@ -460,7 +460,6 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         affectedCharacterIds: [command.characterId],
         before,
         after: copy(after),
-        ...(relatedChanges.length ? { relatedChanges } : {}),
       })
     }
 
