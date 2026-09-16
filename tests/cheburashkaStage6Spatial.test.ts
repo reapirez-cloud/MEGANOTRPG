@@ -22,13 +22,13 @@ const campaignId = "00000000-0000-4000-8000-000000006001"
 const characterId = "00000000-0000-4000-8000-000000006002"
 const userId = "00000000-0000-4000-8000-000000006003"
 
-function context(commandId: string) {
+function context(commandId: string, authority: "player" | "gm" = "player") {
   return createEngineCommandContext({
     commandId,
     occurredAt: "2026-09-16T05:00:00.000Z",
     campaignId,
     requestedBy: userId,
-    authority: "player",
+    authority,
     actorCharacterId: characterId,
   })
 }
@@ -320,6 +320,125 @@ test("equipping a contained item keeps one canonical instance and clears spatial
   assert.equal((await storage.listCharacterItems(characterId)).filter((row) => row.id === sword.id).length, 1)
 })
 
+test("moving a carry-capacity provider cannot orphan occupied external cells", () => {
+  const outer = item("outer", {
+    category: "container",
+    inventory_profile: bagProfile(6, 6),
+  })
+  const provider = item("provider", {
+    category: "container",
+    inventory_profile: bagProfile(4, 4, 1),
+  })
+  const attached = item("attached", {
+    placement_kind: "external",
+    placement_index: 0,
+  })
+
+  assert.match(
+    inventoryPlacementProblem([outer, provider, attached], provider, {
+      kind: "grid",
+      holderItemId: outer.id,
+      gridX: 0,
+      gridY: 0,
+      rotation: 0,
+    }) || "",
+    /освободи внешние ячейки/,
+  )
+})
+
+test("generic create and update cannot bypass the Stage 6 equipment bridge", async () => {
+  const storage = new MemoryCheburashkaStorage()
+  const engine = new CheburashkaEngine(storage)
+
+  await assert.rejects(
+    () => engine.execute({
+      kind: "inventory.create",
+      context: context("00000000-0000-4000-8000-000000006015", "gm"),
+      characterId,
+      input: {
+        name: "Нельзя сразу надеть",
+        quantity: 1,
+        weight: 1,
+        equipped: true,
+        category: "equipment",
+        equipment_slot: "main_hand",
+        image_url: null,
+        description: "",
+        mechanics: [],
+        usage_mode: "none",
+        charges_current: null,
+        charges_max: null,
+        stack_mode: "instance",
+        item_state: {},
+      },
+    }),
+    (reason: unknown) =>
+      reason instanceof EngineCommandError
+      && reason.code === "inventory.create_equipped_forbidden",
+  )
+
+  const equipped = item("equipped", {
+    category: "equipment",
+    equipment_slot: "main_hand",
+    equipped: true,
+  })
+  const equippedStorage = new MemoryCheburashkaStorage([equipped])
+  const equippedEngine = new CheburashkaEngine(equippedStorage)
+
+  await assert.rejects(
+    () => equippedEngine.execute({
+      kind: "inventory.update",
+      context: context("00000000-0000-4000-8000-000000006016", "gm"),
+      characterId,
+      itemId: equipped.id,
+      input: {
+        name: equipped.name,
+        quantity: 1,
+        weight: equipped.weight,
+        equipped: false,
+        category: "equipment",
+        equipment_slot: "main_hand",
+        image_url: null,
+        description: "",
+        mechanics: [],
+        usage_mode: "none",
+        charges_current: null,
+        charges_max: null,
+        stack_mode: "instance",
+        item_state: {},
+      },
+      expectedVersion: 1,
+    }),
+    (reason: unknown) =>
+      reason instanceof EngineCommandError
+      && reason.code === "inventory.equipment_transition_forbidden",
+  )
+})
+
+test("unequip requires an explicit physical destination", async () => {
+  const sword = item("equipped-sword", {
+    category: "equipment",
+    equipment_slot: "main_hand",
+    equipped: true,
+  })
+  const engine = new CheburashkaEngine(new MemoryCheburashkaStorage([sword]))
+
+  await assert.rejects(
+    () => engine.execute({
+      kind: "inventory.set_equipped",
+      context: context("00000000-0000-4000-8000-000000006017"),
+      characterId,
+      itemId: sword.id,
+      equipped: false,
+      equipmentSlot: "main_hand",
+      expectedVersion: 1,
+    }),
+    (reason: unknown) =>
+      reason instanceof EngineCommandError
+      && reason.code === "inventory.unequip_destination_required",
+  )
+})
+
 test("Stage 6 database contract is versioned, locked and server-authoritative", () => {
   const migration = fs.readFileSync(
     "supabase/migrations/20260916044954_cheburashka_stage6_spatial_inventory.sql",
@@ -329,6 +448,11 @@ test("Stage 6 database contract is versioned, locked and server-authoritative", 
     "supabase/migrations/20260916045859_cheburashka_stage6_equipment_transfer_bridge.sql",
     "utf8",
   )
+  const closure = fs.readFileSync(
+    "supabase/migrations/20260916052417_cheburashka_stage6_integrity_closure.sql",
+    "utf8",
+  )
+  const adapter = fs.readFileSync("src/inventory-engine/supabase.ts", "utf8")
 
   assert.match(migration, /placement_kind text not null default 'root'/)
   assert.match(migration, /grid_x integer/)
@@ -344,12 +468,23 @@ test("Stage 6 database contract is versioned, locked and server-authoritative", 
   assert.match(migration, /to authenticated/)
   assert.match(bridge, /character_id is distinct from old\.character_id/)
   assert.match(bridge, /Equipment slot is occupied; choose a destination/)
+  assert.match(closure, /character_inventory_items_validate_spatial_state/)
+  assert.match(closure, /deferrable initially deferred/)
+  assert.match(closure, /External carry capacity would orphan occupied slot/)
+  assert.match(closure, /Inventory creation cannot equip directly/)
+  assert.match(closure, /Inventory equipment state must change through the equipment or spatial move command/)
+  assert.match(closure, /Unequip requires a real inventory destination/)
+  assert.match(adapter, /rpc\("create_inventory_item_v2"/)
+  assert.match(adapter, /rpc\("update_inventory_item_v2"/)
 })
 
 test("Stage 6 UI keeps fixed cell pixels, six-cell viewport and physical Snake actions", () => {
   const surface = fs.readFileSync("src/ui-v1-isolated/InventorySpatialView.tsx", "utf8")
   const css = fs.readFileSync("src/ui-v1-isolated/inventory-spatial.css", "utf8")
   const characterView = fs.readFileSync("src/ui-v1-isolated/CharacterView.tsx", "utf8")
+  const snakeTrigger = fs.readFileSync("src/ui-v1-isolated/snake/interaction/SnakeTrigger.tsx", "utf8")
+  const control = fs.readFileSync("src/ui-v1-isolated/useUiV1CharacterControl.ts", "utf8")
+  const itemEditor = fs.readFileSync("src/components/characters/InventoryItemEditor.tsx", "utf8")
 
   assert.match(surface, /const CELL_PX = 46/)
   assert.match(surface, /onPointerDown/)
@@ -366,4 +501,12 @@ test("Stage 6 UI keeps fixed cell pixels, six-cell viewport and physical Snake a
   assert.match(characterView, /label: "В другую сумку"/)
   assert.match(characterView, /label: "Экипировать"/)
   assert.match(characterView, /label: "Снять"/)
+  assert.match(surface, /moveTolerancePx=\{Math\.max\(1, DRAG_THRESHOLD - 1\)\}/)
+  assert.match(surface, /data-dragging=/)
+  assert.match(snakeTrigger, /moveTolerancePx = 10/)
+  assert.match(css, /u1-inventory-grid-item > \.u1-inventory-shape-cell/)
+  assert.match(css, /pointer-events: auto/)
+  assert.match(css, /data-dragging/)
+  assert.match(control, /catch \(reason\) \{\s*await load\(\)\s*return \{ ok: false, error: errorMessage\(reason, "Не удалось переместить предмет\."\) \}/s)
+  assert.doesNotMatch(itemEditor, /Надеть сразу/)
 })
