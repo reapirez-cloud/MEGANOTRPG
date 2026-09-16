@@ -252,9 +252,8 @@ export default function CharacterSheetSpells({
     if (!contract) return []
 
     const legacyById = new Map(legacySpells.map((spell) => [spell.id, spell]))
-    const usesPreparation = contract.spells.some((spell) =>
-      spell.accesses.some((access) => access.preparationMode === "prepared"),
-    )
+    const usesPreparation =
+      hasMutablePreparationWorkflow(contract.spells)
 
     return contract.spells
       .map((spell): SpellView => {
