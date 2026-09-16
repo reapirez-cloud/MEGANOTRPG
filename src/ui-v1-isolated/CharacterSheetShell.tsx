@@ -19,6 +19,7 @@ export type CharacterSheetShellProps = {
   portraitUrl: string | null
   portraitPresentation: MediaPresentation | null
   panelArtUrl?: string | null
+  panelArtPresentation?: MediaPresentation | null
   dead?: boolean
   activeSection?: CharacterSheetSection
   portraitActions: SnakeAction[]
@@ -38,6 +39,7 @@ export default function CharacterSheetShell({
   portraitUrl,
   portraitPresentation,
   panelArtUrl = null,
+  panelArtPresentation = null,
   dead = false,
   activeSection = "overview",
   portraitActions,
@@ -57,9 +59,40 @@ export default function CharacterSheetShell({
       data-has-panel-art={panelArtUrl ? true : undefined}
       style={
         panelArtUrl
-          ? {
-              "--cv-class-panel-art": `url(${JSON.stringify(panelArtUrl)})`,
-            } as CSSProperties
+          ? (() => {
+              const crop = panelArtPresentation?.crop
+              const positionX =
+                crop && crop.width < 0.999999
+                  ? Math.max(
+                      0,
+                      Math.min(
+                        100,
+                        (crop.x / (1 - crop.width)) * 100,
+                      ),
+                    )
+                  : 50
+              const positionY =
+                crop && crop.height < 0.999999
+                  ? Math.max(
+                      0,
+                      Math.min(
+                        100,
+                        (crop.y / (1 - crop.height)) * 100,
+                      ),
+                    )
+                  : 0
+
+              return {
+                "--cv-class-panel-art":
+                  `url(${JSON.stringify(panelArtUrl)})`,
+                "--cv-class-panel-art-size": crop
+                  ? `${100 / crop.width}% auto`
+                  : "100% auto",
+                "--cv-class-panel-art-position": crop
+                  ? `${positionX}% ${positionY}%`
+                  : "center top",
+              } as CSSProperties
+            })()
           : undefined
       }
     >
