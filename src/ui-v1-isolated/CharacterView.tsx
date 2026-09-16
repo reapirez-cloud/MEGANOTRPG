@@ -6,8 +6,11 @@ import {
 } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
+import type { AbilityKey } from "../character-engine"
+import { useResolvedCharacterRuntime } from "../hooks/useResolvedCharacterRuntime"
 import type { SnakeAction } from "../snake-engine"
 import CharacterInventoryInterface from "./CharacterInventoryInterface"
+import CharacterSheetCore from "./CharacterSheetCore"
 import CharacterSheetShell from "./CharacterSheetShell"
 import {
   isCharacterSheetSection,
@@ -22,6 +25,7 @@ import { useUiV1CharacterControl } from "./useUiV1CharacterControl"
 import { useWorkspaceData } from "./useWorkspaceData"
 import "./character-sheet-theme.css"
 import "./character-sheet-shell.css"
+import "./character-sheet-core.css"
 import "./character-inventory-interface.css"
 
 type CharacterSheetHistorySnapshot =
@@ -119,7 +123,7 @@ function SectionPlaceholder({ section }: { section: CharacterSheetSection }) {
   const copy: Record<CharacterSheetSection, { title: string; body: string }> = {
     overview: {
       title: "Обзор персонажа",
-      body: "Постоянный обзор будет собран на этапах 5–6: показатели, характеристики, классовые ресурсы и ячейки заклинаний.",
+      body: "Основные показатели уже закреплены выше. Здесь на этапе 6 появятся классовые ресурсы, ячейки заклинаний и краткие игровые блоки.",
     },
     features: {
       title: "Умения",
@@ -157,8 +161,10 @@ export default function CharacterView({
   const workspace = useWorkspaceData()
   const workshop = useGMWorkshopData()
   const snake = useSnake()
+  const runtime = useResolvedCharacterRuntime(control.runtimeEntity)
   const [section, setSection] = useState<CharacterSheetSection>("overview")
   const [interfaceMode, setInterfaceMode] = useState<"inventory" | null>(null)
+  const [expandedAbility, setExpandedAbility] = useState<AbilityKey | null>(null)
 
   const classKey = useMemo(
     () => classKeyFrom(
@@ -435,6 +441,8 @@ export default function CharacterView({
             ? {
                 section,
                 interfaceMode,
+                expandedAbility,
+                runtimeStatus: runtime.status,
                 shellVersion: 2,
                 class: control.character.characterClass,
                 level: control.character.level,
@@ -511,6 +519,19 @@ export default function CharacterView({
       }
       onNavigate={navigateSheet}
       onBack={handleBack}
+      core={
+        <CharacterSheetCore
+          contract={runtime.snapshot?.contract || null}
+          sheet={control.sheet}
+          spellcastingAbility={runtime.snapshot?.spellcastingAbility}
+          expandedAbility={expandedAbility}
+          onToggleAbility={(ability) =>
+            setExpandedAbility((current) =>
+              current === ability ? null : ability
+            )
+          }
+        />
+      }
     >
       <SectionPlaceholder section={section} />
     </CharacterSheetShell>
