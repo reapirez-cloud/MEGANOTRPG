@@ -19,7 +19,7 @@ test("Stage 11B makes normal Cheburashka authoring resolve through Chasovoy", ()
   assert.match(migration, /create or replace function public\.update_inventory_item_v3/)
   assert.match(migration, /create or replace function public\.create_surface_inventory_item_v2/)
   assert.match(migration, /cheburashka_resolve_authored_definition_v1/)
-  assert.match(migration, /insert into public\\.reference_definitions/)
+  assert.match(migration, /insert into public\.reference_definitions/)
   assert.match(migration, /d\.scope='system'/)
   assert.match(migration, /d\.scope='campaign'/)
 
