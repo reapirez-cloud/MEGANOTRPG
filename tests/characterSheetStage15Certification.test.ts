@@ -91,48 +91,38 @@ test("template source nodes preserve real feature unlock levels", () => {
   assert.equal(source?.unlockLevel, 3)
 })
 
-test("features consume source-node provenance and sort timing then unlock level then name", () => {
+test("features consume runtime provenance and delegate stable sorting to tested helpers", () => {
   assert.match(runtime, /sourceNodes:\s*TemplateSourceNode\[\]/)
   assert.match(view, /sourceNodes=\{runtime\.snapshot\?\.sourceNodes \|\| \[\]\}/)
   assert.match(features, /sourceNodesById/)
-  assert.match(features, /left\.unlockLevel/)
-  assert.match(features, /Number\.MAX_SAFE_INTEGER/)
-  assert.match(features, /left\.label\.localeCompare\(right\.label, "ru"\)/)
+  assert.match(features, /\.sort\(compareFeatureSourceCandidates\)/)
+  assert.match(features, /stableProvenanceSignature/)
+  assert.match(features, /earliestKnownUnlockLevel/)
+  assert.match(features, /\.sort\(compareFeatureEntries\)/)
   assert.match(features, /category:\s*"other"/)
-  assert.match(features, /sourceNames/)
 })
 
-test("multiclass spell preparation never labels a spontaneous access as unprepared", () => {
-  const notRequired = spells.indexOf(
-    'access.preparationMode === "not_required"',
-  )
-  const unprepared = spells.indexOf(
-    'if (accesses.some((access) => access.preparationMode === "prepared"))',
-  )
-
-  assert.ok(notRequired >= 0)
-  assert.ok(unprepared > notRequired)
+test("spells delegate preparation semantics to tested helpers", () => {
+  assert.match(spells, /resolveSpellPreparationState\(spell\.accesses\)/)
+  assert.match(spells, /hasMutablePreparationWorkflow\(contract\.spells\)/)
+  assert.match(spells, /spellPreparationRank\(left\.preparation\)/)
   assert.match(spells, /hasPreparationWorkflow &&/)
-  assert.match(
-    spells,
-    /value === "always_prepared" \|\| value === "prepared" \? 0 : 1/,
-  )
 })
 
-test("spell levels are not silently clamped into the D&D 0-9 groups", () => {
+test("spell levels delegate standard-range checks and preserve the Прочее fallback", () => {
   assert.doesNotMatch(
     spells,
     /Math\.max\(0, Math\.min\(9, spell\.identity\.level\)\)/,
   )
+  assert.match(spells, /isStandardSpellLevel/)
   assert.match(spells, /data-level="other"/)
   assert.match(spells, />ПРОЧЕЕ</)
-  assert.match(spells, /spell\.level < 0 \|\| spell\.level > 9/)
 })
 
-test("spell schools and multiclass source labels are normalized for dirty data", () => {
-  assert.match(spells, /function normalizeSchool/)
-  assert.match(spells, /\[\.\.\.names\]\.sort/)
-  assert.match(spells, /function sourceSummary/)
+test("spell schools and multiclass source labels delegate to tested normalization helpers", () => {
+  assert.match(spells, /normalizeSpellSchool/)
+  assert.match(spells, /stableUniqueSortedStrings/)
+  assert.match(spells, /summarizeSourceNames/)
 })
 
 
