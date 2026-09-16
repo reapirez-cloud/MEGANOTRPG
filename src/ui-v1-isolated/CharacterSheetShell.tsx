@@ -6,6 +6,7 @@ import type { SnakeAction } from "../snake-engine"
 import {
   CHARACTER_SHEET_NAVIGATION,
   type CharacterSheetSection,
+  type CharacterSheetTarget,
 } from "./characterSheetUiContract"
 import { SnakeTrigger } from "./SnakeProvider"
 
@@ -21,6 +22,7 @@ export type CharacterSheetShellProps = {
   activeSection?: CharacterSheetSection
   portraitActions: SnakeAction[]
   onOpenPortrait?: () => void
+  onNavigate: (target: CharacterSheetTarget) => void
   onBack: () => void
   children?: ReactNode
 }
@@ -37,6 +39,7 @@ export default function CharacterSheetShell({
   activeSection = "overview",
   portraitActions,
   onOpenPortrait,
+  onNavigate,
   onBack,
   children,
 }: CharacterSheetShellProps) {
@@ -104,8 +107,7 @@ export default function CharacterSheetShell({
                   data-target-kind={item.target.kind}
                   data-active={active || undefined}
                   aria-current={active ? "page" : undefined}
-                  aria-disabled="true"
-                  title="Подключение действия будет на следующем этапе"
+                  onClick={() => onNavigate(item.target)}
                 >
                   <span
                     className="u1-character-sheet__icon-placeholder"
