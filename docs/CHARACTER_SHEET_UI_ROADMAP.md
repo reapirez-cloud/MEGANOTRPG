@@ -250,9 +250,19 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - normal right-rail navigation clears transient entity focus, preventing stale cross-links from hijacking later visits;
 - selected feature/spell/resource/effect/item identities are synchronized in CharacterView state for Stage 11 Snake context.
 
-### Stage 11 — Snake UI context
-- keep current section/entity context synchronized with AI context;
-- actions respect player/GM/admin authority.
+### Stage 11 — Snake UI context [DONE]
+- SnakeProvider now owns a synchronized view context in addition to menu/surface state;
+- CharacterView builds one authoritative sheet context and sends the same object to both AI view context and Snake, preventing section/entity drift between the two systems;
+- context tracks character, current section/interface, expanded ability, selected feature/spell/resource/effect/item, entity navigation focus, spell-level focus and reserved inventory-holder focus;
+- the current selected entity becomes the active context entity (feature, resource, spell, item or effect) instead of leaving Snake anchored only to the character root;
+- authority is explicit in context as admin / gm / player, together with canManage, canControlCharacter, isOwner and assignedToCurrentUser;
+- Snake permission capabilities are exposed separately for inspect/navigation, media editing, character control and campaign/character management;
+- authorization remains owned by the existing runtime checks rather than duplicated inside Snake: workshop mutation actions are only created when `canManage`, while character media actions are only created when `canControlCharacter`;
+- read-only feature/resource/spell navigation and detail actions remain available without granting mutation rights;
+- Snake menu AI context now inherits the underlying sheet route, text, entity facts and authority context while adding menu actions/path/depth;
+- Snake surface windows (detail/media/confirm/editor/etc.) now publish their own higher-priority AI context, including surface kind, source action, path and errors, while retaining the underlying sheet context;
+- closing/unmounting the character sheet clears its Snake view context so stale character/entity state cannot leak into another screen;
+- the public character-sheet Snake context-key contract now includes interfaceMode, effect/item selection and authority fields for Stages 12–16.
 
 ### Stage 12 — Visual assets
 - neutral placeholders now;
