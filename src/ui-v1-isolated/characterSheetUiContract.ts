@@ -31,6 +31,10 @@ export type CharacterSheetNavItem = {
   target: CharacterSheetTarget
 }
 
+export function characterSheetNavigationIconSlot(id: string) {
+  return `sheet:nav:${id}`
+}
+
 /**
  * Append future sheet entries here.
  *
@@ -42,25 +46,25 @@ export const CHARACTER_SHEET_NAVIGATION: readonly CharacterSheetNavItem[] = [
   {
     id: "inventory",
     label: "Инвентарь",
-    iconSlot: "sheet:nav:inventory",
+    iconSlot: characterSheetNavigationIconSlot("inventory"),
     target: { kind: "interface", interface: "inventory" },
   },
   {
     id: "features",
     label: "Умения",
-    iconSlot: "sheet:nav:features",
+    iconSlot: characterSheetNavigationIconSlot("features"),
     target: { kind: "section", section: "features" },
   },
   {
     id: "spells",
     label: "Заклинания",
-    iconSlot: "sheet:nav:spells",
+    iconSlot: characterSheetNavigationIconSlot("spells"),
     target: { kind: "section", section: "spells" },
   },
   {
     id: "biography",
     label: "Биография",
-    iconSlot: "sheet:nav:biography",
+    iconSlot: characterSheetNavigationIconSlot("biography"),
     target: { kind: "section", section: "biography" },
   },
 ] as const
@@ -105,12 +109,7 @@ export const CHARACTER_SHEET_SORTING_CONTRACT = {
 
 export const CHARACTER_SHEET_MEDIA_SLOTS = {
   portrait: "sheet:portrait",
-  navigation: {
-    inventory: "sheet:nav:inventory",
-    features: "sheet:nav:features",
-    spells: "sheet:nav:spells",
-    biography: "sheet:nav:biography",
-  },
+  navigationIcon: characterSheetNavigationIconSlot,
   quickStats: {
     armorClass: "sheet:quick:armor_class",
     passivePerception: "sheet:quick:passive_perception",
