@@ -12,11 +12,19 @@
  * - Lists are grouped and sorted; no flat "everything in one pile" screens.
  */
 
-export type CharacterSheetSection =
-  | "overview"
-  | "features"
-  | "spells"
-  | "biography"
+export const CHARACTER_SHEET_SECTIONS = [
+  "overview",
+  "features",
+  "spells",
+  "biography",
+] as const
+
+export type CharacterSheetSection = typeof CHARACTER_SHEET_SECTIONS[number]
+
+export function isCharacterSheetSection(value: unknown): value is CharacterSheetSection {
+  return typeof value === "string" &&
+    CHARACTER_SHEET_SECTIONS.includes(value as CharacterSheetSection)
+}
 
 export type CharacterSheetInterface = "inventory"
 
