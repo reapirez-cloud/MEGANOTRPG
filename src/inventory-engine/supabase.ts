@@ -329,9 +329,10 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
 
   async execute(command: CheburashkaCommand): Promise<InventoryMutation> {
     if (command.kind === "inventory.create_surface") {
-      const { data, error } = await this.client.rpc("create_surface_inventory_item_v1", {
+      const { data, error } = await this.client.rpc("create_surface_inventory_item_v2", {
         p_surface_id: command.surfaceId,
         p_input: persistencePayload(command.input),
+        p_inventory_profile: command.inventoryProfile ?? null,
         p_command_id: command.context.commandId,
       })
       if (error) fail(error, "Could not create Surface item")
@@ -339,9 +340,10 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
     }
 
     if (command.kind === "inventory.create") {
-      const { data, error } = await this.client.rpc("create_inventory_item_v2", {
+      const { data, error } = await this.client.rpc("create_inventory_item_v3", {
         p_character_id: command.characterId,
         p_input: persistencePayload(command.input),
+        p_inventory_profile: command.inventoryProfile ?? null,
         p_command_id: command.context.commandId,
       })
 
@@ -355,10 +357,11 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
         command.characterId,
         command.expectedVersion,
       )
-      const { data, error } = await this.client.rpc("update_inventory_item_v2", {
+      const { data, error } = await this.client.rpc("update_inventory_item_v3", {
         p_character_id: command.characterId,
         p_item_id: command.itemId,
         p_input: persistencePayload(command.input),
+        p_inventory_profile: command.inventoryProfile ?? null,
         p_expected_version: expectedVersion,
         p_command_id: command.context.commandId,
       })

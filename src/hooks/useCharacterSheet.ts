@@ -3,6 +3,7 @@ import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { characterResolutionBus } from "../engine-runtime/runtimeSignals.ts"
 import { shapoklyak } from "../entity-engine/runtime.ts"
 import { cheburashka } from "../inventory-engine/runtime.ts"
+import type { InventoryPhysicalProfile } from "../inventory-engine/profile.ts"
 import { oracle } from "../oracle-engine/runtime.ts"
 import { supabase } from "../lib/supabase"
 import { deleteCampaignMediaObject } from "../lib/mediaUpload"
@@ -157,23 +158,23 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
     }
   }, [canManage, characterId, gmContext, playerContext, reloadSheet])
 
-  const addInventoryItem = useCallback(async (input: InventoryInput): Promise<Result> => {
+  const addInventoryItem = useCallback(async (input: InventoryInput, inventoryProfile?: InventoryPhysicalProfile | null): Promise<Result> => {
     if (!canManage) return { ok: false, error: "Предметы создаёт ГМ или владелец." }
     try {
-      const result = await oracle.inventory.create(gmContext(), characterId, input)
+      const result = await oracle.inventory.create(gmContext(), characterId, input, inventoryProfile)
       const row = result.value.after
       if (row) setInventory((current) => sortInventory([...current, row]))
       return { ok: true }
     } catch (reason) { return failure(reason, "Не удалось создать предмет.") }
   }, [canManage, characterId, gmContext])
 
-  const updateInventoryItem = useCallback(async (itemId: string, input: InventoryInput): Promise<Result> => {
+  const updateInventoryItem = useCallback(async (itemId: string, input: InventoryInput, inventoryProfile?: InventoryPhysicalProfile | null): Promise<Result> => {
     if (!canManage) return { ok: false, error: "Состав предмета изменяет ГМ или владелец." }
     try {
       const item = inventory.find((entry) => entry.id === itemId)
       const version = Number(item?.version ?? 0)
       if (!Number.isInteger(version) || version < 1) throw new Error("Inventory item has no valid version")
-      const result = await oracle.inventory.update(gmContext(), characterId, itemId, input, version)
+      const result = await oracle.inventory.update(gmContext(), characterId, itemId, input, version, inventoryProfile)
       const row = result.value.after
       if (row) setInventory((current) => sortInventory(current.map((item) => item.id === itemId ? row : item)))
       return { ok: true }

@@ -18,6 +18,7 @@ import {
 import {
   defaultInventoryProfile,
   inventoryProfileStackMode,
+  readInventoryProfile,
   type InventoryPhysicalProfile,
 } from "../../inventory-engine/profile.ts"
 import { inventoryProfilePreset } from "../../inventory-engine/profilePresets.ts"
@@ -127,7 +128,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
     item ? inventoryStackMode(item) : "instance",
   )
   const [physicalProfile, setPhysicalProfile] = useState<InventoryPhysicalProfile>(() =>
-    inventoryProfile || defaultInventoryProfile({
+    inventoryProfile || readInventoryProfile(item?.inventory_profile) || defaultInventoryProfile({
       category: item?.category || "other",
       stack_mode: item ? inventoryStackMode(item) : "instance",
       weight: item?.weight ?? null,

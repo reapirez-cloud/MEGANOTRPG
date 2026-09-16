@@ -95,8 +95,8 @@ export class OracleEngine {
     }
 
     this.inventory = {
-      create: (context, characterId, input) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.create", context, characterId, input })),
-      update: (context, characterId, itemId, input, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.update", context, characterId, itemId, input, expectedVersion })),
+      create: (context, characterId, input, inventoryProfile) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.create", context, characterId, input, inventoryProfile })),
+      update: (context, characterId, itemId, input, expectedVersion, inventoryProfile) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.update", context, characterId, itemId, input, expectedVersion, inventoryProfile })),
       remove: (context, characterId, itemId, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.remove", context, characterId, itemId, expectedVersion })),
       setEquipped: (context, characterId, itemId, equipped, equipmentSlot = null, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.set_equipped", context, characterId, itemId, equipped, equipmentSlot, expectedVersion })),
       consume: (context, characterId, itemId, amount = 1, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.consume", context, characterId, itemId, amount, expectedVersion })),
@@ -104,7 +104,7 @@ export class OracleEngine {
       transfer: (context, fromCharacterId, toCharacterId, itemId, amount, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.transfer", context, fromCharacterId, toCharacterId, itemId, amount, expectedVersion })),
       storeWorld: (context, characterId, itemId, worldStorageId, amount, placement, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.store_world", context, characterId, itemId, worldStorageId, amount, placement, expectedVersion })),
       takeWorld: (context, worldStorageId, itemId, characterId, amount, placement, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.take_world", context, worldStorageId, itemId, characterId, amount, placement, expectedVersion })),
-      createSurface: (context, surfaceId, input) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.create_surface", context, surfaceId, input })),
+      createSurface: (context, surfaceId, input, inventoryProfile) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.create_surface", context, surfaceId, input, inventoryProfile })),
       placeSurface: (context, characterId, itemId, surfaceId, amount, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.place_surface", context, characterId, itemId, surfaceId, amount, expectedVersion })),
       takeSurface: (context, surfaceId, itemId, characterId, amount, placement, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.take_surface", context, surfaceId, itemId, characterId, amount, placement, expectedVersion })),
     }

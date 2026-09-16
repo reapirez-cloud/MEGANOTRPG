@@ -1,6 +1,7 @@
 import type { CharacterContribution } from "../character-engine/index.ts"
 import type { InventoryPlacementTarget } from "./spatial.ts"
 import type { EngineCommandContext } from "../engine-contracts/index.ts"
+import type { InventoryPhysicalProfile } from "./profile.ts"
 import type {
   EquipmentSlot,
   InventoryInput,
@@ -13,6 +14,7 @@ export type CheburashkaCommand =
       context: EngineCommandContext
       characterId: string
       input: InventoryInput
+      inventoryProfile?: InventoryPhysicalProfile | null
     }
   | {
       kind: "inventory.update"
@@ -20,6 +22,7 @@ export type CheburashkaCommand =
       characterId: string
       itemId: string
       input: InventoryInput
+      inventoryProfile?: InventoryPhysicalProfile | null
       expectedVersion?: number
     }
   | {
@@ -89,6 +92,7 @@ export type CheburashkaCommand =
       context: EngineCommandContext
       surfaceId: string
       input: InventoryInput
+      inventoryProfile?: InventoryPhysicalProfile | null
     }
   | {
       kind: "inventory.place_surface"

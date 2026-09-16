@@ -573,9 +573,9 @@ When auditing inventory, an agent must:
 
 1. read this contract before proposing redesigns;
 2. distinguish **implemented now** from **approved target**;
-3. preserve completed Inventory Stages 1–10 unless a real defect requires change;
+3. preserve completed Inventory Stages 1–11 unless a real defect requires change;
 4. report gaps against this target rather than inventing a different inventory UX;
-5. distinguish completed Stage 6–10 spatial/load/world-storage/Surface/Trade runtime from still-future legacy adoption/certification work;
+5. distinguish completed Stage 6–11 spatial/load/world-storage/Surface/Trade/adoption runtime from still-future final certification work;
 6. prefer extending one holder/placement model over parallel tables that represent the same fact;
 7. call out server-authority/concurrency gaps for moves, claims and trade commits;
 8. keep GM authority intact and avoid tactical simulation the app does not own;
@@ -600,11 +600,11 @@ Current status:
 8  ✅ persistent world storage / chests / stashes
 9  ✅ chats/scenes + shared Surfaces
 10 ✅ dedicated Trade block mechanics
-11 🚧 Chasovoy adoption + legacy migration (IN PROGRESS)
+11 ✅ Chasovoy adoption + legacy migration
 12 ⬜ final security/concurrency/E2E certification
 ```
 
-There are 12 stages total. Stages 1–10 are complete; Stage 11 is in progress and Stage 12 remains after it.
+There are 12 stages total. Stages 1–11 are complete; Stage 12 is next.
 
 Audits must read both this product contract and the implementation plan.
 

@@ -6,7 +6,7 @@
 >
 > Product contract: `docs/INVENTORY_PRODUCT_CONTRACT.md`
 >
-> Current checkpoint: **Stages 1–10 complete. Stage 11 is IN PROGRESS: Chasovoy adoption + legacy inventory migration.**
+> Current checkpoint: **Stages 1–11 complete. Stage 12 is next: final security/concurrency/E2E certification.**
 >
 > This file defines implementation order and completion boundaries. It does not by itself prove that a stage is implemented. Audits must verify source, live Supabase state where relevant, and real runtime behavior before changing a stage to complete.
 
@@ -26,10 +26,10 @@ The final inventory target is a physical, tactile inventory system built on Cheb
 | 8 | ✅ COMPLETE | Persistent world storage, chests and stashes |
 | 9 | ✅ COMPLETE | Chats/scenes + shared Surfaces |
 | 10 | ✅ COMPLETE | Dedicated Trade block mechanics |
-| 11 | 🚧 IN PROGRESS | Chasovoy adoption + legacy inventory migration |
+| 11 | ✅ COMPLETE | Chasovoy adoption + legacy inventory migration |
 | 12 | ⬜ TODO | Final security/concurrency/E2E certification |
 
-There are **12 stages total**. Ten are complete; two remain.
+There are **12 stages total**. Eleven are complete; one remains.
 
 ---
 
@@ -824,13 +824,13 @@ Applied live:
 
 ---
 
-# Stage 11 — Chasovoy adoption + legacy inventory migration 🚧
+# Stage 11 — Chasovoy adoption + legacy inventory migration ✅
 
-Stage 11 is now **IN PROGRESS**.
+Stage 11 is **COMPLETE**.
 
 ### Stage 11A — reusable catalog + conservative legacy adoption
 
-Started in `dev`:
+Completed in `dev` and live Supabase:
 - materializes reusable physical presets as immutable Chasovoy system item definitions;
 - covers common potions/scrolls, physical currency, ammo, ordinary bulk ingredients, ore/ingots, common weapons/armor, tools, books, clothing and a component pouch;
 - adopts only exact reviewed legacy name/category pairs;
@@ -839,7 +839,7 @@ Started in `dev`:
 - leaves ambiguous/narrative rows unlinked for explicit review instead of guessing;
 - clears the old stack-review marker only for rows whose reviewed adopted profile now makes the packing law explicit.
 
-The initial reviewed adoption set covers 26 current legacy rows in live data. Stage 11 remains open until the remaining legacy rows are either intentionally narrative/unlinked or given a reviewed canonical physical definition, and the normal new-item issuance path no longer depends on legacy physical fallbacks.
+Stage 11A adopted 26 reviewed legacy rows. Stage 11B adds the remaining reusable archetypes, converts the old four-key pseudo-stack into one physical key bundle while preserving its count as state, and explicitly marks every still-unlinked row as an intentional narrative/underspecified instance. New character and Surface authoring now resolves through Chasovoy: exact reusable physical/mechanical profiles reuse active system definitions, while custom authored profiles atomically receive campaign definitions before the concrete Cheburashka item is created. Existing linked definitions are preserved when unchanged; an edited physical/mechanical identity resolves to a matching definition or forks to a new campaign definition rather than silently mutating a global system definition.
 
 By this point the final physical model is known and must become the normal catalog path.
 
@@ -860,12 +860,15 @@ Legacy safety:
 - never silently merge ambiguous rows into stacks;
 - never invent a physical profile that loses meaningful data.
 
-### Stage 11 complete when
+### Stage 11 completion gate — PASSED ✅
 
-- new reusable items issue from Chasovoy with canonical physical metadata;
-- existing reusable catalog items are migrated/adopted;
-- old regex/name guessing is no longer the canonical source;
-- remaining unlinked items are intentional narrative instances.
+- new reusable character/Surface items resolve through Chasovoy with canonical physical metadata;
+- exact reusable authored profiles reuse system definitions and custom authored items atomically receive campaign definitions;
+- existing reusable catalog items are migrated/adopted without replacing concrete item IDs or instance state;
+- no regex/LIKE guessing is used as canonical definition identity;
+- the old ambiguous key stack is normalized to one physical bundle with its four-key count preserved in item state;
+- every remaining unlinked row is explicitly classified as an intentional narrative/underspecified instance rather than migration debt;
+- the normal CharacterProfile GM editor now sends the same physical profile used by Cheburashka/Chasovoy instead of silently dropping it.
 
 ---
 

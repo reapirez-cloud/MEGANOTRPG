@@ -10,6 +10,7 @@ import type {
   EntityVisibilityMode,
 } from "../entity-engine/index.ts"
 import type { InventoryMutation, InventoryPlacementTarget } from "../inventory-engine/index.ts"
+import type { InventoryPhysicalProfile } from "../inventory-engine/profile.ts"
 import type {
   GameSceneCreateInput,
   LocationCreateInput,
@@ -76,8 +77,8 @@ export type OracleCharacterCommands = {
 }
 
 export type OracleInventoryCommands = {
-  create(context: OracleContext, characterId: string, input: InventoryInput): OracleInventoryResult
-  update(context: OracleContext, characterId: string, itemId: string, input: InventoryInput, expectedVersion?: number): OracleInventoryResult
+  create(context: OracleContext, characterId: string, input: InventoryInput, inventoryProfile?: InventoryPhysicalProfile | null): OracleInventoryResult
+  update(context: OracleContext, characterId: string, itemId: string, input: InventoryInput, expectedVersion?: number, inventoryProfile?: InventoryPhysicalProfile | null): OracleInventoryResult
   remove(context: OracleContext, characterId: string, itemId: string, expectedVersion?: number): OracleInventoryResult
   setEquipped(context: OracleContext, characterId: string, itemId: string, equipped: boolean, equipmentSlot?: EquipmentSlot | null, expectedVersion?: number): OracleInventoryResult
   consume(context: OracleContext, characterId: string, itemId: string, amount?: number, expectedVersion?: number): OracleInventoryResult
@@ -85,7 +86,7 @@ export type OracleInventoryCommands = {
   transfer(context: OracleContext, fromCharacterId: string, toCharacterId: string, itemId: string, amount: number, expectedVersion?: number): OracleInventoryResult
   storeWorld(context: OracleContext, characterId: string, itemId: string, worldStorageId: string, amount: number, placement: Extract<InventoryPlacementTarget, { kind: "grid" }>, expectedVersion?: number): OracleInventoryResult
   takeWorld(context: OracleContext, worldStorageId: string, itemId: string, characterId: string, amount: number, placement: InventoryPlacementTarget, expectedVersion?: number): OracleInventoryResult
-  createSurface(context: OracleContext, surfaceId: string, input: InventoryInput): OracleInventoryResult
+  createSurface(context: OracleContext, surfaceId: string, input: InventoryInput, inventoryProfile?: InventoryPhysicalProfile | null): OracleInventoryResult
   placeSurface(context: OracleContext, characterId: string, itemId: string, surfaceId: string, amount: number, expectedVersion?: number): OracleInventoryResult
   takeSurface(context: OracleContext, surfaceId: string, itemId: string, characterId: string, amount: number, placement: InventoryPlacementTarget, expectedVersion?: number): OracleInventoryResult
 }
