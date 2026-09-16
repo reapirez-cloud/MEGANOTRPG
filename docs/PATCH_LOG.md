@@ -35,6 +35,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Equipment and carried storage now remain physically explicit: equipping uses the same canonical item instance, while unequipping requires a real hand/bag/external destination. Invalid or stale drops reload canonical server state instead of leaving a fake client position.
 - Snake exposes the same inspect/open/rotate/move/equip inventory operations as direct touch interaction; the inventory drag threshold now cancels Snake long-press before the two gestures can race.
 
+- Completed Inventory Stage 7 load presentation: inventory now reports carried mass in kilograms against the CE-resolved carrying limit, surfaces unknown-weight items instead of pretending they weigh zero, and marks overload without inventing automatic combat/movement penalties.
+- Physical item authoring now exposes per-unit weight in kg. Voss is instructed to author `weight_per_unit` in kilograms and may create normal CE `carrying.capacityKg` bonuses when an item/feature increases carrying capacity.
+- Specialized container usage is visible in the active bag view, so purpose-built capacities such as a quiver's arrow allowance are not invisible server trivia.
+
 ### Runtime and architecture changes
 
 - Completed Inventory Stage 5 physical authoring: Chasovoy item definitions now use a validated physical profile and strict v2 create/revise RPCs; ordinary item authoring has reusable physical presets and a GM shape editor.
@@ -47,6 +51,13 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Sealed equipment bypasses: generic create/update cannot toggle `equipped`, `set_equipped_v2(false)` cannot unequip into nowhere, and authenticated spatial moves now use `move_inventory_item_v3`, which rejects moving equipped items to abstract root/free state.
 - Added a Cheburashka-owned safe physical-profile projection. A player receives the exact geometry used by server validation without needing read access to hidden Chasovoy definition prose/mechanics, keeping client preview and authoritative placement on one physical model.
 - Applied live Stage 6 migrations `20260916044954_cheburashka_stage6_spatial_inventory`, `20260916045859_cheburashka_stage6_equipment_transfer_bridge`, `20260916050604_cheburashka_stage6_placement_constraint_hardening`, `20260916052417_cheburashka_stage6_integrity_closure`, `20260916053336_cheburashka_stage6_profile_projection`, `20260916053628_cheburashka_stage6_equipment_state_guard` and `20260916053859_cheburashka_stage6_move_destination_guard`.
+
+- Completed Inventory Stage 7. Cheburashka now derives load from canonical item instances in kg; bulk stacks multiply per-unit mass by quantity and nested container contents contribute exactly once. Unknown mass remains explicit in the load projection.
+- Character Engine now resolves base carrying capacity as **Strength × 6.8 kg** and supports ordinary numeric contributions on `carrying.capacityKg`. This is the same mechanics path used by item/feature/class/GM effects rather than an inventory-only exception.
+- Applied live migration `20260916090000_cheburashka_stage7_weight_capacity`: legacy non-null item weights were converted once from old D&D-facing pound values to kg with audit markers; current definition-level legacy weights are advanced through immutable Chasovoy revisions where applicable.
+- Specialized container capacities are authoritative through deferred validation under the per-character inventory advisory lock. Client preflight mirrors that rule, so a quiver-style `50 arrows` cap is both concurrency-safe and immediately understandable in UI.
+- Stage 7 intentionally reports overload without hard-coding speed/action penalties. Tactical encumbrance consequences remain an explicit future rules choice rather than Cheburashka guessing campaign law.
+- Technical debt recorded: broaden CE buff/effect authoring so persistent/temporary numeric buffs across items, features, classes and GM effects share one consistent creation/explanation/management flow instead of adding target-specific UI one by one.
 
 - Started Inventory Stage 5A: added the canonical Chasovoy `inventory_profile` contract for instance/bulk packing, shape masks, physical dimensions and container internal grids. Cheburashka and the GM item editor now default new items to independent instances; bulk stacks are explicit exceptions.
 - Added rollout-safe live Supabase validation for item physical profiles and changed the inventory DB default to `instance`. The old production client keeps a narrow compatibility path when it omits `stack_mode` on an existing multi-quantity item.
@@ -87,6 +98,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - New Stage 6 public RPCs are authenticated-only and not executable by `anon`; authenticated access to spatial v2 was revoked in favor of guarded v3. Existing project-wide Supabase advisor warnings remain tracked for final Stage 12 certification rather than being misreported as new Stage 6 defects.
 - Audited Stage 6 code head `a0e3ba31cd47c288fa57adb63d6c86507b156745` passed Build, Lint, repository tests, Storybook build and Playwright smoke in GitHub Actions run `35060509264`.
 
+- Added `cheburashkaStage7WeightCapacity.test.ts` covering Strength-based metric carrying capacity, a CE `+ carrying.capacityKg` buff, nested/stack load calculation, explicit unknown mass and specialized-capacity overflow preflight.
+- Stage 7 implementation head `7edbf6bdcc0ccbdccee72da431e71e5743de9f23` passed the repository CI pipeline in GitHub Actions run `35062203247`; the documentation/test closure commits require one final CI pass before Stage 7 is released from `dev`.
+
 - Added Stage 5 inventory-profile regression coverage for instance-first defaults, explicit bulk stacks, large magical-container interiors without UI viewport metadata, and preservation of container geometry while ordinary mechanics are edited.
 - Applied live Supabase migration `20260915182537_cheburashka_stage5_inventory_profile_foundation` and verified the DB default / compatibility routing plus acceptance of a 20×20 magical-bag profile.
 - GitHub Actions do not currently report a run/status for direct `dev` head `c819636`; the isolated execution environment also cannot clone GitHub externally, so a full repository `npm test` / build result is not claimed for this work unit.
@@ -108,7 +122,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Known incomplete work
 
-- Inventory Stage 7 remains next: weight/load and authoritative specialized capacity. Stages 8–12 remain intentionally future work.
+- Inventory Stages 1–7 are complete. Stage 8 (persistent world storage/chests/stashes) is next; Stages 8–12 remain intentionally future work.
+- CE technical debt remains: generalize the buff/effect authoring and management UX beyond the newly supported `carrying.capacityKg` target.
 - Legacy inventory v1 RPCs and transitional `legacy` placement cannot be fully retired while the current production `main` still uses the shared live Supabase project; retirement is deferred to production promotion/final certification rather than breaking the live client during dev.
 
 ---
