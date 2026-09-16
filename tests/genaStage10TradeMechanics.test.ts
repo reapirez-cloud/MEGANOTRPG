@@ -60,10 +60,18 @@ test("Stage 10 interest and discussion do not mutate the offer revision", () => 
 })
 
 test("Stage 10 material offer mutation advances revision and clears both acceptances", () => {
-  assert.match(
-    foundation,
-    /set accepted_a_revision=null,[\s\S]*accepted_b_revision=null,[\s\S]*revision=s\.revision\+1/,
+  const bumpStart = foundation.indexOf("create or replace function private.trade_bump_revision_v1")
+  const bumpEnd = foundation.indexOf(
+    "revoke execute on function private.trade_bump_revision_v1",
+    bumpStart,
   )
+  assert.notEqual(bumpStart, -1)
+  assert.notEqual(bumpEnd, -1)
+  const bumpFn = foundation.slice(bumpStart, bumpEnd)
+
+  assert.match(bumpFn, /revision=s\.revision\+1/)
+  assert.match(bumpFn, /accepted_a_revision=null/)
+  assert.match(bumpFn, /accepted_b_revision=null/)
   assert.match(foundation, /trade\.revision_stale/)
   assert.match(foundation, /trade\.offer_subtree_overlap/)
   assert.match(foundation, /cheburashka_trade_item_fingerprint_v1/)
