@@ -254,6 +254,13 @@ export default function CharacterView({
                   gridY: item.grid_y ?? null,
                   rotation: item.grid_rotation ?? 0,
                 })),
+                worldStorages: control.worldStorages.map((storage) => ({
+                  id: storage.id,
+                  name: storage.name,
+                  locationId: storage.location_id,
+                  itemCount: storage.item_count,
+                  canOperate: storage.can_operate,
+                })),
                 spells: control.spells.slice(0, 40).map((spell) => ({
                   id: spell.id,
                   name: spell.name,
@@ -571,6 +578,7 @@ export default function CharacterView({
         placement: firstAvailableGridPlacement(control.inventory, item, container),
       }))
       .filter((entry): entry is { container: InventoryItem; placement: Extract<InventoryPlacementTarget, { kind: "grid" }> } => Boolean(entry.placement))
+    const worldStorageTargets = control.worldStorages.filter((storage) => storage.can_operate)
 
     const freeHands = ([0, 1] as const).filter((index) =>
       !control.inventory.some((candidate) =>
@@ -665,6 +673,24 @@ export default function CharacterView({
             ? { type: "success", notice: "Предмет закреплён снаружи." }
             : { type: "error", message: response.error || "Не удалось переместить предмет." }
         },
+      })
+    }
+
+    if (control.canControlCharacter && worldStorageTargets.length && !item.equipped) {
+      actions.push({
+        id: "store-in-world",
+        label: "Оставить в мире",
+        kind: "branch",
+        children: worldStorageTargets.map((storage) => ({
+          id: "store-world-" + storage.id,
+          label: storage.name,
+          execute: async () => {
+            const response = await control.storeItemInWorld(item, storage)
+            return response.ok
+              ? { type: "success" as const, notice: "Предмет оставлен в «" + storage.name + "»." }
+              : { type: "error" as const, message: response.error || "Не удалось оставить предмет." }
+          },
+        })),
       })
     }
 
