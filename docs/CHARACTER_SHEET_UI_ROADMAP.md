@@ -341,7 +341,11 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - spell school values are normalized case-insensitively before filtering/presentation so dirty casing does not split one school into multiple filter options;
 - resolved spell levels are no longer silently clamped into 0 or 9: standard 0–9 levels keep the canonical groups, while any future non-standard CE level is surfaced under `ПРОЧЕЕ` with its real numeric level instead of being misrepresented;
 - the sheet still treats CE as authoritative: this certification changed renderer metadata/sorting only and did not create a second preparation or spell-state owner;
-- `tests/characterSheetStage15Certification.test.ts` now guards runtime unlock-level propagation, feature sort/fallback behavior, mixed multiclass preparation semantics, school/source normalization and non-standard spell-level handling;
+- critical renderer rules were extracted into the pure `characterSheetDataCertification.ts` module; Features and Spells call those same functions, so behavioral tests exercise production sorting/preparation helpers rather than duplicate test-only logic;
+- `tests/characterSheetStage15Certification.test.ts` guards runtime unlock-level propagation plus component integration with the shared helpers;
+- `tests/characterSheetStage15Behavior.test.ts` adds isolated behavioral coverage for mixed preparation access, prepared-first ranking, preparation-workflow detection, school normalization, source-name cleanup, hostile summary limits, exact 0–9 level validation, order-independent provenance signatures, deterministic primary-source selection, full feature comparator precedence and invalid/unknown unlock levels;
+- unlock-level cleanup now rejects non-integer, zero, negative, NaN and infinite values instead of allowing dirty metadata to sort before legitimate class levels;
+- source-summary compaction clamps invalid/non-positive visible counts to at least one source, so malformed presentation input cannot produce an empty prefix such as ` · +3`;
 - Supabase was audited read-only for this stage; no project data, spell preparation state or template metadata was mutated merely to satisfy certification.
 
 ### Stage 16 — Mobile certification
