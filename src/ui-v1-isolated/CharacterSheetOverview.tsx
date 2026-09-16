@@ -29,8 +29,20 @@ function iconStyle(iconSlot: string) {
   const asset = characterSheetVisualAssetForSlot(iconSlot)
   if (!asset) return undefined
 
+  const positionX =
+    asset.columns <= 1
+      ? "0%"
+      : `${(asset.column / (asset.columns - 1)) * 100}%`
+  const positionY =
+    asset.rows <= 1
+      ? "0%"
+      : `${(asset.row / (asset.rows - 1)) * 100}%`
+
   return {
-    "--u1-sheet-icon": `url("${asset}")`,
+    "--u1-sheet-icon": `url("${asset.url}")`,
+    "--u1-sheet-icon-size":
+      `${asset.columns * 100}% ${asset.rows * 100}%`,
+    "--u1-sheet-icon-position": `${positionX} ${positionY}`,
   } as CSSProperties
 }
 
