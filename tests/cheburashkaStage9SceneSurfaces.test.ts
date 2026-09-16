@@ -282,7 +282,7 @@ test("Stage 9 Larisa moves a character between current scenes and clears stale s
 
 test("Stage 9 migration defines mechanics-only Surfaces with server-winner concurrency", () => {
   const sql = fs.readFileSync(
-    "supabase/migrations/20260916090000_cheburashka_stage9_scene_surfaces.sql",
+    "supabase/migrations/20260916090500_cheburashka_stage9_scene_surfaces.sql",
     "utf8",
   )
   const closure = fs.readFileSync(
@@ -310,7 +310,7 @@ test("Stage 9 migration defines mechanics-only Surfaces with server-winner concu
 
 test("Stage 9 mechanics do not add a chat UI implementation", () => {
   const migration = fs.readFileSync(
-    "supabase/migrations/20260916090000_cheburashka_stage9_scene_surfaces.sql",
+    "supabase/migrations/20260916090500_cheburashka_stage9_scene_surfaces.sql",
     "utf8",
   )
   assert.doesNotMatch(migration, /chat_message_surface|surface_message_id|message_id.*surface/i)
