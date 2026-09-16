@@ -3,6 +3,19 @@ import fs from "node:fs"
 import test from "node:test"
 
 import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
+import {
+  compareFeatureEntries,
+  compareFeatureSourceCandidates,
+  earliestKnownUnlockLevel,
+  hasMutablePreparationWorkflow,
+  isStandardSpellLevel,
+  normalizeSpellSchool,
+  resolveSpellPreparationState,
+  spellPreparationRank,
+  stableProvenanceSignature,
+  stableUniqueSortedStrings,
+  summarizeSourceNames,
+} from "../src/ui-v1-isolated/characterSheetDataCertification.ts"
 
 const features = fs.readFileSync(
   "src/ui-v1-isolated/CharacterSheetFeatures.tsx",
@@ -120,4 +133,226 @@ test("spell schools and multiclass source labels are normalized for dirty data",
   assert.match(spells, /function normalizeSchool/)
   assert.match(spells, /\[\.\.\.names\]\.sort/)
   assert.match(spells, /function sourceSummary/)
+})
+
+
+test("spell preparation semantics are behavioral across mixed multiclass accesses", () => {
+  assert.equal(
+    resolveSpellPreparationState([
+      { preparationMode: "prepared", prepared: false },
+      { preparationMode: "not_required", prepared: true },
+    ]),
+    "not_required",
+  )
+
+  assert.equal(
+    resolveSpellPreparationState([
+      { preparationMode: "not_required", prepared: true },
+      { preparationMode: "prepared", prepared: true },
+    ]),
+    "prepared",
+  )
+
+  assert.equal(
+    resolveSpellPreparationState([
+      { preparationMode: "prepared", prepared: true },
+      { preparationMode: "always_prepared", prepared: true },
+    ]),
+    "always_prepared",
+  )
+
+  assert.equal(
+    resolveSpellPreparationState([
+      { preparationMode: "prepared", prepared: false },
+    ]),
+    "unprepared",
+  )
+})
+
+test("prepared-first rank is binary and does not invent a spontaneous sub-order", () => {
+  assert.equal(spellPreparationRank("always_prepared"), 0)
+  assert.equal(spellPreparationRank("prepared"), 0)
+  assert.equal(spellPreparationRank("not_required"), 1)
+  assert.equal(spellPreparationRank("unprepared"), 1)
+})
+
+test("mutable preparation workflow only exists when a prepared access exists", () => {
+  assert.equal(
+    hasMutablePreparationWorkflow([
+      {
+        accesses: [
+          { preparationMode: "not_required", prepared: true },
+          { preparationMode: "always_prepared", prepared: true },
+        ],
+      },
+    ]),
+    false,
+  )
+
+  assert.equal(
+    hasMutablePreparationWorkflow([
+      {
+        accesses: [
+          { preparationMode: "not_required", prepared: true },
+          { preparationMode: "prepared", prepared: false },
+        ],
+      },
+    ]),
+    true,
+  )
+})
+
+test("spell school normalization collapses dirty casing without inventing translations", () => {
+  assert.equal(normalizeSpellSchool(" evOCation "), "Evocation")
+  assert.equal(normalizeSpellSchool("NECROMANCY"), "Necromancy")
+  assert.equal(normalizeSpellSchool("  "), "")
+  assert.equal(normalizeSpellSchool("Хрономантия"), "Хрономантия")
+})
+
+test("source summaries are deterministic, deduplicated and compact", () => {
+  const names = ["Колдун", "Воин", "Колдун", "Артефакт"]
+
+  assert.deepEqual(
+    stableUniqueSortedStrings(names),
+    ["Артефакт", "Воин", "Колдун"],
+  )
+  assert.equal(
+    summarizeSourceNames(names),
+    "Артефакт · Воин · +1",
+  )
+})
+
+test("standard spell levels accept exactly integer 0 through 9", () => {
+  for (let level = 0; level <= 9; level += 1) {
+    assert.equal(isStandardSpellLevel(level), true)
+  }
+
+  for (const level of [-1, 10, 3.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.equal(isStandardSpellLevel(level), false)
+  }
+})
+
+test("provenance signature is stable under source-order changes and duplicates", () => {
+  const first = stableProvenanceSignature([
+    "source:z",
+    "source:a",
+    "source:z",
+    "",
+  ])
+  const second = stableProvenanceSignature([
+    "unknown",
+    "source:z",
+    "source:a",
+  ])
+
+  assert.equal(first, "source:a|source:z|unknown")
+  assert.equal(second, first)
+})
+
+test("source candidate selection is stable when CE provenance order changes", () => {
+  const candidates = [
+    {
+      category: "other" as const,
+      sourceName: "Неизвестное",
+      originId: "unknown:1",
+    },
+    {
+      category: "class" as const,
+      sourceName: "Воин",
+      originId: "class:1",
+    },
+    {
+      category: "item" as const,
+      sourceName: "Кольцо",
+      originId: "item:1",
+    },
+  ]
+
+  const forward = [...candidates].sort(compareFeatureSourceCandidates)
+  const reversed = [...candidates].reverse().sort(compareFeatureSourceCandidates)
+
+  assert.deepEqual(forward, reversed)
+  assert.equal(forward[0]?.category, "class")
+  assert.equal(forward.at(-1)?.category, "other")
+})
+
+test("feature comparator enforces category, source, timing, unlock level, then name", () => {
+  const entries = [
+    {
+      category: "class" as const,
+      sourceName: "Воин",
+      timing: "passive" as const,
+      unlockLevel: 1,
+      label: "Б",
+    },
+    {
+      category: "class" as const,
+      sourceName: "Воин",
+      timing: "action" as const,
+      unlockLevel: 5,
+      label: "А",
+    },
+    {
+      category: "class" as const,
+      sourceName: "Воин",
+      timing: "action" as const,
+      unlockLevel: 3,
+      label: "Я",
+    },
+    {
+      category: "class" as const,
+      sourceName: "Воин",
+      timing: "action" as const,
+      unlockLevel: 3,
+      label: "А",
+    },
+    {
+      category: "subclass" as const,
+      sourceName: "Чемпион",
+      timing: "action" as const,
+      unlockLevel: 1,
+      label: "0",
+    },
+  ].sort(compareFeatureEntries)
+
+  assert.deepEqual(
+    entries.map((entry) => [
+      entry.category,
+      entry.timing,
+      entry.unlockLevel,
+      entry.label,
+    ]),
+    [
+      ["class", "action", 3, "А"],
+      ["class", "action", 3, "Я"],
+      ["class", "action", 5, "А"],
+      ["class", "passive", 1, "Б"],
+      ["subclass", "action", 1, "0"],
+    ],
+  )
+})
+
+test("unknown feature unlock levels sort after known levels and are never fabricated", () => {
+  assert.equal(earliestKnownUnlockLevel([null, undefined]), null)
+  assert.equal(earliestKnownUnlockLevel([7, null, 3, undefined]), 3)
+
+  const entries = [
+    {
+      category: "class" as const,
+      sourceName: "Воин",
+      timing: "action" as const,
+      unlockLevel: null,
+      label: "Неизвестно",
+    },
+    {
+      category: "class" as const,
+      sourceName: "Воин",
+      timing: "action" as const,
+      unlockLevel: 20,
+      label: "Двадцать",
+    },
+  ].sort(compareFeatureEntries)
+
+  assert.equal(entries[0]?.unlockLevel, 20)
+  assert.equal(entries[1]?.unlockLevel, null)
 })
