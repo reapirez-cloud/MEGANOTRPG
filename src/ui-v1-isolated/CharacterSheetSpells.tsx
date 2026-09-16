@@ -14,6 +14,11 @@ import { supabase } from "../lib/supabase.ts"
 import type { CharacterSpell } from "../types/characterSheet.ts"
 import type { SnakeAction } from "../snake-engine"
 import { CHARACTER_SHEET_SPELL_GROUP_ORDER } from "./characterSheetUiContract"
+import {
+  characterSheetEntityLabel,
+  characterSheetLinkedEntitiesForSpell,
+  type CharacterSheetEntityNavigator,
+} from "./characterSheetEntityNavigation"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 
 type SpellCatalogMeta = {
@@ -194,14 +199,18 @@ export default function CharacterSheetSpells({
   legacySpells,
   runtimeError,
   focusLevel,
+  focusSpellKey,
   onSelect,
+  onNavigateEntity,
 }: {
   characterId: string
   contract: ResolvedCharacterContract | null
   legacySpells: CharacterSpell[]
   runtimeError?: string
   focusLevel?: number | null
+  focusSpellKey?: string | null
   onSelect?: (spellId: string) => void
+  onNavigateEntity?: CharacterSheetEntityNavigator
 }) {
   const snake = useSnake()
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -333,6 +342,24 @@ export default function CharacterSheetSpells({
   })
 
   useEffect(() => {
+    if (!focusSpellKey) return
+
+    const frame = window.requestAnimationFrame(() => {
+      rootRef.current
+        ?.querySelector<HTMLElement>(
+          `[data-spell-key="${focusSpellKey}"]`,
+        )
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [focusSpellKey, filtered.length])
+
+  useEffect(() => {
     if (
       focusLevel === null ||
       focusLevel === undefined ||
@@ -455,6 +482,21 @@ export default function CharacterSheetSpells({
                     body: detailBody(view),
                   },
                 }
+                const relatedTargets =
+                  characterSheetLinkedEntitiesForSpell(view.spell)
+                const navigationAction: SnakeAction | null =
+                  onNavigateEntity && relatedTargets.length
+                    ? {
+                        id: "spell-linked-entities",
+                        label: "Связано",
+                        kind: "branch",
+                        children: relatedTargets.map((target, index) => ({
+                          id: "navigate-" + target.kind + "-" + index,
+                          label: characterSheetEntityLabel(target),
+                          execute: () => onNavigateEntity(target),
+                        })),
+                      }
+                    : null
                 const sourceAction: SnakeAction = {
                   id: "spell-source",
                   label: "Источник",
@@ -472,11 +514,19 @@ export default function CharacterSheetSpells({
                   <SnakeTrigger
                     key={view.spell.key}
                     entity={entity}
-                    actions={[detailAction, sourceAction]}
+                    actions={[
+                      detailAction,
+                      sourceAction,
+                      ...(navigationAction ? [navigationAction] : []),
+                    ]}
                   >
                     <button
                       type="button"
                       className="u1-character-spells__row"
+                      data-spell-key={view.spell.key}
+                      data-entity-focus={
+                        focusSpellKey === view.spell.key || undefined
+                      }
                       data-preparation={view.preparation}
                       data-available={view.spell.available || undefined}
                       data-unavailable={!view.spell.available || undefined}
