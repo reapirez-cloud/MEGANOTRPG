@@ -1351,3 +1351,28 @@
     right: auto;
   }
 }
+
+
+/* Authored class portrait frame · presentation-only overlay */
+.u1-character-sheet__portrait-frame {
+  position: absolute;
+  z-index: 3;
+  top: 2%;
+  left: var(--hero-portrait-left);
+  width: var(--hero-portrait-width);
+  height: 94%;
+  display: block;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,.24));
+}
+
+.u1-character-sheet[data-dead] .u1-character-sheet__portrait-frame {
+  filter:
+    grayscale(.72)
+    saturate(.28)
+    brightness(.78)
+    drop-shadow(0 6px 12px rgba(0,0,0,.28));
+}

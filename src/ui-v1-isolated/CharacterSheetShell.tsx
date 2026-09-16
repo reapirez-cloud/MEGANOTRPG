@@ -77,6 +77,7 @@ export type CharacterSheetShellProps = {
   classKey: string
   portraitUrl: string | null
   portraitPresentation: MediaPresentation | null
+  portraitFrameUrl?: string | null
   panelArtUrl?: string | null
   panelArtPresentation?: MediaPresentation | null
   dead?: boolean
@@ -97,6 +98,7 @@ export default function CharacterSheetShell({
   classKey,
   portraitUrl,
   portraitPresentation,
+  portraitFrameUrl = null,
   panelArtUrl = null,
   panelArtPresentation = null,
   dead = false,
@@ -147,6 +149,7 @@ export default function CharacterSheetShell({
       data-dead={dead || undefined}
       data-has-panel-art={panelArtUrl ? true : undefined}
       data-has-portrait={portraitUrl ? true : undefined}
+      data-has-portrait-frame={portraitFrameUrl ? true : undefined}
       style={
         panelArtUrl
           ? (() => {
@@ -219,6 +222,15 @@ export default function CharacterSheetShell({
                 presentation={portraitPresentation}
                 alt=""
               />
+              {portraitFrameUrl ? (
+                <img
+                  className="u1-character-sheet__portrait-frame"
+                  src={portraitFrameUrl}
+                  alt=""
+                  aria-hidden="true"
+                  draggable={false}
+                />
+              ) : null}
               <span className="u1-character-sheet__portrait-shade" aria-hidden="true" />
               <span className="u1-character-sheet__hero-haze" aria-hidden="true" />
               <span className="u1-character-sheet__identity">

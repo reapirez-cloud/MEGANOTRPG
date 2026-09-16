@@ -136,6 +136,9 @@ export default function CharacterView({
   const classSheetBackground = referenceMedia.get(
     classReferenceArtSlot(classKey, "sheet_background"),
   )
+  const classPortraitFrame = referenceMedia.get(
+    classReferenceArtSlot(classKey, "portrait_frame"),
+  )
 
   const classBackgroundActions = createSheetReferenceMediaActions({
     controller: referenceMedia,
@@ -796,6 +799,7 @@ export default function CharacterView({
       classKey={classKey}
       portraitUrl={portraitUrl}
       portraitPresentation={portraitPresentation}
+      portraitFrameUrl={classPortraitFrame?.url || null}
       panelArtUrl={classSheetBackground?.url || null}
       panelArtPresentation={classSheetBackground?.presentation || null}
       dead={character.lifeState === "dead"}

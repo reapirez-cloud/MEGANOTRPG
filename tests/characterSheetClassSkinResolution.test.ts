@@ -59,7 +59,7 @@ test("background art owns the palette while panels remain neutral dark glass", (
     "utf8",
   )
 
-  assert.match(theme, /--cv-panel-glass:\s*rgba\(5, 6, 7, \.46\)/)
+  assert.match(theme, /--cv-panel-glass:\s*rgba\(5, 6, 7, \.55\)/)
   assert.match(theme, /--cv-art-highlight:/)
   assert.match(theme, /var\(--cv-class-art-wash\)/)
   assert.match(

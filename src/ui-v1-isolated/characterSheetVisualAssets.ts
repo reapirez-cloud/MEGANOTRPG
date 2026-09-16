@@ -65,7 +65,10 @@ export const CHARACTER_SHEET_CLASS_RESOURCE_ASSETS: Readonly<
 > = Object.fromEntries(
   CHARACTER_SHEET_AUTHORED_CLASS_KEYS.map((classKey, index) => [
     classKey,
-    classIcon(CLASS_RESOURCE_ATLAS, index),
+    classIcon(
+      classKey === "druid" ? CLASS_SPELL_SLOT_ATLAS : CLASS_RESOURCE_ATLAS,
+      index,
+    ),
   ]),
 )
 
@@ -74,7 +77,10 @@ export const CHARACTER_SHEET_CLASS_SPELL_SLOT_ASSETS: Readonly<
 > = Object.fromEntries(
   CHARACTER_SHEET_AUTHORED_CLASS_KEYS.map((classKey, index) => [
     classKey,
-    classIcon(CLASS_SPELL_SLOT_ATLAS, index),
+    classIcon(
+      classKey === "druid" ? CLASS_RESOURCE_ATLAS : CLASS_SPELL_SLOT_ATLAS,
+      index,
+    ),
   ]),
 )
 

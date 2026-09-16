@@ -328,9 +328,9 @@
 
 /* Background-first palette · art stays visible, panels stay neutral */
 .u1-character-sheet {
-  --cv-panel-glass: rgba(5, 6, 7, .46);
-  --cv-panel-glass-soft: rgba(5, 6, 7, .36);
-  --cv-panel-glass-strong: rgba(5, 6, 7, .56);
+  --cv-panel-glass: rgba(5, 6, 7, .55);
+  --cv-panel-glass-soft: rgba(5, 6, 7, .44);
+  --cv-panel-glass-strong: rgba(5, 6, 7, .65);
   --cv-panel-edge: rgba(244, 242, 235, .10);
   --cv-panel-line: rgba(244, 242, 235, .075);
   --cv-art-highlight:

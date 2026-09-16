@@ -14,6 +14,7 @@ export type ReferenceArtKind =
   | "preview"
   | "hero"
   | "sheet_background"
+  | "portrait_frame"
   | "resource"
   | "spell_slot"
 
@@ -54,7 +55,7 @@ export function resourceReferenceArtSlot(stateKey: string) {
 }
 
 function validReferenceSlot(value: string) {
-  return /^(?:class:[a-z0-9-]+:(?:preview|hero|sheet_background|resource|spell_slot)|subclass:[a-z0-9-]+:[a-z0-9-]+:(?:preview|hero)|resource:[a-z0-9_-]+)$/.test(value)
+  return /^(?:class:[a-z0-9-]+:(?:preview|hero|sheet_background|portrait_frame|resource|spell_slot)|subclass:[a-z0-9-]+:[a-z0-9-]+:(?:preview|hero)|resource:[a-z0-9_-]+)$/.test(value)
 }
 
 function iconReferenceSlot(value: string) {
@@ -163,11 +164,12 @@ export function useUiV1ReferenceMedia() {
     try {
       if (file) {
         const isIcon = iconReferenceSlot(targetField)
+        const isPortraitFrame = targetField.endsWith(":portrait_frame")
         const upload = await uploadCampaignImage(
           file,
           isIcon ? "reference-icons" : "reference-art",
           scope.campaignId,
-          { preservePng: isIcon },
+          { preservePng: isIcon || isPortraitFrame },
         )
         if (!upload.ok) {
           setBusy(false)
@@ -191,14 +193,18 @@ export function useUiV1ReferenceMedia() {
                 ? "hero_art"
                 : isSheetBackground
                   ? "panel"
-                  : "ui_preview",
+                  : isPortraitFrame
+                    ? "portrait"
+                    : "ui_preview",
             p_profile: isIcon
               ? "tiny_icon"
               : isHero
                 ? "hero_art"
                 : isSheetBackground
                   ? "panel"
-                  : "ui_preview",
+                  : isPortraitFrame
+                    ? "portrait"
+                    : "ui_preview",
           },
         )
 
