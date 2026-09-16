@@ -247,6 +247,9 @@ export function useUiV1CharacterControl(characterId: string) {
 
   const setEquipped = useCallback(async (item: InventoryItem, equipped: boolean): Promise<Result> => {
     if (!canControlCharacter) return { ok: false, error: "Недостаточно прав." }
+    if (!equipped) {
+      return { ok: false, error: "Для снятия выбери реальное место: руку, сумку или внешнюю ячейку." }
+    }
     try {
       if (scope.canManage) {
         await oracle.inventory.setEquipped(
@@ -271,6 +274,7 @@ export function useUiV1CharacterControl(characterId: string) {
       await load()
       return { ok: true }
     } catch (reason) {
+      await load()
       return { ok: false, error: errorMessage(reason, "Не удалось изменить экипировку.") }
     }
   }, [canControlCharacter, characterId, context, load, playerContext, scope.canManage])
@@ -324,6 +328,7 @@ export function useUiV1CharacterControl(characterId: string) {
       await load()
       return { ok: true }
     } catch (reason) {
+      await load()
       return { ok: false, error: errorMessage(reason, "Не удалось переместить предмет.") }
     }
   }, [canControlCharacter, characterId, context, load, playerContext, scope.canManage])
