@@ -84,6 +84,31 @@ export type CheburashkaCommand =
       placement: InventoryPlacementTarget
       expectedVersion?: number
     }
+  | {
+      kind: "inventory.create_surface"
+      context: EngineCommandContext
+      surfaceId: string
+      input: InventoryInput
+    }
+  | {
+      kind: "inventory.place_surface"
+      context: EngineCommandContext
+      characterId: string
+      itemId: string
+      surfaceId: string
+      amount: number
+      expectedVersion?: number
+    }
+  | {
+      kind: "inventory.take_surface"
+      context: EngineCommandContext
+      surfaceId: string
+      itemId: string
+      characterId: string
+      amount: number
+      placement: InventoryPlacementTarget
+      expectedVersion?: number
+    }
 
 export type InventoryItemChange = {
   before: InventoryItem
@@ -95,6 +120,8 @@ export type InventoryMutation = {
   itemId: string
   affectedCharacterIds: string[]
   affectedWorldStorageIds?: string[]
+  affectedSurfaceIds?: string[]
+  affectedSceneIds?: string[]
   affectedLocationIds?: string[]
   before: InventoryItem | null
   after: InventoryItem | null
@@ -123,6 +150,7 @@ export type InventoryMechanicalProjection = {
 export interface CheburashkaStorage {
   listCharacterItems(characterId: string): Promise<InventoryItem[]>
   listWorldStorageItems(worldStorageId: string): Promise<InventoryItem[]>
+  listSurfaceItems(surfaceId: string): Promise<InventoryItem[]>
   getItem(itemId: string): Promise<InventoryItem | null>
   execute(command: CheburashkaCommand): Promise<InventoryMutation>
 }
