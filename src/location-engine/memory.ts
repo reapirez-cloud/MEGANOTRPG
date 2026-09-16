@@ -11,13 +11,171 @@ export class MemoryLarisaStorage implements LarisaStorage {
   private readonly linkSections = new Map<string, { sectionId: string; targetLocationId: string }>()
   private readonly npcHabitats = new Set<string>()
 
-  constructor(initial: LarisaSnapshot = { characterStates: [], locations: [], scenes: [], sceneParticipants: [], worldStorages: [] }) {
+  constructor(initial: LarisaSnapshot = { characterStates: [], locations: [], scenes: [], sceneParticipants: [], sceneSurfaces: [], worldStorages: [] }) {
     this.snapshot = copy(initial)
   }
 
   async loadCampaignSnapshot(): Promise<LarisaSnapshot> { return copy(this.snapshot) }
 
   async execute(command: LarisaCommand): Promise<WorldMutation> {
+    if (command.kind === "world.scene_create") {
+      const roomId = `scene-${command.context.commandId}`
+      this.snapshot.scenes = [...this.snapshot.scenes, {
+        room_id: roomId,
+        title: command.input.title,
+        location_id: command.input.locationId,
+        campaign_day: command.input.campaignDay,
+        day_period: command.input.dayPeriod,
+        scene_state: "active",
+        room_state: command.input.roomState,
+      }]
+      return {
+        kind: command.kind,
+        characterIds: [],
+        locationIds: command.input.locationId ? [command.input.locationId] : [],
+        sceneIds: [roomId],
+        details: { roomId, locationId: command.input.locationId },
+      }
+    }
+
+    if (command.kind === "world.scene_move_character") {
+      const target = command.roomId
+        ? this.snapshot.scenes.find((scene) => scene.room_id === command.roomId && scene.scene_state === "active")
+        : null
+      if (command.roomId && !target) {
+        throw new EngineCommandError("world.scene_not_found", "Target active scene was not found")
+      }
+
+      this.snapshot.sceneParticipants = this.snapshot.sceneParticipants
+        .filter((participant) => participant.character_id !== command.characterId)
+      if (target) {
+        this.snapshot.sceneParticipants.push({
+          room_id: target.room_id,
+          character_id: command.characterId,
+        })
+      }
+
+      if (target && (command.syncLocation || command.syncTime)) {
+        const current = this.snapshot.characterStates.find((state) => state.character_id === command.characterId)
+        const next: CharacterWorldState = {
+          character_id: command.characterId,
+          campaign_id: command.context.campaignId,
+          location_id: command.syncLocation ? target.location_id : current?.location_id ?? null,
+          campaign_day: command.syncTime ? target.campaign_day : current?.campaign_day ?? 1,
+          day_period: command.syncTime ? target.day_period : current?.day_period ?? "day",
+          updated_at: command.context.occurredAt,
+          updated_by: command.context.requestedBy,
+        }
+        this.snapshot.characterStates = [
+          ...this.snapshot.characterStates.filter((state) => state.character_id !== command.characterId),
+          next,
+        ]
+      }
+
+      return {
+        kind: command.kind,
+        characterIds: [command.characterId],
+        locationIds: target?.location_id ? [target.location_id] : [],
+        sceneIds: target ? [target.room_id] : [],
+        details: {
+          characterId: command.characterId,
+          roomId: target?.room_id ?? null,
+          locationId: target?.location_id ?? null,
+        },
+      }
+    }
+
+    if (command.kind === "world.surface_create") {
+      const scene = this.snapshot.scenes.find((item) =>
+        item.room_id === command.input.roomId && item.scene_state === "active"
+      )
+      if (!scene) throw new EngineCommandError("world.scene_not_found", "Scene was not found")
+
+      if (command.input.accessMode === "selected") {
+        const current = new Set(
+          this.snapshot.sceneParticipants
+            .filter((participant) => participant.room_id === command.input.roomId)
+            .map((participant) => participant.character_id),
+        )
+        if (!command.input.characterIds.length || command.input.characterIds.some((id) => !current.has(id))) {
+          throw new EngineCommandError("world.surface_access_invalid", "Selected Surface access requires current scene participants")
+        }
+      }
+
+      const surfaceId = `surface-${command.context.commandId}`
+      this.snapshot.sceneSurfaces = [...this.snapshot.sceneSurfaces, {
+        id: surfaceId,
+        campaign_id: command.context.campaignId,
+        room_id: command.input.roomId,
+        name: command.input.name,
+        description: command.input.description,
+        access_mode: command.input.accessMode,
+        lifecycle_state: "active",
+        version: 1,
+        selected_character_ids: command.input.accessMode === "selected"
+          ? [...new Set(command.input.characterIds)]
+          : [],
+      }]
+      return {
+        kind: command.kind,
+        characterIds: command.input.characterIds,
+        locationIds: [],
+        sceneIds: [command.input.roomId],
+        details: { surfaceId, roomId: command.input.roomId, accessMode: command.input.accessMode },
+      }
+    }
+
+    if (command.kind === "world.surface_update") {
+      const surface = this.snapshot.sceneSurfaces.find((item) => item.id === command.surfaceId)
+      if (!surface) throw new EngineCommandError("world.surface_not_found", "Surface was not found")
+      if (surface.version !== command.expectedVersion) {
+        throw new EngineCommandError("world.version_conflict", "Surface version conflict")
+      }
+      if (command.input.accessMode === "selected") {
+        const current = new Set(
+          this.snapshot.sceneParticipants
+            .filter((participant) => participant.room_id === surface.room_id)
+            .map((participant) => participant.character_id),
+        )
+        if (!command.input.characterIds.length || command.input.characterIds.some((id) => !current.has(id))) {
+          throw new EngineCommandError("world.surface_access_invalid", "Selected Surface access requires current scene participants")
+        }
+      }
+      Object.assign(surface, {
+        name: command.input.name,
+        description: command.input.description,
+        access_mode: command.input.accessMode,
+        selected_character_ids: command.input.accessMode === "selected"
+          ? [...new Set(command.input.characterIds)]
+          : [],
+        version: surface.version + 1,
+      })
+      return {
+        kind: command.kind,
+        characterIds: command.input.characterIds,
+        locationIds: [],
+        sceneIds: [surface.room_id],
+        details: copy(surface),
+      }
+    }
+
+    if (command.kind === "world.surface_set_archived") {
+      const surface = this.snapshot.sceneSurfaces.find((item) => item.id === command.surfaceId)
+      if (!surface) throw new EngineCommandError("world.surface_not_found", "Surface was not found")
+      if (surface.version !== command.expectedVersion) {
+        throw new EngineCommandError("world.version_conflict", "Surface version conflict")
+      }
+      surface.lifecycle_state = command.archived ? "archived" : "active"
+      surface.version += 1
+      return {
+        kind: command.kind,
+        characterIds: [],
+        locationIds: [],
+        sceneIds: [surface.room_id],
+        details: copy(surface),
+      }
+    }
+
     if (command.kind === "world.storage_create") {
       const storageId = `world-storage-${command.context.commandId}`
       const storage = {
@@ -101,8 +259,14 @@ export class MemoryLarisaStorage implements LarisaStorage {
     }
 
     if (command.kind === "world.set_scene_participants") {
+      const selected = new Set(command.characterIds)
       const participants: SceneParticipant[] = command.characterIds.map((characterId) => ({ room_id: command.roomId, character_id: characterId }))
-      this.snapshot.sceneParticipants = [...this.snapshot.sceneParticipants.filter((item) => item.room_id !== command.roomId), ...participants]
+      this.snapshot.sceneParticipants = [
+        ...this.snapshot.sceneParticipants.filter((item) =>
+          item.room_id !== command.roomId && !selected.has(item.character_id)
+        ),
+        ...participants,
+      ]
       return { kind: command.kind, characterIds: command.characterIds, locationIds: [], sceneIds: [command.roomId], details: { characterIds: command.characterIds } }
     }
 
