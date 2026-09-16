@@ -167,15 +167,16 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - active section is reflected in the rail and AI view context.
 
 ### Stage 5 — Core 50/50 block [DONE]
-- persistent 50/50 core mounted between masthead and dynamic sheet content;
-- quick combat/reference values on the left are read from the resolved Character Engine contract with legacy-sheet fallback;
-- quick values include AC, passive Perception, proficiency, initiative, metric speed display, and spell save/attack only for spellcasters;
-- stable placeholder slots are reserved for future quick-stat PNG assets;
-- six abilities live on the right with score + modifier;
-- tapping an ability collapses the other five and expands the selected ability in-place;
-- expanded ability shows its resolved saving throw and CE-linked skills with proficiency/expertise state;
-- tapping the selected ability again returns to the six-stat matrix;
-- expanded ability is exposed to AI/Snake view context for later contextual actions.
+- persistent 50/50 core is mounted between masthead and dynamic lower content;
+- the left side reads resolved Character Engine values only: AC, passive Perception, proficiency, initiative, speed, plus spell save DC / spell attack when a spellcasting ability exists;
+- the UI does not recalculate ability modifiers and does not fall back to cached legacy sheet values while CE is resolving;
+- stable placeholder icon slots are reserved for the future quick-stat PNG set;
+- the right side shows all six CE-resolved abilities with score + modifier;
+- tapping an ability replaces the six-row matrix with that one expanded ability in the same right column;
+- the expanded state shows the CE-resolved saving throw plus only skills whose resolved `ability` points to that characteristic;
+- proficiency and expertise markers come directly from CE `proficiencyRank`;
+- tapping the expanded ability again returns to the six-stat matrix;
+- expanded ability is exposed in the AI/Snake view context for later Stage 11 contextual actions.
 
 ### Stage 6 — Overview
 - class resources;
