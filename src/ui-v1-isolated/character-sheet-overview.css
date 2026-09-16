@@ -430,12 +430,12 @@
   background: currentColor;
   -webkit-mask-image: var(--u1-sheet-icon);
   mask-image: var(--u1-sheet-icon);
-  -webkit-mask-position: center;
-  mask-position: center;
+  -webkit-mask-position: var(--u1-sheet-icon-position, center);
+  mask-position: var(--u1-sheet-icon-position, center);
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
-  -webkit-mask-size: contain;
-  mask-size: contain;
+  -webkit-mask-size: var(--u1-sheet-icon-size, contain);
+  mask-size: var(--u1-sheet-icon-size, contain);
 }
 
 .u1-character-overview__resource-icon[data-has-asset] > i {
