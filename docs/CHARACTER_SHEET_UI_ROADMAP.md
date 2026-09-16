@@ -223,7 +223,7 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - long press vs scroll;
 - Snake;
 - state restoration after Inventory;
-- remove obsolete character-sheet CSS only after replacement is certified.
+- remove later obsolete character-sheet CSS only after its replacement is certified. The pre-redesign character-view.css was intentionally removed in Stage 2.
 
 ## Non-goals for Stage 1
 
