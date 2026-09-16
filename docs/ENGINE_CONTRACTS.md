@@ -12,9 +12,9 @@
 | **GENA** | normal gameplay/session declarations/history, authoritative execution routing and command correlation/receipts | GM authority, character resource rows, spells/preparation rows, inventory rows, entity identity, world topology, definitions, CE calculations, scene rulings |
 | **ORACLE** | no canonical persistence; imperative GM control surface that directly calls the explicit owner | gameplay orchestration, rule legality, domain storage, derived CE totals, duplicate domain events |
 | **CE** | no canonical persistence; deterministic calculation and one transient resolved contract from explicit input | storage, commands, inventory, characters, HP persistence, resources, chat, rolls, locations, time |
-| **CHEBURASHKA** | item instances, holders, quantities, charges, equipment state, transfers and per-instance runtime state | reusable item definitions, character identity, HP, world placement, scene rulings, resolved totals |
+| **CHEBURASHKA** | item instances, holders, quantities, charges, equipment state, transfers, world-storage/Surface ownership and per-instance runtime state | reusable item definitions, character identity, HP, scene/location access rules, scene rulings, resolved totals |
 | **SHAPOKLYAK** | PC/NPC identity, assignment, lifecycle/visibility and canonical character mechanics/runtime state: base sheet facts, explicit HP, spells/options/features, preparation, suppressions, template assignments and persistent character resources | reusable definitions, inventory instances, world topology, dice, derived CE totals, session history |
-| **LARISA** | locations/world hierarchy, links/maps, discovery, character/scene placement, scene participants, descriptive chronology and NPC habitats | definitions, character mechanics/resources, inventory, HP, scene rulings |
+| **LARISA** | locations/world hierarchy, links/maps, discovery, character/scene placement, current scene participants, scene Surface access/lifecycle, descriptive chronology and NPC habitats | item-instance contents, definitions, character mechanics/resources, HP, scene rulings |
 | **TOBIK** | authoritative dice planning/resolution for a requested roll | durable domain state, resources, HP, inventory, hit/miss scene decisions, scene legality |
 | **SNAKE** | no canonical persistence; universal UI interaction/action orchestration: context invocation, reusable surfaces and dispatch into the declared control/owner path | domain rules/state, owner storage, CE calculation, permission invention, arbitrary Supabase writes |
 
@@ -109,7 +109,7 @@ CE resolves the supplied explicit snapshot. It performs no I/O, sends no command
 
 ### Cheburashka — inventory instance engine
 
-Create/update/remove/equip/consume/transfer mutate only inventory-instance state. Reusable item definitions remain Chasovoy state. Mechanical instance diffs request fresh character resolution for every affected character.
+Create/update/remove/equip/consume/transfer and character ↔ world-storage/Surface moves mutate only inventory-instance state. Reusable item definitions remain Chasovoy state. A physical item has one canonical owner scope; Larisa may decide whether a Surface is accessible, but it never owns the item row. Mechanical instance diffs request fresh character resolution for every affected character.
 
 ### Shapoklyak — character owner
 
@@ -117,7 +117,7 @@ Shapoklyak owns who exists and the persistent character mechanics/runtime facts 
 
 ### Larisa — world owner
 
-Larisa owns world hierarchy/topology, placement, discovery, scenes, descriptive time and NPC habitats. Time alone never causes character resource/HP/effect changes.
+Larisa owns world hierarchy/topology, placement, discovery, scenes, current scene membership, scene Surface access/lifecycle, descriptive time and NPC habitats. Cheburashka owns the actual items on a Surface. Time alone never causes character resource/HP/effect changes.
 
 ### Tobik — roll boundary
 
@@ -174,6 +174,18 @@ Player → GENA → Cheburashka authoritative consume/use boundary
 ```
 
 If an instance reaches zero quantity, Cheburashka removes the instance. The Chasovoy definition remains.
+
+Shared scene loot:
+
+```text
+GM → Oracle → Larisa creates/configures Surface
+GM → Oracle → Cheburashka creates/places canonical loot instance
+player action → GENA/explicit gameplay path → Cheburashka take_surface
+Cheburashka transaction lock + item version decide the winner
+Larisa Realtime invalidation tells other clients to refetch
+```
+
+A chat message never owns Surface loot. Realtime never chooses the winner.
 
 ## GM authority and HP
 
