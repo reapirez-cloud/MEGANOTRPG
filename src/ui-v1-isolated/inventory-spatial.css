@@ -414,10 +414,6 @@
 }
 
 @media (max-width: 390px) {
-  .u1-inventory-space {
-    --inv-cell: 44px;
-  }
-
   .u1-inventory-grid-viewport {
     width: 100%;
   }
