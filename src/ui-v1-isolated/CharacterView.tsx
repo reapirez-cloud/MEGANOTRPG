@@ -515,6 +515,8 @@ export default function CharacterView({
           character: workspaceCharacter,
           applyMedia: (slot, input) =>
             workspace.applyCharacterMedia(characterId, slot, input),
+          resetMedia: (slot) =>
+            workspace.resetCharacterMedia(characterId, slot),
         })
       : []
 
