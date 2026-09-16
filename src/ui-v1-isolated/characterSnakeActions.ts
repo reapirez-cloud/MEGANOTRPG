@@ -55,6 +55,7 @@ export function createCharacterSnakeActions({
   canEditAvatar,
   character,
   applyMedia,
+  resetMedia,
 }: {
   canEditAvatar: boolean
   character: CharacterMediaState
@@ -62,8 +63,54 @@ export function createCharacterSnakeActions({
     slot: CharacterMediaSlot,
     input: SnakeActionInput,
   ) => Promise<MutationResult>
+  resetMedia?: (
+    slot: CharacterMediaSlot,
+  ) => Promise<MutationResult>
 }): SnakeAction[] {
   if (!canEditAvatar) return []
+
+  function resetAction(
+    slot: CharacterMediaSlot,
+    id: string,
+    label: string,
+    title: string,
+    notice: string,
+  ): SnakeAction | null {
+    if (!resetMedia) return null
+
+    const hasDedicatedAsset =
+      slot === "avatar"
+        ? Boolean(character.avatarAssetId)
+        : slot === "panel_avatar"
+          ? Boolean(character.panelAvatarAssetId)
+          : Boolean(character.sheetHeroAssetId)
+
+    if (!hasDedicatedAsset) return null
+
+    return {
+      id,
+      label,
+      tone: "danger",
+      surface: {
+        kind: "confirm",
+        eyebrow: "Персонаж · графика",
+        title,
+        body:
+          "Пользовательская привязка будет снята. Лист вернётся к следующему доступному встроенному или унаследованному изображению.",
+        confirmLabel: "Сбросить",
+        cancelLabel: "Отмена",
+      },
+      execute: async ({ input }) => {
+        if (input?.confirmed !== true) {
+          return {
+            type: "error" as const,
+            message: "Сброс не подтверждён.",
+          }
+        }
+        return result(await resetMedia(slot), notice)
+      },
+    }
+  }
 
   return [
     {
@@ -74,7 +121,7 @@ export function createCharacterSnakeActions({
       children: ({ path }) => {
         if (path[path.length - 1]?.id !== "avatar") return []
 
-        return [
+        const actions: SnakeAction[] = [
           {
             id: "character-avatar",
             label: "Аватар персонажа",
@@ -144,9 +191,15 @@ export function createCharacterSnakeActions({
               title: "Арт листа",
               items: mediaItem(
                 "sheet-hero",
-                character.sheetHeroUrl || character.panelAvatarUrl || character.avatarUrl,
-                character.sheetHeroAssetId || character.panelAvatarAssetId || character.avatarAssetId,
-                character.sheetHeroSource || character.panelAvatarSource || character.avatarSource,
+                character.sheetHeroUrl ||
+                  character.panelAvatarUrl ||
+                  character.avatarUrl,
+                character.sheetHeroAssetId ||
+                  character.panelAvatarAssetId ||
+                  character.avatarAssetId,
+                character.sheetHeroSource ||
+                  character.panelAvatarSource ||
+                  character.avatarSource,
                 character.name,
               ),
               compose: {
@@ -168,6 +221,32 @@ export function createCharacterSnakeActions({
               ),
           },
         ]
+
+        const resets = [
+          resetAction(
+            "avatar",
+            "reset-character-avatar",
+            "Сбросить аватар персонажа",
+            "Сбросить аватар персонажа",
+            "Аватар персонажа сброшен.",
+          ),
+          resetAction(
+            "panel_avatar",
+            "reset-panel-avatar",
+            "Сбросить аватар панели",
+            "Сбросить аватар панели",
+            "Панель вернулась к аватару персонажа.",
+          ),
+          resetAction(
+            "sheet_hero",
+            "reset-sheet-hero",
+            "Сбросить арт листа",
+            "Сбросить арт листа",
+            "Арт листа вернулся к панели или аватару.",
+          ),
+        ].filter((action): action is SnakeAction => Boolean(action))
+
+        return [...actions, ...resets]
       },
     },
   ]
