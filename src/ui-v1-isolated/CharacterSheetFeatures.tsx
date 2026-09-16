@@ -257,6 +257,11 @@ function buildEntries(
         "grant:" + grant.key + ":" + grant.variantKey,
         grant.key,
         grant.variantKey,
+        ...(source.sourceTarget?.kind === "feature"
+          ? [source.sourceTarget.featureId]
+          : source.sourceTarget?.kind === "effect"
+            ? [source.sourceTarget.effectId]
+            : []),
         ...grant.sources.map((entry) => entry.source.id),
       ],
       sourceTarget: source.sourceTarget,
@@ -281,6 +286,11 @@ function buildEntries(
             "action:" + action.stateKey,
             action.stateKey,
             action.key,
+            ...(source.sourceTarget?.kind === "feature"
+              ? [source.sourceTarget.featureId]
+              : source.sourceTarget?.kind === "effect"
+                ? [source.sourceTarget.effectId]
+                : []),
             ...action.sources.map((entry) => entry.source.id),
           ]),
         ],
@@ -300,6 +310,11 @@ function buildEntries(
         "action:" + action.stateKey,
         action.stateKey,
         action.key,
+        ...(source.sourceTarget?.kind === "feature"
+          ? [source.sourceTarget.featureId]
+          : source.sourceTarget?.kind === "effect"
+            ? [source.sourceTarget.effectId]
+            : []),
         ...action.sources.map((entry) => entry.source.id),
       ],
       sourceTarget: source.sourceTarget,
