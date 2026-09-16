@@ -293,6 +293,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         before,
         after: sourceAfter ? copy(sourceAfter) : null,
         destinationItem: copy(destination),
+        ...(relatedChanges.length ? { relatedChanges } : {}),
       })
     }
 
