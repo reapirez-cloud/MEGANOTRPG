@@ -24,13 +24,21 @@ import {
   sourceSuppressionContributions,
 } from "./suppressionRuntime.ts"
 import { characterTemplateContributions } from "../rule-templates/registry.ts"
-import { resolveTemplateBundles } from "../rule-templates/resolver.ts"
+import {
+  resolveTemplateBundles,
+  type TemplateSourceNode,
+} from "../rule-templates/resolver.ts"
 import type { CharacterTemplateBundle } from "../rule-templates/types.ts"
 import type { CharacterFeature, CharacterSheet, CharacterSpell } from "../types/characterSheet.ts"
 
 // Integration boundary: keep this adapter aligned with docs/CHARACTER_ENGINE_CONTRACT.md
 // and src/rule-templates/CLASS_INTEGRATION_NOTES.md. CE itself stays persistence/UI agnostic.
-export interface LegacyCharacterEngineView { input: CharacterEngineInput; contract: ResolvedCharacterContract; spellcastingAbility?: AbilityKey }
+export interface LegacyCharacterEngineView {
+  input: CharacterEngineInput
+  contract: ResolvedCharacterContract
+  spellcastingAbility?: AbilityKey
+  sourceNodes: TemplateSourceNode[]
+}
 
 export type CharacterEngineIntegrationSnapshot = {
   /** Cheburashka contract: CE sees projections, never the backpack. */
@@ -213,6 +221,22 @@ export function resolveLegacyCharacterEngineView(args: {
   spells: CharacterSpell[]
   features: CharacterFeature[]
 } & CharacterEngineIntegrationSnapshot): LegacyCharacterEngineView {
-  const input = buildLegacyCharacterEngineInput(args); const spellcastingAbility = parseLegacySpellcastingAbility(args.sheet.spellcasting_ability)
-  return { input, contract: resolveCharacterContract(input), ...(spellcastingAbility ? { spellcastingAbility } : {}) }
+  const input = buildLegacyCharacterEngineInput(args)
+  const spellcastingAbility = parseLegacySpellcastingAbility(
+    args.sheet.spellcasting_ability,
+  )
+  const sourceNodes =
+    args.templateBundles !== undefined
+      ? resolveTemplateBundles(
+          args.templateBundles,
+          Math.max(1, args.character.level || 1),
+        ).sources
+      : []
+
+  return {
+    input,
+    contract: resolveCharacterContract(input),
+    ...(spellcastingAbility ? { spellcastingAbility } : {}),
+    sourceNodes,
+  }
 }

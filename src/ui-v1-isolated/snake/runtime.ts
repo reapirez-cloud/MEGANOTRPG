@@ -6,6 +6,19 @@ import type {
   SnakeSurfaceRequest,
 } from "../../snake-engine"
 
+export type SnakeViewContext = {
+  screen: string
+  route?: string
+  title?: string
+  text?: string
+  entity?: {
+    type: string
+    id: string
+    label?: string
+  } | null
+  facts?: Record<string, unknown>
+}
+
 export type SnakeSurfaceSource = {
   action?: SnakeAction
   entity?: SnakeEntityRef

@@ -1,0 +1,279 @@
+.u1-character-sheet-core {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  border-top: 1px solid var(--cv-line);
+  border-bottom: 1px solid var(--cv-line);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.018), transparent 44%),
+    rgba(255,255,255,.012);
+}
+
+.u1-character-sheet-core--loading {
+  min-height: 216px;
+  grid-template-columns: 1fr;
+  place-items: center;
+  color: var(--cv-text-faint);
+  font-size: 9px;
+}
+
+.u1-character-sheet-core__quick,
+.u1-character-sheet-core__abilities {
+  min-width: 0;
+}
+
+.u1-character-sheet-core__quick {
+  padding-right: 10px;
+  border-right: 1px solid var(--cv-line);
+}
+
+.u1-character-sheet-core__abilities {
+  padding-left: 10px;
+}
+
+.u1-character-sheet-core__quick-row,
+.u1-character-sheet-core__ability-row {
+  min-height: 38px;
+  border-bottom: 1px solid var(--cv-line-soft);
+}
+
+.u1-character-sheet-core__quick-row:last-child,
+.u1-character-sheet-core__ability-row:last-child {
+  border-bottom: 0;
+}
+
+.u1-character-sheet-core__quick-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.u1-character-sheet-core__quick-icon {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--cv-line);
+  display: block;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.045), transparent 72%),
+    rgba(255,255,255,.018);
+}
+
+.u1-character-sheet-core__quick-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cv-text-muted);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-character-sheet-core__quick-row > strong {
+  color: var(--cv-text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.u1-character-sheet-core__ability-row,
+.u1-character-sheet-core__ability-head {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.u1-character-sheet-core__ability-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px 33px;
+  align-items: center;
+  gap: 6px;
+  text-align: left;
+}
+
+.u1-character-sheet-core__ability-row span {
+  color: var(--cv-text-soft);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12px;
+}
+
+.u1-character-sheet-core__ability-row strong,
+.u1-character-sheet-core__ability-head strong {
+  color: var(--cv-text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 400;
+  text-align: right;
+}
+
+.u1-character-sheet-core__ability-row em,
+.u1-character-sheet-core__ability-head em {
+  color: var(--cv-accent);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 13px;
+  line-height: 1;
+  font-style: normal;
+  text-align: right;
+}
+
+.u1-character-sheet-core__ability {
+  min-width: 0;
+  animation: u1-character-core-reveal 150ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.u1-character-sheet-core__ability-head {
+  min-height: 48px;
+  border-bottom: 1px solid var(--cv-line);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px 34px;
+  align-items: center;
+  gap: 6px;
+  text-align: left;
+}
+
+.u1-character-sheet-core__ability-head > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.u1-character-sheet-core__ability-head b {
+  overflow: hidden;
+  color: var(--cv-text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-character-sheet-core__ability-head small {
+  color: var(--cv-text-faint);
+  font-size: 7px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.u1-character-sheet-core__ability-detail {
+  padding-bottom: 7px;
+}
+
+.u1-character-sheet-core__save,
+.u1-character-sheet-core__skill {
+  min-height: 31px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22px 31px;
+  align-items: center;
+  gap: 5px;
+  border-bottom: 1px solid var(--cv-line-soft);
+}
+
+.u1-character-sheet-core__skill:last-child {
+  border-bottom: 0;
+}
+
+.u1-character-sheet-core__save > span,
+.u1-character-sheet-core__skill > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cv-text-muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-character-sheet-core__save > i,
+.u1-character-sheet-core__skill > i {
+  color: var(--cv-accent);
+  font-size: 8px;
+  line-height: 1;
+  font-style: normal;
+  text-align: center;
+}
+
+.u1-character-sheet-core__save > strong,
+.u1-character-sheet-core__skill > strong {
+  color: var(--cv-text-soft);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 400;
+  text-align: right;
+}
+
+.u1-character-sheet-core__skills {
+  display: grid;
+}
+
+.u1-character-sheet-core__no-skills {
+  min-height: 38px;
+  display: grid;
+  align-items: center;
+  color: var(--cv-text-faint);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+@keyframes u1-character-core-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 340px) {
+  .u1-character-sheet-core__quick {
+    padding-right: 7px;
+  }
+
+  .u1-character-sheet-core__abilities {
+    padding-left: 7px;
+  }
+
+  .u1-character-sheet-core__quick-row,
+  .u1-character-sheet-core__ability-row {
+    min-height: 36px;
+  }
+
+  .u1-character-sheet-core__quick-row {
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+    gap: 5px;
+  }
+
+  .u1-character-sheet-core__quick-icon {
+    width: 12px;
+    height: 12px;
+  }
+
+  .u1-character-sheet-core__quick-label {
+    font-size: 8px;
+  }
+
+  .u1-character-sheet-core__ability-row {
+    grid-template-columns: minmax(0, 1fr) 25px 29px;
+    gap: 4px;
+  }
+
+  .u1-character-sheet-core__ability-head {
+    grid-template-columns: minmax(0, 1fr) 27px 31px;
+    gap: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u1-character-sheet-core__ability {
+    animation: none;
+  }
+}

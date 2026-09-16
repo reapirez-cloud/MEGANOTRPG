@@ -121,14 +121,20 @@ test("recharge state round-trips without touching unrelated item state", () => {
   assert.equal(state.hidden, true)
 })
 
-test("stage 2 UI exposes item use in both character surfaces", () => {
+test("stage 2 item use remains canonical while the redesigned sheet keeps inventory outside its content", () => {
   const legacy = fs.readFileSync("src/components/characters/CharacterInventory.tsx", "utf8")
   const current = fs.readFileSync("src/ui-v1-isolated/CharacterView.tsx", "utf8")
+  const control = fs.readFileSync("src/ui-v1-isolated/useUiV1CharacterControl.ts", "utf8")
+  const contract = fs.readFileSync("src/ui-v1-isolated/characterSheetUiContract.ts", "utf8")
   const editor = fs.readFileSync("src/components/characters/InventoryItemEditor.tsx", "utf8")
   const hook = fs.readFileSync("src/hooks/useCharacterSheet.ts", "utf8")
 
   assert.match(legacy, /onUse: \(itemId: string, amount\?: number\)/)
-  assert.match(current, /id: "use-item"/)
+  assert.match(current, /<CharacterInventoryInterface/)
+  assert.match(contract, /neverRenderInsideSheetContent: true/)
+  assert.match(contract, /doNotMountLegacyInventoryUi: true/)
+  assert.match(control, /const useItem = useCallback/)
+  assert.match(control, /kind: "inventory\.consume"/)
   assert.match(editor, /value=\{rechargeTrigger\}/)
   assert.match(editor, /value=\{usageMode\}/)
   assert.match(hook, /characterResolutionBus\.subscribe\(characterId/)

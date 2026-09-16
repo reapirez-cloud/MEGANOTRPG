@@ -14,6 +14,7 @@ import {
 } from "../lib/characterPreparation.ts"
 import { resolveLegacyCharacterEngineView } from "../lib/legacyCharacterEngineAdapter.ts"
 import { resourceSyncInputs } from "../lib/resourceRuntime.ts"
+import type { TemplateSourceNode } from "../rule-templates/resolver.ts"
 import type { CharacterTemplateBundle } from "../rule-templates/types.ts"
 import type { CharacterFeature, CharacterSheet, CharacterSpell } from "../types/characterSheet.ts"
 import type { ResourceSyncInput } from "../types/characterResources.ts"
@@ -73,6 +74,7 @@ export type CharacterRuntimeSnapshot = {
   inventoryLoad: InventoryLoadProjection
   spellcastingAbility?: AbilityKey
   preparation: CharacterPreparationModel
+  sourceNodes: TemplateSourceNode[]
   resourceSyncInputs: ResourceSyncInput[]
   warnings: string[]
 }
@@ -302,6 +304,7 @@ export class CharacterRuntimeResolver {
       inventoryLoad: core.inventoryProjection.load,
       ...(resolvedView.spellcastingAbility ? { spellcastingAbility: resolvedView.spellcastingAbility } : {}),
       preparation,
+      sourceNodes: resolvedView.sourceNodes,
       resourceSyncInputs: resourceSyncInputs(routedContract),
       warnings: catalog.warnings,
     }

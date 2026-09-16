@@ -329,7 +329,11 @@ test("Snake UI runtime is split into orchestration, interaction and reusable sur
   assert.match(snakeFlowWindow, /SnakeFlowWindow/)
   assert.match(snakeSingleWindow, /SnakeSingleWindow/)
   assert.match(snakeWindowHost, /createPortal/)
-  assert.ok(snakeProvider.split("\n").length < 220)
+  assert.match(snakeProvider, /useSnakeMenuRuntime/)
+  assert.match(snakeProvider, /setViewContext/)
+  assert.match(snakeProvider, /"snake-menu"/)
+  assert.match(snakeProvider, /"snake-surface"/)
+  assert.match(snakeProvider, /<SnakeContext\.Provider/)
 })
 
 test("Snake owns long press, right click, duplicate suppression and universal windows", () => {

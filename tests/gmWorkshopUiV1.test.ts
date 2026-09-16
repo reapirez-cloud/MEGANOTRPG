@@ -95,16 +95,17 @@ test("Workshop character creation uses real class templates instead of a free-te
   assert.match(actions, /removeTemplateAssignment/)
 })
 
-test("Character View is a real GM control surface instead of a placeholder route", () => {
+test("Character View is a real GM-aware sheet surface instead of a placeholder route", () => {
   assert.match(app, /<CharacterView/)
-  assert.match(characterView, /Редактировать лист/)
-  assert.match(characterView, /Короткий отдых/)
-  assert.match(characterView, /Долгий отдых/)
-  assert.match(characterView, /Инвентарь/)
-  assert.match(characterView, /Заклинания/)
-  assert.match(characterView, /Особенности/)
-  assert.match(characterView, /transferItem/)
-  assert.match(characterView, /SnakeTrigger/)
+  assert.match(characterView, /createWorkshopCharacterActions/)
+  assert.match(characterView, /control\.canManage && workshopCharacter/)
+  assert.match(characterView, /const managerActions/)
+  assert.match(characterView, /<CharacterSheetShell/)
+  assert.match(characterView, /<CharacterInventoryInterface/)
+  assert.match(characterView, /<CharacterSheetSpells/)
+  assert.match(characterView, /<CharacterSheetFeatures/)
+  assert.match(actions, /id: "edit-character"/)
+  assert.match(actions, /label: "Редактировать"/)
 })
 
 test("Workshop member and invite management are first-class Snake actions", () => {

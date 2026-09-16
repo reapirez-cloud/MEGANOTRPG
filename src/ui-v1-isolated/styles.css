@@ -16,8 +16,17 @@
   --u1-text-faint: #5d6267;
   --u1-steel: #a3a8ad;
   --u1-stone: #b3b0a9;
-  --u1-safe-top: env(safe-area-inset-top, 0px);
-  --u1-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --u1-safe-top: max(
+    env(safe-area-inset-top, 0px),
+    var(--tg-safe-area-inset-top, 0px),
+    var(--tg-content-safe-area-inset-top, 0px)
+  );
+  --u1-safe-bottom: max(
+    env(safe-area-inset-bottom, 0px),
+    var(--tg-safe-area-inset-bottom, 0px),
+    var(--tg-content-safe-area-inset-bottom, 0px)
+  );
+  --u1-viewport-height: var(--tg-viewport-stable-height, 100dvh);
   --u1-dock-height: 44px;
   --u1-dock-space: calc(var(--u1-dock-height) + var(--u1-safe-bottom));
   font-family:
@@ -42,8 +51,9 @@ body,
 }
 
 body {
-  min-height: 100dvh;
+  min-height: var(--u1-viewport-height);
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 button,
@@ -63,7 +73,7 @@ button {
 .u1-app {
   position: relative;
   width: 100%;
-  height: 100dvh;
+  height: var(--u1-viewport-height);
   overflow: hidden;
   isolation: isolate;
   background: var(--u1-canvas);

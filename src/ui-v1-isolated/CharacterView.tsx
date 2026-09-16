@@ -1,189 +1,111 @@
-import { useMemo, useState, type ReactNode } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
-import {
-  type AbilityKey,
-  type ResolvedGrant,
-  type ResolvedResource,
-  type SkillKey,
-} from "../character-engine/index.ts"
-import CampaignMediaFrame from "../components/common/CampaignMediaFrame"
+import type { AbilityKey } from "../character-engine/index.ts"
 import { useResolvedCharacterRuntime } from "../hooks/useResolvedCharacterRuntime"
 import type { SnakeAction } from "../snake-engine"
+import CharacterInventoryInterface from "./CharacterInventoryInterface"
+import CharacterSheetCore from "./CharacterSheetCore"
+import CharacterSheetFeatures from "./CharacterSheetFeatures"
+import CharacterSheetOverview from "./CharacterSheetOverview"
+import CharacterSheetShell from "./CharacterSheetShell"
+import CharacterSheetSpells from "./CharacterSheetSpells"
 import {
-  inventoryChildren,
-  inventoryContainerTargets,
-  inventoryHolder,
-} from "../inventory-engine/holders"
+  CHARACTER_INVENTORY_INTERFACE_CONTRACT,
+  type CharacterSheetSection,
+  type CharacterSheetTarget,
+} from "./characterSheetUiContract"
 import {
-  firstAvailableGridPlacement,
-  firstFreeExternalSlot,
-  inventoryPhysicalProfile,
-  inventoryPlacementKind,
-  type InventoryPlacementTarget,
-} from "../inventory-engine"
-import { inventoryStackMode } from "../inventory-engine/stacking"
-import type { CharacterFeature, CharacterSheet, CharacterSpell, InventoryItem } from "../types/characterSheet"
-import { SnakeTrigger, useSnake } from "./SnakeProvider"
-import InventorySpatialView from "./InventorySpatialView"
-import { openSourceAction } from "./GMWorkshopCommon"
+  characterSheetHistoryStateWith,
+  readCharacterSheetHistory,
+  type CharacterSheetHistorySnapshot,
+} from "./characterSheetHistory"
+import {
+  type CharacterSheetEntityTarget,
+} from "./characterSheetEntityNavigation"
 import { createCharacterSnakeActions } from "./characterSnakeActions"
 import { createWorkshopCharacterActions } from "./gmWorkshopSnakeActions"
 import { useGMWorkshopData } from "./useGMWorkshopData"
+import { useSnake } from "./SnakeProvider"
 import { useUiV1CharacterControl } from "./useUiV1CharacterControl"
+import {
+  classReferenceArtSlot,
+  useUiV1ReferenceMedia,
+} from "./useUiV1ReferenceMedia"
+import { createSheetReferenceMediaActions } from "./characterSheetMediaActions"
 import { useWorkspaceData } from "./useWorkspaceData"
-import "./character-view.css"
+import { bindTelegramBackButton } from "./telegramBackButton"
+import "./character-sheet-theme.css"
+import "./character-sheet-backgrounds.css"
+import "./character-sheet-shell.css"
+import "./character-sheet-core.css"
+import "./character-sheet-features.css"
+import "./character-sheet-overview.css"
+import "./character-sheet-spells.css"
+import "./character-inventory-interface.css"
 
-type FocusSection = "inventory" | "spells" | "features" | "defenses" | null
-
-const abilityFields: Array<[keyof CharacterSheet, AbilityKey, string, string]> = [
-  ["strength", "strength", "СИЛ", "Сила"],
-  ["dexterity", "dexterity", "ЛВК", "Ловкость"],
-  ["constitution", "constitution", "ТЕЛ", "Телосложение"],
-  ["intelligence", "intelligence", "ИНТ", "Интеллект"],
-  ["wisdom", "wisdom", "МДР", "Мудрость"],
-  ["charisma", "charisma", "ХАР", "Харизма"],
-]
-
-const skillLabels: Record<SkillKey, string> = {
-  acrobatics: "Акробатика",
-  animal_handling: "Уход за животными",
-  arcana: "Магия",
-  athletics: "Атлетика",
-  deception: "Обман",
-  history: "История",
-  insight: "Проницательность",
-  intimidation: "Запугивание",
-  investigation: "Анализ",
-  medicine: "Медицина",
-  nature: "Природа",
-  perception: "Восприятие",
-  performance: "Выступление",
-  persuasion: "Убеждение",
-  religion: "Религия",
-  sleight_of_hand: "Ловкость рук",
-  stealth: "Скрытность",
-  survival: "Выживание",
+function historyStateWith(snapshot: CharacterSheetHistorySnapshot) {
+  return characterSheetHistoryStateWith(window.history.state, snapshot)
 }
 
-const resourceMarks: Record<string, string> = {
-  channel_divinity: "✦",
-  wild_shape: "◈",
-  second_wind: "↟",
-  action_surge: "⌁",
-  monk_focus: "⊙",
-  monk_uncanny_metabolism: "◌",
-  sorcery_points: "✺",
-  innate_sorcery: "✹",
-  sorcerous_restoration: "⌇",
-  wizard_arcane_recovery: "△",
-  wizard_chronurgy_chronal_shift: "◐",
-  wizard_chronurgy_momentary_stasis: "□",
-  wizard_chronurgy_arcane_abeyance: "◇",
-  warlock_pact_slots: "◆",
+function classKeyFrom(
+  characterClass: string,
+  assignments: ReturnType<typeof useUiV1CharacterControl>["assignments"],
+  templates: ReturnType<typeof useUiV1CharacterControl>["templates"],
+) {
+  const assignedClass = assignments
+    .map((assignment) => templates.find((template) => template.id === assignment.template_id) || null)
+    .find((template) => template?.kind === "class")
+
+  if (assignedClass?.slug) return assignedClass.slug
+
+  const value = characterClass.toLocaleLowerCase("ru-RU")
+  const aliases: Array<[string, string]> = [
+    ["воин", "fighter"], ["fighter", "fighter"],
+    ["колдун", "warlock"], ["warlock", "warlock"],
+    ["жрец", "cleric"], ["cleric", "cleric"],
+    ["друид", "druid"], ["druid", "druid"],
+    ["бард", "bard"], ["bard", "bard"],
+    ["паладин", "paladin"], ["paladin", "paladin"],
+    ["чарод", "sorcerer"], ["sorcer", "sorcerer"],
+    ["волшеб", "wizard"], ["wizard", "wizard"],
+    ["разбой", "rogue"], ["rogue", "rogue"],
+    ["монах", "monk"], ["monk", "monk"],
+    ["варвар", "barbarian"], ["barbarian", "barbarian"],
+    ["артиф", "artificer"], ["artificer", "artificer"],
+    ["следоп", "ranger"], ["рейндж", "ranger"], ["ranger", "ranger"],
+  ]
+
+  return aliases.find(([needle]) => value.includes(needle))?.[1] || "default"
 }
 
-const roman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"]
+function SectionPlaceholder({ section }: { section: CharacterSheetSection }) {
+  const copy: Record<Exclude<CharacterSheetSection, "overview" | "features" | "spells">, { title: string; body: string }> = {
+    biography: {
+      title: "Биография",
+      body: "Биография остаётся частью листа и заменяет только нижнюю область, не открывая отдельный экран.",
+    },
+  }
 
-function number(value: unknown, fallback: number) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : fallback
-}
+  if (
+    section === "overview" ||
+    section === "features" ||
+    section === "spells"
+  ) return null
 
-function signed(value: number) {
-  return value >= 0 ? "+" + value : String(value)
-}
-
-function titleFromKey(value: string) {
-  const clean = value.replace(/[._:-]+/g, " ").replace(/\s+/g, " ").trim()
-  if (!clean) return "Ресурс"
-  return clean.charAt(0).toLocaleUpperCase("ru-RU") + clean.slice(1)
-}
-
-function resourceMark(key: string) {
-  if (key.startsWith("wizard_signature_")) return "✥"
-  if (resourceMarks[key]) return resourceMarks[key]
-  const parts = key.split(/[._:\s-]+/).filter(Boolean)
-  if (parts.length > 1) return (parts[0][0] + parts[1][0]).toLocaleUpperCase("ru-RU")
-  return (parts[0] || "◇").slice(0, 2).toLocaleUpperCase("ru-RU")
-}
-
-function grantLabel(grant: ResolvedGrant) {
-  const payload =
-    grant.payload && typeof grant.payload === "object" && !Array.isArray(grant.payload)
-      ? grant.payload as Record<string, unknown>
-      : null
-  const label = typeof payload?.label === "string" ? payload.label.trim() : ""
-  return label || titleFromKey(grant.key)
-}
-
-function itemDetail(item: InventoryItem, inventory: readonly InventoryItem[]) {
-  const holder = inventoryHolder(inventory, item)
-  const children = item.category === "container"
-    ? inventoryChildren(inventory, item.id)
-    : []
-  const placement = inventoryPlacementKind(item)
-  const placementText = item.equipped
-    ? "Экипировано."
-    : placement === "hand"
-      ? "В руке " + ((item.placement_index ?? 0) + 1) + "."
-      : placement === "external"
-        ? "Во внешней ячейке " + ((item.placement_index ?? 0) + 1) + "."
-        : placement === "grid" && holder
-          ? "В «" + holder.name + "», клетка " + ((item.grid_x ?? 0) + 1) + ":" + ((item.grid_y ?? 0) + 1) + ", поворот " + (item.grid_rotation || 0) + "°."
-          : placement === "legacy" && holder
-            ? "В «" + holder.name + "», ожидает пространственного размещения."
-            : "В свободных предметах."
-  return [
-    item.category ? "Категория: " + item.category : "",
-    "Количество: " + item.quantity,
-    inventoryStackMode(item) === "instance" ? "Отдельный экземпляр." : "Стопка.",
-    placementText,
-    item.category === "container"
-      ? children.length
-        ? "Внутри: " + children.map((child) => child.name + (child.quantity > 1 ? ` ×${child.quantity}` : "")).join(", ")
-        : "Контейнер пуст."
-      : "",
-    item.usage_mode === "charges"
-      ? "Заряды: " + (item.charges_current ?? item.charges_max ?? 0) + "/" + (item.charges_max ?? 0)
-      : item.usage_mode === "quantity" ? "Использование расходует 1 единицу." : "",
-    item.equipped ? "Сейчас экипировано." : "",
-    item.description || "Описание не добавлено.",
-  ].filter(Boolean).join("\n\n")
-}
-
-function spellDetail(spell: CharacterSpell) {
-  const meta = [
-    spell.spell_level === 0 ? "Заговор" : spell.spell_level + " уровень",
-    spell.school,
-    spell.casting_time,
-    spell.spell_range,
-    spell.duration,
-  ].filter(Boolean).join(" · ")
-  return [meta, spell.description || "Описание не добавлено."].filter(Boolean).join("\n\n")
-}
-
-function featureDetail(feature: CharacterFeature) {
-  return [feature.kind, feature.description || "Описание не добавлено."].filter(Boolean).join("\n\n")
-}
-
-function Section({
-  title,
-  meta,
-  children,
-}: {
-  title: string
-  meta?: string
-  children: ReactNode
-}) {
   return (
-    <section className="u1-character-view__section">
-      <header>
-        <strong>{title}</strong>
-        {meta && <small>{meta}</small>}
-      </header>
-      {children}
-    </section>
+    <div
+      className="u1-character-sheet__stage-placeholder"
+      data-section={section}
+    >
+      <span>{copy[section].title}</span>
+      <p>{copy[section].body}</p>
+    </div>
   )
 }
 
@@ -195,1139 +117,813 @@ export default function CharacterView({
   onBack: () => void
 }) {
   const control = useUiV1CharacterControl(characterId)
-  const workshop = useGMWorkshopData()
   const workspace = useWorkspaceData()
+  const referenceMedia = useUiV1ReferenceMedia()
+  const workshop = useGMWorkshopData()
   const snake = useSnake()
   const runtime = useResolvedCharacterRuntime(control.runtimeEntity)
-  const [focus, setFocus] = useState<FocusSection>(null)
-  const [inventoryHolderId, setInventoryHolderId] = useState<string | null>(null)
+  const [section, setSection] = useState<CharacterSheetSection>("overview")
+  const [interfaceMode, setInterfaceMode] = useState<"inventory" | null>(null)
   const [expandedAbility, setExpandedAbility] = useState<AbilityKey | null>(null)
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null)
+  const [selectedSpellId, setSelectedSpellId] = useState<string | null>(null)
+  const [selectedResourceKey, setSelectedResourceKey] = useState<string | null>(null)
+  const [selectedEffectId, setSelectedEffectId] = useState<string | null>(null)
+  const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
+  const [entityFocus, setEntityFocus] =
+    useState<CharacterSheetEntityTarget | null>(null)
+  const [spellFocusLevel, setSpellFocusLevel] = useState<number | null>(null)
 
-  const contract = runtime.snapshot?.contract || null
-  const spellcastingAbility = runtime.snapshot?.spellcastingAbility
-  const magic = contract && spellcastingAbility
-    ? contract.spellcasting.byAbility[spellcastingAbility]
-    : null
+  const classKey = useMemo(
+    () => classKeyFrom(
+      control.character?.characterClass || "",
+      control.assignments,
+      control.templates,
+    ),
+    [control.assignments, control.character?.characterClass, control.templates],
+  )
+
+  const classSheetBackground = referenceMedia.get(
+    classReferenceArtSlot(classKey, "sheet_background"),
+  )
+
+  const classBackgroundActions = createSheetReferenceMediaActions({
+    controller: referenceMedia,
+    targetField: classReferenceArtSlot(classKey, "sheet_background"),
+    title: "Фон листа · " + (control.character?.characterClass || classKey),
+    eyebrow: "Лист персонажа · оформление",
+    composeLabel: "Фон листа · 9:16",
+    shape: "rect",
+    aspectRatio: 9 / 16,
+    applyLabel: "Установить фон",
+    successNotice: "Фон листа обновлён.",
+    resetTitle: "Сбросить фон",
+    resetNotice: "Встроенный фон класса восстановлен.",
+  })
+
+  const classResourceActions = createSheetReferenceMediaActions({
+    controller: referenceMedia,
+    targetField: classReferenceArtSlot(classKey, "resource"),
+    title: "Иконка ресурса класса",
+    eyebrow: "Лист персонажа · оформление",
+    composeLabel: "Ресурс класса · 1:1",
+    shape: "square",
+    aspectRatio: 1,
+    applyLabel: "Установить иконку",
+    successNotice: "Классовая иконка ресурса обновлена.",
+    resetTitle: "Сбросить иконку ресурса",
+    resetNotice: "Встроенная иконка ресурса класса восстановлена.",
+  })
+
+  const classSpellSlotActions = createSheetReferenceMediaActions({
+    controller: referenceMedia,
+    targetField: classReferenceArtSlot(classKey, "spell_slot"),
+    title: "Иконка ячеек заклинаний",
+    eyebrow: "Лист персонажа · оформление",
+    composeLabel: "Ячейки заклинаний · 1:1",
+    shape: "square",
+    aspectRatio: 1,
+    applyLabel: "Установить иконку",
+    successNotice: "Классовая иконка ячеек обновлена.",
+    resetTitle: "Сбросить иконку ячеек",
+    resetNotice: "Встроенная иконка ячеек класса восстановлена.",
+  })
+
+  const classVisualActions: SnakeAction[] = referenceMedia.isOwner
+    ? [{
+        id: "character-sheet-class-visuals",
+        label: "Оформление листа",
+        kind: "branch",
+        group: "media",
+        children: [
+          {
+            id: "character-sheet-background",
+            label: "Фон листа",
+            kind: "branch",
+            children: classBackgroundActions,
+          },
+          {
+            id: "character-sheet-class-resource",
+            label: "Иконка ресурса класса",
+            kind: "branch",
+            children: classResourceActions,
+          },
+          {
+            id: "character-sheet-class-spell-slot",
+            label: "Иконка ячеек",
+            kind: "branch",
+            children: classSpellSlotActions,
+          },
+        ],
+      }]
+    : []
+
+  const applyHistorySnapshot = useCallback((
+    snapshot: CharacterSheetHistorySnapshot,
+  ) => {
+    if (snapshot.kind === "interface") {
+      setSection(snapshot.returnSection)
+      setFocusedItemId(snapshot.focusedItemId)
+      setInterfaceMode(snapshot.interface)
+      return
+    }
+
+    setSection(snapshot.section)
+    setFocusedItemId(null)
+    setInterfaceMode(null)
+  }, [])
+
+  useEffect(() => {
+    const current = readCharacterSheetHistory(window.history.state, characterId)
+
+    if (current) {
+      applyHistorySnapshot(current)
+    } else {
+      const overview: CharacterSheetHistorySnapshot = {
+        characterId,
+        kind: "sheet",
+        section: "overview",
+      }
+      window.history.replaceState(
+        historyStateWith(overview),
+        "",
+        window.location.href,
+      )
+      applyHistorySnapshot(overview)
+    }
+
+    const onPopState = (event: PopStateEvent) => {
+      const snapshot = readCharacterSheetHistory(event.state, characterId)
+      if (snapshot) applyHistorySnapshot(snapshot)
+    }
+
+    window.addEventListener("popstate", onPopState)
+    return () => window.removeEventListener("popstate", onPopState)
+  }, [applyHistorySnapshot, characterId])
+
+  const ensureOverviewHistory = useCallback(() => {
+    const current = readCharacterSheetHistory(window.history.state, characterId)
+    if (current) return current
+
+    const overview: CharacterSheetHistorySnapshot = {
+      characterId,
+      kind: "sheet",
+      section: "overview",
+    }
+    window.history.replaceState(
+      historyStateWith(overview),
+      "",
+      window.location.href,
+    )
+    return overview
+  }, [characterId])
+
+  const navigateSheet = useCallback((
+    target: CharacterSheetTarget,
+    options?: { focusedItemId?: string | null },
+  ) => {
+    const current = ensureOverviewHistory()
+
+    if (target.kind === "interface") {
+      const returnSection =
+        current.kind === "sheet" ? current.section : section
+
+      const nextFocusedItemId =
+        options && "focusedItemId" in options
+          ? options.focusedItemId || null
+          : focusedItemId
+
+      const next: CharacterSheetHistorySnapshot = {
+        characterId,
+        kind: "interface",
+        interface: "inventory",
+        returnSection,
+        focusedItemId: nextFocusedItemId,
+      }
+      window.history.pushState(
+        historyStateWith(next),
+        "",
+        window.location.href,
+      )
+      setSection(returnSection)
+      setFocusedItemId(nextFocusedItemId)
+      setInterfaceMode("inventory")
+      return
+    }
+
+    const nextSection = target.section
+    if (interfaceMode === null && nextSection === section) return
+
+    if (nextSection === "overview") {
+      if (
+        current.kind === "sheet" &&
+        current.section !== "overview"
+      ) {
+        window.history.back()
+        return
+      }
+
+      const overview: CharacterSheetHistorySnapshot = {
+        characterId,
+        kind: "sheet",
+        section: "overview",
+      }
+      window.history.replaceState(
+        historyStateWith(overview),
+        "",
+        window.location.href,
+      )
+      setSection("overview")
+      setFocusedItemId(null)
+      setInterfaceMode(null)
+      return
+    }
+
+    const next: CharacterSheetHistorySnapshot = {
+      characterId,
+      kind: "sheet",
+      section: nextSection,
+    }
+
+    if (current.kind === "sheet" && current.section === "overview") {
+      window.history.pushState(
+        historyStateWith(next),
+        "",
+        window.location.href,
+      )
+    } else {
+      window.history.replaceState(
+        historyStateWith(next),
+        "",
+        window.location.href,
+      )
+    }
+
+    setSection(nextSection)
+    setFocusedItemId(null)
+    setInterfaceMode(null)
+  }, [
+    characterId,
+    ensureOverviewHistory,
+    focusedItemId,
+    interfaceMode,
+    section,
+  ])
+
+  const navigateEntity = useCallback((
+    target: CharacterSheetEntityTarget,
+  ) => {
+    setEntityFocus(target)
+
+    if (target.kind === "feature") {
+      setSelectedFeatureId(target.featureId)
+      setSelectedEffectId(null)
+      setSpellFocusLevel(null)
+      navigateSheet({ kind: "section", section: "features" })
+      return
+    }
+
+    if (target.kind === "effect") {
+      setSelectedEffectId(target.effectId)
+      setSelectedFeatureId(null)
+      setSpellFocusLevel(null)
+      navigateSheet({ kind: "section", section: "features" })
+      return
+    }
+
+    if (target.kind === "resource") {
+      setSelectedResourceKey(target.stateKey)
+      setSpellFocusLevel(null)
+      navigateSheet({ kind: "section", section: "overview" })
+      return
+    }
+
+    if (target.kind === "spell") {
+      setSelectedSpellId(target.spellKey)
+      setSpellFocusLevel(
+        typeof target.level === "number" &&
+          target.level >= 0 &&
+          target.level <= 9
+          ? target.level
+          : null,
+      )
+      navigateSheet({ kind: "section", section: "spells" })
+      return
+    }
+
+    setFocusedItemId(target.itemId)
+    if (interfaceMode !== "inventory") {
+      navigateSheet(
+        { kind: "interface", interface: "inventory" },
+        { focusedItemId: target.itemId },
+      )
+    } else {
+      const current =
+        readCharacterSheetHistory(window.history.state, characterId)
+      if (current?.kind === "interface") {
+        window.history.replaceState(
+          historyStateWith({
+            ...current,
+            focusedItemId: target.itemId,
+          }),
+          "",
+          window.location.href,
+        )
+      }
+    }
+  }, [characterId, interfaceMode, navigateSheet])
+
+  const handleBack = useCallback(() => {
+    const current = readCharacterSheetHistory(window.history.state, characterId)
+
+    if (interfaceMode === "inventory") {
+      if (current?.kind === "interface") {
+        window.history.back()
+      } else {
+        setFocusedItemId(null)
+        setInterfaceMode(null)
+      }
+      return
+    }
+
+    if (section !== "overview") {
+      if (current?.kind === "sheet" && current.section !== "overview") {
+        window.history.back()
+      } else {
+        const overview: CharacterSheetHistorySnapshot = {
+          characterId,
+          kind: "sheet",
+          section: "overview",
+        }
+        window.history.replaceState(
+          historyStateWith(overview),
+          "",
+          window.location.href,
+        )
+        setSection("overview")
+      }
+      return
+    }
+
+    onBack()
+  }, [characterId, interfaceMode, onBack, section])
+  
+  useEffect(() => bindTelegramBackButton(handleBack), [handleBack])
+
+
+  const workspaceCharacter =
+    workspace.characters.find((item) => item.id === characterId) || null
+  const workshopCharacter =
+    workshop.characters.find((item) => item.id === characterId) || null
+
+  const managerActions: SnakeAction[] =
+    control.canManage && workshopCharacter
+      ? createWorkshopCharacterActions({
+          character: workshopCharacter,
+          members: workshop.members,
+          templates: workshop.templates,
+          assignments: workshop.templateAssignments,
+          locations: workshop.locations,
+          npcHabitats: workshop.npcHabitats,
+          operations: workshop.operations,
+          onOpen: () => setInterfaceMode(null),
+        })
+      : []
+
+  const mediaActions: SnakeAction[] =
+    control.canControlCharacter && workspaceCharacter && control.character
+      ? createCharacterSnakeActions({
+          canEditAvatar: true,
+          character: workspaceCharacter,
+          applyMedia: (slot, input) =>
+            workspace.applyCharacterMedia(characterId, slot, input),
+          resetMedia: (slot) =>
+            workspace.resetCharacterMedia(characterId, slot),
+        })
+      : []
+
+  const portraitUrl =
+    workspaceCharacter?.sheetHeroUrl ||
+    workspaceCharacter?.panelAvatarUrl ||
+    workspaceCharacter?.avatarUrl ||
+    control.character?.panelAvatarUrl ||
+    control.character?.avatarUrl ||
+    null
+
+  const portraitPresentation = workspaceCharacter?.sheetHeroAssetId
+    ? workspaceCharacter.sheetHeroPresentation
+    : workspaceCharacter?.panelAvatarAssetId
+      ? workspaceCharacter.panelAvatarPresentation
+      : control.character?.panelAvatarPresentation || null
+
+  const portraitViewAction: SnakeAction | null =
+    control.character && portraitUrl
+      ? {
+          id: "view-character-sheet-portrait",
+          label: "Открыть арт",
+          surface: {
+            kind: "media",
+            eyebrow: "Персонаж",
+            title: control.character.name,
+            items: [{
+              id: "character-sheet-portrait",
+              src: portraitUrl,
+              title: control.character.name,
+            }],
+          },
+        }
+      : null
+
+  const portraitActions = [
+    ...(portraitViewAction ? [portraitViewAction] : []),
+    ...mediaActions,
+    ...classVisualActions,
+    ...managerActions,
+  ]
+
+  const authorityRole = control.isOwner
+    ? "admin"
+    : control.canManage
+      ? "gm"
+      : "player"
+
+  const activeContextEntity = useMemo(() => {
+    if (interfaceMode === "inventory" && focusedItemId) {
+      return {
+        type: "inventory-item",
+        id: focusedItemId,
+        label:
+          control.inventory.find((item) => item.id === focusedItemId)?.name ||
+          undefined,
+      }
+    }
+
+    if (entityFocus) {
+      if (entityFocus.kind === "feature") {
+        return {
+          type: "character-feature",
+          id: entityFocus.featureId,
+          label: entityFocus.label,
+        }
+      }
+      if (entityFocus.kind === "resource") {
+        return {
+          type: "character-resource",
+          id: entityFocus.stateKey,
+          label: entityFocus.label,
+        }
+      }
+      if (entityFocus.kind === "spell") {
+        return {
+          type: "character-spell",
+          id: entityFocus.spellKey,
+          label: entityFocus.label,
+        }
+      }
+      if (entityFocus.kind === "item") {
+        return {
+          type: "inventory-item",
+          id: entityFocus.itemId,
+          label: entityFocus.label,
+        }
+      }
+      return {
+        type: "character-effect",
+        id: entityFocus.effectId,
+        label: entityFocus.label,
+      }
+    }
+
+    if (section === "features" && selectedEffectId) {
+      return { type: "character-effect", id: selectedEffectId }
+    }
+    if (section === "features" && selectedFeatureId) {
+      return { type: "character-feature", id: selectedFeatureId }
+    }
+    if (section === "spells" && selectedSpellId) {
+      return { type: "character-spell", id: selectedSpellId }
+    }
+    if (section === "overview" && selectedResourceKey) {
+      return { type: "character-resource", id: selectedResourceKey }
+    }
+
+    return control.character
+      ? {
+          type: "character",
+          id: control.character.id,
+          label: control.character.name,
+        }
+      : { type: "character", id: characterId }
+  }, [
+    characterId,
+    control.character,
+    control.inventory,
+    entityFocus,
+    focusedItemId,
+    interfaceMode,
+    section,
+    selectedEffectId,
+    selectedFeatureId,
+    selectedResourceKey,
+    selectedSpellId,
+  ])
+
+  const sheetViewContext = useMemo(() => ({
+    screen: interfaceMode === "inventory"
+      ? "character-inventory-interface"
+      : "character-sheet",
+    route: "#/workspace/character/" + characterId,
+    title: control.character
+      ? "Персонаж · " + control.character.name
+      : "Персонаж",
+    text: control.character
+      ? interfaceMode === "inventory"
+        ? "Открыт отдельный интерфейс инвентаря персонажа."
+        : "Открыт лист персонажа и его текущая игровая секция."
+      : "Лист персонажа открыт, но данные недоступны.",
+    entity: activeContextEntity,
+    facts: control.character
+      ? {
+          characterId,
+          section,
+          interfaceMode,
+          expandedAbility,
+          selectedFeatureId:
+            section === "features" ? selectedFeatureId : null,
+          selectedSpellId:
+            section === "spells" ? selectedSpellId : null,
+          selectedResourceKey:
+            section === "overview" ? selectedResourceKey : null,
+          selectedEffectId:
+            section === "features" ? selectedEffectId : null,
+          focusedItemId:
+            interfaceMode === "inventory" ? focusedItemId : null,
+          entityFocus,
+          spellFocusLevel:
+            section === "spells" ? spellFocusLevel : null,
+          inventoryHolderId: null,
+          inventoryInterfaceStatus:
+            CHARACTER_INVENTORY_INTERFACE_CONTRACT.status,
+          inventoryImplementationRoadmap:
+            CHARACTER_INVENTORY_INTERFACE_CONTRACT.implementationRoadmap,
+          authorityRole,
+          canManage: control.canManage,
+          canControlCharacter: control.canControlCharacter,
+          isOwner: control.isOwner,
+          assignedToCurrentUser:
+            control.character.assignedUserId === control.userId,
+          snakePermissions: {
+            inspect: true,
+            navigate: true,
+            editMedia: control.canControlCharacter,
+            controlCharacter: control.canControlCharacter,
+            manageCharacter: control.canManage,
+            manageCampaign: control.canManage,
+          },
+          runtimeStatus: runtime.status,
+          shellVersion: 2,
+          class: control.character.characterClass,
+          level: control.character.level,
+          spellCount: control.spells.length,
+          featureCount: control.features.length,
+          inventoryCount: control.inventory.length,
+          resourceCount: control.resources.length,
+        }
+      : {
+          characterId,
+          authorityRole,
+          canManage: control.canManage,
+          canControlCharacter: false,
+          isOwner: control.isOwner,
+          snakePermissions: {
+            inspect: true,
+            navigate: true,
+            editMedia: false,
+            controlCharacter: false,
+            manageCharacter: control.canManage,
+            manageCampaign: control.canManage,
+          },
+          error: control.error,
+        },
+  }), [
+    activeContextEntity,
+    authorityRole,
+    characterId,
+    control.canControlCharacter,
+    control.canManage,
+    control.character,
+    control.error,
+    control.features.length,
+    control.inventory.length,
+    control.isOwner,
+    control.resources.length,
+    control.spells.length,
+    control.userId,
+    entityFocus,
+    expandedAbility,
+    focusedItemId,
+    interfaceMode,
+    runtime.status,
+    section,
+    selectedEffectId,
+    selectedFeatureId,
+    selectedResourceKey,
+    selectedSpellId,
+    spellFocusLevel,
+  ])
+
+  useEffect(() => {
+    if (control.loading) {
+      snake.setViewContext(null)
+      return
+    }
+
+    snake.setViewContext(sheetViewContext)
+    return () => snake.setViewContext(null)
+  }, [control.loading, sheetViewContext, snake.setViewContext])
 
   useAIViewContextLayer(
-    "character-view",
-    control.loading
-      ? null
-      : {
-          screen: "character",
-          route: "#/workspace/character/" + characterId,
-          title: control.character ? "Персонаж · " + control.character.name : "Персонаж",
-          text: control.character
-            ? "Открыт игровой лист персонажа «" + control.character.name + "»."
-            : "Страница персонажа открыта, но данные персонажа недоступны.",
-          entity: control.character
-            ? { type: "character", id: control.character.id, label: control.character.name }
-            : { type: "character", id: characterId },
-          facts: control.character
-            ? {
-                focus: focus || "sheet",
-                inventoryHolderId,
-                expandedAbility,
-                class: control.character.characterClass,
-                level: control.character.level,
-                hp: contract
-                  ? {
-                      current: contract.combat.currentHp,
-                      max: contract.combat.maxHp.value,
-                      temp: contract.combat.tempHp,
-                    }
-                  : null,
-                resources: contract?.resources.slice(0, 30).map((resource) => ({
-                  key: resource.stateKey,
-                  current: resource.current,
-                  max: resource.max.value,
-                })) || control.resources.slice(0, 30),
-                inventory: control.inventory.slice(0, 40).map((item) => ({
-                  id: item.id,
-                  name: item.name,
-                  quantity: item.quantity,
-                  equipped: item.equipped,
-                  holderItemId: item.holder_item_id ?? null,
-                  placementKind: inventoryPlacementKind(item),
-                  placementIndex: item.placement_index ?? null,
-                  gridX: item.grid_x ?? null,
-                  gridY: item.grid_y ?? null,
-                  rotation: item.grid_rotation ?? 0,
-                })),
-                worldStorages: control.worldStorages.map((storage) => ({
-                  id: storage.id,
-                  name: storage.name,
-                  locationId: storage.location_id,
-                  itemCount: storage.item_count,
-                  canOperate: storage.can_operate,
-                })),
-                spells: control.spells.slice(0, 40).map((spell) => ({
-                  id: spell.id,
-                  name: spell.name,
-                  level: spell.spell_level,
-                  prepared: spell.prepared,
-                })),
-                features: control.features.slice(0, 40).map((feature) => ({
-                  id: feature.id,
-                  name: feature.name,
-                  kind: feature.kind,
-                })),
-              }
-            : { characterId, error: control.error },
-        },
+    "character-sheet-v2",
+    control.loading ? null : sheetViewContext,
     60,
   )
 
-  const classInfo = useMemo(() => {
-    const assigned = control.assignments
-      .map((assignment) => ({
-        assignment,
-        template: control.templates.find((item) => item.id === assignment.template_id) || null,
-      }))
-      .filter((entry) => entry.template?.kind === "class")
-    const names = assigned.map((entry) =>
-      (entry.template?.name || "") + " " + (entry.assignment.template_level || 1),
-    )
-    return {
-      names,
-      key: assigned[0]?.template?.slug || "default",
-    }
-  }, [control.assignments, control.templates])
-
   if (control.loading) {
-    return <main className="u1-character-view"><div className="u1-character-view__empty">Загрузка персонажа…</div></main>
+    return (
+      <main className="u1-character-sheet" data-class-key="default">
+        <div className="u1-character-sheet__stage-placeholder">
+          <span>Загрузка персонажа…</span>
+        </div>
+      </main>
+    )
   }
 
   if (control.error || !control.character) {
     return (
-      <main className="u1-character-view">
-        <header className="u1-character-view__nav">
-          <button type="button" onClick={onBack}>←</button>
-          <strong>Персонаж</strong>
+      <main className="u1-character-sheet" data-class-key="default">
+        <header className="u1-character-sheet__topbar">
+          <button
+            type="button"
+            className="u1-character-sheet__back"
+            onClick={handleBack}
+            aria-label="Назад"
+          >
+            ←
+          </button>
+          <span>ПЕРСОНАЖ</span>
+          <i aria-hidden="true" />
         </header>
-        <div className="u1-character-view__empty">{control.error || "Персонаж не найден."}</div>
+        <div className="u1-character-sheet__stage-placeholder">
+          <span>{control.error || "Персонаж не найден."}</span>
+        </div>
       </main>
     )
   }
 
   const character = control.character
-  const entity = { type: "character", id: characterId }
-  const workspaceCharacter = workspace.characters.find((item) => item.id === characterId) || null
-  const workshopCharacter = workshop.characters.find((item) => item.id === characterId) || null
 
-  const managerActions = control.canManage && workshopCharacter
-    ? createWorkshopCharacterActions({
-        character: workshopCharacter,
-        members: workshop.members,
-        templates: workshop.templates,
-        assignments: workshop.templateAssignments,
-        locations: workshop.locations,
-        npcHabitats: workshop.npcHabitats,
-        operations: workshop.operations,
-        onOpen: () => setFocus(null),
-      })
-    : []
-
-  const mediaActions = workspaceCharacter
-    ? createCharacterSnakeActions({
-        canEditAvatar: control.canControlCharacter,
-        character: workspaceCharacter,
-        applyMedia: (slot, input) => workspace.applyCharacterMedia(characterId, slot, input),
-      })
-    : []
-
-  const heroUrl =
-    workspaceCharacter?.sheetHeroUrl ||
-    workspaceCharacter?.panelAvatarUrl ||
-    workspaceCharacter?.avatarUrl ||
-    character.panelAvatarUrl ||
-    character.avatarUrl
-  const heroPresentation = workspaceCharacter?.sheetHeroAssetId
-    ? workspaceCharacter.sheetHeroPresentation
-    : null
-
-  const heroViewAction: SnakeAction | null = heroUrl ? {
-    id: "view-sheet-art",
-    label: "Открыть арт",
-    surface: {
-      kind: "media",
-      eyebrow: "Персонаж",
-      title: character.name,
-      items: [{ id: "sheet-art", src: heroUrl, title: character.name }],
-    },
-  } : null
-
-  const sheetAction: SnakeAction | null = control.canManage && control.sheet ? {
-    id: "edit-sheet",
-    label: "Редактировать лист",
-    surface: {
-      kind: "editor",
-      eyebrow: "Лист персонажа",
-      title: character.name,
-      size: { width: "wide", height: "tall" },
-      fields: [
-        { id: "race", label: "Раса / вид", type: "text" },
-        { id: "background", label: "Предыстория", type: "text" },
-        { id: "alignment", label: "Мировоззрение", type: "text" },
-        ...abilityFields.map(([key, , label]) => ({
-          id: String(key),
-          label,
-          type: "number" as const,
-        })),
-        { id: "armor_class", label: "КД", type: "number" },
-        { id: "initiative_bonus", label: "Инициатива", type: "number" },
-        { id: "speed", label: "Скорость", type: "number" },
-        { id: "proficiency_bonus", label: "Бонус мастерства", type: "number" },
-        { id: "passive_perception", label: "Пассивное восприятие", type: "number" },
-        { id: "proficiencies", label: "Владения", type: "textarea" },
-        { id: "languages", label: "Языки", type: "textarea" },
-        { id: "senses", label: "Чувства", type: "textarea" },
-        { id: "backstory", label: "История", type: "textarea" },
-        { id: "notes", label: "Заметки", type: "textarea" },
-      ],
-      initialValues: {
-        race: control.sheet.race,
-        background: control.sheet.background,
-        alignment: control.sheet.alignment,
-        strength: control.sheet.strength,
-        dexterity: control.sheet.dexterity,
-        constitution: control.sheet.constitution,
-        intelligence: control.sheet.intelligence,
-        wisdom: control.sheet.wisdom,
-        charisma: control.sheet.charisma,
-        armor_class: control.sheet.armor_class,
-        initiative_bonus: control.sheet.initiative_bonus,
-        speed: control.sheet.speed,
-        proficiency_bonus: control.sheet.proficiency_bonus,
-        passive_perception: control.sheet.passive_perception,
-        proficiencies: control.sheet.proficiencies,
-        languages: control.sheet.languages,
-        senses: control.sheet.senses,
-        backstory: control.sheet.backstory,
-        notes: control.sheet.notes,
-      },
-      submitLabel: "Сохранить лист",
-    },
-    execute: async ({ input }) => {
-      const sheet = control.sheet!
-      const response = await control.updateSheet({
-        race: String(input?.race ?? sheet.race),
-        background: String(input?.background ?? sheet.background),
-        alignment: String(input?.alignment ?? sheet.alignment),
-        strength: number(input?.strength, sheet.strength),
-        dexterity: number(input?.dexterity, sheet.dexterity),
-        constitution: number(input?.constitution, sheet.constitution),
-        intelligence: number(input?.intelligence, sheet.intelligence),
-        wisdom: number(input?.wisdom, sheet.wisdom),
-        charisma: number(input?.charisma, sheet.charisma),
-        armor_class: number(input?.armor_class, sheet.armor_class),
-        initiative_bonus: number(input?.initiative_bonus, sheet.initiative_bonus),
-        speed: number(input?.speed, sheet.speed),
-        proficiency_bonus: number(input?.proficiency_bonus, sheet.proficiency_bonus),
-        passive_perception: number(input?.passive_perception, sheet.passive_perception),
-        proficiencies: String(input?.proficiencies ?? sheet.proficiencies),
-        languages: String(input?.languages ?? sheet.languages),
-        senses: String(input?.senses ?? sheet.senses),
-        backstory: String(input?.backstory ?? sheet.backstory),
-        notes: String(input?.notes ?? sheet.notes),
-      })
-      return response.ok
-        ? { type: "success", notice: "Лист сохранён." }
-        : { type: "error", message: response.error || "Не удалось сохранить лист." }
-    },
-  } : null
-
-  const hpAction: SnakeAction | null = control.canManage && control.sheet ? {
-    id: "edit-hp",
-    label: "Изменить HP",
-    surface: {
-      kind: "editor",
-      eyebrow: "Боевое состояние",
-      title: character.name,
-      fields: [
-        { id: "current", label: "Текущие HP", type: "number", required: true },
-        { id: "max", label: "Максимум HP", type: "number", required: true },
-        { id: "temp", label: "Временные HP", type: "number" },
-      ],
-      initialValues: {
-        current: control.sheet.current_hp,
-        max: control.sheet.max_hp,
-        temp: control.sheet.temp_hp,
-      },
-      submitLabel: "Сохранить HP",
-    },
-    execute: async ({ input }) => {
-      const response = await control.setHp(
-        Math.max(0, number(input?.current, control.sheet!.current_hp)),
-        Math.max(0, number(input?.max, control.sheet!.max_hp)),
-        Math.max(0, number(input?.temp, control.sheet!.temp_hp)),
-      )
-      return response.ok
-        ? { type: "success", notice: "HP изменены." }
-        : { type: "error", message: response.error || "Не удалось изменить HP." }
-    },
-  } : null
-
-  const recoveryAction: SnakeAction | null = control.canManage ? {
-    id: "recovery",
-    label: "Восстановление",
-    kind: "branch",
-    children: [
-      {
-        id: "short-rest",
-        label: "Короткий отдых",
-        execute: async () => {
-          const response = await control.recover("short_rest")
-          return response.ok
-            ? { type: "success", notice: "Короткий отдых применён." }
-            : { type: "error", message: response.error || "Не удалось восстановить ресурсы." }
-        },
-      },
-      {
-        id: "long-rest",
-        label: "Долгий отдых",
-        execute: async () => {
-          const response = await control.recover("long_rest")
-          return response.ok
-            ? { type: "success", notice: "Долгий отдых применён." }
-            : { type: "error", message: response.error || "Не удалось восстановить ресурсы." }
-        },
-      },
-      {
-        id: "dawn",
-        label: "Рассвет",
-        execute: async () => {
-          const response = await control.recover("dawn")
-          return response.ok
-            ? { type: "success", notice: "Рассвет применён." }
-            : { type: "error", message: response.error || "Не удалось восстановить ресурсы." }
-        },
-      },
-    ],
-  } : null
-
-  const sheetManageChildren = [sheetAction, hpAction, recoveryAction].filter(Boolean) as SnakeAction[]
-  const heroActions: SnakeAction[] = [
-    ...(heroViewAction ? [heroViewAction] : []),
-    ...mediaActions,
-    ...(sheetManageChildren.length ? [{
-      id: "sheet",
-      label: "Лист",
-      kind: "branch" as const,
-      children: sheetManageChildren,
-    }] : []),
-    ...managerActions,
-  ]
-
-  const hpCurrent = contract?.combat.currentHp ?? control.sheet?.current_hp ?? 0
-  const hpMax = contract?.combat.maxHp.value ?? control.sheet?.max_hp ?? 0
-  const hpPercent = hpMax > 0 ? Math.min(100, Math.max(0, hpCurrent / hpMax * 100)) : 0
-  const ac = contract?.combat.ac.value ?? control.sheet?.armor_class ?? 0
-  const initiative = contract?.combat.initiative.value ?? control.sheet?.initiative_bonus ?? 0
-  const speed = contract?.combat.speed.value ?? control.sheet?.speed ?? 0
-  const proficiency = contract?.proficiencyBonus.value ?? control.sheet?.proficiency_bonus ?? 0
-  const passive = contract?.passives.perception.value ?? control.sheet?.passive_perception ?? 0
-
-  const resources = contract?.resources || []
-  const spellSlots = resources
-    .map((resource) => {
-      const match = resource.stateKey.match(/^spell_slot_(\d+)$/)
-      return match ? { level: Number(match[1]), resource } : null
-    })
-    .filter((entry): entry is { level: number; resource: ResolvedResource } => Boolean(entry))
-    .sort((left, right) => left.level - right.level)
-  const classResources = resources.filter((resource) => !/^spell_slot_\d+$/.test(resource.stateKey))
-
-  const capabilityGroups = contract ? [
-    { label: "Сопротивления", entries: contract.capabilities.resistances },
-    { label: "Иммунитеты", entries: contract.capabilities.immunities },
-    { label: "Владения", entries: contract.capabilities.proficiencies },
-    { label: "Языки", entries: contract.capabilities.languages },
-    { label: "Чувства", entries: contract.capabilities.senses },
-  ].filter((group) => group.entries.length) : []
-
-  function resourceLabel(resource: ResolvedResource) {
-    return control.resources.find((row) => row.state_key === resource.stateKey)?.label ||
-      titleFromKey(resource.key || resource.stateKey)
-  }
-
-  function openAction(action: SnakeAction, actionEntity = entity) {
-    if (action.surface) openSourceAction(snake, actionEntity, action)
-  }
-
-  function inventoryActions(item: InventoryItem): SnakeAction[] {
-    const actions: SnakeAction[] = [{
-      id: "inspect",
-      label: "Осмотреть",
-      surface: {
-        kind: "detail",
-        eyebrow: "Инвентарь",
-        title: item.name,
-        body: itemDetail(item, control.inventory),
-        mediaUrl: item.image_url || undefined,
-      },
-    }]
-
-    const usageMode = item.usage_mode ?? (item.category === "consumable" ? "quantity" : "none")
-    const stackMode = inventoryStackMode(item)
-    const profile = inventoryPhysicalProfile(item)
-    const placementKind = inventoryPlacementKind(item)
-    const containerPlacements = inventoryContainerTargets(control.inventory, item)
-      .map((container) => ({
-        container,
-        placement: firstAvailableGridPlacement(control.inventory, item, container),
-      }))
-      .filter((entry): entry is { container: InventoryItem; placement: Extract<InventoryPlacementTarget, { kind: "grid" }> } => Boolean(entry.placement))
-    const worldStorageTargets = control.worldStorages.filter((storage) => storage.can_operate)
-
-    const freeHands = ([0, 1] as const).filter((index) =>
-      !control.inventory.some((candidate) =>
-        candidate.id !== item.id
-        && inventoryPlacementKind(candidate) === "hand"
-        && candidate.placement_index === index
-      ),
-    )
-    const freeExternal = firstFreeExternalSlot(control.inventory)
-
-    if (item.category === "container") {
-      actions.push({
-        id: "open-container",
-        label: "Открыть контейнер",
-        execute: async () => {
-          setInventoryHolderId(item.id)
-          return { type: "success", notice: "Контейнер открыт." }
-        },
-      })
-    }
-
-    if (usageMode !== "none" && control.canControlCharacter) {
-      const remaining = usageMode === "charges"
-        ? item.charges_current ?? item.charges_max ?? 0
-        : item.quantity
-      actions.push({
-        id: "use-item",
-        label: usageMode === "charges" ? "Использовать заряд" : "Использовать",
-        enabled: remaining > 0,
-        disabledReason: usageMode === "charges" ? "Заряды закончились." : "Предмет закончился.",
-        execute: async () => {
-          const response = await control.useItem(item, 1)
-          return response.ok
-            ? { type: "success", notice: usageMode === "charges" ? "Заряд использован." : "Предмет использован." }
-            : { type: "error", message: response.error || "Не удалось использовать предмет." }
-        },
-      })
-    }
-
-    if (
-      control.canControlCharacter
-      && placementKind === "grid"
-      && item.holder_item_id
-      && item.grid_x != null
-      && item.grid_y != null
-      && profile.rotatable
-    ) {
-      actions.push({
-        id: "rotate-item",
-        label: "Повернуть",
-        execute: async () => {
-          const rotation = (((item.grid_rotation || 0) + 90) % 360) as 0 | 90 | 180 | 270
-          const response = await control.moveItem(item, {
-            kind: "grid",
-            holderItemId: item.holder_item_id!,
-            gridX: item.grid_x!,
-            gridY: item.grid_y!,
-            rotation,
-          })
-          return response.ok
-            ? { type: "success", notice: "Предмет повёрнут." }
-            : { type: "error", message: response.error || "Здесь предмет не повернуть." }
-        },
-      })
-    }
-
-    if (control.canControlCharacter && freeHands.length) {
-      actions.push({
-        id: "move-to-hand",
-        label: "В руку",
-        kind: "branch",
-        children: freeHands.map((index) => ({
-          id: "hand-" + index,
-          label: "Рука " + (index + 1),
-          execute: async () => {
-            const response = await control.moveItem(item, { kind: "hand", index })
-            return response.ok
-              ? { type: "success", notice: "Предмет перемещён в руку." }
-              : { type: "error", message: response.error || "Не удалось занять руку." }
-          },
-        })),
-      })
-    }
-
-    if (control.canControlCharacter && freeExternal !== null) {
-      actions.push({
-        id: "move-to-external",
-        label: "Во внешнюю ячейку",
-        execute: async () => {
-          const response = await control.moveItem(item, { kind: "external", index: freeExternal })
-          return response.ok
-            ? { type: "success", notice: "Предмет закреплён снаружи." }
-            : { type: "error", message: response.error || "Не удалось переместить предмет." }
-        },
-      })
-    }
-
-    if (control.canControlCharacter && worldStorageTargets.length && !item.equipped) {
-      actions.push({
-        id: "store-in-world",
-        label: "Оставить в мире",
-        kind: "branch",
-        children: worldStorageTargets.map((storage) => ({
-          id: "store-world-" + storage.id,
-          label: storage.name,
-          execute: async () => {
-            const response = await control.storeItemInWorld(item, storage)
-            return response.ok
-              ? { type: "success" as const, notice: "Предмет оставлен в «" + storage.name + "»." }
-              : { type: "error" as const, message: response.error || "Не удалось оставить предмет." }
-          },
-        })),
-      })
-    }
-
-    if (control.canControlCharacter && containerPlacements.length) {
-      actions.push({
-        id: "move-to-container",
-        label: "В другую сумку",
-        surface: {
-          kind: "editor",
-          eyebrow: "Инвентарь",
-          title: "Куда положить «" + item.name + "»",
-          fields: [{
-            id: "holder",
-            label: "Контейнер",
-            type: "select",
-            required: true,
-            options: containerPlacements.map(({ container }) => ({
-              value: container.id,
-              label: container.name,
-            })),
-          }],
-          initialValues: { holder: containerPlacements[0]?.container.id || "" },
-          submitLabel: "Положить",
-        },
-        execute: async ({ input }) => {
-          const holderId = String(input?.holder || "")
-          const placement = containerPlacements.find((entry) => entry.container.id === holderId)?.placement
-          if (!placement) {
-            return { type: "error", message: "В выбранной сумке больше нет подходящего места." }
-          }
-          const response = await control.moveItem(item, placement)
-          return response.ok
-            ? { type: "success", notice: "Предмет помещён в контейнер." }
-            : { type: "error", message: response.error || "Не удалось переместить предмет." }
-        },
-      })
-    }
-
-    if (control.canControlCharacter && !item.equipped && placementKind !== "root") {
-      actions.push({
-        id: "move-to-root",
-        label: "В свободные предметы",
-        execute: async () => {
-          const response = await control.moveItem(item, { kind: "root" })
-          return response.ok
-            ? { type: "success", notice: "Предмет вынут из размещения." }
-            : { type: "error", message: response.error || "Не удалось переместить предмет." }
-        },
-      })
-    }
-
-    if (item.category === "equipment" && control.canControlCharacter && !item.equipped) {
-      actions.push({
-        id: "equip",
-        label: "Экипировать",
-        execute: async () => {
-          const response = await control.setEquipped(item, true)
-          return response.ok
-            ? { type: "success", notice: "Предмет экипирован." }
-            : { type: "error", message: response.error || "Не удалось экипировать предмет." }
-        },
-      })
-    }
-
-    if (item.category === "equipment" && control.canControlCharacter && item.equipped) {
-      const unequipTargets: SnakeAction[] = [
-        ...freeHands.map((index) => ({
-          id: "unequip-hand-" + index,
-          label: "Снять в руку " + (index + 1),
-          execute: async () => {
-            const response = await control.moveItem(item, { kind: "hand", index })
-            return response.ok
-              ? { type: "success" as const, notice: "Предмет снят в руку." }
-              : { type: "error" as const, message: response.error || "Не удалось снять предмет." }
-          },
-        })),
-        ...(freeExternal === null ? [] : [{
-          id: "unequip-external",
-          label: "Снять во внешнюю ячейку",
-          execute: async () => {
-            const response = await control.moveItem(item, { kind: "external", index: freeExternal })
-            return response.ok
-              ? { type: "success" as const, notice: "Предмет снят во внешнюю ячейку." }
-              : { type: "error" as const, message: response.error || "Не удалось снять предмет." }
-          },
-        }]),
-        ...containerPlacements.map(({ container, placement }) => ({
-          id: "unequip-container-" + container.id,
-          label: "Снять в «" + container.name + "»",
-          execute: async () => {
-            const response = await control.moveItem(item, placement)
-            return response.ok
-              ? { type: "success" as const, notice: "Предмет снят в контейнер." }
-              : { type: "error" as const, message: response.error || "Не удалось снять предмет." }
-          },
-        })),
-      ]
-
-      actions.push({
-        id: "unequip",
-        label: "Снять",
-        kind: "branch",
-        enabled: unequipTargets.length > 0,
-        disabledReason: "Сначала освободи руку, внешнюю ячейку или место в сумке.",
-        children: unequipTargets,
-      })
-    }
-
-    if (control.canManage) {
-      actions.push({
-        id: "edit-item",
-        label: "Редактировать",
-        surface: {
-          kind: "editor",
-          eyebrow: "Инвентарь",
-          title: item.name,
-          fields: [
-            { id: "name", label: "Название", type: "text", required: true },
-            ...(stackMode === "instance" ? [] : [{ id: "quantity", label: "Количество", type: "number", required: true } as const]),
-            { id: "weight", label: "Вес", type: "number" },
-            { id: "description", label: "Описание", type: "textarea" },
-          ],
-          initialValues: {
-            name: item.name,
-            quantity: item.quantity,
-            weight: item.weight ?? "",
-            description: item.description,
-          },
-          submitLabel: "Сохранить предмет",
-        },
-        execute: async ({ input }) => {
-          const response = await control.updateItem(item, {
-            name: String(input?.name || item.name),
-            quantity: stackMode === "instance"
-              ? 1
-              : Math.max(1, Math.floor(number(input?.quantity, item.quantity))),
-            weight: input?.weight === "" ? null : number(input?.weight, item.weight ?? 0),
-            description: String(input?.description ?? item.description),
-          })
-          return response.ok
-            ? { type: "success", notice: "Предмет сохранён." }
-            : { type: "error", message: response.error || "Не удалось сохранить предмет." }
-        },
-      }, {
-        id: "transfer-item",
-        label: "Передать",
-        enabled: control.transferTargets.length > 0,
-        disabledReason: "Нет другого живого персонажа кампании.",
-        surface: {
-          kind: "editor",
-          eyebrow: "Инвентарь",
-          title: "Передать «" + item.name + "»",
-          fields: [
-            {
-              id: "target",
-              label: "Кому",
-              type: "select",
-              required: true,
-              options: control.transferTargets.map((target) => ({
-                value: target.id,
-                label: target.name,
-              })),
-            },
-            ...(stackMode === "instance" ? [] : [{ id: "amount", label: "Количество", type: "number", required: true } as const]),
-          ],
-          initialValues: {
-            target: control.transferTargets[0]?.id || "",
-            ...(stackMode === "instance" ? {} : { amount: 1 }),
-          },
-          submitLabel: "Передать",
-        },
-        execute: async ({ input }) => {
-          const target = String(input?.target || "")
-          const amount = stackMode === "instance"
-            ? 1
-            : Math.max(1, Math.min(item.quantity, Math.floor(number(input?.amount, 1))))
-          const response = await control.transferItem(item, target, amount)
-          return response.ok
-            ? { type: "success", notice: "Предмет передан." }
-            : { type: "error", message: response.error || "Не удалось передать предмет." }
-        },
-      }, {
-        id: "delete-item",
-        label: "Удалить",
-        tone: "danger",
-        surface: {
-          kind: "confirm",
-          eyebrow: "Инвентарь",
-          title: "Удалить «" + item.name + "»?",
-          body: "Экземпляр исчезнет из инвентаря персонажа.",
-          confirmLabel: "Удалить",
-        },
-        execute: async () => {
-          const response = await control.removeItem(item)
-          return response.ok
-            ? { type: "success", notice: "Предмет удалён." }
-            : { type: "error", message: response.error || "Не удалось удалить предмет." }
-        },
-      })
-    }
-    return actions
-  }
-
-  function spellActions(spell: CharacterSpell): SnakeAction[] {
-    const actions: SnakeAction[] = [{
-      id: "inspect",
-      label: "Открыть",
-      surface: {
-        kind: "detail",
-        eyebrow: spell.spell_level === 0 ? "Заговор" : spell.spell_level + " уровень",
-        title: spell.name,
-        body: spellDetail(spell),
-      },
-    }]
-    const canPrepare = control.canManage ||
-      Boolean(control.canControlCharacter && control.sheet?.spell_change_unlocked)
-    if (canPrepare) {
-      actions.push({
-        id: "prepared",
-        label: spell.prepared ? "Снять подготовку" : "Подготовить",
-        execute: async () => {
-          const response = await control.setSpellPrepared(spell.id, !spell.prepared)
-          return response.ok
-            ? { type: "success", notice: spell.prepared ? "Подготовка снята." : "Заклинание подготовлено." }
-            : { type: "error", message: response.error || "Не удалось изменить подготовку." }
-        },
-      })
-    }
-    if (control.canManage) {
-      actions.push({
-        id: "edit-spell",
-        label: "Редактировать",
-        surface: {
-          kind: "editor",
-          eyebrow: "Заклинание",
-          title: spell.name,
-          fields: [
-            { id: "name", label: "Название", type: "text", required: true },
-            { id: "spell_level", label: "Уровень", type: "number" },
-            { id: "school", label: "Школа", type: "text" },
-            { id: "description", label: "Описание", type: "textarea" },
-          ],
-          initialValues: {
-            name: spell.name,
-            spell_level: spell.spell_level,
-            school: spell.school,
-            description: spell.description,
-          },
-          submitLabel: "Сохранить",
-        },
-        execute: async ({ input }) => {
-          const response = await control.updateSpell(spell, {
-            name: String(input?.name || spell.name),
-            spell_level: Math.max(0, Math.min(9, number(input?.spell_level, spell.spell_level))),
-            school: String(input?.school ?? spell.school),
-            description: String(input?.description ?? spell.description),
-          })
-          return response.ok
-            ? { type: "success", notice: "Заклинание сохранено." }
-            : { type: "error", message: response.error || "Не удалось сохранить." }
-        },
-      }, {
-        id: "delete-spell",
-        label: "Удалить",
-        tone: "danger",
-        surface: {
-          kind: "confirm",
-          eyebrow: "Заклинание",
-          title: "Удалить «" + spell.name + "»?",
-          confirmLabel: "Удалить",
-        },
-        execute: async () => {
-          const response = await control.deleteSpell(spell.id)
-          return response.ok
-            ? { type: "success", notice: "Заклинание удалено." }
-            : { type: "error", message: response.error || "Не удалось удалить." }
-        },
-      })
-    }
-    return actions
-  }
-
-  function featureActions(feature: CharacterFeature): SnakeAction[] {
-    const actions: SnakeAction[] = [{
-      id: "inspect",
-      label: "Открыть",
-      surface: {
-        kind: "detail",
-        eyebrow: "Особенность",
-        title: feature.name,
-        body: featureDetail(feature),
-      },
-    }]
-    if (control.canManage) {
-      actions.push({
-        id: "edit-feature",
-        label: "Редактировать",
-        surface: {
-          kind: "editor",
-          eyebrow: "Особенность",
-          title: feature.name,
-          fields: [
-            { id: "name", label: "Название", type: "text", required: true },
-            { id: "description", label: "Описание", type: "textarea" },
-          ],
-          initialValues: { name: feature.name, description: feature.description },
-          submitLabel: "Сохранить",
-        },
-        execute: async ({ input }) => {
-          const response = await control.updateFeature(feature, {
-            name: String(input?.name || feature.name),
-            description: String(input?.description ?? feature.description),
-          })
-          return response.ok
-            ? { type: "success", notice: "Особенность сохранена." }
-            : { type: "error", message: response.error || "Не удалось сохранить." }
-        },
-      }, {
-        id: "delete-feature",
-        label: "Удалить",
-        tone: "danger",
-        surface: {
-          kind: "confirm",
-          eyebrow: "Особенность",
-          title: "Удалить «" + feature.name + "»?",
-          confirmLabel: "Удалить",
-        },
-        execute: async () => {
-          const response = await control.deleteFeature(feature.id)
-          return response.ok
-            ? { type: "success", notice: "Особенность удалена." }
-            : { type: "error", message: response.error || "Не удалось удалить." }
-        },
-      })
-    }
-    return actions
-  }
-
-  function focusedContent() {
-    if (focus === "inventory") {
-      return (
-        <InventorySpatialView
-          items={control.inventory}
-          load={runtime.snapshot?.inventoryLoad ?? null}
-          carryCapacityKg={contract?.carrying.capacityKg.value ?? null}
-          activeHolderId={inventoryHolderId}
-          canControl={control.canControlCharacter}
-          actionsForItem={inventoryActions}
-          onActiveHolderChange={setInventoryHolderId}
-          onOpenItem={(item) => {
-            const inspect = inventoryActions(item)[0]
-            if (inspect) openAction(inspect, { type: "inventory-item", id: item.id })
-          }}
-          onMove={control.moveItem}
-          onEquip={(item) => control.setEquipped(item, true)}
-        />
-      )
-    }
-
-    if (focus === "spells") {
-      return (
-        <Section title="Заклинания" meta={String(control.spells.length)}>
-          <div className="u1-character-view__rows">
-            {control.spells.map((spell) => {
-              const actions = spellActions(spell)
-              const inspect = actions[0]
-              const spellEntity = { type: "spell", id: spell.id }
-              return (
-                <SnakeTrigger key={spell.id} entity={spellEntity} actions={actions}>
-                  <button type="button" className="u1-character-view__row" onClick={() => openAction(inspect, spellEntity)}>
-                    <span>
-                      <strong>{spell.name}</strong>
-                      <small>{spell.spell_level === 0 ? "Заговор" : spell.spell_level + " ур."} · {spell.school}</small>
-                    </span>
-                    <b>{spell.prepared ? "ГОТОВО" : ""}</b>
-                  </button>
-                </SnakeTrigger>
-              )
-            })}
-            {!control.spells.length && <div className="u1-character-view__quiet">Заклинаний нет.</div>}
-          </div>
-        </Section>
-      )
-    }
-
-    if (focus === "features") {
-      return (
-        <Section title="Особенности" meta={String(control.features.length)}>
-          <div className="u1-character-view__rows">
-            {control.features.map((feature) => {
-              const actions = featureActions(feature)
-              const inspect = actions[0]
-              const featureEntity = { type: "feature", id: feature.id }
-              return (
-                <SnakeTrigger key={feature.id} entity={featureEntity} actions={actions}>
-                  <button type="button" className="u1-character-view__row" onClick={() => openAction(inspect, featureEntity)}>
-                    <span><strong>{feature.name}</strong><small>{feature.kind}</small></span>
-                    <b>›</b>
-                  </button>
-                </SnakeTrigger>
-              )
-            })}
-            {!control.features.length && <div className="u1-character-view__quiet">Особенностей нет.</div>}
-          </div>
-        </Section>
-      )
-    }
-
+  if (interfaceMode === "inventory") {
     return (
-      <Section title="Владения и защиты">
-        <div className="u1-character-view__defenses">
-          {capabilityGroups.map((group) => (
-            <div key={group.label}>
-              <span>{group.label}</span>
-              <p>{group.entries.map(grantLabel).join(" · ")}</p>
-            </div>
-          ))}
-          {!capabilityGroups.length && <div className="u1-character-view__quiet">Отдельных защит и владений нет.</div>}
-        </div>
-      </Section>
+      <CharacterInventoryInterface
+        characterId={characterId}
+        characterName={character.name}
+        classKey={classKey}
+        focusedItemId={focusedItemId}
+        focusedItemName={
+          control.inventory.find((item) => item.id === focusedItemId)?.name || null
+        }
+        onBack={handleBack}
+      />
     )
   }
-
-  const hero = (
-    <section className="u1-character-view__hero" data-dead={character.lifeState === "dead" || undefined}>
-      {heroUrl ? (
-        <CampaignMediaFrame
-          value={heroUrl}
-          presentation={heroPresentation}
-          alt=""
-          aria-hidden="true"
-        />
-      ) : <span aria-hidden="true" />}
-      <span className="u1-character-view__hero-veil" aria-hidden="true" />
-      <div className="u1-character-view__hero-copy">
-        <small>БИО</small>
-        <p>{character.bio || "История персонажа ещё не записана."}</p>
-      </div>
-      {heroViewAction && (
-        <button
-          type="button"
-          className="u1-character-view__hero-open"
-          onClick={() => openAction(heroViewAction)}
-          aria-label={"Открыть арт персонажа " + character.name}
-        />
-      )}
-    </section>
-  )
 
   return (
-    <main className="u1-character-view" data-class-key={classInfo.key}>
-      <header className="u1-character-view__nav">
-        <button
-          type="button"
-          onClick={() => {
-            if (focus === "inventory" && inventoryHolderId) {
-              const currentHolder = control.inventory.find((item) => item.id === inventoryHolderId)
-              setInventoryHolderId(currentHolder?.holder_item_id ?? null)
-              return
-            }
-            if (focus) {
-              setFocus(null)
-              return
-            }
-            onBack()
+    <CharacterSheetShell
+      characterId={characterId}
+      characterName={character.name}
+      characterClass={character.characterClass}
+      level={character.level}
+      classKey={classKey}
+      portraitUrl={portraitUrl}
+      portraitPresentation={portraitPresentation}
+      panelArtUrl={classSheetBackground?.url || null}
+      panelArtPresentation={classSheetBackground?.presentation || null}
+      dead={character.lifeState === "dead"}
+      activeSection={section}
+      portraitActions={portraitActions}
+      onOpenPortrait={
+        portraitViewAction?.surface
+          ? () => snake.openSurface(portraitViewAction.surface!)
+          : undefined
+      }
+      onNavigate={(target) => {
+        setEntityFocus(null)
+
+        if (target.kind === "interface") {
+          setFocusedItemId(null)
+        } else if (target.section === "features") {
+          setSelectedFeatureId(null)
+          setSelectedEffectId(null)
+        } else if (target.section === "spells") {
+          setSelectedSpellId(null)
+          setSpellFocusLevel(null)
+        }
+
+        navigateSheet(
+          target,
+          target.kind === "interface"
+            ? { focusedItemId: null }
+            : undefined,
+        )
+      }}
+      onBack={handleBack}
+      core={
+        <CharacterSheetCore
+          contract={runtime.snapshot?.contract || null}
+          spellcastingAbility={runtime.snapshot?.spellcastingAbility}
+          expandedAbility={expandedAbility}
+          onToggleAbility={(ability) =>
+            setExpandedAbility((current) =>
+              current === ability ? null : ability
+            )
+          }
+        />
+      }
+    >
+      {section === "overview" ? (
+        <CharacterSheetOverview
+          characterId={characterId}
+          classKey={classKey}
+          contract={runtime.snapshot?.contract || null}
+          resourceSyncInputs={runtime.snapshot?.resourceSyncInputs || []}
+          runtimeError={runtime.error || undefined}
+          focusResourceKey={
+            entityFocus?.kind === "resource"
+              ? entityFocus.stateKey
+              : null
+          }
+          onSelectResource={(stateKey) => setSelectedResourceKey(stateKey)}
+          onNavigateEntity={navigateEntity}
+          mediaController={referenceMedia}
+          onOpenFeatures={() => {
+            setEntityFocus(null)
+            setSelectedFeatureId(null)
+            setSelectedEffectId(null)
+            navigateSheet({ kind: "section", section: "features" })
           }}
-          aria-label="Назад"
-        >
-          ←
-        </button>
-        <span>{focus ? "ПЕРСОНАЖ / " + focus.toLocaleUpperCase("ru-RU") : "ПЕРСОНАЖ"}</span>
-        {heroActions.length ? (
-          <button
-            type="button"
-            onClick={(event) => {
-              const rect = event.currentTarget.getBoundingClientRect()
-              snake.openMenu({
-                entity,
-                actions: heroActions,
-                point: { x: rect.right, y: rect.bottom + 8 },
-                title: character.name,
-              })
-            }}
-            aria-label="Действия с персонажем"
-          >
-            •••
-          </button>
-        ) : <i />}
-      </header>
-
-      {focus ? focusedContent() : (
-        <>
-          {heroActions.length ? (
-            <SnakeTrigger entity={entity} actions={heroActions}>{hero}</SnakeTrigger>
-          ) : hero}
-
-          <button className="u1-character-view__inventory-line" type="button" onClick={() => { setInventoryHolderId(null); setFocus("inventory") }}>
-            <i /><strong>ИНВЕНТАРЬ · {control.inventory.length} ПРЕДМЕТОВ</strong><i />
-          </button>
-
-          <section className="u1-character-view__identity">
-            <div>
-              <h1>{character.name}</h1>
-              <p>{classInfo.names.length ? classInfo.names.join(" · ") : character.characterClass || "Без класса"}</p>
-            </div>
-            <div className="u1-character-view__hp">
-              <strong>{hpCurrent} / {hpMax} HP</strong>
-              <i><b style={{ width: hpPercent + "%" }} /></i>
-            </div>
-          </section>
-
-          <section className="u1-character-view__core">
-            <div className="u1-character-view__quick">
-              <div><span>КД</span><strong>{ac}</strong></div>
-              <div><span>ПАССИВ</span><strong>{passive}</strong></div>
-              <div><span>МАСТЕРСТВО</span><strong>{signed(proficiency)}</strong></div>
-              <div><span>ИНИЦИАТИВА</span><strong>{signed(initiative)}</strong></div>
-              <div><span>СКОРОСТЬ</span><strong>{speed}</strong></div>
-              {magic && <div><span>СЛ</span><strong>{magic.saveDc}</strong></div>}
-              {magic && <div><span>АТАКА</span><strong>{signed(magic.attackBonus)}</strong></div>}
-            </div>
-
-            <div className="u1-character-view__ability-matrix" data-expanded={expandedAbility || undefined}>
-              {abilityFields
-                .filter(([, ability]) => !expandedAbility || expandedAbility === ability)
-                .map(([sheetKey, ability, short, full]) => {
-                  const resolvedAbility = contract?.abilities[ability]
-                  const score = resolvedAbility?.value ?? Number(control.sheet?.[sheetKey] || 0)
-                  const modifier = resolvedAbility?.modifier ?? Math.floor((score - 10) / 2)
-                  const skillRows = contract
-                    ? (Object.keys(contract.skills) as SkillKey[]).filter((key) => contract.skills[key].ability === ability)
-                    : []
-                  const open = expandedAbility === ability
-                  const saveBonus = contract ? contract.savingThrows[ability].bonus.value : modifier
-                  return (
-                    <div className="u1-character-view__ability" key={ability} data-open={open || undefined}>
-                      <button type="button" onClick={() => setExpandedAbility(open ? null : ability)} aria-expanded={open}>
-                        <span>{short}</span><strong>{score}</strong><em>{signed(modifier)}</em>
-                      </button>
-                      {open && (
-                        <div className="u1-character-view__skills">
-                          <header><span>{full}</span><strong>СПАС {signed(saveBonus)}</strong></header>
-                          {skillRows.map((skillKey) => (
-                            <div key={skillKey}>
-                              <span>{skillLabels[skillKey]}</span>
-                              <strong>{signed(contract!.skills[skillKey].bonus.value)}</strong>
-                              {contract!.skills[skillKey].proficiencyRank > 0 && <i>{contract!.skills[skillKey].proficiencyRank > 1 ? "◆" : "●"}</i>}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-            </div>
-          </section>
-
-          {classResources.length > 0 && (
-            <section className="u1-character-view__resources">
-              <header><span>РЕСУРСЫ</span><i /></header>
-              {classResources.map((resource) => {
-                const resourceEntity = { type: "character-resource", id: characterId + ":" + resource.stateKey }
-                const detailAction: SnakeAction = {
-                  id: "inspect",
-                  label: "Подробнее",
-                  surface: {
-                    kind: "detail",
-                    eyebrow: "Ресурс персонажа",
-                    title: resourceLabel(resource),
-                    body: "Доступно: " + resource.current + " из " + resource.max.value + ".\n\nВосстановление: " + resource.recharge.triggers.join(" · ").replace(/_/g, " "),
-                  },
-                }
-                const max = Math.max(0, Math.round(resource.max.value))
-                return (
-                  <SnakeTrigger key={resource.stateKey} entity={resourceEntity} actions={[detailAction]}>
-                    <button type="button" className="u1-character-view__resource" onClick={() => openAction(detailAction, resourceEntity)}>
-                      <span className="u1-character-view__resource-mark">{resourceMark(resource.stateKey)}</span>
-                      <span className="u1-character-view__resource-copy">
-                        <strong>{resourceLabel(resource)}</strong>
-                        <small>{resource.recharge.triggers.join(" · ").replace(/_/g, " ")}</small>
-                      </span>
-                      {max > 0 && max <= 8 && (
-                        <span className="u1-character-view__pips">
-                          {Array.from({ length: max }, (_, index) => <i key={index} data-filled={index < resource.current || undefined} />)}
-                        </span>
-                      )}
-                      <b>{resource.current}/{max}</b>
-                    </button>
-                  </SnakeTrigger>
-                )
-              })}
-            </section>
-          )}
-
-          {spellSlots.length > 0 && (
-            <section className="u1-character-view__slots">
-              <header><span>ЗАКЛИНАНИЯ</span><i /></header>
-              <div className="u1-character-view__slot-viewport">
-                {spellSlots.map(({ level, resource }) => {
-                  const max = Math.max(0, Math.round(resource.max.value))
-                  const resourceEntity = { type: "spell-slot", id: characterId + ":" + resource.stateKey }
-                  const detailAction: SnakeAction = {
-                    id: "inspect",
-                    label: "Подробнее",
-                    surface: {
-                      kind: "detail",
-                      eyebrow: "Ячейки заклинаний",
-                      title: (roman[level] || level) + " уровень",
-                      body: "Доступно: " + resource.current + " из " + max + ".",
-                    },
-                  }
-                  return (
-                    <SnakeTrigger key={resource.stateKey} entity={resourceEntity} actions={[detailAction]}>
-                      <button type="button" className="u1-character-view__slot" onClick={() => openAction(detailAction, resourceEntity)}>
-                        <span>{roman[level] || level} <small>УРОВЕНЬ</small></span>
-                        <span className="u1-character-view__slot-pips">
-                          {Array.from({ length: max }, (_, index) => <i key={index} data-filled={index < resource.current || undefined} />)}
-                        </span>
-                        <strong>{resource.current} / {max}</strong>
-                      </button>
-                    </SnakeTrigger>
-                  )
-                })}
-              </div>
-            </section>
-          )}
-
-          <section className="u1-character-view__directory">
-            <button type="button" onClick={() => setFocus("features")}><span>СПОСОБНОСТИ</span><strong>{control.features.length}</strong><i>›</i></button>
-            <button type="button" onClick={() => setFocus("spells")}><span>ЗАКЛИНАНИЯ</span><strong>{control.spells.length}</strong><i>›</i></button>
-            <button type="button" onClick={() => setFocus("inventory")}><span>ИНВЕНТАРЬ</span><strong>{control.inventory.length}</strong><i>›</i></button>
-            <button type="button" onClick={() => setFocus("defenses")}><span>ВЛАДЕНИЯ И ЗАЩИТЫ</span><strong>{capabilityGroups.reduce((sum, group) => sum + group.entries.length, 0)}</strong><i>›</i></button>
-          </section>
-
-          {runtime.error && <div className="u1-character-view__quiet">Character Engine: {runtime.error}</div>}
-        </>
+          onOpenSpells={(level) => {
+            setEntityFocus(null)
+            setSelectedSpellId(null)
+            setSpellFocusLevel(
+              typeof level === "number" && level >= 0 && level <= 9
+                ? level
+                : null,
+            )
+            navigateSheet({ kind: "section", section: "spells" })
+          }}
+        />
+      ) : section === "features" ? (
+        <CharacterSheetFeatures
+          characterId={characterId}
+          contract={runtime.snapshot?.contract || null}
+          templates={control.templates}
+          sourceNodes={runtime.snapshot?.sourceNodes || []}
+          runtimeError={runtime.error || undefined}
+          focusKey={
+            entityFocus?.kind === "feature"
+              ? entityFocus.featureId
+              : entityFocus?.kind === "effect"
+                ? entityFocus.effectId
+                : null
+          }
+          onSelect={(featureId) => {
+            setSelectedFeatureId(featureId)
+            setEntityFocus(null)
+          }}
+          onNavigateEntity={navigateEntity}
+        />
+      ) : section === "spells" ? (
+        <CharacterSheetSpells
+          characterId={characterId}
+          contract={runtime.snapshot?.contract || null}
+          legacySpells={control.spells}
+          runtimeError={runtime.error || undefined}
+          focusLevel={spellFocusLevel}
+          focusSpellKey={
+            entityFocus?.kind === "spell"
+              ? entityFocus.spellKey
+              : null
+          }
+          onNavigateEntity={navigateEntity}
+          onSelect={(spellId) => {
+            setSelectedSpellId(spellId)
+            setEntityFocus(null)
+            setSpellFocusLevel(null)
+          }}
+        />
+      ) : (
+        <SectionPlaceholder section={section} />
       )}
-    </main>
+    </CharacterSheetShell>
   )
 }

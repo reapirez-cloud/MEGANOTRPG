@@ -18,11 +18,12 @@ test("character and location screens expose current domain state", () => {
   const character = read("src/ui-v1-isolated/CharacterView.tsx")
   const locations = read("src/ui-v1-isolated/LocationNavigator.tsx")
 
-  assert.match(character, /screen: "character"/)
-  assert.match(character, /inventory:/)
-  assert.match(character, /spells:/)
-  assert.match(character, /features:/)
-  assert.match(character, /resources:/)
+  assert.match(character, /"character-sheet"/)
+  assert.match(character, /interfaceMode/)
+  assert.match(character, /spellCount:/)
+  assert.match(character, /featureCount:/)
+  assert.match(character, /inventoryCount:/)
+  assert.match(character, /resourceCount:/)
 
   assert.match(locations, /screen: detail \? "location-detail" : "location-navigator"/)
   assert.match(locations, /selectedSections/)

@@ -58,7 +58,14 @@ function contentTypeForExtension(extension: string) {
   return canonicalByExtension[extension] || null
 }
 
-async function optimizeCampaignImage(file: File): Promise<File> {
+type UploadCampaignImageOptions = {
+  preservePng?: boolean
+}
+
+async function optimizeCampaignImage(
+  file: File,
+  options?: UploadCampaignImageOptions,
+): Promise<File> {
   if (
     typeof createImageBitmap !== "function" ||
     !["image/jpeg", "image/png", "image/webp"].includes(file.type)
@@ -89,15 +96,29 @@ async function optimizeCampaignImage(file: File): Promise<File> {
     if (!context) return file
 
     context.drawImage(bitmap, 0, 0, width, height)
-    const outputType = file.type === "image/png" ? "image/webp" : file.type
+    const outputType =
+      file.type === "image/png" && options?.preservePng
+        ? "image/png"
+        : file.type === "image/png"
+          ? "image/webp"
+          : file.type
     const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, outputType, outputType === "image/png" ? undefined : 0.86),
+      canvas.toBlob(
+        resolve,
+        outputType,
+        outputType === "image/png" ? undefined : 0.86,
+      ),
     )
 
     if (!blob || blob.size >= file.size) return file
 
     const stem = file.name.replace(/\.[^.]+$/, "") || "image"
-    const extension = outputType === "image/webp" ? "webp" : "jpg"
+    const extension =
+      outputType === "image/png"
+        ? "png"
+        : outputType === "image/webp"
+          ? "webp"
+          : "jpg"
     return new File([blob], `${stem}.${extension}`, {
       type: outputType,
       lastModified: file.lastModified,
@@ -133,6 +154,7 @@ export async function uploadCampaignImage(
   file: File,
   folder: string,
   campaignId: string,
+  options?: UploadCampaignImageOptions,
 ): Promise<UploadImageResult> {
   if (!file.type.startsWith("image/")) {
     return { ok: false, error: "Выбери файл изображения." }
@@ -151,7 +173,7 @@ export async function uploadCampaignImage(
     return { ok: false, error: "Не удалось определить текущего пользователя." }
   }
 
-  const optimized = await optimizeCampaignImage(file)
+  const optimized = await optimizeCampaignImage(file, options)
   if (optimized.size > MAX_UPLOAD_IMAGE_BYTES) {
     return {
       ok: false,

@@ -187,6 +187,7 @@ export {
   type ResolvedSpellCastingMethod,
   type ResolvedSpellResourceCost,
   type ResolvedSpellResourceOption,
+  type ResolvedSourceRef,
   type ResolvedValue,
   type ResourceGrantPayload,
   type ResourceRechargeRule,
