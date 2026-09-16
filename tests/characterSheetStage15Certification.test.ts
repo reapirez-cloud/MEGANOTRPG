@@ -118,6 +118,6 @@ test("spell levels are not silently clamped into the D&D 0-9 groups", () => {
 
 test("spell schools and multiclass source labels are normalized for dirty data", () => {
   assert.match(spells, /function normalizeSchool/)
-  assert.match(spells, /sourceNames\.sort/)
+  assert.match(spells, /\[\.\.\.names\]\.sort/)
   assert.match(spells, /function sourceSummary/)
 })
