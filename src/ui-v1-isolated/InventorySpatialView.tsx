@@ -102,6 +102,9 @@ export default function InventorySpatialView({
   const activeContainer = activeHolder
     ? inventoryPhysicalProfile(activeHolder).container_profile || null
     : null
+  const parentHolder = activeHolder?.holder_item_id
+    ? items.find((item) => item.id === activeHolder.holder_item_id) || null
+    : null
 
   const rootContainers = useMemo(
     () => items.filter((item) => item.category === "container" && itemAtRoot(item)),
@@ -470,24 +473,37 @@ export default function InventorySpatialView({
                 )
               })}
 
-              {hint?.target.kind === "grid" && hint.target.holderItemId === activeHolder.id && draggedItem && (
-                <div
-                  className="u1-inventory-grid-hint"
-                  data-invalid={Boolean(hint.problem) || undefined}
-                  style={{
-                    left: hint.target.gridX * CELL_PX,
-                    top: hint.target.gridY * CELL_PX,
-                    width: rotateInventoryShape(
-                      inventoryPhysicalProfile(draggedItem),
-                      hint.target.rotation,
-                    ).width * CELL_PX,
-                    height: rotateInventoryShape(
-                      inventoryPhysicalProfile(draggedItem),
-                      hint.target.rotation,
-                    ).height * CELL_PX,
-                  }}
-                />
-              )}
+              {hint?.target.kind === "grid" && hint.target.holderItemId === activeHolder.id && draggedItem && (() => {
+                const previewShape = rotateInventoryShape(
+                  inventoryPhysicalProfile(draggedItem),
+                  hint.target.rotation,
+                )
+                return (
+                  <div
+                    className="u1-inventory-grid-hint"
+                    data-invalid={Boolean(hint.problem) || undefined}
+                    style={{
+                      left: hint.target.gridX * CELL_PX,
+                      top: hint.target.gridY * CELL_PX,
+                      width: previewShape.width * CELL_PX,
+                      height: previewShape.height * CELL_PX,
+                    }}
+                  >
+                    {previewShape.cells.map((cell) => (
+                      <i
+                        className="u1-inventory-shape-cell"
+                        key={cell.x + ":" + cell.y}
+                        style={{
+                          left: cell.x * CELL_PX,
+                          top: cell.y * CELL_PX,
+                          width: CELL_PX,
+                          height: CELL_PX,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )
+              })()}
             </div>
           </div>
 
@@ -499,6 +515,18 @@ export default function InventorySpatialView({
               </div>
             </div>
           )}
+
+          <div className="u1-inventory-bag__drop-rail">
+            {parentHolder && (
+              <div
+                data-inventory-drop-kind="container"
+                data-inventory-holder-id={parentHolder.id}
+              >
+                В РОДИТЕЛЬСКУЮ СУМКУ
+              </div>
+            )}
+            <div data-inventory-drop-kind="root">В СВОБОДНЫЕ ПРЕДМЕТЫ</div>
+          </div>
         </section>
       ) : (
         <section className="u1-inventory-root">
