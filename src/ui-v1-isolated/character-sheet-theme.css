@@ -37,6 +37,8 @@
 
   --cv-class-panel-art-fallback: none;
   --cv-class-panel-art: var(--cv-class-panel-art-fallback);
+  --cv-class-panel-art-size: 100% auto;
+  --cv-class-panel-art-position: center top;
   --cv-class-art-wash: rgba(128, 132, 132, .06);
   --cv-ambient-art: var(--cv-class-panel-art);
 
@@ -47,9 +49,15 @@
     radial-gradient(circle at 18% -6%, rgba(255, 255, 255, .075), transparent 33%),
     linear-gradient(180deg, var(--cv-class-art-wash), rgba(31, 34, 37, .82) 72%, rgba(31, 34, 37, .94)),
     var(--cv-ambient-art);
-  background-position: center top, center, center top;
+  background-position:
+    center top,
+    center,
+    var(--cv-class-panel-art-position);
   background-repeat: no-repeat;
-  background-size: auto, auto, 100% auto;
+  background-size:
+    auto,
+    auto,
+    var(--cv-class-panel-art-size);
   background-blend-mode: normal, normal, normal;
 }
 
