@@ -11,6 +11,7 @@ import { useResolvedCharacterRuntime } from "../hooks/useResolvedCharacterRuntim
 import type { SnakeAction } from "../snake-engine"
 import CharacterInventoryInterface from "./CharacterInventoryInterface"
 import CharacterSheetCore from "./CharacterSheetCore"
+import CharacterSheetOverview from "./CharacterSheetOverview"
 import CharacterSheetShell from "./CharacterSheetShell"
 import {
   isCharacterSheetSection,
@@ -26,6 +27,7 @@ import { useWorkspaceData } from "./useWorkspaceData"
 import "./character-sheet-theme.css"
 import "./character-sheet-shell.css"
 import "./character-sheet-core.css"
+import "./character-sheet-overview.css"
 import "./character-inventory-interface.css"
 
 type CharacterSheetHistorySnapshot =
@@ -120,11 +122,7 @@ function classKeyFrom(
 }
 
 function SectionPlaceholder({ section }: { section: CharacterSheetSection }) {
-  const copy: Record<CharacterSheetSection, { title: string; body: string }> = {
-    overview: {
-      title: "Обзор персонажа",
-      body: "Основные показатели уже закреплены выше. Здесь на этапе 6 появятся классовые ресурсы, ячейки заклинаний и краткие игровые блоки.",
-    },
+  const copy: Record<Exclude<CharacterSheetSection, "overview">, { title: string; body: string }> = {
     features: {
       title: "Умения",
       body: "Раздел уже переключается внутри листа. Сортировка по источнику и полноценные действия будут подключены на этапе 7.",
@@ -138,6 +136,8 @@ function SectionPlaceholder({ section }: { section: CharacterSheetSection }) {
       body: "Биография остаётся частью листа и заменяет только нижнюю область, не открывая отдельный экран.",
     },
   }
+
+  if (section === "overview") return null
 
   return (
     <div
@@ -532,7 +532,23 @@ export default function CharacterView({
         />
       }
     >
-      <SectionPlaceholder section={section} />
+      {section === "overview" ? (
+        <CharacterSheetOverview
+          characterId={characterId}
+          classKey={classKey}
+          contract={runtime.snapshot?.contract || null}
+          resourceSyncInputs={runtime.snapshot?.resourceSyncInputs || []}
+          runtimeError={runtime.error || undefined}
+          onOpenFeatures={() =>
+            navigateSheet({ kind: "section", section: "features" })
+          }
+          onOpenSpells={() =>
+            navigateSheet({ kind: "section", section: "spells" })
+          }
+        />
+      ) : (
+        <SectionPlaceholder section={section} />
+      )}
     </CharacterSheetShell>
   )
 }
