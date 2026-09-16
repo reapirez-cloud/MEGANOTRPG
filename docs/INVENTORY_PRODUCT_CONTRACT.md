@@ -202,6 +202,14 @@ The implemented carried-inventory runtime follows these invariants:
 - One bag is expanded at a time. Nested bags use the same holder tree and Back returns to the parent.
 - Equipping a carried item clears its physical carried placement atomically. If the equipment slot is already occupied, the new equip is rejected until the existing equipped item is moved to a real hand/bag/external destination.
 - Cross-character transfer removes source-character hand/grid/external placement from the transferred root item while retaining valid placement of descendants inside a transferred container subtree.
+- Unequip is a spatial transition, not a boolean convenience toggle. An equipped item may move only to a real hand, valid bag grid or available external carry cell; abstract root/free state is not an unequip destination.
+- Generic create/update authoring cannot change equipment state. Equipment transitions use the dedicated Cheburashka equipment/spatial commands so slot conflicts and physical destination rules cannot be bypassed by an editor.
+- Final database state is revalidated after mutations. Changing an item definition/revision, item shape, holder category/grid, character ownership or carry-capacity provider must fail if it would invalidate an already placed item.
+- External carry capacity is a character-level physical invariant. A provider cannot be moved/changed/removed while doing so would orphan an occupied external slot.
+- Same-slot equipment conflicts and the `two_hands` versus `main_hand`/`off_hand` conflict are forbidden in final canonical state, not merely discouraged by UI.
+- Client placement preview consumes a Cheburashka-safe physical-profile projection. Physical geometry may be shown to a player who can view the item without leaking hidden Chasovoy definition prose or mechanics.
+- Sparse authored masks are both collision truth and pointer hit-test truth. Transparent cells inside a shape's bounding rectangle must not block interaction with another item.
+- Rejected spatial/equipment commands refresh the client from canonical server state. Optimistic presentation never becomes a second inventory owner.
 
 ## 9. Currency is ordinary inventory
 
@@ -496,9 +504,9 @@ When auditing inventory, an agent must:
 
 1. read this contract before proposing redesigns;
 2. distinguish **implemented now** from **approved target**;
-3. preserve completed Cheburashka Stages 1–4 unless a real defect requires change;
+3. preserve completed Cheburashka Stages 1–6 unless a real defect requires change;
 4. report gaps against this target rather than inventing a different inventory UX;
-5. avoid declaring future spatial/surface/trade mechanics complete merely because holder infrastructure exists;
+5. distinguish completed Stage 6 spatial runtime from still-future weight/specialized-capacity, Surface and Trade mechanics;
 6. prefer extending one holder/placement model over parallel tables that represent the same fact;
 7. call out server-authority/concurrency gaps for moves, claims and trade commits;
 8. keep GM authority intact and avoid tactical simulation the app does not own;
@@ -517,8 +525,8 @@ Current status:
 2  ✅ item lifecycle
 3  ✅ stack/instance foundation
 4  ✅ nested holders
-5  ⬜ physical item definition + authoring language
-6  ⬜ spatial runtime + mobile inventory UX
+5  ✅ physical item definition + authoring language
+6  ✅ spatial runtime + mobile inventory UX
 7  ⬜ weight, load and specialized capacity
 8  ⬜ persistent world storage / chests / stashes
 9  ⬜ chats/scenes + shared Surfaces
@@ -527,7 +535,7 @@ Current status:
 12 ⬜ final security/concurrency/E2E certification
 ```
 
-There are 12 stages total. Stages 1–4 are complete; 5–12 remain.
+There are 12 stages total. Stages 1–6 are complete; Stage 7 is next and six stages remain.
 
 Audits must read both this product contract and the implementation plan.
 
