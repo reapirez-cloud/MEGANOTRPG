@@ -223,6 +223,11 @@
   display: none;
 }
 
+.u1-character-overview__slot-viewport > .u1-snake-trigger {
+  display: block;
+  min-width: 0;
+}
+
 .u1-character-overview__slot {
   --resource-accent: var(--cv-spell-accent);
   width: 100%;
