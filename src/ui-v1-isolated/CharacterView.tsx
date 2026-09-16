@@ -54,6 +54,7 @@ type CharacterSheetHistorySnapshot =
       kind: "interface"
       interface: "inventory"
       returnSection: CharacterSheetSection
+      focusedItemId: string | null
     }
 
 function readCharacterSheetHistory(
@@ -87,6 +88,10 @@ function readCharacterSheetHistory(
       kind: "interface",
       interface: "inventory",
       returnSection: state.returnSection,
+      focusedItemId:
+        typeof state.focusedItemId === "string"
+          ? state.focusedItemId
+          : null,
     }
   }
 
@@ -276,11 +281,13 @@ export default function CharacterView({
   ) => {
     if (snapshot.kind === "interface") {
       setSection(snapshot.returnSection)
+      setFocusedItemId(snapshot.focusedItemId)
       setInterfaceMode(snapshot.interface)
       return
     }
 
     setSection(snapshot.section)
+    setFocusedItemId(null)
     setInterfaceMode(null)
   }, [])
 
@@ -329,18 +336,27 @@ export default function CharacterView({
     return overview
   }, [characterId])
 
-  const navigateSheet = useCallback((target: CharacterSheetTarget) => {
+  const navigateSheet = useCallback((
+    target: CharacterSheetTarget,
+    options?: { focusedItemId?: string | null },
+  ) => {
     const current = ensureOverviewHistory()
 
     if (target.kind === "interface") {
       const returnSection =
         current.kind === "sheet" ? current.section : section
 
+      const nextFocusedItemId =
+        options && "focusedItemId" in options
+          ? options.focusedItemId || null
+          : focusedItemId
+
       const next: CharacterSheetHistorySnapshot = {
         characterId,
         kind: "interface",
         interface: "inventory",
         returnSection,
+        focusedItemId: nextFocusedItemId,
       }
       window.history.pushState(
         historyStateWith(next),
@@ -348,6 +364,7 @@ export default function CharacterView({
         window.location.href,
       )
       setSection(returnSection)
+      setFocusedItemId(nextFocusedItemId)
       setInterfaceMode("inventory")
       return
     }
@@ -404,6 +421,7 @@ export default function CharacterView({
   }, [
     characterId,
     ensureOverviewHistory,
+    focusedItemId,
     interfaceMode,
     section,
   ])
@@ -451,9 +469,25 @@ export default function CharacterView({
 
     setFocusedItemId(target.itemId)
     if (interfaceMode !== "inventory") {
-      navigateSheet({ kind: "interface", interface: "inventory" })
+      navigateSheet(
+        { kind: "interface", interface: "inventory" },
+        { focusedItemId: target.itemId },
+      )
+    } else {
+      const current =
+        readCharacterSheetHistory(window.history.state, characterId)
+      if (current?.kind === "interface") {
+        window.history.replaceState(
+          historyStateWith({
+            ...current,
+            focusedItemId: target.itemId,
+          }),
+          "",
+          window.location.href,
+        )
+      }
     }
-  }, [interfaceMode, navigateSheet])
+  }, [characterId, interfaceMode, navigateSheet])
 
   const handleBack = useCallback(() => {
     const current = readCharacterSheetHistory(window.history.state, characterId)
@@ -799,6 +833,7 @@ export default function CharacterView({
   if (interfaceMode === "inventory") {
     return (
       <CharacterInventoryInterface
+        characterId={characterId}
         characterName={character.name}
         classKey={classKey}
         focusedItemId={focusedItemId}
@@ -842,7 +877,12 @@ export default function CharacterView({
           setSpellFocusLevel(null)
         }
 
-        navigateSheet(target)
+        navigateSheet(
+          target,
+          target.kind === "interface"
+            ? { focusedItemId: null }
+            : undefined,
+        )
       }}
       onBack={handleBack}
       core={
