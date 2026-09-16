@@ -10,7 +10,12 @@ import {
 import type { SnakeActionInput } from "../snake-engine"
 import { useUiV1CampaignScope } from "./useUiV1SectionData"
 
-export type ReferenceArtKind = "preview" | "hero" | "sheet_background"
+export type ReferenceArtKind =
+  | "preview"
+  | "hero"
+  | "sheet_background"
+  | "resource"
+  | "spell_slot"
 
 export type UiV1ReferenceMedia = {
   targetField: string
@@ -39,13 +44,23 @@ export function classReferenceArtSlot(
 export function subclassReferenceArtSlot(
   classId: string,
   subclassId: string,
-  kind: ReferenceArtKind,
+  kind: Extract<ReferenceArtKind, "preview" | "hero">,
 ) {
   return `subclass:${classId}:${subclassId}:${kind}`
 }
 
+export function resourceReferenceArtSlot(stateKey: string) {
+  return `resource:${stateKey}`
+}
+
 function validReferenceSlot(value: string) {
-  return /^(?:class:[a-z0-9-]+:(?:preview|hero|sheet_background)|subclass:[a-z0-9-]+:[a-z0-9-]+:(?:preview|hero))$/.test(value)
+  return /^(?:class:[a-z0-9-]+:(?:preview|hero|sheet_background|resource|spell_slot)|subclass:[a-z0-9-]+:[a-z0-9-]+:(?:preview|hero)|resource:[a-z0-9_-]+)$/.test(value)
+}
+
+function iconReferenceSlot(value: string) {
+  return value.startsWith("resource:") ||
+    value.endsWith(":resource") ||
+    value.endsWith(":spell_slot")
 }
 
 export function useUiV1ReferenceMedia() {
@@ -147,10 +162,12 @@ export function useUiV1ReferenceMedia() {
 
     try {
       if (file) {
+        const isIcon = iconReferenceSlot(targetField)
         const upload = await uploadCampaignImage(
           file,
-          "reference-art",
+          isIcon ? "reference-icons" : "reference-art",
           scope.campaignId,
+          { preservePng: isIcon },
         )
         if (!upload.ok) {
           setBusy(false)
@@ -160,6 +177,7 @@ export function useUiV1ReferenceMedia() {
         storagePath = upload.url
         const isHero = targetField.endsWith(":hero")
         const isSheetBackground = targetField.endsWith(":sheet_background")
+        const isIcon = iconReferenceSlot(targetField)
         const { data: registered, error: registerError } = await supabase.rpc(
           "register_manual_media_v1",
           {
@@ -168,16 +186,20 @@ export function useUiV1ReferenceMedia() {
             p_mime_type: upload.mimeType,
             p_width: upload.width,
             p_height: upload.height,
-            p_purpose: isHero
-              ? "hero_art"
-              : isSheetBackground
-                ? "panel"
-                : "ui_preview",
-            p_profile: isHero
-              ? "hero_art"
-              : isSheetBackground
-                ? "panel"
-                : "ui_preview",
+            p_purpose: isIcon
+              ? "icon"
+              : isHero
+                ? "hero_art"
+                : isSheetBackground
+                  ? "panel"
+                  : "ui_preview",
+            p_profile: isIcon
+              ? "tiny_icon"
+              : isHero
+                ? "hero_art"
+                : isSheetBackground
+                  ? "panel"
+                  : "ui_preview",
           },
         )
 
@@ -231,6 +253,54 @@ export function useUiV1ReferenceMedia() {
     }
   }, [items, load, scope.campaignId, scope.isOwner])
 
+  const reset = useCallback(async (
+    targetField: string,
+  ): Promise<MutationResult> => {
+    if (!scope.isOwner || !scope.campaignId) {
+      return {
+        ok: false,
+        error: "Только администратор может сбрасывать графику листа.",
+      }
+    }
+
+    if (!validReferenceSlot(targetField)) {
+      return { ok: false, error: "Неизвестный графический слот." }
+    }
+
+    setBusy(true)
+    setError(null)
+
+    try {
+      const { error: resetError } = await supabase.rpc(
+        "unbind_media_presentation_v1",
+        {
+          p_campaign_id: scope.campaignId,
+          p_target_type: "reference_art",
+          p_target_id: scope.campaignId,
+          p_target_field: targetField,
+        },
+      )
+
+      if (resetError) {
+        setError(resetError.message)
+        setBusy(false)
+        return { ok: false, error: resetError.message }
+      }
+
+      await load()
+      setBusy(false)
+      return { ok: true }
+    } catch (reason) {
+      const message =
+        reason instanceof Error
+          ? reason.message
+          : "Не удалось сбросить графику."
+      setError(message)
+      setBusy(false)
+      return { ok: false, error: message }
+    }
+  }, [load, scope.campaignId, scope.isOwner])
+
   return {
     ...scope,
     items,
@@ -239,6 +309,7 @@ export function useUiV1ReferenceMedia() {
     error: scope.error || error,
     get,
     apply,
+    reset,
     refresh: load,
   }
 }
