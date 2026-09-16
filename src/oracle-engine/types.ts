@@ -14,6 +14,8 @@ import type {
   LocationCreateInput,
   LocationUpdateInput,
   WorldMutation,
+  WorldStorageCreateInput,
+  WorldStorageUpdateInput,
 } from "../location-engine/index.ts"
 import type {
   ChasovoyCreateInput,
@@ -78,6 +80,8 @@ export type OracleInventoryCommands = {
   consume(context: OracleContext, characterId: string, itemId: string, amount?: number, expectedVersion?: number): OracleInventoryResult
   move(context: OracleContext, characterId: string, itemId: string, holderItemId: string | null, expectedVersion?: number, placement?: InventoryPlacementTarget): OracleInventoryResult
   transfer(context: OracleContext, fromCharacterId: string, toCharacterId: string, itemId: string, amount: number, expectedVersion?: number): OracleInventoryResult
+  storeWorld(context: OracleContext, characterId: string, itemId: string, worldStorageId: string, amount: number, placement: Extract<InventoryPlacementTarget, { kind: "grid" }>, expectedVersion?: number): OracleInventoryResult
+  takeWorld(context: OracleContext, worldStorageId: string, itemId: string, characterId: string, amount: number, placement: InventoryPlacementTarget, expectedVersion?: number): OracleInventoryResult
 }
 
 export type OracleWorldCommands = {
@@ -100,6 +104,10 @@ export type OracleWorldCommands = {
   updateLocationLink(context: OracleContext, linkId: string, targetLocationId: string, label: string, visibilityMode?: LocationCreateInput["visibilityMode"]): OracleWorldResult
   deleteLocationLink(context: OracleContext, linkId: string): OracleWorldResult
   setNpcHabitat(context: OracleContext, npcCharacterId: string, locationId: string, attached: boolean): OracleWorldResult
+  createStorage(context: OracleContext, input: WorldStorageCreateInput): OracleWorldResult
+  updateStorage(context: OracleContext, worldStorageId: string, input: WorldStorageUpdateInput, expectedVersion: number): OracleWorldResult
+  moveStorage(context: OracleContext, worldStorageId: string, locationId: string, expectedVersion: number): OracleWorldResult
+  setStorageArchived(context: OracleContext, worldStorageId: string, archived: boolean, expectedVersion: number): OracleWorldResult
 }
 
 export type OracleDefinitionCommands = {
