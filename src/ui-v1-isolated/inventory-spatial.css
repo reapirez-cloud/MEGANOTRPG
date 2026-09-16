@@ -292,18 +292,23 @@
   padding: 4px;
   display: grid;
   place-items: center;
-  overflow: hidden;
-  border-radius: 6px;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.025);
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-.u1-inventory-grid-item > span {
+.u1-inventory-shape-cell {
   position: absolute;
-  inset: 3px auto auto 4px;
-  color: var(--cv-accent);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 11px;
-  opacity: .7;
+  z-index: 0;
+  border: 1px solid rgba(235,238,236,.12);
+  border-radius: 5px;
+  background:
+    linear-gradient(145deg, var(--cv-accent-soft), rgba(255,255,255,.022)),
+    #111313;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
+  pointer-events: none;
 }
 
 .u1-inventory-grid-item > strong {
@@ -400,6 +405,16 @@
 }
 
 .u1-inventory-drag-ghost[data-invalid] {
+  border-color: rgba(207,93,110,.7);
+  background: rgba(83,34,43,.85);
+}
+
+.u1-inventory-drag-ghost > .u1-inventory-shape-cell {
+  border-color: rgba(147,178,146,.68);
+  background: rgba(43,57,45,.82);
+}
+
+.u1-inventory-drag-ghost[data-invalid] > .u1-inventory-shape-cell {
   border-color: rgba(207,93,110,.7);
   background: rgba(83,34,43,.85);
 }
