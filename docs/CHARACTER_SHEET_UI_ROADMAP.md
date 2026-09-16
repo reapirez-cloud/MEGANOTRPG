@@ -209,12 +209,19 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - selecting a feature updates `selectedFeatureId` in the AI/Snake view context;
 - empty source categories are not rendered, so the screen stays compact as new source types are added.
 
-### Stage 8 — Spells mode
-- cantrips + levels 1..9;
-- prepared-first when relevant;
-- alphabetical inside groups;
-- compact filters;
-- Snake detail/actions.
+### Stage 8 — Spells mode [DONE]
+- the sheet is read-only for spell preparation: GENA/chat remains the only player preparation workflow;
+- preparation ownership stays in `useChatPreparation` / `ChatPreparationCard` and authoritative GENA RPCs; the profile does not call `setSpellPrepared` or create a second preparation path;
+- spell preparation state displayed in the sheet comes from resolved CE access data (`preparationMode` + `prepared`), including always-prepared and no-preparation access;
+- resolved spells are grouped by cantrips / levels 1..9, with empty levels omitted;
+- inside each level, prepared / always-prepared spells sort first only when the resolved character actually has preparation-based accesses, then names sort alphabetically;
+- compact filters are available for prepared, concentration, ritual and school;
+- CE remains authoritative for spell identity/access/availability; spell-catalog metadata only enriches presentation fields such as concentration, school and detailed rules;
+- legacy `character_spells` rows are used only as presentation metadata fallback and are never treated as an independent preparation controller;
+- every spell row shows preparation state, school, ritual/concentration flags and the first resolved access source;
+- tap opens Snake spell detail and updates `selectedSpellId`; long press exposes Snake “Подробнее” and “Источник” actions;
+- preparation-related spell detail explicitly points the player back to GENA after rest instead of offering a profile-side toggle;
+- unresolved or template-only spell accesses remain visible even when no legacy `character_spells` row exists.
 
 ### Stage 9 — Spell-slot linkage
 - Overview slot tap opens Spells;
