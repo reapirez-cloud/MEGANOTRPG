@@ -177,7 +177,6 @@ export function useUiV1ReferenceMedia() {
         storagePath = upload.url
         const isHero = targetField.endsWith(":hero")
         const isSheetBackground = targetField.endsWith(":sheet_background")
-        const isIcon = iconReferenceSlot(targetField)
         const { data: registered, error: registerError } = await supabase.rpc(
           "register_manual_media_v1",
           {
