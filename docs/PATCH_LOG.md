@@ -69,6 +69,13 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Applied live Stage 8 migrations `20260916070000_cheburashka_stage8_world_storage` and `20260916073000_cheburashka_stage8_integrity_closure`. The closure also keeps Larisa storage name/description synchronized with the physical Cheburashka root container.
 - Stage 8 deliberately stops before scene/chat loot Surfaces; those remain Stage 9 rather than being disguised as persistent chests.
 
+- Completed Inventory Stage 9 as a mechanics-only scene/Surface layer. Existing `chat_rooms(room_type='scene')` remain the durable scene/history entity; Larisa now owns one-current-scene membership plus Surface access/lifecycle, while Cheburashka owns the actual exposed item instances.
+- Added `scene / selected / gm` Surface access, atomic character movement between scenes, optional scene location/time sync and automatic selected-access cleanup when a character leaves a scene.
+- Generalized Cheburashka owner scope to exactly one of character / world storage / scene Surface. Whole containers preserve the same root/descendant identities across Surface moves; partial bulk quantities split without creating a second item ledger.
+- Added server-authoritative first-take semantics: character + Surface advisory locks, source `FOR UPDATE`, optimistic item versions, command receipts, and stable `surface.item_already_taken` / `surface.item_stale` results. Realtime only invalidates/refetches.
+- Applied live Stage 9 migrations `20260916090000_cheburashka_stage9_scene_surfaces` and `20260916091500_cheburashka_stage9_surface_membership_integrity`.
+- **No chat UI was implemented or redesigned in Stage 9.** The stage supplies the mechanics that a later presentation pass may render.
+
 - Started Inventory Stage 5A: added the canonical Chasovoy `inventory_profile` contract for instance/bulk packing, shape masks, physical dimensions and container internal grids. Cheburashka and the GM item editor now default new items to independent instances; bulk stacks are explicit exceptions.
 - Added rollout-safe live Supabase validation for item physical profiles and changed the inventory DB default to `instance`. The old production client keeps a narrow compatibility path when it omits `stack_mode` on an existing multi-quantity item.
 - Separated container geometry from presentation: a magical 100×100 cm interior may be a 20×20 logical grid while the future mobile inventory keeps a readable fixed viewport and pans instead of shrinking cells. Container physical metadata remains separate from ordinary item mechanics, so bags can still carry bonuses, resistances, activated effects and curses through the existing mechanics/CE path.
@@ -115,6 +122,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Live rollback smoke created a temporary persistent chest, moved a real item into its Cheburashka root and returned it to the character, verified owner/holder invariants, then rolled the entire transaction back with no test storage/item left behind.
 - Verified Stage 8 public RPC grants are authenticated-only and not executable by `anon`; project-wide security advisor cleanup remains Stage 12 rather than being misreported as completed here.
 
+- Added `cheburashkaStage9SceneSurfaces.test.ts` covering same-instance nested container movement, bulk quantity conservation, stable already-taken behavior, Surface owner-scope holder isolation, scene membership movement and migration/concurrency invariants.
+- Live Stage 9 rollback smoke created a temporary game scene and selected Surface, moved a real item onto the Surface and back without changing its ID, verified the second take returns `surface.item_already_taken`, verified leaving the scene clears selected access, and rolled all smoke state back.
+- Stage 9 Surface/scene Realtime is tested/defined as invalidation only; transaction locks and item versions remain the winner authority.
+
 - Added Stage 5 inventory-profile regression coverage for instance-first defaults, explicit bulk stacks, large magical-container interiors without UI viewport metadata, and preservation of container geometry while ordinary mechanics are edited.
 - Applied live Supabase migration `20260915182537_cheburashka_stage5_inventory_profile_foundation` and verified the DB default / compatibility routing plus acceptance of a 20×20 magical-bag profile.
 - GitHub Actions do not currently report a run/status for direct `dev` head `c819636`; the isolated execution environment also cannot clone GitHub externally, so a full repository `npm test` / build result is not claimed for this work unit.
@@ -136,7 +147,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Known incomplete work
 
-- Inventory Stages 1–8 are complete. Stage 9 (chats/scenes + shared Surfaces) is next; Stages 9–12 remain intentionally future work.
+- Inventory Stages 1–9 are complete. Stage 10 (dedicated Trade block mechanics) is next; Stages 10–12 remain intentionally future work. Chat UI presentation for Stage 9 mechanics remains intentionally separate.
 - CE technical debt remains: generalize the buff/effect authoring and management UX beyond the newly supported `carrying.capacityKg` target.
 - Legacy inventory v1 RPCs and transitional `legacy` placement cannot be fully retired while the current production `main` still uses the shared live Supabase project; retirement is deferred to production promotion/final certification rather than breaking the live client during dev.
 
