@@ -26,6 +26,22 @@ export {
 } from "./profilePresets.ts"
 export type { InventoryProfilePreset } from "./profilePresets.ts"
 export {
+  firstAvailableGridPlacement,
+  firstFreeExternalSlot,
+  firstFreeHand,
+  inventoryExternalCarryCapacity,
+  inventoryPhysicalProfile,
+  inventoryPlacementKind,
+  inventoryPlacementProblem,
+  rotateInventoryShape,
+} from "./spatial.ts"
+export type {
+  InventoryPlacementTarget,
+  InventoryRotatedShape,
+  InventoryShapeCell,
+  InventorySpatialPlacementKind,
+} from "./spatial.ts"
+export {
   inventoryChildren,
   inventoryContainerTargets,
   inventoryHolder,
