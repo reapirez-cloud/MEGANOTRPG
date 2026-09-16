@@ -352,15 +352,27 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - source-summary compaction clamps invalid/non-positive visible counts to at least one source, so malformed presentation input cannot produce an empty prefix such as ` · +3`;
 - Supabase was audited read-only for this stage; no project data, spell preparation state or template metadata was mutated merely to satisfy certification.
 
-### Stage 16 — Mobile certification
-- 320 / 360 / 390 / 430 widths;
-- Telegram safe areas;
-- Android back;
-- nested-scroll conflicts;
-- long press vs scroll;
-- Snake;
-- state restoration after Inventory;
-- remove later obsolete character-sheet CSS only after its replacement is certified. The pre-redesign character-view.css was intentionally removed in Stage 2.
+### Stage 16 — Mobile certification [DONE]
+- production Character Sheet and its standalone Inventory boundary are certified at 320 / 360 / 390 / 430 px viewport widths with no document/body horizontal overflow;
+- Telegram safe-area and content-safe-area insets are consumed through the shared `--u1-safe-top` / `--u1-safe-bottom` contract, while `--tg-viewport-stable-height` owns the app height when Telegram supplies it;
+- the Character Sheet and Inventory top bars remain sticky below the effective Telegram safe top, and bottom content clears the shared dock plus the effective safe bottom;
+- Android / Telegram native back is bound through one `bindTelegramBackButton` adapter to the same `handleBack` path as browser history, so native back cannot invent a second navigation model;
+- Character Sheet history is extracted into a typed contract. Overview → local section → Inventory uses real browser history, and Inventory snapshots preserve `returnSection` plus exact `focusedItemId`;
+- Back from Inventory restores the previous local sheet section; Back from a local section restores Overview; Back from Overview leaves the character route;
+- browser/Android Forward is also certified: returning forward into Inventory restores the exact focused item rather than reopening a generic inventory state;
+- Snake long press is cancelled when pointer movement crosses the gesture threshold or when any ancestor scroller starts moving, while an intentional stationary 520 ms press still opens Snake;
+- Android synthetic touch `contextmenu` remains insufficient to open Snake by itself, preventing quick taps / scroll attempts from becoming accidental context menus;
+- the outer Character Sheet and Inventory remain the primary vertical scrollers with touch momentum and contained page overscroll;
+- the fixed-height right navigation rail intentionally keeps its own contained scroll, because its height must not grow the masthead;
+- the compact spell-slot viewport keeps a bounded internal scroll but uses `overscroll-behavior-y: auto`, so reaching its edge hands scrolling back to the parent sheet instead of trapping the gesture;
+- Stage 16 has a dedicated production-component Playwright harness using the real `CharacterSheetShell`, `CharacterInventoryInterface`, history helpers, Telegram Back adapter, Snake provider/trigger and production CSS;
+- the browser suite certifies mobile widths, Telegram safe areas/stable viewport, Back + Forward Inventory state restoration, Snake scroll cancellation and nested spell-slot scroll handoff;
+- the obsolete pre-redesign static tests were updated to current Character Sheet / Inventory boundaries instead of forcing the removed UI back into production;
+- CI certification on the Stage 16 code head passed production build, lint, the complete unit-test suite, Storybook build and Chromium Playwright; Playwright reported 9/9 passing tests, including all five Stage 16 mobile cases;
+- active `index.html -> src/ui-v1-isolated/main.tsx` no longer imports the retired Character View CSS. `character-view.css` was already deleted in Stage 2;
+- repository-level legacy Character Sheet CSS is intentionally retained because `legacy.html` is still an explicit Vite build target and `src/App.tsx` imports it. Deleting those files now would break the supported legacy build rather than clean the active UI;
+- Stage 16 is UI-only. No Character Engine, inventory mechanics, spell preparation, Supabase schema, RLS or canonical gameplay state was changed by mobile certification.
+
 
 ## Non-goals for Stage 1
 
