@@ -282,19 +282,23 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - Stage 13 can replace either class-resource or spell-slot visuals through the existing media layer without touching Character Engine, entity navigation or Overview mechanics;
 - Supabase is intentionally not required for the built-in authored pack. Existing media registration/binding RPCs remain the override path for Stage 13 admin media editing.
 
-### Stage 12A — Class sheet skins [PLANNED]
-- every class gets a distinct sheet color identity while keeping the exact same CharacterSheet layout and interaction model;
-- class identity is visual only: no class may fork the shell, navigation structure, 50/50 core, Overview layout, Features layout or Spells layout;
-- each class receives its own palette derived through shared CSS variables rather than class-specific component CSS;
-- each class receives one atmospheric background underlay art for the character sheet;
-- the underlay is decorative only: it never owns pointer events, never changes content geometry and always remains behind graphite UI surfaces;
-- readability wins over artwork: contrast/veil treatment must keep text, charge states, spell states and Snake affordances readable at all supported mobile widths;
-- missing or invalid class art/palette falls back to the neutral graphite skin without changing layout;
-- the semantic media slot is fixed as `class:<classKey>:sheet_background`;
-- the class-skin contract is centralized in `CHARACTER_SHEET_CLASS_SKIN_CONTRACT`; components must not invent per-class styling ad hoc;
-- Stage 13 admin media editing must be able to replace/reset the class sheet background through the existing media system without touching Character Engine;
-- spell-slot and resource icon accents from Stage 12 must harmonize with the class palette rather than becoming separate unrelated color systems;
-- subclass may influence content, but does not fork the sheet layout or create a second skin system at this stage.
+### Stage 12A — Class sheet skins [DONE]
+- the Character Sheet keeps one shared layout and interaction model for every class; class identity is a skin, never a component fork;
+- thirteen class palettes are active now: fighter, warlock, cleric, druid, bard, paladin, sorcerer, wizard, rogue, monk, barbarian, artificer and ranger;
+- every palette controls the graphite canvas, raised canvas, translucent surfaces, line hierarchy, main accent, spell accent, resource accent and class-art color wash rather than changing only one glow color;
+- all palettes stay inside the gray/graphite design language with restrained class undertones; pure black is still reserved for shadows and veils;
+- the same authored class key drives palette, class-resource PNG and spell-slot PNG, so color and icon identity cannot silently drift apart;
+- the semantic class-art slot is `class:<classKey>:sheet_background`;
+- CharacterView loads that slot through the existing reference-media system and passes the resolved private-media URL into CharacterSheetShell;
+- a selected class background becomes one continuous decorative underlay below the sheet, visible through translucent panels instead of being repeated as wallpaper inside every card;
+- a class-specific wash and graphite veil stay above the underlay, preserving text, charge-state, spell-state and Snake readability;
+- missing class art safely renders the palette alone; missing/unknown class identity falls back to the neutral graphite theme without changing geometry;
+- class background bindings are owner/admin-only at the server permission layer; GM/player access is not granted by the UI;
+- Supabase `private.can_attach_media_target` now accepts owner-only `class:<classKey>:sheet_background` reference-art bindings while subclass reference art remains limited to preview/hero;
+- `useUiV1ReferenceMedia` resolves private storage URLs for sheet backgrounds and registers uploads with the existing `panel` media purpose/profile;
+- no parallel storage system was introduced: backgrounds use `media_assets`, `media_bindings`, `campaign-media` and the existing media RPCs;
+- Stage 13 only needs to expose replace/reset controls through Snake; the rendering, media slot, permissions and storage path are already implemented;
+- subclass content does not fork the class skin system at this stage.
 
 ### Stage 13 — Admin media editing
 - long press → Snake media actions;
