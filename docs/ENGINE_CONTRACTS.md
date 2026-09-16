@@ -9,7 +9,7 @@
 | Engine / control plane | Owns and persists | Does not own |
 |---|---|---|
 | **CHASOVOY** | reusable canonical definitions: classes, subclasses, spells, items, feats/features, conditions/reference data, stable identity and revisions | character ownership/state, quantities, current charges, preparation, HP, locations, runtime resources |
-| **GENA** | normal gameplay/session declarations/history, authoritative execution routing and command correlation/receipts | GM authority, character resource rows, spells/preparation rows, inventory rows, entity identity, world topology, definitions, CE calculations, scene rulings |
+| **GENA** | normal gameplay/session declarations/history, Trade session/revision/acceptance/thread/history state, authoritative execution routing and command correlation/receipts | GM imperative reality edits, character resource rows, spells/preparation rows, inventory rows, entity identity, world topology, definitions, CE calculations, scene rulings |
 | **ORACLE** | no canonical persistence; imperative GM control surface that directly calls the explicit owner | gameplay orchestration, rule legality, domain storage, derived CE totals, duplicate domain events |
 | **CE** | no canonical persistence; deterministic calculation and one transient resolved contract from explicit input | storage, commands, inventory, characters, HP persistence, resources, chat, rolls, locations, time |
 | **CHEBURASHKA** | item instances, holders, quantities, charges, equipment state, transfers, world-storage/Surface ownership and per-instance runtime state | reusable item definitions, character identity, HP, scene/location access rules, scene rulings, resolved totals |
@@ -88,7 +88,21 @@ Canonical commands include `definition.create`, `definition.revise` and `definit
 
 GENA handles normal gameplay intentions, command correlation/history and authoritative gameplay execution. It may cause an owner state change, but that does not transfer ownership to GENA.
 
-Receipt-aware template actions/rolls/spells use stable `commandId` correlation so retries return the original result instead of spending twice. Internal/v1 template spend helpers are not exposed to authenticated clients.
+GENA also owns **session-scoped orchestration state** when that state is itself the gameplay/session fact rather than another domain's fact. Stage 10 Trade is the canonical example: the Trade session, offer revision, A/B acceptance, explicit visibility grants, interest markers, negotiation thread and Trade history belong to GENA; the physical items referenced by the offer remain Cheburashka state.
+
+Trade settlement therefore follows:
+
+```text
+future Trade UI / Snake
+→ typed TradeSession / GENA boundary
+→ same-revision A/B acceptance
+→ private Cheburashka atomic exchange projection
+→ canonical inventory state
+```
+
+GENA never becomes the inventory owner and never uses Realtime as settlement authority.
+
+Receipt-aware template actions/rolls/spells/trade commands use stable `commandId` correlation so retries return the original result instead of spending twice. Internal/v1 template spend helpers are not exposed to authenticated clients.
 
 ### Oracle — GM imperative control plane
 
@@ -186,6 +200,19 @@ Larisa Realtime invalidation tells other clients to refetch
 ```
 
 A chat message never owns Surface loot. Realtime never chooses the winner.
+
+Dedicated Trade:
+
+```text
+future Trade presentation
+→ GENA TradeSession API
+→ visibility / interest / offer revision / discussion / acceptance
+→ on second acceptance of the same revision
+→ Cheburashka atomic exchange
+→ all physical transfers commit or none
+```
+
+Trade does not reserve inventory merely by referencing an item. External item changes invalidate the Trade revision. Physical currency is ordinary Cheburashka inventory.
 
 ## GM authority and HP
 
