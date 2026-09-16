@@ -31,6 +31,13 @@ export type CharacterSheetNavItem = {
   target: CharacterSheetTarget
 }
 
+/**
+ * Append future sheet entries here.
+ *
+ * The shell intentionally does not derive its height from this array: the rail
+ * is a fixed-height internal scroller. Adding more entries must never make the
+ * masthead taller or push the 50/50 core block down the page.
+ */
 export const CHARACTER_SHEET_NAVIGATION: readonly CharacterSheetNavItem[] = [
   {
     id: "inventory",
