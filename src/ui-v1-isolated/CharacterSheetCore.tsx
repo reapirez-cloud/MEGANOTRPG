@@ -1,8 +1,9 @@
-import type {
-  AbilityKey,
-  ResolvedCharacterContract,
-  SkillKey,
-} from "../character-engine"
+import {
+  SKILL_KEYS,
+  type AbilityKey,
+  type ResolvedCharacterContract,
+  type SkillKey,
+} from "../character-engine/index.ts"
 import { CHARACTER_SHEET_MEDIA_SLOTS } from "./characterSheetUiContract"
 
 const abilityRows: Array<{
