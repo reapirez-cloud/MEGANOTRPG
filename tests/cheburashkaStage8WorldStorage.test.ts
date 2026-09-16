@@ -185,8 +185,8 @@ test("Stage 8 Larisa keeps storage identity while GM moves only its location fac
   const storage = new MemoryLarisaStorage({
     characterStates: [],
     locations: [
-      { id: locationA, name: "A", parent_location_id: null, image_url: null, visibility_mode: "public", lifecycle_state: "active" },
-      { id: locationB, name: "B", parent_location_id: null, image_url: null, visibility_mode: "public", lifecycle_state: "active" },
+      { id: locationA, name: "A", parent_location_id: null, image_url: null, visibility_mode: "always", lifecycle_state: "active" },
+      { id: locationB, name: "B", parent_location_id: null, image_url: null, visibility_mode: "always", lifecycle_state: "active" },
     ],
     scenes: [],
     sceneParticipants: [],
@@ -229,7 +229,7 @@ test("Stage 8 Larisa keeps storage identity while GM moves only its location fac
 test("Stage 8 player may create/manage own stash but may not move world storage", async () => {
   const storage = new MemoryLarisaStorage({
     characterStates: [],
-    locations: [{ id: locationA, name: "A", parent_location_id: null, image_url: null, visibility_mode: "public", lifecycle_state: "active" }],
+    locations: [{ id: locationA, name: "A", parent_location_id: null, image_url: null, visibility_mode: "always", lifecycle_state: "active" }],
     scenes: [],
     sceneParticipants: [],
     worldStorages: [],
