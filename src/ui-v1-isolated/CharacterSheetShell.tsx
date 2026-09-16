@@ -57,6 +57,7 @@ export default function CharacterSheetShell({
       data-class-key={classKey}
       data-dead={dead || undefined}
       data-has-panel-art={panelArtUrl ? true : undefined}
+      data-has-portrait={portraitUrl ? true : undefined}
       style={
         panelArtUrl
           ? (() => {
@@ -118,6 +119,10 @@ export default function CharacterSheetShell({
               onClick={onOpenPortrait}
               aria-label={portraitUrl ? "Открыть арт персонажа" : characterName}
             >
+              <span
+                className="u1-character-sheet__hero-class-art"
+                aria-hidden="true"
+              />
               <CampaignMediaFrame
                 className="u1-character-sheet__portrait-media"
                 value={portraitUrl}
@@ -125,6 +130,7 @@ export default function CharacterSheetShell({
                 alt=""
               />
               <span className="u1-character-sheet__portrait-shade" aria-hidden="true" />
+              <span className="u1-character-sheet__hero-haze" aria-hidden="true" />
               <span className="u1-character-sheet__identity">
                 <strong>{characterName}</strong>
                 <small>

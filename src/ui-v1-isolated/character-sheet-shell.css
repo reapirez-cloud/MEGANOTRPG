@@ -574,3 +574,201 @@
     0;
 }
 
+
+
+/* Render-4 roadmap · Stage 2 hero lock */
+.u1-character-sheet__portrait {
+  background: transparent;
+  isolation: isolate;
+}
+
+.u1-character-sheet__hero-class-art {
+  position: absolute;
+  z-index: -6;
+  inset: 0;
+  display: block;
+  background-color: var(--cv-canvas);
+  background-image:
+    linear-gradient(90deg, transparent 0 48%, rgba(9, 10, 11, .18) 66%, rgba(9, 10, 11, .48) 100%),
+    var(--cv-ambient-art);
+  background-position:
+    center,
+    var(--cv-class-panel-art-position);
+  background-repeat: no-repeat;
+  background-size:
+    cover,
+    max(100%, 720px) auto;
+  filter: saturate(.88) brightness(.76);
+  transform: scale(1.025);
+}
+
+.u1-character-sheet__portrait-media {
+  z-index: -4;
+  opacity: 1;
+  background: transparent;
+  -webkit-mask-image:
+    linear-gradient(180deg, #000 0%, #000 74%, rgba(0,0,0,.94) 84%, rgba(0,0,0,.1) 100%);
+  mask-image:
+    linear-gradient(180deg, #000 0%, #000 74%, rgba(0,0,0,.94) 84%, rgba(0,0,0,.1) 100%);
+}
+
+.u1-character-sheet__portrait-media > img {
+  object-position: 43% 35%;
+  filter:
+    saturate(.91)
+    contrast(1.035)
+    brightness(.95);
+  transform: scale(1.012);
+  transform-origin: 43% 35%;
+}
+
+.u1-character-sheet__portrait-media[data-media-presentation="true"] > img {
+  transform: none;
+}
+
+.u1-character-sheet:not([data-has-portrait]) .u1-character-sheet__portrait-media {
+  opacity: 0;
+}
+
+.u1-character-sheet:not([data-has-portrait]) .u1-character-sheet__hero-class-art {
+  filter: saturate(.9) brightness(.9);
+}
+
+.u1-character-sheet__portrait-shade {
+  z-index: -3;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(7, 8, 9, .22) 0%,
+      rgba(7, 8, 9, .03) 19%,
+      rgba(7, 8, 9, .02) 43%,
+      rgba(7, 8, 9, .43) 67%,
+      rgba(7, 8, 9, .82) 86%,
+      rgba(7, 8, 9, .94) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(7, 8, 9, .14) 0%,
+      rgba(7, 8, 9, 0) 24%,
+      rgba(7, 8, 9, .04) 50%,
+      rgba(7, 8, 9, .46) 78%,
+      rgba(7, 8, 9, .96) 100%
+    );
+}
+
+.u1-character-sheet__hero-haze {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse at 24% 72%,
+      color-mix(in srgb, var(--cv-accent) 10%, transparent),
+      transparent 44%
+    ),
+    radial-gradient(
+      ellipse at 72% 38%,
+      rgba(0,0,0,.02),
+      rgba(0,0,0,.27) 68%,
+      rgba(0,0,0,.43) 100%
+    );
+  mix-blend-mode: normal;
+}
+
+.u1-character-sheet__identity {
+  z-index: 4;
+  padding-bottom: clamp(10px, 2.9vw, 14px);
+  overflow: visible;
+}
+
+.u1-character-sheet__identity strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: #f1eee6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-character-sheet__identity small {
+  color: rgba(231, 227, 216, .84);
+}
+
+.u1-character-sheet__identity::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: -14%;
+  bottom: 0;
+  height: 1px;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--cv-accent) 76%, transparent),
+      color-mix(in srgb, var(--cv-accent) 52%, transparent) 66%,
+      transparent 100%
+    );
+  box-shadow: 0 0 8px color-mix(in srgb, var(--cv-accent) 18%, transparent);
+}
+
+.u1-character-sheet__identity::before {
+  content: "✦";
+  position: absolute;
+  z-index: 1;
+  right: -1px;
+  bottom: -7px;
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--cv-accent) 62%, transparent);
+  border-radius: 50%;
+  background: rgba(12, 13, 14, .74);
+  color: color-mix(in srgb, var(--cv-accent) 86%, #ece6d8);
+  font-size: 8px;
+  line-height: 1;
+  box-shadow:
+    0 0 0 2px rgba(8, 9, 10, .25),
+    0 0 12px color-mix(in srgb, var(--cv-accent) 16%, transparent);
+}
+
+.u1-character-sheet__masthead::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: clamp(30px, 8vw, 38px);
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(17, 19, 20, 0),
+      color-mix(in srgb, var(--cv-canvas) 76%, transparent) 64%,
+      var(--cv-canvas) 100%
+    );
+}
+
+.u1-character-sheet__back {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(8,9,10,.24), rgba(8,9,10,0) 70%);
+}
+
+.u1-character-sheet[data-dead] .u1-character-sheet__hero-class-art {
+  filter: grayscale(.75) saturate(.18) brightness(.66);
+}
+
+@media (max-width: 359px) {
+  .u1-character-sheet__portrait-media > img {
+    object-position: 40% 35%;
+    transform-origin: 40% 35%;
+  }
+
+  .u1-character-sheet__identity::after {
+    right: -8%;
+  }
+}
