@@ -43,12 +43,19 @@ function normalizeInput(input: InventoryInput) {
 
 function receiptKey(command: CheburashkaCommand): string {
   if (command.kind === "inventory.transfer") {
-    return [
-      command.kind,
-      command.fromCharacterId,
-      command.toCharacterId,
-      command.itemId,
-    ].join(":")
+    return [command.kind, command.fromCharacterId, command.toCharacterId, command.itemId].join(":")
+  }
+  if (command.kind === "inventory.create_surface") {
+    return [command.kind, command.surfaceId].join(":")
+  }
+  if (command.kind === "inventory.take_surface") {
+    return [command.kind, command.surfaceId, command.characterId, command.itemId].join(":")
+  }
+  if (command.kind === "inventory.place_surface") {
+    return [command.kind, command.characterId, command.surfaceId, command.itemId].join(":")
+  }
+  if (command.kind === "inventory.take_world") {
+    return [command.kind, command.worldStorageId, command.characterId, command.itemId].join(":")
   }
   if ("itemId" in command) {
     return [command.kind, command.characterId, command.itemId].join(":")
@@ -69,7 +76,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
 
   async listCharacterItems(characterId: string): Promise<InventoryItem[]> {
     return [...this.items.values()]
-      .filter((item) => item.character_id === characterId && !item.world_storage_id)
+      .filter((item) => item.character_id === characterId && !item.world_storage_id && !item.surface_id)
       .sort(
         (a, b) =>
           a.sort_order - b.sort_order ||
@@ -80,7 +87,18 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
 
   async listWorldStorageItems(worldStorageId: string): Promise<InventoryItem[]> {
     return [...this.items.values()]
-      .filter((item) => item.world_storage_id === worldStorageId && !item.character_id)
+      .filter((item) => item.world_storage_id === worldStorageId && !item.character_id && !item.surface_id)
+      .sort(
+        (a, b) =>
+          a.sort_order - b.sort_order ||
+          a.created_at.localeCompare(b.created_at),
+      )
+      .map(copy)
+  }
+
+  async listSurfaceItems(surfaceId: string): Promise<InventoryItem[]> {
+    return [...this.items.values()]
+      .filter((item) => item.surface_id === surfaceId && !item.character_id && !item.world_storage_id)
       .sort(
         (a, b) =>
           a.sort_order - b.sort_order ||
@@ -182,6 +200,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         id: `item-${command.context.commandId}`,
         character_id: command.characterId,
         world_storage_id: null,
+        surface_id: null,
         name: input.name,
         quantity: input.quantity,
         weight: input.weight,
@@ -221,6 +240,64 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
       })
     }
 
+    if (command.kind === "inventory.create_surface") {
+      if (command.input.equipped) {
+        throw new EngineCommandError(
+          "inventory.create_equipped_forbidden",
+          "Create the Surface item unequipped",
+        )
+      }
+      const input = normalizeInput(command.input)
+      if (!input.name) throw new EngineCommandError("inventory.name_required", "Item name is required")
+      if (!Number.isInteger(input.quantity) || input.quantity < 1) {
+        throw new EngineCommandError("inventory.invalid_quantity", "Inventory quantity must be an integer >= 1")
+      }
+      if (input.stack_mode === "instance" && input.quantity !== 1) {
+        throw new EngineCommandError("inventory.instance_quantity", "Inventory instance quantity must be 1")
+      }
+      const item: InventoryItem = {
+        id: `surface-item-${command.context.commandId}`,
+        character_id: null,
+        world_storage_id: null,
+        surface_id: command.surfaceId,
+        name: input.name,
+        quantity: input.quantity,
+        weight: input.weight,
+        equipped: false,
+        category: input.category,
+        equipment_slot: input.category === "equipment" ? input.equipment_slot : null,
+        image_url: input.image_url,
+        description: input.description.trim(),
+        definition_id: input.definition_id ?? null,
+        definition_revision: input.definition_revision ?? null,
+        mechanics: copy(input.mechanics ?? []),
+        usage_mode: input.usage_mode,
+        charges_current: input.charges_current,
+        charges_max: input.charges_max,
+        stack_mode: input.stack_mode,
+        holder_item_id: null,
+        placement_kind: "surface",
+        placement_index: null,
+        grid_x: null,
+        grid_y: null,
+        grid_rotation: 0,
+        item_state: input.item_state,
+        version: 1,
+        sort_order: 0,
+        created_at: command.context.occurredAt,
+        updated_at: command.context.occurredAt,
+      }
+      this.items.set(item.id, item)
+      return this.finish(command, {
+        kind: command.kind,
+        itemId: item.id,
+        affectedCharacterIds: [],
+        affectedSurfaceIds: [command.surfaceId],
+        before: null,
+        after: copy(item),
+      })
+    }
+
     if (command.kind === "inventory.transfer") {
       const item = this.owned(command.itemId, command.fromCharacterId)
       this.assertVersion(item, command.expectedVersion)
@@ -252,6 +329,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
           ...item,
           character_id: command.toCharacterId,
           world_storage_id: null,
+          surface_id: null,
           holder_item_id: null,
           placement_kind: "root",
           placement_index: null,
@@ -270,6 +348,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
             ...descendant,
             character_id: command.toCharacterId,
             world_storage_id: null,
+            surface_id: null,
             equipped: false,
           })
           this.items.set(descendantId, descendantAfter)
@@ -288,6 +367,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
           id: `${item.id}-to-${command.context.commandId}`,
           character_id: command.toCharacterId,
           world_storage_id: null,
+          surface_id: null,
           quantity: command.amount,
           holder_item_id: null,
           placement_kind: "root",
@@ -350,6 +430,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
           ...source,
           character_id: null,
           world_storage_id: command.worldStorageId,
+          surface_id: null,
           holder_item_id: command.placement.holderItemId,
           placement_kind: "grid",
           placement_index: null,
@@ -376,6 +457,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
             ...descendant,
             character_id: null,
             world_storage_id: command.worldStorageId,
+            surface_id: null,
             equipped: false,
           })
           this.items.set(descendantId, descendantAfter)
@@ -388,6 +470,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
           id: `${source.id}-world-${command.context.commandId}`,
           character_id: null,
           world_storage_id: command.worldStorageId,
+          surface_id: null,
           quantity: command.amount,
           holder_item_id: command.placement.holderItemId,
           placement_kind: "grid",
@@ -450,6 +533,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
       const destinationState = {
         character_id: command.characterId,
         world_storage_id: null,
+        surface_id: null,
         holder_item_id: placement.kind === "grid" ? placement.holderItemId : null,
         placement_kind: placement.kind,
         placement_index: placement.kind === "hand" || placement.kind === "external" ? placement.index : null,
@@ -482,6 +566,7 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
             ...descendant,
             character_id: command.characterId,
             world_storage_id: null,
+            surface_id: null,
             equipped: false,
           })
           this.items.set(descendantId, descendantAfter)
@@ -515,6 +600,195 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         itemId: source.id,
         affectedCharacterIds: [command.characterId],
         affectedWorldStorageIds: [command.worldStorageId],
+        before,
+        after: sourceAfter ? copy(sourceAfter) : null,
+        destinationItem: copy(destination),
+        ...(relatedChanges.length ? { relatedChanges } : {}),
+      })
+    }
+
+    if (command.kind === "inventory.place_surface") {
+      const source = this.owned(command.itemId, command.characterId)
+      this.assertVersion(source, command.expectedVersion)
+      if (source.equipped) {
+        throw new EngineCommandError("inventory.unequip_destination_required", "Equipped item needs a real carried destination first")
+      }
+      if (command.amount > source.quantity) {
+        throw new EngineCommandError("inventory.insufficient_quantity", "Not enough items to place")
+      }
+      if (inventoryStackMode(source) === "instance" && command.amount !== source.quantity) {
+        throw new EngineCommandError("inventory.instance_split_forbidden", "Inventory instance cannot be split")
+      }
+
+      const before = copy(source)
+      let sourceAfter: InventoryItem | null = null
+      let destination: InventoryItem
+      const relatedChanges = []
+
+      if (command.amount === source.quantity) {
+        const descendantIds = source.category === "container"
+          ? inventorySubtreeIds([...this.items.values()], source.id)
+          : []
+        destination = this.stamp({
+          ...source,
+          character_id: null,
+          world_storage_id: null,
+          surface_id: command.surfaceId,
+          holder_item_id: null,
+          placement_kind: "surface",
+          placement_index: null,
+          grid_x: null,
+          grid_y: null,
+          grid_rotation: 0,
+          equipped: false,
+        })
+        this.items.set(source.id, destination)
+
+        for (const descendantId of descendantIds) {
+          const descendant = this.items.get(descendantId)
+          if (!descendant) continue
+          const descendantBefore = copy(descendant)
+          const descendantAfter = this.stamp({
+            ...descendant,
+            character_id: null,
+            world_storage_id: null,
+            surface_id: command.surfaceId,
+            equipped: false,
+          })
+          this.items.set(descendantId, descendantAfter)
+          relatedChanges.push({ before: descendantBefore, after: copy(descendantAfter) })
+        }
+      } else {
+        sourceAfter = this.stamp({ ...source, quantity: source.quantity - command.amount })
+        destination = {
+          ...copy(source),
+          id: `${source.id}-surface-${command.context.commandId}`,
+          character_id: null,
+          world_storage_id: null,
+          surface_id: command.surfaceId,
+          quantity: command.amount,
+          holder_item_id: null,
+          placement_kind: "surface",
+          placement_index: null,
+          grid_x: null,
+          grid_y: null,
+          grid_rotation: 0,
+          equipped: false,
+          version: 1,
+          created_at: command.context.occurredAt,
+          updated_at: command.context.occurredAt,
+        }
+        this.items.set(source.id, sourceAfter)
+        this.items.set(destination.id, destination)
+      }
+
+      return this.finish(command, {
+        kind: command.kind,
+        itemId: source.id,
+        affectedCharacterIds: [command.characterId],
+        affectedSurfaceIds: [command.surfaceId],
+        before,
+        after: sourceAfter ? copy(sourceAfter) : null,
+        destinationItem: copy(destination),
+        ...(relatedChanges.length ? { relatedChanges } : {}),
+      })
+    }
+
+    if (command.kind === "inventory.take_surface") {
+      const source = this.items.get(command.itemId)
+      if (!source || source.surface_id !== command.surfaceId || source.character_id || source.world_storage_id) {
+        throw new EngineCommandError("inventory.surface_item_already_taken", "surface.item_already_taken")
+      }
+      const currentVersion = Number(source.version ?? 0)
+      if (command.expectedVersion !== undefined && currentVersion !== command.expectedVersion) {
+        throw new EngineCommandError("inventory.surface_item_stale", "surface.item_stale")
+      }
+      if (command.amount > source.quantity) {
+        throw new EngineCommandError("inventory.insufficient_quantity", "Not enough items to take")
+      }
+      if (inventoryStackMode(source) === "instance" && command.amount !== source.quantity) {
+        throw new EngineCommandError("inventory.instance_split_forbidden", "Inventory instance cannot be split")
+      }
+
+      const before = copy(source)
+      const characterItems = [...this.items.values()].filter((item) =>
+        item.character_id === command.characterId && !item.world_storage_id && !item.surface_id
+      )
+      const placement = command.placement
+      const destinationState = {
+        character_id: command.characterId,
+        world_storage_id: null,
+        surface_id: null,
+        holder_item_id: placement.kind === "grid" ? placement.holderItemId : null,
+        placement_kind: placement.kind,
+        placement_index: placement.kind === "hand" || placement.kind === "external" ? placement.index : null,
+        grid_x: placement.kind === "grid" ? placement.gridX : null,
+        grid_y: placement.kind === "grid" ? placement.gridY : null,
+        grid_rotation: placement.kind === "grid" ? placement.rotation : 0,
+        equipped: false,
+      } as const
+
+      let sourceAfter: InventoryItem | null = null
+      let destination: InventoryItem
+      const relatedChanges = []
+
+      if (command.amount === source.quantity) {
+        const descendantIds = source.category === "container"
+          ? inventorySubtreeIds([...this.items.values()], source.id)
+          : []
+        destination = this.stamp({ ...source, ...destinationState })
+        const placementProblem = inventoryPlacementProblem(
+          [...characterItems, destination],
+          destination,
+          placement,
+        )
+        if (placementProblem) {
+          throw new EngineCommandError("inventory.placement_invalid", placementProblem)
+        }
+        this.items.set(source.id, destination)
+
+        for (const descendantId of descendantIds) {
+          const descendant = this.items.get(descendantId)
+          if (!descendant) continue
+          const descendantBefore = copy(descendant)
+          const descendantAfter = this.stamp({
+            ...descendant,
+            character_id: command.characterId,
+            world_storage_id: null,
+            surface_id: null,
+            equipped: false,
+          })
+          this.items.set(descendantId, descendantAfter)
+          relatedChanges.push({ before: descendantBefore, after: copy(descendantAfter) })
+        }
+      } else {
+        sourceAfter = this.stamp({ ...source, quantity: source.quantity - command.amount })
+        destination = {
+          ...copy(source),
+          ...destinationState,
+          id: `${source.id}-char-${command.context.commandId}`,
+          quantity: command.amount,
+          version: 1,
+          created_at: command.context.occurredAt,
+          updated_at: command.context.occurredAt,
+        }
+        const placementProblem = inventoryPlacementProblem(
+          [...characterItems, destination],
+          destination,
+          placement,
+        )
+        if (placementProblem) {
+          throw new EngineCommandError("inventory.placement_invalid", placementProblem)
+        }
+        this.items.set(source.id, sourceAfter)
+        this.items.set(destination.id, destination)
+      }
+
+      return this.finish(command, {
+        kind: command.kind,
+        itemId: source.id,
+        affectedCharacterIds: [command.characterId],
+        affectedSurfaceIds: [command.surfaceId],
         before,
         after: sourceAfter ? copy(sourceAfter) : null,
         destinationItem: copy(destination),
