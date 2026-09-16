@@ -11,8 +11,11 @@ import type {
 } from "../entity-engine/index.ts"
 import type { InventoryMutation, InventoryPlacementTarget } from "../inventory-engine/index.ts"
 import type {
+  GameSceneCreateInput,
   LocationCreateInput,
   LocationUpdateInput,
+  SceneSurfaceCreateInput,
+  SceneSurfaceUpdateInput,
   WorldMutation,
   WorldStorageCreateInput,
   WorldStorageUpdateInput,
@@ -82,11 +85,16 @@ export type OracleInventoryCommands = {
   transfer(context: OracleContext, fromCharacterId: string, toCharacterId: string, itemId: string, amount: number, expectedVersion?: number): OracleInventoryResult
   storeWorld(context: OracleContext, characterId: string, itemId: string, worldStorageId: string, amount: number, placement: Extract<InventoryPlacementTarget, { kind: "grid" }>, expectedVersion?: number): OracleInventoryResult
   takeWorld(context: OracleContext, worldStorageId: string, itemId: string, characterId: string, amount: number, placement: InventoryPlacementTarget, expectedVersion?: number): OracleInventoryResult
+  createSurface(context: OracleContext, surfaceId: string, input: InventoryInput): OracleInventoryResult
+  placeSurface(context: OracleContext, characterId: string, itemId: string, surfaceId: string, amount: number, expectedVersion?: number): OracleInventoryResult
+  takeSurface(context: OracleContext, surfaceId: string, itemId: string, characterId: string, amount: number, placement: InventoryPlacementTarget, expectedVersion?: number): OracleInventoryResult
 }
 
 export type OracleWorldCommands = {
   discoverLocation(context: OracleContext, characterId: string, locationId: string, discovered?: boolean): OracleWorldResult
   moveCharacter(context: OracleContext, characterId: string, locationId: string | null, campaignDay: number, dayPeriod: DayPeriod): OracleWorldResult
+  createScene(context: OracleContext, input: GameSceneCreateInput): OracleWorldResult
+  moveCharacterToScene(context: OracleContext, characterId: string, roomId: string | null, options?: { syncLocation?: boolean; syncTime?: boolean }): OracleWorldResult
   setScenePosition(context: OracleContext, roomId: string, locationId: string | null, campaignDay: number, dayPeriod: DayPeriod): OracleWorldResult
   setSceneParticipants(context: OracleContext, roomId: string, characterIds: string[]): OracleWorldResult
   syncSceneParticipants(context: OracleContext, roomId: string, options: { syncLocation: boolean; syncTime: boolean }): OracleWorldResult
@@ -108,6 +116,9 @@ export type OracleWorldCommands = {
   updateStorage(context: OracleContext, worldStorageId: string, input: WorldStorageUpdateInput, expectedVersion: number): OracleWorldResult
   moveStorage(context: OracleContext, worldStorageId: string, locationId: string, expectedVersion: number): OracleWorldResult
   setStorageArchived(context: OracleContext, worldStorageId: string, archived: boolean, expectedVersion: number): OracleWorldResult
+  createSurface(context: OracleContext, input: SceneSurfaceCreateInput): OracleWorldResult
+  updateSurface(context: OracleContext, surfaceId: string, input: SceneSurfaceUpdateInput, expectedVersion: number): OracleWorldResult
+  setSurfaceArchived(context: OracleContext, surfaceId: string, archived: boolean, expectedVersion: number): OracleWorldResult
 }
 
 export type OracleDefinitionCommands = {
