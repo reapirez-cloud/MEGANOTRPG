@@ -1,0 +1,237 @@
+# Character Sheet UI Redesign Roadmap
+
+Status: active source of truth for the new character sheet UX.
+Branch: `dev`.
+Do not merge to `main` as part of character-sheet stages without separate approval.
+
+## Product target
+
+The character sheet is a persistent character shell, not a stack of unrelated pages.
+
+Persistent upper area:
+1. portrait / identity;
+2. thin vertically scrollable navigation next to the portrait;
+3. 50/50 quick stats + abilities.
+
+Only the area below that shell changes for normal sheet sections.
+
+Inventory is the single exception: it opens a dedicated full interface because it owns spatial grids, bags, equipment, drag/drop and its own Snake context.
+
+The visual language is gray graphite with subtle transparent surfaces. Pure/near black is not the page canvas. Black is reserved for shadows, image veils and modal backdrops.
+
+## Navigation contract
+
+Sections rendered inside the sheet:
+- Overview;
+- Умения / features;
+- Заклинания / spells;
+- Биография / biography;
+- future sections may be appended to the scrollable right navigation without changing shell height.
+
+Dedicated interface:
+- Инвентарь.
+
+Normal tap triggers the primary action.
+Long press opens Snake contextual actions.
+The right navigation is vertically scrollable, has no visible scrollbar and must not increase the portrait/header block height.
+
+## Sorting contract
+
+### Features / Умения
+
+Never render one flat list.
+
+Primary groups:
+1. class;
+2. subclass;
+3. race;
+4. background;
+5. item;
+6. effect;
+7. other.
+
+Inside a group:
+1. action;
+2. bonus action;
+3. reaction;
+4. passive;
+5. other;
+then unlock level and name.
+
+Unknown sources go to "Прочее", never silently mix into a normal source group.
+
+### Spells
+
+Never render one flat list.
+
+Groups:
+- cantrips / level 0;
+- levels 1..9.
+
+Inside a level:
+- prepared first when the class actually uses preparation;
+- then alphabetical order.
+
+Full spells mode later adds compact filters for prepared, school, concentration and ritual.
+
+Tapping a spell slot preview on Overview switches to Spells and focuses the corresponding level.
+
+## Resource + spell visuals
+
+Spell slots have class-specific color and later class-specific PNG form.
+Available slot = class color + glow.
+Spent slot = same shape, desaturated gray, no glow.
+
+Unique resources are keyed by `state_key` and later receive their own PNG and color.
+Example: `channel_divinity` must be rendered as actual charge icons, not just "2/2".
+Available charge glows; spent charge is gray.
+
+Until final PNG assets exist, UI uses neutral placeholders with stable dimensions. Layout must never depend on the final artwork.
+
+## Media / admin editing contract
+
+Use the existing media system:
+- `media_assets`;
+- `media_bindings`;
+- `campaign-media` storage;
+- Snake media player.
+
+Do not create a parallel icon storage system.
+
+Future admin-only long press can replace:
+- sheet portrait;
+- global sheet icons;
+- class spell-slot PNG;
+- unique resource PNG.
+
+Players can read the bound assets but cannot edit them.
+Authorization must be enforced server-side, not only by hiding buttons.
+
+## Snake contract
+
+Snake remains the universal context layer.
+
+It must receive enough active UI context to understand:
+- character;
+- current sheet section;
+- expanded ability;
+- selected feature;
+- selected spell;
+- selected resource;
+- inventory mode and active holder when inventory is open.
+
+Normal tap is still the primary UI interaction. Snake must not become a substitute for visible navigation.
+
+## Stages
+
+### Stage 1 — Graphite visual foundation [DONE]
+- dedicated character theme layer;
+- graphite canvas and surface hierarchy;
+- subtle transparency;
+- stronger readable gray text tiers;
+- thin divider hierarchy;
+- neutral ambient-background placeholder;
+- no pure black page canvas;
+- shared graphite tokens prepared for the future standalone inventory interface.
+
+### Stage 2 — Persistent CharacterSheetShell
+- portrait left (~42%);
+- navigation right (~58%);
+- fixed upper block height;
+- identity information integrated without oversized hero.
+
+### Stage 3 — Scrollable right navigation
+- thin 40–44px rows;
+- hidden scrollbar;
+- top/bottom fade;
+- placeholder icon slots;
+- active section treatment without heavy filled cards.
+
+### Stage 4 — Navigation behavior
+- Inventory opens dedicated full interface;
+- features/spells/biography replace only dynamic lower content;
+- back from inner section returns to Overview;
+- back from Overview leaves sheet;
+- returning from Inventory restores previous section.
+
+### Stage 5 — Core 50/50 block
+- quick combat/reference values left;
+- six abilities right;
+- ability click expands its skills without leaving the sheet.
+
+### Stage 6 — Overview
+- class resources;
+- compact spell-slot preview;
+- only important/frequent features and protections.
+
+### Stage 7 — Features mode
+- source grouping;
+- timing sorting;
+- no flat feature dump;
+- tap = detail / primary action;
+- long press = Snake.
+
+### Stage 8 — Spells mode
+- cantrips + levels 1..9;
+- prepared-first when relevant;
+- alphabetical inside groups;
+- compact filters;
+- Snake detail/actions.
+
+### Stage 9 — Spell-slot linkage
+- Overview slot tap opens Spells;
+- focus/scroll to the tapped spell level;
+- class-specific visual accent contract.
+
+### Stage 10 — Entity navigation
+- feature/resource/spell/item/effect links resolve to the correct entity and view;
+- no ad-hoc per-component navigation spaghetti.
+
+### Stage 11 — Snake UI context
+- keep current section/entity context synchronized with AI context;
+- actions respect player/GM/admin authority.
+
+### Stage 12 — Visual assets
+- neutral placeholders now;
+- later PNG replacement without layout changes;
+- class spell slot art + unique resource art.
+
+### Stage 13 — Admin media editing
+- long press → Snake media actions;
+- upload/replace/reset;
+- PNG transparency preserved;
+- portrait supports crop/presentation.
+
+### Stage 14 — Standalone Inventory interface
+- inventory no longer renders as a normal sheet section;
+- spatial grid, bags, equipment and drag/drop remain separate;
+- uses same graphite visual foundation.
+
+### Stage 15 — Sorting/data certification
+- dirty real data;
+- multiclass;
+- missing source metadata;
+- prepared/non-prepared casters;
+- 0–9 spell levels;
+- fallback "Прочее".
+
+### Stage 16 — Mobile certification
+- 320 / 360 / 390 / 430 widths;
+- Telegram safe areas;
+- Android back;
+- nested-scroll conflicts;
+- long press vs scroll;
+- Snake;
+- state restoration after Inventory;
+- remove obsolete character-sheet CSS only after replacement is certified.
+
+## Non-goals for Stage 1
+
+Stage 1 does not:
+- change layout;
+- implement new routes;
+- change Character Engine;
+- change inventory mechanics;
+- add database schema;
+- invent final icons;
+- merge to main.
