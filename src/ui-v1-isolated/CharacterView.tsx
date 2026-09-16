@@ -18,7 +18,6 @@ import {
 import {
   firstAvailableGridPlacement,
   firstFreeExternalSlot,
-  inventoryExternalCarryCapacity,
   inventoryPhysicalProfile,
   inventoryPlacementKind,
   type InventoryPlacementTarget,
@@ -123,11 +122,23 @@ function itemDetail(item: InventoryItem, inventory: readonly InventoryItem[]) {
   const children = item.category === "container"
     ? inventoryChildren(inventory, item.id)
     : []
+  const placement = inventoryPlacementKind(item)
+  const placementText = item.equipped
+    ? "Экипировано."
+    : placement === "hand"
+      ? "В руке " + ((item.placement_index ?? 0) + 1) + "."
+      : placement === "external"
+        ? "Во внешней ячейке " + ((item.placement_index ?? 0) + 1) + "."
+        : placement === "grid" && holder
+          ? "В «" + holder.name + "», клетка " + ((item.grid_x ?? 0) + 1) + ":" + ((item.grid_y ?? 0) + 1) + ", поворот " + (item.grid_rotation || 0) + "°."
+          : placement === "legacy" && holder
+            ? "В «" + holder.name + "», ожидает пространственного размещения."
+            : "В свободных предметах."
   return [
     item.category ? "Категория: " + item.category : "",
     "Количество: " + item.quantity,
     inventoryStackMode(item) === "instance" ? "Отдельный экземпляр." : "Стопка.",
-    holder ? "Находится в: " + holder.name : "Находится в корневом инвентаре.",
+    placementText,
     item.category === "container"
       ? children.length
         ? "Внутри: " + children.map((child) => child.name + (child.quantity > 1 ? ` ×${child.quantity}` : "")).join(", ")
@@ -215,6 +226,7 @@ export default function CharacterView({
           facts: control.character
             ? {
                 focus: focus || "sheet",
+                inventoryHolderId,
                 expandedAbility,
                 class: control.character.characterClass,
                 level: control.character.level,
@@ -236,6 +248,11 @@ export default function CharacterView({
                   quantity: item.quantity,
                   equipped: item.equipped,
                   holderItemId: item.holder_item_id ?? null,
+                  placementKind: inventoryPlacementKind(item),
+                  placementIndex: item.placement_index ?? null,
+                  gridX: item.grid_x ?? null,
+                  gridY: item.grid_y ?? null,
+                  rotation: item.grid_rotation ?? 0,
                 })),
                 spells: control.spells.slice(0, 40).map((spell) => ({
                   id: spell.id,
