@@ -8,10 +8,11 @@ const agents = fs.readFileSync("AGENTS.md", "utf8")
 
 test("inventory roadmap keeps the 12-stage checkpoint explicit", () => {
   assert.match(plan, /There are \*\*12 stages total\*\*/)
-  assert.match(plan, /Stages 1–5 complete/)
+  assert.match(plan, /Stages 1–6 complete/)
   assert.match(plan, /Stage 5 — Physical item definition \+ authoring language/)
   assert.match(plan, /Stage 5 completion gate — PASSED/)
   assert.match(plan, /Stage 6 — Spatial runtime \+ mobile inventory UX/)
+  assert.match(plan, /Stage 6 completion gate — PASSED/)
   assert.match(plan, /Stage 8 — Persistent world storage, chests and stashes/)
   assert.match(plan, /Stage 9 — Chats\/scenes \+ shared Surfaces/)
   assert.match(plan, /Stage 10 — Dedicated Trade block/)
