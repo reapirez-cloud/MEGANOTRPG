@@ -154,12 +154,17 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - active section treatment is a thin accent line + text/icon emphasis, never a heavy filled card;
 - navigation remains data-driven: future entries are appended to `CHARACTER_SHEET_NAVIGATION` without changing shell height or layout.
 
-### Stage 4 — Navigation behavior
-- Inventory opens dedicated full interface;
-- features/spells/biography replace only dynamic lower content;
-- back from inner section returns to Overview;
-- back from Overview leaves sheet;
-- returning from Inventory restores previous section.
+### Stage 4 — Navigation behavior [DONE]
+- Inventory opens a dedicated full interface mode and never renders inside the sheet content area;
+- the standalone inventory mode is intentionally a clean placeholder until Stage 14, so the removed legacy inventory UI is not resurrected;
+- features/spells/biography replace only the dynamic lower content while portrait/navigation shell stays mounted;
+- first transition from Overview creates one internal browser-history step;
+- switching between inner sections replaces that step instead of stacking navigation garbage;
+- back from any inner section returns directly to Overview;
+- back from Overview leaves the character route;
+- Inventory creates its own history step and returning from it restores the exact previous sheet section;
+- popstate is handled locally so browser / Android back follows the same model;
+- active section is reflected in the rail and AI view context.
 
 ### Stage 5 — Core 50/50 block
 - quick combat/reference values left;
