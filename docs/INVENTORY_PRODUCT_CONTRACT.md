@@ -6,7 +6,7 @@
 >
 > Branch: active implementation belongs on `dev`.
 >
-> Current implementation checkpoint: Cheburashka Stages 1–5 are complete (integrity, lifecycle, stacks/instances, nested holders, physical item/container definitions and authoring). Spatial placement/runtime UI, hands/generic carry cells, weight, world storage, scene surfaces and trade remain later stages unless code/tests prove otherwise.
+> Current implementation checkpoint: Cheburashka Stages 1–6 are complete (integrity, lifecycle, stacks/instances, nested holders, physical definitions/authoring, authoritative spatial placement and mobile inventory UX). Weight, world storage, scene surfaces and trade remain later stages unless code/tests prove otherwise.
 
 This document is the canonical product intent for MEGANOTRPG inventory UX. Audits must compare the current implementation to this contract. Do not replace it with a generic RPG inventory pattern merely because that pattern is easier or more familiar.
 
@@ -187,6 +187,21 @@ Holder cycles remain forbidden.
 The final spatial model extends the existing holder tree; it does not replace it with a second parallel inventory structure.
 
 Animation is presentation. The canonical relationship remains Cheburashka state.
+
+## Stage 6 implemented spatial law
+
+The implemented carried-inventory runtime follows these invariants:
+
+- Cheburashka stores canonical placement as root, grid, hand or external carry; a temporary `legacy` holder state exists only for the still-running pre-spatial production client.
+- Grid placement is committed only through the versioned Cheburashka spatial move RPC and is checked under a character-level transaction lock.
+- Exact authored shape-mask cells determine collision. A rectangular CSS box is never the collision model.
+- The rendered cell size is fixed by UI presentation. Current UI 1.0 uses a 46px cell and a viewport of roughly six visible columns; logical container width/height only changes the scrollable plane.
+- Both hand cells always exist and accept the same item instance in compact 1×1 presentation.
+- Generic external carry cells are derived from canonical item profiles and never receive anatomical names.
+- A valid drag commits the same domain command exposed by Snake. An invalid drag changes no canonical state.
+- One bag is expanded at a time. Nested bags use the same holder tree and Back returns to the parent.
+- Equipping a carried item clears its physical carried placement atomically. If the equipment slot is already occupied, the new equip is rejected until the existing equipped item is moved to a real hand/bag/external destination.
+- Cross-character transfer removes source-character hand/grid/external placement from the transferred root item while retaining valid placement of descendants inside a transferred container subtree.
 
 ## 9. Currency is ordinary inventory
 
