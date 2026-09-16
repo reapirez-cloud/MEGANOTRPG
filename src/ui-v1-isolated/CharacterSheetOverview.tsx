@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react"
+
 import type {
   ResolvedAction,
   ResolvedCharacterContract,
@@ -9,6 +11,12 @@ import type { ResourceSyncInput } from "../types/characterResources.ts"
 import type { SnakeAction } from "../snake-engine"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import { CHARACTER_SHEET_MEDIA_SLOTS } from "./characterSheetUiContract"
+import {
+  characterSheetEntitiesUsingResource,
+  characterSheetEntityLabel,
+  characterSheetLinkedEntitiesForAction,
+  type CharacterSheetEntityNavigator,
+} from "./characterSheetEntityNavigation"
 
 const roman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"]
 
@@ -178,6 +186,9 @@ export default function CharacterSheetOverview({
   runtimeError,
   onOpenFeatures,
   onOpenSpells,
+  focusResourceKey,
+  onSelectResource,
+  onNavigateEntity,
 }: {
   characterId: string
   classKey: string
@@ -186,8 +197,30 @@ export default function CharacterSheetOverview({
   runtimeError?: string
   onOpenFeatures: () => void
   onOpenSpells: (level?: number | null) => void
+  focusResourceKey?: string | null
+  onSelectResource?: (stateKey: string) => void
+  onNavigateEntity?: CharacterSheetEntityNavigator
 }) {
   const snake = useSnake()
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!focusResourceKey) return
+
+    const frame = window.requestAnimationFrame(() => {
+      rootRef.current
+        ?.querySelector<HTMLElement>(
+          `[data-resource-key="${focusResourceKey}"]`,
+        )
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [focusResourceKey])
 
   if (!contract) {
     return (
@@ -244,7 +277,7 @@ export default function CharacterSheetOverview({
   ]
 
   return (
-    <div className="u1-character-overview">
+    <div className="u1-character-overview" ref={rootRef}>
       {classResources.length > 0 && (
         <section
           className="u1-character-overview__section"
@@ -270,6 +303,25 @@ export default function CharacterSheetOverview({
                 id: characterId + ":" + resource.stateKey,
                 label,
               }
+              const relatedTargets =
+                characterSheetEntitiesUsingResource(
+                  contract.actions,
+                  contract.spells,
+                  resource.stateKey,
+                )
+              const navigationAction: SnakeAction | null =
+                onNavigateEntity && relatedTargets.length
+                  ? {
+                      id: "resource-linked-entities",
+                      label: "Связано",
+                      kind: "branch",
+                      children: relatedTargets.map((target, index) => ({
+                        id: "navigate-" + target.kind + "-" + index,
+                        label: characterSheetEntityLabel(target),
+                        execute: () => onNavigateEntity(target),
+                      })),
+                    }
+                  : null
               const detailAction: SnakeAction = {
                 id: "inspect-resource",
                 label: "Подробнее",
@@ -288,16 +340,24 @@ export default function CharacterSheetOverview({
                 <SnakeTrigger
                   key={resource.stateKey}
                   entity={entity}
-                  actions={[detailAction]}
+                  actions={[
+                    detailAction,
+                    ...(navigationAction ? [navigationAction] : []),
+                  ]}
                 >
                   <button
                     type="button"
                     className="u1-character-overview__resource"
                     data-resource-key={resource.stateKey}
-                    onClick={() =>
-                      detailAction.surface &&
-                      snake.openSurface(detailAction.surface)
+                    data-focus-target={
+                      focusResourceKey === resource.stateKey || undefined
                     }
+                    onClick={() => {
+                      onSelectResource?.(resource.stateKey)
+                      if (detailAction.surface) {
+                        snake.openSurface(detailAction.surface)
+                      }
+                    }}
                   >
                     <span className="u1-character-overview__resource-head">
                       <span
@@ -427,6 +487,21 @@ export default function CharacterSheetOverview({
                 id: characterId + ":" + action.stateKey,
                 label: title,
               }
+              const relatedTargets =
+                characterSheetLinkedEntitiesForAction(action)
+              const navigationAction: SnakeAction | null =
+                onNavigateEntity && relatedTargets.length
+                  ? {
+                      id: "action-linked-entities",
+                      label: "Связано",
+                      kind: "branch",
+                      children: relatedTargets.map((target, index) => ({
+                        id: "navigate-" + target.kind + "-" + index,
+                        label: characterSheetEntityLabel(target),
+                        execute: () => onNavigateEntity(target),
+                      })),
+                    }
+                  : null
               const detailAction: SnakeAction = {
                 id: "inspect-action",
                 label: "Подробнее",
@@ -442,7 +517,10 @@ export default function CharacterSheetOverview({
                 <SnakeTrigger
                   key={action.stateKey}
                   entity={entity}
-                  actions={[detailAction]}
+                  actions={[
+                    detailAction,
+                    ...(navigationAction ? [navigationAction] : []),
+                  ]}
                 >
                   <button
                     type="button"
