@@ -99,7 +99,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Audited Stage 6 code head `a0e3ba31cd47c288fa57adb63d6c86507b156745` passed Build, Lint, repository tests, Storybook build and Playwright smoke in GitHub Actions run `35060509264`.
 
 - Added `cheburashkaStage7WeightCapacity.test.ts` covering Strength-based metric carrying capacity, a CE `+ carrying.capacityKg` buff, nested/stack load calculation, explicit unknown mass and specialized-capacity overflow preflight.
-- Stage 7 implementation head `7edbf6bdcc0ccbdccee72da431e71e5743de9f23` passed the repository CI pipeline in GitHub Actions run `35062203247`; the documentation/test closure commits require one final CI pass before Stage 7 is released from `dev`.
+- Final Inventory Stage 7 closure head `4fb4c45b0117b1d960ee32ac902262d64ef8299d` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `35064559977`.
 
 - Added Stage 5 inventory-profile regression coverage for instance-first defaults, explicit bulk stacks, large magical-container interiors without UI viewport metadata, and preservation of container geometry while ordinary mechanics are edited.
 - Applied live Supabase migration `20260915182537_cheburashka_stage5_inventory_profile_foundation` and verified the DB default / compatibility routing plus acceptance of a 20×20 magical-bag profile.
