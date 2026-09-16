@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { cheburashka } from "../inventory-engine/runtime.ts"
+import type { InventoryPlacementTarget } from "../inventory-engine/index.ts"
 import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { oracle } from "../oracle-engine/runtime.ts"
 import { shapoklyak } from "../entity-engine/runtime.ts"
@@ -296,8 +297,9 @@ export function useUiV1CharacterControl(characterId: string) {
     }
   }, [canControlCharacter, characterId, context, load, playerContext, scope.canManage])
 
-  const moveItem = useCallback(async (item: InventoryItem, holderItemId: string | null): Promise<Result> => {
+  const moveItem = useCallback(async (item: InventoryItem, placement: InventoryPlacementTarget): Promise<Result> => {
     if (!canControlCharacter) return { ok: false, error: "Недостаточно прав." }
+    const holderItemId = placement.kind === "grid" ? placement.holderItemId : null
     try {
       if (scope.canManage) {
         await oracle.inventory.move(
@@ -306,6 +308,7 @@ export function useUiV1CharacterControl(characterId: string) {
           item.id,
           holderItemId,
           item.version,
+          placement,
         )
       } else {
         await cheburashka.execute({
@@ -314,6 +317,7 @@ export function useUiV1CharacterControl(characterId: string) {
           characterId,
           itemId: item.id,
           holderItemId,
+          placement,
           expectedVersion: item.version,
         })
       }
