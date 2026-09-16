@@ -178,10 +178,22 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - tapping the expanded ability again returns to the six-stat matrix;
 - expanded ability is exposed in the AI/Snake view context for later Stage 11 contextual actions.
 
-### Stage 6 — Overview
-- class resources;
-- compact spell-slot preview;
-- only important/frequent features and protections.
+### Stage 6 — Overview [DONE]
+- Overview is now a real CE-backed surface, not a placeholder;
+- finite class/subclass resources are separated from spell-slot resources by state identity;
+- resource labels come from the CE resource-sync contract rather than being guessed from state keys;
+- each resource renders actual charge icons: available charges use the resource accent + glow, spent charges are cold gray; the numeric fraction remains secondary;
+- known resources have distinct accents now, while every unknown/future state key safely falls back to the class/resource accent and automatically receives a stable `resource:<state_key>` PNG slot;
+- standard `spell_slot_1..9` ledgers render in a dedicated spell-slot block;
+- Warlock Pact Magic is recognized as spell-slot UI too: slot count comes from `warlock_pact_slots` and cast level from CE value `warlock_pact_slot_level`;
+- spell-slot color inherits the active class accent and every class has a stable future PNG slot via `class:<classKey>:spell_slot`;
+- spell levels are vertical, approximately four rows remain visible, additional levels scroll inside the compact viewport;
+- available spell slots glow in the class color, spent slots use the same placeholder shape in gray;
+- normal spell-slot tap opens the Spells sheet section; Stage 9 will refine this to focus the exact tapped level;
+- long press on resources and spell slots opens Snake detail without stealing the normal tap behavior;
+- Overview shows at most four resolved actions, prioritizing currently available action / bonus-action / reaction mechanics, with Snake detail on tap/long press;
+- resistances and immunities get a compact protection preview rather than dumping all capability data into Overview;
+- “ВСЕ” links route from the preview to the full Features or Spells section.
 
 ### Stage 7 — Features mode
 - source grouping;
