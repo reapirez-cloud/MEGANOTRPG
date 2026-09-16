@@ -34,6 +34,7 @@ import {
 } from "./useUiV1ReferenceMedia"
 import { useWorkspaceData } from "./useWorkspaceData"
 import "./character-sheet-theme.css"
+import "./character-sheet-backgrounds.css"
 import "./character-sheet-shell.css"
 import "./character-sheet-core.css"
 import "./character-sheet-features.css"
