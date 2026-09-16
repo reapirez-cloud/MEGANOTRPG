@@ -167,6 +167,7 @@ export default function CharacterView({
   const [expandedAbility, setExpandedAbility] = useState<AbilityKey | null>(null)
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null)
   const [selectedSpellId, setSelectedSpellId] = useState<string | null>(null)
+  const [spellFocusLevel, setSpellFocusLevel] = useState<number | null>(null)
 
   const classKey = useMemo(
     () => classKeyFrom(
@@ -446,6 +447,7 @@ export default function CharacterView({
                 expandedAbility,
                 selectedFeatureId: section === "features" ? selectedFeatureId : null,
                 selectedSpellId: section === "spells" ? selectedSpellId : null,
+                spellFocusLevel: section === "spells" ? spellFocusLevel : null,
                 runtimeStatus: runtime.status,
                 shellVersion: 2,
                 class: control.character.characterClass,
@@ -521,7 +523,12 @@ export default function CharacterView({
           ? () => snake.openSurface(portraitViewAction.surface!)
           : undefined
       }
-      onNavigate={navigateSheet}
+      onNavigate={(target) => {
+        if (target.kind === "section" && target.section === "spells") {
+          setSpellFocusLevel(null)
+        }
+        navigateSheet(target)
+      }}
       onBack={handleBack}
       core={
         <CharacterSheetCore
@@ -546,9 +553,14 @@ export default function CharacterView({
           onOpenFeatures={() =>
             navigateSheet({ kind: "section", section: "features" })
           }
-          onOpenSpells={() =>
+          onOpenSpells={(level) => {
+            setSpellFocusLevel(
+              typeof level === "number" && level >= 0 && level <= 9
+                ? level
+                : null,
+            )
             navigateSheet({ kind: "section", section: "spells" })
-          }
+          }}
         />
       ) : section === "features" ? (
         <CharacterSheetFeatures
@@ -564,7 +576,11 @@ export default function CharacterView({
           contract={runtime.snapshot?.contract || null}
           legacySpells={control.spells}
           runtimeError={runtime.error || undefined}
-          onSelect={setSelectedSpellId}
+          focusLevel={spellFocusLevel}
+          onSelect={(spellId) => {
+            setSelectedSpellId(spellId)
+            setSpellFocusLevel(null)
+          }}
         />
       ) : (
         <SectionPlaceholder section={section} />
