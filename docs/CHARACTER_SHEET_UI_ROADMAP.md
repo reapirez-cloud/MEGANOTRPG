@@ -100,15 +100,15 @@ Use the existing media system:
 
 Do not create a parallel icon storage system.
 
-Future admin-only long press can replace:
-- sheet portrait;
-- global sheet icons;
-- class spell-slot PNG;
-- unique resource PNG;
-- class sheet background underlay.
+Admin media editing is implemented through Snake long press:
+- character portrait / panel avatar / sheet hero keep their existing character-control permissions;
+- class sheet background, class-resource PNG, class spell-slot PNG and exact `resource:<state_key>` PNG overrides are owner/admin-only;
+- every override supports upload/replace and safe reset back to the next fallback layer;
+- PNG icon uploads preserve PNG transparency;
+- saved crop/presentation data is consumed by portrait, icon and class-background rendering.
 
-Players can read the bound assets but cannot edit them.
-Authorization must be enforced server-side, not only by hiding buttons.
+Players can read bound reference assets but cannot edit owner-only class/reference media.
+Authorization is enforced server-side through the existing media guards, not only by hiding buttons.
 
 ## Snake contract
 
@@ -286,12 +286,25 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - no Character Engine mechanics, resource state schema or spell preparation path changed as part of the visual stage;
 - the original multi-megabyte source images are not shipped as-is: the built-in fallback set is mobile-optimized before embedding in the UI.
 
-### Stage 13 — Admin media editing
-- long press → Snake media actions;
-- upload/replace/reset;
-- PNG transparency preserved;
-- portrait supports crop/presentation;
-- class sheet background override/reset uses `class:<classKey>:sheet_background`.
+### Stage 13 — Admin media editing [DONE]
+- long press remains the single contextual entry point: normal tap behavior for resources, spell slots and the portrait is unchanged;
+- portrait Snake media tools continue to edit character avatar (1:1 circle), panel avatar (3:1) and dedicated sheet hero (16:9), with saved crop/presentation restored when reopening the editor;
+- dedicated character-media reset actions now remove the active binding safely: sheet hero falls back to panel/avatar, panel falls back to avatar, and avatar returns to its unbound state;
+- the old server/frontend mismatch was fixed: `list_character_media_presentations_v1` now returns `sheet_hero`, so a dedicated sheet image actually survives reload;
+- owner/admin gets a new `Оформление листа` Snake branch from the character portrait for class background, class-resource icon and class spell-slot icon;
+- class background upload/replace/reset uses the stable `class:<classKey>:sheet_background` binding and the 9:16 Snake crop editor; saved crop is now consumed by CharacterSheetShell instead of being stored and ignored;
+- class resource upload/replace/reset uses `class:<classKey>:resource`;
+- class spell-slot upload/replace/reset uses `class:<classKey>:spell_slot`;
+- long press on an individual resolved resource can additionally set an exact `resource:<state_key>` override;
+- resource visual precedence is exact resource override → class resource override → built-in Stage 12 PNG;
+- spell-slot visual precedence is class override → built-in Stage 12 PNG;
+- reset does not delete the uploaded media object: it safely deactivates the binding through `unbind_media_presentation_v1`, allowing the built-in/lower fallback to become active again;
+- icon uploads are registered as `icon / tiny_icon` media and PNG uploads preserve PNG encoding/transparency even when browser-side resizing is required;
+- backgrounds continue through `panel`, portraits through their existing portrait/panel/hero profiles, and no parallel storage system was introduced;
+- server permission guard now recognizes class resource/spell-slot and exact resource media slots while keeping those reference-art mutations owner-only;
+- `unbind_media_presentation_v1` is callable by authenticated users but re-authorizes every request through `auth.uid()` + `private.can_attach_media_target`; anonymous execution is explicitly revoked;
+- campaign members may read the resulting reference media through the existing `private.can_read_media_asset` path, but GM/player permissions were not widened for owner-only class/reference editing;
+- Character Engine, resource state, spell preparation and gameplay mechanics are untouched by this stage.
 
 ### Stage 14 — Standalone Inventory interface
 - inventory no longer renders as a normal sheet section;
