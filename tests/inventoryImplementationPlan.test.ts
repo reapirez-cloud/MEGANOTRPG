@@ -8,7 +8,7 @@ const agents = fs.readFileSync("AGENTS.md", "utf8")
 
 test("inventory roadmap keeps the 12-stage checkpoint explicit", () => {
   assert.match(plan, /There are \*\*12 stages total\*\*/)
-  assert.match(plan, /Stages 1–9 complete/)
+  assert.match(plan, /Stages 1–10 complete/)
   assert.match(plan, /Stage 5 — Physical item definition \+ authoring language/)
   assert.match(plan, /Stage 5 completion gate — PASSED/)
   assert.match(plan, /Stage 6 — Spatial runtime \+ mobile inventory UX/)
@@ -28,6 +28,11 @@ test("inventory roadmap keeps the 12-stage checkpoint explicit", () => {
   assert.match(plan, /chat UI was intentionally not implemented or redesigned in Stage 9/)
   assert.match(plan, /20260916091500_cheburashka_stage9_surface_membership_integrity/)
   assert.match(plan, /Stage 10 — Dedicated Trade block/)
+  assert.match(plan, /Stage 10 completion gate — PASSED/)
+  assert.match(plan, /trade\.offer_item_stale/)
+  assert.match(plan, /tradeSession/)
+  assert.match(plan, /no Trade UI\/chat UI was implemented in Stage 10/)
+  assert.match(plan, /20260916104500_gena_stage10_trade_read_model_closure/)
   assert.match(plan, /Stage 12 — Final security\/concurrency\/E2E certification/)
 })
 
