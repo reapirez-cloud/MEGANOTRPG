@@ -1,62 +1,86 @@
-export const CHARACTER_SHEET_ASSET_ROOT =
-  "/ui-v1/character-sheet/icons"
-
-export const CHARACTER_SHEET_SPELL_SLOT_ASSETS: Readonly<Record<string, string>> = {
-  default: CHARACTER_SHEET_ASSET_ROOT + "/spell-slots/default.png",
-  fighter: CHARACTER_SHEET_ASSET_ROOT + "/spell-slots/fighter.png",
-  warlock: CHARACTER_SHEET_ASSET_ROOT + "/spell-slots/warlock.png",
-  cleric: CHARACTER_SHEET_ASSET_ROOT + "/spell-slots/cleric.png",
-  druid: CHARACTER_SHEET_ASSET_ROOT + "/spell-slots/druid.png",
-  bard: CHARACTER_SHEET_ASSET_ROOT + "/spell-slots/bard.png",
-  paladin: CHARACTER_SHEET_ASSET_ROOT + "/spell-slots/paladin.png",
-  sorcerer: CHARACTER_SHEET_ASSET_ROOT + "/spell-slots/sorcerer.png",
-  wizard: CHARACTER_SHEET_ASSET_ROOT + "/spell-slots/wizard.png",
-  rogue: CHARACTER_SHEET_ASSET_ROOT + "/spell-slots/rogue.png",
-  monk: CHARACTER_SHEET_ASSET_ROOT + "/spell-slots/monk.png",
+export type CharacterSheetVisualAsset = {
+  url: string
+  columns: number
+  rows: number
+  column: number
+  row: number
 }
 
-export const CHARACTER_SHEET_RESOURCE_ASSETS: Readonly<Record<string, string>> = {
-  action_surge: CHARACTER_SHEET_ASSET_ROOT + "/resources/action_surge.png",
-  bardic_inspiration:
-    CHARACTER_SHEET_ASSET_ROOT + "/resources/bardic_inspiration.png",
-  channel_divinity:
-    CHARACTER_SHEET_ASSET_ROOT + "/resources/channel_divinity.png",
-  innate_sorcery:
-    CHARACTER_SHEET_ASSET_ROOT + "/resources/innate_sorcery.png",
-  monk_focus: CHARACTER_SHEET_ASSET_ROOT + "/resources/monk_focus.png",
-  monk_uncanny_metabolism:
-    CHARACTER_SHEET_ASSET_ROOT + "/resources/monk_uncanny_metabolism.png",
-  paladin_divine_sense:
-    CHARACTER_SHEET_ASSET_ROOT + "/resources/paladin_divine_sense.png",
-  paladin_lay_on_hands:
-    CHARACTER_SHEET_ASSET_ROOT + "/resources/paladin_lay_on_hands.png",
-  second_wind: CHARACTER_SHEET_ASSET_ROOT + "/resources/second_wind.png",
-  sorcerous_restoration:
-    CHARACTER_SHEET_ASSET_ROOT + "/resources/sorcerous_restoration.png",
-  sorcery_points:
-    CHARACTER_SHEET_ASSET_ROOT + "/resources/sorcery_points.png",
-  warlock_contact_patron:
-    CHARACTER_SHEET_ASSET_ROOT + "/resources/warlock_contact_patron.png",
-  warlock_magical_cunning:
-    CHARACTER_SHEET_ASSET_ROOT + "/resources/warlock_magical_cunning.png",
-  wild_shape: CHARACTER_SHEET_ASSET_ROOT + "/resources/wild_shape.png",
-  wizard_arcane_recovery:
-    CHARACTER_SHEET_ASSET_ROOT + "/resources/wizard_arcane_recovery.png",
+const SPELL_SLOT_ATLAS =
+  "/ui-v1/character-sheet/icons/spell-slots.png"
+const RESOURCE_ATLAS =
+  "/ui-v1/character-sheet/icons/resources.png"
+
+function atlasAsset(
+  url: string,
+  columns: number,
+  rows: number,
+  column: number,
+  row: number,
+): CharacterSheetVisualAsset {
+  return { url, columns, rows, column, row }
 }
 
-const RESOURCE_PREFIX_ASSETS: ReadonlyArray<readonly [string, string]> = [
+const spellSlot = (column: number, row: number) =>
+  atlasAsset(SPELL_SLOT_ATLAS, 4, 3, column, row)
+
+const resource = (column: number, row: number) =>
+  atlasAsset(RESOURCE_ATLAS, 5, 4, column, row)
+
+export const CHARACTER_SHEET_SPELL_SLOT_ASSETS: Readonly<
+  Record<string, CharacterSheetVisualAsset>
+> = {
+  default: spellSlot(0, 0),
+  fighter: spellSlot(1, 0),
+  warlock: spellSlot(2, 0),
+  cleric: spellSlot(3, 0),
+  druid: spellSlot(0, 1),
+  bard: spellSlot(1, 1),
+  paladin: spellSlot(2, 1),
+  sorcerer: spellSlot(3, 1),
+  wizard: spellSlot(0, 2),
+  rogue: spellSlot(1, 2),
+  monk: spellSlot(2, 2),
+}
+
+export const CHARACTER_SHEET_RESOURCE_ASSETS: Readonly<
+  Record<string, CharacterSheetVisualAsset>
+> = {
+  generic: resource(0, 0),
+  action_surge: resource(1, 0),
+  bardic_inspiration: resource(2, 0),
+  channel_divinity: resource(3, 0),
+  innate_sorcery: resource(4, 0),
+
+  monk_focus: resource(0, 1),
+  monk_uncanny_metabolism: resource(1, 1),
+  paladin_divine_sense: resource(2, 1),
+  paladin_lay_on_hands: resource(3, 1),
+  second_wind: resource(4, 1),
+
+  sorcerous_restoration: resource(0, 2),
+  sorcery_points: resource(1, 2),
+  warlock_contact_patron: resource(2, 2),
+  warlock_magical_cunning: resource(3, 2),
+  wild_shape: resource(4, 2),
+
+  wizard_arcane_recovery: resource(0, 3),
+  wizard_chronurgy: resource(1, 3),
+  warlock_mystic_arcanum: resource(2, 3),
+}
+
+const RESOURCE_PREFIX_ASSETS: ReadonlyArray<
+  readonly [string, CharacterSheetVisualAsset]
+> = [
   [
     "wizard_chronurgy_",
-    CHARACTER_SHEET_ASSET_ROOT + "/resources/wizard_chronurgy.png",
+    CHARACTER_SHEET_RESOURCE_ASSETS.wizard_chronurgy,
   ],
   [
     "warlock_mystic_arcanum_",
-    CHARACTER_SHEET_ASSET_ROOT + "/resources/warlock_mystic_arcanum.png",
+    CHARACTER_SHEET_RESOURCE_ASSETS.warlock_mystic_arcanum,
   ],
 ]
-
-export const CHARACTER_SHEET_GENERIC_RESOURCE_ASSET =
-  CHARACTER_SHEET_ASSET_ROOT + "/resources/generic.png"
 
 export function characterSheetSpellSlotAsset(classKey: string) {
   return (
@@ -72,7 +96,8 @@ export function characterSheetResourceAsset(stateKey: string) {
   const prefix = RESOURCE_PREFIX_ASSETS.find(([needle]) =>
     stateKey.startsWith(needle)
   )
-  return prefix?.[1] || CHARACTER_SHEET_GENERIC_RESOURCE_ASSET
+
+  return prefix?.[1] || CHARACTER_SHEET_RESOURCE_ASSETS.generic
 }
 
 export function characterSheetVisualAssetForSlot(slot: string) {
