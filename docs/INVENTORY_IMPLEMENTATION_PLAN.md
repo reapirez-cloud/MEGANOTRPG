@@ -6,7 +6,7 @@
 >
 > Product contract: `docs/INVENTORY_PRODUCT_CONTRACT.md`
 >
-> Current checkpoint: **Stages 1–8 complete. Stage 9 is next: chats/scenes + shared Surfaces.**
+> Current checkpoint: **Stages 1–9 complete. Stage 10 is next: dedicated Trade block.**
 >
 > This file defines implementation order and completion boundaries. It does not by itself prove that a stage is implemented. Audits must verify source, live Supabase state where relevant, and real runtime behavior before changing a stage to complete.
 
@@ -24,12 +24,12 @@ The final inventory target is a physical, tactile inventory system built on Cheb
 | 6 | ✅ COMPLETE | Spatial runtime + mobile inventory UX |
 | 7 | ✅ COMPLETE | Weight, load and specialized capacity |
 | 8 | ✅ COMPLETE | Persistent world storage, chests and stashes |
-| 9 | ⬜ TODO | Chats/scenes + shared Surfaces |
+| 9 | ✅ COMPLETE | Chats/scenes + shared Surfaces |
 | 10 | ⬜ TODO | Dedicated Trade block |
 | 11 | ⬜ TODO | Chasovoy adoption + legacy inventory migration |
 | 12 | ⬜ TODO | Final security/concurrency/E2E certification |
 
-There are **12 stages total**. Eight are complete; four remain.
+There are **12 stages total**. Nine are complete; three remain.
 
 ---
 
@@ -498,64 +498,98 @@ Stage 8 deliberately does **not** implement scene/chat loot Surfaces. Those rema
 
 ---
 
-# Stage 9 — Chats/scenes + shared Surfaces
+# Stage 9 — Chats/scenes + shared Surfaces ✅
 
-This stage closes the chat/scene debt needed for shared physical loot.
+Stage 9 is complete as a **mechanics/runtime stage** in `dev` and live Supabase.
 
-### 9.1 Game scenes/chats
+This stage deliberately does **not** rebuild or redesign the chat UI. Existing chat/scene presentation is left alone. The implemented work is the canonical scene membership, Surface access, Cheburashka ownership and concurrency foundation that a later chat/interface pass may render.
 
-Implement:
-- game chat/scene entity;
-- character participants;
-- relation to location/scene;
-- moving characters between chats/scenes when fiction moves them.
+### 9.1 Canonical game-scene membership
 
-### 9.2 Surface block
+Implemented:
+- existing `chat_rooms(room_type='scene')` remain the durable game-scene/history entity rather than inventing a second scene table;
+- Larisa can create a game scene through `create_game_scene_v1`;
+- `scene_participants` now represents **current physical scene membership**;
+- one character can belong to only one current game scene at a time;
+- moving a character to another scene atomically removes the old membership and may synchronize location/time from the destination scene;
+- closing a scene removes current membership while preserving the room/message history;
+- scene membership itself can grant the active character read/write participation according to room state, without making Realtime or React the authority.
 
-GM can create/open a **Surface** block in the chat.
+### 9.2 Shared Surface state
 
-A Surface may fictionally represent:
-- floor;
-- table;
-- loot pile;
-- altar;
-- anything exposed in the scene.
+Implemented:
+- Larisa owns `scene_surfaces`: scene relation, name/description, access policy, lifecycle and optimistic version;
+- access modes are `scene`, `selected` and `gm`;
+- selected-character grants must refer to current participants of that scene;
+- when a character leaves a scene, stale selected-Surface grants are removed atomically;
+- deferred integrity validation rejects a final state where selected Surface grants point outside current scene membership;
+- a Surface is independent from any chat message. Editing/deleting a message cannot create, own or destroy Surface loot.
 
-The application does not need separate surface types for those narratives.
+### 9.3 Cheburashka Surface ownership
 
-GM can:
-- place loot/items on it;
-- grant access to all scene characters or selected characters;
-- keep it GM-only until revealed.
+Cheburashka now has a third canonical physical owner scope:
 
-### 9.3 Inventory integration
-
-Accessible surfaces appear beside/in the inventory as external sources/destinations.
-
-A player can drag:
 ```text
-surface -> bag / hand / carry
-bag / hand / carry -> surface
+character
+world storage
+scene Surface
 ```
 
-### 9.4 "Who got it first"
+Exactly one owner scope is set for every physical item.
 
-Shared loot requires atomic ownership.
+Implemented:
+- `surface_id` is canonical ownership for exposed scene items;
+- top-level Surface items use `placement_kind = surface`;
+- containers placed on a Surface keep the same item row and their nested subtree keeps holder identity;
+- a Surface is not a fake bag/root-container and has no duplicate `surface_inventory_items` ledger;
+- GM may create a canonical item directly on an authorized Surface;
+- an accessible character may place a carried item on a Surface;
+- an accessible character may take a Surface item to root, bag grid, hand or generic external carry;
+- whole-instance moves preserve item identity;
+- partial bulk moves split quantity only;
+- Surface ownership participates in holder-scope, definition/campaign and deferred tree-integrity checks.
 
-If two players grab the same item:
-- first valid server commit wins;
-- second gets stable stale/already-taken result;
-- realtime refresh removes/locks the item for everyone else.
+### 9.4 First-take concurrency
 
-Realtime is notification, not ownership authority.
+Shared loot claim authority is fully server-side.
 
-### Stage 9 complete when
+`take_inventory_item_from_surface_v1`:
+- locks the character inventory scope and Surface scope;
+- selects the source item `FOR UPDATE`;
+- checks the expected item version;
+- commits one canonical ownership move;
+- returns stable `surface.item_already_taken` if the item has already left the Surface;
+- returns stable `surface.item_stale` if the caller is acting on an obsolete Surface item revision;
+- records an idempotent Cheburashka command receipt.
 
-- scene membership changes access correctly;
-- Surface access rules work;
-- inventory sees only accessible surfaces;
-- atomic first-take behavior is proven under concurrency;
-- no duplicate item can be produced.
+Therefore the first valid server commit wins. Realtime never chooses the winner.
+
+### 9.5 Realtime/invalidation boundary
+
+Surface mutations increment `scene_surfaces.version`.
+
+`scene_surfaces`, selected access and scene participants are published for Supabase Realtime, and Larisa exposes a mechanics-only invalidation subscription.
+
+Realtime means **refetch canonical state**. It is not an ownership lock and is not a substitute for the transaction.
+
+Live migrations:
+- `20260916090000_cheburashka_stage9_scene_surfaces`;
+- `20260916091500_cheburashka_stage9_surface_membership_integrity`.
+
+### Stage 9 completion gate — PASSED ✅
+
+- current scene membership is canonical and a character cannot be in two active scene memberships;
+- moving/leaving/closing scenes updates Surface access coherently;
+- `scene / selected / gm` Surface access is server-authoritative;
+- only accessible Surfaces are exposed by the Surface listing boundary;
+- one canonical Cheburashka item moves character ↔ Surface with no duplicate item table;
+- nested container subtrees preserve identity;
+- partial stack moves conserve total quantity;
+- first valid Surface take wins under a Surface transaction lock;
+- second/stale attempts receive stable machine-readable outcomes;
+- Realtime is invalidation only;
+- dedicated Stage 9 regression tests and live rollback smoke prove same-instance movement, already-taken behavior and membership/access cleanup;
+- **chat UI was intentionally not implemented or redesigned in Stage 9**.
 
 ---
 
