@@ -20,6 +20,7 @@ import {
   type CharacterSheetSection,
   type CharacterSheetTarget,
 } from "./characterSheetUiContract"
+import { resolveCharacterSheetClassKey } from "./characterSheetClassKey"
 import {
   characterSheetHistoryStateWith,
   readCharacterSheetHistory,
@@ -62,26 +63,15 @@ function classKeyFrom(
     .map((assignment) => templates.find((template) => template.id === assignment.template_id) || null)
     .find((template) => template?.kind === "class")
 
-  if (assignedClass?.slug) return assignedClass.slug
-
-  const value = characterClass.toLocaleLowerCase("ru-RU")
-  const aliases: Array<[string, string]> = [
-    ["воин", "fighter"], ["fighter", "fighter"],
-    ["колдун", "warlock"], ["warlock", "warlock"],
-    ["жрец", "cleric"], ["cleric", "cleric"],
-    ["друид", "druid"], ["druid", "druid"],
-    ["бард", "bard"], ["bard", "bard"],
-    ["паладин", "paladin"], ["paladin", "paladin"],
-    ["чарод", "sorcerer"], ["sorcer", "sorcerer"],
-    ["волшеб", "wizard"], ["wizard", "wizard"],
-    ["разбой", "rogue"], ["rogue", "rogue"],
-    ["монах", "monk"], ["monk", "monk"],
-    ["варвар", "barbarian"], ["barbarian", "barbarian"],
-    ["артиф", "artificer"], ["artificer", "artificer"],
-    ["следоп", "ranger"], ["рейндж", "ranger"], ["ranger", "ranger"],
-  ]
-
-  return aliases.find(([needle]) => value.includes(needle))?.[1] || "default"
+  return resolveCharacterSheetClassKey({
+    characterClass,
+    assignedClass: assignedClass
+      ? {
+          slug: assignedClass.slug,
+          catalog_key: assignedClass.catalog_key,
+        }
+      : null,
+  })
 }
 
 function SectionPlaceholder({ section }: { section: CharacterSheetSection }) {
