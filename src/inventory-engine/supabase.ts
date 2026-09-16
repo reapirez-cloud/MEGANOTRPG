@@ -52,6 +52,12 @@ function fail(error: { message: string } | null, fallback: string): never {
   if (message.includes("Inventory container nesting depth exceeds 16")) {
     throw new EngineCommandError("inventory.holder_depth", message)
   }
+  if (message.includes("surface.item_already_taken")) {
+    throw new EngineCommandError("inventory.surface_item_already_taken", message)
+  }
+  if (message.includes("surface.item_stale")) {
+    throw new EngineCommandError("inventory.surface_item_stale", message)
+  }
   if (message.includes("Inventory placement is out of bounds")) {
     throw new EngineCommandError("inventory.out_of_bounds", message)
   }
@@ -108,6 +114,7 @@ function normalizeItem(value: unknown, inventoryProfile: unknown = null): Invent
     ...row,
     character_id: row.character_id ?? null,
     world_storage_id: row.world_storage_id ?? null,
+    surface_id: row.surface_id ?? null,
     definition_id: row.definition_id ?? null,
     definition_revision: row.definition_revision ?? null,
     usage_mode: mode,
@@ -195,6 +202,13 @@ function mutationFromRpc(
     ? result.affectedWorldStorageIds.map(String)
     : [before?.world_storage_id, after?.world_storage_id, destinationItem?.world_storage_id]
         .filter((id): id is string => Boolean(id))
+  const affectedSurfaceIds = Array.isArray(result.affectedSurfaceIds)
+    ? result.affectedSurfaceIds.map(String)
+    : [before?.surface_id, after?.surface_id, destinationItem?.surface_id]
+        .filter((id): id is string => Boolean(id))
+  const affectedSceneIds = Array.isArray(result.affectedSceneIds)
+    ? result.affectedSceneIds.map(String)
+    : []
   const affectedLocationIds = Array.isArray(result.affectedLocationIds)
     ? result.affectedLocationIds.map(String)
     : []
@@ -210,6 +224,8 @@ function mutationFromRpc(
     ),
     affectedCharacterIds: [...new Set(affected)],
     ...(affectedWorldStorageIds.length ? { affectedWorldStorageIds: [...new Set(affectedWorldStorageIds)] } : {}),
+    ...(affectedSurfaceIds.length ? { affectedSurfaceIds: [...new Set(affectedSurfaceIds)] } : {}),
+    ...(affectedSceneIds.length ? { affectedSceneIds: [...new Set(affectedSceneIds)] } : {}),
     ...(affectedLocationIds.length ? { affectedLocationIds: [...new Set(affectedLocationIds)] } : {}),
     before,
     after,
@@ -266,6 +282,16 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
     )
   }
 
+  async listSurfaceItems(surfaceId: string): Promise<InventoryItem[]> {
+    const { data, error } = await this.client.rpc("list_scene_surface_items_v1", {
+      p_surface_id: surfaceId,
+    })
+    if (error) fail(error, "Could not load Surface items")
+    return (data || []).map((row: { item: unknown; inventory_profile?: unknown }) =>
+      normalizeItem(row.item, row.inventory_profile ?? null)
+    )
+  }
+
   async getItem(itemId: string): Promise<InventoryItem | null> {
     const { data, error } = await this.client.rpc("get_inventory_item_v2", {
       p_item_id: itemId,
@@ -302,6 +328,16 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
   }
 
   async execute(command: CheburashkaCommand): Promise<InventoryMutation> {
+    if (command.kind === "inventory.create_surface") {
+      const { data, error } = await this.client.rpc("create_surface_inventory_item_v1", {
+        p_surface_id: command.surfaceId,
+        p_input: persistencePayload(command.input),
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not create Surface item")
+      return mutationFromRpc(command.kind, data)
+    }
+
     if (command.kind === "inventory.create") {
       const { data, error } = await this.client.rpc("create_inventory_item_v2", {
         p_character_id: command.characterId,
@@ -421,6 +457,55 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
       })
 
       if (error) fail(error, "Could not move inventory item")
+      return mutationFromRpc(command.kind, data)
+    }
+
+    if (command.kind === "inventory.place_surface") {
+      const expectedVersion = await this.expectedVersion(
+        command.itemId,
+        command.characterId,
+        command.expectedVersion,
+      )
+      const { data, error } = await this.client.rpc("place_inventory_item_on_surface_v1", {
+        p_character_id: command.characterId,
+        p_item_id: command.itemId,
+        p_surface_id: command.surfaceId,
+        p_amount: command.amount,
+        p_expected_version: expectedVersion,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not place inventory item on Surface")
+      return mutationFromRpc(command.kind, data)
+    }
+
+    if (command.kind === "inventory.take_surface") {
+      const item = await this.getItem(command.itemId)
+      if (!item || item.surface_id !== command.surfaceId) {
+        throw new EngineCommandError(
+          "inventory.surface_item_already_taken",
+          "surface.item_already_taken",
+        )
+      }
+      const expectedVersion = command.expectedVersion ?? Number(item.version ?? 0)
+      if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
+        throw new EngineCommandError("inventory.invalid_version", "Inventory item has no valid version")
+      }
+      const placement = command.placement
+      const { data, error } = await this.client.rpc("take_inventory_item_from_surface_v1", {
+        p_surface_id: command.surfaceId,
+        p_item_id: command.itemId,
+        p_character_id: command.characterId,
+        p_amount: command.amount,
+        p_target_kind: placement.kind,
+        p_holder_item_id: placement.kind === "grid" ? placement.holderItemId : null,
+        p_grid_x: placement.kind === "grid" ? placement.gridX : null,
+        p_grid_y: placement.kind === "grid" ? placement.gridY : null,
+        p_rotation: placement.kind === "grid" ? placement.rotation : 0,
+        p_slot_index: placement.kind === "hand" || placement.kind === "external" ? placement.index : null,
+        p_expected_version: expectedVersion,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not take inventory item from Surface")
       return mutationFromRpc(command.kind, data)
     }
 
