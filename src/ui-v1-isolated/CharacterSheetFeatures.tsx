@@ -14,6 +14,13 @@ import {
   CHARACTER_SHEET_FEATURE_TIMING_ORDER,
 } from "./characterSheetUiContract"
 import {
+  compareFeatureEntries,
+  compareFeatureSourceCandidates,
+  earliestKnownUnlockLevel,
+  stableProvenanceSignature,
+  stableUniqueSortedStrings,
+} from "./characterSheetDataCertification"
+import {
   characterSheetEntityFromSource,
   characterSheetEntityLabel,
   characterSheetLinkedEntitiesForAction,
@@ -217,9 +224,6 @@ function sourceMeta(
     }
   }
 
-  const categoryRank = new Map(
-    CHARACTER_SHEET_FEATURE_SOURCE_ORDER.map((key, index) => [key, index]),
-  )
   const candidates = sources.map((sourceRef) =>
     sourceMetaForRef(
       sourceRef,
@@ -227,32 +231,22 @@ function sourceMeta(
       sourceNodesById,
       payloadKind,
     )
-  ).sort((left, right) =>
-    (left.category === "other" ? 1 : 0) -
-      (right.category === "other" ? 1 : 0) ||
-    (categoryRank.get(left.category) ?? 99) -
-      (categoryRank.get(right.category) ?? 99) ||
-    left.sourceName.localeCompare(right.sourceName, "ru") ||
-    left.originId.localeCompare(right.originId)
-  )
+  ).sort(compareFeatureSourceCandidates)
 
   const primary = candidates[0]
-  const sourceNames = [...new Set(
+  const sourceNames = stableUniqueSortedStrings(
     candidates.flatMap((candidate) => candidate.sourceNames),
-  )]
-  const knownUnlockLevels = candidates
-    .map((candidate) => candidate.unlockLevel)
-    .filter((level): level is number => Number.isFinite(level))
+  )
 
   return {
     ...primary,
-    originId: [...new Set(
+    originId: stableProvenanceSignature(
       sources.map((entry) => entry.source.id || "unknown"),
-    )].sort().join("|"),
+    ),
     sourceNames,
-    unlockLevel: knownUnlockLevels.length
-      ? Math.min(...knownUnlockLevels)
-      : null,
+    unlockLevel: earliestKnownUnlockLevel(
+      candidates.map((candidate) => candidate.unlockLevel),
+    ),
   }
 }
 
@@ -415,23 +409,7 @@ function buildEntries(
     })
   }
 
-  const categoryRank = new Map(
-    CHARACTER_SHEET_FEATURE_SOURCE_ORDER.map((key, index) => [key, index]),
-  )
-  const timingRank = new Map(
-    CHARACTER_SHEET_FEATURE_TIMING_ORDER.map((key, index) => [key, index]),
-  )
-
-  return [...entries.values()].sort((left, right) =>
-    (categoryRank.get(left.category) ?? 99) -
-      (categoryRank.get(right.category) ?? 99) ||
-    left.sourceName.localeCompare(right.sourceName, "ru") ||
-    (timingRank.get(left.timing) ?? 99) -
-      (timingRank.get(right.timing) ?? 99) ||
-    (left.unlockLevel ?? Number.MAX_SAFE_INTEGER) -
-      (right.unlockLevel ?? Number.MAX_SAFE_INTEGER) ||
-    left.label.localeCompare(right.label, "ru")
-  )
+  return [...entries.values()].sort(compareFeatureEntries)
 }
 
 function detailBody(entry: FeatureEntry) {
