@@ -16,6 +16,7 @@ import CharacterSheetOverview from "./CharacterSheetOverview"
 import CharacterSheetShell from "./CharacterSheetShell"
 import CharacterSheetSpells from "./CharacterSheetSpells"
 import {
+  CHARACTER_INVENTORY_INTERFACE_CONTRACT,
   isCharacterSheetSection,
   type CharacterSheetSection,
   type CharacterSheetTarget,
@@ -392,6 +393,7 @@ export default function CharacterView({
         window.location.href,
       )
       setSection("overview")
+      setFocusedItemId(null)
       setInterfaceMode(null)
       return
     }
@@ -417,6 +419,7 @@ export default function CharacterView({
     }
 
     setSection(nextSection)
+    setFocusedItemId(null)
     setInterfaceMode(null)
   }, [
     characterId,
@@ -496,6 +499,7 @@ export default function CharacterView({
       if (current?.kind === "interface") {
         window.history.back()
       } else {
+        setFocusedItemId(null)
         setInterfaceMode(null)
       }
       return
@@ -714,6 +718,10 @@ export default function CharacterView({
           spellFocusLevel:
             section === "spells" ? spellFocusLevel : null,
           inventoryHolderId: null,
+          inventoryInterfaceStatus:
+            CHARACTER_INVENTORY_INTERFACE_CONTRACT.status,
+          inventoryImplementationRoadmap:
+            CHARACTER_INVENTORY_INTERFACE_CONTRACT.implementationRoadmap,
           authorityRole,
           canManage: control.canManage,
           canControlCharacter: control.canControlCharacter,
