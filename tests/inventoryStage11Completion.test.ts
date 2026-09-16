@@ -60,6 +60,6 @@ test("Stage 11B closes reviewed legacy debt without guessing narrative junk", ()
 
 test("Stage 11 remains closed after final Stage 12 certification", () => {
   assert.match(plan, /\| 11 \| ✅ COMPLETE \| Chasovoy adoption \+ legacy inventory migration \|/)
-  assert.match(plan, /Stages 1–11 complete\. Stage 12 is next/)
+  assert.match(plan, /Stages 1–12 complete/)
   assert.match(plan, /Stage 11 completion gate — PASSED ✅/)
 })
