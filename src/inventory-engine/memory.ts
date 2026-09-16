@@ -141,6 +141,12 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
     if (replay) return replay
 
     if (command.kind === "inventory.create") {
+      if (command.input.equipped) {
+        throw new EngineCommandError(
+          "inventory.create_equipped_forbidden",
+          "Create the inventory item first, then equip it through the equipment command",
+        )
+      }
       const input = normalizeInput(command.input)
       if (!input.name) {
         throw new EngineCommandError(
@@ -375,6 +381,24 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
     }
 
     if (command.kind === "inventory.update") {
+      if (command.input.equipped !== item.equipped) {
+        throw new EngineCommandError(
+          "inventory.equipment_transition_forbidden",
+          "Equipment state must change through the equipment or spatial move command",
+        )
+      }
+      if (
+        item.equipped
+        && (
+          command.input.category !== "equipment"
+          || command.input.equipment_slot !== item.equipment_slot
+        )
+      ) {
+        throw new EngineCommandError(
+          "inventory.equipped_identity_locked",
+          "Move the equipped item before changing its category or equipment slot",
+        )
+      }
       const input = normalizeInput(command.input)
       if (input.stack_mode === "instance" && input.quantity !== 1) {
         throw new EngineCommandError(
@@ -403,6 +427,12 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
     }
 
     if (command.kind === "inventory.set_equipped") {
+      if (!command.equipped) {
+        throw new EngineCommandError(
+          "inventory.unequip_destination_required",
+          "Unequip requires a real hand, bag or external carry destination",
+        )
+      }
       if (command.equipped && item.category !== "equipment") {
         throw new EngineCommandError(
           "inventory.not_equipment",
