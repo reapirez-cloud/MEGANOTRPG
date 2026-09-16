@@ -424,9 +424,9 @@ export default function CharacterView({
       : []
 
   const mediaActions: SnakeAction[] =
-    workspaceCharacter && control.character
+    control.canControlCharacter && workspaceCharacter && control.character
       ? createCharacterSnakeActions({
-          canEditAvatar: control.canControlCharacter,
+          canEditAvatar: true,
           character: workspaceCharacter,
           applyMedia: (slot, input) =>
             workspace.applyCharacterMedia(characterId, slot, input),
@@ -471,56 +471,190 @@ export default function CharacterView({
     ...managerActions,
   ]
 
+  const authorityRole = control.isOwner
+    ? "admin"
+    : control.canManage
+      ? "gm"
+      : "player"
+
+  const activeContextEntity = useMemo(() => {
+    if (interfaceMode === "inventory" && focusedItemId) {
+      return {
+        type: "inventory-item",
+        id: focusedItemId,
+        label:
+          control.inventory.find((item) => item.id === focusedItemId)?.name ||
+          undefined,
+      }
+    }
+
+    if (entityFocus) {
+      if (entityFocus.kind === "feature") {
+        return {
+          type: "character-feature",
+          id: entityFocus.featureId,
+          label: entityFocus.label,
+        }
+      }
+      if (entityFocus.kind === "resource") {
+        return {
+          type: "character-resource",
+          id: entityFocus.stateKey,
+          label: entityFocus.label,
+        }
+      }
+      if (entityFocus.kind === "spell") {
+        return {
+          type: "character-spell",
+          id: entityFocus.spellKey,
+          label: entityFocus.label,
+        }
+      }
+      if (entityFocus.kind === "item") {
+        return {
+          type: "inventory-item",
+          id: entityFocus.itemId,
+          label: entityFocus.label,
+        }
+      }
+      return {
+        type: "character-effect",
+        id: entityFocus.effectId,
+        label: entityFocus.label,
+      }
+    }
+
+    if (section === "features" && selectedEffectId) {
+      return { type: "character-effect", id: selectedEffectId }
+    }
+    if (section === "features" && selectedFeatureId) {
+      return { type: "character-feature", id: selectedFeatureId }
+    }
+    if (section === "spells" && selectedSpellId) {
+      return { type: "character-spell", id: selectedSpellId }
+    }
+    if (section === "overview" && selectedResourceKey) {
+      return { type: "character-resource", id: selectedResourceKey }
+    }
+
+    return control.character
+      ? {
+          type: "character",
+          id: control.character.id,
+          label: control.character.name,
+        }
+      : { type: "character", id: characterId }
+  }, [
+    characterId,
+    control.character,
+    control.inventory,
+    entityFocus,
+    focusedItemId,
+    interfaceMode,
+    section,
+    selectedEffectId,
+    selectedFeatureId,
+    selectedResourceKey,
+    selectedSpellId,
+  ])
+
+  const sheetViewContext = useMemo(() => ({
+    screen: interfaceMode === "inventory"
+      ? "character-inventory-interface"
+      : "character-sheet",
+    route: "#/workspace/character/" + characterId,
+    title: control.character
+      ? "Персонаж · " + control.character.name
+      : "Персонаж",
+    text: control.character
+      ? interfaceMode === "inventory"
+        ? "Открыт отдельный интерфейс инвентаря персонажа."
+        : "Открыт лист персонажа и его текущая игровая секция."
+      : "Лист персонажа открыт, но данные недоступны.",
+    entity: activeContextEntity,
+    facts: control.character
+      ? {
+          characterId,
+          section,
+          interfaceMode,
+          expandedAbility,
+          selectedFeatureId:
+            section === "features" ? selectedFeatureId : null,
+          selectedSpellId:
+            section === "spells" ? selectedSpellId : null,
+          selectedResourceKey:
+            section === "overview" ? selectedResourceKey : null,
+          selectedEffectId:
+            section === "features" ? selectedEffectId : null,
+          focusedItemId:
+            interfaceMode === "inventory" ? focusedItemId : null,
+          entityFocus,
+          spellFocusLevel:
+            section === "spells" ? spellFocusLevel : null,
+          inventoryHolderId: null,
+          authorityRole,
+          canManage: control.canManage,
+          canControlCharacter: control.canControlCharacter,
+          isOwner: control.isOwner,
+          assignedToCurrentUser:
+            control.character.assignedUserId === control.userId,
+          runtimeStatus: runtime.status,
+          shellVersion: 2,
+          class: control.character.characterClass,
+          level: control.character.level,
+          spellCount: control.spells.length,
+          featureCount: control.features.length,
+          inventoryCount: control.inventory.length,
+          resourceCount: control.resources.length,
+        }
+      : {
+          characterId,
+          authorityRole,
+          canManage: control.canManage,
+          canControlCharacter: false,
+          isOwner: control.isOwner,
+          error: control.error,
+        },
+  }), [
+    activeContextEntity,
+    authorityRole,
+    characterId,
+    control.canControlCharacter,
+    control.canManage,
+    control.character,
+    control.error,
+    control.features.length,
+    control.inventory.length,
+    control.isOwner,
+    control.resources.length,
+    control.spells.length,
+    control.userId,
+    entityFocus,
+    expandedAbility,
+    focusedItemId,
+    interfaceMode,
+    runtime.status,
+    section,
+    selectedEffectId,
+    selectedFeatureId,
+    selectedResourceKey,
+    selectedSpellId,
+    spellFocusLevel,
+  ])
+
+  useEffect(() => {
+    if (control.loading) {
+      snake.setViewContext(null)
+      return
+    }
+
+    snake.setViewContext(sheetViewContext)
+    return () => snake.setViewContext(null)
+  }, [control.loading, sheetViewContext, snake.setViewContext])
+
   useAIViewContextLayer(
     "character-sheet-v2",
-    control.loading
-      ? null
-      : {
-          screen: interfaceMode === "inventory"
-            ? "character-inventory-interface"
-            : "character-sheet",
-          route: "#/workspace/character/" + characterId,
-          title: control.character
-            ? "Персонаж · " + control.character.name
-            : "Персонаж",
-          text: control.character
-            ? interfaceMode === "inventory"
-              ? "Открыт отдельный интерфейс инвентаря персонажа."
-              : "Открыт новый постоянный shell листа персонажа."
-            : "Лист персонажа открыт, но данные недоступны.",
-          entity: control.character
-            ? {
-                type: "character",
-                id: control.character.id,
-                label: control.character.name,
-              }
-            : { type: "character", id: characterId },
-          facts: control.character
-            ? {
-                section,
-                interfaceMode,
-                expandedAbility,
-                selectedFeatureId: section === "features" ? selectedFeatureId : null,
-                selectedSpellId: section === "spells" ? selectedSpellId : null,
-                selectedResourceKey:
-                  section === "overview" ? selectedResourceKey : null,
-                selectedEffectId:
-                  section === "features" ? selectedEffectId : null,
-                focusedItemId:
-                  interfaceMode === "inventory" ? focusedItemId : null,
-                entityFocus,
-                spellFocusLevel: section === "spells" ? spellFocusLevel : null,
-                runtimeStatus: runtime.status,
-                shellVersion: 2,
-                class: control.character.characterClass,
-                level: control.character.level,
-                spellCount: control.spells.length,
-                featureCount: control.features.length,
-                inventoryCount: control.inventory.length,
-                resourceCount: control.resources.length,
-              }
-            : { characterId, error: control.error },
-        },
+    control.loading ? null : sheetViewContext,
     60,
   )
 
