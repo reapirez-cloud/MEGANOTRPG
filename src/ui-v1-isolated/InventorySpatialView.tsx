@@ -175,13 +175,8 @@ export default function InventorySpatialView({
     const grid = element.closest<HTMLElement>("[data-inventory-grid]")
     if (grid && activeHolder) {
       const rect = grid.getBoundingClientRect()
-      const scroll = grid.parentElement
-      const cellX = Math.floor(
-        (clientX - rect.left + (scroll?.scrollLeft || 0)) / CELL_PX,
-      )
-      const cellY = Math.floor(
-        (clientY - rect.top + (scroll?.scrollTop || 0)) / CELL_PX,
-      )
+      const cellX = Math.floor((clientX - rect.left) / CELL_PX)
+      const cellY = Math.floor((clientY - rect.top) / CELL_PX)
       const target = {
         kind: "grid" as const,
         holderItemId: activeHolder.id,
@@ -302,8 +297,31 @@ export default function InventorySpatialView({
           onPointerCancel={cancelDrag}
           aria-label={item.name}
         >
-          <span>{item.name.slice(0, 1).toLocaleUpperCase("ru-RU")}</span>
-          <strong>{compactItemLabel(item)}</strong>
+          {className === "u1-inventory-grid-item" ? (
+            <>
+              {rotateInventoryShape(
+                inventoryPhysicalProfile(item),
+                (item.grid_rotation || 0) as 0 | 90 | 180 | 270,
+              ).cells.map((cell) => (
+                <i
+                  className="u1-inventory-shape-cell"
+                  key={cell.x + ":" + cell.y}
+                  style={{
+                    left: cell.x * CELL_PX,
+                    top: cell.y * CELL_PX,
+                    width: CELL_PX,
+                    height: CELL_PX,
+                  }}
+                />
+              ))}
+              <strong>{compactItemLabel(item)}</strong>
+            </>
+          ) : (
+            <>
+              <span>{item.name.slice(0, 1).toLocaleUpperCase("ru-RU")}</span>
+              <strong>{compactItemLabel(item)}</strong>
+            </>
+          )}
         </button>
       </SnakeTrigger>
     )
@@ -511,6 +529,18 @@ export default function InventorySpatialView({
             height: draggedShape.height * CELL_PX,
           }}
         >
+          {draggedShape.cells.map((cell) => (
+            <i
+              className="u1-inventory-shape-cell"
+              key={cell.x + ":" + cell.y}
+              style={{
+                left: cell.x * CELL_PX,
+                top: cell.y * CELL_PX,
+                width: CELL_PX,
+                height: CELL_PX,
+              }}
+            />
+          ))}
           <span>{draggedItem.name}</span>
         </div>
       )}
