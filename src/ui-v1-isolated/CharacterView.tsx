@@ -32,6 +32,7 @@ import {
   classReferenceArtSlot,
   useUiV1ReferenceMedia,
 } from "./useUiV1ReferenceMedia"
+import { createSheetReferenceMediaActions } from "./characterSheetMediaActions"
 import { useWorkspaceData } from "./useWorkspaceData"
 import "./character-sheet-theme.css"
 import "./character-sheet-backgrounds.css"
@@ -198,6 +199,77 @@ export default function CharacterView({
   const classSheetBackground = referenceMedia.get(
     classReferenceArtSlot(classKey, "sheet_background"),
   )
+
+  const classBackgroundActions = createSheetReferenceMediaActions({
+    controller: referenceMedia,
+    targetField: classReferenceArtSlot(classKey, "sheet_background"),
+    title: "Фон листа · " + (control.character?.characterClass || classKey),
+    eyebrow: "Лист персонажа · оформление",
+    composeLabel: "Фон листа · 9:16",
+    shape: "rect",
+    aspectRatio: 9 / 16,
+    applyLabel: "Установить фон",
+    successNotice: "Фон листа обновлён.",
+    resetTitle: "Сбросить фон",
+    resetNotice: "Встроенный фон класса восстановлен.",
+  })
+
+  const classResourceActions = createSheetReferenceMediaActions({
+    controller: referenceMedia,
+    targetField: classReferenceArtSlot(classKey, "resource"),
+    title: "Иконка ресурса класса",
+    eyebrow: "Лист персонажа · оформление",
+    composeLabel: "Ресурс класса · 1:1",
+    shape: "square",
+    aspectRatio: 1,
+    applyLabel: "Установить иконку",
+    successNotice: "Классовая иконка ресурса обновлена.",
+    resetTitle: "Сбросить иконку ресурса",
+    resetNotice: "Встроенная иконка ресурса класса восстановлена.",
+  })
+
+  const classSpellSlotActions = createSheetReferenceMediaActions({
+    controller: referenceMedia,
+    targetField: classReferenceArtSlot(classKey, "spell_slot"),
+    title: "Иконка ячеек заклинаний",
+    eyebrow: "Лист персонажа · оформление",
+    composeLabel: "Ячейки заклинаний · 1:1",
+    shape: "square",
+    aspectRatio: 1,
+    applyLabel: "Установить иконку",
+    successNotice: "Классовая иконка ячеек обновлена.",
+    resetTitle: "Сбросить иконку ячеек",
+    resetNotice: "Встроенная иконка ячеек класса восстановлена.",
+  })
+
+  const classVisualActions: SnakeAction[] = referenceMedia.isOwner
+    ? [{
+        id: "character-sheet-class-visuals",
+        label: "Оформление листа",
+        kind: "branch",
+        group: "media",
+        children: [
+          {
+            id: "character-sheet-background",
+            label: "Фон листа",
+            kind: "branch",
+            children: classBackgroundActions,
+          },
+          {
+            id: "character-sheet-class-resource",
+            label: "Иконка ресурса класса",
+            kind: "branch",
+            children: classResourceActions,
+          },
+          {
+            id: "character-sheet-class-spell-slot",
+            label: "Иконка ячеек",
+            kind: "branch",
+            children: classSpellSlotActions,
+          },
+        ],
+      }]
+    : []
 
   const applyHistorySnapshot = useCallback((
     snapshot: CharacterSheetHistorySnapshot,
@@ -481,6 +553,7 @@ export default function CharacterView({
   const portraitActions = [
     ...(portraitViewAction ? [portraitViewAction] : []),
     ...mediaActions,
+    ...classVisualActions,
     ...managerActions,
   ]
 
@@ -745,6 +818,7 @@ export default function CharacterView({
       portraitUrl={portraitUrl}
       portraitPresentation={portraitPresentation}
       panelArtUrl={classSheetBackground?.url || null}
+      panelArtPresentation={classSheetBackground?.presentation || null}
       dead={character.lifeState === "dead"}
       activeSection={section}
       portraitActions={portraitActions}
@@ -796,6 +870,7 @@ export default function CharacterView({
           }
           onSelectResource={(stateKey) => setSelectedResourceKey(stateKey)}
           onNavigateEntity={navigateEntity}
+          mediaController={referenceMedia}
           onOpenFeatures={() => {
             setEntityFocus(null)
             setSelectedFeatureId(null)
