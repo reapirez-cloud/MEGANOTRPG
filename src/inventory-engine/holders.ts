@@ -27,16 +27,17 @@ export function inventoryHolder(
 }
 
 export function sameInventoryOwnerScope(
-  left: Pick<InventoryItem, "character_id" | "world_storage_id">,
-  right: Pick<InventoryItem, "character_id" | "world_storage_id">,
+  left: Pick<InventoryItem, "character_id" | "world_storage_id" | "surface_id">,
+  right: Pick<InventoryItem, "character_id" | "world_storage_id" | "surface_id">,
 ): boolean {
   return (left.character_id ?? null) === (right.character_id ?? null)
     && (left.world_storage_id ?? null) === (right.world_storage_id ?? null)
+    && (left.surface_id ?? null) === (right.surface_id ?? null)
 }
 
 export function inventoryHolderProblem(
   items: readonly InventoryItem[],
-  item: Pick<InventoryItem, "id" | "character_id" | "world_storage_id">,
+  item: Pick<InventoryItem, "id" | "character_id" | "world_storage_id" | "surface_id">,
   holderItemId: string | null,
   maxDepth = 16,
 ): InventoryHolderProblem | null {
