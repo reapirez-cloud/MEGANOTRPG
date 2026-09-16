@@ -246,6 +246,8 @@ function ResourceCharges({
       className="u1-character-overview__charges"
       data-spell={spell || undefined}
       aria-label={`Доступно ${current} из ${max}`}
+      data-current={current}
+      data-max={max}
     >
       {Array.from({ length: rendered }, (_, index) => (
         <span
@@ -475,6 +477,7 @@ export default function CharacterSheetOverview({
                     type="button"
                     className="u1-character-overview__resource"
                     data-resource-key={resource.stateKey}
+                    data-depleted={max > 0 && current === 0 ? true : undefined}
                     data-focus-target={
                       focusResourceKey === resource.stateKey || undefined
                     }
@@ -491,6 +494,7 @@ export default function CharacterSheetOverview({
                         data-icon-slot={iconSlot}
                         data-has-asset={visual ? true : undefined}
                         data-asset-render={visual?.render}
+                        data-state={max > 0 && current === 0 ? "spent" : "available"}
                         style={visual?.style}
                         aria-hidden="true"
                       >
@@ -592,6 +596,8 @@ export default function CharacterSheetOverview({
                     type="button"
                     className="u1-character-overview__slot"
                     data-pact={pact || undefined}
+                    data-slot-level={level ?? undefined}
+                    data-slot-count={max}
                     onClick={() => onOpenSpells(level)}
                     aria-label={
                       pact
