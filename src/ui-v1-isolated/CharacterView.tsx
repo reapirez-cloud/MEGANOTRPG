@@ -14,6 +14,7 @@ import CharacterSheetCore from "./CharacterSheetCore"
 import CharacterSheetFeatures from "./CharacterSheetFeatures"
 import CharacterSheetOverview from "./CharacterSheetOverview"
 import CharacterSheetShell from "./CharacterSheetShell"
+import CharacterSheetSpells from "./CharacterSheetSpells"
 import {
   isCharacterSheetSection,
   type CharacterSheetSection,
@@ -30,6 +31,7 @@ import "./character-sheet-shell.css"
 import "./character-sheet-core.css"
 import "./character-sheet-features.css"
 import "./character-sheet-overview.css"
+import "./character-sheet-spells.css"
 import "./character-inventory-interface.css"
 
 type CharacterSheetHistorySnapshot =
@@ -124,18 +126,18 @@ function classKeyFrom(
 }
 
 function SectionPlaceholder({ section }: { section: CharacterSheetSection }) {
-  const copy: Record<Exclude<CharacterSheetSection, "overview" | "features">, { title: string; body: string }> = {
-    spells: {
-      title: "Заклинания",
-      body: "Раздел уже переключается внутри листа. Группировка по уровням, подготовка и фильтры будут подключены на этапе 8.",
-    },
+  const copy: Record<Exclude<CharacterSheetSection, "overview" | "features" | "spells">, { title: string; body: string }> = {
     biography: {
       title: "Биография",
       body: "Биография остаётся частью листа и заменяет только нижнюю область, не открывая отдельный экран.",
     },
   }
 
-  if (section === "overview" || section === "features") return null
+  if (
+    section === "overview" ||
+    section === "features" ||
+    section === "spells"
+  ) return null
 
   return (
     <div
@@ -164,6 +166,7 @@ export default function CharacterView({
   const [interfaceMode, setInterfaceMode] = useState<"inventory" | null>(null)
   const [expandedAbility, setExpandedAbility] = useState<AbilityKey | null>(null)
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null)
+  const [selectedSpellId, setSelectedSpellId] = useState<string | null>(null)
 
   const classKey = useMemo(
     () => classKeyFrom(
@@ -442,6 +445,7 @@ export default function CharacterView({
                 interfaceMode,
                 expandedAbility,
                 selectedFeatureId: section === "features" ? selectedFeatureId : null,
+                selectedSpellId: section === "spells" ? selectedSpellId : null,
                 runtimeStatus: runtime.status,
                 shellVersion: 2,
                 class: control.character.characterClass,
@@ -553,6 +557,14 @@ export default function CharacterView({
           templates={control.templates}
           runtimeError={runtime.error || undefined}
           onSelect={setSelectedFeatureId}
+        />
+      ) : section === "spells" ? (
+        <CharacterSheetSpells
+          characterId={characterId}
+          contract={runtime.snapshot?.contract || null}
+          legacySpells={control.spells}
+          runtimeError={runtime.error || undefined}
+          onSelect={setSelectedSpellId}
         />
       ) : (
         <SectionPlaceholder section={section} />
