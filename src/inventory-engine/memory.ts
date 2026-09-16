@@ -293,7 +293,6 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         before,
         after: sourceAfter ? copy(sourceAfter) : null,
         destinationItem: copy(destination),
-        ...(relatedChanges.length ? { relatedChanges } : {}),
       })
     }
 
@@ -416,38 +415,27 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         )
       }
 
-      const relatedChanges = []
       if (command.equipped) {
-        for (const other of this.items.values()) {
+        const conflict = [...this.items.values()].some((other) => {
           if (
-            other.id === item.id ||
-            other.character_id !== item.character_id ||
-            !other.equipped
-          ) {
-            continue
-          }
+            other.id === item.id
+            || other.character_id !== item.character_id
+            || !other.equipped
+          ) return false
 
           const sameSlot = other.equipment_slot === command.equipmentSlot
           const handConflict =
             command.equipmentSlot === "two_hands"
-              ? other.equipment_slot === "main_hand" ||
-                other.equipment_slot === "off_hand"
-              : (command.equipmentSlot === "main_hand" ||
-                    command.equipmentSlot === "off_hand") &&
-                other.equipment_slot === "two_hands"
-
-          if (!sameSlot && !handConflict) continue
-
-          const displacedBefore = copy(other)
-          const displacedAfter = this.stamp({
-            ...other,
-            equipped: false,
-          })
-          this.items.set(other.id, displacedAfter)
-          relatedChanges.push({
-            before: displacedBefore,
-            after: copy(displacedAfter),
-          })
+              ? other.equipment_slot === "main_hand" || other.equipment_slot === "off_hand"
+              : (command.equipmentSlot === "main_hand" || command.equipmentSlot === "off_hand")
+                && other.equipment_slot === "two_hands"
+          return sameSlot || handConflict
+        })
+        if (conflict) {
+          throw new EngineCommandError(
+            "inventory.equipment_slot_occupied",
+            "Equipment slot is occupied; choose a destination for the equipped item first",
+          )
         }
       }
 
