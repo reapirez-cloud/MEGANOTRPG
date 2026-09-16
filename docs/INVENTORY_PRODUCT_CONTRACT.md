@@ -6,7 +6,7 @@
 >
 > Branch: active implementation belongs on `dev`.
 >
-> Current implementation checkpoint: Cheburashka Stages 1–8 are complete (integrity, lifecycle, stacks/instances, nested holders, physical definitions/authoring, authoritative spatial placement/mobile UX, metric weight/load/specialized capacity, and persistent world storage). Scene/chat Surfaces, Trade, legacy adoption and final certification remain later stages unless code/tests prove otherwise.
+> Current implementation checkpoint: Cheburashka/Larisa Stages 1–9 are complete (integrity, lifecycle, stacks/instances, nested holders, physical definitions/authoring, authoritative spatial placement/mobile UX, metric weight/load/specialized capacity, persistent world storage, and scene Surface mechanics). Trade, legacy adoption and final certification remain later stages unless code/tests prove otherwise.
 
 This document is the canonical product intent for MEGANOTRPG inventory UX. Audits must compare the current implementation to this contract. Do not replace it with a generic RPG inventory pattern merely because that pattern is easier or more familiar.
 
@@ -363,55 +363,69 @@ Canonical law:
 
 Persistent location storage is **not** a scene/chat Surface. Temporary/shared scene loot interaction remains Stage 9.
 
-## 12. Scene/chat surfaces
+## 12. Scene/chat surfaces — implemented mechanics
 
-There is **one surface concept**. Do not invent a separate "temporary sorting table" purely for inventory UI.
+There is **one Surface concept**.
 
-A surface represents items physically available in a game scene/chat. What it means fictionally may be a floor, table, loot pile, altar or another exposed area.
+A Surface represents exposed physical items in a current game scene. Fiction may call it a floor, table, loot pile, altar or anything similar; the persistence model does not multiply Surface types for narrative nouns.
 
-The GM should be able to create/open a Surface block from the game chat and place loot/items on it without entering every player's inventory.
+Stage 9 implements the mechanics without rebuilding the chat UI.
 
-A surface is associated with the current scene/chat and has access rules such as:
+Canonical ownership:
+- Larisa owns game-scene membership and Surface scene/access/lifecycle facts;
+- Cheburashka owns every concrete physical item on the Surface;
+- a Surface is not an inventory copy, item ledger or chat-message payload;
+- Surface state is independent from message editing/deletion.
 
-- all characters in the scene;
-- selected characters;
-- GM only.
+Access modes:
+- `scene` — current scene participants may access it;
+- `selected` — only selected current participants may access it;
+- `gm` — GM/system authority only.
 
-The inventory UI should be able to attach/read currently accessible surfaces as external item sources/destinations.
+Selected access follows current scene presence. Leaving a scene removes stale selected grants, and deferred integrity guards prevent selected grants from pointing to non-participants.
 
-Until the chat/scene system exists, inventory should keep a clean integration point for future `accessible_surfaces` rather than implementing a fake local-only version.
+A character has one current game-scene membership. Historical/closed rooms may retain their message history but do not remain simultaneous physical presence.
 
-## 13. "Who got it first" concurrency on surfaces
+Cheburashka owner scope is exactly one of:
+- character;
+- persistent world storage;
+- scene Surface.
 
-A surface item is one canonical item.
+Top-level Surface items use Surface placement. A container placed on a Surface keeps its same item identity and nested holder subtree.
 
-If two allowed players attempt to take the same item concurrently:
+The eventual inventory/chat UI may render accessible Surfaces as external sources/destinations, but Stage 9 intentionally stops at the mechanics/runtime contract.
 
-1. the server performs an authoritative atomic move/claim;
-2. the first valid commit wins;
-3. the second receives a stable stale/already-taken result;
-4. clients refresh through realtime/invalidation.
+## 13. "Who got it first" concurrency on surfaces — implemented
 
-Do not implement this as visual locking alone.
+A Surface item is one canonical item.
 
-If the winning player later places the item back on an accessible surface, it becomes available again.
+If two allowed players attempt to take the same current item revision:
+1. the server locks the relevant character inventory and Surface scope;
+2. the source item is selected under the transaction;
+3. the first valid canonical ownership move commits;
+4. a later attempt sees either `surface.item_already_taken` or `surface.item_stale`;
+5. clients use invalidation/Realtime only to refetch the canonical result.
 
-Realtime is a refresh/synchronization transport, not the ownership authority.
+Realtime is never ownership authority.
 
-## 14. Chat/scene debt required by surfaces
+Whole instances preserve item identity. Partial fungible bulk claims split quantity; they do not clone physical identity-bearing instances.
 
-The full surface experience depends on future chat/scene work. Record this as a product dependency, not as missing Cheburashka ownership.
+If the winning character later puts the item back on an accessible Surface, the item becomes available under its new canonical revision.
 
-Future chat/scene work must cover at least:
+## 14. Scene mechanics boundary
 
-- real game chats/scenes;
-- which characters are participants in each scene;
-- moving characters between chats/scenes;
-- scene/location relationship;
-- scene-accessible surfaces;
-- changes in accessible surfaces when a character enters/leaves a scene.
+Stage 9 closes the **mechanical** scene debt required by Surfaces:
+- game-scene creation;
+- one current scene membership per character;
+- movement between scenes;
+- optional scene → character location/time synchronization;
+- scene membership based read/write participation;
+- Surface creation/access/lifecycle;
+- character ↔ Surface item moves;
+- first-take concurrency;
+- Realtime invalidation.
 
-Do not make Stage 5/6 inventory implementation balloon into rebuilding the entire chat system prematurely.
+It does **not** claim that the chat interface has been redesigned to expose every Surface interaction. Chat UI remains a separate presentation task.
 
 ## 15. Trade is a dedicated block inside chat
 
@@ -532,9 +546,9 @@ When auditing inventory, an agent must:
 
 1. read this contract before proposing redesigns;
 2. distinguish **implemented now** from **approved target**;
-3. preserve completed Cheburashka Stages 1–8 unless a real defect requires change;
+3. preserve completed Cheburashka/Larisa Stages 1–9 unless a real defect requires change;
 4. report gaps against this target rather than inventing a different inventory UX;
-5. distinguish completed Stage 6–8 spatial/load/world-storage runtime from still-future scene Surface and Trade mechanics;
+5. distinguish completed Stage 6–9 spatial/load/world-storage/Surface runtime from still-future Trade mechanics;
 6. prefer extending one holder/placement model over parallel tables that represent the same fact;
 7. call out server-authority/concurrency gaps for moves, claims and trade commits;
 8. keep GM authority intact and avoid tactical simulation the app does not own;
@@ -557,13 +571,13 @@ Current status:
 6  ✅ spatial runtime + mobile inventory UX
 7  ✅ weight, load and specialized capacity
 8  ✅ persistent world storage / chests / stashes
-9  ⬜ chats/scenes + shared Surfaces
+9  ✅ chats/scenes + shared Surfaces
 10 ⬜ dedicated Trade block
 11 ⬜ Chasovoy adoption + legacy migration
 12 ⬜ final security/concurrency/E2E certification
 ```
 
-There are 12 stages total. Stages 1–8 are complete; Stage 9 is next and four stages remain.
+There are 12 stages total. Stages 1–9 are complete; Stage 10 is next and three stages remain.
 
 Audits must read both this product contract and the implementation plan.
 
