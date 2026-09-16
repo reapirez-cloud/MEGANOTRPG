@@ -287,3 +287,40 @@
     linear-gradient(180deg, rgba(14, 16, 17, .12) 0%, rgba(18, 20, 21, .42) 46%, rgba(18, 20, 21, .78) 100%),
     var(--cv-ambient-art);
 }
+
+
+/* Class skin corrective pass · canonical class art must remain visible */
+.u1-character-sheet {
+  --cv-glass:
+    color-mix(in srgb, var(--cv-accent) 16%, rgba(12, 13, 14, .24));
+  --cv-glass-soft:
+    color-mix(in srgb, var(--cv-accent) 11%, rgba(12, 13, 14, .18));
+  --cv-glass-strong:
+    color-mix(in srgb, var(--cv-accent) 23%, rgba(12, 13, 14, .28));
+
+  background-color:
+    color-mix(in srgb, var(--cv-accent) 7%, #17191a);
+  background-image:
+    radial-gradient(
+      circle at 18% -6%,
+      color-mix(in srgb, var(--cv-accent) 12%, rgba(255,255,255,.05)),
+      transparent 35%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--cv-accent) 8%, transparent),
+      rgba(13, 14, 15, .12) 42%,
+      rgba(13, 14, 15, .26) 72%,
+      rgba(13, 14, 15, .42) 100%
+    ),
+    var(--cv-ambient-art);
+  background-position:
+    center top,
+    center,
+    var(--cv-class-panel-art-position);
+  background-repeat: no-repeat;
+  background-size:
+    auto,
+    auto,
+    var(--cv-class-panel-art-size);
+}
