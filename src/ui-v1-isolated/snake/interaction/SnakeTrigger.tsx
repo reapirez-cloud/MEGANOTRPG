@@ -100,6 +100,16 @@ export function SnakeTrigger({
     }
   }
 
+  function cancelPendingTouchGesture() {
+    if (timerRef.current === null && startRef.current === null) return
+
+    clearTimer()
+    startRef.current = null
+    if (touchGestureRef.current) {
+      touchGestureRef.current.cancelled = true
+    }
+  }
+
   function pointerEnd() {
     const wasPendingLongPress = timerRef.current !== null
     clearTimer()
@@ -145,7 +155,12 @@ export function SnakeTrigger({
   }
 
   useEffect(() => {
+    const cancelOnScroll = () => cancelPendingTouchGesture()
+
+    window.addEventListener("scroll", cancelOnScroll, true)
+
     return () => {
+      window.removeEventListener("scroll", cancelOnScroll, true)
       if (timerRef.current !== null) {
         window.clearTimeout(timerRef.current)
       }
