@@ -144,6 +144,10 @@ type WorkspaceData = {
     slot: CharacterMediaSlot,
     input: SnakeActionInput,
   ) => Promise<MutationResult>
+  resetCharacterMedia: (
+    characterId: string,
+    slot: CharacterMediaSlot,
+  ) => Promise<MutationResult>
 }
 
 const CAMPAIGN_STORAGE_KEYS = [
@@ -786,6 +790,138 @@ export function useWorkspaceData(): WorkspaceData {
     }
   }, [campaignId, canManage, characters, userId])
 
+  const resetCharacterMedia = useCallback(async (
+    characterId: string,
+    slot: CharacterMediaSlot,
+  ): Promise<MutationResult> => {
+    if (!campaignId || !userId) {
+      return { ok: false, error: "Кампания ещё не загружена." }
+    }
+
+    const character = characters.find((item) => item.id === characterId)
+    if (!character) return { ok: false, error: "Персонаж не найден." }
+
+    if (!canManage && character.assignedUserId !== userId) {
+      return { ok: false, error: "Недостаточно прав." }
+    }
+
+    const setCanonicalAvatar = async (avatarUrl: string | null) => {
+      const context = createEngineCommandContext({
+        campaignId,
+        requestedBy: userId,
+        authority: canManage ? "gm" : "player",
+        actorCharacterId: characterId,
+      })
+
+      if (canManage) {
+        await oracle.characters.setAvatar(context, characterId, avatarUrl)
+        return
+      }
+
+      await shapoklyak.execute({
+        kind: "entity.set_avatar",
+        context,
+        characterId,
+        avatarUrl,
+      })
+    }
+
+    try {
+      if (slot === "avatar") {
+        await setCanonicalAvatar(null)
+      }
+
+      const { error: resetError } = await supabase.rpc(
+        "unbind_media_presentation_v1",
+        {
+          p_campaign_id: campaignId,
+          p_target_type: "character",
+          p_target_id: characterId,
+          p_target_field: slot,
+        },
+      )
+
+      if (resetError) {
+        if (slot === "avatar") {
+          try {
+            await setCanonicalAvatar(character.avatarSource)
+          } catch {
+            // Keep resetError as the actionable failure.
+          }
+        }
+        return { ok: false, error: resetError.message }
+      }
+
+      setCharacters((current) =>
+        current.map((item) => {
+          if (item.id !== characterId) return item
+
+          if (slot === "sheet_hero") {
+            return {
+              ...item,
+              sheetHeroUrl: item.panelAvatarUrl || item.avatarUrl,
+              sheetHeroSource: item.panelAvatarSource || item.avatarSource,
+              sheetHeroAssetId: null,
+              sheetHeroPresentation: null,
+            }
+          }
+
+          if (slot === "panel_avatar") {
+            const hasDedicatedSheetHero = Boolean(item.sheetHeroAssetId)
+            return {
+              ...item,
+              panelAvatarUrl: item.avatarUrl,
+              panelAvatarSource: item.avatarSource,
+              panelAvatarAssetId: null,
+              panelAvatarPresentation: null,
+              ...(hasDedicatedSheetHero
+                ? {}
+                : {
+                    sheetHeroUrl: item.avatarUrl,
+                    sheetHeroSource: item.avatarSource,
+                    sheetHeroPresentation: null,
+                  }),
+            }
+          }
+
+          const hasDedicatedPanel = Boolean(item.panelAvatarAssetId)
+          const hasDedicatedSheetHero = Boolean(item.sheetHeroAssetId)
+          return {
+            ...item,
+            avatarUrl: null,
+            avatarSource: null,
+            avatarAssetId: null,
+            avatarPresentation: null,
+            ...(hasDedicatedPanel
+              ? {}
+              : {
+                  panelAvatarUrl: null,
+                  panelAvatarSource: null,
+                  panelAvatarPresentation: null,
+                }),
+            ...(!hasDedicatedPanel && !hasDedicatedSheetHero
+              ? {
+                  sheetHeroUrl: null,
+                  sheetHeroSource: null,
+                  sheetHeroPresentation: null,
+                }
+              : {}),
+          }
+        }),
+      )
+
+      return { ok: true }
+    } catch (reason) {
+      return {
+        ok: false,
+        error:
+          reason instanceof Error
+            ? reason.message
+            : "Не удалось сбросить изображение.",
+      }
+    }
+  }, [campaignId, canManage, characters, userId])
+
   return {
     campaignId,
     campaignTitle,
@@ -805,5 +941,6 @@ export function useWorkspaceData(): WorkspaceData {
     error,
     selectSpeaker,
     applyCharacterMedia,
+    resetCharacterMedia,
   }
 }
