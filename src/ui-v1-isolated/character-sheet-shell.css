@@ -1,8 +1,15 @@
 .u1-character-sheet {
   --sheet-pad: 14px;
+  width: 100%;
+  max-width: 100%;
   height: 100%;
+  min-width: 0;
   min-height: 0;
+  overflow-x: clip;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
   padding:
     calc(8px + var(--u1-safe-top))
     var(--sheet-pad)
@@ -17,7 +24,7 @@
 .u1-character-sheet__topbar {
   position: sticky;
   z-index: 20;
-  top: 0;
+  top: var(--u1-safe-top);
   min-height: 38px;
   margin: 0 calc(var(--sheet-pad) * -1);
   padding: 0 var(--sheet-pad);
@@ -342,5 +349,22 @@
 
   .u1-character-sheet__rail-row strong {
     font-size: 11px;
+  }
+}
+
+
+@media (max-width: 359px) {
+  .u1-character-sheet__identity {
+    left: 9px;
+    right: 8px;
+    bottom: 10px;
+  }
+
+  .u1-character-sheet__identity strong {
+    font-size: 18px;
+  }
+
+  .u1-character-sheet__identity small {
+    font-size: 8px;
   }
 }
