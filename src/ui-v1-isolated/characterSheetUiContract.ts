@@ -115,6 +115,12 @@ export const CHARACTER_SHEET_SORTING_CONTRACT = {
   },
 } as const
 
+export const CHARACTER_SHEET_SPELL_VISUAL_CONTRACT = {
+  accentCssVar: "--cv-spell-accent",
+  softAccentCssVar: "--cv-spell-accent-soft",
+  slotMediaSlot: (classKey: string) => `class:${classKey}:spell_slot`,
+} as const
+
 export const CHARACTER_SHEET_MEDIA_SLOTS = {
   portrait: "sheet:portrait",
   navigationIcon: characterSheetNavigationIconSlot,
@@ -127,7 +133,7 @@ export const CHARACTER_SHEET_MEDIA_SLOTS = {
     spellSaveDc: "sheet:quick:spell_save_dc",
     spellAttack: "sheet:quick:spell_attack",
   },
-  spellSlot: (classKey: string) => `class:${classKey}:spell_slot`,
+  spellSlot: CHARACTER_SHEET_SPELL_VISUAL_CONTRACT.slotMediaSlot,
   resource: (stateKey: string) => `resource:${stateKey}`,
 } as const
 
@@ -137,6 +143,7 @@ export const CHARACTER_SHEET_SNAKE_CONTEXT_KEYS = [
   "expandedAbility",
   "selectedFeatureId",
   "selectedSpellId",
+  "spellFocusLevel",
   "selectedResourceKey",
   "inventoryHolderId",
 ] as const
