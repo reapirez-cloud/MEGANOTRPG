@@ -13,7 +13,7 @@ const migration = fs.readFileSync(
 test("legacy character sheet inventory mutations forward the loaded item version", () => {
   assert.match(
     sheetHook,
-    /oracle\.inventory\.update\(gmContext\(\), characterId, itemId, input, version\)/,
+    /oracle\.inventory\.update\(gmContext\(\), characterId, itemId, input, version, inventoryProfile\)/,
   )
   assert.match(
     sheetHook,
