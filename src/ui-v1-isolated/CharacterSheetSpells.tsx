@@ -76,8 +76,19 @@ const schoolTranslations: Record<string, string> = {
   Transmutation: "Преобразование",
 }
 
+function normalizeSchool(value: string) {
+  const clean = value.trim()
+  if (!clean) return ""
+  const canonical = Object.keys(schoolTranslations).find(
+    (school) => school.toLocaleLowerCase("en-US") ===
+      clean.toLocaleLowerCase("en-US"),
+  )
+  return canonical || clean
+}
+
 function schoolLabel(value: string) {
-  return schoolTranslations[value] || value || "Без школы"
+  const normalized = normalizeSchool(value)
+  return schoolTranslations[normalized] || normalized || "Без школы"
 }
 
 function levelLabel(level: number) {
@@ -103,6 +114,9 @@ function preparationState(accesses: ResolvedSpellAccess[]): PreparationState {
   ) {
     return "prepared"
   }
+  if (accesses.some((access) => access.preparationMode === "not_required")) {
+    return "not_required"
+  }
   if (accesses.some((access) => access.preparationMode === "prepared")) {
     return "unprepared"
   }
@@ -117,7 +131,14 @@ function accessSourceNames(accesses: ResolvedSpellAccess[]) {
       if (name) names.add(name)
     }
   }
-  return [...names]
+  return [...names].sort((left, right) =>
+    left.localeCompare(right, "ru")
+  )
+}
+
+function sourceSummary(names: string[]) {
+  if (names.length <= 2) return names.join(" · ")
+  return names.slice(0, 2).join(" · ") + ` · +${names.length - 2}`
 }
 
 function legacySpellFor(
@@ -134,10 +155,7 @@ function legacySpellFor(
 }
 
 function preparationRank(value: PreparationState) {
-  if (value === "always_prepared") return 0
-  if (value === "prepared") return 1
-  if (value === "not_required") return 2
-  return 3
+  return value === "always_prepared" || value === "prepared" ? 0 : 1
 }
 
 function detailBody(view: SpellView) {
@@ -282,14 +300,16 @@ export default function CharacterSheetSpells({
         const slug = slugFromResolvedKey(spell.key)
         const catalog = slug ? catalogBySlug.get(slug) || null : null
         const schoolValue =
-          spell.identity.school?.trim() ||
-          legacy?.school?.trim() ||
-          catalog?.school?.trim() ||
-          ""
+          normalizeSchool(
+            spell.identity.school?.trim() ||
+            legacy?.school?.trim() ||
+            catalog?.school?.trim() ||
+            "",
+          )
 
         return {
           spell,
-          level: Math.max(0, Math.min(9, spell.identity.level)),
+          level: spell.identity.level,
           name: spell.identity.name,
           school: schoolValue,
           concentration:
@@ -317,6 +337,22 @@ export default function CharacterSheetSpells({
         left.name.localeCompare(right.name, "ru")
       )
   }, [catalogBySlug, contract, legacySpells])
+
+  const hasPreparationWorkflow = useMemo(
+    () =>
+      views.some((view) =>
+        view.spell.accesses.some(
+          (access) => access.preparationMode === "prepared",
+        )
+      ),
+    [views],
+  )
+
+  useEffect(() => {
+    if (!hasPreparationWorkflow && preparedOnly) {
+      setPreparedOnly(false)
+    }
+  }, [hasPreparationWorkflow, preparedOnly])
 
   const schoolOptions = useMemo(
     () =>
@@ -408,13 +444,15 @@ export default function CharacterSheetSpells({
     <div className="u1-character-spells" ref={rootRef}>
       <div className="u1-character-spells__filters">
         <div className="u1-character-spells__chips">
-          <button
-            type="button"
-            data-active={preparedOnly || undefined}
-            onClick={() => setPreparedOnly((value) => !value)}
-          >
-            ПОДГОТОВЛЕНЫ
-          </button>
+          {hasPreparationWorkflow && (
+            <button
+              type="button"
+              data-active={preparedOnly || undefined}
+              onClick={() => setPreparedOnly((value) => !value)}
+            >
+              ПОДГОТОВЛЕНЫ
+            </button>
+          )}
           <button
             type="button"
             data-active={concentrationOnly || undefined}
@@ -554,7 +592,7 @@ export default function CharacterSheetSpells({
                       </span>
 
                       <span className="u1-character-spells__source">
-                        {view.sourceNames[0] || ""}
+                        {sourceSummary(view.sourceNames)}
                       </span>
                     </button>
                   </SnakeTrigger>
@@ -564,6 +602,30 @@ export default function CharacterSheetSpells({
           </section>
         )
       })}
+
+      {filtered.some((spell) => spell.level < 0 || spell.level > 9) && (
+        <section
+          className="u1-character-spells__level"
+          data-level="other"
+        >
+          <header className="u1-character-spells__level-head">
+            <span>ПРОЧЕЕ</span>
+            <small>
+              {filtered.filter(
+                (spell) => spell.level < 0 || spell.level > 9,
+              ).length}
+            </small>
+          </header>
+          <div className="u1-character-spells__no-results">
+            {filtered
+              .filter((spell) => spell.level < 0 || spell.level > 9)
+              .map((spell) =>
+                `${spell.name} · уровень ${spell.level}`
+              )
+              .join(" · ")}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
