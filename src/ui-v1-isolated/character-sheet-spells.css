@@ -267,3 +267,14 @@
     scroll-behavior: auto;
   }
 }
+
+
+.u1-character-spells__row[data-entity-focus] {
+  background: var(--cv-spell-accent-soft);
+  box-shadow: inset 1px 0 0 var(--cv-spell-accent);
+}
+
+.u1-character-spells__row[data-entity-focus] .u1-character-spells__copy strong {
+  color: var(--cv-text);
+  text-shadow: 0 0 7px var(--cv-spell-accent-soft);
+}
