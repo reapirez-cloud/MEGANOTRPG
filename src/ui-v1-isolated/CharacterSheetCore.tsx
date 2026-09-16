@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import type {
   AbilityKey,
   ResolvedCharacterContract,
@@ -134,7 +135,7 @@ function AbilityGlyph({ ability }: { ability: AbilityKey }) {
     focusable: false,
   }
 
-  const paths: Record<AbilityKey, JSX.Element> = {
+  const paths: Record<AbilityKey, ReactNode> = {
     strength: <path d="M7.2 15.8c2.2-1.15 3.8-3.25 4.55-6.15M16.8 15.8c-2.2-1.15-3.8-3.25-4.55-6.15M8 7.4 5.6 9.8M16 7.4l2.4 2.4M8 16.2v2.4M16 16.2v2.4" />,
     dexterity: <path d="M5 15.8c4.9 0 7.45-2.55 7.45-7.45M12.45 8.35 16 5.2M12.45 8.35l3.9 1.2M9.35 12.6l3.35 3.35M7.1 15.15l1.3 3.65" />,
     constitution: <path d="M12 3.8 17 6.1v5.1c0 3.65-1.8 6.55-5 8.95-3.2-2.4-5-5.3-5-8.95V6.1L12 3.8Z" />,
