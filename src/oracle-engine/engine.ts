@@ -102,6 +102,8 @@ export class OracleEngine {
       consume: (context, characterId, itemId, amount = 1, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.consume", context, characterId, itemId, amount, expectedVersion })),
       move: (context, characterId, itemId, holderItemId, expectedVersion, placement) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.move", context, characterId, itemId, holderItemId, expectedVersion, ...(placement ? { placement } : {}) })),
       transfer: (context, fromCharacterId, toCharacterId, itemId, amount, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.transfer", context, fromCharacterId, toCharacterId, itemId, amount, expectedVersion })),
+      storeWorld: (context, characterId, itemId, worldStorageId, amount, placement, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.store_world", context, characterId, itemId, worldStorageId, amount, placement, expectedVersion })),
+      takeWorld: (context, worldStorageId, itemId, characterId, amount, placement, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.take_world", context, worldStorageId, itemId, characterId, amount, placement, expectedVersion })),
     }
 
     this.world = {
@@ -124,6 +126,10 @@ export class OracleEngine {
       updateLocationLink: (context, linkId, targetLocationId, label, visibilityMode) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_link_update", context, linkId, targetLocationId, label, ...(visibilityMode !== undefined ? { visibilityMode } : {}) })),
       deleteLocationLink: (context, linkId) => direct(context, () => dependencies.larisa.execute({ kind: "world.location_link_delete", context, linkId })),
       setNpcHabitat: (context, npcCharacterId, locationId, attached) => direct(context, () => dependencies.larisa.execute({ kind: "world.npc_habitat_set", context, npcCharacterId, locationId, attached })),
+      createStorage: (context, input) => direct(context, () => dependencies.larisa.execute({ kind: "world.storage_create", context, input })),
+      updateStorage: (context, worldStorageId, input, expectedVersion) => direct(context, () => dependencies.larisa.execute({ kind: "world.storage_update", context, worldStorageId, input, expectedVersion })),
+      moveStorage: (context, worldStorageId, locationId, expectedVersion) => direct(context, () => dependencies.larisa.execute({ kind: "world.storage_move", context, worldStorageId, locationId, expectedVersion })),
+      setStorageArchived: (context, worldStorageId, archived, expectedVersion) => direct(context, () => dependencies.larisa.execute({ kind: "world.storage_set_archived", context, worldStorageId, archived, expectedVersion })),
     }
 
     this.definitions = {
