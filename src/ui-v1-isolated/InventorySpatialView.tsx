@@ -1,4 +1,4 @@
-import { useMemo, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useMemo, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react"
 
 import type { SnakeAction } from "../snake-engine"
 import type { InventoryItem } from "../types/characterSheet"
@@ -283,7 +283,7 @@ export default function InventorySpatialView({
   function itemCard(
     item: InventoryItem,
     className: string,
-    style?: React.CSSProperties,
+    style?: CSSProperties,
     dropContainer = false,
   ) {
     const actions = actionsForItem(item)
