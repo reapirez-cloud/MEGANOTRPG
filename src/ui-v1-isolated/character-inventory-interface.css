@@ -1,8 +1,15 @@
 .u1-character-inventory-interface {
   --sheet-pad: 14px;
+  width: 100%;
+  max-width: 100%;
   height: 100%;
+  min-width: 0;
   min-height: 0;
+  overflow-x: clip;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
   padding:
     calc(8px + var(--u1-safe-top))
     var(--sheet-pad)
@@ -17,7 +24,7 @@
 .u1-character-inventory-interface__topbar {
   position: sticky;
   z-index: 20;
-  top: 0;
+  top: var(--u1-safe-top);
   min-height: 38px;
   margin: 0 calc(var(--sheet-pad) * -1);
   padding: 0 var(--sheet-pad);
