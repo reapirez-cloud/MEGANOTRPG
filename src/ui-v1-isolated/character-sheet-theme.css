@@ -33,6 +33,7 @@
   --cv-spell-accent-soft: var(--cv-accent-soft);
   --cv-resource-accent: var(--cv-accent);
   --cv-resource-accent-soft: var(--cv-accent-soft);
+  --u1-spent-cross: url("/ui-v1/character-sheet/icons/spent-resource-cross.png");
 
   --cv-class-panel-art: none;
   --cv-class-art-wash: rgba(128, 132, 132, .06);
