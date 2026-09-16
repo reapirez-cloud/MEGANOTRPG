@@ -17,6 +17,9 @@ const FALLBACK_SPELL_SLOT_ATLAS =
 const FALLBACK_RESOURCE_ATLAS =
   "/ui-v1/character-sheet/icons/resources.png"
 
+export const CHARACTER_SHEET_SPENT_CROSS_ASSET =
+  "/ui-v1/character-sheet/icons/spent-resource-cross.png"
+
 function atlasAsset(
   url: string,
   columns: number,
