@@ -591,12 +591,17 @@ export default function CharacterView({
       }
       onNavigate={(target) => {
         setEntityFocus(null)
+
         if (target.kind === "interface") {
           setFocusedItemId(null)
-        }
-        if (target.kind === "section" && target.section === "spells") {
+        } else if (target.section === "features") {
+          setSelectedFeatureId(null)
+          setSelectedEffectId(null)
+        } else if (target.section === "spells") {
+          setSelectedSpellId(null)
           setSpellFocusLevel(null)
         }
+
         navigateSheet(target)
       }}
       onBack={handleBack}
@@ -629,10 +634,13 @@ export default function CharacterView({
           onNavigateEntity={navigateEntity}
           onOpenFeatures={() => {
             setEntityFocus(null)
+            setSelectedFeatureId(null)
+            setSelectedEffectId(null)
             navigateSheet({ kind: "section", section: "features" })
           }}
           onOpenSpells={(level) => {
             setEntityFocus(null)
+            setSelectedSpellId(null)
             setSpellFocusLevel(
               typeof level === "number" && level >= 0 && level <= 9
                 ? level
