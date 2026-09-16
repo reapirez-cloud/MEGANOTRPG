@@ -108,3 +108,23 @@
   font-size: 12px;
   font-weight: 400;
 }
+
+
+.u1-character-inventory-interface[data-inventory-status="placeholder"]
+  .u1-character-inventory-interface__body {
+  position: relative;
+}
+
+.u1-character-inventory-interface[data-inventory-status="placeholder"]
+  .u1-character-inventory-interface__body::before {
+  content: "PLACEHOLDER";
+  position: absolute;
+  top: 18px;
+  right: 0;
+  color: var(--cv-text-faint);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  opacity: .52;
+  pointer-events: none;
+}
