@@ -123,6 +123,9 @@ function classKeyFrom(
     ["волшеб", "wizard"], ["wizard", "wizard"],
     ["разбой", "rogue"], ["rogue", "rogue"],
     ["монах", "monk"], ["monk", "monk"],
+    ["варвар", "barbarian"], ["barbarian", "barbarian"],
+    ["артиф", "artificer"], ["artificer", "artificer"],
+    ["следоп", "ranger"], ["рейндж", "ranger"], ["ranger", "ranger"],
   ]
 
   return aliases.find(([needle]) => value.includes(needle))?.[1] || "default"
