@@ -6,7 +6,7 @@ import {
 } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
-import type { AbilityKey } from "../character-engine"
+import type { AbilityKey } from "../character-engine/index.ts"
 import { useResolvedCharacterRuntime } from "../hooks/useResolvedCharacterRuntime"
 import type { SnakeAction } from "../snake-engine"
 import CharacterInventoryInterface from "./CharacterInventoryInterface"
