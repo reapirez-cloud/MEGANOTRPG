@@ -195,12 +195,19 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - resistances and immunities get a compact protection preview rather than dumping all capability data into Overview;
 - “ВСЕ” links route from the preview to the full Features or Spells section.
 
-### Stage 7 — Features mode
-- source grouping;
-- timing sorting;
-- no flat feature dump;
-- tap = detail / primary action;
-- long press = Snake.
+### Stage 7 — Features mode [DONE]
+- Features mode now consumes the resolved Character Engine contract instead of dumping raw `character_features` rows;
+- resolved feature grants, traits and CE actions are combined into one catalog;
+- a feature grant and action with the same resolved source + label are merged into one row instead of appearing twice;
+- primary grouping follows the fixed order: class → subclass → race → background → item → effect → other;
+- template-backed provenance is resolved back to the actual `rule_template`, so groups show real class/subclass/race names rather than mechanic keys;
+- legacy manual features use their explicit kind when it is trustworthy (`class_feature`, `racial_trait`); unknown provenance stays in “Прочее” rather than being guessed;
+- inside each source, rows are ordered by action → bonus action → reaction → passive → other, then alphabetically;
+- timing for executable mechanics comes from CE action economy; passive feature rows are not inferred from prose;
+- action availability is visible without turning the list into cards;
+- tap opens the resolved feature/action detail; long press opens Snake with “Подробнее” and “Источник” context actions;
+- selecting a feature updates `selectedFeatureId` in the AI/Snake view context;
+- empty source categories are not rendered, so the screen stays compact as new source types are added.
 
 ### Stage 8 — Spells mode
 - cantrips + levels 1..9;
