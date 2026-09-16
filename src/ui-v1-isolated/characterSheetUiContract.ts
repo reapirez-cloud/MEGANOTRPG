@@ -140,12 +140,20 @@ export const CHARACTER_SHEET_MEDIA_SLOTS = {
 export const CHARACTER_SHEET_SNAKE_CONTEXT_KEYS = [
   "characterId",
   "section",
+  "interfaceMode",
   "expandedAbility",
   "selectedFeatureId",
   "selectedSpellId",
-  "spellFocusLevel",
   "selectedResourceKey",
+  "selectedEffectId",
+  "focusedItemId",
+  "spellFocusLevel",
   "inventoryHolderId",
+  "authorityRole",
+  "canManage",
+  "canControlCharacter",
+  "isOwner",
+  "assignedToCurrentUser",
 ] as const
 
 export const CHARACTER_SHEET_INTERACTION_CONTRACT = {
