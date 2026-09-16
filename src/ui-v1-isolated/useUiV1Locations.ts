@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { createEngineCommandContext } from "../engine-contracts/index.ts"
-import { cheburashka, firstAvailableGridPlacement } from "../inventory-engine/index.ts"
+import { firstAvailableGridPlacement } from "../inventory-engine/index.ts"
+import { cheburashka } from "../inventory-engine/runtime.ts"
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
 import { larisa } from "../location-engine/runtime.ts"
 import type { WorldStorageAccess, WorldStorageKind, WorldStorageVisibility } from "../location-engine/index.ts"
@@ -137,7 +138,7 @@ export function useUiV1Locations() {
     setSections(visibleSections)
     setLinks(visibleLinks)
     setActiveCharacterId(memberResult.data?.active_character_id || null)
-    setStorages((storageResult.data || []).map((storage) => ({
+    setStorages((storageResult.data || []).map((storage: Record<string, unknown>) => ({
       ...storage,
       version: Number(storage.version || 1),
       item_count: Number(storage.item_count || 0),
@@ -397,7 +398,7 @@ export function useUiV1Locations() {
     }
     try {
       const storageItems = await cheburashka.listWorldStorageItems(storage.id)
-      const root = storageItems.find((candidate) => candidate.id === storage.root_item_id)
+      const root = storageItems.find((candidate: InventoryItem) => candidate.id === storage.root_item_id)
       if (!root) return { ok: false, error: "Корневой контейнер хранилища не найден." }
 
       const projectedItem: InventoryItem = {
