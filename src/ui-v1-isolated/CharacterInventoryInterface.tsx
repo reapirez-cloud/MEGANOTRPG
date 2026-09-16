@@ -38,6 +38,8 @@ export default function CharacterInventoryInterface({
       <section
         className="u1-character-inventory-interface__body"
         data-focused-item-id={focusedItemId || undefined}
+        data-future-inventory-mount="reserved"
+        aria-label="Заглушка отдельного интерфейса инвентаря"
       >
         <small>{characterName}</small>
         <strong>Отдельный интерфейс инвентаря</strong>
