@@ -6,7 +6,7 @@
 >
 > Branch: active implementation belongs on `dev`.
 >
-> Current implementation checkpoint: Cheburashka Stages 1–7 are complete (integrity, lifecycle, stacks/instances, nested holders, physical definitions/authoring, authoritative spatial placement/mobile UX, and metric weight/load/specialized capacity). World storage, scene surfaces and trade remain later stages unless code/tests prove otherwise.
+> Current implementation checkpoint: Cheburashka Stages 1–8 are complete (integrity, lifecycle, stacks/instances, nested holders, physical definitions/authoring, authoritative spatial placement/mobile UX, metric weight/load/specialized capacity, and persistent world storage). Scene/chat Surfaces, Trade, legacy adoption and final certification remain later stages unless code/tests prove otherwise.
 
 This document is the canonical product intent for MEGANOTRPG inventory UX. Audits must compare the current implementation to this contract. Do not replace it with a generic RPG inventory pattern merely because that pattern is easier or more familiar.
 
@@ -340,6 +340,29 @@ A character may have enough carrying capacity but no physical place for another 
 
 Any future tactical consequence of encumbrance must be an explicit authored rules mechanic. Inventory presentation must not silently decide how much speed, action economy or other capability is lost.
 
+## Stage 8 implemented world-storage law
+
+Persistent world storage is now part of the canonical physical-item model.
+
+Canonical law:
+- Larisa owns where a persistent storage exists, its visibility/access policy and lifecycle;
+- Cheburashka owns the physical root container and every contained item;
+- a storage is not a second inventory database and does not copy contained items;
+- every physical item has exactly one current owner scope: a character or a world storage;
+- a whole instance keeps its identity when moved between character and world storage;
+- nested containers move with their subtree and preserve descendant IDs/holder relationships;
+- partial bulk-stack moves split quantity only;
+- all world-storage contents must trace back to that storage's root container;
+- a world-storage root is a real container but cannot also be equipped, held in a hand or occupy generic external carry;
+- storage access is server-authoritative and may depend on campaign membership, location visibility, current character position, owner policy and GM authority;
+- moving a storage changes the Larisa location fact only; contents do not get duplicated or reissued;
+- metadata edits keep the Larisa storage name/description and its physical root-container name/description synchronized;
+- player-created storage is restricted to an owner-only stash at the active character's current location;
+- GM may create shared/private/GM-only storage and may move/archive it;
+- UI 1.0 presents persistent storage inside locations and through Snake/current-character inventory actions, never as a parallel client-side inventory truth.
+
+Persistent location storage is **not** a scene/chat Surface. Temporary/shared scene loot interaction remains Stage 9.
+
 ## 12. Scene/chat surfaces
 
 There is **one surface concept**. Do not invent a separate "temporary sorting table" purely for inventory UI.
@@ -509,9 +532,9 @@ When auditing inventory, an agent must:
 
 1. read this contract before proposing redesigns;
 2. distinguish **implemented now** from **approved target**;
-3. preserve completed Cheburashka Stages 1–7 unless a real defect requires change;
+3. preserve completed Cheburashka Stages 1–8 unless a real defect requires change;
 4. report gaps against this target rather than inventing a different inventory UX;
-5. distinguish completed Stage 6 spatial runtime from still-future weight/specialized-capacity, Surface and Trade mechanics;
+5. distinguish completed Stage 6–8 spatial/load/world-storage runtime from still-future scene Surface and Trade mechanics;
 6. prefer extending one holder/placement model over parallel tables that represent the same fact;
 7. call out server-authority/concurrency gaps for moves, claims and trade commits;
 8. keep GM authority intact and avoid tactical simulation the app does not own;
@@ -532,15 +555,15 @@ Current status:
 4  ✅ nested holders
 5  ✅ physical item definition + authoring language
 6  ✅ spatial runtime + mobile inventory UX
-7  ⬜ weight, load and specialized capacity
-8  ⬜ persistent world storage / chests / stashes
+7  ✅ weight, load and specialized capacity
+8  ✅ persistent world storage / chests / stashes
 9  ⬜ chats/scenes + shared Surfaces
 10 ⬜ dedicated Trade block
 11 ⬜ Chasovoy adoption + legacy migration
 12 ⬜ final security/concurrency/E2E certification
 ```
 
-There are 12 stages total. Stages 1–6 are complete; Stage 7 is next and six stages remain.
+There are 12 stages total. Stages 1–8 are complete; Stage 9 is next and four stages remain.
 
 Audits must read both this product contract and the implementation plan.
 
