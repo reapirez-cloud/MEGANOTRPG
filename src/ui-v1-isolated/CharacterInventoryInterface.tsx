@@ -1,10 +1,14 @@
 export default function CharacterInventoryInterface({
   characterName,
   classKey,
+  focusedItemId,
+  focusedItemName,
   onBack,
 }: {
   characterName: string
   classKey: string
+  focusedItemId?: string | null
+  focusedItemName?: string | null
   onBack: () => void
 }) {
   return (
@@ -24,13 +28,22 @@ export default function CharacterInventoryInterface({
         <i aria-hidden="true" />
       </header>
 
-      <section className="u1-character-inventory-interface__body">
+      <section
+        className="u1-character-inventory-interface__body"
+        data-focused-item-id={focusedItemId || undefined}
+      >
         <small>{characterName}</small>
         <strong>Отдельный интерфейс инвентаря</strong>
         <p>
           Навигация уже отделена от листа. Пространственная сетка, сумки,
           экипировка и перенос предметов будут подключены сюда на этапе 14.
         </p>
+        {focusedItemId && (
+          <div className="u1-character-inventory-interface__focus">
+            <small>ЦЕЛЬ ПЕРЕХОДА</small>
+            <strong>{focusedItemName || focusedItemId}</strong>
+          </div>
+        )}
       </section>
     </main>
   )
