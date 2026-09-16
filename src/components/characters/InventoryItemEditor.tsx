@@ -2,18 +2,38 @@ import { useState } from "react"
 import type { FormEvent } from "react"
 import ImageUploadField from "../common/ImageUploadField"
 import ItemMechanicPresets from "./ItemMechanicPresets"
+import InventoryPhysicalProfileEditor from "./InventoryPhysicalProfileEditor"
 import MechanicsBuilder from "./MechanicsBuilder"
 import { equipmentSlots, inventoryCategories } from "../../lib/dndInventory"
+import {
+  readItemRecharge,
+  writeItemRecharge,
+  type ItemRechargeRestore,
+  type ItemRechargeTrigger,
+} from "../../inventory-engine/lifecycle"
+import {
+  inventoryStackMode,
+  isForcedInventoryInstance,
+} from "../../inventory-engine/stacking"
+import {
+  defaultInventoryProfile,
+  inventoryProfileStackMode,
+  readInventoryProfile,
+  type InventoryPhysicalProfile,
+} from "../../inventory-engine/profile.ts"
+import { inventoryProfilePreset } from "../../inventory-engine/profilePresets.ts"
 import { mechanicSummary } from "../../lib/characterMechanics"
 import { deleteCampaignMediaObject, deleteCampaignMediaObjects } from "../../lib/mediaUpload"
-import type { EquipmentSlot, InventoryCategory, InventoryInput, InventoryItem } from "../../types/characterSheet"
+import type { EquipmentSlot, InventoryCategory, InventoryInput, InventoryItem, InventoryStackMode, ItemUsageMode } from "../../types/characterSheet"
 import type { StoredMechanic, StoredMechanics } from "../../types/characterMechanics"
 
 type Props = {
   item: InventoryItem | null
   campaignId: string
   onClose: () => void
-  onSave: (input: InventoryInput) => Promise<{ ok: boolean; error?: string }>
+  onSave: (input: InventoryInput, inventoryProfile?: InventoryPhysicalProfile | null) => Promise<{ ok: boolean; error?: string }>
+  inventoryProfile?: InventoryPhysicalProfile | null
+  enablePhysicalProfile?: boolean
   onDelete?: () => Promise<{ ok: boolean; error?: string }>
 }
 
@@ -88,8 +108,9 @@ function presetForItem(item: InventoryItem | null): ItemPreset {
   return "artifact"
 }
 
-export default function InventoryItemEditor({ item, campaignId, onClose, onSave, onDelete }: Props) {
+export default function InventoryItemEditor({ item, campaignId, onClose, onSave, onDelete, inventoryProfile, enablePhysicalProfile = false }: Props) {
   const initialImageUrl = item?.image_url || ""
+  const initialRecharge = readItemRecharge(item?.item_state)
   const storedMechanics = item?.mechanics || []
   const existingCurse = storedMechanics.find(isCurseMarker)
   const [step, setStep] = useState<WizardStep>(1)
@@ -98,9 +119,26 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
   const [quantity, setQuantity] = useState(String(item?.quantity ?? 1))
   const [category, setCategory] = useState<InventoryCategory>(item?.category || "other")
   const [equipmentSlot, setEquipmentSlot] = useState<EquipmentSlot>(item?.equipment_slot || "other")
-  const [equipped, setEquipped] = useState(item?.equipped || false)
   const [imageUrl, setImageUrl] = useState(initialImageUrl)
   const [description, setDescription] = useState(item?.description || "")
+  const [usageMode, setUsageMode] = useState<ItemUsageMode>(
+    item?.usage_mode ?? (item?.category === "consumable" ? "quantity" : "none"),
+  )
+  const [stackMode, setStackMode] = useState<InventoryStackMode>(
+    item ? inventoryStackMode(item) : "instance",
+  )
+  const [physicalProfile, setPhysicalProfile] = useState<InventoryPhysicalProfile>(() =>
+    inventoryProfile || readInventoryProfile(item?.inventory_profile) || defaultInventoryProfile({
+      category: item?.category || "other",
+      stack_mode: item ? inventoryStackMode(item) : "instance",
+      weight: item?.weight ?? null,
+    }),
+  )
+  const [chargesMax, setChargesMax] = useState(String(item?.charges_max ?? 1))
+  const [chargesCurrent, setChargesCurrent] = useState(String(item?.charges_current ?? item?.charges_max ?? 1))
+  const [rechargeTrigger, setRechargeTrigger] = useState<ItemRechargeTrigger | "none">(initialRecharge.trigger ?? "none")
+  const [rechargeRestore, setRechargeRestore] = useState<ItemRechargeRestore>(initialRecharge.restore)
+  const [rechargeAmount, setRechargeAmount] = useState(String(initialRecharge.amount ?? 1))
   const [cursed, setCursed] = useState(Boolean(existingCurse))
   const [curseDescription, setCurseDescription] = useState(curseText(existingCurse))
   const [showCurseToPlayer, setShowCurseToPlayer] = useState(curseFlag(existingCurse, "showCurseToPlayer"))
@@ -112,6 +150,9 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
   const [error, setError] = useState("")
 
   const currentPreset = presets.find((candidate) => candidate.id === preset) || presets[0]
+  const forcedInstance = isForcedInventoryInstance({ category, usage_mode: usageMode })
+  const profileStackMode = enablePhysicalProfile ? inventoryProfileStackMode(physicalProfile) : stackMode
+  const effectiveStackMode: InventoryStackMode = forcedInstance ? "instance" : profileStackMode
 
   function normalizeActivation(list: StoredMechanics): StoredMechanics {
     return list.map((mechanic) =>
@@ -147,12 +188,30 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
   const reviewMechanics = finalMechanics().slice(0, 7).map(mechanicSummary)
   const equippedOnlyCount = [...mechanics, ...curseMechanics].filter((mechanic) => mechanic.activation === "equipped").length
 
+  function changeCategory(next: InventoryCategory) {
+    setCategory(next)
+    if (!enablePhysicalProfile) return
+    if (next === "container" && !physicalProfile.container_profile) {
+      const starter = inventoryProfilePreset("container-simple-1x1")
+      if (starter) setPhysicalProfile(starter)
+      setStackMode("instance")
+      return
+    }
+    if (next !== "container" && physicalProfile.container_profile) {
+      setPhysicalProfile(defaultInventoryProfile({ category: next, stack_mode: "instance", weight: item?.weight ?? null }))
+      setStackMode("instance")
+    }
+  }
+
   function choosePreset(next: ItemPreset) {
     const selected = presets.find((candidate) => candidate.id === next) || presets[0]
     setPreset(next)
-    setCategory(selected.category)
+    changeCategory(selected.category)
     setEquipmentSlot(selected.slot)
-    setEquipped(false)
+    if (!item) {
+      setUsageMode(next === "consumable" ? "quantity" : "none")
+      setStackMode("instance")
+    }
     if (!item && mechanics.length === 0 && next === "weapon") setMechanics([weaponBase()])
     if (!item && preset === "weapon" && next !== "weapon" && mechanics.length === 1 && mechanics[0]?.type === "action" && mechanics[0].label === "Атака оружием") setMechanics([])
   }
@@ -178,23 +237,49 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
     if (step < 4) { nextStep(); return }
     if (!name.trim()) { setError("Укажи название предмета."); setStep(2); return }
     setSaving(true); setError("")
+    const maxCharges = Math.max(1, Number.parseInt(chargesMax || "1", 10) || 1)
+    const currentCharges = Math.max(0, Math.min(maxCharges, Number.parseInt(chargesCurrent || "0", 10) || 0))
+    const itemState = writeItemRecharge(
+      item?.item_state,
+      usageMode === "charges" && rechargeTrigger !== "none"
+        ? {
+            trigger: rechargeTrigger,
+            restore: rechargeRestore,
+            amount: rechargeRestore === "amount"
+              ? Math.max(1, Number.parseInt(rechargeAmount || "1", 10) || 1)
+              : null,
+          }
+        : { trigger: null, restore: "full", amount: null },
+    )
+    const normalizedPhysicalProfile = enablePhysicalProfile
+      ? defaultInventoryProfile({
+          category,
+          stack_mode: effectiveStackMode,
+          weight: item?.weight ?? null,
+        }, physicalProfile)
+      : null
     const result = await onSave({
       name: name.trim(),
-      quantity: Math.max(0, Number.parseInt(quantity || "0", 10) || 0),
-      weight: item?.weight ?? null,
+      quantity: effectiveStackMode === "instance"
+        ? 1
+        : Math.max(1, Number.parseInt(quantity || "1", 10) || 1),
+      weight: enablePhysicalProfile
+        ? normalizedPhysicalProfile?.weight_per_unit ?? null
+        : item?.weight ?? null,
       category,
       equipment_slot: category === "equipment" ? equipmentSlot : null,
-      equipped: category === "equipment" ? equipped : false,
+      equipped: item?.equipped ?? false,
       image_url: imageUrl || null,
       description,
+      definition_id: item?.definition_id ?? null,
+      definition_revision: item?.definition_revision ?? null,
       mechanics: finalMechanics(),
-      // Charge semantics are Cheburashka state. Until the editor exposes them,
-      // an ordinary description/mechanics edit must preserve them losslessly.
-      ...(item?.usage_mode ? { usage_mode: item.usage_mode } : {}),
-      ...(item?.charges_current !== undefined ? { charges_current: item.charges_current } : {}),
-      ...(item?.charges_max !== undefined ? { charges_max: item.charges_max } : {}),
-      ...(item?.item_state ? { item_state: item.item_state } : {}),
-    })
+      usage_mode: usageMode,
+      charges_current: usageMode === "charges" ? currentCharges : null,
+      charges_max: usageMode === "charges" ? maxCharges : null,
+      stack_mode: effectiveStackMode,
+      item_state: itemState,
+    }, normalizedPhysicalProfile)
     setSaving(false)
     if (!result.ok) { setError(result.error || "Не удалось сохранить предмет."); return }
     if (initialImageUrl && initialImageUrl !== imageUrl) void deleteCampaignMediaObject(initialImageUrl)
@@ -232,7 +317,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
             <div className="creation-wizard__intro"><span>01</span><div><strong>Что создаём?</strong><small>Выбор задаёт только разумную стартовую базу. Всё можно поменять дальше.</small></div></div>
             <div className="creation-preset-grid">
               {presets.map((candidate) => (
-                <button type="button" key={candidate.id} className={preset === candidate.id ? "creation-preset is-active" : "creation-preset"} onClick={() => choosePreset(candidate.id)}>
+                <button type="button" key={candidate.id} disabled={Boolean(item?.equipped)} className={preset === candidate.id ? "creation-preset is-active" : "creation-preset"} onClick={() => choosePreset(candidate.id)}>
                   <span>{candidate.icon}</span><div><strong>{candidate.title}</strong><small>{candidate.description}</small></div><i>{preset === candidate.id ? "✓" : "›"}</i>
                 </button>
               ))}
@@ -247,10 +332,26 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
             <label className="field-label">Название</label>
             <input className="app-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} autoFocus placeholder={preset === "weapon" ? "Например: Длинный меч" : preset === "artifact" ? "Например: Сердце Пепла" : "Название предмета"} />
             <div className="v2-field-grid">
-              <label><span className="field-label">Категория</span><select className="app-select" value={category} onChange={(e) => setCategory(e.target.value as InventoryCategory)}>{inventoryCategories.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
-              <label><span className="field-label">Количество</span><input className="app-input" type="number" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></label>
+              <label><span className="field-label">Категория</span><select className="app-select" value={category} disabled={Boolean(item?.equipped)} onChange={(e) => changeCategory(e.target.value as InventoryCategory)}>{inventoryCategories.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
+              <label><span className="field-label">Количество</span><input className="app-input" type="number" min="1" disabled={effectiveStackMode === "instance"} value={effectiveStackMode === "instance" ? "1" : quantity} onChange={(e) => setQuantity(e.target.value)} /></label>
             </div>
-            {category === "equipment" && <label><span className="field-label">Куда надевается</span><select className="app-select" value={equipmentSlot} onChange={(e) => setEquipmentSlot(e.target.value as EquipmentSlot)}>{equipmentSlots.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>}
+            {!enablePhysicalProfile && <label><span className="field-label">Хранение</span><select className="app-select" value={effectiveStackMode} disabled={forcedInstance} onChange={(e) => setStackMode(e.target.value as InventoryStackMode)}><option value="instance">Отдельный экземпляр</option><option value="stack">Однородная стопка (валюта, боеприпасы, сыпучее)</option></select></label>}
+            {enablePhysicalProfile && <InventoryPhysicalProfileEditor value={physicalProfile} category={category} onChange={(next) => { setPhysicalProfile(next); setStackMode(inventoryProfileStackMode(next)) }} />}
+            {forcedInstance && <div className="creation-activation-note">Этот тип предмета всегда отдельный экземпляр. Количество фиксировано на 1, чтобы состояние, экипировка или заряды не клонировались при разделении стопки.</div>}
+            {category === "equipment" && <label><span className="field-label">Куда надевается</span><select className="app-select" value={equipmentSlot} disabled={Boolean(item?.equipped)} onChange={(e) => setEquipmentSlot(e.target.value as EquipmentSlot)}>{equipmentSlots.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>}
+            <div className="creation-wizard__intro"><span>↯</span><div><strong>Как предмет расходуется?</strong><small>Обычная вещь не тратится. Расходник уменьшает количество. Зарядный предмет тратит собственный счётчик.</small></div></div>
+            <label><span className="field-label">Использование</span><select className="app-select" value={usageMode} onChange={(e) => setUsageMode(e.target.value as ItemUsageMode)}><option value="none">Не расходуется</option><option value="quantity">Расходует количество</option><option value="charges">Использует заряды</option></select></label>
+            {usageMode === "charges" && <>
+              <div className="v2-field-grid">
+                <label><span className="field-label">Зарядов сейчас</span><input className="app-input" type="number" min="0" value={chargesCurrent} onChange={(e) => setChargesCurrent(e.target.value)} /></label>
+                <label><span className="field-label">Максимум зарядов</span><input className="app-input" type="number" min="1" value={chargesMax} onChange={(e) => setChargesMax(e.target.value)} /></label>
+              </div>
+              <label><span className="field-label">Восстановление</span><select className="app-select" value={rechargeTrigger} onChange={(e) => setRechargeTrigger(e.target.value as ItemRechargeTrigger | "none")}><option value="none">Не восстанавливается автоматически</option><option value="short_rest">Короткий отдых</option><option value="long_rest">Долгий отдых</option><option value="dawn">На рассвете</option></select></label>
+              {rechargeTrigger !== "none" && <div className="v2-field-grid">
+                <label><span className="field-label">Сколько вернуть</span><select className="app-select" value={rechargeRestore} onChange={(e) => setRechargeRestore(e.target.value as ItemRechargeRestore)}><option value="full">До максимума</option><option value="amount">Фиксированное число</option></select></label>
+                {rechargeRestore === "amount" && <label><span className="field-label">Количество</span><input className="app-input" type="number" min="1" value={rechargeAmount} onChange={(e) => setRechargeAmount(e.target.value)} /></label>}
+              </div>}
+            </>}
             <ImageUploadField value={imageUrl} onChange={setImageUrl} folder="items" campaignId={campaignId} label="Арт предмета" />
             <label className="field-label">Описание <small className="creation-optional">необязательно</small></label>
             <textarea className="app-textarea" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={3000} placeholder="Что увидит игрок, когда откроет предмет…" />
@@ -263,7 +364,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
                 <label className="v2-toggle-row creation-inline-toggle"><span><strong>Показывать, что делает проклятие</strong><small>Выключено — описание и механика проклятия скрыты, но продолжают действовать.</small></span><input type="checkbox" checked={showCurseEffectToPlayer} disabled={!showCurseToPlayer} onChange={(e) => setShowCurseEffectToPlayer(e.target.checked)} /></label>
               </div>
             </>}
-            {category === "equipment" && <label className="v2-toggle-row creation-inline-toggle"><span><strong>Надеть сразу</strong><small>Если выключено, эффекты с режимом «когда надето» пока не работают.</small></span><input type="checkbox" checked={equipped} onChange={(e) => setEquipped(e.target.checked)} /></label>}
+            {item?.equipped && <div className="creation-activation-note">Предмет сейчас экипирован. Сначала перемести его через физический инвентарь в руку, сумку или внешнюю ячейку; редактор не создаёт предметы «в никуда».</div>}
           </section>
         )}
 
@@ -289,14 +390,16 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
             <div className="creation-wizard__intro"><span>04</span><div><strong>Проверка</strong><small>ГМ видит всё. Игрок получит только разрешённую часть информации.</small></div></div>
             <div className="creation-review-card">
               <div className="creation-review-card__icon">{currentPreset.icon}</div>
-              <div><small>{currentPreset.title}</small><strong>{name.trim() || "Без названия"}</strong><span>{inventoryCategories.find((option) => option.value === category)?.label || category}{category === "equipment" ? ` · ${equipmentSlots.find((option) => option.value === equipmentSlot)?.label || equipmentSlot}` : ""} · ×{Math.max(0, Number.parseInt(quantity || "0", 10) || 0)}</span>{cursed && <b className="creation-review-curse">☠ Проклято</b>}</div>
+              <div><small>{currentPreset.title}</small><strong>{name.trim() || "Без названия"}</strong><span>{inventoryCategories.find((option) => option.value === category)?.label || category}{category === "equipment" ? ` · ${equipmentSlots.find((option) => option.value === equipmentSlot)?.label || equipmentSlot}` : ""} · ×{effectiveStackMode === "instance" ? 1 : Math.max(1, Number.parseInt(quantity || "1", 10) || 1)}</span>{cursed && <b className="creation-review-curse">☠ Проклято</b>}</div>
             </div>
             <div className="creation-review-block"><span>Описание</span><p>{description.trim() || "Без описания."}</p></div>
+            <div className="creation-review-block"><span>Хранение</span><p>{effectiveStackMode === "instance" ? "Отдельный экземпляр. Его нельзя частично делить при передаче." : "Стопка однородных предметов. Её можно делить при передаче."}</p></div>
+            <div className="creation-review-block"><span>Использование</span><p>{usageMode === "none" ? "Не расходуется." : usageMode === "quantity" ? "При использовании расходуется 1 единица предмета." : `Заряды: ${Math.max(0, Math.min(Math.max(1, Number.parseInt(chargesMax || "1", 10) || 1), Number.parseInt(chargesCurrent || "0", 10) || 0))}/${Math.max(1, Number.parseInt(chargesMax || "1", 10) || 1)} · ${rechargeTrigger === "none" ? "без автоматического восстановления" : rechargeTrigger === "short_rest" ? "короткий отдых" : rechargeTrigger === "long_rest" ? "долгий отдых" : "рассвет"}.`}</p></div>
             {cursed && <>
               <div className="creation-review-block creation-review-block--curse"><span>Проклятие</span><p>{curseDescription.trim() || "Предмет отмечен как проклятый, описание проклятия не задано."}</p></div>
               <div className="creation-curse-preview"><strong>Видимость для игрока</strong><span>{showCurseToPlayer ? "✓ Видит, что предмет проклят" : "○ Не знает о проклятии"}</span><span>{showCurseToPlayer && showCurseEffectToPlayer ? "✓ Видит описание и эффекты" : "○ Не видит, что делает проклятие"}</span><small>Скрытие не отключает действие проклятия.</small></div>
             </>}
-            {category === "equipment" && !equipped && equippedOnlyCount > 0 && <div className="creation-default-note creation-default-note--warning"><span>!</span><p><strong>{equippedOnlyCount} эффектов пока не активны</strong><small>Они настроены как «когда надето». После создания предмет нужно надеть, либо поменять режим эффекта.</small></p></div>}
+            {category === "equipment" && !item?.equipped && equippedOnlyCount > 0 && <div className="creation-default-note creation-default-note--warning"><span>!</span><p><strong>{equippedOnlyCount} эффектов пока не активны</strong><small>Они настроены как «когда надето». После создания предмет нужно надеть, либо поменять режим эффекта.</small></p></div>}
             <div className="creation-review-block"><span>Механика</span>{reviewMechanics.length ? <ul>{reviewMechanics.map((summary, index) => <li key={`${summary}:${index}`}>{summary}</li>)}{finalMechanics().length > reviewMechanics.length && <li>И ещё {finalMechanics().length - reviewMechanics.length}…</li>}</ul> : <p>Нет эффектов. Предмет не меняет характеристики и действия персонажа.</p>}</div>
           </section>
         )}

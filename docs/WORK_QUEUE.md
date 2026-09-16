@@ -39,3 +39,39 @@ Next Rogue stage: **Stage 2 — clean class foundation and 1–20 progression**.
 - Build the canonical `class:rogue` package, source-level progression, proficiencies, Expertise/Weapon Mastery choices, subclass unlock and structural feature identities through shared class/template infrastructure.
 - Do not redo Stage 1 unless the user explicitly changes the source/version scope.
 
+## Inventory / scene interaction follow-up
+
+**Status:** STAGES_1_4_COMPLETE_STAGE_5_NEXT  
+**Marked:** 2026-09-15  
+**Branch:** dev
+
+Canonical product contract: `docs/INVENTORY_PRODUCT_CONTRACT.md`.  
+Canonical implementation roadmap: `docs/INVENTORY_IMPLEMENTATION_PLAN.md`.
+
+Current checkpoint:
+- Stages 1–4 are complete.
+- Stage 5 is next: physical item definition + authoring language.
+- There are 12 stages total; 8 remain.
+- Do not report spatial placement, weight, world stashes, shared Surfaces or Trade as implemented merely because the target is documented.
+- The former anatomical carry idea is superseded. Final carry model is two permanent 1×1 hands + N generic external 1×1 carry cells + real individually-opened bag/container grids.
+- Ordinary grid compatibility is geometry-first. Large items may simply not fit. Specialized restrictions/capacities exist only where useful, e.g. a quiver carrying up to 50 arrows.
+- Most items are instances. Stacks are reserved for explicit homogeneous bulk resources such as currency, ammunition and suitable herbs/powders; `ingredient` alone never implies stackability.
+
+Linked chat/scene work is now Stage 9 rather than an unowned side note:
+- real game chats/scenes and participant membership;
+- character movement between scenes/chats;
+- location relationship;
+- GM Surface block with selected/all-character access;
+- server-authoritative first-successful-take wins;
+- inventory integration for accessible surfaces.
+
+Trade is Stage 10:
+- dedicated PC↔NPC / PC↔PC block;
+- NPC side controlled by GM;
+- scoped inventory visibility;
+- wanted-item highlighting;
+- trade thread;
+- same-revision double acceptance;
+- atomic exchange.
+
+Do not solve any stage with parallel inventory ownership, an abstract currency wallet, anatomical slot simulation or UI-only authority.

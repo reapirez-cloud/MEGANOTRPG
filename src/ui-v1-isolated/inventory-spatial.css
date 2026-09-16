@@ -1,0 +1,480 @@
+.u1-inventory-space {
+  --inv-cell: 46px;
+  display: grid;
+  gap: 14px;
+  padding-bottom: 18px;
+}
+
+.u1-inventory-space button {
+  font: inherit;
+}
+
+.u1-inventory-carry,
+.u1-inventory-equipment,
+.u1-inventory-bag,
+.u1-inventory-root {
+  display: grid;
+  gap: 9px;
+}
+
+.u1-inventory-carry > header,
+.u1-inventory-equipment > header,
+.u1-inventory-root > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.u1-inventory-carry > header span,
+.u1-inventory-equipment > header span,
+.u1-inventory-root > header span {
+  color: rgba(228,232,229,.67);
+  font-size: 8px;
+  font-weight: 780;
+  letter-spacing: .14em;
+}
+
+.u1-inventory-carry > header small,
+.u1-inventory-equipment > header small,
+.u1-inventory-root > header small {
+  color: rgba(218,223,220,.32);
+  font-size: 8px;
+}
+
+.u1-inventory-carry__rail {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 2px 1px 6px;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+}
+
+.u1-inventory-carry__rail::-webkit-scrollbar {
+  display: none;
+}
+
+.u1-inventory-slot {
+  flex: 0 0 74px;
+  min-height: 88px;
+  padding: 6px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 5px;
+  border: 1px solid rgba(235,238,236,.09);
+  border-radius: 13px;
+  background: rgba(255,255,255,.018);
+  scroll-snap-align: start;
+}
+
+.u1-inventory-slot--hand {
+  border-color: var(--cv-accent-line);
+  background: linear-gradient(180deg, var(--cv-accent-soft), rgba(255,255,255,.015));
+}
+
+.u1-inventory-slot--bag {
+  flex-basis: 88px;
+}
+
+.u1-inventory-slot > small {
+  align-self: start;
+  overflow: hidden;
+  color: rgba(221,226,223,.38);
+  font-size: 7px;
+  font-weight: 760;
+  letter-spacing: .08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-inventory-slot > i {
+  place-self: center;
+  color: rgba(217,223,219,.18);
+  font-size: 21px;
+  font-style: normal;
+}
+
+.u1-inventory-compact,
+.u1-inventory-loose-item,
+.u1-inventory-equipped-item,
+.u1-inventory-grid-item {
+  border: 1px solid rgba(235,238,236,.1);
+  border-radius: 10px;
+  color: rgba(239,241,238,.82);
+  background:
+    linear-gradient(145deg, var(--cv-accent-soft), rgba(255,255,255,.018)),
+    #111313;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.u1-inventory-compact:active,
+.u1-inventory-loose-item:active,
+.u1-inventory-equipped-item:active,
+.u1-inventory-grid-item:active {
+  cursor: grabbing;
+}
+
+.u1-inventory-compact[data-moving],
+.u1-inventory-loose-item[data-moving],
+.u1-inventory-equipped-item[data-moving],
+.u1-inventory-grid-item[data-moving] {
+  opacity: .42;
+}
+
+.u1-inventory-compact {
+  min-width: 0;
+  min-height: 58px;
+  padding: 6px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+}
+
+.u1-inventory-compact > span,
+.u1-inventory-loose-item > span,
+.u1-inventory-equipped-item > span {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  color: var(--cv-accent);
+  background: rgba(255,255,255,.035);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12px;
+}
+
+.u1-inventory-compact > strong {
+  width: 100%;
+  overflow: hidden;
+  font-size: 8px;
+  line-height: 1.15;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-inventory-equipment > div {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 5px;
+  scrollbar-width: none;
+}
+
+.u1-inventory-equipment > div::-webkit-scrollbar {
+  display: none;
+}
+
+.u1-inventory-equipped-item,
+.u1-inventory-loose-item {
+  flex: 0 0 94px;
+  min-height: 72px;
+  padding: 8px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 5px;
+}
+
+.u1-inventory-equipped-item > strong,
+.u1-inventory-loose-item > strong {
+  width: 100%;
+  overflow: hidden;
+  font-size: 9px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-inventory-equip-drop {
+  min-height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(235,238,236,.12);
+  border-radius: 12px;
+  color: rgba(224,229,225,.32);
+  background: rgba(255,255,255,.012);
+  font-size: 8px;
+  font-weight: 790;
+  letter-spacing: .14em;
+  transition: border-color .12s ease, background .12s ease, color .12s ease;
+}
+
+.u1-inventory-equip-drop[data-active] {
+  border-color: var(--cv-accent-line);
+  color: var(--cv-accent);
+  background: var(--cv-accent-soft);
+}
+
+.u1-inventory-equip-drop[data-invalid] {
+  border-color: rgba(194,87,103,.5);
+  color: #d9a0aa;
+  background: rgba(155,58,73,.12);
+}
+
+.u1-inventory-bag {
+  min-width: 0;
+}
+
+.u1-inventory-bag__head {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 34px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.u1-inventory-bag__head > button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(235,238,236,.08);
+  border-radius: 10px;
+  color: rgba(229,233,230,.62);
+  background: rgba(255,255,255,.02);
+}
+
+.u1-inventory-bag__head > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.u1-inventory-bag__head strong {
+  overflow: hidden;
+  color: rgba(242,244,241,.88);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-inventory-bag__head small {
+  color: rgba(218,223,220,.34);
+  font-size: 8px;
+}
+
+.u1-inventory-bag__head > span {
+  color: rgba(218,223,220,.38);
+  font-size: 10px;
+}
+
+.u1-inventory-grid-viewport {
+  width: min(100%, calc(var(--inv-cell) * 6 + 2px));
+  max-height: min(58dvh, 560px);
+  overflow: auto;
+  border: 1px solid rgba(235,238,236,.1);
+  border-radius: 14px;
+  background: #0c0e0e;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+}
+
+.u1-inventory-grid {
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
+  background-image:
+    linear-gradient(to right, rgba(235,238,236,.075) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(235,238,236,.075) 1px, transparent 1px);
+  background-position: -1px -1px;
+}
+
+.u1-inventory-grid-item {
+  position: absolute;
+  z-index: 3;
+  padding: 4px;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.u1-inventory-shape-cell {
+  position: absolute;
+  z-index: 0;
+  border: 1px solid rgba(235,238,236,.12);
+  border-radius: 5px;
+  background:
+    linear-gradient(145deg, var(--cv-accent-soft), rgba(255,255,255,.022)),
+    #111313;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
+  pointer-events: none;
+}
+
+.u1-inventory-grid-item > .u1-inventory-shape-cell {
+  pointer-events: auto;
+}
+
+.u1-inventory-grid-item[data-dragging],
+.u1-inventory-grid-item[data-dragging] > .u1-inventory-shape-cell,
+.u1-inventory-grid-item[data-moving],
+.u1-inventory-grid-item[data-moving] > .u1-inventory-shape-cell {
+  pointer-events: none;
+}
+
+.u1-inventory-grid-item > strong {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 3px;
+  color: rgba(244,245,242,.78);
+  font-size: 8px;
+  line-height: 1.15;
+  text-align: center;
+  text-overflow: ellipsis;
+}
+
+.u1-inventory-grid-hint {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.u1-inventory-grid-hint > .u1-inventory-shape-cell {
+  border-color: rgba(146,177,145,.72);
+  background: rgba(111,154,112,.2);
+}
+
+.u1-inventory-grid-hint[data-invalid] > .u1-inventory-shape-cell {
+  border-color: rgba(207,93,110,.74);
+  background: rgba(161,58,75,.23);
+}
+
+.u1-inventory-root__tray,
+.u1-inventory-legacy > div {
+  min-height: 88px;
+  padding: 9px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  border: 1px dashed rgba(235,238,236,.1);
+  border-radius: 14px;
+  background: rgba(255,255,255,.012);
+  scrollbar-width: none;
+}
+
+.u1-inventory-root__tray::-webkit-scrollbar,
+.u1-inventory-legacy > div::-webkit-scrollbar {
+  display: none;
+}
+
+.u1-inventory-root__tray > p {
+  place-self: center;
+  width: 100%;
+  margin: auto;
+  color: rgba(221,226,223,.3);
+  font-size: 9px;
+  text-align: center;
+}
+
+.u1-inventory-legacy {
+  display: grid;
+  gap: 6px;
+}
+
+.u1-inventory-legacy > small {
+  color: rgba(215,180,110,.55);
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: .1em;
+}
+
+.u1-inventory-bag__drop-rail {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.u1-inventory-bag__drop-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.u1-inventory-bag__drop-rail > div {
+  flex: 1 0 138px;
+  min-height: 36px;
+  padding: 0 10px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(235,238,236,.1);
+  border-radius: 11px;
+  color: rgba(221,226,223,.34);
+  background: rgba(255,255,255,.012);
+  font-size: 7px;
+  font-weight: 760;
+  letter-spacing: .08em;
+  text-align: center;
+}
+
+.u1-inventory-message {
+  position: sticky;
+  z-index: 9;
+  bottom: calc(var(--u1-dock-space) + 8px);
+  padding: 9px 11px;
+  border: 1px solid rgba(204,91,107,.22);
+  border-radius: 12px;
+  color: #d7a3ab;
+  background: rgba(70,24,31,.92);
+  font-size: 9px;
+  backdrop-filter: blur(10px);
+}
+
+.u1-inventory-drag-ghost {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  transform: translateZ(0);
+  background: transparent;
+  filter: drop-shadow(0 12px 18px rgba(0,0,0,.48));
+  opacity: .92;
+}
+
+.u1-inventory-drag-ghost > .u1-inventory-shape-cell {
+  border-color: rgba(147,178,146,.68);
+  background: rgba(43,57,45,.82);
+}
+
+.u1-inventory-drag-ghost[data-invalid] > .u1-inventory-shape-cell {
+  border-color: rgba(207,93,110,.7);
+  background: rgba(83,34,43,.85);
+}
+
+.u1-inventory-drag-ghost > span {
+  max-width: calc(100% - 8px);
+  overflow: hidden;
+  color: rgba(247,248,244,.86);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 390px) {
+  .u1-inventory-grid-viewport {
+    width: 100%;
+  }
+
+  .u1-inventory-slot {
+    flex-basis: 70px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u1-inventory-equip-drop {
+    transition: none;
+  }
+}

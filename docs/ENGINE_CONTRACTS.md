@@ -9,12 +9,12 @@
 | Engine / control plane | Owns and persists | Does not own |
 |---|---|---|
 | **CHASOVOY** | reusable canonical definitions: classes, subclasses, spells, items, feats/features, conditions/reference data, stable identity and revisions | character ownership/state, quantities, current charges, preparation, HP, locations, runtime resources |
-| **GENA** | normal gameplay/session declarations/history, authoritative execution routing and command correlation/receipts | GM authority, character resource rows, spells/preparation rows, inventory rows, entity identity, world topology, definitions, CE calculations, scene rulings |
+| **GENA** | normal gameplay/session declarations/history, Trade session/revision/acceptance/thread/history state, authoritative execution routing and command correlation/receipts | GM imperative reality edits, character resource rows, spells/preparation rows, inventory rows, entity identity, world topology, definitions, CE calculations, scene rulings |
 | **ORACLE** | no canonical persistence; imperative GM control surface that directly calls the explicit owner | gameplay orchestration, rule legality, domain storage, derived CE totals, duplicate domain events |
 | **CE** | no canonical persistence; deterministic calculation and one transient resolved contract from explicit input | storage, commands, inventory, characters, HP persistence, resources, chat, rolls, locations, time |
-| **CHEBURASHKA** | item instances, holders, quantities, charges, equipment state, transfers and per-instance runtime state | reusable item definitions, character identity, HP, world placement, scene rulings, resolved totals |
+| **CHEBURASHKA** | item instances, holders, quantities, charges, equipment state, transfers, world-storage/Surface ownership and per-instance runtime state | reusable item definitions, character identity, HP, scene/location access rules, scene rulings, resolved totals |
 | **SHAPOKLYAK** | PC/NPC identity, assignment, lifecycle/visibility and canonical character mechanics/runtime state: base sheet facts, explicit HP, spells/options/features, preparation, suppressions, template assignments and persistent character resources | reusable definitions, inventory instances, world topology, dice, derived CE totals, session history |
-| **LARISA** | locations/world hierarchy, links/maps, discovery, character/scene placement, scene participants, descriptive chronology and NPC habitats | definitions, character mechanics/resources, inventory, HP, scene rulings |
+| **LARISA** | locations/world hierarchy, links/maps, discovery, character/scene placement, current scene participants, scene Surface access/lifecycle, descriptive chronology and NPC habitats | item-instance contents, definitions, character mechanics/resources, HP, scene rulings |
 | **TOBIK** | authoritative dice planning/resolution for a requested roll | durable domain state, resources, HP, inventory, hit/miss scene decisions, scene legality |
 | **SNAKE** | no canonical persistence; universal UI interaction/action orchestration: context invocation, reusable surfaces and dispatch into the declared control/owner path | domain rules/state, owner storage, CE calculation, permission invention, arbitrary Supabase writes |
 
@@ -88,7 +88,21 @@ Canonical commands include `definition.create`, `definition.revise` and `definit
 
 GENA handles normal gameplay intentions, command correlation/history and authoritative gameplay execution. It may cause an owner state change, but that does not transfer ownership to GENA.
 
-Receipt-aware template actions/rolls/spells use stable `commandId` correlation so retries return the original result instead of spending twice. Internal/v1 template spend helpers are not exposed to authenticated clients.
+GENA also owns **session-scoped orchestration state** when that state is itself the gameplay/session fact rather than another domain's fact. Stage 10 Trade is the canonical example: the Trade session, offer revision, A/B acceptance, explicit visibility grants, interest markers, negotiation thread and Trade history belong to GENA; the physical items referenced by the offer remain Cheburashka state.
+
+Trade settlement therefore follows:
+
+```text
+future Trade UI / Snake
+→ typed TradeSession / GENA boundary
+→ same-revision A/B acceptance
+→ private Cheburashka atomic exchange projection
+→ canonical inventory state
+```
+
+GENA never becomes the inventory owner and never uses Realtime as settlement authority.
+
+Receipt-aware template actions/rolls/spells/trade commands use stable `commandId` correlation so retries return the original result instead of spending twice. Internal/v1 template spend helpers are not exposed to authenticated clients.
 
 ### Oracle — GM imperative control plane
 
@@ -109,7 +123,7 @@ CE resolves the supplied explicit snapshot. It performs no I/O, sends no command
 
 ### Cheburashka — inventory instance engine
 
-Create/update/remove/equip/consume/transfer mutate only inventory-instance state. Reusable item definitions remain Chasovoy state. Mechanical instance diffs request fresh character resolution for every affected character.
+Create/update/remove/equip/consume/transfer and character ↔ world-storage/Surface moves mutate only inventory-instance state. Reusable item definitions remain Chasovoy state. A physical item has one canonical owner scope; Larisa may decide whether a Surface is accessible, but it never owns the item row. Mechanical instance diffs request fresh character resolution for every affected character.
 
 ### Shapoklyak — character owner
 
@@ -117,7 +131,7 @@ Shapoklyak owns who exists and the persistent character mechanics/runtime facts 
 
 ### Larisa — world owner
 
-Larisa owns world hierarchy/topology, placement, discovery, scenes, descriptive time and NPC habitats. Time alone never causes character resource/HP/effect changes.
+Larisa owns world hierarchy/topology, placement, discovery, scenes, current scene membership, scene Surface access/lifecycle, descriptive time and NPC habitats. Cheburashka owns the actual items on a Surface. Time alone never causes character resource/HP/effect changes.
 
 ### Tobik — roll boundary
 
@@ -174,6 +188,31 @@ Player → GENA → Cheburashka authoritative consume/use boundary
 ```
 
 If an instance reaches zero quantity, Cheburashka removes the instance. The Chasovoy definition remains.
+
+Shared scene loot:
+
+```text
+GM → Oracle → Larisa creates/configures Surface
+GM → Oracle → Cheburashka creates/places canonical loot instance
+player action → GENA/explicit gameplay path → Cheburashka take_surface
+Cheburashka transaction lock + item version decide the winner
+Larisa Realtime invalidation tells other clients to refetch
+```
+
+A chat message never owns Surface loot. Realtime never chooses the winner.
+
+Dedicated Trade:
+
+```text
+future Trade presentation
+→ GENA TradeSession API
+→ visibility / interest / offer revision / discussion / acceptance
+→ on second acceptance of the same revision
+→ Cheburashka atomic exchange
+→ all physical transfers commit or none
+```
+
+Trade does not reserve inventory merely by referencing an item. External item changes invalidate the Trade revision. Physical currency is ordinary Cheburashka inventory.
 
 ## GM authority and HP
 

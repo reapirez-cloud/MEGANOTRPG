@@ -1,5 +1,6 @@
 import { inventoryMechanicContributions } from "../lib/characterMechanics.ts"
 import type { InventoryItem } from "../types/characterSheet.ts"
+import { createInventoryLoadProjection } from "./load.ts"
 import type { InventoryMechanicalProjection } from "./types.ts"
 
 /**
@@ -30,10 +31,10 @@ export function createInventoryMechanicalProjection(
     return id ? [id] : []
   }))]
   const revision = items
-    .map((item) => `${item.id}:${item.version ?? 0}:${item.quantity}:${item.charges_current ?? "-"}:${Number(item.equipped)}`)
+    .map((item) => `${item.id}:${item.version ?? 0}:${item.quantity}:${item.weight ?? "?"}:${item.charges_current ?? "-"}:${Number(item.equipped)}:${item.holder_item_id ?? "-"}:${item.placement_kind ?? "-"}`)
     .sort()
     .join("|")
-  return { characterId, revision, activeItemIds, contributions }
+  return { characterId, revision, activeItemIds, contributions, load: createInventoryLoadProjection(characterId, items) }
 }
 
 export function inventoryItemIdFromSourceId(sourceId: string): string | null {

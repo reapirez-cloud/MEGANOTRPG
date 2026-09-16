@@ -1,6 +1,12 @@
 import { EngineCommandError } from "../engine-contracts/index.ts"
 import type { InventoryInput, InventoryItem, ItemUsageMode } from "../types/characterSheet.ts"
 import type { CheburashkaCommand, CheburashkaStorage, InventoryMutation } from "./types.ts"
+import {
+  inventoryHolderProblem,
+  inventorySubtreeIds,
+} from "./holders.ts"
+import { inventoryStackMode } from "./stacking.ts"
+import { inventoryPlacementProblem } from "./spatial.ts"
 
 function copy<T>(value: T): T {
   return structuredClone(value)
@@ -30,18 +36,26 @@ function normalizeInput(input: InventoryInput) {
     usage_mode: mode,
     charges_current: chargesCurrent,
     charges_max: chargesMax,
+    stack_mode: inventoryStackMode({ ...input, usage_mode: mode }),
     item_state: copy(input.item_state ?? {}),
   }
 }
 
 function receiptKey(command: CheburashkaCommand): string {
   if (command.kind === "inventory.transfer") {
-    return [
-      command.kind,
-      command.fromCharacterId,
-      command.toCharacterId,
-      command.itemId,
-    ].join(":")
+    return [command.kind, command.fromCharacterId, command.toCharacterId, command.itemId].join(":")
+  }
+  if (command.kind === "inventory.create_surface") {
+    return [command.kind, command.surfaceId].join(":")
+  }
+  if (command.kind === "inventory.take_surface") {
+    return [command.kind, command.surfaceId, command.characterId, command.itemId].join(":")
+  }
+  if (command.kind === "inventory.place_surface") {
+    return [command.kind, command.characterId, command.surfaceId, command.itemId].join(":")
+  }
+  if (command.kind === "inventory.take_world") {
+    return [command.kind, command.worldStorageId, command.characterId, command.itemId].join(":")
   }
   if ("itemId" in command) {
     return [command.kind, command.characterId, command.itemId].join(":")
@@ -62,7 +76,29 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
 
   async listCharacterItems(characterId: string): Promise<InventoryItem[]> {
     return [...this.items.values()]
-      .filter((item) => item.character_id === characterId)
+      .filter((item) => item.character_id === characterId && !item.world_storage_id && !item.surface_id)
+      .sort(
+        (a, b) =>
+          a.sort_order - b.sort_order ||
+          a.created_at.localeCompare(b.created_at),
+      )
+      .map(copy)
+  }
+
+  async listWorldStorageItems(worldStorageId: string): Promise<InventoryItem[]> {
+    return [...this.items.values()]
+      .filter((item) => item.world_storage_id === worldStorageId && !item.character_id && !item.surface_id)
+      .sort(
+        (a, b) =>
+          a.sort_order - b.sort_order ||
+          a.created_at.localeCompare(b.created_at),
+      )
+      .map(copy)
+  }
+
+  async listSurfaceItems(surfaceId: string): Promise<InventoryItem[]> {
+    return [...this.items.values()]
+      .filter((item) => item.surface_id === surfaceId && !item.character_id && !item.world_storage_id)
       .sort(
         (a, b) =>
           a.sort_order - b.sort_order ||
@@ -134,6 +170,12 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
     if (replay) return replay
 
     if (command.kind === "inventory.create") {
+      if (command.input.equipped) {
+        throw new EngineCommandError(
+          "inventory.create_equipped_forbidden",
+          "Create the inventory item first, then equip it through the equipment command",
+        )
+      }
       const input = normalizeInput(command.input)
       if (!input.name) {
         throw new EngineCommandError(
@@ -147,10 +189,18 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
           "Inventory quantity must be an integer >= 1",
         )
       }
+      if (input.stack_mode === "instance" && input.quantity !== 1) {
+        throw new EngineCommandError(
+          "inventory.instance_quantity",
+          "Inventory instance quantity must be 1",
+        )
+      }
 
       const item: InventoryItem = {
         id: `item-${command.context.commandId}`,
         character_id: command.characterId,
+        world_storage_id: null,
+        surface_id: null,
         name: input.name,
         quantity: input.quantity,
         weight: input.weight,
@@ -166,6 +216,13 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         usage_mode: input.usage_mode,
         charges_current: input.charges_current,
         charges_max: input.charges_max,
+        stack_mode: input.stack_mode,
+        holder_item_id: null,
+        placement_kind: "root",
+        placement_index: null,
+        grid_x: null,
+        grid_y: null,
+        grid_rotation: 0,
         item_state: input.item_state,
         version: 1,
         sort_order: 0,
@@ -183,6 +240,64 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
       })
     }
 
+    if (command.kind === "inventory.create_surface") {
+      if (command.input.equipped) {
+        throw new EngineCommandError(
+          "inventory.create_equipped_forbidden",
+          "Create the Surface item unequipped",
+        )
+      }
+      const input = normalizeInput(command.input)
+      if (!input.name) throw new EngineCommandError("inventory.name_required", "Item name is required")
+      if (!Number.isInteger(input.quantity) || input.quantity < 1) {
+        throw new EngineCommandError("inventory.invalid_quantity", "Inventory quantity must be an integer >= 1")
+      }
+      if (input.stack_mode === "instance" && input.quantity !== 1) {
+        throw new EngineCommandError("inventory.instance_quantity", "Inventory instance quantity must be 1")
+      }
+      const item: InventoryItem = {
+        id: `surface-item-${command.context.commandId}`,
+        character_id: null,
+        world_storage_id: null,
+        surface_id: command.surfaceId,
+        name: input.name,
+        quantity: input.quantity,
+        weight: input.weight,
+        equipped: false,
+        category: input.category,
+        equipment_slot: input.category === "equipment" ? input.equipment_slot : null,
+        image_url: input.image_url,
+        description: input.description.trim(),
+        definition_id: input.definition_id ?? null,
+        definition_revision: input.definition_revision ?? null,
+        mechanics: copy(input.mechanics ?? []),
+        usage_mode: input.usage_mode,
+        charges_current: input.charges_current,
+        charges_max: input.charges_max,
+        stack_mode: input.stack_mode,
+        holder_item_id: null,
+        placement_kind: "surface",
+        placement_index: null,
+        grid_x: null,
+        grid_y: null,
+        grid_rotation: 0,
+        item_state: input.item_state,
+        version: 1,
+        sort_order: 0,
+        created_at: command.context.occurredAt,
+        updated_at: command.context.occurredAt,
+      }
+      this.items.set(item.id, item)
+      return this.finish(command, {
+        kind: command.kind,
+        itemId: item.id,
+        affectedCharacterIds: [],
+        affectedSurfaceIds: [command.surfaceId],
+        before: null,
+        after: copy(item),
+      })
+    }
+
     if (command.kind === "inventory.transfer") {
       const item = this.owned(command.itemId, command.fromCharacterId)
       this.assertVersion(item, command.expectedVersion)
@@ -193,17 +308,55 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
           "Not enough items to transfer",
         )
       }
+      if (inventoryStackMode(item) === "instance" && command.amount !== item.quantity) {
+        throw new EngineCommandError(
+          "inventory.instance_split_forbidden",
+          "Inventory instance cannot be split",
+        )
+      }
 
       let sourceAfter: InventoryItem | null = null
       let destination: InventoryItem
+      const relatedChanges = []
 
       if (command.amount === item.quantity) {
+        const allItems = [...this.items.values()]
+        const descendantIds = item.category === "container"
+          ? inventorySubtreeIds(allItems, item.id)
+          : []
+
         destination = this.stamp({
           ...item,
           character_id: command.toCharacterId,
+          world_storage_id: null,
+          surface_id: null,
+          holder_item_id: null,
+          placement_kind: "root",
+          placement_index: null,
+          grid_x: null,
+          grid_y: null,
+          grid_rotation: 0,
           equipped: false,
         })
         this.items.set(item.id, destination)
+
+        for (const descendantId of descendantIds) {
+          const descendant = this.items.get(descendantId)
+          if (!descendant) continue
+          const descendantBefore = copy(descendant)
+          const descendantAfter = this.stamp({
+            ...descendant,
+            character_id: command.toCharacterId,
+            world_storage_id: null,
+            surface_id: null,
+            equipped: false,
+          })
+          this.items.set(descendantId, descendantAfter)
+          relatedChanges.push({
+            before: descendantBefore,
+            after: copy(descendantAfter),
+          })
+        }
       } else {
         sourceAfter = this.stamp({
           ...item,
@@ -213,7 +366,15 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
           ...copy(item),
           id: `${item.id}-to-${command.context.commandId}`,
           character_id: command.toCharacterId,
+          world_storage_id: null,
+          surface_id: null,
           quantity: command.amount,
+          holder_item_id: null,
+          placement_kind: "root",
+          placement_index: null,
+          grid_x: null,
+          grid_y: null,
+          grid_rotation: 0,
           equipped: false,
           version: 1,
           created_at: command.context.occurredAt,
@@ -233,6 +394,467 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         before,
         after: sourceAfter ? copy(sourceAfter) : null,
         destinationItem: copy(destination),
+        ...(relatedChanges.length ? { relatedChanges } : {}),
+      })
+    }
+
+    if (command.kind === "inventory.store_world") {
+      const source = this.owned(command.itemId, command.characterId)
+      this.assertVersion(source, command.expectedVersion)
+      if (source.equipped) {
+        throw new EngineCommandError("inventory.unequip_destination_required", "Equipped item needs a real carried destination first")
+      }
+      if (command.amount > source.quantity) {
+        throw new EngineCommandError("inventory.insufficient_quantity", "Not enough items to store")
+      }
+      if (inventoryStackMode(source) === "instance" && command.amount !== source.quantity) {
+        throw new EngineCommandError("inventory.instance_split_forbidden", "Inventory instance cannot be split")
+      }
+
+      const before = copy(source)
+      const storageItems = [...this.items.values()].filter((item) => item.world_storage_id === command.worldStorageId)
+      const holder = storageItems.find((item) => item.id === command.placement.holderItemId)
+      if (!holder || holder.category !== "container") {
+        throw new EngineCommandError("inventory.holder_missing", "World storage root container was not found")
+      }
+
+      let sourceAfter: InventoryItem | null = null
+      let destination: InventoryItem
+      const relatedChanges = []
+
+      if (command.amount === source.quantity) {
+        const descendantIds = source.category === "container"
+          ? inventorySubtreeIds([...this.items.values()], source.id)
+          : []
+        destination = this.stamp({
+          ...source,
+          character_id: null,
+          world_storage_id: command.worldStorageId,
+          surface_id: null,
+          holder_item_id: command.placement.holderItemId,
+          placement_kind: "grid",
+          placement_index: null,
+          grid_x: command.placement.gridX,
+          grid_y: command.placement.gridY,
+          grid_rotation: command.placement.rotation,
+          equipped: false,
+        })
+        const placementProblem = inventoryPlacementProblem(
+          [...storageItems, destination],
+          destination,
+          command.placement,
+        )
+        if (placementProblem) {
+          throw new EngineCommandError("inventory.placement_invalid", placementProblem)
+        }
+        this.items.set(source.id, destination)
+
+        for (const descendantId of descendantIds) {
+          const descendant = this.items.get(descendantId)
+          if (!descendant) continue
+          const descendantBefore = copy(descendant)
+          const descendantAfter = this.stamp({
+            ...descendant,
+            character_id: null,
+            world_storage_id: command.worldStorageId,
+            surface_id: null,
+            equipped: false,
+          })
+          this.items.set(descendantId, descendantAfter)
+          relatedChanges.push({ before: descendantBefore, after: copy(descendantAfter) })
+        }
+      } else {
+        sourceAfter = this.stamp({ ...source, quantity: source.quantity - command.amount })
+        destination = {
+          ...copy(source),
+          id: `${source.id}-world-${command.context.commandId}`,
+          character_id: null,
+          world_storage_id: command.worldStorageId,
+          surface_id: null,
+          quantity: command.amount,
+          holder_item_id: command.placement.holderItemId,
+          placement_kind: "grid",
+          placement_index: null,
+          grid_x: command.placement.gridX,
+          grid_y: command.placement.gridY,
+          grid_rotation: command.placement.rotation,
+          equipped: false,
+          version: 1,
+          created_at: command.context.occurredAt,
+          updated_at: command.context.occurredAt,
+        }
+        const placementProblem = inventoryPlacementProblem(
+          [...storageItems, destination],
+          destination,
+          command.placement,
+        )
+        if (placementProblem) {
+          throw new EngineCommandError("inventory.placement_invalid", placementProblem)
+        }
+        this.items.set(source.id, sourceAfter)
+        this.items.set(destination.id, destination)
+      }
+
+      return this.finish(command, {
+        kind: command.kind,
+        itemId: source.id,
+        affectedCharacterIds: [command.characterId],
+        affectedWorldStorageIds: [command.worldStorageId],
+        before,
+        after: sourceAfter ? copy(sourceAfter) : null,
+        destinationItem: copy(destination),
+        ...(relatedChanges.length ? { relatedChanges } : {}),
+      })
+    }
+
+    if (command.kind === "inventory.take_world") {
+      const source = this.items.get(command.itemId)
+      if (!source || source.world_storage_id !== command.worldStorageId || source.character_id) {
+        throw new EngineCommandError("inventory.not_found", "Inventory item was not found in world storage")
+      }
+      if (!source.holder_item_id) {
+        throw new EngineCommandError("inventory.world_storage_root", "World storage root cannot be taken as contents")
+      }
+      this.assertVersion(source, command.expectedVersion)
+      if (command.amount > source.quantity) {
+        throw new EngineCommandError("inventory.insufficient_quantity", "Not enough items to take")
+      }
+      if (inventoryStackMode(source) === "instance" && command.amount !== source.quantity) {
+        throw new EngineCommandError("inventory.instance_split_forbidden", "Inventory instance cannot be split")
+      }
+
+      const before = copy(source)
+      const characterItems = [...this.items.values()].filter((item) => item.character_id === command.characterId)
+      let sourceAfter: InventoryItem | null = null
+      let destination: InventoryItem
+      const relatedChanges = []
+      const placement = command.placement
+
+      const destinationState = {
+        character_id: command.characterId,
+        world_storage_id: null,
+        surface_id: null,
+        holder_item_id: placement.kind === "grid" ? placement.holderItemId : null,
+        placement_kind: placement.kind,
+        placement_index: placement.kind === "hand" || placement.kind === "external" ? placement.index : null,
+        grid_x: placement.kind === "grid" ? placement.gridX : null,
+        grid_y: placement.kind === "grid" ? placement.gridY : null,
+        grid_rotation: placement.kind === "grid" ? placement.rotation : 0,
+        equipped: false,
+      } as const
+
+      if (command.amount === source.quantity) {
+        const descendantIds = source.category === "container"
+          ? inventorySubtreeIds([...this.items.values()], source.id)
+          : []
+        destination = this.stamp({ ...source, ...destinationState })
+        const placementProblem = inventoryPlacementProblem(
+          [...characterItems, destination],
+          destination,
+          placement,
+        )
+        if (placementProblem) {
+          throw new EngineCommandError("inventory.placement_invalid", placementProblem)
+        }
+        this.items.set(source.id, destination)
+
+        for (const descendantId of descendantIds) {
+          const descendant = this.items.get(descendantId)
+          if (!descendant) continue
+          const descendantBefore = copy(descendant)
+          const descendantAfter = this.stamp({
+            ...descendant,
+            character_id: command.characterId,
+            world_storage_id: null,
+            surface_id: null,
+            equipped: false,
+          })
+          this.items.set(descendantId, descendantAfter)
+          relatedChanges.push({ before: descendantBefore, after: copy(descendantAfter) })
+        }
+      } else {
+        sourceAfter = this.stamp({ ...source, quantity: source.quantity - command.amount })
+        destination = {
+          ...copy(source),
+          ...destinationState,
+          id: `${source.id}-char-${command.context.commandId}`,
+          quantity: command.amount,
+          version: 1,
+          created_at: command.context.occurredAt,
+          updated_at: command.context.occurredAt,
+        }
+        const placementProblem = inventoryPlacementProblem(
+          [...characterItems, destination],
+          destination,
+          placement,
+        )
+        if (placementProblem) {
+          throw new EngineCommandError("inventory.placement_invalid", placementProblem)
+        }
+        this.items.set(source.id, sourceAfter)
+        this.items.set(destination.id, destination)
+      }
+
+      return this.finish(command, {
+        kind: command.kind,
+        itemId: source.id,
+        affectedCharacterIds: [command.characterId],
+        affectedWorldStorageIds: [command.worldStorageId],
+        before,
+        after: sourceAfter ? copy(sourceAfter) : null,
+        destinationItem: copy(destination),
+        ...(relatedChanges.length ? { relatedChanges } : {}),
+      })
+    }
+
+    if (command.kind === "inventory.place_surface") {
+      const source = this.owned(command.itemId, command.characterId)
+      this.assertVersion(source, command.expectedVersion)
+      if (source.equipped) {
+        throw new EngineCommandError("inventory.unequip_destination_required", "Equipped item needs a real carried destination first")
+      }
+      if (command.amount > source.quantity) {
+        throw new EngineCommandError("inventory.insufficient_quantity", "Not enough items to place")
+      }
+      if (inventoryStackMode(source) === "instance" && command.amount !== source.quantity) {
+        throw new EngineCommandError("inventory.instance_split_forbidden", "Inventory instance cannot be split")
+      }
+
+      const before = copy(source)
+      let sourceAfter: InventoryItem | null = null
+      let destination: InventoryItem
+      const relatedChanges = []
+
+      if (command.amount === source.quantity) {
+        const descendantIds = source.category === "container"
+          ? inventorySubtreeIds([...this.items.values()], source.id)
+          : []
+        destination = this.stamp({
+          ...source,
+          character_id: null,
+          world_storage_id: null,
+          surface_id: command.surfaceId,
+          holder_item_id: null,
+          placement_kind: "surface",
+          placement_index: null,
+          grid_x: null,
+          grid_y: null,
+          grid_rotation: 0,
+          equipped: false,
+        })
+        this.items.set(source.id, destination)
+
+        for (const descendantId of descendantIds) {
+          const descendant = this.items.get(descendantId)
+          if (!descendant) continue
+          const descendantBefore = copy(descendant)
+          const descendantAfter = this.stamp({
+            ...descendant,
+            character_id: null,
+            world_storage_id: null,
+            surface_id: command.surfaceId,
+            equipped: false,
+          })
+          this.items.set(descendantId, descendantAfter)
+          relatedChanges.push({ before: descendantBefore, after: copy(descendantAfter) })
+        }
+      } else {
+        sourceAfter = this.stamp({ ...source, quantity: source.quantity - command.amount })
+        destination = {
+          ...copy(source),
+          id: `${source.id}-surface-${command.context.commandId}`,
+          character_id: null,
+          world_storage_id: null,
+          surface_id: command.surfaceId,
+          quantity: command.amount,
+          holder_item_id: null,
+          placement_kind: "surface",
+          placement_index: null,
+          grid_x: null,
+          grid_y: null,
+          grid_rotation: 0,
+          equipped: false,
+          version: 1,
+          created_at: command.context.occurredAt,
+          updated_at: command.context.occurredAt,
+        }
+        this.items.set(source.id, sourceAfter)
+        this.items.set(destination.id, destination)
+      }
+
+      return this.finish(command, {
+        kind: command.kind,
+        itemId: source.id,
+        affectedCharacterIds: [command.characterId],
+        affectedSurfaceIds: [command.surfaceId],
+        before,
+        after: sourceAfter ? copy(sourceAfter) : null,
+        destinationItem: copy(destination),
+        ...(relatedChanges.length ? { relatedChanges } : {}),
+      })
+    }
+
+    if (command.kind === "inventory.take_surface") {
+      const source = this.items.get(command.itemId)
+      if (!source || source.surface_id !== command.surfaceId || source.character_id || source.world_storage_id) {
+        throw new EngineCommandError("inventory.surface_item_already_taken", "surface.item_already_taken")
+      }
+      const currentVersion = Number(source.version ?? 0)
+      if (command.expectedVersion !== undefined && currentVersion !== command.expectedVersion) {
+        throw new EngineCommandError("inventory.surface_item_stale", "surface.item_stale")
+      }
+      if (command.amount > source.quantity) {
+        throw new EngineCommandError("inventory.insufficient_quantity", "Not enough items to take")
+      }
+      if (inventoryStackMode(source) === "instance" && command.amount !== source.quantity) {
+        throw new EngineCommandError("inventory.instance_split_forbidden", "Inventory instance cannot be split")
+      }
+
+      const before = copy(source)
+      const characterItems = [...this.items.values()].filter((item) =>
+        item.character_id === command.characterId && !item.world_storage_id && !item.surface_id
+      )
+      const placement = command.placement
+      const destinationState = {
+        character_id: command.characterId,
+        world_storage_id: null,
+        surface_id: null,
+        holder_item_id: placement.kind === "grid" ? placement.holderItemId : null,
+        placement_kind: placement.kind,
+        placement_index: placement.kind === "hand" || placement.kind === "external" ? placement.index : null,
+        grid_x: placement.kind === "grid" ? placement.gridX : null,
+        grid_y: placement.kind === "grid" ? placement.gridY : null,
+        grid_rotation: placement.kind === "grid" ? placement.rotation : 0,
+        equipped: false,
+      } as const
+
+      let sourceAfter: InventoryItem | null = null
+      let destination: InventoryItem
+      const relatedChanges = []
+
+      if (command.amount === source.quantity) {
+        const descendantIds = source.category === "container"
+          ? inventorySubtreeIds([...this.items.values()], source.id)
+          : []
+        destination = this.stamp({ ...source, ...destinationState })
+        const placementProblem = inventoryPlacementProblem(
+          [...characterItems, destination],
+          destination,
+          placement,
+        )
+        if (placementProblem) {
+          throw new EngineCommandError("inventory.placement_invalid", placementProblem)
+        }
+        this.items.set(source.id, destination)
+
+        for (const descendantId of descendantIds) {
+          const descendant = this.items.get(descendantId)
+          if (!descendant) continue
+          const descendantBefore = copy(descendant)
+          const descendantAfter = this.stamp({
+            ...descendant,
+            character_id: command.characterId,
+            world_storage_id: null,
+            surface_id: null,
+            equipped: false,
+          })
+          this.items.set(descendantId, descendantAfter)
+          relatedChanges.push({ before: descendantBefore, after: copy(descendantAfter) })
+        }
+      } else {
+        sourceAfter = this.stamp({ ...source, quantity: source.quantity - command.amount })
+        destination = {
+          ...copy(source),
+          ...destinationState,
+          id: `${source.id}-char-${command.context.commandId}`,
+          quantity: command.amount,
+          version: 1,
+          created_at: command.context.occurredAt,
+          updated_at: command.context.occurredAt,
+        }
+        const placementProblem = inventoryPlacementProblem(
+          [...characterItems, destination],
+          destination,
+          placement,
+        )
+        if (placementProblem) {
+          throw new EngineCommandError("inventory.placement_invalid", placementProblem)
+        }
+        this.items.set(source.id, sourceAfter)
+        this.items.set(destination.id, destination)
+      }
+
+      return this.finish(command, {
+        kind: command.kind,
+        itemId: source.id,
+        affectedCharacterIds: [command.characterId],
+        affectedSurfaceIds: [command.surfaceId],
+        before,
+        after: sourceAfter ? copy(sourceAfter) : null,
+        destinationItem: copy(destination),
+        ...(relatedChanges.length ? { relatedChanges } : {}),
+      })
+    }
+
+    if (command.kind === "inventory.move") {
+      const item = this.owned(command.itemId, command.characterId)
+      this.assertVersion(item, command.expectedVersion)
+      if (command.placement?.kind === "root" && item.equipped) {
+        throw new EngineCommandError(
+          "inventory.unequip_destination_required",
+          "Unequip requires a real hand, bag or external carry destination",
+        )
+      }
+      const before = copy(item)
+      const allItems = [...this.items.values()]
+      const holderItemId = command.placement?.kind === "grid"
+        ? command.placement.holderItemId
+        : command.holderItemId
+      const problem = inventoryHolderProblem(allItems, item, holderItemId)
+      if (problem) {
+        throw new EngineCommandError(
+          `inventory.holder_${problem}`,
+          `Invalid inventory holder: ${problem}`,
+        )
+      }
+      if (command.placement) {
+        const placementProblem = inventoryPlacementProblem(allItems, item, command.placement)
+        if (placementProblem) {
+          throw new EngineCommandError("inventory.placement_invalid", placementProblem)
+        }
+      }
+
+      const placement = command.placement
+      const nextState = placement
+        ? {
+            holder_item_id: placement.kind === "grid" ? placement.holderItemId : null,
+            placement_kind: placement.kind,
+            placement_index: placement.kind === "hand" || placement.kind === "external"
+              ? placement.index
+              : null,
+            grid_x: placement.kind === "grid" ? placement.gridX : null,
+            grid_y: placement.kind === "grid" ? placement.gridY : null,
+            grid_rotation: placement.kind === "grid" ? placement.rotation : 0,
+            equipped: false,
+          }
+        : {
+            holder_item_id: command.holderItemId,
+            placement_kind: command.holderItemId ? "legacy" as const : "root" as const,
+            placement_index: null,
+            grid_x: null,
+            grid_y: null,
+            grid_rotation: 0 as const,
+            equipped: command.holderItemId ? false : item.equipped,
+          }
+
+      const after = this.stamp({ ...item, ...nextState })
+      this.items.set(item.id, after)
+      return this.finish(command, {
+        kind: command.kind,
+        itemId: item.id,
+        affectedCharacterIds: [command.characterId],
+        before,
+        after: copy(after),
       })
     }
 
@@ -241,6 +863,12 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
     const before = copy(item)
 
     if (command.kind === "inventory.remove") {
+      if ([...this.items.values()].some((child) => (child.holder_item_id ?? null) === item.id)) {
+        throw new EngineCommandError(
+          "inventory.container_not_empty",
+          "Inventory container is not empty",
+        )
+      }
       this.items.delete(item.id)
       return this.finish(command, {
         kind: command.kind,
@@ -252,7 +880,31 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
     }
 
     if (command.kind === "inventory.update") {
+      if (command.input.equipped !== item.equipped) {
+        throw new EngineCommandError(
+          "inventory.equipment_transition_forbidden",
+          "Equipment state must change through the equipment or spatial move command",
+        )
+      }
+      if (
+        item.equipped
+        && (
+          command.input.category !== "equipment"
+          || command.input.equipment_slot !== item.equipment_slot
+        )
+      ) {
+        throw new EngineCommandError(
+          "inventory.equipped_identity_locked",
+          "Move the equipped item before changing its category or equipment slot",
+        )
+      }
       const input = normalizeInput(command.input)
+      if (input.stack_mode === "instance" && input.quantity !== 1) {
+        throw new EngineCommandError(
+          "inventory.instance_quantity",
+          "Inventory instance quantity must be 1",
+        )
+      }
       const after = this.stamp({
         ...item,
         ...input,
@@ -274,6 +926,12 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
     }
 
     if (command.kind === "inventory.set_equipped") {
+      if (!command.equipped) {
+        throw new EngineCommandError(
+          "inventory.unequip_destination_required",
+          "Unequip requires a real hand, bag or external carry destination",
+        )
+      }
       if (command.equipped && item.category !== "equipment") {
         throw new EngineCommandError(
           "inventory.not_equipment",
@@ -287,46 +945,42 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         )
       }
 
-      const relatedChanges = []
       if (command.equipped) {
-        for (const other of this.items.values()) {
+        const conflict = [...this.items.values()].some((other) => {
           if (
-            other.id === item.id ||
-            other.character_id !== item.character_id ||
-            !other.equipped
-          ) {
-            continue
-          }
+            other.id === item.id
+            || other.character_id !== item.character_id
+            || !other.equipped
+          ) return false
 
           const sameSlot = other.equipment_slot === command.equipmentSlot
           const handConflict =
             command.equipmentSlot === "two_hands"
-              ? other.equipment_slot === "main_hand" ||
-                other.equipment_slot === "off_hand"
-              : (command.equipmentSlot === "main_hand" ||
-                    command.equipmentSlot === "off_hand") &&
-                other.equipment_slot === "two_hands"
-
-          if (!sameSlot && !handConflict) continue
-
-          const displacedBefore = copy(other)
-          const displacedAfter = this.stamp({
-            ...other,
-            equipped: false,
-          })
-          this.items.set(other.id, displacedAfter)
-          relatedChanges.push({
-            before: displacedBefore,
-            after: copy(displacedAfter),
-          })
+              ? other.equipment_slot === "main_hand" || other.equipment_slot === "off_hand"
+              : (command.equipmentSlot === "main_hand" || command.equipmentSlot === "off_hand")
+                && other.equipment_slot === "two_hands"
+          return sameSlot || handConflict
+        })
+        if (conflict) {
+          throw new EngineCommandError(
+            "inventory.equipment_slot_occupied",
+            "Equipment slot is occupied; choose a destination for the equipped item first",
+          )
         }
       }
 
       const after = this.stamp({
         ...item,
         equipped: command.equipped,
-        equipment_slot:
-          command.equipmentSlot ?? item.equipment_slot,
+        equipment_slot: command.equipmentSlot ?? item.equipment_slot,
+        ...(command.equipped ? {
+          holder_item_id: null,
+          placement_kind: "root" as const,
+          placement_index: null,
+          grid_x: null,
+          grid_y: null,
+          grid_rotation: 0 as const,
+        } : {}),
       })
       this.items.set(item.id, after)
 
@@ -336,7 +990,6 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         affectedCharacterIds: [command.characterId],
         before,
         after: copy(after),
-        ...(relatedChanges.length ? { relatedChanges } : {}),
       })
     }
 
@@ -345,13 +998,10 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
       (item.category === "consumable" ? "quantity" : "none")
 
     if (mode === "none") {
-      return this.finish(command, {
-        kind: command.kind,
-        itemId: item.id,
-        affectedCharacterIds: [command.characterId],
-        before,
-        after: copy(item),
-      })
+      throw new EngineCommandError(
+        "inventory.not_usable",
+        "Inventory item is not usable",
+      )
     }
 
     if (mode === "charges") {

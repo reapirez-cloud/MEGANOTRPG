@@ -11,6 +11,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Fixed the UI 1.0 character-sheet black screen introduced by the shared Character Runtime hookup: persistent resource resolution now consumes the campaign access already provided by AuthGate/AuthContext instead of calling the legacy CharacterContext.
+
 - Rebuilt the player character sheet into one continuous image-led RPG surface: 16:9 character art with Bio/Diary in the image, Inventory immediately below it, a 50/50 quick-stat/ability matrix, compact class-resource rows with resource-specific marks, vertically scrollable spell-slot rows, and quiet expandable abilities/defenses. The main sheet no longer carries the old permanent tab rail; class, magic, inventory, diary and art stay available as focused deeper screens.
 
 - Voss floating orb now tracks the finger directly during drag instead of easing toward every intermediate pointer position. Drag motion is compositor-driven and frame-synchronised; only the final edge snap keeps a short animation.
@@ -29,7 +31,71 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added a compatibility fallback for older class templates whose foundation is represented only by canonical level-one mechanics instead of newer `core_traits` metadata. Fighter, Cleric and Druid therefore render the same essential facts without a second copy of rules data.
 - Corrected the class-list status too: a class is marked as a translation-only card only when no active CE catalog template exists, instead of inheriting that label forever from an old authored-data flag.
 
+- Completed Inventory Stage 6 physical interaction in UI 1.0: fixed-size 46px cells, real authored item shapes, finger drag, two permanent hand cells, real bag grids, nested containers, generic external carry cells and a scrollable roughly-six-cell mobile viewport. Sparse shapes use their occupied cells as pointer hit areas instead of invisible rectangular blockers.
+- Equipment and carried storage now remain physically explicit: equipping uses the same canonical item instance, while unequipping requires a real hand/bag/external destination. Invalid or stale drops reload canonical server state instead of leaving a fake client position.
+- Snake exposes the same inspect/open/rotate/move/equip inventory operations as direct touch interaction; the inventory drag threshold now cancels Snake long-press before the two gestures can race.
+
+- Completed Inventory Stage 7 load presentation: inventory now reports carried mass in kilograms against the CE-resolved carrying limit, surfaces unknown-weight items instead of pretending they weigh zero, and marks overload without inventing automatic combat/movement penalties.
+- Physical item authoring now exposes per-unit weight in kg. Voss is instructed to author `weight_per_unit` in kilograms and may create normal CE `carrying.capacityKg` bonuses when an item/feature increases carrying capacity.
+- Specialized container usage is visible in the active bag view, so purpose-built capacities such as a quiver's arrow allowance are not invisible server trivia.
+
+- Completed Inventory Stage 8 world storage UI: persistent chests/stashes/crates live inside location detail, can be opened to inspect real contents, and expose Snake actions for putting in/taking out items.
+- The character inventory now exposes accessible persistent storage at the character's current location through **«Оставить в мире»**, using the same canonical Cheburashka move rather than a UI copy.
+- Player-created stashes are private owner storage at the active character's current location; GM storage may be shared, owner-only or GM-only according to explicit policy.
+
 ### Runtime and architecture changes
+
+- Completed Inventory Stage 5 physical authoring: Chasovoy item definitions now use a validated physical profile and strict v2 create/revise RPCs; ordinary item authoring has reusable physical presets and a GM shape editor.
+- Added the immutable standard container library (simple 1×1, purse, pouch, bag, travel bag, backpack, large backpack/sack, quiver and two chest sizes). Standard containers are issued as concrete Cheburashka instances and can be renamed per instance for narrative placement without anatomical carry slots.
+- Voss can now create unusual/magical container profiles and revise existing campaign item definitions while preserving existing mechanics on geometry-only changes. System definitions remain immutable; altered standard bags become campaign variants. Live `voss-agent` was deployed as version 32.
+- Safely normalized legacy quantity-one stacks to instances. Ambiguous quantity>1 legacy stacks were preserved and marked for Stage 11 review rather than being silently split or merged.
+
+- Completed and audited Inventory Stage 6 in Cheburashka. Canonical placement now covers root/grid/hand/external state, exact shape-mask collision, holder legality, rotation, nested containers, optimistic versions and per-character transaction locking. The dev client uses guarded create/update/equipment/spatial RPCs; legacy holder-only state remains only for compatibility with the still-deployed `main`.
+- Added deferred database integrity validation so changing an item definition/profile, container geometry/category, character ownership or external-carry provider cannot leave an already committed placement invalid. Occupied external cells cannot be orphaned, and final equipment state rejects same-slot and two-hands/main/off-hand conflicts.
+- Sealed equipment bypasses: generic create/update cannot toggle `equipped`, `set_equipped_v2(false)` cannot unequip into nowhere, and authenticated spatial moves now use `move_inventory_item_v3`, which rejects moving equipped items to abstract root/free state.
+- Added a Cheburashka-owned safe physical-profile projection. A player receives the exact geometry used by server validation without needing read access to hidden Chasovoy definition prose/mechanics, keeping client preview and authoritative placement on one physical model.
+- Applied live Stage 6 migrations `20260916044954_cheburashka_stage6_spatial_inventory`, `20260916045859_cheburashka_stage6_equipment_transfer_bridge`, `20260916050604_cheburashka_stage6_placement_constraint_hardening`, `20260916052417_cheburashka_stage6_integrity_closure`, `20260916053336_cheburashka_stage6_profile_projection`, `20260916053628_cheburashka_stage6_equipment_state_guard` and `20260916053859_cheburashka_stage6_move_destination_guard`.
+
+- Completed Inventory Stage 7. Cheburashka now derives load from canonical item instances in kg; bulk stacks multiply per-unit mass by quantity and nested container contents contribute exactly once. Unknown mass remains explicit in the load projection.
+- Character Engine now resolves base carrying capacity as **Strength × 6.8 kg** and supports ordinary numeric contributions on `carrying.capacityKg`. This is the same mechanics path used by item/feature/class/GM effects rather than an inventory-only exception.
+- Applied live migration `20260916090000_cheburashka_stage7_weight_capacity`: legacy non-null item weights were converted once from old D&D-facing pound values to kg with audit markers; current definition-level legacy weights are advanced through immutable Chasovoy revisions where applicable.
+- Specialized container capacities are authoritative through deferred validation under the per-character inventory advisory lock. Client preflight mirrors that rule, so a quiver-style `50 arrows` cap is both concurrency-safe and immediately understandable in UI.
+- Stage 7 intentionally reports overload without hard-coding speed/action penalties. Tactical encumbrance consequences remain an explicit future rules choice rather than Cheburashka guessing campaign law.
+- Technical debt recorded: broaden CE buff/effect authoring so persistent/temporary numeric buffs across items, features, classes and GM effects share one consistent creation/explanation/management flow instead of adding target-specific UI one by one.
+
+- Completed Inventory Stage 8 persistent world storage. Larisa owns storage location/visibility/access/lifecycle while Cheburashka owns the physical root container and contents; there is no parallel `world_inventory_items` truth.
+- Generalized Cheburashka item ownership to exactly one owner scope: character or world storage. Whole-instance moves preserve row identity, nested container transfers preserve the subtree, and partial bulk moves split quantity without duplicating totals.
+- Added server-authoritative storage/root/location/campaign integrity, explicit player/GM access policy, optimistic versions, command receipts and advisory locks spanning both character and world-storage scopes.
+- Applied live Stage 8 migrations `20260916070000_cheburashka_stage8_world_storage` and `20260916073000_cheburashka_stage8_integrity_closure`. The closure also keeps Larisa storage name/description synchronized with the physical Cheburashka root container.
+- Stage 8 deliberately stops before scene/chat loot Surfaces; those remain Stage 9 rather than being disguised as persistent chests.
+
+- Completed Inventory Stage 9 as a mechanics-only scene/Surface layer. Existing `chat_rooms(room_type='scene')` remain the durable scene/history entity; Larisa now owns one-current-scene membership plus Surface access/lifecycle, while Cheburashka owns the actual exposed item instances.
+- Added `scene / selected / gm` Surface access, atomic character movement between scenes, optional scene location/time sync and automatic selected-access cleanup when a character leaves a scene.
+- Generalized Cheburashka owner scope to exactly one of character / world storage / scene Surface. Whole containers preserve the same root/descendant identities across Surface moves; partial bulk quantities split without creating a second item ledger.
+- Added server-authoritative first-take semantics: character + Surface advisory locks, source `FOR UPDATE`, optimistic item versions, command receipts, and stable `surface.item_already_taken` / `surface.item_stale` results. Realtime only invalidates/refetches.
+- Applied live Stage 9 migrations `20260916090500_cheburashka_stage9_scene_surfaces` and `20260916091500_cheburashka_stage9_surface_membership_integrity`.
+- **No chat UI was implemented or redesigned in Stage 9.** The stage supplies the mechanics that a later presentation pass may render.
+
+- Completed Inventory Stage 10 as a mechanics/runtime-only Trade layer. GENA owns the two-party Trade session, explicit inventory visibility, interest markers, negotiation thread/history, offer revision and A/B acceptance; Cheburashka remains the sole owner of physical item settlement.
+- Added explicit `item / container / assortment` trade visibility. Starting Trade exposes zero private inventory by default, and Trade access is bound to normal access to the containing chat room.
+- Added non-binding “Хочу это” interest markers and a trade-scoped discussion thread; neither mutates the offer revision or owns inventory.
+- Added revisioned offers with exact item version + subtree integrity fingerprint. Every material offer mutation advances revision and clears both acceptances.
+- Added atomic same-revision settlement: the second acceptance calls a private Cheburashka batch exchange that locks both inventories/items, revalidates ownership/version/quantity/subtree state and commits all transfers or none. Whole instances/containers preserve identity; partial bulk stacks split normally; physical currency is ordinary inventory.
+- Offer references intentionally do not reserve inventory. Outside changes invalidate the revision with stable `trade.offer_item_*` codes, clear both acceptances and leave the session open instead of partially transferring.
+- Added the ready-to-connect typed `src/gena-trade/**` API/runtime and Realtime invalidation bridge so a future Trade block/screen/modal can attach without knowing SQL or rebuilding mechanics.
+- Applied live Stage 10 migrations `20260916100000_gena_stage10_trade_sessions`, `20260916101500_cheburashka_stage10_atomic_trade_commit`, `20260916102500_gena_stage10_acceptance_closure`, `20260916103500_gena_stage10_room_authority_closure` and `20260916104500_gena_stage10_trade_read_model_closure`.
+- **No Trade UI or chat UI was implemented in Stage 10.** Presentation remains intentionally open while the connection contract is stable.
+
+- Started Inventory Stage 5A: added the canonical Chasovoy `inventory_profile` contract for instance/bulk packing, shape masks, physical dimensions and container internal grids. Cheburashka and the GM item editor now default new items to independent instances; bulk stacks are explicit exceptions.
+- Added rollout-safe live Supabase validation for item physical profiles and changed the inventory DB default to `instance`. The old production client keeps a narrow compatibility path when it omits `stack_mode` on an existing multi-quantity item.
+- Separated container geometry from presentation: a magical 100×100 cm interior may be a 20×20 logical grid while the future mobile inventory keeps a readable fixed viewport and pans instead of shrinking cells. Container physical metadata remains separate from ordinary item mechanics, so bags can still carry bonuses, resistances, activated effects and curses through the existing mechanics/CE path.
+- Wired GM catalog and Voss AI Draft application to the same physical profile. Issuing quantity N of an instance definition now creates N independent objects instead of silently creating a stack; Voss item drafts must provide a valid physical profile before canonical application.
+
+- Replaced the earlier coarse inventory roadmap with a canonical 12-stage implementation plan. Stages 1–4 remain complete; Stage 5 now owns physical item profiles/shape authoring, Stage 6 spatial drag/grid/bags/hands/generic carry, Stage 7 weight/capacity, Stage 8 persistent chests/stashes, Stage 9 chats/scenes/Surfaces, Stage 10 Trade, Stage 11 Chasovoy adoption and Stage 12 certification. The product contract was also corrected to remove anatomical back/hip/shoulder simulation: ordinary bag packing is geometry-first, characters always have two 1×1 hands, and extra external carrying uses generic 1×1 cells.\n\n- Added the Voss physical item authoring policy to the live agent system prompt: semantic role is now separated from physical packing, stacking defaults to off, herbs/powders/ammunition/currency may use bounded 1×1 bulk stacks, ore chunks and other distinct ingredients remain individual shaped items, small potions/scrolls remain separate 1×1 instances, and ambiguous items default to instance. The same policy is locked in the inventory product contract and regression tests.\n\n- Added the canonical inventory product contract for future audits/implementation: physical grid shapes, socket/carry placement, equipment, physical currency, weight, scene/chat surfaces with atomic take, and dedicated two-party trade blocks. The contract explicitly marks Stages 1–4 as current and later mechanics as future work, and records the linked chat/scene movement debt without claiming it is implemented.
+
+- Removed the accidental UI 1.0 dependency on legacy CharacterContext. `useCharacterResourceStates` now reads `campaignId` / manager authority from AuthContext's authenticated campaign scope, so the shared CE runtime works in both UI 1.0 and legacy surfaces without breaking the hard-isolation contract. No Supabase schema/data migration was needed.
+
+- Removed the redundant UI 1.0 `CampaignAccessGate`. `AuthGate` is now the single authentication + membership + invite boundary, eliminating a second campaign lookup/source of truth and restoring the Playwright E2E auth bypass contract.
 
 - The character-sheet redesign is presentation-only over the existing shared `ResolvedCharacterContract`. Canonical HP, stats, resources and spell slots still come from the Character Runtime / CE path; no Supabase schema or ownership boundary was changed.
 
@@ -51,6 +117,39 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Live Supabase contains `20260915184110_cheburashka_stage5_complete_authoring_library`; strict v2 reference RPCs are authenticated-only, the system container definitions are present, and the inventory currently has zero quantity-one stacks. Three multi-quantity legacy stacks remain intentionally flagged for later review.
+- Added `inventoryStage5Completion.test.ts` covering prepared item/container profiles, GM shape authoring, system-definition immutability, narrative instance naming, strict v2 Chasovoy writes, Voss campaign-item revisions and non-destructive legacy migration.
+
+- Added/extended `cheburashkaStage6Spatial.test.ts` to lock exact rotation masks, overlap/bounds, two hands, external-capacity provider loss, same-instance equipment, destination-required unequip, create/update equipment bypass prevention, guarded v3 moves, safe profile projection, sparse-shape pointer hit-testing and Snake/drag gesture separation.
+- Live rollback smoke verified external-capacity orphan rejection, holder/profile invalidation rejection, direct-equip create rejection, destinationless unequip rejection, two-hands/main-hand conflict rejection, safe profile projection completeness and rejection of moving a real equipped item to abstract root. Smoke transactions were rolled back.
+- New Stage 6 public RPCs are authenticated-only and not executable by `anon`; authenticated access to spatial v2 was revoked in favor of guarded v3. Existing project-wide Supabase advisor warnings remain tracked for final Stage 12 certification rather than being misreported as new Stage 6 defects.
+- Audited Stage 6 code head `a0e3ba31cd47c288fa57adb63d6c86507b156745` passed Build, Lint, repository tests, Storybook build and Playwright smoke in GitHub Actions run `35060509264`.
+
+- Added `cheburashkaStage7WeightCapacity.test.ts` covering Strength-based metric carrying capacity, a CE `+ carrying.capacityKg` buff, nested/stack load calculation, explicit unknown mass and specialized-capacity overflow preflight.
+- Final Inventory Stage 7 closure head `4fb4c45b0117b1d960ee32ac902262d64ef8299d` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `35064559977`.
+
+- Added `cheburashkaStage8WorldStorage.test.ts` covering character ↔ world owner scopes, full nested-container subtree identity preservation, partial-stack conservation, Larisa storage identity across location moves, narrow player stash authority and migration/security invariants.
+- Live rollback smoke created a temporary persistent chest, moved a real item into its Cheburashka root and returned it to the character, verified owner/holder invariants, then rolled the entire transaction back with no test storage/item left behind.
+- Verified Stage 8 public RPC grants are authenticated-only and not executable by `anon`; project-wide security advisor cleanup remains Stage 12 rather than being misreported as completed here.
+
+- Added `cheburashkaStage9SceneSurfaces.test.ts` covering same-instance nested container movement, bulk quantity conservation, stable already-taken behavior, Surface owner-scope holder isolation, scene membership movement and migration/concurrency invariants.
+- Live Stage 9 rollback smoke created a temporary game scene and selected Surface, moved a real item onto the Surface and back without changing its ID, verified the second take returns `surface.item_already_taken`, verified leaving the scene clears selected access, and rolled all smoke state back.
+- Stage 9 Surface/scene Realtime is tested/defined as invalidation only; transaction locks and item versions remain the winner authority.
+
+- Added `genaStage10TradeMechanics.test.ts` covering Trade-vs-Surface ownership, explicit visibility, non-revisioning interest/thread, offer revision resets, no-reservation references, same-revision dual acceptance, atomic Cheburashka settlement, stale invalidation, nested-container identity, bulk split, physical-currency semantics, inspectable history, typed API wiring and Realtime invalidation-only behavior.
+- Live Stage 10 rollback smoke temporarily attached a PC to the current user, created disposable PC/NPC items, exposed an NPC assortment, completed a two-way same-revision Trade and verified both canonical item IDs swapped owners atomically; the transaction was rolled back.
+- A second live rollback scenario changed an offered item after the first acceptance; the second acceptance returned `trade.offer_item_stale`, advanced the revision, cleared both acceptances and transferred nothing.
+- Stage 10 smoke also caught and closed two live defects before completion: SQL NULL could be mistaken for both-side acceptance, and a Trade visible-inventory CTE had an ambiguous PL/pgSQL output-column name.
+- Final live cleanup audit reports zero Stage 10 smoke items/messages/sessions and zero inventory owner-scope violations.
+
+- Added Stage 5 inventory-profile regression coverage for instance-first defaults, explicit bulk stacks, large magical-container interiors without UI viewport metadata, and preservation of container geometry while ordinary mechanics are edited.
+- Applied live Supabase migration `20260915182537_cheburashka_stage5_inventory_profile_foundation` and verified the DB default / compatibility routing plus acceptance of a 20×20 magical-bag profile.
+- GitHub Actions do not currently report a run/status for direct `dev` head `c819636`; the isolated execution environment also cannot clone GitHub externally, so a full repository `npm test` / build result is not claimed for this work unit.
+
+- Added `uiV1CharacterRuntimeProvider.test.ts` to lock the shared runtime onto AuthContext campaign access and prevent UI 1.0 from regaining a legacy CharacterContext/CharacterProvider dependency.
+
+- Extended the UI 1.0 runtime regression to require a single AuthGate boundary and reject reintroduction of the redundant CampaignAccessGate.
+
 - Added `characterSheetOpusLayout.test.ts` to lock the 16:9 hero/inventory hierarchy, 50/50 core matrix, expandable abilities, resource-specific presentation, scroll-bounded spell slots and the no-second-runtime constraint.
 
 - Added `vossOrbDrag.test.ts` to prevent positional transitions or React-state-per-pointermove regressions from making the floating AI orb lag behind the finger again.
@@ -63,6 +162,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Media sessions are keyed by Snake surface id so opening another asset always starts with fresh page/zoom state; page-arrow controls are suppressed while zoomed to avoid accidental navigation during image panning.
 
 ### Known incomplete work
+
+- Inventory Stages 1–10 are complete. Stage 11 (Chasovoy adoption + legacy inventory migration) is next; Stages 11–12 remain intentionally future work. Stage 9 Surface UI and Stage 10 Trade UI presentation remain intentionally separate from their completed mechanics.
+- CE technical debt remains: generalize the buff/effect authoring and management UX beyond the newly supported `carrying.capacityKg` target.
+- Legacy inventory v1 RPCs and transitional `legacy` placement cannot be fully retired while the current production `main` still uses the shared live Supabase project; retirement is deferred to production promotion/final certification rather than breaking the live client during dev.
 
 ---
 

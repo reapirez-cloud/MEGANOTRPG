@@ -100,7 +100,7 @@ test("Cheburashka rejects stale optimistic updates", async () => {
   )
 })
 
-test("equipping reports every automatically displaced instance", async () => {
+test("equipping refuses to displace another equipped instance without a real destination", async () => {
   const shield = item("shield", {
     name: "Старый щит",
     equipment_slot: "off_hand",
@@ -113,31 +113,28 @@ test("equipping reports every automatically displaced instance", async () => {
     equipped: false,
     version: 7,
   })
-  const engine = new CheburashkaEngine(
-    new MemoryCheburashkaStorage([shield, twoHanded]),
+  const storage = new MemoryCheburashkaStorage([shield, twoHanded])
+  const engine = new CheburashkaEngine(storage)
+
+  await assert.rejects(
+    () => engine.execute({
+      kind: "inventory.set_equipped",
+      context: context("00000000-0000-4000-8000-000000000102"),
+      characterId,
+      itemId: "greatsword",
+      equipped: true,
+      equipmentSlot: "two_hands",
+      expectedVersion: 7,
+    }),
+    (reason: unknown) =>
+      reason instanceof EngineCommandError
+      && reason.code === "inventory.equipment_slot_occupied",
   )
 
-  const result = await engine.execute({
-    kind: "inventory.set_equipped",
-    context: context("00000000-0000-4000-8000-000000000102"),
-    characterId,
-    itemId: "greatsword",
-    equipped: true,
-    equipmentSlot: "two_hands",
-    expectedVersion: 7,
-  })
-
-  assert.equal(result.value.after?.equipped, true)
-  assert.equal(result.value.after?.version, 8)
-  assert.equal(result.value.relatedChanges?.length, 1)
-  assert.equal(result.value.relatedChanges?.[0]?.before.id, "shield")
-  assert.equal(result.value.relatedChanges?.[0]?.before.equipped, true)
-  assert.equal(result.value.relatedChanges?.[0]?.after.equipped, false)
-  assert.equal(result.value.relatedChanges?.[0]?.after.version, 3)
-  assert.deepEqual(
-    new Set(result.effects.itemIds),
-    new Set(["greatsword", "shield"]),
-  )
+  assert.equal((await storage.getItem("shield"))?.equipped, true)
+  assert.equal((await storage.getItem("shield"))?.version, 2)
+  assert.equal((await storage.getItem("greatsword"))?.equipped, false)
+  assert.equal((await storage.getItem("greatsword"))?.version, 7)
 })
 
 test("replaying the same command id is idempotent", async () => {
@@ -163,6 +160,9 @@ test("replaying the same command id is idempotent", async () => {
 test("partial transfer keeps Chasovoy definition provenance", async () => {
   const source = item("stack", {
     quantity: 3,
+    category: "material",
+    equipment_slot: null,
+    stack_mode: "stack",
     version: 5,
     definition_id: "00000000-0000-4000-8000-000000000099",
     definition_revision: 11,

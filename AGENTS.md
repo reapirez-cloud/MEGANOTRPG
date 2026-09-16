@@ -69,6 +69,12 @@ The named-engine ownership boundaries are intentional:
 - **TOBIK — Roll Engine:** owns authoritative dice planning/resolution and returns structured results; it never applies HP or judges the scene.
 - **SNAKE — UI Interaction / Action Agent:** owns no canonical domain state. It centralizes right-click/long-press interaction, reusable action surfaces and dispatch of a selected typed action into the already-authoritative GENA / Oracle / owner path. Snake does not infer business behavior from entity names/types and MUST follow `docs/SNAKE_INTERACTION_CONTRACT.md`.
 
+### Inventory product contract — mandatory
+
+Before auditing or changing inventory UX, item placement, equipment/carry slots, containers, weight, currency, loot surfaces, trade or scene/chat item interaction, read **both** `docs/INVENTORY_PRODUCT_CONTRACT.md` and `docs/INVENTORY_IMPLEMENTATION_PLAN.md`.
+
+The product contract defines what the finished system must feel like; the implementation plan defines the canonical 12-stage delivery order and current checkpoint. Audits must distinguish current implementation from target behavior and must not silently replace the intended physical inventory model with a generic flat grid, abstract wallet, anatomical carry simulator or unrelated trade design.
+
 ### Mandatory command-path split
 
 Normal gameplay:

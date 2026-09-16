@@ -4,6 +4,7 @@ export type SkillRank = 0 | 1 | 2
 export type InventoryCategory = "equipment" | "consumable" | "tool" | "book" | "trinket" | "quest" | "material" | "currency" | "container" | "other"
 export type EquipmentSlot = "main_hand" | "off_hand" | "two_hands" | "head" | "neck" | "shoulders" | "chest" | "hands" | "wrists" | "waist" | "legs" | "feet" | "back" | "ring_left" | "ring_right" | "ammo" | "other"
 export type ItemUsageMode = "none" | "quantity" | "charges"
+export type InventoryStackMode = "stack" | "instance"
 export type SpellSlotState = { max: number; used: number }
 
 export type CharacterSheet = {
@@ -21,13 +22,25 @@ export type CharacterSheet = {
 }
 
 export type InventoryItem = {
-  id: string; character_id: string; name: string; quantity: number; weight: number | null; equipped: boolean
+  id: string; character_id: string | null; world_storage_id?: string | null; surface_id?: string | null; name: string; quantity: number; weight: number | null; equipped: boolean
   category: InventoryCategory; equipment_slot: EquipmentSlot | null; image_url: string | null; description: string
   /** Stable Chasovoy definition identity when this is an issued catalog item. */
   definition_id?: string | null; definition_revision?: number | null
   mechanics?: StoredMechanics
   /** Cheburashka-owned persistent use state. Older rows are normalized by its adapter. */
   usage_mode?: ItemUsageMode; charges_current?: number | null; charges_max?: number | null
+  /** "stack" means quantity may be >1; "instance" is always one independently stateful object. */
+  stack_mode?: InventoryStackMode
+  /** Parent Cheburashka container. Null means the current owner scope root. */
+  holder_item_id?: string | null
+  /** Stage 6 canonical placement. "legacy" exists only for pre-spatial production compatibility. */
+  placement_kind?: "root" | "grid" | "hand" | "external" | "surface" | "legacy"
+  placement_index?: number | null
+  grid_x?: number | null
+  grid_y?: number | null
+  grid_rotation?: 0 | 90 | 180 | 270
+  /** Resolved Chasovoy physical profile for inventory presentation/preflight. */
+  inventory_profile?: Record<string, unknown> | null
   item_state?: Record<string, unknown>; version?: number
   sort_order: number; created_at: string; updated_at: string
 }
@@ -61,6 +74,7 @@ export type InventoryInput = {
   definition_id?: string | null; definition_revision?: number | null
   mechanics?: StoredMechanics
   usage_mode?: ItemUsageMode; charges_current?: number | null; charges_max?: number | null
+  stack_mode?: InventoryStackMode
   item_state?: Record<string, unknown>
 }
 export type SpellInput = {

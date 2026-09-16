@@ -110,8 +110,8 @@ Oracle stores nothing.
 The Oracle surface exposes the current GM mutation capabilities of all four owners:
 
 - characters: create, update, delete, active assignment, avatar, life state, visibility, NPC reveal, HP, sheet mechanics, spellcasting access, spell/options/features, resources, recovery, template assignment/removal and source suppression;
-- inventory: create, update, remove, equip, consume and transfer;
-- world: discovery, character position, scene position, participants/sync, location CRUD/visibility/archive/events, descriptive campaign-announcement publishing, location section CRUD, location link CRUD and NPC habitat attachment;
+- inventory: create, update, remove, equip, consume, character transfer, persistent-world storage moves, direct Surface loot creation and character ↔ Surface moves;
+- world: game-scene creation, current character scene movement, scene position, participants/sync, Surface create/update/archive/access policy, discovery, character position, location CRUD/visibility/archive/events, descriptive campaign-announcement publishing, location section CRUD, location link CRUD, NPC habitat attachment and persistent world storage;
 - definitions: create, revise and archive.
 
 A new GM mutation is not added directly to React first. Its owner gets the command and persistence boundary first; Oracle then exposes that owner command to the GM Cabinet.

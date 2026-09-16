@@ -26,7 +26,15 @@ export class LarisaEngine {
   }
 
   async execute(command: LarisaCommand): Promise<EngineCommandResult<WorldMutation>> {
-    if (command.context.authority !== "gm" && command.context.authority !== "system") {
+    const playerStorageCommand =
+      command.kind === "world.storage_create"
+      || command.kind === "world.storage_update"
+      || command.kind === "world.storage_set_archived"
+    if (
+      command.context.authority !== "gm"
+      && command.context.authority !== "system"
+      && !(command.context.authority === "player" && playerStorageCommand)
+    ) {
       throw new EngineCommandError("world.gm_required", `${command.kind} requires GM authority`)
     }
     if (command.kind === "world.campaign_announcement_publish") {

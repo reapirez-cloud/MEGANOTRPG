@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react"
 import { createEngineCommandContext } from "../engine-contracts/index.ts"
+import { characterResolutionBus } from "../engine-runtime/runtimeSignals.ts"
 import { shapoklyak } from "../entity-engine/runtime.ts"
 import { cheburashka } from "../inventory-engine/runtime.ts"
+import type { InventoryPhysicalProfile } from "../inventory-engine/profile.ts"
 import { oracle } from "../oracle-engine/runtime.ts"
 import { supabase } from "../lib/supabase"
 import { deleteCampaignMediaObject } from "../lib/mediaUpload"
@@ -138,6 +140,10 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
     return () => { cancelled = true }
   }, [load])
 
+  useEffect(() => characterResolutionBus.subscribe(characterId, (request) => {
+    if (request.source === "cheburashka") void reloadInventory()
+  }), [characterId, reloadInventory])
+
   const updateSheet = useCallback(async (input: Partial<CharacterSheet>): Promise<Result> => {
     const patch = { ...input }
     delete patch.character_id
@@ -152,39 +158,48 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
     }
   }, [canManage, characterId, gmContext, playerContext, reloadSheet])
 
-  const addInventoryItem = useCallback(async (input: InventoryInput): Promise<Result> => {
+  const addInventoryItem = useCallback(async (input: InventoryInput, inventoryProfile?: InventoryPhysicalProfile | null): Promise<Result> => {
     if (!canManage) return { ok: false, error: "Предметы создаёт ГМ или владелец." }
     try {
-      const result = await oracle.inventory.create(gmContext(), characterId, input)
+      const result = await oracle.inventory.create(gmContext(), characterId, input, inventoryProfile)
       const row = result.value.after
       if (row) setInventory((current) => sortInventory([...current, row]))
       return { ok: true }
     } catch (reason) { return failure(reason, "Не удалось создать предмет.") }
   }, [canManage, characterId, gmContext])
 
-  const updateInventoryItem = useCallback(async (itemId: string, input: InventoryInput): Promise<Result> => {
+  const updateInventoryItem = useCallback(async (itemId: string, input: InventoryInput, inventoryProfile?: InventoryPhysicalProfile | null): Promise<Result> => {
     if (!canManage) return { ok: false, error: "Состав предмета изменяет ГМ или владелец." }
     try {
-      const result = await oracle.inventory.update(gmContext(), characterId, itemId, input)
+      const item = inventory.find((entry) => entry.id === itemId)
+      const version = Number(item?.version ?? 0)
+      if (!Number.isInteger(version) || version < 1) throw new Error("Inventory item has no valid version")
+      const result = await oracle.inventory.update(gmContext(), characterId, itemId, input, version, inventoryProfile)
       const row = result.value.after
       if (row) setInventory((current) => sortInventory(current.map((item) => item.id === itemId ? row : item)))
       return { ok: true }
     } catch (reason) { return failure(reason, "Не удалось обновить предмет.") }
-  }, [canManage, characterId, gmContext])
+  }, [canManage, characterId, gmContext, inventory])
 
   const deleteInventoryItem = useCallback(async (itemId: string): Promise<Result> => {
     if (!canManage) return { ok: false, error: "Удалять предметы может ГМ или владелец." }
     try {
-      await oracle.inventory.remove(gmContext(), characterId, itemId)
+      const item = inventory.find((entry) => entry.id === itemId)
+      const version = Number(item?.version ?? 0)
+      if (!Number.isInteger(version) || version < 1) throw new Error("Inventory item has no valid version")
+      await oracle.inventory.remove(gmContext(), characterId, itemId, version)
       setInventory((current) => current.filter((item) => item.id !== itemId))
       return { ok: true }
     } catch (reason) { return failure(reason, "Не удалось удалить предмет.") }
-  }, [canManage, characterId, gmContext])
+  }, [canManage, characterId, gmContext, inventory])
 
   const setInventoryEquipped = useCallback(async (itemId: string, equipped: boolean, equipmentSlot: InventoryItem["equipment_slot"]): Promise<Result> => {
     try {
+      const item = inventory.find((entry) => entry.id === itemId)
+      const version = Number(item?.version ?? 0)
+      if (!Number.isInteger(version) || version < 1) throw new Error("Inventory item has no valid version")
       if (canManage) {
-        await oracle.inventory.setEquipped(gmContext(), characterId, itemId, equipped, equipmentSlot)
+        await oracle.inventory.setEquipped(gmContext(), characterId, itemId, equipped, equipmentSlot, version)
       } else {
         await cheburashka.execute({
           kind: "inventory.set_equipped",
@@ -193,11 +208,35 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
           itemId,
           equipped,
           equipmentSlot,
+          expectedVersion: version,
         })
       }
       return reloadInventory()
     } catch (reason) { return failure(reason, "Не удалось изменить экипировку.") }
-  }, [canManage, characterId, gmContext, playerContext, reloadInventory])
+  }, [canManage, characterId, gmContext, inventory, playerContext, reloadInventory])
+
+  const consumeInventoryItem = useCallback(async (itemId: string, amount = 1): Promise<Result> => {
+    const item = inventory.find((entry) => entry.id === itemId)
+    const version = Number(item?.version ?? 0)
+    if (!item || !Number.isInteger(version) || version < 1) return { ok: false, error: "Предмет уже изменился. Обнови инвентарь." }
+    try {
+      if (canManage) {
+        await oracle.inventory.consume(gmContext(), characterId, itemId, amount, version)
+      } else {
+        await cheburashka.execute({
+          kind: "inventory.consume",
+          context: playerContext(),
+          characterId,
+          itemId,
+          amount,
+          expectedVersion: version,
+        })
+      }
+      return reloadInventory()
+    } catch (reason) {
+      return failure(reason, "Не удалось использовать предмет.")
+    }
+  }, [canManage, characterId, gmContext, inventory, playerContext, reloadInventory])
 
   const setSpellcastingEnabled = useCallback(async (enabled: boolean): Promise<Result> => {
     if (!canManage) return { ok: false, error: "Доступ к магии изменяет ГМ или владелец." }
@@ -293,7 +332,7 @@ export function useCharacterSheet(characterId: string, campaignId: string) {
   return {
     sheet, inventory, spells, spellOptions, features, posts, comments, arts,
     loading, error, reload: load, updateSheet,
-    addInventoryItem, updateInventoryItem, deleteInventoryItem, setInventoryEquipped,
+    addInventoryItem, updateInventoryItem, deleteInventoryItem, setInventoryEquipped, consumeInventoryItem,
     setSpellcastingEnabled, addSpell, updateSpell, deleteSpell,
     addSpellOption, updateSpellOption, deleteSpellOption, learnSpell, setSpellPrepared,
     addFeature, updateFeature, deleteFeature,

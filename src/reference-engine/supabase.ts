@@ -90,7 +90,7 @@ export class SupabaseChasovoyStorage implements ChasovoyStorage {
   }
 
   async createDefinition(input: ChasovoyCreateInput, _context: ChasovoyMutationContext) {
-    const { data, error } = await this.client.rpc("create_reference_definition_v1", {
+    const { data, error } = await this.client.rpc("create_reference_definition_v2", {
       p_campaign_id: input.scope === "campaign" ? input.campaignId : null,
       p_kind: input.kind,
       p_slug: input.slug,
@@ -112,7 +112,7 @@ export class SupabaseChasovoyStorage implements ChasovoyStorage {
   }
 
   async reviseDefinition(definitionId: string, input: ChasovoyRevisionInput, _context: ChasovoyMutationContext) {
-    const { error } = await this.client.rpc("revise_reference_definition_v1", {
+    const { error } = await this.client.rpc("revise_reference_definition_v2", {
       p_definition_id: definitionId,
       p_name: input.name,
       p_summary: input.summary ?? "",

@@ -1,6 +1,7 @@
 import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { engineRuntime } from "../engine-runtime/runtime.ts"
 import { supabase } from "../lib/supabase"
+import { inventoryProfileStackMode, readInventoryProfile } from "../inventory-engine/profile.ts"
 import type { ChasovoyDefinitionKind, ChasovoyJson } from "../reference-engine/index.ts"
 import type {
   EquipmentSlot,
@@ -343,6 +344,37 @@ async function preflight(
       throw new Error("Тип определения «" + (node.entity_subtype || "") + "» пока нельзя применить.")
     }
 
+    if (node.entity_type === "definition" && node.entity_subtype === "item") {
+      const payload = object(node.payload)
+      const itemData = object(payload.data)
+      const profile = readInventoryProfile(itemData.inventory_profile)
+      if (!profile) throw new Error("Предмет «" + node.name + "» должен иметь валидный data.inventory_profile перед применением.")
+      if (string(itemData.category) === "container" && !profile.container_profile) {
+        throw new Error("Контейнер «" + node.name + "» должен иметь inventory_profile.container_profile.")
+      }
+
+      const existingDefinitionId = string(payload.existing_definition_id)
+      if (existingDefinitionId) {
+        const { data, error } = await supabase
+          .from("reference_definitions")
+          .select("id,kind,scope,campaign_id,status")
+          .eq("id", existingDefinitionId)
+          .maybeSingle()
+
+        if (
+          error ||
+          !data ||
+          data.kind !== "item" ||
+          data.scope !== "campaign" ||
+          data.campaign_id !== campaignId
+        ) {
+          throw new Error(
+            "AI Draft может ревизовать только campaign-item этой кампании. Системный предмет нужно оставить неизменным и создать campaign-вариант.",
+          )
+        }
+      }
+    }
+
     await verifyCompiledMechanics(node, campaignId)
   }
 
@@ -429,10 +461,11 @@ function plannedSteps(draft: AIDraft): ApplyStep[] {
     }
 
     if (node.entity_type === "definition") {
+      const existingDefinitionId = string(object(node.payload).existing_definition_id)
       steps.push({
         key: "definition:" + node.key,
-        kind: "definition.create",
-        label: "Создать определение «" + node.name + "»",
+        kind: existingDefinitionId ? "definition.revise" : "definition.create",
+        label: (existingDefinitionId ? "Изменить определение «" : "Создать определение «") + node.name + "»",
       })
     }
   }
@@ -503,6 +536,37 @@ async function finishRun(
   return String(data || "")
 }
 
+async function loadDefinitionRevision(definitionId: string) {
+  const { data: definition, error: definitionError } = await supabase
+    .from("reference_definitions")
+    .select("id,current_revision")
+    .eq("id", definitionId)
+    .maybeSingle()
+
+  if (definitionError || !definition) {
+    throw new Error("Не удалось прочитать текущее определение перед AI-ревизией.")
+  }
+
+  const { data: revision, error: revisionError } = await supabase
+    .from("reference_definition_revisions")
+    .select("name,summary,rules_text,mechanics,data")
+    .eq("definition_id", definitionId)
+    .eq("revision", definition.current_revision)
+    .maybeSingle()
+
+  if (revisionError || !revision) {
+    throw new Error("Не удалось прочитать текущую ревизию определения.")
+  }
+
+  return {
+    name: String(revision.name || ""),
+    summary: String(revision.summary || ""),
+    rulesText: String(revision.rules_text || ""),
+    mechanics: Array.isArray(revision.mechanics) ? revision.mechanics : [],
+    data: object(revision.data),
+  }
+}
+
 function inventoryInput(
   node: AIDraftNode,
   relation: AIDraftRelation,
@@ -511,6 +575,13 @@ function inventoryInput(
   const payload = object(node.payload)
   const data = object(payload.data)
   const relationData = object(relation.data)
+  const inventoryProfile = readInventoryProfile(data.inventory_profile)
+  const stackMode = inventoryProfile
+    ? inventoryProfileStackMode(inventoryProfile)
+    : string(data.stack_mode) === "stack"
+      ? "stack"
+      : "instance"
+  const requestedQuantity = Math.max(1, Math.floor(number(relationData.quantity, 1)))
   const categoryRaw = string(relationData.category || data.category)
   const category = INVENTORY_CATEGORIES.has(categoryRaw as InventoryCategory)
     ? categoryRaw as InventoryCategory
@@ -534,7 +605,7 @@ function inventoryInput(
 
   return {
     name: node.name,
-    quantity: Math.max(1, Math.floor(number(relationData.quantity, 1))),
+    quantity: stackMode === "stack" ? requestedQuantity : 1,
     weight: data.weight == null ? null : Math.max(0, number(data.weight)),
     equipped: category === "equipment" && bool(relationData.equipped),
     category,
@@ -549,6 +620,7 @@ function inventoryInput(
       ? null
       : Math.max(0, Math.min(chargesMax, number(relationData.charges_current, chargesMax))),
     charges_max: chargesMax,
+    stack_mode: stackMode,
     item_state: object(relationData.item_state),
   }
 }
@@ -709,28 +781,55 @@ export async function applyAIDraft(
       const payload = object(node.payload)
       const kind = (node.entity_subtype || "reference") as ChasovoyDefinitionKind
 
-      const result = await engineRuntime.oracle.definitions.create(
-        makeContext(campaignId, userId),
-        {
-          kind,
-          scope: "campaign",
-          campaignId,
-          slug: "ai-" + draft.id.slice(0, 8) + "-" + slugPart(node.key),
-          visibility: string(payload.visibility) === "campaign" ? "campaign" : "gm",
-          status: "active",
-          sourceKind: "custom",
-          sourceLabel: "Voss AI Draft",
-          externalId: "ai-draft:" + draft.id + ":" + node.key,
-          name: node.name,
-          summary: string(payload.summary) || node.summary,
-          rulesText: string(payload.rules_text),
-          mechanics: chasovoyJson(payload.mechanics),
-          data: object(payload.data) as Record<string, ChasovoyJson>,
-        },
-      )
+      const existingDefinitionId = string(payload.existing_definition_id)
+      const incomingData = object(payload.data) as Record<string, ChasovoyJson>
+      const currentDefinition = existingDefinitionId
+        ? await loadDefinitionRevision(existingDefinitionId)
+        : null
+      const incomingMechanics = Array.isArray(payload.mechanics)
+        ? payload.mechanics
+        : []
+      const definitionInput = {
+        name: node.name || currentDefinition?.name || "Предмет",
+        summary: Object.prototype.hasOwnProperty.call(payload, "summary")
+          ? string(payload.summary)
+          : currentDefinition?.summary || node.summary,
+        rulesText: Object.prototype.hasOwnProperty.call(payload, "rules_text")
+          ? string(payload.rules_text)
+          : currentDefinition?.rulesText || "",
+        mechanics: incomingMechanics.length
+          ? chasovoyJson(incomingMechanics)
+          : chasovoyJson(currentDefinition?.mechanics || []),
+        data: {
+          ...(currentDefinition?.data || {}),
+          ...incomingData,
+        } as Record<string, ChasovoyJson>,
+      }
 
-      const definitionId = result.value.definitionId || result.value.after?.id || ""
-      if (!definitionId) throw new Error("Часовой не вернул ID созданного определения.")
+      const result = existingDefinitionId
+        ? await engineRuntime.oracle.definitions.revise(
+            makeContext(campaignId, userId),
+            existingDefinitionId,
+            definitionInput,
+          )
+        : await engineRuntime.oracle.definitions.create(
+            makeContext(campaignId, userId),
+            {
+              kind,
+              scope: "campaign",
+              campaignId,
+              slug: "ai-" + draft.id.slice(0, 8) + "-" + slugPart(node.key),
+              visibility: string(payload.visibility) === "campaign" ? "campaign" : "gm",
+              status: "active",
+              sourceKind: "custom",
+              sourceLabel: "Voss AI Draft",
+              externalId: "ai-draft:" + draft.id + ":" + node.key,
+              ...definitionInput,
+            },
+          )
+
+      const definitionId = existingDefinitionId || result.value.definitionId || result.value.after?.id || ""
+      if (!definitionId) throw new Error("Часовой не вернул ID созданного или изменённого определения.")
 
       const ref: CanonicalRef = { type: "definition", id: definitionId }
       entityMap[node.key] = ref
@@ -803,13 +902,20 @@ export async function applyAIDraft(
         }
 
         const characterId = resolveNodeOrExisting(relation, entityMap, "character")
-        const result = await engineRuntime.oracle.inventory.create(
-          makeContext(campaignId, userId),
-          characterId,
-          inventoryInput(itemNode, relation, definition.id),
-        )
-        const itemId = result.value.itemId
-        if (!itemId) throw new Error("Чебурашка не вернула ID выданного предмета.")
+        const input = inventoryInput(itemNode, relation, definition.id)
+        const requestedQuantity = Math.max(1, Math.floor(number(object(relation.data).quantity, 1)))
+        const copies = input.stack_mode === "instance" ? requestedQuantity : 1
+        let itemId = ""
+        for (let copy = 0; copy < copies; copy += 1) {
+          const result = await engineRuntime.oracle.inventory.create(
+            makeContext(campaignId, userId),
+            characterId,
+            input,
+          )
+          const createdId = result.value.itemId
+          if (!createdId) throw new Error("Чебурашка не вернула ID выданного предмета.")
+          if (!itemId) itemId = createdId
+        }
 
         completed += 1
         await recordStep(

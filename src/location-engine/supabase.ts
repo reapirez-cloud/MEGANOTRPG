@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { EngineCommandError } from "../engine-contracts/index.ts"
 import type { CharacterWorldState, DayPeriod, LocationSummary, SceneWorldState } from "../world-state/types.ts"
-import type { LarisaCommand, LarisaSnapshot, LarisaStorage, SceneParticipant, WorldMutation } from "./types.ts"
+import type { LarisaCommand, LarisaSnapshot, LarisaStorage, SceneParticipant, SceneSurface, WorldMutation, WorldStorage } from "./types.ts"
 
 function fail(error: { message: string } | null, fallback: string): never {
   throw new EngineCommandError("world.persistence", error?.message || fallback)
@@ -13,13 +13,22 @@ export class SupabaseLarisaStorage implements LarisaStorage {
   constructor(client: SupabaseClient) { this.client = client }
 
   async loadCampaignSnapshot(campaignId: string): Promise<LarisaSnapshot> {
-    const [stateResult, locationResult, sceneResult, participantResult] = await Promise.all([
+    const [stateResult, locationResult, sceneResult, participantResult, surfaceResult, surfaceAccessResult, storageResult] = await Promise.all([
       this.client.from("character_world_state").select("character_id,campaign_id,location_id,campaign_day,day_period,updated_at,updated_by").eq("campaign_id", campaignId),
       this.client.from("locations").select("id,name,parent_location_id,image_url,visibility_mode,lifecycle_state").eq("campaign_id", campaignId).order("sort_order", { ascending: true }),
       this.client.from("chat_rooms").select("id,title,location_id,campaign_day,day_period,scene_state,room_state").eq("campaign_id", campaignId).eq("room_type", "scene"),
       this.client.from("scene_participants").select("room_id,character_id"),
+      this.client.from("scene_surfaces")
+        .select("id,campaign_id,room_id,name,description,access_mode,lifecycle_state,version")
+        .eq("campaign_id", campaignId),
+      this.client.from("scene_surface_character_access")
+        .select("surface_id,character_id"),
+      this.client.from("world_storages")
+        .select("id,campaign_id,location_id,root_item_id,storage_kind,name,description,visibility_mode,access_mode,owner_character_id,lifecycle_state,version")
+        .eq("campaign_id", campaignId)
+        .eq("lifecycle_state", "active"),
     ])
-    const error = stateResult.error || locationResult.error || sceneResult.error || participantResult.error
+    const error = stateResult.error || locationResult.error || sceneResult.error || participantResult.error || surfaceResult.error || surfaceAccessResult.error || storageResult.error
     if (error) fail(error, "Could not load world state")
     return {
       characterStates: (stateResult.data || []) as CharacterWorldState[],
@@ -34,10 +43,203 @@ export class SupabaseLarisaStorage implements LarisaStorage {
         room_state: room.room_state as "open" | "gm_only" | "closed",
       })) satisfies SceneWorldState[],
       sceneParticipants: (participantResult.data || []) as SceneParticipant[],
+      sceneSurfaces: (surfaceResult.data || []).map((surface) => ({
+        ...surface,
+        version: Number(surface.version || 1),
+        selected_character_ids: (surfaceAccessResult.data || [])
+          .filter((access) => access.surface_id === surface.id)
+          .map((access) => String(access.character_id)),
+      })) as SceneSurface[],
+      worldStorages: (storageResult.data || []).map((storage) => ({
+        ...storage,
+        version: Number(storage.version || 1),
+      })) as WorldStorage[],
     }
   }
 
   async execute(command: LarisaCommand): Promise<WorldMutation> {
+    if (command.kind === "world.scene_create") {
+      const { data, error } = await this.client.rpc("create_game_scene_v1", {
+        p_campaign_id: command.context.campaignId,
+        p_title: command.input.title,
+        p_slug: command.input.slug ?? null,
+        p_location_id: command.input.locationId,
+        p_campaign_day: command.input.campaignDay,
+        p_day_period: command.input.dayPeriod,
+        p_room_state: command.input.roomState,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not create game scene")
+      const row = (data || {}) as Record<string, unknown>
+      return {
+        kind: command.kind,
+        characterIds: [],
+        locationIds: row.locationId ? [String(row.locationId)] : [],
+        sceneIds: row.roomId ? [String(row.roomId)] : [],
+        details: row,
+      }
+    }
+
+    if (command.kind === "world.scene_move_character") {
+      const { data, error } = await this.client.rpc("move_character_to_scene_v1", {
+        p_character_id: command.characterId,
+        p_room_id: command.roomId,
+        p_sync_location: command.syncLocation,
+        p_sync_time: command.syncTime,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not move character between scenes")
+      const row = (data || {}) as Record<string, unknown>
+      return {
+        kind: command.kind,
+        characterIds: [command.characterId],
+        locationIds: row.locationId ? [String(row.locationId)] : [],
+        sceneIds: row.roomId ? [String(row.roomId)] : [],
+        details: row,
+      }
+    }
+
+    if (command.kind === "world.surface_create") {
+      const { data, error } = await this.client.rpc("create_scene_surface_v1", {
+        p_room_id: command.input.roomId,
+        p_name: command.input.name,
+        p_description: command.input.description,
+        p_access_mode: command.input.accessMode,
+        p_character_ids: command.input.characterIds,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not create scene Surface")
+      const row = (data || {}) as Record<string, unknown>
+      return {
+        kind: command.kind,
+        characterIds: command.input.characterIds,
+        locationIds: [],
+        sceneIds: [command.input.roomId],
+        details: row,
+      }
+    }
+
+    if (command.kind === "world.surface_update") {
+      const { data, error } = await this.client.rpc("update_scene_surface_v1", {
+        p_surface_id: command.surfaceId,
+        p_name: command.input.name,
+        p_description: command.input.description,
+        p_access_mode: command.input.accessMode,
+        p_character_ids: command.input.characterIds,
+        p_expected_version: command.expectedVersion,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not update scene Surface")
+      const row = (data || {}) as Record<string, unknown>
+      return {
+        kind: command.kind,
+        characterIds: command.input.characterIds,
+        locationIds: [],
+        sceneIds: row.room_id ? [String(row.room_id)] : [],
+        details: row,
+      }
+    }
+
+    if (command.kind === "world.surface_set_archived") {
+      const { data, error } = await this.client.rpc("set_scene_surface_archived_v1", {
+        p_surface_id: command.surfaceId,
+        p_archived: command.archived,
+        p_expected_version: command.expectedVersion,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not change scene Surface lifecycle")
+      const row = (data || {}) as Record<string, unknown>
+      return {
+        kind: command.kind,
+        characterIds: [],
+        locationIds: [],
+        sceneIds: row.room_id ? [String(row.room_id)] : [],
+        details: row,
+      }
+    }
+
+    if (command.kind === "world.storage_create") {
+      const { data, error } = await this.client.rpc("create_world_storage_v1", {
+        p_location_id: command.input.locationId,
+        p_storage_kind: command.input.storageKind,
+        p_name: command.input.name,
+        p_description: command.input.description,
+        p_visibility_mode: command.input.visibilityMode,
+        p_access_mode: command.input.accessMode,
+        p_owner_character_id: command.input.ownerCharacterId,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not create world storage")
+      const row = (data || {}) as Record<string, unknown>
+      return {
+        kind: command.kind,
+        characterIds: command.input.ownerCharacterId ? [command.input.ownerCharacterId] : [],
+        locationIds: [String(row.locationId || command.input.locationId)],
+        sceneIds: [],
+        details: row,
+      }
+    }
+
+    if (command.kind === "world.storage_update") {
+      const { data, error } = await this.client.rpc("update_world_storage_v1", {
+        p_world_storage_id: command.worldStorageId,
+        p_name: command.input.name,
+        p_description: command.input.description,
+        p_visibility_mode: command.input.visibilityMode,
+        p_access_mode: command.input.accessMode,
+        p_owner_character_id: command.input.ownerCharacterId,
+        p_expected_version: command.expectedVersion,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not update world storage")
+      const row = (data || {}) as Record<string, unknown>
+      return {
+        kind: command.kind,
+        characterIds: command.input.ownerCharacterId ? [command.input.ownerCharacterId] : [],
+        locationIds: row.location_id ? [String(row.location_id)] : [],
+        sceneIds: [],
+        details: row,
+      }
+    }
+
+    if (command.kind === "world.storage_move") {
+      const { data, error } = await this.client.rpc("move_world_storage_v1", {
+        p_world_storage_id: command.worldStorageId,
+        p_location_id: command.locationId,
+        p_expected_version: command.expectedVersion,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not move world storage")
+      const row = (data || {}) as Record<string, unknown>
+      const locations = [row.fromLocationId, row.toLocationId]
+        .filter((id): id is string => typeof id === "string" && Boolean(id))
+      return {
+        kind: command.kind,
+        characterIds: [],
+        locationIds: [...new Set(locations)],
+        sceneIds: [],
+        details: row,
+      }
+    }
+
+    if (command.kind === "world.storage_set_archived") {
+      const { data, error } = await this.client.rpc("set_world_storage_archived_v1", {
+        p_world_storage_id: command.worldStorageId,
+        p_archived: command.archived,
+        p_expected_version: command.expectedVersion,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not change world storage lifecycle")
+      const row = (data || {}) as Record<string, unknown>
+      return {
+        kind: command.kind,
+        characterIds: [],
+        locationIds: row.locationId ? [String(row.locationId)] : [],
+        sceneIds: [],
+        details: row,
+      }
+    }
+
     if (command.kind === "world.discover_location") {
       const { error } = await this.client.rpc("set_world_discovery", { p_character_id: command.characterId, p_entity_type: "location", p_entity_id: command.locationId, p_discovered: command.discovered })
       if (error) fail(error, "Could not update location discovery")

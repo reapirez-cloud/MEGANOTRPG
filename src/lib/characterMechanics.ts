@@ -160,7 +160,7 @@ export function playerVisibleItemMechanics(item: Pick<InventoryItem, "mechanics"
   })
 }
 
-const targetNames: Record<string, string> = { "combat.ac": "КД", "combat.initiative": "инициатива", "combat.maxHp": "макс. HP", "combat.speed": "скорость", "core.proficiencyBonus": "мастерство", "abilities.strength": "Сила", "abilities.dexterity": "Ловкость", "abilities.constitution": "Телосложение", "abilities.intelligence": "Интеллект", "abilities.wisdom": "Мудрость", "abilities.charisma": "Харизма" }
+const targetNames: Record<string, string> = { "combat.ac": "КД", "combat.initiative": "инициатива", "combat.maxHp": "макс. HP", "combat.speed": "скорость", "carrying.capacityKg": "переносимый вес, кг", "core.proficiencyBonus": "мастерство", "abilities.strength": "Сила", "abilities.dexterity": "Ловкость", "abilities.constitution": "Телосложение", "abilities.intelligence": "Интеллект", "abilities.wisdom": "Мудрость", "abilities.charisma": "Харизма" }
 function conditionLabel(condition?: CharacterCondition): string { if (!condition || condition.kind === "always") return ""; if (condition.kind === "hp_below_percent") return `при HP < ${condition.percent}%`; return "при условии" }
 function formulaLabel(value: number | FormulaExpression): string {
   if (typeof value === "number") return String(value)

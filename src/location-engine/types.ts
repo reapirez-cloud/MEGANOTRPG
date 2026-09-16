@@ -9,11 +9,77 @@ import type {
 
 export type SceneParticipant = { room_id: string; character_id: string }
 
+export type SceneSurfaceAccessMode = "scene" | "selected" | "gm"
+
+export type SceneSurface = {
+  id: string
+  campaign_id: string
+  room_id: string
+  name: string
+  description: string
+  access_mode: SceneSurfaceAccessMode
+  lifecycle_state: "active" | "archived"
+  version: number
+  selected_character_ids: string[]
+}
+
+export type GameSceneCreateInput = {
+  title: string
+  slug?: string | null
+  locationId: string | null
+  campaignDay: number
+  dayPeriod: DayPeriod
+  roomState: "open" | "gm_only"
+}
+
+export type SceneSurfaceCreateInput = {
+  roomId: string
+  name: string
+  description: string
+  accessMode: SceneSurfaceAccessMode
+  characterIds: string[]
+}
+
+export type SceneSurfaceUpdateInput = Omit<SceneSurfaceCreateInput, "roomId">
+
+export type WorldStorageKind = "stash" | "chest" | "crate" | "cache" | "other"
+export type WorldStorageVisibility = "campaign" | "owner" | "gm"
+export type WorldStorageAccess = "shared" | "owner" | "gm"
+
+export type WorldStorage = {
+  id: string
+  campaign_id: string
+  location_id: string
+  root_item_id: string
+  storage_kind: WorldStorageKind
+  name: string
+  description: string
+  visibility_mode: WorldStorageVisibility
+  access_mode: WorldStorageAccess
+  owner_character_id: string | null
+  lifecycle_state: "active" | "archived"
+  version: number
+}
+
+export type WorldStorageCreateInput = {
+  locationId: string
+  storageKind: WorldStorageKind
+  name: string
+  description: string
+  visibilityMode: WorldStorageVisibility
+  accessMode: WorldStorageAccess
+  ownerCharacterId: string | null
+}
+
+export type WorldStorageUpdateInput = Omit<WorldStorageCreateInput, "locationId" | "storageKind">
+
 export type LarisaSnapshot = {
   characterStates: CharacterWorldState[]
   locations: LocationSummary[]
   scenes: SceneWorldState[]
   sceneParticipants: SceneParticipant[]
+  sceneSurfaces: SceneSurface[]
+  worldStorages: WorldStorage[]
 }
 
 export type LocationCreateInput = {
@@ -30,6 +96,8 @@ export type LocationUpdateInput = Omit<LocationCreateInput, "parentLocationId">
 export type LarisaCommand =
   | { kind: "world.discover_location"; context: EngineCommandContext; characterId: string; locationId: string; discovered: boolean }
   | { kind: "world.set_character_position"; context: EngineCommandContext; characterId: string; locationId: string | null; campaignDay: number; dayPeriod: DayPeriod }
+  | { kind: "world.scene_create"; context: EngineCommandContext; input: GameSceneCreateInput }
+  | { kind: "world.scene_move_character"; context: EngineCommandContext; characterId: string; roomId: string | null; syncLocation: boolean; syncTime: boolean }
   | { kind: "world.set_scene_position"; context: EngineCommandContext; roomId: string; locationId: string | null; campaignDay: number; dayPeriod: DayPeriod }
   | { kind: "world.set_scene_participants"; context: EngineCommandContext; roomId: string; characterIds: string[] }
   | { kind: "world.sync_scene_participants"; context: EngineCommandContext; roomId: string; syncLocation: boolean; syncTime: boolean }
@@ -47,6 +115,13 @@ export type LarisaCommand =
   | { kind: "world.location_link_update"; context: EngineCommandContext; linkId: string; targetLocationId: string; label: string; visibilityMode?: VisibilityMode }
   | { kind: "world.location_link_delete"; context: EngineCommandContext; linkId: string }
   | { kind: "world.npc_habitat_set"; context: EngineCommandContext; npcCharacterId: string; locationId: string; attached: boolean }
+  | { kind: "world.storage_create"; context: EngineCommandContext; input: WorldStorageCreateInput }
+  | { kind: "world.storage_update"; context: EngineCommandContext; worldStorageId: string; input: WorldStorageUpdateInput; expectedVersion: number }
+  | { kind: "world.storage_move"; context: EngineCommandContext; worldStorageId: string; locationId: string; expectedVersion: number }
+  | { kind: "world.storage_set_archived"; context: EngineCommandContext; worldStorageId: string; archived: boolean; expectedVersion: number }
+  | { kind: "world.surface_create"; context: EngineCommandContext; input: SceneSurfaceCreateInput }
+  | { kind: "world.surface_update"; context: EngineCommandContext; surfaceId: string; input: SceneSurfaceUpdateInput; expectedVersion: number }
+  | { kind: "world.surface_set_archived"; context: EngineCommandContext; surfaceId: string; archived: boolean; expectedVersion: number }
 
 export type WorldMutation = {
   kind: LarisaCommand["kind"]

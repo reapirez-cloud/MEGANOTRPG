@@ -1,5 +1,6 @@
 import { ActionEngineError, resolveActions } from "./actions.ts"
 import { evaluateCondition } from "./conditions.ts"
+import { baseCarryingCapacityKg } from "./carrying.ts"
 import { resolveNumericConflicts } from "./conflicts.ts"
 import { validateCharacterEngineInput } from "./core.ts"
 import { evaluateFormula, selectFormula, type FormulaContext } from "./formulas.ts"
@@ -174,6 +175,20 @@ export function resolveCharacter(
     }),
   ) as Record<AbilityKey, ResolvedAbility>
 
+  const carryingCapacityRaw = resolveNumber(
+    "carrying.capacityKg",
+    baseCarryingCapacityKg(abilities.strength.value),
+    activeContributions,
+    state,
+    maxHp.value,
+  )
+  const carrying = {
+    capacityKg: {
+      ...carryingCapacityRaw,
+      value: Math.max(0, carryingCapacityRaw.value),
+    },
+  }
+
   const grantResolution = resolveGrantResolution(activeContributions, state, maxHp.value)
   const grants = grantResolution.grants
   const untrainedSkillBonus = untrainedSkillProficiencyFraction(grants, proficiencyBonus.value)
@@ -242,6 +257,7 @@ export function resolveCharacter(
     formulaContext[`abilities.${ability}.score`] = abilities[ability].value
     formulaContext[`abilities.${ability}.modifier`] = abilities[ability].modifier
   }
+  formulaContext["carrying.capacityKg"] = carrying.capacityKg.value
 
   // Named scalar values are intentionally ruleset-agnostic. A parser can publish
   // anything from a scaling die size to a cyberware rating and actions/resources
@@ -399,6 +415,7 @@ export function resolveCharacter(
       initiative,
     },
     passives,
+    carrying,
     spellcasting: { byAbility: spellcastingByAbility },
     values,
     resources,
