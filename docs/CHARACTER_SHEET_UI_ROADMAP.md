@@ -205,7 +205,7 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - primary grouping follows the fixed order: class → subclass → race → background → item → effect → other;
 - template-backed provenance is resolved back to the actual `rule_template`, so groups show real class/subclass/race names rather than mechanic keys;
 - legacy manual features use their explicit kind when it is trustworthy (`class_feature`, `racial_trait`); unknown provenance stays in “Прочее” rather than being guessed;
-- inside each source, rows are ordered by action → bonus action → reaction → passive → other, then alphabetically;
+- inside each source, rows are ordered by action → bonus action → reaction → passive → other, then resolved unlock level and name;
 - timing for executable mechanics comes from CE action economy; passive feature rows are not inferred from prose;
 - action availability is visible without turning the list into cards;
 - tap opens the resolved feature/action detail; long press opens Snake with “Подробнее” and “Источник” context actions;
@@ -221,7 +221,7 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - compact filters are available for prepared, concentration, ritual and school;
 - CE remains authoritative for spell identity/access/availability; spell-catalog metadata only enriches presentation fields such as concentration, school and detailed rules;
 - legacy `character_spells` rows are used only as presentation metadata fallback and are never treated as an independent preparation controller;
-- every spell row shows preparation state, school, ritual/concentration flags and the first resolved access source;
+- every spell row shows preparation state, school, ritual/concentration flags and a compact deterministic summary of resolved access sources;
 - tap opens Snake spell detail and updates `selectedSpellId`; long press exposes Snake “Подробнее” and “Источник” actions;
 - preparation-related spell detail explicitly points the player back to GENA after rest instead of offering a profile-side toggle;
 - unresolved or template-only spell accesses remain visible even when no legacy `character_spells` row exists.
@@ -321,13 +321,28 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - the standalone screen continues to inherit the same graphite/class-skin foundation, safe-area spacing and dedicated back control;
 - no inventory engine, Supabase inventory schema, Cheburashka mechanics, item placement rules or drag/drop behavior changed in this stage.
 
-### Stage 15 — Sorting/data certification
-- dirty real data;
-- multiclass;
-- missing source metadata;
-- prepared/non-prepared casters;
-- 0–9 spell levels;
-- fallback "Прочее".
+### Stage 15 — Sorting/data certification [DONE]
+- certification was run against current project data instead of synthetic-only fixtures: 11 characters, 15 template assignments, 14 legacy features and 79 legacy spell rows were present at the audit snapshot;
+- the dataset contains a real multiclass character with two class assignments and two subclass assignments, so class/subclass provenance was verified against an actual mixed-source case rather than inferred from single-class data;
+- the legacy spell dataset currently covers every D&D spell level from 0 through 9 and contains no rows outside that range;
+- active template mechanics also exercise all three CE preparation modes: `prepared`, `always_prepared` and `not_required`;
+- one active custom class template currently lacks catalog-level `source_kind/source_label`; Stage 15 deliberately does not rewrite user data to make the audit pass;
+- template-backed provenance remains trustworthy through template kind/id even when optional catalog source metadata is absent; genuinely unknown non-template CE sources fall into `Прочее` instead of being guessed;
+- Character Runtime snapshots now expose resolver-owned `TemplateSourceNode[]`, preserving exact source-node `unlockLevel` metadata from `rule_template_levels` and structured choice sources;
+- Features consumes those runtime source nodes and now fulfills the documented sort order: category → concrete source → timing → unlock level → name;
+- features with no known unlock metadata sort after known levels instead of receiving a fabricated level;
+- multi-source resolved grants/actions no longer depend on whichever provenance entry happened to be first: source candidates are classified deterministically, all source names are retained for detail, and the dedupe identity uses a stable sorted provenance signature;
+- resolved template provenance remains grouped under the actual class/subclass/race template name; legacy `class_feature` and `racial_trait` retain their trustworthy manual category, while unknown legacy/general sources remain `Прочее`;
+- spell preparation state was corrected for multiclass access: `always_prepared` wins first, then an actually prepared access, then any `not_required` access, and only then an unprepared prepared-access state;
+- therefore a spell available spontaneously from one source is no longer falsely labelled `Не подготовлено` merely because another class access to the same spell is currently unprepared;
+- prepared-first sorting is now binary as specified: prepared/always-prepared spells come first when the character has a preparation workflow, then all remaining spells sort alphabetically; the UI no longer invents an extra ranking between spontaneous and unprepared spells;
+- the `ПОДГОТОВЛЕНЫ` filter is only rendered when the resolved character actually has at least one mutable prepared access, avoiding a dead filter for fully spontaneous casters;
+- spell access source names are deduplicated and sorted deterministically; rows show a compact two-source summary with `+N` for larger multiclass/source sets while Snake detail retains the full list;
+- spell school values are normalized case-insensitively before filtering/presentation so dirty casing does not split one school into multiple filter options;
+- resolved spell levels are no longer silently clamped into 0 or 9: standard 0–9 levels keep the canonical groups, while any future non-standard CE level is surfaced under `ПРОЧЕЕ` with its real numeric level instead of being misrepresented;
+- the sheet still treats CE as authoritative: this certification changed renderer metadata/sorting only and did not create a second preparation or spell-state owner;
+- `tests/characterSheetStage15Certification.test.ts` now guards runtime unlock-level propagation, feature sort/fallback behavior, mixed multiclass preparation semantics, school/source normalization and non-standard spell-level handling;
+- Supabase was audited read-only for this stage; no project data, spell preparation state or template metadata was mutated merely to satisfy certification.
 
 ### Stage 16 — Mobile certification
 - 320 / 360 / 390 / 430 widths;
