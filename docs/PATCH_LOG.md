@@ -73,7 +73,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added `scene / selected / gm` Surface access, atomic character movement between scenes, optional scene location/time sync and automatic selected-access cleanup when a character leaves a scene.
 - Generalized Cheburashka owner scope to exactly one of character / world storage / scene Surface. Whole containers preserve the same root/descendant identities across Surface moves; partial bulk quantities split without creating a second item ledger.
 - Added server-authoritative first-take semantics: character + Surface advisory locks, source `FOR UPDATE`, optimistic item versions, command receipts, and stable `surface.item_already_taken` / `surface.item_stale` results. Realtime only invalidates/refetches.
-- Applied live Stage 9 migrations `20260916090000_cheburashka_stage9_scene_surfaces` and `20260916091500_cheburashka_stage9_surface_membership_integrity`.
+- Applied live Stage 9 migrations `20260916090500_cheburashka_stage9_scene_surfaces` and `20260916091500_cheburashka_stage9_surface_membership_integrity`.
 - **No chat UI was implemented or redesigned in Stage 9.** The stage supplies the mechanics that a later presentation pass may render.
 
 - Started Inventory Stage 5A: added the canonical Chasovoy `inventory_profile` contract for instance/bulk packing, shape masks, physical dimensions and container internal grids. Cheburashka and the GM item editor now default new items to independent instances; bulk stacks are explicit exceptions.
