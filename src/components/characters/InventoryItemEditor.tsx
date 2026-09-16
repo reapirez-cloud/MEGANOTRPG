@@ -118,7 +118,6 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
   const [quantity, setQuantity] = useState(String(item?.quantity ?? 1))
   const [category, setCategory] = useState<InventoryCategory>(item?.category || "other")
   const [equipmentSlot, setEquipmentSlot] = useState<EquipmentSlot>(item?.equipment_slot || "other")
-  const [equipped, setEquipped] = useState(item?.equipped || false)
   const [imageUrl, setImageUrl] = useState(initialImageUrl)
   const [description, setDescription] = useState(item?.description || "")
   const [usageMode, setUsageMode] = useState<ItemUsageMode>(
@@ -208,7 +207,6 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
     setPreset(next)
     changeCategory(selected.category)
     setEquipmentSlot(selected.slot)
-    setEquipped(false)
     if (!item) {
       setUsageMode(next === "consumable" ? "quantity" : "none")
       setStackMode("instance")
@@ -267,7 +265,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
       weight: item?.weight ?? null,
       category,
       equipment_slot: category === "equipment" ? equipmentSlot : null,
-      equipped: category === "equipment" ? equipped : false,
+      equipped: item?.equipped ?? false,
       image_url: imageUrl || null,
       description,
       definition_id: item?.definition_id ?? null,
@@ -316,7 +314,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
             <div className="creation-wizard__intro"><span>01</span><div><strong>Что создаём?</strong><small>Выбор задаёт только разумную стартовую базу. Всё можно поменять дальше.</small></div></div>
             <div className="creation-preset-grid">
               {presets.map((candidate) => (
-                <button type="button" key={candidate.id} className={preset === candidate.id ? "creation-preset is-active" : "creation-preset"} onClick={() => choosePreset(candidate.id)}>
+                <button type="button" key={candidate.id} disabled={Boolean(item?.equipped)} className={preset === candidate.id ? "creation-preset is-active" : "creation-preset"} onClick={() => choosePreset(candidate.id)}>
                   <span>{candidate.icon}</span><div><strong>{candidate.title}</strong><small>{candidate.description}</small></div><i>{preset === candidate.id ? "✓" : "›"}</i>
                 </button>
               ))}
@@ -331,13 +329,13 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
             <label className="field-label">Название</label>
             <input className="app-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} autoFocus placeholder={preset === "weapon" ? "Например: Длинный меч" : preset === "artifact" ? "Например: Сердце Пепла" : "Название предмета"} />
             <div className="v2-field-grid">
-              <label><span className="field-label">Категория</span><select className="app-select" value={category} onChange={(e) => changeCategory(e.target.value as InventoryCategory)}>{inventoryCategories.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
+              <label><span className="field-label">Категория</span><select className="app-select" value={category} disabled={Boolean(item?.equipped)} onChange={(e) => changeCategory(e.target.value as InventoryCategory)}>{inventoryCategories.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
               <label><span className="field-label">Количество</span><input className="app-input" type="number" min="1" disabled={effectiveStackMode === "instance"} value={effectiveStackMode === "instance" ? "1" : quantity} onChange={(e) => setQuantity(e.target.value)} /></label>
             </div>
             {!enablePhysicalProfile && <label><span className="field-label">Хранение</span><select className="app-select" value={effectiveStackMode} disabled={forcedInstance} onChange={(e) => setStackMode(e.target.value as InventoryStackMode)}><option value="instance">Отдельный экземпляр</option><option value="stack">Однородная стопка (валюта, боеприпасы, сыпучее)</option></select></label>}
             {enablePhysicalProfile && <InventoryPhysicalProfileEditor value={physicalProfile} category={category} onChange={(next) => { setPhysicalProfile(next); setStackMode(inventoryProfileStackMode(next)) }} />}
             {forcedInstance && <div className="creation-activation-note">Этот тип предмета всегда отдельный экземпляр. Количество фиксировано на 1, чтобы состояние, экипировка или заряды не клонировались при разделении стопки.</div>}
-            {category === "equipment" && <label><span className="field-label">Куда надевается</span><select className="app-select" value={equipmentSlot} onChange={(e) => setEquipmentSlot(e.target.value as EquipmentSlot)}>{equipmentSlots.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>}
+            {category === "equipment" && <label><span className="field-label">Куда надевается</span><select className="app-select" value={equipmentSlot} disabled={Boolean(item?.equipped)} onChange={(e) => setEquipmentSlot(e.target.value as EquipmentSlot)}>{equipmentSlots.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>}
             <div className="creation-wizard__intro"><span>↯</span><div><strong>Как предмет расходуется?</strong><small>Обычная вещь не тратится. Расходник уменьшает количество. Зарядный предмет тратит собственный счётчик.</small></div></div>
             <label><span className="field-label">Использование</span><select className="app-select" value={usageMode} onChange={(e) => setUsageMode(e.target.value as ItemUsageMode)}><option value="none">Не расходуется</option><option value="quantity">Расходует количество</option><option value="charges">Использует заряды</option></select></label>
             {usageMode === "charges" && <>
@@ -363,7 +361,7 @@ export default function InventoryItemEditor({ item, campaignId, onClose, onSave,
                 <label className="v2-toggle-row creation-inline-toggle"><span><strong>Показывать, что делает проклятие</strong><small>Выключено — описание и механика проклятия скрыты, но продолжают действовать.</small></span><input type="checkbox" checked={showCurseEffectToPlayer} disabled={!showCurseToPlayer} onChange={(e) => setShowCurseEffectToPlayer(e.target.checked)} /></label>
               </div>
             </>}
-            {category === "equipment" && <label className="v2-toggle-row creation-inline-toggle"><span><strong>Надеть сразу</strong><small>Если выключено, эффекты с режимом «когда надето» пока не работают.</small></span><input type="checkbox" checked={equipped} onChange={(e) => setEquipped(e.target.checked)} /></label>}
+            {item?.equipped && <div className="creation-activation-note">Предмет сейчас экипирован. Сначала перемести его через физический инвентарь в руку, сумку или внешнюю ячейку; редактор не создаёт предметы «в никуда».</div>}
           </section>
         )}
 
