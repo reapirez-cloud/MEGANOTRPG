@@ -9,7 +9,7 @@ import type {
   EntityRecoveryTrigger,
   EntityVisibilityMode,
 } from "../entity-engine/index.ts"
-import type { InventoryMutation } from "../inventory-engine/index.ts"
+import type { InventoryMutation, InventoryPlacementTarget } from "../inventory-engine/index.ts"
 import type {
   LocationCreateInput,
   LocationUpdateInput,
@@ -76,7 +76,7 @@ export type OracleInventoryCommands = {
   remove(context: OracleContext, characterId: string, itemId: string, expectedVersion?: number): OracleInventoryResult
   setEquipped(context: OracleContext, characterId: string, itemId: string, equipped: boolean, equipmentSlot?: EquipmentSlot | null, expectedVersion?: number): OracleInventoryResult
   consume(context: OracleContext, characterId: string, itemId: string, amount?: number, expectedVersion?: number): OracleInventoryResult
-  move(context: OracleContext, characterId: string, itemId: string, holderItemId: string | null, expectedVersion?: number): OracleInventoryResult
+  move(context: OracleContext, characterId: string, itemId: string, holderItemId: string | null, expectedVersion?: number, placement?: InventoryPlacementTarget): OracleInventoryResult
   transfer(context: OracleContext, fromCharacterId: string, toCharacterId: string, itemId: string, amount: number, expectedVersion?: number): OracleInventoryResult
 }
 
