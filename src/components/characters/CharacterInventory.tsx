@@ -196,10 +196,14 @@ export default function CharacterInventory(props: Props) {
 
   async function toggleEquip(item: InventoryItem) {
     setError("")
+    if (item.equipped) {
+      setError("Сними предмет через физический инвентарь и выбери реальное место: руку, сумку или внешнюю ячейку.")
+      return
+    }
     const result = await onSetEquipped(
       item.id,
-      !item.equipped,
-      item.equipped ? item.equipment_slot : item.equipment_slot || "main_hand",
+      true,
+      item.equipment_slot || "main_hand",
     )
     if (!result.ok) {
       setError(result.error || "Не удалось изменить экипировку.")
@@ -239,8 +243,8 @@ export default function CharacterInventory(props: Props) {
       } satisfies ContextAction] : []),
       ...(item.category === "equipment" && canEquip ? [{
         id: "equip",
-        label: item.equipped ? "Снять" : "Надеть",
-        detail: item.equipped ? "Отключить эффекты экипировки" : `Использовать слот: ${slotLabel(item.equipment_slot || "main_hand")}`,
+        label: item.equipped ? "Снять через физический инвентарь" : "Надеть",
+        detail: item.equipped ? "Нужно выбрать руку, сумку или внешнюю ячейку" : `Использовать слот: ${slotLabel(item.equipment_slot || "main_hand")}`,
         icon: item.equipped ? "↓" : "↑",
         onSelect: () => toggleEquip(item),
       } satisfies ContextAction] : []),
