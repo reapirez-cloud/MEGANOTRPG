@@ -6,6 +6,7 @@ import {
   inventorySubtreeIds,
 } from "./holders.ts"
 import { inventoryStackMode } from "./stacking.ts"
+import { inventoryPlacementProblem } from "./spatial.ts"
 
 function copy<T>(value: T): T {
   return structuredClone(value)
@@ -180,6 +181,11 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
         charges_max: input.charges_max,
         stack_mode: input.stack_mode,
         holder_item_id: null,
+        placement_kind: "root",
+        placement_index: null,
+        grid_x: null,
+        grid_y: null,
+        grid_rotation: 0,
         item_state: input.item_state,
         version: 1,
         sort_order: 0,
@@ -228,6 +234,11 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
           ...item,
           character_id: command.toCharacterId,
           holder_item_id: null,
+          placement_kind: "root",
+          placement_index: null,
+          grid_x: null,
+          grid_y: null,
+          grid_rotation: 0,
           equipped: false,
         })
         this.items.set(item.id, destination)
@@ -258,6 +269,11 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
           character_id: command.toCharacterId,
           quantity: command.amount,
           holder_item_id: null,
+          placement_kind: "root",
+          placement_index: null,
+          grid_x: null,
+          grid_y: null,
+          grid_rotation: 0,
           equipped: false,
           version: 1,
           created_at: command.context.occurredAt,
@@ -286,29 +302,47 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
       this.assertVersion(item, command.expectedVersion)
       const before = copy(item)
       const allItems = [...this.items.values()]
-      const problem = inventoryHolderProblem(allItems, item, command.holderItemId)
+      const holderItemId = command.placement?.kind === "grid"
+        ? command.placement.holderItemId
+        : command.holderItemId
+      const problem = inventoryHolderProblem(allItems, item, holderItemId)
       if (problem) {
         throw new EngineCommandError(
           `inventory.holder_${problem}`,
           `Invalid inventory holder: ${problem}`,
         )
       }
-
-      if ((item.holder_item_id ?? null) === command.holderItemId) {
-        return this.finish(command, {
-          kind: command.kind,
-          itemId: item.id,
-          affectedCharacterIds: [command.characterId],
-          before,
-          after: copy(item),
-        })
+      if (command.placement) {
+        const placementProblem = inventoryPlacementProblem(allItems, item, command.placement)
+        if (placementProblem) {
+          throw new EngineCommandError("inventory.placement_invalid", placementProblem)
+        }
       }
 
-      const after = this.stamp({
-        ...item,
-        holder_item_id: command.holderItemId,
-        equipped: command.holderItemId ? false : item.equipped,
-      })
+      const placement = command.placement
+      const nextState = placement
+        ? {
+            holder_item_id: placement.kind === "grid" ? placement.holderItemId : null,
+            placement_kind: placement.kind,
+            placement_index: placement.kind === "hand" || placement.kind === "external"
+              ? placement.index
+              : null,
+            grid_x: placement.kind === "grid" ? placement.gridX : null,
+            grid_y: placement.kind === "grid" ? placement.gridY : null,
+            grid_rotation: placement.kind === "grid" ? placement.rotation : 0,
+            equipped: false,
+          }
+        : {
+            holder_item_id: command.holderItemId,
+            placement_kind: command.holderItemId ? "legacy" as const : "root" as const,
+            placement_index: null,
+            grid_x: null,
+            grid_y: null,
+            grid_rotation: 0 as const,
+            equipped: command.holderItemId ? false : item.equipped,
+          }
+
+      const after = this.stamp({ ...item, ...nextState })
       this.items.set(item.id, after)
       return this.finish(command, {
         kind: command.kind,
@@ -369,12 +403,6 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
     }
 
     if (command.kind === "inventory.set_equipped") {
-      if (command.equipped && item.holder_item_id) {
-        throw new EngineCommandError(
-          "inventory.contained_cannot_equip",
-          "Contained inventory item must be removed from its container before equipping",
-        )
-      }
       if (command.equipped && item.category !== "equipment") {
         throw new EngineCommandError(
           "inventory.not_equipment",
@@ -426,8 +454,15 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
       const after = this.stamp({
         ...item,
         equipped: command.equipped,
-        equipment_slot:
-          command.equipmentSlot ?? item.equipment_slot,
+        equipment_slot: command.equipmentSlot ?? item.equipment_slot,
+        ...(command.equipped ? {
+          holder_item_id: null,
+          placement_kind: "root" as const,
+          placement_index: null,
+          grid_x: null,
+          grid_y: null,
+          grid_rotation: 0 as const,
+        } : {}),
       })
       this.items.set(item.id, after)
 
