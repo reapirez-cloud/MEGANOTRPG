@@ -243,3 +243,27 @@
     font-size: 6px;
   }
 }
+
+
+.u1-character-spells__level {
+  scroll-margin-top: 48px;
+}
+
+.u1-character-spells__level[data-focus-target] {
+  box-shadow: inset 1px 0 0 var(--cv-spell-accent);
+}
+
+.u1-character-spells__level[data-focus-target] .u1-character-spells__level-head {
+  background: var(--cv-spell-accent-soft);
+}
+
+.u1-character-spells__level[data-focus-target] .u1-character-spells__level-head > span {
+  color: var(--cv-text);
+  text-shadow: 0 0 8px var(--cv-spell-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u1-character-spells__level {
+    scroll-behavior: auto;
+  }
+}
