@@ -15,9 +15,18 @@ import {
   inventoryContainerTargets,
   inventoryHolder,
 } from "../inventory-engine/holders"
+import {
+  firstAvailableGridPlacement,
+  firstFreeExternalSlot,
+  inventoryExternalCarryCapacity,
+  inventoryPhysicalProfile,
+  inventoryPlacementKind,
+  type InventoryPlacementTarget,
+} from "../inventory-engine"
 import { inventoryStackMode } from "../inventory-engine/stacking"
 import type { CharacterFeature, CharacterSheet, CharacterSpell, InventoryItem } from "../types/characterSheet"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
+import InventorySpatialView from "./InventorySpatialView"
 import { openSourceAction } from "./GMWorkshopCommon"
 import { createCharacterSnakeActions } from "./characterSnakeActions"
 import { createWorkshopCharacterActions } from "./gmWorkshopSnakeActions"
@@ -525,7 +534,7 @@ export default function CharacterView({
   function inventoryActions(item: InventoryItem): SnakeAction[] {
     const actions: SnakeAction[] = [{
       id: "inspect",
-      label: "Открыть",
+      label: "Осмотреть",
       surface: {
         kind: "detail",
         eyebrow: "Инвентарь",
@@ -537,7 +546,35 @@ export default function CharacterView({
 
     const usageMode = item.usage_mode ?? (item.category === "consumable" ? "quantity" : "none")
     const stackMode = inventoryStackMode(item)
-    const containerTargets = inventoryContainerTargets(control.inventory, item)
+    const profile = inventoryPhysicalProfile(item)
+    const placementKind = inventoryPlacementKind(item)
+    const containerPlacements = inventoryContainerTargets(control.inventory, item)
+      .map((container) => ({
+        container,
+        placement: firstAvailableGridPlacement(control.inventory, item, container),
+      }))
+      .filter((entry): entry is { container: InventoryItem; placement: Extract<InventoryPlacementTarget, { kind: "grid" }> } => Boolean(entry.placement))
+
+    const freeHands = ([0, 1] as const).filter((index) =>
+      !control.inventory.some((candidate) =>
+        candidate.id !== item.id
+        && inventoryPlacementKind(candidate) === "hand"
+        && candidate.placement_index === index
+      ),
+    )
+    const freeExternal = firstFreeExternalSlot(control.inventory)
+
+    if (item.category === "container") {
+      actions.push({
+        id: "open-container",
+        label: "Открыть контейнер",
+        execute: async () => {
+          setInventoryHolderId(item.id)
+          return { type: "success", notice: "Контейнер открыт." }
+        },
+      })
+    }
+
     if (usageMode !== "none" && control.canControlCharacter) {
       const remaining = usageMode === "charges"
         ? item.charges_current ?? item.charges_max ?? 0
@@ -556,25 +593,68 @@ export default function CharacterView({
       })
     }
 
-    if (control.canControlCharacter && item.holder_item_id) {
-      const currentHolder = inventoryHolder(control.inventory, item)
-      const outsideHolderId = currentHolder?.holder_item_id ?? null
+    if (
+      control.canControlCharacter
+      && placementKind === "grid"
+      && item.holder_item_id
+      && item.grid_x != null
+      && item.grid_y != null
+      && profile.rotatable
+    ) {
       actions.push({
-        id: "remove-from-container",
-        label: "Вынуть из контейнера",
+        id: "rotate-item",
+        label: "Повернуть",
         execute: async () => {
-          const response = await control.moveItem(item, outsideHolderId)
+          const rotation = (((item.grid_rotation || 0) + 90) % 360) as 0 | 90 | 180 | 270
+          const response = await control.moveItem(item, {
+            kind: "grid",
+            holderItemId: item.holder_item_id!,
+            gridX: item.grid_x!,
+            gridY: item.grid_y!,
+            rotation,
+          })
           return response.ok
-            ? { type: "success", notice: "Предмет вынут из контейнера." }
-            : { type: "error", message: response.error || "Не удалось вынуть предмет." }
+            ? { type: "success", notice: "Предмет повёрнут." }
+            : { type: "error", message: response.error || "Здесь предмет не повернуть." }
         },
       })
     }
 
-    if (control.canControlCharacter && containerTargets.length) {
+    if (control.canControlCharacter && freeHands.length) {
+      actions.push({
+        id: "move-to-hand",
+        label: "В руку",
+        kind: "branch",
+        children: freeHands.map((index) => ({
+          id: "hand-" + index,
+          label: "Рука " + (index + 1),
+          execute: async () => {
+            const response = await control.moveItem(item, { kind: "hand", index })
+            return response.ok
+              ? { type: "success", notice: "Предмет перемещён в руку." }
+              : { type: "error", message: response.error || "Не удалось занять руку." }
+          },
+        })),
+      })
+    }
+
+    if (control.canControlCharacter && freeExternal !== null) {
+      actions.push({
+        id: "move-to-external",
+        label: "Во внешнюю ячейку",
+        execute: async () => {
+          const response = await control.moveItem(item, { kind: "external", index: freeExternal })
+          return response.ok
+            ? { type: "success", notice: "Предмет закреплён снаружи." }
+            : { type: "error", message: response.error || "Не удалось переместить предмет." }
+        },
+      })
+    }
+
+    if (control.canControlCharacter && containerPlacements.length) {
       actions.push({
         id: "move-to-container",
-        label: "Положить в контейнер",
+        label: "В другую сумку",
         surface: {
           kind: "editor",
           eyebrow: "Инвентарь",
@@ -584,19 +664,21 @@ export default function CharacterView({
             label: "Контейнер",
             type: "select",
             required: true,
-            options: containerTargets.map((container) => ({
+            options: containerPlacements.map(({ container }) => ({
               value: container.id,
               label: container.name,
             })),
           }],
-          initialValues: {
-            holder: containerTargets[0]?.id || "",
-          },
+          initialValues: { holder: containerPlacements[0]?.container.id || "" },
           submitLabel: "Положить",
         },
         execute: async ({ input }) => {
-          const holderItemId = String(input?.holder || "")
-          const response = await control.moveItem(item, holderItemId || null)
+          const holderId = String(input?.holder || "")
+          const placement = containerPlacements.find((entry) => entry.container.id === holderId)?.placement
+          if (!placement) {
+            return { type: "error", message: "В выбранной сумке больше нет подходящего места." }
+          }
+          const response = await control.moveItem(item, placement)
           return response.ok
             ? { type: "success", notice: "Предмет помещён в контейнер." }
             : { type: "error", message: response.error || "Не удалось переместить предмет." }
@@ -604,16 +686,73 @@ export default function CharacterView({
       })
     }
 
-    if (item.category === "equipment" && control.canControlCharacter) {
+    if (control.canControlCharacter && !item.equipped && placementKind !== "root") {
+      actions.push({
+        id: "move-to-root",
+        label: "В свободные предметы",
+        execute: async () => {
+          const response = await control.moveItem(item, { kind: "root" })
+          return response.ok
+            ? { type: "success", notice: "Предмет вынут из размещения." }
+            : { type: "error", message: response.error || "Не удалось переместить предмет." }
+        },
+      })
+    }
+
+    if (item.category === "equipment" && control.canControlCharacter && !item.equipped) {
       actions.push({
         id: "equip",
-        label: item.equipped ? "Снять" : "Экипировать",
+        label: "Экипировать",
         execute: async () => {
-          const response = await control.setEquipped(item, !item.equipped)
+          const response = await control.setEquipped(item, true)
           return response.ok
-            ? { type: "success", notice: item.equipped ? "Предмет снят." : "Предмет экипирован." }
-            : { type: "error", message: response.error || "Не удалось изменить экипировку." }
+            ? { type: "success", notice: "Предмет экипирован." }
+            : { type: "error", message: response.error || "Не удалось экипировать предмет." }
         },
+      })
+    }
+
+    if (item.category === "equipment" && control.canControlCharacter && item.equipped) {
+      const unequipTargets: SnakeAction[] = [
+        ...freeHands.map((index) => ({
+          id: "unequip-hand-" + index,
+          label: "Снять в руку " + (index + 1),
+          execute: async () => {
+            const response = await control.moveItem(item, { kind: "hand", index })
+            return response.ok
+              ? { type: "success" as const, notice: "Предмет снят в руку." }
+              : { type: "error" as const, message: response.error || "Не удалось снять предмет." }
+          },
+        })),
+        ...(freeExternal === null ? [] : [{
+          id: "unequip-external",
+          label: "Снять во внешнюю ячейку",
+          execute: async () => {
+            const response = await control.moveItem(item, { kind: "external", index: freeExternal })
+            return response.ok
+              ? { type: "success" as const, notice: "Предмет снят во внешнюю ячейку." }
+              : { type: "error" as const, message: response.error || "Не удалось снять предмет." }
+          },
+        }]),
+        ...containerPlacements.map(({ container, placement }) => ({
+          id: "unequip-container-" + container.id,
+          label: "Снять в «" + container.name + "»",
+          execute: async () => {
+            const response = await control.moveItem(item, placement)
+            return response.ok
+              ? { type: "success" as const, notice: "Предмет снят в контейнер." }
+              : { type: "error" as const, message: response.error || "Не удалось снять предмет." }
+          },
+        })),
+      ]
+
+      actions.push({
+        id: "unequip",
+        label: "Снять",
+        kind: "branch",
+        enabled: unequipTargets.length > 0,
+        disabledReason: "Сначала освободи руку, внешнюю ячейку или место в сумке.",
+        children: unequipTargets,
       })
     }
 
@@ -849,71 +988,20 @@ export default function CharacterView({
 
   function focusedContent() {
     if (focus === "inventory") {
-      const currentHolder = inventoryHolderId
-        ? control.inventory.find((item) => item.id === inventoryHolderId) ?? null
-        : null
-      const visibleInventory = inventoryChildren(control.inventory, inventoryHolderId)
-      const parentHolderId = currentHolder?.holder_item_id ?? null
-
       return (
-        <Section
-          title={currentHolder ? currentHolder.name : "Инвентарь"}
-          meta={String(visibleInventory.length)}
-        >
-          <div className="u1-character-view__rows">
-            {currentHolder && (
-              <button
-                type="button"
-                className="u1-character-view__row"
-                onClick={() => setInventoryHolderId(parentHolderId)}
-              >
-                <span>
-                  <strong>← Назад</strong>
-                  <small>{parentHolderId ? "В родительский контейнер" : "В корневой инвентарь"}</small>
-                </span>
-                <b />
-              </button>
-            )}
-            {visibleInventory.map((item) => {
-              const actions = inventoryActions(item)
-              const inspect = actions[0]
-              const itemEntity = { type: "inventory-item", id: item.id }
-              const childCount = item.category === "container"
-                ? inventoryChildren(control.inventory, item.id).length
-                : 0
-              return (
-                <SnakeTrigger key={item.id} entity={itemEntity} actions={actions}>
-                  <button
-                    type="button"
-                    className="u1-character-view__row"
-                    onClick={() => {
-                      if (item.category === "container") {
-                        setInventoryHolderId(item.id)
-                        return
-                      }
-                      openAction(inspect, itemEntity)
-                    }}
-                  >
-                    <span>
-                      <strong>{item.name}</strong>
-                      <small>
-                        {item.category}
-                        {item.equipped ? " · надето" : ""}
-                        {item.category === "container" ? ` · внутри: ${childCount}` : ""}
-                      </small>
-                    </span>
-                    <b>{item.usage_mode === "charges" ? `${item.charges_current ?? item.charges_max ?? 0}/${item.charges_max ?? 0}` : `×${item.quantity}`}</b>
-                  </button>
-                </SnakeTrigger>
-              )
-            })}
-            {!visibleInventory.length && (
-              <div className="u1-character-view__quiet">
-                {currentHolder ? "Контейнер пуст." : "Инвентарь пуст."}
-              </div>
-            )}
-          </div>
-        </Section>
+        <InventorySpatialView
+          items={control.inventory}
+          activeHolderId={inventoryHolderId}
+          canControl={control.canControlCharacter}
+          actionsForItem={inventoryActions}
+          onActiveHolderChange={setInventoryHolderId}
+          onOpenItem={(item) => {
+            const inspect = inventoryActions(item)[0]
+            if (inspect) openAction(inspect, { type: "inventory-item", id: item.id })
+          }}
+          onMove={control.moveItem}
+          onEquip={(item) => control.setEquipped(item, true)}
+        />
       )
     }
 
