@@ -13,10 +13,13 @@ export function SnakeTrigger({
   entity,
   actions,
   children,
+  moveTolerancePx = 10,
 }: {
   entity: SnakeEntityRef
   actions: SnakeAction[]
   children: ReactNode
+  /** Draggable surfaces may cancel long-press before their own drag threshold. */
+  moveTolerancePx?: number
 }) {
   const snake = useSnake()
   const timerRef = useRef<number | null>(null)
@@ -88,7 +91,7 @@ export function SnakeTrigger({
     const start = startRef.current
     if (!start) return
 
-    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) {
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > moveTolerancePx) {
       clearTimer()
       startRef.current = null
       if (touchGestureRef.current) {
