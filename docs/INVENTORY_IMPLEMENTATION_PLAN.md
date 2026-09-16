@@ -573,7 +573,7 @@ Surface mutations increment `scene_surfaces.version`.
 Realtime means **refetch canonical state**. It is not an ownership lock and is not a substitute for the transaction.
 
 Live migrations:
-- `20260916090000_cheburashka_stage9_scene_surfaces`;
+- `20260916090500_cheburashka_stage9_scene_surfaces`;
 - `20260916091500_cheburashka_stage9_surface_membership_integrity`.
 
 ### Stage 9 completion gate — PASSED ✅
