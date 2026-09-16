@@ -421,3 +421,47 @@
   background: var(--cv-accent-soft);
   box-shadow: inset 1px 0 0 var(--cv-accent);
 }
+
+
+.u1-character-overview__resource-icon[data-has-asset] > i,
+.u1-character-overview__charge[data-has-asset] > i {
+  border: 0;
+  transform: none;
+  background: currentColor;
+  -webkit-mask-image: var(--u1-sheet-icon);
+  mask-image: var(--u1-sheet-icon);
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.u1-character-overview__resource-icon[data-has-asset] > i {
+  width: 22px;
+  height: 22px;
+  box-shadow: none;
+}
+
+.u1-character-overview__charge[data-has-asset] > i {
+  width: 13px;
+  height: 13px;
+}
+
+.u1-character-overview__charge[data-has-asset][data-state="available"] > i {
+  background: currentColor;
+  box-shadow: none;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+.u1-character-overview__charge[data-has-asset][data-state="spent"] > i {
+  background: currentColor;
+  box-shadow: none;
+  filter: none;
+}
+
+.u1-character-overview__slot .u1-character-overview__charge[data-has-asset] > i {
+  width: 13px;
+  height: 13px;
+}
