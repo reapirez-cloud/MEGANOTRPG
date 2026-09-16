@@ -203,3 +203,40 @@ export const CHARACTER_SHEET_INTERACTION_CONTRACT = {
   spellSlotTap: "open-spells-and-focus-level",
   resourceTap: "open-resource-detail-or-linked-feature-group",
 } as const
+
+
+/**
+ * Standalone Inventory boundary.
+ *
+ * The real inventory UI is deliberately NOT implemented by Character Sheet
+ * stages. This contract only reserves the full-interface boundary and the
+ * state that must survive navigation until the dedicated inventory roadmap
+ * mounts its spatial UI here.
+ */
+export const CHARACTER_INVENTORY_INTERFACE_CONTRACT = {
+  version: 1,
+  status: "placeholder",
+  implementationRoadmap: "inventory-separate",
+  rendering: "standalone-full-interface",
+  historyOwner: "character-view",
+  persists: [
+    "characterId",
+    "returnSection",
+    "focusedItemId",
+  ],
+  futureCapabilities: [
+    "spatial-grid",
+    "bags",
+    "equipment",
+    "drag-drop",
+    "inventory-holder",
+    "snake-context",
+  ],
+  rules: {
+    neverRenderInsideSheetContent: true,
+    doNotMountLegacyInventoryUi: true,
+    doNotImplementInventoryMechanicsHere: true,
+    preserveFocusedItemAcrossHistory: true,
+    shareGraphiteFoundation: true,
+  },
+} as const
