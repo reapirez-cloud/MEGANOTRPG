@@ -598,6 +598,14 @@ export default function CharacterView({
           isOwner: control.isOwner,
           assignedToCurrentUser:
             control.character.assignedUserId === control.userId,
+          snakePermissions: {
+            inspect: true,
+            navigate: true,
+            editMedia: control.canControlCharacter,
+            controlCharacter: control.canControlCharacter,
+            manageCharacter: control.canManage,
+            manageCampaign: control.canManage,
+          },
           runtimeStatus: runtime.status,
           shellVersion: 2,
           class: control.character.characterClass,
@@ -613,6 +621,14 @@ export default function CharacterView({
           canManage: control.canManage,
           canControlCharacter: false,
           isOwner: control.isOwner,
+          snakePermissions: {
+            inspect: true,
+            navigate: true,
+            editMedia: false,
+            controlCharacter: false,
+            manageCharacter: control.canManage,
+            manageCampaign: control.canManage,
+          },
           error: control.error,
         },
   }), [
