@@ -93,9 +93,9 @@ test("Stage 10 commit is one atomic Cheburashka batch after same-revision A and 
 test("Stage 10 stale external item change invalidates the revision instead of partially committing", () => {
   assert.match(commit, /offer\.invalidated/)
   assert.match(commit, /trade_bump_revision_v1\(p_session_id,v_error\)/)
-  assert.match(commit, /accepted_a_revision=null/)
-  assert.match(commit, /accepted_b_revision=null/)
-  assert.match(commit, /last_failure_code=p_failure_code/)
+  assert.match(foundation, /accepted_a_revision=null/)
+  assert.match(foundation, /accepted_b_revision=null/)
+  assert.match(foundation, /last_failure_code=p_failure_code/)
 })
 
 test("Stage 10 whole containers preserve subtree identity and partial stacks split quantity", () => {
