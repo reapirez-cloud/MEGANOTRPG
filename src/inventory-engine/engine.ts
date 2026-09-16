@@ -9,6 +9,7 @@ import {
 import { createInventoryMechanicalProjection } from "./projection.ts"
 import { inventoryHolderProblem } from "./holders.ts"
 import { inventoryStackMode } from "./stacking.ts"
+import { inventoryPlacementProblem } from "./spatial.ts"
 import type {
   CheburashkaCommand,
   CheburashkaStorage,
@@ -181,21 +182,14 @@ export class CheburashkaEngine {
       }
     }
 
-    if (command.kind === "inventory.set_equipped" && command.equipped) {
-      const source = await this.storage.getItem(command.itemId)
-      if (source?.holder_item_id) {
-        throw new EngineCommandError(
-          "inventory.contained_cannot_equip",
-          "Contained inventory item must be removed from its container before equipping",
-        )
-      }
-    }
-
     if (command.kind === "inventory.move") {
       const source = await this.storage.getItem(command.itemId)
       if (source && source.character_id === command.characterId) {
         const items = await this.storage.listCharacterItems(command.characterId)
-        const problem = inventoryHolderProblem(items, source, command.holderItemId)
+        const holderItemId = command.placement?.kind === "grid"
+          ? command.placement.holderItemId
+          : command.holderItemId
+        const problem = inventoryHolderProblem(items, source, holderItemId)
         if (problem) {
           const messages = {
             self: "Inventory item cannot contain itself",
@@ -206,6 +200,13 @@ export class CheburashkaEngine {
             depth: "Inventory container nesting depth exceeds 16",
           } as const
           throw new EngineCommandError(`inventory.holder_${problem}`, messages[problem])
+        }
+
+        if (command.placement) {
+          const placementProblem = inventoryPlacementProblem(items, source, command.placement)
+          if (placementProblem) {
+            throw new EngineCommandError("inventory.placement_invalid", placementProblem)
+          }
         }
       }
     }
