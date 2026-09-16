@@ -394,9 +394,7 @@ export default function CharacterSheetFeatures({
                           kind: "detail",
                           eyebrow: categoryLabels[entry.category],
                           title: entry.sourceName,
-                          body: entry.sourceType
-                            ? "Тип источника: " + entry.sourceType
-                            : undefined,
+                          body: "Источник способности: " + entry.sourceName + ".",
                         },
                       }
 
