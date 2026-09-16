@@ -943,6 +943,7 @@ export default function CharacterView({
           characterId={characterId}
           contract={runtime.snapshot?.contract || null}
           templates={control.templates}
+          sourceNodes={runtime.snapshot?.sourceNodes || []}
           runtimeError={runtime.error || undefined}
           focusKey={
             entityFocus?.kind === "feature"
