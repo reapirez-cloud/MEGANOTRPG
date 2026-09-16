@@ -20,6 +20,9 @@ import {
   type CharacterSheetSection,
   type CharacterSheetTarget,
 } from "./characterSheetUiContract"
+import {
+  type CharacterSheetEntityTarget,
+} from "./characterSheetEntityNavigation"
 import { createCharacterSnakeActions } from "./characterSnakeActions"
 import { createWorkshopCharacterActions } from "./gmWorkshopSnakeActions"
 import { useGMWorkshopData } from "./useGMWorkshopData"
@@ -167,6 +170,11 @@ export default function CharacterView({
   const [expandedAbility, setExpandedAbility] = useState<AbilityKey | null>(null)
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null)
   const [selectedSpellId, setSelectedSpellId] = useState<string | null>(null)
+  const [selectedResourceKey, setSelectedResourceKey] = useState<string | null>(null)
+  const [selectedEffectId, setSelectedEffectId] = useState<string | null>(null)
+  const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
+  const [entityFocus, setEntityFocus] =
+    useState<CharacterSheetEntityTarget | null>(null)
   const [spellFocusLevel, setSpellFocusLevel] = useState<number | null>(null)
 
   const classKey = useMemo(
@@ -315,6 +323,53 @@ export default function CharacterView({
     section,
   ])
 
+  const navigateEntity = useCallback((
+    target: CharacterSheetEntityTarget,
+  ) => {
+    setEntityFocus(target)
+
+    if (target.kind === "feature") {
+      setSelectedFeatureId(target.featureId)
+      setSelectedEffectId(null)
+      setSpellFocusLevel(null)
+      navigateSheet({ kind: "section", section: "features" })
+      return
+    }
+
+    if (target.kind === "effect") {
+      setSelectedEffectId(target.effectId)
+      setSelectedFeatureId(null)
+      setSpellFocusLevel(null)
+      navigateSheet({ kind: "section", section: "features" })
+      return
+    }
+
+    if (target.kind === "resource") {
+      setSelectedResourceKey(target.stateKey)
+      setSpellFocusLevel(null)
+      navigateSheet({ kind: "section", section: "overview" })
+      return
+    }
+
+    if (target.kind === "spell") {
+      setSelectedSpellId(target.spellKey)
+      setSpellFocusLevel(
+        typeof target.level === "number" &&
+          target.level >= 0 &&
+          target.level <= 9
+          ? target.level
+          : null,
+      )
+      navigateSheet({ kind: "section", section: "spells" })
+      return
+    }
+
+    setFocusedItemId(target.itemId)
+    if (interfaceMode !== "inventory") {
+      navigateSheet({ kind: "interface", interface: "inventory" })
+    }
+  }, [interfaceMode, navigateSheet])
+
   const handleBack = useCallback(() => {
     const current = readCharacterSheetHistory(window.history.state, characterId)
 
@@ -447,6 +502,13 @@ export default function CharacterView({
                 expandedAbility,
                 selectedFeatureId: section === "features" ? selectedFeatureId : null,
                 selectedSpellId: section === "spells" ? selectedSpellId : null,
+                selectedResourceKey:
+                  section === "overview" ? selectedResourceKey : null,
+                selectedEffectId:
+                  section === "features" ? selectedEffectId : null,
+                focusedItemId:
+                  interfaceMode === "inventory" ? focusedItemId : null,
+                entityFocus,
                 spellFocusLevel: section === "spells" ? spellFocusLevel : null,
                 runtimeStatus: runtime.status,
                 shellVersion: 2,
@@ -501,6 +563,10 @@ export default function CharacterView({
       <CharacterInventoryInterface
         characterName={character.name}
         classKey={classKey}
+        focusedItemId={focusedItemId}
+        focusedItemName={
+          control.inventory.find((item) => item.id === focusedItemId)?.name || null
+        }
         onBack={handleBack}
       />
     )
@@ -524,6 +590,10 @@ export default function CharacterView({
           : undefined
       }
       onNavigate={(target) => {
+        setEntityFocus(null)
+        if (target.kind === "interface") {
+          setFocusedItemId(null)
+        }
         if (target.kind === "section" && target.section === "spells") {
           setSpellFocusLevel(null)
         }
@@ -550,10 +620,19 @@ export default function CharacterView({
           contract={runtime.snapshot?.contract || null}
           resourceSyncInputs={runtime.snapshot?.resourceSyncInputs || []}
           runtimeError={runtime.error || undefined}
-          onOpenFeatures={() =>
-            navigateSheet({ kind: "section", section: "features" })
+          focusResourceKey={
+            entityFocus?.kind === "resource"
+              ? entityFocus.stateKey
+              : null
           }
+          onSelectResource={(stateKey) => setSelectedResourceKey(stateKey)}
+          onNavigateEntity={navigateEntity}
+          onOpenFeatures={() => {
+            setEntityFocus(null)
+            navigateSheet({ kind: "section", section: "features" })
+          }}
           onOpenSpells={(level) => {
+            setEntityFocus(null)
             setSpellFocusLevel(
               typeof level === "number" && level >= 0 && level <= 9
                 ? level
@@ -568,7 +647,18 @@ export default function CharacterView({
           contract={runtime.snapshot?.contract || null}
           templates={control.templates}
           runtimeError={runtime.error || undefined}
-          onSelect={setSelectedFeatureId}
+          focusKey={
+            entityFocus?.kind === "feature"
+              ? entityFocus.featureId
+              : entityFocus?.kind === "effect"
+                ? entityFocus.effectId
+                : null
+          }
+          onSelect={(featureId) => {
+            setSelectedFeatureId(featureId)
+            setEntityFocus(null)
+          }}
+          onNavigateEntity={navigateEntity}
         />
       ) : section === "spells" ? (
         <CharacterSheetSpells
@@ -577,8 +667,15 @@ export default function CharacterView({
           legacySpells={control.spells}
           runtimeError={runtime.error || undefined}
           focusLevel={spellFocusLevel}
+          focusSpellKey={
+            entityFocus?.kind === "spell"
+              ? entityFocus.spellKey
+              : null
+          }
+          onNavigateEntity={navigateEntity}
           onSelect={(spellId) => {
             setSelectedSpellId(spellId)
+            setEntityFocus(null)
             setSpellFocusLevel(null)
           }}
         />
