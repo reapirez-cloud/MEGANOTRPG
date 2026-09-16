@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import type { CSSProperties, ReactNode } from "react"
 
 import CampaignMediaFrame from "../components/common/CampaignMediaFrame"
 import type { MediaPresentation } from "../media/presentation"
@@ -18,6 +18,7 @@ export type CharacterSheetShellProps = {
   classKey: string
   portraitUrl: string | null
   portraitPresentation: MediaPresentation | null
+  panelArtUrl?: string | null
   dead?: boolean
   activeSection?: CharacterSheetSection
   portraitActions: SnakeAction[]
@@ -36,6 +37,7 @@ export default function CharacterSheetShell({
   classKey,
   portraitUrl,
   portraitPresentation,
+  panelArtUrl = null,
   dead = false,
   activeSection = "overview",
   portraitActions,
@@ -52,6 +54,14 @@ export default function CharacterSheetShell({
       className="u1-character-sheet"
       data-class-key={classKey}
       data-dead={dead || undefined}
+      data-has-panel-art={panelArtUrl ? true : undefined}
+      style={
+        panelArtUrl
+          ? {
+              "--cv-class-panel-art": `url(${JSON.stringify(panelArtUrl)})`,
+            } as CSSProperties
+          : undefined
+      }
     >
       <header className="u1-character-sheet__topbar">
         <button
