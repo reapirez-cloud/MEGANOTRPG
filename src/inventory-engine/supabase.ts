@@ -70,6 +70,9 @@ function fail(error: { message: string } | null, fallback: string): never {
   if (message.includes("Inventory item is not rotatable")) {
     throw new EngineCommandError("inventory.rotation_forbidden", message)
   }
+  if (message.includes("Equipment slot is occupied")) {
+    throw new EngineCommandError("inventory.equipment_slot_occupied", message)
+  }
   if (message.includes("Inventory holder does not allow nested containers")) {
     throw new EngineCommandError("inventory.nesting_forbidden", message)
   }
