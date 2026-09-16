@@ -106,6 +106,8 @@ function normalizeItem(value: unknown, inventoryProfile: unknown = null): Invent
   const mode = row.usage_mode ?? (row.category === "consumable" ? "quantity" : "none")
   return {
     ...row,
+    character_id: row.character_id ?? null,
+    world_storage_id: row.world_storage_id ?? null,
     definition_id: row.definition_id ?? null,
     definition_revision: row.definition_revision ?? null,
     usage_mode: mode,
@@ -189,6 +191,14 @@ function mutationFromRpc(
         destinationItem?.character_id,
       ].filter((id): id is string => Boolean(id))
 
+  const affectedWorldStorageIds = Array.isArray(result.affectedWorldStorageIds)
+    ? result.affectedWorldStorageIds.map(String)
+    : [before?.world_storage_id, after?.world_storage_id, destinationItem?.world_storage_id]
+        .filter((id): id is string => Boolean(id))
+  const affectedLocationIds = Array.isArray(result.affectedLocationIds)
+    ? result.affectedLocationIds.map(String)
+    : []
+
   return {
     kind,
     itemId: String(
@@ -199,6 +209,8 @@ function mutationFromRpc(
         "",
     ),
     affectedCharacterIds: [...new Set(affected)],
+    ...(affectedWorldStorageIds.length ? { affectedWorldStorageIds: [...new Set(affectedWorldStorageIds)] } : {}),
+    ...(affectedLocationIds.length ? { affectedLocationIds: [...new Set(affectedLocationIds)] } : {}),
     before,
     after,
     ...(destinationItem ? { destinationItem } : {}),
@@ -244,18 +256,22 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
     )
   }
 
+  async listWorldStorageItems(worldStorageId: string): Promise<InventoryItem[]> {
+    const { data, error } = await this.client.rpc("list_world_storage_items_v1", {
+      p_world_storage_id: worldStorageId,
+    })
+    if (error) fail(error, "Could not load world storage items")
+    return (data || []).map((row) => normalizeItem(row.item, row.inventory_profile ?? null))
+  }
+
   async getItem(itemId: string): Promise<InventoryItem | null> {
-    const { data, error } = await this.client
-      .from("character_inventory_items")
-      .select("*")
-      .eq("id", itemId)
-      .maybeSingle()
-
+    const { data, error } = await this.client.rpc("get_inventory_item_v2", {
+      p_item_id: itemId,
+    })
     if (error) fail(error, "Could not load inventory item")
-    if (!data) return null
-
-    const profiles = await this.physicalProfiles(String(data.character_id))
-    return normalizeItem(data, profiles.get(String(data.id)) ?? null)
+    const row = data?.[0]
+    if (!row?.item) return null
+    return normalizeItem(row.item, row.inventory_profile ?? null)
   }
 
   private async expectedVersion(
@@ -403,6 +419,56 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
       })
 
       if (error) fail(error, "Could not move inventory item")
+      return mutationFromRpc(command.kind, data)
+    }
+
+    if (command.kind === "inventory.store_world") {
+      const expectedVersion = await this.expectedVersion(
+        command.itemId,
+        command.characterId,
+        command.expectedVersion,
+      )
+      const placement = command.placement
+      const { data, error } = await this.client.rpc("store_inventory_item_in_world_v1", {
+        p_character_id: command.characterId,
+        p_item_id: command.itemId,
+        p_world_storage_id: command.worldStorageId,
+        p_amount: command.amount,
+        p_grid_x: placement.gridX,
+        p_grid_y: placement.gridY,
+        p_rotation: placement.rotation,
+        p_expected_version: expectedVersion,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not store inventory item in world storage")
+      return mutationFromRpc(command.kind, data)
+    }
+
+    if (command.kind === "inventory.take_world") {
+      const item = await this.getItem(command.itemId)
+      if (!item || item.world_storage_id !== command.worldStorageId) {
+        throw new EngineCommandError("inventory.not_found", "Inventory item was not found in world storage")
+      }
+      const expectedVersion = command.expectedVersion ?? Number(item.version ?? 0)
+      if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
+        throw new EngineCommandError("inventory.invalid_version", "Inventory item has no valid version")
+      }
+      const placement = command.placement
+      const { data, error } = await this.client.rpc("take_inventory_item_from_world_v1", {
+        p_world_storage_id: command.worldStorageId,
+        p_item_id: command.itemId,
+        p_character_id: command.characterId,
+        p_amount: command.amount,
+        p_target_kind: placement.kind,
+        p_holder_item_id: placement.kind === "grid" ? placement.holderItemId : null,
+        p_grid_x: placement.kind === "grid" ? placement.gridX : null,
+        p_grid_y: placement.kind === "grid" ? placement.gridY : null,
+        p_rotation: placement.kind === "grid" ? placement.rotation : 0,
+        p_slot_index: placement.kind === "hand" || placement.kind === "external" ? placement.index : null,
+        p_expected_version: expectedVersion,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not take inventory item from world storage")
       return mutationFromRpc(command.kind, data)
     }
 
