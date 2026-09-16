@@ -171,6 +171,8 @@
 .u1-character-overview__charge {
   width: 17px;
   height: 17px;
+  position: relative;
+  isolation: isolate;
   display: grid;
   place-items: center;
   flex: 0 0 17px;
@@ -179,6 +181,8 @@
 .u1-character-overview__charge > i {
   width: 9px;
   height: 9px;
+  position: relative;
+  z-index: 1;
   border: 1px solid currentColor;
   display: block;
   transform: rotate(45deg);
@@ -195,7 +199,20 @@
 
 .u1-character-overview__charge[data-state="spent"] {
   color: #656a6c;
-  opacity: .72;
+}
+
+.u1-character-overview__charge[data-state="spent"]::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: -2px;
+  pointer-events: none;
+  background-image: var(--u1-spent-cross);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: .96;
+  filter: drop-shadow(0 0 1px rgba(117, 8, 8, .62));
 }
 
 .u1-character-overview__charge[data-state="spent"] > i {
@@ -470,7 +487,8 @@
 .u1-character-overview__charge[data-asset-render="mask"][data-state="spent"] > i {
   background: currentColor;
   box-shadow: none;
-  filter: none;
+  filter: grayscale(1) brightness(.68);
+  opacity: .55;
 }
 
 .u1-character-overview__charge[data-asset-render="image"][data-state="available"] > i {
