@@ -3,7 +3,10 @@ import type { ReactNode } from "react"
 import CampaignMediaFrame from "../components/common/CampaignMediaFrame"
 import type { MediaPresentation } from "../media/presentation"
 import type { SnakeAction } from "../snake-engine"
-import {\n  CHARACTER_SHEET_NAVIGATION,\n  type CharacterSheetSection,\n} from "./characterSheetUiContract"
+import {
+  CHARACTER_SHEET_NAVIGATION,
+  type CharacterSheetSection,
+} from "./characterSheetUiContract"
 import { SnakeTrigger } from "./SnakeProvider"
 
 export type CharacterSheetShellProps = {
@@ -15,6 +18,7 @@ export type CharacterSheetShellProps = {
   portraitUrl: string | null
   portraitPresentation: MediaPresentation | null
   dead?: boolean
+  activeSection?: CharacterSheetSection
   portraitActions: SnakeAction[]
   onOpenPortrait?: () => void
   onBack: () => void
@@ -30,6 +34,7 @@ export default function CharacterSheetShell({
   portraitUrl,
   portraitPresentation,
   dead = false,
+  activeSection = "overview",
   portraitActions,
   onOpenPortrait,
   onBack,
