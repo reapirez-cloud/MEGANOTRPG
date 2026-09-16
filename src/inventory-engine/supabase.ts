@@ -76,6 +76,9 @@ function fail(error: { message: string } | null, fallback: string): never {
   if (message.includes("Unequip requires a real inventory destination")) {
     throw new EngineCommandError("inventory.unequip_destination_required", message)
   }
+  if (message.includes("Equipped inventory item requires a real unequip destination")) {
+    throw new EngineCommandError("inventory.unequip_destination_required", message)
+  }
   if (message.includes("Inventory creation cannot equip directly")) {
     throw new EngineCommandError("inventory.create_equipped_forbidden", message)
   }
@@ -373,7 +376,7 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
 
       if (command.placement) {
         const placement = command.placement
-        const { data, error } = await this.client.rpc("move_inventory_item_v2", {
+        const { data, error } = await this.client.rpc("move_inventory_item_v3", {
           p_character_id: command.characterId,
           p_item_id: command.itemId,
           p_target_kind: placement.kind,
