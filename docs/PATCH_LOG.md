@@ -31,12 +31,22 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added a compatibility fallback for older class templates whose foundation is represented only by canonical level-one mechanics instead of newer `core_traits` metadata. Fighter, Cleric and Druid therefore render the same essential facts without a second copy of rules data.
 - Corrected the class-list status too: a class is marked as a translation-only card only when no active CE catalog template exists, instead of inheriting that label forever from an old authored-data flag.
 
+- Completed Inventory Stage 6 physical interaction in UI 1.0: fixed-size 46px cells, real authored item shapes, finger drag, two permanent hand cells, real bag grids, nested containers, generic external carry cells and a scrollable roughly-six-cell mobile viewport. Sparse shapes use their occupied cells as pointer hit areas instead of invisible rectangular blockers.
+- Equipment and carried storage now remain physically explicit: equipping uses the same canonical item instance, while unequipping requires a real hand/bag/external destination. Invalid or stale drops reload canonical server state instead of leaving a fake client position.
+- Snake exposes the same inspect/open/rotate/move/equip inventory operations as direct touch interaction; the inventory drag threshold now cancels Snake long-press before the two gestures can race.
+
 ### Runtime and architecture changes
 
 - Completed Inventory Stage 5 physical authoring: Chasovoy item definitions now use a validated physical profile and strict v2 create/revise RPCs; ordinary item authoring has reusable physical presets and a GM shape editor.
 - Added the immutable standard container library (simple 1×1, purse, pouch, bag, travel bag, backpack, large backpack/sack, quiver and two chest sizes). Standard containers are issued as concrete Cheburashka instances and can be renamed per instance for narrative placement without anatomical carry slots.
 - Voss can now create unusual/magical container profiles and revise existing campaign item definitions while preserving existing mechanics on geometry-only changes. System definitions remain immutable; altered standard bags become campaign variants. Live `voss-agent` was deployed as version 32.
 - Safely normalized legacy quantity-one stacks to instances. Ambiguous quantity>1 legacy stacks were preserved and marked for Stage 11 review rather than being silently split or merged.
+
+- Completed and audited Inventory Stage 6 in Cheburashka. Canonical placement now covers root/grid/hand/external state, exact shape-mask collision, holder legality, rotation, nested containers, optimistic versions and per-character transaction locking. The dev client uses guarded create/update/equipment/spatial RPCs; legacy holder-only state remains only for compatibility with the still-deployed `main`.
+- Added deferred database integrity validation so changing an item definition/profile, container geometry/category, character ownership or external-carry provider cannot leave an already committed placement invalid. Occupied external cells cannot be orphaned, and final equipment state rejects same-slot and two-hands/main/off-hand conflicts.
+- Sealed equipment bypasses: generic create/update cannot toggle `equipped`, `set_equipped_v2(false)` cannot unequip into nowhere, and authenticated spatial moves now use `move_inventory_item_v3`, which rejects moving equipped items to abstract root/free state.
+- Added a Cheburashka-owned safe physical-profile projection. A player receives the exact geometry used by server validation without needing read access to hidden Chasovoy definition prose/mechanics, keeping client preview and authoritative placement on one physical model.
+- Applied live Stage 6 migrations `20260916044954_cheburashka_stage6_spatial_inventory`, `20260916045859_cheburashka_stage6_equipment_transfer_bridge`, `20260916050604_cheburashka_stage6_placement_constraint_hardening`, `20260916052417_cheburashka_stage6_integrity_closure`, `20260916053336_cheburashka_stage6_profile_projection`, `20260916053628_cheburashka_stage6_equipment_state_guard` and `20260916053859_cheburashka_stage6_move_destination_guard`.
 
 - Started Inventory Stage 5A: added the canonical Chasovoy `inventory_profile` contract for instance/bulk packing, shape masks, physical dimensions and container internal grids. Cheburashka and the GM item editor now default new items to independent instances; bulk stacks are explicit exceptions.
 - Added rollout-safe live Supabase validation for item physical profiles and changed the inventory DB default to `instance`. The old production client keeps a narrow compatibility path when it omits `stack_mode` on an existing multi-quantity item.
@@ -72,6 +82,11 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Live Supabase contains `20260915184110_cheburashka_stage5_complete_authoring_library`; strict v2 reference RPCs are authenticated-only, the system container definitions are present, and the inventory currently has zero quantity-one stacks. Three multi-quantity legacy stacks remain intentionally flagged for later review.
 - Added `inventoryStage5Completion.test.ts` covering prepared item/container profiles, GM shape authoring, system-definition immutability, narrative instance naming, strict v2 Chasovoy writes, Voss campaign-item revisions and non-destructive legacy migration.
 
+- Added/extended `cheburashkaStage6Spatial.test.ts` to lock exact rotation masks, overlap/bounds, two hands, external-capacity provider loss, same-instance equipment, destination-required unequip, create/update equipment bypass prevention, guarded v3 moves, safe profile projection, sparse-shape pointer hit-testing and Snake/drag gesture separation.
+- Live rollback smoke verified external-capacity orphan rejection, holder/profile invalidation rejection, direct-equip create rejection, destinationless unequip rejection, two-hands/main-hand conflict rejection, safe profile projection completeness and rejection of moving a real equipped item to abstract root. Smoke transactions were rolled back.
+- New Stage 6 public RPCs are authenticated-only and not executable by `anon`; authenticated access to spatial v2 was revoked in favor of guarded v3. Existing project-wide Supabase advisor warnings remain tracked for final Stage 12 certification rather than being misreported as new Stage 6 defects.
+- Audited Stage 6 code head `a0e3ba31cd47c288fa57adb63d6c86507b156745` passed Build, Lint, repository tests, Storybook build and Playwright smoke in GitHub Actions run `35060509264`.
+
 - Added Stage 5 inventory-profile regression coverage for instance-first defaults, explicit bulk stacks, large magical-container interiors without UI viewport metadata, and preservation of container geometry while ordinary mechanics are edited.
 - Applied live Supabase migration `20260915182537_cheburashka_stage5_inventory_profile_foundation` and verified the DB default / compatibility routing plus acceptance of a 20×20 magical-bag profile.
 - GitHub Actions do not currently report a run/status for direct `dev` head `c819636`; the isolated execution environment also cannot clone GitHub externally, so a full repository `npm test` / build result is not claimed for this work unit.
@@ -92,6 +107,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Media sessions are keyed by Snake surface id so opening another asset always starts with fresh page/zoom state; page-arrow controls are suppressed while zoomed to avoid accidental navigation during image panning.
 
 ### Known incomplete work
+
+- Inventory Stage 7 remains next: weight/load and authoritative specialized capacity. Stages 8–12 remain intentionally future work.
+- Legacy inventory v1 RPCs and transitional `legacy` placement cannot be fully retired while the current production `main` still uses the shared live Supabase project; retirement is deferred to production promotion/final certification rather than breaking the live client during dev.
 
 ---
 
