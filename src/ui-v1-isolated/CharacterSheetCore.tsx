@@ -147,12 +147,20 @@ export default function CharacterSheetCore({
       aria-label="Основные показатели персонажа"
       data-expanded={expandedAbility || undefined}
     >
-      <div className="u1-character-sheet-core__quick">
+      <header className="u1-character-sheet-core__head">
+        <span aria-hidden="true">✣</span>
+        <strong>ХАРАКТЕРИСТИКИ</strong>
+        <small>ТЕЛО · РАЗУМ · ДУХ</small>
+      </header>
+
+      <div className="u1-character-sheet-core__columns">
+        <div className="u1-character-sheet-core__quick">
         {quickStats.map((stat) => (
           <div key={stat.id} className="u1-character-sheet-core__quick-row">
             <span
               className="u1-character-sheet-core__quick-icon"
               data-icon-slot={stat.iconSlot}
+              data-stat-id={stat.id}
               aria-hidden="true"
             />
             <span className="u1-character-sheet-core__quick-label">
@@ -227,6 +235,7 @@ export default function CharacterSheetCore({
                 key={ability.key}
                 type="button"
                 className="u1-character-sheet-core__ability-row"
+                data-ability={ability.key}
                 onClick={() => onToggleAbility(ability.key)}
                 aria-expanded="false"
                 aria-label={`${ability.label}: ${resolved.value}, модификатор ${signed(resolved.modifier)}`}
@@ -238,6 +247,7 @@ export default function CharacterSheetCore({
             )
           })
         )}
+        </div>
       </div>
     </section>
   )

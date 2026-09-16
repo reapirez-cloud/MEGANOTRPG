@@ -52,12 +52,6 @@ export function characterSheetNavigationIconSlot(id: string) {
  */
 export const CHARACTER_SHEET_NAVIGATION: readonly CharacterSheetNavItem[] = [
   {
-    id: "inventory",
-    label: "Инвентарь",
-    iconSlot: characterSheetNavigationIconSlot("inventory"),
-    target: { kind: "interface", interface: "inventory" },
-  },
-  {
     id: "features",
     label: "Умения",
     iconSlot: characterSheetNavigationIconSlot("features"),
@@ -74,6 +68,12 @@ export const CHARACTER_SHEET_NAVIGATION: readonly CharacterSheetNavItem[] = [
     label: "Биография",
     iconSlot: characterSheetNavigationIconSlot("biography"),
     target: { kind: "section", section: "biography" },
+  },
+  {
+    id: "inventory",
+    label: "Инвентарь",
+    iconSlot: characterSheetNavigationIconSlot("inventory"),
+    target: { kind: "interface", interface: "inventory" },
   },
 ] as const
 

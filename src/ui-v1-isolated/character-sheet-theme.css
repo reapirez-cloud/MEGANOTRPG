@@ -278,3 +278,12 @@
   --inv-text: var(--cv-text, #ecece8);
   --inv-text-muted: var(--cv-text-muted, #a3a8a7);
 }
+
+
+/* Stage 17 · let class artwork live behind the glass instead of burying it */
+.u1-character-sheet {
+  background-image:
+    radial-gradient(circle at 18% 7%, color-mix(in srgb, var(--cv-accent) 12%, transparent), transparent 31%),
+    linear-gradient(180deg, rgba(14, 16, 17, .12) 0%, rgba(18, 20, 21, .42) 46%, rgba(18, 20, 21, .78) 100%),
+    var(--cv-ambient-art);
+}

@@ -378,7 +378,7 @@ export default function CharacterSheetOverview({
     >
       {classResources.length > 0 && (
         <section
-          className="u1-character-overview__section"
+          className="u1-character-overview__section u1-character-overview__section--resources"
           aria-labelledby="u1-character-overview-resources"
         >
           <header className="u1-character-overview__section-head">

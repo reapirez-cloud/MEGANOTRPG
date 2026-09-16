@@ -157,6 +157,7 @@ export default function CharacterSheetShell({
                   <span
                     className="u1-character-sheet__icon-placeholder"
                     data-icon-slot={item.iconSlot}
+                    data-nav-id={item.id}
                     aria-hidden="true"
                   />
                   <strong>{item.label}</strong>

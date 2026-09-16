@@ -277,3 +277,178 @@
     animation: none;
   }
 }
+
+
+/* Stage 17 · render-4 glass characteristics */
+.u1-character-sheet-core {
+  margin:
+    12px
+    var(--sheet-pad)
+    0;
+  display: block;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--cv-accent) 34%, rgba(235,238,239,.14));
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--cv-accent) 8%, transparent), transparent 56%),
+    rgba(12, 14, 15, .62);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.035),
+    0 18px 38px rgba(0,0,0,.16);
+  backdrop-filter: blur(18px) saturate(.82);
+  -webkit-backdrop-filter: blur(18px) saturate(.82);
+}
+
+.u1-character-sheet-core--loading {
+  min-height: 216px;
+  display: grid;
+}
+
+.u1-character-sheet-core__head {
+  min-height: 42px;
+  padding: 0 14px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--cv-line-soft);
+}
+
+.u1-character-sheet-core__head > span {
+  color: var(--cv-accent);
+  font-size: 16px;
+}
+
+.u1-character-sheet-core__head > strong {
+  color: var(--cv-text);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: .18em;
+}
+
+.u1-character-sheet-core__head > small {
+  color: var(--cv-text-faint);
+  font-size: 7px;
+  letter-spacing: .16em;
+}
+
+.u1-character-sheet-core__columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.u1-character-sheet-core__quick {
+  padding: 7px 12px 9px;
+  border-right: 1px solid color-mix(in srgb, var(--cv-accent) 22%, var(--cv-line-soft));
+}
+
+.u1-character-sheet-core__abilities {
+  padding: 7px 12px 9px;
+}
+
+.u1-character-sheet-core__quick-row,
+.u1-character-sheet-core__ability-row {
+  min-height: 42px;
+}
+
+.u1-character-sheet-core__quick-row {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 7px;
+}
+
+.u1-character-sheet-core__quick-icon {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: color-mix(in srgb, var(--cv-accent) 74%, var(--cv-text-soft));
+}
+
+.u1-character-sheet-core__quick-icon::before {
+  content: "✦";
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+}
+
+.u1-character-sheet-core__quick-icon[data-stat-id="armor-class"]::before { content: "◇"; }
+.u1-character-sheet-core__quick-icon[data-stat-id="passive-perception"]::before { content: "◉"; }
+.u1-character-sheet-core__quick-icon[data-stat-id="proficiency"]::before { content: "✦"; }
+.u1-character-sheet-core__quick-icon[data-stat-id="initiative"]::before { content: "⌁"; }
+.u1-character-sheet-core__quick-icon[data-stat-id="speed"]::before { content: "⌟"; }
+.u1-character-sheet-core__quick-icon[data-stat-id="spell-save-dc"]::before { content: "✧"; }
+.u1-character-sheet-core__quick-icon[data-stat-id="spell-attack"]::before { content: "↗"; }
+
+.u1-character-sheet-core__quick-label {
+  font-size: 10px;
+}
+
+.u1-character-sheet-core__quick-row > strong,
+.u1-character-sheet-core__ability-row strong,
+.u1-character-sheet-core__ability-head strong {
+  font-size: 17px;
+}
+
+.u1-character-sheet-core__ability-row {
+  grid-template-columns: 21px minmax(0, 1fr) 28px 34px;
+  gap: 6px;
+}
+
+.u1-character-sheet-core__ability-row::before {
+  content: "✦";
+  color: color-mix(in srgb, var(--cv-accent) 68%, var(--cv-text-muted));
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+  text-align: center;
+}
+
+.u1-character-sheet-core__ability-row[data-ability="strength"]::before { content: "◆"; }
+.u1-character-sheet-core__ability-row[data-ability="dexterity"]::before { content: "⌁"; }
+.u1-character-sheet-core__ability-row[data-ability="constitution"]::before { content: "◇"; }
+.u1-character-sheet-core__ability-row[data-ability="intelligence"]::before { content: "◈"; }
+.u1-character-sheet-core__ability-row[data-ability="wisdom"]::before { content: "☼"; }
+.u1-character-sheet-core__ability-row[data-ability="charisma"]::before { content: "✧"; }
+
+.u1-character-sheet-core__ability-row span {
+  font-size: 13px;
+}
+
+.u1-character-sheet-core__ability-row em,
+.u1-character-sheet-core__ability-head em {
+  color: var(--cv-text-faint);
+  font-size: 13px;
+}
+
+@media (max-width: 359px) {
+  .u1-character-sheet-core__head {
+    padding-inline: 10px;
+  }
+
+  .u1-character-sheet-core__head > small {
+    display: none;
+  }
+
+  .u1-character-sheet-core__quick,
+  .u1-character-sheet-core__abilities {
+    padding-inline: 8px;
+  }
+
+  .u1-character-sheet-core__quick-row {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    gap: 5px;
+  }
+
+  .u1-character-sheet-core__ability-row {
+    grid-template-columns: 17px minmax(0, 1fr) 24px 29px;
+    gap: 4px;
+  }
+
+  .u1-character-sheet-core__quick-label {
+    font-size: 8px;
+  }
+
+  .u1-character-sheet-core__ability-row span {
+    font-size: 11px;
+  }
+}
