@@ -210,47 +210,35 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
     this.client = client
   }
 
-  async listCharacterItems(characterId: string): Promise<InventoryItem[]> {
-    const { data, error } = await this.client
-      .from("character_inventory_items")
-      .select("*")
-      .eq("character_id", characterId)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true })
+  private async physicalProfiles(characterId: string): Promise<Map<string, unknown>> {
+    const { data, error } = await this.client.rpc(
+      "list_character_inventory_physical_profiles_v1",
+      { p_character_id: characterId },
+    )
+    if (error) fail(error, "Could not load inventory physical profiles")
 
-    if (error) fail(error, "Could not load inventory")
-    const rows = data || []
-    const definitionIds = [...new Set(
-      rows
-        .map((row) => String(row.definition_id || ""))
-        .filter(Boolean),
-    )]
     const profiles = new Map<string, unknown>()
-
-    if (definitionIds.length) {
-      const { data: revisions, error: revisionsError } = await this.client
-        .from("reference_definition_revisions")
-        .select("definition_id,revision,data")
-        .in("definition_id", definitionIds)
-
-      if (revisionsError) fail(revisionsError, "Could not load inventory profiles")
-      for (const revision of revisions || []) {
-        const definitionData = revision.data && typeof revision.data === "object"
-          ? revision.data as JsonRecord
-          : {}
-        profiles.set(
-          String(revision.definition_id) + ":" + String(revision.revision),
-          definitionData.inventory_profile ?? null,
-        )
-      }
+    for (const row of data || []) {
+      profiles.set(String(row.item_id), row.inventory_profile ?? null)
     }
+    return profiles
+  }
 
-    return rows.map((row) => normalizeItem(
-      row,
-      row.definition_id && row.definition_revision
-        ? profiles.get(String(row.definition_id) + ":" + String(row.definition_revision)) ?? null
-        : null,
-    ))
+  async listCharacterItems(characterId: string): Promise<InventoryItem[]> {
+    const [itemsResult, profiles] = await Promise.all([
+      this.client
+        .from("character_inventory_items")
+        .select("*")
+        .eq("character_id", characterId)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true }),
+      this.physicalProfiles(characterId),
+    ])
+
+    if (itemsResult.error) fail(itemsResult.error, "Could not load inventory")
+    return (itemsResult.data || []).map((row) =>
+      normalizeItem(row, profiles.get(String(row.id)) ?? null),
+    )
   }
 
   async getItem(itemId: string): Promise<InventoryItem | null> {
@@ -263,22 +251,8 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
     if (error) fail(error, "Could not load inventory item")
     if (!data) return null
 
-    let inventoryProfile: unknown = null
-    if (data.definition_id && data.definition_revision) {
-      const { data: revision, error: revisionError } = await this.client
-        .from("reference_definition_revisions")
-        .select("data")
-        .eq("definition_id", data.definition_id)
-        .eq("revision", data.definition_revision)
-        .maybeSingle()
-      if (revisionError) fail(revisionError, "Could not load inventory profile")
-      const definitionData = revision?.data && typeof revision.data === "object"
-        ? revision.data as JsonRecord
-        : {}
-      inventoryProfile = definitionData.inventory_profile ?? null
-    }
-
-    return normalizeItem(data, inventoryProfile)
+    const profiles = await this.physicalProfiles(String(data.character_id))
+    return normalizeItem(data, profiles.get(String(data.id)) ?? null)
   }
 
   private async expectedVersion(
