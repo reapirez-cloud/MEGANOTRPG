@@ -76,6 +76,16 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Applied live Stage 9 migrations `20260916090500_cheburashka_stage9_scene_surfaces` and `20260916091500_cheburashka_stage9_surface_membership_integrity`.
 - **No chat UI was implemented or redesigned in Stage 9.** The stage supplies the mechanics that a later presentation pass may render.
 
+- Completed Inventory Stage 10 as a mechanics/runtime-only Trade layer. GENA owns the two-party Trade session, explicit inventory visibility, interest markers, negotiation thread/history, offer revision and A/B acceptance; Cheburashka remains the sole owner of physical item settlement.
+- Added explicit `item / container / assortment` trade visibility. Starting Trade exposes zero private inventory by default, and Trade access is bound to normal access to the containing chat room.
+- Added non-binding “Хочу это” interest markers and a trade-scoped discussion thread; neither mutates the offer revision or owns inventory.
+- Added revisioned offers with exact item version + subtree integrity fingerprint. Every material offer mutation advances revision and clears both acceptances.
+- Added atomic same-revision settlement: the second acceptance calls a private Cheburashka batch exchange that locks both inventories/items, revalidates ownership/version/quantity/subtree state and commits all transfers or none. Whole instances/containers preserve identity; partial bulk stacks split normally; physical currency is ordinary inventory.
+- Offer references intentionally do not reserve inventory. Outside changes invalidate the revision with stable `trade.offer_item_*` codes, clear both acceptances and leave the session open instead of partially transferring.
+- Added the ready-to-connect typed `src/gena-trade/**` API/runtime and Realtime invalidation bridge so a future Trade block/screen/modal can attach without knowing SQL or rebuilding mechanics.
+- Applied live Stage 10 migrations `20260916100000_gena_stage10_trade_sessions`, `20260916101500_cheburashka_stage10_atomic_trade_commit`, `20260916102500_gena_stage10_acceptance_closure`, `20260916103500_gena_stage10_room_authority_closure` and `20260916104500_gena_stage10_trade_read_model_closure`.
+- **No Trade UI or chat UI was implemented in Stage 10.** Presentation remains intentionally open while the connection contract is stable.
+
 - Started Inventory Stage 5A: added the canonical Chasovoy `inventory_profile` contract for instance/bulk packing, shape masks, physical dimensions and container internal grids. Cheburashka and the GM item editor now default new items to independent instances; bulk stacks are explicit exceptions.
 - Added rollout-safe live Supabase validation for item physical profiles and changed the inventory DB default to `instance`. The old production client keeps a narrow compatibility path when it omits `stack_mode` on an existing multi-quantity item.
 - Separated container geometry from presentation: a magical 100×100 cm interior may be a 20×20 logical grid while the future mobile inventory keeps a readable fixed viewport and pans instead of shrinking cells. Container physical metadata remains separate from ordinary item mechanics, so bags can still carry bonuses, resistances, activated effects and curses through the existing mechanics/CE path.
@@ -126,6 +136,12 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Live Stage 9 rollback smoke created a temporary game scene and selected Surface, moved a real item onto the Surface and back without changing its ID, verified the second take returns `surface.item_already_taken`, verified leaving the scene clears selected access, and rolled all smoke state back.
 - Stage 9 Surface/scene Realtime is tested/defined as invalidation only; transaction locks and item versions remain the winner authority.
 
+- Added `genaStage10TradeMechanics.test.ts` covering Trade-vs-Surface ownership, explicit visibility, non-revisioning interest/thread, offer revision resets, no-reservation references, same-revision dual acceptance, atomic Cheburashka settlement, stale invalidation, nested-container identity, bulk split, physical-currency semantics, inspectable history, typed API wiring and Realtime invalidation-only behavior.
+- Live Stage 10 rollback smoke temporarily attached a PC to the current user, created disposable PC/NPC items, exposed an NPC assortment, completed a two-way same-revision Trade and verified both canonical item IDs swapped owners atomically; the transaction was rolled back.
+- A second live rollback scenario changed an offered item after the first acceptance; the second acceptance returned `trade.offer_item_stale`, advanced the revision, cleared both acceptances and transferred nothing.
+- Stage 10 smoke also caught and closed two live defects before completion: SQL NULL could be mistaken for both-side acceptance, and a Trade visible-inventory CTE had an ambiguous PL/pgSQL output-column name.
+- Final live cleanup audit reports zero Stage 10 smoke items/messages/sessions and zero inventory owner-scope violations.
+
 - Added Stage 5 inventory-profile regression coverage for instance-first defaults, explicit bulk stacks, large magical-container interiors without UI viewport metadata, and preservation of container geometry while ordinary mechanics are edited.
 - Applied live Supabase migration `20260915182537_cheburashka_stage5_inventory_profile_foundation` and verified the DB default / compatibility routing plus acceptance of a 20×20 magical-bag profile.
 - GitHub Actions do not currently report a run/status for direct `dev` head `c819636`; the isolated execution environment also cannot clone GitHub externally, so a full repository `npm test` / build result is not claimed for this work unit.
@@ -147,7 +163,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Known incomplete work
 
-- Inventory Stages 1–9 are complete. Stage 10 (dedicated Trade block mechanics) is next; Stages 10–12 remain intentionally future work. Chat UI presentation for Stage 9 mechanics remains intentionally separate.
+- Inventory Stages 1–10 are complete. Stage 11 (Chasovoy adoption + legacy inventory migration) is next; Stages 11–12 remain intentionally future work. Stage 9 Surface UI and Stage 10 Trade UI presentation remain intentionally separate from their completed mechanics.
 - CE technical debt remains: generalize the buff/effect authoring and management UX beyond the newly supported `carrying.capacityKg` target.
 - Legacy inventory v1 RPCs and transitional `legacy` placement cannot be fully retired while the current production `main` still uses the shared live Supabase project; retirement is deferred to production promotion/final certification rather than breaking the live client during dev.
 
