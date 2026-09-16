@@ -6,7 +6,7 @@
 >
 > Product contract: `docs/INVENTORY_PRODUCT_CONTRACT.md`
 >
-> Current checkpoint: **Stages 1–6 complete. Stage 7 is next: weight, load and specialized capacity.**
+> Current checkpoint: **Stages 1–7 complete. Stage 8 is next: persistent world storage, chests and stashes.**
 >
 > This file defines implementation order and completion boundaries. It does not by itself prove that a stage is implemented. Audits must verify source, live Supabase state where relevant, and real runtime behavior before changing a stage to complete.
 
@@ -22,14 +22,14 @@ The final inventory target is a physical, tactile inventory system built on Cheb
 | 4 | ✅ COMPLETE | Nested holders / container tree |
 | 5 | ✅ COMPLETE | Physical item definition + authoring language |
 | 6 | ✅ COMPLETE | Spatial runtime + mobile inventory UX |
-| 7 | ⬜ TODO | Weight, load and specialized capacity |
+| 7 | ✅ COMPLETE | Weight, load and specialized capacity |
 | 8 | ⬜ TODO | Persistent world storage, chests and stashes |
 | 9 | ⬜ TODO | Chats/scenes + shared Surfaces |
 | 10 | ⬜ TODO | Dedicated Trade block |
 | 11 | ⬜ TODO | Chasovoy adoption + legacy inventory migration |
 | 12 | ⬜ TODO | Final security/concurrency/E2E certification |
 
-There are **12 stages total**. Six are complete; six remain.
+There are **12 stages total**. Seven are complete; five remain.
 
 ---
 
@@ -408,35 +408,45 @@ Snake should expose context actions such as:
 
 ---
 
-# Stage 7 — Weight, load and specialized capacity
+# Stage 7 — Weight, load and specialized capacity ✅
 
-Spatial packing already prevents "infinite treasure because weight allows it". Weight is a second independent constraint.
+Stage 7 is complete in `dev` and live Supabase.
 
-Implement:
-- per-item weight;
-- bulk stack quantity × unit weight;
-- container contents contributing to carried weight;
-- coin/ammunition/material stack weight;
-- derived carried total;
-- CE/encumbrance integration only where the existing game rules actually require it.
+Implemented law:
+- kilograms are the canonical inventory mass unit;
+- base carrying capacity is resolved by CE as **Strength × 6.8 kg**;
+- `carrying.capacityKg` is a normal CE numeric target, so items/features/classes/effects may add or otherwise modify carrying capacity without a one-off inventory exception;
+- Cheburashka derives current carried mass directly from canonical item instances;
+- stack mass is `quantity × weight_per_unit`;
+- nested container contents contribute exactly once because ownership remains on the same character inventory tree;
+- an unknown item mass remains explicit and never silently becomes zero;
+- UI 1.0 shows known carried kg versus CE-resolved carrying capacity and marks overload without inventing movement/action penalties;
+- GM physical-profile authoring and Voss use `weight_per_unit` in kg;
+- legacy non-null item weights were migrated once from old D&D-facing pound values to kilograms with an audit marker;
+- current Chasovoy item definitions with legacy top-level weights were advanced through immutable revisions into kg data where applicable;
+- specialized capacities such as quiver arrow limits are authoritative on the server with deferred validation under the per-character inventory lock;
+- client placement preflight mirrors the same specialized-capacity rule for immediate feedback.
 
-Do not create a parallel weight ledger.
+Live migration:
+- `20260916090000_cheburashka_stage7_weight_capacity`.
 
-Specialized capacity rules also become authoritative here:
-- quiver max 50 arrows;
-- other purpose-built capacity definitions when authored.
-
-Space and weight remain independent:
-- enough strength but no room -> cannot pack it;
-- enough room but too much weight -> overloaded according to campaign rules.
-
-### Stage 7 complete when
+### Stage 7 completion gate — PASSED
 
 - totals are deterministic from canonical items;
 - nested container weight is correct;
-- bulk resources are handled correctly;
-- specialized capacity cannot be bypassed by concurrent writes;
-- CE consumes only a projection, not inventory ownership.
+- bulk resources multiply unit mass by quantity;
+- unknown mass remains visible as incomplete load data;
+- specialized capacity cannot be bypassed by ordinary/concurrent inventory writes;
+- CE receives only the carrying modifier target and Cheburashka load projection, never inventory ownership;
+- Stage 7 has dedicated regression coverage for Strength-based kg capacity, CE carrying buffs, nested/stack load, unknown mass and quiver overflow.
+
+### Explicit rules boundary
+
+Stage 7 reports **overload state** but does not silently apply speed penalties, action restrictions or other tactical encumbrance consequences. Those effects require an explicit campaign/rules mechanic and GM-facing authoring rather than being guessed by inventory UI.
+
+### Technical debt after Stage 7
+
+The new `carrying.capacityKg` target is supported by CE, MechanicsBuilder and the Voss mechanics compiler. A broader **CE buffs/effects authoring pass** is still owed: normalize how arbitrary persistent/temporary numeric buffs are created, displayed, explained and managed across items, features, classes and GM effects, instead of expanding target-specific UI one field at a time.
 
 ---
 
