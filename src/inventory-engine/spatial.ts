@@ -94,12 +94,50 @@ export function inventoryExternalCarryCapacity(items: readonly InventoryItem[]) 
   }, 0)
 }
 
+function projectedItemAfterPlacement(
+  item: InventoryItem,
+  target: InventoryPlacementTarget,
+): InventoryItem {
+  return {
+    ...item,
+    equipped: false,
+    holder_item_id: target.kind === "grid" ? target.holderItemId : null,
+    placement_kind: target.kind,
+    placement_index: target.kind === "hand" || target.kind === "external"
+      ? target.index
+      : null,
+    grid_x: target.kind === "grid" ? target.gridX : null,
+    grid_y: target.kind === "grid" ? target.gridY : null,
+    grid_rotation: target.kind === "grid" ? target.rotation : 0,
+  }
+}
+
+function externalCapacityProblemAfterPlacement(
+  items: readonly InventoryItem[],
+  item: InventoryItem,
+  target: InventoryPlacementTarget,
+): string | null {
+  const projected = items.map((candidate) =>
+    candidate.id === item.id ? projectedItemAfterPlacement(candidate, target) : candidate
+  )
+  const capacity = inventoryExternalCarryCapacity(projected)
+  const orphaned = projected.some((candidate) =>
+    inventoryPlacementKind(candidate) === "external"
+    && candidate.placement_index != null
+    && candidate.placement_index >= capacity
+  )
+
+  return orphaned
+    ? "Сначала освободи внешние ячейки: это перемещение уменьшает доступную внешнюю ёмкость."
+    : null
+}
+
 export function inventoryPlacementProblem(
   items: readonly InventoryItem[],
   item: InventoryItem,
   target: InventoryPlacementTarget,
 ): string | null {
-  if (target.kind === "root") return null
+  let problem: string | null = null
 
   if (target.kind === "hand") {
     if (target.index !== 0 && target.index !== 1) return "Недопустимая ячейка руки."
@@ -108,70 +146,72 @@ export function inventoryPlacementProblem(
       && inventoryPlacementKind(other) === "hand"
       && other.placement_index === target.index
     )
-    return occupied ? "Рука уже занята." : null
-  }
-
-  if (target.kind === "external") {
+    if (occupied) problem = "Рука уже занята."
+  } else if (target.kind === "external") {
     if (!Number.isInteger(target.index) || target.index < 0) return "Недопустимая внешняя ячейка."
-    if (target.index >= inventoryExternalCarryCapacity(items)) return "Внешняя ячейка недоступна."
+    const capacityBeforeMove = inventoryExternalCarryCapacity(items)
+    if (target.index >= capacityBeforeMove) return "Внешняя ячейка недоступна."
     const occupied = items.some((other) =>
       other.id !== item.id
       && inventoryPlacementKind(other) === "external"
       && other.placement_index === target.index
     )
-    return occupied ? "Внешняя ячейка уже занята." : null
-  }
+    if (occupied) problem = "Внешняя ячейка уже занята."
+  } else if (target.kind === "grid") {
+    const holder = items.find((candidate) => candidate.id === target.holderItemId)
+    if (!holder) return "Контейнер не найден."
+    const holderProblem = inventoryHolderProblem(items, item, target.holderItemId)
+    if (holderProblem) return "Этот контейнер нельзя использовать для предмета."
 
-  const holder = items.find((candidate) => candidate.id === target.holderItemId)
-  if (!holder) return "Контейнер не найден."
-  const holderProblem = inventoryHolderProblem(items, item, target.holderItemId)
-  if (holderProblem) return "Этот контейнер нельзя использовать для предмета."
+    const holderProfile = inventoryPhysicalProfile(holder)
+    const container = holderProfile.container_profile
+    if (!container) return "У контейнера нет физической сетки."
+    if (item.category === "container" && container.allow_nested_containers === false) {
+      return "Этот контейнер не принимает вложенные контейнеры."
+    }
 
-  const holderProfile = inventoryPhysicalProfile(holder)
-  const container = holderProfile.container_profile
-  if (!container) return "У контейнера нет физической сетки."
-  if (item.category === "container" && container.allow_nested_containers === false) {
-    return "Этот контейнер не принимает вложенные контейнеры."
-  }
+    const profile = inventoryPhysicalProfile(item)
+    if (target.rotation !== 0 && !profile.rotatable) return "Предмет нельзя вращать."
+    if (
+      !Number.isInteger(target.gridX)
+      || !Number.isInteger(target.gridY)
+      || target.gridX < 0
+      || target.gridY < 0
+    ) {
+      return "Некорректные координаты."
+    }
 
-  const profile = inventoryPhysicalProfile(item)
-  if (target.rotation !== 0 && !profile.rotatable) return "Предмет нельзя вращать."
-  if (
-    !Number.isInteger(target.gridX)
-    || !Number.isInteger(target.gridY)
-    || target.gridX < 0
-    || target.gridY < 0
-  ) {
-    return "Некорректные координаты."
-  }
+    const shape = rotateInventoryShape(profile, target.rotation)
+    if (
+      target.gridX + shape.width > container.internal_grid_width
+      || target.gridY + shape.height > container.internal_grid_height
+    ) {
+      return "Предмет не помещается в границы контейнера."
+    }
 
-  const shape = rotateInventoryShape(profile, target.rotation)
-  if (
-    target.gridX + shape.width > container.internal_grid_width
-    || target.gridY + shape.height > container.internal_grid_height
-  ) {
-    return "Предмет не помещается в границы контейнера."
-  }
-
-  const wanted = new Set(
-    shape.cells.map((cell) => (target.gridX + cell.x) + ":" + (target.gridY + cell.y)),
-  )
-  for (const other of items) {
-    if (other.id === item.id) continue
-    if (other.holder_item_id !== holder.id || inventoryPlacementKind(other) !== "grid") continue
-    if (other.grid_x == null || other.grid_y == null) continue
-    const otherShape = rotateInventoryShape(
-      inventoryPhysicalProfile(other),
-      (other.grid_rotation || 0) as 0 | 90 | 180 | 270,
+    const wanted = new Set(
+      shape.cells.map((cell) => (target.gridX + cell.x) + ":" + (target.gridY + cell.y)),
     )
-    for (const cell of otherShape.cells) {
-      if (wanted.has((other.grid_x + cell.x) + ":" + (other.grid_y + cell.y))) {
-        return "Место занято другим предметом."
+    for (const other of items) {
+      if (other.id === item.id) continue
+      if (other.holder_item_id !== holder.id || inventoryPlacementKind(other) !== "grid") continue
+      if (other.grid_x == null || other.grid_y == null) continue
+      const otherShape = rotateInventoryShape(
+        inventoryPhysicalProfile(other),
+        (other.grid_rotation || 0) as 0 | 90 | 180 | 270,
+      )
+      for (const cell of otherShape.cells) {
+        if (wanted.has((other.grid_x + cell.x) + ":" + (other.grid_y + cell.y))) {
+          problem = "Место занято другим предметом."
+          break
+        }
       }
+      if (problem) break
     }
   }
 
-  return null
+  if (problem) return problem
+  return externalCapacityProblemAfterPlacement(items, item, target)
 }
 
 export function firstAvailableGridPlacement(
