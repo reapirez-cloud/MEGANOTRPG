@@ -600,11 +600,11 @@ Current status:
 8  ✅ persistent world storage / chests / stashes
 9  ✅ chats/scenes + shared Surfaces
 10 ✅ dedicated Trade block mechanics
-11 ⬜ Chasovoy adoption + legacy migration
+11 🚧 Chasovoy adoption + legacy migration (IN PROGRESS)
 12 ⬜ final security/concurrency/E2E certification
 ```
 
-There are 12 stages total. Stages 1–10 are complete; Stage 11 is next and two stages remain.
+There are 12 stages total. Stages 1–10 are complete; Stage 11 is in progress and Stage 12 remains after it.
 
 Audits must read both this product contract and the implementation plan.
 
