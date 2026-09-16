@@ -267,39 +267,24 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - closing/unmounting the character sheet clears its Snake view context so stale character/entity state cannot leak into another screen;
 - the public character-sheet Snake context-key contract now includes interfaceMode, effect/item selection and authority fields for Stages 12–16.
 
-### Stage 12 — Visual assets [DONE]
-- the user-authored full-color PNG class-icon pack is now the primary Character Sheet visual set; the earlier neutral silhouette atlases remain only as safe fallbacks;
-- authored icons are optimized into two 4×4 atlases under `public/ui-v1/character-sheet/icons/`: `class-resources.png` and `class-spell-slots.png`, keeping the UI to two image requests instead of shipping the original multi-megabyte PNG files individually;
-- every class has two semantic visuals: one class-resource icon and one spell-slot icon;
-- authored mappings are already reserved for fighter, warlock, cleric, druid, bard, paladin, sorcerer, wizard, rogue, monk and the future barbarian, artificer and ranger classes;
-- the latest redraws supersede earlier versions for Warlock spell slots, Bard spell slots and Cleric class-resource art;
-- future/legacy class-name resolution already recognizes `barbarian`, `artificer`, `ranger` and Russian aliases, so their icons activate automatically once those class packages are introduced;
-- primary semantic slots are `class:<classKey>:resource` and `class:<classKey>:spell_slot`; exact `resource:<stateKey>` fallback slots remain available for unknown/non-class resources;
-- authored PNG colors are preserved instead of being flattened into a monochrome mask; available charges use the full-color art with a restrained glow, while spent charges use the exact same icon in desaturated gray;
-- every spent charge now receives the user-authored `spent-resource-cross.png` as a separate overlay layer; the base icon remains grayscale underneath, so the spent state is readable by both silhouette and the red X without baking the mark into every class asset;
-- old generated silhouette atlases are still available for unknown class/resource fallbacks, so missing future media never breaks layout;
-- atlas coordinates and authored/fallback rendering mode are isolated in `characterSheetVisualAssets.ts`; Overview only asks for semantic slots and never knows sprite coordinates;
-- original 1254px source PNGs are not copied into the application bundle; only UI-sized optimized atlas tiles are shipped;
-- Stage 13 can replace either class-resource or spell-slot visuals through the existing media layer without touching Character Engine, entity navigation or Overview mechanics;
-- Supabase is intentionally not required for the built-in authored pack. Existing media registration/binding RPCs remain the override path for Stage 13 admin media editing.
-
-### Stage 12A — Class sheet skins [DONE]
-- the Character Sheet keeps one shared layout and interaction model for every class; class identity is a skin, never a component fork;
-- thirteen class palettes are active now: fighter, warlock, cleric, druid, bard, paladin, sorcerer, wizard, rogue, monk, barbarian, artificer and ranger;
-- every palette controls the graphite canvas, raised canvas, translucent surfaces, line hierarchy, main accent, spell accent, resource accent and class-art color wash rather than changing only one glow color;
-- all palettes stay inside the gray/graphite design language with restrained class undertones; pure black is still reserved for shadows and veils;
-- the same authored class key drives palette, class-resource PNG and spell-slot PNG, so color and icon identity cannot silently drift apart;
-- the semantic class-art slot is `class:<classKey>:sheet_background`;
-- CharacterView loads that slot through the existing reference-media system and passes the resolved private-media URL into CharacterSheetShell;
-- a selected class background becomes one continuous decorative underlay below the sheet, visible through translucent panels instead of being repeated as wallpaper inside every card;
-- a class-specific wash and graphite veil stay above the underlay, preserving text, charge-state, spell-state and Snake readability;
-- missing class art safely renders the palette alone; missing/unknown class identity falls back to the neutral graphite theme without changing geometry;
-- class background bindings are owner/admin-only at the server permission layer; GM/player access is not granted by the UI;
-- Supabase `private.can_attach_media_target` now accepts owner-only `class:<classKey>:sheet_background` reference-art bindings while subclass reference art remains limited to preview/hero;
-- `useUiV1ReferenceMedia` resolves private storage URLs for sheet backgrounds and registers uploads with the existing `panel` media purpose/profile;
-- no parallel storage system was introduced: backgrounds use `media_assets`, `media_bindings`, `campaign-media` and the existing media RPCs;
-- Stage 13 only needs to expose replace/reset controls through Snake; the rendering, media slot, permissions and storage path are already implemented;
-- subclass content does not fork the class skin system at this stage.
+### Stage 12 — Visual identity, class art and resources [DONE]
+- the user-authored full-color PNG class-icon pack is the primary Character Sheet icon set; neutral silhouette atlases remain only as safe fallbacks;
+- authored class-resource and spell-slot icons are optimized into two 4×4 atlases, including reserved mappings for fighter, warlock, cleric, druid, bard, paladin, sorcerer, wizard, rogue, monk, barbarian, artificer and ranger;
+- the latest redraws supersede earlier Warlock, Bard and Cleric variants;
+- spent charges keep the authored silhouette in grayscale and receive the separate user-authored red `spent-resource-cross.png` overlay;
+- thirteen finished 9:16 class backgrounds are now built into the sheet as optimized WebP fallbacks: fighter = worn steel/leather, warlock = charred parchment, cleric = cathedral ash-light, druid = bark/moss, bard = ebony/gold strings, paladin = ruined shrine, sorcerer = midnight archive, wizard = veined arcane stone, rogue = black leather/poison green, monk = ascetic monastery stone, barbarian = charred leather/embers, artificer = iron/brass workshop, ranger = shadowed forest frontier;
+- built-in backgrounds are isolated in `character-sheet-backgrounds.css` and keyed only by the canonical class key; unknown classes continue to render the neutral graphite fallback;
+- every background is decorative and continuous beneath the sheet rather than repeated inside individual cards;
+- the UI background keeps the source 9:16 composition at `100% auto` so long sheets fade back into graphite instead of stretching one texture across several screens;
+- the class palette is now derived from its actual background material rather than from a generic class stereotype: canvas, raised canvas, three translucent surface levels, divider hierarchy, primary accent, spell accent, resource accent and the background wash all move together;
+- the palette remains intentionally graphite-first. Text tiers remain shared across classes for accessibility, while class identity lives in material tint, accents, icons and the underlay;
+- panel opacity was reduced enough for the art to participate in the composition while keeping spell/resource states and Snake affordances readable;
+- semantic media slots remain `class:<classKey>:resource`, `class:<classKey>:spell_slot` and `class:<classKey>:sheet_background`;
+- Supabase remains the runtime override layer: an active private-media binding for `class:<classKey>:sheet_background` wins over the built-in fallback through the existing reference-media pipeline;
+- there are currently no active class sheet-background bindings in Supabase, so the authored built-in set is what renders by default;
+- server authorization for future background replacement remains owner/admin-only; GM/player permissions were not widened;
+- no Character Engine mechanics, resource state schema or spell preparation path changed as part of the visual stage;
+- the original multi-megabyte source images are not shipped as-is: the built-in fallback set is mobile-optimized before embedding in the UI.
 
 ### Stage 13 — Admin media editing
 - long press → Snake media actions;
