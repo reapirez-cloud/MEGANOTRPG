@@ -17,10 +17,14 @@ import CharacterSheetShell from "./CharacterSheetShell"
 import CharacterSheetSpells from "./CharacterSheetSpells"
 import {
   CHARACTER_INVENTORY_INTERFACE_CONTRACT,
-  isCharacterSheetSection,
   type CharacterSheetSection,
   type CharacterSheetTarget,
 } from "./characterSheetUiContract"
+import {
+  characterSheetHistoryStateWith,
+  readCharacterSheetHistory,
+  type CharacterSheetHistorySnapshot,
+} from "./characterSheetHistory"
 import {
   type CharacterSheetEntityTarget,
 } from "./characterSheetEntityNavigation"
@@ -35,6 +39,7 @@ import {
 } from "./useUiV1ReferenceMedia"
 import { createSheetReferenceMediaActions } from "./characterSheetMediaActions"
 import { useWorkspaceData } from "./useWorkspaceData"
+import { bindTelegramBackButton } from "./telegramBackButton"
 import "./character-sheet-theme.css"
 import "./character-sheet-backgrounds.css"
 import "./character-sheet-shell.css"
@@ -44,72 +49,8 @@ import "./character-sheet-overview.css"
 import "./character-sheet-spells.css"
 import "./character-inventory-interface.css"
 
-type CharacterSheetHistorySnapshot =
-  | {
-      characterId: string
-      kind: "sheet"
-      section: CharacterSheetSection
-    }
-  | {
-      characterId: string
-      kind: "interface"
-      interface: "inventory"
-      returnSection: CharacterSheetSection
-      focusedItemId: string | null
-    }
-
-function readCharacterSheetHistory(
-  value: unknown,
-  characterId: string,
-): CharacterSheetHistorySnapshot | null {
-  if (!value || typeof value !== "object") return null
-
-  const root = value as Record<string, unknown>
-  const raw = root.characterSheet
-  if (!raw || typeof raw !== "object") return null
-
-  const state = raw as Record<string, unknown>
-  if (state.characterId !== characterId) return null
-
-  if (state.kind === "sheet" && isCharacterSheetSection(state.section)) {
-    return {
-      characterId,
-      kind: "sheet",
-      section: state.section,
-    }
-  }
-
-  if (
-    state.kind === "interface" &&
-    state.interface === "inventory" &&
-    isCharacterSheetSection(state.returnSection)
-  ) {
-    return {
-      characterId,
-      kind: "interface",
-      interface: "inventory",
-      returnSection: state.returnSection,
-      focusedItemId:
-        typeof state.focusedItemId === "string"
-          ? state.focusedItemId
-          : null,
-    }
-  }
-
-  return null
-}
-
 function historyStateWith(snapshot: CharacterSheetHistorySnapshot) {
-  const current = window.history.state
-  const base =
-    current && typeof current === "object"
-      ? { ...(current as Record<string, unknown>) }
-      : {}
-
-  return {
-    ...base,
-    characterSheet: snapshot,
-  }
+  return characterSheetHistoryStateWith(window.history.state, snapshot)
 }
 
 function classKeyFrom(
@@ -526,6 +467,9 @@ export default function CharacterView({
 
     onBack()
   }, [characterId, interfaceMode, onBack, section])
+  
+  useEffect(() => bindTelegramBackButton(handleBack), [handleBack])
+
 
   const workspaceCharacter =
     workspace.characters.find((item) => item.id === characterId) || null
