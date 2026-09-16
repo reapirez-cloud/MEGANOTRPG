@@ -15,6 +15,16 @@ import type { CharacterSpell } from "../types/characterSheet.ts"
 import type { SnakeAction } from "../snake-engine"
 import { CHARACTER_SHEET_SPELL_GROUP_ORDER } from "./characterSheetUiContract"
 import {
+  hasMutablePreparationWorkflow,
+  isStandardSpellLevel,
+  normalizeSpellSchool,
+  resolveSpellPreparationState,
+  spellPreparationRank,
+  stableUniqueSortedStrings,
+  summarizeSourceNames,
+  type CharacterSheetPreparationState,
+} from "./characterSheetDataCertification"
+import {
   characterSheetEntityLabel,
   characterSheetLinkedEntitiesForSpell,
   type CharacterSheetEntityNavigator,
@@ -39,11 +49,7 @@ type SpellCatalogMeta = {
   source: string
 }
 
-type PreparationState =
-  | "always_prepared"
-  | "prepared"
-  | "unprepared"
-  | "not_required"
+type PreparationState = CharacterSheetPreparationState
 
 type SpellView = {
   spell: ResolvedSpell
@@ -76,18 +82,8 @@ const schoolTranslations: Record<string, string> = {
   Transmutation: "Преобразование",
 }
 
-function normalizeSchool(value: string) {
-  const clean = value.trim()
-  if (!clean) return ""
-  const canonical = Object.keys(schoolTranslations).find(
-    (school) => school.toLocaleLowerCase("en-US") ===
-      clean.toLocaleLowerCase("en-US"),
-  )
-  return canonical || clean
-}
-
 function schoolLabel(value: string) {
-  const normalized = normalizeSchool(value)
+  const normalized = normalizeSpellSchool(value)
   return schoolTranslations[normalized] || normalized || "Без школы"
 }
 
@@ -101,44 +97,14 @@ function slugFromResolvedKey(key: string) {
   return slug && /^[a-z0-9-]+$/i.test(slug) ? slug : null
 }
 
-function preparationState(accesses: ResolvedSpellAccess[]): PreparationState {
-  if (accesses.some((access) => access.preparationMode === "always_prepared")) {
-    return "always_prepared"
-  }
-  if (
-    accesses.some(
-      (access) =>
-        access.preparationMode === "prepared" &&
-        access.prepared,
-    )
-  ) {
-    return "prepared"
-  }
-  if (accesses.some((access) => access.preparationMode === "not_required")) {
-    return "not_required"
-  }
-  if (accesses.some((access) => access.preparationMode === "prepared")) {
-    return "unprepared"
-  }
-  return "not_required"
-}
-
 function accessSourceNames(accesses: ResolvedSpellAccess[]) {
-  const names = new Set<string>()
-  for (const access of accesses) {
-    for (const sourceRef of access.sources) {
-      const name = sourceRef.source.name?.trim()
-      if (name) names.add(name)
-    }
-  }
-  return [...names].sort((left, right) =>
-    left.localeCompare(right, "ru")
+  return stableUniqueSortedStrings(
+    accesses.flatMap((access) =>
+      access.sources.map(
+        (sourceRef) => sourceRef.source.name?.trim() || "",
+      )
+    ),
   )
-}
-
-function sourceSummary(names: string[]) {
-  if (names.length <= 2) return names.join(" · ")
-  return names.slice(0, 2).join(" · ") + ` · +${names.length - 2}`
 }
 
 function legacySpellFor(
@@ -152,10 +118,6 @@ function legacySpellFor(
     if (row) return row
   }
   return null
-}
-
-function preparationRank(value: PreparationState) {
-  return value === "always_prepared" || value === "prepared" ? 0 : 1
 }
 
 function detailBody(view: SpellView) {
@@ -300,7 +262,7 @@ export default function CharacterSheetSpells({
         const slug = slugFromResolvedKey(spell.key)
         const catalog = slug ? catalogBySlug.get(slug) || null : null
         const schoolValue =
-          normalizeSchool(
+          normalizeSpellSchool(
             spell.identity.school?.trim() ||
             legacy?.school?.trim() ||
             catalog?.school?.trim() ||
@@ -321,7 +283,7 @@ export default function CharacterSheetSpells({
             legacy?.ritual ??
             catalog?.ritual ??
             false,
-          preparation: preparationState(spell.accesses),
+          preparation: resolveSpellPreparationState(spell.accesses),
           sourceNames: accessSourceNames(spell.accesses),
           legacy,
           catalog,
@@ -331,7 +293,8 @@ export default function CharacterSheetSpells({
         left.level - right.level ||
         (
           usesPreparation
-            ? preparationRank(left.preparation) - preparationRank(right.preparation)
+            ? spellPreparationRank(left.preparation) -
+              spellPreparationRank(right.preparation)
             : 0
         ) ||
         left.name.localeCompare(right.name, "ru")
@@ -340,10 +303,8 @@ export default function CharacterSheetSpells({
 
   const hasPreparationWorkflow = useMemo(
     () =>
-      views.some((view) =>
-        view.spell.accesses.some(
-          (access) => access.preparationMode === "prepared",
-        )
+      hasMutablePreparationWorkflow(
+        views.map((view) => view.spell),
       ),
     [views],
   )
@@ -592,7 +553,7 @@ export default function CharacterSheetSpells({
                       </span>
 
                       <span className="u1-character-spells__source">
-                        {sourceSummary(view.sourceNames)}
+                        {summarizeSourceNames(view.sourceNames)}
                       </span>
                     </button>
                   </SnakeTrigger>
@@ -603,7 +564,7 @@ export default function CharacterSheetSpells({
         )
       })}
 
-      {filtered.some((spell) => spell.level < 0 || spell.level > 9) && (
+      {filtered.some((spell) => !isStandardSpellLevel(spell.level)) && (
         <section
           className="u1-character-spells__level"
           data-level="other"
@@ -612,13 +573,13 @@ export default function CharacterSheetSpells({
             <span>ПРОЧЕЕ</span>
             <small>
               {filtered.filter(
-                (spell) => spell.level < 0 || spell.level > 9,
+                (spell) => !isStandardSpellLevel(spell.level),
               ).length}
             </small>
           </header>
           <div className="u1-character-spells__no-results">
             {filtered
-              .filter((spell) => spell.level < 0 || spell.level > 9)
+              .filter((spell) => !isStandardSpellLevel(spell.level))
               .map((spell) =>
                 `${spell.name} · уровень ${spell.level}`
               )
