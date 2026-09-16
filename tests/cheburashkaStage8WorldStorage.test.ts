@@ -264,6 +264,7 @@ test("Stage 8 player may create/manage own stash but may not move world storage"
 
 test("Stage 8 migration locks one item truth and server-authoritative world access", () => {
   const sql = fs.readFileSync("supabase/migrations/20260916070000_cheburashka_stage8_world_storage.sql", "utf8")
+  const integritySql = fs.readFileSync("supabase/migrations/20260916073000_cheburashka_stage8_integrity_closure.sql", "utf8")
   assert.match(sql, /create table if not exists public\.world_storages/)
   assert.match(sql, /character_inventory_items_owner_scope_check/)
   assert.match(sql, /character_id is not null and world_storage_id is null/)
@@ -276,4 +277,7 @@ test("Stage 8 migration locks one item truth and server-authoritative world acce
   assert.match(sql, /private\.can_operate_world_storage_v1/)
   assert.match(sql, /revoke all on function public\.store_inventory_item_in_world_v1[\s\S]*from public, anon/)
   assert.match(sql, /grant execute on function public\.take_inventory_item_from_world_v1[\s\S]*to authenticated/)
+  assert.match(integritySql, /update public\.character_inventory_items item[\s\S]*name = btrim\(p_name\)/)
+  assert.match(integritySql, /description = coalesce\(p_description,''\)/)
+  assert.match(integritySql, /item\.world_storage_id = p_world_storage_id/)
 })
