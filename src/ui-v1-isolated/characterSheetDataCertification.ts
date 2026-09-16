@@ -100,10 +100,11 @@ export function summarizeSourceNames(
   maxVisible = 2,
 ) {
   const names = stableUniqueSortedStrings(values)
-  if (names.length <= maxVisible) return names.join(" · ")
+  const visibleCount = Math.max(1, Math.floor(maxVisible))
+  if (names.length <= visibleCount) return names.join(" · ")
 
-  return names.slice(0, maxVisible).join(" · ") +
-    ` · +${names.length - maxVisible}`
+  return names.slice(0, visibleCount).join(" · ") +
+    ` · +${names.length - visibleCount}`
 }
 
 export function isStandardSpellLevel(level: number) {
@@ -162,7 +163,8 @@ export function earliestKnownUnlockLevel(
   const known = values.filter(
     (level): level is number =>
       typeof level === "number" &&
-      Number.isFinite(level),
+      Number.isInteger(level) &&
+      level >= 1,
   )
 
   return known.length ? Math.min(...known) : null
