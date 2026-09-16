@@ -276,6 +276,7 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - future/legacy class-name resolution already recognizes `barbarian`, `artificer`, `ranger` and Russian aliases, so their icons activate automatically once those class packages are introduced;
 - primary semantic slots are `class:<classKey>:resource` and `class:<classKey>:spell_slot`; exact `resource:<stateKey>` fallback slots remain available for unknown/non-class resources;
 - authored PNG colors are preserved instead of being flattened into a monochrome mask; available charges use the full-color art with a restrained glow, while spent charges use the exact same icon in desaturated gray;
+- every spent charge now receives the user-authored `spent-resource-cross.png` as a separate overlay layer; the base icon remains grayscale underneath, so the spent state is readable by both silhouette and the red X without baking the mark into every class asset;
 - old generated silhouette atlases are still available for unknown class/resource fallbacks, so missing future media never breaks layout;
 - atlas coordinates and authored/fallback rendering mode are isolated in `characterSheetVisualAssets.ts`; Overview only asks for semantic slots and never knows sprite coordinates;
 - original 1254px source PNGs are not copied into the application bundle; only UI-sized optimized atlas tiles are shipped;
