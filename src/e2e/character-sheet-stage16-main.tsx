@@ -223,6 +223,27 @@ function Stage16Harness() {
           scrolling, sticky safe areas and long press can be exercised.
         </p>
 
+        <div
+          className="u1-character-overview__slot-viewport"
+          data-testid="stage16-nested-scroll"
+          style={{ marginTop: 20 }}
+        >
+          {Array.from({ length: 10 }, (_, index) => (
+            <button
+              key={index}
+              type="button"
+              className="u1-character-overview__slot"
+            >
+              <span className="u1-character-overview__slot-level">
+                <strong>{index + 1}</strong>
+                <small>УРОВЕНЬ</small>
+              </span>
+              <span />
+              <b>1/1</b>
+            </button>
+          ))}
+        </div>
+
         <SnakeTrigger
           entity={{
             type: "stage16-target",
@@ -267,7 +288,13 @@ if (!root) throw new Error("Stage 16 root not found")
 createRoot(root).render(
   <AIProvider>
     <SnakeProvider>
-      <Stage16Harness />
+      <div className="u1-app">
+        <div className="u1-stage">
+          <div className="u1-view">
+            <Stage16Harness />
+          </div>
+        </div>
+      </div>
     </SnakeProvider>
   </AIProvider>,
 )
