@@ -185,7 +185,7 @@ export default function CharacterSheetOverview({
   resourceSyncInputs: ResourceSyncInput[]
   runtimeError?: string
   onOpenFeatures: () => void
-  onOpenSpells: () => void
+  onOpenSpells: (level?: number | null) => void
 }) {
   const snake = useSnake()
 
@@ -333,7 +333,7 @@ export default function CharacterSheetOverview({
         >
           <header className="u1-character-overview__section-head">
             <span id="u1-character-overview-slots">ЯЧЕЙКИ ЗАКЛИНАНИЙ</span>
-            <button type="button" onClick={onOpenSpells}>
+            <button type="button" onClick={() => onOpenSpells(null)}>
               ВСЕ ›
             </button>
           </header>
@@ -380,7 +380,7 @@ export default function CharacterSheetOverview({
                     type="button"
                     className="u1-character-overview__slot"
                     data-pact={pact || undefined}
-                    onClick={onOpenSpells}
+                    onClick={() => onOpenSpells(level)}
                     aria-label={
                       pact
                         ? `Ячейки Магии договора, доступно ${current} из ${max}`
