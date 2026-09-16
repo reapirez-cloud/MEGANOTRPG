@@ -83,6 +83,7 @@ export {
   resourceStateKey,
   spendResource,
 } from "./resources.ts"
+export { baseCarryingCapacityKg, KG_PER_STRENGTH_POINT } from "./carrying.ts"
 export { resolveCharacter, resolveCharacterInput } from "./resolver.ts"
 export {
   SpellConflictError,

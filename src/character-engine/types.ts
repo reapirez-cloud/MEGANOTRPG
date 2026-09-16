@@ -123,6 +123,7 @@ export type NumericTarget =
   | "combat.initiative"
   | "combat.maxHp"
   | "combat.speed"
+  | "carrying.capacityKg"
   | `resources.${string}.max`
   | `values.${string}`
   | `actions.${string}.attackBonus`
@@ -695,6 +696,10 @@ export interface ResolvedCharacter {
     initiative: ResolvedNumber
   }
   passives: Record<PassiveKey, ResolvedNumber>
+  carrying: {
+    /** Canonical carry capacity in kilograms. Current carried mass remains a Cheburashka projection. */
+    capacityKg: ResolvedNumber
+  }
   spellcasting: {
     byAbility: Record<AbilityKey, { saveDc: number; attackBonus: number }>
   }

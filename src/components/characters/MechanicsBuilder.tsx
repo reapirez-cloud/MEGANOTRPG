@@ -12,7 +12,7 @@ type ResourceMaxMode = "fixed" | "source_level" | "character_level" | "proficien
 type SpellPayment = "none" | "resource" | "slot"
 
 const numericTargets: Array<{ value: NumericTarget; label: string }> = [
-  { value: "combat.ac", label: "Класс доспеха" }, { value: "combat.initiative", label: "Инициатива" }, { value: "combat.maxHp", label: "Максимум HP" }, { value: "combat.speed", label: "Скорость" }, { value: "core.proficiencyBonus", label: "Бонус мастерства" },
+  { value: "combat.ac", label: "Класс доспеха" }, { value: "combat.initiative", label: "Инициатива" }, { value: "combat.maxHp", label: "Максимум HP" }, { value: "combat.speed", label: "Скорость" }, { value: "carrying.capacityKg", label: "Переносимый вес, кг" }, { value: "core.proficiencyBonus", label: "Бонус мастерства" },
   { value: "abilities.strength", label: "Сила" }, { value: "abilities.dexterity", label: "Ловкость" }, { value: "abilities.constitution", label: "Телосложение" }, { value: "abilities.intelligence", label: "Интеллект" }, { value: "abilities.wisdom", label: "Мудрость" }, { value: "abilities.charisma", label: "Харизма" },
 ]
 const abilities: Array<{ value: AbilityKey; label: string }> = [

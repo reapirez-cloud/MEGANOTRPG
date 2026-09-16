@@ -396,7 +396,7 @@ function condition(
 function numericTarget(value: unknown) {
   const target = text(value, 240)
   if (
-    /^(abilities\.(strength|dexterity|constitution|intelligence|wisdom|charisma)|core\.proficiencyBonus|skills\.[a-z_]+\.bonus|savingThrows\.(strength|dexterity|constitution|intelligence|wisdom|charisma)\.bonus|passives\.(perception|investigation|insight)|combat\.(ac|initiative|maxHp|speed))$/.test(target)
+    /^(abilities\.(strength|dexterity|constitution|intelligence|wisdom|charisma)|core\.proficiencyBonus|skills\.[a-z_]+\.bonus|savingThrows\.(strength|dexterity|constitution|intelligence|wisdom|charisma)\.bonus|passives\.(perception|investigation|insight)|combat\.(ac|initiative|maxHp|speed)|carrying\.capacityKg)$/.test(target)
   ) return target
 
   if (
