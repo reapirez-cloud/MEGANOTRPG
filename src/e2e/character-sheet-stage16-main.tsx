@@ -248,7 +248,6 @@ function Stage16Harness() {
           entity={{
             type: "stage16-target",
             id: "touch-target",
-            label: "Touch target",
           }}
           actions={snakeActions}
         >
