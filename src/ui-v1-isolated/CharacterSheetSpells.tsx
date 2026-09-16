@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react"
 
@@ -192,15 +193,18 @@ export default function CharacterSheetSpells({
   contract,
   legacySpells,
   runtimeError,
+  focusLevel,
   onSelect,
 }: {
   characterId: string
   contract: ResolvedCharacterContract | null
   legacySpells: CharacterSpell[]
   runtimeError?: string
+  focusLevel?: number | null
   onSelect?: (spellId: string) => void
 }) {
   const snake = useSnake()
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const [catalogBySlug, setCatalogBySlug] = useState<Map<string, SpellCatalogMeta>>(
     () => new Map(),
   )
@@ -328,6 +332,30 @@ export default function CharacterSheetSpells({
     return true
   })
 
+  useEffect(() => {
+    if (
+      focusLevel === null ||
+      focusLevel === undefined ||
+      focusLevel < 0 ||
+      focusLevel > 9
+    ) {
+      return
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const target = rootRef.current?.querySelector<HTMLElement>(
+        `[data-level="${focusLevel}"]`,
+      )
+      target?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+        inline: "nearest",
+      })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [focusLevel, filtered.length])
+
   if (!contract) {
     return (
       <section className="u1-character-spells u1-character-spells--loading">
@@ -350,7 +378,7 @@ export default function CharacterSheetSpells({
   }
 
   return (
-    <div className="u1-character-spells">
+    <div className="u1-character-spells" ref={rootRef}>
       <div className="u1-character-spells__filters">
         <div className="u1-character-spells__chips">
           <button
@@ -404,6 +432,7 @@ export default function CharacterSheetSpells({
             key={level}
             className="u1-character-spells__level"
             data-level={level}
+            data-focus-target={level === focusLevel || undefined}
           >
             <header className="u1-character-spells__level-head">
               <span>{levelLabel(level)}</span>
