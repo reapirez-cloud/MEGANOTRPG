@@ -21,6 +21,7 @@ type FeatureEntry = {
   description: string
   category: FeatureSourceGroup
   sourceId: string
+  originId: string
   sourceName: string
   sourceType: string
   timing: FeatureTiming
@@ -134,6 +135,7 @@ function sourceMeta(
     return {
       category: categoryFromTemplateKind(template.kind),
       sourceId: "template:" + template.id,
+      originId: sourceId,
       sourceName: template.name,
       sourceType,
     }
@@ -151,7 +153,11 @@ function sourceMeta(
 
   return {
     category,
-    sourceId: source?.parentSourceId || source?.id || category + ":unknown",
+    sourceId:
+      sourceType === "legacy_feature"
+        ? "legacy:" + category
+        : source?.parentSourceId || source?.id || category + ":unknown",
+    originId: source?.id || category + ":unknown",
     sourceName,
     sourceType,
   }
@@ -225,7 +231,7 @@ function buildEntries(
     const source = sourceMeta(grant.sources, templatesById, payloadKind)
     const label = text(payload?.label) || titleFromKey(grant.key)
     const description = text(payload?.description)
-    const key = source.sourceId + ":" + normalizedLabel(label)
+    const key = source.originId + ":" + normalizedLabel(label)
 
     entries.set(key, {
       id: "grant:" + grant.key + ":" + grant.variantKey,
@@ -241,7 +247,7 @@ function buildEntries(
   for (const action of contract.actions) {
     const source = sourceMeta(action.sources, templatesById)
     const label = action.label?.trim() || titleFromKey(action.key)
-    const key = source.sourceId + ":" + normalizedLabel(label)
+    const key = source.originId + ":" + normalizedLabel(label)
     const current = entries.get(key)
 
     if (current) {
