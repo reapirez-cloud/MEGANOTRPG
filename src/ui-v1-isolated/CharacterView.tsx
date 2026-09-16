@@ -28,6 +28,10 @@ import { createWorkshopCharacterActions } from "./gmWorkshopSnakeActions"
 import { useGMWorkshopData } from "./useGMWorkshopData"
 import { useSnake } from "./SnakeProvider"
 import { useUiV1CharacterControl } from "./useUiV1CharacterControl"
+import {
+  classReferenceArtSlot,
+  useUiV1ReferenceMedia,
+} from "./useUiV1ReferenceMedia"
 import { useWorkspaceData } from "./useWorkspaceData"
 import "./character-sheet-theme.css"
 import "./character-sheet-shell.css"
@@ -165,6 +169,7 @@ export default function CharacterView({
 }) {
   const control = useUiV1CharacterControl(characterId)
   const workspace = useWorkspaceData()
+  const referenceMedia = useUiV1ReferenceMedia()
   const workshop = useGMWorkshopData()
   const snake = useSnake()
   const runtime = useResolvedCharacterRuntime(control.runtimeEntity)
@@ -187,6 +192,10 @@ export default function CharacterView({
       control.templates,
     ),
     [control.assignments, control.character?.characterClass, control.templates],
+  )
+
+  const classSheetBackground = referenceMedia.get(
+    classReferenceArtSlot(classKey, "sheet_background"),
   )
 
   const applyHistorySnapshot = useCallback((
@@ -734,6 +743,7 @@ export default function CharacterView({
       classKey={classKey}
       portraitUrl={portraitUrl}
       portraitPresentation={portraitPresentation}
+      panelArtUrl={classSheetBackground?.url || null}
       dead={character.lifeState === "dead"}
       activeSection={section}
       portraitActions={portraitActions}
