@@ -288,13 +288,20 @@ Implemented in `dev` and live Supabase:
 - one container is open at a time, nested containers can be opened, Back returns to the parent, and drag targets include parent/root destinations;
 - equipment uses the same canonical item instance; equipping clears physical placement atomically, while occupied equipment slots are rejected until the old item receives a real destination;
 - Snake exposes inspect/open/rotate/move-to-bag/move-to-hand/move-to-external/equip/unequip actions backed by the same spatial commands as drag.
+- post-implementation integrity audit closed direct create/update equipment bypasses, destinationless unequip, external-capacity orphaning, definition/profile invalidation of placed items, equipment cross-slot conflicts, drag/long-press races and sparse-shape hit-testing;
+- dev reads physical geometry through a Cheburashka-safe profile projection so a player sees the same physical shape the server validates without requiring access to hidden Chasovoy prose/mechanics;
+- rejected spatial/equipment mutations force a fresh inventory reload, so stale optimistic state returns to canonical server truth instead of lingering on screen.
 
 Live migrations:
 - `20260916044954_cheburashka_stage6_spatial_inventory`;
 - `20260916045859_cheburashka_stage6_equipment_transfer_bridge`;
-- `20260916050604_cheburashka_stage6_placement_constraint_hardening`.
+- `20260916050604_cheburashka_stage6_placement_constraint_hardening`;
+- `20260916052417_cheburashka_stage6_integrity_closure`;
+- `20260916053336_cheburashka_stage6_profile_projection`;
+- `20260916053628_cheburashka_stage6_equipment_state_guard`;
+- `20260916053859_cheburashka_stage6_move_destination_guard`.
 
-The transitional `legacy` placement exists only so the unreleased production client can continue holder-only writes safely. Full historical Chasovoy adoption remains Stage 11, and final concurrency/security/E2E certification remains Stage 12.
+The transitional `legacy` placement and authenticated v1 mutation RPCs remain only because the currently deployed `main` still uses them against the shared Supabase project. New `dev` code uses guarded v2/v3 paths. Legacy RPC retirement is deferred until production promotion/final Stage 12 certification so Stage 6 does not break the live client while being developed. Full historical Chasovoy adoption remains Stage 11, and final cross-system security/concurrency/E2E certification remains Stage 12.
 
 ### 6.1 Authoritative grid placement
 
@@ -392,7 +399,11 @@ Snake should expose context actions such as:
 - generic external cells derive from canonical item profiles;
 - bags open sequentially, large grids pan/scroll at fixed cell size, and nested Back works;
 - grid and drag previews render authored shape masks rather than bounding-box truth;
-- equipment transitions keep one canonical item and reject implicit displacement;
+- equipment transitions keep one canonical item, reject implicit displacement and require a real destination for unequip;
+- external carry capacity cannot be reduced while it would orphan occupied external cells;
+- definition/revision or container-profile changes cannot invalidate an already committed placement without the transaction failing;
+- sparse shape masks are both collision truth and pointer hit-test truth;
+- physical profiles are projected through Cheburashka without leaking hidden definition content;
 - rollback smoke and regression tests cover the spatial invariants.
 
 ---
