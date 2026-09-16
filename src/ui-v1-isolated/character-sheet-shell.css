@@ -222,6 +222,7 @@
   background: transparent;
   color: var(--cv-text-muted);
   text-align: left;
+  cursor: pointer;
 }
 
 .u1-character-sheet__rail-row::before {
@@ -236,10 +237,6 @@
 
 .u1-character-sheet__rail-row:last-child {
   border-bottom: 0;
-}
-
-.u1-character-sheet__rail-row[aria-disabled="true"] {
-  cursor: default;
 }
 
 .u1-character-sheet__rail-row[data-active] {
