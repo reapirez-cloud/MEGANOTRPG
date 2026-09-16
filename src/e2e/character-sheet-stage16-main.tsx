@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, type CSSProperties } from "react"
 import { createRoot } from "react-dom/client"
 
 import { AIProvider } from "../ai/AIProvider"
@@ -262,11 +262,11 @@ function Stage16Harness() {
                   data-asset-render="image"
                   data-state="available"
                   style={{
-                    ["--u1-sheet-icon" as string]:
+                    "--u1-sheet-icon":
                       'url("/ui-v1/character-sheet/icons/class-resources.png")',
-                    ["--u1-sheet-icon-size" as string]: "400% 400%",
-                    ["--u1-sheet-icon-position" as string]: "0% 0%",
-                  }}
+                    "--u1-sheet-icon-size": "400% 400%",
+                    "--u1-sheet-icon-position": "0% 0%",
+                  } as CSSProperties}
                 >
                   <i />
                 </span>
@@ -285,11 +285,11 @@ function Stage16Harness() {
                     data-has-asset="true"
                     data-asset-render="image"
                     style={{
-                      ["--u1-sheet-icon" as string]:
+                      "--u1-sheet-icon":
                         'url("/ui-v1/character-sheet/icons/class-resources.png")',
-                      ["--u1-sheet-icon-size" as string]: "400% 400%",
-                      ["--u1-sheet-icon-position" as string]: "0% 0%",
-                    }}
+                      "--u1-sheet-icon-size": "400% 400%",
+                      "--u1-sheet-icon-position": "0% 0%",
+                    } as CSSProperties}
                   >
                     <i />
                   </span>
@@ -330,11 +330,11 @@ function Stage16Harness() {
                         data-has-asset="true"
                         data-asset-render="image"
                         style={{
-                          ["--u1-sheet-icon" as string]:
+                          "--u1-sheet-icon":
                             'url("/ui-v1/character-sheet/icons/class-spell-slots.png")',
-                          ["--u1-sheet-icon-size" as string]: "400% 400%",
-                          ["--u1-sheet-icon-position" as string]: "0% 0%",
-                        }}
+                          "--u1-sheet-icon-size": "400% 400%",
+                          "--u1-sheet-icon-position": "0% 0%",
+                        } as CSSProperties}
                       >
                         <i />
                       </span>
