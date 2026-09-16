@@ -166,10 +166,16 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - popstate is handled locally so browser / Android back follows the same model;
 - active section is reflected in the rail and AI view context.
 
-### Stage 5 — Core 50/50 block
-- quick combat/reference values left;
-- six abilities right;
-- ability click expands its skills without leaving the sheet.
+### Stage 5 — Core 50/50 block [DONE]
+- persistent 50/50 core mounted between masthead and dynamic sheet content;
+- quick combat/reference values on the left are read from the resolved Character Engine contract with legacy-sheet fallback;
+- quick values include AC, passive Perception, proficiency, initiative, metric speed display, and spell save/attack only for spellcasters;
+- stable placeholder slots are reserved for future quick-stat PNG assets;
+- six abilities live on the right with score + modifier;
+- tapping an ability collapses the other five and expands the selected ability in-place;
+- expanded ability shows its resolved saving throw and CE-linked skills with proficiency/expertise state;
+- tapping the selected ability again returns to the six-stat matrix;
+- expanded ability is exposed to AI/Snake view context for later contextual actions.
 
 ### Stage 6 — Overview
 - class resources;
