@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
 
-async function installTelegramBackButton(page: Parameters<typeof test>[0]["page"]) {
+async function installTelegramBackButton(page: Page) {
   await page.addInitScript(() => {
     const state = {
       shown: 0,
