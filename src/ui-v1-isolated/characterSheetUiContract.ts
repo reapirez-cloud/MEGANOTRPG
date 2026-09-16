@@ -121,6 +121,40 @@ export const CHARACTER_SHEET_SPELL_VISUAL_CONTRACT = {
   slotMediaSlot: (classKey: string) => `class:${classKey}:spell_slot`,
 } as const
 
+export const CHARACTER_SHEET_CLASS_SKIN_CONTRACT = {
+  scope: "class",
+  layoutPolicy: "shared-layout",
+  fallbackClassKey: "default",
+  background: {
+    mediaSlot: (classKey: string) =>
+      `class:${classKey}:sheet_background`,
+    role: "decorative-underlay",
+    mustPreserveReadability: true,
+  },
+  paletteCssVars: [
+    "--cv-canvas",
+    "--cv-canvas-raised",
+    "--cv-surface",
+    "--cv-surface-soft",
+    "--cv-text",
+    "--cv-text-soft",
+    "--cv-text-muted",
+    "--cv-accent",
+    "--cv-accent-soft",
+    "--cv-accent-line",
+    "--cv-spell-accent",
+    "--cv-spell-accent-soft",
+    "--cv-resource-accent",
+  ],
+  rules: {
+    oneSkinPerClass: true,
+    subclassDoesNotChangeLayout: true,
+    backgroundNeverOwnsInteraction: true,
+    backgroundMustRemainBehindUi: true,
+    graphiteFallbackRequired: true,
+  },
+} as const
+
 export const CHARACTER_SHEET_MEDIA_SLOTS = {
   portrait: "sheet:portrait",
   navigationIcon: characterSheetNavigationIconSlot,
@@ -134,6 +168,8 @@ export const CHARACTER_SHEET_MEDIA_SLOTS = {
     spellAttack: "sheet:quick:spell_attack",
   },
   spellSlot: CHARACTER_SHEET_SPELL_VISUAL_CONTRACT.slotMediaSlot,
+  classSheetBackground:
+    CHARACTER_SHEET_CLASS_SKIN_CONTRACT.background.mediaSlot,
   resource: (stateKey: string) => `resource:${stateKey}`,
 } as const
 
