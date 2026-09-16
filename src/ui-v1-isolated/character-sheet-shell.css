@@ -382,7 +382,7 @@
   --sheet-rail-width: clamp(118px, 31.5vw, 150px);
   position: relative;
   padding:
-    0
+    calc(8px + var(--u1-safe-top))
     0
     calc(var(--u1-dock-space) + 24px);
   background-attachment: local;

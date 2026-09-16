@@ -608,7 +608,7 @@
 .u1-character-overview__slot-viewport {
   max-height: clamp(116px, 31vw, 145px);
   scroll-snap-type: y proximity;
-  overscroll-behavior-y: contain;
+  overscroll-behavior-y: auto;
 }
 
 .u1-character-overview__slot {
