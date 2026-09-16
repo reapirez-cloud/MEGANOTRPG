@@ -174,3 +174,14 @@
     font-size: 6px;
   }
 }
+
+
+.u1-character-features__row[data-focus-target] {
+  background: var(--cv-accent-soft);
+  box-shadow: inset 1px 0 0 var(--cv-accent);
+}
+
+.u1-character-features__row[data-focus-target] .u1-character-features__copy strong {
+  color: var(--cv-text);
+  text-shadow: 0 0 7px var(--cv-accent-soft);
+}
