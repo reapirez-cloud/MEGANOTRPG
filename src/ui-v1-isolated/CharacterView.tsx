@@ -11,6 +11,7 @@ import { useResolvedCharacterRuntime } from "../hooks/useResolvedCharacterRuntim
 import type { SnakeAction } from "../snake-engine"
 import CharacterInventoryInterface from "./CharacterInventoryInterface"
 import CharacterSheetCore from "./CharacterSheetCore"
+import CharacterSheetFeatures from "./CharacterSheetFeatures"
 import CharacterSheetOverview from "./CharacterSheetOverview"
 import CharacterSheetShell from "./CharacterSheetShell"
 import {
@@ -27,6 +28,7 @@ import { useWorkspaceData } from "./useWorkspaceData"
 import "./character-sheet-theme.css"
 import "./character-sheet-shell.css"
 import "./character-sheet-core.css"
+import "./character-sheet-features.css"
 import "./character-sheet-overview.css"
 import "./character-inventory-interface.css"
 
@@ -122,11 +124,7 @@ function classKeyFrom(
 }
 
 function SectionPlaceholder({ section }: { section: CharacterSheetSection }) {
-  const copy: Record<Exclude<CharacterSheetSection, "overview">, { title: string; body: string }> = {
-    features: {
-      title: "Умения",
-      body: "Раздел уже переключается внутри листа. Сортировка по источнику и полноценные действия будут подключены на этапе 7.",
-    },
+  const copy: Record<Exclude<CharacterSheetSection, "overview" | "features">, { title: string; body: string }> = {
     spells: {
       title: "Заклинания",
       body: "Раздел уже переключается внутри листа. Группировка по уровням, подготовка и фильтры будут подключены на этапе 8.",
@@ -137,7 +135,7 @@ function SectionPlaceholder({ section }: { section: CharacterSheetSection }) {
     },
   }
 
-  if (section === "overview") return null
+  if (section === "overview" || section === "features") return null
 
   return (
     <div
@@ -165,6 +163,7 @@ export default function CharacterView({
   const [section, setSection] = useState<CharacterSheetSection>("overview")
   const [interfaceMode, setInterfaceMode] = useState<"inventory" | null>(null)
   const [expandedAbility, setExpandedAbility] = useState<AbilityKey | null>(null)
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null)
 
   const classKey = useMemo(
     () => classKeyFrom(
@@ -442,6 +441,7 @@ export default function CharacterView({
                 section,
                 interfaceMode,
                 expandedAbility,
+                selectedFeatureId: section === "features" ? selectedFeatureId : null,
                 runtimeStatus: runtime.status,
                 shellVersion: 2,
                 class: control.character.characterClass,
@@ -545,6 +545,14 @@ export default function CharacterView({
           onOpenSpells={() =>
             navigateSheet({ kind: "section", section: "spells" })
           }
+        />
+      ) : section === "features" ? (
+        <CharacterSheetFeatures
+          characterId={characterId}
+          contract={runtime.snapshot?.contract || null}
+          templates={control.templates}
+          runtimeError={runtime.error || undefined}
+          onSelect={setSelectedFeatureId}
         />
       ) : (
         <SectionPlaceholder section={section} />
