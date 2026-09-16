@@ -145,12 +145,14 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - Snake remains attached to the character/portrait context;
 - lower content area intentionally stays clean for Stages 5–8.
 
-### Stage 3 — Scrollable right navigation
-- thin 40–44px rows;
-- hidden scrollbar;
+### Stage 3 — Scrollable right navigation [DONE]
+- thin 40–42px rows;
+- fixed-height internal vertical scroll independent from navigation item count;
+- hidden scrollbar + touch scrolling + contained overscroll;
 - top/bottom fade;
-- placeholder icon slots;
-- active section treatment without heavy filled cards.
+- stable placeholder icon slots for future PNG assets;
+- active section treatment is a thin accent line + text/icon emphasis, never a heavy filled card;
+- navigation remains data-driven: future entries are appended to `CHARACTER_SHEET_NAVIGATION` without changing shell height or layout.
 
 ### Stage 4 — Navigation behavior
 - Inventory opens dedicated full interface;
