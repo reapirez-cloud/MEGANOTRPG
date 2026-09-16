@@ -415,3 +415,9 @@
     flex-basis: 15px;
   }
 }
+
+
+.u1-character-overview__resource[data-focus-target] {
+  background: var(--cv-accent-soft);
+  box-shadow: inset 1px 0 0 var(--cv-accent);
+}
