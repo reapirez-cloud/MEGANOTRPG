@@ -6,7 +6,7 @@
 >
 > Product contract: `docs/INVENTORY_PRODUCT_CONTRACT.md`
 >
-> Current checkpoint: **Stages 1–9 complete. Stage 10 is next: dedicated Trade block.**
+> Current checkpoint: **Stages 1–10 complete. Stage 11 is next: Chasovoy adoption + legacy inventory migration.**
 >
 > This file defines implementation order and completion boundaries. It does not by itself prove that a stage is implemented. Audits must verify source, live Supabase state where relevant, and real runtime behavior before changing a stage to complete.
 
@@ -25,11 +25,11 @@ The final inventory target is a physical, tactile inventory system built on Cheb
 | 7 | ✅ COMPLETE | Weight, load and specialized capacity |
 | 8 | ✅ COMPLETE | Persistent world storage, chests and stashes |
 | 9 | ✅ COMPLETE | Chats/scenes + shared Surfaces |
-| 10 | ⬜ TODO | Dedicated Trade block |
+| 10 | ✅ COMPLETE | Dedicated Trade block mechanics |
 | 11 | ⬜ TODO | Chasovoy adoption + legacy inventory migration |
 | 12 | ⬜ TODO | Final security/concurrency/E2E certification |
 
-There are **12 stages total**. Nine are complete; three remain.
+There are **12 stages total**. Ten are complete; two remain.
 
 ---
 
@@ -593,43 +593,234 @@ Live migrations:
 
 ---
 
-# Stage 10 — Dedicated Trade block
+# Stage 10 — Dedicated Trade block mechanics ✅
 
-Trade is not a Surface and not ordinary chat commands.
+Stage 10 is complete as a **mechanics/runtime + connection-contract stage** in `dev` and live Supabase.
 
-A chat contains a dedicated two-party Trade block.
+This stage intentionally does **not** implement or redesign the Trade UI. The future interface may be a dedicated block inside chat, a focused screen, a modal/overlay or another presentation. It must connect to the stable GENA TradeSession contract instead of knowing SQL/table details.
 
-Allowed participants:
+Trade is not a Surface and not ordinary chat messages.
+
+Allowed participant pairs:
 - PC ↔ NPC;
 - PC ↔ PC.
 
-For NPC, GM acts as that side.
+NPC ↔ NPC is rejected.
 
-Implement:
-- explicit two sides;
-- scoped inventory visibility;
-- merchant assortment / selected containers / explicitly visible items;
-- "Хочу это" interest marker;
-- central offer area;
-- trade-scoped discussion thread;
+For an NPC side, GM/manager authority acts as that character.
+For a PC side, the assigned owning user acts as that character.
+
+Trade access is also bound to the containing chat room. A trade side cannot use the Trade API to bypass room-read permissions.
+
+### 10.1 GENA Trade session state
+
+GENA owns only the session/orchestration facts:
+- the two character sides;
+- containing chat room;
+- open / committed / cancelled state;
 - offer revision;
-- acceptance A/B;
-- any offer mutation resets both acceptances;
-- atomic final exchange.
+- A/B acceptance revision;
+- explicitly exposed inventory grants;
+- “Хочу это” interest markers;
+- trade-scoped negotiation thread;
+- immutable-ish event/history rows;
+- last invalidation/failure code.
 
-Items in the offer remain owned by their current owner until commit.
+GENA does **not** own inventory rows. Offer lines reference Cheburashka item IDs/quantities and never become a second inventory ledger.
 
-Physical currency is transferred as normal inventory items.
+A typed, UI-agnostic connection seam now exists at:
 
-Base item value is advisory only. GM can accept barter, discounts, favors or nonsense if the scene demands it.
+```text
+src/gena-trade/
+  types.ts
+  supabase.ts
+  realtime.ts
+  runtime.ts
+```
 
-### Stage 10 complete when
+The ready runtime export is `tradeSession`.
 
-- no private NPC/player inventory leaks;
-- both sides accept the same revision;
-- stale/moved items invalidate the offer;
+Future UI may:
+- discover Trade sessions for a room;
+- load one Trade session;
+- load the acting side's own inventory;
+- load only the other side's explicitly trade-visible inventory;
+- load offer / interest / thread / history;
+- create a session;
+- change visibility;
+- mark/unmark interest;
+- add/change/remove own offer lines;
+- post a trade message;
+- accept;
+- cancel.
+
+Every write accepts an explicit stable `commandId`.
+
+### 10.2 Explicit inventory visibility
+
+Starting Trade grants **zero automatic private-inventory visibility**.
+
+The owner/GM side may expose:
+- one explicit item;
+- a container, which exposes that current container subtree;
+- an item as part of a named merchant assortment/group.
+
+The other side sees only those grants plus items that the owner explicitly placed into the central offer.
+
+Selected-container traversal is server-side. Hidden sibling/root NPC/player items are not returned by the Trade read model.
+
+Trade visibility is not ownership and does not reserve an item.
+
+### 10.3 “Хочу это” semantics
+
+Interest markers are communication only.
+
+They:
+- require the target item to be trade-visible to that side;
+- never move the item;
+- never reserve it;
+- never modify the central offer;
+- never advance the offer revision;
+- never reset acceptance.
+
+Only the owner/GM side can add its canonical item to its own offer.
+
+### 10.4 Trade-scoped discussion
+
+Trade has its own lightweight discussion history.
+
+The thread:
+- is scoped to the Trade session;
+- records which character side spoke;
+- supports GM acting for NPC;
+- does not mutate offer revision;
+- does not own inventory;
+- survives Trade closure for inspection.
+
+It is not the main chat and Stage 10 does not implement its visual presentation.
+
+### 10.5 Offer revision and acceptance
+
+Offer lines reference:
+- exact item ID;
+- offered quantity;
+- item version at offer time;
+- a Cheburashka integrity fingerprint covering the offered item and any nested subtree.
+
+Items stay owned by their current character until final commit.
+
+Every **material offer mutation**:
+- advances Trade revision;
+- clears A acceptance;
+- clears B acceptance.
+
+Both sides must accept the exact same current revision.
+
+The first acceptance alone does not commit.
+
+The second matching acceptance triggers settlement in the same server transaction.
+
+SQL NULL acceptance was explicitly hardened so a missing side can never be mistaken for agreement.
+
+### 10.6 Atomic Cheburashka settlement
+
+GENA does not update inventory tables as its own state.
+
+Final settlement calls the private Cheburashka atomic exchange boundary with an explicit offer projection.
+
+Cheburashka then:
+- locks both character inventory aggregates in deterministic order;
+- locks every offered root/subtree row;
+- revalidates both sides;
+- revalidates current owner scope;
+- revalidates item version;
+- revalidates quantity / instance-vs-stack rules;
+- revalidates the saved item/subtree fingerprint;
+- rejects overlapping ancestor/descendant offer lines;
+- moves whole instances while preserving the same item ID;
+- moves nested container subtrees with the container;
+- splits only partial bulk quantities;
+- transfers physical currency exactly like any other inventory item;
+- either commits every offered transfer or none.
+
+There is no wallet/balance settlement path and no enforced price/value equation. Item value remains advisory; barter, discounts, favors or absurd GM-negotiated deals remain valid.
+
+### 10.7 External changes invalidate the offer
+
+An offer does **not** reserve the item.
+
+The Trade offer intentionally has no restrictive FK that prevents the item from being consumed/removed/moved elsewhere.
+
+If an offered item changes outside Trade after it was offered/accepted, acceptance revalidation detects stable conditions such as:
+- `trade.offer_item_moved`;
+- `trade.offer_item_stale`;
+- `trade.offer_item_changed`;
+- `trade.offer_subtree_overlap`.
+
+The Trade session then:
+- remains open;
+- advances to a new revision;
+- clears both acceptances;
+- records `last_failure_code`;
+- emits an `offer.invalidated` history event;
+- performs no partial settlement.
+
+### 10.8 Chat-room and privacy authority
+
+Trade is a dedicated session **inside a chat**, even though the Stage 10 visual block is deferred.
+
+Therefore:
+- Trade reads require normal access to that room;
+- Trade-side actions require normal access to that room;
+- PC sides must have an assigned owner and that owner must be able to read the room at Trade creation time;
+- NPC sides are acted by GM/manager authority;
+- PC private inventory is never made visible merely because that PC is a Trade participant.
+
+### 10.9 Realtime boundary
+
+Trade session/offer/visibility/interest/thread tables publish Realtime invalidations.
+
+`watchTradeSession(...)` is refresh transport only.
+
+Realtime does not:
+- accept;
+- mutate an offer;
+- reserve an item;
+- choose settlement outcome;
+- replace the transaction.
+
+### 10.10 Live migrations
+
+Applied live:
+- `20260916100000_gena_stage10_trade_sessions`;
+- `20260916101500_cheburashka_stage10_atomic_trade_commit`;
+- `20260916102500_gena_stage10_acceptance_closure`;
+- `20260916103500_gena_stage10_room_authority_closure`;
+- `20260916104500_gena_stage10_trade_read_model_closure`.
+
+### Stage 10 completion gate — PASSED ✅
+
+- exactly two explicit character sides;
+- only PC↔PC / PC↔NPC;
+- NPC side is GM-controlled and PC side is owner-controlled;
+- Trade is bound to an accessible containing chat room;
+- no automatic private-inventory disclosure;
+- explicit item/container/assortment visibility;
+- interest markers are non-binding and non-revisioning;
+- independent trade discussion/history exists;
+- material offer changes advance revision and reset both acceptances;
+- both sides must accept the same revision;
+- offer rows do not reserve inventory;
+- stale/moved/changed items invalidate the revision;
+- whole nested containers preserve instance/subtree identity;
+- partial bulk quantities split normally;
+- physical currency uses ordinary inventory transfer;
+- second matching acceptance performs one atomic Cheburashka exchange;
 - all transfers commit or none commit;
-- trade history remains inspectable.
+- history remains inspectable after commit/cancel;
+- a stable typed TradeSession connection API exists for future presentation;
+- Realtime is invalidation only;
+- **no Trade UI/chat UI was implemented in Stage 10**.
 
 ---
 
