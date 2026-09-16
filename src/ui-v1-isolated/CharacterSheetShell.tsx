@@ -3,7 +3,7 @@ import type { ReactNode } from "react"
 import CampaignMediaFrame from "../components/common/CampaignMediaFrame"
 import type { MediaPresentation } from "../media/presentation"
 import type { SnakeAction } from "../snake-engine"
-import { CHARACTER_SHEET_NAVIGATION } from "./characterSheetUiContract"
+import {\n  CHARACTER_SHEET_NAVIGATION,\n  type CharacterSheetSection,\n} from "./characterSheetUiContract"
 import { SnakeTrigger } from "./SnakeProvider"
 
 export type CharacterSheetShellProps = {
@@ -86,24 +86,32 @@ export default function CharacterSheetShell({
 
         <aside className="u1-character-sheet__rail" aria-label="Разделы персонажа">
           <div className="u1-character-sheet__rail-list">
-            {CHARACTER_SHEET_NAVIGATION.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="u1-character-sheet__rail-row"
-                data-target-kind={item.target.kind}
-                aria-disabled="true"
-                title="Подключение действия будет на следующих этапах"
-              >
-                <span
-                  className="u1-character-sheet__icon-placeholder"
-                  data-icon-slot={item.iconSlot}
-                  aria-hidden="true"
-                />
-                <strong>{item.label}</strong>
-                <i aria-hidden="true">›</i>
-              </button>
-            ))}
+            {CHARACTER_SHEET_NAVIGATION.map((item) => {
+              const active =
+                item.target.kind === "section" &&
+                item.target.section === activeSection
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="u1-character-sheet__rail-row"
+                  data-target-kind={item.target.kind}
+                  data-active={active || undefined}
+                  aria-current={active ? "page" : undefined}
+                  aria-disabled="true"
+                  title="Подключение действия будет на следующем этапе"
+                >
+                  <span
+                    className="u1-character-sheet__icon-placeholder"
+                    data-icon-slot={item.iconSlot}
+                    aria-hidden="true"
+                  />
+                  <strong>{item.label}</strong>
+                  <i aria-hidden="true">›</i>
+                </button>
+              )
+            })}
           </div>
         </aside>
       </section>
