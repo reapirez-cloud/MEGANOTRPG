@@ -450,6 +450,7 @@ export default function CharacterSheetSpells({
                       className="u1-character-spells__row"
                       data-preparation={view.preparation}
                       data-available={view.spell.available || undefined}
+                      data-unavailable={!view.spell.available || undefined}
                       onClick={() => {
                         onSelect?.(view.spell.key)
                         if (detailAction.surface) {
