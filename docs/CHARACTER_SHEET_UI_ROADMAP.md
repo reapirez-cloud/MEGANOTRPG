@@ -264,10 +264,17 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - closing/unmounting the character sheet clears its Snake view context so stale character/entity state cannot leak into another screen;
 - the public character-sheet Snake context-key contract now includes interfaceMode, effect/item selection and authority fields for Stages 12–16.
 
-### Stage 12 — Visual assets
-- neutral placeholders now;
-- later PNG replacement without layout changes;
-- class spell slot art + unique resource art.
+### Stage 12 — Visual assets [DONE]
+- neutral geometric placeholders have been replaced by a real transparent PNG fallback pack without changing Overview layout or interaction logic;
+- the built-in pack is shipped as two optimized atlases under `public/ui-v1/character-sheet/icons/`: one spell-slot atlas and one resource atlas, avoiding dozens of separate network requests;
+- spell-slot atlas includes a safe default plus distinct silhouettes for fighter, warlock, cleric, druid, bard, paladin, sorcerer, wizard, rogue and monk;
+- resource atlas includes a generic fallback plus distinct silhouettes for action surge, bardic inspiration, channel divinity, innate sorcery, monk focus, uncanny metabolism, divine sense, lay on hands, second wind, sorcerous restoration, sorcery points, patron contact, magical cunning, wild shape, arcane recovery, chronurgy and mystic arcanum;
+- prefix-based resource families such as `wizard_chronurgy_*` and `warlock_mystic_arcanum_*` resolve to their family icon; unknown future resources resolve to the generic icon instead of breaking the UI;
+- semantic slots remain unchanged (`class:<classKey>:spell_slot` and `resource:<stateKey>`), so Stage 13 can override visual media without touching Character Engine, navigation or markup;
+- CSS uses the PNG alpha channel as a mask, recoloring spell slots with the active class accent and resources with their resource accent while preserving transparency;
+- available charges keep the glow treatment and spent charges reuse the same silhouette in cold gray, so state remains readable even when the icon shape is customized;
+- atlas coordinates are isolated in `characterSheetVisualAssets.ts`; components only ask for a semantic slot and never know sprite coordinates;
+- Supabase is intentionally not required for the built-in fallback pack. Existing media registration/binding RPCs were verified and remain the override path for Stage 13 admin media editing.
 
 ### Stage 13 — Admin media editing
 - long press → Snake media actions;
