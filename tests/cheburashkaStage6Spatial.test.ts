@@ -453,6 +453,10 @@ test("Stage 6 database contract is versioned, locked and server-authoritative", 
     "utf8",
   )
   const adapter = fs.readFileSync("src/inventory-engine/supabase.ts", "utf8")
+  const profileProjection = fs.readFileSync(
+    "supabase/migrations/20260916053336_cheburashka_stage6_profile_projection.sql",
+    "utf8",
+  )
 
   assert.match(migration, /placement_kind text not null default 'root'/)
   assert.match(migration, /grid_x integer/)
@@ -476,6 +480,10 @@ test("Stage 6 database contract is versioned, locked and server-authoritative", 
   assert.match(closure, /Unequip requires a real inventory destination/)
   assert.match(adapter, /rpc\("create_inventory_item_v2"/)
   assert.match(adapter, /rpc\("update_inventory_item_v2"/)
+  assert.match(profileProjection, /list_character_inventory_physical_profiles_v1/)
+  assert.match(profileProjection, /private\.can_view_character/)
+  assert.match(adapter, /list_character_inventory_physical_profiles_v1/)
+  assert.doesNotMatch(adapter, /reference_definition_revisions/)
 })
 
 test("Stage 6 UI keeps fixed cell pixels, six-cell viewport and physical Snake actions", () => {
