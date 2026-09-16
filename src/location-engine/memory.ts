@@ -11,13 +11,67 @@ export class MemoryLarisaStorage implements LarisaStorage {
   private readonly linkSections = new Map<string, { sectionId: string; targetLocationId: string }>()
   private readonly npcHabitats = new Set<string>()
 
-  constructor(initial: LarisaSnapshot = { characterStates: [], locations: [], scenes: [], sceneParticipants: [] }) {
+  constructor(initial: LarisaSnapshot = { characterStates: [], locations: [], scenes: [], sceneParticipants: [], worldStorages: [] }) {
     this.snapshot = copy(initial)
   }
 
   async loadCampaignSnapshot(): Promise<LarisaSnapshot> { return copy(this.snapshot) }
 
   async execute(command: LarisaCommand): Promise<WorldMutation> {
+    if (command.kind === "world.storage_create") {
+      const storageId = `world-storage-${command.context.commandId}`
+      const storage = {
+        id: storageId,
+        campaign_id: command.context.campaignId,
+        location_id: command.input.locationId,
+        root_item_id: `world-storage-root-${command.context.commandId}`,
+        storage_kind: command.input.storageKind,
+        name: command.input.name,
+        description: command.input.description,
+        visibility_mode: command.input.visibilityMode,
+        access_mode: command.input.accessMode,
+        owner_character_id: command.input.ownerCharacterId,
+        lifecycle_state: "active" as const,
+        version: 1,
+      }
+      this.snapshot.worldStorages = [...this.snapshot.worldStorages, storage]
+      return { kind: command.kind, characterIds: command.input.ownerCharacterId ? [command.input.ownerCharacterId] : [], locationIds: [command.input.locationId], sceneIds: [], details: { storageId, rootItemId: storage.root_item_id, locationId: command.input.locationId } }
+    }
+
+    if (command.kind === "world.storage_update") {
+      const storage = this.snapshot.worldStorages.find((item) => item.id === command.worldStorageId)
+      if (!storage) throw new EngineCommandError("world.storage_not_found", "World storage was not found")
+      if (storage.version !== command.expectedVersion) throw new EngineCommandError("world.version_conflict", "World storage version conflict")
+      Object.assign(storage, {
+        name: command.input.name,
+        description: command.input.description,
+        visibility_mode: command.input.visibilityMode,
+        access_mode: command.input.accessMode,
+        owner_character_id: command.input.ownerCharacterId,
+        version: storage.version + 1,
+      })
+      return { kind: command.kind, characterIds: command.input.ownerCharacterId ? [command.input.ownerCharacterId] : [], locationIds: [storage.location_id], sceneIds: [], details: copy(storage) }
+    }
+
+    if (command.kind === "world.storage_move") {
+      const storage = this.snapshot.worldStorages.find((item) => item.id === command.worldStorageId)
+      if (!storage) throw new EngineCommandError("world.storage_not_found", "World storage was not found")
+      if (storage.version !== command.expectedVersion) throw new EngineCommandError("world.version_conflict", "World storage version conflict")
+      const fromLocationId = storage.location_id
+      storage.location_id = command.locationId
+      storage.version += 1
+      return { kind: command.kind, characterIds: [], locationIds: [fromLocationId, command.locationId], sceneIds: [], details: { storageId: storage.id, fromLocationId, toLocationId: command.locationId } }
+    }
+
+    if (command.kind === "world.storage_set_archived") {
+      const storage = this.snapshot.worldStorages.find((item) => item.id === command.worldStorageId)
+      if (!storage) throw new EngineCommandError("world.storage_not_found", "World storage was not found")
+      if (storage.version !== command.expectedVersion) throw new EngineCommandError("world.version_conflict", "World storage version conflict")
+      storage.lifecycle_state = command.archived ? "archived" : "active"
+      storage.version += 1
+      return { kind: command.kind, characterIds: [], locationIds: [storage.location_id], sceneIds: [], details: { storageId: storage.id, archived: command.archived, locationId: storage.location_id } }
+    }
+
     if (command.kind === "world.discover_location") {
       const key = `${command.characterId}:${command.locationId}`
       if (command.discovered) this.discoveries.add(key); else this.discoveries.delete(key)
