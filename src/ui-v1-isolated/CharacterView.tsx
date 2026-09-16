@@ -522,7 +522,6 @@ export default function CharacterView({
       core={
         <CharacterSheetCore
           contract={runtime.snapshot?.contract || null}
-          sheet={control.sheet}
           spellcastingAbility={runtime.snapshot?.spellcastingAbility}
           expandedAbility={expandedAbility}
           onToggleAbility={(ability) =>
