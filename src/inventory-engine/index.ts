@@ -7,6 +7,13 @@ export {
 } from "./projection.ts"
 export { subscribeCheburashkaCharacterChanges } from "./realtime.ts"
 export {
+  createInventoryLoadProjection,
+  inventorySpecializedCapacityProblem,
+  inventorySpecializedCapacityUsage,
+  inventoryUnitWeightKg,
+  type InventorySpecializedCapacityUsage,
+} from "./load.ts"
+export {
   defaultInventoryProfile,
   inventoryProfileStackMode,
   readInventoryProfile,
@@ -58,6 +65,7 @@ export {
 export type {
   CheburashkaCommand,
   CheburashkaStorage,
+  InventoryLoadProjection,
   InventoryMechanicalProjection,
   InventoryMutation,
 } from "./types.ts"

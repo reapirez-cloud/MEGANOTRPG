@@ -1,5 +1,6 @@
 import type { InventoryItem } from "../types/characterSheet.ts"
 import { inventoryHolderProblem } from "./holders.ts"
+import { inventorySpecializedCapacityProblem } from "./load.ts"
 import {
   readInventoryProfile,
   type InventoryPhysicalProfile,
@@ -215,7 +216,21 @@ export function inventoryPlacementProblem(
   }
 
   if (problem) return problem
-  return externalCapacityProblemAfterPlacement(items, item, target)
+  const externalProblem = externalCapacityProblemAfterPlacement(items, item, target)
+  if (externalProblem) return externalProblem
+
+  if (target.kind === "grid") {
+    const projected = items.map((candidate) =>
+      candidate.id === item.id ? projectedItemAfterPlacement(candidate, target) : candidate
+    )
+    const holder = projected.find((candidate) => candidate.id === target.holderItemId)
+    if (holder) {
+      const specializedProblem = inventorySpecializedCapacityProblem(projected, holder)
+      if (specializedProblem) return specializedProblem
+    }
+  }
+
+  return null
 }
 
 export function firstAvailableGridPlacement(

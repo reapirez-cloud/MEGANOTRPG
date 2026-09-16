@@ -80,12 +80,22 @@ export type InventoryMutation = {
   relatedChanges?: InventoryItemChange[]
 }
 
+export type InventoryLoadProjection = {
+  characterId: string
+  /** Sum of all character-owned items whose per-unit kg mass is known, including nested contents. */
+  knownWeightKg: number
+  /** Unknown mass is explicit; it is never silently treated as zero. */
+  unknownWeightItemIds: string[]
+  complete: boolean
+}
+
 export type InventoryMechanicalProjection = {
   characterId: string
   /** Debug/invalidation fingerprint only; not canonical inventory state. */
   revision: string
   activeItemIds: string[]
   contributions: CharacterContribution[]
+  load: InventoryLoadProjection
 }
 
 export interface CheburashkaStorage {

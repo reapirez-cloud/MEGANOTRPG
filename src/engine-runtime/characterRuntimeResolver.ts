@@ -5,7 +5,7 @@ import type {
   ResolvedCharacterContract,
 } from "../character-engine/index.ts"
 import type { Character } from "../context/CharacterContext.tsx"
-import type { InventoryMechanicalProjection } from "../inventory-engine/index.ts"
+import type { InventoryLoadProjection, InventoryMechanicalProjection } from "../inventory-engine/index.ts"
 import {
   buildCharacterPreparationModel,
   type CharacterPreparationModel,
@@ -70,6 +70,7 @@ export type CharacterRuntimeSnapshot = {
   resolvedAt: string
   input: CharacterEngineInput
   contract: ResolvedCharacterContract
+  inventoryLoad: InventoryLoadProjection
   spellcastingAbility?: AbilityKey
   preparation: CharacterPreparationModel
   resourceSyncInputs: ResourceSyncInput[]
@@ -298,6 +299,7 @@ export class CharacterRuntimeResolver {
       resolvedAt: new Date().toISOString(),
       input: resolvedView.input,
       contract: routedContract,
+      inventoryLoad: core.inventoryProjection.load,
       ...(resolvedView.spellcastingAbility ? { spellcastingAbility: resolvedView.spellcastingAbility } : {}),
       preparation,
       resourceSyncInputs: resourceSyncInputs(routedContract),
