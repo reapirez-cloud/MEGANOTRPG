@@ -1070,3 +1070,179 @@
       rgba(0,0,0,.34) 100%
     );
 }
+
+
+/* Character sheet correction · static viewport backdrop + smaller absorbed portrait */
+.u1-character-sheet {
+  position: relative;
+  isolation: isolate;
+  background: none !important;
+}
+
+.u1-character-sheet__fixed-backdrop {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  width: 100%;
+  height: var(--u1-viewport-height);
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--cv-accent) 7%, #151718);
+  background-image:
+    radial-gradient(
+      circle at 18% -6%,
+      color-mix(in srgb, var(--cv-accent) 12%, rgba(255,255,255,.045)),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--cv-accent) 7%, transparent),
+      rgba(10,11,12,.08) 38%,
+      rgba(10,11,12,.18) 68%,
+      rgba(10,11,12,.32) 100%
+    ),
+    var(--cv-ambient-art);
+  background-position:
+    center top,
+    center,
+    var(--cv-class-panel-art-position);
+  background-repeat: no-repeat;
+  background-size:
+    auto,
+    auto,
+    cover;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.u1-character-sheet__hero-class-art {
+  opacity: .22;
+  filter: saturate(.72) brightness(.58);
+}
+
+.u1-character-sheet__portrait-media {
+  top: 3.5%;
+  right: auto;
+  bottom: auto;
+  left: 9%;
+  width: 52%;
+  height: 91%;
+  border-radius:
+    clamp(28px, 8vw, 52px)
+    clamp(34px, 10vw, 62px)
+    clamp(42px, 12vw, 72px)
+    clamp(30px, 9vw, 56px)
+    /
+    clamp(22px, 6vw, 38px)
+    clamp(28px, 8vw, 50px)
+    clamp(48px, 14vw, 82px)
+    clamp(36px, 10vw, 62px);
+  overflow: hidden;
+  -webkit-mask-image:
+    radial-gradient(
+      ellipse 84% 92% at 46% 47%,
+      #000 0%,
+      #000 54%,
+      rgba(0,0,0,.97) 63%,
+      rgba(0,0,0,.78) 73%,
+      rgba(0,0,0,.42) 82%,
+      rgba(0,0,0,.13) 91%,
+      transparent 100%
+    );
+  mask-image:
+    radial-gradient(
+      ellipse 84% 92% at 46% 47%,
+      #000 0%,
+      #000 54%,
+      rgba(0,0,0,.97) 63%,
+      rgba(0,0,0,.78) 73%,
+      rgba(0,0,0,.42) 82%,
+      rgba(0,0,0,.13) 91%,
+      transparent 100%
+    );
+  box-shadow: none;
+}
+
+.u1-character-sheet__portrait-media > img {
+  object-position: 47% 34%;
+  transform: scale(1.01);
+  transform-origin: 47% 34%;
+}
+
+.u1-character-sheet__portrait-shade {
+  z-index: -3;
+  background:
+    radial-gradient(
+      ellipse 46% 82% at 35% 45%,
+      rgba(0,0,0,0) 0%,
+      rgba(0,0,0,.04) 34%,
+      rgba(0,0,0,.28) 60%,
+      rgba(0,0,0,.66) 78%,
+      rgba(0,0,0,.94) 100%
+    ),
+    radial-gradient(
+      ellipse 76% 88% at 36% 47%,
+      rgba(0,0,0,0) 0%,
+      rgba(0,0,0,.08) 38%,
+      rgba(0,0,0,.34) 65%,
+      rgba(0,0,0,.8) 88%,
+      rgba(0,0,0,.98) 100%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(0,0,0,.84) 0%,
+      rgba(0,0,0,.24) 11%,
+      rgba(0,0,0,.02) 28%,
+      rgba(0,0,0,.06) 49%,
+      rgba(0,0,0,.7) 68%,
+      rgba(0,0,0,.97) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(0,0,0,.52) 0%,
+      rgba(0,0,0,.02) 20%,
+      rgba(0,0,0,.06) 52%,
+      rgba(0,0,0,.84) 88%,
+      rgba(0,0,0,.99) 100%
+    );
+}
+
+.u1-character-sheet__hero-haze {
+  background:
+    radial-gradient(
+      ellipse 45% 66% at 34% 44%,
+      rgba(255,255,255,.012) 0%,
+      rgba(0,0,0,0) 32%,
+      rgba(0,0,0,.28) 72%,
+      rgba(0,0,0,.58) 100%
+    );
+}
+
+.u1-character-sheet__identity {
+  left: 12.5%;
+  right: 47%;
+  bottom: clamp(15px, 4.4vw, 21px);
+}
+
+.u1-character-sheet__masthead::after {
+  height: clamp(42px, 11vw, 54px);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(0,0,0,0),
+      rgba(0,0,0,.34) 44%,
+      rgba(0,0,0,.8) 78%,
+      rgba(0,0,0,.96) 100%
+    );
+}
+
+@media (max-width: 359px) {
+  .u1-character-sheet__portrait-media {
+    left: 8%;
+    width: 54%;
+  }
+
+  .u1-character-sheet__identity {
+    left: 11%;
+    right: 45%;
+  }
+}

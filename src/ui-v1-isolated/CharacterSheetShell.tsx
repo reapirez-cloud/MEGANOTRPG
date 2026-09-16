@@ -186,6 +186,7 @@ export default function CharacterSheetShell({
           : undefined
       }
     >
+      <span className="u1-character-sheet__fixed-backdrop" aria-hidden="true" />
       <header className="u1-character-sheet__topbar">
         <button
           type="button"
