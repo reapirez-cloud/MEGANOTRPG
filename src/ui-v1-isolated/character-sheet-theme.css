@@ -34,30 +34,230 @@
   --cv-resource-accent: var(--cv-accent);
   --cv-resource-accent-soft: var(--cv-accent-soft);
 
-  --cv-ambient-art: linear-gradient(transparent, transparent);
+  --cv-class-panel-art: none;
+  --cv-class-art-wash: rgba(128, 132, 132, .06);
+  --cv-ambient-art: var(--cv-class-panel-art);
 
   color: var(--cv-text-soft);
   color-scheme: dark;
   background-color: var(--cv-canvas);
   background-image:
     radial-gradient(circle at 18% -6%, rgba(255, 255, 255, .075), transparent 33%),
-    linear-gradient(180deg, rgba(255, 255, 255, .022), rgba(18, 20, 22, .08)),
+    linear-gradient(180deg, var(--cv-class-art-wash), rgba(31, 34, 37, .82) 72%, rgba(31, 34, 37, .94)),
     var(--cv-ambient-art);
-  background-position: center top, center, center;
+  background-position: center top, center, center top;
   background-repeat: no-repeat;
   background-size: auto, auto, cover;
+  background-blend-mode: normal, normal, normal;
 }
 
-.u1-character-sheet[data-class-key="fighter"] { --cv-accent: #b8a18b; --cv-accent-soft: rgba(184,161,139,.14); --cv-accent-line: rgba(184,161,139,.4); }
-.u1-character-sheet[data-class-key="warlock"] { --cv-accent: #b46e75; --cv-accent-soft: rgba(180,110,117,.14); --cv-accent-line: rgba(180,110,117,.4); }
-.u1-character-sheet[data-class-key="cleric"] { --cv-accent: #c3b994; --cv-accent-soft: rgba(195,185,148,.14); --cv-accent-line: rgba(195,185,148,.4); }
-.u1-character-sheet[data-class-key="druid"] { --cv-accent: #8fa77d; --cv-accent-soft: rgba(143,167,125,.14); --cv-accent-line: rgba(143,167,125,.42); }
-.u1-character-sheet[data-class-key="bard"] { --cv-accent: #aa88a6; --cv-accent-soft: rgba(170,136,166,.14); --cv-accent-line: rgba(170,136,166,.4); }
-.u1-character-sheet[data-class-key="paladin"] { --cv-accent: #beb480; --cv-accent-soft: rgba(190,180,128,.14); --cv-accent-line: rgba(190,180,128,.4); }
-.u1-character-sheet[data-class-key="sorcerer"] { --cv-accent: #b77770; --cv-accent-soft: rgba(183,119,112,.14); --cv-accent-line: rgba(183,119,112,.4); }
-.u1-character-sheet[data-class-key="wizard"] { --cv-accent: #859bab; --cv-accent-soft: rgba(133,155,171,.14); --cv-accent-line: rgba(133,155,171,.4); }
-.u1-character-sheet[data-class-key="rogue"] { --cv-accent: #99998e; --cv-accent-soft: rgba(153,153,142,.14); --cv-accent-line: rgba(153,153,142,.38); }
-.u1-character-sheet[data-class-key="monk"] { --cv-accent: #9e9078; --cv-accent-soft: rgba(158,144,120,.14); --cv-accent-line: rgba(158,144,120,.4); }
+.u1-character-sheet[data-class-key="fighter"] {
+  --cv-canvas: #242526;
+  --cv-canvas-raised: #2c2b29;
+  --cv-surface: rgba(67, 63, 59, .74);
+  --cv-surface-soft: rgba(74, 69, 64, .46);
+  --cv-surface-strong: rgba(83, 76, 69, .58);
+  --cv-line: rgba(226, 211, 194, .18);
+  --cv-line-soft: rgba(226, 211, 194, .09);
+  --cv-accent: #b79a7a;
+  --cv-accent-soft: rgba(183, 154, 122, .16);
+  --cv-accent-line: rgba(183, 154, 122, .43);
+  --cv-spell-accent: #c0a98e;
+  --cv-resource-accent: #b98b68;
+  --cv-class-art-wash: rgba(116, 88, 62, .12);
+}
+
+.u1-character-sheet[data-class-key="warlock"] {
+  --cv-canvas: #252126;
+  --cv-canvas-raised: #2e272f;
+  --cv-surface: rgba(64, 50, 62, .74);
+  --cv-surface-soft: rgba(73, 55, 71, .46);
+  --cv-surface-strong: rgba(82, 60, 78, .58);
+  --cv-line: rgba(220, 187, 205, .18);
+  --cv-line-soft: rgba(220, 187, 205, .09);
+  --cv-accent: #b66f7b;
+  --cv-accent-soft: rgba(182, 111, 123, .17);
+  --cv-accent-line: rgba(182, 111, 123, .45);
+  --cv-spell-accent: #a98ac7;
+  --cv-resource-accent: #c06f65;
+  --cv-class-art-wash: rgba(102, 41, 69, .14);
+}
+
+.u1-character-sheet[data-class-key="cleric"] {
+  --cv-canvas: #252524;
+  --cv-canvas-raised: #2d2c29;
+  --cv-surface: rgba(68, 66, 59, .74);
+  --cv-surface-soft: rgba(76, 73, 64, .46);
+  --cv-surface-strong: rgba(86, 81, 69, .58);
+  --cv-line: rgba(239, 231, 197, .20);
+  --cv-line-soft: rgba(239, 231, 197, .10);
+  --cv-accent: #c8bb8e;
+  --cv-accent-soft: rgba(200, 187, 142, .16);
+  --cv-accent-line: rgba(200, 187, 142, .44);
+  --cv-spell-accent: #d7cfaa;
+  --cv-resource-accent: #c6ad78;
+  --cv-class-art-wash: rgba(151, 134, 79, .11);
+}
+
+.u1-character-sheet[data-class-key="druid"] {
+  --cv-canvas: #212520;
+  --cv-canvas-raised: #282d26;
+  --cv-surface: rgba(52, 63, 51, .74);
+  --cv-surface-soft: rgba(60, 72, 58, .46);
+  --cv-surface-strong: rgba(68, 80, 65, .58);
+  --cv-line: rgba(200, 219, 188, .18);
+  --cv-line-soft: rgba(200, 219, 188, .09);
+  --cv-accent: #91a77a;
+  --cv-accent-soft: rgba(145, 167, 122, .17);
+  --cv-accent-line: rgba(145, 167, 122, .45);
+  --cv-spell-accent: #9eb68b;
+  --cv-resource-accent: #7f9b6a;
+  --cv-class-art-wash: rgba(62, 93, 57, .13);
+}
+
+.u1-character-sheet[data-class-key="bard"] {
+  --cv-canvas: #262126;
+  --cv-canvas-raised: #2e272e;
+  --cv-surface: rgba(65, 51, 64, .74);
+  --cv-surface-soft: rgba(75, 57, 73, .46);
+  --cv-surface-strong: rgba(83, 64, 81, .58);
+  --cv-line: rgba(226, 198, 221, .18);
+  --cv-line-soft: rgba(226, 198, 221, .09);
+  --cv-accent: #ad87a8;
+  --cv-accent-soft: rgba(173, 135, 168, .17);
+  --cv-accent-line: rgba(173, 135, 168, .45);
+  --cv-spell-accent: #bb92b5;
+  --cv-resource-accent: #c17788;
+  --cv-class-art-wash: rgba(105, 53, 92, .13);
+}
+
+.u1-character-sheet[data-class-key="paladin"] {
+  --cv-canvas: #26251f;
+  --cv-canvas-raised: #2e2c25;
+  --cv-surface: rgba(69, 66, 53, .74);
+  --cv-surface-soft: rgba(78, 74, 59, .46);
+  --cv-surface-strong: rgba(87, 82, 64, .58);
+  --cv-line: rgba(239, 227, 183, .19);
+  --cv-line-soft: rgba(239, 227, 183, .09);
+  --cv-accent: #c1b37f;
+  --cv-accent-soft: rgba(193, 179, 127, .17);
+  --cv-accent-line: rgba(193, 179, 127, .45);
+  --cv-spell-accent: #d1c593;
+  --cv-resource-accent: #baa56c;
+  --cv-class-art-wash: rgba(139, 119, 55, .12);
+}
+
+.u1-character-sheet[data-class-key="sorcerer"] {
+  --cv-canvas: #272121;
+  --cv-canvas-raised: #302727;
+  --cv-surface: rgba(69, 51, 50, .74);
+  --cv-surface-soft: rgba(79, 57, 56, .46);
+  --cv-surface-strong: rgba(89, 63, 61, .58);
+  --cv-line: rgba(232, 194, 190, .18);
+  --cv-line-soft: rgba(232, 194, 190, .09);
+  --cv-accent: #ba756d;
+  --cv-accent-soft: rgba(186, 117, 109, .18);
+  --cv-accent-line: rgba(186, 117, 109, .46);
+  --cv-spell-accent: #c77f78;
+  --cv-resource-accent: #d06f63;
+  --cv-class-art-wash: rgba(124, 51, 45, .14);
+}
+
+.u1-character-sheet[data-class-key="wizard"] {
+  --cv-canvas: #20242a;
+  --cv-canvas-raised: #272c33;
+  --cv-surface: rgba(49, 59, 70, .74);
+  --cv-surface-soft: rgba(56, 68, 80, .46);
+  --cv-surface-strong: rgba(63, 76, 89, .58);
+  --cv-line: rgba(194, 214, 230, .18);
+  --cv-line-soft: rgba(194, 214, 230, .09);
+  --cv-accent: #849bad;
+  --cv-accent-soft: rgba(132, 155, 173, .17);
+  --cv-accent-line: rgba(132, 155, 173, .45);
+  --cv-spell-accent: #8faac0;
+  --cv-resource-accent: #718ea7;
+  --cv-class-art-wash: rgba(53, 77, 105, .14);
+}
+
+.u1-character-sheet[data-class-key="rogue"] {
+  --cv-canvas: #222321;
+  --cv-canvas-raised: #292a27;
+  --cv-surface: rgba(57, 59, 54, .74);
+  --cv-surface-soft: rgba(65, 67, 61, .46);
+  --cv-surface-strong: rgba(73, 75, 68, .58);
+  --cv-line: rgba(210, 211, 198, .16);
+  --cv-line-soft: rgba(210, 211, 198, .08);
+  --cv-accent: #99998b;
+  --cv-accent-soft: rgba(153, 153, 139, .15);
+  --cv-accent-line: rgba(153, 153, 139, .40);
+  --cv-spell-accent: #9da49a;
+  --cv-resource-accent: #8e917d;
+  --cv-class-art-wash: rgba(74, 78, 61, .11);
+}
+
+.u1-character-sheet[data-class-key="monk"] {
+  --cv-canvas: #25231f;
+  --cv-canvas-raised: #2c2924;
+  --cv-surface: rgba(64, 59, 51, .74);
+  --cv-surface-soft: rgba(73, 67, 57, .46);
+  --cv-surface-strong: rgba(82, 74, 62, .58);
+  --cv-line: rgba(224, 210, 186, .17);
+  --cv-line-soft: rgba(224, 210, 186, .08);
+  --cv-accent: #a18f73;
+  --cv-accent-soft: rgba(161, 143, 115, .16);
+  --cv-accent-line: rgba(161, 143, 115, .42);
+  --cv-spell-accent: #a49780;
+  --cv-resource-accent: #b08d61;
+  --cv-class-art-wash: rgba(103, 78, 49, .12);
+}
+
+.u1-character-sheet[data-class-key="barbarian"] {
+  --cv-canvas: #29231f;
+  --cv-canvas-raised: #312923;
+  --cv-surface: rgba(72, 58, 48, .75);
+  --cv-surface-soft: rgba(82, 65, 53, .47);
+  --cv-surface-strong: rgba(92, 72, 57, .59);
+  --cv-line: rgba(231, 200, 175, .18);
+  --cv-line-soft: rgba(231, 200, 175, .09);
+  --cv-accent: #b57e61;
+  --cv-accent-soft: rgba(181, 126, 97, .18);
+  --cv-accent-line: rgba(181, 126, 97, .46);
+  --cv-spell-accent: #b68d72;
+  --cv-resource-accent: #c06f50;
+  --cv-class-art-wash: rgba(126, 55, 33, .15);
+}
+
+.u1-character-sheet[data-class-key="artificer"] {
+  --cv-canvas: #202728;
+  --cv-canvas-raised: #272f30;
+  --cv-surface: rgba(48, 64, 65, .74);
+  --cv-surface-soft: rgba(55, 74, 74, .46);
+  --cv-surface-strong: rgba(63, 83, 82, .58);
+  --cv-line: rgba(188, 222, 218, .18);
+  --cv-line-soft: rgba(188, 222, 218, .09);
+  --cv-accent: #7ea8a2;
+  --cv-accent-soft: rgba(126, 168, 162, .17);
+  --cv-accent-line: rgba(126, 168, 162, .44);
+  --cv-spell-accent: #88b3ad;
+  --cv-resource-accent: #b78d67;
+  --cv-class-art-wash: rgba(42, 91, 91, .13);
+}
+
+.u1-character-sheet[data-class-key="ranger"] {
+  --cv-canvas: #202620;
+  --cv-canvas-raised: #272e27;
+  --cv-surface: rgba(49, 64, 49, .74);
+  --cv-surface-soft: rgba(57, 74, 57, .46);
+  --cv-surface-strong: rgba(65, 83, 64, .58);
+  --cv-line: rgba(196, 220, 192, .18);
+  --cv-line-soft: rgba(196, 220, 192, .09);
+  --cv-accent: #82a17b;
+  --cv-accent-soft: rgba(130, 161, 123, .17);
+  --cv-accent-line: rgba(130, 161, 123, .44);
+  --cv-spell-accent: #8faf87;
+  --cv-resource-accent: #76976f;
+  --cv-class-art-wash: rgba(48, 92, 50, .13);
+}
 
 .u1-inventory-space {
   --inv-canvas: var(--cv-canvas, #1f2225);
