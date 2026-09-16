@@ -22,7 +22,7 @@ export type CharacterSheet = {
 }
 
 export type InventoryItem = {
-  id: string; character_id: string | null; world_storage_id?: string | null; name: string; quantity: number; weight: number | null; equipped: boolean
+  id: string; character_id: string | null; world_storage_id?: string | null; surface_id?: string | null; name: string; quantity: number; weight: number | null; equipped: boolean
   category: InventoryCategory; equipment_slot: EquipmentSlot | null; image_url: string | null; description: string
   /** Stable Chasovoy definition identity when this is an issued catalog item. */
   definition_id?: string | null; definition_revision?: number | null
@@ -34,7 +34,7 @@ export type InventoryItem = {
   /** Parent Cheburashka container. Null means the current owner scope root. */
   holder_item_id?: string | null
   /** Stage 6 canonical placement. "legacy" exists only for pre-spatial production compatibility. */
-  placement_kind?: "root" | "grid" | "hand" | "external" | "legacy"
+  placement_kind?: "root" | "grid" | "hand" | "external" | "surface" | "legacy"
   placement_index?: number | null
   grid_x?: number | null
   grid_y?: number | null
