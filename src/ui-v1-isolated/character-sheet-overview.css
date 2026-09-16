@@ -1061,3 +1061,37 @@
     transition: none;
   }
 }
+
+
+/* Class skin corrective pass · resources and slots use class glass */
+.u1-character-overview__section--resources {
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--cv-resource-accent) 18%, rgba(255,255,255,.02)),
+      rgba(255,255,255,.006) 36%,
+      rgba(8,9,10,.045) 100%
+    ),
+    color-mix(in srgb, var(--cv-resource-accent) 19%, rgba(12,13,14,.22));
+}
+
+.u1-character-overview__section--slots {
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--cv-spell-accent) 18%, rgba(255,255,255,.02)),
+      rgba(255,255,255,.006) 36%,
+      rgba(8,9,10,.045) 100%
+    ),
+    color-mix(in srgb, var(--cv-spell-accent) 19%, rgba(12,13,14,.22));
+}
+
+.u1-character-overview__section--resources,
+.u1-character-overview__section--slots {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    inset 0 0 0 1px color-mix(in srgb, var(--section-accent) 22%, rgba(255,255,255,.025)),
+    0 12px 28px rgba(0,0,0,.1);
+  backdrop-filter: blur(17px) saturate(.94);
+  -webkit-backdrop-filter: blur(17px) saturate(.94);
+}
