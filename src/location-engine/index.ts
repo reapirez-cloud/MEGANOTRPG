@@ -9,5 +9,11 @@ export type {
   LocationUpdateInput,
   SceneParticipant,
   WorldMutation,
+  WorldStorage,
+  WorldStorageAccess,
+  WorldStorageCreateInput,
+  WorldStorageKind,
+  WorldStorageUpdateInput,
+  WorldStorageVisibility,
 } from "./types.ts"
 
