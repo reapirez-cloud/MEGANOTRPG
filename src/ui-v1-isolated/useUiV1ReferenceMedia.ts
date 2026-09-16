@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 
+import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
 import { uploadCampaignImage } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
 import {
@@ -9,12 +10,13 @@ import {
 import type { SnakeActionInput } from "../snake-engine"
 import { useUiV1CampaignScope } from "./useUiV1SectionData"
 
-export type ReferenceArtKind = "preview" | "hero"
+export type ReferenceArtKind = "preview" | "hero" | "sheet_background"
 
 export type UiV1ReferenceMedia = {
   targetField: string
   assetId: string
   storagePath: string
+  url: string | null
   presentation: MediaPresentation | null
 }
 
@@ -43,7 +45,7 @@ export function subclassReferenceArtSlot(
 }
 
 function validReferenceSlot(value: string) {
-  return /^(class:[a-z0-9-]+|subclass:[a-z0-9-]+:[a-z0-9-]+):(preview|hero)$/.test(value)
+  return /^(?:class:[a-z0-9-]+:(?:preview|hero|sheet_background)|subclass:[a-z0-9-]+:[a-z0-9-]+:(?:preview|hero))$/.test(value)
 }
 
 export function useUiV1ReferenceMedia() {
@@ -70,15 +72,19 @@ export function useUiV1ReferenceMedia() {
     }
 
     const next: Record<string, UiV1ReferenceMedia> = {}
-    for (const row of (data || []) as ReferenceMediaRow[]) {
-      if (!validReferenceSlot(row.target_field)) continue
-      next[row.target_field] = {
-        targetField: row.target_field,
-        assetId: row.asset_id,
-        storagePath: row.storage_path,
-        presentation: parseMediaPresentation(row.presentation),
-      }
-    }
+    await Promise.all(
+      ((data || []) as ReferenceMediaRow[]).map(async (row) => {
+        if (!validReferenceSlot(row.target_field)) return
+        const resolvedUrl = await resolveCampaignMediaUrl(row.storage_path)
+        next[row.target_field] = {
+          targetField: row.target_field,
+          assetId: row.asset_id,
+          storagePath: row.storage_path,
+          url: resolvedUrl || row.storage_path,
+          presentation: parseMediaPresentation(row.presentation),
+        }
+      }),
+    )
 
     setItems(next)
     setError(null)
@@ -153,6 +159,7 @@ export function useUiV1ReferenceMedia() {
 
         storagePath = upload.url
         const isHero = targetField.endsWith(":hero")
+        const isSheetBackground = targetField.endsWith(":sheet_background")
         const { data: registered, error: registerError } = await supabase.rpc(
           "register_manual_media_v1",
           {
@@ -161,8 +168,16 @@ export function useUiV1ReferenceMedia() {
             p_mime_type: upload.mimeType,
             p_width: upload.width,
             p_height: upload.height,
-            p_purpose: isHero ? "hero_art" : "ui_preview",
-            p_profile: isHero ? "hero_art" : "ui_preview",
+            p_purpose: isHero
+              ? "hero_art"
+              : isSheetBackground
+                ? "panel"
+                : "ui_preview",
+            p_profile: isHero
+              ? "hero_art"
+              : isSheetBackground
+                ? "panel"
+                : "ui_preview",
           },
         )
 
