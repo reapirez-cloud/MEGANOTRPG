@@ -139,6 +139,10 @@ export function inventoryPlacementProblem(
 ): string | null {
   let problem: string | null = null
 
+  if (target.kind === "root" && item.equipped) {
+    return "Экипированный предмет нельзя снять в свободные предметы: выбери руку, сумку или внешнюю ячейку."
+  }
+
   if (target.kind === "hand") {
     if (target.index !== 0 && target.index !== 1) return "Недопустимая ячейка руки."
     const occupied = items.some((other) =>
