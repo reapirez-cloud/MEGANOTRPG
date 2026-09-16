@@ -223,10 +223,17 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - preparation-related spell detail explicitly points the player back to GENA after rest instead of offering a profile-side toggle;
 - unresolved or template-only spell accesses remain visible even when no legacy `character_spells` row exists.
 
-### Stage 9 — Spell-slot linkage
-- Overview slot tap opens Spells;
-- focus/scroll to the tapped spell level;
-- class-specific visual accent contract.
+### Stage 9 — Spell-slot linkage [DONE]
+- every standard spell-slot row on Overview passes its exact resolved level into the Spells section;
+- Warlock Pact Magic passes the CE-resolved current pact cast level rather than character level or a guessed slot tier;
+- entering Spells from a concrete slot stores a transient `spellFocusLevel` and smoothly scrolls to that level group after render;
+- the focused level receives only a subtle spell-accent treatment, not a new card/layout;
+- selecting a spell clears the transient level focus so it does not keep hijacking later interaction;
+- entering Spells from the right navigation or the “ВСЕ” link clears stale focus and opens the normal top of the spellbook;
+- empty or invalid focus levels fail safely: no fabricated spell group is created;
+- `spellFocusLevel` is exposed in the sheet AI/Snake context for later contextual navigation;
+- class-specific spell-slot visuals now have an explicit UI contract: `--cv-spell-accent`, `--cv-spell-accent-soft` and stable `class:<classKey>:spell_slot` media slot;
+- the current theme derives spell accents from each class accent, while Stage 12 may replace only the visual PNG without touching navigation or slot logic.
 
 ### Stage 10 — Entity navigation
 - feature/resource/spell/item/effect links resolve to the correct entity and view;
