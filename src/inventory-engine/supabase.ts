@@ -261,7 +261,9 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
       p_world_storage_id: worldStorageId,
     })
     if (error) fail(error, "Could not load world storage items")
-    return (data || []).map((row) => normalizeItem(row.item, row.inventory_profile ?? null))
+    return (data || []).map((row: { item: unknown; inventory_profile?: unknown }) =>
+      normalizeItem(row.item, row.inventory_profile ?? null)
+    )
   }
 
   async getItem(itemId: string): Promise<InventoryItem | null> {
