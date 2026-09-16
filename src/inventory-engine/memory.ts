@@ -306,6 +306,12 @@ export class MemoryCheburashkaStorage implements CheburashkaStorage {
     if (command.kind === "inventory.move") {
       const item = this.owned(command.itemId, command.characterId)
       this.assertVersion(item, command.expectedVersion)
+      if (command.placement?.kind === "root" && item.equipped) {
+        throw new EngineCommandError(
+          "inventory.unequip_destination_required",
+          "Unequip requires a real hand, bag or external carry destination",
+        )
+      }
       const before = copy(item)
       const allItems = [...this.items.values()]
       const holderItemId = command.placement?.kind === "grid"
