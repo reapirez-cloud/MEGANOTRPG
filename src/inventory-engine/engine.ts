@@ -134,26 +134,29 @@ export class CheburashkaEngine {
       )
     }
 
+    if (command.kind === "inventory.take_surface") {
+      // Surface access and first-take ownership are authoritative in the storage
+      // transaction. Do not turn a legitimate race loser into player_forbidden
+      // by inspecting a row that may already have moved to the winner.
+      return
+    }
+
     if (!("itemId" in command) || typeof command.itemId !== "string") return
     const item = await this.storage.getItem(command.itemId)
     const permitted = command.kind === "inventory.take_world"
       ? Boolean(item && item.world_storage_id === command.worldStorageId)
-      : command.kind === "inventory.take_surface"
-        ? Boolean(item && item.surface_id === command.surfaceId)
-        : Boolean(
-            item
-            && item.character_id === sourceCharacterId
-            && !item.world_storage_id
-            && !item.surface_id
-          )
+      : Boolean(
+          item
+          && item.character_id === sourceCharacterId
+          && !item.world_storage_id
+          && !item.surface_id
+        )
     if (!permitted) {
       throw new EngineCommandError(
         "inventory.player_forbidden",
         command.kind === "inventory.take_world"
           ? "Player can only take an item from the requested accessible world storage"
-          : command.kind === "inventory.take_surface"
-            ? "Player can only take an item from the requested accessible Surface"
-            : "Player can only mutate an inventory item held by the active actor character",
+          : "Player can only mutate an inventory item held by the active actor character",
       )
     }
   }
