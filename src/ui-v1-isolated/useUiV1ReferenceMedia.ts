@@ -44,7 +44,7 @@ export function classReferenceArtSlot(
 export function subclassReferenceArtSlot(
   classId: string,
   subclassId: string,
-  kind: Extract<ReferenceArtKind, "preview" | "hero">,
+  kind: ReferenceArtKind,
 ) {
   return `subclass:${classId}:${subclassId}:${kind}`
 }
