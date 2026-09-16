@@ -6,6 +6,7 @@ import type {
   ResolvedGrant,
   ResolvedSourceRef,
 } from "../character-engine/index.ts"
+import type { TemplateSourceNode } from "../rule-templates/resolver.ts"
 import type { RuleTemplate } from "../rule-templates/types.ts"
 import type { SnakeAction } from "../snake-engine"
 import {
@@ -32,7 +33,9 @@ type FeatureEntry = {
   sourceId: string
   originId: string
   sourceName: string
+  sourceNames: string[]
   sourceType: string
+  unlockLevel: number | null
   timing: FeatureTiming
   navigationKeys: string[]
   sourceTarget: CharacterSheetEntityTarget | null
@@ -82,10 +85,6 @@ function normalizedLabel(value: string) {
     .trim()
 }
 
-function sourceOf(sources: ResolvedSourceRef[]) {
-  return sources[0]?.source || null
-}
-
 function templateIdFromSourceId(sourceId: string) {
   const match = sourceId.match(
     /^template:(?:race|subrace|class|subclass):([^:]+):v\d+/,
@@ -131,26 +130,46 @@ function categoryFromSourceType(
   return "other"
 }
 
-function sourceMeta(
-  sources: ResolvedSourceRef[],
+type SourceMeta = {
+  category: FeatureSourceGroup
+  sourceId: string
+  originId: string
+  sourceName: string
+  sourceNames: string[]
+  sourceType: string
+  sourceTarget: CharacterSheetEntityTarget | null
+  unlockLevel: number | null
+}
+
+function sourceMetaForRef(
+  sourceRef: ResolvedSourceRef,
   templatesById: ReadonlyMap<string, RuleTemplate>,
-  payloadKind = "",
-) {
-  const source = sourceOf(sources)
+  sourceNodesById: ReadonlyMap<string, TemplateSourceNode>,
+  payloadKind: string,
+): SourceMeta {
+  const source = sourceRef.source
   const sourceTarget = characterSheetEntityFromSource(source)
-  const sourceType = source?.sourceType || "unknown"
-  const sourceId = source?.id || "unknown"
+  const sourceType = source.sourceType || "unknown"
+  const sourceId = source.id || "unknown"
   const templateId = templateIdFromSourceId(sourceId)
   const template = templateId ? templatesById.get(templateId) || null : null
+  const sourceNode = sourceNodesById.get(sourceId) || null
 
   if (template) {
+    const category = categoryFromTemplateKind(template.kind)
     return {
-      category: categoryFromTemplateKind(template.kind),
+      category,
       sourceId: "template:" + template.id,
       originId: sourceId,
       sourceName: template.name,
+      sourceNames: [template.name],
       sourceType,
       sourceTarget,
+      unlockLevel:
+        sourceNode?.unlockLevel ??
+        (template.kind === "subclass"
+          ? Math.max(1, Number(template.unlock_level || 1))
+          : 1),
     }
   }
 
@@ -162,18 +181,78 @@ function sourceMeta(
         : category === "race"
           ? "Ручные расовые особенности"
           : "Ручные особенности"
-      : source?.name?.trim() || categoryLabels[category]
+      : source.name?.trim() || categoryLabels[category]
 
   return {
     category,
     sourceId:
       sourceType === "legacy_feature"
         ? "legacy:" + category
-        : source?.parentSourceId || source?.id || category + ":unknown",
-    originId: source?.id || category + ":unknown",
+        : source.parentSourceId || source.id || category + ":unknown",
+    originId: source.id || category + ":unknown",
     sourceName,
+    sourceNames: [sourceName],
     sourceType,
     sourceTarget,
+    unlockLevel: sourceNode?.unlockLevel ?? null,
+  }
+}
+
+function sourceMeta(
+  sources: ResolvedSourceRef[],
+  templatesById: ReadonlyMap<string, RuleTemplate>,
+  sourceNodesById: ReadonlyMap<string, TemplateSourceNode>,
+  payloadKind = "",
+): SourceMeta {
+  if (!sources.length) {
+    return {
+      category: "other",
+      sourceId: "other:unknown",
+      originId: "other:unknown",
+      sourceName: categoryLabels.other,
+      sourceNames: [categoryLabels.other],
+      sourceType: "unknown",
+      sourceTarget: null,
+      unlockLevel: null,
+    }
+  }
+
+  const categoryRank = new Map(
+    CHARACTER_SHEET_FEATURE_SOURCE_ORDER.map((key, index) => [key, index]),
+  )
+  const candidates = sources.map((sourceRef) =>
+    sourceMetaForRef(
+      sourceRef,
+      templatesById,
+      sourceNodesById,
+      payloadKind,
+    )
+  ).sort((left, right) =>
+    (left.category === "other" ? 1 : 0) -
+      (right.category === "other" ? 1 : 0) ||
+    (categoryRank.get(left.category) ?? 99) -
+      (categoryRank.get(right.category) ?? 99) ||
+    left.sourceName.localeCompare(right.sourceName, "ru") ||
+    left.originId.localeCompare(right.originId)
+  )
+
+  const primary = candidates[0]
+  const sourceNames = [...new Set(
+    candidates.flatMap((candidate) => candidate.sourceNames),
+  )]
+  const knownUnlockLevels = candidates
+    .map((candidate) => candidate.unlockLevel)
+    .filter((level): level is number => Number.isFinite(level))
+
+  return {
+    ...primary,
+    originId: [...new Set(
+      sources.map((entry) => entry.source.id || "unknown"),
+    )].sort().join("|"),
+    sourceNames,
+    unlockLevel: knownUnlockLevels.length
+      ? Math.min(...knownUnlockLevels)
+      : null,
   }
 }
 
@@ -230,9 +309,13 @@ function actionDetail(action: ResolvedAction) {
 function buildEntries(
   contract: ResolvedCharacterContract,
   templates: RuleTemplate[],
+  sourceNodes: TemplateSourceNode[],
 ): FeatureEntry[] {
   const templatesById = new Map(
     templates.map((template) => [template.id, template]),
+  )
+  const sourceNodesById = new Map(
+    sourceNodes.map((node) => [node.id, node]),
   )
   const entries = new Map<string, FeatureEntry>()
 
@@ -242,7 +325,12 @@ function buildEntries(
   ]) {
     const payload = record(grant.payload)
     const payloadKind = text(payload?.kind)
-    const source = sourceMeta(grant.sources, templatesById, payloadKind)
+    const source = sourceMeta(
+      grant.sources,
+      templatesById,
+      sourceNodesById,
+      payloadKind,
+    )
     const label = text(payload?.label) || titleFromKey(grant.key)
     const description = text(payload?.description)
     const key = source.originId + ":" + normalizedLabel(label)
@@ -271,7 +359,11 @@ function buildEntries(
   }
 
   for (const action of contract.actions) {
-    const source = sourceMeta(action.sources, templatesById)
+    const source = sourceMeta(
+      action.sources,
+      templatesById,
+      sourceNodesById,
+    )
     const label = action.label?.trim() || titleFromKey(action.key)
     const key = source.originId + ":" + normalizedLabel(label)
     const current = entries.get(key)
@@ -336,6 +428,8 @@ function buildEntries(
     left.sourceName.localeCompare(right.sourceName, "ru") ||
     (timingRank.get(left.timing) ?? 99) -
       (timingRank.get(right.timing) ?? 99) ||
+    (left.unlockLevel ?? Number.MAX_SAFE_INTEGER) -
+      (right.unlockLevel ?? Number.MAX_SAFE_INTEGER) ||
     left.label.localeCompare(right.label, "ru")
   )
 }
@@ -351,6 +445,7 @@ export default function CharacterSheetFeatures({
   characterId,
   contract,
   templates,
+  sourceNodes,
   runtimeError,
   focusKey,
   onSelect,
@@ -359,6 +454,7 @@ export default function CharacterSheetFeatures({
   characterId: string
   contract: ResolvedCharacterContract | null
   templates: RuleTemplate[]
+  sourceNodes: TemplateSourceNode[]
   runtimeError?: string
   focusKey?: string | null
   onSelect?: (featureId: string) => void
@@ -367,7 +463,9 @@ export default function CharacterSheetFeatures({
   const snake = useSnake()
   const rootRef = useRef<HTMLDivElement | null>(null)
 
-  const entries = contract ? buildEntries(contract, templates) : []
+  const entries = contract
+    ? buildEntries(contract, templates, sourceNodes)
+    : []
   const focusedEntry =
     focusKey
       ? entries.find((entry) => entry.navigationKeys.includes(focusKey)) || null
@@ -498,7 +596,14 @@ export default function CharacterSheetFeatures({
                           kind: "detail",
                           eyebrow: categoryLabels[entry.category],
                           title: entry.sourceName,
-                          body: "Источник способности: " + entry.sourceName + ".",
+                          body: [
+                            "Источник способности: " +
+                              entry.sourceNames.join(" · ") +
+                              ".",
+                            entry.unlockLevel !== null
+                              ? "Уровень открытия: " + entry.unlockLevel + "."
+                              : "Уровень открытия не указан источником.",
+                          ].join("\n"),
                         },
                       }
 
