@@ -151,6 +151,44 @@ export class CheburashkaEngine {
       }
     }
 
+    if (command.kind === "inventory.create" && command.input.equipped) {
+      throw new EngineCommandError(
+        "inventory.create_equipped_forbidden",
+        "Create the inventory item first, then equip it through the equipment command",
+      )
+    }
+
+    if (command.kind === "inventory.update") {
+      const current = await this.storage.getItem(command.itemId)
+      if (current && current.character_id === command.characterId) {
+        if (command.input.equipped !== current.equipped) {
+          throw new EngineCommandError(
+            "inventory.equipment_transition_forbidden",
+            "Equipment state must change through the equipment or spatial move command",
+          )
+        }
+        if (
+          current.equipped
+          && (
+            command.input.category !== "equipment"
+            || command.input.equipment_slot !== current.equipment_slot
+          )
+        ) {
+          throw new EngineCommandError(
+            "inventory.equipped_identity_locked",
+            "Move the equipped item before changing its category or equipment slot",
+          )
+        }
+      }
+    }
+
+    if (command.kind === "inventory.set_equipped" && !command.equipped) {
+      throw new EngineCommandError(
+        "inventory.unequip_destination_required",
+        "Unequip requires a real hand, bag or external carry destination",
+      )
+    }
+
     if (
       (command.kind === "inventory.update"
         || command.kind === "inventory.remove"
