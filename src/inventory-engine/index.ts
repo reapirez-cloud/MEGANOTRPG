@@ -54,6 +54,7 @@ export {
   inventoryHolder,
   inventoryHolderProblem,
   inventorySubtreeIds,
+  sameInventoryOwnerScope,
 } from "./holders.ts"
 export {
   forcedInventoryInstanceReason,
