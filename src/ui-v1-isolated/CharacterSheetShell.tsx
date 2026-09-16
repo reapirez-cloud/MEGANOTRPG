@@ -24,6 +24,7 @@ export type CharacterSheetShellProps = {
   onOpenPortrait?: () => void
   onNavigate: (target: CharacterSheetTarget) => void
   onBack: () => void
+  core?: ReactNode
   children?: ReactNode
 }
 
@@ -41,6 +42,7 @@ export default function CharacterSheetShell({
   onOpenPortrait,
   onNavigate,
   onBack,
+  core,
   children,
 }: CharacterSheetShellProps) {
   const entity = { type: "character", id: characterId, label: characterName }
@@ -122,6 +124,8 @@ export default function CharacterSheetShell({
           </div>
         </aside>
       </section>
+
+      {core}
 
       <section className="u1-character-sheet__content">
         {children}
