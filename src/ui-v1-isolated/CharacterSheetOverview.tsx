@@ -347,32 +347,60 @@ export default function CharacterSheetOverview({
                 : roman[level || 0] || String(level || "?")
               const iconSlot = CHARACTER_SHEET_MEDIA_SLOTS.spellSlot(classKey)
 
+              const entity = {
+                type: "spell-slot",
+                id: characterId + ":" + resource.stateKey,
+                label: pact
+                  ? "Ячейки Магии договора"
+                  : `Ячейки ${level} уровня`,
+              }
+              const detailAction: SnakeAction = {
+                id: "inspect-spell-slots",
+                label: "Подробнее",
+                surface: {
+                  kind: "detail",
+                  eyebrow: pact ? "Магия договора" : "Ячейки заклинаний",
+                  title: pact
+                    ? `Пакт · ${level ? roman[level] || level : "?"} уровень`
+                    : `${level} уровень`,
+                  body: [
+                    `Доступно: ${current} из ${max}.`,
+                    `Восстановление: ${rechargeText(resource)}.`,
+                  ].join("\n\n"),
+                },
+              }
+
               return (
-                <button
+                <SnakeTrigger
                   key={resource.stateKey}
-                  type="button"
-                  className="u1-character-overview__slot"
-                  data-pact={pact || undefined}
-                  onClick={onOpenSpells}
-                  aria-label={
-                    pact
-                      ? `Ячейки Магии договора, доступно ${current} из ${max}`
-                      : `Ячейки ${level} уровня, доступно ${current} из ${max}`
-                  }
+                  entity={entity}
+                  actions={[detailAction]}
                 >
-                  <span className="u1-character-overview__slot-level">
-                    <strong>{label}</strong>
-                    {!pact && <small>УРОВЕНЬ</small>}
-                  </span>
+                  <button
+                    type="button"
+                    className="u1-character-overview__slot"
+                    data-pact={pact || undefined}
+                    onClick={onOpenSpells}
+                    aria-label={
+                      pact
+                        ? `Ячейки Магии договора, доступно ${current} из ${max}`
+                        : `Ячейки ${level} уровня, доступно ${current} из ${max}`
+                    }
+                  >
+                    <span className="u1-character-overview__slot-level">
+                      <strong>{label}</strong>
+                      {!pact && <small>УРОВЕНЬ</small>}
+                    </span>
 
-                  <ResourceCharges
-                    resource={resource}
-                    iconSlot={iconSlot}
-                    spell
-                  />
+                    <ResourceCharges
+                      resource={resource}
+                      iconSlot={iconSlot}
+                      spell
+                    />
 
-                  <b>{current}/{max}</b>
-                </button>
+                    <b>{current}/{max}</b>
+                  </button>
+                </SnakeTrigger>
               )
             })}
           </div>
