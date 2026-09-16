@@ -187,20 +187,23 @@ begin
   limit 1;
 
   if v_id is null then
-    v_id := public.create_reference_definition_v2(
-      p_campaign_id,
-      'item',
+    insert into public.reference_definitions(
+      kind,scope,campaign_id,slug,visibility,status,
+      source_kind,source_label,external_id,created_by
+    ) values (
+      'item','campaign',p_campaign_id,
       'inventory-' || p_command_id::text,
-      'campaign',
-      'active',
-      'custom',
+      'campaign','active','custom',
       'Cheburashka inventory authoring',
       'inventory-authoring:' || p_command_id::text,
-      v_name,
-      v_description,
-      '',
-      v_mechanics,
-      v_data
+      auth.uid()
+    )
+    returning id into v_id;
+
+    insert into public.reference_definition_revisions(
+      definition_id,revision,name,summary,rules_text,mechanics,data,created_by
+    ) values (
+      v_id,1,v_name,v_description,'',v_mechanics,v_data,auth.uid()
     );
     v_revision:=1;
   end if;
