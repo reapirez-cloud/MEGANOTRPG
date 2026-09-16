@@ -104,9 +104,21 @@ export class OracleEngine {
       transfer: (context, fromCharacterId, toCharacterId, itemId, amount, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.transfer", context, fromCharacterId, toCharacterId, itemId, amount, expectedVersion })),
       storeWorld: (context, characterId, itemId, worldStorageId, amount, placement, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.store_world", context, characterId, itemId, worldStorageId, amount, placement, expectedVersion })),
       takeWorld: (context, worldStorageId, itemId, characterId, amount, placement, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.take_world", context, worldStorageId, itemId, characterId, amount, placement, expectedVersion })),
+      createSurface: (context, surfaceId, input) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.create_surface", context, surfaceId, input })),
+      placeSurface: (context, characterId, itemId, surfaceId, amount, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.place_surface", context, characterId, itemId, surfaceId, amount, expectedVersion })),
+      takeSurface: (context, surfaceId, itemId, characterId, amount, placement, expectedVersion) => direct(context, () => dependencies.cheburashka.execute({ kind: "inventory.take_surface", context, surfaceId, itemId, characterId, amount, placement, expectedVersion })),
     }
 
     this.world = {
+      createScene: (context, input) => direct(context, () => dependencies.larisa.execute({ kind: "world.scene_create", context, input })),
+      moveCharacterToScene: (context, characterId, roomId, options = {}) => direct(context, () => dependencies.larisa.execute({
+        kind: "world.scene_move_character",
+        context,
+        characterId,
+        roomId,
+        syncLocation: options.syncLocation ?? true,
+        syncTime: options.syncTime ?? true,
+      })),
       discoverLocation: (context, characterId, locationId, discovered = true) => direct(context, () => dependencies.larisa.execute({ kind: "world.discover_location", context, characterId, locationId, discovered })),
       moveCharacter: (context, characterId, locationId, campaignDay, dayPeriod) => direct(context, () => dependencies.larisa.execute({ kind: "world.set_character_position", context, characterId, locationId, campaignDay, dayPeriod })),
       setScenePosition: (context, roomId, locationId, campaignDay, dayPeriod) => direct(context, () => dependencies.larisa.execute({ kind: "world.set_scene_position", context, roomId, locationId, campaignDay, dayPeriod })),
@@ -130,6 +142,9 @@ export class OracleEngine {
       updateStorage: (context, worldStorageId, input, expectedVersion) => direct(context, () => dependencies.larisa.execute({ kind: "world.storage_update", context, worldStorageId, input, expectedVersion })),
       moveStorage: (context, worldStorageId, locationId, expectedVersion) => direct(context, () => dependencies.larisa.execute({ kind: "world.storage_move", context, worldStorageId, locationId, expectedVersion })),
       setStorageArchived: (context, worldStorageId, archived, expectedVersion) => direct(context, () => dependencies.larisa.execute({ kind: "world.storage_set_archived", context, worldStorageId, archived, expectedVersion })),
+      createSurface: (context, input) => direct(context, () => dependencies.larisa.execute({ kind: "world.surface_create", context, input })),
+      updateSurface: (context, surfaceId, input, expectedVersion) => direct(context, () => dependencies.larisa.execute({ kind: "world.surface_update", context, surfaceId, input, expectedVersion })),
+      setSurfaceArchived: (context, surfaceId, archived, expectedVersion) => direct(context, () => dependencies.larisa.execute({ kind: "world.surface_set_archived", context, surfaceId, archived, expectedVersion })),
     }
 
     this.definitions = {
