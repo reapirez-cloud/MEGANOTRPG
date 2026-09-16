@@ -134,11 +134,16 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - no pure black page canvas;
 - shared graphite tokens prepared for the future standalone inventory interface.
 
-### Stage 2 — Persistent CharacterSheetShell
+### Stage 2 — Persistent CharacterSheetShell [DONE]
+- old CharacterView layout removed instead of restyled;
+- legacy `character-view.css` deleted from the repository;
+- new dedicated `CharacterSheetShell` introduced;
 - portrait left (~42%);
-- navigation right (~58%);
+- navigation rail right (~58%);
 - fixed upper block height;
-- identity information integrated without oversized hero.
+- identity information integrated into portrait without oversized hero;
+- Snake remains attached to the character/portrait context;
+- lower content area intentionally stays clean for Stages 5–8.
 
 ### Stage 3 — Scrollable right navigation
 - thin 40–44px rows;
