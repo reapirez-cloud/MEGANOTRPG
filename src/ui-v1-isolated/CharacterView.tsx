@@ -32,7 +32,8 @@ import { createWorkshopCharacterActions } from "./gmWorkshopSnakeActions"
 import { useGMWorkshopData } from "./useGMWorkshopData"
 import { useUiV1CharacterControl } from "./useUiV1CharacterControl"
 import { useWorkspaceData } from "./useWorkspaceData"
-import "./character-view.css"\nimport "./character-sheet-theme.css"
+import "./character-view.css"
+import "./character-sheet-theme.css"
 
 type FocusSection = "inventory" | "spells" | "features" | "defenses" | null
 
