@@ -306,10 +306,20 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - campaign members may read the resulting reference media through the existing `private.can_read_media_asset` path, but GM/player permissions were not widened for owner-only class/reference editing;
 - Character Engine, resource state, spell preparation and gameplay mechanics are untouched by this stage.
 
-### Stage 14 — Standalone Inventory interface
-- inventory no longer renders as a normal sheet section;
-- spatial grid, bags, equipment and drag/drop remain separate;
-- uses same graphite visual foundation.
+### Stage 14 — Standalone Inventory boundary [DONE]
+- Inventory remains a dedicated full-interface mode and never renders inside the normal Character Sheet content area;
+- this stage intentionally does NOT implement the inventory itself: spatial grid, bags, equipment, drag/drop, holder navigation and inventory mechanics move to the separate Inventory roadmap;
+- the current Inventory screen remains an explicit placeholder instead of resurrecting any legacy inventory UI;
+- the placeholder owns a reserved future mount surface so the real inventory can replace the body without changing CharacterView routing or the Character Sheet shell;
+- CharacterView history now persists `focusedItemId` together with the Inventory interface snapshot, so browser / Android back-forward can restore the exact item target instead of only reopening the generic Inventory screen;
+- old history entries without `focusedItemId` remain compatible and safely resolve to no focused item;
+- entering Inventory from the right rail clears stale item focus; entering through entity navigation stores the exact item id;
+- changing the focused item while Inventory is already open updates the current history snapshot instead of stacking another navigation entry;
+- returning from Inventory clears live item focus while browser-forward can restore it from the stored Inventory snapshot;
+- Character Sheet AI/Snake context explicitly publishes `inventoryInterfaceStatus: placeholder` and `inventoryImplementationRoadmap: inventory-separate`, preventing the agent from treating unimplemented grid/equipment actions as live UI;
+- the executable UI contract records `status: placeholder`, `implementationRoadmap: inventory-separate`, the state that must survive navigation, and the future capabilities reserved for the separate Inventory project;
+- the standalone screen continues to inherit the same graphite/class-skin foundation, safe-area spacing and dedicated back control;
+- no inventory engine, Supabase inventory schema, Cheburashka mechanics, item placement rules or drag/drop behavior changed in this stage.
 
 ### Stage 15 — Sorting/data certification
 - dirty real data;
