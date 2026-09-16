@@ -1,16 +1,12 @@
 /*
- * Character sheet visual foundation — Stage 1.
+ * Character sheet visual foundation.
  *
- * This file owns the graphite palette and surface hierarchy for the character
- * experience. Do not re-introduce near-black page canvases inside character
- * sheet/inventory components. Black is reserved for shadows, image veils and
- * transient backdrops.
- *
- * Future ambient art is injected through --cv-ambient-art. Until then the
- * transparent gradient is the deliberate neutral placeholder.
+ * New sheet only. The legacy CharacterView visual system was removed in Stage 2.
+ * Pure/near black is not a page canvas. Black remains valid for shadows,
+ * image veils and transient modal backdrops.
  */
 
-.u1-character-view {
+.u1-character-sheet {
   --cv-canvas: #1f2225;
   --cv-canvas-raised: #25292c;
   --cv-surface: rgba(48, 52, 56, .72);
@@ -29,13 +25,15 @@
   --cv-shadow: rgba(0, 0, 0, .28);
   --cv-shadow-strong: rgba(0, 0, 0, .44);
 
-  /* Stage 6+ can override these independently from the generic class accent. */
+  --cv-accent: #9ea59b;
+  --cv-accent-soft: rgba(158, 165, 155, .14);
+  --cv-accent-line: rgba(158, 165, 155, .38);
+
   --cv-spell-accent: var(--cv-accent);
   --cv-spell-accent-soft: var(--cv-accent-soft);
   --cv-resource-accent: var(--cv-accent);
   --cv-resource-accent-soft: var(--cv-accent-soft);
 
-  /* Neutral placeholder. Later: url(...) supplied by the shell/background layer. */
   --cv-ambient-art: linear-gradient(transparent, transparent);
 
   color: var(--cv-text-soft);
@@ -50,103 +48,17 @@
   background-size: auto, auto, cover;
 }
 
-.u1-character-view__nav {
-  border-bottom-color: var(--cv-line-soft);
-  background: rgba(39, 43, 46, .88);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
-  backdrop-filter: blur(14px) saturate(.82);
-}
+.u1-character-sheet[data-class-key="fighter"] { --cv-accent: #b8a18b; --cv-accent-soft: rgba(184,161,139,.14); --cv-accent-line: rgba(184,161,139,.4); }
+.u1-character-sheet[data-class-key="warlock"] { --cv-accent: #b46e75; --cv-accent-soft: rgba(180,110,117,.14); --cv-accent-line: rgba(180,110,117,.4); }
+.u1-character-sheet[data-class-key="cleric"] { --cv-accent: #c3b994; --cv-accent-soft: rgba(195,185,148,.14); --cv-accent-line: rgba(195,185,148,.4); }
+.u1-character-sheet[data-class-key="druid"] { --cv-accent: #8fa77d; --cv-accent-soft: rgba(143,167,125,.14); --cv-accent-line: rgba(143,167,125,.42); }
+.u1-character-sheet[data-class-key="bard"] { --cv-accent: #aa88a6; --cv-accent-soft: rgba(170,136,166,.14); --cv-accent-line: rgba(170,136,166,.4); }
+.u1-character-sheet[data-class-key="paladin"] { --cv-accent: #beb480; --cv-accent-soft: rgba(190,180,128,.14); --cv-accent-line: rgba(190,180,128,.4); }
+.u1-character-sheet[data-class-key="sorcerer"] { --cv-accent: #b77770; --cv-accent-soft: rgba(183,119,112,.14); --cv-accent-line: rgba(183,119,112,.4); }
+.u1-character-sheet[data-class-key="wizard"] { --cv-accent: #859bab; --cv-accent-soft: rgba(133,155,171,.14); --cv-accent-line: rgba(133,155,171,.4); }
+.u1-character-sheet[data-class-key="rogue"] { --cv-accent: #99998e; --cv-accent-soft: rgba(153,153,142,.14); --cv-accent-line: rgba(153,153,142,.38); }
+.u1-character-sheet[data-class-key="monk"] { --cv-accent: #9e9078; --cv-accent-soft: rgba(158,144,120,.14); --cv-accent-line: rgba(158,144,120,.4); }
 
-.u1-character-view__nav > button {
-  color: var(--cv-text-soft);
-}
-
-.u1-character-view__nav > span,
-.u1-character-view__nav > strong {
-  color: var(--cv-text-muted);
-}
-
-.u1-character-view__hero {
-  background: var(--cv-canvas-raised);
-}
-
-.u1-character-view__hero > img,
-.u1-character-view__hero > span:first-child {
-  background:
-    linear-gradient(135deg, #34393d, #25292c 68%),
-    var(--cv-canvas-raised);
-}
-
-.u1-character-view__hero-veil {
-  background:
-    linear-gradient(180deg, rgba(31, 34, 37, .04), rgba(31, 34, 37, .08) 40%, rgba(24, 27, 29, .78) 100%),
-    linear-gradient(90deg, rgba(24, 27, 29, .08), transparent 55%, rgba(24, 27, 29, .12));
-}
-
-.u1-character-view__hero-copy small,
-.u1-character-view__identity p,
-.u1-character-view__quick span,
-.u1-character-view__skills span,
-.u1-character-view__resources > header,
-.u1-character-view__slots > header,
-.u1-character-view__resource > b,
-.u1-character-view__slot > strong,
-.u1-character-view__directory i {
-  color: var(--cv-text-muted);
-}
-
-.u1-character-view__hero-copy p,
-.u1-character-view__identity h1,
-.u1-character-view__quick strong,
-.u1-character-view__ability > button strong,
-.u1-character-view__resource-copy strong,
-.u1-character-view__directory span,
-.u1-character-view__section > header strong {
-  color: var(--cv-text);
-}
-
-.u1-character-view__inventory-line,
-.u1-character-view__directory strong,
-.u1-character-view__section > header small,
-.u1-character-view__row small,
-.u1-character-view__defenses span,
-.u1-character-view__resource-copy small,
-.u1-character-view__slot > span:first-child small {
-  color: var(--cv-text-faint);
-}
-
-.u1-character-view__ability > button span,
-.u1-character-view__slot > span:first-child {
-  color: var(--cv-text-soft);
-}
-
-.u1-character-view__skills strong,
-.u1-character-view__row strong,
-.u1-character-view__defenses p {
-  color: var(--cv-text-soft);
-}
-
-.u1-character-view__hp > i {
-  background: var(--cv-surface-strong);
-}
-
-.u1-character-view__pips i,
-.u1-character-view__slot-pips i {
-  box-shadow: inset 0 0 0 2px rgba(31, 34, 37, .78);
-}
-
-.u1-character-view__pips i[data-filled],
-.u1-character-view__slot-pips i[data-filled] {
-  box-shadow:
-    inset 0 0 0 2px rgba(31, 34, 37, .62),
-    0 0 7px var(--cv-accent-soft);
-}
-
-/*
- * Shared tokens for the future standalone inventory interface.
- * Inventory keeps its own layout and interaction system, but must inherit the
- * same graphite language rather than returning to #090a0a / #111313.
- */
 .u1-inventory-space {
   --inv-canvas: var(--cv-canvas, #1f2225);
   --inv-surface: var(--cv-surface, rgba(48, 52, 56, .72));
