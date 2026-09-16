@@ -346,3 +346,167 @@ test("unknown feature unlock levels sort after known levels and are never fabric
   assert.equal(entries[0]?.unlockLevel, 20)
   assert.equal(entries[1]?.unlockLevel, null)
 })
+
+
+test("multiclass subclasses use their own parent class level without cross-class leakage", () => {
+  const makeTemplate = (
+    id: string,
+    kind: "class" | "subclass",
+    name: string,
+    parentTemplateId: string | null,
+    unlockLevel: number | null,
+  ) => ({
+    id,
+    campaign_id: "campaign-1",
+    kind,
+    slug: id,
+    name,
+    description: "",
+    version: 1,
+    mechanics: [],
+    choices: [],
+    parent_template_id: parentTemplateId,
+    unlock_level: unlockLevel,
+    is_active: true,
+    created_by: null,
+    created_at: "",
+    updated_at: "",
+  })
+
+  const featureMechanic = (id: string, label: string) => ({
+    id,
+    type: "grant",
+    target: "feature",
+    key: id,
+    payload: { label },
+    sourceKey: id,
+  })
+
+  const bundles = [
+    {
+      assignment: {
+        id: "fighter-assignment",
+        character_id: "hero-1",
+        template_id: "fighter",
+        template_level: 5,
+        selected_choices: {},
+        assigned_at: "",
+        updated_at: "",
+      },
+      template: makeTemplate(
+        "fighter",
+        "class",
+        "Воин",
+        null,
+        null,
+      ),
+      levels: [],
+    },
+    {
+      assignment: {
+        id: "champion-assignment",
+        character_id: "hero-1",
+        template_id: "champion",
+        template_level: 20,
+        selected_choices: {},
+        assigned_at: "",
+        updated_at: "",
+      },
+      template: makeTemplate(
+        "champion",
+        "subclass",
+        "Чемпион",
+        "fighter",
+        3,
+      ),
+      levels: [
+        {
+          id: "champion-level-3",
+          template_id: "champion",
+          level: 3,
+          choices: [],
+          mechanics: [
+            featureMechanic(
+              "champion-feature",
+              "Фича чемпиона",
+            ),
+          ],
+        },
+      ],
+    },
+    {
+      assignment: {
+        id: "sorcerer-assignment",
+        character_id: "hero-1",
+        template_id: "sorcerer",
+        template_level: 2,
+        selected_choices: {},
+        assigned_at: "",
+        updated_at: "",
+      },
+      template: makeTemplate(
+        "sorcerer",
+        "class",
+        "Чародей",
+        null,
+        null,
+      ),
+      levels: [],
+    },
+    {
+      assignment: {
+        id: "shadow-assignment",
+        character_id: "hero-1",
+        template_id: "shadow",
+        template_level: 20,
+        selected_choices: {},
+        assigned_at: "",
+        updated_at: "",
+      },
+      template: makeTemplate(
+        "shadow",
+        "subclass",
+        "Теневая магия",
+        "sorcerer",
+        3,
+      ),
+      levels: [
+        {
+          id: "shadow-level-3",
+          template_id: "shadow",
+          level: 3,
+          choices: [],
+          mechanics: [
+            featureMechanic(
+              "shadow-feature",
+              "Фича тени",
+            ),
+          ],
+        },
+      ],
+    },
+  ] as any
+
+  const resolved = resolveTemplateBundles(bundles, 7)
+
+  const emittedIds = new Set(
+    resolved.sources.flatMap((source) => source.mechanicIds),
+  )
+
+  assert.equal(emittedIds.has("champion-feature"), true)
+  assert.equal(emittedIds.has("shadow-feature"), false)
+
+  const championRoot = resolved.sources.find(
+    (source) =>
+      source.templateId === "champion" &&
+      source.nodeKind === "template",
+  )
+  const shadowRoot = resolved.sources.find(
+    (source) =>
+      source.templateId === "shadow" &&
+      source.nodeKind === "template",
+  )
+
+  assert.equal(championRoot?.unlockLevel, 3)
+  assert.equal(shadowRoot?.unlockLevel, 3)
+})
