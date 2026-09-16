@@ -39,6 +39,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Physical item authoring now exposes per-unit weight in kg. Voss is instructed to author `weight_per_unit` in kilograms and may create normal CE `carrying.capacityKg` bonuses when an item/feature increases carrying capacity.
 - Specialized container usage is visible in the active bag view, so purpose-built capacities such as a quiver's arrow allowance are not invisible server trivia.
 
+- Completed Inventory Stage 8 world storage UI: persistent chests/stashes/crates live inside location detail, can be opened to inspect real contents, and expose Snake actions for putting in/taking out items.
+- The character inventory now exposes accessible persistent storage at the character's current location through **«Оставить в мире»**, using the same canonical Cheburashka move rather than a UI copy.
+- Player-created stashes are private owner storage at the active character's current location; GM storage may be shared, owner-only or GM-only according to explicit policy.
+
 ### Runtime and architecture changes
 
 - Completed Inventory Stage 5 physical authoring: Chasovoy item definitions now use a validated physical profile and strict v2 create/revise RPCs; ordinary item authoring has reusable physical presets and a GM shape editor.
@@ -58,6 +62,12 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Specialized container capacities are authoritative through deferred validation under the per-character inventory advisory lock. Client preflight mirrors that rule, so a quiver-style `50 arrows` cap is both concurrency-safe and immediately understandable in UI.
 - Stage 7 intentionally reports overload without hard-coding speed/action penalties. Tactical encumbrance consequences remain an explicit future rules choice rather than Cheburashka guessing campaign law.
 - Technical debt recorded: broaden CE buff/effect authoring so persistent/temporary numeric buffs across items, features, classes and GM effects share one consistent creation/explanation/management flow instead of adding target-specific UI one by one.
+
+- Completed Inventory Stage 8 persistent world storage. Larisa owns storage location/visibility/access/lifecycle while Cheburashka owns the physical root container and contents; there is no parallel `world_inventory_items` truth.
+- Generalized Cheburashka item ownership to exactly one owner scope: character or world storage. Whole-instance moves preserve row identity, nested container transfers preserve the subtree, and partial bulk moves split quantity without duplicating totals.
+- Added server-authoritative storage/root/location/campaign integrity, explicit player/GM access policy, optimistic versions, command receipts and advisory locks spanning both character and world-storage scopes.
+- Applied live Stage 8 migrations `20260916070000_cheburashka_stage8_world_storage` and `20260916073000_cheburashka_stage8_integrity_closure`. The closure also keeps Larisa storage name/description synchronized with the physical Cheburashka root container.
+- Stage 8 deliberately stops before scene/chat loot Surfaces; those remain Stage 9 rather than being disguised as persistent chests.
 
 - Started Inventory Stage 5A: added the canonical Chasovoy `inventory_profile` contract for instance/bulk packing, shape masks, physical dimensions and container internal grids. Cheburashka and the GM item editor now default new items to independent instances; bulk stacks are explicit exceptions.
 - Added rollout-safe live Supabase validation for item physical profiles and changed the inventory DB default to `instance`. The old production client keeps a narrow compatibility path when it omits `stack_mode` on an existing multi-quantity item.
@@ -101,6 +111,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added `cheburashkaStage7WeightCapacity.test.ts` covering Strength-based metric carrying capacity, a CE `+ carrying.capacityKg` buff, nested/stack load calculation, explicit unknown mass and specialized-capacity overflow preflight.
 - Final Inventory Stage 7 closure head `4fb4c45b0117b1d960ee32ac902262d64ef8299d` passed Build, Lint, repository Test, Storybook build and Playwright smoke in GitHub Actions run `35064559977`.
 
+- Added `cheburashkaStage8WorldStorage.test.ts` covering character ↔ world owner scopes, full nested-container subtree identity preservation, partial-stack conservation, Larisa storage identity across location moves, narrow player stash authority and migration/security invariants.
+- Live rollback smoke created a temporary persistent chest, moved a real item into its Cheburashka root and returned it to the character, verified owner/holder invariants, then rolled the entire transaction back with no test storage/item left behind.
+- Verified Stage 8 public RPC grants are authenticated-only and not executable by `anon`; project-wide security advisor cleanup remains Stage 12 rather than being misreported as completed here.
+
 - Added Stage 5 inventory-profile regression coverage for instance-first defaults, explicit bulk stacks, large magical-container interiors without UI viewport metadata, and preservation of container geometry while ordinary mechanics are edited.
 - Applied live Supabase migration `20260915182537_cheburashka_stage5_inventory_profile_foundation` and verified the DB default / compatibility routing plus acceptance of a 20×20 magical-bag profile.
 - GitHub Actions do not currently report a run/status for direct `dev` head `c819636`; the isolated execution environment also cannot clone GitHub externally, so a full repository `npm test` / build result is not claimed for this work unit.
@@ -122,7 +136,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Known incomplete work
 
-- Inventory Stages 1–7 are complete. Stage 8 (persistent world storage/chests/stashes) is next; Stages 8–12 remain intentionally future work.
+- Inventory Stages 1–8 are complete. Stage 9 (chats/scenes + shared Surfaces) is next; Stages 9–12 remain intentionally future work.
 - CE technical debt remains: generalize the buff/effect authoring and management UX beyond the newly supported `carrying.capacityKg` target.
 - Legacy inventory v1 RPCs and transitional `legacy` placement cannot be fully retired while the current production `main` still uses the shared live Supabase project; retirement is deferred to production promotion/final certification rather than breaking the live client during dev.
 
