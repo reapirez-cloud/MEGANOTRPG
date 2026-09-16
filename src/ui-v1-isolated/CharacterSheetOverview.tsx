@@ -15,7 +15,10 @@ import type { ResourceSyncInput } from "../types/characterResources.ts"
 import type { SnakeAction } from "../snake-engine"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import { CHARACTER_SHEET_MEDIA_SLOTS } from "./characterSheetUiContract"
-import { characterSheetVisualAssetForSlot } from "./characterSheetVisualAssets"
+import {
+  CHARACTER_SHEET_SPENT_CROSS_ASSET,
+  characterSheetVisualAssetForSlot,
+} from "./characterSheetVisualAssets"
 import {
   characterSheetEntitiesUsingResource,
   characterSheetEntityLabel,
@@ -24,6 +27,10 @@ import {
 } from "./characterSheetEntityNavigation"
 
 const roman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"]
+
+const spentCrossStyle = {
+  "--u1-spent-cross": `url("${CHARACTER_SHEET_SPENT_CROSS_ASSET}")`,
+} as CSSProperties
 
 function iconVisual(iconSlot: string) {
   const asset = characterSheetVisualAssetForSlot(iconSlot)
@@ -311,7 +318,11 @@ export default function CharacterSheetOverview({
   ]
 
   return (
-    <div className="u1-character-overview" ref={rootRef}>
+    <div
+      className="u1-character-overview"
+      ref={rootRef}
+      style={spentCrossStyle}
+    >
       {classResources.length > 0 && (
         <section
           className="u1-character-overview__section"
