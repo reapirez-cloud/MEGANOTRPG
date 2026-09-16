@@ -439,6 +439,30 @@ test("unequip requires an explicit physical destination", async () => {
   )
 })
 
+test("equipped item cannot move into abstract root without a real destination", async () => {
+  const sword = item("root-guard-sword", {
+    category: "equipment",
+    equipment_slot: "main_hand",
+    equipped: true,
+  })
+  const engine = new CheburashkaEngine(new MemoryCheburashkaStorage([sword]))
+
+  await assert.rejects(
+    () => engine.execute({
+      kind: "inventory.move",
+      context: context("00000000-0000-4000-8000-000000006018"),
+      characterId,
+      itemId: sword.id,
+      holderItemId: null,
+      placement: { kind: "root" },
+      expectedVersion: 1,
+    }),
+    (reason: unknown) =>
+      reason instanceof EngineCommandError
+      && reason.code === "inventory.placement_invalid",
+  )
+})
+
 test("Stage 6 database contract is versioned, locked and server-authoritative", () => {
   const migration = fs.readFileSync(
     "supabase/migrations/20260916044954_cheburashka_stage6_spatial_inventory.sql",
@@ -455,6 +479,14 @@ test("Stage 6 database contract is versioned, locked and server-authoritative", 
   const adapter = fs.readFileSync("src/inventory-engine/supabase.ts", "utf8")
   const profileProjection = fs.readFileSync(
     "supabase/migrations/20260916053336_cheburashka_stage6_profile_projection.sql",
+    "utf8",
+  )
+  const equipmentGuard = fs.readFileSync(
+    "supabase/migrations/20260916053628_cheburashka_stage6_equipment_state_guard.sql",
+    "utf8",
+  )
+  const moveGuard = fs.readFileSync(
+    "supabase/migrations/20260916053859_cheburashka_stage6_move_destination_guard.sql",
     "utf8",
   )
 
@@ -484,6 +516,12 @@ test("Stage 6 database contract is versioned, locked and server-authoritative", 
   assert.match(profileProjection, /private\.can_view_character/)
   assert.match(adapter, /list_character_inventory_physical_profiles_v1/)
   assert.doesNotMatch(adapter, /reference_definition_revisions/)
+  assert.match(equipmentGuard, /Conflicting equipped inventory items are not allowed/)
+  assert.match(equipmentGuard, /deferrable initially deferred/)
+  assert.match(moveGuard, /move_inventory_item_v3/)
+  assert.match(moveGuard, /Equipped inventory item requires a real unequip destination/)
+  assert.match(moveGuard, /revoke execute on function public\.move_inventory_item_v2/)
+  assert.match(adapter, /rpc\("move_inventory_item_v3"/)
 })
 
 test("Stage 6 UI keeps fixed cell pixels, six-cell viewport and physical Snake actions", () => {
