@@ -16,6 +16,15 @@ import type { SnakeAction } from "../snake-engine"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import { CHARACTER_SHEET_MEDIA_SLOTS } from "./characterSheetUiContract"
 import {
+  createSheetReferenceMediaActions,
+  type CharacterSheetMediaController,
+} from "./characterSheetMediaActions"
+import {
+  classReferenceArtSlot,
+  resourceReferenceArtSlot,
+  type UiV1ReferenceMedia,
+} from "./useUiV1ReferenceMedia"
+import {
   CHARACTER_SHEET_SPENT_CROSS_ASSET,
   characterSheetVisualAssetForSlot,
 } from "./characterSheetVisualAssets"
@@ -32,7 +41,47 @@ const spentCrossStyle = {
   "--u1-spent-cross": `url("${CHARACTER_SHEET_SPENT_CROSS_ASSET}")`,
 } as CSSProperties
 
-function iconVisual(iconSlot: string) {
+function mediaCropStyle(media: UiV1ReferenceMedia) {
+  const presentation = media.presentation
+  if (!presentation) {
+    return {
+      size: "cover",
+      position: "center",
+    }
+  }
+
+  const { x, y, width, height } = presentation.crop
+  const positionX =
+    width >= 0.999999
+      ? 50
+      : Math.max(0, Math.min(100, (x / (1 - width)) * 100))
+  const positionY =
+    height >= 0.999999
+      ? 50
+      : Math.max(0, Math.min(100, (y / (1 - height)) * 100))
+
+  return {
+    size: `${100 / width}% ${100 / height}%`,
+    position: `${positionX}% ${positionY}%`,
+  }
+}
+
+function iconVisual(
+  iconSlot: string,
+  override?: UiV1ReferenceMedia | null,
+) {
+  if (override?.url) {
+    const crop = mediaCropStyle(override)
+    return {
+      render: "image" as const,
+      style: {
+        "--u1-sheet-icon": `url(${JSON.stringify(override.url)})`,
+        "--u1-sheet-icon-size": crop.size,
+        "--u1-sheet-icon-position": crop.position,
+      } as CSSProperties,
+    }
+  }
+
   const asset = characterSheetVisualAssetForSlot(iconSlot)
   if (!asset) return null
 
@@ -175,16 +224,18 @@ function availableChargeCount(resource: ResolvedResource) {
 function ResourceCharges({
   resource,
   iconSlot,
+  mediaOverride = null,
   spell = false,
 }: {
   resource: ResolvedResource
   iconSlot: string
+  mediaOverride?: UiV1ReferenceMedia | null
   spell?: boolean
 }) {
   const max = chargeCount(resource)
   const current = availableChargeCount(resource)
   const rendered = Math.min(max, 40)
-  const visual = iconVisual(iconSlot)
+  const visual = iconVisual(iconSlot, mediaOverride)
 
   if (max === 0) {
     return <span className="u1-character-overview__zero">нет зарядов</span>
@@ -230,6 +281,7 @@ export default function CharacterSheetOverview({
   focusResourceKey,
   onSelectResource,
   onNavigateEntity,
+  mediaController,
 }: {
   characterId: string
   classKey: string
@@ -241,6 +293,7 @@ export default function CharacterSheetOverview({
   focusResourceKey?: string | null
   onSelectResource?: (stateKey: string) => void
   onNavigateEntity?: CharacterSheetEntityNavigator
+  mediaController?: CharacterSheetMediaController | null
 }) {
   const snake = useSnake()
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -342,7 +395,34 @@ export default function CharacterSheetOverview({
               const current = availableChargeCount(resource)
               const iconSlot =
                 CHARACTER_SHEET_MEDIA_SLOTS.classResource(classKey)
-              const visual = iconVisual(iconSlot)
+              const exactMediaSlot =
+                resourceReferenceArtSlot(resource.stateKey)
+              const exactMedia =
+                mediaController?.get(exactMediaSlot) || null
+              const classResourceMedia =
+                mediaController?.get(
+                  classReferenceArtSlot(classKey, "resource"),
+                ) || null
+              const resourceMedia =
+                exactMedia || classResourceMedia
+              const visual = iconVisual(iconSlot, resourceMedia)
+              const resourceMediaActions =
+                mediaController
+                  ? createSheetReferenceMediaActions({
+                      controller: mediaController,
+                      targetField: exactMediaSlot,
+                      title: label,
+                      eyebrow: "Лист персонажа · ресурс",
+                      composeLabel: "Иконка ресурса · 1:1",
+                      shape: "square",
+                      aspectRatio: 1,
+                      applyLabel: "Установить иконку",
+                      successNotice: "Иконка ресурса обновлена.",
+                      resetTitle: "Сбросить иконку ресурса",
+                      resetNotice:
+                        "Иконка ресурса возвращена к классовой или встроенной.",
+                    })
+                  : []
               const entity = {
                 type: "character-resource",
                 id: characterId + ":" + resource.stateKey,
@@ -388,6 +468,7 @@ export default function CharacterSheetOverview({
                   actions={[
                     detailAction,
                     ...(navigationAction ? [navigationAction] : []),
+                    ...resourceMediaActions,
                   ]}
                 >
                   <button
@@ -425,6 +506,7 @@ export default function CharacterSheetOverview({
                     <ResourceCharges
                       resource={resource}
                       iconSlot={iconSlot}
+                      mediaOverride={resourceMedia}
                     />
                   </button>
                 </SnakeTrigger>
@@ -454,6 +536,28 @@ export default function CharacterSheetOverview({
                 ? `ПАКТ · ${level ? roman[level] || level : "?"}`
                 : roman[level || 0] || String(level || "?")
               const iconSlot = CHARACTER_SHEET_MEDIA_SLOTS.spellSlot(classKey)
+              const spellMediaSlot =
+                classReferenceArtSlot(classKey, "spell_slot")
+              const spellMedia =
+                mediaController?.get(spellMediaSlot) || null
+              const spellMediaActions =
+                mediaController
+                  ? createSheetReferenceMediaActions({
+                      controller: mediaController,
+                      targetField: spellMediaSlot,
+                      title: "Иконка ячеек заклинаний",
+                      eyebrow: "Лист персонажа · класс",
+                      composeLabel: "Ячейка заклинаний · 1:1",
+                      shape: "square",
+                      aspectRatio: 1,
+                      applyLabel: "Установить иконку",
+                      successNotice:
+                        "Классовая иконка ячеек заклинаний обновлена.",
+                      resetTitle: "Сбросить иконку ячеек",
+                      resetNotice:
+                        "Иконка ячеек возвращена к встроенной.",
+                    })
+                  : []
 
               const entity = {
                 type: "spell-slot",
@@ -482,7 +586,7 @@ export default function CharacterSheetOverview({
                 <SnakeTrigger
                   key={resource.stateKey}
                   entity={entity}
-                  actions={[detailAction]}
+                  actions={[detailAction, ...spellMediaActions]}
                 >
                   <button
                     type="button"
@@ -503,6 +607,7 @@ export default function CharacterSheetOverview({
                     <ResourceCharges
                       resource={resource}
                       iconSlot={iconSlot}
+                      mediaOverride={spellMedia}
                       spell
                     />
 
