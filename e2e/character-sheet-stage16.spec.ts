@@ -141,6 +141,27 @@ test("Stage 16 Telegram Back restores Inventory focus and sheet history in order
     ),
   ).toBe("features")
 
+  // Browser/Android forward must restore the exact Inventory snapshot, including
+  // the focused item. Back is only half of a history contract, despite mankind's
+  // heroic attempts to test it that way.
+  await page.evaluate(() => window.history.forward())
+  await expect(
+    page.locator('[data-inventory-status="placeholder"]'),
+  ).toBeVisible()
+  await expect(page.getByText("Тестовый предмет")).toBeVisible()
+  await expect.poll(
+    () => page.evaluate(
+      () => (window.history.state as any)?.characterSheet?.focusedItemId,
+    ),
+  ).toBe("item-stage16")
+
+  await page.evaluate(() => (window as any).__fireStage16TelegramBack())
+  await expect.poll(
+    () => page.evaluate(
+      () => (window.history.state as any)?.characterSheet?.section,
+    ),
+  ).toBe("features")
+
   await page.evaluate(() => (window as any).__fireStage16TelegramBack())
   await expect.poll(
     () => page.evaluate(
