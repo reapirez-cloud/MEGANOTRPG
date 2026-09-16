@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react"
+
 import type {
   ResolvedAction,
   ResolvedCharacterContract,
@@ -10,6 +12,13 @@ import {
   CHARACTER_SHEET_FEATURE_SOURCE_ORDER,
   CHARACTER_SHEET_FEATURE_TIMING_ORDER,
 } from "./characterSheetUiContract"
+import {
+  characterSheetEntityFromSource,
+  characterSheetEntityLabel,
+  characterSheetLinkedEntitiesForAction,
+  type CharacterSheetEntityNavigator,
+  type CharacterSheetEntityTarget,
+} from "./characterSheetEntityNavigation"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 
 type FeatureSourceGroup = typeof CHARACTER_SHEET_FEATURE_SOURCE_ORDER[number]
@@ -25,6 +34,8 @@ type FeatureEntry = {
   sourceName: string
   sourceType: string
   timing: FeatureTiming
+  navigationKeys: string[]
+  sourceTarget: CharacterSheetEntityTarget | null
   action: ResolvedAction | null
   grant: ResolvedGrant | null
 }
@@ -126,6 +137,7 @@ function sourceMeta(
   payloadKind = "",
 ) {
   const source = sourceOf(sources)
+  const sourceTarget = characterSheetEntityFromSource(source)
   const sourceType = source?.sourceType || "unknown"
   const sourceId = source?.id || "unknown"
   const templateId = templateIdFromSourceId(sourceId)
@@ -138,6 +150,7 @@ function sourceMeta(
       originId: sourceId,
       sourceName: template.name,
       sourceType,
+      sourceTarget,
     }
   }
 
@@ -160,6 +173,7 @@ function sourceMeta(
     originId: source?.id || category + ":unknown",
     sourceName,
     sourceType,
+    sourceTarget,
   }
 }
 
@@ -239,6 +253,13 @@ function buildEntries(
       description,
       ...source,
       timing: featureTiming(grant),
+      navigationKeys: [
+        "grant:" + grant.key + ":" + grant.variantKey,
+        grant.key,
+        grant.variantKey,
+        ...grant.sources.map((entry) => entry.source.id),
+      ],
+      sourceTarget: source.sourceTarget,
       action: null,
       grant,
     })
@@ -254,6 +275,16 @@ function buildEntries(
       entries.set(key, {
         ...current,
         timing: timingFromEconomy(action.economy),
+        navigationKeys: [
+          ...new Set([
+            ...current.navigationKeys,
+            "action:" + action.stateKey,
+            action.stateKey,
+            action.key,
+            ...action.sources.map((entry) => entry.source.id),
+          ]),
+        ],
+        sourceTarget: current.sourceTarget || source.sourceTarget,
         action,
       })
       continue
@@ -265,6 +296,13 @@ function buildEntries(
       description: "",
       ...source,
       timing: timingFromEconomy(action.economy),
+      navigationKeys: [
+        "action:" + action.stateKey,
+        action.stateKey,
+        action.key,
+        ...action.sources.map((entry) => entry.source.id),
+      ],
+      sourceTarget: source.sourceTarget,
       action,
       grant: null,
     })
@@ -299,15 +337,20 @@ export default function CharacterSheetFeatures({
   contract,
   templates,
   runtimeError,
+  focusKey,
   onSelect,
+  onNavigateEntity,
 }: {
   characterId: string
   contract: ResolvedCharacterContract | null
   templates: RuleTemplate[]
   runtimeError?: string
+  focusKey?: string | null
   onSelect?: (featureId: string) => void
+  onNavigateEntity?: CharacterSheetEntityNavigator
 }) {
   const snake = useSnake()
+  const rootRef = useRef<HTMLDivElement | null>(null)
 
   if (!contract) {
     return (
@@ -323,6 +366,27 @@ export default function CharacterSheetFeatures({
   }
 
   const entries = buildEntries(contract, templates)
+  const focusedEntry =
+    focusKey
+      ? entries.find((entry) => entry.navigationKeys.includes(focusKey)) || null
+      : null
+
+  useEffect(() => {
+    if (!focusedEntry) return
+    const frame = window.requestAnimationFrame(() => {
+      rootRef.current
+        ?.querySelector<HTMLElement>(
+          `[data-entry-id="${focusedEntry.id}"]`,
+        )
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [focusedEntry?.id])
+
   const byCategory = new Map<FeatureSourceGroup, FeatureEntry[]>()
 
   for (const entry of entries) {
@@ -341,7 +405,7 @@ export default function CharacterSheetFeatures({
   }
 
   return (
-    <div className="u1-character-features">
+    <div className="u1-character-features" ref={rootRef}>
       {CHARACTER_SHEET_FEATURE_SOURCE_ORDER.map((category) => {
         const categoryEntries = byCategory.get(category) || []
         if (!categoryEntries.length) return null
@@ -393,6 +457,25 @@ export default function CharacterSheetFeatures({
                           body: detailBody(entry),
                         },
                       }
+                      const relatedTargets = [
+                        ...(entry.action
+                          ? characterSheetLinkedEntitiesForAction(entry.action)
+                          : []),
+                        ...(entry.sourceTarget ? [entry.sourceTarget] : []),
+                      ]
+                      const navigationAction: SnakeAction | null =
+                        onNavigateEntity && relatedTargets.length
+                          ? {
+                              id: "feature-linked-entities",
+                              label: "Связано",
+                              kind: "branch",
+                              children: relatedTargets.map((target, index) => ({
+                                id: "navigate-" + target.kind + "-" + index,
+                                label: characterSheetEntityLabel(target),
+                                execute: () => onNavigateEntity(target),
+                              })),
+                            }
+                          : null
                       const sourceAction: SnakeAction = {
                         id: "feature-source",
                         label: "Источник",
@@ -408,11 +491,19 @@ export default function CharacterSheetFeatures({
                         <SnakeTrigger
                           key={entry.id}
                           entity={entity}
-                          actions={[detailAction, sourceAction]}
+                          actions={[
+                            detailAction,
+                            sourceAction,
+                            ...(navigationAction ? [navigationAction] : []),
+                          ]}
                         >
                           <button
                             type="button"
                             className="u1-character-features__row"
+                            data-entry-id={entry.id}
+                            data-focus-target={
+                              focusedEntry?.id === entry.id || undefined
+                            }
                             data-timing={entry.timing}
                             data-available={
                               entry.action?.available === true || undefined
