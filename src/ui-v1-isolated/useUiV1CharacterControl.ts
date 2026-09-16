@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { cheburashka } from "../inventory-engine/runtime.ts"
-import type { InventoryPlacementTarget } from "../inventory-engine/index.ts"
+import { firstAvailableGridPlacement, type InventoryPlacementTarget } from "../inventory-engine/index.ts"
 import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { oracle } from "../oracle-engine/runtime.ts"
 import { shapoklyak } from "../entity-engine/runtime.ts"
@@ -37,6 +37,16 @@ export type UiV1Character = {
   panelAvatarPresentation: MediaPresentation | null
 }
 
+export type UiV1CharacterWorldStorage = {
+  id: string
+  location_id: string
+  root_item_id: string
+  name: string
+  storage_kind: string
+  item_count: number
+  can_operate: boolean
+}
+
 type Result = { ok: boolean; error?: string }
 
 function errorMessage(reason: unknown, fallback: string) {
@@ -54,6 +64,7 @@ export function useUiV1CharacterControl(characterId: string) {
   const [assignments, setAssignments] = useState<CharacterTemplateAssignment[]>([])
   const [templates, setTemplates] = useState<RuleTemplate[]>([])
   const [transferTargets, setTransferTargets] = useState<Array<{ id: string; name: string }>>([])
+  const [worldStorages, setWorldStorages] = useState<UiV1CharacterWorldStorage[]>([])
   const [resources, setResources] = useState<Array<{
     state_key: string
     label: string | null
@@ -80,6 +91,7 @@ export function useUiV1CharacterControl(characterId: string) {
         resourcesResult,
         transferTargetsResult,
         mediaResult,
+        worldStateResult,
       ] = await Promise.all([
         supabase.from("characters")
           .select("id,campaign_id,assigned_user_id,name,character_class,level,bio,avatar_url,character_type,visibility,visibility_mode,publication_state,life_state,died_at,created_by,created_at,updated_at")
@@ -111,6 +123,10 @@ export function useUiV1CharacterControl(characterId: string) {
         supabase.rpc("list_character_media_presentations_v1", {
           p_campaign_id: scope.campaignId,
         }),
+        supabase.from("character_world_state")
+          .select("location_id")
+          .eq("character_id", characterId)
+          .maybeSingle(),
       ])
 
       const firstError =
@@ -122,11 +138,20 @@ export function useUiV1CharacterControl(characterId: string) {
         templatesResult.error ||
         resourcesResult.error ||
         transferTargetsResult.error ||
-        mediaResult.error
+        mediaResult.error ||
+        worldStateResult.error
       if (firstError) throw new Error(firstError.message)
       if (!characterResult.data) throw new Error("Персонаж не найден.")
 
       const inventoryRows = await cheburashka.listCharacterItems(characterId)
+      const storageResult = worldStateResult.data?.location_id
+        ? await supabase.rpc("list_world_storages_v1", {
+            p_campaign_id: scope.campaignId,
+            p_location_id: worldStateResult.data.location_id,
+          })
+        : { data: [], error: null }
+      if (storageResult.error) throw new Error(storageResult.error.message)
+
       const row = characterResult.data
       const mediaRows = (mediaResult.data || []) as Array<{
         character_id: string
@@ -183,6 +208,15 @@ export function useUiV1CharacterControl(characterId: string) {
         id: item.id,
         name: item.name,
       })))
+      setWorldStorages((storageResult.data || []).map((storage: Record<string, unknown>) => ({
+        id: String(storage.id || ""),
+        location_id: String(storage.location_id || ""),
+        root_item_id: String(storage.root_item_id || ""),
+        name: String(storage.name || "Хранилище"),
+        storage_kind: String(storage.storage_kind || "stash"),
+        item_count: Number(storage.item_count || 0),
+        can_operate: storage.can_operate === true,
+      })).filter((storage) => Boolean(storage.id && storage.root_item_id)))
     } catch (reason) {
       setError(errorMessage(reason, "Не удалось загрузить персонажа."))
     } finally {
@@ -333,6 +367,62 @@ export function useUiV1CharacterControl(characterId: string) {
     }
   }, [canControlCharacter, characterId, context, load, playerContext, scope.canManage])
 
+  const storeItemInWorld = useCallback(async (
+    item: InventoryItem,
+    storage: UiV1CharacterWorldStorage,
+    amount = item.quantity,
+  ): Promise<Result> => {
+    if (!canControlCharacter) return { ok: false, error: "Недостаточно прав." }
+    if (!storage.can_operate) return { ok: false, error: "Это хранилище сейчас недоступно." }
+    if (item.equipped) return { ok: false, error: "Сначала сними предмет в реальное место." }
+    try {
+      const storageItems = await cheburashka.listWorldStorageItems(storage.id)
+      const root = storageItems.find((candidate) => candidate.id === storage.root_item_id)
+      if (!root) return { ok: false, error: "Корневой контейнер хранилища не найден." }
+
+      const projected: InventoryItem = {
+        ...item,
+        character_id: null,
+        world_storage_id: storage.id,
+        holder_item_id: root.id,
+        placement_kind: "grid",
+        placement_index: null,
+        grid_x: null,
+        grid_y: null,
+        grid_rotation: 0,
+        equipped: false,
+      }
+      const placement = firstAvailableGridPlacement(
+        [...storageItems, projected],
+        projected,
+        root,
+      )
+      if (!placement) return { ok: false, error: "В хранилище нет места для этого предмета." }
+
+      if (scope.canManage) {
+        await oracle.inventory.storeWorld(
+          context(), characterId, item.id, storage.id, amount, placement, item.version,
+        )
+      } else {
+        await cheburashka.execute({
+          kind: "inventory.store_world",
+          context: playerContext(),
+          characterId,
+          itemId: item.id,
+          worldStorageId: storage.id,
+          amount,
+          placement,
+          expectedVersion: item.version,
+        })
+      }
+      await load()
+      return { ok: true }
+    } catch (reason) {
+      await load()
+      return { ok: false, error: errorMessage(reason, "Не удалось оставить предмет в мире.") }
+    }
+  }, [canControlCharacter, characterId, context, load, playerContext, scope.canManage])
+
   const updateItem = useCallback((item: InventoryItem, patch: Partial<InventoryInput>) => {
     const input: InventoryInput = {
       name: patch.name ?? item.name,
@@ -448,6 +538,7 @@ export function useUiV1CharacterControl(characterId: string) {
     templates,
     resources,
     transferTargets,
+    worldStorages,
     loading: scope.loading || loading,
     error: scope.error || error,
     refresh: load,
@@ -457,6 +548,7 @@ export function useUiV1CharacterControl(characterId: string) {
     setEquipped,
     useItem,
     moveItem,
+    storeItemInWorld,
     updateItem,
     removeItem,
     transferItem,
