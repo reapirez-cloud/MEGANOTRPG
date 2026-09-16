@@ -6,7 +6,7 @@
 >
 > Product contract: `docs/INVENTORY_PRODUCT_CONTRACT.md`
 >
-> Current checkpoint: **Stages 1–11 complete. Stage 12 is next: final security/concurrency/E2E certification.**
+> Current checkpoint: **Stages 1–12 complete. Inventory certification is CLOSED.**
 >
 > This file defines implementation order and completion boundaries. It does not by itself prove that a stage is implemented. Audits must verify source, live Supabase state where relevant, and real runtime behavior before changing a stage to complete.
 
@@ -27,9 +27,9 @@ The final inventory target is a physical, tactile inventory system built on Cheb
 | 9 | ✅ COMPLETE | Chats/scenes + shared Surfaces |
 | 10 | ✅ COMPLETE | Dedicated Trade block mechanics |
 | 11 | ✅ COMPLETE | Chasovoy adoption + legacy inventory migration |
-| 12 | ⬜ TODO | Final security/concurrency/E2E certification |
+| 12 | ✅ COMPLETE | Final security/concurrency/E2E certification |
 
-There are **12 stages total**. Eleven are complete; one remains.
+There are **12 stages total**. All twelve are complete.
 
 ---
 
@@ -872,7 +872,13 @@ Legacy safety:
 
 ---
 
-# Stage 12 — Final security/concurrency/E2E certification
+# Stage 12 — Final security/concurrency/E2E certification ✅
+
+Stage 12 is **COMPLETE**. Final certification was performed against the live Supabase system plus the repository regression/E2E suite, not source inspection alone.
+
+Certification record: `docs/INVENTORY_STAGE12_CERTIFICATION.md`.
+
+Live hardening migration: `20260916120000_cheburashka_stage12_final_certification`.
 
 Final certification is against the real system, not source inspection alone.
 
@@ -898,13 +904,15 @@ Required areas:
 
 No stage is READY merely because a React screen exists.
 
-### Stage 12 complete when
+### Stage 12 completion gate — PASSED ✅
 
-- all critical invariants are demonstrated against the live/test database;
-- concurrency tests prove no duplication/lost ownership;
-- E2E covers the intended mobile flows;
-- no legacy inventory path can bypass Cheburashka;
-- the audit records known non-critical debt explicitly.
+- critical owner/holder/equipment/definition invariants were demonstrated against live Supabase;
+- optimistic-version and first-winner concurrency semantics remain locked by DB/runtime regressions and live stale-state probes;
+- mobile E2E now covers real inventory bag opening, pointer drag to a hand cell and Snake long-press action routing;
+- the still-deployed v1 authoring path is compatibility-only and is sealed by a DB definition-binding trigger plus definition/narrative CHECK constraint;
+- authenticated direct writes remain revoked for canonical inventory/world/Surface/Trade tables;
+- RLS was exercised as the actual `authenticated` role and a broken private-helper permission path was replaced by narrow current-user wrappers;
+- known non-critical debt is recorded explicitly in `docs/INVENTORY_STAGE12_CERTIFICATION.md`.
 
 ---
 

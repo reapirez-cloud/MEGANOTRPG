@@ -6,7 +6,7 @@
 >
 > Branch: active implementation belongs on `dev`.
 >
-> Current implementation checkpoint: Inventory Stages 1–10 are complete. Cheburashka owns physical item state/exchange, Larisa owns world/scene access facts, and GENA now owns dedicated Trade session/revision/history orchestration. Chasovoy legacy adoption and final certification remain later stages unless code/tests prove otherwise.
+> Current implementation checkpoint: Inventory Stages 1–12 are complete. Cheburashka owns canonical physical item state/exchange, Chasovoy owns reusable physical definitions, Larisa owns world/scene access facts, and GENA owns dedicated Trade session/revision/history orchestration. Final certification is recorded in `docs/INVENTORY_STAGE12_CERTIFICATION.md`.
 
 This document is the canonical product intent for MEGANOTRPG inventory UX. Audits must compare the current implementation to this contract. Do not replace it with a generic RPG inventory pattern merely because that pattern is easier or more familiar.
 
@@ -573,9 +573,9 @@ When auditing inventory, an agent must:
 
 1. read this contract before proposing redesigns;
 2. distinguish **implemented now** from **approved target**;
-3. preserve completed Inventory Stages 1–11 unless a real defect requires change;
+3. preserve completed Inventory Stages 1–12 unless a real defect requires change;
 4. report gaps against this target rather than inventing a different inventory UX;
-5. distinguish completed Stage 6–11 spatial/load/world-storage/Surface/Trade/adoption runtime from still-future final certification work;
+5. distinguish completed Stage 6–12 spatial/load/world-storage/Surface/Trade/adoption/certification runtime from future presentation or cleanup work;
 6. prefer extending one holder/placement model over parallel tables that represent the same fact;
 7. call out server-authority/concurrency gaps for moves, claims and trade commits;
 8. keep GM authority intact and avoid tactical simulation the app does not own;
@@ -601,10 +601,10 @@ Current status:
 9  ✅ chats/scenes + shared Surfaces
 10 ✅ dedicated Trade block mechanics
 11 ✅ Chasovoy adoption + legacy migration
-12 ⬜ final security/concurrency/E2E certification
+12 ✅ final security/concurrency/E2E certification
 ```
 
-There are 12 stages total. Stages 1–11 are complete; Stage 12 is next.
+There are 12 stages total. Stages 1–12 are complete.
 
 Audits must read both this product contract and the implementation plan.
 
