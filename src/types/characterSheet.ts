@@ -33,6 +33,14 @@ export type InventoryItem = {
   stack_mode?: InventoryStackMode
   /** Parent Cheburashka container. Null means the character's root inventory. */
   holder_item_id?: string | null
+  /** Stage 6 canonical placement. "legacy" exists only for pre-spatial production compatibility. */
+  placement_kind?: "root" | "grid" | "hand" | "external" | "legacy"
+  placement_index?: number | null
+  grid_x?: number | null
+  grid_y?: number | null
+  grid_rotation?: 0 | 90 | 180 | 270
+  /** Resolved Chasovoy physical profile for inventory presentation/preflight. */
+  inventory_profile?: Record<string, unknown> | null
   item_state?: Record<string, unknown>; version?: number
   sort_order: number; created_at: string; updated_at: string
 }
