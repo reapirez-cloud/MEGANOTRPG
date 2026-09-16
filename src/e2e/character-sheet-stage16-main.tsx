@@ -20,6 +20,7 @@ import { bindTelegramBackButton } from "../ui-v1-isolated/telegramBackButton"
 import "../ui-v1-isolated/styles.css"
 import "../ui-v1-isolated/snake.css"
 import "../ui-v1-isolated/character-sheet-theme.css"
+import "../ui-v1-isolated/character-sheet-backgrounds.css"
 import "../ui-v1-isolated/character-sheet-shell.css"
 import "../ui-v1-isolated/character-sheet-core.css"
 import "../ui-v1-isolated/character-sheet-features.css"
@@ -182,34 +183,51 @@ function Stage16Harness() {
           className="u1-character-sheet-core"
           data-testid="stage16-core"
         >
-          <div className="u1-character-sheet-core__quick">
-            {Array.from({ length: 6 }, (_, index) => (
-              <div
-                key={index}
-                className="u1-character-sheet-core__quick-row"
-              >
-                <span className="u1-character-sheet-core__quick-icon" />
-                <span className="u1-character-sheet-core__quick-label">
-                  Показатель {index + 1}
-                </span>
-                <strong>{10 + index}</strong>
-              </div>
-            ))}
-          </div>
-          <div className="u1-character-sheet-core__abilities">
-            {["СИЛ", "ЛВК", "ТЕЛ", "ИНТ", "МДР", "ХАР"].map(
-              (label, index) => (
-                <button
-                  key={label}
-                  type="button"
-                  className="u1-character-sheet-core__ability-row"
+          <header className="u1-character-sheet-core__head">
+            <span aria-hidden="true">✣</span>
+            <strong>ХАРАКТЕРИСТИКИ</strong>
+            <small>ТЕЛО · РАЗУМ · ДУХ</small>
+          </header>
+          <div
+            className="u1-character-sheet-core__columns"
+            data-testid="stage16-core-columns"
+          >
+            <div
+              className="u1-character-sheet-core__quick"
+              data-testid="stage16-core-left"
+            >
+              {Array.from({ length: 7 }, (_, index) => (
+                <div
+                  key={index}
+                  className="u1-character-sheet-core__quick-row"
                 >
-                  <span>{label}</span>
+                  <span className="u1-character-sheet-core__quick-icon" />
+                  <span className="u1-character-sheet-core__quick-label">
+                    Показатель {index + 1}
+                  </span>
                   <strong>{10 + index}</strong>
-                  <em>+2</em>
-                </button>
-              ),
-            )}
+                </div>
+              ))}
+            </div>
+            <div
+              className="u1-character-sheet-core__abilities"
+              data-testid="stage16-core-right"
+            >
+              {["СИЛ", "ЛВК", "ТЕЛ", "ИНТ", "МДР", "ХАР"].map(
+                (label, index) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className="u1-character-sheet-core__ability-row"
+                  >
+                    <span className="u1-character-sheet-core__ability-glyph" />
+                    <span>{label}</span>
+                    <strong>{10 + index}</strong>
+                    <em>+2</em>
+                  </button>
+                ),
+              )}
+            </div>
           </div>
         </section>
       }
@@ -223,25 +241,110 @@ function Stage16Harness() {
           scrolling, sticky safe areas and long press can be exercised.
         </p>
 
-        <div
-          className="u1-character-overview__slot-viewport"
-          data-testid="stage16-nested-scroll"
-          style={{ marginTop: 20 }}
-        >
-          {Array.from({ length: 10 }, (_, index) => (
+        <div className="u1-character-overview" data-testid="stage16-overview">
+          <section
+            className="u1-character-overview__section u1-character-overview__section--resources"
+            data-testid="stage16-resources"
+          >
+            <header className="u1-character-overview__section-head">
+              <span>РЕСУРСЫ</span>
+              <small>1</small>
+            </header>
             <button
-              key={index}
               type="button"
-              className="u1-character-overview__slot"
+              className="u1-character-overview__resource"
+              data-resource-key="stage16-resource"
             >
-              <span className="u1-character-overview__slot-level">
-                <strong>{index + 1}</strong>
-                <small>УРОВЕНЬ</small>
+              <span className="u1-character-overview__resource-head">
+                <span
+                  className="u1-character-overview__resource-icon"
+                  data-has-asset="true"
+                  data-asset-render="image"
+                  data-state="available"
+                  style={{
+                    ["--u1-sheet-icon" as string]:
+                      'url("/ui-v1/character-sheet/icons/class-resources.png")',
+                    ["--u1-sheet-icon-size" as string]: "400% 400%",
+                    ["--u1-sheet-icon-position" as string]: "0% 0%",
+                  }}
+                >
+                  <i />
+                </span>
+                <span className="u1-character-overview__resource-copy">
+                  <strong>Сертификационный ресурс</strong>
+                  <small>короткий отдых</small>
+                </span>
+                <b>2/3</b>
               </span>
-              <span />
-              <b>1/1</b>
+              <span className="u1-character-overview__charges">
+                {[0, 1, 2].map((index) => (
+                  <span
+                    key={index}
+                    className="u1-character-overview__charge"
+                    data-state={index < 2 ? "available" : "spent"}
+                    data-has-asset="true"
+                    data-asset-render="image"
+                    style={{
+                      ["--u1-sheet-icon" as string]:
+                        'url("/ui-v1/character-sheet/icons/class-resources.png")',
+                      ["--u1-sheet-icon-size" as string]: "400% 400%",
+                      ["--u1-sheet-icon-position" as string]: "0% 0%",
+                    }}
+                  >
+                    <i />
+                  </span>
+                ))}
+              </span>
             </button>
-          ))}
+          </section>
+
+          <section
+            className="u1-character-overview__section u1-character-overview__section--slots"
+            data-testid="stage16-slots"
+          >
+            <header className="u1-character-overview__section-head">
+              <span>ЯЧЕЙКИ ЗАКЛИНАНИЙ</span>
+              <button type="button">ВСЕ ›</button>
+            </header>
+            <div
+              className="u1-character-overview__slot-viewport"
+              data-testid="stage16-nested-scroll"
+            >
+              {Array.from({ length: 9 }, (_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  className="u1-character-overview__slot"
+                  data-slot-level={index + 1}
+                >
+                  <span className="u1-character-overview__slot-level">
+                    <strong>{index + 1}</strong>
+                    <small>УРОВЕНЬ</small>
+                  </span>
+                  <span className="u1-character-overview__charges">
+                    {Array.from({ length: 4 }, (_, chargeIndex) => (
+                      <span
+                        key={chargeIndex}
+                        className="u1-character-overview__charge"
+                        data-state={chargeIndex < 2 ? "available" : "spent"}
+                        data-has-asset="true"
+                        data-asset-render="image"
+                        style={{
+                          ["--u1-sheet-icon" as string]:
+                            'url("/ui-v1/character-sheet/icons/class-spell-slots.png")',
+                          ["--u1-sheet-icon-size" as string]: "400% 400%",
+                          ["--u1-sheet-icon-position" as string]: "0% 0%",
+                        }}
+                      >
+                        <i />
+                      </span>
+                    ))}
+                  </span>
+                  <b>2/4</b>
+                </button>
+              ))}
+            </div>
+          </section>
         </div>
 
         <SnakeTrigger
