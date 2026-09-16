@@ -113,7 +113,7 @@ export function characterSheetLinkedEntitiesForAction(
   for (const cost of action.resourceCosts) {
     targets.push({
       kind: "resource",
-      stateKey: cost.key,
+      stateKey: cost.stateKey,
       label: cost.key,
     })
   }
@@ -122,30 +122,8 @@ export function characterSheetLinkedEntitiesForAction(
     for (const cost of option.costs) {
       targets.push({
         kind: "resource",
-        stateKey: cost.key,
+        stateKey: cost.stateKey,
         label: cost.key,
-      })
-    }
-  }
-
-  for (const requirement of action.requirements) {
-    if (requirement.kind === "resource") {
-      targets.push({
-        kind: "resource",
-        stateKey: requirement.key,
-        label: requirement.label || requirement.key,
-      })
-      continue
-    }
-
-    if (
-      requirement.kind === "grant" &&
-      (requirement.target === "feature" || requirement.target === "trait")
-    ) {
-      targets.push({
-        kind: "feature",
-        featureId: requirement.key,
-        label: requirement.label || requirement.key,
       })
     }
   }
@@ -154,7 +132,7 @@ export function characterSheetLinkedEntitiesForAction(
     if (effect.kind !== "resource") continue
     targets.push({
       kind: "resource",
-      stateKey: effect.key,
+      stateKey: effect.stateKey,
       label: effect.key,
     })
   }
@@ -178,7 +156,7 @@ export function characterSheetLinkedEntitiesForSpell(
         for (const cost of option.costs) {
           targets.push({
             kind: "resource",
-            stateKey: cost.key,
+            stateKey: cost.stateKey,
             label: cost.key,
           })
         }
