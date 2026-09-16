@@ -11,6 +11,7 @@ const contract = fs.readFileSync("docs/INVENTORY_PRODUCT_CONTRACT.md", "utf8")
 const report = fs.readFileSync("docs/INVENTORY_STAGE12_CERTIFICATION.md", "utf8")
 const adapter = fs.readFileSync("src/inventory-engine/supabase.ts", "utf8")
 const characterView = fs.readFileSync("src/ui-v1-isolated/CharacterView.tsx", "utf8")
+const sheetContract = fs.readFileSync("src/ui-v1-isolated/characterSheetUiContract.ts", "utf8")
 const spatial = fs.readFileSync("src/ui-v1-isolated/InventorySpatialView.tsx", "utf8")
 const worldSnake = fs.readFileSync("src/ui-v1-isolated/worldStorageSnakeActions.ts", "utf8")
 
@@ -52,22 +53,15 @@ test("Stage 12 keeps direct writes sealed and adds advisor-requested FK indexes"
   assert.match(report, /zero `legacy` placements/)
 })
 
-test("Stage 12 locks the intended Snake inventory routing", () => {
-  for (const action of [
-    "inspect",
-    "open-container",
-    "use-item",
-    "rotate-item",
-    "move-to-hand",
-    "move-to-external",
-    "store-in-world",
-    "move-to-container",
-    "move-to-root",
-    "equip",
-    "unequip",
-  ]) {
-    assert.match(characterView, new RegExp(`id: "${action}"`))
-  }
+test("Stage 12 inventory mechanics remain isolated from the redesigned character sheet", () => {
+  assert.match(characterView, /<CharacterInventoryInterface/)
+  assert.doesNotMatch(characterView, /<InventorySpatialView/)
+  assert.match(sheetContract, /rendering: "standalone-full-interface"/)
+  assert.match(sheetContract, /doNotMountLegacyInventoryUi: true/)
+  assert.match(sheetContract, /"spatial-grid"/)
+  assert.match(sheetContract, /"snake-context"/)
+  assert.match(spatial, /actionsForItem/)
+  assert.match(spatial, /<SnakeTrigger/)
   assert.match(worldSnake, /store-world-item/)
   assert.match(worldSnake, /take-world-item/)
 })
