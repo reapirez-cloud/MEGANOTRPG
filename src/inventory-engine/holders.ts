@@ -26,9 +26,17 @@ export function inventoryHolder(
   return holderId ? items.find((entry) => entry.id === holderId) ?? null : null
 }
 
+export function sameInventoryOwnerScope(
+  left: Pick<InventoryItem, "character_id" | "world_storage_id">,
+  right: Pick<InventoryItem, "character_id" | "world_storage_id">,
+): boolean {
+  return (left.character_id ?? null) === (right.character_id ?? null)
+    && (left.world_storage_id ?? null) === (right.world_storage_id ?? null)
+}
+
 export function inventoryHolderProblem(
   items: readonly InventoryItem[],
-  item: Pick<InventoryItem, "id" | "character_id">,
+  item: Pick<InventoryItem, "id" | "character_id" | "world_storage_id">,
   holderItemId: string | null,
   maxDepth = 16,
 ): InventoryHolderProblem | null {
@@ -38,7 +46,7 @@ export function inventoryHolderProblem(
   const byId = new Map(items.map((entry) => [entry.id, entry]))
   let cursor = byId.get(holderItemId)
   if (!cursor) return "missing"
-  if (cursor.character_id !== item.character_id) return "different_character"
+  if (!sameInventoryOwnerScope(cursor, item)) return "different_character"
   if (cursor.category !== "container") return "not_container"
 
   const seen = new Set<string>()
@@ -56,7 +64,7 @@ export function inventoryHolderProblem(
 
     cursor = byId.get(parentId)
     if (!cursor) return "missing"
-    if (cursor.character_id !== item.character_id) return "different_character"
+    if (!sameInventoryOwnerScope(cursor, item)) return "different_character"
   }
 
   return null
@@ -68,7 +76,7 @@ export function inventoryContainerTargets(
 ): InventoryItem[] {
   return items
     .filter((candidate) =>
-      candidate.character_id === item.character_id &&
+      sameInventoryOwnerScope(candidate, item) &&
       candidate.category === "container" &&
       candidate.id !== item.id &&
       candidate.id !== (item.holder_item_id ?? null) &&
