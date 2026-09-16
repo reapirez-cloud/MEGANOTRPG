@@ -73,6 +73,21 @@ function fail(error: { message: string } | null, fallback: string): never {
   if (message.includes("Equipment slot is occupied")) {
     throw new EngineCommandError("inventory.equipment_slot_occupied", message)
   }
+  if (message.includes("Unequip requires a real inventory destination")) {
+    throw new EngineCommandError("inventory.unequip_destination_required", message)
+  }
+  if (message.includes("Inventory creation cannot equip directly")) {
+    throw new EngineCommandError("inventory.create_equipped_forbidden", message)
+  }
+  if (message.includes("Inventory equipment state must change")) {
+    throw new EngineCommandError("inventory.equipment_transition_forbidden", message)
+  }
+  if (message.includes("Equipped inventory category and slot cannot be edited")) {
+    throw new EngineCommandError("inventory.equipped_identity_locked", message)
+  }
+  if (message.includes("External carry capacity would orphan occupied slot")) {
+    throw new EngineCommandError("inventory.external_capacity_orphan", message)
+  }
   if (message.includes("Inventory holder does not allow nested containers")) {
     throw new EngineCommandError("inventory.nesting_forbidden", message)
   }
@@ -293,7 +308,7 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
 
   async execute(command: CheburashkaCommand): Promise<InventoryMutation> {
     if (command.kind === "inventory.create") {
-      const { data, error } = await this.client.rpc("create_inventory_item_v1", {
+      const { data, error } = await this.client.rpc("create_inventory_item_v2", {
         p_character_id: command.characterId,
         p_input: persistencePayload(command.input),
         p_command_id: command.context.commandId,
@@ -309,7 +324,7 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
         command.characterId,
         command.expectedVersion,
       )
-      const { data, error } = await this.client.rpc("update_inventory_item_v1", {
+      const { data, error } = await this.client.rpc("update_inventory_item_v2", {
         p_character_id: command.characterId,
         p_item_id: command.itemId,
         p_input: persistencePayload(command.input),
