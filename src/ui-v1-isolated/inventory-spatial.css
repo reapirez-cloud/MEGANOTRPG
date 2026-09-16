@@ -328,12 +328,14 @@
   position: absolute;
   z-index: 2;
   pointer-events: none;
-  border: 1px solid rgba(146,177,145,.72);
-  border-radius: 6px;
+}
+
+.u1-inventory-grid-hint > .u1-inventory-shape-cell {
+  border-color: rgba(146,177,145,.72);
   background: rgba(111,154,112,.2);
 }
 
-.u1-inventory-grid-hint[data-invalid] {
+.u1-inventory-grid-hint[data-invalid] > .u1-inventory-shape-cell {
   border-color: rgba(207,93,110,.74);
   background: rgba(161,58,75,.23);
 }
@@ -377,6 +379,33 @@
   letter-spacing: .1em;
 }
 
+.u1-inventory-bag__drop-rail {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.u1-inventory-bag__drop-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.u1-inventory-bag__drop-rail > div {
+  flex: 1 0 138px;
+  min-height: 36px;
+  padding: 0 10px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(235,238,236,.1);
+  border-radius: 11px;
+  color: rgba(221,226,223,.34);
+  background: rgba(255,255,255,.012);
+  font-size: 7px;
+  font-weight: 760;
+  letter-spacing: .08em;
+  text-align: center;
+}
+
 .u1-inventory-message {
   position: sticky;
   z-index: 9;
@@ -396,17 +425,11 @@
   pointer-events: none;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(147,178,146,.68);
-  border-radius: 7px;
+  border: 0;
   transform: translateZ(0);
-  background: rgba(43,57,45,.82);
-  box-shadow: 0 12px 36px rgba(0,0,0,.48);
+  background: transparent;
+  filter: drop-shadow(0 12px 18px rgba(0,0,0,.48));
   opacity: .92;
-}
-
-.u1-inventory-drag-ghost[data-invalid] {
-  border-color: rgba(207,93,110,.7);
-  background: rgba(83,34,43,.85);
 }
 
 .u1-inventory-drag-ghost > .u1-inventory-shape-cell {
