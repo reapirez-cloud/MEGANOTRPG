@@ -84,3 +84,27 @@
   font-size: 10px;
   line-height: 1.55;
 }
+
+
+.u1-character-inventory-interface__focus {
+  margin-top: 12px;
+  padding: 9px 0 9px 10px;
+  border-top: 1px solid var(--cv-line-soft);
+  border-bottom: 1px solid var(--cv-line-soft);
+  box-shadow: inset 1px 0 0 var(--cv-accent);
+  display: grid;
+  gap: 4px;
+}
+
+.u1-character-inventory-interface__focus > small {
+  color: var(--cv-text-faint);
+  font-size: 7px;
+  letter-spacing: .1em;
+}
+
+.u1-character-inventory-interface__focus > strong {
+  color: var(--cv-text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12px;
+  font-weight: 400;
+}
