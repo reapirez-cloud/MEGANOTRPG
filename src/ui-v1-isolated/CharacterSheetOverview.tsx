@@ -1,4 +1,8 @@
-import { useEffect, useRef } from "react"
+import {
+  useEffect,
+  useRef,
+  type CSSProperties,
+} from "react"
 
 import type {
   ResolvedAction,
@@ -11,6 +15,7 @@ import type { ResourceSyncInput } from "../types/characterResources.ts"
 import type { SnakeAction } from "../snake-engine"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import { CHARACTER_SHEET_MEDIA_SLOTS } from "./characterSheetUiContract"
+import { characterSheetVisualAssetForSlot } from "./characterSheetVisualAssets"
 import {
   characterSheetEntitiesUsingResource,
   characterSheetEntityLabel,
@@ -19,6 +24,16 @@ import {
 } from "./characterSheetEntityNavigation"
 
 const roman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"]
+
+function iconStyle(iconSlot: string) {
+  const asset = characterSheetVisualAssetForSlot(iconSlot)
+  if (!asset) return undefined
+
+  return {
+    "--u1-sheet-icon": `url("${asset}")`,
+  } as CSSProperties
+}
+
 
 const rechargeLabels: Record<ResourceRechargeTrigger, string> = {
   short_rest: "короткий отдых",
@@ -147,6 +162,7 @@ function ResourceCharges({
   const max = chargeCount(resource)
   const current = availableChargeCount(resource)
   const rendered = Math.min(max, 40)
+  const visualStyle = iconStyle(iconSlot)
 
   if (max === 0) {
     return <span className="u1-character-overview__zero">нет зарядов</span>
@@ -164,6 +180,8 @@ function ResourceCharges({
           className="u1-character-overview__charge"
           data-state={index < current ? "available" : "spent"}
           data-icon-slot={iconSlot}
+          data-has-asset={visualStyle ? true : undefined}
+          style={visualStyle}
           aria-hidden="true"
         >
           <i />
@@ -298,6 +316,7 @@ export default function CharacterSheetOverview({
               const iconSlot = CHARACTER_SHEET_MEDIA_SLOTS.resource(
                 resource.stateKey,
               )
+              const visualStyle = iconStyle(iconSlot)
               const entity = {
                 type: "character-resource",
                 id: characterId + ":" + resource.stateKey,
@@ -363,6 +382,8 @@ export default function CharacterSheetOverview({
                       <span
                         className="u1-character-overview__resource-icon"
                         data-icon-slot={iconSlot}
+                        data-has-asset={visualStyle ? true : undefined}
+                        style={visualStyle}
                         aria-hidden="true"
                       >
                         <i />
