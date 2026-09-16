@@ -286,7 +286,12 @@ export default function InventorySpatialView({
   ) {
     const actions = actionsForItem(item)
     return (
-      <SnakeTrigger key={item.id} entity={{ type: "inventory-item", id: item.id }} actions={actions}>
+      <SnakeTrigger
+        key={item.id}
+        entity={{ type: "inventory-item", id: item.id }}
+        actions={actions}
+        moveTolerancePx={Math.max(1, DRAG_THRESHOLD - 1)}
+      >
         <button
           type="button"
           className={className}
@@ -294,6 +299,7 @@ export default function InventorySpatialView({
           data-inventory-drop-kind={dropContainer ? "container" : undefined}
           data-inventory-holder-id={dropContainer ? item.id : undefined}
           data-moving={movingId === item.id || undefined}
+          data-dragging={drag?.moved && drag.itemId === item.id || undefined}
           onPointerDown={(event) => startDrag(event, item)}
           onPointerMove={(event) => moveDrag(event, item)}
           onPointerUp={(event) => void endDrag(event, item)}
