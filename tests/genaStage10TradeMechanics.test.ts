@@ -77,7 +77,9 @@ test("Stage 10 offer references do not reserve or own the physical item", () => 
 
 test("Stage 10 commit is one atomic Cheburashka batch after same-revision A and B acceptance", () => {
   assert.match(commit, /cheburashka_commit_trade_exchange_v1/)
-  assert.match(commit, /pg_advisory_xact_lock[\s\S]*inventory:/)
+  assert.match(commit, /'inventory:'\|\|p_side_a_character_id::text/)
+  assert.match(commit, /'inventory:'\|\|p_side_b_character_id::text/)
+  assert.match(commit, /pg_advisory_xact_lock/)
   assert.match(commit, /for update/)
   assert.match(commit, /cheburashka_validate_trade_exchange_v1/)
   assert.match(commit, /trade\.offer_item_moved/)
