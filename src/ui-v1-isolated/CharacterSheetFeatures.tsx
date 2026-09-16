@@ -352,20 +352,7 @@ export default function CharacterSheetFeatures({
   const snake = useSnake()
   const rootRef = useRef<HTMLDivElement | null>(null)
 
-  if (!contract) {
-    return (
-      <section className="u1-character-features u1-character-features--loading">
-        <span>
-          {runtimeError
-            ? "Character Engine не собрал умения."
-            : "Character Engine собирает умения…"}
-        </span>
-        {runtimeError && <small>{runtimeError}</small>}
-      </section>
-    )
-  }
-
-  const entries = buildEntries(contract, templates)
+  const entries = contract ? buildEntries(contract, templates) : []
   const focusedEntry =
     focusKey
       ? entries.find((entry) => entry.navigationKeys.includes(focusKey)) || null
@@ -386,6 +373,19 @@ export default function CharacterSheetFeatures({
     })
     return () => window.cancelAnimationFrame(frame)
   }, [focusedEntry?.id])
+
+  if (!contract) {
+    return (
+      <section className="u1-character-features u1-character-features--loading">
+        <span>
+          {runtimeError
+            ? "Character Engine не собрал умения."
+            : "Character Engine собирает умения…"}
+        </span>
+        {runtimeError && <small>{runtimeError}</small>}
+      </section>
+    )
+  }
 
   const byCategory = new Map<FeatureSourceGroup, FeatureEntry[]>()
 
