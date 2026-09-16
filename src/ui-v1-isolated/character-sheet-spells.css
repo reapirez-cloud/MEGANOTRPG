@@ -189,7 +189,7 @@
   color: var(--cv-text-muted);
 }
 
-.u1-character-spells__row[data-available="false"] {
+.u1-character-spells__row[data-unavailable] {
   opacity: .66;
 }
 
