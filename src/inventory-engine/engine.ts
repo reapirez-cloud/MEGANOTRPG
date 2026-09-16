@@ -37,6 +37,8 @@ function eventFor(command: CheburashkaCommand, mutation: InventoryMutation): Eng
     payload: {
       characterId,
       affectedCharacterIds: mutation.affectedCharacterIds,
+      affectedWorldStorageIds: mutation.affectedWorldStorageIds ?? [],
+      affectedLocationIds: mutation.affectedLocationIds ?? [],
       before: mutation.before,
       after: mutation.after,
       destinationItem: mutation.destinationItem ?? null,
@@ -51,6 +53,7 @@ function changed(mutation: InventoryMutation): boolean {
   if (mutation.before === null || mutation.after === null) return mutation.before !== mutation.after
   return (mutation.before.version ?? 0) !== (mutation.after.version ?? 0)
     || mutation.before.character_id !== mutation.after.character_id
+    || (mutation.before.world_storage_id ?? null) !== (mutation.after.world_storage_id ?? null)
     || mutation.before.quantity !== mutation.after.quantity
     || mutation.before.charges_current !== mutation.after.charges_current
     || mutation.before.equipped !== mutation.after.equipped
@@ -65,7 +68,7 @@ function effectsFor(mutation: InventoryMutation, requiresResolution: boolean): E
       mutation.destinationItem?.id || "",
       ...(mutation.relatedChanges || []).flatMap((change) => [change.before.id, change.after.id]),
     ].filter(Boolean))],
-    locationIds: [],
+    locationIds: mutation.affectedLocationIds ?? [],
     sceneIds: [],
     resolveCharacterIds: requiresResolution ? mutation.affectedCharacterIds : [],
   }
@@ -98,6 +101,11 @@ export class CheburashkaEngine {
     return this.storage.listCharacterItems(characterId)
   }
 
+  listWorldStorageItems(worldStorageId: string) {
+    if (!worldStorageId) throw new EngineCommandError("inventory.world_storage_required", "World storage id is required")
+    return this.storage.listWorldStorageItems(worldStorageId)
+  }
+
   getItem(itemId: string) {
     if (!itemId) throw new EngineCommandError("inventory.item_required", "Item id is required")
     return this.storage.getItem(itemId)
@@ -120,10 +128,15 @@ export class CheburashkaEngine {
 
     if (!("itemId" in command) || typeof command.itemId !== "string") return
     const item = await this.storage.getItem(command.itemId)
-    if (!item || item.character_id !== sourceCharacterId) {
+    const permitted = command.kind === "inventory.take_world"
+      ? Boolean(item && item.world_storage_id === command.worldStorageId)
+      : Boolean(item && item.character_id === sourceCharacterId && !item.world_storage_id)
+    if (!permitted) {
       throw new EngineCommandError(
         "inventory.player_forbidden",
-        "Player can only mutate an inventory item held by the active actor character",
+        command.kind === "inventory.take_world"
+          ? "Player can only take an item from the requested accessible world storage"
+          : "Player can only mutate an inventory item held by the active actor character",
       )
     }
   }
@@ -195,14 +208,21 @@ export class CheburashkaEngine {
         || command.kind === "inventory.set_equipped"
         || command.kind === "inventory.consume"
         || command.kind === "inventory.move"
-        || command.kind === "inventory.transfer")
+        || command.kind === "inventory.transfer"
+        || command.kind === "inventory.store_world"
+        || command.kind === "inventory.take_world")
       && command.expectedVersion !== undefined
       && (!Number.isInteger(command.expectedVersion) || command.expectedVersion < 1)
     ) {
       throw new EngineCommandError("inventory.invalid_version", "Expected inventory version must be an integer >= 1")
     }
 
-    if (command.kind === "inventory.consume" || command.kind === "inventory.transfer") {
+    if (
+      command.kind === "inventory.consume"
+      || command.kind === "inventory.transfer"
+      || command.kind === "inventory.store_world"
+      || command.kind === "inventory.take_world"
+    ) {
       if (!Number.isInteger(command.amount) || command.amount < 1) {
         throw new EngineCommandError("inventory.invalid_amount", "Inventory amount must be an integer >= 1")
       }
@@ -249,11 +269,20 @@ export class CheburashkaEngine {
       }
     }
 
-    if (command.kind === "inventory.transfer") {
+    if (
+      command.kind === "inventory.transfer"
+      || command.kind === "inventory.store_world"
+      || command.kind === "inventory.take_world"
+    ) {
       const source = await this.storage.getItem(command.itemId)
+      const sourceMatches = command.kind === "inventory.transfer"
+        ? source?.character_id === command.fromCharacterId
+        : command.kind === "inventory.store_world"
+          ? source?.character_id === command.characterId
+          : source?.world_storage_id === command.worldStorageId
       if (
         source &&
-        source.character_id === command.fromCharacterId &&
+        sourceMatches &&
         inventoryStackMode(source) === "instance" &&
         command.amount !== source.quantity
       ) {
