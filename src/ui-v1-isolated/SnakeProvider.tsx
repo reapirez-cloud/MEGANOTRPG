@@ -123,8 +123,12 @@ export function SnakeProvider({ children }: { children: ReactNode }) {
     menu.menu
       ? {
           screen: "snake-menu",
+          route: viewContext?.route,
           title: menu.frame?.title || "Контекстное меню",
-          text: "Открыто контекстное меню Snake для выбранной сущности.",
+          text: [
+            viewContext?.text,
+            "Открыто контекстное меню Snake для выбранной сущности.",
+          ].filter(Boolean).join("\n\n"),
           entity: {
             type: menu.menu.entity.type,
             id: menu.menu.entity.id,
