@@ -22,7 +22,7 @@ export type CharacterSheet = {
 }
 
 export type InventoryItem = {
-  id: string; character_id: string; name: string; quantity: number; weight: number | null; equipped: boolean
+  id: string; character_id: string | null; world_storage_id?: string | null; name: string; quantity: number; weight: number | null; equipped: boolean
   category: InventoryCategory; equipment_slot: EquipmentSlot | null; image_url: string | null; description: string
   /** Stable Chasovoy definition identity when this is an issued catalog item. */
   definition_id?: string | null; definition_revision?: number | null
@@ -31,7 +31,7 @@ export type InventoryItem = {
   usage_mode?: ItemUsageMode; charges_current?: number | null; charges_max?: number | null
   /** "stack" means quantity may be >1; "instance" is always one independently stateful object. */
   stack_mode?: InventoryStackMode
-  /** Parent Cheburashka container. Null means the character's root inventory. */
+  /** Parent Cheburashka container. Null means the current owner scope root. */
   holder_item_id?: string | null
   /** Stage 6 canonical placement. "legacy" exists only for pre-spatial production compatibility. */
   placement_kind?: "root" | "grid" | "hand" | "external" | "legacy"
