@@ -168,6 +168,7 @@ export const CHARACTER_SHEET_MEDIA_SLOTS = {
     spellAttack: "sheet:quick:spell_attack",
   },
   spellSlot: CHARACTER_SHEET_SPELL_VISUAL_CONTRACT.slotMediaSlot,
+  classResource: (classKey: string) => `class:${classKey}:resource`,
   classSheetBackground:
     CHARACTER_SHEET_CLASS_SKIN_CONTRACT.background.mediaSlot,
   resource: (stateKey: string) => `resource:${stateKey}`,
