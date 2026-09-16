@@ -242,3 +242,4 @@ $function$;
 revoke all on function public.accept_trade_v1(uuid,uuid,bigint,uuid)
 from public,anon;
 grant execute on function public.accept_trade_v1(uuid,uuid,bigint,uuid)
+to authenticated;
