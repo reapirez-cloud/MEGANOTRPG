@@ -268,16 +268,19 @@ Normal tap is still the primary UI interaction. Snake must not become a substitu
 - the public character-sheet Snake context-key contract now includes interfaceMode, effect/item selection and authority fields for Stages 12–16.
 
 ### Stage 12 — Visual assets [DONE]
-- neutral geometric placeholders have been replaced by a real transparent PNG fallback pack without changing Overview layout or interaction logic;
-- the built-in pack is shipped as two optimized atlases under `public/ui-v1/character-sheet/icons/`: one spell-slot atlas and one resource atlas, avoiding dozens of separate network requests;
-- spell-slot atlas includes a safe default plus distinct silhouettes for fighter, warlock, cleric, druid, bard, paladin, sorcerer, wizard, rogue and monk;
-- resource atlas includes a generic fallback plus distinct silhouettes for action surge, bardic inspiration, channel divinity, innate sorcery, monk focus, uncanny metabolism, divine sense, lay on hands, second wind, sorcerous restoration, sorcery points, patron contact, magical cunning, wild shape, arcane recovery, chronurgy and mystic arcanum;
-- prefix-based resource families such as `wizard_chronurgy_*` and `warlock_mystic_arcanum_*` resolve to their family icon; unknown future resources resolve to the generic icon instead of breaking the UI;
-- semantic slots remain unchanged (`class:<classKey>:spell_slot` and `resource:<stateKey>`), so Stage 13 can override visual media without touching Character Engine, navigation or markup;
-- CSS uses the PNG alpha channel as a mask, recoloring spell slots with the active class accent and resources with their resource accent while preserving transparency;
-- available charges keep the glow treatment and spent charges reuse the same silhouette in cold gray, so state remains readable even when the icon shape is customized;
-- atlas coordinates are isolated in `characterSheetVisualAssets.ts`; components only ask for a semantic slot and never know sprite coordinates;
-- Supabase is intentionally not required for the built-in fallback pack. Existing media registration/binding RPCs were verified and remain the override path for Stage 13 admin media editing.
+- the user-authored full-color PNG class-icon pack is now the primary Character Sheet visual set; the earlier neutral silhouette atlases remain only as safe fallbacks;
+- authored icons are optimized into two 4×4 atlases under `public/ui-v1/character-sheet/icons/`: `class-resources.png` and `class-spell-slots.png`, keeping the UI to two image requests instead of shipping the original multi-megabyte PNG files individually;
+- every class has two semantic visuals: one class-resource icon and one spell-slot icon;
+- authored mappings are already reserved for fighter, warlock, cleric, druid, bard, paladin, sorcerer, wizard, rogue, monk and the future barbarian, artificer and ranger classes;
+- the latest redraws supersede earlier versions for Warlock spell slots, Bard spell slots and Cleric class-resource art;
+- future/legacy class-name resolution already recognizes `barbarian`, `artificer`, `ranger` and Russian aliases, so their icons activate automatically once those class packages are introduced;
+- primary semantic slots are `class:<classKey>:resource` and `class:<classKey>:spell_slot`; exact `resource:<stateKey>` fallback slots remain available for unknown/non-class resources;
+- authored PNG colors are preserved instead of being flattened into a monochrome mask; available charges use the full-color art with a restrained glow, while spent charges use the exact same icon in desaturated gray;
+- old generated silhouette atlases are still available for unknown class/resource fallbacks, so missing future media never breaks layout;
+- atlas coordinates and authored/fallback rendering mode are isolated in `characterSheetVisualAssets.ts`; Overview only asks for semantic slots and never knows sprite coordinates;
+- original 1254px source PNGs are not copied into the application bundle; only UI-sized optimized atlas tiles are shipped;
+- Stage 13 can replace either class-resource or spell-slot visuals through the existing media layer without touching Character Engine, entity navigation or Overview mechanics;
+- Supabase is intentionally not required for the built-in authored pack. Existing media registration/binding RPCs remain the override path for Stage 13 admin media editing.
 
 ### Stage 12A — Class sheet skins [PLANNED]
 - every class gets a distinct sheet color identity while keeping the exact same CharacterSheet layout and interaction model;
