@@ -4,11 +4,17 @@ export type CharacterSheetVisualAsset = {
   rows: number
   column: number
   row: number
+  render: "image" | "mask"
 }
 
-const SPELL_SLOT_ATLAS =
+const CLASS_RESOURCE_ATLAS =
+  "/ui-v1/character-sheet/icons/class-resources.png"
+const CLASS_SPELL_SLOT_ATLAS =
+  "/ui-v1/character-sheet/icons/class-spell-slots.png"
+
+const FALLBACK_SPELL_SLOT_ATLAS =
   "/ui-v1/character-sheet/icons/spell-slots.png"
-const RESOURCE_ATLAS =
+const FALLBACK_RESOURCE_ATLAS =
   "/ui-v1/character-sheet/icons/resources.png"
 
 function atlasAsset(
@@ -17,56 +23,104 @@ function atlasAsset(
   rows: number,
   column: number,
   row: number,
+  render: CharacterSheetVisualAsset["render"],
 ): CharacterSheetVisualAsset {
-  return { url, columns, rows, column, row }
+  return { url, columns, rows, column, row, render }
 }
 
-const spellSlot = (column: number, row: number) =>
-  atlasAsset(SPELL_SLOT_ATLAS, 4, 3, column, row)
+const classIcon = (
+  url: string,
+  index: number,
+): CharacterSheetVisualAsset =>
+  atlasAsset(
+    url,
+    4,
+    4,
+    index % 4,
+    Math.floor(index / 4),
+    "image",
+  )
 
-const resource = (column: number, row: number) =>
-  atlasAsset(RESOURCE_ATLAS, 5, 4, column, row)
+export const CHARACTER_SHEET_AUTHORED_CLASS_KEYS = [
+  "fighter",
+  "warlock",
+  "cleric",
+  "druid",
+  "bard",
+  "paladin",
+  "sorcerer",
+  "wizard",
+  "rogue",
+  "monk",
+  "barbarian",
+  "artificer",
+  "ranger",
+] as const
 
-export const CHARACTER_SHEET_SPELL_SLOT_ASSETS: Readonly<
+export const CHARACTER_SHEET_CLASS_RESOURCE_ASSETS: Readonly<
   Record<string, CharacterSheetVisualAsset>
-> = {
-  default: spellSlot(0, 0),
-  fighter: spellSlot(1, 0),
-  warlock: spellSlot(2, 0),
-  cleric: spellSlot(3, 0),
-  druid: spellSlot(0, 1),
-  bard: spellSlot(1, 1),
-  paladin: spellSlot(2, 1),
-  sorcerer: spellSlot(3, 1),
-  wizard: spellSlot(0, 2),
-  rogue: spellSlot(1, 2),
-  monk: spellSlot(2, 2),
-}
+> = Object.fromEntries(
+  CHARACTER_SHEET_AUTHORED_CLASS_KEYS.map((classKey, index) => [
+    classKey,
+    classIcon(CLASS_RESOURCE_ATLAS, index),
+  ]),
+)
+
+export const CHARACTER_SHEET_CLASS_SPELL_SLOT_ASSETS: Readonly<
+  Record<string, CharacterSheetVisualAsset>
+> = Object.fromEntries(
+  CHARACTER_SHEET_AUTHORED_CLASS_KEYS.map((classKey, index) => [
+    classKey,
+    classIcon(CLASS_SPELL_SLOT_ATLAS, index),
+  ]),
+)
+
+const fallbackSpellSlot = (column: number, row: number) =>
+  atlasAsset(
+    FALLBACK_SPELL_SLOT_ATLAS,
+    4,
+    3,
+    column,
+    row,
+    "mask",
+  )
+
+const fallbackResource = (column: number, row: number) =>
+  atlasAsset(
+    FALLBACK_RESOURCE_ATLAS,
+    5,
+    4,
+    column,
+    row,
+    "mask",
+  )
+
+const FALLBACK_SPELL_SLOT_ASSET = fallbackSpellSlot(0, 0)
 
 export const CHARACTER_SHEET_RESOURCE_ASSETS: Readonly<
   Record<string, CharacterSheetVisualAsset>
 > = {
-  generic: resource(0, 0),
-  action_surge: resource(1, 0),
-  bardic_inspiration: resource(2, 0),
-  channel_divinity: resource(3, 0),
-  innate_sorcery: resource(4, 0),
+  generic: fallbackResource(0, 0),
+  action_surge: fallbackResource(1, 0),
+  bardic_inspiration: fallbackResource(2, 0),
+  channel_divinity: fallbackResource(3, 0),
+  innate_sorcery: fallbackResource(4, 0),
 
-  monk_focus: resource(0, 1),
-  monk_uncanny_metabolism: resource(1, 1),
-  paladin_divine_sense: resource(2, 1),
-  paladin_lay_on_hands: resource(3, 1),
-  second_wind: resource(4, 1),
+  monk_focus: fallbackResource(0, 1),
+  monk_uncanny_metabolism: fallbackResource(1, 1),
+  paladin_divine_sense: fallbackResource(2, 1),
+  paladin_lay_on_hands: fallbackResource(3, 1),
+  second_wind: fallbackResource(4, 1),
 
-  sorcerous_restoration: resource(0, 2),
-  sorcery_points: resource(1, 2),
-  warlock_contact_patron: resource(2, 2),
-  warlock_magical_cunning: resource(3, 2),
-  wild_shape: resource(4, 2),
+  sorcerous_restoration: fallbackResource(0, 2),
+  sorcery_points: fallbackResource(1, 2),
+  warlock_contact_patron: fallbackResource(2, 2),
+  warlock_magical_cunning: fallbackResource(3, 2),
+  wild_shape: fallbackResource(4, 2),
 
-  wizard_arcane_recovery: resource(0, 3),
-  wizard_chronurgy: resource(1, 3),
-  warlock_mystic_arcanum: resource(2, 3),
+  wizard_arcane_recovery: fallbackResource(0, 3),
+  wizard_chronurgy: fallbackResource(1, 3),
+  warlock_mystic_arcanum: fallbackResource(2, 3),
 }
 
 const RESOURCE_PREFIX_ASSETS: ReadonlyArray<
@@ -82,10 +136,17 @@ const RESOURCE_PREFIX_ASSETS: ReadonlyArray<
   ],
 ]
 
+export function characterSheetClassResourceAsset(classKey: string) {
+  return (
+    CHARACTER_SHEET_CLASS_RESOURCE_ASSETS[classKey] ||
+    CHARACTER_SHEET_RESOURCE_ASSETS.generic
+  )
+}
+
 export function characterSheetSpellSlotAsset(classKey: string) {
   return (
-    CHARACTER_SHEET_SPELL_SLOT_ASSETS[classKey] ||
-    CHARACTER_SHEET_SPELL_SLOT_ASSETS.default
+    CHARACTER_SHEET_CLASS_SPELL_SLOT_ASSETS[classKey] ||
+    FALLBACK_SPELL_SLOT_ASSET
   )
 }
 
@@ -104,6 +165,11 @@ export function characterSheetVisualAssetForSlot(slot: string) {
   const spellMatch = slot.match(/^class:([^:]+):spell_slot$/)
   if (spellMatch?.[1]) {
     return characterSheetSpellSlotAsset(spellMatch[1])
+  }
+
+  const classResourceMatch = slot.match(/^class:([^:]+):resource$/)
+  if (classResourceMatch?.[1]) {
+    return characterSheetClassResourceAsset(classResourceMatch[1])
   }
 
   if (slot.startsWith("resource:")) {
