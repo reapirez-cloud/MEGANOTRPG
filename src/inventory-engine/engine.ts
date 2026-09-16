@@ -38,6 +38,8 @@ function eventFor(command: CheburashkaCommand, mutation: InventoryMutation): Eng
       characterId,
       affectedCharacterIds: mutation.affectedCharacterIds,
       affectedWorldStorageIds: mutation.affectedWorldStorageIds ?? [],
+      affectedSurfaceIds: mutation.affectedSurfaceIds ?? [],
+      affectedSceneIds: mutation.affectedSceneIds ?? [],
       affectedLocationIds: mutation.affectedLocationIds ?? [],
       before: mutation.before,
       after: mutation.after,
@@ -54,6 +56,7 @@ function changed(mutation: InventoryMutation): boolean {
   return (mutation.before.version ?? 0) !== (mutation.after.version ?? 0)
     || mutation.before.character_id !== mutation.after.character_id
     || (mutation.before.world_storage_id ?? null) !== (mutation.after.world_storage_id ?? null)
+    || (mutation.before.surface_id ?? null) !== (mutation.after.surface_id ?? null)
     || mutation.before.quantity !== mutation.after.quantity
     || mutation.before.charges_current !== mutation.after.charges_current
     || mutation.before.equipped !== mutation.after.equipped
@@ -69,7 +72,7 @@ function effectsFor(mutation: InventoryMutation, requiresResolution: boolean): E
       ...(mutation.relatedChanges || []).flatMap((change) => [change.before.id, change.after.id]),
     ].filter(Boolean))],
     locationIds: mutation.affectedLocationIds ?? [],
-    sceneIds: [],
+    sceneIds: mutation.affectedSceneIds ?? [],
     resolveCharacterIds: requiresResolution ? mutation.affectedCharacterIds : [],
   }
 }
@@ -106,6 +109,11 @@ export class CheburashkaEngine {
     return this.storage.listWorldStorageItems(worldStorageId)
   }
 
+  listSurfaceItems(surfaceId: string) {
+    if (!surfaceId) throw new EngineCommandError("inventory.surface_required", "Surface id is required")
+    return this.storage.listSurfaceItems(surfaceId)
+  }
+
   getItem(itemId: string) {
     if (!itemId) throw new EngineCommandError("inventory.item_required", "Item id is required")
     return this.storage.getItem(itemId)
@@ -130,23 +138,32 @@ export class CheburashkaEngine {
     const item = await this.storage.getItem(command.itemId)
     const permitted = command.kind === "inventory.take_world"
       ? Boolean(item && item.world_storage_id === command.worldStorageId)
-      : Boolean(item && item.character_id === sourceCharacterId && !item.world_storage_id)
+      : command.kind === "inventory.take_surface"
+        ? Boolean(item && item.surface_id === command.surfaceId)
+        : Boolean(
+            item
+            && item.character_id === sourceCharacterId
+            && !item.world_storage_id
+            && !item.surface_id
+          )
     if (!permitted) {
       throw new EngineCommandError(
         "inventory.player_forbidden",
         command.kind === "inventory.take_world"
           ? "Player can only take an item from the requested accessible world storage"
-          : "Player can only mutate an inventory item held by the active actor character",
+          : command.kind === "inventory.take_surface"
+            ? "Player can only take an item from the requested accessible Surface"
+            : "Player can only mutate an inventory item held by the active actor character",
       )
     }
   }
 
   async execute(command: CheburashkaCommand): Promise<EngineCommandResult<InventoryMutation>> {
-    if (["inventory.create", "inventory.update", "inventory.remove"].includes(command.kind) && !isGm(command)) {
+    if (["inventory.create", "inventory.create_surface", "inventory.update", "inventory.remove"].includes(command.kind) && !isGm(command)) {
       throw new EngineCommandError("inventory.gm_required", "Only GM authority can establish inventory contents")
     }
 
-    if (command.kind === "inventory.create" || command.kind === "inventory.update") {
+    if (command.kind === "inventory.create" || command.kind === "inventory.create_surface" || command.kind === "inventory.update") {
       if (!command.input.name.trim()) {
         throw new EngineCommandError("inventory.name_required", "Item name is required")
       }
@@ -164,7 +181,7 @@ export class CheburashkaEngine {
       }
     }
 
-    if (command.kind === "inventory.create" && command.input.equipped) {
+    if ((command.kind === "inventory.create" || command.kind === "inventory.create_surface") && command.input.equipped) {
       throw new EngineCommandError(
         "inventory.create_equipped_forbidden",
         "Create the inventory item first, then equip it through the equipment command",
@@ -210,7 +227,9 @@ export class CheburashkaEngine {
         || command.kind === "inventory.move"
         || command.kind === "inventory.transfer"
         || command.kind === "inventory.store_world"
-        || command.kind === "inventory.take_world")
+        || command.kind === "inventory.take_world"
+        || command.kind === "inventory.place_surface"
+        || command.kind === "inventory.take_surface")
       && command.expectedVersion !== undefined
       && (!Number.isInteger(command.expectedVersion) || command.expectedVersion < 1)
     ) {
@@ -222,6 +241,8 @@ export class CheburashkaEngine {
       || command.kind === "inventory.transfer"
       || command.kind === "inventory.store_world"
       || command.kind === "inventory.take_world"
+      || command.kind === "inventory.place_surface"
+      || command.kind === "inventory.take_surface"
     ) {
       if (!Number.isInteger(command.amount) || command.amount < 1) {
         throw new EngineCommandError("inventory.invalid_amount", "Inventory amount must be an integer >= 1")
@@ -273,13 +294,17 @@ export class CheburashkaEngine {
       command.kind === "inventory.transfer"
       || command.kind === "inventory.store_world"
       || command.kind === "inventory.take_world"
+      || command.kind === "inventory.place_surface"
+      || command.kind === "inventory.take_surface"
     ) {
       const source = await this.storage.getItem(command.itemId)
       const sourceMatches = command.kind === "inventory.transfer"
         ? source?.character_id === command.fromCharacterId
-        : command.kind === "inventory.store_world"
+        : command.kind === "inventory.store_world" || command.kind === "inventory.place_surface"
           ? source?.character_id === command.characterId
-          : source?.world_storage_id === command.worldStorageId
+          : command.kind === "inventory.take_world"
+            ? source?.world_storage_id === command.worldStorageId
+            : source?.surface_id === command.surfaceId
       if (
         source &&
         sourceMatches &&
