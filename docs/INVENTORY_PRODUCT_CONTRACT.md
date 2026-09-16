@@ -6,7 +6,7 @@
 >
 > Branch: active implementation belongs on `dev`.
 >
-> Current implementation checkpoint: Cheburashka Stages 1–6 are complete (integrity, lifecycle, stacks/instances, nested holders, physical definitions/authoring, authoritative spatial placement and mobile inventory UX). Weight, world storage, scene surfaces and trade remain later stages unless code/tests prove otherwise.
+> Current implementation checkpoint: Cheburashka Stages 1–7 are complete (integrity, lifecycle, stacks/instances, nested holders, physical definitions/authoring, authoritative spatial placement/mobile UX, and metric weight/load/specialized capacity). World storage, scene surfaces and trade remain later stages unless code/tests prove otherwise.
 
 This document is the canonical product intent for MEGANOTRPG inventory UX. Audits must compare the current implementation to this contract. Do not replace it with a generic RPG inventory pattern merely because that pattern is easier or more familiar.
 
@@ -319,21 +319,26 @@ A merchant is a capability/context of an NPC, not necessarily a separate NPC ent
 
 ## 11. Weight and capacity are physical extensions
 
-Future carrying rules should use the same physical items rather than a parallel load ledger.
+Stage 7 implements weight on the same canonical physical items rather than a parallel load ledger.
 
-The target model must be able to account for:
+Canonical law:
+- all new/normalized mass values are kilograms;
+- `weight_per_unit` means kilograms per one unit;
+- a bulk stack weighs `quantity × weight_per_unit`;
+- a container's own mass and every nested content item each contribute exactly once;
+- unknown mass is preserved as unknown rather than treated as zero;
+- character base carrying capacity is **Strength × 6.8 kg**;
+- CE owns the derived carrying-capacity number and accepts normal numeric mechanics on `carrying.capacityKg`;
+- Cheburashka owns carried item mass and exposes only a derived load projection to the shared character runtime;
+- overload is a reported state, not permission for UI to invent speed/action penalties;
+- coins, ammunition and homogeneous materials have physical mass because they remain physical inventory;
+- specialized capacities are separate from geometry and weight. A quiver may, for example, enforce a maximum arrow quantity even when cells and kg would otherwise allow more.
 
-- item weight;
-- stack quantity × per-unit weight;
-- contents of carried containers;
-- physical capacity/compatibility;
-- character carrying capacity / encumbrance when implemented.
+Space and mass remain independent constraints.
 
-Space and mass are independent constraints.
+A character may have enough carrying capacity but no physical place for another long weapon, or enough grid space but exceed the resolved carrying capacity by mass.
 
-A character may have enough weight capacity but no physical place for another long weapon, or enough grid space but be overloaded by mass.
-
-Coin weight belongs here because coins are items.
+Any future tactical consequence of encumbrance must be an explicit authored rules mechanic. Inventory presentation must not silently decide how much speed, action economy or other capability is lost.
 
 ## 12. Scene/chat surfaces
 
@@ -504,7 +509,7 @@ When auditing inventory, an agent must:
 
 1. read this contract before proposing redesigns;
 2. distinguish **implemented now** from **approved target**;
-3. preserve completed Cheburashka Stages 1–6 unless a real defect requires change;
+3. preserve completed Cheburashka Stages 1–7 unless a real defect requires change;
 4. report gaps against this target rather than inventing a different inventory UX;
 5. distinguish completed Stage 6 spatial runtime from still-future weight/specialized-capacity, Surface and Trade mechanics;
 6. prefer extending one holder/placement model over parallel tables that represent the same fact;
