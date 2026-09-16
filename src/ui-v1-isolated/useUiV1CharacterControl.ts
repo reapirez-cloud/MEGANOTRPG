@@ -216,7 +216,7 @@ export function useUiV1CharacterControl(characterId: string) {
         storage_kind: String(storage.storage_kind || "stash"),
         item_count: Number(storage.item_count || 0),
         can_operate: storage.can_operate === true,
-      })).filter((storage) => Boolean(storage.id && storage.root_item_id)))
+      })).filter((storage: UiV1CharacterWorldStorage) => Boolean(storage.id && storage.root_item_id)))
     } catch (reason) {
       setError(errorMessage(reason, "Не удалось загрузить персонажа."))
     } finally {
