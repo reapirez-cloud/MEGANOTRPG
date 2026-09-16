@@ -297,6 +297,7 @@
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+  pointer-events: none;
 }
 
 .u1-inventory-shape-cell {
@@ -308,6 +309,17 @@
     linear-gradient(145deg, var(--cv-accent-soft), rgba(255,255,255,.022)),
     #111313;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
+  pointer-events: none;
+}
+
+.u1-inventory-grid-item > .u1-inventory-shape-cell {
+  pointer-events: auto;
+}
+
+.u1-inventory-grid-item[data-dragging],
+.u1-inventory-grid-item[data-dragging] > .u1-inventory-shape-cell,
+.u1-inventory-grid-item[data-moving],
+.u1-inventory-grid-item[data-moving] > .u1-inventory-shape-cell {
   pointer-events: none;
 }
 
