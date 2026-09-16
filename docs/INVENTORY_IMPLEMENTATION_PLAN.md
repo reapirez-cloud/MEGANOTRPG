@@ -6,7 +6,7 @@
 >
 > Product contract: `docs/INVENTORY_PRODUCT_CONTRACT.md`
 >
-> Current checkpoint: **Stages 1–7 complete. Stage 8 is next: persistent world storage, chests and stashes.**
+> Current checkpoint: **Stages 1–8 complete. Stage 9 is next: chats/scenes + shared Surfaces.**
 >
 > This file defines implementation order and completion boundaries. It does not by itself prove that a stage is implemented. Audits must verify source, live Supabase state where relevant, and real runtime behavior before changing a stage to complete.
 
@@ -23,13 +23,13 @@ The final inventory target is a physical, tactile inventory system built on Cheb
 | 5 | ✅ COMPLETE | Physical item definition + authoring language |
 | 6 | ✅ COMPLETE | Spatial runtime + mobile inventory UX |
 | 7 | ✅ COMPLETE | Weight, load and specialized capacity |
-| 8 | ⬜ TODO | Persistent world storage, chests and stashes |
+| 8 | ✅ COMPLETE | Persistent world storage, chests and stashes |
 | 9 | ⬜ TODO | Chats/scenes + shared Surfaces |
 | 10 | ⬜ TODO | Dedicated Trade block |
 | 11 | ⬜ TODO | Chasovoy adoption + legacy inventory migration |
 | 12 | ⬜ TODO | Final security/concurrency/E2E certification |
 
-There are **12 stages total**. Seven are complete; five remain.
+There are **12 stages total**. Eight are complete; four remain.
 
 ---
 
@@ -450,33 +450,51 @@ The new `carrying.capacityKg` target is supported by CE, MechanicsBuilder and th
 
 ---
 
-# Stage 8 — Persistent world storage, chests and stashes
+# Stage 8 — Persistent world storage, chests and stashes ✅
 
-The inventory design should create a real reason to leave possessions behind.
+Stage 8 is complete in `dev` and live Supabase.
 
-Implement persistent world storage:
-- chests;
-- crates;
-- caches/stashes;
-- other location-bound containers.
+Implemented law:
+- persistent world storage is represented by `world_storages`, which stores Larisa-owned location, visibility, access and lifecycle facts;
+- the physical storage root and every contained object remain ordinary Cheburashka item instances in the canonical inventory table;
+- there is no parallel `world_inventory_items` ledger and no copied item truth;
+- exactly one owner scope is valid for a physical item: character-owned or world-storage-owned;
+- moving an instance between a character and world storage preserves the same row identity whenever the whole instance moves;
+- moving a container transfers its entire nested subtree to the new owner scope without changing descendant identities or holder relationships;
+- bulk-stack partial moves split only quantity while preserving total quantity;
+- every world-storage item must remain connected to that storage's canonical root container;
+- world-storage root containers cannot occupy hands/external carry or equipment state;
+- location/owner campaign consistency is server-authoritative;
+- GM may create, edit, move and archive world storage;
+- a player may create/manage only an owner-only stash for their active character at the character's current location;
+- shared/player access is validated against campaign membership, location visibility, character position and storage policy on the server;
+- storage metadata uses optimistic versions and command receipts;
+- inventory store/take operations lock both the character inventory scope and world-storage scope;
+- Larisa metadata and the physical Cheburashka root container keep name/description synchronized;
+- UI 1.0 renders storages inside location detail rather than as a second abstract inventory screen;
+- Snake can inspect storage, put/take items, edit policy where authorized, move it as GM and archive it;
+- the character inventory exposes accessible current-location storage through the same Cheburashka store command.
 
-A stash is not a second player inventory. It is a persistent world holder associated with a location/world context.
+Live migrations:
+- `20260916070000_cheburashka_stage8_world_storage`;
+- `20260916073000_cheburashka_stage8_integrity_closure`.
 
-Player/GM should be able to:
-- move items from carried inventory into a world container;
-- return later and find the same items;
-- create a stash where permissions/world rules allow;
-- leave oversized/valuable loot instead of magically carrying the entire hoard.
+Stage 8 deliberately does **not** implement scene/chat loot Surfaces. Those remain Stage 9. A persistent chest in a location is durable world storage; a temporary/shared scene drop surface is a different interaction and must not be smuggled into this stage.
 
-Larisa owns location/world placement facts; Cheburashka owns the physical items/holder contents.
+### Stage 8 completion gate — PASSED ✅
 
-### Stage 8 complete when
-
-- world containers persist across sessions;
-- stash ownership/visibility is explicit;
-- moving a container does not duplicate its contents;
-- location changes do not orphan items;
-- permissions are server-authoritative.
+- world containers persist independently from character sessions;
+- stash ownership, visibility and access policy are explicit;
+- the same canonical item moves character ↔ world storage without a duplicate item ledger;
+- nested container subtrees preserve identity across world-storage moves;
+- partial bulk moves preserve total quantity;
+- moving a world storage changes Larisa location facts without copying contents;
+- location/storage/root consistency is protected by database constraints/deferred validation;
+- permissions and character-at-location access are server-authoritative;
+- character/world mutations use version checks, idempotent command receipts and shared advisory locks;
+- authenticated-only RPC boundaries are used; `anon` cannot execute Stage 8 storage mutation/read helpers;
+- UI/Snake expose the canonical operations rather than maintaining client-side storage truth;
+- dedicated Stage 8 regression coverage and live rollback smoke verify the owner-scope, subtree and no-duplication invariants.
 
 ---
 
