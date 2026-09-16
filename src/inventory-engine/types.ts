@@ -1,4 +1,5 @@
 import type { CharacterContribution } from "../character-engine/index.ts"
+import type { InventoryPlacementTarget } from "./spatial.ts"
 import type { EngineCommandContext } from "../engine-contracts/index.ts"
 import type {
   EquipmentSlot,
@@ -51,6 +52,7 @@ export type CheburashkaCommand =
       characterId: string
       itemId: string
       holderItemId: string | null
+      placement?: InventoryPlacementTarget
       expectedVersion?: number
     }
   | {
