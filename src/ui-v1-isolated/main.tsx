@@ -12,6 +12,7 @@ import "./snake.css"
 import "./workspace.css"
 import "./gm-workshop.css"
 import "./art-library.css"
+import "./character-sheet-header-stage1.css"
 
 const root = document.getElementById("ui-v1-root")
 

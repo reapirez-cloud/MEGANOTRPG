@@ -1,0 +1,106 @@
+/*
+ * Character Sheet Header · Stage 1
+ * Geometry only: portrait 40% / identity 30% / navigation 30%.
+ * Artwork, copy, navigation contents and mechanics are intentionally unchanged.
+ */
+
+.u1-character-sheet {
+  --sheet-header-portrait-track: 40%;
+  --sheet-header-identity-track: 30%;
+  --sheet-header-nav-track: 30%;
+}
+
+.u1-character-sheet__masthead {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 40fr)
+    minmax(0, 30fr)
+    minmax(0, 30fr);
+  grid-template-rows: minmax(0, 1fr);
+  height: var(--sheet-hero-height);
+  min-height: 0;
+  overflow: hidden;
+}
+
+/*
+ * The authored hero/background remains one continuous surface across all three
+ * tracks. Its children are positioned against the fixed track geometry below,
+ * so artwork can never resize the identity or navigation columns.
+ */
+.u1-character-sheet__portrait-cell {
+  position: relative;
+  inset: auto;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Existing authored 9:16 class frame stays authoritative and is simply
+ * centred inside the left 40% track. */
+.u1-character-sheet__portrait-frame-stack {
+  left: 20%;
+  right: auto;
+  max-width: calc(40% - (var(--sheet-pad) * 0.5));
+  transform: translateX(-50%);
+}
+
+/* Frameless/fallback portrait follows the same left-track boundary. The
+ * framed media is nested one level deeper and therefore is not affected. */
+.u1-character-sheet__portrait > .u1-character-sheet__portrait-media {
+  left: 20%;
+  right: auto;
+  width: auto;
+  height: 94%;
+  max-width: calc(40% - (var(--sheet-pad) * 0.5));
+  transform: translateX(-50%);
+}
+
+/* Stage 1 moves the existing identity payload only. Stage 2 owns its final
+ * name/class/race/subclass/level/inspiration composition. */
+.u1-character-sheet__identity {
+  top: 0;
+  bottom: 0;
+  left: 40%;
+  right: auto;
+  width: 30%;
+  min-width: 0;
+  max-width: none;
+  box-sizing: border-box;
+  display: grid;
+  align-content: center;
+  overflow: hidden;
+  padding-inline: clamp(4px, 1.3vw, 7px);
+  transform: none;
+}
+
+.u1-character-sheet__identity > strong,
+.u1-character-sheet__identity > small {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* The rail gets an independent right-hand track. Its current labels, row
+ * count, scrolling and active-state behaviour are deliberately preserved for
+ * Stage 3. */
+.u1-character-sheet__rail {
+  position: relative;
+  inset: auto;
+  grid-column: 3;
+  grid-row: 1;
+  align-self: center;
+  justify-self: stretch;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  height: calc(var(--sheet-rail-row) * 3);
+  margin: 0 var(--sheet-pad) 0 0;
+  transform: none;
+}
+
+@media (max-width: 359px) {
+  .u1-character-sheet__identity {
+    padding-inline: 4px;
+  }
+}
