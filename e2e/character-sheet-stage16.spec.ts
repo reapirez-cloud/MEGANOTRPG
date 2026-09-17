@@ -74,24 +74,6 @@ test("Stage 16 keeps the character sheet inside 320/360/390/430 mobile widths", 
   }
 })
 
-test("Stage 16 mounts quick stats only on the Character overview", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto("/e2e-character-sheet-stage16.html")
-
-  const core = page.getByTestId("stage16-core")
-  await expect(core).toBeVisible()
-
-  await page.getByRole("button", { name: "Заклинания" }).click()
-  await expect(core).toHaveCount(0)
-  await expect(page.locator('.u1-character-sheet[data-section="spells"]')).toBeVisible()
-  await expect(
-    page.locator('.u1-character-sheet__content[data-section="spells"]'),
-  ).toBeVisible()
-
-  await page.getByRole("button", { name: "Персонаж" }).click()
-  await expect(core).toBeVisible()
-})
-
 test("Stage 16 consumes Telegram safe areas and stable viewport height", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto("/e2e-character-sheet-stage16.html")

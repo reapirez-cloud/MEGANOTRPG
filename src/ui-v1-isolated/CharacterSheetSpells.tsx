@@ -3,13 +3,10 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
 } from "react"
-import { CaretRight, FunnelSimple, LockKey, Plus, X } from "@phosphor-icons/react"
 
 import type {
   ResolvedCharacterContract,
-  ResolvedResource,
   ResolvedSpell,
   ResolvedSpellAccess,
 } from "../character-engine/index.ts"
@@ -24,6 +21,7 @@ import {
   resolveSpellPreparationState,
   spellPreparationRank,
   stableUniqueSortedStrings,
+  summarizeSourceNames,
   type CharacterSheetPreparationState,
 } from "./characterSheetDataCertification"
 import {
@@ -32,7 +30,6 @@ import {
   type CharacterSheetEntityNavigator,
 } from "./characterSheetEntityNavigation"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
-import { characterSheetSpellSlotAsset } from "./characterSheetVisualAssets"
 
 type SpellCatalogMeta = {
   slug: string
@@ -85,83 +82,13 @@ const schoolTranslations: Record<string, string> = {
   Transmutation: "Преобразование",
 }
 
-const roman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"]
-
-function atlasStyle(
-  url: string,
-  columns: number,
-  rows: number,
-  column: number,
-  row: number,
-) {
-  const positionX = columns <= 1 ? "0%" : `${(column / (columns - 1)) * 100}%`
-  const positionY = rows <= 1 ? "0%" : `${(row / (rows - 1)) * 100}%`
-
-  return {
-    "--u1-spell-icon": `url("${url}")`,
-    "--u1-spell-icon-size": `${columns * 100}% ${rows * 100}%`,
-    "--u1-spell-icon-position": `${positionX} ${positionY}`,
-  } as CSSProperties
-}
-
-function classSpellIconStyle(classKey: string) {
-  const asset = characterSheetSpellSlotAsset(classKey)
-  return atlasStyle(
-    asset.url,
-    asset.columns,
-    asset.rows,
-    asset.column,
-    asset.row,
-  )
-}
-
-function spellCardIconStyle(name: string, level: number) {
-  const hash = [...name].reduce(
-    (sum, character) => (sum * 31 + character.charCodeAt(0)) >>> 0,
-    Math.max(0, level),
-  )
-  const index = hash % 12
-  return atlasStyle(
-    "/ui-v1/character-sheet/icons/spell-slots.png",
-    4,
-    3,
-    index % 4,
-    Math.floor(index / 4),
-  )
-}
-
 function schoolLabel(value: string) {
   const normalized = normalizeSpellSchool(value)
   return schoolTranslations[normalized] || normalized || "Без школы"
 }
 
-function levelTitle(level: number) {
-  return level === 0 ? "Заговоры" : `${level} круг`
-}
-
-function standardSlotLevel(resource: ResolvedResource) {
-  const match = resource.stateKey.match(/^spell_slot_([1-9])$/)
-  return match ? Number(match[1]) : null
-}
-
-function pactSlotLevel(contract: ResolvedCharacterContract) {
-  const value = contract.values.find(
-    (entry) => entry.key === "warlock_pact_slot_level" || entry.stateKey === "warlock_pact_slot_level",
-  )
-  return value ? Math.max(1, Math.min(9, Math.round(value.value.value))) : null
-}
-
-function slotCount(resource: ResolvedResource | null | undefined) {
-  if (!resource) return { current: 0, max: 0 }
-  const max = Math.max(0, Math.round(resource.max.value))
-  return {
-    current: Math.max(0, Math.min(max, Math.round(resource.current))),
-    max,
-  }
-}
-
-function castingTimeLabel(view: SpellView) {
-  return view.catalog?.casting_time || view.legacy?.casting_time || schoolLabel(view.school)
+function levelLabel(level: number) {
+  return level === 0 ? "ЗАГОВОРЫ" : `${level} УРОВЕНЬ`
 }
 
 function slugFromResolvedKey(key: string) {
@@ -248,9 +175,6 @@ function detailBody(view: SpellView) {
 
 export default function CharacterSheetSpells({
   characterId,
-  characterClass,
-  characterLevel,
-  classKey,
   contract,
   legacySpells,
   runtimeError,
@@ -260,9 +184,6 @@ export default function CharacterSheetSpells({
   onNavigateEntity,
 }: {
   characterId: string
-  characterClass: string
-  characterLevel: number
-  classKey: string
   contract: ResolvedCharacterContract | null
   legacySpells: CharacterSpell[]
   runtimeError?: string
@@ -276,12 +197,6 @@ export default function CharacterSheetSpells({
   const [catalogBySlug, setCatalogBySlug] = useState<Map<string, SpellCatalogMeta>>(
     () => new Map(),
   )
-  const [expandedLevel, setExpandedLevel] = useState<number | null>(() =>
-    typeof focusLevel === "number" && focusLevel >= 0 && focusLevel <= 9
-      ? focusLevel
-      : 1,
-  )
-  const [grimoireLevel, setGrimoireLevel] = useState<number | null>(null)
   const [preparedOnly, setPreparedOnly] = useState(false)
   const [concentrationOnly, setConcentrationOnly] = useState(false)
   const [ritualOnly, setRitualOnly] = useState(false)
@@ -385,65 +300,42 @@ export default function CharacterSheetSpells({
       )
   }, [catalogBySlug, contract, legacySpells])
 
-  const slotByLevel = useMemo(
-    () => new Map(
-      (contract?.resources || [])
-        .map((resource) => {
-          const level = standardSlotLevel(resource)
-          return level === null ? null : [level, resource] as const
-        })
-        .filter(
-          (entry): entry is readonly [number, ResolvedResource] =>
-            entry !== null,
-        ),
-    ),
-    [contract],
-  )
-
-  const pactSlots = useMemo(
-    () => (contract?.resources || []).find((resource) => resource.stateKey === "warlock_pact_slots") || null,
-    [contract],
-  )
-  const pactLevel = contract ? pactSlotLevel(contract) : null
-  const slotForSpellLevel = (level: number) => {
-    const standard = slotByLevel.get(level)
-    if (standard) return { resource: standard, pact: false, castLevel: level }
-    if (level > 0 && pactSlots && pactLevel && level <= pactLevel) {
-      return { resource: pactSlots, pact: true, castLevel: pactLevel }
-    }
-    return { resource: null, pact: false, castLevel: level }
-  }
-
   const hasPreparationWorkflow = useMemo(
-    () => hasMutablePreparationWorkflow(views.map((view) => view.spell)),
+    () =>
+      hasMutablePreparationWorkflow(
+        views.map((view) => view.spell),
+      ),
     [views],
   )
 
   useEffect(() => {
-    if (!hasPreparationWorkflow && preparedOnly) setPreparedOnly(false)
+    if (!hasPreparationWorkflow && preparedOnly) {
+      setPreparedOnly(false)
+    }
   }, [hasPreparationWorkflow, preparedOnly])
 
   const schoolOptions = useMemo(
-    () => [...new Set(views.map((view) => view.school).filter(Boolean))]
-      .sort((left, right) => schoolLabel(left).localeCompare(schoolLabel(right), "ru")),
+    () =>
+      [...new Set(views.map((spell) => spell.school).filter(Boolean))]
+        .sort((left, right) =>
+          schoolLabel(left).localeCompare(schoolLabel(right), "ru")
+        ),
     [views],
   )
 
-  const filterGrimoire = (items: SpellView[]) => items.filter((spell) => {
-    if (preparedOnly && spell.preparation !== "prepared" && spell.preparation !== "always_prepared") return false
+  const filtered = views.filter((spell) => {
+    if (
+      preparedOnly &&
+      spell.preparation !== "prepared" &&
+      spell.preparation !== "always_prepared"
+    ) {
+      return false
+    }
     if (concentrationOnly && !spell.concentration) return false
     if (ritualOnly && !spell.ritual) return false
-    return school === "all" || spell.school === school
+    if (school !== "all" && spell.school !== school) return false
+    return true
   })
-
-  const openCircle = (level: number) => {
-    setExpandedLevel(level)
-    setGrimoireLevel(null)
-    window.requestAnimationFrame(() => {
-      rootRef.current?.querySelector<HTMLElement>(`[data-level="${level}"]`)
-        ?.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" })
-    })
-  }
 
   useEffect(() => {
     if (!focusSpellKey) return
@@ -461,7 +353,7 @@ export default function CharacterSheetSpells({
     })
 
     return () => window.cancelAnimationFrame(frame)
-  }, [focusSpellKey, views.length])
+  }, [focusSpellKey, filtered.length])
 
   useEffect(() => {
     if (
@@ -472,8 +364,6 @@ export default function CharacterSheetSpells({
     ) {
       return
     }
-
-    setExpandedLevel(focusLevel)
 
     const frame = window.requestAnimationFrame(() => {
       const target = rootRef.current?.querySelector<HTMLElement>(
@@ -487,7 +377,7 @@ export default function CharacterSheetSpells({
     })
 
     return () => window.cancelAnimationFrame(frame)
-  }, [focusLevel, views.length])
+  }, [focusLevel, filtered.length])
 
   if (!contract) {
     return (
@@ -502,280 +392,198 @@ export default function CharacterSheetSpells({
     )
   }
 
-  const renderSpell = (view: SpellView, compact = false) => {
-    const level = view.level
-    const entity = {
-      type: "character-spell",
-      id: characterId + ":" + view.spell.key,
-    }
-    const detailAction: SnakeAction = {
-      id: "inspect-spell",
-      label: "Подробнее",
-      surface: {
-        kind: "detail",
-        eyebrow: level === 0 ? "Заговор" : `${level} круг`,
-        title: view.name,
-        body: detailBody(view),
-      },
-    }
-    const relatedTargets = characterSheetLinkedEntitiesForSpell(view.spell)
-    const navigationAction: SnakeAction | null =
-      onNavigateEntity && relatedTargets.length
-        ? {
-            id: "spell-linked-entities",
-            label: "Связано",
-            kind: "branch",
-            children: relatedTargets.map((target, index) => ({
-              id: "navigate-" + target.kind + "-" + index,
-              label: characterSheetEntityLabel(target),
-              execute: () => onNavigateEntity(target),
-            })),
-          }
-        : null
-    const sourceAction: SnakeAction = {
-      id: "spell-source",
-      label: "Источник",
-      surface: {
-        kind: "detail",
-        eyebrow: "Доступ к заклинанию",
-        title: view.name,
-        body: view.sourceNames.length
-          ? view.sourceNames.join("\n")
-          : "Источник не подписан.",
-      },
-    }
-
+  if (!views.length) {
     return (
-      <SnakeTrigger
-        key={view.spell.key}
-        entity={entity}
-        actions={[
-          detailAction,
-          sourceAction,
-          ...(navigationAction ? [navigationAction] : []),
-        ]}
-      >
-        <button
-          type="button"
-          className={
-            compact
-              ? "u1-character-spells__preview-card"
-              : "u1-character-spells__spell-card"
-          }
-          data-spell-key={view.spell.key}
-          data-entity-focus={focusSpellKey === view.spell.key || undefined}
-          data-preparation={view.preparation}
-          data-unavailable={!view.spell.available || undefined}
-          onClick={() => {
-            onSelect?.(view.spell.key)
-            if (detailAction.surface) snake.openSurface(detailAction.surface)
-          }}
-        >
-          <span
-            className="u1-character-spells__spell-icon"
-            style={spellCardIconStyle(view.name, level)}
-            aria-hidden="true"
-          />
-          <span className="u1-character-spells__spell-copy">
-            <strong>{view.name}</strong>
-            {!compact && (
-              <small>
-                <span>{castingTimeLabel(view)}</span>
-                {view.concentration && <em>Концентрация</em>}
-                {view.ritual && <em>Ритуал</em>}
-              </small>
-            )}
-          </span>
-        </button>
-      </SnakeTrigger>
+      <section className="u1-character-spells u1-character-spells--empty">
+        <span>У персонажа нет доступных заклинаний.</span>
+      </section>
     )
   }
 
   return (
     <div className="u1-character-spells" ref={rootRef}>
-      <section
-        className="u1-character-spells__slots-panel"
-        aria-labelledby="u1-character-spells-slots-title"
-      >
-        <header className="u1-character-spells__slots-head">
-          <strong id="u1-character-spells-slots-title">ЯЧЕЙКИ ЗАКЛИНАНИЙ</strong>
-          <span aria-hidden="true" />
-          <small>
-            {pactSlots && pactLevel
-              ? `Магия договора · ${roman[pactLevel] || pactLevel} круг`
-              : `${characterClass || "Заклинатель"} · Ур. ${characterLevel}`}
-          </small>
-        </header>
-        <div className="u1-character-spells__slots-grid">
-          {Array.from({ length: 9 }, (_, index) => index + 1).map((level) => {
-            const pactAtThisLevel = Boolean(pactSlots && pactLevel === level)
-            const slot = slotCount(slotByLevel.get(level) || (pactAtThisLevel ? pactSlots : null))
-            const locked = slot.max <= 0
-            const exhausted = !locked && slot.current <= 0
-
-            return (
-              <button
-                key={level}
-                type="button"
-                className="u1-character-spells__slot"
-                data-locked={locked || undefined}
-                data-pact={pactAtThisLevel || undefined}
-                data-exhausted={exhausted || undefined}
-                onClick={() => {
-                  if (!locked) openCircle(level)
-                }}
-                aria-label={
-                  locked
-                    ? `${level} круг недоступен`
-                    : pactAtThisLevel
-                      ? `Магия договора: ${slot.current} из ${slot.max} ячеек ${level} круга`
-                      : `${level} круг: ${slot.current} из ${slot.max} ячеек`
-                }
-                aria-controls={`u1-character-spells-circle-${level}`}
-              >
-                <span className="u1-character-spells__slot-icon-frame">
-                  {locked ? (
-                    <LockKey weight="fill" aria-hidden="true" />
-                  ) : (
-                    <i
-                      className="u1-character-spells__class-icon"
-                      style={classSpellIconStyle(classKey)}
-                      aria-hidden="true"
-                    />
-                  )}
-                </span>
-                <small>{locked ? `${level} круг` : `${slot.current}/${slot.max}`}</small>
-              </button>
-            )
-          })}
+      <div className="u1-character-spells__filters">
+        <div className="u1-character-spells__chips">
+          {hasPreparationWorkflow && (
+            <button
+              type="button"
+              data-active={preparedOnly || undefined}
+              onClick={() => setPreparedOnly((value) => !value)}
+            >
+              ПОДГОТОВЛЕНЫ
+            </button>
+          )}
+          <button
+            type="button"
+            data-active={concentrationOnly || undefined}
+            onClick={() => setConcentrationOnly((value) => !value)}
+          >
+            КОНЦЕНТРАЦИЯ
+          </button>
+          <button
+            type="button"
+            data-active={ritualOnly || undefined}
+            onClick={() => setRitualOnly((value) => !value)}
+          >
+            РИТУАЛ
+          </button>
         </div>
-      </section>
+
+        <label className="u1-character-spells__school">
+          <span>ШКОЛА</span>
+          <select value={school} onChange={(event) => setSchool(event.target.value)}>
+            <option value="all">Все</option>
+            {schoolOptions.map((value) => (
+              <option key={value} value={value}>
+                {schoolLabel(value)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="u1-character-spells__no-results">
+          Под эти фильтры ничего не попало.
+        </div>
+      )}
 
       {CHARACTER_SHEET_SPELL_GROUP_ORDER.map((level) => {
-        const allSpells = views.filter((spell) => spell.level === level)
-        const grimoireOpen = grimoireLevel === level
-        const spells = grimoireOpen ? filterGrimoire(allSpells) : allSpells
-        if (!allSpells.length) return null
-
-        const expanded = expandedLevel === level
-        const slotPresentation = slotForSpellLevel(level)
-        const slot = slotCount(slotPresentation.resource)
-        const preview = allSpells.slice(0, 3)
-        const remaining = Math.max(0, allSpells.length - preview.length)
+        const spells = filtered.filter((spell) => spell.level === level)
+        if (!spells.length) return null
 
         return (
           <section
             key={level}
-            id={`u1-character-spells-circle-${level}`}
-            className="u1-character-spells__circle"
+            className="u1-character-spells__level"
             data-level={level}
-            data-expanded={expanded || undefined}
             data-focus-target={level === focusLevel || undefined}
           >
-            <button
-              type="button"
-              className="u1-character-spells__circle-head"
-              onClick={() => setExpandedLevel((current) => current === level ? null : level)}
-              aria-expanded={expanded}
-              aria-controls={`u1-character-spells-content-${level}`}
-            >
-              <span
-                className="u1-character-spells__circle-seal"
-                style={level === 0 ? classSpellIconStyle(classKey) : undefined}
-                data-cantrip={level === 0 || undefined}
-                aria-hidden="true"
-              >
-                {level > 0 && (roman[level] || level)}
-              </span>
-              <span className="u1-character-spells__circle-title">
-                <strong>{levelTitle(level)}</strong>
-                <small>
-                  {level === 0
-                    ? "Всегда доступны"
-                    : slot.max > 0
-                      ? slotPresentation.pact
-                        ? `${slot.current}/${slot.max} Магия договора · ${roman[slotPresentation.castLevel] || slotPresentation.castLevel} круг`
-                        : `${slot.current}/${slot.max} ячеек`
-                      : "Без доступных ячеек"}
-                </small>
-              </span>
-              <span className="u1-character-spells__circle-count">
-                {allSpells.length} {allSpells.length === 1 ? "заклинание" : "заклинаний"}
-              </span>
-              <CaretRight
-                className="u1-character-spells__circle-caret"
-                aria-hidden="true"
-              />
-            </button>
+            <header className="u1-character-spells__level-head">
+              <span>{levelLabel(level)}</span>
+              <small>{spells.length}</small>
+            </header>
 
-            {expanded ? (
-              <div className="u1-character-spells__expanded-grid" id={`u1-character-spells-content-${level}`}>
-                {grimoireOpen ? (
-                  <div className="u1-character-spells__grimoire-panel" data-grimoire-level={level}>
-                    <header className="u1-character-spells__grimoire-head">
-                      <span><FunnelSimple aria-hidden="true" /> Гримуар · {levelTitle(level)}</span>
-                      <button type="button" onClick={() => setGrimoireLevel(null)} aria-label="Закрыть гримуар">
-                        <X aria-hidden="true" />
-                      </button>
-                    </header>
-                    <div className="u1-character-spells__grimoire-filters">
-                      {hasPreparationWorkflow && <button type="button" data-active={preparedOnly || undefined} onClick={() => setPreparedOnly((value) => !value)}>Подготовлены</button>}
-                      <button type="button" data-active={concentrationOnly || undefined} onClick={() => setConcentrationOnly((value) => !value)}>Концентрация</button>
-                      <button type="button" data-active={ritualOnly || undefined} onClick={() => setRitualOnly((value) => !value)}>Ритуал</button>
-                      <label>
-                        <span>Школа</span>
-                        <select value={school} onChange={(event) => setSchool(event.target.value)}>
-                          <option value="all">Все</option>
-                          {schoolOptions.map((value) => <option key={value} value={value}>{schoolLabel(value)}</option>)}
-                        </select>
-                      </label>
-                    </div>
-                    <div className="u1-character-spells__grimoire-list">
-                      {spells.length ? spells.map((view) => renderSpell(view)) : <p>Под эти фильтры ничего не попало.</p>}
-                    </div>
-                  </div>
-                ) : <>
-                  {allSpells.map((view) => renderSpell(view))}
-                  <button
-                    type="button"
-                    className="u1-character-spells__grimoire"
-                    onClick={() => setGrimoireLevel(level)}
-                    aria-label={`Открыть гримуар раздела «${levelTitle(level)}»`}
+            <div className="u1-character-spells__list">
+              {spells.map((view) => {
+                const entity = {
+                  type: "character-spell",
+                  id: characterId + ":" + view.spell.key,
+                }
+                const detailAction: SnakeAction = {
+                  id: "inspect-spell",
+                  label: "Подробнее",
+                  surface: {
+                    kind: "detail",
+                    eyebrow: level === 0 ? "Заговор" : `${level} уровень`,
+                    title: view.name,
+                    body: detailBody(view),
+                  },
+                }
+                const relatedTargets =
+                  characterSheetLinkedEntitiesForSpell(view.spell)
+                const navigationAction: SnakeAction | null =
+                  onNavigateEntity && relatedTargets.length
+                    ? {
+                        id: "spell-linked-entities",
+                        label: "Связано",
+                        kind: "branch",
+                        children: relatedTargets.map((target, index) => ({
+                          id: "navigate-" + target.kind + "-" + index,
+                          label: characterSheetEntityLabel(target),
+                          execute: () => onNavigateEntity(target),
+                        })),
+                      }
+                    : null
+                const sourceAction: SnakeAction = {
+                  id: "spell-source",
+                  label: "Источник",
+                  surface: {
+                    kind: "detail",
+                    eyebrow: "Доступ к заклинанию",
+                    title: view.name,
+                    body: view.sourceNames.length
+                      ? view.sourceNames.join("\n")
+                      : "Источник не подписан.",
+                  },
+                }
+
+                return (
+                  <SnakeTrigger
+                    key={view.spell.key}
+                    entity={entity}
+                    actions={[
+                      detailAction,
+                      sourceAction,
+                      ...(navigationAction ? [navigationAction] : []),
+                    ]}
                   >
-                    <Plus aria-hidden="true" />
-                    <span>Открыть в гримуаре</span>
-                  </button>
-                </>}
-              </div>
-            ) : (
-              <div className="u1-character-spells__preview-row" id={`u1-character-spells-content-${level}`}>
-                {preview.map((view) => renderSpell(view, true))}
-                {remaining > 0 && (
-                  <button
-                    type="button"
-                    className="u1-character-spells__more"
-                    onClick={() => setExpandedLevel(level)}
-                    aria-label={`Показать ещё ${remaining}`}
-                  >
-                    +{remaining}
-                  </button>
-                )}
-              </div>
-            )}
+                    <button
+                      type="button"
+                      className="u1-character-spells__row"
+                      data-spell-key={view.spell.key}
+                      data-entity-focus={
+                        focusSpellKey === view.spell.key || undefined
+                      }
+                      data-preparation={view.preparation}
+                      data-available={view.spell.available || undefined}
+                      data-unavailable={!view.spell.available || undefined}
+                      onClick={() => {
+                        onSelect?.(view.spell.key)
+                        if (detailAction.surface) {
+                          snake.openSurface(detailAction.surface)
+                        }
+                      }}
+                    >
+                      <span className="u1-character-spells__state" aria-hidden="true">
+                        <i />
+                      </span>
+
+                      <span className="u1-character-spells__copy">
+                        <strong>{view.name}</strong>
+                        <small>
+                          {[
+                            schoolLabel(view.school),
+                            preparationLabels[view.preparation],
+                            view.concentration ? "Концентрация" : "",
+                            view.ritual ? "Ритуал" : "",
+                          ].filter(Boolean).join(" · ")}
+                        </small>
+                      </span>
+
+                      <span className="u1-character-spells__source">
+                        {summarizeSourceNames(view.sourceNames)}
+                      </span>
+                    </button>
+                  </SnakeTrigger>
+                )
+              })}
+            </div>
           </section>
         )
       })}
 
-      {!views.length && (
-        <section className="u1-character-spells__empty-book" aria-live="polite">
-          <strong>Гримуар пока пуст</strong>
-          <span>Заклинания появятся здесь, когда Character Engine выдаст персонажу доступ к ним.</span>
-        </section>
-      )}
-
-      {views.some((spell) => !isStandardSpellLevel(spell.level)) && (
-        <section className="u1-character-spells__unknown-levels">
-          Заклинания с нестандартным уровнем будут подключены отдельно.
+      {filtered.some((spell) => !isStandardSpellLevel(spell.level)) && (
+        <section
+          className="u1-character-spells__level"
+          data-level="other"
+        >
+          <header className="u1-character-spells__level-head">
+            <span>ПРОЧЕЕ</span>
+            <small>
+              {filtered.filter(
+                (spell) => !isStandardSpellLevel(spell.level),
+              ).length}
+            </small>
+          </header>
+          <div className="u1-character-spells__no-results">
+            {filtered
+              .filter((spell) => !isStandardSpellLevel(spell.level))
+              .map((spell) =>
+                `${spell.name} · уровень ${spell.level}`
+              )
+              .join(" · ")}
+          </div>
         </section>
       )}
     </div>

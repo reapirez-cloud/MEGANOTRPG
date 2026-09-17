@@ -39,17 +39,6 @@ test("production character sheet follows the persistent shell and standalone inv
   assert.match(history, /focusedItemId: string \| null/)
 })
 
-test("quick stats and abilities are owned exclusively by the overview page", () => {
-  assert.match(view, /overviewCore=\{[\s\S]*?<CharacterSheetCore/)
-  assert.doesNotMatch(view, /\bcore=\{[\s\S]*?<CharacterSheetCore/)
-  assert.match(
-    shell,
-    /activeSection === "overview" \? overviewCore : null/,
-  )
-  assert.match(shell, /data-section=\{activeSection\}/)
-  assert.match(contract, /overviewCoreVisibility: "overview-only"/)
-})
-
 test("Snake owns logical character sheet interactions instead of ad-hoc menus", () => {
   assert.match(view, /type: "inventory-item"/)
   assert.match(view, /type: "character-spell"/)

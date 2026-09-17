@@ -870,7 +870,7 @@ export default function CharacterView({
         )
       }}
       onBack={handleBack}
-      overviewCore={
+      core={
         <CharacterSheetCore
           contract={runtime.snapshot?.contract || null}
           spellcastingAbility={runtime.snapshot?.spellcastingAbility}
@@ -938,9 +938,6 @@ export default function CharacterView({
       ) : section === "spells" ? (
         <CharacterSheetSpells
           characterId={characterId}
-          characterClass={character.characterClass}
-          characterLevel={character.level}
-          classKey={classKey}
           contract={runtime.snapshot?.contract || null}
           legacySpells={control.spells}
           runtimeError={runtime.error || undefined}
