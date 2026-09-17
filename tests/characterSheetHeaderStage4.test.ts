@@ -44,7 +44,11 @@ test("stage 4 keeps frame and avatar inside the left layout track", () => {
   )
 
   assert.match(css, /--sheet-header-portrait-center:\s*20%/)
-  assert.match(css, /portrait-frame-stack[\s\S]*aspect-ratio:\s*9\s*\/\s*16/)
+  assert.match(css, /--sheet-header-frame-aspect:\s*941\s*\/\s*1672/)
+  assert.match(
+    css,
+    /portrait-frame-stack[\s\S]*aspect-ratio:\s*var\(--sheet-header-frame-aspect\)/,
+  )
   assert.match(
     css,
     /portrait-frame-stack \.u1-character-sheet__portrait-media[\s\S]*--sheet-header-frame-inset-x/,
