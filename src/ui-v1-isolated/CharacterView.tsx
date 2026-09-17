@@ -947,6 +947,8 @@ export default function CharacterView({
               ? entityFocus.spellKey
               : null
           }
+          canEditPreparation={control.canControlCharacter}
+          onSetPrepared={control.setSpellPrepared}
           onNavigateEntity={navigateEntity}
           onSelect={(spellId) => {
             setSelectedSpellId(spellId)
