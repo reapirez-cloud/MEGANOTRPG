@@ -11,9 +11,9 @@ import type {
 } from "../../types/characterSheet.ts"
 import CharacterDetailSheet from "./CharacterDetailSheet.tsx"
 import CharacterSectionState from "./CharacterSectionState.tsx"
-import SpellSlotMeter from "./SpellSlotMeter.tsx"
 import { buildSpellbookRenderModel, type SpellbookMode } from "./spellbookRender.ts"
 import "./CharacterSpellbookStage2.css"
+import "./CharacterSpellbookStage3.css"
 
 type Props = {
   sheet: CharacterSheet
@@ -128,16 +128,25 @@ export default function CharacterSpellbook(props: Props) {
             <button
               key={slot.level}
               type="button"
-              className={`spellbook-reference-shell__circle${slot.available ? " is-available" : " is-locked"}${active ? " is-active" : ""}`}
+              className={`spellbook-reference-shell__circle${slot.available ? " is-available" : " is-locked"}${slot.depleted ? " is-depleted" : ""}${active ? " is-active" : ""}`}
               disabled={!slot.available}
               aria-pressed={slot.available ? active : undefined}
               aria-label={slot.available
-                ? `${slot.level} круг: ${slot.current} из ${slot.maximum} ячеек`
+                ? `${slot.level} круг: ${slot.current} из ${slot.maximum} ячеек${slot.depleted ? ", ячейки закончились" : ""}`
                 : `${slot.level} круг недоступен`}
               onClick={() => onSelectedLevelChange(active ? null : slot.level)}
             >
-              <span>{slot.level}</span>
-              <strong>{slot.available ? `${slot.current}/${slot.maximum}` : "·"}</strong>
+              <span className="spellbook-reference-shell__level">{slot.level}</span>
+              {slot.available ? (
+                <span className="spellbook-reference-shell__cells" aria-hidden="true">
+                  {slot.cells.map((cell) => (
+                    <i key={cell.index} className={cell.filled ? "is-filled" : ""} />
+                  ))}
+                </span>
+              ) : (
+                <span className="spellbook-reference-shell__locked-mark" aria-hidden="true">×</span>
+              )}
+              <strong>{slot.available ? `${slot.current}/${slot.maximum}` : "—"}</strong>
             </button>
           )
         })}
@@ -166,7 +175,10 @@ export default function CharacterSpellbook(props: Props) {
       <div className="spellbook-reference-shell__summary">
         <span>{preparedCount} подготовлено</span>
         <span>{knownCount} изучено</span>
-        <button type="button" onClick={onOpenReference}>Справочник</button>
+        <div className="spellbook-reference-shell__actions">
+          {canManage && <button type="button" onClick={onEditResources}>Настроить ячейки</button>}
+          <button type="button" onClick={onOpenReference}>Справочник</button>
+        </div>
       </div>
 
       {(magic || spellcastingAbility) && (
@@ -176,18 +188,6 @@ export default function CharacterSpellbook(props: Props) {
           <div><span>Атака</span><strong>{magic ? signed(magic.attackBonus) : "—"}</strong></div>
         </div>
       )}
-
-      <div className="spellbook-v3__slots">
-        <div className="sheet-v3__section-heading">
-          <div><span>Ресурс</span><h3>Ячейки заклинаний</h3></div>
-          {canManage && <button type="button" onClick={onEditResources}>Настроить</button>}
-        </div>
-        <SpellSlotMeter
-          resources={contract.resources}
-          selectedLevel={selectedLevel}
-          onSelect={(level) => onSelectedLevelChange(selectedLevel === level ? null : level)}
-        />
-      </div>
 
       <div className="spellbook-v3__mode" role="tablist" aria-label="Раздел заклинаний">
         <button type="button" role="tab" aria-selected={mode === "prepared"} className={mode === "prepared" ? "is-active" : ""} onClick={() => setMode("prepared")}>Подготовлено <span>{preparedCount}</span></button>
