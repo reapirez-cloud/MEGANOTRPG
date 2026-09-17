@@ -16,6 +16,7 @@ import "./character-sheet-header-stage1.css"
 import "./character-sheet-header-stage4.css"
 import "./character-sheet-header-stage5.css"
 import "./character-sheet-overview-panel-fix.css"
+import "./character-sheet-spell-slot-charge-fix.css"
 
 const root = document.getElementById("ui-v1-root")
 
