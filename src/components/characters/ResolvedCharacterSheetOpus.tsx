@@ -300,19 +300,19 @@ export default function ResolvedCharacterSheetOpus({
       <section className="opus-core-grid" aria-label="Основные параметры персонажа">
         <div className="opus-core-grid__quick">
           <button type="button" onClick={() => explainNumber("Класс доспеха", { kind: "number", target: "combat.ac" })}>
-            <span>КД</span><strong>{contract.combat.ac.value}</strong>
+            <UiIcon name="armor-class" className="opus-core-icon" /><span>КД</span><strong>{contract.combat.ac.value}</strong>
           </button>
           <button type="button" onClick={() => explainNumber("Пассивное восприятие", { kind: "number", target: "passives.perception" })}>
-            <span>ПАССИВ</span><strong>{contract.passives.perception.value}</strong>
+            <UiIcon name="passive-perception" className="opus-core-icon" /><span>ПАССИВ</span><strong>{contract.passives.perception.value}</strong>
           </button>
           <button type="button" onClick={() => explainNumber("Бонус мастерства", { kind: "number", target: "core.proficiencyBonus" })}>
-            <span>МАСТЕРСТВО</span><strong>{signed(contract.proficiencyBonus.value)}</strong>
+            <UiIcon name="proficiency" className="opus-core-icon" /><span>МАСТЕРСТВО</span><strong>{signed(contract.proficiencyBonus.value)}</strong>
           </button>
           <button type="button" onClick={() => explainNumber("Инициатива", { kind: "number", target: "combat.initiative" })}>
-            <span>ИНИЦИАТИВА</span><strong>{signed(contract.combat.initiative.value)}</strong>
+            <UiIcon name="initiative" className="opus-core-icon" /><span>ИНИЦИАТИВА</span><strong>{signed(contract.combat.initiative.value)}</strong>
           </button>
           <button type="button" onClick={() => explainNumber("Скорость", { kind: "number", target: "combat.speed" })}>
-            <span>СКОРОСТЬ</span><strong>{contract.combat.speed.value}</strong>
+            <UiIcon name="dexterity" className="opus-core-icon" /><span>СКОРОСТЬ</span><strong>{contract.combat.speed.value}</strong>
           </button>
           {spellSaveDc !== null && <div><UiIcon name="spell-save-dc" className="opus-core-icon" /><span>СЛ</span><strong>{spellSaveDc}</strong></div>}
           {spellAttack !== null && <div><UiIcon name="spell-save-dc" className="opus-core-icon" /><span>АТАКА</span><strong>{signed(spellAttack)}</strong></div>}
