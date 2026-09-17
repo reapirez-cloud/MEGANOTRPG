@@ -87,25 +87,6 @@ function UiIcon({ name, className = "" }: { name: UiIconName; className?: string
   return <img className={"opus-ui-icon " + className} src={uiIconPaths[name]} alt="" aria-hidden="true" />
 }
 
-const resourceIconNames: Record<string, UiIconName> = {
-  rage: "strength",
-  bardic_inspiration: "inspiration",
-  channel_divinity: "spell-save-dc",
-  wild_shape: "wisdom",
-  second_wind: "constitution",
-  action_surge: "initiative",
-  lay_on_hands: "spell-save-dc",
-  monk_focus: "wisdom",
-  monk_uncanny_metabolism: "constitution",
-  sorcery_points: "spell-save-dc",
-  innate_sorcery: "charisma",
-  sorcerous_restoration: "inspiration",
-  wizard_arcane_recovery: "intelligence",
-  wizard_chronurgy_chronal_shift: "initiative",
-  wizard_chronurgy_momentary_stasis: "passive-perception",
-  wizard_chronurgy_arcane_abeyance: "spell-save-dc",
-  warlock_pact_slots: "spell-save-dc",
-}
 
 const romanLevels = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"]
 
@@ -374,7 +355,7 @@ export default function ResolvedCharacterSheetOpus({
                 onClick={canManage ? onEditResources : undefined}
                 aria-label={resourceLabel(resource) + ": " + resource.current + " из " + resource.max.value}
               >
-                <span className="opus-resource-line__icon"><UiIcon name={resourceIconName(resource)} /></span>
+                <span className="opus-resource-line__icon" aria-hidden="true">{resourceIcon(resource)}</span>
                 <span className="opus-resource-line__copy">
                   <strong>{resourceLabel(resource)}</strong>
                   <small>{resource.recharge.triggers.join(" · ").replace(/_/g, " ") || "ручное восстановление"}</small>
