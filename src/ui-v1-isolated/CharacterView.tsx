@@ -15,6 +15,7 @@ import CharacterSheetFeatures from "./CharacterSheetFeatures"
 import CharacterSheetOverview from "./CharacterSheetOverview"
 import CharacterSheetShell from "./CharacterSheetShell"
 import CharacterSheetSpells from "./CharacterSheetSpells"
+import { characterSheetPortraitFrameUrl } from "./characterSheetVisualAssets"
 import {
   CHARACTER_INVENTORY_INTERFACE_CONTRACT,
   type CharacterSheetSection,
@@ -135,6 +136,9 @@ export default function CharacterView({
 
   const classSheetBackground = referenceMedia.get(
     classReferenceArtSlot(classKey, "sheet_background"),
+  )
+  const classPortraitFrame = referenceMedia.get(
+    classReferenceArtSlot(classKey, "portrait_frame"),
   )
 
   const classBackgroundActions = createSheetReferenceMediaActions({
@@ -796,6 +800,9 @@ export default function CharacterView({
       classKey={classKey}
       portraitUrl={portraitUrl}
       portraitPresentation={portraitPresentation}
+      portraitFrameUrl={
+        classPortraitFrame?.url || characterSheetPortraitFrameUrl(classKey)
+      }
       panelArtUrl={classSheetBackground?.url || null}
       panelArtPresentation={classSheetBackground?.presentation || null}
       dead={character.lifeState === "dead"}

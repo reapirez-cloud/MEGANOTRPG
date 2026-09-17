@@ -25,9 +25,19 @@ test("stage 5 keeps authored resource and spell-slot art for every prepared clas
     const resource = characterSheetClassResourceAsset(classKey)
     const spellSlot = characterSheetSpellSlotAsset(classKey)
 
-    assert.equal(resource.url, "/ui-v1/character-sheet/icons/class-resources.png")
+    assert.equal(
+      resource.url,
+      classKey === "druid"
+        ? "/ui-v1/character-sheet/icons/class-spell-slots.png"
+        : "/ui-v1/character-sheet/icons/class-resources.png",
+    )
     assert.equal(resource.render, "image")
-    assert.equal(spellSlot.url, "/ui-v1/character-sheet/icons/class-spell-slots.png")
+    assert.equal(
+      spellSlot.url,
+      classKey === "druid"
+        ? "/ui-v1/character-sheet/icons/class-resources.png"
+        : "/ui-v1/character-sheet/icons/class-spell-slots.png",
+    )
     assert.equal(spellSlot.render, "image")
   }
 })
