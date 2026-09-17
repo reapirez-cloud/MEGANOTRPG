@@ -1,0 +1,344 @@
+/* Stage 6: mobile pixel-QA guardrails for the spell screen.
+ * Keep the reference anatomy intact while preventing width drift across the
+ * supported 320/360/390/430 px viewport family.
+ */
+
+.u1-character-spells {
+  width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.u1-character-spells__slots-panel,
+.u1-character-spells__circle,
+.u1-character-spells__slots-grid,
+.u1-character-spells__preview-row,
+.u1-character-spells__expanded-grid,
+.u1-character-spells__grimoire-panel,
+.u1-character-spells__grimoire-list,
+.u1-character-spells__spell-entry,
+.u1-character-spells__grimoire-entry,
+.u1-character-spells__spell-card,
+.u1-character-spells__preview-card,
+.u1-character-spells__spell-copy,
+.u1-character-spells__spell-meta,
+.u1-character-spells__cast,
+.u1-character-spells__cast-options {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.u1-character-spells__slots-panel {
+  padding: 14px 12px 13px;
+}
+
+.u1-character-spells__slots-head {
+  min-width: 0;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.u1-character-spells__slots-head > strong,
+.u1-character-spells__slots-head > small {
+  min-width: 0;
+}
+
+.u1-character-spells__slots-grid {
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.u1-character-spells__slot {
+  min-width: 0;
+  gap: 5px;
+}
+
+.u1-character-spells__slot-icon-frame {
+  width: 100%;
+  max-width: 42px;
+  aspect-ratio: 1;
+}
+
+.u1-character-spells__circle-head {
+  min-width: 0;
+  min-height: 70px;
+  grid-template-columns: 48px minmax(0, 1fr) max-content 14px;
+  gap: 9px;
+  padding: 9px 13px;
+}
+
+.u1-character-spells__circle-seal {
+  width: 48px;
+  height: 48px;
+}
+
+.u1-character-spells__circle-title,
+.u1-character-spells__circle-title > strong,
+.u1-character-spells__circle-title > small,
+.u1-character-spells__circle-count {
+  min-width: 0;
+}
+
+.u1-character-spells__circle-title > strong,
+.u1-character-spells__circle-title > small,
+.u1-character-spells__circle-count,
+.u1-character-spells__spell-copy > strong,
+.u1-character-spells__cast-time,
+.u1-character-spells__preparation {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.u1-character-spells__preview-row {
+  min-width: 0;
+  padding: 7px 11px 10px;
+  gap: 6px;
+}
+
+.u1-character-spells__preview-row[data-has-more] {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 50px;
+}
+
+.u1-character-spells__preview-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.u1-character-spells__expanded-grid {
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 7px;
+  padding: 9px 11px 12px;
+}
+
+.u1-character-spells__spell-entry,
+.u1-character-spells__grimoire-entry {
+  overflow: hidden;
+}
+
+.u1-character-spells__spell-card {
+  min-height: 70px;
+  overflow: hidden;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.u1-character-spells__spell-card .u1-character-spells__spell-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.u1-character-spells__spell-card .u1-character-spells__spell-copy > strong {
+  overflow-wrap: anywhere;
+}
+
+.u1-character-spells__grimoire-panel {
+  overflow: hidden;
+}
+
+.u1-character-spells__grimoire-filters {
+  min-width: 0;
+}
+
+.u1-character-spells__grimoire-filters > button,
+.u1-character-spells__grimoire-filters > label {
+  max-width: 100%;
+}
+
+.u1-character-spells__grimoire-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.u1-character-spells__cast-primary,
+.u1-character-spells__cast-options > button,
+.u1-character-spells__prepare-toggle,
+.u1-character-spells__prepare-fixed {
+  max-width: 100%;
+}
+
+@media (max-width: 359px) {
+  .u1-character-spells {
+    gap: 7px;
+  }
+
+  .u1-character-spells__slots-panel {
+    padding: 11px 8px 10px;
+  }
+
+  .u1-character-spells__slots-head {
+    gap: 6px;
+    margin-bottom: 9px;
+  }
+
+  .u1-character-spells__slots-grid {
+    gap: 2px;
+  }
+
+  .u1-character-spells__slot {
+    gap: 4px;
+  }
+
+  .u1-character-spells__slot-icon-frame {
+    max-width: 34px;
+    border-radius: 4px;
+  }
+
+  .u1-character-spells__slot > small {
+    font-size: 6px;
+  }
+
+  .u1-character-spells__slot[data-locked] > small {
+    font-size: 5px;
+  }
+
+  .u1-character-spells__circle-head {
+    min-height: 60px;
+    grid-template-columns: 38px minmax(0, 1fr) minmax(44px, auto) 12px;
+    gap: 6px;
+    padding: 7px 8px;
+  }
+
+  .u1-character-spells__circle-seal {
+    width: 38px;
+    height: 38px;
+  }
+
+  .u1-character-spells__circle-title {
+    gap: 3px;
+  }
+
+  .u1-character-spells__circle-title > strong {
+    font-size: 14px;
+  }
+
+  .u1-character-spells__circle-title > small,
+  .u1-character-spells__circle-count {
+    font-size: 6px;
+  }
+
+  .u1-character-spells__circle-count {
+    max-width: 54px;
+  }
+
+  .u1-character-spells__preview-row,
+  .u1-character-spells__preview-row[data-has-more] {
+    padding: 6px 7px 8px;
+    gap: 4px;
+  }
+
+  .u1-character-spells__preview-row[data-has-more] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 36px;
+  }
+
+  .u1-character-spells__expanded-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    padding: 7px 7px 9px;
+  }
+
+  .u1-character-spells__spell-card {
+    min-height: 62px;
+    padding: 5px;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .u1-character-spells__spell-card .u1-character-spells__spell-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .u1-character-spells__spell-copy > strong {
+    font-size: 7px;
+  }
+
+  .u1-character-spells__cast-time,
+  .u1-character-spells__preparation,
+  .u1-character-spells__spell-meta > em {
+    font-size: 5px;
+  }
+
+  .u1-character-spells__grimoire-panel {
+    padding-inline: 7px;
+  }
+
+  .u1-character-spells__grimoire-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .u1-character-spells__grimoire-reset {
+    margin-left: 0;
+  }
+}
+
+@media (min-width: 360px) and (max-width: 389px) {
+  .u1-character-spells__slots-panel {
+    padding-inline: 10px;
+  }
+
+  .u1-character-spells__slots-grid {
+    gap: 3px;
+  }
+
+  .u1-character-spells__circle-head {
+    min-height: 66px;
+    grid-template-columns: 44px minmax(0, 1fr) max-content 13px;
+    gap: 8px;
+    padding-inline: 10px;
+  }
+
+  .u1-character-spells__circle-seal {
+    width: 44px;
+    height: 44px;
+  }
+
+  .u1-character-spells__preview-row[data-has-more] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 44px;
+  }
+
+  .u1-character-spells__expanded-grid {
+    gap: 6px;
+    padding-inline: 9px;
+  }
+}
+
+@media (min-width: 390px) and (max-width: 399px) {
+  .u1-character-spells__slots-panel {
+    padding: 14px 12px 13px;
+  }
+
+  .u1-character-spells__circle-head {
+    min-height: 70px;
+  }
+
+  .u1-character-spells__preview-row {
+    min-height: 58px;
+  }
+
+  .u1-character-spells__expanded-grid {
+    gap: 7px;
+  }
+}
+
+@media (min-width: 400px) and (max-width: 430px) {
+  .u1-character-spells__slots-panel {
+    padding-inline: 13px;
+  }
+
+  .u1-character-spells__slot-icon-frame {
+    max-width: 43px;
+  }
+
+  .u1-character-spells__circle-head {
+    min-height: 72px;
+    grid-template-columns: 50px minmax(0, 1fr) max-content 14px;
+  }
+
+  .u1-character-spells__circle-seal {
+    width: 50px;
+    height: 50px;
+  }
+}
