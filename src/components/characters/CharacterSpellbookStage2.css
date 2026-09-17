@@ -1,0 +1,200 @@
+.character-spellbook-v5 {
+  min-width: 0;
+}
+
+.spellbook-reference-shell {
+  min-width: 0;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--character-line);
+  border-radius: var(--character-radius-medium);
+  background: var(--character-surface-raised);
+  overflow: hidden;
+}
+
+.spellbook-reference-shell__head {
+  min-width: 0;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.spellbook-reference-shell__title {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.spellbook-reference-shell__title small {
+  color: var(--character-text-muted);
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.spellbook-reference-shell__title h2 {
+  margin: 0;
+  color: var(--character-text-primary);
+  font-size: 15px;
+  line-height: 1.15;
+  letter-spacing: .035em;
+}
+
+.spellbook-reference-shell__identity {
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  text-align: right;
+}
+
+.spellbook-reference-shell__identity strong {
+  max-width: 130px;
+  overflow: hidden;
+  color: var(--character-text-secondary);
+  font-size: 10px;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spellbook-reference-shell__identity span {
+  color: var(--character-text-muted);
+  font-size: 9px;
+  font-weight: 680;
+}
+
+.spellbook-reference-shell__rail {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.spellbook-reference-shell__circle {
+  min-width: 0;
+  min-height: 46px;
+  padding: 5px 2px;
+  border: 1px solid var(--character-line);
+  border-radius: 10px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 2px;
+  color: var(--character-text-muted);
+  background: var(--character-surface-soft);
+  font: inherit;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, opacity 120ms ease;
+}
+
+.spellbook-reference-shell__circle > span {
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.spellbook-reference-shell__circle > strong {
+  font-size: 10px;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.spellbook-reference-shell__circle.is-available {
+  color: var(--character-text-primary);
+  border-color: var(--character-accent);
+  background: var(--character-accent-soft);
+}
+
+.spellbook-reference-shell__circle.is-active {
+  box-shadow: inset 0 0 0 1px var(--character-accent);
+  transform: translateY(-1px);
+}
+
+.spellbook-reference-shell__circle.is-locked {
+  opacity: .38;
+}
+
+.spellbook-reference-shell__circle:focus-visible {
+  outline: 2px solid var(--character-accent);
+  outline-offset: 2px;
+}
+
+.spellbook-reference-shell__summary {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.spellbook-reference-shell__summary > span {
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--character-line);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--character-text-secondary);
+  background: var(--character-surface-soft);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.spellbook-reference-shell__summary > button {
+  justify-self: end;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--character-line);
+  border-radius: 10px;
+  color: var(--character-text-primary);
+  background: var(--character-surface-soft);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 740;
+}
+
+.spellbook-reference-shell__summary > button:focus-visible {
+  outline: 2px solid var(--character-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 390px) {
+  .spellbook-reference-shell {
+    padding: 10px;
+    gap: 9px;
+  }
+
+  .spellbook-reference-shell__head {
+    gap: 8px;
+  }
+
+  .spellbook-reference-shell__title h2 {
+    font-size: 13px;
+  }
+
+  .spellbook-reference-shell__identity strong {
+    max-width: 96px;
+    font-size: 9px;
+  }
+
+  .spellbook-reference-shell__rail {
+    gap: 3px;
+  }
+
+  .spellbook-reference-shell__circle {
+    min-height: 42px;
+    border-radius: 8px;
+  }
+
+  .spellbook-reference-shell__circle > span,
+  .spellbook-reference-shell__circle > strong {
+    font-size: 8px;
+  }
+
+  .spellbook-reference-shell__summary {
+    grid-template-columns: repeat(2, auto) minmax(0, 1fr);
+  }
+}
