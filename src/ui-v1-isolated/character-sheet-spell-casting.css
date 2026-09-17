@@ -1,3 +1,5 @@
+@import "./character-sheet-spell-stage6.css";
+
 .u1-character-spells__spell-entry,
 .u1-character-spells__grimoire-entry {
   min-width: 0;
