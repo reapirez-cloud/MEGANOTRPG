@@ -11,7 +11,9 @@ import type {
   ResolvedResource,
   ResolvedSpell,
   ResolvedSpellAccess,
+  ResolvedSpellResourceOption,
 } from "../character-engine/index.ts"
+import { spendResolvedClassSpellOption } from "../lib/classResourceRuntime.ts"
 import { supabase } from "../lib/supabase.ts"
 import type { CharacterSpell } from "../types/characterSheet.ts"
 import type { SnakeAction } from "../snake-engine"
@@ -32,6 +34,7 @@ import {
 } from "./characterSheetEntityNavigation"
 import { characterSheetSpellSlotAsset } from "./characterSheetVisualAssets"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
+import "./character-sheet-spell-casting.css"
 
 type SpellCatalogMeta = {
   slug: string
@@ -69,6 +72,20 @@ type SpellView = {
 type PreparationMutationResult = {
   ok: boolean
   error?: string
+}
+
+type CastChoice = {
+  id: string
+  methodKind: string
+  castLevel: number
+  option: ResolvedSpellResourceOption | null
+  available: boolean
+}
+
+type CastFeedback = {
+  spellKey: string
+  kind: "success" | "error"
+  text: string
 }
 
 const preparationLabels: Record<PreparationState, string> = {
@@ -337,6 +354,91 @@ function detailBody(view: SpellView) {
   ].filter(Boolean).join("\n\n")
 }
 
+function castMethodLabel(kind: string) {
+  const normalized = kind.trim().toLocaleLowerCase("ru-RU")
+  if (normalized.includes("ritual") || normalized.includes("ритуал")) return "Ритуал"
+  if (normalized.includes("pact")) return "Магия договора"
+  if (normalized.includes("item")) return "Предмет"
+  return "Наложение"
+}
+
+function resourceLabel(stateKey: string, castLevel: number) {
+  const slot = stateKey.match(/^spell_slot_([1-9])$/)
+  if (slot) {
+    const level = Number(slot[1])
+    return `${roman[level] || level} круг`
+  }
+  if (stateKey === "warlock_pact_slots") {
+    return `Магия договора · ${roman[castLevel] || castLevel} круг`
+  }
+  if (stateKey.startsWith("mystic_arcanum")) {
+    return `Мистический аркан · ${roman[castLevel] || castLevel} круг`
+  }
+  return stateKey
+    .replace(/::/g, " · ")
+    .replace(/[_-]+/g, " ")
+}
+
+function castChoiceLabel(choice: CastChoice) {
+  if (!choice.option) return `${castMethodLabel(choice.methodKind)} · без расхода`
+
+  const costs = choice.option.costs.map((cost) => {
+    const pool = `${Math.max(0, Math.round(cost.current))}/${Math.max(0, Math.round(cost.max))}`
+    return `${resourceLabel(cost.stateKey, choice.castLevel)} · ${pool}`
+  })
+
+  return costs.join(" + ")
+}
+
+function resolvedCastChoices(view: SpellView): CastChoice[] {
+  const bySignature = new Map<string, CastChoice>()
+
+  for (const access of view.spell.accesses) {
+    for (const method of access.methods) {
+      if (!method.resourceOptions.length) {
+        const signature = `free:${method.kind}`
+        const choice: CastChoice = {
+          id: `${view.spell.key}:${access.key}:${method.key}:free`,
+          methodKind: method.kind,
+          castLevel: view.level,
+          option: null,
+          available: method.available,
+        }
+        const current = bySignature.get(signature)
+        if (!current || (!current.available && choice.available)) {
+          bySignature.set(signature, choice)
+        }
+        continue
+      }
+
+      for (const option of method.resourceOptions) {
+        const costSignature = option.costs
+          .map((cost) => `${cost.stateKey}:${cost.amount}`)
+          .sort()
+          .join("|")
+        const signature = `${option.castLevel}:${costSignature}`
+        const choice: CastChoice = {
+          id: `${view.spell.key}:${access.key}:${method.key}:${option.key}`,
+          methodKind: method.kind,
+          castLevel: option.castLevel,
+          option,
+          available: method.available && option.available,
+        }
+        const current = bySignature.get(signature)
+        if (!current || (!current.available && choice.available)) {
+          bySignature.set(signature, choice)
+        }
+      }
+    }
+  }
+
+  return [...bySignature.values()].sort((left, right) =>
+    left.castLevel - right.castLevel ||
+    Number(Boolean(left.option)) - Number(Boolean(right.option)) ||
+    castChoiceLabel(left).localeCompare(castChoiceLabel(right), "ru"),
+  )
+}
+
 export default function CharacterSheetSpells({
   characterId,
   contract,
@@ -378,6 +480,9 @@ export default function CharacterSheetSpells({
   const [school, setSchool] = useState("all")
   const [preparationBusyId, setPreparationBusyId] = useState<string | null>(null)
   const [preparationError, setPreparationError] = useState("")
+  const [castPickerKey, setCastPickerKey] = useState<string | null>(null)
+  const [castBusyKey, setCastBusyKey] = useState<string | null>(null)
+  const [castFeedback, setCastFeedback] = useState<CastFeedback | null>(null)
   const [catalogBySlug, setCatalogBySlug] = useState<Map<string, SpellCatalogMeta>>(
     () => new Map(),
   )
@@ -518,6 +623,7 @@ export default function CharacterSheetSpells({
     if (!views.length) {
       setExpandedLevel(null)
       setGrimoireLevel(null)
+      setCastPickerKey(null)
       return
     }
 
@@ -563,6 +669,7 @@ export default function CharacterSheetSpells({
     setExpandedLevel(level)
     setGrimoireLevel(null)
     setPreparationError("")
+    setCastPickerKey(null)
     window.requestAnimationFrame(() => {
       rootRef.current
         ?.querySelector<HTMLElement>(`[data-level="${level}"]`)
@@ -578,6 +685,7 @@ export default function CharacterSheetSpells({
     setExpandedLevel(level)
     setGrimoireLevel(level)
     setPreparationError("")
+    setCastPickerKey(null)
     window.requestAnimationFrame(() => {
       rootRef.current
         ?.querySelector<HTMLElement>(`[data-grimoire-level="${level}"]`)
@@ -629,12 +737,57 @@ export default function CharacterSheetSpells({
     }
   }
 
+  const castSpell = async (view: SpellView, choice: CastChoice) => {
+    if (!contract || !canEditPreparation || !choice.available) return
+
+    setCastBusyKey(choice.id)
+    setCastFeedback(null)
+
+    try {
+      if (choice.option) {
+        const result = await spendResolvedClassSpellOption(
+          characterId,
+          contract,
+          choice.option,
+        )
+        if (!result.ok) {
+          setCastFeedback({
+            spellKey: view.spell.key,
+            kind: "error",
+            text: result.error || "Не удалось списать ресурс заклинания.",
+          })
+          return
+        }
+      }
+
+      setCastPickerKey(null)
+      setCastFeedback({
+        spellKey: view.spell.key,
+        kind: "success",
+        text: choice.option
+          ? `Наложено · ${castChoiceLabel(choice)}`
+          : "Наложено · без расхода ресурса",
+      })
+    } catch (reason) {
+      setCastFeedback({
+        spellKey: view.spell.key,
+        kind: "error",
+        text: reason instanceof Error && reason.message
+          ? reason.message
+          : "Не удалось наложить заклинание.",
+      })
+    } finally {
+      setCastBusyKey((current) => current === choice.id ? null : current)
+    }
+  }
+
   useEffect(() => {
     if (!focusSpellKey) return
     const focused = views.find((view) => view.spell.key === focusSpellKey)
     if (focused && isStandardSpellLevel(focused.level)) {
       setExpandedLevel(focused.level)
       setGrimoireLevel(null)
+      setCastPickerKey(null)
     }
 
     const frame = window.requestAnimationFrame(() => {
@@ -664,6 +817,7 @@ export default function CharacterSheetSpells({
 
     setExpandedLevel(focusLevel)
     setGrimoireLevel(null)
+    setCastPickerKey(null)
     const frame = window.requestAnimationFrame(() => {
       rootRef.current
         ?.querySelector<HTMLElement>(`[data-level="${focusLevel}"]`)
@@ -695,6 +849,91 @@ export default function CharacterSheetSpells({
       <section className="u1-character-spells u1-character-spells--empty">
         <span>У персонажа нет доступных заклинаний.</span>
       </section>
+    )
+  }
+
+  const renderCastControls = (view: SpellView) => {
+    const choices = resolvedCastChoices(view)
+    const availableChoices = choices.filter((choice) => choice.available)
+    const pickerOpen = castPickerKey === view.spell.key
+    const busy = castBusyKey !== null && choices.some((choice) => choice.id === castBusyKey)
+    const feedback = castFeedback?.spellKey === view.spell.key ? castFeedback : null
+
+    let disabledReason = ""
+    if (!canEditPreparation) {
+      disabledReason = "Только для управляемого персонажа"
+    } else if (!choices.length) {
+      disabledReason = "Нет способа наложения"
+    } else if (!availableChoices.length) {
+      disabledReason = view.preparation === "unprepared"
+        ? "Не подготовлено"
+        : "Нет доступного ресурса"
+    }
+
+    const primaryLabel = busy
+      ? "Накладываю…"
+      : disabledReason || (availableChoices.length > 1 ? "Выбрать расход" : "Наложить")
+
+    return (
+      <div
+        className="u1-character-spells__cast"
+        data-picker={pickerOpen || undefined}
+        data-disabled={Boolean(disabledReason) || undefined}
+      >
+        <button
+          type="button"
+          className="u1-character-spells__cast-primary"
+          disabled={Boolean(disabledReason) || busy}
+          onClick={() => {
+            if (availableChoices.length === 1) {
+              void castSpell(view, availableChoices[0]!)
+              return
+            }
+            setCastFeedback(null)
+            setCastPickerKey((current) =>
+              current === view.spell.key ? null : view.spell.key,
+            )
+          }}
+        >
+          <span className="u1-character-spells__cast-glyph" aria-hidden="true" />
+          <span>{primaryLabel}</span>
+        </button>
+
+        {pickerOpen && choices.length > 1 && (
+          <div className="u1-character-spells__cast-options">
+            {choices.map((choice) => (
+              <button
+                key={choice.id}
+                type="button"
+                data-pact={
+                  choice.option?.costs.some(
+                    (cost) => cost.stateKey === "warlock_pact_slots",
+                  ) || undefined
+                }
+                disabled={!choice.available || castBusyKey !== null}
+                onClick={() => void castSpell(view, choice)}
+              >
+                <strong>
+                  {choice.castLevel > 0
+                    ? `${roman[choice.castLevel] || choice.castLevel} круг`
+                    : castMethodLabel(choice.methodKind)}
+                </strong>
+                <small>{castChoiceLabel(choice)}</small>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {feedback && (
+          <div
+            className="u1-character-spells__cast-feedback"
+            data-kind={feedback.kind}
+            role="status"
+          >
+            {feedback.text}
+          </div>
+        )}
+      </div>
     )
   }
 
@@ -746,7 +985,7 @@ export default function CharacterSheetSpells({
 
     const trigger = (
       <SnakeTrigger
-        key={grimoire ? undefined : view.spell.key}
+        key={compact ? view.spell.key : undefined}
         entity={entity}
         actions={[
           detailAction,
@@ -808,45 +1047,59 @@ export default function CharacterSheetSpells({
       </SnakeTrigger>
     )
 
-    if (!grimoire) return trigger
+    if (compact) return trigger
 
     const preparationSpellId = mutablePreparationSpellId(view)
-    const busy = preparationSpellId === preparationBusyId
+    const preparationBusy = preparationSpellId === preparationBusyId
     const mutable = Boolean(preparationSpellId)
     const editable = mutable && Boolean(onSetPrepared) && canEditPreparation
+
+    if (grimoire) {
+      return (
+        <div
+          key={view.spell.key}
+          className="u1-character-spells__grimoire-entry"
+          data-preparation={view.preparation}
+        >
+          {trigger}
+          {renderCastControls(view)}
+          {mutable ? (
+            <button
+              type="button"
+              className="u1-character-spells__prepare-toggle"
+              data-active={view.preparation === "prepared" || undefined}
+              data-busy={preparationBusy || undefined}
+              disabled={!editable || preparationBusy}
+              aria-pressed={view.preparation === "prepared"}
+              onClick={() => void setPrepared(view)}
+            >
+              {preparationBusy
+                ? "Сохраняю…"
+                : view.preparation === "prepared"
+                  ? "Убрать из подготовленных"
+                  : "Подготовить"}
+            </button>
+          ) : (
+            <span className="u1-character-spells__prepare-fixed">
+              {view.preparation === "always_prepared"
+                ? "Всегда подготовлено"
+                : view.preparation === "not_required"
+                  ? "Подготовка не требуется"
+                  : "Управляется источником"}
+            </span>
+          )}
+        </div>
+      )
+    }
 
     return (
       <div
         key={view.spell.key}
-        className="u1-character-spells__grimoire-entry"
+        className="u1-character-spells__spell-entry"
         data-preparation={view.preparation}
       >
         {trigger}
-        {mutable ? (
-          <button
-            type="button"
-            className="u1-character-spells__prepare-toggle"
-            data-active={view.preparation === "prepared" || undefined}
-            data-busy={busy || undefined}
-            disabled={!editable || busy}
-            aria-pressed={view.preparation === "prepared"}
-            onClick={() => void setPrepared(view)}
-          >
-            {busy
-              ? "Сохраняю…"
-              : view.preparation === "prepared"
-                ? "Убрать из подготовленных"
-                : "Подготовить"}
-          </button>
-        ) : (
-          <span className="u1-character-spells__prepare-fixed">
-            {view.preparation === "always_prepared"
-              ? "Всегда подготовлено"
-              : view.preparation === "not_required"
-                ? "Подготовка не требуется"
-                : "Управляется источником"}
-          </span>
-        )}
+        {renderCastControls(view)}
       </div>
     )
   }
@@ -959,6 +1212,7 @@ export default function CharacterSheetSpells({
               onClick={() => {
                 setExpandedLevel(level)
                 if (grimoireLevel !== level) setGrimoireLevel(null)
+                setCastPickerKey(null)
               }}
               aria-expanded={expanded}
               aria-controls={`u1-character-spells-content-${level}`}
@@ -1011,6 +1265,7 @@ export default function CharacterSheetSpells({
                       onClick={() => {
                         setGrimoireLevel(null)
                         setPreparationError("")
+                        setCastPickerKey(null)
                       }}
                       aria-label="Закрыть гримуар"
                     >
@@ -1117,6 +1372,7 @@ export default function CharacterSheetSpells({
                     onClick={() => {
                       setExpandedLevel(level)
                       setGrimoireLevel(null)
+                      setCastPickerKey(null)
                     }}
                     aria-label={`Показать ещё ${remaining}`}
                   >
