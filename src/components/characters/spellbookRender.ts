@@ -4,11 +4,19 @@ import { spellSlotResources } from "./spellSlots.ts"
 
 export type SpellbookMode = "prepared" | "known"
 
+export type SpellbookSlotLevel = {
+  level: number
+  available: boolean
+  current: number
+  maximum: number
+}
+
 export type SpellbookRenderModel = {
   preparedCount: number
   knownCount: number
   levels: number[]
   slotLevels: number[]
+  slotRail: SpellbookSlotLevel[]
   visibleSpells: CharacterSpell[]
 }
 
@@ -38,6 +46,23 @@ export function buildSpellbookRenderModel({
   for (const spell of spells) levelSet.add(spell.spell_level)
   for (const slot of slots) levelSet.add(slot.level)
 
+  const slotByLevel = new Map(slots.map(({ resource, level }) => {
+    const maximum = Math.max(0, Math.round(resource.max.value))
+    const current = Math.max(0, Math.min(maximum, Math.round(resource.current)))
+    return [level, { current, maximum }] as const
+  }))
+
+  const slotRail: SpellbookSlotLevel[] = Array.from({ length: 9 }, (_, index) => {
+    const level = index + 1
+    const slot = slotByLevel.get(level)
+    return {
+      level,
+      available: Boolean(slot),
+      current: slot?.current ?? 0,
+      maximum: slot?.maximum ?? 0,
+    }
+  })
+
   const preparedCount = spells.reduce(
     (count, spell) => count + (spell.prepared ? 1 : 0),
     0,
@@ -53,6 +78,7 @@ export function buildSpellbookRenderModel({
     knownCount: spells.length,
     levels: [...levelSet].sort((left, right) => left - right),
     slotLevels: slots.map((slot) => slot.level),
+    slotRail,
     visibleSpells,
   }
 }
