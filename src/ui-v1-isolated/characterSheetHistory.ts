@@ -2,6 +2,7 @@ export type CharacterSheetHistorySection =
   | "overview"
   | "features"
   | "spells"
+  | "proficiencies"
   | "biography"
 
 export type CharacterSheetHistorySnapshot =
@@ -22,6 +23,7 @@ const sections: readonly CharacterSheetHistorySection[] = [
   "overview",
   "features",
   "spells",
+  "proficiencies",
   "biography",
 ]
 

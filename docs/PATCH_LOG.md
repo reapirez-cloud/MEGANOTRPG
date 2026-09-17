@@ -11,6 +11,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Added lossless 9:16 portrait frames for all 13 supported classes. Each class now receives its frame automatically, the character avatar is strictly clipped inside the transparent opening, and the undistorted PNG is rendered above the avatar; campaign-specific frame overrides remain supported.
+
 - Fixed the UI 1.0 character-sheet black screen introduced by the shared Character Runtime hookup: persistent resource resolution now consumes the campaign access already provided by AuthGate/AuthContext instead of calling the legacy CharacterContext.
 
 - Rebuilt the player character sheet into one continuous image-led RPG surface: 16:9 character art with Bio/Diary in the image, Inventory immediately below it, a 50/50 quick-stat/ability matrix, compact class-resource rows with resource-specific marks, vertically scrollable spell-slot rows, and quiet expandable abilities/defenses. The main sheet no longer carries the old permanent tab rail; class, magic, inventory, diary and art stay available as focused deeper screens.

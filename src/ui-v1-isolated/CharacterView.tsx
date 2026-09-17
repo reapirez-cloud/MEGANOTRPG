@@ -15,6 +15,7 @@ import CharacterSheetFeatures from "./CharacterSheetFeatures"
 import CharacterSheetOverview from "./CharacterSheetOverview"
 import CharacterSheetShell from "./CharacterSheetShell"
 import CharacterSheetSpells from "./CharacterSheetSpells"
+import { characterSheetPortraitFrameUrl } from "./characterSheetVisualAssets"
 import {
   CHARACTER_INVENTORY_INTERFACE_CONTRACT,
   type CharacterSheetSection,
@@ -44,6 +45,8 @@ import { bindTelegramBackButton } from "./telegramBackButton"
 import "./character-sheet-theme.css"
 import "./character-sheet-backgrounds.css"
 import "./character-sheet-shell.css"
+import "./character-sheet-header-stage2.css"
+import "./character-sheet-header-stage3.css"
 import "./character-sheet-core.css"
 import "./character-sheet-features.css"
 import "./character-sheet-overview.css"
@@ -76,6 +79,10 @@ function classKeyFrom(
 
 function SectionPlaceholder({ section }: { section: CharacterSheetSection }) {
   const copy: Record<Exclude<CharacterSheetSection, "overview" | "features" | "spells">, { title: string; body: string }> = {
+    proficiencies: {
+      title: "Владения",
+      body: "Владения, языки и чувства остаются частью листа и открываются в нижней области. Детальную раскладку этого раздела подключим отдельным этапом.",
+    },
     biography: {
       title: "Биография",
       body: "Биография остаётся частью листа и заменяет только нижнюю область, не открывая отдельный экран.",
@@ -132,6 +139,34 @@ export default function CharacterView({
     ),
     [control.assignments, control.character?.characterClass, control.templates],
   )
+
+  const identityMeta = useMemo(() => {
+    const subclass = control.assignments
+      .map((assignment) =>
+        control.templates.find((template) => template.id === assignment.template_id) || null,
+      )
+      .find((template) => template?.kind === "subclass")
+      ?.name.trim() || ""
+
+    const assignedSubrace = control.assignments
+      .map((assignment) =>
+        control.templates.find((template) => template.id === assignment.template_id) || null,
+      )
+      .find((template) => template?.kind === "subrace")
+      ?.name.trim() || ""
+
+    const assignedRace = control.assignments
+      .map((assignment) =>
+        control.templates.find((template) => template.id === assignment.template_id) || null,
+      )
+      .find((template) => template?.kind === "race")
+      ?.name.trim() || ""
+
+    return {
+      subclass,
+      race: control.sheet?.race?.trim() || assignedSubrace || assignedRace,
+    }
+  }, [control.assignments, control.sheet?.race, control.templates])
 
   const classSheetBackground = referenceMedia.get(
     classReferenceArtSlot(classKey, "sheet_background"),
@@ -796,10 +831,14 @@ export default function CharacterView({
       characterName={character.name}
       characterClass={character.characterClass}
       level={character.level}
+      race={identityMeta.race}
+      subclass={identityMeta.subclass}
       classKey={classKey}
       portraitUrl={portraitUrl}
       portraitPresentation={portraitPresentation}
-      portraitFrameUrl={classPortraitFrame?.url || null}
+      portraitFrameUrl={
+        classPortraitFrame?.url || characterSheetPortraitFrameUrl(classKey)
+      }
       panelArtUrl={classSheetBackground?.url || null}
       panelArtPresentation={classSheetBackground?.presentation || null}
       dead={character.lifeState === "dead"}

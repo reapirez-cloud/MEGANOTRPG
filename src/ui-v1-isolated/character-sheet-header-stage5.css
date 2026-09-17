@@ -1,0 +1,110 @@
+/*
+ * Character Sheet Header · Stage 5
+ * Mobile QA hardening for the approved header composition.
+ *
+ * This layer does not redesign Stages 1–4. It only protects their geometry at
+ * the target Telegram widths and under ugly-but-real content: long names,
+ * missing subclass data and missing portrait art.
+ */
+
+.u1-character-sheet__masthead,
+.u1-character-sheet__portrait-cell,
+.u1-character-sheet__identity,
+.u1-character-sheet__rail {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.u1-character-sheet__masthead {
+  contain: layout paint;
+}
+
+/* Long character names may use two lines, but never get to widen or move the
+ * 30% identity track. A single absurdly long token must still break safely. */
+.u1-character-sheet__identity > .u1-character-sheet__identity-name {
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: auto;
+}
+
+.u1-character-sheet__identity-class,
+.u1-character-sheet__identity-detail,
+.u1-character-sheet__identity-level,
+.u1-character-sheet__identity-inspiration,
+.u1-character-sheet__identity-inspiration-label {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+/* Missing metadata keeps the hierarchy intact instead of collapsing the middle
+ * track or changing the position of level/inspiration rows. */
+.u1-character-sheet__identity-detail[data-empty] {
+  opacity: .72;
+}
+
+/* A character without portrait media still receives a deliberate neutral
+ * aperture. The class frame/background remains decorative and the empty image
+ * can never expose a broken-image treatment or affect geometry. */
+.u1-character-sheet:not([data-has-portrait])
+  .u1-character-sheet__portrait-frame-stack .u1-character-sheet__portrait-media,
+.u1-character-sheet:not([data-has-portrait])
+  .u1-character-sheet__portrait > .u1-character-sheet__portrait-media {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255,255,255,.035), transparent 36%),
+    linear-gradient(180deg, rgba(32,35,37,.72), rgba(15,17,18,.9));
+}
+
+.u1-character-sheet:not([data-has-portrait])
+  .u1-character-sheet__portrait-media > img {
+  opacity: 0;
+}
+
+/* QA target: Telegram/mobile widths used by the sheet review. The rail is kept
+ * intentionally thin, so typography and icon columns are tightened just enough
+ * to guarantee that the canonical longest label, “Заклинания”, remains whole. */
+@media (min-width: 360px) and (max-width: 412px) {
+  .u1-character-sheet__identity {
+    padding-inline: clamp(4px, 1.15vw, 5px);
+  }
+
+  .u1-character-sheet__identity > .u1-character-sheet__identity-name {
+    font-size: clamp(14px, 3.8vw, 16px);
+    line-height: 1;
+  }
+
+  .u1-character-sheet__identity-separator {
+    margin-block: clamp(4px, 1.15vw, 5px);
+  }
+
+  .u1-character-sheet__rail-row {
+    grid-template-columns:
+      clamp(20px, 5.35vw, 22px)
+      minmax(0, 1fr)
+      7px;
+    gap: clamp(2px, .8vw, 3px);
+    padding-inline: 1px;
+  }
+
+  .u1-character-sheet__nav-icon {
+    width: clamp(20px, 5.35vw, 22px);
+    height: clamp(20px, 5.35vw, 22px);
+  }
+
+  .u1-character-sheet__rail-row strong {
+    overflow: visible;
+    font-size: clamp(8.25px, 2.15vw, 9px);
+    letter-spacing: -.025em;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  .u1-character-sheet__rail-chevron {
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u1-character-sheet__rail-list {
+    scroll-behavior: auto;
+  }
+}

@@ -8,7 +8,9 @@ import {
   resolveCharacterSheetClassKey,
 } from "../src/ui-v1-isolated/characterSheetClassKey.ts"
 import {
+  CHARACTER_SHEET_AUTHORED_CLASS_KEYS,
   characterSheetClassResourceAsset,
+  characterSheetPortraitFrameUrl,
   characterSheetSpellSlotAsset,
 } from "../src/ui-v1-isolated/characterSheetVisualAssets.ts"
 
@@ -43,6 +45,37 @@ test("William Kidd cleric assignment resolves to cleric instead of fallback", ()
     characterSheetSpellSlotAsset(classKey).url,
     "/ui-v1/character-sheet/icons/class-spell-slots.png",
   )
+})
+
+test("every authored class ships a lossless portrait frame fallback", () => {
+  for (const classKey of CHARACTER_SHEET_AUTHORED_CLASS_KEYS) {
+    const url = characterSheetPortraitFrameUrl(classKey)
+    assert.equal(
+      url,
+      `/ui-v1/character-sheet/portrait-frames/${classKey}.png`,
+    )
+    assert.equal(
+      fs.existsSync(`public${url}`),
+      true,
+      `missing portrait frame for ${classKey}`,
+    )
+  }
+
+  assert.equal(characterSheetPortraitFrameUrl("default"), null)
+})
+
+test("framed avatars are clipped beneath a non-distorted PNG overlay", () => {
+  const shell = fs.readFileSync(
+    "src/ui-v1-isolated/character-sheet-shell.css",
+    "utf8",
+  )
+
+  assert.match(shell, /portrait-frame-stack[\s\S]*aspect-ratio:\s*9\s*\/\s*16/)
+  assert.match(
+    shell,
+    /portrait-frame-stack \.u1-character-sheet__portrait-media[\s\S]*inset:\s*6% 10\.5% 6\.5%/,
+  )
+  assert.match(shell, /u1-character-sheet__portrait-frame[\s\S]*object-fit:\s*contain/)
 })
 
 test("background art owns the palette while panels remain neutral dark glass", () => {

@@ -22,6 +22,15 @@ function CharacterSheetNavIcon({ id }: { id: string }) {
     focusable: false,
   }
 
+  if (id === "overview") {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="8" r="3.1" />
+        <path d="M5.8 19.25c.55-4.1 2.6-6.15 6.2-6.15s5.65 2.05 6.2 6.15" />
+      </svg>
+    )
+  }
+
   if (id === "features") {
     return (
       <svg {...common}>
@@ -37,6 +46,16 @@ function CharacterSheetNavIcon({ id }: { id: string }) {
         <path d="M5 6.35c2.55-.7 4.6-.25 7 1.25v10.05c-2.4-1.5-4.45-1.95-7-1.25V6.35Z" />
         <path d="M19 6.35c-2.55-.7-4.6-.25-7 1.25v10.05c2.4-1.5 4.45-1.95 7-1.25V6.35Z" />
         <path d="m16.85 2.95.45 1.2 1.2.45-1.2.45-.45 1.2-.45-1.2-1.2-.45 1.2-.45.45-1.2Z" />
+      </svg>
+    )
+  }
+
+  if (id === "proficiencies") {
+    return (
+      <svg {...common}>
+        <path d="m5.1 4.2 5.55 5.55M4.3 3.4l1.6 4.25 2.25-2.25L4.3 3.4Z" />
+        <path d="m18.9 4.2-5.55 5.55M19.7 3.4l-1.6 4.25-2.25-2.25 3.85-2Z" />
+        <path d="m9.1 11.3-4.45 7.15M14.9 11.3l4.45 7.15" />
       </svg>
     )
   }
@@ -74,6 +93,8 @@ export type CharacterSheetShellProps = {
   characterName: string
   characterClass: string
   level: number
+  race?: string | null
+  subclass?: string | null
   classKey: string
   portraitUrl: string | null
   portraitPresentation: MediaPresentation | null
@@ -95,6 +116,8 @@ export default function CharacterSheetShell({
   characterName,
   characterClass,
   level,
+  race = null,
+  subclass = null,
   classKey,
   portraitUrl,
   portraitPresentation,
@@ -216,30 +239,78 @@ export default function CharacterSheetShell({
                 className="u1-character-sheet__hero-class-art"
                 aria-hidden="true"
               />
-              <CampaignMediaFrame
-                className="u1-character-sheet__portrait-media"
-                value={portraitUrl}
-                presentation={portraitPresentation}
-                alt=""
-              />
               {portraitFrameUrl ? (
-                <img
-                  className="u1-character-sheet__portrait-frame"
-                  src={portraitFrameUrl}
+                <span className="u1-character-sheet__portrait-frame-stack">
+                  <CampaignMediaFrame
+                    className="u1-character-sheet__portrait-media"
+                    value={portraitUrl}
+                    presentation={portraitPresentation}
+                    alt=""
+                  />
+                  <img
+                    className="u1-character-sheet__portrait-frame"
+                    src={portraitFrameUrl}
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                  />
+                </span>
+              ) : (
+                <CampaignMediaFrame
+                  className="u1-character-sheet__portrait-media"
+                  value={portraitUrl}
+                  presentation={portraitPresentation}
                   alt=""
-                  aria-hidden="true"
-                  draggable={false}
                 />
-              ) : null}
+              )}
               <span className="u1-character-sheet__portrait-shade" aria-hidden="true" />
               <span className="u1-character-sheet__hero-haze" aria-hidden="true" />
               <span className="u1-character-sheet__identity">
-                <strong>{characterName}</strong>
-                <small>
+                <strong className="u1-character-sheet__identity-name">
+                  {characterName}
+                </strong>
+                <span className="u1-character-sheet__identity-class">
                   {characterClass || "Без класса"}
-                  {" · "}
-                  ур. {level}
-                </small>
+                </span>
+                <span
+                  className="u1-character-sheet__identity-detail u1-character-sheet__identity-race"
+                  data-empty={race ? undefined : true}
+                >
+                  {race || "Раса —"}
+                </span>
+                <span
+                  className="u1-character-sheet__identity-separator"
+                  aria-hidden="true"
+                />
+                <span
+                  className="u1-character-sheet__identity-detail u1-character-sheet__identity-subclass"
+                  data-empty={subclass ? undefined : true}
+                >
+                  {subclass || "Подкласс —"}
+                </span>
+                <span
+                  className="u1-character-sheet__identity-separator"
+                  aria-hidden="true"
+                />
+                <span className="u1-character-sheet__identity-level">
+                  Уровень {level}
+                </span>
+                <span
+                  className="u1-character-sheet__identity-separator"
+                  aria-hidden="true"
+                />
+                <span className="u1-character-sheet__identity-inspiration">
+                  <span className="u1-character-sheet__identity-inspiration-label">
+                    Вдохновение
+                  </span>
+                  <span
+                    className="u1-character-sheet__identity-inspiration-slots"
+                    aria-label="Два слота вдохновения. Механика будет подключена отдельно."
+                  >
+                    <i aria-hidden="true" />
+                    <i aria-hidden="true" />
+                  </span>
+                </span>
               </span>
             </button>
           </SnakeTrigger>

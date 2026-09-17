@@ -20,6 +20,9 @@ const FALLBACK_RESOURCE_ATLAS =
 export const CHARACTER_SHEET_SPENT_CROSS_ASSET =
   "/ui-v1/character-sheet/icons/spent-resource-cross.png"
 
+const CLASS_PORTRAIT_FRAME_ROOT =
+  "/ui-v1/character-sheet/portrait-frames"
+
 function atlasAsset(
   url: string,
   columns: number,
@@ -59,6 +62,15 @@ export const CHARACTER_SHEET_AUTHORED_CLASS_KEYS = [
   "artificer",
   "ranger",
 ] as const
+
+export const CHARACTER_SHEET_CLASS_PORTRAIT_FRAMES: Readonly<
+  Record<string, string>
+> = Object.fromEntries(
+  CHARACTER_SHEET_AUTHORED_CLASS_KEYS.map((classKey) => [
+    classKey,
+    `${CLASS_PORTRAIT_FRAME_ROOT}/${classKey}.png`,
+  ]),
+)
 
 export const CHARACTER_SHEET_CLASS_RESOURCE_ASSETS: Readonly<
   Record<string, CharacterSheetVisualAsset>
@@ -157,6 +169,10 @@ export function characterSheetSpellSlotAsset(classKey: string) {
     CHARACTER_SHEET_CLASS_SPELL_SLOT_ASSETS[classKey] ||
     FALLBACK_SPELL_SLOT_ASSET
   )
+}
+
+export function characterSheetPortraitFrameUrl(classKey: string) {
+  return CHARACTER_SHEET_CLASS_PORTRAIT_FRAMES[classKey] || null
 }
 
 export function characterSheetResourceAsset(stateKey: string) {
