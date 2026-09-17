@@ -4,6 +4,8 @@ import { spellSlotResources } from "./spellSlots.ts"
 
 export type SpellbookMode = "prepared" | "known"
 
+export const SPELLBOOK_CANTRIP_PREVIEW_LIMIT = 4
+
 export type SpellbookSlotCell = {
   index: number
   filled: boolean
@@ -18,13 +20,23 @@ export type SpellbookSlotLevel = {
   cells: SpellbookSlotCell[]
 }
 
+export type SpellbookCantripProjection = {
+  count: number
+  expanded: boolean
+  previewSpells: CharacterSpell[]
+  visibleSpells: CharacterSpell[]
+  hiddenCount: number
+}
+
 export type SpellbookRenderModel = {
   preparedCount: number
   knownCount: number
   levels: number[]
   slotLevels: number[]
   slotRail: SpellbookSlotLevel[]
+  cantrips: SpellbookCantripProjection
   visibleSpells: CharacterSpell[]
+  visibleLeveledSpells: CharacterSpell[]
 }
 
 type BuildSpellbookRenderModelInput = {
@@ -38,8 +50,8 @@ type BuildSpellbookRenderModelInput = {
  * Pure render projection for the spell tab.
  *
  * Keep UI components dumb: the same resolved resources drive the slot panel,
- * level filters and spell list so a visual redesign cannot quietly invent a
- * second interpretation of character state.
+ * cantrip section, level filters and spell list so a visual redesign cannot
+ * quietly invent a second interpretation of character state.
  */
 export function buildSpellbookRenderModel({
   resources,
@@ -84,10 +96,20 @@ export function buildSpellbookRenderModel({
     0,
   )
 
-  const visibleSpells = spells.filter((spell) =>
-    (mode !== "prepared" || spell.prepared) &&
-    (selectedLevel === null || spell.spell_level === selectedLevel),
+  const modeSpells = spells.filter((spell) => mode !== "prepared" || spell.prepared)
+  const cantripSpells = modeSpells.filter((spell) => spell.spell_level === 0)
+  const cantripExpanded = selectedLevel === 0
+  const cantripPreview = cantripSpells.slice(0, SPELLBOOK_CANTRIP_PREVIEW_LIMIT)
+  const cantripVisible = selectedLevel === null
+    ? cantripPreview
+    : cantripExpanded
+      ? cantripSpells
+      : []
+
+  const visibleSpells = modeSpells.filter((spell) =>
+    selectedLevel === null || spell.spell_level === selectedLevel,
   )
+  const visibleLeveledSpells = visibleSpells.filter((spell) => spell.spell_level > 0)
 
   return {
     preparedCount,
@@ -95,6 +117,14 @@ export function buildSpellbookRenderModel({
     levels: [...levelSet].sort((left, right) => left - right),
     slotLevels: slots.map((slot) => slot.level),
     slotRail,
+    cantrips: {
+      count: cantripSpells.length,
+      expanded: cantripExpanded,
+      previewSpells: cantripPreview,
+      visibleSpells: cantripVisible,
+      hiddenCount: Math.max(0, cantripSpells.length - cantripPreview.length),
+    },
     visibleSpells,
+    visibleLeveledSpells,
   }
 }
