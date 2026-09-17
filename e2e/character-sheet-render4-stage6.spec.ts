@@ -85,7 +85,7 @@ test("Render 4 fits hero, rail, 50/50 core and overview at 360/390/412", async (
     expect(metrics.sheetRight).toBeLessThanOrEqual(width + 0.5)
     expect(Math.abs(metrics.heroHeight - expectedHero)).toBeLessThanOrEqual(1.5)
 
-    expect(metrics.railRows).toBe(4)
+    expect(metrics.railRows).toBe(6)
     expect(metrics.railScrollHeight).toBeGreaterThan(metrics.railClientHeight)
     expect(Math.abs(metrics.railClientHeight - metrics.railRowHeight * 3)).toBeLessThanOrEqual(1.5)
     expect(metrics.identityRight).toBeLessThanOrEqual(metrics.railLeft + 0.5)
