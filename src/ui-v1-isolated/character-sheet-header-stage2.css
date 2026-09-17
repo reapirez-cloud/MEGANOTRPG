@@ -1,6 +1,6 @@
 /*
  * Character Sheet Header · Stage 2
- * Final identity composition inside the middle 30% track locked by Stage 1.
+ * Identity composition inside the middle 30% track locked by Stage 1.
  * No character mechanics live here: inspiration is presentation-only until its
  * canonical resource/state is implemented.
  */
@@ -9,7 +9,7 @@
   z-index: 4;
   gap: 0;
   align-content: center;
-  padding-block: clamp(10px, 3vw, 16px);
+  padding-block: clamp(9px, 2.6vw, 13px);
   background:
     linear-gradient(90deg, rgba(24, 27, 29, .72), rgba(24, 27, 29, .42) 72%, rgba(24, 27, 29, .18));
   box-shadow:
@@ -24,8 +24,8 @@
   max-width: 100%;
   color: var(--cv-text);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(15px, 4.25vw, 20px);
-  line-height: .96;
+  font-size: clamp(15px, 4.15vw, 20px);
+  line-height: .98;
   font-weight: 400;
   letter-spacing: -.025em;
   white-space: normal;
@@ -35,59 +35,55 @@
   text-shadow: 0 2px 14px rgba(0, 0, 0, .58);
 }
 
-.u1-character-sheet__identity-classline {
+.u1-character-sheet__identity-class,
+.u1-character-sheet__identity-detail,
+.u1-character-sheet__identity-level {
+  display: block;
+  overflow: hidden;
   min-width: 0;
-  margin-top: 7px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 5px;
+  max-width: 100%;
+  color: var(--cv-text-soft);
+  font-family: Georgia, "Times New Roman", serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .54);
 }
 
 .u1-character-sheet__identity-class {
-  overflow: hidden;
+  margin-top: clamp(5px, 1.5vw, 7px);
+  font-size: clamp(9px, 2.5vw, 11px);
+  line-height: 1.08;
+}
+
+.u1-character-sheet__identity-race {
+  margin-top: 3px;
+  color: var(--cv-text-muted);
+  font-size: clamp(8px, 2.25vw, 10px);
+  line-height: 1.08;
+}
+
+.u1-character-sheet__identity-subclass {
   color: var(--cv-text-soft);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(9px, 2.55vw, 11px);
-  line-height: 1.05;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, .56);
+  font-size: clamp(9px, 2.45vw, 11px);
+  line-height: 1.12;
 }
 
 .u1-character-sheet__identity-level {
-  color: var(--cv-text-muted);
-  font-size: clamp(7px, 1.9vw, 8px);
-  line-height: 1;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  white-space: nowrap;
+  color: var(--cv-text-soft);
+  font-size: clamp(10px, 2.7vw, 12px);
+  line-height: 1.05;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .u1-character-sheet__identity-separator {
   width: 100%;
   height: 1px;
-  margin: 7px 0 6px;
+  margin: clamp(5px, 1.45vw, 7px) 0;
   display: block;
-  background: linear-gradient(90deg, var(--cv-line), var(--cv-line-soft) 68%, transparent);
-}
-
-.u1-character-sheet__identity-detail {
-  display: block;
-  overflow: hidden;
-  min-width: 0;
-  color: var(--cv-text-soft);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(8px, 2.25vw, 10px);
-  line-height: 1.22;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, .52);
-}
-
-.u1-character-sheet__identity-detail + .u1-character-sheet__identity-detail {
-  margin-top: 3px;
+  background:
+    linear-gradient(90deg, var(--cv-line), var(--cv-line-soft) 68%, transparent);
 }
 
 .u1-character-sheet__identity-detail[data-empty] {
@@ -98,32 +94,35 @@
 .u1-character-sheet__identity-inspiration {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 5px;
+  justify-items: start;
+  gap: clamp(4px, 1.15vw, 6px);
 }
 
 .u1-character-sheet__identity-inspiration-label {
   overflow: hidden;
-  color: var(--cv-text-faint);
-  font-size: clamp(6px, 1.75vw, 7px);
+  max-width: 100%;
+  color: var(--cv-text-muted);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(8px, 2.2vw, 10px);
   line-height: 1;
-  font-weight: 760;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .52);
 }
 
 .u1-character-sheet__identity-inspiration-slots {
   display: inline-grid;
-  grid-template-columns: repeat(2, 11px);
-  gap: 4px;
+  grid-template-columns: repeat(2, clamp(10px, 2.75vw, 12px));
+  gap: clamp(5px, 1.4vw, 7px);
+  padding-left: 2px;
 }
 
 .u1-character-sheet__identity-inspiration-slots > i {
-  width: 11px;
-  height: 11px;
+  width: clamp(10px, 2.75vw, 12px);
+  height: clamp(10px, 2.75vw, 12px);
   display: block;
   border: 1px solid var(--cv-accent-line);
   background:
@@ -137,29 +136,22 @@
 
 @media (max-width: 359px) {
   .u1-character-sheet__identity {
-    padding-block: 9px;
+    padding-block: 7px;
   }
 
-  .u1-character-sheet__identity-classline {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2px;
+  .u1-character-sheet__identity-class {
+    margin-top: 4px;
   }
 
-  .u1-character-sheet__identity-level {
-    font-size: 7px;
+  .u1-character-sheet__identity-race {
+    margin-top: 2px;
   }
 
   .u1-character-sheet__identity-separator {
-    margin-block: 5px;
+    margin-block: 4px;
   }
 
-  .u1-character-sheet__identity-inspiration-slots {
-    grid-template-columns: repeat(2, 10px);
+  .u1-character-sheet__identity-inspiration {
     gap: 3px;
-  }
-
-  .u1-character-sheet__identity-inspiration-slots > i {
-    width: 10px;
-    height: 10px;
   }
 }
