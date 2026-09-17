@@ -17,6 +17,7 @@ import { buildSpellbookRenderModel, type SpellbookMode } from "./spellbookRender
 import "./CharacterSpellbookStage2.css"
 import "./CharacterSpellbookStage3.css"
 import "./CharacterSpellbookStage4.css"
+import "./CharacterSpellbookStage5.css"
 
 type Props = {
   sheet: CharacterSheet
@@ -62,6 +63,10 @@ function levelName(level: number) {
   return level === 0 ? "Заговор" : `${level} уровень`
 }
 
+function compactSpellFacts(spell: CharacterSpell) {
+  return buildSpellMiniIcons(spell).filter((item) => item.kind !== "prepared")
+}
+
 export default function CharacterSpellbook(props: Props) {
   const {
     sheet,
@@ -102,8 +107,11 @@ export default function CharacterSpellbook(props: Props) {
     knownCount,
     levels,
     slotRail,
-    visibleSpells,
+    cantrips,
+    visibleLeveledSpells,
   } = renderModel
+  const cantripSectionVisible = selectedLevel === null || selectedLevel === 0
+  const hasVisibleSpellContent = cantrips.visibleSpells.length > 0 || visibleLeveledSpells.length > 0
 
   const spellHeader = (
     <section className="spellbook-reference-shell" aria-label="Ячейки заклинаний">
@@ -191,11 +199,51 @@ export default function CharacterSpellbook(props: Props) {
         <button type="button" role="tab" aria-selected={mode === "known"} className={mode === "known" ? "is-active" : ""} onClick={() => setMode("known")}>Изучено <span>{knownCount}</span></button>
       </div>
 
+      {cantripSectionVisible && (
+        <section className={`spellbook-cantrips${cantrips.expanded ? " is-expanded" : ""}`} aria-label="Заговоры">
+          <button
+            className="spellbook-cantrips__head"
+            type="button"
+            aria-expanded={cantrips.expanded}
+            onClick={() => onSelectedLevelChange(cantrips.expanded ? null : 0)}
+          >
+            <span className="spellbook-cantrips__rune" aria-hidden="true">∞</span>
+            <span className="spellbook-cantrips__heading">
+              <small>0 круг</small>
+              <strong>ЗАГОВОРЫ</strong>
+            </span>
+            <span className="spellbook-cantrips__count">
+              <b>{cantrips.count}</b>
+              <small>{cantrips.expanded ? "открыто" : "известно"}</small>
+            </span>
+            <span className="spellbook-cantrips__toggle" aria-hidden="true">⌄</span>
+          </button>
+
+          {cantrips.visibleSpells.length > 0 ? (
+            <div className="spellbook-cantrips__preview">
+              {cantrips.visibleSpells.map((spell) => (
+                <button className="spellbook-cantrips__spell" type="button" key={spell.id} onClick={() => setSelectedSpell(spell)}>
+                  <span className="spellbook-cantrips__spell-rune" aria-hidden="true">∞</span>
+                  <span className="spellbook-cantrips__spell-copy">
+                    <strong>{spell.name}</strong>
+                    {spell.school && <small>{spell.school}</small>}
+                    <SpellMiniIconRow items={compactSpellFacts(spell)} compact />
+                  </span>
+                  <span className="spellbook-cantrips__spell-chevron" aria-hidden="true">›</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="spellbook-cantrips__empty">В этом режиме заговоров нет.</div>
+          )}
+        </section>
+      )}
+
       <div className="spellbook-v3__levels" aria-label="Фильтр по уровню">
         <button type="button" className={selectedLevel === null ? "is-active" : ""} onClick={() => onSelectedLevelChange(null)}>Все</button>
-        {levels.map((level) => (
+        {levels.filter((level) => level > 0).map((level) => (
           <button type="button" key={level} className={selectedLevel === level ? "is-active" : ""} onClick={() => onSelectedLevelChange(level)}>
-            {level === 0 ? "Заговоры" : level}
+            {level}
           </button>
         ))}
       </div>
@@ -203,14 +251,14 @@ export default function CharacterSpellbook(props: Props) {
       {error && <CharacterSectionState compact kind="error" title="Заклинания не обновились" detail={error} />}
 
       <div className="spellbook-v3__list">
-        {visibleSpells.map((spell) => (
+        {visibleLeveledSpells.map((spell) => (
           <article className="spellbook-v3__spell" key={spell.id}>
             <button className="spellbook-v3__spell-main" type="button" onClick={() => setSelectedSpell(spell)}>
-              <span className="spellbook-v3__level-rune">{spell.spell_level === 0 ? "∞" : spell.spell_level}</span>
+              <span className="spellbook-v3__level-rune">{spell.spell_level}</span>
               <span className="spellbook-v3__spell-copy">
                 <strong>{spell.name}</strong>
                 {spell.school && <small className="spellbook-v3__school">{spell.school}</small>}
-                <SpellMiniIconRow items={buildSpellMiniIcons(spell).filter((item) => item.kind !== "prepared")} compact />
+                <SpellMiniIconRow items={compactSpellFacts(spell)} compact />
               </span>
               <span className="spellbook-v3__chevron" aria-hidden="true">›</span>
             </button>
@@ -234,7 +282,7 @@ export default function CharacterSpellbook(props: Props) {
         ))}
       </div>
 
-      {visibleSpells.length === 0 && (
+      {!hasVisibleSpellContent && (
         <CharacterSectionState
           compact
           kind="empty"
