@@ -18,6 +18,7 @@ import "./CharacterSpellbookStage2.css"
 import "./CharacterSpellbookStage3.css"
 import "./CharacterSpellbookStage4.css"
 import "./CharacterSpellbookStage5.css"
+import "./CharacterSpellbookStage6.css"
 
 type Props = {
   sheet: CharacterSheet
@@ -105,13 +106,12 @@ export default function CharacterSpellbook(props: Props) {
   const {
     preparedCount,
     knownCount,
-    levels,
     slotRail,
     cantrips,
-    visibleLeveledSpells,
+    levelSections,
   } = renderModel
   const cantripSectionVisible = selectedLevel === null || selectedLevel === 0
-  const hasVisibleSpellContent = cantrips.visibleSpells.length > 0 || visibleLeveledSpells.length > 0
+  const hasModeSpellContent = cantrips.count > 0 || levelSections.some((section) => section.spellCount > 0)
 
   const spellHeader = (
     <section className="spellbook-reference-shell" aria-label="Ячейки заклинаний">
@@ -239,55 +239,96 @@ export default function CharacterSpellbook(props: Props) {
         </section>
       )}
 
-      <div className="spellbook-v3__levels" aria-label="Фильтр по уровню">
-        <button type="button" className={selectedLevel === null ? "is-active" : ""} onClick={() => onSelectedLevelChange(null)}>Все</button>
-        {levels.filter((level) => level > 0).map((level) => (
-          <button type="button" key={level} className={selectedLevel === level ? "is-active" : ""} onClick={() => onSelectedLevelChange(level)}>
-            {level}
-          </button>
-        ))}
-      </div>
-
       {error && <CharacterSectionState compact kind="error" title="Заклинания не обновились" detail={error} />}
 
-      <div className="spellbook-v3__list">
-        {visibleLeveledSpells.map((spell) => (
-          <article className="spellbook-v3__spell" key={spell.id}>
-            <button className="spellbook-v3__spell-main" type="button" onClick={() => setSelectedSpell(spell)}>
-              <span className="spellbook-v3__level-rune">{spell.spell_level}</span>
-              <span className="spellbook-v3__spell-copy">
-                <strong>{spell.name}</strong>
-                {spell.school && <small className="spellbook-v3__school">{spell.school}</small>}
-                <SpellMiniIconRow items={compactSpellFacts(spell)} compact />
+      <div className="spellbook-level-accordions" aria-label="Заклинания по кругам">
+        {levelSections.map((section) => (
+          <section
+            className={`spellbook-level-panel${section.expanded ? " is-expanded" : ""}${section.slot.depleted ? " is-depleted" : ""}`}
+            key={section.level}
+          >
+            <button
+              className="spellbook-level-panel__head"
+              type="button"
+              aria-expanded={section.expanded}
+              aria-controls={`spellbook-level-${section.level}`}
+              onClick={() => onSelectedLevelChange(section.expanded ? null : section.level)}
+            >
+              <span className="spellbook-level-panel__rune" aria-hidden="true">{section.level}</span>
+              <span className="spellbook-level-panel__heading">
+                <small>{section.level} круг</small>
+                <strong>ЗАКЛИНАНИЯ {section.level} КРУГА</strong>
               </span>
-              <span className="spellbook-v3__chevron" aria-hidden="true">›</span>
+              <span className="spellbook-level-panel__count">
+                <b>{section.spellCount}</b>
+                <small>{mode === "prepared" ? "подгот." : "изучено"}</small>
+              </span>
+              <span className={`spellbook-level-panel__slots${section.slot.available ? "" : " is-none"}`}>
+                {section.slot.available ? (
+                  <>
+                    <span className="spellbook-level-panel__slot-cells" aria-hidden="true">
+                      {section.slot.cells.map((cell) => <i key={cell.index} className={cell.filled ? "is-filled" : ""} />)}
+                    </span>
+                    <small>{section.slot.current}/{section.slot.maximum} яч.</small>
+                  </>
+                ) : (
+                  <small>без ячеек</small>
+                )}
+              </span>
+              <span className="spellbook-level-panel__toggle" aria-hidden="true">⌄</span>
             </button>
-            <div className="spellbook-v3__spell-actions">
-              {canChooseSpells ? (
-                <button
-                  type="button"
-                  className={spell.prepared ? "spellbook-v3__prepare is-prepared" : "spellbook-v3__prepare"}
-                  aria-pressed={spell.prepared}
-                  disabled={actionId === `prepare:${spell.id}`}
-                  onClick={() => onTogglePrepared(spell)}
-                >
-                  <span aria-hidden="true">{spell.prepared ? "◆" : "◇"}</span>
-                  {spell.prepared ? "Подготовлено" : "Подготовить"}
-                </button>
-              ) : spell.prepared ? (
-                <span className="spellbook-v3__prepared-label">◆ Подготовлено</span>
-              ) : <span />}
-            </div>
-          </article>
+
+            {section.expanded && (
+              <div className="spellbook-level-panel__body" id={`spellbook-level-${section.level}`}>
+                {section.spells.length > 0 ? (
+                  <div className="spellbook-level-panel__list">
+                    {section.spells.map((spell) => (
+                      <article className="spellbook-v3__spell" key={spell.id}>
+                        <button className="spellbook-v3__spell-main" type="button" onClick={() => setSelectedSpell(spell)}>
+                          <span className="spellbook-v3__level-rune">{spell.spell_level}</span>
+                          <span className="spellbook-v3__spell-copy">
+                            <strong>{spell.name}</strong>
+                            {spell.school && <small className="spellbook-v3__school">{spell.school}</small>}
+                            <SpellMiniIconRow items={compactSpellFacts(spell)} compact />
+                          </span>
+                          <span className="spellbook-v3__chevron" aria-hidden="true">›</span>
+                        </button>
+                        <div className="spellbook-v3__spell-actions">
+                          {canChooseSpells ? (
+                            <button
+                              type="button"
+                              className={spell.prepared ? "spellbook-v3__prepare is-prepared" : "spellbook-v3__prepare"}
+                              aria-pressed={spell.prepared}
+                              disabled={actionId === `prepare:${spell.id}`}
+                              onClick={() => onTogglePrepared(spell)}
+                            >
+                              <span aria-hidden="true">{spell.prepared ? "◆" : "◇"}</span>
+                              {spell.prepared ? "Подготовлено" : "Подготовить"}
+                            </button>
+                          ) : spell.prepared ? (
+                            <span className="spellbook-v3__prepared-label">◆ Подготовлено</span>
+                          ) : <span />}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="spellbook-level-panel__empty">
+                    {mode === "prepared" ? "На этом круге нет подготовленных заклинаний." : "На этом круге нет изученных заклинаний."}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
         ))}
       </div>
 
-      {!hasVisibleSpellContent && (
+      {selectedLevel === null && !hasModeSpellContent && (
         <CharacterSectionState
           compact
           kind="empty"
           title={mode === "prepared" ? "Нет подготовленных заклинаний" : "Список пуст"}
-          detail={selectedLevel === null ? "Добавить заклинание можно через Справочник." : "На выбранном уровне ничего не найдено."}
+          detail="Добавить заклинание можно через Справочник."
         />
       )}
 
