@@ -1,0 +1,51 @@
+/*
+ * Spell-slot charge visibility correction · 2026-09-17.
+ *
+ * The large class spell-slot art introduced a wide left gutter while the
+ * charge rail kept `overflow: hidden`. On narrow Telegram viewports that
+ * silently clipped standard four-slot rows (for example William Kidd's
+ * 1st-level 4/4 slots) down to only the first two visible rings.
+ *
+ * Keep the large class art, but reserve enough real grid width for all four
+ * standard D&D spell-slot markers. This changes presentation only; resource
+ * counts continue to come from Character Engine / character_resource_states.
+ */
+
+.u1-character-overview__slot {
+  grid-template-columns:
+    clamp(34px, 9.5vw, 44px)
+    minmax(65px, 1fr)
+    clamp(24px, 6.5vw, 28px) !important;
+  gap: clamp(3px, .85vw, 5px) !important;
+}
+
+.u1-character-overview__slot .u1-character-overview__charges {
+  min-width: 65px;
+  gap: 3px;
+  overflow: visible;
+  flex-wrap: nowrap;
+}
+
+.u1-character-overview__slot .u1-character-overview__charge {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+
+.u1-character-overview__slot .u1-character-overview__charge[data-has-asset] > i,
+.u1-character-overview__slot .u1-character-overview__charge > i {
+  width: 12px;
+  height: 12px;
+}
+
+@media (max-width: 359px) {
+  .u1-character-overview__slot {
+    grid-template-columns: 34px minmax(62px, 1fr) 24px !important;
+    gap: 3px !important;
+  }
+
+  .u1-character-overview__slot .u1-character-overview__charges {
+    min-width: 62px;
+    gap: 2px;
+  }
+}
