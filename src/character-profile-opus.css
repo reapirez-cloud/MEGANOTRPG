@@ -1927,3 +1927,43 @@
   .character-profile-opus .opus-sheet-intro__hp > i > b,
   .character-profile-opus .opus-sheet-directory summary > i { transition: none; }
 }
+
+
+/* PNG icon system: preserve the original aspect ratio; never crop or stretch. */
+.character-profile-opus .opus-ui-icon {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  flex: 0 0 auto;
+  object-fit: contain;
+  image-rendering: auto;
+}
+.character-profile-opus .opus-core-grid__quick > button,
+.character-profile-opus .opus-core-grid__quick > div {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+}
+.character-profile-opus .opus-core-icon {
+  width: auto;
+  height: auto;
+  max-width: 22px;
+  max-height: 22px;
+  opacity: .9;
+}
+.character-profile-opus .opus-ability-row > button {
+  grid-template-columns: 24px minmax(0, 1fr) 32px 30px;
+}
+.character-profile-opus .opus-ability-row__icon {
+  width: auto;
+  height: auto;
+  max-width: 20px;
+  max-height: 20px;
+  opacity: .86;
+}
+.character-profile-opus .opus-resource-line__icon > .opus-ui-icon {
+  width: auto;
+  height: auto;
+  max-width: 42px;
+  max-height: 42px;
+}

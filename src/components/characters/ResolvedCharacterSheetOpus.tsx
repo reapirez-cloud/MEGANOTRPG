@@ -16,13 +16,13 @@ import { useLongPressItem } from "../../hooks/useLongPressItem.ts"
 import type { CharacterFeature } from "../../types/characterSheet.ts"
 import ContextActionSheet, { type ContextAction } from "../common/ContextActionSheet.tsx"
 
-const abilities: Array<[AbilityKey, string, string]> = [
-  ["strength", "СИЛ", "Сила"],
-  ["dexterity", "ЛОВ", "Ловкость"],
-  ["constitution", "ТЕЛ", "Телосложение"],
-  ["intelligence", "ИНТ", "Интеллект"],
-  ["wisdom", "МДР", "Мудрость"],
-  ["charisma", "ХАР", "Харизма"],
+const abilities: Array<[AbilityKey, string, string, UiIconName]> = [
+  ["strength", "СИЛ", "Сила", "strength"],
+  ["dexterity", "ЛОВ", "Ловкость", "dexterity"],
+  ["constitution", "ТЕЛ", "Телосложение", "constitution"],
+  ["intelligence", "ИНТ", "Интеллект", "intelligence"],
+  ["wisdom", "МДР", "Мудрость", "wisdom"],
+  ["charisma", "ХАР", "Харизма", "charisma"],
 ]
 
 const skills: Array<[SkillKey, string]> = [
@@ -64,6 +64,47 @@ const resourcePresentation: Record<string, { icon: string; label?: string }> = {
   wizard_chronurgy_momentary_stasis: { icon: "□", label: "Мгновенный стазис" },
   wizard_chronurgy_arcane_abeyance: { icon: "◇", label: "Тайное ожидание" },
   warlock_pact_slots: { icon: "◆", label: "Магия договора" },
+}
+
+const uiIconPaths = {
+  strength: "/ui-icons/grimdark/strength.png",
+  dexterity: "/ui-icons/grimdark/dexterity.png",
+  constitution: "/ui-icons/grimdark/constitution.png",
+  intelligence: "/ui-icons/grimdark/intelligence.png",
+  wisdom: "/ui-icons/grimdark/wisdom.png",
+  charisma: "/ui-icons/grimdark/charisma.png",
+  "armor-class": "/ui-icons/grimdark/armor-class.png",
+  initiative: "/ui-icons/grimdark/initiative.png",
+  proficiency: "/ui-icons/grimdark/proficiency.png",
+  "spell-save-dc": "/ui-icons/grimdark/spell-save-dc.png",
+  "passive-perception": "/ui-icons/grimdark/passive-perception.png",
+  inspiration: "/ui-icons/grimdark/inspiration.png",
+} as const
+
+type UiIconName = keyof typeof uiIconPaths
+
+function UiIcon({ name, className = "" }: { name: UiIconName; className?: string }) {
+  return <img className={"opus-ui-icon " + className} src={uiIconPaths[name]} alt="" aria-hidden="true" />
+}
+
+const resourceIconNames: Record<string, UiIconName> = {
+  rage: "strength",
+  bardic_inspiration: "inspiration",
+  channel_divinity: "spell-save-dc",
+  wild_shape: "wisdom",
+  second_wind: "constitution",
+  action_surge: "initiative",
+  lay_on_hands: "spell-save-dc",
+  monk_focus: "wisdom",
+  monk_uncanny_metabolism: "constitution",
+  sorcery_points: "spell-save-dc",
+  innate_sorcery: "charisma",
+  sorcerous_restoration: "inspiration",
+  wizard_arcane_recovery: "intelligence",
+  wizard_chronurgy_chronal_shift: "initiative",
+  wizard_chronurgy_momentary_stasis: "passive-perception",
+  wizard_chronurgy_arcane_abeyance: "spell-save-dc",
+  warlock_pact_slots: "spell-save-dc",
 }
 
 const romanLevels = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"]
@@ -273,12 +314,12 @@ export default function ResolvedCharacterSheetOpus({
           <button type="button" onClick={() => explainNumber("Скорость", { kind: "number", target: "combat.speed" })}>
             <span>СКОРОСТЬ</span><strong>{contract.combat.speed.value}</strong>
           </button>
-          {spellSaveDc !== null && <div><span>СЛ</span><strong>{spellSaveDc}</strong></div>}
-          {spellAttack !== null && <div><span>АТАКА</span><strong>{signed(spellAttack)}</strong></div>}
+          {spellSaveDc !== null && <div><UiIcon name="spell-save-dc" className="opus-core-icon" /><span>СЛ</span><strong>{spellSaveDc}</strong></div>}
+          {spellAttack !== null && <div><UiIcon name="spell-save-dc" className="opus-core-icon" /><span>АТАКА</span><strong>{signed(spellAttack)}</strong></div>}
         </div>
 
         <div className="opus-core-grid__abilities" data-expanded={expandedAbility || undefined}>
-          {visibleAbilities.map(([key, short, label]) => {
+          {visibleAbilities.map(([key, short, label, iconName]) => {
             const ability = contract.abilities[key]
             const save = contract.savingThrows[key]
             const isExpanded = expandedAbility === key
@@ -286,6 +327,7 @@ export default function ResolvedCharacterSheetOpus({
             return (
               <div className="opus-ability-row" key={key} data-expanded={isExpanded ? "true" : undefined}>
                 <button type="button" onClick={() => toggleAbility(key)} aria-expanded={isExpanded}>
+                  <UiIcon name={iconName} className="opus-ability-row__icon" />
                   <span>{short}</span>
                   <strong>{ability.value}</strong>
                   <em>{signed(ability.modifier)}</em>
@@ -332,7 +374,7 @@ export default function ResolvedCharacterSheetOpus({
                 onClick={canManage ? onEditResources : undefined}
                 aria-label={resourceLabel(resource) + ": " + resource.current + " из " + resource.max.value}
               >
-                <span className="opus-resource-line__icon" aria-hidden="true">{resourceIcon(resource)}</span>
+                <span className="opus-resource-line__icon"><UiIcon name={resourceIconName(resource)} /></span>
                 <span className="opus-resource-line__copy">
                   <strong>{resourceLabel(resource)}</strong>
                   <small>{resource.recharge.triggers.join(" · ").replace(/_/g, " ") || "ручное восстановление"}</small>

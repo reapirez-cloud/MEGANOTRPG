@@ -71,3 +71,16 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Spell fact glyphs keep their authored proportions at every card width. */
+.spell-mini-icon__glyph,
+.spell-mini-icon__glyph > svg {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
