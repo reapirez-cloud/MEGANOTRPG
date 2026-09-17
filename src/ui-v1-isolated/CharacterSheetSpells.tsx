@@ -73,6 +73,13 @@ const preparationLabels: Record<PreparationState, string> = {
   not_required: "Без подготовки",
 }
 
+const preparationShortLabels: Record<PreparationState, string> = {
+  always_prepared: "Всегда",
+  prepared: "Подготовлено",
+  unprepared: "Не подготовлено",
+  not_required: "Без подготовки",
+}
+
 const schoolTranslations: Record<string, string> = {
   Abjuration: "Ограждение",
   Conjuration: "Вызов",
@@ -82,6 +89,17 @@ const schoolTranslations: Record<string, string> = {
   Illusion: "Иллюзия",
   Necromancy: "Некромантия",
   Transmutation: "Преобразование",
+}
+
+const schoolIconSeeds: Record<string, number> = {
+  Abjuration: 0,
+  Conjuration: 2,
+  Divination: 4,
+  Enchantment: 6,
+  Evocation: 8,
+  Illusion: 10,
+  Necromancy: 1,
+  Transmutation: 5,
 }
 
 const classLabels: Record<string, string> = {
@@ -101,6 +119,7 @@ const classLabels: Record<string, string> = {
 }
 
 const roman = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"]
+const SPELL_CARD_ICON_ATLAS = "/ui-v1/character-sheet/icons/spell-slots.png"
 
 function atlasStyle(
   url: string,
@@ -130,6 +149,32 @@ function classSpellIconStyle(classKey: string) {
     asset.column,
     asset.row,
   )
+}
+
+function stableHash(value: string) {
+  let hash = 2166136261
+  for (const character of value) {
+    hash ^= character.charCodeAt(0)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+function spellCardIconStyle(view: SpellView) {
+  const school = normalizeSpellSchool(view.school)
+  const seed = schoolIconSeeds[school] ?? Math.max(0, view.level)
+  const identity = `${view.spell.key}:${view.name}:${view.level}`
+  const index = (seed + stableHash(identity)) % 12
+  const column = index % 4
+  const row = Math.floor(index / 4)
+  const positionX = `${(column / 3) * 100}%`
+  const positionY = `${(row / 2) * 100}%`
+
+  return {
+    "--u1-spell-card-icon": `url("${SPELL_CARD_ICON_ATLAS}")`,
+    "--u1-spell-card-icon-size": "400% 300%",
+    "--u1-spell-card-icon-position": `${positionX} ${positionY}`,
+  } as CSSProperties
 }
 
 function standardSlotLevel(resource: ResolvedResource) {
@@ -164,6 +209,14 @@ function schoolLabel(value: string) {
 
 function levelTitle(level: number) {
   return level === 0 ? "Заговоры" : `${level} круг`
+}
+
+function castingTimeLabel(view: SpellView) {
+  return (
+    view.catalog?.casting_time?.trim() ||
+    view.legacy?.casting_time?.trim() ||
+    schoolLabel(view.school)
+  )
 }
 
 function slugFromResolvedKey(key: string) {
@@ -577,23 +630,44 @@ export default function CharacterSheetSpells({
           data-spell-key={view.spell.key}
           data-entity-focus={focusSpellKey === view.spell.key || undefined}
           data-preparation={view.preparation}
+          data-school={normalizeSpellSchool(view.school) || undefined}
+          data-concentration={view.concentration || undefined}
+          data-ritual={view.ritual || undefined}
           data-unavailable={!view.spell.available || undefined}
           onClick={() => {
             onSelect?.(view.spell.key)
             if (detailAction.surface) snake.openSurface(detailAction.surface)
           }}
         >
-          <span
-            className="u1-character-spells__spell-icon"
-            style={classSpellIconStyle(sheetClassKey)}
-            aria-hidden="true"
-          />
+          <span className="u1-character-spells__spell-visual" aria-hidden="true">
+            <span
+              className="u1-character-spells__spell-icon"
+              style={spellCardIconStyle(view)}
+            />
+            <i
+              className="u1-character-spells__prep-mark"
+              data-state={view.preparation}
+            />
+          </span>
+
           <span className="u1-character-spells__spell-copy">
             <strong>{view.name}</strong>
             {!compact && (
-              <small>
-                {schoolLabel(view.school)} · {preparationLabels[view.preparation]}
-              </small>
+              <>
+                <small className="u1-character-spells__spell-meta">
+                  <span className="u1-character-spells__cast-time">
+                    {castingTimeLabel(view)}
+                  </span>
+                  {view.concentration && <em>Концентрация</em>}
+                  {view.ritual && <em>Ритуал</em>}
+                </small>
+                <span
+                  className="u1-character-spells__preparation"
+                  data-state={view.preparation}
+                >
+                  {preparationShortLabels[view.preparation]}
+                </span>
+              </>
             )}
           </span>
         </button>
@@ -670,7 +744,9 @@ export default function CharacterSheetSpells({
       {views.length === 0 && (
         <section className="u1-character-spells__empty-book">
           <strong>Книга заклинаний пока пуста</strong>
-          <span>Ячейки уже собраны Character Engine, но доступных заклинаний у персонажа нет.</span>
+          <span>
+            Ячейки уже собраны Character Engine, но доступных заклинаний у персонажа нет.
+          </span>
         </section>
       )}
 
