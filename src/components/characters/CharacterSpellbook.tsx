@@ -11,9 +11,12 @@ import type {
 } from "../../types/characterSheet.ts"
 import CharacterDetailSheet from "./CharacterDetailSheet.tsx"
 import CharacterSectionState from "./CharacterSectionState.tsx"
+import { SpellMiniIconRow } from "./SpellMiniIcon.tsx"
+import { buildSpellMiniIcons } from "./spellMiniIcons.ts"
 import { buildSpellbookRenderModel, type SpellbookMode } from "./spellbookRender.ts"
 import "./CharacterSpellbookStage2.css"
 import "./CharacterSpellbookStage3.css"
+import "./CharacterSpellbookStage4.css"
 
 type Props = {
   sheet: CharacterSheet
@@ -57,12 +60,6 @@ function signed(value: number) {
 
 function levelName(level: number) {
   return level === 0 ? "Заговор" : `${level} уровень`
-}
-
-function spellMeta(spell: CharacterSpell) {
-  return [spell.school, spell.casting_time, spell.spell_range]
-    .filter(Boolean)
-    .join(" · ") || "Параметры не указаны"
 }
 
 export default function CharacterSpellbook(props: Props) {
@@ -212,7 +209,8 @@ export default function CharacterSpellbook(props: Props) {
               <span className="spellbook-v3__level-rune">{spell.spell_level === 0 ? "∞" : spell.spell_level}</span>
               <span className="spellbook-v3__spell-copy">
                 <strong>{spell.name}</strong>
-                <small>{spellMeta(spell)}</small>
+                {spell.school && <small className="spellbook-v3__school">{spell.school}</small>}
+                <SpellMiniIconRow items={buildSpellMiniIcons(spell).filter((item) => item.kind !== "prepared")} compact />
               </span>
               <span className="spellbook-v3__chevron" aria-hidden="true">›</span>
             </button>
@@ -271,11 +269,11 @@ export default function CharacterSpellbook(props: Props) {
             {selectedSpell.spell_range && <div><span>Дистанция</span><strong>{selectedSpell.spell_range}</strong></div>}
             {selectedSpell.duration && <div><span>Длительность</span><strong>{selectedSpell.duration}</strong></div>}
           </div>
-          <div className="character-spell-detail-v5__tags">
-            {selectedSpell.concentration && <span>Концентрация</span>}
-            {selectedSpell.ritual && <span>Ритуал</span>}
-            {selectedSpell.components && <span>{selectedSpell.components}</span>}
-          </div>
+          <SpellMiniIconRow
+            items={buildSpellMiniIcons(selectedSpell).filter((item) =>
+              item.kind === "components" || item.kind === "concentration" || item.kind === "ritual" || item.kind === "prepared",
+            )}
+          />
           <p className="character-spell-detail-v5__description">{selectedSpell.description || "Описание приходит из Справочника."}</p>
           {selectedSpell.source && <small className="character-spell-detail-v5__source">Источник: {selectedSpell.source}</small>}
           {canChooseSpells && <div className="character-spell-detail-v5__actions">
