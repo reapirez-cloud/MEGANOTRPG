@@ -178,7 +178,7 @@ function Stage16Harness() {
       activeSection={section}
       onNavigate={navigate}
       onBack={handleBack}
-      core={
+      overviewCore={
         <section
           className="u1-character-sheet-core"
           data-testid="stage16-core"

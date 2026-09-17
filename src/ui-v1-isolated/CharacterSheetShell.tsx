@@ -107,7 +107,7 @@ export type CharacterSheetShellProps = {
   onOpenPortrait?: () => void
   onNavigate: (target: CharacterSheetTarget) => void
   onBack: () => void
-  core?: ReactNode
+  overviewCore?: ReactNode
   children?: ReactNode
 }
 
@@ -130,7 +130,7 @@ export default function CharacterSheetShell({
   onOpenPortrait,
   onNavigate,
   onBack,
-  core,
+  overviewCore,
   children,
 }: CharacterSheetShellProps) {
   const entity = { type: "character", id: characterId, label: characterName }
@@ -173,6 +173,7 @@ export default function CharacterSheetShell({
       data-has-panel-art={panelArtUrl ? true : undefined}
       data-has-portrait={portraitUrl ? true : undefined}
       data-has-portrait-frame={portraitFrameUrl ? true : undefined}
+      data-section={activeSection}
       style={
         panelArtUrl
           ? (() => {
@@ -355,9 +356,12 @@ export default function CharacterSheetShell({
         </aside>
       </section>
 
-      {core}
+      {activeSection === "overview" ? overviewCore : null}
 
-      <section className="u1-character-sheet__content">
+      <section
+        className="u1-character-sheet__content"
+        data-section={activeSection}
+      >
         {children}
       </section>
     </main>

@@ -7,6 +7,7 @@
  * IMPORTANT PRODUCT RULES
  * - Inventory is a full interface, not a CharacterSheetSection.
  * - Everything else switches the content area under the persistent sheet shell.
+ * - Quick stats and abilities belong to Overview and never render on another section.
  * - Normal tap performs the primary action/navigation.
  * - Long press is reserved for Snake contextual actions.
  * - Lists are grouped and sorted; no flat "everything in one pile" screens.
@@ -209,6 +210,7 @@ export const CHARACTER_SHEET_SNAKE_CONTEXT_KEYS = [
 export const CHARACTER_SHEET_INTERACTION_CONTRACT = {
   inventory: "open-full-interface",
   sectionTap: "replace-dynamic-content",
+  overviewCoreVisibility: "overview-only",
   backFromSection: "return-to-overview",
   backFromOverview: "leave-character-sheet",
   entityTap: "primary-action-or-detail",
