@@ -80,7 +80,7 @@ test("overview correction loads globally after the base character styles", () =>
   )
 })
 
-test("resource panel keeps the class background undimmed and gives the PNG a full-height left rail", () => {
+test("resource panel keeps the class background undimmed and uses the authored PNG as a strict square", () => {
   assert.match(
     overviewPanelFixCss,
     /u1-character-overview__section--resources[\s\S]*background:\s*transparent !important/,
@@ -91,7 +91,7 @@ test("resource panel keeps the class background undimmed and gives the PNG a ful
   )
   assert.match(
     overviewPanelFixCss,
-    /--u1-resource-media-rail:\s*clamp\(78px, 21\.5vw, 98px\)/,
+    /--u1-resource-icon-square:\s*clamp\(82px, 22vw, 104px\)/,
   )
   assert.match(
     overviewPanelFixCss,
@@ -100,6 +100,10 @@ test("resource panel keeps the class background undimmed and gives the PNG a ful
   assert.match(
     overviewPanelFixCss,
     /u1-character-overview__resource-icon[\s\S]*grid-row:\s*1 \/ 3/,
+  )
+  assert.match(
+    overviewPanelFixCss,
+    /u1-character-overview__resource-icon[\s\S]*aspect-ratio:\s*1 \/ 1/,
   )
   assert.match(
     overviewPanelFixCss,
