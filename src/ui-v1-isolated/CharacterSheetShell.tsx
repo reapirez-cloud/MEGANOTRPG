@@ -74,6 +74,8 @@ export type CharacterSheetShellProps = {
   characterName: string
   characterClass: string
   level: number
+  race?: string | null
+  subclass?: string | null
   classKey: string
   portraitUrl: string | null
   portraitPresentation: MediaPresentation | null
@@ -95,6 +97,8 @@ export default function CharacterSheetShell({
   characterName,
   characterClass,
   level,
+  race = null,
+  subclass = null,
   classKey,
   portraitUrl,
   portraitPresentation,
@@ -243,12 +247,49 @@ export default function CharacterSheetShell({
               <span className="u1-character-sheet__portrait-shade" aria-hidden="true" />
               <span className="u1-character-sheet__hero-haze" aria-hidden="true" />
               <span className="u1-character-sheet__identity">
-                <strong>{characterName}</strong>
-                <small>
-                  {characterClass || "Без класса"}
-                  {" · "}
-                  ур. {level}
-                </small>
+                <strong className="u1-character-sheet__identity-name">
+                  {characterName}
+                </strong>
+                <span className="u1-character-sheet__identity-classline">
+                  <span className="u1-character-sheet__identity-class">
+                    {characterClass || "Без класса"}
+                  </span>
+                  <span className="u1-character-sheet__identity-level">
+                    ур. {level}
+                  </span>
+                </span>
+                <span
+                  className="u1-character-sheet__identity-separator"
+                  aria-hidden="true"
+                />
+                <span
+                  className="u1-character-sheet__identity-detail"
+                  data-empty={subclass ? undefined : true}
+                >
+                  {subclass || "Подкласс —"}
+                </span>
+                <span
+                  className="u1-character-sheet__identity-detail"
+                  data-empty={race ? undefined : true}
+                >
+                  {race || "Раса —"}
+                </span>
+                <span
+                  className="u1-character-sheet__identity-separator"
+                  aria-hidden="true"
+                />
+                <span className="u1-character-sheet__identity-inspiration">
+                  <span className="u1-character-sheet__identity-inspiration-label">
+                    Вдохновение
+                  </span>
+                  <span
+                    className="u1-character-sheet__identity-inspiration-slots"
+                    aria-label="Два слота вдохновения. Механика будет подключена отдельно."
+                  >
+                    <i aria-hidden="true" />
+                    <i aria-hidden="true" />
+                  </span>
+                </span>
               </span>
             </button>
           </SnakeTrigger>

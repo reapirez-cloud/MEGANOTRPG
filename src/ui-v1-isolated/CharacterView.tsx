@@ -45,6 +45,7 @@ import { bindTelegramBackButton } from "./telegramBackButton"
 import "./character-sheet-theme.css"
 import "./character-sheet-backgrounds.css"
 import "./character-sheet-shell.css"
+import "./character-sheet-header-stage2.css"
 import "./character-sheet-core.css"
 import "./character-sheet-features.css"
 import "./character-sheet-overview.css"
@@ -133,6 +134,34 @@ export default function CharacterView({
     ),
     [control.assignments, control.character?.characterClass, control.templates],
   )
+
+  const identityMeta = useMemo(() => {
+    const subclass = control.assignments
+      .map((assignment) =>
+        control.templates.find((template) => template.id === assignment.template_id) || null,
+      )
+      .find((template) => template?.kind === "subclass")
+      ?.name.trim() || ""
+
+    const assignedSubrace = control.assignments
+      .map((assignment) =>
+        control.templates.find((template) => template.id === assignment.template_id) || null,
+      )
+      .find((template) => template?.kind === "subrace")
+      ?.name.trim() || ""
+
+    const assignedRace = control.assignments
+      .map((assignment) =>
+        control.templates.find((template) => template.id === assignment.template_id) || null,
+      )
+      .find((template) => template?.kind === "race")
+      ?.name.trim() || ""
+
+    return {
+      subclass,
+      race: control.sheet?.race?.trim() || assignedSubrace || assignedRace,
+    }
+  }, [control.assignments, control.sheet?.race, control.templates])
 
   const classSheetBackground = referenceMedia.get(
     classReferenceArtSlot(classKey, "sheet_background"),
@@ -797,6 +826,8 @@ export default function CharacterView({
       characterName={character.name}
       characterClass={character.characterClass}
       level={character.level}
+      race={identityMeta.race}
+      subclass={identityMeta.subclass}
       classKey={classKey}
       portraitUrl={portraitUrl}
       portraitPresentation={portraitPresentation}
