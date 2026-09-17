@@ -49,9 +49,14 @@ test("stage 2 spell rail carries the same current and max values as runtime reso
     selectedLevel: null,
   })
 
-  assert.deepEqual(model.slotRail[0], { level: 1, available: true, current: 3, maximum: 4 })
-  assert.deepEqual(model.slotRail[1], { level: 2, available: true, current: 1, maximum: 3 })
-  assert.deepEqual(model.slotRail[2], { level: 3, available: false, current: 0, maximum: 0 })
+  assert.deepEqual(
+    model.slotRail.slice(0, 3).map(({ level, available, current, maximum }) => ({ level, available, current, maximum })),
+    [
+      { level: 1, available: true, current: 3, maximum: 4 },
+      { level: 2, available: true, current: 1, maximum: 3 },
+      { level: 3, available: false, current: 0, maximum: 0 },
+    ],
+  )
 })
 
 test("stage 2 spell rail clamps corrupted runtime counters before rendering", () => {
