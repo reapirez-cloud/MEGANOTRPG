@@ -21,6 +21,10 @@ const overviewPanelFixCss = fs.readFileSync(
   "src/ui-v1-isolated/character-sheet-overview-panel-fix.css",
   "utf8",
 )
+const spellSlotChargeFixCss = fs.readFileSync(
+  "src/ui-v1-isolated/character-sheet-spell-slot-charge-fix.css",
+  "utf8",
+)
 const mainSource = fs.readFileSync(
   "src/ui-v1-isolated/main.tsx",
   "utf8",
@@ -73,14 +77,15 @@ test("stage 5 spent state desaturates the same icon and overlays the authored re
   )
 })
 
-test("overview correction loads globally after the base character styles", () => {
-  assert.match(
-    mainSource,
-    /import "\.\/character-sheet-overview-panel-fix\.css"/,
-  )
+test("overview corrections load globally after the base character styles", () => {
+  const panelFix = mainSource.indexOf('import "./character-sheet-overview-panel-fix.css"')
+  const slotFix = mainSource.indexOf('import "./character-sheet-spell-slot-charge-fix.css"')
+
+  assert.ok(panelFix >= 0)
+  assert.ok(slotFix > panelFix)
 })
 
-test("resource panel keeps the class background undimmed and gives the PNG a full-height left rail", () => {
+test("resource panel keeps the class background undimmed and gives the PNG a strict square", () => {
   assert.match(
     overviewPanelFixCss,
     /u1-character-overview__section--resources[\s\S]*background:\s*transparent !important/,
@@ -91,7 +96,7 @@ test("resource panel keeps the class background undimmed and gives the PNG a ful
   )
   assert.match(
     overviewPanelFixCss,
-    /--u1-resource-media-rail:\s*clamp\(78px, 21\.5vw, 98px\)/,
+    /--u1-resource-icon-square:\s*clamp\(82px,\s*22vw,\s*104px\)/,
   )
   assert.match(
     overviewPanelFixCss,
@@ -99,7 +104,7 @@ test("resource panel keeps the class background undimmed and gives the PNG a ful
   )
   assert.match(
     overviewPanelFixCss,
-    /u1-character-overview__resource-icon[\s\S]*grid-row:\s*1 \/ 3/,
+    /u1-character-overview__resource-icon[\s\S]*grid-row:\s*1 \/ 3[\s\S]*aspect-ratio:\s*1 \/ 1/,
   )
   assert.match(
     overviewPanelFixCss,
@@ -131,5 +136,20 @@ test("spell slots page horizontally with three visible level rows", () => {
   assert.match(
     overviewCss,
     /grid-template-columns:\s*repeat\(4,/,
+  )
+})
+
+test("spell-slot charge rail keeps four standard markers visible on narrow screens", () => {
+  assert.match(
+    spellSlotChargeFixCss,
+    /u1-character-overview__charges[\s\S]*min-width:\s*65px[\s\S]*overflow:\s*visible/,
+  )
+  assert.match(
+    spellSlotChargeFixCss,
+    /u1-character-overview__charge[\s\S]*flex:\s*0 0 14px/,
+  )
+  assert.match(
+    spellSlotChargeFixCss,
+    /@media \(max-width:\s*359px\)[\s\S]*min-width:\s*62px/,
   )
 })
