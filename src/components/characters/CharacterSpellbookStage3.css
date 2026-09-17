@@ -1,0 +1,155 @@
+/* Spell tab render — Stage 3.
+ * Turns the 1–9 level rail into the actual slot panel. The old duplicate meter is
+ * intentionally gone: one runtime projection, one visible representation.
+ */
+
+.spellbook-reference-shell__circle {
+  min-height: 64px;
+  grid-template-rows: auto minmax(12px, auto) auto;
+  align-content: center;
+  gap: 4px;
+}
+
+.spellbook-reference-shell__circle > .spellbook-reference-shell__level {
+  color: inherit;
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.spellbook-reference-shell__cells {
+  min-height: 13px;
+  display: grid;
+  grid-template-columns: repeat(2, 5px);
+  grid-auto-rows: 5px;
+  align-content: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.spellbook-reference-shell__cells > i {
+  width: 5px;
+  height: 5px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  display: block;
+  opacity: .38;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.spellbook-reference-shell__cells > i.is-filled {
+  opacity: 1;
+  background: currentColor;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--character-accent) 55%, transparent);
+}
+
+.spellbook-reference-shell__circle > strong {
+  min-height: 10px;
+  color: var(--character-text-secondary);
+  font-size: 8px;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.spellbook-reference-shell__circle.is-available > strong {
+  color: var(--character-text-primary);
+}
+
+.spellbook-reference-shell__circle.is-depleted {
+  opacity: .72;
+}
+
+.spellbook-reference-shell__circle.is-depleted .spellbook-reference-shell__cells > i {
+  opacity: .2;
+}
+
+.spellbook-reference-shell__circle.is-depleted > strong {
+  color: var(--character-text-muted);
+}
+
+.spellbook-reference-shell__locked-mark {
+  min-height: 13px;
+  display: grid;
+  place-items: center;
+  color: var(--character-text-muted);
+  font-size: 9px;
+  line-height: 1;
+}
+
+.spellbook-reference-shell__circle.is-active .spellbook-reference-shell__cells > i.is-filled {
+  box-shadow: 0 0 8px color-mix(in srgb, var(--character-accent) 72%, transparent);
+}
+
+.spellbook-reference-shell__summary {
+  grid-template-columns: auto auto minmax(0, 1fr);
+}
+
+.spellbook-reference-shell__actions {
+  min-width: 0;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.spellbook-reference-shell__actions > button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--character-line);
+  border-radius: 10px;
+  color: var(--character-text-primary);
+  background: var(--character-surface-soft);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 740;
+}
+
+.spellbook-reference-shell__actions > button:focus-visible {
+  outline: 2px solid var(--character-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 390px) {
+  .spellbook-reference-shell__circle {
+    min-height: 58px;
+    padding-left: 1px;
+    padding-right: 1px;
+    gap: 3px;
+  }
+
+  .spellbook-reference-shell__circle > .spellbook-reference-shell__level {
+    font-size: 9px;
+  }
+
+  .spellbook-reference-shell__cells {
+    grid-template-columns: repeat(2, 4px);
+    grid-auto-rows: 4px;
+    gap: 2px;
+  }
+
+  .spellbook-reference-shell__cells > i {
+    width: 4px;
+    height: 4px;
+    border-radius: 1px;
+  }
+
+  .spellbook-reference-shell__circle > strong {
+    font-size: 7px;
+  }
+
+  .spellbook-reference-shell__summary {
+    grid-template-columns: repeat(2, auto) minmax(0, 1fr);
+  }
+
+  .spellbook-reference-shell__actions {
+    gap: 4px;
+  }
+
+  .spellbook-reference-shell__actions > button {
+    min-height: 30px;
+    padding: 0 7px;
+    font-size: 8px;
+  }
+}
