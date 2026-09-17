@@ -14,6 +14,7 @@ import "./gm-workshop.css"
 import "./art-library.css"
 import "./character-sheet-header-stage1.css"
 import "./character-sheet-header-stage4.css"
+import "./character-sheet-header-stage5.css"
 
 const root = document.getElementById("ui-v1-root")
 
