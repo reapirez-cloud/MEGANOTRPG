@@ -108,9 +108,10 @@ export const CHARACTER_SHEET_FEATURE_TIMING_ORDER = [
   "other",
 ] as const
 
-export const CHARACTER_SHEET_SPELL_GROUP_ORDER = [
+/** Numeric by contract so runtime focus values can be checked without literal-tuple casts. */
+export const CHARACTER_SHEET_SPELL_GROUP_ORDER: readonly number[] = [
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-] as const
+]
 
 export const CHARACTER_SHEET_SORTING_CONTRACT = {
   features: {
