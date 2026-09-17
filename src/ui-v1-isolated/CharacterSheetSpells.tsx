@@ -66,6 +66,11 @@ type SpellView = {
   catalog: SpellCatalogMeta | null
 }
 
+type PreparationMutationResult = {
+  ok: boolean
+  error?: string
+}
+
 const preparationLabels: Record<PreparationState, string> = {
   always_prepared: "Всегда подготовлено",
   prepared: "Подготовлено",
@@ -248,6 +253,37 @@ function legacySpellFor(
   return null
 }
 
+function mutablePreparationSpellId(view: SpellView) {
+  if (!view.legacy) return null
+  const mutable = view.spell.accesses.some(
+    (access) => access.preparationMode === "prepared",
+  )
+  return mutable ? view.legacy.id : null
+}
+
+function resolveViewPreparation(
+  spell: ResolvedSpell,
+  legacy: CharacterSpell | null,
+) {
+  const resolved = resolveSpellPreparationState(spell.accesses)
+  if (!legacy) return resolved
+
+  const hasMutable = spell.accesses.some(
+    (access) => access.preparationMode === "prepared",
+  )
+  const hasFixedAccess = spell.accesses.some(
+    (access) =>
+      access.preparationMode === "always_prepared" ||
+      access.preparationMode === "not_required",
+  )
+
+  if (hasMutable && !hasFixedAccess) {
+    return legacy.prepared ? "prepared" : "unprepared"
+  }
+
+  return resolved
+}
+
 function detailBody(view: SpellView) {
   const meta = view.catalog
   const legacy = view.legacy
@@ -257,7 +293,7 @@ function detailBody(view: SpellView) {
 
   const preparationNote =
     view.preparation === "prepared" || view.preparation === "unprepared"
-      ? "Подготовка меняется через Гену в окне подготовки после отдыха."
+      ? "Подготовку можно изменить в гримуаре."
       : ""
 
   const facts = [
@@ -308,6 +344,8 @@ export default function CharacterSheetSpells({
   runtimeError,
   focusLevel,
   focusSpellKey,
+  canEditPreparation = false,
+  onSetPrepared,
   onSelect,
   onNavigateEntity,
 }: {
@@ -317,6 +355,11 @@ export default function CharacterSheetSpells({
   runtimeError?: string
   focusLevel?: number | null
   focusSpellKey?: string | null
+  canEditPreparation?: boolean
+  onSetPrepared?: (
+    spellId: string,
+    prepared: boolean,
+  ) => Promise<PreparationMutationResult>
   onSelect?: (spellId: string) => void
   onNavigateEntity?: CharacterSheetEntityNavigator
 }) {
@@ -328,6 +371,13 @@ export default function CharacterSheetSpells({
       ? focusLevel
       : null,
   )
+  const [grimoireLevel, setGrimoireLevel] = useState<number | null>(null)
+  const [preparedOnly, setPreparedOnly] = useState(false)
+  const [concentrationOnly, setConcentrationOnly] = useState(false)
+  const [ritualOnly, setRitualOnly] = useState(false)
+  const [school, setSchool] = useState("all")
+  const [preparationBusyId, setPreparationBusyId] = useState<string | null>(null)
+  const [preparationError, setPreparationError] = useState("")
   const [catalogBySlug, setCatalogBySlug] = useState<Map<string, SpellCatalogMeta>>(
     () => new Map(),
   )
@@ -405,7 +455,7 @@ export default function CharacterSheetSpells({
             legacy?.concentration ?? catalog?.concentration ?? false,
           ritual:
             spell.identity.ritual ?? legacy?.ritual ?? catalog?.ritual ?? false,
-          preparation: resolveSpellPreparationState(spell.accesses),
+          preparation: resolveViewPreparation(spell, legacy),
           sourceNames: accessSourceNames(spell.accesses),
           legacy,
           catalog,
@@ -449,6 +499,15 @@ export default function CharacterSheetSpells({
   const pactLevel = contract ? pactSlotLevel(contract) : null
   const hasSpellSlots = slotByLevel.size > 0 || Boolean(pactSlots)
 
+  const schoolOptions = useMemo(
+    () =>
+      [...new Set(views.map((view) => view.school).filter(Boolean))]
+        .sort((left, right) =>
+          schoolLabel(left).localeCompare(schoolLabel(right), "ru"),
+        ),
+    [views],
+  )
+
   useEffect(() => {
     if (!contract) return
     const sheet = rootRef.current?.closest<HTMLElement>(".u1-character-sheet")
@@ -458,6 +517,7 @@ export default function CharacterSheetSpells({
   useEffect(() => {
     if (!views.length) {
       setExpandedLevel(null)
+      setGrimoireLevel(null)
       return
     }
 
@@ -477,6 +537,10 @@ export default function CharacterSheetSpells({
       }
       return availableLevels.find((level) => level > 0) ?? availableLevels[0] ?? null
     })
+
+    setGrimoireLevel((current) =>
+      current !== null && availableLevels.includes(current) ? current : null,
+    )
   }, [focusLevel, views])
 
   const slotForSpellLevel = (level: number) => {
@@ -488,8 +552,17 @@ export default function CharacterSheetSpells({
     return { resource: null, pact: false, castLevel: level }
   }
 
+  const resetGrimoireFilters = () => {
+    setPreparedOnly(false)
+    setConcentrationOnly(false)
+    setRitualOnly(false)
+    setSchool("all")
+  }
+
   const openCircle = (level: number) => {
     setExpandedLevel(level)
+    setGrimoireLevel(null)
+    setPreparationError("")
     window.requestAnimationFrame(() => {
       rootRef.current
         ?.querySelector<HTMLElement>(`[data-level="${level}"]`)
@@ -501,11 +574,67 @@ export default function CharacterSheetSpells({
     })
   }
 
+  const openGrimoire = (level: number) => {
+    setExpandedLevel(level)
+    setGrimoireLevel(level)
+    setPreparationError("")
+    window.requestAnimationFrame(() => {
+      rootRef.current
+        ?.querySelector<HTMLElement>(`[data-grimoire-level="${level}"]`)
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "nearest",
+        })
+    })
+  }
+
+  const filteredGrimoireSpells = (items: SpellView[]) => items.filter((view) => {
+    if (
+      preparedOnly &&
+      view.preparation !== "prepared" &&
+      view.preparation !== "always_prepared"
+    ) {
+      return false
+    }
+    if (concentrationOnly && !view.concentration) return false
+    if (ritualOnly && !view.ritual) return false
+    if (school !== "all" && view.school !== school) return false
+    return true
+  })
+
+  const setPrepared = async (view: SpellView) => {
+    const spellId = mutablePreparationSpellId(view)
+    if (!spellId || !onSetPrepared || !canEditPreparation) return
+
+    const nextPrepared = view.preparation !== "prepared"
+    setPreparationBusyId(spellId)
+    setPreparationError("")
+
+    try {
+      const result = await onSetPrepared(spellId, nextPrepared)
+      if (!result.ok) {
+        setPreparationError(
+          result.error || "Не удалось изменить подготовку заклинания.",
+        )
+      }
+    } catch (reason) {
+      setPreparationError(
+        reason instanceof Error && reason.message
+          ? reason.message
+          : "Не удалось изменить подготовку заклинания.",
+      )
+    } finally {
+      setPreparationBusyId((current) => current === spellId ? null : current)
+    }
+  }
+
   useEffect(() => {
     if (!focusSpellKey) return
     const focused = views.find((view) => view.spell.key === focusSpellKey)
     if (focused && isStandardSpellLevel(focused.level)) {
       setExpandedLevel(focused.level)
+      setGrimoireLevel(null)
     }
 
     const frame = window.requestAnimationFrame(() => {
@@ -534,6 +663,7 @@ export default function CharacterSheetSpells({
     }
 
     setExpandedLevel(focusLevel)
+    setGrimoireLevel(null)
     const frame = window.requestAnimationFrame(() => {
       rootRef.current
         ?.querySelector<HTMLElement>(`[data-level="${focusLevel}"]`)
@@ -568,7 +698,11 @@ export default function CharacterSheetSpells({
     )
   }
 
-  const renderSpell = (view: SpellView, compact = false) => {
+  const renderSpell = (
+    view: SpellView,
+    compact = false,
+    grimoire = false,
+  ) => {
     const entity = {
       type: "character-spell",
       id: characterId + ":" + view.spell.key,
@@ -610,9 +744,9 @@ export default function CharacterSheetSpells({
       },
     }
 
-    return (
+    const trigger = (
       <SnakeTrigger
-        key={view.spell.key}
+        key={grimoire ? undefined : view.spell.key}
         entity={entity}
         actions={[
           detailAction,
@@ -672,6 +806,48 @@ export default function CharacterSheetSpells({
           </span>
         </button>
       </SnakeTrigger>
+    )
+
+    if (!grimoire) return trigger
+
+    const preparationSpellId = mutablePreparationSpellId(view)
+    const busy = preparationSpellId === preparationBusyId
+    const mutable = Boolean(preparationSpellId)
+    const editable = mutable && Boolean(onSetPrepared) && canEditPreparation
+
+    return (
+      <div
+        key={view.spell.key}
+        className="u1-character-spells__grimoire-entry"
+        data-preparation={view.preparation}
+      >
+        {trigger}
+        {mutable ? (
+          <button
+            type="button"
+            className="u1-character-spells__prepare-toggle"
+            data-active={view.preparation === "prepared" || undefined}
+            data-busy={busy || undefined}
+            disabled={!editable || busy}
+            aria-pressed={view.preparation === "prepared"}
+            onClick={() => void setPrepared(view)}
+          >
+            {busy
+              ? "Сохраняю…"
+              : view.preparation === "prepared"
+                ? "Убрать из подготовленных"
+                : "Подготовить"}
+          </button>
+        ) : (
+          <span className="u1-character-spells__prepare-fixed">
+            {view.preparation === "always_prepared"
+              ? "Всегда подготовлено"
+              : view.preparation === "not_required"
+                ? "Подготовка не требуется"
+                : "Управляется источником"}
+          </span>
+        )}
+      </div>
     )
   }
 
@@ -755,6 +931,13 @@ export default function CharacterSheetSpells({
         if (!allSpells.length) return null
 
         const expanded = expandedLevel === level
+        const grimoireOpen = grimoireLevel === level
+        const grimoireSpells = grimoireOpen
+          ? filteredGrimoireSpells(allSpells)
+          : allSpells
+        const levelHasPreparation = allSpells.some(
+          (view) => mutablePreparationSpellId(view) !== null,
+        )
         const slotPresentation = slotForSpellLevel(level)
         const slot = slotCount(slotPresentation.resource)
         const preview = allSpells.slice(0, 3)
@@ -767,12 +950,16 @@ export default function CharacterSheetSpells({
             className="u1-character-spells__circle"
             data-level={level}
             data-expanded={expanded || undefined}
+            data-grimoire={grimoireOpen || undefined}
             data-focus-target={level === focusLevel || undefined}
           >
             <button
               type="button"
               className="u1-character-spells__circle-head"
-              onClick={() => setExpandedLevel(level)}
+              onClick={() => {
+                setExpandedLevel(level)
+                if (grimoireLevel !== level) setGrimoireLevel(null)
+              }}
               aria-expanded={expanded}
               aria-controls={`u1-character-spells-content-${level}`}
             >
@@ -805,12 +992,117 @@ export default function CharacterSheetSpells({
             </button>
 
             {expanded ? (
-              <div
-                className="u1-character-spells__expanded-grid"
-                id={`u1-character-spells-content-${level}`}
-              >
-                {allSpells.map((view) => renderSpell(view))}
-              </div>
+              grimoireOpen ? (
+                <div
+                  className="u1-character-spells__grimoire-panel"
+                  id={`u1-character-spells-content-${level}`}
+                  data-grimoire-level={level}
+                >
+                  <header className="u1-character-spells__grimoire-head">
+                    <span className="u1-character-spells__grimoire-title">
+                      <strong>Гримуар · {levelTitle(level)}</strong>
+                      <small>
+                        {grimoireSpells.length} из {allSpells.length}
+                      </small>
+                    </span>
+                    <button
+                      type="button"
+                      className="u1-character-spells__grimoire-close"
+                      onClick={() => {
+                        setGrimoireLevel(null)
+                        setPreparationError("")
+                      }}
+                      aria-label="Закрыть гримуар"
+                    >
+                      <span aria-hidden="true" />
+                    </button>
+                  </header>
+
+                  <div className="u1-character-spells__grimoire-filters">
+                    {levelHasPreparation && (
+                      <button
+                        type="button"
+                        data-active={preparedOnly || undefined}
+                        onClick={() => setPreparedOnly((value) => !value)}
+                      >
+                        Подготовлены
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      data-active={concentrationOnly || undefined}
+                      onClick={() => setConcentrationOnly((value) => !value)}
+                    >
+                      Концентрация
+                    </button>
+                    <button
+                      type="button"
+                      data-active={ritualOnly || undefined}
+                      onClick={() => setRitualOnly((value) => !value)}
+                    >
+                      Ритуал
+                    </button>
+                    <label>
+                      <span>Школа</span>
+                      <select
+                        value={school}
+                        onChange={(event) => setSchool(event.target.value)}
+                      >
+                        <option value="all">Все</option>
+                        {schoolOptions.map((value) => (
+                          <option key={value} value={value}>
+                            {schoolLabel(value)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="u1-character-spells__grimoire-reset"
+                      onClick={resetGrimoireFilters}
+                    >
+                      Сбросить
+                    </button>
+                  </div>
+
+                  {preparationError && (
+                    <div
+                      className="u1-character-spells__grimoire-error"
+                      role="status"
+                    >
+                      {preparationError}
+                    </div>
+                  )}
+
+                  <div className="u1-character-spells__grimoire-list">
+                    {grimoireSpells.length ? (
+                      grimoireSpells.map((view) => renderSpell(view, false, true))
+                    ) : (
+                      <div className="u1-character-spells__grimoire-empty">
+                        Под эти фильтры ничего не попало.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="u1-character-spells__expanded-grid"
+                  id={`u1-character-spells-content-${level}`}
+                >
+                  {allSpells.map((view) => renderSpell(view))}
+                  <button
+                    type="button"
+                    className="u1-character-spells__grimoire-open"
+                    onClick={() => openGrimoire(level)}
+                  >
+                    <span className="u1-character-spells__grimoire-book" aria-hidden="true" />
+                    <span>
+                      <strong>Открыть в гримуаре</strong>
+                      <small>Все заклинания круга, фильтры и подготовка</small>
+                    </span>
+                  </button>
+                </div>
+              )
             ) : (
               <div
                 className="u1-character-spells__preview-row"
@@ -822,7 +1114,10 @@ export default function CharacterSheetSpells({
                   <button
                     type="button"
                     className="u1-character-spells__more"
-                    onClick={() => setExpandedLevel(level)}
+                    onClick={() => {
+                      setExpandedLevel(level)
+                      setGrimoireLevel(null)
+                    }}
                     aria-label={`Показать ещё ${remaining}`}
                   >
                     +{remaining}
