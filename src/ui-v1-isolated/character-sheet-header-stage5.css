@@ -103,6 +103,38 @@
   }
 }
 
+/* Hero cleanup approved after device review. The dark geometry visible behind
+ * identity and navigation came from stacked Stage-2/Stage-3 veils, rail fades
+ * and the bottom masthead fade. Keep the art/frame, remove those rectangular
+ * paint layers completely. */
+.u1-character-sheet__identity {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.u1-character-sheet__portrait-shade,
+.u1-character-sheet__hero-haze {
+  background: none !important;
+}
+
+.u1-character-sheet__masthead::after,
+.u1-character-sheet__rail::before,
+.u1-character-sheet__rail::after,
+.u1-character-sheet__rail-row::after {
+  display: none !important;
+}
+
+.u1-character-sheet__rail {
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.u1-character-sheet:not([data-dead]) .u1-character-sheet__hero-class-art {
+  filter: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .u1-character-sheet__rail-list {
     scroll-behavior: auto;
