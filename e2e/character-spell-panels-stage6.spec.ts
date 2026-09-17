@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
 
 const mobileWidths = [320, 360, 390, 430] as const
 const classKeys = [
@@ -17,7 +17,7 @@ const classKeys = [
   "ranger",
 ] as const
 
-async function openFixture(page: Parameters<typeof test>[0]["page"], width: number, classKey = "cleric") {
+async function openFixture(page: Page, width: number, classKey = "cleric") {
   await page.setViewportSize({ width, height: 844 })
   await page.goto(`/e2e-character-spell-panels-stage6.html?class=${classKey}`)
   await expect(page.locator(".u1-character-spells")).toBeVisible()
@@ -199,23 +199,12 @@ test("Stage 6 clamps pathological Russian spell names instead of widening cards"
 test("Stage 6 preserves spell palette and authored class slot art for every class skin", async ({ page }) => {
   for (const classKey of classKeys) {
     await openFixture(page, 390, classKey)
-
-    const values = await expect.poll(async () => page.evaluate(() => {
-      const sheet = document.querySelector<HTMLElement>(".u1-character-sheet")
-      const icon = document.querySelector<HTMLElement>(".u1-character-spells__class-icon")
-      if (!sheet || !icon) return null
-      const sheetStyle = getComputedStyle(sheet)
-      const iconStyle = getComputedStyle(icon)
-      return {
-        accent: sheetStyle.getPropertyValue("--cv-spell-accent").trim(),
-        image: iconStyle.backgroundImage,
-        position: iconStyle.backgroundPosition,
-      }
-    })).not.toBeNull()
+    await expect(page.locator(".u1-character-spells__class-icon").first()).toBeVisible()
 
     const actual = await page.evaluate(() => {
-      const sheet = document.querySelector<HTMLElement>(".u1-character-sheet")!
-      const icon = document.querySelector<HTMLElement>(".u1-character-spells__class-icon")!
+      const sheet = document.querySelector<HTMLElement>(".u1-character-sheet")
+      const icon = document.querySelector<HTMLElement>(".u1-character-spells__class-icon")
+      if (!sheet || !icon) throw new Error("Class spell skin surface missing")
       const sheetStyle = getComputedStyle(sheet)
       const iconStyle = getComputedStyle(icon)
       return {
@@ -230,6 +219,5 @@ test("Stage 6 preserves spell palette and authored class slot art for every clas
       actual.image.includes("class-spell-slots.png") || actual.image.includes("class-resources.png"),
     ).toBe(true)
     expect(actual.position).not.toBe("")
-    void values
   }
 })
