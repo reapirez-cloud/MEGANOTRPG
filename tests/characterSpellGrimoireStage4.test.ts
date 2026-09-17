@@ -17,7 +17,7 @@ const styles = fs.readFileSync(
 
 test("spell stage 4 opens a per-circle grimoire from the expanded spell panel", () => {
   assert.match(spells, /const \[grimoireLevel, setGrimoireLevel\]/)
-  assert.match(spells, /function|const openGrimoire/)
+  assert.match(spells, /const openGrimoire = \(level: number\) =>/)
   assert.match(spells, /Открыть в гримуаре/)
   assert.match(spells, /data-grimoire-level=\{level\}/)
   assert.match(spells, /Гримуар · \{levelTitle\(level\)\}/)
