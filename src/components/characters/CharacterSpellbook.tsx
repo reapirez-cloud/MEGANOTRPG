@@ -10,7 +10,6 @@ import type {
   CharacterSpellOption,
 } from "../../types/characterSheet.ts"
 import CharacterDetailSheet from "./CharacterDetailSheet.tsx"
-import CharacterSectionHeader from "./CharacterSectionHeader.tsx"
 import CharacterSectionState from "./CharacterSectionState.tsx"
 import SpellSlotMeter from "./SpellSlotMeter.tsx"
 import { buildSpellbookRenderModel, type SpellbookMode } from "./spellbookRender.ts"
@@ -18,6 +17,7 @@ import { buildSpellbookRenderModel, type SpellbookMode } from "./spellbookRender
 type Props = {
   sheet: CharacterSheet
   contract: ResolvedCharacterContract
+  classLabel: string
   spellcastingAbility?: AbilityKey
   spells: CharacterSpell[]
   /** Legacy catalog-option projection. Kept in the prop contract during migration, never authored here. */
@@ -68,6 +68,7 @@ export default function CharacterSpellbook(props: Props) {
   const {
     sheet,
     contract,
+    classLabel,
     spellcastingAbility,
     spells,
     canManage,
@@ -102,13 +103,51 @@ export default function CharacterSpellbook(props: Props) {
     preparedCount,
     knownCount,
     levels,
+    slotRail,
     visibleSpells,
   } = renderModel
+
+  const spellHeader = (
+    <section className="spellbook-reference-shell" aria-label="Ячейки заклинаний">
+      <header className="spellbook-reference-shell__head">
+        <div className="spellbook-reference-shell__title">
+          <small>Магия персонажа</small>
+          <h2>ЯЧЕЙКИ ЗАКЛИНАНИЙ</h2>
+        </div>
+        <div className="spellbook-reference-shell__identity">
+          <strong>{classLabel || "Заклинатель"}</strong>
+          <span>Ур. {contract.level}</span>
+        </div>
+      </header>
+
+      <div className="spellbook-reference-shell__rail" aria-label="Круги заклинаний с первого по девятый">
+        {slotRail.map((slot) => {
+          const active = selectedLevel === slot.level
+          return (
+            <button
+              key={slot.level}
+              type="button"
+              className={`spellbook-reference-shell__circle${slot.available ? " is-available" : " is-locked"}${active ? " is-active" : ""}`}
+              disabled={!slot.available}
+              aria-pressed={slot.available ? active : undefined}
+              aria-label={slot.available
+                ? `${slot.level} круг: ${slot.current} из ${slot.maximum} ячеек`
+                : `${slot.level} круг недоступен`}
+              onClick={() => onSelectedLevelChange(active ? null : slot.level)}
+            >
+              <span>{slot.level}</span>
+              <strong>{slot.available ? `${slot.current}/${slot.maximum}` : "·"}</strong>
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
 
   if (!sheet.spellcasting_enabled) {
     return (
       <section className="spellbook-v3 spellbook-v3--empty character-spellbook-v5 character-specialized-v5">
-        <CharacterSectionHeader eyebrow="Магия персонажа" title="Магия" icon="✦" action={<button type="button" onClick={onOpenReference}>Справочник</button>} />
+        {spellHeader}
         <CharacterSectionState
           kind="empty"
           title="Магия не открыта"
@@ -121,17 +160,13 @@ export default function CharacterSpellbook(props: Props) {
 
   return (
     <section className="spellbook-v3 character-spellbook-v5 character-specialized-v5">
-      <CharacterSectionHeader
-        eyebrow="Магия персонажа"
-        title="Магия"
-        detail="Подготовка, известные заклинания и доступные ячейки."
-        icon="✦"
-        meta={<>
-          <span>{preparedCount} подготовлено</span>
-          <span>{knownCount} изучено</span>
-        </>}
-        action={<button type="button" onClick={onOpenReference}>Справочник</button>}
-      />
+      {spellHeader}
+
+      <div className="spellbook-reference-shell__summary">
+        <span>{preparedCount} подготовлено</span>
+        <span>{knownCount} изучено</span>
+        <button type="button" onClick={onOpenReference}>Справочник</button>
+      </div>
 
       {(magic || spellcastingAbility) && (
         <div className="spellbook-v3__casting" aria-label="Показатели заклинателя">
