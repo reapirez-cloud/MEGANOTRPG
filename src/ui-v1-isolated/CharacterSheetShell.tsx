@@ -250,29 +250,31 @@ export default function CharacterSheetShell({
                 <strong className="u1-character-sheet__identity-name">
                   {characterName}
                 </strong>
-                <span className="u1-character-sheet__identity-classline">
-                  <span className="u1-character-sheet__identity-class">
-                    {characterClass || "Без класса"}
-                  </span>
-                  <span className="u1-character-sheet__identity-level">
-                    ур. {level}
-                  </span>
+                <span className="u1-character-sheet__identity-class">
+                  {characterClass || "Без класса"}
+                </span>
+                <span
+                  className="u1-character-sheet__identity-detail u1-character-sheet__identity-race"
+                  data-empty={race ? undefined : true}
+                >
+                  {race || "Раса —"}
                 </span>
                 <span
                   className="u1-character-sheet__identity-separator"
                   aria-hidden="true"
                 />
                 <span
-                  className="u1-character-sheet__identity-detail"
+                  className="u1-character-sheet__identity-detail u1-character-sheet__identity-subclass"
                   data-empty={subclass ? undefined : true}
                 >
                   {subclass || "Подкласс —"}
                 </span>
                 <span
-                  className="u1-character-sheet__identity-detail"
-                  data-empty={race ? undefined : true}
-                >
-                  {race || "Раса —"}
+                  className="u1-character-sheet__identity-separator"
+                  aria-hidden="true"
+                />
+                <span className="u1-character-sheet__identity-level">
+                  Уровень {level}
                 </span>
                 <span
                   className="u1-character-sheet__identity-separator"
