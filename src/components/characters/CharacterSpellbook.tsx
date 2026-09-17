@@ -13,11 +13,12 @@ import CharacterDetailSheet from "./CharacterDetailSheet.tsx"
 import CharacterSectionState from "./CharacterSectionState.tsx"
 import SpellSlotMeter from "./SpellSlotMeter.tsx"
 import { buildSpellbookRenderModel, type SpellbookMode } from "./spellbookRender.ts"
+import "./CharacterSpellbookStage2.css"
 
 type Props = {
   sheet: CharacterSheet
   contract: ResolvedCharacterContract
-  classLabel: string
+  classLabel?: string
   spellcastingAbility?: AbilityKey
   spells: CharacterSpell[]
   /** Legacy catalog-option projection. Kept in the prop contract during migration, never authored here. */
