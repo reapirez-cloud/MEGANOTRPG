@@ -13,9 +13,7 @@ import CharacterDetailSheet from "./CharacterDetailSheet.tsx"
 import CharacterSectionHeader from "./CharacterSectionHeader.tsx"
 import CharacterSectionState from "./CharacterSectionState.tsx"
 import SpellSlotMeter from "./SpellSlotMeter.tsx"
-import { spellSlotResources } from "./spellSlots.ts"
-
-type SpellMode = "prepared" | "known"
+import { buildSpellbookRenderModel, type SpellbookMode } from "./spellbookRender.ts"
 
 type Props = {
   sheet: CharacterSheet
@@ -86,7 +84,7 @@ export default function CharacterSpellbook(props: Props) {
     onForget,
   } = props
 
-  const [mode, setMode] = useState<SpellMode>(
+  const [mode, setMode] = useState<SpellbookMode>(
     spells.some((spell) => spell.prepared) ? "prepared" : "known",
   )
   const [selectedSpell, setSelectedSpell] = useState<CharacterSpell | null>(null)
@@ -94,18 +92,18 @@ export default function CharacterSpellbook(props: Props) {
   const magic = spellcastingAbility
     ? contract.spellcasting.byAbility[spellcastingAbility]
     : null
-  const preparedCount = spells.filter((spell) => spell.prepared).length
-  const levels = useMemo(() => {
-    const values = new Set<number>()
-    for (const spell of spells) values.add(spell.spell_level)
-    for (const slot of spellSlotResources(contract.resources)) values.add(slot.level)
-    return [...values].sort((left, right) => left - right)
-  }, [contract.resources, spells])
-
-  const visibleSpells = spells.filter((spell) =>
-    (mode !== "prepared" || spell.prepared) &&
-    (selectedLevel === null || spell.spell_level === selectedLevel),
-  )
+  const renderModel = useMemo(() => buildSpellbookRenderModel({
+    resources: contract.resources,
+    spells,
+    mode,
+    selectedLevel,
+  }), [contract.resources, mode, selectedLevel, spells])
+  const {
+    preparedCount,
+    knownCount,
+    levels,
+    visibleSpells,
+  } = renderModel
 
   if (!sheet.spellcasting_enabled) {
     return (
@@ -130,7 +128,7 @@ export default function CharacterSpellbook(props: Props) {
         icon="✦"
         meta={<>
           <span>{preparedCount} подготовлено</span>
-          <span>{spells.length} изучено</span>
+          <span>{knownCount} изучено</span>
         </>}
         action={<button type="button" onClick={onOpenReference}>Справочник</button>}
       />
@@ -157,7 +155,7 @@ export default function CharacterSpellbook(props: Props) {
 
       <div className="spellbook-v3__mode" role="tablist" aria-label="Раздел заклинаний">
         <button type="button" role="tab" aria-selected={mode === "prepared"} className={mode === "prepared" ? "is-active" : ""} onClick={() => setMode("prepared")}>Подготовлено <span>{preparedCount}</span></button>
-        <button type="button" role="tab" aria-selected={mode === "known"} className={mode === "known" ? "is-active" : ""} onClick={() => setMode("known")}>Изучено <span>{spells.length}</span></button>
+        <button type="button" role="tab" aria-selected={mode === "known"} className={mode === "known" ? "is-active" : ""} onClick={() => setMode("known")}>Изучено <span>{knownCount}</span></button>
       </div>
 
       <div className="spellbook-v3__levels" aria-label="Фильтр по уровню">
