@@ -1,0 +1,59 @@
+/* Spell screen stage 2: lock the information hierarchy to the approved reference.
+ * Layout only. Character Engine data, spell mechanics and casting behavior stay untouched.
+ */
+
+.u1-character-spells-stage2 > .u1-character-spells {
+  display: contents;
+}
+
+.u1-character-spells-stage2 .u1-character-spells__slots-panel {
+  order: 0;
+}
+
+.u1-character-spells-stage2 .u1-character-spells__circle[data-level="0"] {
+  order: 10;
+}
+
+.u1-character-spells-stage2 .u1-character-spells__circle[data-level="1"] { order: 21; }
+.u1-character-spells-stage2 .u1-character-spells__circle[data-level="2"] { order: 22; }
+.u1-character-spells-stage2 .u1-character-spells__circle[data-level="3"] { order: 23; }
+.u1-character-spells-stage2 .u1-character-spells__circle[data-level="4"] { order: 24; }
+.u1-character-spells-stage2 .u1-character-spells__circle[data-level="5"] { order: 25; }
+.u1-character-spells-stage2 .u1-character-spells__circle[data-level="6"] { order: 26; }
+.u1-character-spells-stage2 .u1-character-spells__circle[data-level="7"] { order: 27; }
+.u1-character-spells-stage2 .u1-character-spells__circle[data-level="8"] { order: 28; }
+.u1-character-spells-stage2 .u1-character-spells__circle[data-level="9"] { order: 29; }
+
+.u1-character-spells-stage2 .u1-character-spells__empty-book {
+  order: 80;
+}
+
+.u1-character-spells-stage2 .u1-character-spells__unknown-levels {
+  order: 90;
+}
+
+.u1-character-spells-stage2__placeholder .u1-character-spells__circle-head {
+  cursor: default;
+}
+
+.u1-character-spells-stage2__placeholder-seal {
+  background-image: none !important;
+  background-color: rgba(0, 0, 0, .14);
+}
+
+.u1-character-spells-stage2__placeholder .u1-character-spells__circle-caret {
+  opacity: 0;
+}
+
+.u1-character-spells-stage2__empty-preview {
+  min-height: 42px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+}
+
+.u1-character-spells-stage2__empty-preview > span {
+  color: var(--cv-text-muted);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(7px, 1.9vw, 9px);
+  line-height: 1.35;
+}
