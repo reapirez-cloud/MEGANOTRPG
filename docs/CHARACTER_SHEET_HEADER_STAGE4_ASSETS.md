@@ -1,41 +1,46 @@
-# Character Sheet Header · Stage 4 Assets
+# Character Sheet Header · Stage 4 Asset Fit
 
-Status: implemented on `dev`.
+Stage 4 locks how existing MEGANOT art is fitted into the Stage-1 header geometry. It does not redesign the user's PNGs, change class colors, or introduce new character mechanics.
 
-Stage 4 binds the existing visual assets to the header geometry already locked by Stage 1. It does not redesign the art, change class colors, change navigation contents, or introduce gameplay mechanics.
+## Ownership
 
-## Asset contract
+- Stage 1 owns the 40% portrait / 30% identity / 30% navigation geometry.
+- Stage 2 owns identity content and hierarchy.
+- Stage 3 owns navigation order, typography and internal scrolling.
+- Stage 4 owns only media fitting, clipping and paint-layer boundaries.
 
-The header uses the already-authored MEGANOT assets:
+Artwork never participates in grid sizing. A portrait, class background or frame can be replaced without moving the identity or navigation columns.
 
-- the class-specific lossless 9:16 PNG portrait frame;
-- the character portrait/media crop;
-- the class sheet background/reference-art binding;
-- the existing rail icon layer;
-- the existing neutral darkening/haze system used to keep text readable.
+## Portrait frame contract
 
-The visual layer is subordinate to layout. No PNG, portrait crop, background image, or icon is allowed to resize the 40% / 30% / 30% tracks.
+- Authored class frames are treated as a fixed 941:1672 viewport, matching the current production PNG family closely enough to preserve the aperture without letting source dimensions drive layout.
+- The frame is centred in the left 40% track.
+- The character portrait is rendered as a separate layer underneath the PNG frame and clipped inside the existing aperture insets.
+- Saved `CampaignMediaFrame` crop/presentation data remains valid inside that aperture.
+- The portrait cannot bleed over the frame, identity column or navigation rail.
+- Missing/unknown class frames fall back to the same fixed portrait viewport instead of expanding to fill the available track.
+- Dead-character desaturation continues to apply to the framed portrait treatment.
 
-## Portrait frame
+## Background contract
 
-The frame is centered inside the left 40% track at the fixed 20% header axis. The authored frame remains 9:16 and is rendered with `object-fit: contain`, so transparent padding or source PNG dimensions cannot distort it.
+Class sheet art remains a decorative layer. It may span the complete masthead, but it is absolutely positioned and cannot affect track width or header height. Neutral header veils remain independent from the artwork so unusually bright assets do not destroy text readability.
 
-The portrait itself is a separate layer below the frame and is clipped to the frame aperture (`6% 10.5% 6.5%`). The old free-portrait mask/fade is disabled inside framed portraits, preventing the avatar from leaking outside the authored opening.
+## Supabase boundary
 
-Unsupported/default classes keep a stable fallback portrait viewport inside the same left track.
+The existing media system remains authoritative for runtime overrides. No new table, storage bucket, migration or parallel asset registry is introduced.
 
-## Class background
+Verified on 2026-09-17:
+- active `class:*:portrait_frame` bindings exist for 7 classes;
+- those bound assets are PNG and are 941×1671 or 941×1672;
+- no active `class:*:sheet_background` runtime binding is currently required, so built-in class-background fallbacks continue to work normally.
 
-The existing class background remains a paint-only surface. Runtime campaign reference-art bindings still override bundled fallbacks through the existing `class:<classKey>:sheet_background` path. Stage 4 adds no new media storage or Supabase source of truth.
+The absence or presence of a Supabase media override must never change layout geometry.
 
-## Readability layers
+## Acceptance
 
-The neutral portrait shade and haze are restored over the art layer because earlier character-sheet passes intentionally disabled them. They do not recolor class artwork; they only preserve text/control readability across bright and dark source images.
-
-Identity and navigation stay above all art layers by explicit z-order.
-
-## Scope boundary
-
-Stage 3 navigation contents/order/typography are intentionally not implemented by this stage. Stage 4 can land before Stage 3 because it does not change rail semantics.
-
-No Character Engine, Supabase schema/data, inspiration mechanics, inventory mechanics, spell mechanics, or rest mechanics are changed.
+- Existing PNG portrait frames stay lossless and undistorted.
+- Portraits stay inside the frame aperture.
+- Replacing a frame/background does not move identity or navigation.
+- Framed and frameless characters occupy the same left-track visual footprint.
+- 360 / 390 / 412 CSS-px mobile widths preserve the same composition.
+- No Supabase schema or data mutation is required for Stage 4.
