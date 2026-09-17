@@ -3,10 +3,12 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
 } from "react"
 
 import type {
   ResolvedCharacterContract,
+  ResolvedResource,
   ResolvedSpell,
   ResolvedSpellAccess,
 } from "../character-engine/index.ts"
@@ -29,6 +31,7 @@ import {
   characterSheetLinkedEntitiesForSpell,
   type CharacterSheetEntityNavigator,
 } from "./characterSheetEntityNavigation"
+import { characterSheetSpellSlotAsset } from "./characterSheetVisualAssets"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 
 type SpellCatalogMeta = {
@@ -80,6 +83,77 @@ const schoolTranslations: Record<string, string> = {
   Illusion: "Иллюзия",
   Necromancy: "Некромантия",
   Transmutation: "Преобразование",
+}
+
+const classLabels: Record<string, string> = {
+  fighter: "Воин",
+  warlock: "Колдун",
+  cleric: "Жрец",
+  druid: "Друид",
+  bard: "Бард",
+  paladin: "Паладин",
+  sorcerer: "Чародей",
+  wizard: "Волшебник",
+  rogue: "Разбойник",
+  monk: "Монах",
+  barbarian: "Варвар",
+  artificer: "Изобретатель",
+  ranger: "Следопыт",
+}
+
+function atlasStyle(
+  url: string,
+  columns: number,
+  rows: number,
+  column: number,
+  row: number,
+) {
+  const positionX =
+    columns <= 1 ? "0%" : `${(column / (columns - 1)) * 100}%`
+  const positionY =
+    rows <= 1 ? "0%" : `${(row / (rows - 1)) * 100}%`
+
+  return {
+    "--u1-spell-slot-icon": `url("${url}")`,
+    "--u1-spell-slot-icon-size": `${columns * 100}% ${rows * 100}%`,
+    "--u1-spell-slot-icon-position": `${positionX} ${positionY}`,
+  } as CSSProperties
+}
+
+function classSpellIconStyle(classKey: string) {
+  const asset = characterSheetSpellSlotAsset(classKey)
+  return atlasStyle(
+    asset.url,
+    asset.columns,
+    asset.rows,
+    asset.column,
+    asset.row,
+  )
+}
+
+function standardSlotLevel(resource: ResolvedResource) {
+  const match = resource.stateKey.match(/^spell_slot_([1-9])$/)
+  return match ? Number(match[1]) : null
+}
+
+function pactSlotLevel(contract: ResolvedCharacterContract) {
+  const value = contract.values.find(
+    (entry) =>
+      entry.key === "warlock_pact_slot_level" ||
+      entry.stateKey === "warlock_pact_slot_level",
+  )
+  return value
+    ? Math.max(1, Math.min(9, Math.round(value.value.value)))
+    : null
+}
+
+function slotCount(resource: ResolvedResource | null | undefined) {
+  if (!resource) return { current: 0, max: 0 }
+  const max = Math.max(0, Math.round(resource.max.value))
+  return {
+    current: Math.max(0, Math.min(max, Math.round(resource.current))),
+    max,
+  }
 }
 
 function schoolLabel(value: string) {
@@ -194,6 +268,7 @@ export default function CharacterSheetSpells({
 }) {
   const snake = useSnake()
   const rootRef = useRef<HTMLDivElement | null>(null)
+  const [sheetClassKey, setSheetClassKey] = useState("")
   const [catalogBySlug, setCatalogBySlug] = useState<Map<string, SpellCatalogMeta>>(
     () => new Map(),
   )
@@ -300,6 +375,37 @@ export default function CharacterSheetSpells({
       )
   }, [catalogBySlug, contract, legacySpells])
 
+  const slotByLevel = useMemo(
+    () => new Map(
+      (contract?.resources || [])
+        .map((resource) => {
+          const level = standardSlotLevel(resource)
+          return level === null ? null : [level, resource] as const
+        })
+        .filter(
+          (entry): entry is readonly [number, ResolvedResource] =>
+            entry !== null,
+        ),
+    ),
+    [contract],
+  )
+
+  const pactSlots = useMemo(
+    () =>
+      (contract?.resources || []).find(
+        (resource) => resource.stateKey === "warlock_pact_slots",
+      ) || null,
+    [contract],
+  )
+
+  const pactLevel = contract ? pactSlotLevel(contract) : null
+
+  useEffect(() => {
+    if (!contract) return
+    const sheet = rootRef.current?.closest<HTMLElement>(".u1-character-sheet")
+    setSheetClassKey(sheet?.dataset.classKey || "")
+  }, [characterId, contract])
+
   const hasPreparationWorkflow = useMemo(
     () =>
       hasMutablePreparationWorkflow(
@@ -336,6 +442,18 @@ export default function CharacterSheetSpells({
     if (school !== "all" && spell.school !== school) return false
     return true
   })
+
+  const scrollToLevel = (level: number) => {
+    window.requestAnimationFrame(() => {
+      rootRef.current
+        ?.querySelector<HTMLElement>(`[data-level="${level}"]`)
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+          inline: "nearest",
+        })
+    })
+  }
 
   useEffect(() => {
     if (!focusSpellKey) return
@@ -402,6 +520,67 @@ export default function CharacterSheetSpells({
 
   return (
     <div className="u1-character-spells" ref={rootRef}>
+      <section
+        className="u1-character-spells__slots-panel"
+        aria-labelledby="u1-character-spells-slots-title"
+      >
+        <header className="u1-character-spells__slots-head">
+          <strong id="u1-character-spells-slots-title">ЯЧЕЙКИ ЗАКЛИНАНИЙ</strong>
+          <span aria-hidden="true" />
+          <small>
+            {pactSlots && pactLevel
+              ? `Магия договора · ${pactLevel} круг`
+              : classLabels[sheetClassKey] || "Заклинатель"}
+          </small>
+        </header>
+
+        <div className="u1-character-spells__slots-grid">
+          {Array.from({ length: 9 }, (_, index) => index + 1).map((level) => {
+            const pactAtThisLevel = Boolean(pactSlots && pactLevel === level)
+            const resource =
+              slotByLevel.get(level) || (pactAtThisLevel ? pactSlots : null)
+            const slot = slotCount(resource)
+            const locked = slot.max <= 0
+            const exhausted = !locked && slot.current <= 0
+
+            return (
+              <button
+                key={level}
+                type="button"
+                className="u1-character-spells__slot"
+                data-slot-level={level}
+                data-locked={locked || undefined}
+                data-pact={pactAtThisLevel || undefined}
+                data-exhausted={exhausted || undefined}
+                data-focus-target={focusLevel === level || undefined}
+                disabled={locked}
+                onClick={() => scrollToLevel(level)}
+                aria-label={
+                  locked
+                    ? `${level} круг недоступен`
+                    : pactAtThisLevel
+                      ? `Магия договора: ${slot.current} из ${slot.max} ячеек ${level} круга`
+                      : `${level} круг: ${slot.current} из ${slot.max} ячеек`
+                }
+              >
+                <span className="u1-character-spells__slot-icon-frame">
+                  {locked ? (
+                    <i className="u1-character-spells__slot-lock" aria-hidden="true" />
+                  ) : (
+                    <i
+                      className="u1-character-spells__class-icon"
+                      style={classSpellIconStyle(sheetClassKey)}
+                      aria-hidden="true"
+                    />
+                  )}
+                </span>
+                <small>{locked ? `${level} круг` : `${slot.current}/${slot.max}`}</small>
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
       <div className="u1-character-spells__filters">
         <div className="u1-character-spells__chips">
           {hasPreparationWorkflow && (
