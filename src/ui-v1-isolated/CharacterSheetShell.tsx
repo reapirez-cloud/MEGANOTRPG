@@ -22,6 +22,15 @@ function CharacterSheetNavIcon({ id }: { id: string }) {
     focusable: false,
   }
 
+  if (id === "overview") {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="8" r="3.1" />
+        <path d="M5.8 19.25c.55-4.1 2.6-6.15 6.2-6.15s5.65 2.05 6.2 6.15" />
+      </svg>
+    )
+  }
+
   if (id === "features") {
     return (
       <svg {...common}>
@@ -37,6 +46,16 @@ function CharacterSheetNavIcon({ id }: { id: string }) {
         <path d="M5 6.35c2.55-.7 4.6-.25 7 1.25v10.05c-2.4-1.5-4.45-1.95-7-1.25V6.35Z" />
         <path d="M19 6.35c-2.55-.7-4.6-.25-7 1.25v10.05c2.4-1.5 4.45-1.95 7-1.25V6.35Z" />
         <path d="m16.85 2.95.45 1.2 1.2.45-1.2.45-.45 1.2-.45-1.2-1.2-.45 1.2-.45.45-1.2Z" />
+      </svg>
+    )
+  }
+
+  if (id === "proficiencies") {
+    return (
+      <svg {...common}>
+        <path d="m5.1 4.2 5.55 5.55M4.3 3.4l1.6 4.25 2.25-2.25L4.3 3.4Z" />
+        <path d="m18.9 4.2-5.55 5.55M19.7 3.4l-1.6 4.25-2.25-2.25 3.85-2Z" />
+        <path d="m9.1 11.3-4.45 7.15M14.9 11.3l4.45 7.15" />
       </svg>
     )
   }

@@ -16,6 +16,7 @@ export const CHARACTER_SHEET_SECTIONS = [
   "overview",
   "features",
   "spells",
+  "proficiencies",
   "biography",
 ] as const
 
@@ -44,13 +45,19 @@ export function characterSheetNavigationIconSlot(id: string) {
 }
 
 /**
- * Append future sheet entries here.
+ * Header reference order is intentional and stable.
  *
  * The shell intentionally does not derive its height from this array: the rail
  * is a fixed-height internal scroller. Adding more entries must never make the
  * masthead taller or push the 50/50 core block down the page.
  */
 export const CHARACTER_SHEET_NAVIGATION: readonly CharacterSheetNavItem[] = [
+  {
+    id: "overview",
+    label: "Персонаж",
+    iconSlot: characterSheetNavigationIconSlot("overview"),
+    target: { kind: "section", section: "overview" },
+  },
   {
     id: "features",
     label: "Умения",
@@ -62,6 +69,12 @@ export const CHARACTER_SHEET_NAVIGATION: readonly CharacterSheetNavItem[] = [
     label: "Заклинания",
     iconSlot: characterSheetNavigationIconSlot("spells"),
     target: { kind: "section", section: "spells" },
+  },
+  {
+    id: "proficiencies",
+    label: "Владения",
+    iconSlot: characterSheetNavigationIconSlot("proficiencies"),
+    target: { kind: "section", section: "proficiencies" },
   },
   {
     id: "biography",

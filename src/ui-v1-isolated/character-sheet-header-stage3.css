@@ -1,0 +1,80 @@
+/*
+ * Character Sheet Header · Stage 3
+ * Navigation rail composition matched to the approved reference while keeping
+ * MEGANOT's existing class skin. Mobile stays a three-row internal scroller.
+ */
+
+.u1-character-sheet__rail-list {
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  scroll-snap-type: y mandatory;
+}
+
+.u1-character-sheet__rail-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.u1-character-sheet__rail-row {
+  min-width: 0;
+  grid-template-columns:
+    clamp(21px, 5.8vw, 27px)
+    minmax(0, 1fr)
+    clamp(7px, 1.9vw, 9px);
+  gap: clamp(3px, 1vw, 5px);
+  padding-inline: clamp(1px, .45vw, 2px);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.u1-character-sheet__nav-icon {
+  width: clamp(21px, 5.8vw, 27px);
+  height: clamp(21px, 5.8vw, 27px);
+}
+
+.u1-character-sheet__nav-icon > svg {
+  width: 64%;
+  height: 64%;
+}
+
+.u1-character-sheet__rail-row strong {
+  min-width: 0;
+  overflow: visible;
+  font-size: clamp(8.5px, 2.25vw, 10.5px);
+  line-height: 1;
+  letter-spacing: -.018em;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.u1-character-sheet__rail-chevron {
+  font-size: clamp(10px, 2.7vw, 13px);
+}
+
+@media (max-width: 359px) {
+  .u1-character-sheet__rail-row {
+    grid-template-columns: 20px minmax(0, 1fr) 7px;
+    gap: 3px;
+  }
+
+  .u1-character-sheet__nav-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .u1-character-sheet__rail-row strong {
+    font-size: 8.25px;
+    letter-spacing: -.025em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u1-character-sheet__rail-list {
+    scroll-behavior: auto;
+  }
+}

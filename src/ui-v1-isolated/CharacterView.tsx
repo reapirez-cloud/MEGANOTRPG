@@ -46,6 +46,7 @@ import "./character-sheet-theme.css"
 import "./character-sheet-backgrounds.css"
 import "./character-sheet-shell.css"
 import "./character-sheet-header-stage2.css"
+import "./character-sheet-header-stage3.css"
 import "./character-sheet-core.css"
 import "./character-sheet-features.css"
 import "./character-sheet-overview.css"
@@ -78,6 +79,10 @@ function classKeyFrom(
 
 function SectionPlaceholder({ section }: { section: CharacterSheetSection }) {
   const copy: Record<Exclude<CharacterSheetSection, "overview" | "features" | "spells">, { title: string; body: string }> = {
+    proficiencies: {
+      title: "Владения",
+      body: "Владения, языки и чувства остаются частью листа и открываются в нижней области. Детальную раскладку этого раздела подключим отдельным этапом.",
+    },
     biography: {
       title: "Биография",
       body: "Биография остаётся частью листа и заменяет только нижнюю область, не открывая отдельный экран.",
