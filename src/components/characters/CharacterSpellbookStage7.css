@@ -1,0 +1,73 @@
+/* Spell tab render — Stage 7.
+ * Expanded spell circles use a dense two-column card grid.
+ */
+
+.spellbook-level-panel__body {
+  padding: 8px;
+  border-top: 1px solid var(--character-line);
+  background: var(--character-surface-soft);
+}
+
+.spellbook-level-panel__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.spellbook-level-panel__list .spellbook-v3__spell {
+  min-width: 0;
+  border: 1px solid var(--character-line);
+  border-radius: var(--character-radius-small);
+  background: var(--character-surface-raised);
+  overflow: hidden;
+}
+
+.spellbook-level-panel__list .spellbook-v3__spell-main {
+  min-height: 92px;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 14px;
+  gap: 7px;
+  align-items: start;
+}
+
+.spellbook-level-panel__list .spellbook-v3__level-rune {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+}
+
+.spellbook-level-panel__list .spellbook-v3__spell-copy {
+  gap: 4px;
+}
+
+.spellbook-level-panel__list .spellbook-v3__spell-copy strong {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.spellbook-level-panel__list .spellbook-v3__school {
+  color: var(--character-text-muted);
+  font-size: 8px;
+}
+
+.spellbook-level-panel__list .spell-mini-icons {
+  margin-top: 3px;
+}
+
+.spellbook-level-panel__list .spellbook-v3__spell-actions {
+  padding: 0 8px 8px;
+}
+
+.spellbook-level-panel__empty {
+  padding: 14px;
+  color: var(--character-text-muted);
+  text-align: center;
+  font-size: 10px;
+}
+
+@media (max-width: 420px) {
+  .spellbook-level-panel__list {
+    grid-template-columns: 1fr;
+  }
+}
