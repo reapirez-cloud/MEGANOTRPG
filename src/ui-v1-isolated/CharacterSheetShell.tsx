@@ -355,7 +355,7 @@ export default function CharacterSheetShell({
         </aside>
       </section>
 
-      {core}
+      {activeSection === "overview" ? core : null}
 
       <section className="u1-character-sheet__content">
         {children}
