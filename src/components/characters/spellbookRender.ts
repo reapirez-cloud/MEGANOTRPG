@@ -4,11 +4,18 @@ import { spellSlotResources } from "./spellSlots.ts"
 
 export type SpellbookMode = "prepared" | "known"
 
+export type SpellbookSlotCell = {
+  index: number
+  filled: boolean
+}
+
 export type SpellbookSlotLevel = {
   level: number
   available: boolean
   current: number
   maximum: number
+  depleted: boolean
+  cells: SpellbookSlotCell[]
 }
 
 export type SpellbookRenderModel = {
@@ -30,7 +37,7 @@ type BuildSpellbookRenderModelInput = {
 /**
  * Pure render projection for the spell tab.
  *
- * Keep UI components dumb: the same resolved resources drive the slot meter,
+ * Keep UI components dumb: the same resolved resources drive the slot panel,
  * level filters and spell list so a visual redesign cannot quietly invent a
  * second interpretation of character state.
  */
@@ -55,11 +62,20 @@ export function buildSpellbookRenderModel({
   const slotRail: SpellbookSlotLevel[] = Array.from({ length: 9 }, (_, index) => {
     const level = index + 1
     const slot = slotByLevel.get(level)
+    const maximum = slot?.maximum ?? 0
+    const current = slot?.current ?? 0
+    const available = Boolean(slot)
+
     return {
       level,
-      available: Boolean(slot),
-      current: slot?.current ?? 0,
-      maximum: slot?.maximum ?? 0,
+      available,
+      current,
+      maximum,
+      depleted: available && maximum > 0 && current === 0,
+      cells: Array.from({ length: maximum }, (_, cellIndex) => ({
+        index: cellIndex,
+        filled: cellIndex < current,
+      })),
     }
   })
 
