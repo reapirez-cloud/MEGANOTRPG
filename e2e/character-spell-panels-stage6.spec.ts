@@ -264,3 +264,42 @@ test("Stage 4 keeps class identity in the slots header instead of replacing it w
   await expect(page.locator(".u1-character-spells__slots-head [data-class-level]")).toHaveText("Колдун · Ур. 5")
   await expect(page.locator(".u1-character-spells__slots-head")).not.toContainText("Магия договора")
 })
+
+
+test("Stage 5 makes long-rest preparation read-only in the sheet grimoire", async ({ page }) => {
+  await openFixture(page, 390, "cleric")
+  await page.getByRole("button", { name: "Открыть в гримуаре" }).click()
+
+  const panel = page.locator(".u1-character-spells__grimoire-panel")
+  await expect(panel).toHaveAttribute("data-management-mode", "long_rest")
+  await expect(panel.locator(".u1-character-spells__grimoire-context")).toContainText("после долгого отдыха через чат")
+  await expect(panel.locator(".u1-character-spells__prepare-toggle")).toHaveCount(0)
+  await expect(panel.locator(".u1-character-spells__prepare-fixed").first()).toBeVisible()
+})
+
+test("Stage 5 gives Wizard a spellbook grimoire instead of unsafe direct preparation", async ({ page }) => {
+  await openFixture(page, 390, "wizard")
+  await page.getByRole("button", { name: "Открыть в гримуаре" }).click()
+
+  const panel = page.locator(".u1-character-spells__grimoire-panel")
+  await expect(panel).toHaveAttribute("data-management-mode", "spellbook")
+  await expect(panel.locator(".u1-character-spells__grimoire-context")).toContainText("Книга заклинаний")
+  await expect(panel.locator(".u1-character-spells__prepare-toggle")).toHaveCount(0)
+})
+
+test("Stage 5 distinguishes Pact Magic and persistent level-up spell choices", async ({ page }) => {
+  await openFixture(page, 390, "warlock")
+  await page.getByRole("button", { name: "Открыть в гримуаре" }).click()
+  let panel = page.locator(".u1-character-spells__grimoire-panel")
+  await expect(panel).toHaveAttribute("data-management-mode", "pact_magic")
+  await expect(panel.locator(".u1-character-spells__grimoire-context")).toContainText("Магия договора")
+  await expect(panel.locator(".u1-character-spells__prepare-toggle")).toHaveCount(0)
+  await expect(panel.locator(".u1-character-spells__prepare-fixed").first()).toContainText("Магия договора")
+
+  await openFixture(page, 390, "sorcerer")
+  await page.getByRole("button", { name: "Открыть в гримуаре" }).click()
+  panel = page.locator(".u1-character-spells__grimoire-panel")
+  await expect(panel).toHaveAttribute("data-management-mode", "level_choice")
+  await expect(panel.locator(".u1-character-spells__grimoire-context")).toContainText("при развитии персонажа")
+  await expect(panel.locator(".u1-character-spells__prepare-fixed").first()).toContainText("Выбрано при развитии")
+})
