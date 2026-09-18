@@ -368,3 +368,82 @@
     transition: none;
   }
 }
+
+
+/* Premium background-derived glass · shared with the character sheet */
+.u1-character-spells__slots-panel,
+.u1-character-spells__circle,
+.u1-character-spells__grimoire-panel {
+  border-color: var(--cv-panel-edge);
+  background: var(--cv-panel-glass);
+  box-shadow:
+    inset 0 1px 0 var(--cv-panel-specular),
+    inset 0 0 0 1px color-mix(in srgb, var(--cv-panel-edge) 72%, transparent),
+    0 12px 28px rgba(0,0,0,.13);
+  backdrop-filter: var(--cv-panel-filter);
+  -webkit-backdrop-filter: var(--cv-panel-filter);
+}
+
+.u1-character-spells__slots-panel::before,
+.u1-character-spells__circle::before {
+  border-color: var(--cv-panel-line);
+}
+
+.u1-character-spells__circle[data-expanded] {
+  border-color:
+    color-mix(in srgb, var(--cv-spell-accent) 34%, var(--cv-panel-edge));
+  box-shadow:
+    inset 0 1px 0 var(--cv-panel-specular),
+    inset 0 0 0 1px color-mix(in srgb, var(--cv-spell-accent) 8%, transparent),
+    0 13px 30px rgba(0,0,0,.15);
+}
+
+.u1-character-spells__preview-row,
+.u1-character-spells__expanded-grid,
+.u1-character-spells__grimoire-panel {
+  border-top-color: var(--cv-panel-line);
+}
+
+.u1-character-spells__preview-card,
+.u1-character-spells__spell-card,
+.u1-character-spells__more,
+.u1-character-spells__grimoire-open,
+.u1-character-spells__grimoire-entry {
+  border-color: var(--cv-panel-line);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--cv-art-highlight) 3.5%, transparent),
+      transparent 38%,
+      color-mix(in srgb, var(--cv-art-tint) 4.5%, transparent)
+    ),
+    rgba(5, 6, 7, .22);
+}
+
+.u1-character-spells__slot-icon-frame,
+.u1-character-spells__circle-seal {
+  border-color:
+    color-mix(in srgb, var(--cv-art-tint) 18%, var(--cv-panel-edge));
+  background:
+    radial-gradient(
+      circle at 50% 42%,
+      color-mix(in srgb, var(--cv-spell-accent) 11%, transparent),
+      transparent 64%
+    ),
+    rgba(3,4,5,.18);
+}
+
+.u1-character-spells__slot:not([data-locked]) .u1-character-spells__slot-icon-frame {
+  border-color:
+    color-mix(in srgb, var(--cv-spell-accent) 28%, var(--cv-panel-edge));
+}
+
+.u1-character-spells__slots-head > span {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--cv-art-highlight) 44%, transparent),
+      color-mix(in srgb, var(--cv-art-tint) 20%, transparent) 54%,
+      transparent
+    );
+}

@@ -31,6 +31,11 @@ import {
   type CharacterSheetEntityNavigator,
 } from "./characterSheetEntityNavigation"
 import { characterSheetSpellSlotAsset } from "./characterSheetVisualAssets"
+import type { CharacterSheetMediaController } from "./characterSheetMediaActions"
+import {
+  classReferenceArtSlot,
+  type UiV1ReferenceMedia,
+} from "./useUiV1ReferenceMedia"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import "./character-sheet-spells.css"
 import "./character-sheet-spell-stage6.css"
@@ -153,7 +158,39 @@ function atlasStyle(
   } as CSSProperties
 }
 
-function classSpellIconStyle(classKey: string) {
+function mediaIconStyle(media: UiV1ReferenceMedia) {
+  const presentation = media.presentation
+  if (!presentation) {
+    return {
+      "--u1-spell-slot-icon": `url(${JSON.stringify(media.url)})`,
+      "--u1-spell-slot-icon-size": "contain",
+      "--u1-spell-slot-icon-position": "center",
+    } as CSSProperties
+  }
+
+  const { x, y, width, height } = presentation.crop
+  const positionX =
+    width >= 0.999999
+      ? 50
+      : Math.max(0, Math.min(100, (x / (1 - width)) * 100))
+  const positionY =
+    height >= 0.999999
+      ? 50
+      : Math.max(0, Math.min(100, (y / (1 - height)) * 100))
+
+  return {
+    "--u1-spell-slot-icon": `url(${JSON.stringify(media.url)})`,
+    "--u1-spell-slot-icon-size": `${100 / width}% ${100 / height}%`,
+    "--u1-spell-slot-icon-position": `${positionX}% ${positionY}%`,
+  } as CSSProperties
+}
+
+function classSpellIconStyle(
+  classKey: string,
+  override?: UiV1ReferenceMedia | null,
+) {
+  if (override?.url) return mediaIconStyle(override)
+
   const asset = characterSheetSpellSlotAsset(classKey)
   return atlasStyle(
     asset.url,
@@ -433,6 +470,7 @@ export default function CharacterSheetSpells({
   onSetPrepared,
   onSelect,
   onNavigateEntity,
+  mediaController,
 }: {
   characterId: string
   classKey?: string
@@ -449,11 +487,18 @@ export default function CharacterSheetSpells({
   ) => Promise<PreparationMutationResult>
   onSelect?: (spellId: string) => void
   onNavigateEntity?: CharacterSheetEntityNavigator
+  mediaController?: CharacterSheetMediaController | null
 }) {
   const snake = useSnake()
   const rootRef = useRef<HTMLDivElement | null>(null)
   const [sheetClassKey, setSheetClassKey] = useState(() => classKey?.trim() || "")
   const displayClassKey = classKey?.trim() || sheetClassKey
+  const classSpellSlotMedia =
+    displayClassKey
+      ? mediaController?.get(
+          classReferenceArtSlot(displayClassKey, "spell_slot"),
+        ) || null
+      : null
   const [expandedLevel, setExpandedLevel] = useState<number | null>(() =>
     initialSpellCircleLevel(contract, focusLevel),
   )
@@ -1008,7 +1053,7 @@ export default function CharacterSheetSpells({
                     ) : (
                       <i
                         className="u1-character-spells__class-icon"
-                        style={classSpellIconStyle(displayClassKey)}
+                        style={classSpellIconStyle(displayClassKey, classSpellSlotMedia)}
                         aria-hidden="true"
                       />
                     )}
@@ -1052,7 +1097,7 @@ export default function CharacterSheetSpells({
               <div className="u1-character-spells__circle-head">
                 <span
                   className="u1-character-spells__circle-seal u1-character-spells-stage2__placeholder-seal"
-                  style={cantrip ? classSpellIconStyle(displayClassKey) : undefined}
+                  style={cantrip ? classSpellIconStyle(displayClassKey, classSpellSlotMedia) : undefined}
                   data-cantrip={cantrip || undefined}
                   aria-hidden="true"
                 >
@@ -1145,7 +1190,7 @@ export default function CharacterSheetSpells({
             >
               <span
                 className="u1-character-spells__circle-seal"
-                style={level === 0 ? classSpellIconStyle(displayClassKey) : undefined}
+                style={level === 0 ? classSpellIconStyle(displayClassKey, classSpellSlotMedia) : undefined}
                 data-cantrip={level === 0 || undefined}
                 aria-hidden="true"
               >

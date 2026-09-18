@@ -169,7 +169,10 @@ export function useUiV1ReferenceMedia() {
           file,
           isIcon ? "reference-icons" : "reference-art",
           scope.campaignId,
-          { preservePng: isIcon || isPortraitFrame },
+          {
+            preservePng: isIcon || isPortraitFrame,
+            preserveOriginal: isIcon || isPortraitFrame,
+          },
         )
         if (!upload.ok) {
           setBusy(false)

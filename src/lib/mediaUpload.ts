@@ -60,12 +60,21 @@ function contentTypeForExtension(extension: string) {
 
 type UploadCampaignImageOptions = {
   preservePng?: boolean
+  /**
+   * Keep authored UI assets byte-for-byte. When enabled we never resize,
+   * re-encode, lower quality, or change the source mime type.
+   */
+  preserveOriginal?: boolean
 }
 
 async function optimizeCampaignImage(
   file: File,
   options?: UploadCampaignImageOptions,
 ): Promise<File> {
+  if (options?.preserveOriginal) {
+    return file
+  }
+
   if (
     typeof createImageBitmap !== "function" ||
     !["image/jpeg", "image/png", "image/webp"].includes(file.type)

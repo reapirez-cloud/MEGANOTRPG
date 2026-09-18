@@ -78,7 +78,7 @@ test("framed avatars are clipped beneath a non-distorted PNG overlay", () => {
   assert.match(shell, /u1-character-sheet__portrait-frame[\s\S]*object-fit:\s*contain/)
 })
 
-test("background art owns the palette while panels remain neutral dark glass", () => {
+test("background art owns the palette while panels use class-refracted premium glass", () => {
   const theme = fs.readFileSync(
     "src/ui-v1-isolated/character-sheet-theme.css",
     "utf8",
@@ -92,8 +92,10 @@ test("background art owns the palette while panels remain neutral dark glass", (
     "utf8",
   )
 
-  assert.match(theme, /--cv-panel-glass:\s*rgba\(5, 6, 7, \.55\)/)
+  assert.match(theme, /--cv-art-tint:/)
   assert.match(theme, /--cv-art-highlight:/)
+  assert.match(theme, /--cv-panel-glass:\s*linear-gradient\(/)
+  assert.match(theme, /rgba\(5, 6, 7, \.34\)/)
   assert.match(theme, /var\(--cv-class-art-wash\)/)
   assert.match(
     theme,
