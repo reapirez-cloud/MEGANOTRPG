@@ -43,7 +43,7 @@ jobs:
           output_dir = source_dir / "ui"
           output_dir.mkdir(parents=True, exist_ok=True)
 
-          max_edge = 512
+          max_edge = 384
           sources = sorted(source_dir.glob("*.png"))
           if not sources:
               raise SystemExit("No source grimdark PNG icons found")
