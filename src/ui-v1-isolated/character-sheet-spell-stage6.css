@@ -71,6 +71,13 @@
   height: 48px;
 }
 
+.u1-character-spells__circle[data-expanded] {
+  border-color: var(--cv-accent-line);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.04),
+    0 8px 20px rgba(0,0,0,.18);
+}
+
 .u1-character-spells__circle-title,
 .u1-character-spells__circle-title > strong,
 .u1-character-spells__circle-title > small,
@@ -164,8 +171,20 @@
   }
 
   .u1-character-spells__slots-head {
-    gap: 6px;
+    grid-template-columns: auto minmax(8px, 1fr) auto;
+    gap: 5px;
     margin-bottom: 9px;
+  }
+
+  .u1-character-spells__slots-head > strong {
+    font-size: 8px;
+  }
+
+  .u1-character-spells__slots-head > small {
+    display: block;
+    max-width: 82px;
+    font-size: 6px;
+    text-align: right;
   }
 
   .u1-character-spells__slots-grid {
