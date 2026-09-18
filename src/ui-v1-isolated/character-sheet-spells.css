@@ -76,6 +76,7 @@
 
 .u1-character-spells__slots-head > small {
   overflow: hidden;
+  text-align: right;
   max-width: 118px;
   color: var(--cv-text-faint);
   font-family: Georgia, "Times New Roman", serif;
