@@ -11,14 +11,17 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Abilities v2 Stage 2 rebuilds the collapsed five-panel anatomy to match the reference proportions while staying inside the existing MEGANOT sheet: the identity side now yields more width to the ability-preview side, previews remain a compact three-row list, and `ещё N` sits beside the far-right chevron instead of becoming a stray fourth row.
 - Started Abilities v2 visual correction: removed the copied standalone `УМЕНИЯ` heading/slogan so the five ability panels now begin directly in the existing character-sheet flow beneath the unchanged MEGANOT character/background shell. The reference is now treated as panel-composition guidance only, not as a page skin.
 ### Database / migration changes
 
 ### Runtime and architecture changes
 
+- Abilities v2 Stage 2 is presentation-only. The existing read-model, accordion state, Snake entity/actions, manager suppression callback and CE/runtime ownership paths are unchanged; only `CharacterSheetFeatures` collapsed markup and its CSS grid geometry were adjusted.
 - Added `docs/ABILITIES_VISUAL_REWORK_CONTRACT.md` to lock ownership for the v2 presentation pass: CharacterSheet keeps the masthead/art/background, Character+Spells remain the only visual-language source through shared `--cv-*` tokens, and the Abilities rewrite is presentation-only over the already-certified read-model/Snake/suppression mechanics.
 ### Tests / verification
 
+- Updated the abilities panel-shell/accordion regressions and extended `characterAbilitiesVisualContract.test.ts` to lock the ~42/58 collapsed identity/preview split, compact preview rows, right-side `ещё N` tail and the same hierarchy on narrow screens.
 - Added `characterAbilitiesVisualContract.test.ts` and updated the existing panel-shell regression to forbid the copied heading/slogan, abilities-owned page chrome/theme, and accidental replacement of the existing runtime/Snake/suppression wiring during the visual rewrite.
 ### Known incomplete work
 
