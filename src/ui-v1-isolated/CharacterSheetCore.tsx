@@ -56,8 +56,8 @@ function QuickStatIcon({ id }: { id: string }) {
       <img
         src={`${GRIMDARK_ICON_ROOT}/${id}.png`}
         alt=""
-        width={96}
-        height={96}
+        width={128}
+        height={128}
         decoding="async"
         draggable={false}
       />
@@ -90,8 +90,8 @@ function AbilityGlyph({ ability }: { ability: AbilityKey }) {
     <img
       src={`${GRIMDARK_ICON_ROOT}/${ability}.png`}
       alt=""
-      width={96}
-      height={96}
+      width={128}
+      height={128}
       decoding="async"
       draggable={false}
     />
@@ -248,9 +248,8 @@ export default function CharacterSheetCore({
               <span className="u1-character-sheet-core__ability-glyph" aria-hidden="true">
                 <AbilityGlyph ability={expandedAbility} />
               </span>
-              <span>
-                <b>{expandedMeta.short}</b>
-                <small>{expandedMeta.label}</small>
+              <span className="u1-character-sheet-core__ability-label">
+                {expandedMeta.short}
               </span>
               <em>{signed(contract.abilities[expandedAbility].modifier)}</em>
               <strong>{contract.abilities[expandedAbility].value}</strong>
@@ -307,7 +306,9 @@ export default function CharacterSheetCore({
                 <span className="u1-character-sheet-core__ability-glyph" aria-hidden="true">
                   <AbilityGlyph ability={ability.key} />
                 </span>
-                <span>{ability.short}</span>
+                <span className="u1-character-sheet-core__ability-label">
+                  {ability.short}
+                </span>
                 <em>{signed(resolved.modifier)}</em>
                 <strong>{resolved.value}</strong>
               </button>
