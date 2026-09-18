@@ -216,7 +216,7 @@
 
 .u1-character-spells__spell-card,
 .u1-character-spells__grimoire-open {
-  min-height: clamp(32px, 9.4vw, 38px);
+  min-height: clamp(30px, 8.6vw, 35px);
 }
 
 .u1-character-spells__spell-card {
@@ -345,7 +345,9 @@
 }
 
 @media (min-width: 390px) and (max-width: 399px) {
-  .u1-character-spells__slots-panel { padding: 9px 9px 8px; }
+  .u1-character-spells__slots-panel { padding: 11px 9px 10px; }
+  .u1-character-spells__slots-head { margin-bottom: 8px; }
+  .u1-character-spells__slot-icon-frame { max-width: 32px; }
   .u1-character-spells__circle-head { min-height: 38px; }
   .u1-character-spells__circle-seal { width: 30px; height: 30px; }
   .u1-character-spells__preview-row { min-height: 32px; }
