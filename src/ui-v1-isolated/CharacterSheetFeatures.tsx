@@ -331,11 +331,6 @@ export default function CharacterSheetFeatures({
                           onSetSuppressed={onSetSuppressed}
                         />
                       ))}
-                      {preview.hiddenCount > 0 && (
-                        <small>
-                          ещё {preview.hiddenCount}
-                        </small>
-                      )}
                     </span>
                   ) : (
                     <span className="u1-character-features__empty-label">
@@ -343,26 +338,34 @@ export default function CharacterSheetFeatures({
                     </span>
                   )}
 
-                  <button
-                    type="button"
-                    className="u1-character-features__panel-chevron-button"
-                    disabled={group.totalCount <= 0}
-                    aria-expanded={expanded}
-                    aria-controls={contentId}
-                    aria-label={
-                      expanded
-                        ? "Свернуть " + group.label
-                        : "Развернуть " + group.label
-                    }
-                    onClick={toggleGroup}
-                  >
-                    <i
-                      className="u1-character-features__panel-chevron"
-                      aria-hidden="true"
+                  <span className="u1-character-features__panel-tail">
+                    {!expanded && preview.hiddenCount > 0 && (
+                      <small className="u1-character-features__panel-more">
+                        ещё {preview.hiddenCount}
+                      </small>
+                    )}
+
+                    <button
+                      type="button"
+                      className="u1-character-features__panel-chevron-button"
+                      disabled={group.totalCount <= 0}
+                      aria-expanded={expanded}
+                      aria-controls={contentId}
+                      aria-label={
+                        expanded
+                          ? "Свернуть " + group.label
+                          : "Развернуть " + group.label
+                      }
+                      onClick={toggleGroup}
                     >
-                      ⌄
-                    </i>
-                  </button>
+                      <i
+                        className="u1-character-features__panel-chevron"
+                        aria-hidden="true"
+                      >
+                        ⌄
+                      </i>
+                    </button>
+                  </span>
                 </div>
               </div>
 
