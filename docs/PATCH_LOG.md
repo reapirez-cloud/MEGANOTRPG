@@ -2,12 +2,18 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-14-G
+---
 
-**Status:** OPEN
-**Branch:** `dev`
+## Released patches
+
+## Patch — 2026-09-14-G
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `14b3d7d556bb41c1b8ffce7ffbd94deb55c1e57b`
 **Started:** 2026-09-14
+**Released:** 2026-09-18
+**Release identity:** `main / 2026-09-18-G`
 
 ### Player-facing changes
 
@@ -199,10 +205,6 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Inventory Stages 1–10 are complete. Stage 11 (Chasovoy adoption + legacy inventory migration) is next; Stages 11–12 remain intentionally future work. Stage 9 Surface UI and Stage 10 Trade UI presentation remain intentionally separate from their completed mechanics.
 - CE technical debt remains: generalize the buff/effect authoring and management UX beyond the newly supported `carrying.capacityKg` target.
 - Legacy inventory v1 RPCs and transitional `legacy` placement cannot be fully retired while the current production `main` still uses the shared live Supabase project; retirement is deferred to production promotion/final certification rather than breaking the live client during dev.
-
----
-
-## Released patches
 
 ## Patch — 2026-09-13-F
 
