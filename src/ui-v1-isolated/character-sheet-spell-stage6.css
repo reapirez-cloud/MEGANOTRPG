@@ -152,8 +152,6 @@
   align-items: start;
 }
 
-.u1-character-spells__cast-primary,
-.u1-character-spells__cast-options > button,
 .u1-character-spells__prepare-toggle,
 .u1-character-spells__prepare-fixed {
   max-width: 100%;
