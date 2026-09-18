@@ -995,8 +995,13 @@ export default function CharacterView({
         />
       ) : section === "features" ? (
         <CharacterSheetFeatures
+          characterId={characterId}
           model={abilitiesReadModel}
           runtimeError={runtime.error || undefined}
+          onSelect={(abilityId) => {
+            setSelectedFeatureId(abilityId)
+            setEntityFocus(null)
+          }}
         />
       ) : section === "spells" ? (
         <CharacterSheetSpells
