@@ -241,6 +241,15 @@ Architecture rules that materially affect future implementation must live in rep
 
 
 
+## Temporary abilities-tab implementation contract — DELETE ON READY
+
+Before auditing, implementing or refactoring the character-sheet **Умения / Abilities** tab, read `docs/ABILITIES_TAB_IMPLEMENTATION_PLAN.md`.
+
+- The approved reference controls layout, panels, density and accordion/interaction mechanics only. Do not copy its visual styling; use the already-approved MEGANOT UI 1.0 style.
+- The temporary contract is mandatory while the Abilities tab is incomplete.
+- **When every READY criterion in that file passes, the completing agent MUST in the same work unit delete `docs/ABILITIES_TAB_IMPLEMENTATION_PLAN.md`, remove this entire section from `AGENTS.md`, remove temporary pointers/TODOs created only for that plan, and journal the finished implementation in `docs/PATCH_LOG.md`.**
+- Do not "complete" the plan by changing its status to READY and leaving it in the repository. Self-deletion is part of READY.
+
 ## Snake interaction architecture — mandatory for UI 1.0
 
 UI 1.0 must use **Snake** as the planned universal interaction/action layer.
