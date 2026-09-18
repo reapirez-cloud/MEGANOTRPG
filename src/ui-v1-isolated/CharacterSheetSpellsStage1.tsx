@@ -211,6 +211,37 @@ function levelTitle(level: number) {
   return level === 0 ? "Заговоры" : `${level} круг`
 }
 
+function spellCountLabel(count: number) {
+  const value = Math.max(0, Math.round(count))
+  const mod100 = value % 100
+  const mod10 = value % 10
+
+  if (mod100 >= 11 && mod100 <= 14) return `${value} заклинаний`
+  if (mod10 === 1) return `${value} заклинание`
+  if (mod10 >= 2 && mod10 <= 4) return `${value} заклинания`
+  return `${value} заклинаний`
+}
+
+function initialSpellCircleLevel(
+  contract: ResolvedCharacterContract | null,
+  focusLevel?: number | null,
+) {
+  if (
+    typeof focusLevel === "number" &&
+    focusLevel >= 0 &&
+    focusLevel <= 9
+  ) {
+    return focusLevel
+  }
+
+  if (!contract) return null
+
+  const levels = CHARACTER_SHEET_SPELL_GROUP_ORDER.filter((level) =>
+    contract.spells.some((spell) => spell.identity.level === level),
+  )
+  return levels.find((level) => level > 0) ?? levels[0] ?? null
+}
+
 function castingTimeLabel(view: SpellView) {
   const raw =
     view.catalog?.casting_time?.trim() ||
@@ -342,6 +373,7 @@ function detailBody(view: SpellView) {
 
 export default function CharacterSheetSpells({
   characterId,
+  classKey,
   contract,
   legacySpells,
   runtimeError,
@@ -353,6 +385,7 @@ export default function CharacterSheetSpells({
   onNavigateEntity,
 }: {
   characterId: string
+  classKey?: string
   contract: ResolvedCharacterContract | null
   legacySpells: CharacterSpell[]
   runtimeError?: string
@@ -368,11 +401,10 @@ export default function CharacterSheetSpells({
 }) {
   const snake = useSnake()
   const rootRef = useRef<HTMLDivElement | null>(null)
-  const [sheetClassKey, setSheetClassKey] = useState("")
+  const [sheetClassKey, setSheetClassKey] = useState(() => classKey?.trim() || "")
+  const displayClassKey = classKey?.trim() || sheetClassKey
   const [expandedLevel, setExpandedLevel] = useState<number | null>(() =>
-    typeof focusLevel === "number" && focusLevel >= 0 && focusLevel <= 9
-      ? focusLevel
-      : null,
+    initialSpellCircleLevel(contract, focusLevel),
   )
   const [grimoireLevel, setGrimoireLevel] = useState<number | null>(null)
   const [preparedOnly, setPreparedOnly] = useState(false)
@@ -513,9 +545,13 @@ export default function CharacterSheetSpells({
 
   useEffect(() => {
     if (!contract) return
+    if (classKey?.trim()) {
+      setSheetClassKey(classKey.trim())
+      return
+    }
     const sheet = rootRef.current?.closest<HTMLElement>(".u1-character-sheet")
     setSheetClassKey(sheet?.dataset.classKey || "")
-  }, [characterId, contract])
+  }, [characterId, classKey, contract])
 
   useEffect(() => {
     if (!views.length) {
@@ -862,7 +898,12 @@ export default function CharacterSheetSpells({
   }
 
   return (
-    <div className="u1-character-spells" ref={rootRef}>
+    <div
+      className="u1-character-spells"
+      ref={rootRef}
+      data-class-key={displayClassKey || undefined}
+      data-character-level={contract.level}
+    >
       {hasSpellSlots && (
         <section
           className="u1-character-spells__slots-panel"
@@ -871,10 +912,8 @@ export default function CharacterSheetSpells({
           <header className="u1-character-spells__slots-head">
             <strong id="u1-character-spells-slots-title">ЯЧЕЙКИ ЗАКЛИНАНИЙ</strong>
             <span aria-hidden="true" />
-            <small>
-              {pactSlots && pactLevel
-                ? `Магия договора · ${pactLevel} круг`
-                : classLabels[sheetClassKey] || "Заклинатель"}
+            <small data-class-level>
+              {classLabels[displayClassKey] || "Заклинатель"} · Ур. {contract.level}
             </small>
           </header>
 
@@ -914,7 +953,7 @@ export default function CharacterSheetSpells({
                     ) : (
                       <i
                         className="u1-character-spells__class-icon"
-                        style={classSpellIconStyle(sheetClassKey)}
+                        style={classSpellIconStyle(displayClassKey)}
                         aria-hidden="true"
                       />
                     )}
@@ -958,7 +997,7 @@ export default function CharacterSheetSpells({
               <div className="u1-character-spells__circle-head">
                 <span
                   className="u1-character-spells__circle-seal u1-character-spells-stage2__placeholder-seal"
-                  style={cantrip ? classSpellIconStyle(sheetClassKey) : undefined}
+                  style={cantrip ? classSpellIconStyle(displayClassKey) : undefined}
                   data-cantrip={cantrip || undefined}
                   aria-hidden="true"
                 >
@@ -975,7 +1014,7 @@ export default function CharacterSheetSpells({
                 </span>
 
                 <span className="u1-character-spells__circle-count">
-                  0 заклинаний
+                  {spellCountLabel(0)}
                 </span>
                 <span
                   className="u1-character-spells__circle-caret"
@@ -1019,15 +1058,20 @@ export default function CharacterSheetSpells({
               type="button"
               className="u1-character-spells__circle-head"
               onClick={() => {
-                setExpandedLevel(level)
-                if (grimoireLevel !== level) setGrimoireLevel(null)
+                if (expanded) {
+                  setExpandedLevel(null)
+                  setGrimoireLevel(null)
+                  setPreparationError("")
+                  return
+                }
+                openCircle(level)
               }}
               aria-expanded={expanded}
               aria-controls={`u1-character-spells-content-${level}`}
             >
               <span
                 className="u1-character-spells__circle-seal"
-                style={level === 0 ? classSpellIconStyle(sheetClassKey) : undefined}
+                style={level === 0 ? classSpellIconStyle(displayClassKey) : undefined}
                 data-cantrip={level === 0 || undefined}
                 aria-hidden="true"
               >
@@ -1048,7 +1092,7 @@ export default function CharacterSheetSpells({
               </span>
 
               <span className="u1-character-spells__circle-count">
-                {allSpells.length} заклинаний
+                {spellCountLabel(allSpells.length)}
               </span>
               <span className="u1-character-spells__circle-caret" aria-hidden="true" />
             </button>
