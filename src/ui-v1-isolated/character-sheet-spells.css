@@ -662,6 +662,26 @@
   transform: translate(-50%, -50%) rotate(-45deg);
 }
 
+.u1-character-spells__grimoire-context {
+  min-height: 28px;
+  padding: 7px 9px;
+  border: 1px solid var(--cv-line-soft);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  background: rgba(0,0,0,.1);
+  color: var(--cv-text-faint);
+  font-size: clamp(6px, 1.6vw, 8px);
+  line-height: 1.3;
+}
+
+.u1-character-spells__grimoire-context[data-mode="pact_magic"],
+.u1-character-spells__grimoire-context[data-mode="spellbook"] {
+  border-color: var(--cv-accent-line);
+  background: var(--cv-spell-accent-soft);
+  color: var(--cv-text-soft);
+}
+
 .u1-character-spells__grimoire-filters {
   min-width: 0;
   padding-block: 8px;
@@ -801,6 +821,17 @@
 
 .u1-character-spells__prepare-fixed {
   border-style: dashed;
+}
+
+.u1-character-spells__prepare-fixed[data-current-preparation="prepared"],
+.u1-character-spells__prepare-fixed[data-current-preparation="always_prepared"] {
+  border-color: var(--cv-accent-line);
+  color: var(--cv-spell-accent);
+}
+
+.u1-character-spells__prepare-fixed[data-management-mode="pact_magic"],
+.u1-character-spells__prepare-fixed[data-management-mode="level_choice"] {
+  color: var(--cv-text-muted);
 }
 
 .u1-character-spells__grimoire-empty {
