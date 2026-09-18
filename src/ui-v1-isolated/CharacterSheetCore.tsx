@@ -10,12 +10,12 @@ const abilityRows: Array<{
   short: string
   label: string
 }> = [
-  { key: "strength", short: "СИЛ", label: "Сила" },
-  { key: "dexterity", short: "ЛВК", label: "Ловкость" },
-  { key: "constitution", short: "ТЕЛ", label: "Телосложение" },
-  { key: "intelligence", short: "ИНТ", label: "Интеллект" },
-  { key: "wisdom", short: "МДР", label: "Мудрость" },
-  { key: "charisma", short: "ХАР", label: "Харизма" },
+  { key: "strength", short: "Сил", label: "Сила" },
+  { key: "dexterity", short: "Лвк", label: "Ловкость" },
+  { key: "constitution", short: "Тел", label: "Телосложение" },
+  { key: "intelligence", short: "Инт", label: "Интеллект" },
+  { key: "wisdom", short: "Мдр", label: "Мудрость" },
+  { key: "charisma", short: "Хар", label: "Харизма" },
 ]
 
 const skillLabels: Record<SkillKey, string> = {
@@ -252,8 +252,8 @@ export default function CharacterSheetCore({
                 <b>{expandedMeta.short}</b>
                 <small>{expandedMeta.label}</small>
               </span>
-              <strong>{contract.abilities[expandedAbility].value}</strong>
               <em>{signed(contract.abilities[expandedAbility].modifier)}</em>
+              <strong>{contract.abilities[expandedAbility].value}</strong>
             </button>
 
             <div className="u1-character-sheet-core__ability-detail">
@@ -308,8 +308,8 @@ export default function CharacterSheetCore({
                   <AbilityGlyph ability={ability.key} />
                 </span>
                 <span>{ability.short}</span>
-                <strong>{resolved.value}</strong>
                 <em>{signed(resolved.modifier)}</em>
+                <strong>{resolved.value}</strong>
               </button>
             )
           })
