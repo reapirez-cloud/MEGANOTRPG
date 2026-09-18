@@ -49,6 +49,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Completed Abilities Stage 1 with a pure five-group character-sheet read-model over the existing Character Runtime snapshot. It uses pre-suppression contributions plus the source graph and resolved CE contract, keeps suppressed earned abilities representable, merges race/subrace only at the player-facing Race group, exposes safe granular source identity for later Snake suppression, and leaves item/unknown sources explicitly unclassified instead of mislabeling them as Effects. No CE, persistence, RLS or canonical mutation path changed.
 - Added a temporary repository-level implementation contract for the character-sheet **Умения / Abilities** tab. It fixes the approved reference as a layout/interaction target only, preserves the existing MEGANOT visual style, defines the five source panels, Snake-based row actions and real CE source suppression, and makes self-deletion of the plan plus its AGENTS pointer part of the tab's READY criteria.
 - Completed Inventory Stage 5 physical authoring: Chasovoy item definitions now use a validated physical profile and strict v2 create/revise RPCs; ordinary item authoring has reusable physical presets and a GM shape editor.
 - Added the immutable standard container library (simple 1×1, purse, pouch, bag, travel bag, backpack, large backpack/sack, quiver and two chest sizes). Standard containers are issued as concrete Cheburashka instances and can be renamed per instance for narrative placement without anatomical carry slots.
@@ -126,6 +127,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Added `characterAbilitiesReadModel.test.ts` covering the fixed five-group order, class/subclass separation, race+subrace player-facing merge, background/effect classification, root-to-child suppression ancestry, preservation of suppressed rows, authored icon/Voss metadata, runtime rule/availability enrichment, and rejection of an unsafe granular suppression target for legacy multi-source aliases.
+- Verification limitation for this work unit: the GitHub connector reports no commit status for the direct `dev` head and the isolated container cannot resolve GitHub for a local clone, so a full repository `npm test` / build result is not claimed here.
 - Live Supabase contains `20260915184110_cheburashka_stage5_complete_authoring_library`; strict v2 reference RPCs are authenticated-only, the system container definitions are present, and the inventory currently has zero quantity-one stacks. Three multi-quantity legacy stacks remain intentionally flagged for later review.
 - Added `inventoryStage5Completion.test.ts` covering prepared item/container profiles, GM shape authoring, system-definition immutability, narrative instance naming, strict v2 Chasovoy writes, Voss campaign-item revisions and non-destructive legacy migration.
 
