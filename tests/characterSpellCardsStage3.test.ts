@@ -19,8 +19,11 @@ test("spell stage 3 gives every spell a stable atlas icon instead of the class s
   assert.match(styles, /background-image:\s*var\(--u1-spell-card-icon\)/)
 })
 
-test("spell stage 3 exposes casting time and spell flags on expanded cards", () => {
+test("spell stage 3 keeps expanded cards informational and compact", () => {
   assert.match(spells, /function castingTimeLabel\(view: SpellView\)/)
+  assert.match(spells, /Бонусное действие/)
+  assert.match(spells, /return "Действие"/)
+  assert.match(spells, /return "Реакция"/)
   assert.match(spells, /\{castingTimeLabel\(view\)\}/)
   assert.match(spells, /data-concentration=\{view\.concentration \|\| undefined\}/)
   assert.match(spells, /data-ritual=\{view\.ritual \|\| undefined\}/)
@@ -28,12 +31,12 @@ test("spell stage 3 exposes casting time and spell flags on expanded cards", () 
   assert.match(spells, /view\.ritual && <em>Ритуал<\/em>/)
 })
 
-test("spell stage 3 makes preparation state readable without opening details", () => {
-  assert.match(spells, /preparationShortLabels/)
-  assert.match(spells, /className="u1-character-spells__prep-mark"/)
-  assert.match(spells, /className="u1-character-spells__preparation"/)
-  assert.match(styles, /\.u1-character-spells__prep-mark\[data-state="prepared"\]/)
-  assert.match(styles, /\.u1-character-spells__preparation\[data-state="always_prepared"\]/)
+test("spell stage 3 hides preparation bookkeeping from the normal sheet card", () => {
+  assert.doesNotMatch(spells, /preparationShortLabels/)
+  assert.doesNotMatch(spells, /className="u1-character-spells__preparation"/)
+  assert.match(spells, /data-preparation=\{grimoire \? view\.preparation : undefined\}/)
+  assert.match(spells, /\{grimoire && \([\s\S]*u1-character-spells__prep-mark/)
+  assert.doesNotMatch(styles, /\.u1-character-spells__preparation/)
 })
 
 test("spell stage 3 keeps stage 2 two-column geometry and class theming", () => {
