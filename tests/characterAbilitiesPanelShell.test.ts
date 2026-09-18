@@ -65,7 +65,7 @@ test("stage 2 preserves the approved Meganot visual system rather than copying t
 })
 
 test("stage 2 shell remains the stable foundation after later interaction stages", () => {
-  assert.match(features, /data-stage="snake-detail"/)
+  assert.match(features, /data-stage="manager-suppression"/)
   assert.doesNotMatch(features, /CHARACTER_SHEET_FEATURE_SOURCE_ORDER/)
   assert.doesNotMatch(features, /ContextActionSheet|useLongPressItem/)
 })
