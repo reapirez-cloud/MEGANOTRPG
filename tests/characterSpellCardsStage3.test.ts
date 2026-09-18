@@ -3,7 +3,7 @@ import fs from "node:fs"
 import test from "node:test"
 
 const spells = fs.readFileSync(
-  "src/ui-v1-isolated/CharacterSheetSpells.tsx",
+  "src/ui-v1-isolated/CharacterSheetSpellsStage1.tsx",
   "utf8",
 )
 const styles = fs.readFileSync(

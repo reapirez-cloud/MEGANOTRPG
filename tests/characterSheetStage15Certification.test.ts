@@ -22,7 +22,7 @@ const features = fs.readFileSync(
   "utf8",
 )
 const spells = fs.readFileSync(
-  "src/ui-v1-isolated/CharacterSheetSpells.tsx",
+  "src/ui-v1-isolated/CharacterSheetSpellsStage1.tsx",
   "utf8",
 )
 const runtime = fs.readFileSync(

@@ -9,11 +9,12 @@ const inventory = fs.readFileSync("src/components/characters/CharacterInventory.
 const sectionHeader = fs.readFileSync("src/components/characters/CharacterSectionHeader.tsx", "utf8")
 const styles = fs.readFileSync("src/components/characters/CharacterSpecialized.css", "utf8")
 
-test("stage 5 gives specialized character sections one shared top-level header language", () => {
+test("specialized character sections keep shared headers while Magic uses its dedicated reference shell", () => {
   assert.match(sectionHeader, /character-section-header-v5/)
   assert.match(classPanel, /<CharacterSectionHeader/)
-  assert.match(spellbook, /<CharacterSectionHeader/)
   assert.match(inventory, /<CharacterSectionHeader/)
+  assert.match(spellbook, /className="spellbook-reference-shell"/)
+  assert.match(spellbook, /aria-label="Ячейки заклинаний"/)
   assert.match(styles, /\.character-section-header-v5 \{/)
 })
 
@@ -29,7 +30,8 @@ test("Class is a directory into focused class subclass and Wizard book surfaces"
 
 test("Magic keeps resolved casting math and slots while adopting shared detail and state presentation", () => {
   assert.match(spellbook, /contract\.spellcasting\.byAbility/)
-  assert.match(spellbook, /<SpellSlotMeter[\s\S]*?resources=\{contract\.resources\}/)
+  assert.match(spellbook, /buildSpellbookRenderModel\(\{[\s\S]*?resources:\s*contract\.resources/)
+  assert.match(spellbook, /slotRail\.map\(\(slot\) =>/)
   assert.match(spellbook, /<CharacterDetailSheet eyebrow=\{levelName\(selectedSpell\.spell_level\)\}/)
   assert.match(spellbook, /<CharacterSectionState/)
   assert.doesNotMatch(spellbook, /sheet-backdrop--spell/)
