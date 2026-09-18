@@ -366,20 +366,6 @@
   color: color-mix(in srgb, var(--cv-accent) 74%, var(--cv-text-soft));
 }
 
-.u1-character-sheet-core__quick-icon::before {
-  content: "✦";
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 11px;
-}
-
-.u1-character-sheet-core__quick-icon[data-stat-id="armor-class"]::before { content: "◇"; }
-.u1-character-sheet-core__quick-icon[data-stat-id="passive-perception"]::before { content: "◉"; }
-.u1-character-sheet-core__quick-icon[data-stat-id="proficiency"]::before { content: "✦"; }
-.u1-character-sheet-core__quick-icon[data-stat-id="initiative"]::before { content: "⌁"; }
-.u1-character-sheet-core__quick-icon[data-stat-id="speed"]::before { content: "⌟"; }
-.u1-character-sheet-core__quick-icon[data-stat-id="spell-save-dc"]::before { content: "✧"; }
-.u1-character-sheet-core__quick-icon[data-stat-id="spell-attack"]::before { content: "↗"; }
-
 .u1-character-sheet-core__quick-label {
   font-size: clamp(7px, 2.35vw, 10px);
 }
@@ -394,21 +380,6 @@
   grid-template-columns: 15px minmax(0, 1fr) 22px 28px;
   gap: 4px;
 }
-
-.u1-character-sheet-core__ability-row::before {
-  content: "✦";
-  color: color-mix(in srgb, var(--cv-accent) 68%, var(--cv-text-muted));
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 10px;
-  text-align: center;
-}
-
-.u1-character-sheet-core__ability-row[data-ability="strength"]::before { content: "◆"; }
-.u1-character-sheet-core__ability-row[data-ability="dexterity"]::before { content: "⌁"; }
-.u1-character-sheet-core__ability-row[data-ability="constitution"]::before { content: "◇"; }
-.u1-character-sheet-core__ability-row[data-ability="intelligence"]::before { content: "◈"; }
-.u1-character-sheet-core__ability-row[data-ability="wisdom"]::before { content: "☼"; }
-.u1-character-sheet-core__ability-row[data-ability="charisma"]::before { content: "✧"; }
 
 .u1-character-sheet-core__ability-row span {
   font-size: clamp(9px, 2.8vw, 12px);
@@ -619,10 +590,6 @@
   color: color-mix(in srgb, var(--cv-accent) 72%, var(--cv-text-soft));
 }
 
-.u1-character-sheet-core__quick-icon::before {
-  content: none;
-}
-
 .u1-character-sheet-core__quick-icon > svg,
 .u1-character-sheet-core__quick-icon > img {
   width: 100%;
@@ -653,18 +620,14 @@
   grid-template-columns:
     clamp(16px, 4.4vw, 20px)
     minmax(0, 1fr)
-    clamp(23px, 6.25vw, 28px)
-    clamp(27px, 7.2vw, 32px);
+    clamp(27px, 7.2vw, 32px)
+    clamp(23px, 6.25vw, 28px);
   gap: clamp(4px, 1.2vw, 6px);
   border-radius: 7px;
   transition:
     background-color 140ms ease,
     color 140ms ease,
     transform 140ms ease;
-}
-
-.u1-character-sheet-core__ability-row::before {
-  content: none;
 }
 
 .u1-character-sheet-core__ability-row:active {
@@ -740,8 +703,8 @@
   grid-template-columns:
     clamp(16px, 4.4vw, 20px)
     minmax(0, 1fr)
-    clamp(23px, 6.25vw, 28px)
-    clamp(27px, 7.2vw, 32px);
+    clamp(27px, 7.2vw, 32px)
+    clamp(23px, 6.25vw, 28px);
   gap: clamp(4px, 1.2vw, 6px);
   border-radius: 8px 8px 0 0;
 }
@@ -871,8 +834,8 @@
     grid-template-columns:
       15px
       minmax(0, 1fr)
-      20px
-      25px;
+      25px
+      20px;
     gap: 3px;
   }
 }
