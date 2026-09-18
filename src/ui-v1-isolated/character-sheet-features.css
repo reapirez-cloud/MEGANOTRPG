@@ -1,6 +1,13 @@
+/*
+ * Abilities v2 visual contract:
+ * - CharacterSheet owns the page art/background/masthead.
+ * - Character/Spells own the visual language via shared --cv-* tokens.
+ * - This surface owns only the ability panels and interaction states.
+ * - Reference imagery controls panel geometry/density, never page chrome.
+ */
 .u1-character-features {
   display: grid;
-  gap: 14px;
+  gap: 0;
   padding: 2px 0 8px;
 }
 
@@ -17,29 +24,6 @@
   color: var(--cv-text-faint);
   font-size: 8px;
   line-height: 1.45;
-}
-
-.u1-character-features__intro {
-  display: grid;
-  gap: 5px;
-  padding: 0 1px 2px;
-}
-
-.u1-character-features__intro > span {
-  color: var(--cv-text);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(19px, 5.2vw, 25px);
-  line-height: 1;
-  font-weight: 400;
-  letter-spacing: .16em;
-}
-
-.u1-character-features__intro > small {
-  color: var(--cv-text-muted);
-  font-size: 7px;
-  line-height: 1.25;
-  letter-spacing: .18em;
-  text-transform: uppercase;
 }
 
 .u1-character-features__panels {
