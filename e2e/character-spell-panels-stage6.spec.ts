@@ -98,7 +98,7 @@ test("Stage 6 keeps the spell screen inside 320/360/390/430 without horizontal d
   }
 })
 
-test("Stage 6 keeps the 390px reference rhythm compact and two-column", async ({ page }) => {
+test("Stage 6 locks the final 390px reference geometry", async ({ page }) => {
   await openFixture(page, 390)
 
   const metrics = await page.evaluate(() => {
@@ -130,12 +130,11 @@ test("Stage 6 keeps the 390px reference rhythm compact and two-column", async ({
     }
   })
 
-  console.log("STAGE6_REFERENCE_PROBE", JSON.stringify(metrics))
   expect(Math.abs(metrics.slotsWidth - metrics.rootWidth)).toBeLessThanOrEqual(1.5)
-  expect(metrics.slotsHeight).toBeGreaterThanOrEqual(92)
-  expect(metrics.slotsHeight).toBeLessThanOrEqual(140)
-  expect(metrics.circleHeadHeight).toBeGreaterThanOrEqual(69)
-  expect(metrics.circleHeadHeight).toBeLessThanOrEqual(72)
+  expect(metrics.slotsHeight).toBeGreaterThanOrEqual(76)
+  expect(metrics.slotsHeight).toBeLessThanOrEqual(88)
+  expect(metrics.circleHeadHeight).toBeGreaterThanOrEqual(36)
+  expect(metrics.circleHeadHeight).toBeLessThanOrEqual(42)
   expect(metrics.gridColumns).toBe(2)
   expect(Math.abs(metrics.firstWidth - metrics.secondWidth)).toBeLessThanOrEqual(1.5)
   expect(metrics.columnGap).toBeGreaterThanOrEqual(6)
@@ -196,33 +195,6 @@ test("Stage 6 clamps pathological Russian spell names instead of widening cards"
   expect(result.overflow).toBe("hidden")
   expect(result.whiteSpace).toBe("normal")
 })
-
-test("Stage 6 preserves spell palette and authored class slot art for every class skin", async ({ page }) => {
-  for (const classKey of classKeys) {
-    await openFixture(page, 390, classKey)
-    await expect(page.locator(".u1-character-spells__class-icon").first()).toBeVisible()
-
-    const actual = await page.evaluate(() => {
-      const sheet = document.querySelector<HTMLElement>(".u1-character-sheet")
-      const icon = document.querySelector<HTMLElement>(".u1-character-spells__class-icon")
-      if (!sheet || !icon) throw new Error("Class spell skin surface missing")
-      const sheetStyle = getComputedStyle(sheet)
-      const iconStyle = getComputedStyle(icon)
-      return {
-        accent: sheetStyle.getPropertyValue("--cv-spell-accent").trim(),
-        image: iconStyle.backgroundImage,
-        position: iconStyle.backgroundPosition,
-      }
-    })
-
-    expect(actual.accent).not.toBe("")
-    expect(
-      actual.image.includes("class-spell-slots.png") || actual.image.includes("class-resources.png"),
-    ).toBe(true)
-    expect(actual.position).not.toBe("")
-  }
-})
-
 
 test("Stage 6 keeps the character spell sheet informational", async ({ page }) => {
   await openFixture(page, 390)
@@ -303,4 +275,137 @@ test("Stage 5 distinguishes Pact Magic and persistent level-up spell choices", a
   await expect(panel).toHaveAttribute("data-management-mode", "level_choice")
   await expect(panel.locator(".u1-character-spells__grimoire-context")).toContainText("при развитии персонажа")
   await expect(panel.locator(".u1-character-spells__prepare-fixed").first()).toContainText("Выбрано при развитии")
+})
+
+
+test("Stage 6 matches the reference hierarchy exactly", async ({ page }) => {
+  await openFixture(page, 390, "cleric")
+
+  const cantrips = page.locator('.u1-character-spells__circle[data-level="0"]')
+  const levelOne = page.locator('.u1-character-spells__circle[data-level="1"]')
+  const levelTwo = page.locator('.u1-character-spells__circle[data-level="2"]')
+  const levelThree = page.locator('.u1-character-spells__circle[data-level="3"]')
+
+  await expect(cantrips).not.toHaveAttribute("data-expanded", "true")
+  await expect(cantrips.locator(".u1-character-spells__preview-card")).toHaveCount(3)
+  await expect(cantrips.locator(".u1-character-spells__more")).toHaveText("+1")
+
+  await expect(levelOne).toHaveAttribute("data-expanded", "true")
+  await expect(levelOne.locator(".u1-character-spells__spell-card")).toHaveCount(5)
+  await expect(levelOne.locator(".u1-character-spells__grimoire-open")).toHaveCount(1)
+
+  const geometry = await levelOne.evaluate((node) => {
+    const cards = Array.from(node.querySelectorAll<HTMLElement>(".u1-character-spells__spell-card"))
+    const launcher = node.querySelector<HTMLElement>(".u1-character-spells__grimoire-open")
+    const grid = node.querySelector<HTMLElement>(".u1-character-spells__expanded-grid")
+    if (cards.length !== 5 || !launcher || !grid) {
+      throw new Error("Reference first-circle cells missing")
+    }
+    const card = cards[0]!.getBoundingClientRect()
+    const button = launcher.getBoundingClientRect()
+    return {
+      panelHeight: node.getBoundingClientRect().height,
+      cardWidth: card.width,
+      cardHeight: card.height,
+      launcherWidth: button.width,
+      launcherHeight: button.height,
+      gridColumns: getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length,
+    }
+  })
+
+  expect(geometry.gridColumns).toBe(2)
+  expect(geometry.panelHeight).toBeGreaterThanOrEqual(130)
+  expect(geometry.panelHeight).toBeLessThanOrEqual(170)
+  expect(Math.abs(geometry.launcherWidth - geometry.cardWidth)).toBeLessThanOrEqual(1.5)
+  expect(Math.abs(geometry.launcherHeight - geometry.cardHeight)).toBeLessThanOrEqual(6)
+
+  await expect(levelTwo.locator(".u1-character-spells__preview-card")).toHaveCount(3)
+  await expect(levelTwo.locator(".u1-character-spells__more")).toHaveText("+1")
+  await expect(levelThree.locator(".u1-character-spells__preview-card")).toHaveCount(3)
+  await expect(levelThree.locator(".u1-character-spells__more")).toHaveCount(0)
+})
+
+test("Stage 6 certifies locked, exhausted and available slot visuals", async ({ page }) => {
+  await openFixture(page, 390, "cleric")
+
+  for (const level of [1, 2, 4, 5]) {
+    const slot = page.locator(`.u1-character-spells__slot[data-slot-level="${level}"]`)
+    await expect(slot).not.toHaveAttribute("data-locked", "true")
+    await expect(slot.locator(".u1-character-spells__class-icon")).toHaveCount(1)
+  }
+
+  const exhausted = page.locator('.u1-character-spells__slot[data-slot-level="3"]')
+  await expect(exhausted).toHaveAttribute("data-exhausted", "true")
+  await expect(exhausted.locator(".u1-character-spells__class-icon")).toHaveCount(1)
+
+  for (const level of [6, 7, 8, 9]) {
+    const slot = page.locator(`.u1-character-spells__slot[data-slot-level="${level}"]`)
+    await expect(slot).toHaveAttribute("data-locked", "true")
+    await expect(slot.locator(".u1-character-spells__slot-lock")).toHaveCount(1)
+    await expect(slot.locator(".u1-character-spells__class-icon")).toHaveCount(0)
+  }
+})
+
+test("Stage 6 keeps full-size square class slot art instead of compressing atlas tiles", async ({ page }) => {
+  await openFixture(page, 390, "cleric")
+
+  const geometry = await page
+    .locator(".u1-character-spells__slot:not([data-locked])")
+    .first()
+    .evaluate((slot) => {
+      const frame = slot.querySelector<HTMLElement>(".u1-character-spells__slot-icon-frame")
+      const icon = slot.querySelector<HTMLElement>(".u1-character-spells__class-icon")
+      if (!frame || !icon) throw new Error("Class slot icon missing")
+      const frameRect = frame.getBoundingClientRect()
+      const iconRect = icon.getBoundingClientRect()
+      const style = getComputedStyle(icon)
+      return {
+        frameWidth: frameRect.width,
+        frameHeight: frameRect.height,
+        iconWidth: iconRect.width,
+        iconHeight: iconRect.height,
+        backgroundSize: style.backgroundSize,
+      }
+    })
+
+  expect(Math.abs(geometry.frameWidth - geometry.frameHeight)).toBeLessThanOrEqual(1)
+  expect(Math.abs(geometry.iconWidth - geometry.iconHeight)).toBeLessThanOrEqual(1)
+  expect(geometry.iconWidth / geometry.frameWidth).toBeGreaterThanOrEqual(.98)
+  expect(geometry.iconHeight / geometry.frameHeight).toBeGreaterThanOrEqual(.98)
+  expect(geometry.backgroundSize).toBe("400% 400%")
+})
+
+test("Stage 6 keeps a unique authored spell skin for all classes", async ({ page }) => {
+  const identities: string[] = []
+  const accents: string[] = []
+
+  for (const classKey of classKeys) {
+    await openFixture(page, 390, classKey)
+    const actual = await page.evaluate(() => {
+      const sheet = document.querySelector<HTMLElement>(".u1-character-sheet")
+      const icon = document.querySelector<HTMLElement>(".u1-character-spells__class-icon")
+      if (!sheet || !icon) throw new Error("Class spell skin surface missing")
+      const sheetStyle = getComputedStyle(sheet)
+      const iconStyle = getComputedStyle(icon)
+      return {
+        accent: sheetStyle.getPropertyValue("--cv-spell-accent").trim(),
+        image: iconStyle.backgroundImage,
+        position: iconStyle.backgroundPosition,
+        size: iconStyle.backgroundSize,
+      }
+    })
+
+    expect(actual.accent).not.toBe("")
+    expect(actual.size).toBe("400% 400%")
+    expect(
+      actual.image.includes("class-spell-slots.png") ||
+        actual.image.includes("class-resources.png"),
+    ).toBe(true)
+
+    identities.push(`${actual.image}|${actual.position}`)
+    accents.push(actual.accent)
+  }
+
+  expect(new Set(identities).size).toBe(classKeys.length)
+  expect(new Set(accents).size).toBe(classKeys.length)
 })
