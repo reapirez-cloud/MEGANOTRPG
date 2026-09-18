@@ -47,8 +47,8 @@ test("spell stage 4 changes preparation through the existing character controlle
 
 test("spell stage 4 keeps the grimoire usable on the mobile two-column sheet", () => {
   assert.match(styles, /\.u1-character-spells__grimoire-list[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/)
-  assert.match(styles, /\.u1-character-spells__grimoire-open[\s\S]*grid-column:\s*1 \/ -1/)
-  assert.match(styles, /\.u1-character-spells__grimoire-filters/)
+  assert.match(styles, /\.u1-character-spells__grimoire-open[\s\S]*grid-column:\s*auto/)
+  assert.match(styles, /\.u1-character-spells__grimoire-book::after/)\n  assert.match(styles, /\.u1-character-spells__grimoire-filters/)
   assert.match(styles, /\.u1-character-spells__prepare-toggle\[data-active\]/)
   assert.match(styles, /@media \(max-width: 359px\)/)
 })
