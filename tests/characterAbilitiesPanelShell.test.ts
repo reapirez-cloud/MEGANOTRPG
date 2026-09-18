@@ -65,7 +65,7 @@ test("stage 2 preserves the approved Meganot visual system rather than copying t
 })
 
 test("the finished shell keeps the stage 2 foundation without temporary milestone markers", () => {
-  assert.match(features, /aria-labelledby="character-abilities-title"/)
+  assert.match(features, /aria-label="Умения персонажа"/)
   assert.doesNotMatch(features, /data-stage=/)
   assert.doesNotMatch(features, /CHARACTER_SHEET_FEATURE_SOURCE_ORDER/)
   assert.doesNotMatch(features, /ContextActionSheet|useLongPressItem/)
