@@ -998,10 +998,12 @@ export default function CharacterView({
           characterId={characterId}
           model={abilitiesReadModel}
           runtimeError={runtime.error || undefined}
+          canManage={control.canManage}
           onSelect={(abilityId) => {
             setSelectedFeatureId(abilityId)
             setEntityFocus(null)
           }}
+          onSetSuppressed={runtime.templates.suppressions.setSuppressed}
         />
       ) : section === "spells" ? (
         <CharacterSheetSpells
