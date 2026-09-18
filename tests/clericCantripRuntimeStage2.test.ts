@@ -54,6 +54,7 @@ test("cleric stage 2 backfill preserves canonical rows before deterministic defa
 test("cleric stage 2 package passes shared quality and resource policy", () => {
   const choices = {
     key: "cleric_cantrips",
+    label: "Заговоры жреца",
     count: 3,
     count_by_level: { "1": 3, "4": 4, "10": 5 },
     target: "spell",
