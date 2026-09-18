@@ -44,22 +44,28 @@ test("abilities tab stage 2 renders the five-group read model as one stable pane
   assert.match(features, /data-group=\{group\.key\}/)
   assert.match(features, /className="u1-character-features__panel-source"/)
   assert.match(features, /className="u1-character-features__panel-summary"/)
+  assert.match(features, /className="u1-character-features__panel-tail"/)
+  assert.match(features, /className="u1-character-features__panel-more"/)
   assert.match(features, /<AbilityGroupIcon group=\{group\.key\}/)
   assert.match(features, /<strong>\{group\.label\}<\/strong>/)
   assert.match(features, /<small>\{sourceSummary\(group\)\}<\/small>/)
 })
 
-test("stage 2 preserves the approved Meganot visual system rather than copying the reference skin", () => {
+test("stage 2 gives the collapsed panel a reference-led 42/58 identity-to-preview split", () => {
   assert.match(styles, /var\(--cv-text\)/)
   assert.match(styles, /var\(--cv-accent\)/)
   assert.match(styles, /var\(--cv-surface\)/)
   assert.match(
     styles,
-    /\.u1-character-features__panel-head\s*\{[\s\S]*?grid-template-columns:/,
+    /\.u1-character-features__panel-head\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, \.84fr\) minmax\(0, 1\.16fr\)/,
   )
   assert.match(
     styles,
-    /\.u1-character-features__panel-source\s*\{[\s\S]*?grid-template-columns:/,
+    /\.u1-character-features__panel-source\s*\{[\s\S]*?grid-template-columns:\s*clamp\(52px, 14vw, 62px\) minmax\(0, 1fr\)/,
+  )
+  assert.match(
+    styles,
+    /\.u1-character-features__panel-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) auto/,
   )
   assert.doesNotMatch(styles, /gold|#d4af37|#ffd700/i)
 })
