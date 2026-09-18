@@ -76,9 +76,11 @@ test("suppressed ability remains inspectable and detail states that it is muted 
   assert.match(surface.body || "", /Состояние: заглушено ведущим/)
 })
 
-test("stage 4 ability domain provider currently exposes inspect only and keeps manager suppression for stage 5", () => {
+test("player ability actions expose inspect only", () => {
   const row = abilityRow()
-  const actions = createCharacterAbilitySnakeActions(row)
+  const actions = createCharacterAbilitySnakeActions(row, {
+    canManage: false,
+  })
 
   assert.deepEqual(
     actions.map((action) => action.id),
@@ -92,6 +94,95 @@ test("stage 4 ability domain provider currently exposes inspect only and keeps m
       id: "character-7:subclass:riposte",
     },
   )
+})
+
+test("manager ability actions expose granular suppress and enable commands", async () => {
+  const calls: Array<{ sourceId: string; suppressed: boolean }> = []
+  const setSuppressed = async (
+    sourceId: string,
+    suppressed: boolean,
+  ) => {
+    calls.push({ sourceId, suppressed })
+    return { ok: true }
+  }
+
+  const activeActions = createCharacterAbilitySnakeActions(
+    abilityRow("active"),
+    { canManage: true, setSuppressed },
+  )
+  assert.deepEqual(
+    activeActions.map((action) => action.id),
+    ["inspect-character-ability", "suppress-character-ability"],
+  )
+  assert.equal(activeActions[1].label, "Заглушить")
+
+  const suppressResult = await activeActions[1].execute?.({
+    entity: { type: "character-ability", id: "test" },
+    input: undefined,
+    path: [],
+  })
+  assert.equal(suppressResult?.type, "success")
+  assert.deepEqual(calls[0], {
+    sourceId: "template:subclass:battle-master:v1:source:riposte",
+    suppressed: true,
+  })
+
+  const suppressedActions = createCharacterAbilitySnakeActions(
+    abilityRow("suppressed"),
+    { canManage: true, setSuppressed },
+  )
+  assert.equal(suppressedActions[1].id, "enable-character-ability")
+  assert.equal(suppressedActions[1].label, "Включить")
+
+  await suppressedActions[1].execute?.({
+    entity: { type: "character-ability", id: "test" },
+    input: undefined,
+    path: [],
+  })
+  assert.deepEqual(calls[1], {
+    sourceId: "template:subclass:battle-master:v1:source:riposte",
+    suppressed: false,
+  })
+})
+
+test("manager action is omitted when the row has no safe granular suppression source", () => {
+  const row = abilityRow()
+  row.sourceId = null
+  row.capabilities.suppress = false
+
+  const actions = createCharacterAbilitySnakeActions(row, {
+    canManage: true,
+    setSuppressed: async () => ({ ok: true }),
+  })
+
+  assert.deepEqual(
+    actions.map((action) => action.id),
+    ["inspect-character-ability"],
+  )
+})
+
+test("manager suppression failures are returned through Snake instead of pretending success", async () => {
+  const actions = createCharacterAbilitySnakeActions(
+    abilityRow(),
+    {
+      canManage: true,
+      setSuppressed: async () => ({
+        ok: false,
+        error: "RLS denied",
+      }),
+    },
+  )
+
+  const result = await actions[1].execute?.({
+    entity: { type: "character-ability", id: "test" },
+    input: undefined,
+    path: [],
+  })
+
+  assert.deepEqual(result, {
+    type: "error",
+    message: "RLS denied",
+  })
 })
 
 const features = fs.readFileSync(
@@ -129,11 +220,24 @@ test("abilities tab uses Snake instead of resurrecting a local long-press/contex
     /ContextActionSheet|useLongPressItem|onContextMenu|setContextMenu|bottom-sheet/i,
   )
   assert.match(features, /SnakeTrigger, useSnake/)
+  assert.match(features, /canManage=\{canManage\}/)
+  assert.match(features, /onSetSuppressed=\{onSetSuppressed\}/)
 })
 
 test("normal ability taps update character-sheet selection context before opening detail", () => {
   assert.match(
     view,
     /<CharacterSheetFeatures[\s\S]*?characterId=\{characterId\}[\s\S]*?onSelect=\{\(abilityId\) => \{[\s\S]*?setSelectedFeatureId\(abilityId\)/,
+  )
+})
+
+test("character view passes canonical manager authority and suppression runtime into the ability provider", () => {
+  assert.match(
+    view,
+    /<CharacterSheetFeatures[\s\S]*?canManage=\{control\.canManage\}/,
+  )
+  assert.match(
+    view,
+    /onSetSuppressed=\{runtime\.templates\.suppressions\.setSuppressed\}/,
   )
 })
