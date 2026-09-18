@@ -19,6 +19,17 @@ const now = "2026-09-17T12:00:00.000Z"
 const characterId = "stage6-cleric"
 const classKey = new URLSearchParams(window.location.search).get("class") || "cleric"
 
+const classSpellProfile =
+  classKey === "wizard"
+    ? { preparationRefresh: "long_rest" }
+    : classKey === "cleric" || classKey === "druid" || classKey === "paladin"
+      ? { preparationRefresh: "long_rest" }
+      : classKey === "warlock"
+        ? { progression: "pact_magic" }
+        : classKey === "bard" || classKey === "sorcerer"
+          ? { selectionMode: "persistent_on_level_change" }
+          : {}
+
 function spell(
   id: string,
   name: string,
@@ -153,6 +164,7 @@ function Stage6SpellPanelPreview() {
         <CharacterSheetSpells
           characterId={characterId}
           classKey={classKey}
+          classSpellProfile={classSpellProfile}
           contract={contract}
           legacySpells={spells}
           focusLevel={1}
