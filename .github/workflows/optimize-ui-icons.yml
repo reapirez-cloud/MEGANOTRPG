@@ -33,7 +33,7 @@ jobs:
       - name: Install Pillow
         run: python -m pip install --disable-pip-version-check pillow==11.3.0
 
-      - name: Build lossless UI derivatives
+      - name: Build tiny UI derivatives
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -43,7 +43,7 @@ jobs:
           output_dir = source_dir / "ui"
           output_dir.mkdir(parents=True, exist_ok=True)
 
-          max_edge = 384
+          max_edge = 128
           sources = sorted(source_dir.glob("*.png"))
           if not sources:
               raise SystemExit("No source grimdark PNG icons found")
