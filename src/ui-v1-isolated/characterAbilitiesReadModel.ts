@@ -631,13 +631,34 @@ export function buildCharacterAbilitiesReadModel(
     )
     .map((entry) => entry.row)
 
+  const rootSourceNames = new Map<CharacterAbilityGroupKey, string[]>()
+  for (const node of input.sourceNodes) {
+    if (node.nodeKind !== "template") continue
+
+    const key: CharacterAbilityGroupKey | null =
+      node.templateKind === "class"
+        ? "class"
+        : node.templateKind === "subclass"
+          ? "subclass"
+          : node.templateKind === "race" || node.templateKind === "subrace"
+            ? "race"
+            : null
+    if (!key) continue
+
+    rootSourceNames.set(key, [
+      ...(rootSourceNames.get(key) || []),
+      node.name,
+    ])
+  }
+
   const groups = CHARACTER_ABILITY_GROUP_ORDER.map((key) => {
     const groupRows = rows
       .filter((row) => row.group === key)
       .sort(rowSort)
-    const sourceNames = uniqueSorted(
-      groupRows.map((row) => row.sourceName),
-    )
+    const sourceNames = uniqueSorted([
+      ...(rootSourceNames.get(key) || []),
+      ...groupRows.map((row) => row.sourceName),
+    ])
     const suppressedCount = groupRows.filter(
       (row) => row.status === "suppressed",
     ).length
