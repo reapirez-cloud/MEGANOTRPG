@@ -2,6 +2,23 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
+## Active patch — 2026-09-18-H
+
+**Status:** OPEN
+**Branch:** `dev`
+**Base main:** `8eb36c0b17ce93f49859a59393f8ad440a94f9ea`
+**Started:** 2026-09-18
+
+### Player-facing changes
+
+### Database / migration changes
+
+### Runtime and architecture changes
+
+### Tests / verification
+
+### Known incomplete work
+
 ---
 
 ## Released patches
@@ -14,6 +31,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 **Started:** 2026-09-14
 **Released:** 2026-09-18
 **Release identity:** `main / 2026-09-18-G`
+**Release commit:** `8eb36c0b17ce93f49859a59393f8ad440a94f9ea`
 
 ### Player-facing changes
 
