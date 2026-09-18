@@ -235,3 +235,32 @@ test("Stage 6 keeps the character spell sheet informational", async ({ page }) =
   await expect(cards.first()).toBeVisible()
   await expect(cards.first().locator(".u1-character-spells__spell-meta")).toBeVisible()
 })
+
+
+test("Stage 4 matches the reference class-level header and collapsed circle anatomy", async ({ page }) => {
+  await openFixture(page, 390, "cleric")
+
+  const header = page.locator(".u1-character-spells__slots-head [data-class-level]")
+  await expect(header).toHaveText("Жрец · Ур. 5")
+
+  const cantrips = page.locator('.u1-character-spells__circle[data-level="0"]')
+  const levelOne = page.locator('.u1-character-spells__circle[data-level="1"]')
+  await expect(cantrips.locator(".u1-character-spells__circle-count")).toHaveText("4 заклинания")
+  await expect(levelOne.locator(".u1-character-spells__circle-count")).toHaveText("5 заклинаний")
+
+  await expect(levelOne).toHaveAttribute("data-expanded", "true")
+  await levelOne.locator(".u1-character-spells__circle-head").click()
+  await expect(levelOne).not.toHaveAttribute("data-expanded", "true")
+  await expect(levelOne.locator(".u1-character-spells__preview-card")).toHaveCount(3)
+  await expect(levelOne.locator(".u1-character-spells__more")).toHaveText("+2")
+
+  await cantrips.locator(".u1-character-spells__circle-head").click()
+  await expect(cantrips).toHaveAttribute("data-expanded", "true")
+  await expect(levelOne).not.toHaveAttribute("data-expanded", "true")
+})
+
+test("Stage 4 keeps class identity in the slots header instead of replacing it with casting-system text", async ({ page }) => {
+  await openFixture(page, 390, "warlock")
+  await expect(page.locator(".u1-character-spells__slots-head [data-class-level]")).toHaveText("Колдун · Ур. 5")
+  await expect(page.locator(".u1-character-spells__slots-head")).not.toContainText("Магия договора")
+})
