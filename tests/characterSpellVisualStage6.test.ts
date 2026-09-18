@@ -6,10 +6,6 @@ const stage6Styles = fs.readFileSync(
   "src/ui-v1-isolated/character-sheet-spell-stage6.css",
   "utf8",
 )
-const castingStyles = fs.readFileSync(
-  "src/ui-v1-isolated/character-sheet-spell-casting.css",
-  "utf8",
-)
 const fixture = fs.readFileSync(
   "src/e2e/character-spell-panels-stage6-main.tsx",
   "utf8",
@@ -23,11 +19,16 @@ const visualAssets = fs.readFileSync(
   "utf8",
 )
 
-test("spell stage 6 is loaded by the production spell component styling path", () => {
-  assert.match(castingStyles, /@import "\.\/character-sheet-spell-stage6\.css";/)
+test("spell stage 6 is loaded directly by the production spell component styling path", () => {
+  const component = fs.readFileSync(
+    "src/ui-v1-isolated/CharacterSheetSpellsStage1.tsx",
+    "utf8",
+  )
+  assert.match(component, /import "\.\/character-sheet-spell-stage6\.css"/)
   assert.match(stage6Styles, /\.u1-character-spells\s*\{[\s\S]*overflow-x:\s*clip/)
   assert.match(stage6Styles, /\.u1-character-spells__slots-grid\s*\{[\s\S]*repeat\(9, minmax\(0, 1fr\)\)/)
   assert.match(stage6Styles, /\.u1-character-spells__expanded-grid\s*\{[\s\S]*repeat\(2, minmax\(0, 1fr\)\)/)
+  assert.doesNotMatch(stage6Styles, /u1-character-spells__cast-primary|u1-character-spells__cast-options/)
 })
 
 test("spell stage 6 has explicit guardrails for every supported mobile width family", () => {
