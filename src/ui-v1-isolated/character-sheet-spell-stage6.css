@@ -21,9 +21,7 @@
 .u1-character-spells__spell-card,
 .u1-character-spells__preview-card,
 .u1-character-spells__spell-copy,
-.u1-character-spells__spell-meta,
-.u1-character-spells__cast,
-.u1-character-spells__cast-options {
+.u1-character-spells__spell-meta {
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
@@ -84,8 +82,7 @@
 .u1-character-spells__circle-title > small,
 .u1-character-spells__circle-count,
 .u1-character-spells__spell-copy > strong,
-.u1-character-spells__cast-time,
-.u1-character-spells__preparation {
+.u1-character-spells__cast-time {
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -254,7 +251,6 @@
   }
 
   .u1-character-spells__cast-time,
-  .u1-character-spells__preparation,
   .u1-character-spells__spell-meta > em {
     font-size: 5px;
   }
