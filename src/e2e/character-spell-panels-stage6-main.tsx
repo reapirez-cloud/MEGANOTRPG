@@ -152,6 +152,7 @@ function Stage6SpellPanelPreview() {
       >
         <CharacterSheetSpells
           characterId={characterId}
+          classKey={classKey}
           contract={contract}
           legacySpells={spells}
           focusLevel={1}
