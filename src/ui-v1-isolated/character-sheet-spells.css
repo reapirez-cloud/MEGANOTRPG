@@ -460,22 +460,6 @@
   white-space: nowrap;
 }
 
-.u1-character-spells__preparation {
-  width: fit-content;
-  max-width: 100%;
-  overflow: hidden;
-  color: var(--cv-text-faint);
-  font-size: clamp(5px, 1.45vw, 7px);
-  line-height: 1.1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.u1-character-spells__preparation[data-state="prepared"],
-.u1-character-spells__preparation[data-state="always_prepared"] {
-  color: var(--cv-spell-accent);
-}
-
 .u1-character-spells__more {
   display: grid;
   place-items: center;
@@ -528,17 +512,6 @@
   border-radius: 4px;
   opacity: .5;
   pointer-events: none;
-}
-
-.u1-character-spells__spell-card[data-unavailable],
-.u1-character-spells__preview-card[data-unavailable] {
-  opacity: .5;
-  filter: grayscale(.18);
-}
-
-.u1-character-spells__spell-card[data-unavailable] .u1-character-spells__spell-icon,
-.u1-character-spells__preview-card[data-unavailable] .u1-character-spells__spell-icon {
-  filter: grayscale(.8) brightness(.72);
 }
 
 .u1-character-spells__spell-card[data-entity-focus],
