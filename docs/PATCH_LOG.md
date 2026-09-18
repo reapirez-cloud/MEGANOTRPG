@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Abilities Stage 3 turns the five source panels into the approved single-open accordion. Collapsed panels now preview up to three real abilities and calculate `ещё N`; expanded panels keep the same header and reveal the complete compact row list in place. Empty groups remain visible but non-interactive, suppressed rows remain in their logical position and visibly muted, and the same hierarchy survives the narrow mobile layout.
 - Abilities Stage 2 replaces the old source/category list presentation with the approved five-panel character-sheet shell: **Класс / Подкласс / Раса / Предыстория / Эффекты**. The layout follows the reference's panel geometry while retaining MEGANOT's existing class palette, graphite surfaces and cold-light visual language. Panels are now fed by the canonical Stage 1 read-model; accordion previews/expansion remain Stage 3.
 - Added lossless 9:16 portrait frames for all 13 supported classes. Each class now receives its frame automatically, the character avatar is strictly clipped inside the transparent opening, and the undistorted PNG is rendered above the avatar; campaign-specific frame overrides remain supported.
 
@@ -128,6 +129,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Added `characterAbilitiesAccordion.test.ts` covering the three-row preview limit, computed hidden count, single-group accordion transitions, empty-group behavior, in-place full-row rendering, suppression presentation and responsive structure. Advanced the Stage 2 shell regression so it continues to guard the MEGANOT panel foundation after Stage 3 expansion logic landed.
 - Added `characterAbilitiesPanelShell.test.ts` to lock the Stage 2 runtime wiring, five-panel stack, source/summary geometry, MEGANOT theme-token usage, and the deliberate absence of Stage 3 accordion/Snake behavior. Extended the read-model regression so class/subclass/race source names remain available from template roots even when a panel has zero rows.
 - Added `characterAbilitiesReadModel.test.ts` covering the fixed five-group order, class/subclass separation, race+subrace player-facing merge, background/effect classification, root-to-child suppression ancestry, preservation of suppressed rows, authored icon/Voss metadata, runtime rule/availability enrichment, and rejection of an unsafe granular suppression target for legacy multi-source aliases.
 - Verification limitation for this work unit: the GitHub connector reports no commit status for the direct `dev` head and the isolated container cannot resolve GitHub for a local clone, so a full repository `npm test` / build result is not claimed here.
