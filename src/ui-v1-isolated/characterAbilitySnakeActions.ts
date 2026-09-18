@@ -5,6 +5,19 @@ import type {
 } from "../snake-engine"
 import type { CharacterAbilityRow } from "./characterAbilitiesReadModel.ts"
 
+export type CharacterAbilitySuppressionResult = {
+  ok: boolean
+  error?: string
+}
+
+export type CharacterAbilitySnakeActionContext = {
+  canManage: boolean
+  setSuppressed?: (
+    sourceId: string,
+    suppressed: boolean,
+  ) => Promise<CharacterAbilitySuppressionResult>
+}
+
 function mechanicalRuleText(
   row: CharacterAbilityRow,
 ) {
@@ -73,12 +86,67 @@ export function characterAbilityEntity(
   }
 }
 
+function managerSuppressionAction(
+  row: CharacterAbilityRow,
+  context: CharacterAbilitySnakeActionContext,
+): SnakeAction | null {
+  if (
+    !context.canManage ||
+    !row.capabilities.suppress ||
+    !row.sourceId ||
+    !context.setSuppressed
+  ) {
+    return null
+  }
+
+  const suppress = row.status !== "suppressed"
+
+  return {
+    id: suppress
+      ? "suppress-character-ability"
+      : "enable-character-ability",
+    label: suppress ? "Заглушить" : "Включить",
+    tone: suppress ? "danger" : "normal",
+    execute: async () => {
+      const result = await context.setSuppressed?.(
+        row.sourceId as string,
+        suppress,
+      )
+
+      if (!result?.ok) {
+        return {
+          type: "error",
+          message:
+            result?.error ||
+            "Не удалось изменить состояние умения.",
+        }
+      }
+
+      return {
+        type: "success",
+        notice: suppress
+          ? "Умение заглушено. Его механика больше не применяется."
+          : "Умение включено. Его механика снова применяется.",
+      }
+    },
+  }
+}
+
 export function createCharacterAbilitySnakeActions(
   row: CharacterAbilityRow,
+  context: CharacterAbilitySnakeActionContext = {
+    canManage: false,
+  },
 ): SnakeAction[] {
-  return [{
+  const inspect: SnakeAction = {
     id: "inspect-character-ability",
     label: "Подробнее",
     surface: characterAbilityDetailSurface(row),
-  }]
+  }
+  const managerAction = managerSuppressionAction(row, context)
+
+  return [
+    inspect,
+    ...(managerAction ? [managerAction] : []),
+  ]
 }
