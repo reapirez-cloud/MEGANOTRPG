@@ -33,6 +33,7 @@ import {
 import { characterSheetSpellSlotAsset } from "./characterSheetVisualAssets"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import "./character-sheet-spells.css"
+import "./character-sheet-spell-stage6.css"
 
 type SpellCatalogMeta = {
   slug: string
