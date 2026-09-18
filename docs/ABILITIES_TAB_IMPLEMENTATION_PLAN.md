@@ -189,8 +189,18 @@ Current Stage 1 checkpoint:
 - existing authored mechanic metadata may enrich icon/Voss/detail fields, while mechanics still come from the resolved Character Runtime/CE contract;
 - no abilities panel/layout work was done in Stage 1. Stage 2 is the next implementation stage.
 
-### Stage 2 — Panel shell
-Build the five accordion panels in the approved order and using existing MEGANOT UI 1.0 visual tokens/components.
+### Stage 2 — Panel shell ✅ COMPLETE
+Built the five persistent source panels in the approved order using the existing MEGANOT UI 1.0 visual system.
+
+Current Stage 2 checkpoint:
+- the live character-sheet `Умения` section now consumes the Stage 1 read-model assembled from the already-mounted Character Runtime snapshot;
+- no second CE resolver, Supabase reader or abilities-specific runtime was added to the presentation component;
+- the screen always renders `Class / Subclass / Race / Background / Effects` in stable order, including quiet empty panels where a source is not yet present;
+- class/subclass/race source names come from the runtime source graph even when a group currently has zero ability rows;
+- each panel has the approved reference geometry: source/icon identity area on the left and a reserved summary/chevron area on the right;
+- the visual treatment uses MEGANOT class palette variables and existing graphite/cold-light language rather than the reference's gold/ornamental skin;
+- compact previews, computed `ещё N`, expansion state and full rows are intentionally NOT implemented here. Those belong to Stage 3;
+- per-ability Snake/detail/suppression interactions remain intentionally deferred to their later stages.
 
 ### Stage 3 — Collapsed/expanded behavior
 Implement compact previews, computed `ещё N`, single-group expansion, full row list and responsive behavior matching the reference mechanics.
