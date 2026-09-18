@@ -1,7 +1,14 @@
+import { useEffect, useState } from "react"
+
+import {
+  characterAbilityCollapsedPreview,
+  nextExpandedAbilityGroup,
+} from "./characterAbilitiesAccordion.ts"
 import type {
   CharacterAbilitiesReadModel,
   CharacterAbilityGroup,
   CharacterAbilityGroupKey,
+  CharacterAbilityRow,
 } from "./characterAbilitiesReadModel.ts"
 
 function AbilityGroupIcon({
@@ -88,13 +95,76 @@ function sourceSummary(group: CharacterAbilityGroup) {
   )
 }
 
-function countLabel(group: CharacterAbilityGroup) {
-  if (group.totalCount === 0) return "Нет умений"
-  if (group.totalCount === 1) return "1 умение"
-  if (group.totalCount >= 2 && group.totalCount <= 4) {
-    return group.totalCount + " умения"
-  }
-  return group.totalCount + " умений"
+function iconIsImage(value: string) {
+  return /^(?:https?:|data:|blob:|\/)/i.test(value)
+}
+
+function AbilityRowIcon({
+  row,
+}: {
+  row: CharacterAbilityRow
+}) {
+  return (
+    <span
+      className="u1-character-features__ability-icon"
+      data-icon-id={row.icon || undefined}
+      aria-hidden="true"
+    >
+      {iconIsImage(row.icon) ? (
+        <img src={row.icon} alt="" draggable={false} />
+      ) : (
+        <AbilityGroupIcon group={row.group} />
+      )}
+    </span>
+  )
+}
+
+function AbilityPreviewRow({
+  row,
+}: {
+  row: CharacterAbilityRow
+}) {
+  return (
+    <span
+      className="u1-character-features__preview-row"
+      data-suppressed={row.status === "suppressed" || undefined}
+    >
+      <AbilityRowIcon row={row} />
+      <span>{row.label}</span>
+    </span>
+  )
+}
+
+function AbilityExpandedRow({
+  row,
+}: {
+  row: CharacterAbilityRow
+}) {
+  return (
+    <div
+      className="u1-character-features__ability-row"
+      data-ability-id={row.id}
+      data-suppressed={row.status === "suppressed" || undefined}
+    >
+      <AbilityRowIcon row={row} />
+
+      <span className="u1-character-features__ability-copy">
+        <strong>{row.label}</strong>
+        <small>
+          {row.shortDescription ||
+            (row.unlockLevel !== null
+              ? "Открывается на " + row.unlockLevel + " уровне"
+              : "Описание не добавлено")}
+        </small>
+      </span>
+
+      {row.status === "suppressed" && (
+        <span className="u1-character-features__ability-state">
+          Заглушено
+        </span>
+      )}
+    </div>
+  )
 }
 
 export default function CharacterSheetFeatures({
@@ -104,6 +174,20 @@ export default function CharacterSheetFeatures({
   model: CharacterAbilitiesReadModel | null
   runtimeError?: string
 }) {
+  const [expandedGroup, setExpandedGroup] =
+    useState<CharacterAbilityGroupKey | null>(null)
+
+  useEffect(() => {
+    if (!expandedGroup || !model) return
+
+    const current = model.groups.find(
+      (group) => group.key === expandedGroup,
+    )
+    if (!current || current.totalCount <= 0) {
+      setExpandedGroup(null)
+    }
+  }, [expandedGroup, model])
+
   if (!model) {
     return (
       <section className="u1-character-features u1-character-features--loading">
@@ -121,7 +205,8 @@ export default function CharacterSheetFeatures({
     <section
       className="u1-character-features"
       aria-labelledby="character-abilities-title"
-      data-stage="panel-shell"
+      data-stage="accordion"
+      data-expanded-group={expandedGroup || undefined}
       data-unclassified-count={
         model.unclassifiedSourceIds.length > 0
           ? model.unclassifiedSourceIds.length
@@ -134,41 +219,101 @@ export default function CharacterSheetFeatures({
       </header>
 
       <div className="u1-character-features__panels">
-        {model.groups.map((group) => (
-          <article
-            key={group.key}
-            className="u1-character-features__panel"
-            data-group={group.key}
-            data-empty={group.totalCount === 0 || undefined}
-            data-suppressed-count={
-              group.suppressedCount > 0
-                ? group.suppressedCount
-                : undefined
-            }
-          >
-            <div className="u1-character-features__panel-source">
-              <span
-                className="u1-character-features__panel-icon"
-                aria-hidden="true"
-              >
-                <AbilityGroupIcon group={group.key} />
-              </span>
+        {model.groups.map((group) => {
+          const expanded =
+            expandedGroup === group.key && group.totalCount > 0
+          const preview = characterAbilityCollapsedPreview(group)
+          const contentId =
+            "character-ability-group-" + group.key
 
-              <span className="u1-character-features__panel-identity">
-                <strong>{group.label}</strong>
-                <small>{sourceSummary(group)}</small>
-              </span>
-            </div>
-
-            <div
-              className="u1-character-features__panel-summary"
-              aria-label={countLabel(group)}
+          return (
+            <article
+              key={group.key}
+              className="u1-character-features__panel"
+              data-group={group.key}
+              data-expanded={expanded || undefined}
+              data-empty={group.totalCount === 0 || undefined}
+              data-suppressed-count={
+                group.suppressedCount > 0
+                  ? group.suppressedCount
+                  : undefined
+              }
             >
-              <span>{countLabel(group)}</span>
-              <i aria-hidden="true">⌄</i>
-            </div>
-          </article>
-        ))}
+              <button
+                type="button"
+                className="u1-character-features__panel-toggle"
+                disabled={group.totalCount <= 0}
+                aria-expanded={expanded}
+                aria-controls={contentId}
+                onClick={() =>
+                  setExpandedGroup((current) =>
+                    nextExpandedAbilityGroup(
+                      current,
+                      group.key,
+                      group.totalCount,
+                    )
+                  )
+                }
+              >
+                <span className="u1-character-features__panel-source">
+                  <span
+                    className="u1-character-features__panel-icon"
+                    aria-hidden="true"
+                  >
+                    <AbilityGroupIcon group={group.key} />
+                  </span>
+
+                  <span className="u1-character-features__panel-identity">
+                    <strong>{group.label}</strong>
+                    <small>{sourceSummary(group)}</small>
+                  </span>
+                </span>
+
+                <span className="u1-character-features__panel-summary">
+                  {expanded ? (
+                    <span className="u1-character-features__opened-count">
+                      Открыто: {group.totalCount} из {group.totalCount}
+                    </span>
+                  ) : group.totalCount > 0 ? (
+                    <span className="u1-character-features__preview">
+                      {preview.rows.map((row) => (
+                        <AbilityPreviewRow key={row.id} row={row} />
+                      ))}
+                      {preview.hiddenCount > 0 && (
+                        <small>
+                          ещё {preview.hiddenCount}
+                        </small>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="u1-character-features__empty-label">
+                      Нет умений
+                    </span>
+                  )}
+
+                  <i
+                    className="u1-character-features__panel-chevron"
+                    aria-hidden="true"
+                  >
+                    ⌄
+                  </i>
+                </span>
+              </button>
+
+              <div
+                id={contentId}
+                className="u1-character-features__expanded"
+                role="region"
+                aria-label={group.label}
+                hidden={!expanded}
+              >
+                {group.rows.map((row) => (
+                  <AbilityExpandedRow key={row.id} row={row} />
+                ))}
+              </div>
+            </article>
+          )
+        })}
       </div>
     </section>
   )
