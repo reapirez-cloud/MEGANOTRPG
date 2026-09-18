@@ -61,8 +61,10 @@ test("repository contract limits the external reference to panel geometry", () =
   )
   assert.match(
     contract,
-    /CharacterSheet owns the page art\/background\/masthead/i,
+    /character-sheet shell already owns the visual scene/i,
   )
+  assert.match(contract, /character masthead \/ portrait block/i)
+  assert.match(contract, /class artwork\/background behind the sheet/i)
   assert.match(
     contract,
     /Abilities does not own a third theme/i,
