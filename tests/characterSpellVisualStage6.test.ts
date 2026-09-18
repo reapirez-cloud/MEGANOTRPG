@@ -40,7 +40,7 @@ test("stage 6 matches the compact reference anatomy instead of adding an extra g
   assert.match(baseStyles, /\.u1-character-spells__grimoire-open\s*\{[\s\S]*grid-column:\s*auto/)
   assert.match(baseStyles, /\.u1-character-spells__grimoire-book::after/)
   assert.match(stage6Styles, /\.u1-character-spells__circle-head\s*\{[\s\S]*min-height:\s*clamp\(34px, 9\.7vw, 42px\)/)
-  assert.match(stage6Styles, /\.u1-character-spells__spell-card,[\s\S]*\.u1-character-spells__grimoire-open[\s\S]*min-height:\s*clamp\(32px, 9\.4vw, 38px\)/)
+  assert.match(stage6Styles, /\.u1-character-spells__spell-card,[\s\S]*\.u1-character-spells__grimoire-open[\s\S]*min-height:\s*clamp\(30px, 8\.6vw, 35px\)/)
   assert.match(stage6Styles, /\.u1-character-spells__preview-row\s*\{[\s\S]*min-height:\s*clamp\(29px, 8\.4vw, 35px\)/)
 })
 
