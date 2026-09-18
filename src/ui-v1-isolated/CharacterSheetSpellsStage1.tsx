@@ -1171,18 +1171,72 @@ export default function CharacterSheetSpells({
         </section>
       )}
 
-      {views.length === 0 && (
-        <section className="u1-character-spells__empty-book">
-          <strong>Книга заклинаний пока пуста</strong>
-          <span>
-            Ячейки уже собраны Character Engine, но доступных заклинаний у персонажа нет.
-          </span>
-        </section>
-      )}
-
       {CHARACTER_SHEET_SPELL_GROUP_ORDER.map((level) => {
         const allSpells = views.filter((spell) => spell.level === level)
-        if (!allSpells.length) return null
+        const slotPresentation = slotForSpellLevel(level)
+        const slot = slotCount(slotPresentation.resource)
+        const hasStandardSpellSurface =
+          hasSpellSlots || views.some((spell) => isStandardSpellLevel(spell.level))
+        const emptyCantrip =
+          level === 0 && hasStandardSpellSurface && allSpells.length === 0
+        const emptySlotLevel =
+          level > 0 &&
+          !slotPresentation.pact &&
+          slot.max > 0 &&
+          allSpells.length === 0
+
+        if (!allSpells.length && !emptyCantrip && !emptySlotLevel) return null
+
+        if (!allSpells.length) {
+          const cantrip = level === 0
+
+          return (
+            <section
+              key={level}
+              id={`u1-character-spells-circle-${level}`}
+              className="u1-character-spells__circle u1-character-spells-stage2__placeholder"
+              data-level={level}
+              data-stage2-placeholder={cantrip ? "cantrips" : "spell-level"}
+              aria-label={cantrip ? "Заговоры" : `${level} круг`}
+            >
+              <div className="u1-character-spells__circle-head">
+                <span
+                  className="u1-character-spells__circle-seal u1-character-spells-stage2__placeholder-seal"
+                  style={cantrip ? classSpellIconStyle(sheetClassKey) : undefined}
+                  data-cantrip={cantrip || undefined}
+                  aria-hidden="true"
+                >
+                  {!cantrip && (roman[level] || level)}
+                </span>
+
+                <span className="u1-character-spells__circle-title">
+                  <strong>{cantrip ? "Заговоры" : `${level} круг`}</strong>
+                  <small>
+                    {cantrip
+                      ? "Всегда доступны"
+                      : `${slot.current}/${slot.max} ячеек`}
+                  </small>
+                </span>
+
+                <span className="u1-character-spells__circle-count">
+                  0 заклинаний
+                </span>
+                <span
+                  className="u1-character-spells__circle-caret"
+                  aria-hidden="true"
+                />
+              </div>
+
+              <div className="u1-character-spells__preview-row u1-character-spells-stage2__empty-preview">
+                <span>
+                  {cantrip
+                    ? "Заговоры пока не собраны Character Engine."
+                    : "Заклинания этого круга пока не собраны Character Engine."}
+                </span>
+              </div>
+            </section>
+          )
+        }
 
         const expanded = expandedLevel === level
         const grimoireOpen = grimoireLevel === level
@@ -1192,8 +1246,6 @@ export default function CharacterSheetSpells({
         const levelHasPreparation = allSpells.some(
           (view) => mutablePreparationSpellId(view) !== null,
         )
-        const slotPresentation = slotForSpellLevel(level)
-        const slot = slotCount(slotPresentation.resource)
         const preview = allSpells.slice(0, 3)
         const remaining = Math.max(0, allSpells.length - preview.length)
 
