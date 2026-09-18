@@ -90,6 +90,9 @@ function AbilityGlyph({ ability }: { ability: AbilityKey }) {
     <img
       src={`${GRIMDARK_ICON_ROOT}/${ability}.png`}
       alt=""
+      width={96}
+      height={96}
+      decoding="async"
       draggable={false}
     />
   )
