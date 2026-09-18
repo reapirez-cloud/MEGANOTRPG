@@ -371,10 +371,12 @@ function spellInput(definition: ChasovoyDefinition): SpellInput {
   }
 }
 
-export function useGMWorkshopData() {
+export function useGMWorkshopData(enabled = true) {
   const [state, setState] = useState<WorkshopState>(EMPTY_STATE)
 
   const load = useCallback(async () => {
+    if (!enabled) return
+
     setState((current) => ({ ...current, loading: true, error: null }))
 
     const { data: authData, error: authError } = await supabase.auth.getUser()
@@ -638,11 +640,15 @@ export function useGMWorkshopData() {
       loading: false,
       error: null,
     })
-  }, [])
+  }, [enabled])
 
   useEffect(() => {
+    if (!enabled) {
+      setState(EMPTY_STATE)
+      return
+    }
     void load()
-  }, [load])
+  }, [enabled, load])
 
   const context = useCallback(() => createEngineCommandContext({
     campaignId: state.campaignId,

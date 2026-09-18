@@ -64,7 +64,7 @@ function iconReferenceSlot(value: string) {
     value.endsWith(":spell_slot")
 }
 
-export function useUiV1ReferenceMedia() {
+export function useUiV1ReferenceMedia(enabled = true) {
   const scope = useUiV1CampaignScope()
   const [items, setItems] = useState<Record<string, UiV1ReferenceMedia>>({})
   const [loading, setLoading] = useState(true)
@@ -72,7 +72,7 @@ export function useUiV1ReferenceMedia() {
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    if (!scope.campaignId) return
+    if (!enabled || !scope.campaignId) return
 
     setLoading(true)
     const { data, error: queryError } = await supabase.rpc(
@@ -105,15 +105,20 @@ export function useUiV1ReferenceMedia() {
     setItems(next)
     setError(null)
     setLoading(false)
-  }, [scope.campaignId])
+  }, [enabled, scope.campaignId])
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false)
+      return
+    }
+
     if (!scope.campaignId) {
       if (!scope.loading) setLoading(false)
       return
     }
     void load()
-  }, [load, scope.campaignId, scope.loading])
+  }, [enabled, load, scope.campaignId, scope.loading])
 
   const get = useCallback(
     (targetField: string) => items[targetField] || null,

@@ -263,7 +263,16 @@ function sheetPreview(
   }
 }
 
-export function useWorkspaceData(): WorkspaceData {
+type WorkspaceDataOptions = {
+  enabled?: boolean
+  characterId?: string | null
+}
+
+export function useWorkspaceData(
+  options: WorkspaceDataOptions = {},
+): WorkspaceData {
+  const enabled = options.enabled ?? true
+  const scopedCharacterId = options.characterId?.trim() || null
   const [campaignId, setCampaignId] = useState("")
   const [campaignTitle, setCampaignTitle] = useState("Мунтар")
   const [campaignCoverUrl, setCampaignCoverUrl] = useState<string | null>(null)
@@ -276,6 +285,11 @@ export function useWorkspaceData(): WorkspaceData {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false)
+      return
+    }
+
     let cancelled = false
 
     const load = async () => {
@@ -327,12 +341,19 @@ export function useWorkspaceData(): WorkspaceData {
           .select("title, cover_url")
           .eq("id", nextCampaignId)
           .maybeSingle(),
-        supabase
-          .from("characters")
-          .select("id, assigned_user_id, name, character_class, level, avatar_url, character_type, visibility, publication_state, life_state, died_at")
-          .eq("campaign_id", nextCampaignId)
-          .eq("publication_state", "campaign")
-          .order("created_at", { ascending: true }),
+        scopedCharacterId
+          ? supabase
+              .from("characters")
+              .select("id, assigned_user_id, name, character_class, level, avatar_url, character_type, visibility, publication_state, life_state, died_at")
+              .eq("campaign_id", nextCampaignId)
+              .eq("id", scopedCharacterId)
+              .limit(1)
+          : supabase
+              .from("characters")
+              .select("id, assigned_user_id, name, character_class, level, avatar_url, character_type, visibility, publication_state, life_state, died_at")
+              .eq("campaign_id", nextCampaignId)
+              .eq("publication_state", "campaign")
+              .order("created_at", { ascending: true }),
         supabase
           .from("campaign_members")
           .select("user_id, active_character_id")
@@ -483,7 +504,7 @@ export function useWorkspaceData(): WorkspaceData {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [enabled, scopedCharacterId])
 
   const canManage =
     membership?.role === "gm" || membership?.is_owner === true

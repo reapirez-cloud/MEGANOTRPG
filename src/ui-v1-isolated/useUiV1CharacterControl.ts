@@ -81,8 +81,42 @@ export function useUiV1CharacterControl(characterId: string) {
     setError(null)
 
     try {
+      const characterResult = await supabase
+        .from("characters")
+        .select("id,campaign_id,assigned_user_id,name,character_class,level,bio,avatar_url,character_type,visibility,visibility_mode,publication_state,life_state,died_at,created_by,created_at,updated_at")
+        .eq("campaign_id", scope.campaignId)
+        .eq("id", characterId)
+        .maybeSingle()
+
+      if (characterResult.error) throw new Error(characterResult.error.message)
+      if (!characterResult.data) {
+        throw new Error("Персонаж не найден.")
+      }
+
+      const earlyRow = characterResult.data
+      const earlyAvatarSource = earlyRow.avatar_url || null
+      const earlyAvatarUrl =
+        (await resolveCampaignMediaUrl(earlyAvatarSource)) ||
+        earlyAvatarSource
+
+      setRuntimeEntity(earlyRow as CharacterEntity)
+      setCharacter({
+        id: earlyRow.id,
+        name: earlyRow.name,
+        characterClass: earlyRow.character_class || "",
+        level: earlyRow.level || 1,
+        bio: earlyRow.bio || "",
+        characterType: earlyRow.character_type === "npc" ? "npc" : "pc",
+        assignedUserId: earlyRow.assigned_user_id,
+        lifeState: earlyRow.life_state === "dead" ? "dead" : "alive",
+        avatarUrl: earlyAvatarUrl,
+        avatarPresentation: null,
+        panelAvatarUrl: earlyAvatarUrl,
+        panelAvatarPresentation: null,
+      })
+      setLoading(false)
+
       const [
-        characterResult,
         sheetResult,
         spellsResult,
         featuresResult,
@@ -93,11 +127,6 @@ export function useUiV1CharacterControl(characterId: string) {
         mediaResult,
         worldStateResult,
       ] = await Promise.all([
-        supabase.from("characters")
-          .select("id,campaign_id,assigned_user_id,name,character_class,level,bio,avatar_url,character_type,visibility,visibility_mode,publication_state,life_state,died_at,created_by,created_at,updated_at")
-          .eq("campaign_id", scope.campaignId)
-          .eq("id", characterId)
-          .maybeSingle(),
         supabase.from("character_sheets").select("*").eq("character_id", characterId).maybeSingle(),
         supabase.from("character_spells").select("*").eq("character_id", characterId)
           .order("spell_level").order("sort_order"),
@@ -130,7 +159,6 @@ export function useUiV1CharacterControl(characterId: string) {
       ])
 
       const firstError =
-        characterResult.error ||
         sheetResult.error ||
         spellsResult.error ||
         featuresResult.error ||
@@ -141,8 +169,6 @@ export function useUiV1CharacterControl(characterId: string) {
         mediaResult.error ||
         worldStateResult.error
       if (firstError) throw new Error(firstError.message)
-      if (!characterResult.data) throw new Error("Персонаж не найден.")
-
       const inventoryRows = await cheburashka.listCharacterItems(characterId)
       const storageResult = worldStateResult.data?.location_id
         ? await supabase.rpc("list_world_storages_v1", {
