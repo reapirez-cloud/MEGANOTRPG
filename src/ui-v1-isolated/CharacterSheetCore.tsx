@@ -10,12 +10,12 @@ const abilityRows: Array<{
   short: string
   label: string
 }> = [
-  { key: "strength", short: "СИЛ", label: "Сила" },
-  { key: "dexterity", short: "ЛВК", label: "Ловкость" },
-  { key: "constitution", short: "ТЕЛ", label: "Телосложение" },
-  { key: "intelligence", short: "ИНТ", label: "Интеллект" },
-  { key: "wisdom", short: "МДР", label: "Мудрость" },
-  { key: "charisma", short: "ХАР", label: "Харизма" },
+  { key: "strength", short: "Сил", label: "Сила" },
+  { key: "dexterity", short: "Лвк", label: "Ловкость" },
+  { key: "constitution", short: "Тел", label: "Телосложение" },
+  { key: "intelligence", short: "Инт", label: "Интеллект" },
+  { key: "wisdom", short: "Мдр", label: "Мудрость" },
+  { key: "charisma", short: "Хар", label: "Харизма" },
 ]
 
 const skillLabels: Record<SkillKey, string> = {
@@ -56,8 +56,8 @@ function QuickStatIcon({ id }: { id: string }) {
       <img
         src={`${GRIMDARK_ICON_ROOT}/${id}.png`}
         alt=""
-        width={96}
-        height={96}
+        width={128}
+        height={128}
         decoding="async"
         draggable={false}
       />
@@ -90,6 +90,9 @@ function AbilityGlyph({ ability }: { ability: AbilityKey }) {
     <img
       src={`${GRIMDARK_ICON_ROOT}/${ability}.png`}
       alt=""
+      width={128}
+      height={128}
+      decoding="async"
       draggable={false}
     />
   )
@@ -245,12 +248,11 @@ export default function CharacterSheetCore({
               <span className="u1-character-sheet-core__ability-glyph" aria-hidden="true">
                 <AbilityGlyph ability={expandedAbility} />
               </span>
-              <span>
-                <b>{expandedMeta.short}</b>
-                <small>{expandedMeta.label}</small>
+              <span className="u1-character-sheet-core__ability-label">
+                {expandedMeta.short}
               </span>
-              <strong>{contract.abilities[expandedAbility].value}</strong>
               <em>{signed(contract.abilities[expandedAbility].modifier)}</em>
+              <strong>{contract.abilities[expandedAbility].value}</strong>
             </button>
 
             <div className="u1-character-sheet-core__ability-detail">
@@ -304,9 +306,11 @@ export default function CharacterSheetCore({
                 <span className="u1-character-sheet-core__ability-glyph" aria-hidden="true">
                   <AbilityGlyph ability={ability.key} />
                 </span>
-                <span>{ability.short}</span>
-                <strong>{resolved.value}</strong>
+                <span className="u1-character-sheet-core__ability-label">
+                  {ability.short}
+                </span>
                 <em>{signed(resolved.modifier)}</em>
+                <strong>{resolved.value}</strong>
               </button>
             )
           })

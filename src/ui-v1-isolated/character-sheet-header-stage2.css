@@ -171,9 +171,14 @@
   grid-column: 1;
   grid-row: 1 / 3;
   width: clamp(17px, 4.6vw, 21px);
+  height: clamp(17px, 4.6vw, 21px);
   aspect-ratio: 1 / 1;
+  justify-self: center;
+  align-self: center;
+  line-height: 0;
+  box-sizing: border-box;
   background:
-    url("/ui-icons/grimdark/inspiration.png")
+    url("/ui-icons/grimdark/ui/inspiration.png")
     center / contain no-repeat;
   opacity: .88;
   mix-blend-mode: screen;
@@ -198,5 +203,6 @@
 
   .u1-character-sheet__identity-inspiration::before {
     width: 16px;
+    height: 16px;
   }
 }

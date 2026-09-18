@@ -1408,3 +1408,27 @@
     brightness(.78)
     drop-shadow(0 6px 12px rgba(0,0,0,.28));
 }
+
+
+/* Character sheet navigation icon geometry */
+.u1-character-sheet__nav-icon {
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  align-self: center;
+  line-height: 0;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+.u1-character-sheet__nav-icon > svg {
+  aspect-ratio: 1 / 1;
+  display: block;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  transform: none;
+  transform-origin: center;
+  box-sizing: border-box;
+}

@@ -105,6 +105,7 @@ export function useUiV1ReferenceMedia(
       ((data || []) as ReferenceMediaRow[]).map(async (row) => {
         if (!validReferenceSlot(row.target_field)) return
         if (!relevantReferenceSlot(row.target_field, classKey)) return
+
         const resolvedUrl = await resolveCampaignMediaUrl(row.storage_path)
         next[row.target_field] = {
           targetField: row.target_field,

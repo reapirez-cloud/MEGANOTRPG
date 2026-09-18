@@ -1200,3 +1200,47 @@
   color: var(--cv-art-highlight);
   text-shadow: 0 0 7px color-mix(in srgb, var(--cv-art-highlight) 72%, transparent);
 }
+
+
+/* Resource and spell-slot icon geometry · preserve authored artwork */
+.u1-character-overview__resource-icon,
+.u1-character-overview__charge {
+  aspect-ratio: 1 / 1;
+  justify-self: center;
+  align-self: center;
+  line-height: 0;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+.u1-character-overview__resource-icon > i,
+.u1-character-overview__charge > i {
+  aspect-ratio: 1 / 1;
+  display: block;
+  margin: 0;
+  padding: 0;
+  background-position: 50% 50%;
+  background-repeat: no-repeat;
+  transform-origin: center;
+  box-sizing: border-box;
+}
+
+.u1-character-overview__resource-icon[data-asset-render="image"] > i,
+.u1-character-overview__charge[data-asset-render="image"] > i {
+  background-size: var(--u1-sheet-icon-size, contain);
+  background-position: var(--u1-sheet-icon-position, 50% 50%);
+}
+
+.u1-character-overview__resource-icon[data-asset-render="mask"] > i,
+.u1-character-overview__charge[data-asset-render="mask"] > i {
+  -webkit-mask-position: var(--u1-sheet-icon-position, 50% 50%);
+  mask-position: var(--u1-sheet-icon-position, 50% 50%);
+}
+
+.u1-character-overview__resource-head {
+  align-items: center;
+}
+
+.u1-character-overview__charges {
+  align-items: center;
+}

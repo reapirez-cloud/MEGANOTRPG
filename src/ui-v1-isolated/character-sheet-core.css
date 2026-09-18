@@ -366,20 +366,6 @@
   color: color-mix(in srgb, var(--cv-accent) 74%, var(--cv-text-soft));
 }
 
-.u1-character-sheet-core__quick-icon::before {
-  content: "✦";
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 11px;
-}
-
-.u1-character-sheet-core__quick-icon[data-stat-id="armor-class"]::before { content: "◇"; }
-.u1-character-sheet-core__quick-icon[data-stat-id="passive-perception"]::before { content: "◉"; }
-.u1-character-sheet-core__quick-icon[data-stat-id="proficiency"]::before { content: "✦"; }
-.u1-character-sheet-core__quick-icon[data-stat-id="initiative"]::before { content: "⌁"; }
-.u1-character-sheet-core__quick-icon[data-stat-id="speed"]::before { content: "⌟"; }
-.u1-character-sheet-core__quick-icon[data-stat-id="spell-save-dc"]::before { content: "✧"; }
-.u1-character-sheet-core__quick-icon[data-stat-id="spell-attack"]::before { content: "↗"; }
-
 .u1-character-sheet-core__quick-label {
   font-size: clamp(7px, 2.35vw, 10px);
 }
@@ -394,21 +380,6 @@
   grid-template-columns: 15px minmax(0, 1fr) 22px 28px;
   gap: 4px;
 }
-
-.u1-character-sheet-core__ability-row::before {
-  content: "✦";
-  color: color-mix(in srgb, var(--cv-accent) 68%, var(--cv-text-muted));
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 10px;
-  text-align: center;
-}
-
-.u1-character-sheet-core__ability-row[data-ability="strength"]::before { content: "◆"; }
-.u1-character-sheet-core__ability-row[data-ability="dexterity"]::before { content: "⌁"; }
-.u1-character-sheet-core__ability-row[data-ability="constitution"]::before { content: "◇"; }
-.u1-character-sheet-core__ability-row[data-ability="intelligence"]::before { content: "◈"; }
-.u1-character-sheet-core__ability-row[data-ability="wisdom"]::before { content: "☼"; }
-.u1-character-sheet-core__ability-row[data-ability="charisma"]::before { content: "✧"; }
 
 .u1-character-sheet-core__ability-row span {
   font-size: clamp(9px, 2.8vw, 12px);
@@ -619,10 +590,6 @@
   color: color-mix(in srgb, var(--cv-accent) 72%, var(--cv-text-soft));
 }
 
-.u1-character-sheet-core__quick-icon::before {
-  content: none;
-}
-
 .u1-character-sheet-core__quick-icon > svg,
 .u1-character-sheet-core__quick-icon > img {
   width: 100%;
@@ -653,18 +620,14 @@
   grid-template-columns:
     clamp(16px, 4.4vw, 20px)
     minmax(0, 1fr)
-    clamp(23px, 6.25vw, 28px)
-    clamp(27px, 7.2vw, 32px);
+    clamp(27px, 7.2vw, 32px)
+    clamp(23px, 6.25vw, 28px);
   gap: clamp(4px, 1.2vw, 6px);
   border-radius: 7px;
   transition:
     background-color 140ms ease,
     color 140ms ease,
     transform 140ms ease;
-}
-
-.u1-character-sheet-core__ability-row::before {
-  content: none;
 }
 
 .u1-character-sheet-core__ability-row:active {
@@ -740,8 +703,8 @@
   grid-template-columns:
     clamp(16px, 4.4vw, 20px)
     minmax(0, 1fr)
-    clamp(23px, 6.25vw, 28px)
-    clamp(27px, 7.2vw, 32px);
+    clamp(27px, 7.2vw, 32px)
+    clamp(23px, 6.25vw, 28px);
   gap: clamp(4px, 1.2vw, 6px);
   border-radius: 8px 8px 0 0;
 }
@@ -871,8 +834,8 @@
     grid-template-columns:
       15px
       minmax(0, 1fr)
-      20px
-      25px;
+      25px
+      20px;
     gap: 3px;
   }
 }
@@ -959,4 +922,95 @@
 .u1-character-sheet-core__ability,
 .u1-character-sheet-core__save {
   background: transparent;
+}
+
+
+/* Character stat icon geometry · one square system */
+.u1-character-sheet-core {
+  --u1-core-icon-cell: clamp(18px, 4.7vw, 21px);
+  --u1-core-icon-size: clamp(16px, 4.15vw, 18px);
+  --u1-core-modifier-cell: clamp(27px, 7.2vw, 32px);
+  --u1-core-value-cell: clamp(23px, 6.25vw, 28px);
+}
+
+.u1-character-sheet-core__quick-row {
+  grid-template-columns:
+    var(--u1-core-icon-cell)
+    minmax(0, 1fr)
+    auto;
+}
+
+.u1-character-sheet-core__ability-row,
+.u1-character-sheet-core__ability-head {
+  grid-template-columns:
+    var(--u1-core-icon-cell)
+    minmax(0, 1fr)
+    var(--u1-core-modifier-cell)
+    var(--u1-core-value-cell);
+  align-items: center;
+}
+
+.u1-character-sheet-core__ability-head {
+  min-height: clamp(23px, 6.25vw, 29px);
+  padding: 0;
+}
+
+.u1-character-sheet-core__quick-icon,
+.u1-character-sheet-core__ability-glyph {
+  width: var(--u1-core-icon-cell);
+  height: var(--u1-core-icon-cell);
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  align-self: center;
+  overflow: visible;
+  line-height: 0;
+  box-sizing: border-box;
+}
+
+.u1-character-sheet-core__quick-icon > img,
+.u1-character-sheet-core__quick-icon > svg,
+.u1-character-sheet-core__ability-glyph > img,
+.u1-character-sheet-core__ability-glyph > svg {
+  width: var(--u1-core-icon-size);
+  height: var(--u1-core-icon-size);
+  max-width: var(--u1-core-icon-size);
+  max-height: var(--u1-core-icon-size);
+  aspect-ratio: 1 / 1;
+  display: block;
+  margin: 0;
+  padding: 0;
+  object-fit: contain;
+  object-position: 50% 50%;
+  transform: none;
+  transform-origin: center;
+  box-sizing: border-box;
+}
+
+.u1-character-sheet-core__ability-label {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(225, 222, 214, .82);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(9px, 2.75vw, 12px);
+  line-height: 1;
+  letter-spacing: .025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-character-sheet-core__ability-row > em,
+.u1-character-sheet-core__ability-row > strong,
+.u1-character-sheet-core__ability-head > em,
+.u1-character-sheet-core__ability-head > strong {
+  align-self: center;
+  justify-self: end;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.u1-character-sheet-core__quick-label,
+.u1-character-sheet-core__quick-row > strong {
+  line-height: 1;
 }

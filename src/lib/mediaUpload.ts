@@ -6,6 +6,7 @@ const MAX_UPLOAD_IMAGE_BYTES = 12 * 1024 * 1024
 const MAX_FILE_BYTES = 20 * 1024 * 1024
 const RESIZE_THRESHOLD_BYTES = 2.5 * 1024 * 1024
 const MAX_IMAGE_DIMENSION = 2560
+const IMMUTABLE_IMAGE_CACHE_SECONDS = "31536000"
 
 export type UploadImageResult =
   | { ok: true; url: string; width: number; height: number; mimeType: string }
@@ -212,7 +213,7 @@ export async function uploadCampaignImage(
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
     .upload(objectPath, optimized, {
-      cacheControl: "3600",
+      cacheControl: IMMUTABLE_IMAGE_CACHE_SECONDS,
       upsert: false,
       contentType: optimized.type || undefined,
     })
