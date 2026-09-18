@@ -155,3 +155,48 @@
     gap: 3px;
   }
 }
+
+
+/* Authored inspiration icon · latest grimdark pack */
+.u1-character-sheet__identity-inspiration {
+  grid-template-columns: clamp(17px, 4.6vw, 21px) minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: clamp(5px, 1.4vw, 7px);
+  row-gap: clamp(3px, .9vw, 4px);
+  align-items: center;
+}
+
+.u1-character-sheet__identity-inspiration::before {
+  content: "";
+  grid-column: 1;
+  grid-row: 1 / 3;
+  width: clamp(17px, 4.6vw, 21px);
+  aspect-ratio: 1 / 1;
+  background:
+    url("/ui-icons/grimdark/inspiration.png")
+    center / contain no-repeat;
+  opacity: .88;
+  mix-blend-mode: screen;
+  filter:
+    grayscale(1)
+    contrast(1.04)
+    drop-shadow(0 0 5px color-mix(in srgb, var(--cv-art-highlight) 14%, transparent));
+  pointer-events: none;
+}
+
+.u1-character-sheet__identity-inspiration-label,
+.u1-character-sheet__identity-inspiration-slots {
+  grid-column: 2;
+}
+
+@media (max-width: 359px) {
+  .u1-character-sheet__identity-inspiration {
+    grid-template-columns: 16px minmax(0, 1fr);
+    column-gap: 4px;
+    row-gap: 2px;
+  }
+
+  .u1-character-sheet__identity-inspiration::before {
+    width: 16px;
+  }
+}
