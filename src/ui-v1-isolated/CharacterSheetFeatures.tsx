@@ -122,6 +122,11 @@ export default function CharacterSheetFeatures({
       className="u1-character-features"
       aria-labelledby="character-abilities-title"
       data-stage="panel-shell"
+      data-unclassified-count={
+        model.unclassifiedSourceIds.length > 0
+          ? model.unclassifiedSourceIds.length
+          : undefined
+      }
     >
       <header className="u1-character-features__intro">
         <span id="character-abilities-title">УМЕНИЯ</span>
@@ -165,15 +170,6 @@ export default function CharacterSheetFeatures({
           </article>
         ))}
       </div>
-
-      {model.unclassifiedSourceIds.length > 0 && (
-        <small
-          className="u1-character-features__unclassified"
-          data-unclassified-count={model.unclassifiedSourceIds.length}
-        >
-          {model.unclassifiedSourceIds.length} источн. ожидают классификации
-        </small>
-      )}
     </section>
   )
 }
