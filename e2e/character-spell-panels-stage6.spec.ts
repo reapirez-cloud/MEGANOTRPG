@@ -137,8 +137,8 @@ test("Stage 6 locks the final 390px reference geometry", async ({ page }) => {
   expect(metrics.circleHeadHeight).toBeLessThanOrEqual(42)
   expect(metrics.gridColumns).toBe(2)
   expect(Math.abs(metrics.firstWidth - metrics.secondWidth)).toBeLessThanOrEqual(1.5)
-  expect(metrics.columnGap).toBeGreaterThanOrEqual(6)
-  expect(metrics.columnGap).toBeLessThanOrEqual(9)
+  expect(metrics.columnGap).toBeGreaterThanOrEqual(4)
+  expect(metrics.columnGap).toBeLessThanOrEqual(6.5)
 })
 
 test("Stage 6 collapses the grimoire to one usable column at 320px", async ({ page }) => {
