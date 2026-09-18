@@ -217,8 +217,17 @@ Current Stage 3 checkpoint:
 - the accordion helpers are pure and regression-tested independently from React;
 - ability row tap/details and long-press/right-click Snake registration are intentionally NOT implemented in Stage 3. Those belong to Stage 4.
 
-### Stage 4 — Ability detail + Snake registration
-Make every row tappable for details and registered for long-press/right-click Snake actions. Remove the local context-menu path from the new screen.
+### Stage 4 — Ability detail + Snake registration ✅ COMPLETE
+Connected every ability row to the universal Snake interaction system and the shared Snake detail surface.
+
+Current Stage 4 checkpoint:
+- both collapsed preview rows and expanded full rows are first-class `character-ability` Snake entities with stable character-scoped identities;
+- ordinary tap opens the shared Snake detail window rather than a new abilities-only modal or route;
+- detail content includes the real source name, unlock level when known, current suppressed state, short description, resolved structured/summary mechanic payloads, and authored Voss explanation/nuances/comment when present;
+- the selected ability is also published into the character-sheet view context so AI/Snake context tracks the same object the user just opened;
+- long press on touch and right click on desktop are owned exclusively by the existing `SnakeTrigger`; there is no abilities-specific `ContextActionSheet`, `useLongPressItem`, `onContextMenu` handler or bottom-sheet runtime;
+- collapsed and expanded presentations share one `createCharacterAbilitySnakeActions` domain provider, so later authority actions can be added once without duplicating UI wiring;
+- Stage 4 intentionally exposes only `Подробнее`. GM/owner `Заглушить / Включить` commands remain Stage 5 and are not faked here.
 
 ### Stage 5 — Manager suppression
 Wire `Заглушить / Включить` through the authoritative manager path. Keep suppressed rows in place and verify CE actually excludes/restores their mechanics.
