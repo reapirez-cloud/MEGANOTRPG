@@ -18,7 +18,9 @@ const featureKinds: Array<{ value: FeatureInput["kind"]; icon: string; label: st
   { value: "feat", icon: "✦", label: "Фит", detail: "Отдельная особенность или талант персонажа." },
   { value: "class_feature", icon: "◇", label: "Классовая черта", detail: "То, что даёт класс или подкласс." },
   { value: "racial_trait", icon: "◈", label: "Расовая черта", detail: "Врожденная или видовая особенность." },
-  { value: "feature", icon: "◆", label: "Уникальный эффект", detail: "Сюжетная, временная или особая механика." },
+  { value: "background_feature", icon: "▣", label: "Черта предыстории", detail: "Умение, владение или связь, полученная из предыстории персонажа." },
+  { value: "effect", icon: "◉", label: "Активный эффект", detail: "Текущее состояние, благословение, проклятие или иной действующий эффект." },
+  { value: "feature", icon: "◆", label: "Особенность", detail: "Постоянная уникальная черта персонажа без другого подходящего источника." },
   { value: "other", icon: "…", label: "Другое", detail: "Если ни один готовый тип не подходит." },
 ]
 

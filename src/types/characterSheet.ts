@@ -59,7 +59,7 @@ export type CharacterSpell = {
 export type CharacterSpellOption = CharacterSpell & { granted_by: string | null }
 
 export type CharacterFeature = {
-  id: string; character_id: string; kind: "feat" | "class_feature" | "racial_trait" | "feature" | "other"
+  id: string; character_id: string; kind: "feat" | "class_feature" | "racial_trait" | "background_feature" | "effect" | "feature" | "other"
   name: string; description: string; mechanics?: StoredMechanics; sort_order: number; created_at: string; updated_at: string
 }
 

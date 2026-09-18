@@ -21,6 +21,10 @@ const features = fs.readFileSync(
   "src/ui-v1-isolated/CharacterSheetFeatures.tsx",
   "utf8",
 )
+const abilitiesReadModel = fs.readFileSync(
+  "src/ui-v1-isolated/characterAbilitiesReadModel.ts",
+  "utf8",
+)
 const spells = fs.readFileSync(
   "src/ui-v1-isolated/CharacterSheetSpellsStage1.tsx",
   "utf8",
@@ -91,15 +95,29 @@ test("template source nodes preserve real feature unlock levels", () => {
   assert.equal(source?.unlockLevel, 3)
 })
 
-test("features consume runtime provenance and delegate stable sorting to tested helpers", () => {
+test("features consume runtime provenance through the canonical abilities read-model", () => {
   assert.match(runtime, /sourceNodes:\s*TemplateSourceNode\[\]/)
-  assert.match(view, /sourceNodes=\{runtime\.snapshot\?\.sourceNodes \|\| \[\]\}/)
-  assert.match(features, /sourceNodesById/)
-  assert.match(features, /\.sort\(compareFeatureSourceCandidates\)/)
-  assert.match(features, /stableProvenanceSignature/)
-  assert.match(features, /earliestKnownUnlockLevel/)
-  assert.match(features, /\.sort\(compareFeatureEntries\)/)
-  assert.match(features, /category:\s*"other"/)
+  assert.match(
+    view,
+    /buildCharacterAbilitiesReadModel\(\{[\s\S]*?contract: snapshot\.contract/,
+  )
+  assert.match(
+    view,
+    /contributions: snapshot\.input\.contributions/,
+  )
+  assert.match(view, /sourceNodes: snapshot\.sourceNodes/)
+  assert.match(
+    view,
+    /<CharacterSheetFeatures[\s\S]*?model=\{abilitiesReadModel\}/,
+  )
+  assert.match(abilitiesReadModel, /const sourceNodesById = new Map/)
+  assert.match(abilitiesReadModel, /sourceNodeForBucket/)
+  assert.match(abilitiesReadModel, /\.sort\(rowSort\)/)
+  assert.match(abilitiesReadModel, /unclassifiedSourceIds/)
+  assert.doesNotMatch(
+    features,
+    /sourceNodesById|compareFeatureSourceCandidates|compareFeatureEntries/,
+  )
 })
 
 test("spells delegate preparation semantics to tested helpers", () => {

@@ -2,15 +2,27 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-14-G
+---
 
-**Status:** OPEN
-**Branch:** `dev`
+## Released patches
+
+## Patch — 2026-09-14-G
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `14b3d7d556bb41c1b8ffce7ffbd94deb55c1e57b`
 **Started:** 2026-09-14
+**Released:** 2026-09-18
+**Release identity:** `main / 2026-09-18-G`
 
 ### Player-facing changes
 
+- **Умения / Abilities tab is READY.** The character sheet now ships the approved five-panel Class / Subclass / Race / Background / Effects accordion with real-data previews, in-place expansion, shared Snake detail/context interaction, manager suppression/re-enable, real Background/Effects sources and narrow-screen touch geometry. The finished UI remains in the existing MEGANOT visual system rather than copying the reference skin.
+- Abilities Stage 6 connects the final two panels to real character data. **Предыстория** now uses explicit `background_feature` rows and displays the canonical `character_sheets.background` identity; **Эффекты** renders explicit persistent `effect` rows under `Активные состояния`. The existing GM Feature Editor can author both kinds with real descriptions and structured mechanics. Generic legacy `feature` rows are intentionally left unclassified rather than guessed into Effects.
+- Abilities Stage 5 adds manager-only Snake controls: GM/campaign owner see **Заглушить** on active granular abilities and **Включить** on suppressed ones, while players remain inspect-only. Suppressed rows stay exactly where earned, remain inspectable and visibly muted, and switch action state after the canonical runtime refresh.
+- Abilities Stage 4 makes every preview/full ability row interactive through the universal Snake system. Normal tap opens a shared detail window with source, unlock level, mechanics and available Voss text; long-press/right-click opens Snake for the same `character-ability` entity. No abilities-specific context menu, bottom sheet or second gesture runtime was introduced.
+- Abilities Stage 3 turns the five source panels into the approved single-open accordion. Collapsed panels now preview up to three real abilities and calculate `ещё N`; expanded panels keep the same header and reveal the complete compact row list in place. Empty groups remain visible but non-interactive, suppressed rows remain in their logical position and visibly muted, and the same hierarchy survives the narrow mobile layout.
+- Abilities Stage 2 replaces the old source/category list presentation with the approved five-panel character-sheet shell: **Класс / Подкласс / Раса / Предыстория / Эффекты**. The layout follows the reference's panel geometry while retaining MEGANOT's existing class palette, graphite surfaces and cold-light visual language. Panels are now fed by the canonical Stage 1 read-model; accordion previews/expansion remain Stage 3.
 - Added lossless 9:16 portrait frames for all 13 supported classes. Each class now receives its frame automatically, the character avatar is strictly clipped inside the transparent opening, and the undistorted PNG is rendered above the avatar; campaign-specific frame overrides remain supported.
 
 - Fixed the UI 1.0 character-sheet black screen introduced by the shared Character Runtime hookup: persistent resource resolution now consumes the campaign access already provided by AuthGate/AuthContext instead of calling the legacy CharacterContext.
@@ -47,8 +59,18 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - The character inventory now exposes accessible persistent storage at the character's current location through **«Оставить в мире»**, using the same canonical Cheburashka move rather than a UI copy.
 - Player-created stashes are private owner storage at the active character's current location; GM storage may be shared, owner-only or GM-only according to explicit policy.
 
+### Database / migration changes
+
+- Applied and committed `20260918150053_character_feature_background_effect_kinds.sql`, extending the existing `character_features_kind_check` to allow `background_feature` and `effect`. No new table/RLS/function/privilege surface was added. Production verification inserted both kinds inside a transaction, rolled back, and confirmed zero leftover test rows. Supabase security advisors were run afterward; findings are pre-existing project-wide warnings unrelated to this constraint-only migration.
+
 ### Runtime and architecture changes
 
+- Abilities Stage 7 cleanup/certification is complete: UI 1.0 no longer depends on the superseded legacy class-mechanics presentation, while the still-used `CharacterProfileV2` compatibility panel remains intact. Temporary milestone markers, the temporary implementation-plan file and its `AGENTS.md` pointer were removed as required by READY.
+- Stage 6 keeps `character_features` as the canonical owner for background abilities and persistent active effects. New `background_feature` / `effect` rows travel through the existing Shapoklyak-owned feature data, Character Runtime and CE pipeline, and use one `feature:<id>` source identity so Snake suppression remains granular and mechanical. `character_sheets.background` is presentation/source identity only and never parsed into mechanics.
+- Ability suppression now reuses the existing authoritative chain `Snake domain action -> useCharacterSourceSuppressions -> Oracle -> Shapoklyak -> set_character_source_suppressed -> CharacterResolutionBus -> Character Runtime -> CE`. No second mutation path, local suppression state or direct abilities-component Supabase write was added. The live database RLS was re-verified: `character_source_suppressions_manage` delegates to `private.can_manage_character`, whose campaign authority resolves owner or GM.
+- `characterAbilitySnakeActions` is the single ability-domain action provider for both compact and expanded rows. It owns `Подробнее` plus capability/authority-gated manager `Заглушить / Включить`, while renderers remain persistence-agnostic.
+- Completed Abilities Stage 1 with a pure five-group character-sheet read-model over the existing Character Runtime snapshot. It uses pre-suppression contributions plus the source graph and resolved CE contract, keeps suppressed earned abilities representable, merges race/subrace only at the player-facing Race group, exposes safe granular source identity for later Snake suppression, and leaves item/unknown sources explicitly unclassified instead of mislabeling them as Effects. No CE, persistence, RLS or canonical mutation path changed.
+- The temporary Abilities implementation contract completed its self-deletion on READY: `docs/ABILITIES_TAB_IMPLEMENTATION_PLAN.md` and its root `AGENTS.md` pointer were removed in the certification work unit instead of being left as permanent repository policy.
 - Completed Inventory Stage 5 physical authoring: Chasovoy item definitions now use a validated physical profile and strict v2 create/revise RPCs; ordinary item authoring has reusable physical presets and a GM shape editor.
 - Added the immutable standard container library (simple 1×1, purse, pouch, bag, travel bag, backpack, large backpack/sack, quiver and two chest sizes). Standard containers are issued as concrete Cheburashka instances and can be renamed per instance for narrative placement without anatomical carry slots.
 - Voss can now create unusual/magical container profiles and revise existing campaign item definitions while preserving existing mechanics on geometry-only changes. System definitions remain immutable; altered standard bags become campaign variants. Live `voss-agent` was deployed as version 32.
@@ -125,6 +147,15 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Stage 7 certification also retired two stale tests that still described superseded UI internals: the Stage 15 feature certification now validates Runtime → abilities read-model provenance instead of direct `sourceNodes` props, and the compact Snake regression now checks behavior rather than requiring a specific JSX ternary shape.
+- Added `characterAbilitiesReadyCertification.test.ts` to enforce READY self-deletion, prove UI 1.0 no longer depends on the superseded legacy class-mechanics panel, preserve the still-used `CharacterProfileV2` compatibility panel, reject stage-only markers, and require the Active patch journal to record the finished READY tab. Final mobile regressions also lock readable 20px compact icons, 24px preview rows and 44px chevron touch targets on narrow screens.
+- Added `characterAbilitiesStage6Sources.test.ts`, exercising the actual legacy Character Runtime adapter with real `CharacterFeature` objects. It verifies Background/Effect classification, canonical source labels, one-source granular suppression identity, explicit GM authoring kinds, migration coverage, and that generic legacy `feature` rows remain unclassified instead of being silently converted into effects.
+- Extended `characterAbilitySnakeActions.test.ts` for player-vs-manager action manifests, active `Заглушить`, suppressed `Включить`, safe-granular-source gating, persistence callback arguments and Snake error propagation. Added `characterAbilitySuppression.test.ts`, which resolves CE with and without the same source suppression and verifies the source's capability, explicit rule and numeric mechanic all disappear/reappear together; it also locks the Oracle/Shapoklyak/RPC/reload architecture and GM-or-owner authority semantics.
+- Added `characterAbilitySnakeActions.test.ts` covering detail content, suppressed-row inspectability, stable `character-ability` identity, shared Snake registration for compact/full rows, selected-ability view context and rejection of local context-menu/long-press runtimes. Advanced Stage 2/3 regressions to keep guarding their layout/accordion contracts after Stage 4 interaction wiring.
+- Added `characterAbilitiesAccordion.test.ts` covering the three-row preview limit, computed hidden count, single-group accordion transitions, empty-group behavior, in-place full-row rendering, suppression presentation and responsive structure. Advanced the Stage 2 shell regression so it continues to guard the MEGANOT panel foundation after Stage 3 expansion logic landed.
+- Added `characterAbilitiesPanelShell.test.ts` to lock the Stage 2 runtime wiring, five-panel stack, source/summary geometry, MEGANOT theme-token usage, and the deliberate absence of Stage 3 accordion/Snake behavior. Extended the read-model regression so class/subclass/race source names remain available from template roots even when a panel has zero rows.
+- Added `characterAbilitiesReadModel.test.ts` covering the fixed five-group order, class/subclass separation, race+subrace player-facing merge, background/effect classification, root-to-child suppression ancestry, preservation of suppressed rows, authored icon/Voss metadata, runtime rule/availability enrichment, and rejection of an unsafe granular suppression target for legacy multi-source aliases.
+- Abilities READY code head `619ec1e9ff23c607961abd7fca44ada4f66c3bc6` passed **Build, Lint, repository tests, Storybook build and Playwright smoke** in GitHub Actions run `35361520019`. The temporary CI PR differed from `dev` only by an inert trigger file and was closed without merge; its branch was reset back to the tested `dev` head afterward.
 - Live Supabase contains `20260915184110_cheburashka_stage5_complete_authoring_library`; strict v2 reference RPCs are authenticated-only, the system container definitions are present, and the inventory currently has zero quantity-one stacks. Three multi-quantity legacy stacks remain intentionally flagged for later review.
 - Added `inventoryStage5Completion.test.ts` covering prepared item/container profiles, GM shape authoring, system-definition immutability, narrative instance naming, strict v2 Chasovoy writes, Voss campaign-item revisions and non-destructive legacy migration.
 
@@ -174,10 +205,6 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Inventory Stages 1–10 are complete. Stage 11 (Chasovoy adoption + legacy inventory migration) is next; Stages 11–12 remain intentionally future work. Stage 9 Surface UI and Stage 10 Trade UI presentation remain intentionally separate from their completed mechanics.
 - CE technical debt remains: generalize the buff/effect authoring and management UX beyond the newly supported `carrying.capacityKg` target.
 - Legacy inventory v1 RPCs and transitional `legacy` placement cannot be fully retired while the current production `main` still uses the shared live Supabase project; retirement is deferred to production promotion/final certification rather than breaking the live client during dev.
-
----
-
-## Released patches
 
 ## Patch — 2026-09-13-F
 

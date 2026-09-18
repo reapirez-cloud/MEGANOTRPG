@@ -128,9 +128,26 @@ export function inventoryMechanicContributions(items: InventoryItem[]): Characte
   }
   return contributions
 }
+function featureSourceType(kind: CharacterFeature["kind"]): string {
+  if (kind === "background_feature") return "character_background_feature"
+  if (kind === "effect") return "character_effect"
+  if (kind === "class_feature") return "character_class_feature"
+  if (kind === "racial_trait") return "character_racial_trait"
+  return "character_feature"
+}
+
 export function featureMechanicContributions(features: CharacterFeature[]): CharacterContribution[] {
   const contributions: CharacterContribution[] = []
-  for (const feature of features) { const source = sourceFor(`feature:${feature.id}`, feature.name, "character_feature"); for (const mechanic of mechanicsArray(feature.mechanics)) contributions.push(contributionForStoredMechanic(mechanic, source)) }
+  for (const feature of features) {
+    const source = sourceFor(
+      `feature:${feature.id}`,
+      feature.name,
+      featureSourceType(feature.kind),
+    )
+    for (const mechanic of mechanicsArray(feature.mechanics)) {
+      contributions.push(contributionForStoredMechanic(mechanic, source))
+    }
+  }
   return contributions
 }
 

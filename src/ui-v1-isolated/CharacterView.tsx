@@ -12,6 +12,7 @@ import type { SnakeAction } from "../snake-engine"
 import CharacterInventoryInterface from "./CharacterInventoryInterface"
 import CharacterSheetCore from "./CharacterSheetCore"
 import CharacterSheetFeatures from "./CharacterSheetFeatures"
+import { buildCharacterAbilitiesReadModel } from "./characterAbilitiesReadModel"
 import CharacterSheetOverview from "./CharacterSheetOverview"
 import CharacterSheetShell from "./CharacterSheetShell"
 import CharacterSheetSpells from "./CharacterSheetSpells"
@@ -141,6 +142,29 @@ export default function CharacterView({
   )
   const snake = useSnake()
   const runtime = useResolvedCharacterRuntime(control.runtimeEntity)
+
+  const abilitiesReadModel = useMemo(() => {
+    const snapshot = runtime.snapshot
+    if (!snapshot) return null
+
+    return buildCharacterAbilitiesReadModel({
+      contract: snapshot.contract,
+      contributions: snapshot.input.contributions,
+      sourceNodes: snapshot.sourceNodes,
+      suppressedSourceIds: [
+        ...runtime.templates.suppressions.sourceIds,
+        ...runtime.preparation.suppressedSourceIds,
+      ],
+      templateBundles: runtime.templates.bundles,
+      backgroundName: control.sheet?.background,
+    })
+  }, [
+    runtime.preparation.suppressedSourceIds,
+    runtime.snapshot,
+    control.sheet?.background,
+    runtime.templates.bundles,
+    runtime.templates.suppressions.sourceIds,
+  ])
 
   useEffect(() => {
     setAuxiliaryEnabled(false)
@@ -682,7 +706,7 @@ export default function CharacterView({
       return { type: "character-effect", id: selectedEffectId }
     }
     if (section === "features" && selectedFeatureId) {
-      return { type: "character-feature", id: selectedFeatureId }
+      return { type: "character-ability", id: selectedFeatureId }
     }
     if (section === "spells" && selectedSpellId) {
       return { type: "character-spell", id: selectedSpellId }
@@ -974,22 +998,14 @@ export default function CharacterView({
       ) : section === "features" ? (
         <CharacterSheetFeatures
           characterId={characterId}
-          contract={runtime.snapshot?.contract || null}
-          templates={control.templates}
-          sourceNodes={runtime.snapshot?.sourceNodes || []}
+          model={abilitiesReadModel}
           runtimeError={runtime.error || undefined}
-          focusKey={
-            entityFocus?.kind === "feature"
-              ? entityFocus.featureId
-              : entityFocus?.kind === "effect"
-                ? entityFocus.effectId
-                : null
-          }
-          onSelect={(featureId) => {
-            setSelectedFeatureId(featureId)
+          canManage={control.canManage}
+          onSelect={(abilityId) => {
+            setSelectedFeatureId(abilityId)
             setEntityFocus(null)
           }}
-          onNavigateEntity={navigateEntity}
+          onSetSuppressed={runtime.templates.suppressions.setSuppressed}
         />
       ) : section === "spells" ? (
         <CharacterSheetSpells

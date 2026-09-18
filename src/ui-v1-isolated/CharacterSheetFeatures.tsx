@@ -1,471 +1,244 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useState } from "react"
 
+import {
+  characterAbilityCollapsedPreview,
+  nextExpandedAbilityGroup,
+} from "./characterAbilitiesAccordion.ts"
+import {
+  characterAbilityDetailSurface,
+  characterAbilityEntity,
+  createCharacterAbilitySnakeActions,
+  type CharacterAbilitySuppressionResult,
+} from "./characterAbilitySnakeActions.ts"
 import type {
-  ResolvedAction,
-  ResolvedCharacterContract,
-  ResolvedGrant,
-  ResolvedSourceRef,
-} from "../character-engine/index.ts"
-import type { TemplateSourceNode } from "../rule-templates/resolver.ts"
-import type { RuleTemplate } from "../rule-templates/types.ts"
-import type { SnakeAction } from "../snake-engine"
-import {
-  CHARACTER_SHEET_FEATURE_SOURCE_ORDER,
-  CHARACTER_SHEET_FEATURE_TIMING_ORDER,
-} from "./characterSheetUiContract"
-import {
-  compareFeatureEntries,
-  compareFeatureSourceCandidates,
-  earliestKnownUnlockLevel,
-  stableProvenanceSignature,
-  stableUniqueSortedStrings,
-} from "./characterSheetDataCertification"
-import {
-  characterSheetEntityFromSource,
-  characterSheetEntityLabel,
-  characterSheetLinkedEntitiesForAction,
-  type CharacterSheetEntityNavigator,
-  type CharacterSheetEntityTarget,
-} from "./characterSheetEntityNavigation"
+  CharacterAbilitiesReadModel,
+  CharacterAbilityGroup,
+  CharacterAbilityGroupKey,
+  CharacterAbilityRow,
+} from "./characterAbilitiesReadModel.ts"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
 
-type FeatureSourceGroup = typeof CHARACTER_SHEET_FEATURE_SOURCE_ORDER[number]
-type FeatureTiming = typeof CHARACTER_SHEET_FEATURE_TIMING_ORDER[number]
-
-type FeatureEntry = {
-  id: string
-  label: string
-  description: string
-  category: FeatureSourceGroup
-  sourceId: string
-  originId: string
-  sourceName: string
-  sourceNames: string[]
-  sourceType: string
-  unlockLevel: number | null
-  timing: FeatureTiming
-  navigationKeys: string[]
-  sourceTarget: CharacterSheetEntityTarget | null
-  action: ResolvedAction | null
-  grant: ResolvedGrant | null
-}
-
-const categoryLabels: Record<FeatureSourceGroup, string> = {
-  class: "КЛАСС",
-  subclass: "ПОДКЛАСС",
-  race: "РАСА",
-  background: "ПРЕДЫСТОРИЯ",
-  item: "ПРЕДМЕТЫ",
-  effect: "ЭФФЕКТЫ",
-  other: "ПРОЧЕЕ",
-}
-
-const timingLabels: Record<FeatureTiming, string> = {
-  action: "Действие",
-  bonus_action: "Бонусное действие",
-  reaction: "Реакция",
-  passive: "Пассивное",
-  other: "Особенность",
-}
-
-function record(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null
-}
-
-function text(value: unknown) {
-  return typeof value === "string" && value.trim() ? value.trim() : ""
-}
-
-function titleFromKey(value: string) {
-  const clean = value.replace(/[._:-]+/g, " ").replace(/\s+/g, " ").trim()
-  if (!clean) return "Особенность"
-  return clean.charAt(0).toLocaleUpperCase("ru-RU") + clean.slice(1)
-}
-
-function normalizedLabel(value: string) {
-  return value
-    .toLocaleLowerCase("ru-RU")
-    .replace(/[^a-zа-яё0-9]+/giu, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-function templateIdFromSourceId(sourceId: string) {
-  const match = sourceId.match(
-    /^template:(?:race|subrace|class|subclass):([^:]+):v\d+/,
-  )
-  return match?.[1] || null
-}
-
-function categoryFromTemplateKind(
-  kind: RuleTemplate["kind"],
-): FeatureSourceGroup {
-  if (kind === "class") return "class"
-  if (kind === "subclass") return "subclass"
-  return "race"
-}
-
-function categoryFromSourceType(
-  sourceType: string,
-  payloadKind: string,
-): FeatureSourceGroup {
-  const value = sourceType.toLocaleLowerCase("ru-RU")
-
-  if (value.includes("subclass")) return "subclass"
-  if (value.includes("class")) return "class"
-  if (value.includes("subrace") || value.includes("race")) return "race"
-  if (value.includes("background")) return "background"
-  if (
-    value.includes("item") ||
-    value.includes("inventory") ||
-    value.includes("equipment")
-  ) return "item"
-  if (
-    value.includes("effect") ||
-    value.includes("status") ||
-    value.includes("condition") ||
-    value.includes("curse")
-  ) return "effect"
-
-  if (value === "legacy_feature") {
-    if (payloadKind === "class_feature") return "class"
-    if (payloadKind === "racial_trait") return "race"
+function AbilityGroupIcon({
+  group,
+}: {
+  group: CharacterAbilityGroupKey
+}) {
+  const common = {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.4,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+    focusable: false,
   }
 
-  return "other"
-}
-
-type SourceMeta = {
-  category: FeatureSourceGroup
-  sourceId: string
-  originId: string
-  sourceName: string
-  sourceNames: string[]
-  sourceType: string
-  sourceTarget: CharacterSheetEntityTarget | null
-  unlockLevel: number | null
-}
-
-function sourceMetaForRef(
-  sourceRef: ResolvedSourceRef,
-  templatesById: ReadonlyMap<string, RuleTemplate>,
-  sourceNodesById: ReadonlyMap<string, TemplateSourceNode>,
-  payloadKind: string,
-): SourceMeta {
-  const source = sourceRef.source
-  const sourceTarget = characterSheetEntityFromSource(source)
-  const sourceType = source.sourceType || "unknown"
-  const sourceId = source.id || "unknown"
-  const templateId = templateIdFromSourceId(sourceId)
-  const template = templateId ? templatesById.get(templateId) || null : null
-  const sourceNode = sourceNodesById.get(sourceId) || null
-
-  if (template) {
-    const category = categoryFromTemplateKind(template.kind)
-    return {
-      category,
-      sourceId: "template:" + template.id,
-      originId: sourceId,
-      sourceName: template.name,
-      sourceNames: [template.name],
-      sourceType,
-      sourceTarget,
-      unlockLevel:
-        sourceNode?.unlockLevel ??
-        (template.kind === "subclass"
-          ? Math.max(1, Number(template.unlock_level || 1))
-          : 1),
-    }
-  }
-
-  const category = categoryFromSourceType(sourceType, payloadKind)
-  const sourceName =
-    sourceType === "legacy_feature"
-      ? category === "class"
-        ? "Ручные классовые особенности"
-        : category === "race"
-          ? "Ручные расовые особенности"
-          : "Ручные особенности"
-      : source.name?.trim() || categoryLabels[category]
-
-  return {
-    category,
-    sourceId:
-      sourceType === "legacy_feature"
-        ? "legacy:" + category
-        : source.parentSourceId || source.id || category + ":unknown",
-    originId: source.id || category + ":unknown",
-    sourceName,
-    sourceNames: [sourceName],
-    sourceType,
-    sourceTarget,
-    unlockLevel: sourceNode?.unlockLevel ?? null,
-  }
-}
-
-function sourceMeta(
-  sources: ResolvedSourceRef[],
-  templatesById: ReadonlyMap<string, RuleTemplate>,
-  sourceNodesById: ReadonlyMap<string, TemplateSourceNode>,
-  payloadKind = "",
-): SourceMeta {
-  if (!sources.length) {
-    return {
-      category: "other",
-      sourceId: "other:unknown",
-      originId: "other:unknown",
-      sourceName: categoryLabels.other,
-      sourceNames: [categoryLabels.other],
-      sourceType: "unknown",
-      sourceTarget: null,
-      unlockLevel: null,
-    }
-  }
-
-  const candidates = sources.map((sourceRef) =>
-    sourceMetaForRef(
-      sourceRef,
-      templatesById,
-      sourceNodesById,
-      payloadKind,
+  if (group === "class") {
+    return (
+      <svg {...common}>
+        <path d="m7.2 4.2 9.6 15.6M16.8 4.2 7.2 19.8" />
+        <path d="m5.2 6.4 2-2 2.2.5M18.8 6.4l-2-2-2.2.5" />
+        <path d="m5.8 17.4 2.2 2.2M18.2 17.4 16 19.6" />
+      </svg>
     )
-  ).sort(compareFeatureSourceCandidates)
-
-  const primary = candidates[0]
-  const sourceNames = stableUniqueSortedStrings(
-    candidates.flatMap((candidate) => candidate.sourceNames),
-  )
-
-  return {
-    ...primary,
-    originId: stableProvenanceSignature(
-      sources.map((entry) => entry.source.id || "unknown"),
-    ),
-    sourceNames,
-    unlockLevel: earliestKnownUnlockLevel(
-      candidates.map((candidate) => candidate.unlockLevel),
-    ),
-  }
-}
-
-function timingFromEconomy(economy: string): FeatureTiming {
-  const value = economy.toLocaleLowerCase("ru-RU")
-  if (value === "action" || value === "magic_action") return "action"
-  if (value === "bonus_action") return "bonus_action"
-  if (value === "reaction") return "reaction"
-  return "other"
-}
-
-function featureTiming(grant: ResolvedGrant): FeatureTiming {
-  const payload = record(grant.payload)
-  const mechanic = record(payload?.mechanic)
-  const explicit =
-    text(mechanic?.economy) ||
-    text(mechanic?.actionType) ||
-    text(mechanic?.activation)
-
-  if (explicit) {
-    const timing = timingFromEconomy(explicit)
-    if (timing !== "other") return timing
   }
 
-  return "passive"
-}
-
-function actionDetail(action: ResolvedAction) {
-  const costs = [
-    ...action.resourceCosts.map((cost) =>
-      `${titleFromKey(cost.key)}: ${cost.amount} · ${cost.current}/${cost.max}`
-    ),
-    ...action.costOptions.flatMap((option) =>
-      option.costs.map((cost) =>
-        `${option.label || titleFromKey(option.key)}: ${titleFromKey(cost.key)} ${cost.amount}`
-      )
-    ),
-  ]
-
-  const requirements = action.requirements
-    .filter((requirement) => requirement.label)
-    .map((requirement) =>
-      `${requirement.satisfied ? "✓" : "×"} ${requirement.label}`
+  if (group === "subclass") {
+    return (
+      <svg {...common}>
+        <path d="M12 3.2 14 9.8 20.6 12 14 14.2 12 20.8 10 14.2 3.4 12 10 9.8 12 3.2Z" />
+        <circle cx="12" cy="12" r="2.2" />
+      </svg>
     )
-
-  return [
-    timingLabels[timingFromEconomy(action.economy)],
-    action.available ? "Сейчас доступно." : "Сейчас недоступно.",
-    costs.length ? "Стоимость:\n" + costs.join("\n") : "",
-    requirements.length ? "Условия:\n" + requirements.join("\n") : "",
-  ].filter(Boolean).join("\n\n")
-}
-
-function buildEntries(
-  contract: ResolvedCharacterContract,
-  templates: RuleTemplate[],
-  sourceNodes: TemplateSourceNode[],
-): FeatureEntry[] {
-  const templatesById = new Map(
-    templates.map((template) => [template.id, template]),
-  )
-  const sourceNodesById = new Map(
-    sourceNodes.map((node) => [node.id, node]),
-  )
-  const entries = new Map<string, FeatureEntry>()
-
-  for (const grant of [
-    ...contract.capabilities.features,
-    ...contract.capabilities.traits,
-  ]) {
-    const payload = record(grant.payload)
-    const payloadKind = text(payload?.kind)
-    const source = sourceMeta(
-      grant.sources,
-      templatesById,
-      sourceNodesById,
-      payloadKind,
-    )
-    const label = text(payload?.label) || titleFromKey(grant.key)
-    const description = text(payload?.description)
-    const key = source.originId + ":" + normalizedLabel(label)
-
-    entries.set(key, {
-      id: "grant:" + grant.key + ":" + grant.variantKey,
-      label,
-      description,
-      ...source,
-      timing: featureTiming(grant),
-      navigationKeys: [
-        "grant:" + grant.key + ":" + grant.variantKey,
-        grant.key,
-        grant.variantKey,
-        ...(source.sourceTarget?.kind === "feature"
-          ? [source.sourceTarget.featureId]
-          : source.sourceTarget?.kind === "effect"
-            ? [source.sourceTarget.effectId]
-            : []),
-        ...grant.sources.map((entry) => entry.source.id),
-      ],
-      sourceTarget: source.sourceTarget,
-      action: null,
-      grant,
-    })
   }
 
-  for (const action of contract.actions) {
-    const source = sourceMeta(
-      action.sources,
-      templatesById,
-      sourceNodesById,
+  if (group === "race") {
+    return (
+      <svg {...common}>
+        <path d="M12 20.2V8.4" />
+        <path d="M12 12.3c-3.6-.2-5.8-2-6.7-5.5 3.6-.3 5.9 1.4 6.7 5.5Z" />
+        <path d="M12 9.6c3.4-.2 5.6-1.8 6.6-4.9-3.4-.4-5.7 1.2-6.6 4.9Z" />
+        <path d="M9.4 20.2h5.2" />
+      </svg>
     )
-    const label = action.label?.trim() || titleFromKey(action.key)
-    const key = source.originId + ":" + normalizedLabel(label)
-    const current = entries.get(key)
-
-    if (current) {
-      entries.set(key, {
-        ...current,
-        timing: timingFromEconomy(action.economy),
-        navigationKeys: [
-          ...new Set([
-            ...current.navigationKeys,
-            "action:" + action.stateKey,
-            action.stateKey,
-            action.key,
-            ...(source.sourceTarget?.kind === "feature"
-              ? [source.sourceTarget.featureId]
-              : source.sourceTarget?.kind === "effect"
-                ? [source.sourceTarget.effectId]
-                : []),
-            ...action.sources.map((entry) => entry.source.id),
-          ]),
-        ],
-        sourceTarget: current.sourceTarget || source.sourceTarget,
-        action,
-      })
-      continue
-    }
-
-    entries.set(key, {
-      id: "action:" + action.stateKey,
-      label,
-      description: "",
-      ...source,
-      timing: timingFromEconomy(action.economy),
-      navigationKeys: [
-        "action:" + action.stateKey,
-        action.stateKey,
-        action.key,
-        ...(source.sourceTarget?.kind === "feature"
-          ? [source.sourceTarget.featureId]
-          : source.sourceTarget?.kind === "effect"
-            ? [source.sourceTarget.effectId]
-            : []),
-        ...action.sources.map((entry) => entry.source.id),
-      ],
-      sourceTarget: source.sourceTarget,
-      action,
-      grant: null,
-    })
   }
 
-  return [...entries.values()].sort(compareFeatureEntries)
+  if (group === "background") {
+    return (
+      <svg {...common}>
+        <path d="M5.2 5.3c2.5-.7 4.6-.3 6.8 1.2v11.4c-2.2-1.5-4.3-1.9-6.8-1.2V5.3Z" />
+        <path d="M18.8 5.3c-2.5-.7-4.6-.3-6.8 1.2v11.4c2.2-1.5 4.3-1.9 6.8-1.2V5.3Z" />
+        <path d="M8 9.2h2M14 9.2h2M8 12h2M14 12h2" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg {...common}>
+      <circle cx="12" cy="12" r="6.7" />
+      <path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3" />
+      <path d="m5.5 5.5 2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1" />
+      <circle cx="12" cy="12" r="2.2" />
+    </svg>
+  )
 }
 
-function detailBody(entry: FeatureEntry) {
-  return [
-    entry.description,
-    entry.action ? actionDetail(entry.action) : "",
-  ].filter(Boolean).join("\n\n") || "Описание не добавлено."
+function sourceSummary(group: CharacterAbilityGroup) {
+  if (!group.sourceNames.length) {
+    return group.key === "effect"
+      ? "Активные состояния"
+      : "Источник не назначен"
+  }
+
+  if (group.sourceNames.length <= 2) {
+    return group.sourceNames.join(" · ")
+  }
+
+  return (
+    group.sourceNames.slice(0, 2).join(" · ") +
+    " · +" +
+    (group.sourceNames.length - 2)
+  )
+}
+
+function iconIsImage(value: string) {
+  return /^(?:https?:|data:|blob:|\/)/i.test(value)
+}
+
+function AbilityRowIcon({
+  row,
+}: {
+  row: CharacterAbilityRow
+}) {
+  return (
+    <span
+      className="u1-character-features__ability-icon"
+      data-icon-id={row.icon || undefined}
+      aria-hidden="true"
+    >
+      {iconIsImage(row.icon) ? (
+        <img src={row.icon} alt="" draggable={false} />
+      ) : (
+        <AbilityGroupIcon group={row.group} />
+      )}
+    </span>
+  )
+}
+
+function AbilityInteractiveRow({
+  characterId,
+  row,
+  compact = false,
+  canManage,
+  onSelect,
+  onSetSuppressed,
+}: {
+  characterId: string
+  row: CharacterAbilityRow
+  compact?: boolean
+  canManage: boolean
+  onSelect?: (abilityId: string) => void
+  onSetSuppressed?: (
+    sourceId: string,
+    suppressed: boolean,
+  ) => Promise<CharacterAbilitySuppressionResult>
+}) {
+  const snake = useSnake()
+  const entity = characterAbilityEntity(characterId, row)
+  const actions = createCharacterAbilitySnakeActions(row, {
+    canManage,
+    setSuppressed: onSetSuppressed,
+  })
+  const detail = characterAbilityDetailSurface(row)
+
+  if (compact) {
+    return (
+      <SnakeTrigger entity={entity} actions={actions}>
+        <button
+          type="button"
+          className="u1-character-features__preview-row"
+          data-ability-id={row.id}
+          data-suppressed={row.status === "suppressed" || undefined}
+          onClick={() => {
+            onSelect?.(row.id)
+            snake.openSurface(detail)
+          }}
+        >
+          <AbilityRowIcon row={row} />
+          <span>{row.label}</span>
+        </button>
+      </SnakeTrigger>
+    )
+  }
+
+  return (
+    <SnakeTrigger entity={entity} actions={actions}>
+      <button
+        type="button"
+        className="u1-character-features__ability-row"
+        data-ability-id={row.id}
+        data-suppressed={row.status === "suppressed" || undefined}
+        onClick={() => {
+          onSelect?.(row.id)
+          snake.openSurface(detail)
+        }}
+      >
+        <AbilityRowIcon row={row} />
+
+        <span className="u1-character-features__ability-copy">
+          <strong>{row.label}</strong>
+          <small>
+            {row.shortDescription ||
+              (row.unlockLevel !== null
+                ? "Открывается на " + row.unlockLevel + " уровне"
+                : "Описание не добавлено")}
+          </small>
+        </span>
+
+        {row.status === "suppressed" && (
+          <span className="u1-character-features__ability-state">
+            Заглушено
+          </span>
+        )}
+      </button>
+    </SnakeTrigger>
+  )
 }
 
 export default function CharacterSheetFeatures({
   characterId,
-  contract,
-  templates,
-  sourceNodes,
+  model,
   runtimeError,
-  focusKey,
+  canManage,
   onSelect,
-  onNavigateEntity,
+  onSetSuppressed,
 }: {
   characterId: string
-  contract: ResolvedCharacterContract | null
-  templates: RuleTemplate[]
-  sourceNodes: TemplateSourceNode[]
+  model: CharacterAbilitiesReadModel | null
   runtimeError?: string
-  focusKey?: string | null
-  onSelect?: (featureId: string) => void
-  onNavigateEntity?: CharacterSheetEntityNavigator
+  canManage: boolean
+  onSelect?: (abilityId: string) => void
+  onSetSuppressed?: (
+    sourceId: string,
+    suppressed: boolean,
+  ) => Promise<CharacterAbilitySuppressionResult>
 }) {
-  const snake = useSnake()
-  const rootRef = useRef<HTMLDivElement | null>(null)
-
-  const entries = contract
-    ? buildEntries(contract, templates, sourceNodes)
-    : []
-  const focusedEntry =
-    focusKey
-      ? entries.find((entry) => entry.navigationKeys.includes(focusKey)) || null
-      : null
+  const [expandedGroup, setExpandedGroup] =
+    useState<CharacterAbilityGroupKey | null>(null)
 
   useEffect(() => {
-    if (!focusedEntry) return
-    const frame = window.requestAnimationFrame(() => {
-      rootRef.current
-        ?.querySelector<HTMLElement>(
-          `[data-entry-id="${focusedEntry.id}"]`,
-        )
-        ?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-          inline: "nearest",
-        })
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [focusedEntry?.id])
+    if (!expandedGroup || !model) return
 
-  if (!contract) {
+    const current = model.groups.find(
+      (group) => group.key === expandedGroup,
+    )
+    if (!current || current.totalCount <= 0) {
+      setExpandedGroup(null)
+    }
+  }, [expandedGroup, model])
+
+  if (!model) {
     return (
       <section className="u1-character-features u1-character-features--loading">
         <span>
@@ -478,171 +251,148 @@ export default function CharacterSheetFeatures({
     )
   }
 
-  const byCategory = new Map<FeatureSourceGroup, FeatureEntry[]>()
-
-  for (const entry of entries) {
-    byCategory.set(entry.category, [
-      ...(byCategory.get(entry.category) || []),
-      entry,
-    ])
-  }
-
-  if (entries.length === 0) {
-    return (
-      <section className="u1-character-features u1-character-features--empty">
-        <span>У персонажа пока нет resolved-умений.</span>
-      </section>
-    )
-  }
-
   return (
-    <div className="u1-character-features" ref={rootRef}>
-      {CHARACTER_SHEET_FEATURE_SOURCE_ORDER.map((category) => {
-        const categoryEntries = byCategory.get(category) || []
-        if (!categoryEntries.length) return null
+    <section
+      className="u1-character-features"
+      aria-labelledby="character-abilities-title"
+      data-expanded-group={expandedGroup || undefined}
+      data-unclassified-count={
+        model.unclassifiedSourceIds.length > 0
+          ? model.unclassifiedSourceIds.length
+          : undefined
+      }
+    >
+      <header className="u1-character-features__intro">
+        <span id="character-abilities-title">УМЕНИЯ</span>
+        <small>Всё, что делает персонажа тем, кто он есть</small>
+      </header>
 
-        const sourceGroups = new Map<string, FeatureEntry[]>()
-        for (const entry of categoryEntries) {
-          sourceGroups.set(entry.sourceId, [
-            ...(sourceGroups.get(entry.sourceId) || []),
-            entry,
-          ])
-        }
-
-        return (
-          <section
-            key={category}
-            className="u1-character-features__category"
-            data-category={category}
-          >
-            <header className="u1-character-features__category-head">
-              <span>{categoryLabels[category]}</span>
-              <small>{categoryEntries.length}</small>
-            </header>
-
-            {[...sourceGroups.entries()].map(([sourceId, sourceEntries]) => {
-              const sourceName =
-                sourceEntries[0]?.sourceName || categoryLabels[category]
-
-              return (
-                <div key={sourceId} className="u1-character-features__source">
-                  <div className="u1-character-features__source-head">
-                    <strong>{sourceName}</strong>
-                  </div>
-
-                  <div className="u1-character-features__list">
-                    {sourceEntries.map((entry) => {
-                      const entity = {
-                        type: entry.action
-                          ? "character-action"
-                          : "character-feature",
-                        id: characterId + ":" + entry.id,
-                      }
-                      const detailAction: SnakeAction = {
-                        id: "inspect-feature",
-                        label: "Подробнее",
-                        surface: {
-                          kind: "detail",
-                          eyebrow: timingLabels[entry.timing],
-                          title: entry.label,
-                          body: detailBody(entry),
-                        },
-                      }
-                      const relatedTargets = [
-                        ...(entry.action
-                          ? characterSheetLinkedEntitiesForAction(entry.action)
-                          : []),
-                        ...(entry.sourceTarget ? [entry.sourceTarget] : []),
-                      ]
-                      const navigationAction: SnakeAction | null =
-                        onNavigateEntity && relatedTargets.length
-                          ? {
-                              id: "feature-linked-entities",
-                              label: "Связано",
-                              kind: "branch",
-                              children: relatedTargets.map((target, index) => ({
-                                id: "navigate-" + target.kind + "-" + index,
-                                label: characterSheetEntityLabel(target),
-                                execute: () => onNavigateEntity(target),
-                              })),
-                            }
-                          : null
-                      const sourceAction: SnakeAction = {
-                        id: "feature-source",
-                        label: "Источник",
-                        surface: {
-                          kind: "detail",
-                          eyebrow: categoryLabels[entry.category],
-                          title: entry.sourceName,
-                          body: [
-                            "Источник способности: " +
-                              entry.sourceNames.join(" · ") +
-                              ".",
-                            entry.unlockLevel !== null
-                              ? "Уровень открытия: " + entry.unlockLevel + "."
-                              : "Уровень открытия не указан источником.",
-                          ].join("\n"),
-                        },
-                      }
-
-                      return (
-                        <SnakeTrigger
-                          key={entry.id}
-                          entity={entity}
-                          actions={[
-                            detailAction,
-                            sourceAction,
-                            ...(navigationAction ? [navigationAction] : []),
-                          ]}
-                        >
-                          <button
-                            type="button"
-                            className="u1-character-features__row"
-                            data-entry-id={entry.id}
-                            data-focus-target={
-                              focusedEntry?.id === entry.id || undefined
-                            }
-                            data-timing={entry.timing}
-                            data-available={
-                              entry.action?.available === true || undefined
-                            }
-                            data-unavailable={
-                              entry.action?.available === false || undefined
-                            }
-                            onClick={() => {
-                              onSelect?.(entry.id)
-                              if (detailAction.surface) {
-                                snake.openSurface(detailAction.surface)
-                              }
-                            }}
-                          >
-                            <span className="u1-character-features__timing">
-                              {timingLabels[entry.timing]}
-                            </span>
-                            <span className="u1-character-features__copy">
-                              <strong>{entry.label}</strong>
-                              {entry.description && (
-                                <small>{entry.description}</small>
-                              )}
-                            </span>
-                            <i aria-hidden="true">
-                              {entry.action
-                                ? entry.action.available
-                                  ? "●"
-                                  : "○"
-                                : "›"}
-                            </i>
-                          </button>
-                        </SnakeTrigger>
-                      )
-                    })}
-                  </div>
-                </div>
+      <div className="u1-character-features__panels">
+        {model.groups.map((group) => {
+          const expanded =
+            expandedGroup === group.key && group.totalCount > 0
+          const preview = characterAbilityCollapsedPreview(group)
+          const contentId =
+            "character-ability-group-" + group.key
+          const toggleGroup = () =>
+            setExpandedGroup((current) =>
+              nextExpandedAbilityGroup(
+                current,
+                group.key,
+                group.totalCount,
               )
-            })}
-          </section>
-        )
-      })}
-    </div>
+            )
+
+          return (
+            <article
+              key={group.key}
+              className="u1-character-features__panel"
+              data-group={group.key}
+              data-expanded={expanded || undefined}
+              data-empty={group.totalCount === 0 || undefined}
+              data-suppressed-count={
+                group.suppressedCount > 0
+                  ? group.suppressedCount
+                  : undefined
+              }
+            >
+              <div className="u1-character-features__panel-head">
+                <button
+                  type="button"
+                  className="u1-character-features__panel-source"
+                  disabled={group.totalCount <= 0}
+                  aria-expanded={expanded}
+                  aria-controls={contentId}
+                  onClick={toggleGroup}
+                >
+                  <span
+                    className="u1-character-features__panel-icon"
+                    aria-hidden="true"
+                  >
+                    <AbilityGroupIcon group={group.key} />
+                  </span>
+
+                  <span className="u1-character-features__panel-identity">
+                    <strong>{group.label}</strong>
+                    <small>{sourceSummary(group)}</small>
+                  </span>
+                </button>
+
+                <div className="u1-character-features__panel-summary">
+                  {expanded ? (
+                    <span className="u1-character-features__opened-count">
+                      Открыто: {group.totalCount} из {group.totalCount}
+                    </span>
+                  ) : group.totalCount > 0 ? (
+                    <span className="u1-character-features__preview">
+                      {preview.rows.map((row) => (
+                        <AbilityInteractiveRow
+                          key={row.id}
+                          characterId={characterId}
+                          row={row}
+                          compact
+                          canManage={canManage}
+                          onSelect={onSelect}
+                          onSetSuppressed={onSetSuppressed}
+                        />
+                      ))}
+                      {preview.hiddenCount > 0 && (
+                        <small>
+                          ещё {preview.hiddenCount}
+                        </small>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="u1-character-features__empty-label">
+                      Нет умений
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    className="u1-character-features__panel-chevron-button"
+                    disabled={group.totalCount <= 0}
+                    aria-expanded={expanded}
+                    aria-controls={contentId}
+                    aria-label={
+                      expanded
+                        ? "Свернуть " + group.label
+                        : "Развернуть " + group.label
+                    }
+                    onClick={toggleGroup}
+                  >
+                    <i
+                      className="u1-character-features__panel-chevron"
+                      aria-hidden="true"
+                    >
+                      ⌄
+                    </i>
+                  </button>
+                </div>
+              </div>
+
+              <div
+                id={contentId}
+                className="u1-character-features__expanded"
+                role="region"
+                aria-label={group.label}
+                hidden={!expanded}
+              >
+                {group.rows.map((row) => (
+                  <AbilityInteractiveRow
+                    key={row.id}
+                    characterId={characterId}
+                    row={row}
+                    canManage={canManage}
+                    onSelect={onSelect}
+                    onSetSuppressed={onSetSuppressed}
+                  />
+                ))}
+              </div>
+            </article>
+          )
+        })}
+      </div>
+    </section>
   )
 }
