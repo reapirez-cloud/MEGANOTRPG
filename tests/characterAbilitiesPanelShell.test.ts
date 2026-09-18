@@ -55,7 +55,7 @@ test("stage 2 preserves the approved Meganot visual system rather than copying t
   assert.match(styles, /var\(--cv-surface\)/)
   assert.match(
     styles,
-    /\.u1-character-features__panel-toggle\s*\{[\s\S]*?grid-template-columns:/,
+    /\.u1-character-features__panel-head\s*\{[\s\S]*?grid-template-columns:/,
   )
   assert.match(
     styles,
@@ -64,8 +64,8 @@ test("stage 2 preserves the approved Meganot visual system rather than copying t
   assert.doesNotMatch(styles, /gold|#d4af37|#ffd700/i)
 })
 
-test("stage 2 shell remains the stable foundation after stage 3 adds accordion behavior", () => {
-  assert.match(features, /data-stage="accordion"/)
-  assert.doesNotMatch(features, /SnakeTrigger|useSnake/)
+test("stage 2 shell remains the stable foundation after later interaction stages", () => {
+  assert.match(features, /data-stage="snake-detail"/)
   assert.doesNotMatch(features, /CHARACTER_SHEET_FEATURE_SOURCE_ORDER/)
+  assert.doesNotMatch(features, /ContextActionSheet|useLongPressItem/)
 })
