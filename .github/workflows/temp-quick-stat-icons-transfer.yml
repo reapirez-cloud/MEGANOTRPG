@@ -1,0 +1,48 @@
+name: TEMP latest quick-stat icon transfer
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - ".github/workflows/temp-quick-stat-icons-transfer.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+      - name: Download exact original PNGs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p public/ui-icons/grimdark
+
+          curl -fsSL 'https://sdmntprindiasocentral.oaiusercontent.com/files/00000000-aef8-8211-8397-db0c260c35cf/raw?se=2026-09-18T12%3A05%3A01Z&sp=r&sv=2026-02-06&sr=b&scid=fbe82a19-b732-598c-a76e-5b6d40f391b1&skoid=002823aa-689d-47ca-9347-108c20f4f00d&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-18T06%3A50%3A02Z&ske=2026-09-19T06%3A50%3A02Z&sks=b&skv=2026-02-06&sig=UgzD3KUFaeZ4wKeb27coekINC%2BugGtpdAPC%2BQM491ag%3D' -o public/ui-icons/grimdark/armor-class.png
+          curl -fsSL 'https://sdmntprnortheu.oaiusercontent.com/files/00000000-2398-81f4-a88d-00b6e52fc5f9/raw?se=2026-09-18T12%3A05%3A02Z&sp=r&sv=2026-02-06&sr=b&scid=97754c2f-5427-5702-acbb-74c727eb7b72&skoid=002823aa-689d-47ca-9347-108c20f4f00d&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-18T07%3A52%3A02Z&ske=2026-09-19T07%3A52%3A02Z&sks=b&skv=2026-02-06&sig=Jq6Dlipvds2b8nzL1NBmfhO2LV6dRhJRASA3Aty%2BY%2BI%3D' -o public/ui-icons/grimdark/initiative.png
+          curl -fsSL 'https://sdmntprdenmarkeast.oaiusercontent.com/files/00000000-950c-8210-aad5-d159400f11f0/raw?se=2026-09-18T12%3A05%3A03Z&sp=r&sv=2026-02-06&sr=b&scid=16a9354f-2c47-5cdd-93b1-b0484d73d4b7&skoid=002823aa-689d-47ca-9347-108c20f4f00d&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-18T01%3A17%3A14Z&ske=2026-09-19T01%3A17%3A14Z&sks=b&skv=2026-02-06&sig=smT6BgXzxdyaob/jrysLLBDLUenzC2oJT6pRBHddviE%3D' -o public/ui-icons/grimdark/speed.png
+          curl -fsSL 'https://sdmntprukwest.oaiusercontent.com/files/00000000-fef8-8243-8731-80e027a31f31/raw?se=2026-09-18T12%3A05%3A04Z&sp=r&sv=2026-02-06&sr=b&scid=ba6df6f0-3dc1-5492-bad6-2b9e95cece27&skoid=002823aa-689d-47ca-9347-108c20f4f00d&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-18T07%3A19%3A10Z&ske=2026-09-19T07%3A19%3A10Z&sks=b&skv=2026-02-06&sig=iEx92RUJQ5GMpG%2Bgffw9lp07jPCG96A3fcbLblYpBBM%3D' -o public/ui-icons/grimdark/inspiration.png
+          curl -fsSL 'https://sdmntprcentralus.oaiusercontent.com/files/00000000-6668-81f5-9638-dd180a4a6b80/raw?se=2026-09-18T12%3A05%3A07Z&sp=r&sv=2026-02-06&sr=b&scid=446399d5-b060-54dc-897e-dfdeb081d942&skoid=002823aa-689d-47ca-9347-108c20f4f00d&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-18T06%3A50%3A04Z&ske=2026-09-19T06%3A50%3A04Z&sks=b&skv=2026-02-06&sig=2wGyc1O7YBng%2BQY1plLluu%2B4JmqWD2EooO84Dw62PqI%3D' -o public/ui-icons/grimdark/proficiency.png
+          curl -fsSL 'https://sdmntprnortheu.oaiusercontent.com/files/00000000-e544-81f4-9cfb-5f15562d6925/raw?se=2026-09-18T12%3A05%3A09Z&sp=r&sv=2026-02-06&sr=b&scid=8e7a0119-d1af-5657-8b7a-b20870e1cfd0&skoid=002823aa-689d-47ca-9347-108c20f4f00d&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-18T05%3A03%3A10Z&ske=2026-09-19T05%3A03%3A10Z&sks=b&skv=2026-02-06&sig=OlUlHf5hj6bCyiTq/6sMkJKBqqtige6TrDxTTPS7Pnw%3D' -o public/ui-icons/grimdark/spell-save-dc.png
+
+          echo 'a7d2d8a2ac92539c7eae02272c8a7947c626a0d576efb6de7158b13b8cb02977  public/ui-icons/grimdark/armor-class.png' | sha256sum -c -
+          echo '49ece0f1559802f0bec0c9b74614cb0ebfce39e62032cf0f304c36049783d98b  public/ui-icons/grimdark/initiative.png' | sha256sum -c -
+          echo '82933035be702a3cf4e0eb368d5f7acf16fdcc41a8ba5076b150d1b2bbb95566  public/ui-icons/grimdark/speed.png' | sha256sum -c -
+          echo '6c2f4d4abe10b09c016926db25b7e6bade0d910562a041e6490913d3d28dae76  public/ui-icons/grimdark/inspiration.png' | sha256sum -c -
+          echo '0c536be38958d857e88bef10bb461655fe9057f5e042da89d9ae909291df44e9  public/ui-icons/grimdark/proficiency.png' | sha256sum -c -
+          echo '28f4a04e85624edf0c7d7c6b6aeffeeae697920d733cfe385c5db480a071b501  public/ui-icons/grimdark/spell-save-dc.png' | sha256sum -c -
+
+      - name: Commit assets and remove transfer workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/temp-quick-stat-icons-transfer.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(ui): add latest quick-stat icon pack"
+          git push origin HEAD:dev
