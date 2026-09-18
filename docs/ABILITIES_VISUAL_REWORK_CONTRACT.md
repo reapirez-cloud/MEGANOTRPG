@@ -1,6 +1,6 @@
 # Abilities v2 visual rework contract
 
-> Status: **ACTIVE — Stage 1 locked**
+> Status: **ACTIVE — Stage 2 locked**
 > Scope: UI 1.0 character-sheet Abilities presentation only.
 
 This contract corrects the first Abilities presentation pass. It is intentionally visual/presentation-only. Existing read-model, Character Runtime, CE resolution, Snake actions, suppression, Background and Effects data remain canonical and must not be rebuilt for this rework.
@@ -88,3 +88,15 @@ Stage 1 is complete only when:
 - the visual contract explicitly preserves the existing character masthead/background;
 - regression coverage prevents an abilities-specific page header/theme from returning;
 - no Character Runtime, CE, Snake, suppression or database behavior changes.
+
+## Stage 2 acceptance
+
+Stage 2 is complete only when:
+
+- the collapsed header keeps the existing left identity block but gives the ability-preview side more horizontal room;
+- the primary desktop split is approximately 42% identity / 58% preview;
+- the right side renders up to three compact preview rows as one vertical list;
+- `ещё N` is not a fourth list row and sits in the right-side tail beside the chevron;
+- the chevron remains at the far right and does not steal a large dedicated column;
+- narrow screens preserve the same left/right hierarchy instead of switching to a different card composition;
+- Stage 2 changes layout only: palette, page background, Character/Spells visual tokens, accordion state, Snake and suppression behavior remain unchanged.
