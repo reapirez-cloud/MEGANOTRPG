@@ -255,7 +255,6 @@ export default function CharacterSheetFeatures({
     <section
       className="u1-character-features"
       aria-labelledby="character-abilities-title"
-      data-stage="manager-suppression"
       data-expanded-group={expandedGroup || undefined}
       data-unclassified-count={
         model.unclassifiedSourceIds.length > 0
