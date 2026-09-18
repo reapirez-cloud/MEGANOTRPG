@@ -257,7 +257,7 @@ test("abilities read-model always exposes the five approved groups in reference 
   const model = buildCharacterAbilitiesReadModel({
     contract: contract(),
     contributions: [],
-    sourceNodes: [],
+    sourceNodes: sourceNodes(),
   })
 
   assert.deepEqual(
@@ -269,6 +269,18 @@ test("abilities read-model always exposes the five approved groups in reference 
     ["Класс", "Подкласс", "Раса", "Предыстория", "Эффекты"],
   )
   assert.ok(model.groups.every((group) => group.rows.length === 0))
+  assert.deepEqual(
+    model.groups.find((group) => group.key === "class")!.sourceNames,
+    ["Воин"],
+  )
+  assert.deepEqual(
+    model.groups.find((group) => group.key === "subclass")!.sourceNames,
+    ["Мастер битвы"],
+  )
+  assert.deepEqual(
+    model.groups.find((group) => group.key === "race")!.sourceNames.sort(),
+    ["Высший эльф", "Эльф"].sort(),
+  )
 })
 
 test("read-model separates class, subclass and ancestry while merging race + subrace into one player group", () => {
