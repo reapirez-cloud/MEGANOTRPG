@@ -8,6 +8,7 @@ import {
   characterAbilityDetailSurface,
   characterAbilityEntity,
   createCharacterAbilitySnakeActions,
+  type CharacterAbilitySuppressionResult,
 } from "./characterAbilitySnakeActions.ts"
 import type {
   CharacterAbilitiesReadModel,
@@ -129,16 +130,26 @@ function AbilityInteractiveRow({
   characterId,
   row,
   compact = false,
+  canManage,
   onSelect,
+  onSetSuppressed,
 }: {
   characterId: string
   row: CharacterAbilityRow
   compact?: boolean
+  canManage: boolean
   onSelect?: (abilityId: string) => void
+  onSetSuppressed?: (
+    sourceId: string,
+    suppressed: boolean,
+  ) => Promise<CharacterAbilitySuppressionResult>
 }) {
   const snake = useSnake()
   const entity = characterAbilityEntity(characterId, row)
-  const actions = createCharacterAbilitySnakeActions(row)
+  const actions = createCharacterAbilitySnakeActions(row, {
+    canManage,
+    setSuppressed: onSetSuppressed,
+  })
   const detail = characterAbilityDetailSurface(row)
 
   if (compact) {
@@ -199,12 +210,19 @@ export default function CharacterSheetFeatures({
   characterId,
   model,
   runtimeError,
+  canManage,
   onSelect,
+  onSetSuppressed,
 }: {
   characterId: string
   model: CharacterAbilitiesReadModel | null
   runtimeError?: string
+  canManage: boolean
   onSelect?: (abilityId: string) => void
+  onSetSuppressed?: (
+    sourceId: string,
+    suppressed: boolean,
+  ) => Promise<CharacterAbilitySuppressionResult>
 }) {
   const [expandedGroup, setExpandedGroup] =
     useState<CharacterAbilityGroupKey | null>(null)
@@ -237,7 +255,7 @@ export default function CharacterSheetFeatures({
     <section
       className="u1-character-features"
       aria-labelledby="character-abilities-title"
-      data-stage="snake-detail"
+      data-stage="manager-suppression"
       data-expanded-group={expandedGroup || undefined}
       data-unclassified-count={
         model.unclassifiedSourceIds.length > 0
@@ -314,7 +332,9 @@ export default function CharacterSheetFeatures({
                           characterId={characterId}
                           row={row}
                           compact
+                          canManage={canManage}
                           onSelect={onSelect}
+                          onSetSuppressed={onSetSuppressed}
                         />
                       ))}
                       {preview.hiddenCount > 0 && (
@@ -364,7 +384,9 @@ export default function CharacterSheetFeatures({
                     key={row.id}
                     characterId={characterId}
                     row={row}
+                    canManage={canManage}
                     onSelect={onSelect}
+                    onSetSuppressed={onSetSuppressed}
                   />
                 ))}
               </div>
