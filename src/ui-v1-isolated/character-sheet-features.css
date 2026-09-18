@@ -1,5 +1,5 @@
 /*
- * Abilities v2 visual contract:
+ * Abilities v2 visual contract: docs/ABILITIES_VISUAL_REWORK_CONTRACT.md
  * - CharacterSheet owns the page art/background/masthead.
  * - Character/Spells own the visual language via shared --cv-* tokens.
  * - This surface owns only the ability panels and interaction states.
