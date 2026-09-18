@@ -229,8 +229,21 @@ Current Stage 4 checkpoint:
 - collapsed and expanded presentations share one `createCharacterAbilitySnakeActions` domain provider, so later authority actions can be added once without duplicating UI wiring;
 - Stage 4 intentionally exposes only `Подробнее`. GM/owner `Заглушить / Включить` commands remain Stage 5 and are not faked here.
 
-### Stage 5 — Manager suppression
-Wire `Заглушить / Включить` through the authoritative manager path. Keep suppressed rows in place and verify CE actually excludes/restores their mechanics.
+### Stage 5 — Manager suppression ✅ COMPLETE
+Connected GM/owner ability suppression to the existing authoritative Oracle → Shapoklyak source-suppression path and verified real CE removal/restoration.
+
+Current Stage 5 checkpoint:
+- the ability Snake provider receives only `canManage` plus the canonical suppression callback; ordinary renderers still own no authority rules or persistence logic;
+- players receive only `Подробнее`;
+- GM and campaign owner receive `Заглушить` for an active ability and `Включить` for a suppressed ability;
+- manager actions are emitted only when the read-model exposes one safe granular `sourceId` and `capabilities.suppress === true`; unsafe legacy multi-source rows remain inspect-only rather than targeting a broader source by guess;
+- the manager callback is the mounted runtime's existing `useCharacterSourceSuppressions.setSuppressed`, which calls `Oracle.characters.setSourceSuppressed`;
+- Oracle forwards only GM/system authority to Shapoklyak's `entity.set_source_suppressed` command;
+- Shapoklyak persists through `set_character_source_suppressed`, publishes a resolution request, and the runtime reloads the canonical suppression rows;
+- the live Supabase project was verified to expose `set_character_source_suppressed(uuid,text,boolean)` and RLS on `character_source_suppressions` uses `private.can_manage_character`; `private.can_manage_campaign` resolves manager authority as `is_owner = true OR role = 'gm'`;
+- suppressed rows continue to remain in their original group/position and remain inspectable/muted because the Stage 1 read-model consumes pre-suppression contributions plus the canonical suppression snapshot;
+- a CE regression now proves suppression is mechanical rather than visual: the same source's feature/rule and numeric contribution disappear from the resolved contract while suppressed and return when the suppression contribution is absent;
+- no Supabase schema or RLS migration was required for Stage 5.
 
 ### Stage 6 — Background/Effects completion
 Connect real Background and Effects sources. Do not use fake fixtures as shipped behavior.
