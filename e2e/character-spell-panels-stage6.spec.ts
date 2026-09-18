@@ -130,6 +130,7 @@ test("Stage 6 keeps the 390px reference rhythm compact and two-column", async ({
     }
   })
 
+  console.log("STAGE6_REFERENCE_PROBE", JSON.stringify(metrics))
   expect(Math.abs(metrics.slotsWidth - metrics.rootWidth)).toBeLessThanOrEqual(1.5)
   expect(metrics.slotsHeight).toBeGreaterThanOrEqual(92)
   expect(metrics.slotsHeight).toBeLessThanOrEqual(140)
