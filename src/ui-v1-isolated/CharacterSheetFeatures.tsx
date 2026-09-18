@@ -4,12 +4,18 @@ import {
   characterAbilityCollapsedPreview,
   nextExpandedAbilityGroup,
 } from "./characterAbilitiesAccordion.ts"
+import {
+  characterAbilityDetailSurface,
+  characterAbilityEntity,
+  createCharacterAbilitySnakeActions,
+} from "./characterAbilitySnakeActions.ts"
 import type {
   CharacterAbilitiesReadModel,
   CharacterAbilityGroup,
   CharacterAbilityGroupKey,
   CharacterAbilityRow,
 } from "./characterAbilitiesReadModel.ts"
+import { SnakeTrigger, useSnake } from "./SnakeProvider"
 
 function AbilityGroupIcon({
   group,
@@ -119,60 +125,86 @@ function AbilityRowIcon({
   )
 }
 
-function AbilityPreviewRow({
+function AbilityInteractiveRow({
+  characterId,
   row,
+  compact = false,
+  onSelect,
 }: {
+  characterId: string
   row: CharacterAbilityRow
+  compact?: boolean
+  onSelect?: (abilityId: string) => void
 }) {
+  const snake = useSnake()
+  const entity = characterAbilityEntity(characterId, row)
+  const actions = createCharacterAbilitySnakeActions(row)
+  const detail = characterAbilityDetailSurface(row)
+
+  if (compact) {
+    return (
+      <SnakeTrigger entity={entity} actions={actions}>
+        <button
+          type="button"
+          className="u1-character-features__preview-row"
+          data-ability-id={row.id}
+          data-suppressed={row.status === "suppressed" || undefined}
+          onClick={() => {
+            onSelect?.(row.id)
+            snake.openSurface(detail)
+          }}
+        >
+          <AbilityRowIcon row={row} />
+          <span>{row.label}</span>
+        </button>
+      </SnakeTrigger>
+    )
+  }
+
   return (
-    <span
-      className="u1-character-features__preview-row"
-      data-suppressed={row.status === "suppressed" || undefined}
-    >
-      <AbilityRowIcon row={row} />
-      <span>{row.label}</span>
-    </span>
-  )
-}
+    <SnakeTrigger entity={entity} actions={actions}>
+      <button
+        type="button"
+        className="u1-character-features__ability-row"
+        data-ability-id={row.id}
+        data-suppressed={row.status === "suppressed" || undefined}
+        onClick={() => {
+          onSelect?.(row.id)
+          snake.openSurface(detail)
+        }}
+      >
+        <AbilityRowIcon row={row} />
 
-function AbilityExpandedRow({
-  row,
-}: {
-  row: CharacterAbilityRow
-}) {
-  return (
-    <div
-      className="u1-character-features__ability-row"
-      data-ability-id={row.id}
-      data-suppressed={row.status === "suppressed" || undefined}
-    >
-      <AbilityRowIcon row={row} />
-
-      <span className="u1-character-features__ability-copy">
-        <strong>{row.label}</strong>
-        <small>
-          {row.shortDescription ||
-            (row.unlockLevel !== null
-              ? "Открывается на " + row.unlockLevel + " уровне"
-              : "Описание не добавлено")}
-        </small>
-      </span>
-
-      {row.status === "suppressed" && (
-        <span className="u1-character-features__ability-state">
-          Заглушено
+        <span className="u1-character-features__ability-copy">
+          <strong>{row.label}</strong>
+          <small>
+            {row.shortDescription ||
+              (row.unlockLevel !== null
+                ? "Открывается на " + row.unlockLevel + " уровне"
+                : "Описание не добавлено")}
+          </small>
         </span>
-      )}
-    </div>
+
+        {row.status === "suppressed" && (
+          <span className="u1-character-features__ability-state">
+            Заглушено
+          </span>
+        )}
+      </button>
+    </SnakeTrigger>
   )
 }
 
 export default function CharacterSheetFeatures({
+  characterId,
   model,
   runtimeError,
+  onSelect,
 }: {
+  characterId: string
   model: CharacterAbilitiesReadModel | null
   runtimeError?: string
+  onSelect?: (abilityId: string) => void
 }) {
   const [expandedGroup, setExpandedGroup] =
     useState<CharacterAbilityGroupKey | null>(null)
@@ -205,7 +237,7 @@ export default function CharacterSheetFeatures({
     <section
       className="u1-character-features"
       aria-labelledby="character-abilities-title"
-      data-stage="accordion"
+      data-stage="snake-detail"
       data-expanded-group={expandedGroup || undefined}
       data-unclassified-count={
         model.unclassifiedSourceIds.length > 0
@@ -225,6 +257,14 @@ export default function CharacterSheetFeatures({
           const preview = characterAbilityCollapsedPreview(group)
           const contentId =
             "character-ability-group-" + group.key
+          const toggleGroup = () =>
+            setExpandedGroup((current) =>
+              nextExpandedAbilityGroup(
+                current,
+                group.key,
+                group.totalCount,
+              )
+            )
 
           return (
             <article
@@ -239,23 +279,15 @@ export default function CharacterSheetFeatures({
                   : undefined
               }
             >
-              <button
-                type="button"
-                className="u1-character-features__panel-toggle"
-                disabled={group.totalCount <= 0}
-                aria-expanded={expanded}
-                aria-controls={contentId}
-                onClick={() =>
-                  setExpandedGroup((current) =>
-                    nextExpandedAbilityGroup(
-                      current,
-                      group.key,
-                      group.totalCount,
-                    )
-                  )
-                }
-              >
-                <span className="u1-character-features__panel-source">
+              <div className="u1-character-features__panel-head">
+                <button
+                  type="button"
+                  className="u1-character-features__panel-source"
+                  disabled={group.totalCount <= 0}
+                  aria-expanded={expanded}
+                  aria-controls={contentId}
+                  onClick={toggleGroup}
+                >
                   <span
                     className="u1-character-features__panel-icon"
                     aria-hidden="true"
@@ -267,9 +299,9 @@ export default function CharacterSheetFeatures({
                     <strong>{group.label}</strong>
                     <small>{sourceSummary(group)}</small>
                   </span>
-                </span>
+                </button>
 
-                <span className="u1-character-features__panel-summary">
+                <div className="u1-character-features__panel-summary">
                   {expanded ? (
                     <span className="u1-character-features__opened-count">
                       Открыто: {group.totalCount} из {group.totalCount}
@@ -277,7 +309,13 @@ export default function CharacterSheetFeatures({
                   ) : group.totalCount > 0 ? (
                     <span className="u1-character-features__preview">
                       {preview.rows.map((row) => (
-                        <AbilityPreviewRow key={row.id} row={row} />
+                        <AbilityInteractiveRow
+                          key={row.id}
+                          characterId={characterId}
+                          row={row}
+                          compact
+                          onSelect={onSelect}
+                        />
                       ))}
                       {preview.hiddenCount > 0 && (
                         <small>
@@ -291,14 +329,28 @@ export default function CharacterSheetFeatures({
                     </span>
                   )}
 
-                  <i
-                    className="u1-character-features__panel-chevron"
-                    aria-hidden="true"
+                  <button
+                    type="button"
+                    className="u1-character-features__panel-chevron-button"
+                    disabled={group.totalCount <= 0}
+                    aria-expanded={expanded}
+                    aria-controls={contentId}
+                    aria-label={
+                      expanded
+                        ? "Свернуть " + group.label
+                        : "Развернуть " + group.label
+                    }
+                    onClick={toggleGroup}
                   >
-                    ⌄
-                  </i>
-                </span>
-              </button>
+                    <i
+                      className="u1-character-features__panel-chevron"
+                      aria-hidden="true"
+                    >
+                      ⌄
+                    </i>
+                  </button>
+                </div>
+              </div>
 
               <div
                 id={contentId}
@@ -308,7 +360,12 @@ export default function CharacterSheetFeatures({
                 hidden={!expanded}
               >
                 {group.rows.map((row) => (
-                  <AbilityExpandedRow key={row.id} row={row} />
+                  <AbilityInteractiveRow
+                    key={row.id}
+                    characterId={characterId}
+                    row={row}
+                    onSelect={onSelect}
+                  />
                 ))}
               </div>
             </article>
