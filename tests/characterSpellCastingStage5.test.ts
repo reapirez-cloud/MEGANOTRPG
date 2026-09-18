@@ -6,8 +6,12 @@ const spells = fs.readFileSync(
   "src/ui-v1-isolated/CharacterSheetSpellsStage1.tsx",
   "utf8",
 )
-const castingStyles = fs.readFileSync(
-  "src/ui-v1-isolated/character-sheet-spell-casting.css",
+const chatRoom = fs.readFileSync(
+  "src/pages/ChatRoom.tsx",
+  "utf8",
+)
+const chatHook = fs.readFileSync(
+  "src/hooks/useChatMessages.ts",
   "utf8",
 )
 const classResourceRuntime = fs.readFileSync(
@@ -18,57 +22,45 @@ const resourceRuntime = fs.readFileSync(
   "src/lib/resourceRuntime.ts",
   "utf8",
 )
-const resourceMigration = fs.readFileSync(
-  "supabase/migrations/20260828184500_druid_resource_runtime_finalization.sql",
-  "utf8",
-)
 const entityStorage = fs.readFileSync(
   "src/entity-engine/supabase.ts",
   "utf8",
 )
 
-test("spell stage 5 uses resolved CE casting methods instead of rebuilding spell-slot rules", () => {
-  assert.match(spells, /ResolvedSpellResourceOption/)
-  assert.match(spells, /view\.spell\.accesses/)
-  assert.match(spells, /access\.methods/)
-  assert.match(spells, /method\.resourceOptions/)
-  assert.match(spells, /method\.available && option\.available/)
-  assert.match(spells, /option\.castLevel/)
+test("character spell sheet no longer casts or spends resources", () => {
+  assert.doesNotMatch(spells, /spendResolvedClassSpellOption/)
+  assert.doesNotMatch(spells, /ResolvedSpellResourceOption/)
+  assert.doesNotMatch(spells, /resolvedCastChoices/)
+  assert.doesNotMatch(spells, /renderCastControls/)
+  assert.doesNotMatch(spells, /castSpell\s*=\s*async/)
+  assert.doesNotMatch(spells, /Выбрать расход/)
+  assert.doesNotMatch(spells, />Наложить</)
+  assert.doesNotMatch(spells, /character-sheet-spell-casting\.css/)
 })
 
-test("spell stage 5 spends the selected CE resource option through the persistent runtime", () => {
-  assert.match(spells, /spendResolvedClassSpellOption/)
-  assert.match(spells, /await spendResolvedClassSpellOption\(/)
+test("chat remains the authoritative spell-casting surface", () => {
+  assert.match(chatRoom, /async function executeSpell\(spell: ResolvedSpell/)
+  assert.match(chatRoom, /async function castSpell\(spell: ResolvedSpell\)/)
+  assert.match(chatRoom, /templateMechanicIdForSpellAccess\(access\)/)
+  assert.match(chatRoom, /chat\.sendTemplateSpell\(/)
+  assert.match(chatRoom, /chat\.sendEvent\(characterId, "spell"/)
+  assert.match(chatRoom, /resourceCostInputs\(contract, option\.costs\)/)
+  assert.match(chatHook, /sendTemplateSpell/)
+})
+
+test("persistent CE resource spending remains available to chat/runtime infrastructure", () => {
   assert.match(classResourceRuntime, /resourceCostInputs\(contract, option\.costs\)/)
   assert.match(classResourceRuntime, /spend_character_resources/)
-  assert.match(resourceMigration, /Public cost-only path for sheet spell casting/)
-  assert.match(resourceMigration, /for update;/)
-  assert.match(resourceMigration, /current=current-v_amount/)
-  assert.match(resourceMigration, /private\.can_operate_character_resources/)
-})
-
-test("spell stage 5 supports free casting, Pact Magic and CE availability gates", () => {
-  assert.match(spells, /if \(!method\.resourceOptions\.length\)/)
-  assert.match(spells, /option: null/)
-  assert.match(spells, /warlock_pact_slots/)
-  assert.match(spells, /Не подготовлено/)
-  assert.match(spells, /Нет доступного ресурса/)
-  assert.match(spells, /availableChoices\.length === 1/)
-  assert.match(spells, /Выбрать расход/)
-})
-
-test("spell stage 5 keeps spell slots on the same ledger restored by rest runtime", () => {
   assert.match(resourceRuntime, /including spell slots/)
   assert.match(entityStorage, /grant_character_long_rest/)
   assert.match(entityStorage, /grant_character_short_rest/)
   assert.match(entityStorage, /recover_character_resources/)
 })
 
-test("spell stage 5 exposes mobile casting controls without replacing stage 4 grimoire", () => {
-  assert.match(castingStyles, /\.u1-character-spells__cast-primary/)
-  assert.match(castingStyles, /\.u1-character-spells__cast-options/)
-  assert.match(castingStyles, /\[data-pact\]/)
-  assert.match(castingStyles, /@media \(max-width: 359px\)/)
+test("grimoire keeps preparation management without becoming a casting surface", () => {
   assert.match(spells, /className="u1-character-spells__grimoire-panel"/)
   assert.match(spells, /className="u1-character-spells__prepare-toggle"/)
+  assert.match(spells, /await onSetPrepared\(spellId, nextPrepared\)/)
+  assert.doesNotMatch(spells, /u1-character-spells__cast-primary/)
+  assert.doesNotMatch(spells, /u1-character-spells__cast-options/)
 })
