@@ -1,6 +1,6 @@
 # UI 1.0 — Character Sheet Abilities Tab Implementation Contract
 
-> Status: **TEMPORARY / PLANNED**
+> Status: **TEMPORARY / IN PROGRESS**
 >
 > Branch: `dev`
 >
@@ -175,8 +175,19 @@ Do not delete shared runtime code merely because the old UI consumed it.
 
 ## Implementation order
 
-### Stage 1 — Read-model
-Create and test the normalized five-group abilities read-model without changing canonical mechanics.
+### Stage 1 — Read-model ✅ COMPLETE
+Created and regression-tested the normalized five-group abilities read-model without changing canonical mechanics.
+
+Current Stage 1 checkpoint:
+- one pure renderer-facing `characterAbilitiesReadModel` consumes the existing Character Runtime snapshot rather than resolving CE again;
+- it always emits the approved `Class / Subclass / Race / Background / Effects` groups in stable order;
+- class, subclass and ancestry source identities remain distinct internally while race + subrace merge only in the player-facing Race group;
+- pre-suppression runtime contributions plus the source graph keep an earned ability visible even after CE suppresses its mechanics;
+- suppression state follows source ancestry, so suppressing a template root marks its child abilities without deleting them from the read-model;
+- unsafe multi-source legacy aliases are deliberately not exposed as granular suppression targets;
+- unresolved item/other sources remain explicit in `unclassifiedSourceIds` rather than being mislabeled as Effects;
+- existing authored mechanic metadata may enrich icon/Voss/detail fields, while mechanics still come from the resolved Character Runtime/CE contract;
+- no abilities panel/layout work was done in Stage 1. Stage 2 is the next implementation stage.
 
 ### Stage 2 — Panel shell
 Build the five accordion panels in the approved order and using existing MEGANOT UI 1.0 visual tokens/components.
