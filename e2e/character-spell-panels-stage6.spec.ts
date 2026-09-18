@@ -221,3 +221,17 @@ test("Stage 6 preserves spell palette and authored class slot art for every clas
     expect(actual.position).not.toBe("")
   }
 })
+
+
+test("Stage 6 keeps the character spell sheet informational", async ({ page }) => {
+  await openFixture(page, 390)
+
+  await expect(page.locator(".u1-character-spells__cast")).toHaveCount(0)
+  await expect(page.locator(".u1-character-spells__cast-primary")).toHaveCount(0)
+  await expect(page.locator(".u1-character-spells__expanded-grid .u1-character-spells__preparation")).toHaveCount(0)
+  await expect(page.locator(".u1-character-spells__expanded-grid .u1-character-spells__prep-mark")).toHaveCount(0)
+
+  const cards = page.locator(".u1-character-spells__expanded-grid .u1-character-spells__spell-card")
+  await expect(cards.first()).toBeVisible()
+  await expect(cards.first().locator(".u1-character-spells__spell-meta")).toBeVisible()
+})
