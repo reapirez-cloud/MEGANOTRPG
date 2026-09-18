@@ -268,11 +268,17 @@ function sourceNodeForBucket(
 
 function primaryPayload(bucket: SourceBucket) {
   const ordered = bucket.contributions
-    .filter((contribution) => contribution.kind === "grant")
+    .filter(
+      (
+        contribution,
+      ): contribution is Extract<CharacterContribution, { kind: "grant" }> =>
+        contribution.kind === "grant",
+    )
     .slice()
     .sort((left, right) => {
-      const rank = (value: typeof left) => {
-        if (value.kind !== "grant") return 99
+      const rank = (
+        value: Extract<CharacterContribution, { kind: "grant" }>,
+      ) => {
         if (value.target === "feature" || value.target === "trait") return 0
         if (value.target === "action") return 1
         if (value.target === "resource") return 2
@@ -407,7 +413,7 @@ function sourceNameForRow(
   }
 
   const sourceNames = uniqueSorted(bucket.sourceNames)
-  return sourceNames[0] || GROUP_LABELS.effect
+  return sourceNames[0] || "Источник"
 }
 
 function sourceTypeForRow(bucket: SourceBucket, sourceNode: TemplateSourceNode | null) {
