@@ -156,10 +156,12 @@ export default function CharacterView({
         ...runtime.preparation.suppressedSourceIds,
       ],
       templateBundles: runtime.templates.bundles,
+      backgroundName: control.sheet?.background,
     })
   }, [
     runtime.preparation.suppressedSourceIds,
     runtime.snapshot,
+    control.sheet?.background,
     runtime.templates.bundles,
     runtime.templates.suppressions.sourceIds,
   ])
