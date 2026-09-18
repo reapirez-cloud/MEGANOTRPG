@@ -98,8 +98,12 @@ export function buildLegacyCharacterEngineInput(args: {
         : feature.kind === "effect"
           ? "character_effect"
           : "legacy_feature"
+    const canonicalFeatureSource =
+      feature.kind === "background_feature" || feature.kind === "effect"
     const source = legacySource(
-      `legacy-feature:${feature.id}`,
+      canonicalFeatureSource
+        ? `feature:${feature.id}`
+        : `legacy-feature:${feature.id}`,
       feature.name,
       sourceType,
     )
