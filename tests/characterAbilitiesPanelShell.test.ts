@@ -64,8 +64,9 @@ test("stage 2 preserves the approved Meganot visual system rather than copying t
   assert.doesNotMatch(styles, /gold|#d4af37|#ffd700/i)
 })
 
-test("stage 2 shell remains the stable foundation after later interaction stages", () => {
-  assert.match(features, /data-stage="manager-suppression"/)
+test("the finished shell keeps the stage 2 foundation without temporary milestone markers", () => {
+  assert.match(features, /aria-labelledby="character-abilities-title"/)
+  assert.doesNotMatch(features, /data-stage=/)
   assert.doesNotMatch(features, /CHARACTER_SHEET_FEATURE_SOURCE_ORDER/)
   assert.doesNotMatch(features, /ContextActionSheet|useLongPressItem/)
 })
