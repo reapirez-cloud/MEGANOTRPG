@@ -124,13 +124,20 @@ export default function CharacterView({
     loadFeatures: false,
     loadResources: false,
   })
+  const classKey = classKeyFrom(
+    control.character?.characterClass || "",
+    control.assignments,
+    control.templates,
+  )
   const workspace = useWorkspaceData({
     enabled: auxiliaryEnabled,
     characterId,
+    minimal: true,
   })
-  const referenceMedia = useUiV1ReferenceMedia(auxiliaryEnabled)
+  const referenceMedia = useUiV1ReferenceMedia(auxiliaryEnabled, classKey)
   const workshop = useGMWorkshopData(
     auxiliaryEnabled && control.canManage,
+    characterId,
   )
   const snake = useSnake()
   const runtime = useResolvedCharacterRuntime(control.runtimeEntity)
@@ -169,15 +176,6 @@ export default function CharacterView({
   const [entityFocus, setEntityFocus] =
     useState<CharacterSheetEntityTarget | null>(null)
   const [spellFocusLevel, setSpellFocusLevel] = useState<number | null>(null)
-
-  const classKey = useMemo(
-    () => classKeyFrom(
-      control.character?.characterClass || "",
-      control.assignments,
-      control.templates,
-    ),
-    [control.assignments, control.character?.characterClass, control.templates],
-  )
 
   const classSpellProfile = useMemo(() => {
     const assignedClass = control.assignments

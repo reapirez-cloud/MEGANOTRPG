@@ -266,6 +266,7 @@ function sheetPreview(
 type WorkspaceDataOptions = {
   enabled?: boolean
   characterId?: string | null
+  minimal?: boolean
 }
 
 export function useWorkspaceData(
@@ -273,6 +274,7 @@ export function useWorkspaceData(
 ): WorkspaceData {
   const enabled = options.enabled ?? true
   const scopedCharacterId = options.characterId?.trim() || null
+  const minimal = options.minimal ?? false
   const [campaignId, setCampaignId] = useState("")
   const [campaignTitle, setCampaignTitle] = useState("Мунтар")
   const [campaignCoverUrl, setCampaignCoverUrl] = useState<string | null>(null)
@@ -335,12 +337,16 @@ export function useWorkspaceData(
       const nextCampaignId = nextMembership.campaign_id
       window.localStorage.setItem("meganotrpg:v1:campaign-id", nextCampaignId)
 
+      const emptyRows = { data: [], error: null } as const
+      const emptySingle = { data: null, error: null } as const
       const [campaignResult, characterResult, campaignMembersResult, mediaResult] = await Promise.all([
-        supabase
-          .from("campaigns")
-          .select("title, cover_url")
-          .eq("id", nextCampaignId)
-          .maybeSingle(),
+        minimal
+          ? Promise.resolve(emptySingle)
+          : supabase
+              .from("campaigns")
+              .select("title, cover_url")
+              .eq("id", nextCampaignId)
+              .maybeSingle(),
         scopedCharacterId
           ? supabase
               .from("characters")
@@ -354,10 +360,12 @@ export function useWorkspaceData(
               .eq("campaign_id", nextCampaignId)
               .eq("publication_state", "campaign")
               .order("created_at", { ascending: true }),
-        supabase
-          .from("campaign_members")
-          .select("user_id, active_character_id")
-          .eq("campaign_id", nextCampaignId),
+        minimal
+          ? Promise.resolve(emptyRows)
+          : supabase
+              .from("campaign_members")
+              .select("user_id, active_character_id")
+              .eq("campaign_id", nextCampaignId),
         supabase.rpc("list_character_media_presentations_v1", {
           p_campaign_id: nextCampaignId,
         }),
@@ -379,12 +387,13 @@ export function useWorkspaceData(
       const rawCharacters = (characterResult.data || []) as CharacterRow[]
       const characterIds = rawCharacters.map((character) => character.id)
 
-      const sheetResult = characterIds.length
-        ? await supabase
-            .from("character_sheets")
-            .select("character_id,current_hp,max_hp,strength,dexterity,constitution,intelligence,wisdom,charisma,proficiency_bonus,skill_proficiencies")
-            .in("character_id", characterIds)
-        : { data: [] as CharacterSheetPreviewRow[], error: null }
+      const sheetResult =
+        !minimal && characterIds.length
+          ? await supabase
+              .from("character_sheets")
+              .select("character_id,current_hp,max_hp,strength,dexterity,constitution,intelligence,wisdom,charisma,proficiency_bonus,skill_proficiencies")
+              .in("character_id", characterIds)
+          : { data: [] as CharacterSheetPreviewRow[], error: null }
 
       if (cancelled) return
       if (sheetResult.error) {
@@ -488,12 +497,18 @@ export function useWorkspaceData(
       setCampaignId(nextCampaignId)
       setCampaignTitle(campaignResult.data?.title || "Мунтар")
       setCampaignCoverUrl(
-        (await resolveCampaignMediaUrl(campaignResult.data?.cover_url || null)) ||
-          campaignResult.data?.cover_url ||
-          null,
+        minimal
+          ? null
+          : (await resolveCampaignMediaUrl(campaignResult.data?.cover_url || null)) ||
+              campaignResult.data?.cover_url ||
+              null,
       )
       setMembership(nextMembership)
-      setCampaignMemberships((campaignMembersResult.data || []) as CampaignMembershipRow[])
+      setCampaignMemberships(
+        minimal
+          ? []
+          : (campaignMembersResult.data || []) as CampaignMembershipRow[],
+      )
       setCharacters(resolvedCharacters)
       setSpeakerCharacterId(nextSpeakerCharacterId)
       setLoading(false)
@@ -504,7 +519,7 @@ export function useWorkspaceData(
     return () => {
       cancelled = true
     }
-  }, [enabled, scopedCharacterId])
+  }, [enabled, minimal, scopedCharacterId])
 
   const canManage =
     membership?.role === "gm" || membership?.is_owner === true
