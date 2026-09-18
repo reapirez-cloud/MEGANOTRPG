@@ -11,12 +11,15 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Started Abilities v2 visual correction: removed the copied standalone `УМЕНИЯ` heading/slogan so the five ability panels now begin directly in the existing character-sheet flow beneath the unchanged MEGANOT character/background shell. The reference is now treated as panel-composition guidance only, not as a page skin.
 ### Database / migration changes
 
 ### Runtime and architecture changes
 
+- Added `docs/ABILITIES_VISUAL_REWORK_CONTRACT.md` to lock ownership for the v2 presentation pass: CharacterSheet keeps the masthead/art/background, Character+Spells remain the only visual-language source through shared `--cv-*` tokens, and the Abilities rewrite is presentation-only over the already-certified read-model/Snake/suppression mechanics.
 ### Tests / verification
 
+- Added `characterAbilitiesVisualContract.test.ts` and updated the existing panel-shell regression to forbid the copied heading/slogan, abilities-owned page chrome/theme, and accidental replacement of the existing runtime/Snake/suppression wiring during the visual rewrite.
 ### Known incomplete work
 
 ---
