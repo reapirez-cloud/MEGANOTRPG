@@ -182,6 +182,10 @@
   mask-image: var(--u1-sheet-icon);
   -webkit-mask-position: var(--u1-sheet-icon-position, center);
   mask-position: var(--u1-sheet-icon-position, center);
+  -webkit-mask-origin: content-box;
+  mask-origin: content-box;
+  -webkit-mask-clip: content-box;
+  mask-clip: content-box;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-size: var(--u1-sheet-icon-size, contain);
