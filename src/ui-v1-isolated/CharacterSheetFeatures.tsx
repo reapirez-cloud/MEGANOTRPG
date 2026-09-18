@@ -254,7 +254,7 @@ export default function CharacterSheetFeatures({
   return (
     <section
       className="u1-character-features"
-      aria-labelledby="character-abilities-title"
+      aria-label="Умения персонажа"
       data-expanded-group={expandedGroup || undefined}
       data-unclassified-count={
         model.unclassifiedSourceIds.length > 0
@@ -262,11 +262,6 @@ export default function CharacterSheetFeatures({
           : undefined
       }
     >
-      <header className="u1-character-features__intro">
-        <span id="character-abilities-title">УМЕНИЯ</span>
-        <small>Всё, что делает персонажа тем, кто он есть</small>
-      </header>
-
       <div className="u1-character-features__panels">
         {model.groups.map((group) => {
           const expanded =
