@@ -1,4 +1,9 @@
 -- CLASS_MIGRATION_SCOPE: mechanics
+-- CLASS_INTEGRATION_STRICT: class:cleric
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
+-- CLASS_PACKAGE_TEST: tests/clericCantripRuntimeStage2.test.ts
+-- CLASS_WORK_STATUS: cleric:stage2_cantrips=READY;cleric:mechanics=READY
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 -- Stage 2 spell-screen repair:
 -- encode the Cleric's base cantrip choice as real class spell mechanics so
 -- spell_catalog -> class template -> Character Engine -> UI stays continuous.
