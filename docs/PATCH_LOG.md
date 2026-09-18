@@ -49,6 +49,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added a temporary repository-level implementation contract for the character-sheet **Умения / Abilities** tab. It fixes the approved reference as a layout/interaction target only, preserves the existing MEGANOT visual style, defines the five source panels, Snake-based row actions and real CE source suppression, and makes self-deletion of the plan plus its AGENTS pointer part of the tab's READY criteria.
 - Completed Inventory Stage 5 physical authoring: Chasovoy item definitions now use a validated physical profile and strict v2 create/revise RPCs; ordinary item authoring has reusable physical presets and a GM shape editor.
 - Added the immutable standard container library (simple 1×1, purse, pouch, bag, travel bag, backpack, large backpack/sack, quiver and two chest sizes). Standard containers are issued as concrete Cheburashka instances and can be renamed per instance for narrative placement without anatomical carry slots.
 - Voss can now create unusual/magical container profiles and revise existing campaign item definitions while preserving existing mechanics on geometry-only changes. System definitions remain immutable; altered standard bags become campaign variants. Live `voss-agent` was deployed as version 32.
