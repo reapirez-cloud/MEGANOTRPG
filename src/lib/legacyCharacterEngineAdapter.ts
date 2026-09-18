@@ -91,7 +91,33 @@ export function buildLegacyCharacterEngineInput(args: {
   // passives.perception or the skill through normal contributions instead of
   // freezing an old sheet number here.
   addTextGrants(contributions, "language", sheet.languages, sheetSource); addTextGrants(contributions, "proficiency", sheet.proficiencies, sheetSource); addTextGrants(contributions, "sense", sheet.senses, sheetSource)
-  for (const feature of features) { const source = legacySource(`legacy-feature:${feature.id}`, feature.name, "legacy_feature"); contributions.push({ id: `legacy:feature:${feature.id}`, kind: "grant", operation: "GRANT", target: "feature", key: feature.id, payload: { label: feature.name, description: feature.description, kind: feature.kind, legacyFeatureId: feature.id }, source }) }
+  for (const feature of features) {
+    const sourceType =
+      feature.kind === "background_feature"
+        ? "background_feature"
+        : feature.kind === "effect"
+          ? "character_effect"
+          : "legacy_feature"
+    const source = legacySource(
+      `legacy-feature:${feature.id}`,
+      feature.name,
+      sourceType,
+    )
+    contributions.push({
+      id: `legacy:feature:${feature.id}`,
+      kind: "grant",
+      operation: "GRANT",
+      target: "feature",
+      key: feature.id,
+      payload: {
+        label: feature.name,
+        description: feature.description,
+        kind: feature.kind,
+        legacyFeatureId: feature.id,
+      },
+      source,
+    })
+  }
 
   // Prefer the integration snapshot loaded by the consumer. Registry fallback is
   // transitional only; it exists for old sheet callers while they are migrated.
