@@ -202,8 +202,20 @@ Current Stage 2 checkpoint:
 - compact previews, computed `ещё N`, expansion state and full rows are intentionally NOT implemented here. Those belong to Stage 3;
 - per-ability Snake/detail/suppression interactions remain intentionally deferred to their later stages.
 
-### Stage 3 — Collapsed/expanded behavior
-Implement compact previews, computed `ещё N`, single-group expansion, full row list and responsive behavior matching the reference mechanics.
+### Stage 3 — Collapsed/expanded behavior ✅ COMPLETE
+Implemented the reference accordion mechanics on top of the Stage 2 MEGANOT panel shell.
+
+Current Stage 3 checkpoint:
+- collapsed panels show up to three real ability rows from the canonical read-model, each with an authored image when the icon is a real media path or the approved group fallback glyph otherwise;
+- `ещё N` is computed from the actual remaining row count and is omitted when there is nothing hidden;
+- only one non-empty group can be expanded at a time; tapping the same group again collapses it;
+- empty groups remain visible for structural consistency but cannot steal accordion expansion;
+- expanded content renders the complete earned row list directly inside the same panel with compact icon / name / short-description rows;
+- the expanded header shows `Открыто: N из N` from the current earned model. Suppression does not rewrite earned-count semantics;
+- suppressed rows already remain in logical position and render muted, but manager suppression commands themselves are still deferred to Stage 5;
+- the same left-source / right-summary hierarchy is preserved under the narrow mobile media rule instead of switching to a different layout;
+- the accordion helpers are pure and regression-tested independently from React;
+- ability row tap/details and long-press/right-click Snake registration are intentionally NOT implemented in Stage 3. Those belong to Stage 4.
 
 ### Stage 4 — Ability detail + Snake registration
 Make every row tappable for details and registered for long-press/right-click Snake actions. Remove the local context-menu path from the new screen.
