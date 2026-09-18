@@ -623,10 +623,13 @@
   content: none;
 }
 
-.u1-character-sheet-core__quick-icon > svg {
+.u1-character-sheet-core__quick-icon > svg,
+.u1-character-sheet-core__quick-icon > img {
   width: 100%;
   height: 100%;
   display: block;
+  object-fit: contain;
+  object-position: center;
   filter: drop-shadow(0 0 5px color-mix(in srgb, var(--cv-accent) 12%, transparent));
 }
 
@@ -683,10 +686,13 @@
   color: color-mix(in srgb, var(--cv-accent) 68%, var(--cv-text-muted));
 }
 
-.u1-character-sheet-core__ability-glyph > svg {
+.u1-character-sheet-core__ability-glyph > svg,
+.u1-character-sheet-core__ability-glyph > img {
   width: 100%;
   height: 100%;
   display: block;
+  object-fit: contain;
+  object-position: center;
   filter: drop-shadow(0 0 5px color-mix(in srgb, var(--cv-accent) 10%, transparent));
 }
 
