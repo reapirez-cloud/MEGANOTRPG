@@ -326,15 +326,53 @@
 }
 
 
-/* Background-first palette · art stays visible, panels stay neutral */
+/* Background-first premium glass · the class art owns the palette.
+ * No extra per-class UI colors are invented here: glass refraction is derived
+ * from the class accent/art wash that already belongs to the background.
+ */
 .u1-character-sheet {
-  --cv-panel-glass: rgba(5, 6, 7, .55);
-  --cv-panel-glass-soft: rgba(5, 6, 7, .44);
-  --cv-panel-glass-strong: rgba(5, 6, 7, .65);
-  --cv-panel-edge: rgba(244, 242, 235, .10);
-  --cv-panel-line: rgba(244, 242, 235, .075);
+  --cv-art-shadow:
+    color-mix(in srgb, var(--cv-accent) 22%, #050607 78%);
+  --cv-art-tint:
+    color-mix(in srgb, var(--cv-accent) 72%, var(--cv-class-art-wash) 28%);
   --cv-art-highlight:
-    color-mix(in srgb, var(--cv-class-art-wash) 62%, #f0ece3 38%);
+    color-mix(in srgb, var(--cv-art-tint) 66%, #eee9df 34%);
+
+  --cv-panel-glass:
+    linear-gradient(
+      138deg,
+      color-mix(in srgb, var(--cv-art-highlight) 7%, transparent) 0%,
+      rgba(255,255,255,.008) 24%,
+      transparent 47%,
+      color-mix(in srgb, var(--cv-art-tint) 8%, transparent) 76%,
+      color-mix(in srgb, var(--cv-art-shadow) 14%, transparent) 100%
+    ),
+    rgba(5, 6, 7, .34);
+  --cv-panel-glass-soft:
+    linear-gradient(
+      138deg,
+      color-mix(in srgb, var(--cv-art-highlight) 5%, transparent) 0%,
+      transparent 42%,
+      color-mix(in srgb, var(--cv-art-tint) 6%, transparent) 100%
+    ),
+    rgba(5, 6, 7, .27);
+  --cv-panel-glass-strong:
+    linear-gradient(
+      138deg,
+      color-mix(in srgb, var(--cv-art-highlight) 8%, transparent) 0%,
+      transparent 36%,
+      color-mix(in srgb, var(--cv-art-tint) 10%, transparent) 78%,
+      color-mix(in srgb, var(--cv-art-shadow) 18%, transparent) 100%
+    ),
+    rgba(5, 6, 7, .43);
+
+  --cv-panel-edge:
+    color-mix(in srgb, var(--cv-art-highlight) 14%, rgba(244, 242, 235, .08));
+  --cv-panel-line:
+    color-mix(in srgb, var(--cv-art-tint) 10%, rgba(244, 242, 235, .052));
+  --cv-panel-specular:
+    color-mix(in srgb, var(--cv-art-highlight) 18%, rgba(255,255,255,.045));
+  --cv-panel-filter: blur(16px) saturate(1.04) brightness(.90);
 }
 
 .u1-character-sheet__fixed-backdrop {
