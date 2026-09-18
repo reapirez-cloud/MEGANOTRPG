@@ -197,7 +197,7 @@ const view = fs.readFileSync(
 test("both collapsed previews and expanded ability rows register through the same SnakeTrigger provider", () => {
   assert.match(
     features,
-    /const actions = createCharacterAbilitySnakeActions\(row\)/,
+    /const actions = createCharacterAbilitySnakeActions\(row, \{[\s\S]*?canManage,[\s\S]*?setSuppressed: onSetSuppressed/,
   )
   assert.match(
     features,
