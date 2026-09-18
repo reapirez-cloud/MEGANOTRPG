@@ -45,7 +45,7 @@ function mediaCropStyle(media: UiV1ReferenceMedia) {
   const presentation = media.presentation
   if (!presentation) {
     return {
-      size: "cover",
+      size: "contain",
       position: "center",
     }
   }
