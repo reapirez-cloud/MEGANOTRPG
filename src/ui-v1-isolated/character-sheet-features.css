@@ -68,9 +68,9 @@
 .u1-character-features__panel-head {
   width: 100%;
   min-width: 0;
-  min-height: 94px;
+  min-height: 92px;
   display: grid;
-  grid-template-columns: minmax(0, 1.06fr) minmax(132px, .94fr);
+  grid-template-columns: minmax(0, .84fr) minmax(0, 1.16fr);
 }
 
 .u1-character-features__panel-source {
@@ -164,12 +164,12 @@
 
 .u1-character-features__panel-summary {
   min-width: 0;
-  padding: 10px clamp(9px, 2.8vw, 13px);
+  padding: 9px clamp(8px, 2.3vw, 11px) 9px clamp(10px, 2.8vw, 13px);
   border-left: 1px solid var(--cv-line-soft);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 32px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: clamp(7px, 2vw, 10px);
   background:
     linear-gradient(
       90deg,
@@ -182,7 +182,7 @@
   min-width: 0;
   display: grid;
   align-content: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .u1-character-features__preview > .u1-snake-trigger {
@@ -193,13 +193,13 @@
 .u1-character-features__preview-row {
   width: 100%;
   min-width: 0;
-  min-height: 24px;
-  padding: 1px 0;
+  min-height: 22px;
+  padding: 0;
   border: 0;
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-columns: 18px minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   background: transparent;
   color: var(--cv-text-soft);
   text-align: left;
@@ -217,16 +217,24 @@
   white-space: nowrap;
 }
 
-.u1-character-features__preview > small {
-  justify-self: end;
+.u1-character-features__panel-tail {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: clamp(5px, 1.6vw, 8px);
+  white-space: nowrap;
+}
+
+.u1-character-features__panel-more {
   color: var(--cv-text-muted);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 8px;
+  font-size: clamp(7px, 1.95vw, 9px);
   line-height: 1;
 }
 
 .u1-character-features__ability-icon {
-  width: 20px;
+  width: 18px;
   aspect-ratio: 1 / 1;
   display: grid;
   place-items: center;
@@ -268,8 +276,8 @@
 }
 
 .u1-character-features__panel-chevron-button {
-  width: 32px;
-  height: 44px;
+  width: 24px;
+  height: 40px;
   padding: 0;
   border: 0;
   display: grid;
@@ -422,7 +430,7 @@
 
   .u1-character-features__panel-head {
     min-height: 88px;
-    grid-template-columns: minmax(0, 1fr) minmax(110px, .86fr);
+    grid-template-columns: minmax(0, .88fr) minmax(0, 1.12fr);
   }
 
   .u1-character-features__panel-source {
@@ -437,28 +445,36 @@
 
   .u1-character-features__panel-summary {
     padding-inline: 7px;
-    grid-template-columns: minmax(0, 1fr) 28px;
-    gap: 4px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 5px;
   }
 
   .u1-character-features__preview {
-    gap: 4px;
+    gap: 3px;
   }
 
   .u1-character-features__preview-row {
-    min-height: 24px;
-    grid-template-columns: 20px minmax(0, 1fr);
+    min-height: 21px;
+    grid-template-columns: 17px minmax(0, 1fr);
     gap: 5px;
   }
 
   .u1-character-features__preview-row
   > .u1-character-features__ability-icon {
-    width: 20px;
+    width: 17px;
+  }
+
+  .u1-character-features__panel-tail {
+    gap: 4px;
+  }
+
+  .u1-character-features__panel-more {
+    font-size: 7px;
   }
 
   .u1-character-features__panel-chevron-button {
-    width: 28px;
-    height: 44px;
+    width: 22px;
+    height: 40px;
   }
 
   .u1-character-features__ability-row {
