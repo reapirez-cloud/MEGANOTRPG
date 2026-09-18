@@ -98,6 +98,8 @@ export type CharacterAbilitiesReadModelInput = {
    * This enriches rows with icons/Voss text without changing mechanics.
    */
   templateBundles?: readonly CharacterTemplateBundle[]
+  /** Canonical narrative source name for the Background group. */
+  backgroundName?: string
 }
 
 const GROUP_LABELS: Record<CharacterAbilityGroupKey, string> = {
@@ -582,16 +584,23 @@ export function buildCharacterAbilitiesReadModel(
         authored.description ||
         authored.explanation
 
+      const canonicalSourceName =
+        group === "background" && text(input.backgroundName)
+          ? text(input.backgroundName)
+          : group === "effect"
+            ? "Активные состояния"
+            : sourceNameForRow(
+                bucket,
+                sourceNode,
+                templateRootsById,
+              )
+
       const row: CharacterAbilityRow = {
         id: group + ":" + bucket.identity,
         group,
         sourceId,
         sourceIds,
-        sourceName: sourceNameForRow(
-          bucket,
-          sourceNode,
-          templateRootsById,
-        ),
+        sourceName: canonicalSourceName,
         sourceNames: uniqueSorted(bucket.sourceNames),
         sourceType: sourceTypeForRow(bucket, sourceNode),
         label,
@@ -632,6 +641,14 @@ export function buildCharacterAbilitiesReadModel(
     .map((entry) => entry.row)
 
   const rootSourceNames = new Map<CharacterAbilityGroupKey, string[]>()
+  const backgroundName = text(input.backgroundName)
+  if (backgroundName) {
+    rootSourceNames.set("background", [backgroundName])
+  }
+  if (rows.some((row) => row.group === "effect")) {
+    rootSourceNames.set("effect", ["Активные состояния"])
+  }
+
   for (const node of input.sourceNodes) {
     if (node.nodeKind !== "template") continue
 
