@@ -39,7 +39,7 @@ const skillLabels: Record<SkillKey, string> = {
   survival: "Выживание",
 }
 
-const GRIMDARK_ICON_ROOT = "/ui-icons/grimdark"
+const GRIMDARK_ICON_ROOT = "/ui-icons/grimdark/ui"
 
 const QUICK_STAT_PNG_IDS = new Set([
   "armor-class",
@@ -56,6 +56,9 @@ function QuickStatIcon({ id }: { id: string }) {
       <img
         src={`${GRIMDARK_ICON_ROOT}/${id}.png`}
         alt=""
+        width={96}
+        height={96}
+        decoding="async"
         draggable={false}
       />
     )

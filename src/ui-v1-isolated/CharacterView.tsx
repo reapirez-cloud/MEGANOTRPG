@@ -113,14 +113,60 @@ export default function CharacterView({
   characterId: string
   onBack: () => void
 }) {
-  const control = useUiV1CharacterControl(characterId)
-  const workspace = useWorkspaceData()
-  const referenceMedia = useUiV1ReferenceMedia()
-  const workshop = useGMWorkshopData()
-  const snake = useSnake()
-  const runtime = useResolvedCharacterRuntime(control.runtimeEntity)
+  const [auxiliaryEnabled, setAuxiliaryEnabled] = useState(false)
   const [section, setSection] = useState<CharacterSheetSection>("overview")
   const [interfaceMode, setInterfaceMode] = useState<"inventory" | null>(null)
+  const [spellsDataEnabled, setSpellsDataEnabled] = useState(false)
+  const [inventoryDataEnabled, setInventoryDataEnabled] = useState(false)
+  const control = useUiV1CharacterControl(characterId, {
+    loadSpells: spellsDataEnabled,
+    loadInventory: inventoryDataEnabled,
+    loadFeatures: false,
+    loadResources: false,
+  })
+  const classKey = classKeyFrom(
+    control.character?.characterClass || "",
+    control.assignments,
+    control.templates,
+  )
+  const workspace = useWorkspaceData({
+    enabled: auxiliaryEnabled,
+    characterId,
+    minimal: true,
+  })
+  const referenceMedia = useUiV1ReferenceMedia(auxiliaryEnabled, classKey)
+  const workshop = useGMWorkshopData(
+    auxiliaryEnabled && control.canManage,
+    characterId,
+  )
+  const snake = useSnake()
+  const runtime = useResolvedCharacterRuntime(control.runtimeEntity)
+
+  useEffect(() => {
+    setAuxiliaryEnabled(false)
+    setSpellsDataEnabled(false)
+    setInventoryDataEnabled(false)
+  }, [characterId])
+
+  useEffect(() => {
+    if (section === "spells") setSpellsDataEnabled(true)
+    if (interfaceMode === "inventory") setInventoryDataEnabled(true)
+  }, [interfaceMode, section])
+
+  useEffect(() => {
+    if (
+      auxiliaryEnabled ||
+      control.loading ||
+      runtime.status === "loading" ||
+      runtime.status === "stale"
+    ) return
+
+    const timer = window.setTimeout(() => {
+      setAuxiliaryEnabled(true)
+    }, 250)
+
+    return () => window.clearTimeout(timer)
+  }, [auxiliaryEnabled, control.loading, runtime.status])
   const [expandedAbility, setExpandedAbility] = useState<AbilityKey | null>(null)
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null)
   const [selectedSpellId, setSelectedSpellId] = useState<string | null>(null)
@@ -130,15 +176,6 @@ export default function CharacterView({
   const [entityFocus, setEntityFocus] =
     useState<CharacterSheetEntityTarget | null>(null)
   const [spellFocusLevel, setSpellFocusLevel] = useState<number | null>(null)
-
-  const classKey = useMemo(
-    () => classKeyFrom(
-      control.character?.characterClass || "",
-      control.assignments,
-      control.templates,
-    ),
-    [control.assignments, control.character?.characterClass, control.templates],
-  )
 
   const classSpellProfile = useMemo(() => {
     const assignedClass = control.assignments

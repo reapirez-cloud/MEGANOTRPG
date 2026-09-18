@@ -64,7 +64,20 @@ function iconReferenceSlot(value: string) {
     value.endsWith(":spell_slot")
 }
 
-export function useUiV1ReferenceMedia() {
+function relevantReferenceSlot(value: string, classKey: string | null) {
+  if (!classKey) return true
+  if (value.startsWith("class:")) {
+    return value.startsWith(`class:${classKey}:`)
+  }
+  if (value.startsWith("subclass:")) return false
+  return true
+}
+
+export function useUiV1ReferenceMedia(
+  enabled = true,
+  classKeyInput?: string | null,
+) {
+  const classKey = classKeyInput?.trim() || null
   const scope = useUiV1CampaignScope()
   const [items, setItems] = useState<Record<string, UiV1ReferenceMedia>>({})
   const [loading, setLoading] = useState(true)
@@ -72,7 +85,7 @@ export function useUiV1ReferenceMedia() {
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    if (!scope.campaignId) return
+    if (!enabled || !scope.campaignId) return
 
     setLoading(true)
     const { data, error: queryError } = await supabase.rpc(
@@ -91,6 +104,7 @@ export function useUiV1ReferenceMedia() {
     await Promise.all(
       ((data || []) as ReferenceMediaRow[]).map(async (row) => {
         if (!validReferenceSlot(row.target_field)) return
+        if (!relevantReferenceSlot(row.target_field, classKey)) return
         const resolvedUrl = await resolveCampaignMediaUrl(row.storage_path)
         next[row.target_field] = {
           targetField: row.target_field,
@@ -105,15 +119,20 @@ export function useUiV1ReferenceMedia() {
     setItems(next)
     setError(null)
     setLoading(false)
-  }, [scope.campaignId])
+  }, [classKey, enabled, scope.campaignId])
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false)
+      return
+    }
+
     if (!scope.campaignId) {
       if (!scope.loading) setLoading(false)
       return
     }
     void load()
-  }, [load, scope.campaignId, scope.loading])
+  }, [enabled, load, scope.campaignId, scope.loading])
 
   const get = useCallback(
     (targetField: string) => items[targetField] || null,

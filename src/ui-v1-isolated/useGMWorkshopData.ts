@@ -371,10 +371,16 @@ function spellInput(definition: ChasovoyDefinition): SpellInput {
   }
 }
 
-export function useGMWorkshopData() {
+export function useGMWorkshopData(
+  enabled = true,
+  focusedCharacterIdInput?: string | null,
+) {
+  const focusedCharacterId = focusedCharacterIdInput?.trim() || null
   const [state, setState] = useState<WorkshopState>(EMPTY_STATE)
 
   const load = useCallback(async () => {
+    if (!enabled) return
+
     setState((current) => ({ ...current, loading: true, error: null }))
 
     const { data: authData, error: authError } = await supabase.auth.getUser()
@@ -422,29 +428,47 @@ export function useGMWorkshopData() {
       return
     }
 
+    const emptyRows = { data: [], error: null } as const
+    const emptySingle = { data: null, error: null } as const
+    const characterQuery = supabase.from("characters")
+      .select("id,assigned_user_id,name,character_class,level,bio,avatar_url,character_type,visibility_mode,publication_state,life_state,died_at,created_at")
+      .eq("campaign_id", campaignId)
+    const habitatQuery = supabase.from("location_npc_habitats")
+      .select("npc_character_id,location_id")
+      .eq("campaign_id", campaignId)
+
     const results = await Promise.all([
-      supabase.from("campaigns").select("title, cover_url").eq("id", campaignId).maybeSingle(),
+      focusedCharacterId
+        ? Promise.resolve(emptySingle)
+        : supabase.from("campaigns").select("title, cover_url").eq("id", campaignId).maybeSingle(),
       supabase.from("campaign_members").select("user_id, role, is_owner, active_character_id").eq("campaign_id", campaignId).order("created_at"),
-      supabase.from("characters")
-        .select("id,assigned_user_id,name,character_class,level,bio,avatar_url,character_type,visibility_mode,publication_state,life_state,died_at,created_at")
-        .eq("campaign_id", campaignId)
-        .order("created_at"),
-      supabase.from("gm_workspace_folders")
-        .select("id,parent_id,name,sort_order")
-        .eq("campaign_id", campaignId)
-        .eq("workspace_user_id", userId)
-        .order("sort_order"),
-      supabase.from("gm_workspace_files")
-        .select("id,folder_id,kind,title,body,file_url,original_name,mime_type,updated_at")
-        .eq("campaign_id", campaignId)
-        .eq("workspace_user_id", userId)
-        .order("updated_at", { ascending: false }),
-      supabase.from("campaign_invites")
-        .select("code,max_uses,uses_count,expires_at,revoked_at,created_at")
-        .eq("campaign_id", campaignId)
-        .order("created_at", { ascending: false })
-        .limit(20),
-      chasovoy.listDefinitions({ scope: "campaign", campaignId }),
+      focusedCharacterId
+        ? characterQuery.eq("id", focusedCharacterId).limit(1)
+        : characterQuery.order("created_at"),
+      focusedCharacterId
+        ? Promise.resolve(emptyRows)
+        : supabase.from("gm_workspace_folders")
+            .select("id,parent_id,name,sort_order")
+            .eq("campaign_id", campaignId)
+            .eq("workspace_user_id", userId)
+            .order("sort_order"),
+      focusedCharacterId
+        ? Promise.resolve(emptyRows)
+        : supabase.from("gm_workspace_files")
+            .select("id,folder_id,kind,title,body,file_url,original_name,mime_type,updated_at")
+            .eq("campaign_id", campaignId)
+            .eq("workspace_user_id", userId)
+            .order("updated_at", { ascending: false }),
+      focusedCharacterId
+        ? Promise.resolve(emptyRows)
+        : supabase.from("campaign_invites")
+            .select("code,max_uses,uses_count,expires_at,revoked_at,created_at")
+            .eq("campaign_id", campaignId)
+            .order("created_at", { ascending: false })
+            .limit(20),
+      focusedCharacterId
+        ? Promise.resolve([] as ChasovoyDefinition[])
+        : chasovoy.listDefinitions({ scope: "campaign", campaignId }),
       supabase.from("rule_templates")
         .select("id,campaign_id,kind,slug,name,description,version,mechanics,choices,parent_template_id,unlock_level,catalog_key,catalog_revision,source_kind,source_label,is_builtin,mechanical_summary,author_description,author_comment,rules_meta,is_active,created_by,created_at,updated_at")
         .eq("campaign_id", campaignId)
@@ -455,9 +479,9 @@ export function useGMWorkshopData() {
         .select("id,parent_location_id,name,lifecycle_state")
         .eq("campaign_id", campaignId)
         .order("sort_order"),
-      supabase.from("location_npc_habitats")
-        .select("npc_character_id,location_id")
-        .eq("campaign_id", campaignId),
+      focusedCharacterId
+        ? habitatQuery.eq("npc_character_id", focusedCharacterId)
+        : habitatQuery,
     ])
 
     const [
@@ -571,9 +595,11 @@ export function useGMWorkshopData() {
       campaignId,
       campaignTitle: campaignResult.data?.title || "Кампания",
       campaignCoverUrl:
-        (await resolveCampaignMediaUrl(campaignResult.data?.cover_url || null)) ||
-        campaignResult.data?.cover_url ||
-        null,
+        focusedCharacterId
+          ? null
+          : (await resolveCampaignMediaUrl(campaignResult.data?.cover_url || null)) ||
+              campaignResult.data?.cover_url ||
+              null,
       userId,
       canManage,
       isOwner: ownMembership.is_owner === true,
@@ -638,11 +664,15 @@ export function useGMWorkshopData() {
       loading: false,
       error: null,
     })
-  }, [])
+  }, [enabled, focusedCharacterId])
 
   useEffect(() => {
+    if (!enabled) {
+      setState(EMPTY_STATE)
+      return
+    }
     void load()
-  }, [load])
+  }, [enabled, load])
 
   const context = useCallback(() => createEngineCommandContext({
     campaignId: state.campaignId,
