@@ -6,7 +6,6 @@ const MAX_UPLOAD_IMAGE_BYTES = 12 * 1024 * 1024
 const MAX_FILE_BYTES = 20 * 1024 * 1024
 const RESIZE_THRESHOLD_BYTES = 2.5 * 1024 * 1024
 const MAX_IMAGE_DIMENSION = 2560
-const UI_ICON_MAX_DIMENSION = 384
 const IMMUTABLE_IMAGE_CACHE_SECONDS = "31536000"
 
 export type UploadImageResult =
@@ -16,53 +15,6 @@ export type UploadImageResult =
 export type UploadFileResult =
   | { ok: true; url: string }
   | { ok: false; error: string }
-
-async function createUiIconDerivative(source: Blob): Promise<File | null> {
-  if (
-    typeof createImageBitmap !== "function" ||
-    typeof document === "undefined"
-  ) {
-    return null
-  }
-
-  let bitmap: ImageBitmap
-  try {
-    bitmap = await createImageBitmap(source)
-  } catch {
-    return null
-  }
-
-  try {
-    const largestSide = Math.max(bitmap.width, bitmap.height)
-    const scale = Math.min(
-      1,
-      UI_ICON_MAX_DIMENSION / Math.max(1, largestSide),
-    )
-    const width = Math.max(1, Math.round(bitmap.width * scale))
-    const height = Math.max(1, Math.round(bitmap.height * scale))
-    const canvas = document.createElement("canvas")
-    canvas.width = width
-    canvas.height = height
-    const context = canvas.getContext("2d")
-    if (!context) return null
-
-    context.imageSmoothingEnabled = true
-    context.imageSmoothingQuality = "high"
-    context.drawImage(bitmap, 0, 0, width, height)
-
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/png"),
-    )
-    if (!blob) return null
-
-    return new File([blob], "ui-icon.png", {
-      type: "image/png",
-      lastModified: Date.now(),
-    })
-  } finally {
-    bitmap.close()
-  }
-}
 
 function extensionFor(file: File) {
   const fromName = file.name
@@ -206,58 +158,6 @@ export async function deleteCampaignMediaObjects(
 
 export async function deleteCampaignMediaObject(value: string | null | undefined) {
   await deleteCampaignMediaObjects([value])
-}
-
-export async function uploadCampaignUiIconDerivative(
-  source: Blob,
-  folder: string,
-  campaignId: string,
-): Promise<UploadImageResult> {
-  if (!campaignId) {
-    return { ok: false, error: "Кампания ещё не загружена." }
-  }
-
-  const derivative = await createUiIconDerivative(source)
-  if (!derivative) {
-    return { ok: false, error: "Не удалось подготовить UI-копию изображения." }
-  }
-
-  const { data: userData, error: userError } = await supabase.auth.getUser()
-  if (userError || !userData.user) {
-    return { ok: false, error: "Не удалось определить текущего пользователя." }
-  }
-
-  const safeFolder = folder.replace(/[^a-z0-9_-]/gi, "-") || "ui-icons"
-  const id =
-    globalThis.crypto?.randomUUID?.() ||
-    `${Date.now()}-${Math.random().toString(16).slice(2)}`
-  const objectPath =
-    `${campaignId}/${userData.user.id}/${safeFolder}/${id}.png`
-
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET)
-    .upload(objectPath, derivative, {
-      cacheControl: IMMUTABLE_IMAGE_CACHE_SECONDS,
-      upsert: false,
-      contentType: "image/png",
-    })
-
-  if (uploadError) {
-    return { ok: false, error: uploadError.message }
-  }
-
-  const bitmap = await createImageBitmap(derivative)
-  const width = Math.max(1, bitmap.width)
-  const height = Math.max(1, bitmap.height)
-  bitmap.close()
-
-  return {
-    ok: true,
-    url: objectPath,
-    width,
-    height,
-    mimeType: "image/png",
-  }
 }
 
 export async function uploadCampaignImage(
