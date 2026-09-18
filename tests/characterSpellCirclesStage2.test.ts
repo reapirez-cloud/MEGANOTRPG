@@ -11,6 +11,11 @@ const styles = fs.readFileSync(
   "utf8",
 )
 
+const stage2Wrapper = fs.readFileSync(
+  "src/ui-v1-isolated/CharacterSheetSpells.tsx",
+  "utf8",
+)
+
 test("spell stage 2 replaces the flat list with cantrip and circle panels", () => {
   assert.match(spells, /CHARACTER_SHEET_SPELL_GROUP_ORDER\.map/)
   assert.match(spells, /level === 0 \? "Заговоры" : `\$\{level\} круг`/)
@@ -39,4 +44,14 @@ test("spell stage 2 keeps CE slot counts in every circle header", () => {
   assert.match(spells, /slotCount\(slotPresentation\.resource\)/)
   assert.match(spells, /Магия договора/)
   assert.match(spells, /\$\{slot\.current\}\/\$\{slot\.max\} ячеек/)
+})
+
+test("spell stage 2 keeps empty spell surfaces inside the canonical 0-9 pass", () => {
+  assert.match(spells, /const emptyCantrip =/)
+  assert.match(spells, /const emptySlotLevel =/)
+  assert.match(spells, /data-stage2-placeholder=\{cantrip \? "cantrips" : "spell-level"\}/)
+  assert.match(spells, /level === 0 && hasStandardSpellSurface/)
+  assert.match(spells, /slot\.max > 0/)
+  assert.doesNotMatch(stage2Wrapper, /EmptySpellCircle/)
+  assert.doesNotMatch(spells, /Книга заклинаний пока пуста/)
 })
