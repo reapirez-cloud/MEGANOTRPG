@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { cheburashka } from "../inventory-engine/runtime.ts"
 import { firstAvailableGridPlacement, type InventoryPlacementTarget } from "../inventory-engine/index.ts"
@@ -53,8 +53,23 @@ function errorMessage(reason: unknown, fallback: string) {
   return reason instanceof Error && reason.message ? reason.message : fallback
 }
 
-export function useUiV1CharacterControl(characterId: string) {
+type UiV1CharacterControlOptions = {
+  loadSpells?: boolean
+  loadInventory?: boolean
+  loadFeatures?: boolean
+  loadResources?: boolean
+}
+
+export function useUiV1CharacterControl(
+  characterId: string,
+  options: UiV1CharacterControlOptions = {},
+) {
   const scope = useUiV1CampaignScope()
+  const loadSpells = options.loadSpells ?? true
+  const loadInventory = options.loadInventory ?? true
+  const loadFeatures = options.loadFeatures ?? true
+  const loadResources = options.loadResources ?? true
+  const loadedCharacterIdRef = useRef<string | null>(null)
   const [character, setCharacter] = useState<UiV1Character | null>(null)
   const [runtimeEntity, setRuntimeEntity] = useState<CharacterEntity | null>(null)
   const [sheet, setSheet] = useState<CharacterSheet | null>(null)
@@ -77,7 +92,9 @@ export function useUiV1CharacterControl(characterId: string) {
 
   const load = useCallback(async () => {
     if (!scope.campaignId || !characterId) return
-    setLoading(true)
+    if (loadedCharacterIdRef.current !== characterId) {
+      setLoading(true)
+    }
     setError(null)
 
     try {
@@ -100,6 +117,7 @@ export function useUiV1CharacterControl(characterId: string) {
         earlyAvatarSource
 
       setRuntimeEntity(earlyRow as CharacterEntity)
+      loadedCharacterIdRef.current = characterId
       setCharacter({
         id: earlyRow.id,
         name: earlyRow.name,
@@ -116,46 +134,64 @@ export function useUiV1CharacterControl(characterId: string) {
       })
       setLoading(false)
 
+      const emptyRows = { data: [], error: null } as const
+      const emptySingle = { data: null, error: null } as const
+
       const [
         sheetResult,
         spellsResult,
         featuresResult,
         assignmentsResult,
-        templatesResult,
         resourcesResult,
         transferTargetsResult,
         mediaResult,
         worldStateResult,
       ] = await Promise.all([
-        supabase.from("character_sheets").select("*").eq("character_id", characterId).maybeSingle(),
-        supabase.from("character_spells").select("*").eq("character_id", characterId)
-          .order("spell_level").order("sort_order"),
-        supabase.from("character_features").select("*").eq("character_id", characterId)
-          .order("sort_order").order("created_at"),
+        supabase.from("character_sheets")
+          .select("*")
+          .eq("character_id", characterId)
+          .maybeSingle(),
+        loadSpells
+          ? supabase.from("character_spells")
+              .select("*")
+              .eq("character_id", characterId)
+              .order("spell_level")
+              .order("sort_order")
+          : Promise.resolve(emptyRows),
+        loadFeatures
+          ? supabase.from("character_features")
+              .select("*")
+              .eq("character_id", characterId)
+              .order("sort_order")
+              .order("created_at")
+          : Promise.resolve(emptyRows),
         supabase.from("character_template_assignments")
           .select("id,character_id,template_id,template_level,selected_choices,assigned_at,updated_at")
           .eq("character_id", characterId),
-        supabase.from("rule_templates")
-          .select("id,campaign_id,kind,slug,name,description,version,mechanics,choices,parent_template_id,unlock_level,catalog_key,catalog_revision,source_kind,source_label,is_builtin,mechanical_summary,author_description,author_comment,rules_meta,is_active,created_by,created_at,updated_at")
-          .eq("campaign_id", scope.campaignId),
-        supabase.from("character_resource_states")
-          .select("state_key,label,current,max_snapshot,recharge")
-          .eq("character_id", characterId)
-          .order("state_key"),
-        supabase.from("characters")
-          .select("id,name")
-          .eq("campaign_id", scope.campaignId)
-          .neq("id", characterId)
-          .eq("publication_state", "campaign")
-          .eq("life_state", "alive")
-          .order("name"),
+        loadResources
+          ? supabase.from("character_resource_states")
+              .select("state_key,label,current,max_snapshot,recharge")
+              .eq("character_id", characterId)
+              .order("state_key")
+          : Promise.resolve(emptyRows),
+        loadInventory
+          ? supabase.from("characters")
+              .select("id,name")
+              .eq("campaign_id", scope.campaignId)
+              .neq("id", characterId)
+              .eq("publication_state", "campaign")
+              .eq("life_state", "alive")
+              .order("name")
+          : Promise.resolve(emptyRows),
         supabase.rpc("list_character_media_presentations_v1", {
           p_campaign_id: scope.campaignId,
         }),
-        supabase.from("character_world_state")
-          .select("location_id")
-          .eq("character_id", characterId)
-          .maybeSingle(),
+        loadInventory
+          ? supabase.from("character_world_state")
+              .select("location_id")
+              .eq("character_id", characterId)
+              .maybeSingle()
+          : Promise.resolve(emptySingle),
       ])
 
       const firstError =
@@ -163,19 +199,35 @@ export function useUiV1CharacterControl(characterId: string) {
         spellsResult.error ||
         featuresResult.error ||
         assignmentsResult.error ||
-        templatesResult.error ||
         resourcesResult.error ||
         transferTargetsResult.error ||
         mediaResult.error ||
         worldStateResult.error
       if (firstError) throw new Error(firstError.message)
-      const inventoryRows = await cheburashka.listCharacterItems(characterId)
-      const storageResult = worldStateResult.data?.location_id
-        ? await supabase.rpc("list_world_storages_v1", {
-            p_campaign_id: scope.campaignId,
-            p_location_id: worldStateResult.data.location_id,
-          })
-        : { data: [], error: null }
+
+      const assignmentRows =
+        (assignmentsResult.data || []) as CharacterTemplateAssignment[]
+      const assignedTemplateIds = [
+        ...new Set(assignmentRows.map((item) => item.template_id)),
+      ]
+      const templatesResult = assignedTemplateIds.length
+        ? await supabase.from("rule_templates")
+            .select("id,campaign_id,kind,slug,name,description,version,mechanics,choices,parent_template_id,unlock_level,catalog_key,catalog_revision,source_kind,source_label,is_builtin,mechanical_summary,author_description,author_comment,rules_meta,is_active,created_by,created_at,updated_at")
+            .eq("campaign_id", scope.campaignId)
+            .in("id", assignedTemplateIds)
+        : emptyRows
+      if (templatesResult.error) throw new Error(templatesResult.error.message)
+
+      const inventoryRows = loadInventory
+        ? await cheburashka.listCharacterItems(characterId)
+        : []
+      const storageResult =
+        loadInventory && worldStateResult.data?.location_id
+          ? await supabase.rpc("list_world_storages_v1", {
+              p_campaign_id: scope.campaignId,
+              p_location_id: worldStateResult.data.location_id,
+            })
+          : { data: [], error: null }
       if (storageResult.error) throw new Error(storageResult.error.message)
 
       const row = characterResult.data
@@ -218,23 +270,25 @@ export function useUiV1CharacterControl(characterId: string) {
         panelAvatarPresentation: parseMediaPresentation(panelBinding?.presentation),
       })
       setSheet((sheetResult.data || null) as CharacterSheet | null)
-      setInventory(inventoryRows)
-      setSpells((spellsResult.data || []) as CharacterSpell[])
-      setFeatures((featuresResult.data || []) as CharacterFeature[])
-      setAssignments((assignmentsResult.data || []) as CharacterTemplateAssignment[])
+      if (loadInventory) setInventory(inventoryRows)
+      if (loadSpells) setSpells((spellsResult.data || []) as CharacterSpell[])
+      if (loadFeatures) {
+        setFeatures((featuresResult.data || []) as CharacterFeature[])
+      }
+      setAssignments(assignmentRows)
       setTemplates((templatesResult.data || []) as RuleTemplate[])
-      setResources((resourcesResult.data || []).map((item) => ({
+      if (loadResources) setResources((resourcesResult.data || []).map((item) => ({
         state_key: item.state_key,
         label: item.label,
         current: Number(item.current || 0),
         max_snapshot: Number(item.max_snapshot || 0),
         recharge: item.recharge,
       })))
-      setTransferTargets((transferTargetsResult.data || []).map((item) => ({
+      if (loadInventory) setTransferTargets((transferTargetsResult.data || []).map((item) => ({
         id: item.id,
         name: item.name,
       })))
-      setWorldStorages((storageResult.data || []).map((storage: Record<string, unknown>) => ({
+      if (loadInventory) setWorldStorages((storageResult.data || []).map((storage: Record<string, unknown>) => ({
         id: String(storage.id || ""),
         location_id: String(storage.location_id || ""),
         root_item_id: String(storage.root_item_id || ""),
@@ -248,7 +302,14 @@ export function useUiV1CharacterControl(characterId: string) {
     } finally {
       setLoading(false)
     }
-  }, [characterId, scope.campaignId])
+  }, [
+    characterId,
+    loadFeatures,
+    loadInventory,
+    loadResources,
+    loadSpells,
+    scope.campaignId,
+  ])
 
   useEffect(() => {
     if (!scope.campaignId) {

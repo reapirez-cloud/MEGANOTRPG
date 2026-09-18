@@ -114,7 +114,16 @@ export default function CharacterView({
   onBack: () => void
 }) {
   const [auxiliaryEnabled, setAuxiliaryEnabled] = useState(false)
-  const control = useUiV1CharacterControl(characterId)
+  const [section, setSection] = useState<CharacterSheetSection>("overview")
+  const [interfaceMode, setInterfaceMode] = useState<"inventory" | null>(null)
+  const [spellsDataEnabled, setSpellsDataEnabled] = useState(false)
+  const [inventoryDataEnabled, setInventoryDataEnabled] = useState(false)
+  const control = useUiV1CharacterControl(characterId, {
+    loadSpells: spellsDataEnabled,
+    loadInventory: inventoryDataEnabled,
+    loadFeatures: false,
+    loadResources: false,
+  })
   const workspace = useWorkspaceData({
     enabled: auxiliaryEnabled,
     characterId,
@@ -128,7 +137,14 @@ export default function CharacterView({
 
   useEffect(() => {
     setAuxiliaryEnabled(false)
+    setSpellsDataEnabled(false)
+    setInventoryDataEnabled(false)
   }, [characterId])
+
+  useEffect(() => {
+    if (section === "spells") setSpellsDataEnabled(true)
+    if (interfaceMode === "inventory") setInventoryDataEnabled(true)
+  }, [interfaceMode, section])
 
   useEffect(() => {
     if (
@@ -144,8 +160,6 @@ export default function CharacterView({
 
     return () => window.clearTimeout(timer)
   }, [auxiliaryEnabled, control.loading, runtime.status])
-  const [section, setSection] = useState<CharacterSheetSection>("overview")
-  const [interfaceMode, setInterfaceMode] = useState<"inventory" | null>(null)
   const [expandedAbility, setExpandedAbility] = useState<AbilityKey | null>(null)
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null)
   const [selectedSpellId, setSelectedSpellId] = useState<string | null>(null)
