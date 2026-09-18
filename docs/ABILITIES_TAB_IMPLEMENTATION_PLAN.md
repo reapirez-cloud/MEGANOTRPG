@@ -245,8 +245,23 @@ Current Stage 5 checkpoint:
 - a CE regression now proves suppression is mechanical rather than visual: the same source's feature/rule and numeric contribution disappear from the resolved contract while suppressed and return when the suppression contribution is absent;
 - no Supabase schema or RLS migration was required for Stage 5.
 
-### Stage 6 — Background/Effects completion
-Connect real Background and Effects sources. Do not use fake fixtures as shipped behavior.
+### Stage 6 — Background/Effects completion ✅ COMPLETE
+Connected Background and Effects to real canonical character data without shipping fake rows or inventing a parallel effect store.
+
+Current Stage 6 checkpoint:
+- `character_features` remains the single canonical persistent feature/effect owner; no new effect table or UI-only JSON store was introduced;
+- the database `character_features_kind_check` now explicitly permits `background_feature` and `effect` in addition to the existing feature kinds;
+- `CharacterFeature` / `FeatureInput` types expose the same two explicit kinds;
+- the existing GM `FeatureEditor` can author **Черта предыстории** and **Активный эффект** with the same description + structured mechanics builder used by other character features;
+- generic legacy `feature` rows are deliberately NOT auto-reclassified as effects, because current production rows are semantically mixed and guessing would silently corrupt presentation;
+- Background and Effect feature mechanics flow through the existing legacy adapter / Character Runtime / CE pipeline;
+- Stage 6 kinds use one canonical `feature:<id>` source identity for both descriptive grant and mechanics, so Stage 5 granular Snake suppression can safely target them;
+- the Background panel uses `character_sheets.background` only as the canonical source display name (for example, `Бывший наёмник`); the text field does not invent abilities by itself;
+- the Effects panel uses `Активные состояния` as its source label and renders only canonical `effect` feature rows; row existence is the current active-state contract, while removing the row ends the persistent effect;
+- real Background/Effect rows remain normal CE-backed abilities: description, mechanics, Snake detail and manager suppression all work through the same paths as previous stages;
+- the production schema migration was applied and mirrored in `supabase/migrations/20260918150053_character_feature_background_effect_kinds.sql`;
+- a transaction-level production verification inserted one row of each new kind and rolled back successfully; a follow-up query confirmed zero leftover test rows;
+- Supabase security advisors were run after the DDL. They report pre-existing project-wide warnings unrelated to this constraint-only migration; Stage 6 added no table, policy, function or privilege surface.
 
 ### Stage 7 — Cleanup and certification
 Remove superseded abilities UI code, finish mobile polish and run READY tests.
