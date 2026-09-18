@@ -205,7 +205,7 @@ test("both collapsed previews and expanded ability rows register through the sam
   )
   assert.match(
     features,
-    /compact \? \([\s\S]*?className="u1-character-features__preview-row"/,
+    /if \(compact\) \{[\s\S]*?className="u1-character-features__preview-row"/,
   )
   assert.match(
     features,
