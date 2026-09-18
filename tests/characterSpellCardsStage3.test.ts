@@ -40,6 +40,6 @@ test("spell stage 3 keeps stage 2 two-column geometry and class theming", () => 
   assert.match(styles, /\.u1-character-spells__expanded-grid[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/)
   assert.match(styles, /var\(--cv-spell-accent\)/)
   assert.match(styles, /var\(--cv-spell-accent-soft\)/)
-  assert.match(spells, /className="u1-character-spells__preview-card"/)
-  assert.match(spells, /className="u1-character-spells__spell-card"/)
+  assert.match(spells, /u1-character-spells__preview-card/)
+  assert.match(spells, /u1-character-spells__spell-card/)
 })

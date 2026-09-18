@@ -106,23 +106,23 @@ test("spells delegate preparation semantics to tested helpers", () => {
   assert.match(spells, /resolveSpellPreparationState\(spell\.accesses\)/)
   assert.match(spells, /hasMutablePreparationWorkflow\(contract\.spells\)/)
   assert.match(spells, /spellPreparationRank\(left\.preparation\)/)
-  assert.match(spells, /hasPreparationWorkflow &&/)
+  assert.match(spells, /usesPreparation[\s\S]*?spellPreparationRank/)
 })
 
-test("spell levels delegate standard-range checks and preserve the Прочее fallback", () => {
+test("spell levels delegate standard-range checks and preserve the explicit out-of-range fallback", () => {
   assert.doesNotMatch(
     spells,
     /Math\.max\(0, Math\.min\(9, spell\.identity\.level\)\)/,
   )
   assert.match(spells, /isStandardSpellLevel/)
-  assert.match(spells, /data-level="other"/)
-  assert.match(spells, />ПРОЧЕЕ</)
+  assert.match(spells, /className="u1-character-spells__unknown-levels"/)
+  assert.match(spells, /\.filter\(\(spell\) => !isStandardSpellLevel\(spell\.level\)\)/)
 })
 
 test("spell schools and multiclass source labels delegate to tested normalization helpers", () => {
   assert.match(spells, /normalizeSpellSchool/)
   assert.match(spells, /stableUniqueSortedStrings/)
-  assert.match(spells, /summarizeSourceNames/)
+  assert.match(spells, /sourceNames:\s*accessSourceNames\(spell\.accesses\)/)
 })
 
 
