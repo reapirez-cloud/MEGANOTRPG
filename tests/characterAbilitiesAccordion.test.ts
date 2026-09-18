@@ -143,14 +143,14 @@ test("stage 3 keeps the reference hierarchy responsive without switching to a di
   )
   assert.match(
     styles,
-    /\.u1-character-features__preview-row\s*\{[\s\S]*?min-height: 24px/,
+    /\.u1-character-features__preview-row\s*\{[\s\S]*?min-height: 22px/,
   )
   assert.match(
     styles,
-    /@media \(max-width: 359px\)[\s\S]*?\.u1-character-features__preview-row[\s\S]*?grid-template-columns: 20px/,
+    /@media \(max-width: 359px\)[\s\S]*?\.u1-character-features__preview-row[\s\S]*?grid-template-columns: 17px/,
   )
   assert.match(
     styles,
-    /\.u1-character-features__panel-chevron-button\s*\{[\s\S]*?height: 44px/,
+    /\.u1-character-features__panel-chevron-button\s*\{[\s\S]*?height: 40px/,
   )
 })
