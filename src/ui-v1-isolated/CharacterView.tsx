@@ -938,6 +938,7 @@ export default function CharacterView({
       ) : section === "spells" ? (
         <CharacterSheetSpells
           characterId={characterId}
+          classKey={classKey}
           contract={runtime.snapshot?.contract || null}
           legacySpells={control.spells}
           runtimeError={runtime.error || undefined}
