@@ -73,6 +73,19 @@ type PreparationMutationResult = {
   error?: string
 }
 
+type SpellClassProfile = {
+  preparationRefresh?: string | null
+  selectionMode?: string | null
+  progression?: string | null
+}
+
+type GrimoireManagementMode =
+  | "direct"
+  | "long_rest"
+  | "level_choice"
+  | "pact_magic"
+  | "spellbook"
+
 const preparationLabels: Record<PreparationState, string> = {
   always_prepared: "Всегда подготовлено",
   prepared: "Подготовлено",
@@ -242,6 +255,42 @@ function initialSpellCircleLevel(
   return levels.find((level) => level > 0) ?? levels[0] ?? null
 }
 
+function grimoireManagementMode(
+  classKey: string,
+  profile: SpellClassProfile | undefined,
+  hasPactSlots: boolean,
+): GrimoireManagementMode {
+  if (classKey === "wizard") return "spellbook"
+  if (profile?.preparationRefresh === "long_rest") return "long_rest"
+  if (profile?.progression === "pact_magic" || hasPactSlots) return "pact_magic"
+  if (profile?.selectionMode === "persistent_on_level_change") return "level_choice"
+  return "direct"
+}
+
+function fixedPreparationLabel(
+  view: SpellView,
+  mode: GrimoireManagementMode,
+) {
+  if (view.level === 0) return "Всегда доступно"
+
+  if (mode === "pact_magic") return "Магия договора"
+  if (mode === "level_choice") return "Выбрано при развитии"
+
+  if (view.preparation === "always_prepared") return "Всегда подготовлено"
+  if (view.preparation === "prepared") return "Подготовлено"
+  if (view.preparation === "unprepared") return "Не подготовлено"
+  return "Подготовка не требуется"
+}
+
+function grimoireOpenHint(mode: GrimoireManagementMode) {
+  if (mode === "spellbook") return "Книга заклинаний, фильтры и подготовка"
+  if (mode === "long_rest") return "Фильтры и подготовка после долгого отдыха"
+  if (mode === "pact_magic") return "Магия договора, фильтры и подробности"
+  if (mode === "level_choice") return "Выбранные заклинания, фильтры и подробности"
+  return "Все заклинания круга, фильтры и подготовка"
+}
+
+
 function castingTimeLabel(view: SpellView) {
   const raw =
     view.catalog?.casting_time?.trim() ||
@@ -374,6 +423,7 @@ function detailBody(view: SpellView) {
 export default function CharacterSheetSpells({
   characterId,
   classKey,
+  classSpellProfile,
   contract,
   legacySpells,
   runtimeError,
@@ -386,6 +436,7 @@ export default function CharacterSheetSpells({
 }: {
   characterId: string
   classKey?: string
+  classSpellProfile?: SpellClassProfile
   contract: ResolvedCharacterContract | null
   legacySpells: CharacterSpell[]
   runtimeError?: string
@@ -533,15 +584,13 @@ export default function CharacterSheetSpells({
 
   const pactLevel = contract ? pactSlotLevel(contract) : null
   const hasSpellSlots = slotByLevel.size > 0 || Boolean(pactSlots)
-
-  const schoolOptions = useMemo(
-    () =>
-      [...new Set(views.map((view) => view.school).filter(Boolean))]
-        .sort((left, right) =>
-          schoolLabel(left).localeCompare(schoolLabel(right), "ru"),
-        ),
-    [views],
+  const grimoireMode = grimoireManagementMode(
+    displayClassKey,
+    classSpellProfile,
+    Boolean(pactSlots),
   )
+  const preparationManagedByRest =
+    grimoireMode === "long_rest" || grimoireMode === "spellbook"
 
   useEffect(() => {
     if (!contract) return
@@ -614,6 +663,7 @@ export default function CharacterSheetSpells({
   }
 
   const openGrimoire = (level: number) => {
+    resetGrimoireFilters()
     setExpandedLevel(level)
     setGrimoireLevel(level)
     setPreparationError("")
@@ -847,7 +897,11 @@ export default function CharacterSheetSpells({
     const preparationSpellId = mutablePreparationSpellId(view)
     const preparationBusy = preparationSpellId === preparationBusyId
     const mutable = Boolean(preparationSpellId)
-    const editable = mutable && Boolean(onSetPrepared) && canEditPreparation
+    const editable =
+      mutable &&
+      grimoireMode === "direct" &&
+      Boolean(onSetPrepared) &&
+      canEditPreparation
 
     if (grimoire) {
       return (
@@ -857,7 +911,7 @@ export default function CharacterSheetSpells({
           data-preparation={view.preparation}
         >
           {trigger}
-          {mutable ? (
+          {mutable && grimoireMode === "direct" ? (
             <button
               type="button"
               className="u1-character-spells__prepare-toggle"
@@ -874,12 +928,12 @@ export default function CharacterSheetSpells({
                   : "Подготовить"}
             </button>
           ) : (
-            <span className="u1-character-spells__prepare-fixed">
-              {view.preparation === "always_prepared"
-                ? "Всегда подготовлено"
-                : view.preparation === "not_required"
-                  ? "Подготовка не требуется"
-                  : "Управляется источником"}
+            <span
+              className="u1-character-spells__prepare-fixed"
+              data-management-mode={grimoireMode}
+              data-current-preparation={view.preparation}
+            >
+              {fixedPreparationLabel(view, grimoireMode)}
             </span>
           )}
         </div>
@@ -903,6 +957,7 @@ export default function CharacterSheetSpells({
       ref={rootRef}
       data-class-key={displayClassKey || undefined}
       data-character-level={contract.level}
+      data-grimoire-management={grimoireMode}
     >
       {hasSpellSlots && (
         <section
@@ -1038,9 +1093,28 @@ export default function CharacterSheetSpells({
         const grimoireSpells = grimoireOpen
           ? filteredGrimoireSpells(allSpells)
           : allSpells
-        const levelHasPreparation = allSpells.some(
-          (view) => mutablePreparationSpellId(view) !== null,
+        const levelHasPreparation =
+          (preparationManagedByRest &&
+            allSpells.some((view) => view.preparation !== "not_required")) ||
+          (grimoireMode === "direct" &&
+            allSpells.some((view) => mutablePreparationSpellId(view) !== null))
+        const schoolOptions = [...new Set(
+          allSpells.map((view) => view.school).filter(Boolean),
+        )].sort((left, right) =>
+          schoolLabel(left).localeCompare(schoolLabel(right), "ru"),
         )
+        const grimoireContext =
+          grimoireMode === "spellbook"
+            ? "Книга заклинаний · подготовка меняется после долгого отдыха через чат"
+            : grimoireMode === "long_rest"
+              ? "Подготовка меняется после долгого отдыха через чат"
+              : grimoireMode === "pact_magic"
+                ? slotPresentation.pact && slot.max > 0
+                  ? `Магия договора · ${slot.current}/${slot.max} · ячейка ${roman[slotPresentation.castLevel] || slotPresentation.castLevel} круга`
+                  : "Магия договора · выбранные заклинания"
+                : grimoireMode === "level_choice"
+                  ? "Список меняется при развитии персонажа"
+                  : "Подготовку доступных заклинаний можно менять здесь"
         const preview = allSpells.slice(0, 3)
         const remaining = Math.max(0, allSpells.length - preview.length)
 
@@ -1117,12 +1191,20 @@ export default function CharacterSheetSpells({
                       onClick={() => {
                         setGrimoireLevel(null)
                         setPreparationError("")
+                        resetGrimoireFilters()
                       }}
                       aria-label="Закрыть гримуар"
                     >
                       <span aria-hidden="true" />
                     </button>
                   </header>
+
+                  <div
+                    className="u1-character-spells__grimoire-context"
+                    data-mode={grimoireMode}
+                  >
+                    {grimoireContext}
+                  </div>
 
                   <div className="u1-character-spells__grimoire-filters">
                     {levelHasPreparation && (
@@ -1204,7 +1286,7 @@ export default function CharacterSheetSpells({
                     <span className="u1-character-spells__grimoire-book" aria-hidden="true" />
                     <span>
                       <strong>Открыть в гримуаре</strong>
-                      <small>Все заклинания круга, фильтры и подготовка</small>
+                      <small>{grimoireOpenHint(grimoireMode)}</small>
                     </span>
                   </button>
                 </div>
