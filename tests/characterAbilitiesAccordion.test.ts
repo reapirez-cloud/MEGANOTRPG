@@ -117,16 +117,17 @@ test("stage 3 renders real collapsed previews, computed more count and in-place 
   assert.match(features, /Открыто: \{group\.totalCount\} из \{group\.totalCount\}/)
 })
 
-test("stage 3 rows remain presentation-only until the Snake/detail stage", () => {
-  assert.doesNotMatch(features, /SnakeTrigger|useSnake/)
-  assert.doesNotMatch(features, /openSurface|inspect-feature|Заглушить|Включить/)
+test("stage 3 accordion structure survives the later Snake/detail wiring", () => {
+  assert.match(features, /SnakeTrigger/)
+  assert.match(features, /snake\.openSurface\(detail\)/)
+  assert.doesNotMatch(features, /Заглушить|Включить/)
   assert.match(features, /data-suppressed=\{row\.status === "suppressed"/)
 })
 
 test("stage 3 keeps the reference hierarchy responsive without switching to a different mobile structure", () => {
   assert.match(
     styles,
-    /\.u1-character-features__panel-toggle\s*\{[\s\S]*?grid-template-columns:/,
+    /\.u1-character-features__panel-head\s*\{[\s\S]*?grid-template-columns:/,
   )
   assert.match(
     styles,
@@ -134,7 +135,7 @@ test("stage 3 keeps the reference hierarchy responsive without switching to a di
   )
   assert.match(
     styles,
-    /@media \(max-width: 359px\)[\s\S]*?\.u1-character-features__panel-toggle[\s\S]*?grid-template-columns:/,
+    /@media \(max-width: 359px\)[\s\S]*?\.u1-character-features__panel-head[\s\S]*?grid-template-columns:/,
   )
   assert.match(
     styles,
