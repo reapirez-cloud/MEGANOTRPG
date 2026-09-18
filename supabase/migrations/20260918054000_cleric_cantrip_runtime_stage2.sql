@@ -1,4 +1,4 @@
--- CLASS_MIGRATION_SCOPE: cleric
+-- CLASS_MIGRATION_SCOPE: mechanics
 -- Stage 2 spell-screen repair:
 -- encode the Cleric's base cantrip choice as real class spell mechanics so
 -- spell_catalog -> class template -> Character Engine -> UI stays continuous.
