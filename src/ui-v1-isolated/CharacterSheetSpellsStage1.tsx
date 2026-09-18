@@ -1177,6 +1177,7 @@ export default function CharacterSheetSpells({
                   className="u1-character-spells__grimoire-panel"
                   id={`u1-character-spells-content-${level}`}
                   data-grimoire-level={level}
+                  data-management-mode={grimoireMode}
                 >
                   <header className="u1-character-spells__grimoire-head">
                     <span className="u1-character-spells__grimoire-title">
