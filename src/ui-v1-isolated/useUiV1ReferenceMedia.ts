@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
-import {
-  uploadCampaignImage,
-  uploadCampaignUiIconDerivative,
-} from "../lib/mediaUpload"
+import { uploadCampaignImage } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
 import {
   parseMediaPresentation,
@@ -25,7 +22,6 @@ export type UiV1ReferenceMedia = {
   targetField: string
   assetId: string
   storagePath: string
-  uiStoragePath: string | null
   url: string | null
   presentation: MediaPresentation | null
 }
@@ -34,14 +30,8 @@ type ReferenceMediaRow = {
   target_field: string
   asset_id: string
   storage_path: string
-  ui_storage_path: string | null
-  ui_mime_type: string | null
-  ui_width: number | null
-  ui_height: number | null
   presentation: unknown
 }
-
-const uiDerivativeBackfillInFlight = new Set<string>()
 
 type MutationResult = { ok: boolean; error?: string }
 
@@ -83,49 +73,6 @@ function relevantReferenceSlot(value: string, classKey: string | null) {
   return true
 }
 
-function classIconReferenceSlot(value: string, classKey: string | null) {
-  if (!classKey) return false
-  return value.startsWith(`class:${classKey}:`) && iconReferenceSlot(value)
-}
-
-async function backfillUiDerivative(
-  row: ReferenceMediaRow,
-  campaignId: string,
-) {
-  if (uiDerivativeBackfillInFlight.has(row.asset_id)) return false
-  uiDerivativeBackfillInFlight.add(row.asset_id)
-
-  try {
-    const sourceUrl = await resolveCampaignMediaUrl(row.storage_path)
-    if (!sourceUrl) return false
-
-    const response = await fetch(sourceUrl)
-    if (!response.ok) return false
-    const source = await response.blob()
-
-    const derivative = await uploadCampaignUiIconDerivative(
-      source,
-      "reference-icons-ui",
-      campaignId,
-    )
-    if (!derivative.ok) return false
-
-    const { error } = await supabase.rpc("set_media_ui_derivative_v1", {
-      p_asset_id: row.asset_id,
-      p_storage_path: derivative.url,
-      p_mime_type: derivative.mimeType,
-      p_width: derivative.width,
-      p_height: derivative.height,
-    })
-
-    return !error
-  } catch {
-    return false
-  } finally {
-    uiDerivativeBackfillInFlight.delete(row.asset_id)
-  }
-}
-
 export function useUiV1ReferenceMedia(
   enabled = true,
   classKeyInput?: string | null,
@@ -153,38 +100,18 @@ export function useUiV1ReferenceMedia(
       return
     }
 
-    const rows = (data || []) as ReferenceMediaRow[]
     const next: Record<string, UiV1ReferenceMedia> = {}
-    const missingClassIconDerivatives: ReferenceMediaRow[] = []
-
     await Promise.all(
-      rows.map(async (row) => {
+      ((data || []) as ReferenceMediaRow[]).map(async (row) => {
         if (!validReferenceSlot(row.target_field)) return
         if (!relevantReferenceSlot(row.target_field, classKey)) return
 
-        const isIcon = iconReferenceSlot(row.target_field)
-        const displayPath = isIcon
-          ? row.ui_storage_path
-          : row.storage_path
-        const resolvedUrl = displayPath
-          ? await resolveCampaignMediaUrl(displayPath)
-          : null
-
-        if (
-          isIcon &&
-          !row.ui_storage_path &&
-          scope.isOwner &&
-          classIconReferenceSlot(row.target_field, classKey)
-        ) {
-          missingClassIconDerivatives.push(row)
-        }
-
+        const resolvedUrl = await resolveCampaignMediaUrl(row.storage_path)
         next[row.target_field] = {
           targetField: row.target_field,
           assetId: row.asset_id,
           storagePath: row.storage_path,
-          uiStoragePath: row.ui_storage_path,
-          url: resolvedUrl,
+          url: resolvedUrl || row.storage_path,
           presentation: parseMediaPresentation(row.presentation),
         }
       }),
@@ -193,22 +120,7 @@ export function useUiV1ReferenceMedia(
     setItems(next)
     setError(null)
     setLoading(false)
-
-    if (missingClassIconDerivatives.length > 0 && scope.isOwner) {
-      window.setTimeout(() => {
-        void (async () => {
-          let changed = false
-          for (const row of missingClassIconDerivatives.slice(0, 2)) {
-            changed = (await backfillUiDerivative(
-              row,
-              scope.campaignId as string,
-            )) || changed
-          }
-          if (changed) void load()
-        })()
-      }, 1800)
-    }
-  }, [classKey, enabled, scope.campaignId, scope.isOwner])
+  }, [classKey, enabled, scope.campaignId])
 
   useEffect(() => {
     if (!enabled) {
@@ -328,23 +240,6 @@ export function useUiV1ReferenceMedia(
         }
 
         assetId = String(registered)
-
-        if (isIcon) {
-          const derivative = await uploadCampaignUiIconDerivative(
-            file,
-            "reference-icons-ui",
-            scope.campaignId,
-          )
-          if (derivative.ok) {
-            await supabase.rpc("set_media_ui_derivative_v1", {
-              p_asset_id: assetId,
-              p_storage_path: derivative.url,
-              p_mime_type: derivative.mimeType,
-              p_width: derivative.width,
-              p_height: derivative.height,
-            })
-          }
-        }
       }
 
       if (!assetId || !storagePath) {
