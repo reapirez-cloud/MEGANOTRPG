@@ -20,7 +20,7 @@ const classKeys = [
 async function openFixture(page: Page, width: number, classKey = "cleric") {
   await page.setViewportSize({ width, height: 844 })
   await page.goto(`/e2e-character-spell-panels-stage6.html?class=${classKey}`)
-  await expect(page.locator(".u1-character-spells")).toBeVisible()
+  await expect(page.locator('[data-spell-layout="stage2"]')).toBeVisible()
 }
 
 test("Stage 6 keeps the spell screen inside 320/360/390/430 without horizontal drift", async ({ page }) => {
@@ -28,7 +28,7 @@ test("Stage 6 keeps the spell screen inside 320/360/390/430 without horizontal d
     await openFixture(page, width)
 
     const metrics = await page.evaluate(() => {
-      const root = document.querySelector<HTMLElement>(".u1-character-spells")
+      const root = document.querySelector<HTMLElement>('[data-spell-layout="stage2"]')
       const sheet = document.querySelector<HTMLElement>(".u1-character-sheet")
       const slots = Array.from(document.querySelectorAll<HTMLElement>(".u1-character-spells__slot"))
       const expanded = document.querySelector<HTMLElement>(".u1-character-spells__expanded-grid")
@@ -102,7 +102,7 @@ test("Stage 6 keeps the 390px reference rhythm compact and two-column", async ({
   await openFixture(page, 390)
 
   const metrics = await page.evaluate(() => {
-    const root = document.querySelector<HTMLElement>(".u1-character-spells")
+    const root = document.querySelector<HTMLElement>('[data-spell-layout="stage2"]')
     const slotsPanel = document.querySelector<HTMLElement>(".u1-character-spells__slots-panel")
     const firstHead = document.querySelector<HTMLElement>(".u1-character-spells__circle-head")
     const grid = document.querySelector<HTMLElement>(".u1-character-spells__expanded-grid")
@@ -148,7 +148,7 @@ test("Stage 6 collapses the grimoire to one usable column at 320px", async ({ pa
   await expect(page.locator(".u1-character-spells__grimoire-panel")).toBeVisible()
 
   const metrics = await page.evaluate(() => {
-    const root = document.querySelector<HTMLElement>(".u1-character-spells")
+    const root = document.querySelector<HTMLElement>('[data-spell-layout="stage2"]')
     const list = document.querySelector<HTMLElement>(".u1-character-spells__grimoire-list")
     const panel = document.querySelector<HTMLElement>(".u1-character-spells__grimoire-panel")
     if (!root || !list || !panel) throw new Error("320px grimoire surface missing")
