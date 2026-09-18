@@ -704,7 +704,7 @@ export default function CharacterView({
       return { type: "character-effect", id: selectedEffectId }
     }
     if (section === "features" && selectedFeatureId) {
-      return { type: "character-feature", id: selectedFeatureId }
+      return { type: "character-ability", id: selectedFeatureId }
     }
     if (section === "spells" && selectedSpellId) {
       return { type: "character-spell", id: selectedSpellId }
