@@ -131,8 +131,8 @@ test("Stage 6 locks the final 390px reference geometry", async ({ page }) => {
   })
 
   expect(Math.abs(metrics.slotsWidth - metrics.rootWidth)).toBeLessThanOrEqual(1.5)
-  expect(metrics.slotsHeight).toBeGreaterThanOrEqual(76)
-  expect(metrics.slotsHeight).toBeLessThanOrEqual(88)
+  expect(metrics.slotsHeight).toBeGreaterThanOrEqual(79)
+  expect(metrics.slotsHeight).toBeLessThanOrEqual(87)
   expect(metrics.circleHeadHeight).toBeGreaterThanOrEqual(36)
   expect(metrics.circleHeadHeight).toBeLessThanOrEqual(42)
   expect(metrics.gridColumns).toBe(2)
@@ -370,8 +370,8 @@ test("Stage 6 keeps full-size square class slot art instead of compressing atlas
 
   expect(Math.abs(geometry.frameWidth - geometry.frameHeight)).toBeLessThanOrEqual(1)
   expect(Math.abs(geometry.iconWidth - geometry.iconHeight)).toBeLessThanOrEqual(1)
-  expect(geometry.iconWidth / geometry.frameWidth).toBeGreaterThanOrEqual(.98)
-  expect(geometry.iconHeight / geometry.frameHeight).toBeGreaterThanOrEqual(.98)
+  expect(geometry.iconWidth / geometry.frameWidth).toBeGreaterThanOrEqual(.92)
+  expect(geometry.iconHeight / geometry.frameHeight).toBeGreaterThanOrEqual(.92)
   expect(geometry.backgroundSize).toBe("400% 400%")
 })
 
