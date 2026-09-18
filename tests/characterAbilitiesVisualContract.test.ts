@@ -75,3 +75,21 @@ test("repository contract limits the external reference to panel geometry", () =
   )
   assert.match(contract, /Stage 1 acceptance/)
 })
+
+
+test("abilities v2 stage 2 keeps more-count and chevron in a compact right-side tail", () => {
+  assert.match(
+    features,
+    /className="u1-character-features__preview"[\s\S]*?preview\.rows\.map/,
+  )
+  assert.match(
+    features,
+    /className="u1-character-features__panel-tail"[\s\S]*?className="u1-character-features__panel-more"[\s\S]*?ещё \{preview\.hiddenCount\}[\s\S]*?className="u1-character-features__panel-chevron-button"/,
+  )
+  assert.match(
+    styles,
+    /\.u1-character-features__panel-tail\s*\{[\s\S]*?display:\s*inline-flex[\s\S]*?justify-content:\s*flex-end/,
+  )
+  assert.match(contract, /Status: \*\*ACTIVE — Stage 2 locked\*\*/)
+  assert.match(contract, /## Stage 2 acceptance/)
+})
