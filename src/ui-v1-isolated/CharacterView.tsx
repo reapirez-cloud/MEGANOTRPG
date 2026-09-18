@@ -140,6 +140,25 @@ export default function CharacterView({
     [control.assignments, control.character?.characterClass, control.templates],
   )
 
+  const classSpellProfile = useMemo(() => {
+    const assignedClass = control.assignments
+      .map((assignment) =>
+        control.templates.find((template) => template.id === assignment.template_id) || null,
+      )
+      .find((template) => template?.kind === "class")
+    const meta = assignedClass?.rules_meta || {}
+    const metaText = (key: string) => {
+      const value = meta[key]
+      return typeof value === "string" && value.trim() ? value.trim() : null
+    }
+
+    return {
+      preparationRefresh: metaText("spell_preparation_refresh"),
+      selectionMode: metaText("spell_selection_mode"),
+      progression: metaText("spell_progression"),
+    }
+  }, [control.assignments, control.templates])
+
   const identityMeta = useMemo(() => {
     const subclass = control.assignments
       .map((assignment) =>
@@ -939,6 +958,7 @@ export default function CharacterView({
         <CharacterSheetSpells
           characterId={characterId}
           classKey={classKey}
+          classSpellProfile={classSpellProfile}
           contract={runtime.snapshot?.contract || null}
           legacySpells={control.spells}
           runtimeError={runtime.error || undefined}
