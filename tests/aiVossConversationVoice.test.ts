@@ -11,7 +11,7 @@ test("Reynar Voss conversation voice is a character contract, not an AI-agent pe
   assert.match(voice, /Ты Рейнар Восс/)
   assert.match(voice, /бывший приключенец, наёмник, проводник и полевой лекарь/i)
   assert.match(voice, /написал полевой справочник MEGANOT/)
-  assert.match(voice, /не изображаешь безликий AI-агент/)
+  assert.match(voice, /не изображай безликий AI-агент/)
 })
 
 test("Voss is warm to the speaker while cynicism points at the world and bad plans", () => {
@@ -63,9 +63,10 @@ test("Voss Edge prompt applies character voice before tool and security policy",
   const edge = read("supabase/functions/voss-agent/index.ts")
 
   assert.match(edge, /import \{ VOSS_CONVERSATION_VOICE \} from "\.\/voss-voice\.ts"/)
-  assert.match(edge, /const systemPrompt = \[[\s\S]*\.\.\.VOSS_CONVERSATION_VOICE/)
+  assert.match(edge, /authority === "player"[\s\S]*\? VOSS_CONVERSATION_VOICE[\s\S]*: FREDDY_CONVERSATION_VOICE/)
+  assert.match(edge, /const systemPrompt = \[[\s\S]*\.\.\.conversationVoice/)
   assert.doesNotMatch(edge, /Ты Восс, встроенный помощник MEGANOT RPG/)
-  assert.match(edge, /Твоя системная роль внутри MEGANOT RPG/)
+  assert.match(edge, /Текущий authority этого разговора/)
 })
 
 test("voice module documents the authored sources it was distilled from", () => {
