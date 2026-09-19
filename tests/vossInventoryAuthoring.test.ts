@@ -18,7 +18,7 @@ const contract = fs.readFileSync("docs/INVENTORY_PRODUCT_CONTRACT.md", "utf8")
 
 test("Voss receives the physical item packing policy in the live system prompt", () => {
   assert.match(vossIndex, /VOSS_INVENTORY_AUTHORING_RULES/)
-  assert.match(vossIndex, /\.\.\.VOSS_INVENTORY_AUTHORING_RULES/)
+  assert.match(vossIndex, /inventoryWorkflowRequested \? VOSS_INVENTORY_AUTHORING_RULES : \[\]/)
   assert.match(draftTools, /payload\.data\.inventory_profile/)
 })
 
