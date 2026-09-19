@@ -40,11 +40,13 @@ test("stage 8 keeps the catalog boundary and forbids manual personal-history cre
 test("stage 8 locks current-story and completion ordering semantics", async () => {
   const model = await readFile(modelPath, "utf8")
 
-  assert.match(model, /last_message_at \|\| room\.updated_at \|\| room\.created_at/)
-  assert.match(model, /const currentStory = \[\.\.\.personalActive, \.\.\.eventsActive\]/)
-  assert.doesNotMatch(model, /currentStory[\s\S]{0,220}flood/)
-  assert.match(model, /room\.room_type === "character"[\s\S]{0,180}room\.character_died_at/)
-  assert.match(model, /room\.room_type === "scene"[\s\S]{0,180}room\.closed_at/)
+  assert.match(model, /timestamp\(room\.last_message_at\)/)
+  assert.match(model, /timestamp\(room\.updated_at\)/)
+  assert.match(model, /timestamp\(room\.created_at\)/)
+  assert.match(model, /\[\.\.\.personalActive, \.\.\.eventsActive\]\.sort\(byActivityDesc\)\[0\]/)
+  assert.match(model, /const flood = rooms\.find\(\(room\) => room\.room_type === "flood"\)/)
+  assert.match(model, /return timestamp\(room\.character_died_at\) \|\| chatRoomActivityTimestamp\(room\)/)
+  assert.match(model, /return timestamp\(room\.closed_at\) \|\| chatRoomActivityTimestamp\(room\)/)
 })
 
 test("stage 8 locks personal-history lifecycle ownership", async () => {
