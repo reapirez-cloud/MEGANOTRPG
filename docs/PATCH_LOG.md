@@ -25,6 +25,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added `docs/ABILITIES_VISUAL_REWORK_CONTRACT.md` to lock ownership for the v2 presentation pass: CharacterSheet keeps the masthead/art/background, Character+Spells remain the only visual-language source through shared `--cv-*` tokens, and the Abilities rewrite is presentation-only over the already-certified read-model/Snake/suppression mechanics.
 ### Tests / verification
 
+- Abilities v2 Stage 4 full CI passed on run `35422837517`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully.
 - Extended abilities accordion/visual regressions to lock compact expanded rows, single-line descriptions, same-panel expansion, narrow-screen sizing and the absence of nested expanded-card surfaces.
 - Abilities v2 Stage 3 full CI passed on run `35422578313`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully.
 - Extended the abilities visual/panel regressions to require the shared Spells surface recipe, shared class-accent tokens and absence of abilities-only skin variables or the superseded custom radial panel glow.
