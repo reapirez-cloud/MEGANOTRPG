@@ -569,33 +569,6 @@ export function AIProvider({ children }: { children: ReactNode }) {
     }
   }, [activeThreadId, campaignId, loadConversationFor, userId])
 
-  useEffect(() => {
-    if (!campaignId || !userId || !activeThreadId || !pendingReply) return
-
-    const poll = async () => {
-      try {
-        const loadedThreadId =
-          await loadConversationFor(campaignId, userId, activeThreadId)
-        await loadJobsFor(campaignId, userId, loadedThreadId)
-      } catch {
-        // A later poll or the next app open reconstructs the same server state.
-      }
-    }
-
-    const timer = window.setInterval(() => {
-      void poll()
-    }, 2200)
-
-    return () => window.clearInterval(timer)
-  }, [
-    activeThreadId,
-    campaignId,
-    loadConversationFor,
-    loadJobsFor,
-    pendingReply,
-    userId,
-  ])
-
   const loadDraftsFor = useCallback(async (nextCampaignId: string) => {
     const { data, error: draftError } = await supabase
       .from("ai_drafts")
@@ -738,6 +711,33 @@ export function AIProvider({ children }: { children: ReactNode }) {
       )
     }
   }, [activeThreadId, campaignId, loadJobsFor, userId])
+
+  useEffect(() => {
+    if (!campaignId || !userId || !activeThreadId || !pendingReply) return
+
+    const poll = async () => {
+      try {
+        const loadedThreadId =
+          await loadConversationFor(campaignId, userId, activeThreadId)
+        await loadJobsFor(campaignId, userId, loadedThreadId)
+      } catch {
+        // A later poll or the next app open reconstructs the same server state.
+      }
+    }
+
+    const timer = window.setInterval(() => {
+      void poll()
+    }, 2200)
+
+    return () => window.clearInterval(timer)
+  }, [
+    activeThreadId,
+    campaignId,
+    loadConversationFor,
+    loadJobsFor,
+    pendingReply,
+    userId,
+  ])
 
   const hasActiveJobs = useMemo(
     () => jobs.some((job) =>
