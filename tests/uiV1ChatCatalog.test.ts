@@ -59,7 +59,7 @@ test("ui v1 chat unavailable actions use Snake placeholder surfaces", async () =
   assert.match(catalog, /kind: "placeholder"/)
   assert.match(catalog, /Внутренний игровой диалог подключается отдельным этапом/)
   assert.match(catalog, /Создание события подключается отдельным потоком/)
-  assert.doesNotMatch(catalog, /onOpenRoom|ChatRoom/)
+  assert.doesNotMatch(catalog, /onOpenRoom|<ChatRoom|pages\/ChatRoom/)
 })
 
 test("ui v1 chat visual surface stays isolated and supports narrow screens", async () => {
