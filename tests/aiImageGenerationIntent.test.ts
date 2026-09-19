@@ -65,4 +65,8 @@ test("generate_image is not published to the model before explicit intent", () =
     edge,
     /imageGenerationRequested && round === 0[\s\S]*function: \{ name: "generate_image" \}/,
   )
+  assert.match(
+    edge,
+    /toolName === "generate_image" && !imageGenerationRequested[\s\S]*explicit_image_generation_command_required/,
+  )
 })
