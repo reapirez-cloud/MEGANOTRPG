@@ -88,7 +88,7 @@ function sourceSummary(group: CharacterAbilityGroup) {
   if (!group.sourceNames.length) {
     return group.key === "effect"
       ? "Активные состояния"
-      : "Источник не назначен"
+      : "Не назначено"
   }
 
   if (group.sourceNames.length <= 2) {
@@ -333,8 +333,11 @@ export default function CharacterSheetFeatures({
                       ))}
                     </span>
                   ) : (
-                    <span className="u1-character-features__empty-label">
-                      Нет умений
+                    <span
+                      className="u1-character-features__empty-label"
+                      aria-label="Нет доступных умений"
+                    >
+                      —
                     </span>
                   )}
 
