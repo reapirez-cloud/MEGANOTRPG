@@ -1355,6 +1355,11 @@
   border-left-color: rgba(207, 213, 216, 0.24);
   background: linear-gradient(90deg, rgba(195, 202, 205, 0.045), transparent);
 }
+.u1-agent-thinking { color: rgba(177, 185, 189, 0.46); }
+.u1-agent-attachments { border-top-color: rgba(195, 202, 205, 0.08); }
+.u1-agent-attachment strong { color: rgba(224, 228, 230, 0.72); }
+.u1-agent-attachment small { color: rgba(171, 179, 183, 0.4); }
+.u1-agent-attachment button { color: rgba(199, 205, 208, 0.44); }
 .u1-agent-composer {
   border-top-color: rgba(195, 202, 205, 0.11);
   background: rgba(7, 8, 9, 0.96);
