@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Chats Stage 6 activates the catalog controls: real text search across visible room metadata/previews, section filters including unread-only, inline `Все (N)` expansion/collapse, one shared room-dialog placeholder on tap, and a manager-only `+` that opens the event-creation placeholder without exposing personal-history creation.
 - Chats Stage 5 locks personal histories to character lifecycle: a PC owns one automatic personal history, death moves it to **Завершённые** and makes it read-only, and revival returns the same history to active without creating a replacement room.
 - Chats Stage 4 replaces placeholder-ish catalog copy with authoritative room state: hero status/access, visible World location, campaign day/period, real last-message preview/activity, personal-story preview/date, event availability, unread counts, and exact archive completion dates. Missing context is omitted instead of invented.
 - Chats Stage 3 rebuilds the landing-page geometry around the approved render without copying its skin: compact catalog toolbar, panoramic **Текущая история**, a dedicated thin **Флуд** row, portrait-card horizontal **Личные истории**, richer vertical **События**, and quieter compact **Завершённые** rows. The removed `Новая история` card stays removed; GM/Admin only receive the dormant `+` geometry.
@@ -25,6 +26,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Applied and committed `chat_catalog_stage2_read_model`: `get_campaign_chat_rooms` now returns raw room lifecycle/activity timestamps (`created_at`, `updated_at`, `closed_at`, `character_died_at`, `last_message_at`) alongside the existing preview/unread data. `chat_rooms` and `characters` are now published to `supabase_realtime`, matching the subscriptions already used by the client for room closure and character death/revival refreshes.
 ### Runtime and architecture changes
 
+- Added a pure `catalogFilters.ts` view helper so filtering/search stays separate from the Stage 2 catalog read-model. Stage 6 remains non-mutating and deliberately does not invoke the retained `onOpenRoom` route contract or the existing ChatRoom implementation.
 - Catalog classification now treats a personal history as completed solely from the linked character's `life_state`; stale `room_state='closed'` metadata can no longer keep a revived character archived. Event completion remains room-state driven.
 - Added `catalogPresentation.ts` as the factual display layer for room status, access labels, World context, activity stamps and completion labels. `Chats.tsx` consumes this layer instead of hardcoding `Продолжается` or assuming room-local position for personal histories.
 - Chats Stage 3 is presentation-only over the Stage 2 read-model. Search/filter/create controls and every room surface are intentionally non-interactive; no ChatRoom navigation, room creation, RPC, lifecycle, RLS, Realtime or Supabase schema behavior changed.
@@ -34,6 +36,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Character-bound achievements are read as inspect-only presentation rows under `Особое`; they do not become a second mechanics source. Any mechanical achievement reward still requires a canonical character feature/runtime source. No database schema or RLS change was introduced.
 ### Tests / verification
 
+- Added Chats Stage 6 regressions for case-insensitive search, visible metadata/location matching, section and unread filters, inline expansion limits, manager-only creation stub, shared non-mutating room placeholder, and the continued no-ChatRoom boundary.
 - Added Chats Stage 5 regressions for new-PC projection, alive→dead archive transition, dead→alive restoration, stale closure immunity and the database guard against manually closing personal histories.
 - Added Chats Stage 4 regressions for real World-context omission/visibility, event access labels, death-vs-close completion semantics, factual previews, absence of fabricated chapter/episode labels, and Realtime refreshes for character position/location changes.
 - Added `chatCatalogStage3.test.ts` to lock the approved landing-page anatomy, panoramic hero ratio, circular personal-story media, distinct event/archive row densities, mobile breakpoints, no `Новая история`, and the no-premature-interaction boundary.

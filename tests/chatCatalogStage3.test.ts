@@ -8,7 +8,7 @@ const stylePath = new URL("../src/chats-v3.css", import.meta.url)
 test("stage 3 matches the approved chat landing-page anatomy without opening rooms", async () => {
   const source = await readFile(pagePath, "utf8")
 
-  assert.match(source, /data-chat-catalog-stage="4"/)
+  assert.match(source, /data-chat-catalog-stage="6"/)
   assert.match(source, /chat-catalog__toolbar/)
   assert.match(source, /aria-label="Поиск"/)
   assert.match(source, /aria-label="Фильтр"/)
@@ -36,11 +36,12 @@ test("stage 3 uses a panoramic hero, portrait story rail and two distinct list d
   assert.match(css, /@media \(max-width: 350px\)/)
 })
 
-test("stage 3 catalog tools are geometry placeholders, not premature interactions", async () => {
+test("stage 3 toolbar geometry survives later catalog interaction stages", async () => {
   const source = await readFile(pagePath, "utf8")
 
-  const disabledControls = source.match(/<button[^>]+disabled>/g) || []
-  assert.ok(disabledControls.length >= 2)
+  assert.match(source, /aria-label="Поиск"/)
+  assert.match(source, /aria-label="Фильтр"/)
+  assert.match(source, /chat-catalog__toolbar-add/)
   assert.match(source, /\{canManage && \(/)
-  assert.doesNotMatch(source, /setSearch|setFilter|createSceneRoom/)
+  assert.doesNotMatch(source, /onOpenRoom\s*\(/)
 })
