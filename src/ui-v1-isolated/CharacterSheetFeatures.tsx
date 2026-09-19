@@ -163,6 +163,10 @@ function AbilityRowIcon({
         />
       ) : visual.kind === "atlas" ? (
         <i className="u1-character-features__ability-icon-sprite" />
+      ) : visual.kind === "glyph" ? (
+        <span className="u1-character-features__ability-icon-glyph">
+          {visual.glyph}
+        </span>
       ) : (
         <AbilityGroupIcon group={row.group} />
       )}
