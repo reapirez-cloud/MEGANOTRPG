@@ -91,6 +91,22 @@ export const VOSS_MANAGER_TOOLS = [
   {
     type: "function",
     function: {
+      name: "delete_campaign_character",
+      description:
+        "GM/Admin only. Permanently delete a campaign or Workshop character when explicitly requested.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+        },
+        required: ["character_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_location",
       description:
         "GM/Admin only. Create a canonical location/zone in the campaign world. May be nested under an existing parent location.",
@@ -149,6 +165,22 @@ export const VOSS_MANAGER_TOOLS = [
           archived: { type: "boolean" },
         },
         required: ["location_id", "archived"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_location",
+      description:
+        "GM/Admin only. Permanently delete a location/zone when explicitly requested.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          location_id: { type: "string" },
+        },
+        required: ["location_id"],
       },
     },
   },
@@ -305,6 +337,32 @@ async function setCharacterLifeState(
   if (error) return { error: error.message }
   if (!data) return { not_found: true }
   return { character: data, canonical_state_changed: true }
+}
+
+async function deleteCampaignCharacter(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  if (!characterId) return { error: "character_id_required" }
+
+  const current = await readCharacter(context, characterId)
+  if (current.error) return { error: current.error }
+  if (!current.row) return { not_found: true }
+
+  const { error } = await managerClient(context)
+    .from("characters")
+    .delete()
+    .eq("campaign_id", context.campaignId)
+    .eq("id", characterId)
+
+  if (error) return { error: error.message }
+  return {
+    deleted: true,
+    character_id: characterId,
+    character_name: current.row.name,
+    canonical_state_changed: true,
+  }
 }
 
 async function setCharacterPublication(
@@ -466,6 +524,38 @@ async function updateLocation(
   return { location: data, canonical_state_changed: true }
 }
 
+async function deleteLocation(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const locationId = uuid(args.location_id)
+  if (!locationId) return { error: "location_id_required" }
+
+  const { data: current, error: readError } = await managerClient(context)
+    .from("locations")
+    .select("id,name")
+    .eq("campaign_id", context.campaignId)
+    .eq("id", locationId)
+    .maybeSingle()
+
+  if (readError) return { error: readError.message }
+  if (!current) return { not_found: true }
+
+  const { error } = await managerClient(context)
+    .from("locations")
+    .delete()
+    .eq("campaign_id", context.campaignId)
+    .eq("id", locationId)
+
+  if (error) return { error: error.message }
+  return {
+    deleted: true,
+    location_id: locationId,
+    location_name: current.name,
+    canonical_state_changed: true,
+  }
+}
+
 async function setLocationArchived(
   context: VossManagerToolContext,
   args: JsonRecord,
@@ -501,9 +591,11 @@ export async function executeVossManagerTool(
     if (name === "update_campaign_character") return await updateCampaignCharacter(context, args)
     if (name === "set_character_life_state") return await setCharacterLifeState(context, args)
     if (name === "set_character_publication") return await setCharacterPublication(context, args)
+    if (name === "delete_campaign_character") return await deleteCampaignCharacter(context, args)
     if (name === "create_location") return await createLocation(context, args)
     if (name === "update_location") return await updateLocation(context, args)
     if (name === "set_location_archived") return await setLocationArchived(context, args)
+    if (name === "delete_location") return await deleteLocation(context, args)
     return { error: "unknown_manager_tool" }
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error) }
