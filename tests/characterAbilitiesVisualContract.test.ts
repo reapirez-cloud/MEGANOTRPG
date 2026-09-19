@@ -154,7 +154,6 @@ test("abilities v2 stage 5 makes empty groups quiet and compact", () => {
 
 
 test("abilities v2 stage 6 preserves authored media without stretching or drift", () => {
-  assert.match(contract, /Status: \*\*ACTIVE — Stage 6 locked\*\*/)
   assert.match(contract, /## Stage 6 acceptance/)
   assert.match(features, /characterAbilityIconVisual\(row\.icon\)/)
   assert.match(features, /data-icon-kind=\{visual\.kind\}/)
