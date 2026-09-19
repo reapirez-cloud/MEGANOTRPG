@@ -139,6 +139,22 @@ export const VOSS_DRAFT_TOOLS = [
   {
     type: "function",
     function: {
+      name: "list_content_drafts",
+      description:
+        "List the current GM's own open AI drafts in this campaign. Use this before read_content_draft when the user refers to a draft by name or asks what is in Drafts. Drafts are private to their creator and are not canonical game state.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          query: { type: "string" },
+          limit: { type: "integer", minimum: 1, maximum: 30 },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "read_content_draft",
       description:
         "Read one existing GM-only AI draft before revising it. Returns the current revision, structured nodes, relations and validation warnings. This does not read canonical game state.",
@@ -670,6 +686,40 @@ function relationSignature(relation: DraftRelation) {
   ].join("|")
 }
 
+async function listContentDrafts(
+  context: VossDraftToolContext,
+  args: JsonObject,
+) {
+  const query = text(args.query, 120)
+  const rawLimit = Math.floor(Number(args.limit))
+  const limit = Number.isFinite(rawLimit)
+    ? Math.max(1, Math.min(30, rawLimit))
+    : 20
+
+  let request = context.admin
+    .from("ai_drafts")
+    .select("id,draft_type,title,summary,status,current_revision,created_at,updated_at")
+    .eq("campaign_id", context.campaignId)
+    .eq("created_by", context.userId)
+    .eq("status", "review")
+    .order("updated_at", { ascending: false })
+    .limit(limit)
+
+  if (query) {
+    const pattern = "%" + query.replace(/[%_]/g, " ") + "%"
+    request = request.or("title.ilike." + pattern + ",summary.ilike." + pattern)
+  }
+
+  const { data, error } = await request
+  if (error) return { error: error.message }
+
+  return {
+    drafts: data || [],
+    private_to_user: true,
+    canonical_state_changed: false,
+  }
+}
+
 async function loadDraft(
   context: VossDraftToolContext,
   draftId: string,
@@ -679,6 +729,7 @@ async function loadDraft(
     .select("id,campaign_id,created_by,agent_key,draft_type,title,summary,status,schema_version,current_revision,content,validation_warnings,created_at,updated_at")
     .eq("id", draftId)
     .eq("campaign_id", context.campaignId)
+    .eq("created_by", context.userId)
     .eq("status", "review")
     .maybeSingle()
 
@@ -938,6 +989,7 @@ async function reviseContentDraft(
 export function isVossDraftTool(name: string) {
   return (
     name === "propose_content_draft" ||
+    name === "list_content_drafts" ||
     name === "read_content_draft" ||
     name === "revise_content_draft"
   )
@@ -949,6 +1001,10 @@ export async function executeVossDraftTool(
   args: JsonObject,
 ) {
   if (!context.canManage) return { error: "GM authority required" }
+
+  if (name === "list_content_drafts") {
+    return listContentDrafts(context, args)
+  }
 
   if (name === "read_content_draft") {
     return readContentDraft(context, args)
