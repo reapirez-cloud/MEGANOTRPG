@@ -231,7 +231,7 @@ function groupFromSourceType(
     value.includes("background") ||
     value.includes("origin")
   ) return "background"
-  if (value.includes("feat")) return "feat"
+  if (value === "feat" || value === "character_feat") return "feat"
   if (
     value.includes("special") ||
     value === "character_feature" ||
