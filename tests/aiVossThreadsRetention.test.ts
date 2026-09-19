@@ -72,7 +72,7 @@ test("Voss minimises without cancelling work, uses app chat confirmation, and hi
   const css = read("src/ai/ai-voss.css")
 
   assert.match(shell, /data-busy=\{\(sending \|\| pendingReply\) \|\| undefined\}/)
-  assert.match(shell, /Восс работает в фоне/)
+  assert.match(shell, /\$\{assistantName\} работает в фоне/)
   assert.match(shell, /u1-agent-confirm/)
   assert.doesNotMatch(shell, /window\.confirm\(/)
   assert.doesNotMatch(shell, /Developer Mode|DEVELOPER RUN/)
