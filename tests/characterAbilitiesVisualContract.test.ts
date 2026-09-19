@@ -95,7 +95,6 @@ test("abilities v2 stage 2 keeps more-count and chevron in a compact right-side 
 
 
 test("abilities v2 stage 3 uses shared class tokens instead of an abilities-only skin", () => {
-  assert.match(contract, /Status: \*\*ACTIVE — Stage 3 locked\*\*/)
   assert.match(contract, /## Stage 3 acceptance/)
   assert.match(styles, /background:[\s\S]*?var\(--cv-surface-soft\)/)
   assert.match(styles, /border: 1px solid var\(--cv-accent-line\)/)
@@ -112,6 +111,7 @@ test("abilities v2 stage 3 uses shared class tokens instead of an abilities-only
 })
 
 test("abilities v2 stage 4 expanded state stays one panel instead of nesting cards", () => {
+  assert.match(contract, /Status: \*\*ACTIVE — Stage 4 locked\*\*/)
   assert.match(
     features,
     /<article[\s\S]*?className="u1-character-features__panel"[\s\S]*?<div[\s\S]*?className="u1-character-features__expanded"/,
