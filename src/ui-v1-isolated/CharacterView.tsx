@@ -13,7 +13,9 @@ import CharacterInventoryInterface from "./CharacterInventoryInterface"
 import CharacterSheetCore from "./CharacterSheetCore"
 import CharacterSheetFeatures from "./CharacterSheetFeatures"
 import { buildCharacterAbilitiesReadModel } from "./characterAbilitiesReadModel"
+import { buildCharacterProficienciesReadModel } from "./characterProficienciesReadModel"
 import CharacterSheetOverview from "./CharacterSheetOverview"
+import CharacterSheetProficiencies from "./CharacterSheetProficiencies"
 import CharacterSheetShell from "./CharacterSheetShell"
 import CharacterSheetSpells from "./CharacterSheetSpells"
 import { characterSheetPortraitFrameUrl } from "./characterSheetVisualAssets"
@@ -51,6 +53,7 @@ import "./character-sheet-header-stage3.css"
 import "./character-sheet-core.css"
 import "./character-sheet-features.css"
 import "./character-sheet-overview.css"
+import "./character-sheet-proficiencies.css"
 import "./character-sheet-spells.css"
 import "./character-inventory-interface.css"
 
@@ -170,6 +173,16 @@ export default function CharacterView({
     runtime.templates.bundles,
     runtime.templates.suppressions.sourceIds,
   ])
+
+  const proficienciesReadModel = useMemo(() => {
+    const snapshot = runtime.snapshot
+    if (!snapshot) return null
+
+    return buildCharacterProficienciesReadModel({
+      contract: snapshot.contract,
+      legacy: control.sheet,
+    })
+  }, [runtime.snapshot, control.sheet])
 
   useEffect(() => {
     setAuxiliaryEnabled(false)
@@ -1013,6 +1026,11 @@ export default function CharacterView({
             setEntityFocus(null)
           }}
           onSetSuppressed={runtime.templates.suppressions.setSuppressed}
+        />
+      ) : section === "proficiencies" ? (
+        <CharacterSheetProficiencies
+          model={proficienciesReadModel}
+          runtimeError={runtime.error || undefined}
         />
       ) : section === "spells" ? (
         <CharacterSheetSpells
