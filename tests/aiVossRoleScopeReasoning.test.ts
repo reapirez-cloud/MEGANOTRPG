@@ -11,6 +11,8 @@ test("DeepSeek and Grok use their highest advertised reasoning effort", () => {
   assert.match(gateway, /deepseek-v4\.1-flash"[\s\S]*return "max"/)
   assert.match(gateway, /grok-4\.6"[\s\S]*return "xhigh"/)
   assert.match(gateway, /reasoning_effort/)
+  assert.match(gateway, /disableReasoningEffort/)
+  assert.match(gateway, /timeoutMs/)
 })
 
 test("Voss stays in human character instead of narrating AI internals", () => {
@@ -32,7 +34,7 @@ test("Voss runtime has no mechanics authoring tools or mechanics route", () => {
   assert.doesNotMatch(edge, /executeVossMechanicsTool/)
   assert.doesNotMatch(edge, /isVossMechanicsTool/)
   assert.match(edge, /isMechanicsAuthoringRequest/)
-  assert.match(edge, /!mechanicsAuthoringRequested \? VOSS_DRAFT_TOOLS/)
+  assert.match(edge, /const scopedDraftTools[\s\S]*!mechanicsAuthoringRequested/)
   assert.doesNotMatch(router, /\| "mechanics_compile"/)
   assert.doesNotMatch(router, /return "mechanics_compile"/)
   assert.doesNotMatch(shell, /MECHANICS COMPILER/)
@@ -62,7 +64,7 @@ test("Voss can inspect the visible MEGANOT campaign surface and chats", () => {
   assert.match(reads, /\.from\("achievements"\)/)
   assert.match(reads, /\.from\("feed_items"\)/)
   assert.match(reads, /\.from\("campaign_art_items"\)/)
-  assert.match(edge, /Если человек говорит, что потерялся/)
+  assert.match(edge, /readWorkflowInstructions/)
   assert.match(edge, /read_campaign_overview/)
 })
 
