@@ -131,6 +131,42 @@ function isMechanicsAuthoringRequest(message: string) {
   return mechanicSubject && authoringIntent
 }
 
+function isImageWorkflowRequest(message: string) {
+  const text = message.toLocaleLowerCase("ru-RU")
+  return (
+    isExplicitImageGenerationRequest(message) ||
+    /(арт|изображен|картин|рисунк|икон|аватар|портрет|панорам|рендер|вариант).{0,80}(сохрани|оставь|прикреп|примен|удал|мусор|отмен|перв|втор|послед)/u.test(text) ||
+    /(сохрани|оставь|прикреп|примен|удал|мусор|отмен).{0,80}(арт|изображен|картин|рисунк|икон|аватар|портрет|панорам|рендер|вариант)/u.test(text)
+  )
+}
+
+function isManagerMutationRequest(message: string) {
+  const text = message.toLocaleLowerCase("ru-RU")
+  const mutation =
+    /(создай|создать|измени|изменить|обнови|обновить|удали|удалить|добавь|добавить|назнач|опубликуй|скрой|скрыть|архив|оживи|убей|перемести|выдай|выдать)/u.test(text)
+  const domain =
+    /(персонаж|нпс|npc|локац|зон|предмет|инвентар|публикац|видимост|жизн|статус)/u.test(text)
+  return mutation && domain
+}
+
+function isAdminWorkflowRequest(message: string) {
+  const text = message.toLocaleLowerCase("ru-RU")
+  return /(блокиров|разблок|security|безопасност|системн.{0,30}(настрой|модел)|настрой.{0,30}восс|модел.{0,30}восс)/u.test(text)
+}
+
+function isInventoryWorkflowRequest(message: string) {
+  return /(предмет|инвентар|оруж|брон|экип|контейнер|рюкзак|сумк|выдай|выдать)/u.test(
+    message.toLocaleLowerCase("ru-RU"),
+  )
+}
+
+function pickTools(
+  tools: Array<{ function: { name: string } }>,
+  names: ReadonlySet<string>,
+) {
+  return tools.filter((tool) => names.has(tool.function.name))
+}
+
 function providerMessage(payload: any): ProviderMessage {
   const message = payload?.choices?.[0]?.message
   return message && typeof message === "object" ? message : {}
@@ -350,6 +386,10 @@ Deno.serve(async (req: Request) => {
   const incomingAttachments = normalizeAttachments(body.attachments)
   const mechanicsAuthoringRequested = isMechanicsAuthoringRequest(message)
   const imageGenerationRequested = isExplicitImageGenerationRequest(message)
+  const imageWorkflowRequested = isImageWorkflowRequest(message)
+  const managerMutationRequested = isManagerMutationRequest(message)
+  const adminWorkflowRequested = isAdminWorkflowRequest(message)
+  const inventoryWorkflowRequested = isInventoryWorkflowRequest(message)
 
   if (!campaignId) return reply({ error: "campaignId is required" }, 400)
   if (!message) return reply({ error: "message is required" }, 400)
@@ -711,7 +751,7 @@ Deno.serve(async (req: Request) => {
     "Канонические игровые сущности и механику ты не изменяешь произвольно: не заявляй, что создал, удалил или переписал мир, персонажей, инвентарь или Chasovoy без подтверждённого системного инструмента. Stage 11 даёт узкое исключение только для generated media: по явной просьбе пользователя attach_generated_image может прикрепить разрешённое изображение к существующей сущности после отдельной серверной проверки прав.",
     "Если GM явно просит создать или спроектировать контент и тебе доступен propose_content_draft, собери структурированный AI-черновик. После этого честно скажи, что сохранён только черновик для проверки GM.",
     "К обычному создаваемому контенту относятся локации, НПС/ПС, предметы, описательная часть классов и справочных сущностей, лор, сцены и связанные материалы. Для такого запроса сам определи правильный тип сущности и связи, вместо того чтобы заставлять GM вручную объяснять, в какую таблицу это положить.",
-    ...VOSS_INVENTORY_AUTHORING_RULES,
+    ...(inventoryWorkflowRequested ? VOSS_INVENTORY_AUTHORING_RULES : []),
 
     "Раздел «Черновик» Мастерской содержит два разных типа данных: AI Draft System и обычные draft-сущности Мастерской. Для AI Draft используй list_content_drafts → read_content_draft → revise_content_draft. Для будущих PC/NPC используй list_workshop_drafts и GM/Admin manager-tools: create_workshop_character, update_campaign_character и set_character_publication. Не смешивай эти слои.",
     "При редактировании меняй только затронутые узлы и связи. Не пересобирай весь draft заново, если пользователь этого не просил.",
@@ -807,29 +847,90 @@ Deno.serve(async (req: Request) => {
   ]
 
   const supportsReadTools = resolvedModel.supports_tools === true
+  const taskKey = routeDecision.taskKey
+
+  const generalReadToolNames = new Set([
+    "search_entities",
+    "read_character",
+    "read_location",
+    "read_campaign_overview",
+  ])
+  const memorySupportToolNames = new Set([
+    "read_campaign_overview",
+    "read_chat_room",
+    "search_chat_messages",
+  ])
+
+  const scopedReadTools =
+    taskKey === "reference_read" ||
+    taskKey === "workshop" ||
+    taskKey === "draft_edit"
+      ? VOSS_READ_TOOLS
+      : taskKey === "memory_read" || taskKey === "memory_write"
+        ? pickTools(VOSS_READ_TOOLS, memorySupportToolNames)
+        : pickTools(VOSS_READ_TOOLS, generalReadToolNames)
+
+  const scopedMemoryReadTools =
+    taskKey === "memory_read" || taskKey === "memory_write"
+      ? VOSS_MEMORY_READ_TOOLS
+      : []
+
+  const scopedImageTools = imageWorkflowRequested
+    ? VOSS_IMAGE_TOOLS.filter(
+        (tool) =>
+          imageGenerationRequested ||
+          tool.function.name !== "generate_image",
+      )
+    : []
+
+  const scopedManagerTools =
+    canManage &&
+      (
+        taskKey === "workshop" ||
+        taskKey === "draft_edit" ||
+        managerMutationRequested
+      )
+      ? VOSS_MANAGER_TOOLS
+      : []
+
+  const scopedDraftTools =
+    canManage &&
+      !mechanicsAuthoringRequested &&
+      (taskKey === "workshop" || taskKey === "draft_edit")
+      ? VOSS_DRAFT_TOOLS
+      : []
+
+  const scopedMemoryWriteTools =
+    canManage && taskKey === "memory_write"
+      ? VOSS_MEMORY_WRITE_TOOLS
+      : []
+
+  const scopedAdminTools =
+    authority === "admin" && adminWorkflowRequested
+      ? VOSS_ADMIN_TOOLS
+      : []
+
+  const scopedOwnerReadTools =
+    authority === "admin" && adminWorkflowRequested
+      ? VOSS_OWNER_READ_TOOLS
+      : []
+
+  const scopedOwnerMediaTools =
+    authority === "admin" && imageWorkflowRequested
+      ? VOSS_OWNER_MEDIA_TOOLS
+      : []
+
   const availableTools = supportsReadTools
     ? [
-        ...VOSS_READ_TOOLS,
-        ...VOSS_MEMORY_READ_TOOLS,
-        ...VOSS_IMAGE_TOOLS.filter(
-          (tool) =>
-            imageGenerationRequested ||
-            tool.function.name !== "generate_image",
-        ),
-        ...(canManage
-          ? [
-              ...VOSS_MANAGER_TOOLS,
-              ...(!mechanicsAuthoringRequested ? VOSS_DRAFT_TOOLS : []),
-              ...VOSS_MEMORY_WRITE_TOOLS,
-            ]
-          : []),
-        ...(authority === "admin"
-          ? [
-              ...VOSS_OWNER_READ_TOOLS,
-              ...VOSS_OWNER_MEDIA_TOOLS,
-              ...VOSS_ADMIN_TOOLS,
-            ]
-          : []),
+        ...scopedReadTools,
+        ...scopedMemoryReadTools,
+        ...scopedImageTools,
+        ...scopedManagerTools,
+        ...scopedDraftTools,
+        ...scopedMemoryWriteTools,
+        ...scopedOwnerReadTools,
+        ...scopedOwnerMediaTools,
+        ...scopedAdminTools,
       ]
     : []
   const readToolsUsed: string[] = []
