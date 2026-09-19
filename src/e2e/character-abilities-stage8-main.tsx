@@ -31,7 +31,14 @@ function row(
     group,
     sourceId: `stage8:${group}:${index}`,
     sourceIds: [`stage8:${group}:${index}`],
-    sourceName: group === "class" ? "Воин" : group === "subclass" ? "Мастер битвы" : group === "race" ? "Человек" : group === "background" ? "Солдат" : "Активные состояния",
+    sourceName:
+      group === "class" ? "Воин"
+      : group === "subclass" ? "Мастер битвы"
+      : group === "race" ? "Человек"
+      : group === "background" ? "Солдат"
+      : group === "feat" ? "Черты и таланты"
+      : group === "special" ? "Особенности · достижения"
+      : "Активные состояния",
     sourceNames: [],
     sourceType: "stage8",
     label,
@@ -95,6 +102,29 @@ const model: CharacterAbilitiesReadModel = {
       rows: [],
       totalCount: 0,
       activeCount: 0,
+      suppressedCount: 0,
+    },
+    {
+      key: "feat",
+      label: "Фиты",
+      sourceNames: ["Черты и таланты"],
+      rows: [
+        row("feat", 1, "Внимательный"),
+      ],
+      totalCount: 1,
+      activeCount: 1,
+      suppressedCount: 0,
+    },
+    {
+      key: "special",
+      label: "Особое",
+      sourceNames: ["Особенности · достижения"],
+      rows: [
+        row("special", 1, "Воровской жаргон"),
+        row("special", 2, "Пережил невозможное", { icon: "★" }),
+      ],
+      totalCount: 2,
+      activeCount: 2,
       suppressedCount: 0,
     },
     {
