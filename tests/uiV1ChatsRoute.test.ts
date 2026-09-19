@@ -4,29 +4,30 @@ import test from "node:test"
 
 const appPath = new URL("../src/ui-v1-isolated/UiV1App.tsx", import.meta.url)
 const entryPath = new URL("../src/ui-v1-isolated/main.tsx", import.meta.url)
+const catalogPath = new URL("../src/ui-v1-isolated/ChatCatalog.tsx", import.meta.url)
+const dataPath = new URL("../src/ui-v1-isolated/useUiV1ChatCatalog.ts", import.meta.url)
 
-test("ui v1 chats root renders the certified catalog instead of the old development placeholder", async () => {
-  const source = await readFile(appPath, "utf8")
+test("ui v1 chats root mounts the isolated catalog instead of a future placeholder", async () => {
+  const [app, catalog] = await Promise.all([
+    readFile(appPath, "utf8"),
+    readFile(catalogPath, "utf8"),
+  ])
 
-  assert.match(source, /import Chats from "\.\.\/pages\/Chats"/)
-  assert.match(source, /<Chats/)
-  assert.doesNotMatch(
-    source,
-    /Новый интерфейс чатов будет построен отдельно\. Этот экран существует только как чистая точка подключения\./,
-  )
+  assert.match(app, /import ChatCatalog from "\.\/ChatCatalog"/)
+  assert.match(app, /return <ChatCatalog \/>/)
+  assert.doesNotMatch(app, /pages\/Chats|Новый интерфейс чатов будет построен отдельно/)
+  assert.match(catalog, /data-chat-catalog-stage="8"/)
 })
 
-test("ui v1 supplies the CharacterProvider required by the chat catalog read model", async () => {
-  const source = await readFile(entryPath, "utf8")
+test("ui v1 chat route stays hard-isolated from legacy page and CharacterContext trees", async () => {
+  const [entry, app, catalog, data] = await Promise.all([
+    readFile(entryPath, "utf8"),
+    readFile(appPath, "utf8"),
+    readFile(catalogPath, "utf8"),
+    readFile(dataPath, "utf8"),
+  ])
 
-  assert.match(source, /import \{ CharacterProvider \} from "\.\.\/context\/CharacterContext"/)
-  assert.match(source, /<AuthGate>[\s\S]*<CharacterProvider>[\s\S]*<AIProvider>/)
-})
-
-test("ui v1 keeps the Stage 8 room-navigation boundary after mounting Chats", async () => {
-  const source = await readFile(appPath, "utf8")
-
-  assert.match(source, /onOpenRoom=\{\(\) => \{/)
-  assert.match(source, /Stage 8 landing catalog intentionally keeps room navigation disconnected/)
-  assert.doesNotMatch(source, /go\("chat\//)
+  assert.doesNotMatch(entry + app + catalog + data, /pages\/|CharacterContext|chats-v3\.css/)
+  assert.match(data, /get_campaign_chat_rooms/)
+  assert.match(data, /buildChatCatalogModel/)
 })

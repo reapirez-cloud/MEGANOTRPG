@@ -11,15 +11,17 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
-- Fixed the UI 1.0 Chats dock route to render the released Stage 8 chat catalog instead of the stale `Будущий раздел` placeholder. The inner room/dialog boundary remains intentionally disconnected.
+- Fixed the UI 1.0 Chats dock route to render an isolated Stage 8 chat catalog instead of the stale `Будущий раздел` placeholder. The full catalog hierarchy, search/filter/expand behavior, real room context and resilience states now exist inside the UI 1.0 tree; the inner room/dialog boundary remains intentionally disconnected.
 ### Database / migration changes
 
 ### Runtime and architecture changes
 
-- UI 1.0 now mounts the shared `CharacterProvider` above `UiV1App`, allowing the released Chats catalog to reuse the canonical `useRooms` / `useCharacters` read model rather than creating a second UI-specific chat data path.
+- UI 1.0 keeps hard isolation: `ChatCatalog.tsx`, `chat-catalog.css` and `useUiV1ChatCatalog.ts` live inside the isolated tree, read Supabase under RLS, and reuse only the shared pure chat model/presentation/filter modules. No legacy page, `CharacterContext`, legacy chat CSS or old visual tree is imported.
+- Unavailable room opening and event creation use Snake Placeholder surfaces instead of a local modal family or a legacy route fallback.
 ### Tests / verification
 
-- Added a UI 1.0 Chats route regression that forbids the stale development placeholder, requires the canonical `Chats` screen and verifies the required `CharacterProvider` while preserving the no-inner-dialog Stage 8 boundary.
+- Added UI 1.0 Chats regressions that forbid the stale development placeholder and legacy imports, require the isolated catalog/adapter, lock Player/GM/Owner authority plus all six Realtime refresh sources, require Snake placeholders for deferred actions, and preserve 320px/large-list resilience.
+- The first wiring attempt correctly failed CI because it imported the legacy `pages/Chats` / `CharacterContext` tree; the final implementation removes that bridge and restores the repository hard-isolation contract.
 ### Known incomplete work
 
 ---

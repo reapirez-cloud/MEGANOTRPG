@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
 import AgentShell from "../ai/AgentShell"
-import Chats from "../pages/Chats"
+import ChatCatalog from "./ChatCatalog"
 
 import { useHomeData, type HomeEvent, type HomeSocietyNews } from "./useHomeData"
 import { WhatsNew } from "./WhatsNew"
@@ -678,13 +678,7 @@ function Screen({ route }: { route: Route }) {
     )
   }
 
-  return (
-    <Chats
-      onOpenRoom={() => {
-        // The Stage 8 landing catalog intentionally keeps room navigation disconnected.
-      }}
-    />
-  )
+  return <ChatCatalog />
 }
 
 export default function UiV1App() {
