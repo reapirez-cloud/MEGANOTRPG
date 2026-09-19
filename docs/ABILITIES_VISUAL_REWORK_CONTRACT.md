@@ -1,6 +1,6 @@
 # Abilities v2 visual rework contract
 
-> Status: **ACTIVE — Stage 4 locked**
+> Status: **ACTIVE — Stage 5 locked**
 > Scope: UI 1.0 character-sheet Abilities presentation only.
 
 This contract corrects the first Abilities presentation pass. It is intentionally visual/presentation-only. Existing read-model, Character Runtime, CE resolution, Snake actions, suppression, Background and Effects data remain canonical and must not be rebuilt for this rework.
@@ -128,4 +128,18 @@ Stage 4 is complete only when:
 - expanded rows use transparent backgrounds and shared dividers so the parent panel remains the only surface;
 - Stage 2 collapsed geometry and Stage 3 MEGANOT skin remain unchanged;
 - accordion, Snake, suppression, permissions, runtime and CE behavior remain unchanged.
+
+
+## Stage 5 acceptance
+
+Stage 5 is complete only when:
+
+- all five groups remain present even when a source or ability list is empty;
+- missing source copy is short and secondary (`Не назначено`) rather than a system-error phrase;
+- empty groups do not render the visible phrase `Нет умений`; the right side uses only a quiet dash while keeping an accessible empty-state label;
+- empty panels compact to roughly 68px with a 40px group icon, and to roughly 64px / 36px on narrow screens;
+- empty state does not dim the entire card with global opacity; title/source hierarchy remains readable while icon, source and chevron are selectively subdued;
+- empty groups cannot expand or steal accordion state;
+- non-empty collapsed and expanded geometry from Stages 2 and 4 remain unchanged;
+- Stage 3 Character/Spells skin, runtime, CE, Snake, suppression and data ownership remain unchanged.
 
