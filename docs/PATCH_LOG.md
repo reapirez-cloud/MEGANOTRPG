@@ -2,12 +2,18 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-18-H
+---
 
-**Status:** OPEN
-**Branch:** `dev`
+## Released patches
+
+## Patch — 2026-09-18-H
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `8eb36c0b17ce93f49859a59393f8ad440a94f9ea`
 **Started:** 2026-09-18
+**Released:** 2026-09-19
+**Release identity:** `main / 2026-09-19-H`
 
 ### Player-facing changes
 
@@ -48,10 +54,6 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Updated the abilities panel-shell/accordion regressions and extended `characterAbilitiesVisualContract.test.ts` to lock the ~42/58 collapsed identity/preview split, compact preview rows, right-side `ещё N` tail and the same hierarchy on narrow screens.
 - Added `characterAbilitiesVisualContract.test.ts` and updated the existing panel-shell regression to forbid the copied heading/slogan, abilities-owned page chrome/theme, and accidental replacement of the existing runtime/Snake/suppression wiring during the visual rewrite.
 ### Known incomplete work
-
----
-
-## Released patches
 
 ## Patch — 2026-09-14-G
 
