@@ -182,7 +182,7 @@ test("Agent UI polls active image jobs and resolves private media through signed
   assert.match(provider, /resolveCampaignMediaUrl/)
   assert.match(provider, /hasActiveJobs/)
   assert.match(provider, /window\.setInterval/)
-  assert.match(provider, /2200/)
+  assert.match(provider, /4000/)
   assert.match(provider, /outputs: \(assetsByJob\.get\(job\.id\) \|\| \[\]\)/)
 })
 
