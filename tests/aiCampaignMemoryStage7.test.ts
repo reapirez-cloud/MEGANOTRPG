@@ -60,8 +60,8 @@ test("memory reads use the signed-in client while writes are GM-only", () => {
 
   assert.match(tools, /context\.client[\s\S]*from\("campaign_events"\)/)
   assert.match(tools, /if \(!context\.canManage\) return \{ error: "GM authority required" \}/)
-  assert.match(edge, /\.\.\.VOSS_MEMORY_READ_TOOLS/)
-  assert.match(edge, /\.\.\.VOSS_MEMORY_WRITE_TOOLS/)
+  assert.match(edge, /const scopedMemoryReadTools[\s\S]*VOSS_MEMORY_READ_TOOLS/)
+  assert.match(edge, /const scopedMemoryWriteTools[\s\S]*VOSS_MEMORY_WRITE_TOOLS/)
   assert.match(edge, /canChooseModel/)
 })
 
