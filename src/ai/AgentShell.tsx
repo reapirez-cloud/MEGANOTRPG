@@ -10,6 +10,7 @@ import {
 import {
   useAI,
   type AIAttachment,
+  type AIGeneratedAssetRef,
 } from "./AIProvider"
 import {
   AGENT_OPEN_EVENT,
@@ -110,6 +111,7 @@ export default function AgentShell() {
     assistantName,
     models,
     selectedModelId,
+    lastRoute,
     threads,
     activeThreadId,
     messages,
@@ -125,6 +127,8 @@ export default function AgentShell() {
     switchThread,
     deleteThread,
     saveGeneratedAsset,
+    cancelImageJob,
+    retryImageJob,
     send,
   } = useAI()
 
@@ -132,6 +136,8 @@ export default function AgentShell() {
   const [toolsOpen, setToolsOpen] = useState(false)
   const [draft, setDraft] = useState("")
   const [attachments, setAttachments] = useState<AIAttachment[]>([])
+  const [selectedGeneratedAssetRef, setSelectedGeneratedAssetRef] =
+    useState<AIGeneratedAssetRef | null>(null)
   const [uploading, setUploading] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const [pendingDeleteThreadId, setPendingDeleteThreadId] =
@@ -141,7 +147,10 @@ export default function AgentShell() {
 
   const logRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const panelRef = useRef<HTMLElement | null>(null)
   const orbRef = useRef<HTMLButtonElement | null>(null)
+  const wasOpenRef = useRef(false)
   const orbPositionRef = useRef(orbPosition)
   const orbFrameRef = useRef<number | null>(null)
   const pendingOrbPositionRef = useRef(orbPosition)
@@ -208,16 +217,48 @@ export default function AgentShell() {
     if (!open) {
       setToolsOpen(false)
       setPendingDeleteThreadId(null)
+      if (wasOpenRef.current) {
+        wasOpenRef.current = false
+        requestAnimationFrame(() => orbRef.current?.focus())
+      }
       return
     }
 
+    wasOpenRef.current = true
+    requestAnimationFrame(() => textareaRef.current?.focus())
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return
-      if (toolsOpen) {
-        setToolsOpen(false)
+      if (event.key === "Escape") {
+        if (toolsOpen) {
+          setToolsOpen(false)
+          return
+        }
+        setOpen(false)
         return
       }
-      setOpen(false)
+
+      if (event.key !== "Tab") return
+      const panel = panelRef.current
+      if (!panel) return
+
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((node) => getComputedStyle(node).visibility !== "hidden")
+
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
 
     window.addEventListener("keydown", onKeyDown)
@@ -238,8 +279,9 @@ export default function AgentShell() {
     event.preventDefault()
     const text = draft.trim()
     const outgoingAttachments = attachments
+    const outgoingGeneratedAssetRef = selectedGeneratedAssetRef
     if (
-      (!text && !outgoingAttachments.length) ||
+      (!text && !outgoingAttachments.length && !outgoingGeneratedAssetRef) ||
       sending ||
       pendingReply ||
       uploading
@@ -247,11 +289,17 @@ export default function AgentShell() {
 
     setDraft("")
     setAttachments([])
+    setSelectedGeneratedAssetRef(null)
 
-    const accepted = await send(text, outgoingAttachments)
+    const accepted = await send(
+      text,
+      outgoingAttachments,
+      outgoingGeneratedAssetRef,
+    )
     if (!accepted) {
       setDraft(text)
       setAttachments(outgoingAttachments)
+      setSelectedGeneratedAssetRef(outgoingGeneratedAssetRef)
     }
   }
 
@@ -532,7 +580,7 @@ export default function AgentShell() {
                   className="u1-agent-model-choice"
                   data-selected={model.id === selectedModelId || undefined}
                   onClick={() => void chooseModel(model.id)}
-                  disabled={sending}
+                  disabled={sending || pendingReply}
                 >
                   <strong>{model.display_name}</strong>
                   <small>
@@ -550,7 +598,7 @@ export default function AgentShell() {
               type="button"
               className="u1-agent-file-action"
               onClick={() => fileInputRef.current?.click()}
-              disabled={sending || uploading || attachments.length >= 4}
+              disabled={sending || pendingReply || uploading || attachments.length >= 4}
             >
               <span aria-hidden="true">＋</span>
               <div>
@@ -575,7 +623,7 @@ export default function AgentShell() {
                 type="button"
                 className="u1-agent-thread-new"
                 onClick={() => void createThread()}
-                disabled={sending}
+                disabled={sending || pendingReply}
                 aria-label={`Новый чат с ${assistantName}`}
               >
                 ＋
@@ -599,7 +647,7 @@ export default function AgentShell() {
                     type="button"
                     className="u1-agent-thread-choice"
                     onClick={() => void switchThread(thread.id)}
-                    disabled={sending}
+                    disabled={sending || pendingReply}
                   >
                     <strong>{thread.title || "Новый чат"}</strong>
                     <small>
@@ -613,7 +661,7 @@ export default function AgentShell() {
                     type="button"
                     className="u1-agent-thread-delete"
                     onClick={() => setPendingDeleteThreadId(thread.id)}
-                    disabled={sending}
+                    disabled={sending || pendingReply}
                     aria-label={`Удалить чат ${thread.title || "Новый чат"}`}
                   >
                     ×
@@ -722,11 +770,16 @@ export default function AgentShell() {
                             type="button"
                             className="u1-agent-image-option"
                             data-preferred={asset.review.preferred === true || undefined}
-                            onClick={() =>
-                              prefillPrompt(
-                                `Используй вариант ${asset.variant_index} из последней генерации.`,
-                              )
-                            }
+                            onClick={() => {
+                              setSelectedGeneratedAssetRef({
+                                jobId: job.id,
+                                assetId: asset.id,
+                                variantIndex: asset.variant_index,
+                              })
+                              if (!draft.trim()) {
+                                prefillPrompt("Используй выбранный вариант.")
+                              }
+                            }}
                           >
                             {asset.url ? (
                               <img
@@ -750,7 +803,7 @@ export default function AgentShell() {
                               <button
                                 type="button"
                                 onClick={() => void saveGeneratedAsset(asset.id)}
-                                disabled={sending}
+                                disabled={sending || pendingReply}
                               >
                                 Сохранить
                               </button>
@@ -781,22 +834,46 @@ export default function AgentShell() {
                 )}
 
                 {(job.status === "queued" || job.status === "running") && (
-                  <p>
-                    Генерация · готово {job.completed_outputs} из{" "}
-                    {job.requested_outputs}
-                  </p>
+                  <div className="u1-agent-image-job__progress">
+                    <p>
+                      Генерация · готово {job.completed_outputs} из{" "}
+                      {job.requested_outputs}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void cancelImageJob(job.id)}
+                    >
+                      Отменить
+                    </button>
+                  </div>
                 )}
 
                 {reviewSummary && <p>{reviewSummary}</p>}
 
                 {job.status === "failed" && (
-                  <p className="u1-agent-image-job__error">
-                    {job.error_message || "Генерация не завершилась."}
-                  </p>
+                  <div className="u1-agent-image-job__failure">
+                    <p className="u1-agent-image-job__error">
+                      {job.error_message || "Генерация не завершилась."}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void retryImageJob(job.id)}
+                    >
+                      Повторить
+                    </button>
+                  </div>
                 )}
               </article>
             )
           })}
+
+          {lastRoute && (lastRoute.degraded || lastRoute.mode === "fallback") && (
+            <div className="u1-agent-route-note" role="status">
+              {lastRoute.degraded
+                ? "Ответ работает в ограниченном режиме."
+                : `Использована совместимая модель: ${lastRoute.modelName}.`}
+            </div>
+          )}
 
           {(sending || pendingReply) && (
             <div className="u1-agent-thinking">
@@ -817,13 +894,29 @@ export default function AgentShell() {
                 <button
                   type="button"
                   onClick={() => void discardAttachment(attachment)}
-                  disabled={sending}
+                  disabled={sending || pendingReply}
                   aria-label={`Убрать ${attachment.name}`}
                 >
                   ×
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {selectedGeneratedAssetRef && (
+          <div className="u1-agent-selected-image">
+            <span>
+              Выбран вариант {selectedGeneratedAssetRef.variantIndex}
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedGeneratedAssetRef(null)}
+              disabled={sending || pendingReply}
+              aria-label="Убрать выбранное изображение"
+            >
+              ×
+            </button>
           </div>
         )}
 
@@ -835,8 +928,15 @@ export default function AgentShell() {
 
         <form className="u1-agent-composer" onSubmit={submit}>
           <textarea
+            ref={textareaRef}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault()
+                event.currentTarget.form?.requestSubmit()
+              }
+            }}
             placeholder={`${assistantName}…`}
             maxLength={8000}
             rows={2}
@@ -846,7 +946,7 @@ export default function AgentShell() {
           <button
             type="submit"
             disabled={
-              (!draft.trim() && !attachments.length) ||
+              (!draft.trim() && !attachments.length && !selectedGeneratedAssetRef) ||
               sending ||
               pendingReply ||
               uploading
