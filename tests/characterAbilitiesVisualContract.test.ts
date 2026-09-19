@@ -90,12 +90,13 @@ test("abilities v2 stage 2 keeps more-count and chevron in a compact right-side 
     styles,
     /\.u1-character-features__panel-tail\s*\{[\s\S]*?display:\s*inline-flex[\s\S]*?justify-content:\s*flex-end/,
   )
-  assert.match(contract, /Status: \*\*ACTIVE — Stage 2 locked\*\*/)
   assert.match(contract, /## Stage 2 acceptance/)
 })
 
 
 test("abilities v2 stage 3 uses shared class tokens instead of an abilities-only skin", () => {
+  assert.match(contract, /Status: \*\*ACTIVE — Stage 3 locked\*\*/)
+  assert.match(contract, /## Stage 3 acceptance/)
   assert.match(styles, /background:[\s\S]*?var\(--cv-surface-soft\)/)
   assert.match(styles, /border: 1px solid var\(--cv-accent-line\)/)
   assert.match(styles, /var\(--cv-accent-soft\)/)
