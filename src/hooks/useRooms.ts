@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
-import { useCharacters } from "../context/CharacterContext"
+import { buildChatCatalogModel } from "../chat/catalogModel"\nimport { useCharacters } from "../context/CharacterContext"
 import { deleteCampaignMediaObjects } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
 import type { ChatRoom, RoomState, RoomType } from "../types/chat"
@@ -28,6 +28,10 @@ type RoomRpcRow = {
   scene_state: string
   is_own_character_room: boolean
   preview: string
+  created_at: string
+  updated_at: string
+  closed_at: string | null
+  character_died_at: string | null
   last_message_at: string | null
   last_message_id: number | null
   unread_count: number
@@ -87,6 +91,11 @@ export function useRooms() {
       is_own_character_room: Boolean(room.is_own_character_room),
       preview: room.preview,
       time: formatTime(room.last_message_at),
+      created_at: room.created_at,
+      updated_at: room.updated_at,
+      closed_at: room.closed_at || null,
+      character_died_at: room.character_died_at || null,
+      last_message_at: room.last_message_at || null,
       last_message_id: room.last_message_id,
       unread_count: room.unread_count,
     })) satisfies ChatRoom[]
@@ -169,8 +178,10 @@ export function useRooms() {
     return { ok: true }
   }, [rooms])
 
+  const catalog = useMemo(() => buildChatCatalogModel(rooms), [rooms])
+
   return {
-    rooms, campaignId, campaignTitle, loading, error,
+    rooms, catalog, campaignId, campaignTitle, loading, error,
     reload: () => loadRooms(false),
     createSceneRoom, createGameRoom: createSceneRoom,
     renameRoom, setRoomAvatar, setRoomState, setCampaignAccess, deleteRoom,

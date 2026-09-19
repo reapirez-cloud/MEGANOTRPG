@@ -4,7 +4,7 @@ import test from "node:test"
 
 const pagePath = new URL("../src/pages/Chats.tsx", import.meta.url)
 
-test("chat catalog stage 1 is one landing page with the approved hierarchy", async () => {
+test("chat catalog stage 1 remains one landing page with the approved hierarchy", async () => {
   const source = await readFile(pagePath, "utf8")
 
   for (const label of [
@@ -17,15 +17,13 @@ test("chat catalog stage 1 is one landing page with the approved hierarchy", asy
     assert.match(source, new RegExp(label))
   }
 
-  assert.match(source, /data-chat-catalog-stage="1"/)
-  assert.match(source, /const currentStory = activeEvents\[0\] \?\? activePersonal\[0\] \?\? null/)
-  assert.match(
-    source,
-    /\(room\.room_type === "character" \|\| room\.room_type === "scene"\)[\s\S]*roomClosed\(room\)/,
-  )
+  assert.match(source, /data-chat-catalog-stage="2"/)
+  assert.match(source, /const catalog = rooms\.catalog/)
+  assert.match(source, /catalog\.currentStory/)
+  assert.match(source, /catalog\.completed/)
 })
 
-test("stage 1 removes legacy directory navigation and cannot enter ChatRoom", async () => {
+test("catalog keeps the stage 1 no-ChatRoom boundary", async () => {
   const source = await readFile(pagePath, "utf8")
 
   assert.doesNotMatch(source, /type ChatSection/)

@@ -8,16 +8,6 @@ import "../chats-v3.css"
 
 type Props = { onOpenRoom: (id: string) => void }
 
-function roomClosed(room: ChatRoom) {
-  if (room.room_type === "character") {
-    return room.character_life_state === "dead" || room.room_state === "closed"
-  }
-  if (room.room_type === "scene") {
-    return room.scene_state === "closed" || room.room_state === "closed"
-  }
-  return false
-}
-
 function periodLabel(value: ChatRoom["day_period"]) {
   const labels: Record<ChatRoom["day_period"], string> = {
     dawn: "рассвет",
@@ -50,31 +40,7 @@ export default function Chats({ onOpenRoom }: Props) {
     [characters],
   )
 
-  const catalog = useMemo(() => {
-    const flood = rooms.rooms.find((room) => room.room_type === "flood") || null
-    const activePersonal = rooms.rooms.filter(
-      (room) => room.room_type === "character" && !roomClosed(room),
-    )
-    const activeEvents = rooms.rooms.filter(
-      (room) => room.room_type === "scene" && !roomClosed(room),
-    )
-    const completed = rooms.rooms.filter(
-      (room) =>
-        (room.room_type === "character" || room.room_type === "scene") &&
-        roomClosed(room),
-    )
-
-    // Stage 2 owns real activity ordering. Stage 1 only fixes the screen model.
-    const currentStory = activeEvents[0] ?? activePersonal[0] ?? null
-
-    return {
-      flood,
-      currentStory,
-      activePersonal,
-      activeEvents,
-      completed,
-    }
-  }, [rooms.rooms])
+  const catalog = rooms.catalog
 
   function roomMeta(room: ChatRoom) {
     if (room.room_type === "character" && room.character_id) {
@@ -134,7 +100,7 @@ export default function Chats({ onOpenRoom }: Props) {
   }
 
   return (
-    <div className="chats-v3 chat-catalog" data-chat-catalog-stage="1">
+    <div className="chats-v3 chat-catalog" data-chat-catalog-stage="2">
       {rooms.error && <div className="auth-error">{rooms.error}</div>}
 
       <header className="chat-catalog__page-head">
@@ -187,12 +153,12 @@ export default function Chats({ onOpenRoom }: Props) {
             <span>Персонажи</span>
             <h3 id="chat-personal-title">Личные истории</h3>
           </div>
-          <small>{catalog.activePersonal.length}</small>
+          <small>{catalog.personalActive.length}</small>
         </header>
 
-        {catalog.activePersonal.length > 0 ? (
+        {catalog.personalActive.length > 0 ? (
           <div className="chat-catalog__personal-strip">
-            {catalog.activePersonal.map((room) => (
+            {catalog.personalActive.map((room) => (
               <article className="chat-catalog__personal-card" key={room.id} data-room-id={room.id}>
                 {roomArtwork(room, "◇")}
                 <span className="chat-catalog__personal-copy">
@@ -217,12 +183,12 @@ export default function Chats({ onOpenRoom }: Props) {
             <span>Игра</span>
             <h3 id="chat-events-title">События</h3>
           </div>
-          <small>{catalog.activeEvents.length}</small>
+          <small>{catalog.eventsActive.length}</small>
         </header>
 
         <div className="chat-catalog__list">
-          {catalog.activeEvents.map((room) => compactRoom(room, "✦"))}
-          {!catalog.activeEvents.length && (
+          {catalog.eventsActive.map((room) => compactRoom(room, "✦"))}
+          {!catalog.eventsActive.length && (
             <div className="chat-catalog__empty">Активных событий пока нет.</div>
           )}
         </div>
@@ -246,7 +212,7 @@ export default function Chats({ onOpenRoom }: Props) {
       </section>
 
       <p className="chat-catalog__stage-note">
-        Экран диалога пока отключён: этот этап фиксирует только новую стартовую базу чатов.
+        Данные каталога подключены; экран диалога пока остаётся отключён.
       </p>
     </div>
   )

@@ -24,6 +24,11 @@ export type ChatRoom = {
   is_own_character_room: boolean
   preview: string
   time: string
+  created_at: string
+  updated_at: string
+  closed_at: string | null
+  character_died_at: string | null
+  last_message_at: string | null
   last_message_id: number | null
   unread_count: number
 }
