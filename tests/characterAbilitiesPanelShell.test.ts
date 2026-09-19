@@ -37,7 +37,7 @@ test("abilities panel shell consumes one runtime-owned read model instead of reb
   assert.doesNotMatch(features, /resolveCharacter|supabase|useResolvedCharacterRuntime/)
 })
 
-test("abilities tab stage 2 renders the five-group read model as one stable panel stack", () => {
+test("abilities tab renders the seven-group read model as one stable panel stack", () => {
   assert.match(features, /model\.groups\.map\(\(group\) =>/)
   assert.match(features, /className="u1-character-features__panels"/)
   assert.match(features, /className="u1-character-features__panel"/)
@@ -54,7 +54,7 @@ test("abilities tab stage 2 renders the five-group read model as one stable pane
 test("stage 2 gives the collapsed panel a reference-led 42/58 identity-to-preview split", () => {
   assert.match(styles, /var\(--cv-text\)/)
   assert.match(styles, /var\(--cv-accent\)/)
-  assert.match(styles, /var\(--cv-surface-soft\)/)
+  assert.match(styles, /var\(--cv-panel-glass\)/)
   assert.match(
     styles,
     /\.u1-character-features__panel-head\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, \.84fr\) minmax\(0, 1\.16fr\)/,
@@ -78,13 +78,17 @@ test("the finished shell keeps the stage 2 foundation without temporary mileston
 })
 
 
-test("abilities panels reuse the exact Character/Spells surface recipe", () => {
+test("abilities panels reuse the current premium Character/Spells glass recipe", () => {
   assert.match(
     styles,
-    /\.u1-character-features__panel\s*\{[\s\S]*?border: 1px solid var\(--cv-line\)[\s\S]*?border-radius: clamp\(8px, 2\.2vw, 11px\)[\s\S]*?linear-gradient\(180deg, rgba\(255,255,255,\.025\), transparent 42%\)[\s\S]*?var\(--cv-surface-soft\)[\s\S]*?0 7px 18px rgba\(0,0,0,\.14\)/,
+    /\.u1-character-features__panel\s*\{[\s\S]*?border: 1px solid var\(--cv-panel-edge\)[\s\S]*?background: var\(--cv-panel-glass\)[\s\S]*?var\(--cv-panel-specular\)[\s\S]*?var\(--cv-panel-filter\)/,
   )
   assert.match(
     styles,
-    /\.u1-character-features__panel::before\s*\{[\s\S]*?inset: 3px[\s\S]*?border: 1px solid var\(--cv-line-soft\)[\s\S]*?border-radius: clamp\(6px, 1\.7vw, 9px\)/,
+    /\.u1-character-features__panel::before\s*\{[\s\S]*?inset: 3px[\s\S]*?border: 1px solid var\(--cv-panel-line\)[\s\S]*?border-radius: clamp\(6px, 1\.7vw, 9px\)/,
+  )
+  assert.doesNotMatch(
+    styles,
+    /\.u1-character-features__panel\s*\{[\s\S]*?var\(--cv-surface-soft\)/,
   )
 })
