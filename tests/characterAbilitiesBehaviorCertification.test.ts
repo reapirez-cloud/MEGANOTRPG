@@ -229,8 +229,7 @@ test("stage 7 certifies canonical suppression path and manager authority survive
   )
 })
 
-test("stage 7 contract is behavior-only and leaves final visual certification for stage 8", () => {
-  assert.match(contract, /Status: \*\*ACTIVE — Stage 7 locked\*\*/)
+test("stage 7 behavior contract remains present after final visual certification", () => {
   assert.match(contract, /## Stage 7 acceptance/)
   assert.match(contract, /8\. \*\*Visual certification\*\*/)
 })
