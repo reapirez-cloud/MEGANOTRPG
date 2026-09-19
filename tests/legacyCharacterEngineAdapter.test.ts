@@ -107,7 +107,7 @@ test("a slot spell with no configured capacity remains unavailable instead of be
   assert.equal(method.available, false)
 })
 
-test("explicit integration snapshot feeds CE without registry ordering", () => {
+test("explicit integration snapshot feeds CE without registry ordering and uses canonical generic-feature suppression", () => {
   const visible = resolveLegacyCharacterEngineView({
     character: { id: "c1", name: "Snapshot", level: 4 },
     sheet: sheet({ spellcasting_enabled: false, spell_slots: {} }),
@@ -128,7 +128,7 @@ test("explicit integration snapshot feeds CE without registry ordering", () => {
     inventoryContributions: [],
     resourceStates: {},
     templateBundles: [],
-    suppressedSourceIds: new Set(["legacy-feature:f1"]),
+    suppressedSourceIds: new Set(["feature:f1"]),
   })
   assert.equal(suppressed.contract.capabilities.features.some((entry) => entry.key === "f1"), false)
 })
