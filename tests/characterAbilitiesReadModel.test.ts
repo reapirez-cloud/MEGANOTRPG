@@ -253,7 +253,7 @@ function contract(): ResolvedCharacterContract {
   } as unknown as ResolvedCharacterContract
 }
 
-test("abilities read-model always exposes the five approved groups in reference order", () => {
+test("abilities read-model always exposes the seven approved groups in reference order", () => {
   const model = buildCharacterAbilitiesReadModel({
     contract: contract(),
     contributions: [],
@@ -266,7 +266,7 @@ test("abilities read-model always exposes the five approved groups in reference 
   )
   assert.deepEqual(
     model.groups.map((group) => group.label),
-    ["Класс", "Подкласс", "Раса", "Предыстория", "Эффекты"],
+    ["Класс", "Подкласс", "Раса", "Предыстория", "Фиты", "Особое", "Эффекты"],
   )
   assert.ok(model.groups.every((group) => group.rows.length === 0))
   assert.deepEqual(
@@ -488,4 +488,69 @@ test("legacy manual feature aliases dedupe without inventing an unsafe suppressi
   )
   assert.equal(rows[0].sourceId, null)
   assert.equal(rows[0].capabilities.suppress, false)
+})
+
+
+test("description-only feats and special features remain visible without inventing mechanics", () => {
+  const model = buildCharacterAbilitiesReadModel({
+    contract: contract(),
+    contributions: [],
+    sourceNodes: [],
+    features: [
+      {
+        id: "feat-1",
+        character_id: "character-1",
+        kind: "feat",
+        name: "Внимательный",
+        description: "Фит персонажа.",
+        mechanics: [],
+        sort_order: 10,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "william-jargon",
+        character_id: "character-1",
+        kind: "feature",
+        name: "Воровской жаргон",
+        description: "Особое знание жаргона/кода.",
+        mechanics: [],
+        sort_order: 20,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      },
+    ],
+    achievements: [{
+      id: "achievement-1",
+      title: "Пережил невозможное",
+      description: "Персональное достижение.",
+      icon: "★",
+    }],
+  })
+
+  const feats = model.groups.find((group) => group.key === "feat")!
+  const special = model.groups.find((group) => group.key === "special")!
+
+  assert.deepEqual(feats.rows.map((row) => row.label), ["Внимательный"])
+  assert.equal(feats.rows[0].mechanics.length, 0)
+  assert.equal(feats.rows[0].sourceId, "feature:feat-1")
+  assert.equal(feats.rows[0].capabilities.suppress, true)
+
+  assert.deepEqual(
+    special.rows.map((row) => row.label).sort(),
+    ["Воровской жаргон", "Пережил невозможное"].sort(),
+  )
+  const jargon = special.rows.find((row) => row.label === "Воровской жаргон")!
+  assert.equal(jargon.shortDescription, "Особое знание жаргона/кода.")
+  assert.equal(jargon.mechanics.length, 0)
+  assert.equal(jargon.sourceId, "feature:william-jargon")
+  assert.equal(jargon.capabilities.suppress, true)
+
+  const achievement = special.rows.find(
+    (row) => row.label === "Пережил невозможное",
+  )!
+  assert.equal(achievement.sourceType, "achievement")
+  assert.equal(achievement.sourceId, null)
+  assert.equal(achievement.icon, "★")
+  assert.equal(achievement.capabilities.suppress, false)
 })
