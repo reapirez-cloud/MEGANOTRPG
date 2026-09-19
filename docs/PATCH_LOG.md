@@ -2,6 +2,23 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
+## Active patch — 2026-09-19-I
+
+**Status:** OPEN
+**Branch:** `dev`
+**Base main:** `5fabada04f317e56cb4322a6b3b01543e1d4c9ca`
+**Started:** 2026-09-19
+
+### Player-facing changes
+
+### Database / migration changes
+
+### Runtime and architecture changes
+
+### Tests / verification
+
+### Known incomplete work
+
 ---
 
 ## Released patches
@@ -14,6 +31,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 **Started:** 2026-09-18
 **Released:** 2026-09-19
 **Release identity:** `main / 2026-09-19-H`
+**Release commit:** `5fabada04f317e56cb4322a6b3b01543e1d4c9ca`
 
 ### Player-facing changes
 
@@ -38,6 +56,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added `docs/ABILITIES_VISUAL_REWORK_CONTRACT.md` to lock ownership for the v2 presentation pass: CharacterSheet keeps the masthead/art/background, Character+Spells remain the only visual-language source through shared `--cv-*` tokens, and the Abilities rewrite is presentation-only over the already-certified read-model/Snake/suppression mechanics.
 ### Tests / verification
 
+- Release candidate `609a68d0033eb9d264f7d8c8e84e22d05a078b4d` passed exact-head CI run `35424880423` (Build, Lint, Tests, Storybook, Playwright); production release `5fabada04f317e56cb4322a6b3b01543e1d4c9ca` then reached Vercel `success`.
 - Abilities v2 final READY head passed full CI on run `35424674578`: Build, Lint, repository tests, Storybook build and Playwright smoke all succeeded with the Stage 8 mobile browser certification suite enabled.
 - Added a dedicated Stage 8 Playwright fixture/spec using the real `CharacterSheetShell` + `CharacterSheetFeatures`; browser certification checks no horizontal overflow at 320/360/390/430px, ~42/58 standard and ~44/56 narrow panel splits, locked collapsed/empty/expanded heights and icon sizes, absence of the copied heading/slogan, and visible in-place suppressed rows. Initial Stage 8 CI run `35424499275` passed Build, Lint, repository tests, Storybook and Playwright including the new browser suite.
 - Abilities v2 Stage 7 behavior certification passed full CI on run `35424263822`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully after removing stale stage-number assertions from prior visual guards.
