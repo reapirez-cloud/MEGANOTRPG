@@ -16,7 +16,7 @@ test("stage 3 matches the approved chat landing-page anatomy without opening roo
   assert.match(source, /Текущая история/)
   assert.match(source, /chat-catalog__flood-label">Флуд/)
   assert.match(source, /chat-catalog__personal-strip/)
-  assert.match(source, /Все \(\{catalog\.personalActive\.length\}\)/)
+  assert.match(source, /sectionControl\("personal", visiblePersonal\.length, PERSONAL_PREVIEW_LIMIT\)/)
   assert.match(source, /Сюжетные ветки · кампании · временные игры/)
   assert.match(source, /Истории остаются с нами/)
   assert.doesNotMatch(source, /Новая история/)
