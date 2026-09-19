@@ -9,6 +9,9 @@ type ChatRequest = {
   toolChoice?: "auto" | Record<string, unknown>
   temperature?: number
   allowOwnerOverride?: boolean
+  disableReasoningEffort?: boolean
+  timeoutMs?: number
+  retryCount?: number
 }
 
 export class ProviderGatewayError extends Error {
@@ -182,54 +185,98 @@ export async function requestChatCompletion(input: ChatRequest) {
     input.allowOwnerOverride === true,
   )
 
-  let response: Response
-  try {
-    response = await fetch(apiBase + "/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: providerModel,
-        messages: input.messages,
-        temperature: input.temperature ?? 0.55,
-        ...(reasoningEffortForModel(input.model)
-          ? { reasoning_effort: reasoningEffortForModel(input.model) }
-          : {}),
-        ...(input.tools?.length
-          ? {
-              tools: input.tools,
-              tool_choice: input.toolChoice || "auto",
-            }
-          : {}),
-      }),
-    })
-  } catch (error) {
-    throw new ProviderGatewayError("AI provider request failed", {
-      code: "ai_provider_request_failed",
-      status: 502,
-      detail: error instanceof Error ? error.message : String(error),
-    })
+  const timeoutMs = Math.max(5_000, Math.min(input.timeoutMs ?? 45_000, 90_000))
+  const retryCount = Math.max(0, Math.min(input.retryCount ?? 1, 1))
+  const reasoningEffort =
+    input.disableReasoningEffort === true
+      ? null
+      : reasoningEffortForModel(input.model)
+
+  for (let attempt = 0; attempt <= retryCount; attempt += 1) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+    let response: Response
+    try {
+      response = await fetch(apiBase + "/chat/completions", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Authorization": "Bearer " + apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: providerModel,
+          messages: input.messages,
+          temperature: input.temperature ?? 0.55,
+          ...(reasoningEffort
+            ? { reasoning_effort: reasoningEffort }
+            : {}),
+          ...(input.tools?.length
+            ? {
+                tools: input.tools,
+                tool_choice: input.toolChoice || "auto",
+              }
+            : {}),
+        }),
+      })
+    } catch (error) {
+      clearTimeout(timeout)
+
+      const timedOut =
+        error instanceof DOMException && error.name === "AbortError"
+
+      if (!timedOut && attempt < retryCount) {
+        await new Promise((resolve) => setTimeout(resolve, 250))
+        continue
+      }
+
+      throw new ProviderGatewayError(
+        timedOut ? "AI provider request timed out" : "AI provider request failed",
+        {
+          code: timedOut ? "ai_provider_timeout" : "ai_provider_request_failed",
+          status: timedOut ? 504 : 502,
+          detail: error instanceof Error ? error.message : String(error),
+        },
+      )
+    } finally {
+      clearTimeout(timeout)
+    }
+
+    if (!response.ok) {
+      const detail = (await response.text()).slice(0, 1200)
+      const retryable =
+        response.status === 429 ||
+        response.status === 502 ||
+        response.status === 503 ||
+        response.status === 504
+
+      if (retryable && attempt < retryCount) {
+        await new Promise((resolve) => setTimeout(resolve, 350))
+        continue
+      }
+
+      throw new ProviderGatewayError("AI provider returned an error", {
+        code: "ai_provider_error",
+        status: 502,
+        providerStatus: response.status,
+        detail,
+      })
+    }
+
+    try {
+      return await response.json()
+    } catch (error) {
+      throw new ProviderGatewayError("AI provider returned invalid JSON", {
+        code: "ai_provider_invalid_response",
+        status: 502,
+        detail: error instanceof Error ? error.message : String(error),
+      })
+    }
   }
 
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 1200)
-    throw new ProviderGatewayError("AI provider returned an error", {
-      code: "ai_provider_error",
-      status: 502,
-      providerStatus: response.status,
-      detail,
-    })
-  }
-
-  try {
-    return await response.json()
-  } catch (error) {
-    throw new ProviderGatewayError("AI provider returned invalid JSON", {
-      code: "ai_provider_invalid_response",
-      status: 502,
-      detail: error instanceof Error ? error.message : String(error),
-    })
-  }
+  throw new ProviderGatewayError("AI provider request failed", {
+    code: "ai_provider_request_failed",
+    status: 502,
+  })
 }
