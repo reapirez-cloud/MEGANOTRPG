@@ -328,6 +328,7 @@ Deno.serve(async (req: Request) => {
   const agentKey = body.agentKey === "voss" ? "voss" : "voss"
   const requestedThreadId =
     typeof body.threadId === "string" ? body.threadId.trim() : ""
+  const asyncDeliveryRequested = body.deliveryMode === "async-v1"
   const viewContext = cleanContext(body.viewContext)
   const requestedDevSessionId =
     typeof body.devSessionId === "string" ? body.devSessionId : ""
@@ -1089,6 +1090,10 @@ Deno.serve(async (req: Request) => {
       mainWritable: false,
     },
   })
+  }
+
+  if (!asyncDeliveryRequested) {
+    return await processTurn()
   }
 
   const backgroundTurn = (async () => {
