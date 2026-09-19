@@ -81,9 +81,15 @@ export const VOSS_ADMIN_TOOLS = [
         type: "object",
         additionalProperties: false,
         properties: {
-          model_id: { type: ["string", "null"] },
+          model_id: {
+            type: "string",
+            description: "Enabled campaign agent model id. Omit when clear=true.",
+          },
+          clear: {
+            type: "boolean",
+            description: "Set true to clear the campaign default model.",
+          },
         },
-        required: ["model_id"],
       },
     },
   },
@@ -222,8 +228,9 @@ async function setCampaignVossModel(
   context: VossAdminToolContext,
   args: JsonRecord,
 ) {
-  const modelId = args.model_id === null ? null : uuid(args.model_id)
-  if (args.model_id !== null && !modelId) return { error: "model_id_invalid" }
+  const clear = args.clear === true
+  const modelId = clear ? null : uuid(args.model_id)
+  if (!clear && !modelId) return { error: "model_id_required" }
 
   if (modelId) {
     const { data: model, error: modelError } = await context.admin
