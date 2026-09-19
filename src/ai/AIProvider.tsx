@@ -100,6 +100,12 @@ export type AIAttachment = {
   size: number
 }
 
+export type AIGeneratedAssetRef = {
+  jobId: string
+  assetId: string
+  variantIndex: number
+}
+
 export type AIDraftNode = {
   key: string
   entity_type: "location" | "character" | "definition"
@@ -320,7 +326,13 @@ type AIContextValue = {
   switchThread: (threadId: string) => Promise<boolean>
   deleteThread: (threadId: string) => Promise<boolean>
   saveGeneratedAsset: (assetId: string) => Promise<boolean>
-  send: (message: string, attachments?: AIAttachment[]) => Promise<boolean>
+  cancelImageJob: (jobId: string) => Promise<boolean>
+  retryImageJob: (jobId: string) => Promise<boolean>
+  send: (
+    message: string,
+    attachments?: AIAttachment[],
+    generatedAssetRef?: AIGeneratedAssetRef | null,
+  ) => Promise<boolean>
   refreshConversation: () => Promise<void>
   refreshDrafts: () => Promise<void>
   refreshJobs: () => Promise<void>
@@ -1332,6 +1344,44 @@ export function AIProvider({ children }: { children: ReactNode }) {
     return true
   }, [activeThreadId, campaignId, loadJobsFor, userId])
 
+  const runImageJobAction = useCallback(async (
+    action: "cancel_image_job" | "retry_image_job",
+    jobId: string,
+  ) => {
+    if (!campaignId || !userId || !jobId) return false
+    setError(null)
+
+    const { data, error: invokeError } = await supabase.functions.invoke(
+      "voss-agent",
+      {
+        body: {
+          campaignId,
+          agentKey: "voss",
+          action,
+          jobId,
+        },
+      },
+    )
+
+    if (invokeError || data?.error) {
+      setError(await normalizeFunctionError(invokeError, data))
+      return false
+    }
+
+    await loadJobsFor(campaignId, userId, activeThreadId)
+    return true
+  }, [activeThreadId, campaignId, loadJobsFor, userId])
+
+  const cancelImageJob = useCallback(
+    (jobId: string) => runImageJobAction("cancel_image_job", jobId),
+    [runImageJobAction],
+  )
+
+  const retryImageJob = useCallback(
+    (jobId: string) => runImageJobAction("retry_image_job", jobId),
+    [runImageJobAction],
+  )
+
   const chooseModel = useCallback(async (modelId: string) => {
     if (!campaignId || !userId) return false
     const model = models.find(
@@ -1410,6 +1460,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const send = useCallback(async (
     rawMessage: string,
     attachments: AIAttachment[] = [],
+    generatedAssetRef: AIGeneratedAssetRef | null = null,
   ) => {
     const message =
       rawMessage.trim() ||
@@ -1466,6 +1517,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
           mimeType: attachment.mimeType,
           size: attachment.size,
         })),
+        ...(generatedAssetRef ? { generatedAssetRef } : {}),
         ...(devSession && devSessionToken
           ? {
               devSessionId: devSession.id,
@@ -1594,6 +1646,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
     switchThread,
     deleteThread,
     saveGeneratedAsset,
+    cancelImageJob,
+    retryImageJob,
     send,
     refreshConversation,
     refreshDrafts,
@@ -1607,6 +1661,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     campaignId,
     canManage,
     cancelDevRun,
+    cancelImageJob,
     chooseModel,
     createThread,
     closeDeveloperMode,
@@ -1635,6 +1690,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     refreshMechanicsCompilations,
     refreshDevRun,
     refreshDevRuns,
+    retryImageJob,
     route,
     saveGeneratedAsset,
     selectedModelId,
