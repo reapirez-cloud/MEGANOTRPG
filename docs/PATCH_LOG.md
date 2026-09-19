@@ -2,31 +2,53 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-19-I
+## Released patches
 
-**Status:** OPEN
-**Branch:** `dev`
+## Patch — 2026-09-19-I
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `5fabada04f317e56cb4322a6b3b01543e1d4c9ca`
+**Release base main:** `7806f717cf63c1310a84b19ee3b0bac476a59143`
 **Started:** 2026-09-19
+**Released:** 2026-09-19
+**Release identity:** `main / 2026-09-19-I`
 
 ### Player-facing changes
 
-- Expanded the character-sheet Abilities stack from five to seven canonical groups: **Класс / Подкласс / Раса / Предыстория / Фиты / Особое / Эффекты**. `Фиты` reads explicit `feat` character features; `Особое` reads generic GM-authored `feature`/`other` rows plus character-bound achievements. Description-only unique traits remain visible even with empty mechanics, so William's canonical `Воровской жаргон`-style feature no longer disappears from the sheet.
-- Corrected the Abilities panel material to the same current premium background-derived glass used by Character Core and Spells (`--cv-panel-glass`, edge/line/specular/filter tokens) instead of the older `--cv-surface-soft` recipe. Feats and Special also receive distinct group icons, and short achievement symbols such as `★` render as authored glyph media.
+- Rebuilt the Chats landing page as one mobile-first catalog with the fixed hierarchy **Текущая история → Флуд → Личные истории → События → Завершённые**, matching the approved reference geometry while retaining the existing MegANOT visual language.
+- The catalog now uses real room/campaign data for previews, unread counts, activity, visible World location, campaign day/period, access state, completion dates and artwork fallbacks; no fabricated chapter/episode metadata is shown.
+- Personal histories are lifecycle-owned: a PC gets one automatic history, death moves it to **Завершённые** and makes it read-only, and revival returns the same room to active without creating a duplicate.
+- Search, section filters, unread-only filtering and inline **Все (N)** expansion are active. Room taps stay on the shared catalog placeholder, and the GM/Owner `+` opens only the event-creation placeholder; personal histories cannot be created manually.
+- Loading/error/empty states, broken-media fallback, `99+` unread badges, long labels, large expanded lists, reduced motion and layouts down to 320px are hardened.
+- Stage 8 freezes the catalog contract for Player / GM / Owner authority, room visibility, lifecycle, activity ordering, Realtime coverage, responsive behavior and the deliberate boundary before the inner gameplay dialog.
+
 ### Database / migration changes
+
+- Added `chat_catalog_stage2_read_model`: the chat catalog RPC exposes raw lifecycle/activity timestamps and the catalog lifecycle tables are published to Realtime.
+- Added `chat_catalog_stage4_real_context`: scene context comes from the room, personal-story context comes from `character_world_state`, and a location name is exposed only when `private.can_view_location(...)` permits it; World state/location changes refresh the catalog through Realtime.
+- Added `chat_catalog_stage5_personal_lifecycle`: personal rooms are normalized to lifecycle-owned state, death/revival clear stale closure metadata, and `set_chat_room_state` rejects manual state changes for character histories.
 
 ### Runtime and architecture changes
 
-- Feat/Special mechanics remain owned by Character Runtime / CE. Canonical `character_features` are supplied to the abilities read-model only to preserve presentation for description-only rows; matching runtime rows are deduplicated by `feature:<id>`. Generic `feature`/`other` mechanics now expose `character_special` source semantics and `feat` uses `character_feat`, while canonical suppression identity remains unchanged.
-- Character-bound achievements are read as inspect-only presentation rows under `Особое`; they do not become a second mechanics source. Any mechanical achievement reward still requires a canonical character feature/runtime source. No database schema or RLS change was introduced.
+- Added pure `catalogModel.ts`, `catalogPresentation.ts` and `catalogFilters.ts` layers so classification/sorting, factual display semantics and browsing stay outside page markup and outside canonical gameplay ownership.
+- **Текущая история** is the most recently active accessible personal/event room; Flood is never eligible. Active lists sort by real activity and completed lists by character death or event close time with deterministic fallbacks.
+- The landing catalog remains non-mutating and deliberately does not invoke the retained `onOpenRoom` route contract or old ChatRoom implementation.
+- Manager UI uses the repository authority invariant `canManage = isGm || isOwner`; Owner remains an independent authority flag rather than a third exclusive role.
+- `docs/CHAT_CATALOG_CONTRACT.md` is the frozen Stage 8 landing-page contract.
+
 ### Tests / verification
 
-- Extended abilities read-model/browser coverage to seven groups, including description-only feats, William-style `Воровской жаргон`, read-only achievement rows/glyphs, premium Character/Spells glass tokens, and the seven-panel 320–430px Playwright certification stack.
+- Added Stage 1–8 catalog regression suites covering hierarchy, read-model ordering, factual context, lifecycle, search/filter behavior, placeholders, resilience, mobile geometry and the final authority/Realtime boundary.
+- Stage 8 head `0b2a5819d6cc7b1d4817c44a4cedf042a51a95d4` passed full CI run `35437152754`: Build, Lint, repository tests, Storybook and Playwright all succeeded.
+- Live Supabase release audit confirmed RLS on all catalog-related tables, authenticated-only chat RPC execution, one personal room per PC (8/8 with zero duplicates), clean alive/dead lifecycle invariants, and all six catalog Realtime sources published.
+- Release reconciliation against `main...dev` found 13 chat-only commits and no branch divergence; unrelated work already present on `main` is excluded from this patch.
+
 ### Known incomplete work
 
----
+- The **Chats landing catalog is complete and frozen**. The inner gameplay dialog is intentionally a separate roadmap and is not part of this release.
 
-## Released patches
+
 
 ## Patch — 2026-09-18-H
 

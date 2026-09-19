@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
+import { buildChatCatalogModel } from "../chat/catalogModel"
 import { useCharacters } from "../context/CharacterContext"
 import { deleteCampaignMediaObjects } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
@@ -27,7 +28,15 @@ type RoomRpcRow = {
   day_period: string
   scene_state: string
   is_own_character_room: boolean
+  context_location_id: string | null
+  context_location_name: string | null
+  context_campaign_day: number | null
+  context_day_period: string | null
   preview: string
+  created_at: string
+  updated_at: string
+  closed_at: string | null
+  character_died_at: string | null
   last_message_at: string | null
   last_message_id: number | null
   unread_count: number
@@ -85,8 +94,17 @@ export function useRooms() {
       day_period: normalizePeriod(room.day_period),
       scene_state: room.scene_state === "closed" ? "closed" : "active",
       is_own_character_room: Boolean(room.is_own_character_room),
+      context_location_id: room.context_location_id || null,
+      context_location_name: room.context_location_name || null,
+      context_campaign_day: room.context_campaign_day === null ? null : Number(room.context_campaign_day),
+      context_day_period: room.context_day_period ? normalizePeriod(room.context_day_period) : null,
       preview: room.preview,
       time: formatTime(room.last_message_at),
+      created_at: room.created_at,
+      updated_at: room.updated_at,
+      closed_at: room.closed_at || null,
+      character_died_at: room.character_died_at || null,
+      last_message_at: room.last_message_at || null,
       last_message_id: room.last_message_id,
       unread_count: room.unread_count,
     })) satisfies ChatRoom[]
@@ -109,6 +127,8 @@ export function useRooms() {
       .on("postgres_changes", { event: "*", schema: "public", table: "chat_rooms", filter: `campaign_id=eq.${campaignId}` }, refreshSoon)
       .on("postgres_changes", { event: "*", schema: "public", table: "chat_messages" }, refreshSoon)
       .on("postgres_changes", { event: "*", schema: "public", table: "characters", filter: `campaign_id=eq.${campaignId}` }, refreshSoon)
+      .on("postgres_changes", { event: "*", schema: "public", table: "character_world_state", filter: `campaign_id=eq.${campaignId}` }, refreshSoon)
+      .on("postgres_changes", { event: "*", schema: "public", table: "locations", filter: `campaign_id=eq.${campaignId}` }, refreshSoon)
       .on("postgres_changes", { event: "*", schema: "public", table: "scene_participants" }, refreshSoon)
       .subscribe()
     return () => {
@@ -169,8 +189,10 @@ export function useRooms() {
     return { ok: true }
   }, [rooms])
 
+  const catalog = useMemo(() => buildChatCatalogModel(rooms), [rooms])
+
   return {
-    rooms, campaignId, campaignTitle, loading, error,
+    rooms, catalog, campaignId, campaignTitle, loading, error,
     reload: () => loadRooms(false),
     createSceneRoom, createGameRoom: createSceneRoom,
     renameRoom, setRoomAvatar, setRoomState, setCampaignAccess, deleteRoom,

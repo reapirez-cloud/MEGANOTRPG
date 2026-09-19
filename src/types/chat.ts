@@ -22,8 +22,17 @@ export type ChatRoom = {
   day_period: "dawn" | "morning" | "day" | "late_day" | "evening" | "night" | "deep_night"
   scene_state: SceneState
   is_own_character_room: boolean
+  context_location_id: string | null
+  context_location_name: string | null
+  context_campaign_day: number | null
+  context_day_period: "dawn" | "morning" | "day" | "late_day" | "evening" | "night" | "deep_night" | null
   preview: string
   time: string
+  created_at: string
+  updated_at: string
+  closed_at: string | null
+  character_died_at: string | null
+  last_message_at: string | null
   last_message_id: number | null
   unread_count: number
 }
