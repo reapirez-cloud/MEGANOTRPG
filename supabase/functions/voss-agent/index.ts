@@ -46,6 +46,7 @@ import {
   getPlayerVossBlock,
   notifySystemAdminsOfVossBlock,
   recordPlayerSecurityAssessment,
+  resolvePlayerSecurityModel,
 } from "./security.ts"
 import {
   recordVossRouteRun,
@@ -587,10 +588,31 @@ Deno.serve(async (req: Request) => {
     }, 500)
   }
 
+  const { data: currentThread } = await admin
+    .from("ai_threads")
+    .select("title")
+    .eq("id", threadId)
+    .maybeSingle()
+
+  const autoTitle =
+    currentThread?.title === "Новый чат"
+      ? message.replace(/\s+/g, " ").trim().slice(0, 72) || "Новый чат"
+      : currentThread?.title || "Новый чат"
+
+  await admin
+    .from("ai_threads")
+    .update({
+      title: autoTitle,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", threadId)
+
+  const processTurn = async () => {
   if (authority === "player") {
     try {
+      const securityModel = await resolvePlayerSecurityModel(admin, resolvedModel)
       const assessment = await assessPlayerSecurity({
-        model: resolvedModel,
+        model: securityModel,
         message,
         history,
         allowOwnerOverride: false,
@@ -638,56 +660,22 @@ Deno.serve(async (req: Request) => {
             .update({ updated_at: new Date().toISOString() })
             .eq("id", threadId)
 
-          if (!asyncDeliveryRequested) {
-            return reply({
-              answer: blockedAnswer,
-              threadId,
-              authority,
-              security: {
-                blocked: true,
-                strikeCount: securityState.strike_count,
-              },
-            })
-          }
-
           return reply({
-            accepted: true,
+            answer: blockedAnswer,
             threadId,
-            messageId: persistedUserMessage.id,
             authority,
             security: {
               blocked: true,
               strikeCount: securityState.strike_count,
             },
-          }, 202)
+          })
         }
       }
     } catch {
-      // The classifier is defense in depth. Server/RLS authority still remains
-      // authoritative if the classifier/provider is temporarily unavailable.
+      // Defense in depth only. RLS/tool authorization remains authoritative.
     }
   }
 
-  const { data: currentThread } = await admin
-    .from("ai_threads")
-    .select("title")
-    .eq("id", threadId)
-    .maybeSingle()
-
-  const autoTitle =
-    currentThread?.title === "Новый чат"
-      ? message.replace(/\s+/g, " ").trim().slice(0, 72) || "Новый чат"
-      : currentThread?.title || "Новый чат"
-
-  await admin
-    .from("ai_threads")
-    .update({
-      title: autoTitle,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", threadId)
-
-  const processTurn = async () => {
   const contextText = Object.keys(viewContext).length
     ? JSON.stringify(viewContext, null, 2)
     : "Контекст текущего экрана не передан."
