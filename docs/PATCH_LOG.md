@@ -2,6 +2,25 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
+## Active patch — 2026-09-19-K
+
+**Status:** OPEN
+**Branch:** `dev`
+**Base main:** `a23d9ed3b9e5dc4e3b585c690d2376033738c8ed`
+**Started:** 2026-09-19
+
+### Player-facing changes
+
+### Database / migration changes
+
+### Runtime and architecture changes
+
+### Tests / verification
+
+### Known incomplete work
+
+---
+
 ## Released patches
 
 ## Patch — 2026-09-19-J
@@ -12,6 +31,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 **Started:** 2026-09-19
 **Released:** 2026-09-19
 **Release identity:** `main / 2026-09-19-J`
+**Release commit:** `a23d9ed3b9e5dc4e3b585c690d2376033738c8ed`
 
 ### Player-facing changes
 
@@ -24,6 +44,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Unavailable room opening and event creation use Snake Placeholder surfaces instead of a local modal family or a legacy route fallback.
 ### Tests / verification
 
+- Release candidate `5a105445e1fcea706527e049a713f462ec87f761` passed exact-head CI run `35442563167`; production release `a23d9ed3b9e5dc4e3b585c690d2376033738c8ed` passed release CI run `35442707529` and reached Vercel `success`.
 - Final isolated UI 1.0 Chats head `895d84b10a727ebf8b4d879ac86e2f115d528ba2` passed full CI run `35442398294`: Build, Lint, repository tests, Storybook and Playwright all succeeded.
 - Added UI 1.0 Chats regressions that forbid the stale development placeholder and legacy imports, require the isolated catalog/adapter, lock Player/GM/Owner authority plus all six Realtime refresh sources, require Snake placeholders for deferred actions, and preserve 320px/large-list resilience.
 - The first wiring attempt correctly failed CI because it imported the legacy `pages/Chats` / `CharacterContext` tree; the final implementation removes that bridge and restores the repository hard-isolation contract.
