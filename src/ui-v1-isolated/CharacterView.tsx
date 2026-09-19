@@ -119,10 +119,11 @@ export default function CharacterView({
   const [interfaceMode, setInterfaceMode] = useState<"inventory" | null>(null)
   const [spellsDataEnabled, setSpellsDataEnabled] = useState(false)
   const [inventoryDataEnabled, setInventoryDataEnabled] = useState(false)
+  const [featuresDataEnabled, setFeaturesDataEnabled] = useState(false)
   const control = useUiV1CharacterControl(characterId, {
     loadSpells: spellsDataEnabled,
     loadInventory: inventoryDataEnabled,
-    loadFeatures: false,
+    loadFeatures: featuresDataEnabled,
     loadResources: false,
   })
   const classKey = classKeyFrom(
@@ -157,10 +158,14 @@ export default function CharacterView({
       ],
       templateBundles: runtime.templates.bundles,
       backgroundName: control.sheet?.background,
+      features: control.features,
+      achievements: control.achievements,
     })
   }, [
     runtime.preparation.suppressedSourceIds,
     runtime.snapshot,
+    control.achievements,
+    control.features,
     control.sheet?.background,
     runtime.templates.bundles,
     runtime.templates.suppressions.sourceIds,
@@ -170,10 +175,12 @@ export default function CharacterView({
     setAuxiliaryEnabled(false)
     setSpellsDataEnabled(false)
     setInventoryDataEnabled(false)
+    setFeaturesDataEnabled(false)
   }, [characterId])
 
   useEffect(() => {
     if (section === "spells") setSpellsDataEnabled(true)
+    if (section === "features") setFeaturesDataEnabled(true)
     if (interfaceMode === "inventory") setInventoryDataEnabled(true)
   }, [interfaceMode, section])
 
