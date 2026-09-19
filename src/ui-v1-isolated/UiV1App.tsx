@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
 import AgentShell from "../ai/AgentShell"
+import ChatCatalog from "./ChatCatalog"
 
 import { useHomeData, type HomeEvent, type HomeSocietyNews } from "./useHomeData"
 import { WhatsNew } from "./WhatsNew"
@@ -677,13 +678,7 @@ function Screen({ route }: { route: Route }) {
     )
   }
 
-  return (
-    <Placeholder
-      eyebrow="Будущий раздел"
-      title="Чаты"
-      body="Новый интерфейс чатов будет построен отдельно. Этот экран существует только как чистая точка подключения."
-    />
-  )
+  return <ChatCatalog />
 }
 
 export default function UiV1App() {

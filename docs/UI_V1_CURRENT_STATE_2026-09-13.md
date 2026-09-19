@@ -49,7 +49,7 @@ Current status:
 
 - **Главная** — implemented;
 - **Я / Workspace** — implemented first identity-space pass;
-- **Чаты** — UI 1.0 placeholder.
+- **Чаты** — Stage 8 landing catalog implemented in isolated UI 1.0; inner gameplay dialog remains a deliberate future connection seam.
 
 The top-right `VI` circle is reserved for the future player profile and no longer routes to Workspace. Profile UI remains deliberately unimplemented.
 
@@ -168,6 +168,22 @@ Current World status:
 
 Current hub is data-driven. Present entries include spells, classes, invocations, bestiary and deferred/reference placeholders. Existing real catalogs are used where available. Unknown/new subsection routes degrade to clean UI 1.0 connection placeholders rather than legacy screens.
 
+## Chats — isolated landing catalog
+
+The `#/chats` root now renders a real UI 1.0 catalog rather than a placeholder. It is isolated from the legacy visual tree and reads through `useUiV1ChatCatalog.ts` under RLS while reusing the shared pure chat catalog model/presentation/filter logic.
+
+Current catalog contract:
+
+- fixed hierarchy: **Текущая история → Флуд → Личные истории → События → Завершённые**;
+- factual room/world/lifecycle data only; no invented chapter metadata;
+- search, filters, unread-only filtering and inline **Все (N)** expansion;
+- GM/owner event `+` remains a Snake Placeholder until the dedicated create flow is designed;
+- room tap opens a Snake Placeholder; the inner gameplay dialog remains intentionally unimplemented in UI 1.0;
+- loading/error/empty, broken-media fallback, `99+`, large lists and 320px layouts are supported;
+- Realtime refresh sources are `chat_rooms`, `chat_messages`, `characters`, `character_world_state`, `locations` and `scene_participants`.
+
+Do not import `src/pages/Chats.tsx`, `chats-v3.css`, `CharacterContext` or another legacy visual/runtime provider into UI 1.0. Shared pure read-model modules are allowed; UI 1.0 owns its isolated adapter and presentation.
+
 ## Chronology, Society News and Achievements
 
 - **Что нового / chronology** — real non-art campaign chronology with progressive loading and stable future source slots;
@@ -241,7 +257,7 @@ E. Snake interaction runtime              DONE core + Locations proof #1
 F. Inventory as Snake proof #2            DONE first working pass in Character View
 G. Workspace identity shell                DONE first pass
 H. Character UI / Sheet / Inventory UI    DONE first working GM-control pass
-I. Chats UI 1.0                           DEFERRED
+I. Chats UI 1.0 landing catalog           DONE Stage 8; inner dialog deferred
 J. remaining surfaces + atmosphere/polish DEFERRED
 ```
 
@@ -251,7 +267,7 @@ Do not create local context menus or modal families beside Snake. New entity fam
 
 Intentionally deferred at this snapshot:
 
-- Chats UI 1.0;
+- inner Chats gameplay dialog / room screen;
 - Map UI;
 - dedicated Art/gallery UI 1.0;
 - many entity detail/editor/create flows;

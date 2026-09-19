@@ -4,6 +4,33 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ## Released patches
 
+## Patch — 2026-09-19-J
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
+**Base main:** `8639c14dd77c6db4374a536f872a4ab87b87f342`
+**Started:** 2026-09-19
+**Released:** 2026-09-19
+**Release identity:** `main / 2026-09-19-J`
+
+### Player-facing changes
+
+- Fixed the UI 1.0 Chats dock route to render an isolated Stage 8 chat catalog instead of the stale `Будущий раздел` placeholder. The full catalog hierarchy, search/filter/expand behavior, real room context and resilience states now exist inside the UI 1.0 tree; the inner room/dialog boundary remains intentionally disconnected.
+### Database / migration changes
+
+### Runtime and architecture changes
+
+- UI 1.0 keeps hard isolation: `ChatCatalog.tsx`, `chat-catalog.css` and `useUiV1ChatCatalog.ts` live inside the isolated tree, read Supabase under RLS, and reuse only the shared pure chat model/presentation/filter modules. No legacy page, `CharacterContext`, legacy chat CSS or old visual tree is imported.
+- Unavailable room opening and event creation use Snake Placeholder surfaces instead of a local modal family or a legacy route fallback.
+### Tests / verification
+
+- Final isolated UI 1.0 Chats head `895d84b10a727ebf8b4d879ac86e2f115d528ba2` passed full CI run `35442398294`: Build, Lint, repository tests, Storybook and Playwright all succeeded.
+- Added UI 1.0 Chats regressions that forbid the stale development placeholder and legacy imports, require the isolated catalog/adapter, lock Player/GM/Owner authority plus all six Realtime refresh sources, require Snake placeholders for deferred actions, and preserve 320px/large-list resilience.
+- The first wiring attempt correctly failed CI because it imported the legacy `pages/Chats` / `CharacterContext` tree; the final implementation removes that bridge and restores the repository hard-isolation contract.
+### Known incomplete work
+
+---
+
 ## Patch — 2026-09-19-I
 
 **Status:** RELEASED
@@ -13,6 +40,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 **Started:** 2026-09-19
 **Released:** 2026-09-19
 **Release identity:** `main / 2026-09-19-I`
+**Release commit:** `8639c14dd77c6db4374a536f872a4ab87b87f342`
 
 ### Player-facing changes
 
@@ -39,6 +67,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Release candidate `dd39c0b349e6e54b44cb834916195d87bb0adaea` passed exact-head CI run `35440478602`; production release `8639c14dd77c6db4374a536f872a4ab87b87f342` passed release CI run `35440618360` and reached Vercel `success`.
 - Added Stage 1–8 catalog regression suites covering hierarchy, read-model ordering, factual context, lifecycle, search/filter behavior, placeholders, resilience, mobile geometry and the final authority/Realtime boundary.
 - Stage 8 head `0b2a5819d6cc7b1d4817c44a4cedf042a51a95d4` passed full CI run `35437152754`: Build, Lint, repository tests, Storybook and Playwright all succeeded.
 - Live Supabase release audit confirmed RLS on all catalog-related tables, authenticated-only chat RPC execution, one personal room per PC (8/8 with zero duplicates), clean alive/dead lifecycle invariants, and all six catalog Realtime sources published.
