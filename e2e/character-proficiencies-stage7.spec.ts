@@ -232,9 +232,10 @@ test("Stage 7 keeps long tool and language catalogs wrapping inside their panels
   expect(result.languageHeight).toBeGreaterThan(130)
 })
 
-test("Stage 7 accordion panels remain independent and keep the sheet scroll position stable", async ({ page }) => {
+test("Stage 7 accordion panels remain independent and keep programmatic toggles scroll-stable", async ({ page }) => {
   await openFixture(page, 390)
 
+  const sheet = page.locator(".u1-character-sheet")
   const weapons = page.locator(
     '.u1-character-proficiencies__panel[data-group="weapons"]',
   )
@@ -245,22 +246,38 @@ test("Stage 7 accordion panels remain independent and keep the sheet scroll posi
   await expect(weapons).toHaveAttribute("data-expanded", "true")
   await expect(armor).toHaveAttribute("data-expanded", "true")
 
-  const before = await page.locator(".u1-character-sheet").evaluate(
-    (sheet) => sheet.scrollTop,
-  )
+  await sheet.evaluate((element) => {
+    element.scrollTop = 120
+  })
+  const before = await sheet.evaluate((element) => element.scrollTop)
 
-  await weapons.locator(".u1-character-proficiencies__head").click()
+  // DOM click avoids Playwright's own scrollIntoView(), so this assertion
+  // measures the component's scroll compensation rather than the test runner.
+  await weapons.locator(".u1-character-proficiencies__head").evaluate(
+    (element) => (element as HTMLButtonElement).click(),
+  )
+  await page.waitForTimeout(220)
   await expect(weapons).toHaveAttribute("data-expanded", "false")
   await expect(armor).toHaveAttribute("data-expanded", "true")
 
-  await armor.locator(".u1-character-proficiencies__head").click()
+  const armorTopBefore = await armor
+    .locator(".u1-character-proficiencies__head")
+    .evaluate((element) => element.getBoundingClientRect().top)
+
+  await armor.locator(".u1-character-proficiencies__head").evaluate(
+    (element) => (element as HTMLButtonElement).click(),
+  )
+  await page.waitForTimeout(220)
   await expect(weapons).toHaveAttribute("data-expanded", "false")
   await expect(armor).toHaveAttribute("data-expanded", "false")
 
-  const after = await page.locator(".u1-character-sheet").evaluate(
-    (sheet) => sheet.scrollTop,
-  )
+  const after = await sheet.evaluate((element) => element.scrollTop)
+  const armorTopAfter = await armor
+    .locator(".u1-character-proficiencies__head")
+    .evaluate((element) => element.getBoundingClientRect().top)
+
   expect(Math.abs(after - before)).toBeLessThanOrEqual(2)
+  expect(Math.abs(armorTopAfter - armorTopBefore)).toBeLessThanOrEqual(2)
 })
 
 test("Stage 7 keeps suppressed proficiencies visible but excludes them from the effective counter", async ({ page }) => {
@@ -311,7 +328,8 @@ async function openSourceBranch(
     .first()
   await tag.click({ button: "right" })
   await expect(page.getByRole("menu")).toBeVisible()
-  await page.getByText("Источник", { exact: true }).click()
+  await page.getByRole("menuitem", { name: "Источник" }).click()
+  await page.getByRole("menuitem", { name: "Воин" }).click()
 }
 
 test("Stage 7 player Snake exposes provenance without mutation commands", async ({ page }) => {
