@@ -14,15 +14,22 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Chat room cards now participate in Snake: right-click on desktop and long-press on touch open the room action menu instead of doing nothing.
 - Snake window backdrops no longer click through into the chat beneath when dismissed outside the window; the universal host now consumes the full gesture and closes on the completed click.
 - Chat room artwork now fills the whole preview as a class-style panorama for personal histories, events and completed rooms, with one shared 3:1 geometry for image/fallback states and a restrained dark scrim only where text needs contrast; Flood stays compact.
+- ArtPlayer now opens the whole active art/generation collection with the tapped item as the initial slide, so swipe and arrow navigation work across neighboring assets instead of trapping the viewer on one image.
+- Art Library now has Snake-driven multi-select: select the first asset from Snake, tap additional cards to add/remove them, then use Snake on a selected card to delete the selected set. The header shows the selection count and can clear the mode.
+- System/reference icons no longer appear as fake generations; existing authored class icons are surfaced in owner-only System Materials, while true Generations contains only assets produced by image jobs.
+- Class/subclass art upload now registers and binds atomically. A failed bind no longer leaves duplicate manual assets behind, and failed uploads clean their Storage object.
 ### Database / migration changes
 
+- Added `art_library_integrity_v1`: generation read/delete RPCs now accept only real generated assets (`source_job_id`), authored class icons are bridged into owner-only System Materials, and `bind_reference_media_upload_v1` makes reference upload + binding one transaction.
 ### Runtime and architecture changes
 
 - Added the UI 1.0 chat-room Snake action provider and registered hero, Flood/event/archive rows and personal-history cards as `chat_room` entities through `SnakeTrigger`. Ordinary tap and Snake `Открыть` reuse the same deferred room surface descriptor.
 - Fixed the click-through behavior globally in `SnakeWindowHost`, not in Chats, and documented the completed-click backdrop law in the canonical Snake contract.
+- Reference art file uploads use the new atomic RPC; icon slots are registered as system reference icons, while preview/hero/panel art remains normal reference media. Batch deletion reuses the canonical System Materials and generated-media deletion boundaries.
 ### Tests / verification
 
 - Added regressions for chat-room Snake registration/action-provider coverage, full-bleed panoramic chat artwork geometry/scrims (including identical image/fallback sizing), and the universal Snake backdrop rule that forbids closing/unmounting on pointerdown.
+- Added regressions for true-generation isolation, System Materials icon ownership, collection-level ArtPlayer navigation, Snake multi-select/batch deletion, and atomic class/subclass art binding with Storage cleanup on failure.
 ### Known incomplete work
 
 ---
