@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
-import { uploadCampaignImage } from "../lib/mediaUpload"
+import { deleteCampaignMediaObjects, uploadCampaignImage } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
 import {
   parseMediaPresentation,
@@ -202,46 +202,57 @@ export function useUiV1ReferenceMedia(
         storagePath = upload.url
         const isHero = targetField.endsWith(":hero")
         const isSheetBackground = targetField.endsWith(":sheet_background")
-        const { data: registered, error: registerError } = await supabase.rpc(
-          "register_manual_media_v1",
+        const purpose = isIcon
+          ? "icon"
+          : isHero
+            ? "hero_art"
+            : isSheetBackground
+              ? "panel"
+              : isPortraitFrame
+                ? "portrait"
+                : "ui_preview"
+        const profile = isIcon
+          ? "tiny_icon"
+          : isHero
+            ? "hero_art"
+            : isSheetBackground
+              ? "panel"
+              : isPortraitFrame
+                ? "portrait"
+                : "ui_preview"
+
+        const { data: bound, error: bindUploadError } = await supabase.rpc(
+          "bind_reference_media_upload_v1",
           {
             p_campaign_id: scope.campaignId,
+            p_target_field: targetField,
             p_storage_path: storagePath,
             p_mime_type: upload.mimeType,
             p_width: upload.width,
             p_height: upload.height,
-            p_purpose: isIcon
-              ? "icon"
-              : isHero
-                ? "hero_art"
-                : isSheetBackground
-                  ? "panel"
-                  : isPortraitFrame
-                    ? "portrait"
-                    : "ui_preview",
-            p_profile: isIcon
-              ? "tiny_icon"
-              : isHero
-                ? "hero_art"
-                : isSheetBackground
-                  ? "panel"
-                  : isPortraitFrame
-                    ? "portrait"
-                    : "ui_preview",
+            p_purpose: purpose,
+            p_profile: profile,
+            p_presentation: presentation,
           },
         )
 
-        if (registerError || !registered) {
+        if (bindUploadError || !bound) {
+          await deleteCampaignMediaObjects([storagePath])
           const message =
-            registerError?.message || "Не удалось зарегистрировать изображение."
+            bindUploadError?.message || "Не удалось зарегистрировать и привязать изображение."
           setError(message)
           setBusy(false)
           return { ok: false, error: message }
         }
 
-        assetId = String(registered)
-      }
+        const payload = bound as { asset_id?: string; storage_path?: string }
+        assetId = payload.asset_id || assetId
+        storagePath = payload.storage_path || storagePath
 
+        await load()
+        setBusy(false)
+        return { ok: true }
+      }
       if (!assetId || !storagePath) {
         const message =
           "Встроенный арт можно только заменить загрузкой нового файла."
