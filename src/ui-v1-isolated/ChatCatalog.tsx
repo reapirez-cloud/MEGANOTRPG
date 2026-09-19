@@ -12,7 +12,8 @@ import {
   roomStatus,
 } from "../chat/catalogPresentation"
 import type { ChatRoom } from "../types/chat"
-import { useSnake } from "./SnakeProvider"
+import { SnakeTrigger, useSnake } from "./SnakeProvider"
+import { chatRoomOpenSurface, createChatRoomSnakeActions } from "./chatSnakeActions"
 import { useUiV1ChatCatalog } from "./useUiV1ChatCatalog"
 import "./chat-catalog.css"
 
@@ -186,13 +187,17 @@ export default function ChatCatalog() {
   }
 
   function openRoom(room: ChatRoom) {
-    snake.openSurface({
-      kind: "placeholder",
-      eyebrow: roomTypeLabel(room),
-      title: room.title,
-      body: "Внутренний игровой диалог подключается отдельным этапом. Комната и сообщения остаются без изменений.",
-      size: { width: "compact", height: "content" },
-    })
+    snake.openSurface(chatRoomOpenSurface(room))
+  }
+
+  function roomSnakeActions(room: ChatRoom) {
+    const details = [
+      roomMeta(room),
+      room.preview || "Пока без сообщений",
+      formatRoomActivity(room) ? "Последняя активность · " + formatRoomActivity(room) : "",
+    ].filter(Boolean).join("\n\n")
+
+    return createChatRoomSnakeActions({ room, details })
   }
 
   function openCreateEvent() {
@@ -235,8 +240,12 @@ export default function ChatCatalog() {
     const meta = variant === "completed" ? formatRoomCompletion(room) : roomMeta(room)
 
     return (
-      <button
+      <SnakeTrigger
         key={room.id}
+        entity={{ type: "chat_room", id: room.id }}
+        actions={roomSnakeActions(room)}
+      >
+      <button
         type="button"
         className={"u1-chat-row u1-chat-row--" + variant}
         data-tone={roomStatus(room).tone}
@@ -263,6 +272,7 @@ export default function ChatCatalog() {
           )}
         </span>
       </button>
+      </SnakeTrigger>
     )
   }
 
@@ -381,23 +391,28 @@ export default function ChatCatalog() {
             <h2>Текущая история</h2>
           </div>
           {hero ? (
-            <button type="button" className="u1-chat-hero" onClick={() => openRoom(hero)}>
-              <ChatArt room={hero} fallback="✦" className="u1-chat-hero__media" />
-              <span className="u1-chat-hero__shade" aria-hidden="true" />
-              <span className="u1-chat-hero__copy">
-                <small>{roomTypeLabel(hero)}</small>
-                <strong>{hero.title}</strong>
-                <span>{hero.preview || "Пока без сообщений"}</span>
-                <em>{roomMeta(hero)}</em>
-              </span>
-              <span className="u1-chat-hero__state">
-                <b>{roomStatus(hero).label}</b>
-                <small>{formatRoomActivity(hero)}</small>
-              </span>
-              {hero.unread_count > 0 && (
-                <i className="u1-chat-badge">{formatUnreadCount(hero.unread_count)}</i>
-              )}
-            </button>
+            <SnakeTrigger
+              entity={{ type: "chat_room", id: hero.id }}
+              actions={roomSnakeActions(hero)}
+            >
+              <button type="button" className="u1-chat-hero" onClick={() => openRoom(hero)}>
+                <ChatArt room={hero} fallback="✦" className="u1-chat-hero__media" />
+                <span className="u1-chat-hero__shade" aria-hidden="true" />
+                <span className="u1-chat-hero__copy">
+                  <small>{roomTypeLabel(hero)}</small>
+                  <strong>{hero.title}</strong>
+                  <span>{hero.preview || "Пока без сообщений"}</span>
+                  <em>{roomMeta(hero)}</em>
+                </span>
+                <span className="u1-chat-hero__state">
+                  <b>{roomStatus(hero).label}</b>
+                  <small>{formatRoomActivity(hero)}</small>
+                </span>
+                {hero.unread_count > 0 && (
+                  <i className="u1-chat-badge">{formatUnreadCount(hero.unread_count)}</i>
+                )}
+              </button>
+            </SnakeTrigger>
           ) : (
             <div className="u1-chat-empty">Активной игровой истории пока нет.</div>
           )}
@@ -422,23 +437,28 @@ export default function ChatCatalog() {
           {visiblePersonal.length ? (
             <div className={"u1-chat-personal" + (expanded.personal ? " is-expanded" : "")}>
               {personalShown.map((room) => (
-                <button
+                <SnakeTrigger
                   key={room.id}
-                  type="button"
-                  className="u1-chat-personal__card"
-                  onClick={() => openRoom(room)}
-                  title={room.title}
+                  entity={{ type: "chat_room", id: room.id }}
+                  actions={roomSnakeActions(room)}
                 >
-                  <span className="u1-chat-personal__media">
-                    <ChatArt room={room} fallback="◇" />
-                    {room.unread_count > 0 && (
-                      <b>{formatUnreadCount(room.unread_count)}</b>
-                    )}
-                  </span>
-                  <strong>{room.title}</strong>
-                  <small>{characterIdentity(room) || "Личная история"}</small>
-                  <span>{room.preview || "Пока без сообщений"}</span>
-                </button>
+                  <button
+                    type="button"
+                    className="u1-chat-personal__card"
+                    onClick={() => openRoom(room)}
+                    title={room.title}
+                  >
+                    <span className="u1-chat-personal__media">
+                      <ChatArt room={room} fallback="◇" />
+                      {room.unread_count > 0 && (
+                        <b>{formatUnreadCount(room.unread_count)}</b>
+                      )}
+                    </span>
+                    <strong>{room.title}</strong>
+                    <small>{characterIdentity(room) || "Личная история"}</small>
+                    <span>{room.preview || "Пока без сообщений"}</span>
+                  </button>
+                </SnakeTrigger>
               ))}
             </div>
           ) : (

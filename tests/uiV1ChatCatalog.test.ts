@@ -72,3 +72,30 @@ test("ui v1 chat visual surface stays isolated and supports narrow screens", asy
   assert.match(css, /content-visibility:\s*auto/)
   assert.doesNotMatch(css, /--chat-|chats-v3|App\.css/)
 })
+
+
+test("ui v1 chat rooms are Snake-managed persistent objects", async () => {
+  const catalog = await readFile(catalogPath, "utf8")
+  const actions = await readFile(
+    new URL("../src/ui-v1-isolated/chatSnakeActions.ts", import.meta.url),
+    "utf8",
+  )
+
+  assert.match(catalog, /SnakeTrigger/)
+  assert.match(catalog, /entity=\{\{ type: "chat_room", id: room\.id \}\}/)
+  assert.match(catalog, /entity=\{\{ type: "chat_room", id: hero\.id \}\}/)
+  assert.ok((catalog.match(/<SnakeTrigger/g) || []).length >= 3)
+  assert.match(catalog, /createChatRoomSnakeActions/)
+  assert.match(actions, /label: "Открыть"/)
+  assert.match(actions, /label: "Сведения"/)
+  assert.match(actions, /chatRoomOpenSurface/)
+})
+
+test("personal chat cards keep one geometry with or without artwork", async () => {
+  const css = await readFile(stylePath, "utf8")
+
+  assert.match(css, /\.u1-chat-personal__card\s*\{[\s\S]*?height:\s*132px/)
+  assert.match(css, /grid-template-rows:\s*56px 12px 9px 11px/)
+  assert.match(css, /\.u1-chat-personal__media\s*\{[\s\S]*?width:\s*56px;[\s\S]*?height:\s*56px/)
+  assert.match(css, /\.u1-chat-art\s*\{[\s\S]*?display:\s*block/)
+})
