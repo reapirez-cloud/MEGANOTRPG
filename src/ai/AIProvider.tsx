@@ -1427,6 +1427,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
         campaignId,
         agentKey: "voss",
         threadId,
+        deliveryMode: "async-v1",
         message,
         viewContext: context,
         attachments: attachments.map((attachment) => ({
