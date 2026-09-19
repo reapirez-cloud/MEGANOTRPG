@@ -20,6 +20,7 @@ import {
 import {
   executeVossImageTool,
   isVossImageTool,
+  processAgentImageJob,
   VOSS_IMAGE_TOOLS,
   VOSS_OWNER_MEDIA_TOOLS,
 } from "./image-tools.ts"
@@ -373,6 +374,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const campaignId = typeof body.campaignId === "string" ? body.campaignId : ""
+  const action = typeof body.action === "string" ? body.action.trim() : ""
   const message = typeof body.message === "string" ? body.message.trim() : ""
   const agentKey = body.agentKey === "voss" ? "voss" : "voss"
   const requestedThreadId =
@@ -392,7 +394,7 @@ Deno.serve(async (req: Request) => {
   const inventoryWorkflowRequested = isInventoryWorkflowRequest(message)
 
   if (!campaignId) return reply({ error: "campaignId is required" }, 400)
-  if (!message) return reply({ error: "message is required" }, 400)
+  if (!action && !message) return reply({ error: "message is required" }, 400)
   if (message.length > 8000) return reply({ error: "message is too long" }, 400)
 
   const { data: adminStatus } = await admin.rpc(
@@ -411,6 +413,18 @@ Deno.serve(async (req: Request) => {
   if (membershipError) return reply({ error: membershipError.message }, 500)
   if (!membership && !isSystemAdmin) {
     return reply({ error: "Campaign access denied" }, 403)
+  }
+
+  if (action === "cancel_image_job") {
+    const jobId = typeof body.jobId === "string" ? body.jobId : ""
+    if (!jobId) return reply({ error: "jobId is required" }, 400)
+
+    const { data, error } = await admin.rpc("cancel_agent_job_v1", {
+      p_job_id: jobId,
+      p_user_id: user.id,
+    })
+    if (error) return reply({ error: error.message }, 400)
+    return reply({ jobId, status: data })
   }
 
   const canChooseModel = true
@@ -440,6 +454,46 @@ Deno.serve(async (req: Request) => {
         detail: error instanceof Error ? error.message : String(error),
       }, 500)
     }
+  }
+
+  if (action === "retry_image_job") {
+    const sourceJobId = typeof body.jobId === "string" ? body.jobId : ""
+    if (!sourceJobId) return reply({ error: "jobId is required" }, 400)
+
+    const { data: sourceJob, error: sourceError } = await admin
+      .from("agent_jobs")
+      .select("id,thread_id,status,input,requested_outputs")
+      .eq("id", sourceJobId)
+      .eq("campaign_id", campaignId)
+      .eq("requested_by", user.id)
+      .eq("job_type", "image_generate")
+      .maybeSingle()
+
+    if (sourceError) return reply({ error: sourceError.message }, 500)
+    if (!sourceJob) return reply({ error: "image_job_not_found" }, 404)
+    if (!sourceJob.thread_id) {
+      return reply({ error: "image_job_thread_missing" }, 409)
+    }
+
+    const { data: newJobId, error: reserveError } = await admin.rpc(
+      "reserve_agent_image_job_v1",
+      {
+        p_campaign_id: campaignId,
+        p_user_id: user.id,
+        p_thread_id: sourceJob.thread_id,
+        p_input: sourceJob.input || {},
+        p_requested_outputs: Number(sourceJob.requested_outputs || 1),
+      },
+    )
+
+    if (reserveError || typeof newJobId !== "string") {
+      return reply({
+        error: reserveError?.message || "image_job_retry_failed",
+      }, 400)
+    }
+
+    runBackground(processAgentImageJob({ admin, jobId: newJobId }))
+    return reply({ jobId: newJobId, status: "queued" }, 202)
   }
 
   if (
