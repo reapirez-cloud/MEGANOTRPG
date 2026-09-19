@@ -11,8 +11,9 @@ const migration = fs.readFileSync(
   "utf8",
 )
 
-test("Voss is an app operator without repository-writing tools", () => {
-  assert.match(edge, /ты оператор приложения/)
+test("Freddy is the manager app operator while player Voss stays in-world", () => {
+  assert.match(edge, /В разговоре с игроком ты Рейнар Восс, а не оператор приложения/)
+  assert.match(edge, /Ты Фредди, дворецкий-оператор MEGANOT/)
   assert.match(edge, /Код приложения, Git-ветки, CI, Vercel, миграции и исходники ты не изменяешь/)
   assert.doesNotMatch(edge, /VOSS_DEVELOPER_TOOLS/)
   assert.match(edge, /toolsAvailable: false/)
