@@ -91,8 +91,8 @@ function contractFor(bundle: CharacterTemplateBundle) {
 
 test("persisted Protector key emits its actual CE proficiencies", () => {
   const contract = contractFor(cleric("divine-order:protector"))
-  assert.ok(contract.grants.some((grant) => grant.target === "proficiency" && grant.key === "category:martial_weapons"))
-  assert.ok(contract.grants.some((grant) => grant.target === "proficiency" && grant.key === "category:heavy_armor"))
+  assert.ok(contract.grants.some((grant) => grant.target === "proficiency" && grant.key === "weapon:martial"))
+  assert.ok(contract.grants.some((grant) => grant.target === "proficiency" && grant.key === "armor:heavy"))
 })
 
 test("persisted Thaumaturge key reaches its structured rule instead of becoming inert", () => {

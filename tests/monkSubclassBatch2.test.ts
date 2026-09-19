@@ -155,7 +155,7 @@ test("Drunken Master spends shared Focus and keeps Intoxicated Frenzy at five at
 
 test("Kensei choices become persistent weapon proficiencies and Sharpen costs match the selected bonus", () => {
   const contract = resolveCharacterContract(inputFor("kensei"))
-  for (const key of ["weapon:longsword", "weapon:longbow", "weapon:hand_crossbow"]) assert.equal(contract.capabilities.proficiencies.some((entry) => entry.key === key), true)
+  for (const key of ["weapon:longsword", "weapon:longbow", "weapon:hand-crossbow"]) assert.equal(contract.capabilities.proficiencies.some((entry) => entry.key === key), true)
   assert.equal(execute(inputFor("kensei", { monk_focus: { current: 20 } }), "deft_strike").resources?.monk_focus?.current, 19)
   assert.equal(execute(inputFor("kensei", { monk_focus: { current: 20 } }), "sharpen_the_blade_2").resources?.monk_focus?.current, 18)
   assert.equal(execute(inputFor("kensei", { monk_focus: { current: 20 } }), "sharpen_the_blade_3").resources?.monk_focus?.current, 17)

@@ -124,7 +124,7 @@ test("Thaumaturge child cantrip is active only for the Thaumaturge Divine Order"
 
   const protector = contract(clericBundle("divine-order:protector"))
   assert.equal(protector.spells.some((spell) => spell.key === "spell:guidance"), false)
-  assert.ok(protector.grants.some((grant) => grant.target === "proficiency" && grant.key === "category:heavy_armor"))
+  assert.ok(protector.grants.some((grant) => grant.target === "proficiency" && grant.key === "armor:heavy"))
 })
 
 test("final migration explicitly reconciles every remaining Cleric gap", () => {
