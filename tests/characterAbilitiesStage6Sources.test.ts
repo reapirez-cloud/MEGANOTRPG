@@ -129,6 +129,7 @@ test("real character background features and active effects flow through the run
     contributions: input.contributions,
     sourceNodes: [],
     backgroundName: characterSheet.background,
+    features,
   })
 
   const background = model.groups.find(
@@ -136,6 +137,9 @@ test("real character background features and active effects flow through the run
   )!
   const effects = model.groups.find(
     (group) => group.key === "effect",
+  )!
+  const special = model.groups.find(
+    (group) => group.key === "special",
   )!
 
   assert.equal(background.rows.length, 1)
@@ -152,12 +156,18 @@ test("real character background features and active effects flow through the run
   assert.equal(effects.rows[0].capabilities.suppress, true)
   assert.deepEqual(effects.sourceNames, ["Активные состояния"])
 
-  assert.ok(
+  assert.equal(special.rows.length, 1)
+  assert.equal(special.rows[0].label, "Личная привычка")
+  assert.equal(special.rows[0].sourceId, "feature:generic-1")
+  assert.equal(special.rows[0].capabilities.suppress, true)
+  assert.deepEqual(special.sourceNames, ["Особенности · достижения"])
+  assert.equal(
     model.unclassifiedSourceIds.some(
       (sourceId) =>
         sourceId === "feature:generic-1" ||
         sourceId === "legacy-feature:generic-1",
     ),
+    false,
   )
 })
 
@@ -229,11 +239,15 @@ const migration = fs.readFileSync(
   "utf8",
 )
 
-test("GM feature authoring exposes explicit Background and Effect kinds", () => {
+test("GM feature authoring exposes Background, Effect, Feat and Special kinds", () => {
   assert.match(editor, /value: "background_feature"/)
   assert.match(editor, /label: "Черта предыстории"/)
   assert.match(editor, /value: "effect"/)
   assert.match(editor, /label: "Активный эффект"/)
+  assert.match(editor, /value: "feat"/)
+  assert.match(editor, /label: "Фит"/)
+  assert.match(editor, /value: "feature"/)
+  assert.match(editor, /label: "Особое"/)
 })
 
 test("abilities read-model receives the canonical narrative background name", () => {
