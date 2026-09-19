@@ -97,7 +97,7 @@ test("Warlock coverage restores the authored light-armor simple-weapon and save 
 
 test("Stage 5 forward migrations are idempotent and future-campaign aware", () => {
   for (const sql of [monkMigration, warlockMigration]) {
-    assert.match(sql, /not exists (/)
+    assert.ok(sql.includes("not exists ("))
     assert.match(sql, /after insert on public\.campaigns/)
     assert.match(sql, /for v_campaign in select id from public\.campaigns loop/)
     assert.match(sql, /proficiency_stage5_status','READY'/)
