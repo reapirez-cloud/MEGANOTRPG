@@ -1,6 +1,6 @@
 # Abilities v2 visual rework contract
 
-> Status: **ACTIVE — Stage 2 locked**
+> Status: **ACTIVE — Stage 3 locked**
 > Scope: UI 1.0 character-sheet Abilities presentation only.
 
 This contract corrects the first Abilities presentation pass. It is intentionally visual/presentation-only. Existing read-model, Character Runtime, CE resolution, Snake actions, suppression, Background and Effects data remain canonical and must not be rebuilt for this rework.
@@ -100,3 +100,17 @@ Stage 2 is complete only when:
 - the chevron remains at the far right and does not steal a large dedicated column;
 - narrow screens preserve the same left/right hierarchy instead of switching to a different card composition;
 - Stage 2 changes layout only: palette, page background, Character/Spells visual tokens, accordion state, Snake and suppression behavior remain unchanged.
+
+## Stage 3 acceptance
+
+Stage 3 is complete only when:
+
+- collapsed ability panels use the same outer material recipe as Character/Spells: `var(--cv-surface-soft)`, `var(--cv-line)`, the existing soft top gloss, shared radius scale and shared shadow scale;
+- panels use the same 3px inset `var(--cv-line-soft)` frame already used by the Spells surface;
+- class tinting comes only from existing sheet tokens such as `--cv-accent`, `--cv-accent-soft` and `--cv-accent-line`;
+- group and ability icons use the same quiet framed/radial treatment language as existing spell/resource icon surfaces instead of a new abilities glow system;
+- abilities does not introduce its own glass, border, surface, accent, radius or shadow variables;
+- the Stage 2 collapsed geometry remains unchanged;
+- Character/Spells typography families and the shared `--cv-text*` hierarchy remain the source of truth;
+- no page background, masthead, runtime, CE, Snake, suppression or data-source behavior changes.
+
