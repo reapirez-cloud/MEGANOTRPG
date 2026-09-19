@@ -109,7 +109,7 @@ test("stage 4 completion dates use death for personal stories and close for even
 test("stage 4 page uses factual preview/context/status across every catalog surface", async () => {
   const source = await readFile(pagePath, "utf8")
 
-  assert.match(source, /data-chat-catalog-stage="6"/)
+  assert.match(source, /data-chat-catalog-stage="7"/)
   assert.match(source, /roomStatus\(hero\)/)
   assert.match(source, /roomContextParts\(room\)/)
   assert.match(source, /formatRoomCompletion\(room\)/)

@@ -3,12 +3,12 @@ import { useMemo, useState } from "react"
 import {
   filterChatCatalogRooms,
   type ChatCatalogFilter,
-  type ChatCatalogSection,
 } from "../chat/catalogFilters"
 import {
   formatRoomActivity,
   formatRoomActivityDate,
   formatRoomCompletion,
+  formatUnreadCount,
   roomContextParts,
   roomStatus,
 } from "../chat/catalogPresentation"
@@ -46,15 +46,78 @@ function roomTypeLabel(room: ChatRoom) {
   return "Флуд"
 }
 
-function unreadLabel(count: number) {
-  return count > 99 ? "99+" : String(count)
-}
-
 function sectionMatchesBrowsing(
   browsing: boolean,
   rooms: ChatRoom[],
 ) {
   return !browsing || rooms.length > 0
+}
+
+function CatalogArtwork({
+  room,
+  fallback,
+  className = "chat-catalog__art",
+}: {
+  room: ChatRoom
+  fallback: string
+  className?: string
+}) {
+  const [failedValue, setFailedValue] = useState<string | null>(null)
+  const mediaFailed = Boolean(room.avatar_url && failedValue === room.avatar_url)
+  const fallbackNode = <span className="chat-catalog__art-fallback">{fallback}</span>
+
+  return (
+    <span className={className} aria-hidden="true">
+      {room.avatar_url && !mediaFailed ? (
+        <CampaignImage
+          value={room.avatar_url}
+          alt=""
+          decoding="async"
+          fallback={fallbackNode}
+          onError={() => setFailedValue(room.avatar_url)}
+        />
+      ) : fallbackNode}
+    </span>
+  )
+}
+
+function ChatCatalogSkeleton() {
+  return (
+    <div
+      className="chats-v3 chat-catalog chat-catalog--loading"
+      data-chat-catalog-stage="7"
+      aria-busy="true"
+      aria-label="Загрузка чатов"
+    >
+      <header className="chat-catalog__toolbar chat-catalog__skeleton-toolbar" aria-hidden="true">
+        <span className="chat-catalog__skeleton-line chat-catalog__skeleton-line--brand" />
+        <span className="chat-catalog__skeleton-tools">
+          <i /><i /><i />
+        </span>
+      </header>
+
+      <section aria-hidden="true">
+        <span className="chat-catalog__skeleton-line chat-catalog__skeleton-line--heading" />
+        <div className="chat-catalog__skeleton-hero" />
+      </section>
+
+      <div className="chat-catalog__skeleton-flood" aria-hidden="true" />
+
+      <section aria-hidden="true">
+        <span className="chat-catalog__skeleton-line chat-catalog__skeleton-line--heading" />
+        <div className="chat-catalog__skeleton-personal">
+          {Array.from({ length: 4 }, (_, index) => <i key={index} />)}
+        </div>
+      </section>
+
+      <section aria-hidden="true">
+        <span className="chat-catalog__skeleton-line chat-catalog__skeleton-line--heading" />
+        <div className="chat-catalog__skeleton-list">
+          <i /><i /><i />
+        </div>
+      </section>
+    </div>
+  )
 }
 
 export default function Chats({ onOpenRoom }: Props) {
@@ -167,6 +230,13 @@ export default function Chats({ onOpenRoom }: Props) {
     }))
   }
 
+  function resetBrowsing() {
+    setSearchQuery("")
+    setSearchOpen(false)
+    setFilter("all")
+    setFilterOpen(false)
+  }
+
   function sectionControl(
     section: keyof ExpandedSections,
     count: number,
@@ -205,13 +275,7 @@ export default function Chats({ onOpenRoom }: Props) {
   }
 
   function roomArtwork(room: ChatRoom, fallback: string, className = "chat-catalog__art") {
-    return (
-      <span className={className} aria-hidden="true">
-        {room.avatar_url
-          ? <CampaignImage value={room.avatar_url} alt="" />
-          : <span>{fallback}</span>}
-      </span>
-    )
+    return <CatalogArtwork room={room} fallback={fallback} className={className} />
   }
 
   function rowRoom(room: ChatRoom, fallback: string, variant: "event" | "completed" | "flood") {
@@ -226,6 +290,8 @@ export default function Chats({ onOpenRoom }: Props) {
         type="button"
         data-room-id={room.id}
         data-room-status={status.tone}
+        aria-label={roomTypeLabel(room) + ": " + room.title}
+        title={room.title}
         onClick={() => openRoomStub(room)}
       >
         {roomArtwork(room, fallback)}
@@ -241,7 +307,7 @@ export default function Chats({ onOpenRoom }: Props) {
           {activity && <time>{activity}</time>}
           {room.unread_count > 0 ? (
             <b aria-label={"Непрочитанных: " + room.unread_count}>
-              {unreadLabel(room.unread_count)}
+              {formatUnreadCount(room.unread_count)}
             </b>
           ) : (
             variant !== "flood" && <span className="chat-catalog__chevron" aria-hidden="true">›</span>
@@ -254,19 +320,31 @@ export default function Chats({ onOpenRoom }: Props) {
   const hero = !browsing ? catalog.currentStory : null
   const heroStatus = hero ? roomStatus(hero) : null
   const heroActivity = hero ? formatRoomActivity(hero) : ""
+  const catalogEmpty = rooms.rooms.length === 0
 
-  if (rooms.loading) {
+  if (rooms.loading) return <ChatCatalogSkeleton />
+
+  if (rooms.error && catalogEmpty) {
     return (
-      <div className="center-state">
-        <span className="status-spinner" />
-        <span>Загружаем чаты…</span>
+      <div className="chats-v3 chat-catalog" data-chat-catalog-stage="7">
+        <section className="chat-catalog__state chat-catalog__state--error" role="alert">
+          <span className="chat-catalog__state-mark" aria-hidden="true">!</span>
+          <h3>Чаты не загрузились</h3>
+          <p>Каталог временно недоступен. Сообщения и комнаты не изменены.</p>
+          <button type="button" onClick={() => void rooms.reload()}>Повторить</button>
+        </section>
       </div>
     )
   }
 
   return (
-    <div className="chats-v3 chat-catalog" data-chat-catalog-stage="6">
-      {rooms.error && <div className="auth-error">{rooms.error}</div>}
+    <div className="chats-v3 chat-catalog" data-chat-catalog-stage="7">
+      {rooms.error && (
+        <div className="chat-catalog__refresh-warning" role="status">
+          <span>Не удалось обновить каталог. Показываю последние загруженные данные.</span>
+          <button type="button" onClick={() => void rooms.reload()}>Повторить</button>
+        </div>
+      )}
 
       <header className="chat-catalog__toolbar">
         <div className="chat-catalog__toolbar-copy">
@@ -398,7 +476,15 @@ export default function Chats({ onOpenRoom }: Props) {
         </section>
       )}
 
-      {!browsing && (
+      {catalogEmpty && !browsing && (
+        <section className="chat-catalog__state chat-catalog__state--empty" aria-live="polite">
+          <span className="chat-catalog__state-mark" aria-hidden="true">◇</span>
+          <h3>Здесь пока тихо</h3>
+          <p>Комнаты кампании появятся автоматически или после создания события мастером.</p>
+        </section>
+      )}
+
+      {!catalogEmpty && !browsing && (
         <section className="chat-catalog__hero-section" aria-labelledby="chat-current-title">
           <header className="chat-catalog__section-head chat-catalog__section-head--hero">
             <h3 id="chat-current-title">Текущая история</h3>
@@ -410,6 +496,8 @@ export default function Chats({ onOpenRoom }: Props) {
               type="button"
               data-room-id={hero.id}
               data-room-status={heroStatus.tone}
+              aria-label={roomTypeLabel(hero) + ": " + hero.title}
+              title={hero.title}
               onClick={() => openRoomStub(hero)}
             >
               {roomArtwork(hero, "✦", "chat-catalog__hero-media")}
@@ -426,7 +514,7 @@ export default function Chats({ onOpenRoom }: Props) {
               </span>
               {hero.unread_count > 0 && (
                 <b className="chat-catalog__hero-unread">
-                  {unreadLabel(hero.unread_count)}
+                  {formatUnreadCount(hero.unread_count)}
                 </b>
               )}
               <span className="chat-catalog__hero-chevron" aria-hidden="true">›</span>
@@ -439,7 +527,7 @@ export default function Chats({ onOpenRoom }: Props) {
         </section>
       )}
 
-      {sectionMatchesBrowsing(browsing, visibleFlood ? [visibleFlood] : []) && (
+      {!catalogEmpty && sectionMatchesBrowsing(browsing, visibleFlood ? [visibleFlood] : []) && (
         <section className="chat-catalog__flood" aria-label="Флуд">
           {visibleFlood ? (
             <>
@@ -452,7 +540,7 @@ export default function Chats({ onOpenRoom }: Props) {
         </section>
       )}
 
-      {sectionMatchesBrowsing(browsing, visiblePersonal) && (
+      {!catalogEmpty && sectionMatchesBrowsing(browsing, visiblePersonal) && (
         <section className="chat-catalog__section" aria-labelledby="chat-personal-title">
           <header className="chat-catalog__section-head">
             <div>
@@ -473,13 +561,15 @@ export default function Chats({ onOpenRoom }: Props) {
                     key={room.id}
                     type="button"
                     data-room-id={room.id}
+                    aria-label={"Личная история: " + room.title}
+                    title={room.title}
                     onClick={() => openRoomStub(room)}
                   >
                     <span className="chat-catalog__personal-media">
                       {roomArtwork(room, "◇")}
                       {room.unread_count > 0 && (
                         <b aria-label={"Непрочитанных: " + room.unread_count}>
-                          {unreadLabel(room.unread_count)}
+                          {formatUnreadCount(room.unread_count)}
                         </b>
                       )}
                     </span>
@@ -499,7 +589,7 @@ export default function Chats({ onOpenRoom }: Props) {
         </section>
       )}
 
-      {sectionMatchesBrowsing(browsing, visibleEvents) && (
+      {!catalogEmpty && sectionMatchesBrowsing(browsing, visibleEvents) && (
         <section className="chat-catalog__section" aria-labelledby="chat-events-title">
           <header className="chat-catalog__section-head">
             <div>
@@ -521,7 +611,7 @@ export default function Chats({ onOpenRoom }: Props) {
         </section>
       )}
 
-      {sectionMatchesBrowsing(browsing, visibleCompleted) && (
+      {!catalogEmpty && sectionMatchesBrowsing(browsing, visibleCompleted) && (
         <section className="chat-catalog__section chat-catalog__section--completed" aria-labelledby="chat-completed-title">
           <header className="chat-catalog__section-head">
             <div>
@@ -546,13 +636,15 @@ export default function Chats({ onOpenRoom }: Props) {
       )}
 
       {browsing && totalMatches === 0 && (
-        <div className="chat-catalog__empty chat-catalog__empty--browse">
-          Ничего не найдено. Каталог хотя бы не выдумывает результаты из вежливости.
+        <div className="chat-catalog__empty chat-catalog__empty--browse" role="status">
+          <strong>Ничего не найдено</strong>
+          <span>Поиск и фильтры не нашли подходящих комнат.</span>
+          <button type="button" onClick={resetBrowsing}>Сбросить поиск и фильтр</button>
         </div>
       )}
 
       <p className="chat-catalog__stage-note">
-        Поиск, фильтры и каталог работают; сам экран диалога подключается следующим роадмапом.
+        Каталог устойчив к загрузке, ошибкам и большим спискам; экран диалога подключается отдельным роадмапом.
       </p>
     </div>
   )

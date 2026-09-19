@@ -17,7 +17,7 @@ test("chat catalog stage 1 remains one landing page with the approved hierarchy"
     assert.match(source, new RegExp(label))
   }
 
-  assert.match(source, /data-chat-catalog-stage="6"/)
+  assert.match(source, /data-chat-catalog-stage="7"/)
   assert.match(source, /const catalog = rooms\.catalog/)
   assert.match(source, /catalog\.currentStory/)
   assert.match(source, /catalog\.completed/)

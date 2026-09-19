@@ -27,6 +27,11 @@ function activitySource(room: ChatRoom) {
   return room.last_message_at || room.updated_at || room.created_at
 }
 
+export function formatUnreadCount(count: number) {
+  if (!Number.isFinite(count) || count <= 0) return "0"
+  return count > 99 ? "99+" : String(Math.floor(count))
+}
+
 export function roomStatus(room: ChatRoom): ChatRoomStatus {
   if (room.room_type === "character") {
     if (room.character_life_state === "dead") {

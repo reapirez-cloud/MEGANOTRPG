@@ -8,7 +8,7 @@ const stylePath = new URL("../src/chats-v3.css", import.meta.url)
 test("stage 6 activates search, filters and manager event stub without opening ChatRoom", async () => {
   const source = await readFile(pagePath, "utf8")
 
-  assert.match(source, /data-chat-catalog-stage="6"/)
+  assert.match(source, /data-chat-catalog-stage="7"/)
   assert.match(source, /setSearchQuery/)
   assert.match(source, /setFilter/)
   assert.match(source, /placeholder="Название, персонаж, зона, сообщение…"/)
