@@ -339,6 +339,29 @@ export async function resolveVossModel(
     ) || base
 
   if (!input.canManage) {
+    if (TASKS_REQUIRING_TOOLS.has(taskKey) && !primary.supports_tools) {
+      const compatible =
+        (base.supports_tools ? base : null) ||
+        [...models]
+          .filter((model) =>
+            selectableByUser(model, false) &&
+            model.supports_tools
+          )
+          .sort(economicalSort)[0] ||
+        null
+
+      if (compatible) {
+        return {
+          taskKey,
+          model: compatible,
+          routeMode: "fallback",
+          reason:
+            "Player's selected public model lacks required tools; a compatible public campaign model was selected for this task.",
+          degraded: false,
+        }
+      }
+    }
+
     return {
       taskKey,
       model: primary,
