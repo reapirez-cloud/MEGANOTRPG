@@ -107,6 +107,7 @@ export default function AgentShell() {
   const {
     campaignId,
     canManage,
+    assistantName,
     models,
     selectedModelId,
     threads,
@@ -408,10 +409,10 @@ export default function AgentShell() {
         }}
         aria-label={
           open
-            ? "Свернуть Восса"
+            ? `Свернуть ${assistantName}`
             : sending || pendingReply
-              ? "Восс работает в фоне"
-              : "Открыть Восса"
+              ? `${assistantName} работает в фоне`
+              : `Открыть ${assistantName}`
         }
         aria-expanded={open}
         aria-controls="u1-agent-panel"
@@ -428,7 +429,7 @@ export default function AgentShell() {
           type="button"
           className="u1-agent-backdrop"
           onClick={() => setOpen(false)}
-          aria-label="Закрыть Восса"
+          aria-label=`Закрыть ${assistantName}`
           tabIndex={-1}
         />
       )}
@@ -461,7 +462,7 @@ export default function AgentShell() {
       <aside
         id="u1-agent-panel"
         className="u1-agent-panel"
-        aria-label="Восс"
+        aria-label={assistantName}
         aria-hidden={!open}
         data-open={open || undefined}
       >
@@ -470,7 +471,7 @@ export default function AgentShell() {
             type="button"
             className="u1-agent-tools-trigger"
             onClick={() => setToolsOpen((current) => !current)}
-            aria-label="Инструменты Восса"
+            aria-label={`Инструменты ${assistantName}`}
             aria-expanded={toolsOpen}
           >
             <span />
@@ -482,7 +483,7 @@ export default function AgentShell() {
             <AgentMark />
             <div>
               <span>MEGANOT</span>
-              <strong>Восс</strong>
+              <strong>{assistantName}</strong>
             </div>
           </div>
 
@@ -492,7 +493,7 @@ export default function AgentShell() {
               type="button"
               className="u1-agent-panel__close"
               onClick={() => setOpen(false)}
-              aria-label="Свернуть Восса"
+              aria-label=`Свернуть ${assistantName}`
             >
               ×
             </button>
@@ -511,7 +512,7 @@ export default function AgentShell() {
           aria-hidden={!toolsOpen}
         >
           <header>
-            <span>ИНСТРУМЕНТЫ ВОССА</span>
+            <span>ИНСТРУМЕНТЫ {assistantName.toLocaleUpperCase("ru-RU")}</span>
             <button
               type="button"
               onClick={() => setToolsOpen(false)}
@@ -575,7 +576,7 @@ export default function AgentShell() {
                 className="u1-agent-thread-new"
                 onClick={() => void createThread()}
                 disabled={sending}
-                aria-label="Новый чат с Воссом"
+                aria-label={`Новый чат с ${assistantName}`}
               >
                 ＋
               </button>
@@ -637,7 +638,7 @@ export default function AgentShell() {
               aria-labelledby="u1-agent-delete-chat-title"
               onClick={(event) => event.stopPropagation()}
             >
-              <span>ЧАТЫ ВОССА</span>
+              <span>ЧАТЫ {assistantName.toLocaleUpperCase("ru-RU")}</span>
               <strong id="u1-agent-delete-chat-title">Удалить чат?</strong>
               <p>
                 «{pendingDeleteThread.title || "Новый чат"}» исчезнет вместе с
@@ -673,7 +674,7 @@ export default function AgentShell() {
               className="u1-agent-message"
               data-role={message.role}
             >
-              <small>{message.role === "assistant" ? "ВОСС" : "ВЫ"}</small>
+              <small>{message.role === "assistant" ? assistantName.toLocaleUpperCase("ru-RU") : "ВЫ"}</small>
               <p>{message.body}</p>
             </article>
           ))}
@@ -738,7 +739,7 @@ export default function AgentShell() {
                             )}
                             <span>
                               Вариант {asset.variant_index}
-                              {asset.review.preferred === true ? " · выбор Восса" : ""}
+                              {asset.review.preferred === true ? ` · выбор ${assistantName}` : ""}
                             </span>
                           </button>
 
@@ -800,7 +801,7 @@ export default function AgentShell() {
           {(sending || pendingReply) && (
             <div className="u1-agent-thinking">
               <AgentMark />
-              <span>Восс разбирается…</span>
+              <span>{assistantName} разбирается…</span>
             </div>
           )}
         </div>
@@ -836,11 +837,11 @@ export default function AgentShell() {
           <textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="Восс…"
+            placeholder={`${assistantName}…`}
             maxLength={8000}
             rows={2}
             disabled={sending || pendingReply}
-            aria-label="Сообщение Воссу"
+            aria-label={`Сообщение для ${assistantName}`}
           />
           <button
             type="submit"
@@ -850,7 +851,7 @@ export default function AgentShell() {
               pendingReply ||
               uploading
             }
-            aria-label="Отправить Воссу"
+            aria-label={`Отправить ${assistantName}`}
           >
             <span aria-hidden="true">↑</span>
           </button>
