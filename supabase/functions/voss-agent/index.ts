@@ -372,7 +372,6 @@ Deno.serve(async (req: Request) => {
   if (membershipError) return reply({ error: membershipError.message }, 500)
   if (!membership) return reply({ error: "Campaign access denied" }, 403)
 
-  const isOwner = membership.is_owner === true
   const canChooseModel = true
 
   let isSystemAdmin = false
@@ -1126,7 +1125,7 @@ Deno.serve(async (req: Request) => {
 
       if (
         toolName === "inspect_system_media" &&
-        isOwner &&
+        authority === "admin" &&
         resolvedModel.supports_vision === true &&
         result &&
         typeof result === "object" &&
