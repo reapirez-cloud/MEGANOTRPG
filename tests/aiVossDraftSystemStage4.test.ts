@@ -44,7 +44,8 @@ test("draft schema is typed for future canonical execution", () => {
 test("players never receive the draft tool from the gateway", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
 
-  assert.match(edge, /const canManage = membership\.role === "gm" \|\| membership\.is_owner === true/)
+  assert.match(edge, /const authority = resolveVossAuthority\(membership \|\| \{\}, isSystemAdmin\)/)
+  assert.match(edge, /const canManage = canManageCampaignWithVoss\(authority\)/)
   assert.match(edge, /\.\.\.\(canManage[\s\S]*!mechanicsAuthoringRequested \? VOSS_DRAFT_TOOLS/)
   assert.match(edge, /executeVossDraftTool/)
   assert.match(edge, /isVossDraftTool/)
