@@ -17,6 +17,10 @@ export type CharacterAbilityIconVisual =
       style: CSSProperties
     }
   | {
+      kind: "glyph"
+      glyph: string
+    }
+  | {
       kind: "fallback"
     }
 
@@ -55,6 +59,14 @@ function atlasStyle(asset: CharacterSheetVisualAsset): CSSProperties {
       `${asset.columns * 100}% ${asset.rows * 100}%`,
     "--u1-ability-icon-position": `${positionX} ${positionY}`,
   } as CSSProperties
+}
+
+function authoredGlyph(value: string) {
+  const icon = clean(value)
+  if (!icon) return null
+  if (/[:/\\.]/.test(icon)) return null
+  if (icon.length > 8) return null
+  return icon
 }
 
 function semanticResourceKey(value: string) {
@@ -97,6 +109,14 @@ export function characterAbilityIconVisual(
       kind: "atlas",
       render: atlas.render,
       style: atlasStyle(atlas),
+    }
+  }
+
+  const glyph = authoredGlyph(icon)
+  if (glyph) {
+    return {
+      kind: "glyph",
+      glyph,
     }
   }
 
