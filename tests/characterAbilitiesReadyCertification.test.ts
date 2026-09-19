@@ -16,6 +16,10 @@ const legacyProfile = fs.readFileSync(
   "utf8",
 )
 const patchLog = fs.readFileSync("docs/PATCH_LOG.md", "utf8")
+const visualContract = fs.readFileSync(
+  "docs/ABILITIES_VISUAL_REWORK_CONTRACT.md",
+  "utf8",
+)
 
 test("READY self-deletion removed the temporary abilities implementation contract", () => {
   assert.equal(
@@ -55,5 +59,26 @@ test("active patch journal records the finished READY abilities tab", () => {
   assert.match(
     patchLog,
     /Abilities tab[^\n]*READY|Умения[^\n]*READY/i,
+  )
+})
+
+
+test("abilities v2 visual rework is Stage 8 READY and browser-certified", () => {
+  assert.match(
+    visualContract,
+    /Status: \*\*READY — Stage 8 certified\*\*/,
+  )
+  assert.match(visualContract, /## Stage 8 acceptance/)
+  assert.equal(
+    fs.existsSync("e2e-character-abilities-stage8.html"),
+    true,
+  )
+  assert.equal(
+    fs.existsSync("src/e2e/character-abilities-stage8-main.tsx"),
+    true,
+  )
+  assert.equal(
+    fs.existsSync("e2e/character-abilities-stage8.spec.ts"),
+    true,
   )
 })
