@@ -88,6 +88,9 @@ test("Voss accepts a durable user turn before background completion", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
 
   assert.match(edge, /persistedUserMessage/)
+  assert.match(provider, /deliveryMode: "async-v1"/)
+  assert.match(edge, /body\.deliveryMode === "async-v1"/)
+  assert.match(edge, /if \(!asyncDeliveryRequested\) \{[\s\S]*?return await processTurn\(\)/)
   assert.match(edge, /runBackground\(backgroundTurn\)/)
   assert.match(edge, /accepted: true/)
   assert.match(edge, /\}, 202\)/)
