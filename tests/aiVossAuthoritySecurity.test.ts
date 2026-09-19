@@ -59,7 +59,7 @@ test("GM Voss receives actual campaign mutation tools and players do not", () =>
     assert.match(manager, new RegExp('name: "' + tool + '"'))
   }
 
-  assert.match(edge, /\.\.\.\(canManage[\s\S]*\.\.\.VOSS_MANAGER_TOOLS/)
+  assert.match(edge, /const scopedManagerTools[\s\S]*canManage[\s\S]*VOSS_MANAGER_TOOLS/)
   assert.match(manager, /if \(!canManage\(context\)\) return \{ error: "gm_authority_required" \}/)
   assert.match(manager, /context\.authority === "admin" \? context\.admin : context\.client/)
 })
@@ -75,7 +75,7 @@ test("admin Voss gets system security controls and full campaign read scope", ()
   assert.match(admin, /name: "set_campaign_voss_model"/)
   assert.match(admin, /strike_count: 0/)
   assert.match(admin, /blocked: false/)
-  assert.match(edge, /authority === "admin"[\s\S]*\.\.\.VOSS_ADMIN_TOOLS/)
+  assert.match(edge, /const scopedAdminTools[\s\S]*authority === "admin"[\s\S]*VOSS_ADMIN_TOOLS/)
   assert.match(edge, /client: authority === "admin" \? admin : userClient/)
 })
 
