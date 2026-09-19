@@ -46,6 +46,7 @@ export const CHARACTER_PROFICIENCY_GROUPS = {
     entries: [
       { key: "weapon:simple", label: "Простое оружие" },
       { key: "weapon:martial", label: "Воинское оружие" },
+      { key: "weapon:martial-light", label: "Воинское оружие со свойством «Лёгкое»" },
       { key: "weapon:club", label: "Дубинка" },
       { key: "weapon:dagger", label: "Кинжал" },
       { key: "weapon:greatclub", label: "Большая дубинка" },

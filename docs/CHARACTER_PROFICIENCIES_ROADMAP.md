@@ -85,32 +85,35 @@ Legacy sheet fields remain fallback only. They never replace a CE-owned row.
 
 Detailed audit: `docs/CHARACTER_PROFICIENCIES_STAGE4_AUDIT.md`.
 
-## Stage 5 — class coverage and future-mechanics placeholders
+## Stage 5 — class coverage and future-mechanics placeholders — IMPLEMENTED
 
-This stage is intentionally separate from Stage 4.
+Machine-readable coverage now reserves all 13 class identities in
+`characterProficiencyClassCoverage.ts`.
 
-Goal: certify every playable class against the five-panel screen.
+Certified five-panel proficiency packages:
 
-For every class whose mechanics already exist:
+- Fighter
+- Cleric
+- Druid
+- Wizard
+- Bard
+- Monk
+- Paladin
+- Sorcerer
+- Warlock
 
-- locate the best existing source mechanics
-- normalize weapon / armor / tool / language / saving throw grants
-- verify resolved CE output
-- verify provenance and suppression identity
-- record missing or ambiguous ownership instead of guessing
+Explicit `mechanics_pending` placeholders:
 
-Current planned “mechanics pending” placeholders:
+- Rogue
+- Barbarian
+- Ranger
+- Artificer
 
-- Разбойник / Rogue
-- Варвар / Barbarian
-- Следопыт / Ranger
-- Артифисер / Artificer
+Live audit found that Monk and Warlock had exact proficiency data already authored in `rules_meta.core_traits`, but their base CE grants were missing. Stage 5 adds forward-only, idempotent migrations for those two classes and installs the same repair for future campaigns.
 
-For these classes, reserve stable class identities and coverage entries, but do not invent grants. Their placeholder status must make later mechanics connection a data change, not a UI rewrite.
+This stage does not invent grants for pending classes, rewrite persistent choices, or change whole-class Mechanics READY status.
 
-All other classes should be checked against the mechanics already authored in the project and connected where possible.
-
-Exit criterion: every supported class has either certified canonical proficiency data or an explicit mechanics-pending placeholder.
+Deployment/certification details: `docs/CHARACTER_PROFICIENCIES_STAGE5_AUDIT.md`.
 
 ## Stage 6 — Snake and authority
 
