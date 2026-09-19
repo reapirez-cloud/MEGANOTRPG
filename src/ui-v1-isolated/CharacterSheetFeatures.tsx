@@ -5,6 +5,9 @@ import {
   nextExpandedAbilityGroup,
 } from "./characterAbilitiesAccordion.ts"
 import {
+  characterAbilityIconVisual,
+} from "./characterAbilityMedia.ts"
+import {
   characterAbilityDetailSurface,
   characterAbilityEntity,
   createCharacterAbilitySnakeActions,
@@ -102,23 +105,45 @@ function sourceSummary(group: CharacterAbilityGroup) {
   )
 }
 
-function iconIsImage(value: string) {
-  return /^(?:https?:|data:|blob:|\/)/i.test(value)
-}
-
 function AbilityRowIcon({
   row,
 }: {
   row: CharacterAbilityRow
 }) {
+  const [imageFailed, setImageFailed] = useState(false)
+  const resolved = characterAbilityIconVisual(row.icon)
+  const visual =
+    imageFailed && resolved.kind === "image"
+      ? { kind: "fallback" as const }
+      : resolved
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [row.icon])
+
   return (
     <span
       className="u1-character-features__ability-icon"
       data-icon-id={row.icon || undefined}
+      data-icon-kind={visual.kind}
+      data-asset-render={
+        visual.kind === "atlas"
+          ? visual.render
+          : undefined
+      }
+      style={visual.kind === "atlas" ? visual.style : undefined}
       aria-hidden="true"
     >
-      {iconIsImage(row.icon) ? (
-        <img src={row.icon} alt="" draggable={false} />
+      {visual.kind === "image" ? (
+        <img
+          src={visual.src}
+          alt=""
+          draggable={false}
+          decoding="async"
+          onError={() => setImageFailed(true)}
+        />
+      ) : visual.kind === "atlas" ? (
+        <i className="u1-character-features__ability-icon-sprite" />
       ) : (
         <AbilityGroupIcon group={row.group} />
       )}
