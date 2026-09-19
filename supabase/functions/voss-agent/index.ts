@@ -58,6 +58,7 @@ import {
 import { VOSS_CONVERSATION_VOICE } from "./voss-voice.ts"
 import { FREDDY_CONVERSATION_VOICE } from "./freddy-voice.ts"
 import { VOSS_INVENTORY_AUTHORING_RULES } from "./inventory-authoring.ts"
+import { isExplicitImageGenerationRequest } from "./image-intent.ts"
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -100,16 +101,6 @@ function runBackground(promise: Promise<unknown>) {
   }
 
   void promise
-}
-
-function isExplicitImageGenerationRequest(message: string) {
-  const text = message.toLocaleLowerCase("ru-RU").replace(/\s+/g, " ").trim()
-  const imageSubject =
-    /(арт|изображен|картин|рисунк|икон|аватар|портрет|панорам|рендер|image|art|picture|icon|avatar|portrait|render)/u.test(text)
-  const generationIntent =
-    /(нарис|рисуй|сгенер|создай|создать|сделай|сделать|generate|draw|render|create)/u.test(text)
-
-  return imageSubject && generationIntent
 }
 
 function getEnv(...names: string[]) {
@@ -762,7 +753,7 @@ Deno.serve(async (req: Request) => {
     "Не делай вывод о скрытых событиях из отсутствия результатов: memory tools уже фильтруются правами пользователя.",
     "remember_campaign_fact и save_campaign_summary доступны только GM. Используй их только если GM явно просит запомнить, зафиксировать или сохранить вывод/сводку. Обычный вопрос или просьба пересказать историю не является разрешением что-либо сохранять.",
     "Не расширяй видимость производной памяти относительно её источников. Инструмент дополнительно проверяет это на сервере.",
-    "Изображения генерируй только когда пользователь явно просит создать, нарисовать, сгенерировать, переделать или отредактировать изображение/арт/аватар/иконку. Не запускай генерацию как инициативное украшательство ответа. Если такая явная просьба есть, текстовый ответ без вызова generate_image считается незавершённым: обязательно создай job. Для одной картинки variants=1, для двух альтернатив variants=2.",
+    "Генерация изображений работает только по явной команде в ТЕКУЩЕМ сообщении пользователя: «рисуй», «нарисуй», «отрисуй», «перерисуй», «дорисуй», «сгенерируй» или столь же прямой команде создать конкретное изображение. Обсуждение будущего арта, подбор композиции/стиля, написание промпта, фразы «что нарисовать», «как бы ты это нарисовал», «сделай концепт», описание желаемой сцены или приложенный референс НЕ являются разрешением запускать generate_image. До явной команды обсуждай и уточняй замысел без генерации. Если явная команда есть, текстовый ответ без вызова generate_image считается незавершённым: обязательно создай job. Для одной картинки variants=1, для двух альтернатив variants=2.",
     "Для изображений используй generate_image. Передавай semantic purpose, а не сырые параметры качества: сервер сам выбирает Image Profile, модель, размер и качество под назначение.",
     "Для изображений предметов инвентаря и интерфейсных иконок всегда используй purpose=icon: это low / 50K. Для портретов, превью, панелей, hero/master art и любых остальных артов используй соответствующий purpose: все они high / 150K. Medium не используй.",
     "variants — ТОЧНОЕ число финальных альтернатив в пределах поддерживаемого лимита: 1 или 2. Если пользователь просит варианты/несколько картинок, используй 2 и прямо не обещай третью в одном job.",
@@ -832,7 +823,11 @@ Deno.serve(async (req: Request) => {
     ? [
         ...VOSS_READ_TOOLS,
         ...VOSS_MEMORY_READ_TOOLS,
-        ...VOSS_IMAGE_TOOLS,
+        ...VOSS_IMAGE_TOOLS.filter(
+          (tool) =>
+            imageGenerationRequested ||
+            tool.function.name !== "generate_image",
+        ),
         ...(canManage
           ? [
               ...VOSS_MANAGER_TOOLS,
