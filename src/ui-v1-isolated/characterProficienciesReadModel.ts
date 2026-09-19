@@ -98,25 +98,25 @@ const LEGACY_PROFICIENCY_PATTERNS: readonly {
     group: "armor",
     key: "armor:light",
     label: "Лёгкие доспехи",
-    pattern: /л[её]гк(?:ие|ими|их)?\s+(?:доспех|брон)/iu,
+    pattern: /л[её]гк(?:ие|ими|их)?(?=[^;.\n]*(?:доспех|брон))/iu,
   },
   {
     group: "armor",
     key: "armor:medium",
     label: "Средние доспехи",
-    pattern: /средн(?:ие|ими|их)?\s+(?:доспех|брон)/iu,
+    pattern: /средн(?:ие|ими|их)?(?=[^;.\n]*(?:доспех|брон))/iu,
   },
   {
     group: "armor",
     key: "armor:heavy",
     label: "Тяжёлые доспехи",
-    pattern: /тяж[её]л(?:ые|ыми|ых)?\s+(?:доспех|брон)/iu,
+    pattern: /тяж[её]л(?:ые|ыми|ых)?(?=[^;.\n]*(?:доспех|брон))/iu,
   },
   {
     group: "armor",
     key: "armor:shield",
     label: "Щиты",
-    pattern: /\bщит(?:ы|ами|ов|а)?\b/iu,
+    pattern: /щит(?:ы|ами|ов|а)?/iu,
   },
   {
     group: "tools",
@@ -329,7 +329,7 @@ function splitLegacyClauses(value: string) {
   return value
     .replace(/[.!?]\s+/g, ";")
     .split(/[;\n]+/g)
-    .map((item) => item.trim())
+    .map((item) => item.trim().replace(/[.!?]+$/g, "").trim())
     .filter(Boolean)
 }
 
