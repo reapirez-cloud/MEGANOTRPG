@@ -132,6 +132,15 @@ function isMechanicsAuthoringRequest(message: string) {
   return mechanicSubject && authoringIntent
 }
 
+function isPureConversationRequest(message: string) {
+  const text = message
+    .toLocaleLowerCase("ru-RU")
+    .replace(/\s+/g, " ")
+    .trim()
+
+  return /^(?:привет|здравствуй|здравствуйте|добрый (?:день|вечер|утро)|как дела|кто ты|что ты|спасибо|благодарю|понял|поняла|ок|окей|ладно|ясно)[.!?… ]*$/u.test(text)
+}
+
 function isImageWorkflowRequest(message: string) {
   const text = message.toLocaleLowerCase("ru-RU")
   return (
@@ -404,6 +413,7 @@ Deno.serve(async (req: Request) => {
     : null
   const mechanicsAuthoringRequested = isMechanicsAuthoringRequest(message)
   const imageGenerationRequested = isExplicitImageGenerationRequest(message)
+  const pureConversationRequested = isPureConversationRequest(message)
   const imageWorkflowRequested = isImageWorkflowRequest(message)
   const managerMutationRequested = isManagerMutationRequest(message)
   const adminWorkflowRequested = isAdminWorkflowRequest(message)
@@ -978,7 +988,9 @@ Deno.serve(async (req: Request) => {
       ? VOSS_READ_TOOLS
       : taskKey === "memory_read" || taskKey === "memory_write"
         ? pickTools(VOSS_READ_TOOLS, memorySupportToolNames)
-        : pickTools(VOSS_READ_TOOLS, generalReadToolNames)
+        : pureConversationRequested
+          ? []
+          : pickTools(VOSS_READ_TOOLS, generalReadToolNames)
 
   const scopedMemoryReadTools =
     taskKey === "memory_read" || taskKey === "memory_write"
