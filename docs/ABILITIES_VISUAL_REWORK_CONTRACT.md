@@ -55,7 +55,7 @@ These are implemented in later rework stages without changing the page shell.
 
 The v2 rework must preserve the already completed behavior:
 
-- five groups: Class / Subclass / Race / Background / Effects;
+- seven groups: Class / Subclass / Race / Background / Feats / Special / Effects;
 - real read-model data;
 - max-three collapsed preview and computed hidden count;
 - one expanded group at a time;
@@ -105,8 +105,8 @@ Stage 2 is complete only when:
 
 Stage 3 is complete only when:
 
-- collapsed ability panels use the same outer material recipe as Character/Spells: `var(--cv-surface-soft)`, `var(--cv-line)`, the existing soft top gloss, shared radius scale and shared shadow scale;
-- panels use the same 3px inset `var(--cv-line-soft)` frame already used by the Spells surface;
+- ability panels use the current background-derived glass shared by Character/Spells/Core: `var(--cv-panel-glass)`, `var(--cv-panel-edge)`, `var(--cv-panel-specular)` and `var(--cv-panel-filter)`;
+- panels use the same 3px inset `var(--cv-panel-line)` frame as the current Spells surface;
 - class tinting comes only from existing sheet tokens such as `--cv-accent`, `--cv-accent-soft` and `--cv-accent-line`;
 - group and ability icons use the same quiet framed/radial treatment language as existing spell/resource icon surfaces instead of a new abilities glow system;
 - abilities does not introduce its own glass, border, surface, accent, radius or shadow variables;
@@ -185,7 +185,7 @@ Stage 8 is complete only when:
 
 - browser certification uses the real `CharacterSheetShell` and real `CharacterSheetFeatures`, preserving the MEGANOT character masthead/background above the panels;
 - the abilities surface fits without horizontal overflow at 320, 360, 390 and 430px viewport widths;
-- all five panels remain inside the sheet width and below the existing character masthead;
+- all seven panels remain inside the sheet width and below the existing character masthead;
 - standard-width collapsed panels preserve approximately 42/58 identity-to-preview geometry; 320px keeps the same hierarchy at approximately 44/56 rather than switching to another card layout;
 - 390px non-empty collapsed headers remain roughly 92px tall with 18px preview icons; empty panels remain roughly 68px with 40px group icons;
 - 320px non-empty collapsed headers remain roughly 88px with 17px preview icons; empty panels remain roughly 64px with 36px group icons;
@@ -195,4 +195,25 @@ Stage 8 is complete only when:
 - suppressed rows remain visible in place with the intended muted treatment;
 - full repository CI passes Build, Lint, repository tests, Storybook and Playwright with the Stage 8 browser suite enabled;
 - completion of Stage 8 changes no runtime, CE, Snake, suppression, permission or canonical data behavior.
+
+
+## Post-READY source completeness correction
+
+The certified panel geometry remains unchanged, but the source map is seven groups:
+
+1. `Класс` — canonical class sources.
+2. `Подкласс` — canonical subclass sources.
+3. `Раса` — race + subrace player-facing sources.
+4. `Предыстория` — explicit `background_feature` sources.
+5. `Фиты` — explicit canonical `character_features.kind = feat` rows.
+6. `Особое` — canonical generic `feature` / `other` rows plus character-bound achievements.
+7. `Эффекты` — explicit persistent active `effect` sources.
+
+`Особое` is allowed to contain description-only entries with no mechanics. A GM-granted unique trait such as «Воровской жаргон» must remain visible even when its canonical `character_features.mechanics` is an empty array.
+
+Character-bound achievements are presentation rows in `Особое`. The achievements table does not become a second mechanics engine: an achievement can display title/description/icon, but any mechanical reward must still be authored through a canonical character feature/runtime source and resolved by CE.
+
+Feat/Special feature rows preserve their canonical `feature:<id>` identity, so manager suppression continues through the existing Oracle/Shapoklyak suppression path. Achievement rows have no suppression source and remain inspect-only.
+
+The panel skin must follow the **current** Character/Spells premium background-derived glass, not the older base `--cv-surface-soft` recipe. The authoritative panel tokens are `--cv-panel-glass`, `--cv-panel-edge`, `--cv-panel-line`, `--cv-panel-specular` and `--cv-panel-filter`.
 
