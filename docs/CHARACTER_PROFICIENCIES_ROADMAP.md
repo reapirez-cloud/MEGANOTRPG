@@ -48,19 +48,21 @@ Implemented:
 
 Deliberate boundary: Stage 2 panels are statically expanded. No accordion state or Snake actions are added here.
 
-## Stage 3 — behaviour and states
+## Stage 3 — behaviour and states — READY
 
-Implement:
+Implemented:
 
 - independent expanded/collapsed state per panel
-- header/chevron tap target
-- `aria-expanded` matching real state
-- short layout-safe animation
-- real count presentation for open/closed catalogs
-- loading / empty / error refinement
-- preserve scroll position while toggling
+- all five panels start expanded, matching the Stage 2/reference composition
+- whole panel header is the tap target, including the chevron zone
+- `aria-expanded`, `aria-controls`, labelled regions and collapsed `aria-hidden`
+- short grid-row animation without fixed-height clipping
+- reduced-motion fallback
+- closed catalogs show `current / total`; open catalogs show the trustworthy current count only
+- distinct loading, runtime error, stale-warning and empty-group states
+- the real `.u1-character-sheet` scroll container is compensated while toggling
 
-Do not impose the abilities screen rule of “only one group open”. The proficiencies reference owns this behaviour.
+The abilities screen rule of “only one group open” is intentionally not used here. Each proficiency panel owns its own state.
 
 ## Stage 4 — canonical data integration
 

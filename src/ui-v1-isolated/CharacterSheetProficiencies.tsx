@@ -1,7 +1,20 @@
+import { useState, type MouseEvent } from "react"
+
+import {
+  CHARACTER_PROFICIENCY_GROUP_ORDER,
+} from "./characterProficienciesCatalog.ts"
 import type {
   CharacterProficienciesReadModel,
   CharacterProficiencyGroupKey,
 } from "./characterProficienciesReadModel.ts"
+
+type ExpandedGroups = Record<CharacterProficiencyGroupKey, boolean>
+
+function defaultExpandedGroups(): ExpandedGroups {
+  return Object.fromEntries(
+    CHARACTER_PROFICIENCY_GROUP_ORDER.map((key) => [key, true]),
+  ) as ExpandedGroups
+}
 
 function ProficiencyGroupIcon({
   group,
@@ -77,6 +90,15 @@ function groupCounter(
     : `${current} / ${total}`
 }
 
+function groupCounterLabel(
+  current: number,
+  total: number | null,
+) {
+  return total === null
+    ? `${current} владений в открытом каталоге`
+    : `${current} из ${total} владений`
+}
+
 export default function CharacterSheetProficiencies({
   model,
   runtimeError,
@@ -84,85 +106,167 @@ export default function CharacterSheetProficiencies({
   model: CharacterProficienciesReadModel | null
   runtimeError?: string
 }) {
+  const [expandedGroups, setExpandedGroups] = useState<ExpandedGroups>(
+    defaultExpandedGroups,
+  )
+
+  function toggleGroup(
+    group: CharacterProficiencyGroupKey,
+    event: MouseEvent<HTMLButtonElement>,
+  ) {
+    const header = event.currentTarget
+    const scroller = header.closest<HTMLElement>(".u1-character-sheet")
+    const beforeTop = header.getBoundingClientRect().top
+
+    setExpandedGroups((current) => ({
+      ...current,
+      [group]: !current[group],
+    }))
+
+    window.requestAnimationFrame(() => {
+      if (!scroller || !header.isConnected) return
+      const afterTop = header.getBoundingClientRect().top
+      const delta = afterTop - beforeTop
+      if (Math.abs(delta) > 0.5) scroller.scrollTop += delta
+    })
+  }
+
   if (!model) {
+    const failed = Boolean(runtimeError)
+
     return (
       <section
-        className="u1-character-proficiencies u1-character-proficiencies--loading"
+        className={
+          "u1-character-proficiencies u1-character-proficiencies--status " +
+          (failed
+            ? "u1-character-proficiencies--error"
+            : "u1-character-proficiencies--loading")
+        }
         aria-label="Владения"
-        data-stage="2"
+        aria-live="polite"
+        data-stage="3"
+        data-state={failed ? "error" : "loading"}
       >
-        <span>{runtimeError || "Собираем владения персонажа…"}</span>
+        <span>
+          {failed
+            ? "Не удалось собрать владения"
+            : "Собираем владения персонажа…"}
+        </span>
         <small>
-          Character Engine и старый лист сводятся в один read-model.
+          {runtimeError ||
+            "Character Engine и старый лист сводятся в один read-model."}
         </small>
       </section>
     )
   }
 
+  const empty = model.groups.every((group) => group.currentCount === 0)
+
   return (
     <section
       className="u1-character-proficiencies"
       aria-label="Владения"
-      data-stage="2"
+      data-stage="3"
+      data-empty={empty || undefined}
     >
+      {runtimeError ? (
+        <div
+          className="u1-character-proficiencies__warning"
+          role="status"
+        >
+          <strong>Данные Character Engine могли обновиться не полностью.</strong>
+          <small>{runtimeError}</small>
+        </div>
+      ) : null}
+
       <div className="u1-character-proficiencies__panels">
-        {model.groups.map((group) => (
-          <article
-            className="u1-character-proficiencies__panel"
-            data-group={group.key}
-            data-static-expanded="true"
-            key={group.key}
-          >
-            <header className="u1-character-proficiencies__head">
-              <span
-                className="u1-character-proficiencies__icon"
-                data-icon-slot={group.iconSlot}
-                aria-hidden="true"
+        {model.groups.map((group) => {
+          const expanded = expandedGroups[group.key]
+          const headerId = `proficiency-${group.key}-header`
+          const bodyId = `proficiency-${group.key}-body`
+
+          return (
+            <article
+              className="u1-character-proficiencies__panel"
+              data-group={group.key}
+              data-expanded={expanded ? "true" : "false"}
+              data-empty={group.currentCount === 0 || undefined}
+              key={group.key}
+            >
+              <button
+                id={headerId}
+                className="u1-character-proficiencies__head"
+                type="button"
+                aria-expanded={expanded}
+                aria-controls={bodyId}
+                onClick={(event) => toggleGroup(group.key, event)}
               >
-                <ProficiencyGroupIcon group={group.key} />
-              </span>
+                <span
+                  className="u1-character-proficiencies__icon"
+                  data-icon-slot={group.iconSlot}
+                  aria-hidden="true"
+                >
+                  <ProficiencyGroupIcon group={group.key} />
+                </span>
 
-              <span className="u1-character-proficiencies__identity">
-                <strong>{group.label}</strong>
-                <small>{group.description}</small>
-              </span>
+                <span className="u1-character-proficiencies__identity">
+                  <strong>{group.label}</strong>
+                  <small>{group.description}</small>
+                </span>
 
-              <span className="u1-character-proficiencies__tail">
-                <strong>
-                  {groupCounter(
+                <span
+                  className="u1-character-proficiencies__tail"
+                  aria-label={groupCounterLabel(
                     group.currentCount,
                     group.catalogCount,
                   )}
-                </strong>
-                <i aria-hidden="true">⌄</i>
-              </span>
-            </header>
+                >
+                  <strong aria-hidden="true">
+                    {groupCounter(
+                      group.currentCount,
+                      group.catalogCount,
+                    )}
+                  </strong>
+                  <i aria-hidden="true">⌄</i>
+                </span>
+              </button>
 
-            <div className="u1-character-proficiencies__body">
               <div
-                className="u1-character-proficiencies__tags"
-                aria-label={group.label}
+                id={bodyId}
+                className="u1-character-proficiencies__collapse"
+                role="region"
+                aria-labelledby={headerId}
+                aria-hidden={!expanded}
               >
-                {group.rows.map((row) => (
-                  <span
-                    className="u1-character-proficiencies__tag"
-                    data-origin={row.origin}
-                    data-rank={row.rank}
-                    key={row.id}
-                  >
-                    {row.label}
-                  </span>
-                ))}
+                <div className="u1-character-proficiencies__collapse-inner">
+                  <div className="u1-character-proficiencies__body">
+                    <div
+                      className="u1-character-proficiencies__tags"
+                      aria-label={group.label}
+                    >
+                      {group.rows.map((row) => (
+                        <span
+                          className="u1-character-proficiencies__tag"
+                          data-origin={row.origin}
+                          data-rank={row.rank}
+                          key={row.id}
+                        >
+                          {row.label}
+                        </span>
+                      ))}
 
-                {group.rows.length === 0 ? (
-                  <span className="u1-character-proficiencies__empty">
-                    Нет записей
-                  </span>
-                ) : null}
+                      {group.rows.length === 0 ? (
+                        <span className="u1-character-proficiencies__empty">
+                          Нет владений этого типа
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          )
+        })}
       </div>
 
       {model.unclassifiedRuntimeKeys.length ||

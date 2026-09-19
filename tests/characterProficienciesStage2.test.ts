@@ -44,7 +44,7 @@ test("proficiencies stage 2 freezes reference panel anatomy", () => {
   assert.match(panel, /u1-character-proficiencies__identity/)
   assert.match(panel, /u1-character-proficiencies__tail/)
   assert.match(panel, /u1-character-proficiencies__tags/)
-  assert.match(panel, /data-static-expanded="true"/)
+  assert.match(panel, /data-expanded=\{expanded \? "true" : "false"\}/)
   assert.match(panel, /groupCounter/)
 })
 
@@ -59,8 +59,8 @@ test("proficiencies stage 2 keeps shared MegANOT glass and mobile geometry", () 
   assert.match(styles, /@media \(max-width: 359px\)/)
 })
 
-test("stage 2 does not steal stage 3 accordion behaviour", () => {
-  assert.doesNotMatch(panel, /useState/)
-  assert.doesNotMatch(panel, /aria-expanded/)
-  assert.doesNotMatch(panel, /onClick=/)
+test("stage 2 panel anatomy remains intact after later behaviour stages", () => {
+  assert.match(panel, /u1-character-proficiencies__panel/)
+  assert.match(panel, /u1-character-proficiencies__head/)
+  assert.match(panel, /u1-character-proficiencies__body/)
 })
