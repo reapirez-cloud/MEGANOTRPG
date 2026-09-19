@@ -90,6 +90,27 @@ The UI choice is not trusted. The Edge Function resolves membership again and ig
 
 Global model-registry writes are not exposed to authenticated clients in Stage 1. They are an administrative/server concern.
 
+## Runtime update — 2026-09-19
+
+The original Stage descriptions below remain historical implementation notes. The current runtime has since evolved in several important ways:
+
+- normal campaign model choice is per-user; both enabled public campaign models may be selected by a Player without changing authority;
+- if a selected public Player model lacks a capability required by the classified task, routing may use another compatible public campaign model without granting broader permissions;
+- prompts and tool schemas are task-scoped instead of publishing the entire Agent Platform toolbox on every turn;
+- pure conversational turns such as greetings receive no domain tools;
+- Player security classification runs inside the background turn with a lightweight classifier profile; RLS and tool authorization remain the hard security boundary;
+- provider requests use bounded timeouts and only one retry for transient transport/provider failures;
+- durable async delivery uses a lightweight message-tail poll while an answer is pending, with slower polling for active image jobs;
+- image generation requires an explicit current-turn draw/generate command; discussing an image does not expose `generate_image`;
+- generated-image references are bound by exact job/variant/asset identity, and cancel/retry are direct server actions rather than extra LLM turns.
+
+Authority remains independent from model choice:
+
+```text
+Player model choice != GM authority
+GM model choice     != system-admin authority
+```
+
 ## Current-screen context
 
 The AI does not inspect screenshots or scrape the DOM.
