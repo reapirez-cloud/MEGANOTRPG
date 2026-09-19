@@ -295,6 +295,7 @@ type AIContextValue = {
   developerCapabilities: AIDeveloperCapabilities | null
   loading: boolean
   sending: boolean
+  pendingReply: boolean
   error: string | null
   viewContext: AIViewContext | null
   route: string
@@ -485,6 +486,11 @@ export function AIProvider({ children }: { children: ReactNode }) {
     [route, viewLayers],
   )
 
+  const pendingReply = useMemo(
+    () => messages.length > 0 && messages[messages.length - 1]?.role === "user",
+    [messages],
+  )
+
   const setViewContextLayer = useCallback((
     source: string,
     context: AIViewContextLayer,
@@ -562,6 +568,33 @@ export function AIProvider({ children }: { children: ReactNode }) {
       setError(reason instanceof Error ? reason.message : "Не удалось загрузить историю Восса.")
     }
   }, [activeThreadId, campaignId, loadConversationFor, userId])
+
+  useEffect(() => {
+    if (!campaignId || !userId || !activeThreadId || !pendingReply) return
+
+    const poll = async () => {
+      try {
+        const loadedThreadId =
+          await loadConversationFor(campaignId, userId, activeThreadId)
+        await loadJobsFor(campaignId, userId, loadedThreadId)
+      } catch {
+        // A later poll or the next app open reconstructs the same server state.
+      }
+    }
+
+    const timer = window.setInterval(() => {
+      void poll()
+    }, 2200)
+
+    return () => window.clearInterval(timer)
+  }, [
+    activeThreadId,
+    campaignId,
+    loadConversationFor,
+    loadJobsFor,
+    pendingReply,
+    userId,
+  ])
 
   const loadDraftsFor = useCallback(async (nextCampaignId: string) => {
     const { data, error: draftError } = await supabase
@@ -1353,7 +1386,13 @@ export function AIProvider({ children }: { children: ReactNode }) {
       (attachments.length
         ? "Изучи прикреплённые файлы и используй их как контекст запроса."
         : "")
-    if (!campaignId || !userId || !message || sending) return false
+    if (
+      !campaignId ||
+      !userId ||
+      !message ||
+      sending ||
+      pendingReply
+    ) return false
 
     let threadId = activeThreadId
     if (!threadId) {
@@ -1361,6 +1400,18 @@ export function AIProvider({ children }: { children: ReactNode }) {
       if (!threadId) return false
     }
 
+    const optimisticId = -Date.now()
+    const optimisticCreatedAt = new Date().toISOString()
+    setMessages((current) => [
+      ...current,
+      {
+        id: optimisticId,
+        role: "user",
+        body: message,
+        created_at: optimisticCreatedAt,
+        model_id: null,
+      },
+    ])
     setSending(true)
     setError(null)
 
@@ -1394,13 +1445,23 @@ export function AIProvider({ children }: { children: ReactNode }) {
     })
 
     if (invokeError || data?.error) {
+      setMessages((current) =>
+        current.filter((entry) => entry.id !== optimisticId)
+      )
       setError(await normalizeFunctionError(invokeError, data))
       setSending(false)
       return false
     }
 
-    if (!data?.answer) {
-      setError("Восс вернул пустой ответ.")
+    const accepted =
+      data?.accepted === true ||
+      typeof data?.answer === "string"
+
+    if (!accepted) {
+      setMessages((current) =>
+        current.filter((entry) => entry.id !== optimisticId)
+      )
+      setError("Восс не подтвердил приём сообщения.")
       setSending(false)
       return false
     }
@@ -1424,20 +1485,13 @@ export function AIProvider({ children }: { children: ReactNode }) {
       const loadedThreadId =
         await loadConversationFor(campaignId, userId, responseThreadId)
       await loadJobsFor(campaignId, userId, loadedThreadId)
-      if (canManage) {
-        await loadDraftsFor(campaignId)
-        await loadMechanicsCompilationsFor(campaignId, userId)
-      }
-      if (isSystemAdmin) {
-        await loadDevRunsFor(campaignId, userId)
+
+      // Legacy synchronous edge responses may already contain the answer.
+      if (typeof data?.answer === "string" && data.answer.trim()) {
+        await loadConversationFor(campaignId, userId, responseThreadId)
       }
     } catch {
-      const now = new Date().toISOString()
-      setMessages((current) => [
-        ...current,
-        { id: -Date.now(), role: "user", body: message, created_at: now, model_id: null },
-        { id: -(Date.now() + 1), role: "assistant", body: data.answer, created_at: now, model_id: data.model?.id || null },
-      ])
+      // Keep the optimistic message. Polling will replace it from durable server state.
     }
 
     if (attachments.length) {
@@ -1453,7 +1507,20 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     setSending(false)
     return true
-  }, [activeThreadId, campaignId, canManage, createThread, devSession, devSessionToken, isSystemAdmin, loadConversationFor, loadDevRunsFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor, route, sending, userId, viewContext])
+  }, [
+    activeThreadId,
+    campaignId,
+    createThread,
+    devSession,
+    devSessionToken,
+    loadConversationFor,
+    loadJobsFor,
+    pendingReply,
+    route,
+    sending,
+    userId,
+    viewContext,
+  ])
 
   const value = useMemo<AIContextValue>(() => ({
     campaignId,
@@ -1475,6 +1542,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     developerCapabilities,
     loading,
     sending,
+    pendingReply,
     error,
     viewContext,
     route,
@@ -1526,6 +1594,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     models,
     openDeveloperMode,
     ownerOverrideModels,
+    pendingReply,
     removeAttachment,
     refreshConversation,
     refreshDrafts,
