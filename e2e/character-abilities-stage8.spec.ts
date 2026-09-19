@@ -70,7 +70,7 @@ test("Stage 8 keeps abilities inside 320/360/390/430 mobile widths with the refe
     expect(metrics.firstLeft).toBeGreaterThanOrEqual(metrics.wrapLeft - 0.5)
     expect(metrics.firstRight).toBeLessThanOrEqual(metrics.wrapRight + 0.5)
     expect(metrics.firstTop).toBeGreaterThan(metrics.mastheadBottom)
-    expect(metrics.panelCount).toBe(5)
+    expect(metrics.panelCount).toBe(7)
 
     if (width <= 359) {
       expect(metrics.sourceRatio).toBeGreaterThanOrEqual(0.42)
@@ -319,4 +319,41 @@ test("Stage 8 keeps suppressed rows visible in place instead of hiding them", as
   expect(Number(style.opacity)).toBeGreaterThan(0.4)
   expect(Number(style.opacity)).toBeLessThan(0.5)
   expect(style.filter).toContain("grayscale")
+})
+
+
+test("Stage 8 keeps Feats and Special in the certified mobile stack", async ({ page }) => {
+  await openFixture(page, 390)
+
+  const featPanel = page.locator(
+    '.u1-character-features__panel[data-group="feat"]',
+  )
+  const specialPanel = page.locator(
+    '.u1-character-features__panel[data-group="special"]',
+  )
+
+  await expect(featPanel).toBeVisible()
+  await expect(featPanel).toContainText("Фиты")
+  await expect(featPanel).toContainText("Внимательный")
+
+  await expect(specialPanel).toBeVisible()
+  await expect(specialPanel).toContainText("Особое")
+  await expect(specialPanel).toContainText("Воровской жаргон")
+  await expect(specialPanel).toContainText("Пережил невозможное")
+
+  const glyph = specialPanel
+    .locator(".u1-character-features__ability-icon-glyph")
+    .filter({ hasText: "★" })
+  await expect(glyph).toBeVisible()
+
+  const glass = await specialPanel.evaluate((panel) => {
+    const style = getComputedStyle(panel)
+    return {
+      backdropFilter: style.backdropFilter,
+      borderColor: style.borderColor,
+      backgroundImage: style.backgroundImage,
+    }
+  })
+  expect(glass.backdropFilter).toContain("blur")
+  expect(glass.backgroundImage).not.toBe("none")
 })
