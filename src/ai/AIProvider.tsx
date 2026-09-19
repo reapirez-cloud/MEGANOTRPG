@@ -280,6 +280,7 @@ type AIContextValue = {
   userId: string
   canManage: boolean
   isSystemAdmin: boolean
+  assistantName: "Восс" | "Фредди"
   models: AIModel[]
   ownerOverrideModels: AIModel[]
   selectedModelId: string | null
@@ -380,12 +381,12 @@ async function normalizeFunctionError(
         : ""
 
   if (/failed to send|network|fetch/i.test(message)) {
-    return "Нет связи с сервером Восса."
+    return "Нет связи с сервером помощника."
   }
   if (/non-2xx|edge function/i.test(message)) {
-    return "Восс получил серверную ошибку. Детали сохранены на стороне функции."
+    return "Помощник получил серверную ошибку. Детали сохранены на стороне функции."
   }
-  return message || "Восс не смог ответить."
+  return message || "Помощник не смог ответить."
 }
 
 const MAX_AI_ATTACHMENT_BYTES = 12 * 1024 * 1024
@@ -491,6 +492,9 @@ export function AIProvider({ children }: { children: ReactNode }) {
     [messages],
   )
 
+  const assistantName: "Восс" | "Фредди" =
+    canManage || isSystemAdmin ? "Фредди" : "Восс"
+
   const setViewContextLayer = useCallback((
     source: string,
     context: AIViewContextLayer,
@@ -565,7 +569,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     try {
       await loadConversationFor(campaignId, userId, activeThreadId)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Не удалось загрузить историю Восса.")
+      setError(reason instanceof Error ? reason.message : "Не удалось загрузить историю помощника.")
     }
   }, [activeThreadId, campaignId, loadConversationFor, userId])
 
@@ -707,7 +711,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Не удалось загрузить задачи Восса.",
+          : "Не удалось загрузить задачи помощника.",
       )
     }
   }, [activeThreadId, campaignId, loadJobsFor, userId])
@@ -1026,12 +1030,12 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
       setCampaignId(nextCampaignId)
       setUserId(nextUserId)
-      setCanManage(manager)
 
       const { data: systemAdminStatus, error: systemAdminError } =
         await supabase.rpc("my_system_admin_status_v1")
       const systemAdmin = !systemAdminError && systemAdminStatus === true
       setIsSystemAdmin(systemAdmin)
+      setCanManage(manager || systemAdmin)
       if (!systemAdmin) {
         setDevSession(null)
         setDevSessionToken("")
@@ -1104,7 +1108,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
         }
       } catch (reason) {
         if (!cancelled) {
-          setError(reason instanceof Error ? reason.message : "Не удалось загрузить AI-данные Восса.")
+          setError(reason instanceof Error ? reason.message : "Не удалось загрузить AI-данные помощника.")
         }
       }
 
@@ -1462,7 +1466,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
       setMessages((current) =>
         current.filter((entry) => entry.id !== optimisticId)
       )
-      setError("Восс не подтвердил приём сообщения.")
+      setError("Помощник не подтвердил приём сообщения.")
       setSending(false)
       return false
     }
@@ -1528,6 +1532,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     userId,
     canManage,
     isSystemAdmin,
+    assistantName,
     models,
     ownerOverrideModels,
     selectedModelId,
@@ -1572,6 +1577,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
   }), [
     activeThreadId,
     applyDevRun,
+    assistantName,
     campaignId,
     canManage,
     cancelDevRun,
