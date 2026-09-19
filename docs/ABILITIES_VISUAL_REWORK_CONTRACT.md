@@ -1,6 +1,6 @@
 # Abilities v2 visual rework contract
 
-> Status: **ACTIVE — Stage 5 locked**
+> Status: **ACTIVE — Stage 6 locked**
 > Scope: UI 1.0 character-sheet Abilities presentation only.
 
 This contract corrects the first Abilities presentation pass. It is intentionally visual/presentation-only. Existing read-model, Character Runtime, CE resolution, Snake actions, suppression, Background and Effects data remain canonical and must not be rebuilt for this rework.
@@ -142,4 +142,20 @@ Stage 5 is complete only when:
 - empty groups cannot expand or steal accordion state;
 - non-empty collapsed and expanded geometry from Stages 2 and 4 remain unchanged;
 - Stage 3 Character/Spells skin, runtime, CE, Snake, suppression and data ownership remain unchanged.
+
+
+## Stage 6 acceptance
+
+Stage 6 is complete only when:
+
+- both collapsed previews and expanded rows use the same `AbilityRowIcon` renderer and therefore the same media rules;
+- direct authored PNG/JPEG/WebP/GIF/SVG/AVIF, public paths, relative image paths and remote/data/blob URLs render as media instead of being mistaken for fallback ids;
+- known semantic feature/resource ids reuse existing character-sheet visual assets instead of discarding authored intent (for example `feature:second-wind` resolves to the existing Second Wind atlas icon);
+- known `class:<key>:resource` and `class:<key>:spell_slot` semantic slots reuse the existing class atlas;
+- unknown semantic ids remain stable group fallbacks rather than becoming broken image URLs;
+- authored image media uses a fixed square frame with `object-fit: contain` and centered positioning; `cover` is forbidden for ability icons;
+- atlas image/mask sprites use their canonical atlas size/position without stretching or hand-cropping;
+- failed authored image loads fall back to the group glyph in the same slot instead of leaving a blank square;
+- compact and expanded icon slots keep the geometry from Stages 2 and 4 (18/24px standard, 17/22px narrow) and do not mutate source files or create compressed derivatives;
+- Stage 3 skin, Stage 5 empty states, runtime, CE, Snake, suppression, permissions and canonical data remain unchanged.
 
