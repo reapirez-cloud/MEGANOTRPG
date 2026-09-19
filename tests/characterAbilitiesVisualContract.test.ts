@@ -111,7 +111,6 @@ test("abilities v2 stage 3 uses shared class tokens instead of an abilities-only
 })
 
 test("abilities v2 stage 4 expanded state stays one panel instead of nesting cards", () => {
-  assert.match(contract, /Status: \*\*ACTIVE — Stage 4 locked\*\*/)
   assert.match(
     features,
     /<article[\s\S]*?className="u1-character-features__panel"[\s\S]*?<div[\s\S]*?className="u1-character-features__expanded"/,
@@ -125,4 +124,31 @@ test("abilities v2 stage 4 expanded state stays one panel instead of nesting car
     /\.u1-character-features__ability-row\s*\{[\s\S]*?background:\s*transparent/,
   )
   assert.match(contract, /## Stage 4 acceptance/)
+})
+
+
+test("abilities v2 stage 5 makes empty groups quiet and compact", () => {
+  assert.match(contract, /Status: \*\*ACTIVE — Stage 5 locked\*\*/)
+  assert.match(contract, /## Stage 5 acceptance/)
+  assert.doesNotMatch(features, />\s*Нет умений\s*</)
+  assert.doesNotMatch(features, /Источник не назначен/)
+  assert.match(features, /aria-label="Нет доступных умений"/)
+  assert.match(features, />\s*—\s*<\/span>/)
+  assert.match(features, /"Не назначено"/)
+  assert.match(
+    styles,
+    /\.u1-character-features__panel\[data-empty\][\s\S]*?\.u1-character-features__panel-head\s*\{[\s\S]*?min-height:\s*68px/,
+  )
+  assert.match(
+    styles,
+    /\.u1-character-features__panel\[data-empty\][\s\S]*?\.u1-character-features__panel-icon\s*\{[\s\S]*?width:\s*40px/,
+  )
+  assert.match(
+    styles,
+    /@media \(max-width: 359px\)[\s\S]*?\.u1-character-features__panel\[data-empty\][\s\S]*?min-height:\s*64px/,
+  )
+  assert.doesNotMatch(
+    styles,
+    /\.u1-character-features__panel\[data-empty\]\s*\{\s*opacity:/,
+  )
 })
