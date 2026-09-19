@@ -1415,3 +1415,149 @@
   }
 }
 
+
+
+/* AI legibility + interaction pass.
+   Keep the restrained MEGANOT geometry, stop making metadata microscopic. */
+.u1-agent-message p {
+  font-size: 12px;
+}
+
+.u1-agent-message small,
+.u1-agent-panel__identity span,
+.u1-agent-panel__header-actions small,
+.u1-agent-tools-drawer > header span,
+.u1-agent-tools-section__label,
+.u1-agent-system-entry > header span,
+.u1-agent-image-job > header span,
+.u1-agent-system-entry > header b,
+.u1-agent-image-job > header small {
+  font-size: 9px;
+}
+
+.u1-agent-model-choice small,
+.u1-agent-file-action small,
+.u1-agent-dev-control small,
+.u1-agent-system-entry > p,
+.u1-agent-image-job > p,
+.u1-agent-system-note,
+.u1-agent-system-meta small,
+.u1-agent-thinking,
+.u1-agent-attachment strong,
+.u1-agent-attachment small,
+.u1-agent-thread-choice small,
+.u1-agent-thread-empty,
+.u1-agent-image-option > span,
+.u1-agent-image-expiry {
+  font-size: 10px;
+}
+
+.u1-agent-image-actions button,
+.u1-agent-image-actions a,
+.u1-agent-image-actions > span,
+.u1-agent-system-actions button {
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: 9px;
+}
+
+.u1-agent-thread-new,
+.u1-agent-thread-delete {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+}
+
+.u1-agent-thread-row {
+  grid-template-columns: minmax(0, 1fr) 36px;
+}
+
+.u1-agent-thread-choice {
+  min-height: 42px;
+}
+
+.u1-agent-thread-choice strong {
+  font-size: 11px;
+}
+
+.u1-agent-composer {
+  grid-template-columns: minmax(0, 1fr) 40px;
+}
+
+.u1-agent-composer textarea {
+  min-height: 38px;
+  max-height: 160px;
+  font-size: 12px;
+  field-sizing: content;
+}
+
+.u1-agent-composer > button {
+  width: 40px;
+  height: 40px;
+}
+
+.u1-agent-image-job__progress,
+.u1-agent-image-job__failure {
+  padding-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.u1-agent-image-job__progress > p,
+.u1-agent-image-job__failure > p {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.u1-agent-image-job__progress > button,
+.u1-agent-image-job__failure > button {
+  min-height: 32px;
+  padding: 5px 9px;
+  border: 1px solid rgba(198, 204, 207, 0.12);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.u1-agent-selected-image {
+  position: relative;
+  z-index: 3;
+  min-height: 34px;
+  padding: 5px 11px 5px 22px;
+  border-top: 1px solid rgba(195, 202, 205, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+}
+
+.u1-agent-selected-image button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
+}
+
+.u1-agent-route-note {
+  margin: 2px 0 14px;
+  padding: 7px 10px;
+  border-left: 1px solid rgba(199, 205, 208, 0.18);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .u1-agent-panel__close,
+  .u1-agent-tools-trigger {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
