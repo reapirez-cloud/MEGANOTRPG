@@ -564,6 +564,31 @@ export function AIProvider({ children }: { children: ReactNode }) {
     return nextThreadId
   }, [])
 
+  const loadConversationTailFor = useCallback(async (
+    nextThreadId: string,
+  ) => {
+    const { data: rows, error: messageError } = await supabase
+      .from("ai_messages")
+      .select("id,role,body,created_at,model_id")
+      .eq("thread_id", nextThreadId)
+      .order("id", { ascending: false })
+      .limit(24)
+
+    if (messageError) throw messageError
+
+    const tail = [...(rows || [])].reverse() as AIConversationMessage[]
+    setMessages((current) => {
+      const merged = new Map<number, AIConversationMessage>()
+      for (const message of current) {
+        if (message.id > 0) merged.set(message.id, message)
+      }
+      for (const message of tail) merged.set(message.id, message)
+      return [...merged.values()].sort((left, right) => left.id - right.id)
+    })
+
+    return tail[tail.length - 1]?.role === "assistant"
+  }, [])
+
   const refreshConversation = useCallback(async () => {
     if (!campaignId || !userId) return
     try {
@@ -721,9 +746,10 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     const poll = async () => {
       try {
-        const loadedThreadId =
-          await loadConversationFor(campaignId, userId, activeThreadId)
-        await loadJobsFor(campaignId, userId, loadedThreadId)
+        const assistantArrived = await loadConversationTailFor(activeThreadId)
+        if (assistantArrived) {
+          await loadJobsFor(campaignId, userId, activeThreadId)
+        }
       } catch {
         // A later poll or the next app open reconstructs the same server state.
       }
@@ -731,13 +757,13 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     const timer = window.setInterval(() => {
       void poll()
-    }, 2200)
+    }, 2000)
 
     return () => window.clearInterval(timer)
   }, [
     activeThreadId,
     campaignId,
-    loadConversationFor,
+    loadConversationTailFor,
     loadJobsFor,
     pendingReply,
     userId,
@@ -757,7 +783,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     const timer = window.setInterval(() => {
       void loadJobsFor(campaignId, userId, activeThreadId)
-    }, 2200)
+    }, 4000)
 
     return () => window.clearInterval(timer)
   }, [activeThreadId, campaignId, hasActiveJobs, loadJobsFor, userId])
