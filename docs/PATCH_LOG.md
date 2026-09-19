@@ -29,7 +29,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added the UI 1.0 chat-room Snake action provider and registered hero, Flood/event/archive rows and personal-history cards as `chat_room` entities through `SnakeTrigger`. Ordinary tap and Snake `Открыть` reuse the same deferred room surface descriptor.
 - Fixed the click-through behavior globally in `SnakeWindowHost`, not in Chats, and documented the completed-click backdrop law in the canonical Snake contract.
 - Reference art file uploads use the new atomic RPC; icon slots are registered as system reference icons, while preview/hero/panel art remains normal reference media. Batch deletion reuses the canonical System Materials and generated-media deletion boundaries.
-- Voss draft tooling now includes `list_content_drafts`, scoped to the current manager's own review drafts before read/revise. Chat turns use a durable server-first delivery path with background completion and a persisted failure reply if processing cannot finish.
+- Voss draft tooling now distinguishes `AI Draft System` from ordinary GM Workshop drafts: `list_content_drafts` is scoped to the current manager's own review drafts, while `list_workshop_drafts` discovers future PC/NPC/reference draft entities through the current user's RLS read scope. Chat turns use a durable server-first delivery path with background completion and a persisted failure reply if processing cannot finish.
 ### Tests / verification
 
 - Added regressions for chat-room Snake registration/action-provider coverage, full-bleed panoramic chat artwork geometry/scrims (including identical image/fallback sizing), and the universal Snake backdrop rule that forbids closing/unmounting on pointerdown.
