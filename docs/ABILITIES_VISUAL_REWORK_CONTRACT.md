@@ -1,6 +1,6 @@
 # Abilities v2 visual rework contract
 
-> Status: **ACTIVE — Stage 6 locked**
+> Status: **ACTIVE — Stage 7 locked**
 > Scope: UI 1.0 character-sheet Abilities presentation only.
 
 This contract corrects the first Abilities presentation pass. It is intentionally visual/presentation-only. Existing read-model, Character Runtime, CE resolution, Snake actions, suppression, Background and Effects data remain canonical and must not be rebuilt for this rework.
@@ -158,4 +158,23 @@ Stage 6 is complete only when:
 - failed authored image loads fall back to the group glyph in the same slot instead of leaving a blank square;
 - compact and expanded icon slots keep the geometry from Stages 2 and 4 (18/24px standard, 17/22px narrow) and do not mutate source files or create compressed derivatives;
 - Stage 3 skin, Stage 5 empty states, runtime, CE, Snake, suppression, permissions and canonical data remain unchanged.
+
+
+## Stage 7 acceptance
+
+Stage 7 is complete only when:
+
+- accordion state still allows at most one expanded group and empty groups cannot steal the current expansion;
+- collapsed preview remains capped at three real rows with a computed hidden count;
+- collapsed and expanded ability rows still use the same `AbilityInteractiveRow`, Snake entity and action provider;
+- ordinary tap still records the selected ability and opens the shared Snake detail surface;
+- long-press/right-click behavior remains owned by `SnakeTrigger`; no local context-menu or bottom-sheet runtime returns;
+- player action manifests expose inspect only;
+- GM/owner manifests may expose granular `Заглушить / Включить` only when the read-model supplies a safe suppressible source;
+- manager authority remains `role === "gm" || is_owner === true`;
+- suppression still routes through the canonical callback into Oracle/Shapoklyak, reloads canonical suppression rows and then reaches the shared Character Runtime / CE path;
+- suppressed abilities remain in their original group/list position, stay inspectable and visibly muted, and are never moved into a separate disabled bucket;
+- CSS may mute suppressed rows but must not hide them;
+- Stages 1-6 presentation contracts remain intact;
+- Stage 7 introduces no new runtime state, mutation path, database schema or UI-owned permission truth.
 
