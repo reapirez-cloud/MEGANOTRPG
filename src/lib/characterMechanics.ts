@@ -133,6 +133,8 @@ function featureSourceType(kind: CharacterFeature["kind"]): string {
   if (kind === "effect") return "character_effect"
   if (kind === "class_feature") return "character_class_feature"
   if (kind === "racial_trait") return "character_racial_trait"
+  if (kind === "feat") return "character_feat"
+  if (kind === "feature" || kind === "other") return "character_special"
   return "character_feature"
 }
 
