@@ -16,7 +16,7 @@ function timestamp(value: string | null | undefined) {
 
 export function isChatRoomClosed(room: ChatRoom) {
   if (room.room_type === "character") {
-    return room.character_life_state === "dead" || room.room_state === "closed"
+    return room.character_life_state === "dead"
   }
   if (room.room_type === "scene") {
     return room.scene_state === "closed" || room.room_state === "closed"

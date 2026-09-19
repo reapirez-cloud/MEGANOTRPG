@@ -29,7 +29,7 @@ function activitySource(room: ChatRoom) {
 
 export function roomStatus(room: ChatRoom): ChatRoomStatus {
   if (room.room_type === "character") {
-    if (room.character_life_state === "dead" || room.room_state === "closed") {
+    if (room.character_life_state === "dead") {
       return { label: "История завершена", tone: "archived" }
     }
     if (room.is_read_only) {
