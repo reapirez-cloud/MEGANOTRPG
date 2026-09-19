@@ -30,6 +30,7 @@ type DraftRelation = {
 }
 
 export type VossDraftToolContext = {
+  client: SupabaseClient
   admin: SupabaseClient
   campaignId: string
   userId: string
@@ -133,6 +134,22 @@ export const VOSS_DRAFT_TOOLS = [
           },
         },
         required: ["draft_type", "title", "summary", "nodes", "relations"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_workshop_drafts",
+      description:
+        "List draft characters and draft campaign definitions currently visible to this GM in the Workshop Draft section. Access uses the current user's normal MEGANOT RLS permissions. Use this when the GM refers to a future PC/NPC/item/spell/effect/ability kept in Drafts.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          query: { type: "string" },
+          limit: { type: "integer", minimum: 1, maximum: 30 },
+        },
       },
     },
   },
@@ -686,6 +703,81 @@ function relationSignature(relation: DraftRelation) {
   ].join("|")
 }
 
+async function listWorkshopDrafts(
+  context: VossDraftToolContext,
+  args: JsonObject,
+) {
+  const query = text(args.query, 120)
+  const rawLimit = Math.floor(Number(args.limit))
+  const limit = Number.isFinite(rawLimit)
+    ? Math.max(1, Math.min(30, rawLimit))
+    : 20
+  const pattern = query ? "%" + query.replace(/[%_]/g, " ") + "%" : ""
+
+  let characterRequest = context.client
+    .from("characters")
+    .select("id,name,character_class,level,bio,character_type,visibility_mode,publication_state,life_state,created_at")
+    .eq("campaign_id", context.campaignId)
+    .eq("publication_state", "draft")
+    .order("created_at", { ascending: false })
+    .limit(limit)
+
+  if (pattern) characterRequest = characterRequest.ilike("name", pattern)
+
+  const { data: characters, error: characterError } = await characterRequest
+  if (characterError) return { error: characterError.message }
+
+  const { data: definitions, error: definitionError } = await context.client
+    .from("reference_definitions")
+    .select("id,kind,slug,visibility,status,current_revision,created_at,updated_at")
+    .eq("campaign_id", context.campaignId)
+    .eq("scope", "campaign")
+    .eq("status", "draft")
+    .order("updated_at", { ascending: false })
+    .limit(limit)
+
+  if (definitionError) return { error: definitionError.message }
+
+  const definitionIds = (definitions || []).map((row) => row.id)
+  const { data: revisions, error: revisionError } = definitionIds.length
+    ? await context.client
+      .from("reference_definition_revisions")
+      .select("definition_id,revision,name,summary")
+      .in("definition_id", definitionIds)
+    : { data: [], error: null }
+
+  if (revisionError) return { error: revisionError.message }
+
+  const currentRevision = new Map(
+    (definitions || []).map((row) => [row.id, row.current_revision]),
+  )
+  const revisionByDefinition = new Map(
+    (revisions || [])
+      .filter((row) => currentRevision.get(row.definition_id) === row.revision)
+      .map((row) => [row.definition_id, row]),
+  )
+
+  const draftDefinitions = (definitions || [])
+    .map((row) => ({
+      ...row,
+      ...(revisionByDefinition.get(row.id) || {}),
+    }))
+    .filter((row) =>
+      !query ||
+      String(row.name || "").toLocaleLowerCase("ru-RU").includes(
+        query.toLocaleLowerCase("ru-RU"),
+      )
+    )
+    .slice(0, limit)
+
+  return {
+    characters: characters || [],
+    definitions: draftDefinitions,
+    source: "gm-workshop-drafts",
+    canonical_state_changed: false,
+  }
+}
+
 async function listContentDrafts(
   context: VossDraftToolContext,
   args: JsonObject,
@@ -989,6 +1081,7 @@ async function reviseContentDraft(
 export function isVossDraftTool(name: string) {
   return (
     name === "propose_content_draft" ||
+    name === "list_workshop_drafts" ||
     name === "list_content_drafts" ||
     name === "read_content_draft" ||
     name === "revise_content_draft"
@@ -1001,6 +1094,10 @@ export async function executeVossDraftTool(
   args: JsonObject,
 ) {
   if (!context.canManage) return { error: "GM authority required" }
+
+  if (name === "list_workshop_drafts") {
+    return listWorkshopDrafts(context, args)
+  }
 
   if (name === "list_content_drafts") {
     return listContentDrafts(context, args)
