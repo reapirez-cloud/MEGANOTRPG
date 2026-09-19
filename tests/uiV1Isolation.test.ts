@@ -502,9 +502,9 @@ test("global AgentMark replaces the inactive VI profile placeholder", () => {
   assert.doesNotMatch(app, /PlayerProfileMark/)
   assert.match(app, /<AgentShell \/>/)
   assert.match(agentShell, /className="u1-agent-orb"/)
-  assert.match(agentShell, /"Свернуть Восса"/)
-  assert.match(agentShell, /"Восс работает в фоне"/)
-  assert.match(agentShell, /"Открыть Восса"/)
+  assert.match(agentShell, /\`Свернуть \$\{assistantName\}\`/)
+  assert.match(agentShell, /\`\$\{assistantName\} работает в фоне\`/)
+  assert.match(agentShell, /\`Открыть \$\{assistantName\}\`/)
 })
 
 

@@ -83,13 +83,15 @@ test("agent shell can be opened globally without adding duplicate buttons", () =
   assert.match(shell, /detail\?\.prompt/)
 })
 
-test("conversation keeps canonical system artifacts without turning them into dashboard widgets", () => {
+test("conversation stays chat-first while canonical job artifacts remain inline", () => {
   const shell = read("src/ai/AgentShell.tsx")
   const styles = read("src/ai/ai-voss.css")
 
-  assert.match(shell, /AI DRAFT · НЕ КАНОН/)
+  assert.doesNotMatch(shell, /AI DRAFT · НЕ КАНОН/)
+  assert.doesNotMatch(shell, /drafts\[0\]/)
   assert.doesNotMatch(shell, /MECHANICS COMPILER/)
   assert.doesNotMatch(shell, /DEVELOPER RUN/)
+  assert.match(shell, /u1-agent-image-job/)
   assert.match(styles, /\.u1-agent-system-entry/)
   assert.match(styles, /border-left:/)
   assert.doesNotMatch(styles, /border-radius:\s*1[024]px/)

@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
 import CampaignImage from "../components/common/CampaignImage"
@@ -139,12 +139,40 @@ export default function ArtSection({ subsection }: { subsection?: string }) {
   const fileRef = useRef<HTMLInputElement | null>(null)
   const current = sections.find((section) => section.id === subsection)
   const allowedSections = sections.filter((section) => !section.ownerOnly || data.isOwner)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+
+  useEffect(() => {
+    setSelectedIds(new Set())
+  }, [current?.id])
+
+  const selectionMode = selectedIds.size > 0
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((currentSelection) => {
+      const next = new Set(currentSelection)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const clearSelection = () => setSelectedIds(new Set())
 
   const collectionItems = useMemo(
     () => current?.collection
       ? data.items.filter((item) => item.collection === current.collection)
       : [],
     [current?.collection, data.items],
+  )
+
+  const selectedArtItems = useMemo(
+    () => collectionItems.filter((item) => selectedIds.has(item.id)),
+    [collectionItems, selectedIds],
+  )
+
+  const selectedGenerated = useMemo(
+    () => data.generated.filter((asset) => selectedIds.has(asset.id)),
+    [data.generated, selectedIds],
   )
 
   const openArt = (item: UiV1ArtItem) => {
@@ -166,18 +194,22 @@ export default function ArtSection({ subsection }: { subsection?: string }) {
             pageNumber: page.page_number,
           },
         }))
-      : [{
-          id: item.id,
-          src: item.image_url,
-          title: item.title,
-          caption: item.caption,
-          alt: item.title,
+      : collectionItems.map((candidate) => ({
+          id: candidate.id,
+          src: candidate.image_url,
+          title: candidate.title,
+          caption: candidate.caption,
+          alt: candidate.title,
           facts: {
-            artItemId: item.id,
-            kind: item.kind,
-            collection: item.collection,
+            artItemId: candidate.id,
+            kind: candidate.kind,
+            collection: candidate.collection,
           },
-        }]
+        }))
+
+    const initialIndex = comicPages.length
+      ? 0
+      : Math.max(0, collectionItems.findIndex((candidate) => candidate.id === item.id))
 
     snake.openSurface(
       {
@@ -185,36 +217,127 @@ export default function ArtSection({ subsection }: { subsection?: string }) {
         eyebrow: item.kind === "comic" ? "Комикс" : current?.title,
         title: item.title || current?.title || "Арт",
         items: mediaItems,
+        initialIndex,
       },
       { entity: { type: "campaign-art", id: item.id } },
     )
   }
 
   const openGeneration = (asset: UiV1GeneratedAsset) => {
-    const title = asset.purpose.split("_").join(" ")
+    const initialIndex = Math.max(0, data.generated.findIndex((candidate) => candidate.id === asset.id))
+    const mediaItems = data.generated.map((candidate) => {
+      const title = candidate.purpose.split("_").join(" ")
+      return {
+        id: candidate.id,
+        src: candidate.storage_path,
+        title,
+        facts: {
+          purpose: candidate.purpose,
+          profile: candidate.profile,
+          status: candidate.status,
+          width: candidate.width,
+          height: candidate.height,
+          variantIndex: candidate.variant_index,
+          createdAt: candidate.created_at,
+        },
+      }
+    })
+
     snake.openSurface(
       {
         kind: "media",
-        eyebrow: "Генерация",
-        title,
-        items: [{
-          id: asset.id,
-          src: asset.storage_path,
-          title,
-          facts: {
-            purpose: asset.purpose,
-            profile: asset.profile,
-            status: asset.status,
-            width: asset.width,
-            height: asset.height,
-            variantIndex: asset.variant_index,
-            createdAt: asset.created_at,
-          },
-        }],
+        eyebrow: "Генерации",
+        title: asset.purpose.split("_").join(" "),
+        items: mediaItems,
+        initialIndex,
       },
       { entity: { type: "generated-media", id: asset.id } },
     )
   }
+
+  const selectionActions = (
+    id: string,
+    selected: boolean,
+    canSelect: boolean,
+    batchDelete?: SnakeAction,
+  ): SnakeAction[] => {
+    if (!canSelect) return []
+
+    const actions: SnakeAction[] = [{
+      id: selected ? "unselect-art" : "select-art",
+      label: selected
+        ? "Снять выделение"
+        : selectionMode
+          ? "Добавить к выделению"
+          : "Выбрать",
+      group: "manage",
+      execute: async () => {
+        toggleSelected(id)
+        return {
+          type: "success",
+          notice: selected ? "Снято с выделения." : "Добавлено к выделению.",
+        }
+      },
+    }]
+
+    if (selected && batchDelete) actions.push(batchDelete)
+    return actions
+  }
+
+  const artBatchDeleteAction: SnakeAction | undefined = selectedArtItems.length
+    ? {
+        id: "delete-selected-art",
+        label: `Удалить выбранные (${selectedArtItems.length})`,
+        tone: "danger",
+        group: "manage",
+        surface: {
+          kind: "confirm",
+          eyebrow: "Арты · Групповое удаление",
+          title: `Удалить выбранные арты: ${selectedArtItems.length}?`,
+          body: "Удаление выполняется сразу. Системные материалы, которые используются, останутся на месте.",
+          confirmLabel: "Удалить выбранные",
+        },
+        execute: async () => {
+          const response = await data.deleteArts(selectedArtItems)
+          clearSelection()
+          return response.ok
+            ? { type: "success", notice: `Удалено: ${response.deleted || selectedArtItems.length}.` }
+            : { type: "error", message: response.error || "Не удалось удалить все выбранные арты." }
+        },
+      }
+    : undefined
+
+  const generatedBatchBlocked = selectedGenerated.some(
+    (asset) => asset.has_active_binding || asset.status === "attached",
+  )
+  const generationBatchDeleteAction: SnakeAction | undefined = selectedGenerated.length
+    ? {
+        id: "delete-selected-generations",
+        label: generatedBatchBlocked
+          ? "Среди выбранных есть используемые"
+          : `Удалить выбранные (${selectedGenerated.length})`,
+        tone: generatedBatchBlocked ? "normal" : "danger",
+        group: "manage",
+        enabled: !generatedBatchBlocked,
+        disabledReason: generatedBatchBlocked
+          ? "Сними выделение с используемых изображений или сначала отвяжи их."
+          : undefined,
+        surface: generatedBatchBlocked ? undefined : {
+          kind: "confirm",
+          eyebrow: "Генерации · Групповое удаление",
+          title: `Удалить выбранные генерации: ${selectedGenerated.length}?`,
+          body: "Записи и файлы будут удалены сразу.",
+          confirmLabel: "Удалить выбранные",
+        },
+        execute: generatedBatchBlocked ? undefined : async () => {
+          const response = await data.deleteGeneratedMany(selectedGenerated)
+          clearSelection()
+          return response.ok
+            ? { type: "success", notice: `Удалено: ${response.deleted || selectedGenerated.length}.` }
+            : { type: "error", message: response.error || "Не удалось удалить все выбранные генерации." }
+        },
+      }
+    : undefined
 
   useAIViewContextLayer(
     "art-library",
@@ -294,7 +417,16 @@ export default function ArtSection({ subsection }: { subsection?: string }) {
         title={current.title}
         campaignTitle={data.campaignTitle || "Кампания"}
         onBack={() => go("home/art")}
-        action={canUpload ? (
+        action={selectionMode ? (
+          <button
+            type="button"
+            className="u1-art-library__selection"
+            onClick={clearSelection}
+            aria-label="Снять всё выделение"
+          >
+            {selectedIds.size} выбрано · ×
+          </button>
+        ) : canUpload ? (
           <button
             type="button"
             className="u1-art-library__add"
@@ -328,14 +460,19 @@ export default function ArtSection({ subsection }: { subsection?: string }) {
         data.generated.length ? (
           <div className="u1-art-library__grid">
             {data.generated.map((asset) => {
-              const actions = generationActions(asset, () => data.deleteGenerated(asset))
+              const selected = selectedIds.has(asset.id)
+              const selection = selectionActions(asset.id, selected, true, generationBatchDeleteAction)
+              const actions = selectionMode
+                ? selection
+                : [...selection, ...generationActions(asset, () => data.deleteGenerated(asset))]
               return (
                 <SnakeTrigger key={asset.id} entity={{ type: "generated-media", id: asset.id }} actions={actions}>
                   <button
                     type="button"
                     className="u1-art-card"
+                    data-selected={selected || undefined}
                     data-attached={(asset.has_active_binding || asset.status === "attached") || undefined}
-                    onClick={() => openGeneration(asset)}
+                    onClick={() => selectionMode ? toggleSelected(asset.id) : openGeneration(asset)}
                   >
                     <span className="u1-art-card__media">
                       <CampaignImage value={asset.storage_path} alt="" loading="lazy" />
@@ -357,10 +494,25 @@ export default function ArtSection({ subsection }: { subsection?: string }) {
               current.collection === "system"
                 ? data.isOwner
                 : data.canManage || item.uploaded_by === data.userId
-            const actions = artActions(item, canDelete, () => data.deleteArt(item))
+            const selected = selectedIds.has(item.id)
+            const selection = selectionActions(item.id, selected, canDelete, artBatchDeleteAction)
+            const actions = selectionMode
+              ? selection
+              : [...selection, ...artActions(item, canDelete, () => data.deleteArt(item))]
             return (
               <SnakeTrigger key={item.id} entity={{ type: "campaign-art", id: item.id }} actions={actions}>
-                <button type="button" className="u1-art-card" onClick={() => openArt(item)}>
+                <button
+                  type="button"
+                  className="u1-art-card"
+                  data-selected={selected || undefined}
+                  onClick={() => {
+                    if (selectionMode) {
+                      if (canDelete) toggleSelected(item.id)
+                      return
+                    }
+                    openArt(item)
+                  }}
+                >
                   <span className="u1-art-card__media">
                     <CampaignImage value={item.image_url} alt={item.title} loading="lazy" />
                   </span>

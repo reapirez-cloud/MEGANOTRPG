@@ -46,7 +46,16 @@ export function SnakeWindowHost({
       className="u1-snake-window-layer"
       data-media={session.request.kind === "media" ? "true" : undefined}
       onPointerDown={(event) => {
-        if (event.target === event.currentTarget && !busy) onClose()
+        if (event.target === event.currentTarget) event.stopPropagation()
+      }}
+      onPointerUp={(event) => {
+        if (event.target === event.currentTarget) event.stopPropagation()
+      }}
+      onClick={(event) => {
+        if (event.target !== event.currentTarget) return
+        event.preventDefault()
+        event.stopPropagation()
+        if (!busy) onClose()
       }}
     >
       {session.request.kind === "media" ? (

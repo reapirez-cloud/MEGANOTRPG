@@ -24,7 +24,8 @@ test("players can select public campaign models without gaining GM authority", (
     "supabase/migrations/20260915004500_voss_grok_user_models_attachments.sql",
   )
 
-  assert.match(edge, /const canManage = membership\.role === "gm" \|\| membership\.is_owner === true/)
+  assert.match(edge, /const authority = resolveVossAuthority\(membership \|\| \{\}, isSystemAdmin\)/)
+  assert.match(edge, /const canManage = canManageCampaignWithVoss\(authority\)/)
   assert.match(edge, /ai_user_agent_settings/)
   assert.match(router, /user_selectable/)
   assert.match(router, /Player uses their explicitly selected public campaign model/)

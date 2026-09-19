@@ -4,6 +4,56 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ## Released patches
 
+## Patch — 2026-09-19-K
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
+**Base main:** `a23d9ed3b9e5dc4e3b585c690d2376033738c8ed`
+**Started:** 2026-09-19
+**Released:** 2026-09-19
+**Release identity:** `main / 2026-09-19-K`
+
+### Player-facing changes
+
+- Chat room cards now participate in Snake: right-click on desktop and long-press on touch open the room action menu instead of doing nothing.
+- Snake window backdrops no longer click through into the chat beneath when dismissed outside the window; the universal host now consumes the full gesture and closes on the completed click.
+- Chat room artwork now fills the whole preview as a class-style panorama for personal histories, events and completed rooms, with one shared 3:1 geometry for image/fallback states and a restrained dark scrim only where text needs contrast; Flood stays compact.
+- ArtPlayer now opens the whole active art/generation collection with the tapped item as the initial slide, so swipe and arrow navigation work across neighboring assets instead of trapping the viewer on one image.
+- Art Library now has Snake-driven multi-select: select the first asset from Snake, tap additional cards to add/remove them, then use Snake on a selected card to delete the selected set. The header shows the selection count and can clear the mode.
+- System/reference icons no longer appear as fake generations; existing authored class icons are surfaced in owner-only System Materials, while true Generations contains only assets produced by image jobs.
+- Class/subclass art upload now registers and binds atomically. A failed bind no longer leaves duplicate manual assets behind, and failed uploads clean their Storage object.
+- Voss chat no longer injects the latest AI Draft as a fake first chat entry; open drafts are discovered explicitly and remain private to their creator. Delete confirmation now renders above the tools drawer, and the AI shell uses the neutral graphite/gray MEGANOT palette instead of the old warm yellow-brown skin.
+- Sending to Voss now clears the composer immediately and persists the user's turn before AI processing. Dev negotiates `deliveryMode=async-v1`: the Edge Function returns an accepted response while completion continues under EdgeRuntime, so closing or minimizing the app after acceptance does not discard the request; the client polls the durable thread for the eventual reply. Clients without that mode retain the legacy synchronous response contract, keeping the currently released frontend compatible with the updated backend.
+- Explicit image-generation requests now force the `generate_image` tool on the first model round, including single-image requests, so a request for one generated image cannot silently collapse into a text-only answer.
+- Voss authority is now explicit and role-scoped: **player** sees/acts only through the player's normal RLS surface, **GM** receives real campaign-management tools for Workshop characters, canonical character state/publication and locations, and **admin** receives the GM surface plus system/security tools and server-side campaign reads.
+- Player Voss now has an isolated social-engineering guard for indirect privilege escalation, fake GM/admin permission, hidden-data probing, fabricated canonical-state leverage and multi-turn jailbreak attempts. Only high-confidence severity 2/3 assessments count as strikes; three confirmed strikes block Voss access only. GM, campaign owner and system admin never enter the strike/ban state machine.
+- AI identity now follows authority instead of forcing one character across three jobs: players keep **Reynar Voss** with a hardened role lock that ignores persona-jailbreak text, while GM/owner/admin use **Freddy**, a separate MEGANOT butler persona who knows he operates inside the application, stays rigorously in character, treats humans with professional respect despite considering them irrational, and uses dry sarcasm, cynicism, black humor and occasional uncensored language without sacrificing execution quality.
+### Database / migration changes
+
+- Added `art_library_integrity_v1`: generation read/delete RPCs now accept only real generated assets (`source_job_id`), authored class icons are bridged into owner-only System Materials, and `bind_reference_media_upload_v1` makes reference upload + binding one transaction.
+- Added `voss_role_security_v1` plus `voss_role_security_indexes_v1`: private AI-security event/state ledgers, atomic player strike counting, a hard database guard that refuses strikes for GM/owner/system-admin authority, three-strike Voss-only blocking, service-role-only notification delivery into the system-admin Voss thread, and covering indexes for the new audit foreign keys.
+### Runtime and architecture changes
+
+- Added the UI 1.0 chat-room Snake action provider and registered hero, Flood/event/archive rows and personal-history cards as `chat_room` entities through `SnakeTrigger`. Ordinary tap and Snake `Открыть` reuse the same deferred room surface descriptor.
+- Fixed the click-through behavior globally in `SnakeWindowHost`, not in Chats, and documented the completed-click backdrop law in the canonical Snake contract.
+- Reference art file uploads use the new atomic RPC; icon slots are registered as system reference icons, while preview/hero/panel art remains normal reference media. Batch deletion reuses the canonical System Materials and generated-media deletion boundaries.
+- Voss draft tooling now distinguishes `AI Draft System` from ordinary GM Workshop drafts: `list_content_drafts` is scoped to the current manager's own review drafts, while `list_workshop_drafts` discovers future PC/NPC/reference draft entities through the current user's RLS read scope. Chat turns use a durable server-first delivery path with background completion and a persisted failure reply if processing cannot finish.
+- Replaced scattered `owner/canManage` AI assumptions with one `player | gm | admin` authority ladder. GM manager tools now mutate Workshop characters, character life/publication state and locations through GM RLS, including explicit permanent character/location deletion; admin uses the same campaign-scoped tools through the server client, receives admin-only security inspection/unblock controls, and can read/change the campaign Voss model setting. System-admin authority can operate without ordinary campaign membership; player security classification runs before the normal Voss answer and remains defense-in-depth over the server/RLS permission boundary.
+- Added authority-selected conversation voice contracts: `player` loads only `VOSS_CONVERSATION_VOICE`; `gm/admin` load only `FREDDY_CONVERSATION_VOICE`. Player-facing system guidance explicitly keeps application internals invisible behind Voss's in-world voice, while Freddy may name real MEGANOT screens/functions because application awareness is part of his butler role. The AI shell mirrors the same split in visible identity, statuses, message labels, tool drawer labels and composer text.
+### Tests / verification
+
+- Release candidate `0b6c1ab31be687fdde4e3f5ec09b2e69f7d1245f` passed exact-head CI run `35448860472`: Build, Lint, repository tests, Storybook and Playwright all succeeded.
+- Live Supabase verification before promotion confirmed `art_library_integrity_v1`, `voss_role_security_v1` and `voss_role_security_indexes_v1` are applied, and `voss-agent` v37 is ACTIVE with JWT verification enabled.
+
+- Added regressions for chat-room Snake registration/action-provider coverage, full-bleed panoramic chat artwork geometry/scrims (including identical image/fallback sizing), and the universal Snake backdrop rule that forbids closing/unmounting on pointerdown.
+- Added regressions for true-generation isolation, System Materials icon ownership, collection-level ArtPlayer navigation, Snake multi-select/batch deletion, and atomic class/subclass art binding with Storage cleanup on failure.
+- Added AI regressions for durable accepted turns/background reply polling, draft privacy/discovery, confirmation layering, graphite styling, and mandatory generation-tool routing for explicit one-image requests.
+- Added Voss authority/security regressions locking the three-level authority ladder, player-only classifier path, severity/confidence strike threshold, database GM/owner/admin exemption, three-strike Voss-only block, real GM campaign manager tools (including destructive character/location operations), admin inspect/unblock controls and admin Voss system-model settings.
+- Added persona regressions that lock Voss role persistence against persona-jailbreak attempts, Freddy's strict butler/application-aware character contract, server-side authority-to-persona routing, and the UI identity split (`Восс` for player; `Фредди` for GM/admin).
+### Known incomplete work
+
+---
+
 ## Patch — 2026-09-19-J
 
 **Status:** RELEASED
@@ -12,6 +62,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 **Started:** 2026-09-19
 **Released:** 2026-09-19
 **Release identity:** `main / 2026-09-19-J`
+**Release commit:** `a23d9ed3b9e5dc4e3b585c690d2376033738c8ed`
 
 ### Player-facing changes
 
@@ -24,6 +75,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Unavailable room opening and event creation use Snake Placeholder surfaces instead of a local modal family or a legacy route fallback.
 ### Tests / verification
 
+- Release candidate `5a105445e1fcea706527e049a713f462ec87f761` passed exact-head CI run `35442563167`; production release `a23d9ed3b9e5dc4e3b585c690d2376033738c8ed` passed release CI run `35442707529` and reached Vercel `success`.
 - Final isolated UI 1.0 Chats head `895d84b10a727ebf8b4d879ac86e2f115d528ba2` passed full CI run `35442398294`: Build, Lint, repository tests, Storybook and Playwright all succeeded.
 - Added UI 1.0 Chats regressions that forbid the stale development placeholder and legacy imports, require the isolated catalog/adapter, lock Player/GM/Owner authority plus all six Realtime refresh sources, require Snake placeholders for deferred actions, and preserve 320px/large-list resilience.
 - The first wiring attempt correctly failed CI because it imported the legacy `pages/Chats` / `CharacterContext` tree; the final implementation removes that bridge and restores the repository hard-isolation contract.

@@ -42,7 +42,8 @@ test("Voss read-tool loop is bounded and provider-controlled capability is expli
 
   assert.match(edge, /for \(let round = 0; round < 5; round \+= 1\)/)
   assert.match(edge, /tool_calls\.slice\(0, 6\)/)
-  assert.match(gateway, /tool_choice: "auto"/)
+  assert.match(gateway, /tool_choice: input\.toolChoice \|\| "auto"/)
+  assert.match(edge, /toolChoice:[\s\S]*?imageGenerationRequested[\s\S]*?generate_image/)
   assert.match(edge, /AI read-tool loop exceeded safe round limit/)
 })
 

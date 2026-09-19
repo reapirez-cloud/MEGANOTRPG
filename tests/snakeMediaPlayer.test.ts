@@ -47,3 +47,12 @@ test("AI view context follows the exact open media item and page", () => {
   assert.match(media, /mediaCount: count/)
   assert.match(media, /entity: session\.entity/)
 })
+
+
+test("art sections pass the whole current collection into Snake media navigation", () => {
+  assert.match(art, /collectionItems\.map\(\(candidate\) => \(\{/)
+  assert.match(art, /data\.generated\.map\(\(candidate\) => \{/)
+  assert.match(art, /initialIndex/)
+  assert.match(media, /count > 1/)
+  assert.match(media, /showIndex\(index \+ \(dx < 0 \? 1 : -1\)\)/)
+})

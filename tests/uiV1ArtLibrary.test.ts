@@ -11,6 +11,11 @@ const migration = fs.readFileSync(
   "utf8",
 )
 
+const integrityMigration = fs.readFileSync(
+  "supabase/migrations/20260919133000_art_library_integrity_v1.sql",
+  "utf8",
+)
+
 test("UI 1.0 art hub uses workshop-style text destinations without random preview art", () => {
   assert.match(app, /<ArtSection subsection=\{route\.subsection\}/)
   assert.match(art, /WorkshopPanel/)
@@ -45,4 +50,22 @@ test("art cards reuse Snake for management actions", () => {
   assert.match(art, /entity=\{\{ type: "campaign-art"/)
   assert.match(art, /entity=\{\{ type: "generated-media"/)
   assert.match(art, /kind: "confirm"/)
+})
+
+
+test("generation admin RPC exposes only real generated assets and rejects manual media deletion", () => {
+  assert.match(integrityMigration, /a\.source_job_id is not null/)
+  assert.match(integrityMigration, /a\.provider_key <> 'manual-upload'/)
+  assert.match(integrityMigration, /generated_media_required/)
+  assert.match(integrityMigration, /model_key = 'meganot-original-class-icon'/)
+  assert.match(integrityMigration, /collection,\s*asset_id[\s\S]*'system'/)
+})
+
+test("art library supports Snake multiselect and one-pass batch deletion", () => {
+  assert.match(art, /selectedIds/)
+  assert.match(art, /Добавить к выделению/)
+  assert.match(art, /Удалить выбранные/)
+  assert.match(art, /data-selected/)
+  assert.match(data, /deleteArts/)
+  assert.match(data, /deleteGeneratedMany/)
 })

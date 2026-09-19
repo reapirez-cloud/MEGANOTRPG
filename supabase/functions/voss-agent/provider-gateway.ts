@@ -6,6 +6,7 @@ type ChatRequest = {
   model: RouterModel
   messages: Array<Record<string, unknown>>
   tools?: Array<Record<string, unknown>>
+  toolChoice?: "auto" | Record<string, unknown>
   temperature?: number
   allowOwnerOverride?: boolean
 }
@@ -199,7 +200,7 @@ export async function requestChatCompletion(input: ChatRequest) {
         ...(input.tools?.length
           ? {
               tools: input.tools,
-              tool_choice: "auto",
+              tool_choice: input.toolChoice || "auto",
             }
           : {}),
       }),

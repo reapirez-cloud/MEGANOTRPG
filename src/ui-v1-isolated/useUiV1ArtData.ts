@@ -378,6 +378,137 @@ export function useUiV1ArtData() {
     return { ok: true }
   }, [load, scope.isOwner])
 
+  const deleteArts = useCallback(async (
+    targets: UiV1ArtItem[],
+  ): Promise<MutationResult & { deleted?: number; failed?: number }> => {
+    if (!targets.length) return { ok: false, error: "Ничего не выбрано.", deleted: 0, failed: 0 }
+
+    setBusy(true)
+    setError(null)
+    let deleted = 0
+    let failed = 0
+    const errors: string[] = []
+    const storagePaths: string[] = []
+
+    for (const item of targets) {
+      const itemPaths = [
+        item.image_url,
+        ...pages.filter((page) => page.art_item_id === item.id).map((page) => page.image_url),
+      ]
+
+      if (item.collection === "system") {
+        if (!scope.isOwner) {
+          failed += 1
+          errors.push("Системные материалы может удалять только администратор.")
+          continue
+        }
+
+        const { data, error: deleteError } = await supabase.rpc(
+          "delete_system_media_v1",
+          { p_art_item_id: item.id },
+        )
+
+        if (deleteError) {
+          failed += 1
+          errors.push(
+            /system_media_in_use/i.test(deleteError.message)
+              ? "Один из системных материалов используется и не был удалён."
+              : deleteError.message,
+          )
+          continue
+        }
+
+        const payload = (data || {}) as { storage_path?: string }
+        storagePaths.push(payload.storage_path || item.image_url)
+        deleted += 1
+        continue
+      }
+
+      const { error: deleteError } = await supabase
+        .from("campaign_art_items")
+        .delete()
+        .eq("id", item.id)
+
+      if (deleteError) {
+        failed += 1
+        errors.push(deleteError.message)
+        continue
+      }
+
+      storagePaths.push(...itemPaths)
+      deleted += 1
+    }
+
+    if (storagePaths.length) await deleteCampaignMediaObjects(storagePaths)
+    await load()
+    setBusy(false)
+
+    if (failed) {
+      const message = `Удалено: ${deleted}. Не удалено: ${failed}. ${errors[0] || ""}`.trim()
+      setError(message)
+      return { ok: false, error: message, deleted, failed }
+    }
+
+    return { ok: true, deleted, failed }
+  }, [load, pages, scope.isOwner])
+
+  const deleteGeneratedMany = useCallback(async (
+    targets: UiV1GeneratedAsset[],
+  ): Promise<MutationResult & { deleted?: number; failed?: number }> => {
+    if (!scope.isOwner) {
+      return { ok: false, error: "Только администратор может удалять генерации.", deleted: 0, failed: targets.length }
+    }
+    if (!targets.length) return { ok: false, error: "Ничего не выбрано.", deleted: 0, failed: 0 }
+
+    setBusy(true)
+    setError(null)
+    let deleted = 0
+    let failed = 0
+    const errors: string[] = []
+    const byBucket = new Map<string, string[]>()
+
+    for (const asset of targets) {
+      if (asset.has_active_binding || asset.status === "attached") {
+        failed += 1
+        errors.push("Одна из генераций используется и не была удалена.")
+        continue
+      }
+
+      const { data, error: deleteError } = await supabase.rpc(
+        "delete_generated_media_admin_v1",
+        { p_asset_id: asset.id },
+      )
+
+      if (deleteError) {
+        failed += 1
+        errors.push(deleteError.message)
+        continue
+      }
+
+      const payload = (data || {}) as { storage_bucket?: string; storage_path?: string }
+      const bucket = payload.storage_bucket || asset.storage_bucket
+      const storagePath = payload.storage_path || asset.storage_path
+      byBucket.set(bucket, [...(byBucket.get(bucket) || []), storagePath])
+      deleted += 1
+    }
+
+    for (const [bucket, paths] of byBucket.entries()) {
+      const { error: storageError } = await supabase.storage.from(bucket).remove(paths)
+      if (storageError) errors.push(storageError.message)
+    }
+
+    await load()
+    setBusy(false)
+
+    if (failed || errors.length) {
+      const message = `Удалено: ${deleted}. Не удалено: ${failed}. ${errors[0] || ""}`.trim()
+      setError(message)
+      return { ok: false, error: message, deleted, failed }
+    }
+
+    return { ok: true, deleted, failed }
+  }, [load, scope.isOwner])
+
   return {
     ...scope,
     campaignTitle,
@@ -391,6 +522,8 @@ export function useUiV1ArtData() {
     refresh: load,
     upload,
     deleteArt,
+    deleteArts,
     deleteGenerated,
+    deleteGeneratedMany,
   }
 }

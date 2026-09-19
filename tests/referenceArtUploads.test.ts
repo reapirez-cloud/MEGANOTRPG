@@ -14,6 +14,10 @@ const migration = fs.readFileSync(
   "supabase/migrations/20260915195500_owner_reference_art_bindings.sql",
   "utf8",
 )
+const integrityMigration = fs.readFileSync(
+  "supabase/migrations/20260919133000_art_library_integrity_v1.sql",
+  "utf8",
+)
 
 test("reference art mutation is owner-only on both UI and database boundaries", () => {
   assert.match(runtime, /if \(!scope\.isOwner \|\| !scope\.campaignId\)/)
@@ -42,4 +46,14 @@ test("reference art editing goes through Snake MediaPlayer rather than a one-off
   assert.match(screen, /requireFile: !media\?\.assetId/)
   assert.match(runtime, /bind_media_presentation_v1/)
   assert.match(runtime, /p_target_type: "reference_art"/)
+})
+
+
+test("new reference uploads bind atomically and clean Storage on failure", () => {
+  assert.match(runtime, /bind_reference_media_upload_v1/)
+  assert.match(runtime, /deleteCampaignMediaObjects\(\[storagePath\]\)/)
+  assert.match(integrityMigration, /create or replace function public\.bind_reference_media_upload_v1/)
+  assert.match(integrityMigration, /v_result := public\.bind_media_presentation_v1/)
+  assert.match(integrityMigration, /v_system_icon/)
+  assert.match(integrityMigration, /'system-reference-icon'/)
 })

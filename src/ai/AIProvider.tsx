@@ -280,6 +280,7 @@ type AIContextValue = {
   userId: string
   canManage: boolean
   isSystemAdmin: boolean
+  assistantName: "Восс" | "Фредди"
   models: AIModel[]
   ownerOverrideModels: AIModel[]
   selectedModelId: string | null
@@ -295,6 +296,7 @@ type AIContextValue = {
   developerCapabilities: AIDeveloperCapabilities | null
   loading: boolean
   sending: boolean
+  pendingReply: boolean
   error: string | null
   viewContext: AIViewContext | null
   route: string
@@ -379,12 +381,12 @@ async function normalizeFunctionError(
         : ""
 
   if (/failed to send|network|fetch/i.test(message)) {
-    return "Нет связи с сервером Восса."
+    return "Нет связи с сервером помощника."
   }
   if (/non-2xx|edge function/i.test(message)) {
-    return "Восс получил серверную ошибку. Детали сохранены на стороне функции."
+    return "Помощник получил серверную ошибку. Детали сохранены на стороне функции."
   }
-  return message || "Восс не смог ответить."
+  return message || "Помощник не смог ответить."
 }
 
 const MAX_AI_ATTACHMENT_BYTES = 12 * 1024 * 1024
@@ -485,6 +487,14 @@ export function AIProvider({ children }: { children: ReactNode }) {
     [route, viewLayers],
   )
 
+  const pendingReply = useMemo(
+    () => messages.length > 0 && messages[messages.length - 1]?.role === "user",
+    [messages],
+  )
+
+  const assistantName: "Восс" | "Фредди" =
+    canManage || isSystemAdmin ? "Фредди" : "Восс"
+
   const setViewContextLayer = useCallback((
     source: string,
     context: AIViewContextLayer,
@@ -559,7 +569,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     try {
       await loadConversationFor(campaignId, userId, activeThreadId)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Не удалось загрузить историю Восса.")
+      setError(reason instanceof Error ? reason.message : "Не удалось загрузить историю помощника.")
     }
   }, [activeThreadId, campaignId, loadConversationFor, userId])
 
@@ -701,10 +711,37 @@ export function AIProvider({ children }: { children: ReactNode }) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Не удалось загрузить задачи Восса.",
+          : "Не удалось загрузить задачи помощника.",
       )
     }
   }, [activeThreadId, campaignId, loadJobsFor, userId])
+
+  useEffect(() => {
+    if (!campaignId || !userId || !activeThreadId || !pendingReply) return
+
+    const poll = async () => {
+      try {
+        const loadedThreadId =
+          await loadConversationFor(campaignId, userId, activeThreadId)
+        await loadJobsFor(campaignId, userId, loadedThreadId)
+      } catch {
+        // A later poll or the next app open reconstructs the same server state.
+      }
+    }
+
+    const timer = window.setInterval(() => {
+      void poll()
+    }, 2200)
+
+    return () => window.clearInterval(timer)
+  }, [
+    activeThreadId,
+    campaignId,
+    loadConversationFor,
+    loadJobsFor,
+    pendingReply,
+    userId,
+  ])
 
   const hasActiveJobs = useMemo(
     () => jobs.some((job) =>
@@ -993,12 +1030,12 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
       setCampaignId(nextCampaignId)
       setUserId(nextUserId)
-      setCanManage(manager)
 
       const { data: systemAdminStatus, error: systemAdminError } =
         await supabase.rpc("my_system_admin_status_v1")
       const systemAdmin = !systemAdminError && systemAdminStatus === true
       setIsSystemAdmin(systemAdmin)
+      setCanManage(manager || systemAdmin)
       if (!systemAdmin) {
         setDevSession(null)
         setDevSessionToken("")
@@ -1071,7 +1108,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
         }
       } catch (reason) {
         if (!cancelled) {
-          setError(reason instanceof Error ? reason.message : "Не удалось загрузить AI-данные Восса.")
+          setError(reason instanceof Error ? reason.message : "Не удалось загрузить AI-данные помощника.")
         }
       }
 
@@ -1353,7 +1390,13 @@ export function AIProvider({ children }: { children: ReactNode }) {
       (attachments.length
         ? "Изучи прикреплённые файлы и используй их как контекст запроса."
         : "")
-    if (!campaignId || !userId || !message || sending) return false
+    if (
+      !campaignId ||
+      !userId ||
+      !message ||
+      sending ||
+      pendingReply
+    ) return false
 
     let threadId = activeThreadId
     if (!threadId) {
@@ -1361,6 +1404,18 @@ export function AIProvider({ children }: { children: ReactNode }) {
       if (!threadId) return false
     }
 
+    const optimisticId = -Date.now()
+    const optimisticCreatedAt = new Date().toISOString()
+    setMessages((current) => [
+      ...current,
+      {
+        id: optimisticId,
+        role: "user",
+        body: message,
+        created_at: optimisticCreatedAt,
+        model_id: null,
+      },
+    ])
     setSending(true)
     setError(null)
 
@@ -1376,6 +1431,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
         campaignId,
         agentKey: "voss",
         threadId,
+        deliveryMode: "async-v1",
         message,
         viewContext: context,
         attachments: attachments.map((attachment) => ({
@@ -1394,13 +1450,23 @@ export function AIProvider({ children }: { children: ReactNode }) {
     })
 
     if (invokeError || data?.error) {
+      setMessages((current) =>
+        current.filter((entry) => entry.id !== optimisticId)
+      )
       setError(await normalizeFunctionError(invokeError, data))
       setSending(false)
       return false
     }
 
-    if (!data?.answer) {
-      setError("Восс вернул пустой ответ.")
+    const accepted =
+      data?.accepted === true ||
+      typeof data?.answer === "string"
+
+    if (!accepted) {
+      setMessages((current) =>
+        current.filter((entry) => entry.id !== optimisticId)
+      )
+      setError("Помощник не подтвердил приём сообщения.")
       setSending(false)
       return false
     }
@@ -1424,20 +1490,13 @@ export function AIProvider({ children }: { children: ReactNode }) {
       const loadedThreadId =
         await loadConversationFor(campaignId, userId, responseThreadId)
       await loadJobsFor(campaignId, userId, loadedThreadId)
-      if (canManage) {
-        await loadDraftsFor(campaignId)
-        await loadMechanicsCompilationsFor(campaignId, userId)
-      }
-      if (isSystemAdmin) {
-        await loadDevRunsFor(campaignId, userId)
+
+      // Legacy synchronous edge responses may already contain the answer.
+      if (typeof data?.answer === "string" && data.answer.trim()) {
+        await loadConversationFor(campaignId, userId, responseThreadId)
       }
     } catch {
-      const now = new Date().toISOString()
-      setMessages((current) => [
-        ...current,
-        { id: -Date.now(), role: "user", body: message, created_at: now, model_id: null },
-        { id: -(Date.now() + 1), role: "assistant", body: data.answer, created_at: now, model_id: data.model?.id || null },
-      ])
+      // Keep the optimistic message. Polling will replace it from durable server state.
     }
 
     if (attachments.length) {
@@ -1453,13 +1512,27 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     setSending(false)
     return true
-  }, [activeThreadId, campaignId, canManage, createThread, devSession, devSessionToken, isSystemAdmin, loadConversationFor, loadDevRunsFor, loadDraftsFor, loadJobsFor, loadMechanicsCompilationsFor, route, sending, userId, viewContext])
+  }, [
+    activeThreadId,
+    campaignId,
+    createThread,
+    devSession,
+    devSessionToken,
+    loadConversationFor,
+    loadJobsFor,
+    pendingReply,
+    route,
+    sending,
+    userId,
+    viewContext,
+  ])
 
   const value = useMemo<AIContextValue>(() => ({
     campaignId,
     userId,
     canManage,
     isSystemAdmin,
+    assistantName,
     models,
     ownerOverrideModels,
     selectedModelId,
@@ -1475,6 +1548,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     developerCapabilities,
     loading,
     sending,
+    pendingReply,
     error,
     viewContext,
     route,
@@ -1503,6 +1577,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
   }), [
     activeThreadId,
     applyDevRun,
+    assistantName,
     campaignId,
     canManage,
     cancelDevRun,
@@ -1526,6 +1601,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     models,
     openDeveloperMode,
     ownerOverrideModels,
+    pendingReply,
     removeAttachment,
     refreshConversation,
     refreshDrafts,

@@ -8,6 +8,7 @@ const read = (path: string) =>
 test("Voss stage 5 exposes draft read and revise tools", () => {
   const tools = read("supabase/functions/voss-agent/draft-tools.ts")
 
+  assert.match(tools, /name: "list_content_drafts"/)
   assert.match(tools, /name: "read_content_draft"/)
   assert.match(tools, /name: "revise_content_draft"/)
   assert.match(tools, /expected_revision/)
@@ -17,15 +18,17 @@ test("Voss stage 5 exposes draft read and revise tools", () => {
   assert.match(tools, /relations_remove/)
 })
 
-test("draft revision editing remains isolated from canonical engines", () => {
+test("draft revision editing remains isolated while Workshop discovery is read-only", () => {
   const tools = read("supabase/functions/voss-agent/draft-tools.ts")
 
   assert.doesNotMatch(tools, /oracle\./)
   assert.doesNotMatch(tools, /gena\./)
-  assert.doesNotMatch(tools, /\.from\("characters"\)/)
-  assert.doesNotMatch(tools, /\.from\("locations"\)/)
-  assert.doesNotMatch(tools, /\.from\("reference_definitions"\)/)
   assert.doesNotMatch(tools, /\.from\("character_inventory_items"\)/)
+  assert.match(tools, /name: "list_workshop_drafts"/)
+  assert.match(tools, /context\.client[\s\S]*?\.from\("characters"\)[\s\S]*?\.select\(/)
+  assert.match(tools, /context\.client[\s\S]*?\.from\("reference_definitions"\)[\s\S]*?\.select\(/)
+  assert.doesNotMatch(tools, /\.from\("characters"\)[\s\S]{0,400}?\.(?:insert|update|delete)\(/)
+  assert.doesNotMatch(tools, /\.from\("reference_definitions"\)[\s\S]{0,400}?\.(?:insert|update|delete)\(/)
   assert.match(tools, /canonical_state_changed: false/)
 })
 
@@ -53,20 +56,42 @@ test("revision metadata is persisted and visible in UI", () => {
   )
   const provider = read("src/ai/AIProvider.tsx")
   const workshop = read("src/ui-v1-isolated/GMWorkshopDraft.tsx")
-  const shell = read("src/ai/AgentShell.tsx")
-
   assert.match(migration, /change_summary/)
   assert.match(migration, /operations jsonb/)
   assert.match(provider, /recent_revisions/)
   assert.match(workshop, /История ревизий/)
-  assert.match(shell, /change_summary/)
 })
 
 test("Voss prompt requires reading the latest revision before editing", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
 
-  assert.match(edge, /сначала используй read_content_draft/)
+  assert.match(edge, /list_content_drafts/)
+  assert.match(edge, /list_workshop_drafts/)
+  assert.match(edge, /read_content_draft/)
   assert.match(edge, /revise_content_draft/)
   assert.match(edge, /draft_revision_conflict/)
   assert.match(edge, /Не создавай новый AI-черновик/)
+})
+
+
+test("draft discovery is private to the current GM and stays out of the chat log", () => {
+  const tools = read("supabase/functions/voss-agent/draft-tools.ts")
+  const shell = read("src/ai/AgentShell.tsx")
+
+  assert.match(tools, /\.eq\("created_by", context\.userId\)/)
+  assert.match(tools, /private_to_user: true/)
+  assert.doesNotMatch(shell, /AI DRAFT · НЕ КАНОН/)
+  assert.doesNotMatch(shell, /drafts\[0\]/)
+})
+
+
+test("Workshop draft discovery uses the current GM RLS scope", () => {
+  const tools = read("supabase/functions/voss-agent/draft-tools.ts")
+  const edge = read("supabase/functions/voss-agent/index.ts")
+
+  assert.match(tools, /client: SupabaseClient/)
+  assert.match(tools, /\.eq\("publication_state", "draft"\)/)
+  assert.match(tools, /\.eq\("status", "draft"\)/)
+  assert.match(tools, /source: "gm-workshop-drafts"/)
+  assert.match(edge, /client: userClient,[\s\S]*?canManage/)
 })

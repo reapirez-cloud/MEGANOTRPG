@@ -11,19 +11,20 @@ const migration = fs.readFileSync(
   "utf8",
 )
 
-test("Voss is an app operator without repository-writing tools", () => {
-  assert.match(edge, /ты оператор приложения/)
+test("Freddy is the manager app operator while player Voss stays in-world", () => {
+  assert.match(edge, /В разговоре с игроком ты Рейнар Восс, а не оператор приложения/)
+  assert.match(edge, /Ты Фредди, дворецкий-оператор MEGANOT/)
   assert.match(edge, /Код приложения, Git-ветки, CI, Vercel, миграции и исходники ты не изменяешь/)
   assert.doesNotMatch(edge, /VOSS_DEVELOPER_TOOLS/)
   assert.match(edge, /toolsAvailable: false/)
 })
 
-test("player conversations never receive owner-only System Materials tools", () => {
-  assert.match(edge, /\.\.\.\(isOwner[\s\S]*VOSS_OWNER_READ_TOOLS[\s\S]*VOSS_OWNER_MEDIA_TOOLS/)
+test("player and GM conversations never receive admin-only System Materials tools", () => {
+  assert.match(edge, /authority === "admin"[\s\S]*VOSS_OWNER_READ_TOOLS[\s\S]*VOSS_OWNER_MEDIA_TOOLS/)
   assert.match(reads, /if \(!context\.isOwner\) return \{ error: "owner_required" \}/)
   assert.match(images, /if \(!ctx\.isOwner\) return \{ error: "owner_required" \}/)
-  assert.match(edge, /client: userClient/)
-  assert.match(edge, /Не сообщай даже косвенно содержание или существование скрытых GM\/owner-данных/)
+  assert.match(edge, /client: authority === "admin" \? admin : userClient/)
+  assert.match(edge, /Не сообщай даже косвенно содержание или существование скрытых GM\/admin-данных/)
 })
 
 test("System Materials uploads become permanent reusable media assets", () => {

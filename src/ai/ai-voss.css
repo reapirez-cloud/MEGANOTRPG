@@ -1202,3 +1202,216 @@
   font-size: 20px;
   line-height: 1;
 }
+
+/* Graphite AI law: Voss follows MEGANOT's neutral gray grimdark palette. */
+.u1-agent-orb {
+  border-color: rgba(205, 211, 214, 0.22);
+  background:
+    radial-gradient(circle at 38% 32%, rgba(235, 239, 241, 0.09), transparent 34%),
+    linear-gradient(155deg, rgba(25, 27, 29, 0.98), rgba(6, 7, 8, 0.99));
+  color: rgba(232, 235, 236, 0.82);
+}
+.u1-agent-orb:hover,
+.u1-agent-orb[data-open] { border-color: rgba(218, 223, 226, 0.4); }
+.u1-agent-orb__state {
+  background: rgba(215, 220, 222, 0.72);
+  box-shadow: 0 0 7px rgba(215, 220, 222, 0.18);
+}
+.u1-agent-mark i {
+  background: linear-gradient(90deg, transparent, rgba(232, 235, 236, 0.72), transparent);
+}
+
+.u1-agent-panel {
+  border-left-color: rgba(197, 203, 207, 0.16);
+  background:
+    radial-gradient(circle at 92% 7%, rgba(190, 198, 202, 0.035), transparent 34%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.005) 0,
+      rgba(255, 255, 255, 0.005) 1px,
+      transparent 1px,
+      transparent 34px
+    ),
+    linear-gradient(180deg, #111315 0%, #090b0c 48%, #070809 100%);
+  color: rgba(231, 234, 235, 0.9);
+}
+.u1-agent-panel::before {
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(199, 205, 208, 0.13) 12%,
+    rgba(199, 205, 208, 0.045) 70%,
+    transparent
+  );
+}
+.u1-agent-panel__header {
+  border-bottom-color: rgba(196, 202, 205, 0.13);
+  background:
+    linear-gradient(90deg, rgba(211, 217, 220, 0.025), transparent 58%),
+    rgba(5, 6, 7, 0.46);
+}
+.u1-agent-tools-trigger span {
+  background: linear-gradient(
+    90deg,
+    rgba(205, 211, 214, 0.12),
+    rgba(226, 230, 232, 0.62),
+    rgba(205, 211, 214, 0.12)
+  );
+}
+.u1-agent-panel__identity span,
+.u1-agent-panel__header-actions small,
+.u1-agent-tools-drawer > header span,
+.u1-agent-tools-section__label {
+  color: rgba(183, 190, 194, 0.44);
+}
+.u1-agent-panel__identity strong { color: rgba(239, 241, 242, 0.9); }
+.u1-agent-panel__close,
+.u1-agent-tools-drawer > header button { color: rgba(209, 214, 217, 0.46); }
+
+.u1-agent-tools-drawer {
+  border-right-color: rgba(197, 203, 207, 0.16);
+  background:
+    linear-gradient(130deg, rgba(198, 205, 208, 0.025), transparent 28%),
+    #0a0c0d;
+}
+.u1-agent-tools-drawer > header,
+.u1-agent-tools-section {
+  border-bottom-color: rgba(196, 202, 205, 0.08);
+}
+.u1-agent-model-choice {
+  border-left-color: rgba(200, 206, 209, 0.09);
+  background: linear-gradient(90deg, rgba(211, 216, 219, 0.012), transparent 70%);
+}
+.u1-agent-model-choice::after { border-color: rgba(203, 209, 212, 0.18); }
+.u1-agent-model-choice[data-selected] {
+  border-left-color: rgba(221, 225, 227, 0.46);
+  background: linear-gradient(90deg, rgba(201, 207, 210, 0.08), transparent 82%);
+}
+.u1-agent-model-choice[data-selected]::after {
+  background: rgba(220, 224, 226, 0.52);
+  box-shadow: 0 0 9px rgba(220, 224, 226, 0.1);
+}
+.u1-agent-model-choice strong,
+.u1-agent-file-action strong,
+.u1-agent-dev-control strong { color: rgba(231, 234, 235, 0.82); }
+.u1-agent-model-choice small,
+.u1-agent-file-action small,
+.u1-agent-dev-control small { color: rgba(178, 185, 188, 0.42); }
+.u1-agent-file-action {
+  border-color: rgba(198, 204, 207, 0.11);
+  background: transparent;
+}
+.u1-agent-file-action > span { color: rgba(211, 216, 219, 0.54); }
+
+.u1-agent-log {
+  scrollbar-color: rgba(193, 199, 202, 0.13) transparent;
+}
+.u1-agent-message::before {
+  background: linear-gradient(180deg, rgba(196, 202, 205, 0.3), rgba(196, 202, 205, 0.035));
+}
+.u1-agent-message small { color: rgba(166, 174, 178, 0.42); }
+.u1-agent-message p { color: rgba(224, 228, 230, 0.78); }
+.u1-agent-message[data-role="user"] p { color: rgba(239, 241, 242, 0.88); }
+
+.u1-agent-system-entry,
+.u1-agent-image-job {
+  border-top-color: rgba(195, 201, 204, 0.07);
+  border-bottom-color: rgba(195, 201, 204, 0.07);
+  border-left-color: rgba(207, 213, 216, 0.2);
+  background: linear-gradient(90deg, rgba(197, 203, 206, 0.035), transparent 68%);
+}
+.u1-agent-system-entry > header span,
+.u1-agent-image-job > header span,
+.u1-agent-system-entry > header b,
+.u1-agent-image-job > header small {
+  color: rgba(179, 186, 190, 0.46);
+}
+.u1-agent-system-entry > header strong,
+.u1-agent-image-job > header strong { color: rgba(232, 235, 236, 0.82); }
+.u1-agent-system-entry > p,
+.u1-agent-image-job > p,
+.u1-agent-system-note { color: rgba(190, 197, 200, 0.52); }
+
+.u1-agent-image-card,
+.u1-agent-image-option {
+  border-color: rgba(196, 202, 205, 0.08);
+  background: #080a0b;
+}
+.u1-agent-image-card .u1-agent-image-option { border-bottom-color: rgba(196, 202, 205, 0.08); }
+.u1-agent-image-card[data-saved],
+.u1-agent-image-option[data-preferred] { border-color: rgba(216, 221, 223, 0.24); }
+.u1-agent-image-option { color: rgba(205, 211, 214, 0.62); }
+.u1-agent-image-option img,
+.u1-agent-image-option__placeholder { background: #0b0d0e; }
+.u1-agent-image-actions button,
+.u1-agent-image-actions a {
+  border-color: rgba(198, 204, 207, 0.12);
+  color: rgba(213, 218, 220, 0.62);
+}
+.u1-agent-image-actions > span { color: rgba(184, 192, 195, 0.54); }
+.u1-agent-image-expiry { color: rgba(177, 185, 189, 0.38); }
+
+.u1-agent-attachment {
+  border-left-color: rgba(207, 213, 216, 0.24);
+  background: linear-gradient(90deg, rgba(195, 202, 205, 0.045), transparent);
+}
+.u1-agent-thinking { color: rgba(177, 185, 189, 0.46); }
+.u1-agent-attachments { border-top-color: rgba(195, 202, 205, 0.08); }
+.u1-agent-attachment strong { color: rgba(224, 228, 230, 0.72); }
+.u1-agent-attachment small { color: rgba(171, 179, 183, 0.4); }
+.u1-agent-attachment button { color: rgba(199, 205, 208, 0.44); }
+.u1-agent-composer {
+  border-top-color: rgba(195, 202, 205, 0.11);
+  background: rgba(7, 8, 9, 0.96);
+}
+.u1-agent-composer::before {
+  background: linear-gradient(180deg, transparent, rgba(203, 209, 212, 0.2), transparent);
+}
+.u1-agent-composer textarea { color: rgba(235, 238, 239, 0.9); }
+.u1-agent-composer textarea::placeholder { color: rgba(165, 173, 177, 0.3); }
+.u1-agent-composer > button {
+  border-color: rgba(201, 207, 210, 0.16);
+  background: linear-gradient(145deg, rgba(199, 205, 208, 0.055), transparent);
+  color: rgba(224, 228, 230, 0.72);
+}
+
+.u1-agent-thread-row {
+  border-left-color: rgba(198, 204, 207, 0.07);
+  background: linear-gradient(90deg, rgba(201, 207, 210, 0.009), transparent 76%);
+}
+.u1-agent-thread-row[data-active] {
+  border-left-color: rgba(219, 224, 226, 0.44);
+  background: linear-gradient(90deg, rgba(198, 204, 207, 0.07), transparent 84%);
+}
+.u1-agent-thread-choice strong { color: rgba(226, 230, 232, 0.72); }
+.u1-agent-thread-choice small,
+.u1-agent-thread-empty { color: rgba(170, 178, 182, 0.36); }
+.u1-agent-thread-new {
+  border-color: rgba(198, 204, 207, 0.12);
+  color: rgba(217, 222, 224, 0.62);
+}
+.u1-agent-thread-delete { color: rgba(192, 198, 201, 0.3); }
+
+.u1-agent-confirm-shade {
+  z-index: 60;
+  background: rgba(3, 4, 5, 0.8);
+}
+.u1-agent-confirm {
+  border-color: rgba(205, 211, 214, 0.2);
+  background: linear-gradient(145deg, rgba(25, 28, 30, 0.99), rgba(9, 10, 11, 0.995));
+}
+.u1-agent-confirm > span { color: rgba(179, 186, 190, 0.44); }
+.u1-agent-confirm > strong { color: rgba(233, 236, 237, 0.88); }
+.u1-agent-confirm > p { color: rgba(188, 195, 198, 0.58); }
+.u1-agent-confirm button {
+  border-color: rgba(198, 204, 207, 0.14);
+  background: rgba(255, 255, 255, 0.014);
+  color: rgba(213, 218, 220, 0.66);
+}
+
+@media (max-width: 720px) {
+  .u1-agent-panel {
+    border-top-color: rgba(197, 203, 207, 0.16);
+  }
+}
+

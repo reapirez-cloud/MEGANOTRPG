@@ -56,6 +56,7 @@ The following concerns are generic and belong to Snake / Snake surfaces:
 - native text-selection / touch-callout suppression for registered triggers;
 - keyboard close / Escape;
 - outside-click close;
+- a window backdrop consumes the full pointer/click sequence and closes only on the completed outside click; never unmount a Snake window on pointerdown, because that can click through into the object underneath;
 - focus and accessibility behavior;
 - presentation of enabled, disabled, hidden, destructive and grouped actions;
 - confirmation flows;
