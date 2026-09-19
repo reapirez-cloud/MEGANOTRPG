@@ -8,6 +8,7 @@ const read = (path: string) =>
 test("Voss stage 5 exposes draft read and revise tools", () => {
   const tools = read("supabase/functions/voss-agent/draft-tools.ts")
 
+  assert.match(tools, /name: "list_content_drafts"/)
   assert.match(tools, /name: "read_content_draft"/)
   assert.match(tools, /name: "revise_content_draft"/)
   assert.match(tools, /expected_revision/)
@@ -53,20 +54,29 @@ test("revision metadata is persisted and visible in UI", () => {
   )
   const provider = read("src/ai/AIProvider.tsx")
   const workshop = read("src/ui-v1-isolated/GMWorkshopDraft.tsx")
-  const shell = read("src/ai/AgentShell.tsx")
-
   assert.match(migration, /change_summary/)
   assert.match(migration, /operations jsonb/)
   assert.match(provider, /recent_revisions/)
   assert.match(workshop, /История ревизий/)
-  assert.match(shell, /change_summary/)
 })
 
 test("Voss prompt requires reading the latest revision before editing", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
 
-  assert.match(edge, /сначала используй read_content_draft/)
+  assert.match(edge, /сначала используй list_content_drafts/)
+  assert.match(edge, /read_content_draft/)
   assert.match(edge, /revise_content_draft/)
   assert.match(edge, /draft_revision_conflict/)
   assert.match(edge, /Не создавай новый AI-черновик/)
+})
+
+
+test("draft discovery is private to the current GM and stays out of the chat log", () => {
+  const tools = read("supabase/functions/voss-agent/draft-tools.ts")
+  const shell = read("src/ai/AgentShell.tsx")
+
+  assert.match(tools, /\.eq\("created_by", context\.userId\)/)
+  assert.match(tools, /private_to_user: true/)
+  assert.doesNotMatch(shell, /AI DRAFT · НЕ КАНОН/)
+  assert.doesNotMatch(shell, /drafts\[0\]/)
 })
