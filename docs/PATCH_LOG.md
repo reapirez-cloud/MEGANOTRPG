@@ -2,12 +2,16 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-19-K
+## Released patches
 
-**Status:** OPEN
-**Branch:** `dev`
+## Patch — 2026-09-19-K
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `a23d9ed3b9e5dc4e3b585c690d2376033738c8ed`
 **Started:** 2026-09-19
+**Released:** 2026-09-19
+**Release identity:** `main / 2026-09-19-K`
 
 ### Player-facing changes
 
@@ -38,6 +42,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added authority-selected conversation voice contracts: `player` loads only `VOSS_CONVERSATION_VOICE`; `gm/admin` load only `FREDDY_CONVERSATION_VOICE`. Player-facing system guidance explicitly keeps application internals invisible behind Voss's in-world voice, while Freddy may name real MEGANOT screens/functions because application awareness is part of his butler role. The AI shell mirrors the same split in visible identity, statuses, message labels, tool drawer labels and composer text.
 ### Tests / verification
 
+- Release candidate `0b6c1ab31be687fdde4e3f5ec09b2e69f7d1245f` passed exact-head CI run `35448860472`: Build, Lint, repository tests, Storybook and Playwright all succeeded.
+- Live Supabase verification before promotion confirmed `art_library_integrity_v1`, `voss_role_security_v1` and `voss_role_security_indexes_v1` are applied, and `voss-agent` v37 is ACTIVE with JWT verification enabled.
+
 - Added regressions for chat-room Snake registration/action-provider coverage, full-bleed panoramic chat artwork geometry/scrims (including identical image/fallback sizing), and the universal Snake backdrop rule that forbids closing/unmounting on pointerdown.
 - Added regressions for true-generation isolation, System Materials icon ownership, collection-level ArtPlayer navigation, Snake multi-select/batch deletion, and atomic class/subclass art binding with Storage cleanup on failure.
 - Added AI regressions for durable accepted turns/background reply polling, draft privacy/discovery, confirmation layering, graphite styling, and mandatory generation-tool routing for explicit one-image requests.
@@ -46,8 +53,6 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Known incomplete work
 
 ---
-
-## Released patches
 
 ## Patch — 2026-09-19-J
 
