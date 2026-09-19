@@ -21,6 +21,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Abilities v2 Stage 7 made no production runtime mutation changes. The audit confirmed the existing Snake/Oracle/Shapoklyak/Character Runtime boundaries survived Stages 1-6 without a UI-owned permission or suppression path being introduced.
 - Added a renderer-only `characterAbilityMedia` resolver that classifies authored images, existing character-sheet atlas slots and semantic fallbacks without mutating media or creating derivatives. Both collapsed and expanded rows keep using the same `AbilityRowIcon`; CE/runtime/Snake/suppression ownership is untouched.
 - Abilities v2 Stage 5 is presentation-only. Empty groups remain in the five-panel structure, stay non-expandable through the existing accordion rule, and do not change read-model, Character Runtime, CE, Snake, suppression or canonical data behavior.
 - Abilities v2 Stage 4 changes only expanded-list presentation. Stage 2 collapsed geometry, Stage 3 shared Character/Spells skin, accordion state, Snake actions, suppression authority, Character Runtime and CE resolution remain unchanged.
@@ -29,6 +30,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added `docs/ABILITIES_VISUAL_REWORK_CONTRACT.md` to lock ownership for the v2 presentation pass: CharacterSheet keeps the masthead/art/background, Character+Spells remain the only visual-language source through shared `--cv-*` tokens, and the Abilities rewrite is presentation-only over the already-certified read-model/Snake/suppression mechanics.
 ### Tests / verification
 
+- Added `characterAbilitiesBehaviorCertification.test.ts` to certify the post-rework interaction contract end-to-end: one-at-a-time accordion behavior, three-row preview cap, shared collapsed/expanded Snake provider, tap-to-detail, player-vs-manager actions, canonical suppression callback/reload path, owner-or-GM authority and visible-in-place suppressed rows.
 - Abilities v2 Stage 6 full CI passed on rerun `35423576685`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully after correcting the Node ESM import extension in the new media resolver.
 - Added `characterAbilityMedia.test.ts` plus Stage 6 visual regressions for direct media paths, semantic atlas reuse, unknown-id fallback, centered `object-fit: contain`, atlas position/size preservation and image-load fallback behavior.
 - Abilities v2 Stage 5 full CI passed on run `35423096150`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully.
