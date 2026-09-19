@@ -429,7 +429,7 @@ export default function AgentShell() {
           type="button"
           className="u1-agent-backdrop"
           onClick={() => setOpen(false)}
-          aria-label=`Закрыть ${assistantName}`
+          aria-label={`Закрыть ${assistantName}`}
           tabIndex={-1}
         />
       )}
@@ -493,7 +493,7 @@ export default function AgentShell() {
               type="button"
               className="u1-agent-panel__close"
               onClick={() => setOpen(false)}
-              aria-label=`Свернуть ${assistantName}`
+              aria-label={`Свернуть ${assistantName}`}
             >
               ×
             </button>
