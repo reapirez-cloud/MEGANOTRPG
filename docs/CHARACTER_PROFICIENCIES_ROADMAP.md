@@ -135,17 +135,25 @@ No permanent management buttons were added to the reference composition and no n
 
 Detailed audit: `docs/CHARACTER_PROFICIENCIES_STAGE6_AUDIT.md`.
 
-## Stage 7 — visual/mobile certification
+## Stage 7 — visual/mobile certification — READY
 
-- unit tests for classification, fallback and provenance
-- component/source contract tests
-- GM/Admin/Player cases
-- legacy and CE-native characters
-- empty categories
-- large tool/language lists
-- narrow mobile widths
-- visual regression fixture/screenshot
-- cleanup of obsolete placeholder copy
+Final certification now includes:
+
+- inherited unit coverage for classification, fallback and provenance
+- component/source contract guards
+- GM/Admin/Player Snake authority cases
+- legacy and CE-native character paths
+- empty-category browser coverage
+- large tool/language catalog wrapping
+- 320 / 360 / 390 / 430 mobile-width certification
+- deterministic Stage 7 browser fixture
+- generated 390 px visual certification screenshot artifact
+- final overflow guardrails for long authored labels
+- cleanup of visible implementation/debug copy
+
+Detailed audit: `docs/CHARACTER_PROFICIENCIES_STAGE7_AUDIT.md`.
+
+The Владения roadmap is complete. Future class mechanics for Rogue / Barbarian / Ranger / Artificer update the Stage 5 coverage/data contract; they do not reopen the screen architecture.
 
 ## Non-goals
 

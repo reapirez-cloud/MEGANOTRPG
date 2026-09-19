@@ -199,7 +199,7 @@ export default function CharacterSheetProficiencies({
         }
         aria-label="Владения"
         aria-live="polite"
-        data-stage="6"
+        data-stage="7"
         data-state={failed ? "error" : "loading"}
       >
         <span>
@@ -208,8 +208,9 @@ export default function CharacterSheetProficiencies({
             : "Собираем владения персонажа…"}
         </span>
         <small>
-          {runtimeError ||
-            "Character Engine и старый лист сводятся в один read-model."}
+          {failed
+            ? "Данные персонажа временно недоступны."
+            : "Подготавливаем данные персонажа."}
         </small>
       </section>
     )
@@ -221,16 +222,22 @@ export default function CharacterSheetProficiencies({
     <section
       className="u1-character-proficiencies"
       aria-label="Владения"
-      data-stage="6"
+      data-stage="7"
       data-empty={empty || undefined}
+      data-unclassified-runtime={
+        model.unclassifiedRuntimeKeys.length || undefined
+      }
+      data-unclassified-legacy={
+        model.unclassifiedLegacyTokens.length || undefined
+      }
     >
       {runtimeError ? (
         <div
           className="u1-character-proficiencies__warning"
           role="status"
         >
-          <strong>Данные Character Engine могли обновиться не полностью.</strong>
-          <small>{runtimeError}</small>
+          <strong>Часть данных могла обновиться не полностью.</strong>
+          <small>Показано последнее доступное состояние персонажа.</small>
         </div>
       ) : null}
 
@@ -322,17 +329,6 @@ export default function CharacterSheetProficiencies({
           )
         })}
       </div>
-
-      {model.unclassifiedRuntimeKeys.length ||
-      model.unclassifiedLegacyTokens.length ? (
-        <p
-          className="u1-character-proficiencies__diagnostic"
-          aria-hidden="true"
-        >
-          Неразобранные записи сохранены в read-model и не подмешиваются
-          в пять панелей.
-        </p>
-      ) : null}
     </section>
   )
 }
