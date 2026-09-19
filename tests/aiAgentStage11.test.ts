@@ -194,3 +194,16 @@ test("review and attach are journaled as agent job types", () => {
   assert.match(tools, /status: "running"/)
   assert.match(tools, /status: "completed"/)
 })
+
+
+test("explicit one-image requests cannot silently degrade to text-only replies", () => {
+  const edge = read("supabase/functions/voss-agent/index.ts")
+  const gateway = read("supabase/functions/voss-agent/provider-gateway.ts")
+
+  assert.match(edge, /isExplicitImageGenerationRequest/)
+  assert.match(edge, /imageGenerationRequested && round === 0/)
+  assert.match(edge, /function: \{ name: "generate_image" \}/)
+  assert.match(edge, /Для одной картинки variants=1/)
+  assert.match(gateway, /toolChoice\?: "auto" \| Record<string, unknown>/)
+  assert.match(gateway, /tool_choice: input\.toolChoice \|\| "auto"/)
+})
