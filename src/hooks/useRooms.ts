@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
-import { buildChatCatalogModel } from "../chat/catalogModel"\nimport { useCharacters } from "../context/CharacterContext"
+import { buildChatCatalogModel } from "../chat/catalogModel"
+import { useCharacters } from "../context/CharacterContext"
 import { deleteCampaignMediaObjects } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
 import type { ChatRoom, RoomState, RoomType } from "../types/chat"
