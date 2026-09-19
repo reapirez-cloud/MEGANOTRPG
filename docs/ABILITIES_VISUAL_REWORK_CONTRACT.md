@@ -1,6 +1,6 @@
 # Abilities v2 visual rework contract
 
-> Status: **ACTIVE — Stage 7 locked**
+> Status: **READY — Stage 8 certified**
 > Scope: UI 1.0 character-sheet Abilities presentation only.
 
 This contract corrects the first Abilities presentation pass. It is intentionally visual/presentation-only. Existing read-model, Character Runtime, CE resolution, Snake actions, suppression, Background and Effects data remain canonical and must not be rebuilt for this rework.
@@ -177,4 +177,22 @@ Stage 7 is complete only when:
 - CSS may mute suppressed rows but must not hide them;
 - Stages 1-6 presentation contracts remain intact;
 - Stage 7 introduces no new runtime state, mutation path, database schema or UI-owned permission truth.
+
+
+## Stage 8 acceptance
+
+Stage 8 is complete only when:
+
+- browser certification uses the real `CharacterSheetShell` and real `CharacterSheetFeatures`, preserving the MEGANOT character masthead/background above the panels;
+- the abilities surface fits without horizontal overflow at 320, 360, 390 and 430px viewport widths;
+- all five panels remain inside the sheet width and below the existing character masthead;
+- standard-width collapsed panels preserve approximately 42/58 identity-to-preview geometry; 320px keeps the same hierarchy at approximately 44/56 rather than switching to another card layout;
+- 390px non-empty collapsed headers remain roughly 92px tall with 18px preview icons; empty panels remain roughly 68px with 40px group icons;
+- 320px non-empty collapsed headers remain roughly 88px with 17px preview icons; empty panels remain roughly 64px with 36px group icons;
+- 390px expanded rows remain roughly 46px with 24px icons; 320px expanded rows remain roughly 44px with 22px icons;
+- expanded descriptions remain single-line/ellipsized and the expanded body remains transparent inside the parent panel;
+- the copied visible `УМЕНИЯ` heading/slogan is absent from the certified browser surface;
+- suppressed rows remain visible in place with the intended muted treatment;
+- full repository CI passes Build, Lint, repository tests, Storybook and Playwright with the Stage 8 browser suite enabled;
+- completion of Stage 8 changes no runtime, CE, Snake, suppression, permission or canonical data behavior.
 
