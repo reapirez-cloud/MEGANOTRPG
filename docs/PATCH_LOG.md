@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Abilities v2 Stage 6 fixes ability media rendering: authored image paths/URLs now render in the existing icon slots with centered `contain` behavior, known semantic feature/resource ids reuse existing sheet atlases (for example `feature:second-wind`), unknown ids fall back to the stable group glyph, and broken authored images automatically fall back instead of leaving blank squares.
 - Abilities v2 Stage 5 makes empty groups quiet instead of error-like: `Источник не назначен` is replaced by secondary `Не назначено`, visible `Нет умений` is removed in favor of a subtle dash, and empty panels compact to ~68px / 40px icons (64px / 36px on narrow screens) without dimming the whole card.
 - Abilities v2 Stage 4 rebuilds the expanded state as a compact continuation of the same panel: the header stays in place, the full ability list opens below a soft divider, rows shrink to ~46px with 24px icons, descriptions stay on one ellipsized line, and narrow screens use ~44px rows with 22px icons. No nested ability cards were introduced.
 - Abilities v2 Stage 3 removes the abilities-only skin and reuses the exact Character/Spells material language: shared `--cv-surface-soft` glass, `--cv-line` borders, the same inset frame/radius/shadow recipe, and class tinting exclusively through existing `--cv-accent*` tokens. Stage 2 geometry is unchanged.
@@ -20,6 +21,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added a renderer-only `characterAbilityMedia` resolver that classifies authored images, existing character-sheet atlas slots and semantic fallbacks without mutating media or creating derivatives. Both collapsed and expanded rows keep using the same `AbilityRowIcon`; CE/runtime/Snake/suppression ownership is untouched.
 - Abilities v2 Stage 5 is presentation-only. Empty groups remain in the five-panel structure, stay non-expandable through the existing accordion rule, and do not change read-model, Character Runtime, CE, Snake, suppression or canonical data behavior.
 - Abilities v2 Stage 4 changes only expanded-list presentation. Stage 2 collapsed geometry, Stage 3 shared Character/Spells skin, accordion state, Snake actions, suppression authority, Character Runtime and CE resolution remain unchanged.
 - Abilities v2 Stage 3 is CSS/presentation-only. It introduces no abilities-specific theme variables and does not touch the page background, masthead, read-model, Character Runtime, CE, Snake, suppression, permissions or canonical data sources.
@@ -27,6 +29,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added `docs/ABILITIES_VISUAL_REWORK_CONTRACT.md` to lock ownership for the v2 presentation pass: CharacterSheet keeps the masthead/art/background, Character+Spells remain the only visual-language source through shared `--cv-*` tokens, and the Abilities rewrite is presentation-only over the already-certified read-model/Snake/suppression mechanics.
 ### Tests / verification
 
+- Added `characterAbilityMedia.test.ts` plus Stage 6 visual regressions for direct media paths, semantic atlas reuse, unknown-id fallback, centered `object-fit: contain`, atlas position/size preservation and image-load fallback behavior.
 - Abilities v2 Stage 5 full CI passed on run `35423096150`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully.
 - Extended `characterAbilitiesVisualContract.test.ts` to forbid the old visible empty/error copy, require accessible quiet empty-state markup, lock compact empty-panel geometry on standard/narrow screens, and prevent whole-card opacity dimming from returning.
 - Abilities v2 Stage 4 full CI passed on run `35422837517`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully.
