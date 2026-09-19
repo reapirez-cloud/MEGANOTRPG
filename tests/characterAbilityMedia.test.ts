@@ -77,3 +77,15 @@ test("unknown semantic ability ids stay honest fallbacks instead of pretending t
     { kind: "fallback" },
   )
 })
+
+
+test("short authored achievement symbols render as glyphs", () => {
+  assert.deepEqual(
+    characterAbilityIconVisual("★"),
+    { kind: "glyph", glyph: "★" },
+  )
+  assert.deepEqual(
+    characterAbilityIconVisual("✦"),
+    { kind: "glyph", glyph: "✦" },
+  )
+})
