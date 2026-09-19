@@ -37,6 +37,14 @@ export type UiV1Character = {
   panelAvatarPresentation: MediaPresentation | null
 }
 
+export type UiV1CharacterAchievement = {
+  id: string
+  title: string
+  description: string
+  icon: string
+  awarded_at: string
+}
+
 export type UiV1CharacterWorldStorage = {
   id: string
   location_id: string
@@ -76,6 +84,7 @@ export function useUiV1CharacterControl(
   const [inventory, setInventory] = useState<InventoryItem[]>([])
   const [spells, setSpells] = useState<CharacterSpell[]>([])
   const [features, setFeatures] = useState<CharacterFeature[]>([])
+  const [achievements, setAchievements] = useState<UiV1CharacterAchievement[]>([])
   const [assignments, setAssignments] = useState<CharacterTemplateAssignment[]>([])
   const [templates, setTemplates] = useState<RuleTemplate[]>([])
   const [transferTargets, setTransferTargets] = useState<Array<{ id: string; name: string }>>([])
@@ -141,6 +150,7 @@ export function useUiV1CharacterControl(
         sheetResult,
         spellsResult,
         featuresResult,
+        achievementsResult,
         assignmentsResult,
         resourcesResult,
         transferTargetsResult,
@@ -164,6 +174,13 @@ export function useUiV1CharacterControl(
               .eq("character_id", characterId)
               .order("sort_order")
               .order("created_at")
+          : Promise.resolve(emptyRows),
+        loadFeatures
+          ? supabase.from("achievements")
+              .select("id,title,description,icon,awarded_at")
+              .eq("campaign_id", scope.campaignId)
+              .eq("character_id", characterId)
+              .order("awarded_at", { ascending: false })
           : Promise.resolve(emptyRows),
         supabase.from("character_template_assignments")
           .select("id,character_id,template_id,template_level,selected_choices,assigned_at,updated_at")
@@ -198,6 +215,7 @@ export function useUiV1CharacterControl(
         sheetResult.error ||
         spellsResult.error ||
         featuresResult.error ||
+        achievementsResult.error ||
         assignmentsResult.error ||
         resourcesResult.error ||
         transferTargetsResult.error ||
@@ -274,6 +292,9 @@ export function useUiV1CharacterControl(
       if (loadSpells) setSpells((spellsResult.data || []) as CharacterSpell[])
       if (loadFeatures) {
         setFeatures((featuresResult.data || []) as CharacterFeature[])
+        setAchievements(
+          (achievementsResult.data || []) as UiV1CharacterAchievement[],
+        )
       }
       setAssignments(assignmentRows)
       setTemplates((templatesResult.data || []) as RuleTemplate[])
@@ -621,6 +642,7 @@ export function useUiV1CharacterControl(
     inventory,
     spells,
     features,
+    achievements,
     assignments,
     templates,
     resources,
