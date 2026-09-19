@@ -11,12 +11,15 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Fixed the UI 1.0 Chats dock route to render the released Stage 8 chat catalog instead of the stale `Будущий раздел` placeholder. The inner room/dialog boundary remains intentionally disconnected.
 ### Database / migration changes
 
 ### Runtime and architecture changes
 
+- UI 1.0 now mounts the shared `CharacterProvider` above `UiV1App`, allowing the released Chats catalog to reuse the canonical `useRooms` / `useCharacters` read model rather than creating a second UI-specific chat data path.
 ### Tests / verification
 
+- Added a UI 1.0 Chats route regression that forbids the stale development placeholder, requires the canonical `Chats` screen and verifies the required `CharacterProvider` while preserving the no-inner-dialog Stage 8 boundary.
 ### Known incomplete work
 
 ---

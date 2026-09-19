@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
 import AgentShell from "../ai/AgentShell"
+import Chats from "../pages/Chats"
 
 import { useHomeData, type HomeEvent, type HomeSocietyNews } from "./useHomeData"
 import { WhatsNew } from "./WhatsNew"
@@ -678,10 +679,10 @@ function Screen({ route }: { route: Route }) {
   }
 
   return (
-    <Placeholder
-      eyebrow="Будущий раздел"
-      title="Чаты"
-      body="Новый интерфейс чатов будет построен отдельно. Этот экран существует только как чистая точка подключения."
+    <Chats
+      onOpenRoom={() => {
+        // The Stage 8 landing catalog intentionally keeps room navigation disconnected.
+      }}
     />
   )
 }
