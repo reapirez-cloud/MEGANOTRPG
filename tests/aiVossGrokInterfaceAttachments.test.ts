@@ -36,7 +36,8 @@ test("model selection is per-user rather than one campaign-global switch", () =>
 test("public model choice does not unlock GM-only tools", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
 
-  assert.match(edge, /const canManage = membership\.role === "gm" \|\| membership\.is_owner === true/)
+  assert.match(edge, /const authority = resolveVossAuthority\(membership \|\| \{\}, isSystemAdmin\)/)
+  assert.match(edge, /const canManage = canManageCampaignWithVoss\(authority\)/)
   assert.match(edge, /const canChooseModel = true/)
   assert.match(edge, /\.\.\.\(canManage[\s\S]*VOSS_DRAFT_TOOLS/)
   assert.match(edge, /canManage,[\s\S]*toolName,[\s\S]*args/)
