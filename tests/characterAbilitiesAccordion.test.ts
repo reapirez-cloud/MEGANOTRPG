@@ -154,3 +154,27 @@ test("stage 3 keeps the reference hierarchy responsive without switching to a di
     /\.u1-character-features__panel-chevron-button\s*\{[\s\S]*?height: 40px/,
   )
 })
+
+
+test("abilities v2 stage 4 keeps expanded rows compact inside the same panel", () => {
+  assert.match(
+    styles,
+    /\.u1-character-features__expanded\s*\{[\s\S]*?margin:\s*0 3px 3px[\s\S]*?border-top:\s*1px solid var\(--cv-line-soft\)[\s\S]*?background:\s*transparent/,
+  )
+  assert.match(
+    styles,
+    /\.u1-character-features__ability-row\s*\{[\s\S]*?min-height:\s*46px[\s\S]*?grid-template-columns:\s*24px minmax\(0, 1fr\) auto/,
+  )
+  assert.match(
+    styles,
+    /\.u1-character-features__ability-row > \.u1-character-features__ability-icon\s*\{[\s\S]*?width:\s*24px/,
+  )
+  assert.match(
+    styles,
+    /\.u1-character-features__ability-copy > small\s*\{[\s\S]*?text-overflow:\s*ellipsis[\s\S]*?white-space:\s*nowrap/,
+  )
+  assert.match(
+    styles,
+    /@media \(max-width: 359px\)[\s\S]*?\.u1-character-features__ability-row\s*\{[\s\S]*?min-height:\s*44px[\s\S]*?grid-template-columns:\s*22px minmax\(0, 1fr\) auto/,
+  )
+})
