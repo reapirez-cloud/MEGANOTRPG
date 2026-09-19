@@ -27,6 +27,8 @@ test("players stay role-limited while using an explicitly selected public model"
   assert.match(router, /model: primary/)
   assert.match(router, /routeMode: "primary"/)
   assert.match(router, /Player uses their explicitly selected public campaign model/)
+  assert.match(router, /Player's selected public model lacks required tools/)
+  assert.match(router, /routeMode: "fallback"/)
 })
 
 test("read-heavy auto routing prefers cheaper faster compatible models", () => {
