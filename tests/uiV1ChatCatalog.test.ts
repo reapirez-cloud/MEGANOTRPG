@@ -98,11 +98,22 @@ test("ui v1 chat rooms are Snake-managed persistent objects", async () => {
   assert.match(actions, /chatRoomOpenSurface/)
 })
 
-test("personal chat cards keep one geometry with or without artwork", async () => {
+test("chat artwork uses full-bleed panoramic geometry with readable text scrims", async () => {
   const css = await readFile(stylePath, "utf8")
 
-  assert.match(css, /\.u1-chat-personal__card\s*\{[\s\S]*?height:\s*132px/)
-  assert.match(css, /grid-template-rows:\s*56px 12px 9px 11px/)
-  assert.match(css, /\.u1-chat-personal__media\s*\{[\s\S]*?width:\s*56px;[\s\S]*?height:\s*56px/)
-  assert.match(css, /\.u1-chat-art\s*\{[\s\S]*?display:\s*block/)
+  assert.match(css, /Panoramic chat artwork: full-bleed room previews/)
+  assert.match(
+    css,
+    /\.u1-chat-row:not\(\.u1-chat-row--flood\),\s*\.u1-chat-personal__card\s*\{[\s\S]*?aspect-ratio:\s*3\s*\/\s*1/,
+  )
+  assert.match(
+    css,
+    /\.u1-chat-row:not\(\.u1-chat-row--flood\) > \.u1-chat-art\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*0;[\s\S]*?width:\s*100%;[\s\S]*?height:\s*100%/,
+  )
+  assert.match(
+    css,
+    /\.u1-chat-personal__media\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*0;[\s\S]*?width:\s*100%;[\s\S]*?height:\s*100%/,
+  )
+  assert.match(css, /linear-gradient\(90deg, rgba\(5,6,7,\.94\)/)
+  assert.match(css, /\.u1-chat-row--flood\s*\{[\s\S]*?min-height:\s*52px/)
 })
