@@ -4,7 +4,7 @@ import {
   CHARACTER_SHEET_RESOURCE_ASSETS,
   characterSheetVisualAssetForSlot,
   type CharacterSheetVisualAsset,
-} from "./characterSheetVisualAssets"
+} from "./characterSheetVisualAssets.ts"
 
 export type CharacterAbilityIconVisual =
   | {
