@@ -122,7 +122,7 @@ export const VOSS_MANAGER_TOOLS = [
         additionalProperties: false,
         properties: {
           location_id: { type: "string" },
-          parent_location_id: { type: ["string", "null"] },
+          parent_location_id: { type: "string" },
           name: { type: "string" },
           summary: { type: "string" },
           description: { type: "string" },
