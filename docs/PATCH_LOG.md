@@ -18,6 +18,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Art Library now has Snake-driven multi-select: select the first asset from Snake, tap additional cards to add/remove them, then use Snake on a selected card to delete the selected set. The header shows the selection count and can clear the mode.
 - System/reference icons no longer appear as fake generations; existing authored class icons are surfaced in owner-only System Materials, while true Generations contains only assets produced by image jobs.
 - Class/subclass art upload now registers and binds atomically. A failed bind no longer leaves duplicate manual assets behind, and failed uploads clean their Storage object.
+- Voss chat no longer injects the latest AI Draft as a fake first chat entry; open drafts are discovered explicitly and remain private to their creator. Delete confirmation now renders above the tools drawer, and the AI shell uses the neutral graphite/gray MEGANOT palette instead of the old warm yellow-brown skin.
+- Sending to Voss now clears the composer immediately and persists the user's turn before AI processing. The Edge Function returns an accepted response while completion continues under EdgeRuntime, so closing or minimizing the app after acceptance does not discard the request; the client polls the durable thread for the eventual reply.
+- Explicit image-generation requests now force the `generate_image` tool on the first model round, including single-image requests, so a request for one generated image cannot silently collapse into a text-only answer.
 ### Database / migration changes
 
 - Added `art_library_integrity_v1`: generation read/delete RPCs now accept only real generated assets (`source_job_id`), authored class icons are bridged into owner-only System Materials, and `bind_reference_media_upload_v1` makes reference upload + binding one transaction.
@@ -26,10 +29,12 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added the UI 1.0 chat-room Snake action provider and registered hero, Flood/event/archive rows and personal-history cards as `chat_room` entities through `SnakeTrigger`. Ordinary tap and Snake `Открыть` reuse the same deferred room surface descriptor.
 - Fixed the click-through behavior globally in `SnakeWindowHost`, not in Chats, and documented the completed-click backdrop law in the canonical Snake contract.
 - Reference art file uploads use the new atomic RPC; icon slots are registered as system reference icons, while preview/hero/panel art remains normal reference media. Batch deletion reuses the canonical System Materials and generated-media deletion boundaries.
+- Voss draft tooling now includes `list_content_drafts`, scoped to the current manager's own review drafts before read/revise. Chat turns use a durable server-first delivery path with background completion and a persisted failure reply if processing cannot finish.
 ### Tests / verification
 
 - Added regressions for chat-room Snake registration/action-provider coverage, full-bleed panoramic chat artwork geometry/scrims (including identical image/fallback sizing), and the universal Snake backdrop rule that forbids closing/unmounting on pointerdown.
 - Added regressions for true-generation isolation, System Materials icon ownership, collection-level ArtPlayer navigation, Snake multi-select/batch deletion, and atomic class/subclass art binding with Storage cleanup on failure.
+- Added AI regressions for durable accepted turns/background reply polling, draft privacy/discovery, confirmation layering, graphite styling, and mandatory generation-tool routing for explicit one-image requests.
 ### Known incomplete work
 
 ---
