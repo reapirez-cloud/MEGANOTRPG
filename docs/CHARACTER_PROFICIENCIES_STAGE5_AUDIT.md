@@ -75,3 +75,24 @@ The same repair is installed for future campaigns through campaign triggers that
 
 Machine-readable roster and expected five-panel baselines:
 `src/ui-v1-isolated/characterProficiencyClassCoverage.ts`.
+
+
+## Connected Supabase deployment certification
+
+Applied successfully on 2026-09-19:
+
+- `monk_proficiencies_stage5_v1`
+- `warlock_proficiencies_stage5_v1`
+
+Post-deployment SQL audit:
+
+- expected base grants missing across the nine certified classes: **0**
+- Monk `proficiency_stage5_status`: **READY**
+- Warlock `proficiency_stage5_status`: **READY**
+- active templates for Rogue / Barbarian / Ranger / Artificer: **0**
+- unsupported non-skill proficiency keys across active class/subclass mechanics: **0**
+- active class/subclass proficiency or language grants without `sourceKey`: **0**
+
+Stage 5 is therefore READY for its declared five-panel scope.
+
+This does not change the broader whole-class mechanics status ledger. A class may have a certified proficiency package here while unrelated class mechanics remain under their own audit.

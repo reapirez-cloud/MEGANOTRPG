@@ -85,7 +85,7 @@ Legacy sheet fields remain fallback only. They never replace a CE-owned row.
 
 Detailed audit: `docs/CHARACTER_PROFICIENCIES_STAGE4_AUDIT.md`.
 
-## Stage 5 — class coverage and future-mechanics placeholders — IMPLEMENTED
+## Stage 5 — class coverage and future-mechanics placeholders — READY
 
 Machine-readable coverage now reserves all 13 class identities in
 `characterProficiencyClassCoverage.ts`.
@@ -112,6 +112,8 @@ Explicit `mechanics_pending` placeholders:
 Live audit found that Monk and Warlock had exact proficiency data already authored in `rules_meta.core_traits`, but their base CE grants were missing. Stage 5 adds forward-only, idempotent migrations for those two classes and installs the same repair for future campaigns.
 
 This stage does not invent grants for pending classes, rewrite persistent choices, or change whole-class Mechanics READY status.
+
+Connected Supabase was migrated and re-audited on 2026-09-19: all nine certified class baselines are present, no expected grants are missing, and active class/subclass proficiency grants have stable source identities.
 
 Deployment/certification details: `docs/CHARACTER_PROFICIENCIES_STAGE5_AUDIT.md`.
 
