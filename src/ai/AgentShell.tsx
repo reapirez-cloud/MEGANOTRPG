@@ -112,10 +112,10 @@ export default function AgentShell() {
     threads,
     activeThreadId,
     messages,
-    drafts,
     jobs,
     loading,
     sending,
+    pendingReply,
     error,
     chooseModel,
     uploadAttachment,
@@ -229,18 +229,28 @@ export default function AgentShell() {
       const node = logRef.current
       if (node) node.scrollTop = node.scrollHeight
     })
-  }, [jobs, messages, open, sending])
+  }, [jobs, messages, open, pendingReply, sending])
 
   if (!campaignId || loading) return null
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     const text = draft.trim()
-    if ((!text && !attachments.length) || sending || uploading) return
-    const accepted = await send(text, attachments)
-    if (accepted) {
-      setDraft("")
-      setAttachments([])
+    const outgoingAttachments = attachments
+    if (
+      (!text && !outgoingAttachments.length) ||
+      sending ||
+      pendingReply ||
+      uploading
+    ) return
+
+    setDraft("")
+    setAttachments([])
+
+    const accepted = await send(text, outgoingAttachments)
+    if (!accepted) {
+      setDraft(text)
+      setAttachments(outgoingAttachments)
     }
   }
 
@@ -399,14 +409,14 @@ export default function AgentShell() {
         aria-label={
           open
             ? "Свернуть Восса"
-            : sending
+            : sending || pendingReply
               ? "Восс работает в фоне"
               : "Открыть Восса"
         }
         aria-expanded={open}
         aria-controls="u1-agent-panel"
         data-open={open || undefined}
-        data-busy={sending || undefined}
+        data-busy={(sending || pendingReply) || undefined}
         data-dragging={orbDragging || undefined}
       >
         <AgentMark />
@@ -657,24 +667,6 @@ export default function AgentShell() {
         )}
 
         <div className="u1-agent-log" ref={logRef} aria-live="polite">
-          {canManage && drafts[0] && (
-            <article className="u1-agent-system-entry">
-              <header>
-                <div>
-                  <span>AI DRAFT · НЕ КАНОН</span>
-                  <strong>{drafts[0].title}</strong>
-                </div>
-                <b>r{drafts[0].current_revision}</b>
-              </header>
-              {drafts[0].summary && <p>{drafts[0].summary}</p>}
-              {drafts[0].recent_revisions?.[0]?.change_summary && (
-                <small className="u1-agent-system-note">
-                  {drafts[0].recent_revisions[0].change_summary}
-                </small>
-              )}
-            </article>
-          )}
-
           {messages.map((message) => (
             <article
               key={message.id}
@@ -805,7 +797,7 @@ export default function AgentShell() {
             )
           })}
 
-          {sending && (
+          {(sending || pendingReply) && (
             <div className="u1-agent-thinking">
               <AgentMark />
               <span>Восс разбирается…</span>
@@ -847,7 +839,7 @@ export default function AgentShell() {
             placeholder="Восс…"
             maxLength={8000}
             rows={2}
-            disabled={sending}
+            disabled={sending || pendingReply}
             aria-label="Сообщение Воссу"
           />
           <button
@@ -855,6 +847,7 @@ export default function AgentShell() {
             disabled={
               (!draft.trim() && !attachments.length) ||
               sending ||
+              pendingReply ||
               uploading
             }
             aria-label="Отправить Воссу"
