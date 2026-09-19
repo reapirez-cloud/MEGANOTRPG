@@ -30,6 +30,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added `docs/ABILITIES_VISUAL_REWORK_CONTRACT.md` to lock ownership for the v2 presentation pass: CharacterSheet keeps the masthead/art/background, Character+Spells remain the only visual-language source through shared `--cv-*` tokens, and the Abilities rewrite is presentation-only over the already-certified read-model/Snake/suppression mechanics.
 ### Tests / verification
 
+- Abilities v2 Stage 7 behavior certification passed full CI on run `35424263822`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully after removing stale stage-number assertions from prior visual guards.
 - Added `characterAbilitiesBehaviorCertification.test.ts` to certify the post-rework interaction contract end-to-end: one-at-a-time accordion behavior, three-row preview cap, shared collapsed/expanded Snake provider, tap-to-detail, player-vs-manager actions, canonical suppression callback/reload path, owner-or-GM authority and visible-in-place suppressed rows.
 - Abilities v2 Stage 6 full CI passed on rerun `35423576685`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully after correcting the Node ESM import extension in the new media resolver.
 - Added `characterAbilityMedia.test.ts` plus Stage 6 visual regressions for direct media paths, semantic atlas reuse, unknown-id fallback, centered `object-fit: contain`, atlas position/size preservation and image-load fallback behavior.
