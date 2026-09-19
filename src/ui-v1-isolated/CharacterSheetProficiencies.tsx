@@ -135,7 +135,7 @@ function ProficiencyInteractiveTag({
         data-suppressed={row.status === "suppressed" || undefined}
         aria-label={
           row.status === "suppressed"
-            ? row.label + ", заглушено ведущим"
+            ? row.label + ", заглушено"
             : row.label
         }
       >
