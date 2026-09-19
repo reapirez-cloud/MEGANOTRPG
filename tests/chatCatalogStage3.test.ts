@@ -8,7 +8,7 @@ const stylePath = new URL("../src/chats-v3.css", import.meta.url)
 test("stage 3 matches the approved chat landing-page anatomy without opening rooms", async () => {
   const source = await readFile(pagePath, "utf8")
 
-  assert.match(source, /data-chat-catalog-stage="7"/)
+  assert.match(source, /data-chat-catalog-stage="8"/)
   assert.match(source, /chat-catalog__toolbar/)
   assert.match(source, /aria-label="Поиск"/)
   assert.match(source, /aria-label="Фильтр"/)

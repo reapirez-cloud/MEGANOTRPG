@@ -18,7 +18,7 @@ test("stage 7 caps unread badges instead of letting three-digit counts wreck geo
 test("stage 7 has geometry-preserving loading and retryable error states", async () => {
   const source = await readFile(pagePath, "utf8")
 
-  assert.match(source, /data-chat-catalog-stage="7"/)
+  assert.match(source, /data-chat-catalog-stage="8"/)
   assert.match(source, /function ChatCatalogSkeleton\(\)/)
   assert.match(source, /aria-busy="true"/)
   assert.match(source, /chat-catalog__skeleton-hero/)

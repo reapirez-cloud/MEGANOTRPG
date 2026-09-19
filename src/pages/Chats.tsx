@@ -85,7 +85,7 @@ function ChatCatalogSkeleton() {
   return (
     <div
       className="chats-v3 chat-catalog chat-catalog--loading"
-      data-chat-catalog-stage="7"
+      data-chat-catalog-stage="8"
       aria-busy="true"
       aria-label="Загрузка чатов"
     >
@@ -326,7 +326,7 @@ export default function Chats({ onOpenRoom }: Props) {
 
   if (rooms.error && catalogEmpty) {
     return (
-      <div className="chats-v3 chat-catalog" data-chat-catalog-stage="7">
+      <div className="chats-v3 chat-catalog" data-chat-catalog-stage="8">
         <section className="chat-catalog__state chat-catalog__state--error" role="alert">
           <span className="chat-catalog__state-mark" aria-hidden="true">!</span>
           <h3>Чаты не загрузились</h3>
@@ -338,7 +338,7 @@ export default function Chats({ onOpenRoom }: Props) {
   }
 
   return (
-    <div className="chats-v3 chat-catalog" data-chat-catalog-stage="7">
+    <div className="chats-v3 chat-catalog" data-chat-catalog-stage="8">
       {rooms.error && (
         <div className="chat-catalog__refresh-warning" role="status">
           <span>Не удалось обновить каталог. Показываю последние загруженные данные.</span>
@@ -644,7 +644,7 @@ export default function Chats({ onOpenRoom }: Props) {
       )}
 
       <p className="chat-catalog__stage-note">
-        Каталог устойчив к загрузке, ошибкам и большим спискам; экран диалога подключается отдельным роадмапом.
+        Каталог чатов готов; экран диалога развивается отдельным роадмапом.
       </p>
     </div>
   )
