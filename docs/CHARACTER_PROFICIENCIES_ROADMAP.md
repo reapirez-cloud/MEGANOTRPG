@@ -117,18 +117,23 @@ Connected Supabase was migrated and re-audited on 2026-09-19: all nine certified
 
 Deployment/certification details: `docs/CHARACTER_PROFICIENCIES_STAGE5_AUDIT.md`.
 
-## Stage 6 — Snake and authority
+## Stage 6 — Snake and authority — READY
 
-Normal tap remains panel behaviour.
+Implemented through the existing universal Snake runtime:
 
-Long press adds the MegANOT context layer:
+- ordinary panel tap remains the Stage 3 accordion
+- long press / right click on a proficiency tag opens Snake near the invocation point
+- player actions expose proficiency and provenance inspection only
+- GM/Admin authority comes from `control.canManage`
+- CE-owned sources expose granular suppress / re-enable actions where safe
+- mutation reuses `runtime.templates.suppressions.setSuppressed` and the existing Oracle → Shapoklyak canonical persistence path
+- fully suppressed proficiencies remain visible as muted tags but no longer count as effective ownership
+- legacy fallback cannot resurrect a suppressed CE-owned proficiency
+- inherited parent suppression is shown but cannot be unsafely reversed from a child proficiency
 
-- inspect provenance
-- source details
-- GM/Admin source controls where valid
-- source-aware suppression
+No permanent management buttons were added to the reference composition and no new Supabase table/RPC was created.
 
-Do not add permanent admin buttons to the reference composition.
+Detailed audit: `docs/CHARACTER_PROFICIENCIES_STAGE6_AUDIT.md`.
 
 ## Stage 7 — visual/mobile certification
 

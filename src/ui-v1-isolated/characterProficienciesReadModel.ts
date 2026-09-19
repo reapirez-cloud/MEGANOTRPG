@@ -1,10 +1,12 @@
 import type {
   AbilityKey,
+  CharacterContribution,
   ResolvedCharacterContract,
   ResolvedGrant,
   ResolvedSourceRef,
 } from "../character-engine/index.ts"
 import type { CharacterSheet } from "../types/characterSheet.ts"
+import type { TemplateSourceNode } from "../rule-templates/resolver.ts"
 import {
   canonicalCapabilityGrantKey,
   isCharacterSheetProficiencyOutOfScopeKey,
@@ -28,6 +30,10 @@ export type CharacterProficiencySource = {
   sourceId: string
   name: string
   sourceType: string
+  suppressed: boolean
+  suppressedBySourceId: string | null
+  directlyManagedSuppressed: boolean
+  suppressible: boolean
 }
 
 export type CharacterProficiencyRow = {
@@ -38,6 +44,7 @@ export type CharacterProficiencyRow = {
   rank: 1 | 2
   origin: CharacterProficiencyRowOrigin
   catalogued: boolean
+  status: "active" | "suppressed"
   sources: CharacterProficiencySource[]
 }
 
@@ -69,6 +76,17 @@ export type CharacterProficienciesLegacyInput =
 export type CharacterProficienciesReadModelInput = {
   contract: ResolvedCharacterContract
   legacy?: CharacterProficienciesLegacyInput
+  /**
+   * Runtime input before CE suppression. Only suppressed capability grants are
+   * reintroduced from here so a muted proficiency remains visible and can be
+   * inspected/re-enabled instead of vanishing from the sheet.
+   */
+  contributions?: readonly CharacterContribution[]
+  sourceNodes?: readonly TemplateSourceNode[]
+  /** All effective source suppressions for this snapshot. */
+  suppressedSourceIds?: Iterable<string>
+  /** Persistent GM/Admin suppressions that Snake may safely toggle directly. */
+  managerSuppressedSourceIds?: Iterable<string>
 }
 
 const ABILITY_LABELS: Record<AbilityKey, string> = {
@@ -195,10 +213,74 @@ function sourcesFromRefs(
       sourceId,
       name: ref.source.name?.trim() || "Источник",
       sourceType: ref.source.sourceType?.trim() || "unknown",
+      suppressed: false,
+      suppressedBySourceId: null,
+      directlyManagedSuppressed: false,
+      suppressible: Boolean(ref.contributionId) && !sourceId.startsWith("legacy:"),
     })
   }
 
   return result
+}
+
+
+function suppressionSourceFor(
+  sourceId: string,
+  suppressed: ReadonlySet<string>,
+  sourceNodesById: ReadonlyMap<string, TemplateSourceNode>,
+) {
+  let current: string | undefined = sourceId
+  const visited = new Set<string>()
+
+  while (current && !visited.has(current)) {
+    visited.add(current)
+    if (suppressed.has(current)) return current
+    current = sourceNodesById.get(current)?.parentSourceId
+  }
+
+  return null
+}
+
+function contributionSource(
+  contribution: Extract<CharacterContribution, { kind: "grant" }>,
+  suppressed: ReadonlySet<string>,
+  managerSuppressed: ReadonlySet<string>,
+  sourceNodesById: ReadonlyMap<string, TemplateSourceNode>,
+): CharacterProficiencySource {
+  const sourceId = contribution.source.id.trim()
+  const suppressedBySourceId = suppressionSourceFor(
+    sourceId,
+    suppressed,
+    sourceNodesById,
+  )
+
+  return {
+    contributionId: contribution.id,
+    sourceId,
+    name: contribution.source.name?.trim() || "Источник",
+    sourceType: contribution.source.sourceType?.trim() || "unknown",
+    suppressed: Boolean(suppressedBySourceId),
+    suppressedBySourceId,
+    directlyManagedSuppressed:
+      suppressedBySourceId === sourceId &&
+      managerSuppressed.has(sourceId),
+    suppressible: Boolean(sourceId) && !sourceId.startsWith("legacy:"),
+  }
+}
+
+function rowStatus(
+  origin: CharacterProficiencyRowOrigin,
+  sources: readonly CharacterProficiencySource[],
+): "active" | "suppressed" {
+  if (origin !== "character-engine") return "active"
+
+  const runtimeSources = sources.filter(
+    (source) => !source.sourceId.startsWith("legacy:"),
+  )
+  return runtimeSources.length > 0 &&
+    runtimeSources.every((source) => source.suppressed)
+    ? "suppressed"
+    : "active"
 }
 
 function mergeSources(
@@ -258,7 +340,30 @@ function runtimeRow(
     rank,
     origin: "character-engine",
     catalogued: Boolean(characterProficiencyCatalogEntry(group, key)),
+    status: "active",
     sources: sourcesFromRefs(sources),
+  }
+}
+
+function suppressedContributionRow(
+  group: CharacterProficiencyGroupKey,
+  key: string,
+  contribution: Extract<CharacterContribution, { kind: "grant" }>,
+  source: CharacterProficiencySource,
+): CharacterProficiencyRow {
+  const payload = record(contribution.payload)
+  const rank = payload?.rank === 2 ? 2 : 1
+
+  return {
+    id: group + ":" + key,
+    group,
+    key,
+    label: fallbackLabel(group, key, text(payload?.label)),
+    rank,
+    origin: "character-engine",
+    catalogued: Boolean(characterProficiencyCatalogEntry(group, key)),
+    status: "suppressed",
+    sources: [source],
   }
 }
 
@@ -275,11 +380,16 @@ function legacyRow(
     rank: 1,
     origin: "legacy",
     catalogued: Boolean(characterProficiencyCatalogEntry(group, key)),
+    status: "active",
     sources: [{
       contributionId: null,
       sourceId: "legacy:character-sheet",
       name: "Лист персонажа",
       sourceType: "legacy_character_sheet",
+      suppressed: false,
+      suppressedBySourceId: null,
+      directlyManagedSuppressed: false,
+      suppressible: false,
     }],
   }
 }
@@ -300,6 +410,29 @@ function mergeRow(
     return
   }
 
+  // Once CE owns an identity, the legacy sheet is fallback only. In particular,
+  // a suppressed CE grant must not reappear as an apparently active legacy row.
+  if (
+    existing.origin === "character-engine" &&
+    incoming.origin === "legacy"
+  ) {
+    return
+  }
+  if (
+    existing.origin === "legacy" &&
+    incoming.origin === "character-engine"
+  ) {
+    rows.set(identity, incoming)
+    return
+  }
+
+  const mergedSources = mergeSources(existing.sources, incoming.sources)
+  const origin =
+    existing.origin === "character-engine" ||
+    incoming.origin === "character-engine"
+      ? "character-engine"
+      : "legacy"
+
   rows.set(identity, {
     ...existing,
     label:
@@ -307,13 +440,10 @@ function mergeRow(
         ? existing.label
         : incoming.label || existing.label,
     rank: Math.max(existing.rank, incoming.rank) as 1 | 2,
-    origin:
-      existing.origin === "character-engine" ||
-      incoming.origin === "character-engine"
-        ? "character-engine"
-        : "legacy",
+    origin,
     catalogued: existing.catalogued || incoming.catalogued,
-    sources: mergeSources(existing.sources, incoming.sources),
+    status: rowStatus(origin, mergedSources),
+    sources: mergedSources,
   })
 }
 
@@ -448,6 +578,61 @@ export function buildCharacterProficienciesReadModel(
     ...input.contract.capabilities.languages,
   ]
 
+  const sourceNodesById = new Map(
+    (input.sourceNodes || []).map((node) => [node.id, node]),
+  )
+  const suppressed = new Set(input.suppressedSourceIds || [])
+  const managerSuppressed = new Set(
+    input.managerSuppressedSourceIds || [],
+  )
+
+  for (const contribution of input.contributions || []) {
+    if (contribution.kind !== "grant") continue
+    if (
+      contribution.target !== "proficiency" &&
+      contribution.target !== "language"
+    ) {
+      continue
+    }
+
+    const key = canonicalCapabilityGrantKey(
+      contribution.target,
+      contribution.key,
+    )
+    const group = characterProficiencyGroupForGrant(
+      contribution.target,
+      key,
+    )
+
+    if (!group) {
+      if (
+        contribution.target === "proficiency" &&
+        !isCharacterSheetProficiencyOutOfScopeKey(key)
+      ) {
+        unclassifiedRuntime.add(key)
+      }
+      continue
+    }
+
+    const source = contributionSource(
+      contribution,
+      suppressed,
+      managerSuppressed,
+      sourceNodesById,
+    )
+    if (!source.suppressed) continue
+
+    mergeRow(
+      rows,
+      suppressedContributionRow(
+        group,
+        key,
+        contribution,
+        source,
+      ),
+    )
+  }
+
   for (const grant of runtimeGrants) {
     const key =
       grant.target === "proficiency" || grant.target === "language"
@@ -538,7 +723,9 @@ export function buildCharacterProficienciesReadModel(
       catalogMode: contract.catalogMode,
       catalogCount: characterProficiencyCatalogCount(key),
       rows: groupRows,
-      currentCount: groupRows.length,
+      currentCount: groupRows.filter(
+        (row) => row.status === "active",
+      ).length,
     } satisfies CharacterProficiencyGroup
   })
 

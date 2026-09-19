@@ -181,8 +181,21 @@ export default function CharacterView({
     return buildCharacterProficienciesReadModel({
       contract: snapshot.contract,
       legacy: control.sheet,
+      contributions: snapshot.input.contributions,
+      sourceNodes: snapshot.sourceNodes,
+      suppressedSourceIds: [
+        ...runtime.templates.suppressions.sourceIds,
+        ...runtime.preparation.suppressedSourceIds,
+      ],
+      managerSuppressedSourceIds:
+        runtime.templates.suppressions.sourceIds,
     })
-  }, [runtime.snapshot, control.sheet])
+  }, [
+    runtime.preparation.suppressedSourceIds,
+    runtime.snapshot,
+    control.sheet,
+    runtime.templates.suppressions.sourceIds,
+  ])
 
   useEffect(() => {
     setAuxiliaryEnabled(false)
@@ -1029,8 +1042,11 @@ export default function CharacterView({
         />
       ) : section === "proficiencies" ? (
         <CharacterSheetProficiencies
+          characterId={characterId}
           model={proficienciesReadModel}
           runtimeError={runtime.error || undefined}
+          canManage={control.canManage}
+          onSetSuppressed={runtime.templates.suppressions.setSuppressed}
         />
       ) : section === "spells" ? (
         <CharacterSheetSpells

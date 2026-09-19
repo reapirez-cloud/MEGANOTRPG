@@ -1,9 +1,9 @@
 /*
- * Character proficiencies · Stage 3.
+ * Character proficiencies · Stage 6.
  *
  * The reference owns composition and density.
  * MegANOT owns palette, glass, typography and background.
- * Every group expands independently; Snake remains a later stage.
+ * Every group expands independently; individual tags use the shared Snake runtime.
  */
 .u1-character-proficiencies {
   display: grid;
@@ -305,6 +305,26 @@
   font-size: clamp(9px, 2.45vw, 11px);
   line-height: 1.1;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.018);
+}
+
+.u1-character-proficiencies__tag[data-suppressed="true"] {
+  opacity: .46;
+  filter: grayscale(.72);
+  border-style: dashed;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(
+    in srgb,
+    currentColor 52%,
+    transparent
+  );
+}
+
+.u1-character-proficiencies__tag[data-suppressed="true"]::after {
+  content: " ×";
+  margin-left: 5px;
+  color: var(--cv-text-faint);
+  text-decoration: none;
 }
 
 .u1-character-proficiencies__tag[data-rank="2"]::before {

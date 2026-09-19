@@ -2,11 +2,18 @@ import { useState, type MouseEvent } from "react"
 
 import {
   CHARACTER_PROFICIENCY_GROUP_ORDER,
+  type CharacterProficiencyGroupKey,
 } from "./characterProficienciesCatalog.ts"
 import type {
   CharacterProficienciesReadModel,
-  CharacterProficiencyGroupKey,
+  CharacterProficiencyRow,
 } from "./characterProficienciesReadModel.ts"
+import {
+  characterProficiencyEntity,
+  createCharacterProficiencySnakeActions,
+  type CharacterProficiencySuppressionResult,
+} from "./characterProficiencySnakeActions.ts"
+import { SnakeTrigger } from "./SnakeProvider"
 
 type ExpandedGroups = Record<CharacterProficiencyGroupKey, boolean>
 
@@ -99,12 +106,60 @@ function groupCounterLabel(
     : `${current} из ${total} владений`
 }
 
+function ProficiencyInteractiveTag({
+  characterId,
+  row,
+  canManage,
+  onSetSuppressed,
+}: {
+  characterId: string
+  row: CharacterProficiencyRow
+  canManage: boolean
+  onSetSuppressed?: (
+    sourceId: string,
+    suppressed: boolean,
+  ) => Promise<CharacterProficiencySuppressionResult>
+}) {
+  const entity = characterProficiencyEntity(characterId, row)
+  const actions = createCharacterProficiencySnakeActions(row, {
+    canManage,
+    setSuppressed: onSetSuppressed,
+  })
+
+  return (
+    <SnakeTrigger entity={entity} actions={actions}>
+      <span
+        className="u1-character-proficiencies__tag"
+        data-origin={row.origin}
+        data-rank={row.rank}
+        data-suppressed={row.status === "suppressed" || undefined}
+        aria-label={
+          row.status === "suppressed"
+            ? row.label + ", заглушено ведущим"
+            : row.label
+        }
+      >
+        {row.label}
+      </span>
+    </SnakeTrigger>
+  )
+}
+
 export default function CharacterSheetProficiencies({
+  characterId,
   model,
   runtimeError,
+  canManage,
+  onSetSuppressed,
 }: {
+  characterId: string
   model: CharacterProficienciesReadModel | null
   runtimeError?: string
+  canManage: boolean
+  onSetSuppressed?: (
+    sourceId: string,
+    suppressed: boolean,
+  ) => Promise<CharacterProficiencySuppressionResult>
 }) {
   const [expandedGroups, setExpandedGroups] = useState<ExpandedGroups>(
     defaultExpandedGroups,
@@ -144,7 +199,7 @@ export default function CharacterSheetProficiencies({
         }
         aria-label="Владения"
         aria-live="polite"
-        data-stage="3"
+        data-stage="6"
         data-state={failed ? "error" : "loading"}
       >
         <span>
@@ -166,7 +221,7 @@ export default function CharacterSheetProficiencies({
     <section
       className="u1-character-proficiencies"
       aria-label="Владения"
-      data-stage="3"
+      data-stage="6"
       data-empty={empty || undefined}
     >
       {runtimeError ? (
@@ -245,14 +300,13 @@ export default function CharacterSheetProficiencies({
                       aria-label={group.label}
                     >
                       {group.rows.map((row) => (
-                        <span
-                          className="u1-character-proficiencies__tag"
-                          data-origin={row.origin}
-                          data-rank={row.rank}
+                        <ProficiencyInteractiveTag
+                          characterId={characterId}
+                          row={row}
+                          canManage={canManage}
+                          onSetSuppressed={onSetSuppressed}
                           key={row.id}
-                        >
-                          {row.label}
-                        </span>
+                        />
                       ))}
 
                       {group.rows.length === 0 ? (
