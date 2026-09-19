@@ -68,6 +68,29 @@ function reply(body: JsonRecord, status = 200) {
   })
 }
 
+function runBackground(promise: Promise<unknown>) {
+  const runtime = (globalThis as unknown as {
+    EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void }
+  }).EdgeRuntime
+
+  if (runtime?.waitUntil) {
+    runtime.waitUntil(promise)
+    return
+  }
+
+  void promise
+}
+
+function isExplicitImageGenerationRequest(message: string) {
+  const text = message.toLocaleLowerCase("ru-RU").replace(/\s+/g, " ").trim()
+  const imageSubject =
+    /(арт|изображен|картин|рисунк|икон|аватар|портрет|панорам|рендер|image|art|picture|icon|avatar|portrait|render)/u.test(text)
+  const generationIntent =
+    /(нарис|рисуй|сгенер|создай|создать|сделай|сделать|generate|draw|render|create)/u.test(text)
+
+  return imageSubject && generationIntent
+}
+
 function getEnv(...names: string[]) {
   for (const name of names) {
     const value = Deno.env.get(name)
@@ -312,6 +335,7 @@ Deno.serve(async (req: Request) => {
     typeof body.devSessionToken === "string" ? body.devSessionToken : ""
   const incomingAttachments = normalizeAttachments(body.attachments)
   const mechanicsAuthoringRequested = isMechanicsAuthoringRequest(message)
+  const imageGenerationRequested = isExplicitImageGenerationRequest(message)
 
   if (!campaignId) return reply({ error: "campaignId is required" }, 400)
   if (!message) return reply({ error: "message is required" }, 400)
@@ -523,7 +547,7 @@ Deno.serve(async (req: Request) => {
     "К обычному создаваемому контенту относятся локации, НПС/ПС, предметы, описательная часть классов и справочных сущностей, лор, сцены и связанные материалы. Для такого запроса сам определи правильный тип сущности и связи, вместо того чтобы заставлять GM вручную объяснять, в какую таблицу это положить.",
     ...VOSS_INVENTORY_AUTHORING_RULES,
 
-    "Если GM просит изменить существующий AI-черновик, сначала используй read_content_draft, затем revise_content_draft с exact expected_revision из прочитанного черновика.",
+    "Если GM просит найти, показать, продолжить или изменить существующий AI-черновик, сначала используй list_content_drafts, затем read_content_draft для выбранного черновика и только потом revise_content_draft с exact expected_revision.",
     "При редактировании меняй только затронутые узлы и связи. Не пересобирай весь draft заново, если пользователь этого не просил.",
     "Если revise_content_draft вернул draft_revision_conflict, перечитай draft и повторно примени намерение пользователя к свежей версии.",
     "Не создавай новый AI-черновик, если пользователь явно просит исправить, переделать или продолжить уже существующий draft.",
@@ -551,7 +575,7 @@ Deno.serve(async (req: Request) => {
     "Не делай вывод о скрытых событиях из отсутствия результатов: memory tools уже фильтруются правами пользователя.",
     "remember_campaign_fact и save_campaign_summary доступны только GM. Используй их только если GM явно просит запомнить, зафиксировать или сохранить вывод/сводку. Обычный вопрос или просьба пересказать историю не является разрешением что-либо сохранять.",
     "Не расширяй видимость производной памяти относительно её источников. Инструмент дополнительно проверяет это на сервере.",
-    "Изображения генерируй только когда пользователь явно просит создать, нарисовать, сгенерировать, переделать или отредактировать изображение/арт/аватар/иконку. Не запускай генерацию как инициативное украшательство ответа.",
+    "Изображения генерируй только когда пользователь явно просит создать, нарисовать, сгенерировать, переделать или отредактировать изображение/арт/аватар/иконку. Не запускай генерацию как инициативное украшательство ответа. Если такая явная просьба есть, текстовый ответ без вызова generate_image считается незавершённым: обязательно создай job. Для одной картинки variants=1, для двух альтернатив variants=2.",
     "Для изображений используй generate_image. Передавай semantic purpose, а не сырые параметры качества: сервер сам выбирает Image Profile, модель, размер и качество под назначение.",
     "Для изображений предметов инвентаря и интерфейсных иконок всегда используй purpose=icon: это low / 50K. Для портретов, превью, панелей, hero/master art и любых остальных артов используй соответствующий purpose: все они high / 150K. Medium не используй.",
     "variants — ТОЧНОЕ число финальных альтернатив в пределах поддерживаемого лимита: 1 или 2. Если пользователь просит варианты/несколько картинок, используй 2 и прямо не обещай третью в одном job.",
@@ -657,6 +681,13 @@ Deno.serve(async (req: Request) => {
         model: resolvedModel,
         messages: providerMessages,
         tools: availableTools,
+        toolChoice:
+          imageGenerationRequested && round === 0 && availableTools.length
+            ? {
+                type: "function",
+                function: { name: "generate_image" },
+              }
+            : "auto",
         temperature: 0.55,
         allowOwnerOverride:
           developerMode &&
