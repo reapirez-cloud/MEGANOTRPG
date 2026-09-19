@@ -322,7 +322,7 @@ test("stage 4 resolves templates, choices and feature sources into canonical fiv
     "Тяжёлая броня",
     "Инструменты кузнеца",
     "Инструмент: Инструменты пивовара",
-    "Народ",
+    "Общий",
     "Предыстория",
     "Талант",
     "Эффект",
