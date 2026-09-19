@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- **Abilities v2 visual rework is READY.** Stage 8 certifies the real CharacterSheet + Abilities surface at 320/360/390/430px: the character masthead/background remains above the panels, the copied `УМЕНИЯ` heading/slogan stays absent, five panels preserve the reference-led left/right hierarchy, empty and expanded states retain their locked compact geometry, and suppressed rows remain visible in place.
 - Abilities v2 Stage 6 fixes ability media rendering: authored image paths/URLs now render in the existing icon slots with centered `contain` behavior, known semantic feature/resource ids reuse existing sheet atlases (for example `feature:second-wind`), unknown ids fall back to the stable group glyph, and broken authored images automatically fall back instead of leaving blank squares.
 - Abilities v2 Stage 5 makes empty groups quiet instead of error-like: `Источник не назначен` is replaced by secondary `Не назначено`, visible `Нет умений` is removed in favor of a subtle dash, and empty panels compact to ~68px / 40px icons (64px / 36px on narrow screens) without dimming the whole card.
 - Abilities v2 Stage 4 rebuilds the expanded state as a compact continuation of the same panel: the header stays in place, the full ability list opens below a soft divider, rows shrink to ~46px with 24px icons, descriptions stay on one ellipsized line, and narrow screens use ~44px rows with 22px icons. No nested ability cards were introduced.
@@ -21,6 +22,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Abilities v2 Stage 8 is certification-only: no Character Runtime, CE, Snake, suppression, permission, database or canonical source path changed. `docs/ABILITIES_VISUAL_REWORK_CONTRACT.md` is now marked `READY — Stage 8 certified`.
 - Abilities v2 Stage 7 made no production runtime mutation changes. The audit confirmed the existing Snake/Oracle/Shapoklyak/Character Runtime boundaries survived Stages 1-6 without a UI-owned permission or suppression path being introduced.
 - Added a renderer-only `characterAbilityMedia` resolver that classifies authored images, existing character-sheet atlas slots and semantic fallbacks without mutating media or creating derivatives. Both collapsed and expanded rows keep using the same `AbilityRowIcon`; CE/runtime/Snake/suppression ownership is untouched.
 - Abilities v2 Stage 5 is presentation-only. Empty groups remain in the five-panel structure, stay non-expandable through the existing accordion rule, and do not change read-model, Character Runtime, CE, Snake, suppression or canonical data behavior.
@@ -30,6 +32,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added `docs/ABILITIES_VISUAL_REWORK_CONTRACT.md` to lock ownership for the v2 presentation pass: CharacterSheet keeps the masthead/art/background, Character+Spells remain the only visual-language source through shared `--cv-*` tokens, and the Abilities rewrite is presentation-only over the already-certified read-model/Snake/suppression mechanics.
 ### Tests / verification
 
+- Added a dedicated Stage 8 Playwright fixture/spec using the real `CharacterSheetShell` + `CharacterSheetFeatures`; browser certification checks no horizontal overflow at 320/360/390/430px, ~42/58 standard and ~44/56 narrow panel splits, locked collapsed/empty/expanded heights and icon sizes, absence of the copied heading/slogan, and visible in-place suppressed rows. Initial Stage 8 CI run `35424499275` passed Build, Lint, repository tests, Storybook and Playwright including the new browser suite.
 - Abilities v2 Stage 7 behavior certification passed full CI on run `35424263822`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully after removing stale stage-number assertions from prior visual guards.
 - Added `characterAbilitiesBehaviorCertification.test.ts` to certify the post-rework interaction contract end-to-end: one-at-a-time accordion behavior, three-row preview cap, shared collapsed/expanded Snake provider, tap-to-detail, player-vs-manager actions, canonical suppression callback/reload path, owner-or-GM authority and visible-in-place suppressed rows.
 - Abilities v2 Stage 6 full CI passed on rerun `35423576685`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully after correcting the Node ESM import extension in the new media resolver.
