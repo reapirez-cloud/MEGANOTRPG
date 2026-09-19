@@ -461,10 +461,10 @@ export default function ArtSection({ subsection }: { subsection?: string }) {
           <div className="u1-art-library__grid">
             {data.generated.map((asset) => {
               const selected = selectedIds.has(asset.id)
-              const actions = [
-                ...selectionActions(asset.id, selected, true, generationBatchDeleteAction),
-                ...generationActions(asset, () => data.deleteGenerated(asset)),
-              ]
+              const selection = selectionActions(asset.id, selected, true, generationBatchDeleteAction)
+              const actions = selectionMode
+                ? selection
+                : [...selection, ...generationActions(asset, () => data.deleteGenerated(asset))]
               return (
                 <SnakeTrigger key={asset.id} entity={{ type: "generated-media", id: asset.id }} actions={actions}>
                   <button
@@ -495,10 +495,10 @@ export default function ArtSection({ subsection }: { subsection?: string }) {
                 ? data.isOwner
                 : data.canManage || item.uploaded_by === data.userId
             const selected = selectedIds.has(item.id)
-            const actions = [
-              ...selectionActions(item.id, selected, canDelete, artBatchDeleteAction),
-              ...artActions(item, canDelete, () => data.deleteArt(item)),
-            ]
+            const selection = selectionActions(item.id, selected, canDelete, artBatchDeleteAction)
+            const actions = selectionMode
+              ? selection
+              : [...selection, ...artActions(item, canDelete, () => data.deleteArt(item))]
             return (
               <SnakeTrigger key={item.id} entity={{ type: "campaign-art", id: item.id }} actions={actions}>
                 <button
