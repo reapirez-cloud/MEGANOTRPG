@@ -341,10 +341,11 @@ test("Stage 8 keeps Feats and Special in the certified mobile stack", async ({ p
   await expect(specialPanel).toContainText("Воровской жаргон")
   await expect(specialPanel).toContainText("Пережил невозможное")
 
-  const glyph = specialPanel
+  const glyphs = specialPanel
     .locator(".u1-character-features__ability-icon-glyph")
     .filter({ hasText: "★" })
-  await expect(glyph).toBeVisible()
+  await expect(glyphs).toHaveCount(2)
+  await expect(glyphs.first()).toBeVisible()
 
   const glass = await specialPanel.evaluate((panel) => {
     const style = getComputedStyle(panel)
