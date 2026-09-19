@@ -1,6 +1,6 @@
 # Abilities v2 visual rework contract
 
-> Status: **ACTIVE — Stage 3 locked**
+> Status: **ACTIVE — Stage 4 locked**
 > Scope: UI 1.0 character-sheet Abilities presentation only.
 
 This contract corrects the first Abilities presentation pass. It is intentionally visual/presentation-only. Existing read-model, Character Runtime, CE resolution, Snake actions, suppression, Background and Effects data remain canonical and must not be rebuilt for this rework.
@@ -113,4 +113,19 @@ Stage 3 is complete only when:
 - the Stage 2 collapsed geometry remains unchanged;
 - Character/Spells typography families and the shared `--cv-text*` hierarchy remain the source of truth;
 - no page background, masthead, runtime, CE, Snake, suppression or data-source behavior changes.
+
+
+## Stage 4 acceptance
+
+Stage 4 is complete only when:
+
+- expanding a group keeps the existing collapsed header in place and grows the same outer panel downward;
+- the expanded body is separated only by the shared soft line and remains inside the panel's existing inset frame;
+- full ability rows are compact list rows, not nested cards, tiles or secondary surfaces;
+- standard expanded rows target roughly 46px height with 24px icons; narrow-screen rows target roughly 44px with 22px icons;
+- each row keeps one compact title line plus one single-line description with ellipsis;
+- suppressed state remains a small trailing status and does not force a second row or a new card;
+- expanded rows use transparent backgrounds and shared dividers so the parent panel remains the only surface;
+- Stage 2 collapsed geometry and Stage 3 MEGANOT skin remain unchanged;
+- accordion, Snake, suppression, permissions, runtime and CE behavior remain unchanged.
 
