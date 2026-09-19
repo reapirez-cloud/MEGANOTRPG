@@ -362,6 +362,12 @@ Deno.serve(async (req: Request) => {
   if (!message) return reply({ error: "message is required" }, 400)
   if (message.length > 8000) return reply({ error: "message is too long" }, 400)
 
+  const { data: adminStatus } = await admin.rpc(
+    "is_system_admin_for_v1",
+    { p_user_id: user.id },
+  )
+  const isSystemAdmin = adminStatus === true
+
   const { data: membership, error: membershipError } = await userClient
     .from("campaign_members")
     .select("role,is_owner")
@@ -370,22 +376,17 @@ Deno.serve(async (req: Request) => {
     .maybeSingle()
 
   if (membershipError) return reply({ error: membershipError.message }, 500)
-  if (!membership) return reply({ error: "Campaign access denied" }, 403)
+  if (!membership && !isSystemAdmin) {
+    return reply({ error: "Campaign access denied" }, 403)
+  }
 
   const canChooseModel = true
 
-  let isSystemAdmin = false
   let developerMode = false
   let devSessionId: string | null = null
   let developerOwnerOverrideModelId: string | null = null
 
-  const { data: adminStatus } = await admin.rpc(
-    "is_system_admin_for_v1",
-    { p_user_id: user.id },
-  )
-  isSystemAdmin = adminStatus === true
-
-  const authority = resolveVossAuthority(membership, isSystemAdmin)
+  const authority = resolveVossAuthority(membership || {}, isSystemAdmin)
   const actorRole = authority
   const canManage = canManageCampaignWithVoss(authority)
 
@@ -444,7 +445,7 @@ Deno.serve(async (req: Request) => {
   }
 
   let selectedModelId: string | null = null
-  const { data: settings } = await userClient
+  const { data: settings } = await (authority === "admin" ? admin : userClient)
     .from("ai_user_agent_settings")
     .select("selected_model_id")
     .eq("campaign_id", campaignId)
@@ -956,7 +957,7 @@ Deno.serve(async (req: Request) => {
             : imageTool
               ? await executeVossImageTool(
                 {
-                  userClient,
+                  userClient: authority === "admin" ? admin : userClient,
                   admin,
                   campaignId,
                   userId: user.id,
@@ -970,7 +971,7 @@ Deno.serve(async (req: Request) => {
               : draftTool
                 ? await executeVossDraftTool(
                   {
-                    client: userClient,
+                    client: authority === "admin" ? admin : userClient,
                     admin,
                     campaignId,
                     userId: user.id,
@@ -983,7 +984,7 @@ Deno.serve(async (req: Request) => {
                 : memoryTool
                   ? await executeVossMemoryTool(
                     {
-                      client: userClient,
+                      client: authority === "admin" ? admin : userClient,
                       admin,
                       campaignId,
                       userId: user.id,
