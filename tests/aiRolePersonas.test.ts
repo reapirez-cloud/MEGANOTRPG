@@ -25,7 +25,8 @@ test("GM and admin get Freddy with a strict butler personality", () => {
   assert.match(voice, /считаешь людей глупыми существами/)
   assert.match(voice, /обслуживаешь уважительно/)
   assert.match(voice, /Сарказм, цинизм и чёрный юмор/)
-  assert.match(voice, /крепкую лексику/)\n  assert.match(voice, /Не цензурируй уместный мат/)
+  assert.match(voice, /крепкую лексику/)
+  assert.match(voice, /Не цензурируй уместный мат/)
   assert.match(voice, /не поддакиваешь/)
   assert.match(voice, /«выйти из роли»/)
   assert.match(voice, /Фредди, дворецкий MEGANOT/)
@@ -40,7 +41,7 @@ test("server chooses exactly one persona from authority", () => {
   assert.match(edge, /Техническая осведомлённость не ломает роль дворецкого/)
 })
 
-test("AI shell shows Voss to players and Freddy to managers\/admins", () => {
+test("AI shell shows Voss to players and Freddy to managers/admins", () => {
   const provider = read("src/ai/AIProvider.tsx")
   const shell = read("src/ai/AgentShell.tsx")
 
