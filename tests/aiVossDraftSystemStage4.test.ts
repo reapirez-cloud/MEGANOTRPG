@@ -5,17 +5,18 @@ import test from "node:test"
 const read = (path: string) =>
   readFileSync(new URL("../" + path, import.meta.url), "utf8")
 
-test("Voss stage 4 exposes only one GM draft creation tool", () => {
+test("Voss keeps one AI-draft creation command while Workshop draft access is read-only", () => {
   const tools = read("supabase/functions/voss-agent/draft-tools.ts")
 
-  assert.match(tools, /name: "propose_content_draft"/)
+  assert.equal((tools.match(/name: "propose_content_draft"/g) || []).length, 1)
   assert.match(tools, /GM-only structured AI draft/)
+  assert.match(tools, /name: "list_workshop_drafts"/)
+  assert.match(tools, /name: "list_content_drafts"/)
   assert.doesNotMatch(tools, /oracle\./)
   assert.doesNotMatch(tools, /gena\./)
   assert.doesNotMatch(tools, /\.rpc\(/)
-  assert.doesNotMatch(tools, /\.from\("locations"\)/)
-  assert.doesNotMatch(tools, /\.from\("characters"\)/)
-  assert.doesNotMatch(tools, /\.from\("reference_definitions"\)/)
+  assert.doesNotMatch(tools, /\.from\("characters"\)[\s\S]{0,500}?\.(?:insert|update|delete|upsert)\(/)
+  assert.doesNotMatch(tools, /\.from\("reference_definitions"\)[\s\S]{0,500}?\.(?:insert|update|delete|upsert)\(/)
 })
 
 test("draft persistence is isolated to AI draft tables", () => {
@@ -61,15 +62,15 @@ test("AI draft tables are manager-readable and client read-only", () => {
   assert.doesNotMatch(migration, /grant update on public\.ai_drafts to authenticated/i)
 })
 
-test("GM Workshop and global AgentShell surface structured AI drafts", () => {
+test("structured AI drafts live in Workshop instead of being injected into every chat", () => {
   const workshop = read("src/ui-v1-isolated/GMWorkshopDraft.tsx")
   const shell = read("src/ai/AgentShell.tsx")
   const provider = read("src/ai/AIProvider.tsx")
 
   assert.match(workshop, /Черновики Восса/)
   assert.match(workshop, /AI DRAFT · НЕ КАНОН/)
-  assert.match(shell, /AI DRAFT · НЕ КАНОН/)
-  assert.match(shell, /u1-agent-system-entry/)
+  assert.doesNotMatch(shell, /AI DRAFT · НЕ КАНОН/)
+  assert.doesNotMatch(shell, /drafts\[0\]/)
   assert.match(provider, /from\("ai_drafts"\)/)
   assert.match(provider, /refreshDrafts/)
 })
