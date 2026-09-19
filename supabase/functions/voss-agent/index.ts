@@ -529,6 +529,50 @@ Deno.serve(async (req: Request) => {
   if (historyError) return reply({ error: historyError.message }, 500)
   const history = [...(recentRows || [])].reverse()
 
+  const { data: persistedUserMessage, error: userMessageError } = await admin
+    .from("ai_messages")
+    .insert({
+      thread_id: threadId,
+      role: "user",
+      body: message,
+      view_context: {
+        ...viewContext,
+        attachments: loadedAttachments.map((attachment) => ({
+          name: attachment.name,
+          mimeType: attachment.mimeType,
+          size: attachment.size,
+        })),
+      },
+    })
+    .select("id,created_at")
+    .single()
+
+  if (userMessageError || !persistedUserMessage) {
+    return reply({
+      error: userMessageError?.message || "Failed to persist user message",
+    }, 500)
+  }
+
+  const { data: currentThread } = await admin
+    .from("ai_threads")
+    .select("title")
+    .eq("id", threadId)
+    .maybeSingle()
+
+  const autoTitle =
+    currentThread?.title === "Новый чат"
+      ? message.replace(/\s+/g, " ").trim().slice(0, 72) || "Новый чат"
+      : currentThread?.title || "Новый чат"
+
+  await admin
+    .from("ai_threads")
+    .update({
+      title: autoTitle,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", threadId)
+
+  const processTurn = async () => {
   const contextText = Object.keys(viewContext).length
     ? JSON.stringify(viewContext, null, 2)
     : "Контекст текущего экрана не передан."
@@ -980,48 +1024,19 @@ Deno.serve(async (req: Request) => {
     return reply({ error: "AI provider returned an empty answer" }, 502)
   }
 
-  const { error: saveError } = await admin.from("ai_messages").insert([
-    {
-      thread_id: threadId,
-      role: "user",
-      body: message,
-      view_context: {
-        ...viewContext,
-        attachments: loadedAttachments.map((attachment) => ({
-          name: attachment.name,
-          mimeType: attachment.mimeType,
-          size: attachment.size,
-        })),
-      },
-    },
-    {
-      thread_id: threadId,
-      role: "assistant",
-      body: answer,
-      model_id: resolvedModel.id,
-      task_key: routeDecision.taskKey,
-      view_context: {},
-    },
-  ])
+  const { error: saveError } = await admin.from("ai_messages").insert({
+    thread_id: threadId,
+    role: "assistant",
+    body: answer,
+    model_id: resolvedModel.id,
+    task_key: routeDecision.taskKey,
+    view_context: {},
+  })
   if (saveError) return reply({ error: saveError.message }, 500)
-
-  const { data: currentThread } = await admin
-    .from("ai_threads")
-    .select("title")
-    .eq("id", threadId)
-    .maybeSingle()
-
-  const autoTitle =
-    currentThread?.title === "Новый чат"
-      ? message.replace(/\s+/g, " ").trim().slice(0, 72) || "Новый чат"
-      : currentThread?.title || "Новый чат"
 
   await admin
     .from("ai_threads")
-    .update({
-      title: autoTitle,
-      updated_at: new Date().toISOString(),
-    })
+    .update({ updated_at: new Date().toISOString() })
     .eq("id", threadId)
 
   return reply({
@@ -1073,4 +1088,74 @@ Deno.serve(async (req: Request) => {
       mainWritable: false,
     },
   })
+  }
+
+  const backgroundTurn = (async () => {
+    try {
+      const response = await processTurn()
+      if (response.status < 400) return
+
+      let failure = "Восс не смог завершить ответ."
+      try {
+        const payload = await response.clone().json()
+        if (payload && typeof payload.error === "string" && payload.error.trim()) {
+          failure = payload.error.trim().slice(0, 500)
+        }
+      } catch {
+        // Keep the stable user-facing fallback.
+      }
+
+      await admin.from("ai_messages").insert({
+        thread_id: threadId,
+        role: "assistant",
+        body: "Не удалось завершить ответ: " + failure,
+        model_id: resolvedModel.id,
+        task_key: routeDecision.taskKey,
+        view_context: { delivery_error: true },
+      }).then(() => undefined).catch(() => undefined)
+
+      await admin
+        .from("ai_threads")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", threadId)
+    } catch (error) {
+      await admin.from("ai_messages").insert({
+        thread_id: threadId,
+        role: "assistant",
+        body: "Не удалось завершить ответ. Запрос был принят сервером, но обработка завершилась ошибкой.",
+        model_id: resolvedModel.id,
+        task_key: routeDecision.taskKey,
+        view_context: {
+          delivery_error: true,
+          error:
+            error instanceof Error
+              ? error.message.slice(0, 500)
+              : String(error).slice(0, 500),
+        },
+      }).then(() => undefined).catch(() => undefined)
+
+      await admin
+        .from("ai_threads")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", threadId)
+    }
+  })()
+
+  runBackground(backgroundTurn)
+
+  return reply({
+    accepted: true,
+    threadId,
+    messageId: persistedUserMessage.id,
+    model: {
+      id: resolvedModel.id,
+      name: resolvedModel.display_name,
+    },
+    routing: {
+      task: routeDecision.taskKey,
+      mode: routeDecision.routeMode,
+      reason: routeDecision.reason,
+      degraded: routeDecision.degraded,
+    },
+  }, 202)
 })
