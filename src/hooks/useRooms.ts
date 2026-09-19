@@ -28,6 +28,10 @@ type RoomRpcRow = {
   day_period: string
   scene_state: string
   is_own_character_room: boolean
+  context_location_id: string | null
+  context_location_name: string | null
+  context_campaign_day: number | null
+  context_day_period: string | null
   preview: string
   created_at: string
   updated_at: string
@@ -90,6 +94,10 @@ export function useRooms() {
       day_period: normalizePeriod(room.day_period),
       scene_state: room.scene_state === "closed" ? "closed" : "active",
       is_own_character_room: Boolean(room.is_own_character_room),
+      context_location_id: room.context_location_id || null,
+      context_location_name: room.context_location_name || null,
+      context_campaign_day: room.context_campaign_day === null ? null : Number(room.context_campaign_day),
+      context_day_period: room.context_day_period ? normalizePeriod(room.context_day_period) : null,
       preview: room.preview,
       time: formatTime(room.last_message_at),
       created_at: room.created_at,
@@ -119,6 +127,8 @@ export function useRooms() {
       .on("postgres_changes", { event: "*", schema: "public", table: "chat_rooms", filter: `campaign_id=eq.${campaignId}` }, refreshSoon)
       .on("postgres_changes", { event: "*", schema: "public", table: "chat_messages" }, refreshSoon)
       .on("postgres_changes", { event: "*", schema: "public", table: "characters", filter: `campaign_id=eq.${campaignId}` }, refreshSoon)
+      .on("postgres_changes", { event: "*", schema: "public", table: "character_world_state", filter: `campaign_id=eq.${campaignId}` }, refreshSoon)
+      .on("postgres_changes", { event: "*", schema: "public", table: "locations", filter: `campaign_id=eq.${campaignId}` }, refreshSoon)
       .on("postgres_changes", { event: "*", schema: "public", table: "scene_participants" }, refreshSoon)
       .subscribe()
     return () => {

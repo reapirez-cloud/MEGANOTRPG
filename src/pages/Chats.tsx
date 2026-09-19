@@ -1,5 +1,12 @@
 import { useMemo } from "react"
 
+import {
+  formatRoomActivity,
+  formatRoomActivityDate,
+  formatRoomCompletion,
+  roomContextParts,
+  roomStatus,
+} from "../chat/catalogPresentation"
 import CampaignImage from "../components/common/CampaignImage"
 import { useCharacters } from "../context/CharacterContext"
 import { useRooms } from "../hooks/useRooms"
@@ -7,19 +14,6 @@ import type { ChatRoom } from "../types/chat"
 import "../chats-v3.css"
 
 type Props = { onOpenRoom: (id: string) => void }
-
-function periodLabel(value: ChatRoom["day_period"]) {
-  const labels: Record<ChatRoom["day_period"], string> = {
-    dawn: "рассвет",
-    morning: "утро",
-    day: "день",
-    late_day: "после полудня",
-    evening: "вечер",
-    night: "ночь",
-    deep_night: "глубокая ночь",
-  }
-  return labels[value]
-}
 
 function roomTypeLabel(room: ChatRoom) {
   if (room.room_type === "character") return "История"
@@ -32,8 +26,8 @@ function unreadLabel(count: number) {
 }
 
 export default function Chats({ onOpenRoom }: Props) {
-  // Stage 3 is geometry-only. Catalog navigation remains intentionally
-  // disconnected until the interaction stage.
+  // Stage 4 fills the Stage 3 geometry with authoritative catalog data only.
+  // Navigation stays disconnected until the interaction stage.
   void onOpenRoom
 
   const { characters, canManage } = useCharacters()
@@ -46,18 +40,26 @@ export default function Chats({ onOpenRoom }: Props) {
 
   const catalog = rooms.catalog
 
+  function characterIdentity(room: ChatRoom) {
+    if (!room.character_id) return ""
+    const character = characterMap.get(room.character_id)
+    if (!character) return ""
+    return (character.character_class || "Без класса") + " · " + character.level + " ур."
+  }
+
   function roomMeta(room: ChatRoom) {
-    if (room.room_type === "character" && room.character_id) {
-      const character = characterMap.get(room.character_id)
-      if (!character) return "Личная история"
-      return (character.character_class || "Без класса") + " · " + character.level + " ур."
+    const context = roomContextParts(room)
+
+    if (room.room_type === "character") {
+      const identity = characterIdentity(room)
+      return [identity, ...context].filter(Boolean).join(" · ") || "Личная история"
     }
 
     if (room.room_type === "scene") {
-      return "День " + room.campaign_day + " · " + periodLabel(room.day_period)
+      return [...context, roomStatus(room).label].filter(Boolean).join(" · ")
     }
 
-    return "Общий разговор кампании"
+    return roomStatus(room).label
   }
 
   function roomArtwork(room: ChatRoom, fallback: string, className = "chat-catalog__art") {
@@ -71,11 +73,16 @@ export default function Chats({ onOpenRoom }: Props) {
   }
 
   function rowRoom(room: ChatRoom, fallback: string, variant: "event" | "completed" | "flood") {
+    const status = roomStatus(room)
+    const meta = variant === "completed" ? formatRoomCompletion(room) : roomMeta(room)
+    const activity = formatRoomActivity(room)
+
     return (
       <article
         className={"chat-catalog__row chat-catalog__row--" + variant}
         key={room.id}
         data-room-id={room.id}
+        data-room-status={status.tone}
       >
         {roomArtwork(room, fallback)}
         <span className="chat-catalog__row-copy">
@@ -83,11 +90,11 @@ export default function Chats({ onOpenRoom }: Props) {
             <strong>{room.title}</strong>
             {variant === "completed" && <small>{roomTypeLabel(room)}</small>}
           </span>
-          <span className="chat-catalog__meta">{roomMeta(room)}</span>
+          {meta && <span className="chat-catalog__meta">{meta}</span>}
           <span className="chat-catalog__preview">{room.preview || "Пока без сообщений"}</span>
         </span>
         <span className="chat-catalog__row-side">
-          <time>{room.time}</time>
+          {activity && <time>{activity}</time>}
           {room.unread_count > 0 ? (
             <b aria-label={"Непрочитанных: " + room.unread_count}>
               {unreadLabel(room.unread_count)}
@@ -100,6 +107,10 @@ export default function Chats({ onOpenRoom }: Props) {
     )
   }
 
+  const hero = catalog.currentStory
+  const heroStatus = hero ? roomStatus(hero) : null
+  const heroActivity = hero ? formatRoomActivity(hero) : ""
+
   if (rooms.loading) {
     return (
       <div className="center-state">
@@ -110,7 +121,7 @@ export default function Chats({ onOpenRoom }: Props) {
   }
 
   return (
-    <div className="chats-v3 chat-catalog" data-chat-catalog-stage="3">
+    <div className="chats-v3 chat-catalog" data-chat-catalog-stage="4">
       {rooms.error && <div className="auth-error">{rooms.error}</div>}
 
       <header className="chat-catalog__toolbar">
@@ -146,23 +157,23 @@ export default function Chats({ onOpenRoom }: Props) {
           <h3 id="chat-current-title">Текущая история</h3>
         </header>
 
-        {catalog.currentStory ? (
-          <article className="chat-catalog__hero" data-room-id={catalog.currentStory.id}>
-            {roomArtwork(catalog.currentStory, "✦", "chat-catalog__hero-media")}
+        {hero && heroStatus ? (
+          <article className="chat-catalog__hero" data-room-id={hero.id} data-room-status={heroStatus.tone}>
+            {roomArtwork(hero, "✦", "chat-catalog__hero-media")}
             <span className="chat-catalog__hero-shade" aria-hidden="true" />
             <div className="chat-catalog__hero-copy">
-              <span className="chat-catalog__hero-kicker">{roomTypeLabel(catalog.currentStory)}</span>
-              <h4>{catalog.currentStory.title}</h4>
-              <p>{catalog.currentStory.preview || "История пока ждёт первого сообщения."}</p>
-              <span className="chat-catalog__hero-meta">{roomMeta(catalog.currentStory)}</span>
+              <span className="chat-catalog__hero-kicker">{roomTypeLabel(hero)}</span>
+              <h4>{hero.title}</h4>
+              <p>{hero.preview || "Пока без сообщений"}</p>
+              {roomMeta(hero) && <span className="chat-catalog__hero-meta">{roomMeta(hero)}</span>}
             </div>
             <div className="chat-catalog__hero-status">
-              <span><i /> Продолжается</span>
-              {catalog.currentStory.time && <small>Последняя активность · {catalog.currentStory.time}</small>}
+              <span data-tone={heroStatus.tone}><i /> {heroStatus.label}</span>
+              {heroActivity && <small>Последняя активность · {heroActivity}</small>}
             </div>
-            {catalog.currentStory.unread_count > 0 && (
+            {hero.unread_count > 0 && (
               <b className="chat-catalog__hero-unread">
-                {unreadLabel(catalog.currentStory.unread_count)}
+                {unreadLabel(hero.unread_count)}
               </b>
             )}
             <span className="chat-catalog__hero-chevron" aria-hidden="true">›</span>
@@ -196,22 +207,28 @@ export default function Chats({ onOpenRoom }: Props) {
 
         {catalog.personalActive.length > 0 ? (
           <div className="chat-catalog__personal-strip">
-            {catalog.personalActive.map((room) => (
-              <article className="chat-catalog__personal-card" key={room.id} data-room-id={room.id}>
-                <div className="chat-catalog__personal-media">
-                  {roomArtwork(room, "◇")}
-                  {room.unread_count > 0 && (
-                    <b aria-label={"Непрочитанных: " + room.unread_count}>
-                      {unreadLabel(room.unread_count)}
-                    </b>
-                  )}
-                </div>
-                <span className="chat-catalog__personal-copy">
-                  <strong>{room.title}</strong>
-                  <small>{roomMeta(room)}</small>
-                </span>
-              </article>
-            ))}
+            {catalog.personalActive.map((room) => {
+              const context = roomContextParts(room)
+              const activityDate = formatRoomActivityDate(room)
+              return (
+                <article className="chat-catalog__personal-card" key={room.id} data-room-id={room.id}>
+                  <div className="chat-catalog__personal-media">
+                    {roomArtwork(room, "◇")}
+                    {room.unread_count > 0 && (
+                      <b aria-label={"Непрочитанных: " + room.unread_count}>
+                        {unreadLabel(room.unread_count)}
+                      </b>
+                    )}
+                  </div>
+                  <span className="chat-catalog__personal-copy">
+                    <strong>{room.title}</strong>
+                    <small>{[characterIdentity(room), ...context].filter(Boolean).join(" · ") || "Личная история"}</small>
+                    <span className="chat-catalog__personal-preview">{room.preview || "Пока без сообщений"}</span>
+                    {activityDate && <time className="chat-catalog__personal-time">{activityDate}</time>}
+                  </span>
+                </article>
+              )
+            })}
           </div>
         ) : (
           <div className="chat-catalog__empty">У живых персонажей пока нет личных историй.</div>
@@ -261,7 +278,7 @@ export default function Chats({ onOpenRoom }: Props) {
       </section>
 
       <p className="chat-catalog__stage-note">
-        Каталог собран; открытие комнат и инструменты подключаются позже.
+        Каталог показывает только фактические данные кампании; действия подключаются позже.
       </p>
     </div>
   )

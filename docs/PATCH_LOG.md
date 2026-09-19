@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Chats Stage 4 replaces placeholder-ish catalog copy with authoritative room state: hero status/access, visible World location, campaign day/period, real last-message preview/activity, personal-story preview/date, event availability, unread counts, and exact archive completion dates. Missing context is omitted instead of invented.
 - Chats Stage 3 rebuilds the landing-page geometry around the approved render without copying its skin: compact catalog toolbar, panoramic **Текущая история**, a dedicated thin **Флуд** row, portrait-card horizontal **Личные истории**, richer vertical **События**, and quieter compact **Завершённые** rows. The removed `Новая история` card stays removed; GM/Admin only receive the dormant `+` geometry.
 - Chats Stage 2 now chooses **Текущая история** by real activity instead of room position, sorts active personal stories/events by latest activity, and sorts **Завершённые** by the character death time or event close time. Flood is never eligible for the current-story hero.
 - Rebuilt the Chats landing page foundation as one catalog instead of the legacy Home → Personal/Scenes directory. The start screen now has the fixed product hierarchy **Текущая история → Флуд → Личные истории → События → Завершённые**; user-facing `scene` terminology is replaced by `Событие`, and the catalog deliberately does not enter the existing ChatRoom yet.
@@ -18,9 +19,11 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Corrected the Abilities panel material to the same current premium background-derived glass used by Character Core and Spells (`--cv-panel-glass`, edge/line/specular/filter tokens) instead of the older `--cv-surface-soft` recipe. Feats and Special also receive distinct group icons, and short achievement symbols such as `★` render as authored glyph media.
 ### Database / migration changes
 
+- Applied and committed `chat_catalog_stage4_real_context`: the chat-room RPC now resolves scene position from the room and personal-story position from `character_world_state`, exposing the location name only when `private.can_view_location(...)` allows it. `character_world_state` and `locations` were added to `supabase_realtime` for catalog context refreshes.
 - Applied and committed `chat_catalog_stage2_read_model`: `get_campaign_chat_rooms` now returns raw room lifecycle/activity timestamps (`created_at`, `updated_at`, `closed_at`, `character_died_at`, `last_message_at`) alongside the existing preview/unread data. `chat_rooms` and `characters` are now published to `supabase_realtime`, matching the subscriptions already used by the client for room closure and character death/revival refreshes.
 ### Runtime and architecture changes
 
+- Added `catalogPresentation.ts` as the factual display layer for room status, access labels, World context, activity stamps and completion labels. `Chats.tsx` consumes this layer instead of hardcoding `Продолжается` or assuming room-local position for personal histories.
 - Chats Stage 3 is presentation-only over the Stage 2 read-model. Search/filter/create controls and every room surface are intentionally non-interactive; no ChatRoom navigation, room creation, RPC, lifecycle, RLS, Realtime or Supabase schema behavior changed.
 - Added a pure chat catalog read-model (`buildChatCatalogModel`) and made `useRooms()` expose it directly. The page no longer owns classification/sorting logic; raw `last_message_at` is preserved instead of being discarded after formatting the display time, with deterministic `updated_at`/`created_at` fallbacks for rooms without messages.
 - Chats Stage 1 is presentation-only over the existing `useRooms()` data. No chat schema, RLS, lifecycle trigger, message runtime or ChatRoom implementation changed; the `onOpenRoom` route contract is retained but intentionally disconnected until the later catalog-interaction stage.
@@ -28,6 +31,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Character-bound achievements are read as inspect-only presentation rows under `Особое`; they do not become a second mechanics source. Any mechanical achievement reward still requires a canonical character feature/runtime source. No database schema or RLS change was introduced.
 ### Tests / verification
 
+- Added Chats Stage 4 regressions for real World-context omission/visibility, event access labels, death-vs-close completion semantics, factual previews, absence of fabricated chapter/episode labels, and Realtime refreshes for character position/location changes.
 - Added `chatCatalogStage3.test.ts` to lock the approved landing-page anatomy, panoramic hero ratio, circular personal-story media, distinct event/archive row densities, mobile breakpoints, no `Новая история`, and the no-premature-interaction boundary.
 - Added Chats Stage 2 regression coverage for current-story selection, activity fallback ordering, death-vs-close archive ordering, raw timestamp hydration, and Realtime publication of `chat_rooms`/`characters`. Stage 1 tests were updated to keep guarding the single-page/no-ChatRoom boundary after the read-model moved out of `Chats.tsx`.
 - Reconciled the legacy chat-preview regression with the Stage 1 boundary: the wide `chat-previews` crop primitive remains certified for the later editor, while the landing-page test now validates artwork/message-preview separation in the new catalog instead of requiring the removed inline scene editor.

@@ -760,3 +760,71 @@
     flex-basis: 96px;
   }
 }
+
+
+/* Stage 4: real catalog content and state semantics. */
+.chat-catalog__hero-status > span[data-tone="limited"] i {
+  background: #c1b28d;
+  box-shadow: 0 0 9px rgba(193, 178, 141, .28);
+}
+
+.chat-catalog__hero-status > span[data-tone="neutral"] i {
+  background: #918a95;
+  box-shadow: none;
+}
+
+.chat-catalog__hero-status > span[data-tone="archived"] i {
+  background: #77717a;
+  box-shadow: none;
+}
+
+.chat-catalog__personal-copy {
+  align-content: start;
+}
+
+.chat-catalog__personal-copy small,
+.chat-catalog__personal-preview,
+.chat-catalog__personal-time {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-catalog__personal-preview {
+  color: #8a848e;
+  font-size: 8px;
+  line-height: 1.25;
+}
+
+.chat-catalog__personal-time {
+  color: #57525a;
+  font-size: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-catalog__row-side time {
+  max-width: 62px;
+  white-space: normal;
+  text-align: right;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-catalog__row[data-room-status="limited"] .chat-catalog__meta {
+  color: #847a68;
+}
+
+.chat-catalog__row[data-room-status="archived"] .chat-catalog__meta {
+  color: #625d66;
+}
+
+@media (max-width: 390px) {
+  .chat-catalog__personal-preview {
+    font-size: 7px;
+  }
+
+  .chat-catalog__row-side time {
+    max-width: 52px;
+    font-size: 7px;
+  }
+}
