@@ -386,6 +386,22 @@ Deno.serve(async (req: Request) => {
   const requestedDevSessionToken =
     typeof body.devSessionToken === "string" ? body.devSessionToken : ""
   const incomingAttachments = normalizeAttachments(body.attachments)
+  const generatedAssetRefRaw =
+    body.generatedAssetRef &&
+    typeof body.generatedAssetRef === "object" &&
+    !Array.isArray(body.generatedAssetRef)
+      ? body.generatedAssetRef as JsonRecord
+      : null
+  const generatedAssetRef = generatedAssetRefRaw &&
+      typeof generatedAssetRefRaw.jobId === "string" &&
+      typeof generatedAssetRefRaw.assetId === "string" &&
+      Number.isInteger(Number(generatedAssetRefRaw.variantIndex))
+    ? {
+        jobId: generatedAssetRefRaw.jobId.slice(0, 80),
+        assetId: generatedAssetRefRaw.assetId.slice(0, 80),
+        variantIndex: Math.max(1, Math.min(2, Number(generatedAssetRefRaw.variantIndex))),
+      }
+    : null
   const mechanicsAuthoringRequested = isMechanicsAuthoringRequest(message)
   const imageGenerationRequested = isExplicitImageGenerationRequest(message)
   const imageWorkflowRequested = isImageWorkflowRequest(message)
@@ -671,6 +687,7 @@ Deno.serve(async (req: Request) => {
           mimeType: attachment.mimeType,
           size: attachment.size,
         })),
+        ...(generatedAssetRef ? { generated_asset_ref: generatedAssetRef } : {}),
       },
     })
     .select("id,created_at")
@@ -872,8 +889,19 @@ Deno.serve(async (req: Request) => {
     )
     .join("\n")
 
+  const generatedAssetReferenceText = generatedAssetRef
+    ? "\n\n[ВЫБРАННЫЙ СГЕНЕРИРОВАННЫЙ ВАРИАНТ: job_id=" +
+      generatedAssetRef.jobId +
+      " variant_index=" +
+      generatedAssetRef.variantIndex +
+      " asset_id=" +
+      generatedAssetRef.assetId +
+      "]"
+    : ""
+
   const userText =
     message +
+    generatedAssetReferenceText +
     (attachmentText ? "\n" + attachmentText : "") +
     (imageAttachments.length
       ? "\n\nПрикреплены изображения: " +
