@@ -23,6 +23,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Character-bound achievements are read as inspect-only presentation rows under `Особое`; they do not become a second mechanics source. Any mechanical achievement reward still requires a canonical character feature/runtime source. No database schema or RLS change was introduced.
 ### Tests / verification
 
+- Reconciled the legacy chat-preview regression with the Stage 1 boundary: the wide `chat-previews` crop primitive remains certified for the later editor, while the landing-page test now validates artwork/message-preview separation in the new catalog instead of requiring the removed inline scene editor.
 - Added `chatsCatalogStage1.test.ts` to lock the single-page catalog hierarchy, completed-room merge, removal of legacy `home/personal/scenes` directory state, and the temporary no-navigation boundary.
 - Extended abilities read-model/browser coverage to seven groups, including description-only feats, William-style `Воровской жаргон`, read-only achievement rows/glyphs, premium Character/Spells glass tokens, and the seven-panel 320–430px Playwright certification stack.
 ### Known incomplete work
