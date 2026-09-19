@@ -53,11 +53,18 @@ test("ui v1 chat adapter keeps all certified realtime refresh sources", async ()
 })
 
 test("ui v1 chat unavailable actions use Snake placeholder surfaces", async () => {
-  const catalog = await readFile(catalogPath, "utf8")
+  const [catalog, actions] = await Promise.all([
+    readFile(catalogPath, "utf8"),
+    readFile(
+      new URL("../src/ui-v1-isolated/chatSnakeActions.ts", import.meta.url),
+      "utf8",
+    ),
+  ])
 
   assert.match(catalog, /useSnake\(\)/)
   assert.match(catalog, /kind: "placeholder"/)
-  assert.match(catalog, /Внутренний игровой диалог подключается отдельным этапом/)
+  assert.match(actions, /kind: "placeholder"/)
+  assert.match(actions, /Внутренний игровой диалог подключается отдельным этапом/)
   assert.match(catalog, /Создание события подключается отдельным потоком/)
   assert.doesNotMatch(catalog, /onOpenRoom|<ChatRoom|pages\/ChatRoom/)
 })
