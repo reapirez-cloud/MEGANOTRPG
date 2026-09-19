@@ -10,6 +10,7 @@ import type {
 } from "../character-engine/index.ts"
 import type { CharacterFeature, InventoryItem } from "../types/characterSheet.ts"
 import type { StoredActionDamage, StoredMechanic, StoredMechanics, StoredMechanicPresentation } from "../types/characterMechanics.ts"
+import { canonicalCapabilityGrantKey } from "./proficiencyIdentity.ts"
 import { isPersistentResourceRecoveryTrigger } from "./persistentResourcePolicy.ts"
 
 function literal(value: number): FormulaExpression { return { kind: "literal", value } }
@@ -49,7 +50,22 @@ export function contributionForStoredMechanic(mechanic: StoredMechanic, source: 
   const variant = mechanic.variantKey ? { variantKey: mechanic.variantKey } : {}
   if (mechanic.type === "numeric") return withPriority(withCondition({ id, kind: "numeric", target: mechanic.target, operation: mechanic.operation, value: mechanic.value, source }, mechanic.condition), mechanic.priority)
   if (mechanic.type === "formula") return withPriority(withCondition({ id, kind: "formula", target: mechanic.target, operation: mechanic.operation, formula: mechanic.formula, source }, mechanic.condition), mechanic.priority)
-  if (mechanic.type === "grant") return withPriority(withCondition({ id, kind: "grant", operation, target: mechanic.target, key: mechanic.key, ...variant, ...(mechanic.payload === undefined ? {} : { payload: mechanic.payload }), source }, mechanic.condition), mechanic.priority)
+  if (mechanic.type === "grant") {
+    const key =
+      mechanic.target === "proficiency" || mechanic.target === "language"
+        ? canonicalCapabilityGrantKey(mechanic.target, mechanic.key)
+        : mechanic.key
+    return withPriority(withCondition({
+      id,
+      kind: "grant",
+      operation,
+      target: mechanic.target,
+      key,
+      ...variant,
+      ...(mechanic.payload === undefined ? {} : { payload: mechanic.payload }),
+      source,
+    }, mechanic.condition), mechanic.priority)
+  }
   if (mechanic.type === "resource") {
     const triggers = rechargeTriggers(mechanic.recharge)
     const recharge = mechanic.restore === "amount"

@@ -64,21 +64,26 @@ Implemented:
 
 The abilities screen rule of “only one group open” is intentionally not used here. Each proficiency panel owns its own state.
 
-## Stage 4 — canonical data integration
+## Stage 4 — canonical data integration — READY
 
-Audit the resolved path end-to-end:
+Implemented and audited end-to-end:
 
 - class grants
 - subclass grants
-- race/species grants
-- background grants
-- feats
-- effects
-- template choices
+- race/subrace grants through the generic template resolver
+- background-feature mechanics
+- feat mechanics
+- effect mechanics
+- persistent template choices
+- parser → CE → resolved contract → proficiencies read-model
 
-The renderer must remain source-agnostic and consume only the read-model.
+Historical key aliases are canonicalized only when emitted into Character Engine. Persistent option ids remain unchanged so existing `selected_choices` and Choice Runtime v2 receipts stay valid.
 
-Legacy fields remain fallback only. They must never replace a CE-owned row.
+Grant Engine now preserves proficiency labels while still resolving the maximum rank. Known `skill:*` proficiency grants remain canonical CE data but are intentionally excluded from these five panels without creating false diagnostics.
+
+Legacy sheet fields remain fallback only. They never replace a CE-owned row.
+
+Detailed audit: `docs/CHARACTER_PROFICIENCIES_STAGE4_AUDIT.md`.
 
 ## Stage 5 — class coverage and future-mechanics placeholders
 

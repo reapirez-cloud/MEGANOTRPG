@@ -43,13 +43,35 @@ function canonicalPayload(value: GrantPayload | undefined): string {
     .join(",")}}`
 }
 
-function proficiencyRankFromPayload(payload: GrantPayload | undefined): 1 | 2 {
-  if (payload === undefined) return 1
+type ProficiencyGrantPayload = {
+  rank: 1 | 2
+  label?: string
+}
+
+function proficiencyPayload(
+  payload: GrantPayload | undefined,
+): ProficiencyGrantPayload {
+  if (payload === undefined) return { rank: 1 }
   if (typeof payload === "object" && payload !== null && !Array.isArray(payload)) {
-    const rank = payloadObject(payload).rank
-    if (rank === 1 || rank === 2) return rank
+    const object = payloadObject(payload)
+    const rank = object.rank
+    if (rank === 1 || rank === 2) {
+      const label = object.label
+      return {
+        rank,
+        ...(typeof label === "string" && label.trim()
+          ? { label: label.trim() }
+          : {}),
+      }
+    }
   }
-  throw new GrantEngineError("proficiency grant payload must be { rank: 1 | 2 }")
+  throw new GrantEngineError(
+    "proficiency grant payload must contain { rank: 1 | 2 }",
+  )
+}
+
+function proficiencyRankFromPayload(payload: GrantPayload | undefined): 1 | 2 {
+  return proficiencyPayload(payload).rank
 }
 
 function sensePayload(payload: GrantPayload | undefined): SenseGrantPayload {
@@ -80,11 +102,14 @@ function mergePayload(
   identity: string,
 ): GrantPayload | undefined {
   if (target === "proficiency") {
-    const rank = Math.max(
-      proficiencyRankFromPayload(current),
-      proficiencyRankFromPayload(incoming),
-    ) as 1 | 2
-    return { rank }
+    const left = proficiencyPayload(current)
+    const right = proficiencyPayload(incoming)
+    const rank = Math.max(left.rank, right.rank) as 1 | 2
+    const label = left.label || right.label
+    return {
+      rank,
+      ...(label ? { label } : {}),
+    }
   }
 
   if (target === "sense") {
@@ -110,7 +135,7 @@ function mergePayload(
 
 function normalizedPayload(contribution: GrantContribution): GrantPayload | undefined {
   if (contribution.target === "proficiency") {
-    return { rank: proficiencyRankFromPayload(contribution.payload) }
+    return proficiencyPayload(contribution.payload)
   }
   if (contribution.target === "sense") {
     return sensePayload(contribution.payload) as GrantPayload

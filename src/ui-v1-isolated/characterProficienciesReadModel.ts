@@ -6,6 +6,10 @@ import type {
 } from "../character-engine/index.ts"
 import type { CharacterSheet } from "../types/characterSheet.ts"
 import {
+  canonicalCapabilityGrantKey,
+  isCharacterSheetProficiencyOutOfScopeKey,
+} from "../lib/proficiencyIdentity.ts"
+import {
   CHARACTER_PROFICIENCY_GROUP_ORDER,
   CHARACTER_PROFICIENCY_GROUPS,
   CHARACTER_PROFICIENCY_SAVING_THROW_ABILITIES,
@@ -445,14 +449,21 @@ export function buildCharacterProficienciesReadModel(
   ]
 
   for (const grant of runtimeGrants) {
+    const key =
+      grant.target === "proficiency" || grant.target === "language"
+        ? canonicalCapabilityGrantKey(grant.target, grant.key)
+        : grant.key
     const group = characterProficiencyGroupForGrant(
       grant.target,
-      grant.key,
+      key,
     )
 
     if (!group) {
-      if (grant.target === "proficiency") {
-        unclassifiedRuntime.add(grant.key)
+      if (
+        grant.target === "proficiency" &&
+        !isCharacterSheetProficiencyOutOfScopeKey(key)
+      ) {
+        unclassifiedRuntime.add(key)
       }
       continue
     }
@@ -461,7 +472,7 @@ export function buildCharacterProficienciesReadModel(
       rows,
       runtimeRow(
         group,
-        grant.key,
+        key,
         payloadLabel(grant),
         payloadRank(grant),
         grant.sources,

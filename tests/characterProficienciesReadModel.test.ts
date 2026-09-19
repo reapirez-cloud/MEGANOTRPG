@@ -327,7 +327,7 @@ test("legacy parser does not turn explicit absence into ownership", () => {
   )
 })
 
-test("unknown proficiency keys stay explicit instead of leaking into the five panels", () => {
+test("canonical skill proficiencies stay out of the five panels without false diagnostics", () => {
   const skillSource = source(
     "skill-perception",
     "template:race:elf:perception",
@@ -345,27 +345,34 @@ test("unknown proficiency keys stay explicit instead of leaking into the five pa
         ),
       ],
     }),
-    legacy: {
-      proficiencies:
-        "Ключевой исходный навык: Внимательность",
-      languages: "",
-      saving_throw_proficiencies: [],
-    },
   })
 
-  assert.deepEqual(
-    model.unclassifiedRuntimeKeys,
-    ["skill:perception"],
-  )
-  assert.deepEqual(
-    model.unclassifiedLegacyTokens,
-    ["Ключевой исходный навык: Внимательность"],
-  )
+  assert.deepEqual(model.unclassifiedRuntimeKeys, [])
   assert.equal(
     model.groups.reduce(
       (total, group) => total + group.currentCount,
       0,
     ),
     0,
+  )
+})
+
+test("truly unknown proficiency keys remain explicit diagnostics", () => {
+  const model = buildCharacterProficienciesReadModel({
+    contract: contract({
+      proficiencies: [
+        grant(
+          "proficiency",
+          "mystery:forgotten-discipline",
+          "Забытое искусство",
+          [],
+        ),
+      ],
+    }),
+  })
+
+  assert.deepEqual(
+    model.unclassifiedRuntimeKeys,
+    ["mystery:forgotten-discipline"],
   )
 })

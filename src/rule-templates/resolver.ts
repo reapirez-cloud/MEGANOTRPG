@@ -1,5 +1,6 @@
 import type { CharacterContribution, CharacterSource, FormulaExpression } from "../character-engine/index.ts"
 import { contributionForStoredMechanic } from "../lib/characterMechanics.ts"
+import { canonicalCapabilityGrantKey } from "../lib/proficiencyIdentity.ts"
 import type { StoredMechanic, StoredMechanics } from "../types/characterMechanics.ts"
 import { choiceOptionSourceAvailable } from "./choiceSourceRequirements.ts"
 import {
@@ -194,7 +195,8 @@ function choiceContributions(
     const rule = definition.option_rules?.[key] || {}
     if (!choiceOptionSourceAvailable(rule, bundles, characterLevel)) return []
 
-    const optionName = definition.option_labels?.[key] || key
+    const explicitOptionLabel = definition.option_labels?.[key]?.trim()
+    const optionName = explicitOptionLabel || key
     const identity = structuredChoiceInstanceIdentity(instance, index, selected)
     const source: CharacterSource = {
       id: `${root.id}:choice:${definition.key}:${identity}`,
@@ -225,14 +227,27 @@ function choiceContributions(
       return optionMechanics
     }
 
+    const emittedKey =
+      definition.target === "proficiency" || definition.target === "language"
+        ? canonicalCapabilityGrantKey(definition.target, key)
+        : key
     const base: CharacterContribution = {
       id: `${source.id}:grant:${index}`,
       kind: "grant",
       operation: "GRANT",
       target: definition.target,
-      key,
+      key: emittedKey,
       variantKey: identity,
-      ...(definition.target === "proficiency" ? { payload: { rank: 1 } } : {}),
+      ...(definition.target === "proficiency"
+        ? {
+            payload: {
+              rank: 1,
+              ...(explicitOptionLabel ? { label: explicitOptionLabel } : {}),
+            },
+          }
+        : definition.target === "language" && explicitOptionLabel
+          ? { payload: { label: explicitOptionLabel } }
+          : {}),
       source,
     }
     return [base, ...optionMechanics]
