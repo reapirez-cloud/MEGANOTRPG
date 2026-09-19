@@ -27,6 +27,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added `docs/ABILITIES_VISUAL_REWORK_CONTRACT.md` to lock ownership for the v2 presentation pass: CharacterSheet keeps the masthead/art/background, Character+Spells remain the only visual-language source through shared `--cv-*` tokens, and the Abilities rewrite is presentation-only over the already-certified read-model/Snake/suppression mechanics.
 ### Tests / verification
 
+- Abilities v2 Stage 5 full CI passed on run `35423096150`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully.
 - Extended `characterAbilitiesVisualContract.test.ts` to forbid the old visible empty/error copy, require accessible quiet empty-state markup, lock compact empty-panel geometry on standard/narrow screens, and prevent whole-card opacity dimming from returning.
 - Abilities v2 Stage 4 full CI passed on run `35422837517`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully.
 - Extended abilities accordion/visual regressions to lock compact expanded rows, single-line descriptions, same-panel expansion, narrow-screen sizing and the absence of nested expanded-card surfaces.
