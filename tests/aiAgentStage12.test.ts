@@ -273,7 +273,7 @@ test("Voss router no longer exposes mechanics authoring as a task", () => {
   assert.doesNotMatch(router, /\| "mechanics_compile"/)
   assert.doesNotMatch(router, /return "mechanics_compile"/)
   assert.match(edge, /isMechanicsAuthoringRequest/)
-  assert.match(edge, /!mechanicsAuthoringRequested \? VOSS_DRAFT_TOOLS/)
+  assert.match(edge, /const scopedDraftTools[\s\S]*!mechanicsAuthoringRequested[\s\S]*VOSS_DRAFT_TOOLS/)
 })
 
 test("Voss chat no longer presents Mechanics Compiler controls", () => {
