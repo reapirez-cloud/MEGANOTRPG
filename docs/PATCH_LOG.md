@@ -6,6 +6,55 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ## Released patches
 
+## Patch — 2026-09-18-H
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
+**Base main:** `8eb36c0b17ce93f49859a59393f8ad440a94f9ea`
+**Started:** 2026-09-18
+**Released:** 2026-09-19
+**Release identity:** `main / 2026-09-19-H`
+
+### Player-facing changes
+
+- **Abilities v2 visual rework is READY.** Stage 8 certifies the real CharacterSheet + Abilities surface at 320/360/390/430px: the character masthead/background remains above the panels, the copied `УМЕНИЯ` heading/slogan stays absent, five panels preserve the reference-led left/right hierarchy, empty and expanded states retain their locked compact geometry, and suppressed rows remain visible in place.
+- Abilities v2 Stage 6 fixes ability media rendering: authored image paths/URLs now render in the existing icon slots with centered `contain` behavior, known semantic feature/resource ids reuse existing sheet atlases (for example `feature:second-wind`), unknown ids fall back to the stable group glyph, and broken authored images automatically fall back instead of leaving blank squares.
+- Abilities v2 Stage 5 makes empty groups quiet instead of error-like: `Источник не назначен` is replaced by secondary `Не назначено`, visible `Нет умений` is removed in favor of a subtle dash, and empty panels compact to ~68px / 40px icons (64px / 36px on narrow screens) without dimming the whole card.
+- Abilities v2 Stage 4 rebuilds the expanded state as a compact continuation of the same panel: the header stays in place, the full ability list opens below a soft divider, rows shrink to ~46px with 24px icons, descriptions stay on one ellipsized line, and narrow screens use ~44px rows with 22px icons. No nested ability cards were introduced.
+- Abilities v2 Stage 3 removes the abilities-only skin and reuses the exact Character/Spells material language: shared `--cv-surface-soft` glass, `--cv-line` borders, the same inset frame/radius/shadow recipe, and class tinting exclusively through existing `--cv-accent*` tokens. Stage 2 geometry is unchanged.
+- Abilities v2 Stage 2 rebuilds the collapsed five-panel anatomy to match the reference proportions while staying inside the existing MEGANOT sheet: the identity side now yields more width to the ability-preview side, previews remain a compact three-row list, and `ещё N` sits beside the far-right chevron instead of becoming a stray fourth row.
+- Started Abilities v2 visual correction: removed the copied standalone `УМЕНИЯ` heading/slogan so the five ability panels now begin directly in the existing character-sheet flow beneath the unchanged MEGANOT character/background shell. The reference is now treated as panel-composition guidance only, not as a page skin.
+### Database / migration changes
+
+### Runtime and architecture changes
+
+- Abilities v2 Stage 8 is certification-only: no Character Runtime, CE, Snake, suppression, permission, database or canonical source path changed. `docs/ABILITIES_VISUAL_REWORK_CONTRACT.md` is now marked `READY — Stage 8 certified`.
+- Abilities v2 Stage 7 made no production runtime mutation changes. The audit confirmed the existing Snake/Oracle/Shapoklyak/Character Runtime boundaries survived Stages 1-6 without a UI-owned permission or suppression path being introduced.
+- Added a renderer-only `characterAbilityMedia` resolver that classifies authored images, existing character-sheet atlas slots and semantic fallbacks without mutating media or creating derivatives. Both collapsed and expanded rows keep using the same `AbilityRowIcon`; CE/runtime/Snake/suppression ownership is untouched.
+- Abilities v2 Stage 5 is presentation-only. Empty groups remain in the five-panel structure, stay non-expandable through the existing accordion rule, and do not change read-model, Character Runtime, CE, Snake, suppression or canonical data behavior.
+- Abilities v2 Stage 4 changes only expanded-list presentation. Stage 2 collapsed geometry, Stage 3 shared Character/Spells skin, accordion state, Snake actions, suppression authority, Character Runtime and CE resolution remain unchanged.
+- Abilities v2 Stage 3 is CSS/presentation-only. It introduces no abilities-specific theme variables and does not touch the page background, masthead, read-model, Character Runtime, CE, Snake, suppression, permissions or canonical data sources.
+- Abilities v2 Stage 2 is presentation-only. The existing read-model, accordion state, Snake entity/actions, manager suppression callback and CE/runtime ownership paths are unchanged; only `CharacterSheetFeatures` collapsed markup and its CSS grid geometry were adjusted.
+- Added `docs/ABILITIES_VISUAL_REWORK_CONTRACT.md` to lock ownership for the v2 presentation pass: CharacterSheet keeps the masthead/art/background, Character+Spells remain the only visual-language source through shared `--cv-*` tokens, and the Abilities rewrite is presentation-only over the already-certified read-model/Snake/suppression mechanics.
+### Tests / verification
+
+- Abilities v2 final READY head passed full CI on run `35424674578`: Build, Lint, repository tests, Storybook build and Playwright smoke all succeeded with the Stage 8 mobile browser certification suite enabled.
+- Added a dedicated Stage 8 Playwright fixture/spec using the real `CharacterSheetShell` + `CharacterSheetFeatures`; browser certification checks no horizontal overflow at 320/360/390/430px, ~42/58 standard and ~44/56 narrow panel splits, locked collapsed/empty/expanded heights and icon sizes, absence of the copied heading/slogan, and visible in-place suppressed rows. Initial Stage 8 CI run `35424499275` passed Build, Lint, repository tests, Storybook and Playwright including the new browser suite.
+- Abilities v2 Stage 7 behavior certification passed full CI on run `35424263822`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully after removing stale stage-number assertions from prior visual guards.
+- Added `characterAbilitiesBehaviorCertification.test.ts` to certify the post-rework interaction contract end-to-end: one-at-a-time accordion behavior, three-row preview cap, shared collapsed/expanded Snake provider, tap-to-detail, player-vs-manager actions, canonical suppression callback/reload path, owner-or-GM authority and visible-in-place suppressed rows.
+- Abilities v2 Stage 6 full CI passed on rerun `35423576685`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully after correcting the Node ESM import extension in the new media resolver.
+- Added `characterAbilityMedia.test.ts` plus Stage 6 visual regressions for direct media paths, semantic atlas reuse, unknown-id fallback, centered `object-fit: contain`, atlas position/size preservation and image-load fallback behavior.
+- Abilities v2 Stage 5 full CI passed on run `35423096150`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully.
+- Extended `characterAbilitiesVisualContract.test.ts` to forbid the old visible empty/error copy, require accessible quiet empty-state markup, lock compact empty-panel geometry on standard/narrow screens, and prevent whole-card opacity dimming from returning.
+- Abilities v2 Stage 4 full CI passed on run `35422837517`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully.
+- Extended abilities accordion/visual regressions to lock compact expanded rows, single-line descriptions, same-panel expansion, narrow-screen sizing and the absence of nested expanded-card surfaces.
+- Abilities v2 Stage 3 full CI passed on run `35422578313`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully.
+- Extended the abilities visual/panel regressions to require the shared Spells surface recipe, shared class-accent tokens and absence of abilities-only skin variables or the superseded custom radial panel glow.
+- Abilities v2 Stage 2 full CI passed on run `35365104120`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully.
+- Updated the abilities panel-shell/accordion regressions and extended `characterAbilitiesVisualContract.test.ts` to lock the ~42/58 collapsed identity/preview split, compact preview rows, right-side `ещё N` tail and the same hierarchy on narrow screens.
+- Added `characterAbilitiesVisualContract.test.ts` and updated the existing panel-shell regression to forbid the copied heading/slogan, abilities-owned page chrome/theme, and accidental replacement of the existing runtime/Snake/suppression wiring during the visual rewrite.
+### Known incomplete work
+
 ## Patch — 2026-09-14-G
 
 **Status:** RELEASED
@@ -14,6 +63,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 **Started:** 2026-09-14
 **Released:** 2026-09-18
 **Release identity:** `main / 2026-09-18-G`
+**Release commit:** `8eb36c0b17ce93f49859a59393f8ad440a94f9ea`
 
 ### Player-facing changes
 

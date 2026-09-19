@@ -5,6 +5,9 @@ import {
   nextExpandedAbilityGroup,
 } from "./characterAbilitiesAccordion.ts"
 import {
+  characterAbilityIconVisual,
+} from "./characterAbilityMedia.ts"
+import {
   characterAbilityDetailSurface,
   characterAbilityEntity,
   createCharacterAbilitySnakeActions,
@@ -88,7 +91,7 @@ function sourceSummary(group: CharacterAbilityGroup) {
   if (!group.sourceNames.length) {
     return group.key === "effect"
       ? "Активные состояния"
-      : "Источник не назначен"
+      : "Не назначено"
   }
 
   if (group.sourceNames.length <= 2) {
@@ -102,23 +105,45 @@ function sourceSummary(group: CharacterAbilityGroup) {
   )
 }
 
-function iconIsImage(value: string) {
-  return /^(?:https?:|data:|blob:|\/)/i.test(value)
-}
-
 function AbilityRowIcon({
   row,
 }: {
   row: CharacterAbilityRow
 }) {
+  const [imageFailed, setImageFailed] = useState(false)
+  const resolved = characterAbilityIconVisual(row.icon)
+  const visual =
+    imageFailed && resolved.kind === "image"
+      ? { kind: "fallback" as const }
+      : resolved
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [row.icon])
+
   return (
     <span
       className="u1-character-features__ability-icon"
       data-icon-id={row.icon || undefined}
+      data-icon-kind={visual.kind}
+      data-asset-render={
+        visual.kind === "atlas"
+          ? visual.render
+          : undefined
+      }
+      style={visual.kind === "atlas" ? visual.style : undefined}
       aria-hidden="true"
     >
-      {iconIsImage(row.icon) ? (
-        <img src={row.icon} alt="" draggable={false} />
+      {visual.kind === "image" ? (
+        <img
+          src={visual.src}
+          alt=""
+          draggable={false}
+          decoding="async"
+          onError={() => setImageFailed(true)}
+        />
+      ) : visual.kind === "atlas" ? (
+        <i className="u1-character-features__ability-icon-sprite" />
       ) : (
         <AbilityGroupIcon group={row.group} />
       )}
@@ -254,7 +279,7 @@ export default function CharacterSheetFeatures({
   return (
     <section
       className="u1-character-features"
-      aria-labelledby="character-abilities-title"
+      aria-label="Умения персонажа"
       data-expanded-group={expandedGroup || undefined}
       data-unclassified-count={
         model.unclassifiedSourceIds.length > 0
@@ -262,11 +287,6 @@ export default function CharacterSheetFeatures({
           : undefined
       }
     >
-      <header className="u1-character-features__intro">
-        <span id="character-abilities-title">УМЕНИЯ</span>
-        <small>Всё, что делает персонажа тем, кто он есть</small>
-      </header>
-
       <div className="u1-character-features__panels">
         {model.groups.map((group) => {
           const expanded =
@@ -336,38 +356,44 @@ export default function CharacterSheetFeatures({
                           onSetSuppressed={onSetSuppressed}
                         />
                       ))}
-                      {preview.hiddenCount > 0 && (
-                        <small>
-                          ещё {preview.hiddenCount}
-                        </small>
-                      )}
                     </span>
                   ) : (
-                    <span className="u1-character-features__empty-label">
-                      Нет умений
+                    <span
+                      className="u1-character-features__empty-label"
+                      aria-label="Нет доступных умений"
+                    >
+                      —
                     </span>
                   )}
 
-                  <button
-                    type="button"
-                    className="u1-character-features__panel-chevron-button"
-                    disabled={group.totalCount <= 0}
-                    aria-expanded={expanded}
-                    aria-controls={contentId}
-                    aria-label={
-                      expanded
-                        ? "Свернуть " + group.label
-                        : "Развернуть " + group.label
-                    }
-                    onClick={toggleGroup}
-                  >
-                    <i
-                      className="u1-character-features__panel-chevron"
-                      aria-hidden="true"
+                  <span className="u1-character-features__panel-tail">
+                    {!expanded && preview.hiddenCount > 0 && (
+                      <small className="u1-character-features__panel-more">
+                        ещё {preview.hiddenCount}
+                      </small>
+                    )}
+
+                    <button
+                      type="button"
+                      className="u1-character-features__panel-chevron-button"
+                      disabled={group.totalCount <= 0}
+                      aria-expanded={expanded}
+                      aria-controls={contentId}
+                      aria-label={
+                        expanded
+                          ? "Свернуть " + group.label
+                          : "Развернуть " + group.label
+                      }
+                      onClick={toggleGroup}
                     >
-                      ⌄
-                    </i>
-                  </button>
+                      <i
+                        className="u1-character-features__panel-chevron"
+                        aria-hidden="true"
+                      >
+                        ⌄
+                      </i>
+                    </button>
+                  </span>
                 </div>
               </div>
 

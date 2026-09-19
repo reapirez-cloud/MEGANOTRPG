@@ -44,29 +44,47 @@ test("abilities tab stage 2 renders the five-group read model as one stable pane
   assert.match(features, /data-group=\{group\.key\}/)
   assert.match(features, /className="u1-character-features__panel-source"/)
   assert.match(features, /className="u1-character-features__panel-summary"/)
+  assert.match(features, /className="u1-character-features__panel-tail"/)
+  assert.match(features, /className="u1-character-features__panel-more"/)
   assert.match(features, /<AbilityGroupIcon group=\{group\.key\}/)
   assert.match(features, /<strong>\{group\.label\}<\/strong>/)
   assert.match(features, /<small>\{sourceSummary\(group\)\}<\/small>/)
 })
 
-test("stage 2 preserves the approved Meganot visual system rather than copying the reference skin", () => {
+test("stage 2 gives the collapsed panel a reference-led 42/58 identity-to-preview split", () => {
   assert.match(styles, /var\(--cv-text\)/)
   assert.match(styles, /var\(--cv-accent\)/)
-  assert.match(styles, /var\(--cv-surface\)/)
+  assert.match(styles, /var\(--cv-surface-soft\)/)
   assert.match(
     styles,
-    /\.u1-character-features__panel-head\s*\{[\s\S]*?grid-template-columns:/,
+    /\.u1-character-features__panel-head\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, \.84fr\) minmax\(0, 1\.16fr\)/,
   )
   assert.match(
     styles,
-    /\.u1-character-features__panel-source\s*\{[\s\S]*?grid-template-columns:/,
+    /\.u1-character-features__panel-source\s*\{[\s\S]*?grid-template-columns:\s*clamp\(52px, 14vw, 62px\) minmax\(0, 1fr\)/,
+  )
+  assert.match(
+    styles,
+    /\.u1-character-features__panel-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) auto/,
   )
   assert.doesNotMatch(styles, /gold|#d4af37|#ffd700/i)
 })
 
 test("the finished shell keeps the stage 2 foundation without temporary milestone markers", () => {
-  assert.match(features, /aria-labelledby="character-abilities-title"/)
+  assert.match(features, /aria-label="Умения персонажа"/)
   assert.doesNotMatch(features, /data-stage=/)
   assert.doesNotMatch(features, /CHARACTER_SHEET_FEATURE_SOURCE_ORDER/)
   assert.doesNotMatch(features, /ContextActionSheet|useLongPressItem/)
+})
+
+
+test("abilities panels reuse the exact Character/Spells surface recipe", () => {
+  assert.match(
+    styles,
+    /\.u1-character-features__panel\s*\{[\s\S]*?border: 1px solid var\(--cv-line\)[\s\S]*?border-radius: clamp\(8px, 2\.2vw, 11px\)[\s\S]*?linear-gradient\(180deg, rgba\(255,255,255,\.025\), transparent 42%\)[\s\S]*?var\(--cv-surface-soft\)[\s\S]*?0 7px 18px rgba\(0,0,0,\.14\)/,
+  )
+  assert.match(
+    styles,
+    /\.u1-character-features__panel::before\s*\{[\s\S]*?inset: 3px[\s\S]*?border: 1px solid var\(--cv-line-soft\)[\s\S]*?border-radius: clamp\(6px, 1\.7vw, 9px\)/,
+  )
 })
