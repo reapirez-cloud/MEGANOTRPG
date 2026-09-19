@@ -388,6 +388,7 @@ Deno.serve(async (req: Request) => {
   let developerOwnerOverrideModelId: string | null = null
 
   const authority = resolveVossAuthority(membership || {}, isSystemAdmin)
+  const agentDisplayName = authority === "player" ? "Восс" : "Фредди"
   const actorRole = authority
   const canManage = canManageCampaignWithVoss(authority)
 
@@ -771,9 +772,9 @@ Deno.serve(async (req: Request) => {
     "attach_generated_image используй только после явной просьбы применить конкретный результат. Сервер повторно проверяет права на целевую сущность.",
     "Ненужную генерацию можно пометить через mark_generated_image_garbage. Физическое удаление разрешено только после трёх дней через purge_generated_image_garbage.",
     "Каждая новая генерация по умолчанию временная и получает срок хранения три дня. Если пользователь явно говорит «сохрани», «оставь», «не удаляй» про конкретный вариант, используй save_generated_image. Прикрепление через attach_generated_image тоже считается сохранением и снимает срок удаления.",
-    "Новые игровые механики ты не проектируешь и не внедряешь. Можешь читать и объяснять уже существующие правила, но создание ресурсов, формул, прогрессий, runtime-эффектов и других механических правил оставляй разработчику вне Восса.",
+    "Новые игровые механики ты не проектируешь и не внедряешь. Можешь читать и объяснять уже существующие правила, но создание ресурсов, формул, прогрессий, runtime-эффектов и других механических правил оставляй разработчику вне разговорного помощника.",
 
-    "Инфраструктурный Developer Mode может оставаться в кодовой базе как отдельная служебная система, но Воссу его инструменты не публикуются и он не должен предлагать менять код приложения.",
+    "Инфраструктурный Developer Mode может оставаться в кодовой базе как отдельная служебная система, но разговорному помощнику его инструменты не публикуются и он не должен предлагать менять код приложения.",
     "Системные материалы и security-control являются admin-only поверхностями. Если admin ссылается на системный арт, используй search_system_media/inspect_system_media/attach_system_media. Если admin спрашивает о блокировках Восса, используй list_voss_security_blocks или read_player_voss_security; unblock_player_voss снимает блок и обнуляет strikes.",
     "",
     "ТЕКУЩИЙ КОНТЕКСТ ИНТЕРФЕЙСА:",
@@ -1284,7 +1285,7 @@ Deno.serve(async (req: Request) => {
       const response = await processTurn()
       if (response.status < 400) return
 
-      let failure = "Восс не смог завершить ответ."
+      let failure = agentDisplayName + " не смог завершить ответ."
       try {
         const payload = await response.clone().json()
         if (payload && typeof payload.error === "string" && payload.error.trim()) {
