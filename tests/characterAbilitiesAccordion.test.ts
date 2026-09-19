@@ -159,7 +159,7 @@ test("stage 3 keeps the reference hierarchy responsive without switching to a di
 test("abilities v2 stage 4 keeps expanded rows compact inside the same panel", () => {
   assert.match(
     styles,
-    /\.u1-character-features__expanded\s*\{[\s\S]*?margin:\s*0 3px 3px[\s\S]*?border-top:\s*1px solid var\(--cv-line-soft\)[\s\S]*?background:\s*transparent/,
+    /\.u1-character-features__expanded\s*\{[\s\S]*?margin:\s*0 3px 3px[\s\S]*?border-top:\s*1px solid var\(--cv-panel-line\)[\s\S]*?background:\s*transparent/,
   )
   assert.match(
     styles,
