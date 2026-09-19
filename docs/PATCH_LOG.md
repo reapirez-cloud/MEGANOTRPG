@@ -13,7 +13,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 - Chat room cards now participate in Snake: right-click on desktop and long-press on touch open the room action menu instead of doing nothing.
 - Snake window backdrops no longer click through into the chat beneath when dismissed outside the window; the universal host now consumes the full gesture and closes on the completed click.
-- Personal-history cards now use one fixed tile geometry for image and fallback states, with identical media size and text baselines across every character.
+- Chat room artwork now fills the whole preview as a class-style panorama for personal histories, events and completed rooms, with one shared 3:1 geometry for image/fallback states and a restrained dark scrim only where text needs contrast; Flood stays compact.
 ### Database / migration changes
 
 ### Runtime and architecture changes
@@ -22,7 +22,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Fixed the click-through behavior globally in `SnakeWindowHost`, not in Chats, and documented the completed-click backdrop law in the canonical Snake contract.
 ### Tests / verification
 
-- Added regressions for chat-room Snake registration/action-provider coverage, uniform personal-card geometry and the universal Snake backdrop rule that forbids closing/unmounting on pointerdown.
+- Added regressions for chat-room Snake registration/action-provider coverage, full-bleed panoramic chat artwork geometry/scrims (including identical image/fallback sizing), and the universal Snake backdrop rule that forbids closing/unmounting on pointerdown.
 ### Known incomplete work
 
 ---
