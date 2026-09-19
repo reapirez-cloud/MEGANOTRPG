@@ -128,6 +128,28 @@ function normalizeAssessment(raw: JsonRecord): VossSecurityAssessment {
   }
 }
 
+export async function resolvePlayerSecurityModel(
+  admin: SupabaseClient,
+  fallback: RouterModel,
+): Promise<RouterModel> {
+  const { data } = await admin
+    .from("ai_models")
+    .select(
+      "id,provider_key,model_key,display_name,enabled,is_base,gm_selectable,user_selectable,supports_tools,supports_json,supports_streaming,supports_vision,model_kind,access_scope,context_window,cost_tier,reasoning_tier,latency_tier",
+    )
+    .eq("enabled", true)
+    .eq("model_kind", "agent")
+    .eq("access_scope", "campaign")
+    .eq("supports_tools", true)
+    .order("is_base", { ascending: false })
+    .order("cost_tier", { ascending: true })
+    .order("latency_tier", { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  return (data as RouterModel | null) || fallback
+}
+
 export async function assessPlayerSecurity(input: {
   model: RouterModel
   message: string
@@ -173,6 +195,9 @@ export async function assessPlayerSecurity(input: {
       function: { name: "report_player_security_assessment" },
     },
     temperature: 0.05,
+    disableReasoningEffort: true,
+    timeoutMs: 12_000,
+    retryCount: 0,
     allowOwnerOverride: input.allowOwnerOverride === true,
   })
 
