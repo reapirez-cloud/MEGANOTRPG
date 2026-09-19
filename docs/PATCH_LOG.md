@@ -2,6 +2,25 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
+## Active patch — 2026-09-19-J
+
+**Status:** OPEN
+**Branch:** `dev`
+**Base main:** `8639c14dd77c6db4374a536f872a4ab87b87f342`
+**Started:** 2026-09-19
+
+### Player-facing changes
+
+### Database / migration changes
+
+### Runtime and architecture changes
+
+### Tests / verification
+
+### Known incomplete work
+
+---
+
 ## Released patches
 
 ## Patch — 2026-09-19-I
@@ -13,6 +32,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 **Started:** 2026-09-19
 **Released:** 2026-09-19
 **Release identity:** `main / 2026-09-19-I`
+**Release commit:** `8639c14dd77c6db4374a536f872a4ab87b87f342`
 
 ### Player-facing changes
 
@@ -39,6 +59,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Release candidate `dd39c0b349e6e54b44cb834916195d87bb0adaea` passed exact-head CI run `35440478602`; production release `8639c14dd77c6db4374a536f872a4ab87b87f342` passed release CI run `35440618360` and reached Vercel `success`.
 - Added Stage 1–8 catalog regression suites covering hierarchy, read-model ordering, factual context, lifecycle, search/filter behavior, placeholders, resilience, mobile geometry and the final authority/Realtime boundary.
 - Stage 8 head `0b2a5819d6cc7b1d4817c44a4cedf042a51a95d4` passed full CI run `35437152754`: Build, Lint, repository tests, Storybook and Playwright all succeeded.
 - Live Supabase release audit confirmed RLS on all catalog-related tables, authenticated-only chat RPC execution, one personal room per PC (8/8 with zero duplicates), clean alive/dead lifecycle invariants, and all six catalog Realtime sources published.
