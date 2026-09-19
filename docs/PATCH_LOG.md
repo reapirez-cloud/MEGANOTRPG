@@ -11,12 +11,17 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Expanded the character-sheet Abilities stack from five to seven canonical groups: **Класс / Подкласс / Раса / Предыстория / Фиты / Особое / Эффекты**. `Фиты` reads explicit `feat` character features; `Особое` reads generic GM-authored `feature`/`other` rows plus character-bound achievements. Description-only unique traits remain visible even with empty mechanics, so William's canonical `Воровской жаргон`-style feature no longer disappears from the sheet.
+- Corrected the Abilities panel material to the same current premium background-derived glass used by Character Core and Spells (`--cv-panel-glass`, edge/line/specular/filter tokens) instead of the older `--cv-surface-soft` recipe. Feats and Special also receive distinct group icons, and short achievement symbols such as `★` render as authored glyph media.
 ### Database / migration changes
 
 ### Runtime and architecture changes
 
+- Feat/Special mechanics remain owned by Character Runtime / CE. Canonical `character_features` are supplied to the abilities read-model only to preserve presentation for description-only rows; matching runtime rows are deduplicated by `feature:<id>`. Generic `feature`/`other` mechanics now expose `character_special` source semantics and `feat` uses `character_feat`, while canonical suppression identity remains unchanged.
+- Character-bound achievements are read as inspect-only presentation rows under `Особое`; they do not become a second mechanics source. Any mechanical achievement reward still requires a canonical character feature/runtime source. No database schema or RLS change was introduced.
 ### Tests / verification
 
+- Extended abilities read-model/browser coverage to seven groups, including description-only feats, William-style `Воровской жаргон`, read-only achievement rows/glyphs, premium Character/Spells glass tokens, and the seven-panel 320–430px Playwright certification stack.
 ### Known incomplete work
 
 ---
