@@ -128,7 +128,6 @@ test("abilities v2 stage 4 expanded state stays one panel instead of nesting car
 
 
 test("abilities v2 stage 5 makes empty groups quiet and compact", () => {
-  assert.match(contract, /Status: \*\*ACTIVE — Stage 5 locked\*\*/)
   assert.match(contract, /## Stage 5 acceptance/)
   assert.doesNotMatch(features, />\s*Нет умений\s*</)
   assert.doesNotMatch(features, /Источник не назначен/)
@@ -150,5 +149,27 @@ test("abilities v2 stage 5 makes empty groups quiet and compact", () => {
   assert.doesNotMatch(
     styles,
     /\.u1-character-features__panel\[data-empty\]\s*\{\s*opacity:/,
+  )
+})
+
+
+test("abilities v2 stage 6 preserves authored media without stretching or drift", () => {
+  assert.match(contract, /Status: \*\*ACTIVE — Stage 6 locked\*\*/)
+  assert.match(contract, /## Stage 6 acceptance/)
+  assert.match(features, /characterAbilityIconVisual\(row\.icon\)/)
+  assert.match(features, /data-icon-kind=\{visual\.kind\}/)
+  assert.match(features, /data-asset-render=/)
+  assert.match(features, /onError=\{\(\) => setImageFailed\(true\)\}/)
+  assert.match(
+    styles,
+    /\.u1-character-features__ability-icon > img\s*\{[\s\S]*?object-fit:\s*contain[\s\S]*?object-position:\s*50% 50%/,
+  )
+  assert.doesNotMatch(
+    styles,
+    /\.u1-character-features__ability-icon > img\s*\{[\s\S]*?object-fit:\s*cover/,
+  )
+  assert.match(
+    styles,
+    /\.u1-character-features__ability-icon-sprite\s*\{[\s\S]*?background-position:\s*var\(--u1-ability-icon-position, 50% 50%\)[\s\S]*?background-size:\s*var\(--u1-ability-icon-size, contain\)/,
   )
 })
