@@ -38,12 +38,13 @@ test("semantic feature icons reuse existing sheet atlas assets when an exact res
   if (visual.kind !== "atlas") return
 
   assert.equal(visual.render, "mask")
+  const style = visual.style as Record<string, unknown>
   assert.match(
-    String(visual.style["--u1-ability-icon"]),
+    String(style["--u1-ability-icon"]),
     /resources\.png/,
   )
   assert.match(
-    String(visual.style["--u1-ability-icon-size"]),
+    String(style["--u1-ability-icon-size"]),
     /500% 400%/,
   )
 })
@@ -55,8 +56,9 @@ test("class semantic icon slots reuse the existing authored class atlas", () => 
   if (visual.kind !== "atlas") return
 
   assert.equal(visual.render, "image")
+  const style = visual.style as Record<string, unknown>
   assert.match(
-    String(visual.style["--u1-ability-icon"]),
+    String(style["--u1-ability-icon"]),
     /class-resources\.png/,
   )
 })
