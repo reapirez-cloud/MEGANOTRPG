@@ -110,3 +110,19 @@ test("abilities v2 stage 3 uses shared class tokens instead of an abilities-only
     /--abilities-(?:glass|border|accent|surface|shadow|radius)/,
   )
 })
+
+test("abilities v2 stage 4 expanded state stays one panel instead of nesting cards", () => {
+  assert.match(
+    features,
+    /<article[\s\S]*?className="u1-character-features__panel"[\s\S]*?<div[\s\S]*?className="u1-character-features__expanded"/,
+  )
+  assert.doesNotMatch(
+    features,
+    /u1-character-features__(?:ability-card|expanded-card|nested-card)/,
+  )
+  assert.match(
+    styles,
+    /\.u1-character-features__ability-row\s*\{[\s\S]*?background:\s*transparent/,
+  )
+  assert.match(contract, /## Stage 4 acceptance/)
+})
