@@ -60,7 +60,7 @@ test("generate_image is not published to the model before explicit intent", () =
     edge,
     /VOSS_IMAGE_TOOLS\.filter\([\s\S]*imageGenerationRequested[\s\S]*tool\.function\.name !== "generate_image"/,
   )
-  assert.match(edge, /До явной команды обсуждай и уточняй замысел без генерации/)
+  assert.match(edge, /Обсуждение арта, композиции, стиля, промпта и референсов не является разрешением генерировать/)
   assert.match(
     edge,
     /imageGenerationRequested && round === 0[\s\S]*function: \{ name: "generate_image" \}/,
