@@ -9,12 +9,15 @@ import type {
   StoredMechanic,
   StoredMechanicPresentation,
 } from "../types/characterMechanics.ts"
+import type { CharacterFeature } from "../types/characterSheet.ts"
 
 export const CHARACTER_ABILITY_GROUP_ORDER = [
   "class",
   "subclass",
   "race",
   "background",
+  "feat",
+  "special",
   "effect",
 ] as const
 
@@ -75,7 +78,7 @@ export type CharacterAbilitiesReadModel = {
   groups: CharacterAbilityGroup[]
   /**
    * Sources that looked ability-like but could not be assigned safely to one
-   * of the five approved player-facing groups. Keeping this explicit prevents
+   * of the approved player-facing groups. Keeping this explicit prevents
    * a future renderer from silently shoving unknown data into "Эффекты".
    */
   unclassifiedSourceIds: string[]
@@ -100,6 +103,23 @@ export type CharacterAbilitiesReadModelInput = {
   templateBundles?: readonly CharacterTemplateBundle[]
   /** Canonical narrative source name for the Background group. */
   backgroundName?: string
+  /**
+   * Canonical character-authored feature rows. These are presentation metadata
+   * for the panel list; mechanics still come only from Character Runtime / CE.
+   * They are required so description-only feats/specials remain visible.
+   */
+  features?: readonly CharacterFeature[]
+  /**
+   * Character-bound achievements are read-only Special rows. Achievement
+   * rewards do not become mechanics here; any mechanical reward still needs a
+   * canonical feature/runtime source.
+   */
+  achievements?: readonly {
+    id: string
+    title: string
+    description: string
+    icon: string
+  }[]
 }
 
 const GROUP_LABELS: Record<CharacterAbilityGroupKey, string> = {
@@ -107,6 +127,8 @@ const GROUP_LABELS: Record<CharacterAbilityGroupKey, string> = {
   subclass: "Подкласс",
   race: "Раса",
   background: "Предыстория",
+  feat: "Фиты",
+  special: "Особое",
   effect: "Эффекты",
 }
 
@@ -209,6 +231,12 @@ function groupFromSourceType(
     value.includes("background") ||
     value.includes("origin")
   ) return "background"
+  if (value.includes("feat")) return "feat"
+  if (
+    value.includes("special") ||
+    value === "character_feature" ||
+    value.includes("unique")
+  ) return "special"
   if (
     value.includes("effect") ||
     value.includes("status") ||
@@ -223,6 +251,11 @@ function groupFromSourceType(
       featureKind === "background_feature" ||
       featureKind === "background"
     ) return "background"
+    if (featureKind === "feat") return "feat"
+    if (
+      featureKind === "feature" ||
+      featureKind === "other"
+    ) return "special"
     if (
       featureKind === "effect" ||
       featureKind === "condition"
@@ -533,6 +566,31 @@ function templateKindRank(node: TemplateSourceNode | null) {
     : 99
 }
 
+function groupForFeatureKind(
+  kind: CharacterFeature["kind"],
+): CharacterAbilityGroupKey {
+  if (kind === "class_feature") return "class"
+  if (kind === "racial_trait") return "race"
+  if (kind === "background_feature") return "background"
+  if (kind === "effect") return "effect"
+  if (kind === "feat") return "feat"
+  return "special"
+}
+
+function supplementalFeatureSourceName(
+  group: CharacterAbilityGroupKey,
+  backgroundName?: string,
+) {
+  if (group === "background") return text(backgroundName) || "Предыстория"
+  if (group === "effect") return "Активные состояния"
+  if (group === "feat") return "Фит"
+  if (group === "special") return "Особое"
+  if (group === "race") return "Раса"
+  if (group === "subclass") return "Подкласс"
+  return "Класс"
+}
+
+
 export function buildCharacterAbilitiesReadModel(
   input: CharacterAbilitiesReadModelInput,
 ): CharacterAbilitiesReadModel {
@@ -553,7 +611,7 @@ export function buildCharacterAbilitiesReadModel(
   const suppressed = new Set(input.suppressedSourceIds || [])
   const unclassified = new Set<string>()
 
-  const rows = buildBuckets(input.contributions)
+  const runtimeRows = buildBuckets(input.contributions)
     .map((bucket) => {
       const sourceNode = sourceNodeForBucket(bucket, sourceNodesById)
       const group = groupForBucket(bucket, sourceNode)
@@ -640,11 +698,114 @@ export function buildCharacterAbilitiesReadModel(
     )
     .map((entry) => entry.row)
 
+  const rows = [...runtimeRows]
+  const rowsBySourceIdentity = new Map<string, number>()
+  rows.forEach((row, index) => {
+    for (const sourceId of row.sourceIds) {
+      rowsBySourceIdentity.set(normalizedSourceIdentity(sourceId), index)
+    }
+  })
+
+  for (const feature of input.features || []) {
+    const canonicalSourceId = "feature:" + feature.id
+    const group = groupForFeatureKind(feature.kind)
+    const existingIndex = rowsBySourceIdentity.get(canonicalSourceId)
+
+    if (existingIndex !== undefined) {
+      const existing = rows[existingIndex]!
+      rows[existingIndex] = {
+        ...existing,
+        group,
+        id: group + ":" + canonicalSourceId,
+        label: text(feature.name) || existing.label,
+        shortDescription:
+          text(feature.description) || existing.shortDescription,
+        sourceName: supplementalFeatureSourceName(
+          group,
+          input.backgroundName,
+        ),
+        sourceNames: [
+          supplementalFeatureSourceName(group, input.backgroundName),
+        ],
+      }
+      continue
+    }
+
+    const isSuppressed = suppressed.has(canonicalSourceId)
+    rows.push({
+      id: group + ":" + canonicalSourceId,
+      group,
+      sourceId: canonicalSourceId,
+      sourceIds: [canonicalSourceId],
+      sourceName: supplementalFeatureSourceName(
+        group,
+        input.backgroundName,
+      ),
+      sourceNames: [
+        supplementalFeatureSourceName(group, input.backgroundName),
+      ],
+      sourceType:
+        feature.kind === "feat"
+          ? "character_feat"
+          : feature.kind === "feature" || feature.kind === "other"
+            ? "character_special"
+            : "character_" + feature.kind,
+      label: text(feature.name) || "Особенность",
+      shortDescription: text(feature.description),
+      unlockLevel: null,
+      icon: "ability:" + group,
+      status: isSuppressed ? "suppressed" : "active",
+      runtimeAvailable: null,
+      mechanics: [],
+      voss: {
+        explanation: "",
+        nuances: [],
+        comment: "",
+      },
+      capabilities: {
+        inspect: true,
+        suppress: true,
+      },
+    })
+  }
+
+  for (const achievement of input.achievements || []) {
+    rows.push({
+      id: "special:achievement:" + achievement.id,
+      group: "special",
+      sourceId: null,
+      sourceIds: [],
+      sourceName: "Достижение",
+      sourceNames: ["Достижение"],
+      sourceType: "achievement",
+      label: text(achievement.title) || "Достижение",
+      shortDescription: text(achievement.description),
+      unlockLevel: null,
+      icon: text(achievement.icon) || "ability:special",
+      status: "active",
+      runtimeAvailable: null,
+      mechanics: [],
+      voss: {
+        explanation: "",
+        nuances: [],
+        comment: "",
+      },
+      capabilities: {
+        inspect: true,
+        suppress: false,
+      },
+    })
+  }
+
+  rows.sort(rowSort)
+
   const rootSourceNames = new Map<CharacterAbilityGroupKey, string[]>()
   const backgroundName = text(input.backgroundName)
   if (backgroundName) {
     rootSourceNames.set("background", [backgroundName])
   }
+  rootSourceNames.set("feat", ["Черты и таланты"])
+  rootSourceNames.set("special", ["Особенности · достижения"])
   if (rows.some((row) => row.group === "effect")) {
     rootSourceNames.set("effect", ["Активные состояния"])
   }
@@ -672,10 +833,10 @@ export function buildCharacterAbilitiesReadModel(
     const groupRows = rows
       .filter((row) => row.group === key)
       .sort(rowSort)
-    const sourceNames = uniqueSorted([
-      ...(rootSourceNames.get(key) || []),
-      ...groupRows.map((row) => row.sourceName),
-    ])
+    const rootNames = rootSourceNames.get(key) || []
+    const sourceNames = rootNames.length
+      ? uniqueSorted(rootNames)
+      : uniqueSorted(groupRows.map((row) => row.sourceName))
     const suppressedCount = groupRows.filter(
       (row) => row.status === "suppressed",
     ).length
