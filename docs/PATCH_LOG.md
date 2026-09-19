@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Abilities v2 Stage 4 rebuilds the expanded state as a compact continuation of the same panel: the header stays in place, the full ability list opens below a soft divider, rows shrink to ~46px with 24px icons, descriptions stay on one ellipsized line, and narrow screens use ~44px rows with 22px icons. No nested ability cards were introduced.
 - Abilities v2 Stage 3 removes the abilities-only skin and reuses the exact Character/Spells material language: shared `--cv-surface-soft` glass, `--cv-line` borders, the same inset frame/radius/shadow recipe, and class tinting exclusively through existing `--cv-accent*` tokens. Stage 2 geometry is unchanged.
 - Abilities v2 Stage 2 rebuilds the collapsed five-panel anatomy to match the reference proportions while staying inside the existing MEGANOT sheet: the identity side now yields more width to the ability-preview side, previews remain a compact three-row list, and `ещё N` sits beside the far-right chevron instead of becoming a stray fourth row.
 - Started Abilities v2 visual correction: removed the copied standalone `УМЕНИЯ` heading/slogan so the five ability panels now begin directly in the existing character-sheet flow beneath the unchanged MEGANOT character/background shell. The reference is now treated as panel-composition guidance only, not as a page skin.
@@ -18,11 +19,13 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Abilities v2 Stage 4 changes only expanded-list presentation. Stage 2 collapsed geometry, Stage 3 shared Character/Spells skin, accordion state, Snake actions, suppression authority, Character Runtime and CE resolution remain unchanged.
 - Abilities v2 Stage 3 is CSS/presentation-only. It introduces no abilities-specific theme variables and does not touch the page background, masthead, read-model, Character Runtime, CE, Snake, suppression, permissions or canonical data sources.
 - Abilities v2 Stage 2 is presentation-only. The existing read-model, accordion state, Snake entity/actions, manager suppression callback and CE/runtime ownership paths are unchanged; only `CharacterSheetFeatures` collapsed markup and its CSS grid geometry were adjusted.
 - Added `docs/ABILITIES_VISUAL_REWORK_CONTRACT.md` to lock ownership for the v2 presentation pass: CharacterSheet keeps the masthead/art/background, Character+Spells remain the only visual-language source through shared `--cv-*` tokens, and the Abilities rewrite is presentation-only over the already-certified read-model/Snake/suppression mechanics.
 ### Tests / verification
 
+- Extended abilities accordion/visual regressions to lock compact expanded rows, single-line descriptions, same-panel expansion, narrow-screen sizing and the absence of nested expanded-card surfaces.
 - Abilities v2 Stage 3 full CI passed on run `35422578313`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully.
 - Extended the abilities visual/panel regressions to require the shared Spells surface recipe, shared class-accent tokens and absence of abilities-only skin variables or the superseded custom radial panel glow.
 - Abilities v2 Stage 2 full CI passed on run `35365104120`: Build, Lint, repository tests, Storybook build and Playwright smoke all completed successfully.
