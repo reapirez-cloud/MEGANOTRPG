@@ -28,7 +28,7 @@
 
 .u1-character-features__panels {
   display: grid;
-  gap: 10px;
+  gap: clamp(8px, 2.2vw, 11px);
 }
 
 .u1-character-features__panel {
@@ -36,33 +36,22 @@
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--cv-line);
-  border-radius: 12px;
+  border-radius: clamp(8px, 2.2vw, 11px);
   background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--cv-accent) 5%, transparent),
-      transparent 54%
-    ),
-    color-mix(in srgb, var(--cv-surface) 92%, transparent);
+    linear-gradient(180deg, rgba(255,255,255,.025), transparent 42%),
+    var(--cv-surface-soft);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.022),
-    0 12px 28px rgba(0,0,0,.1);
-  isolation: isolate;
+    inset 0 1px 0 rgba(255,255,255,.035),
+    0 7px 18px rgba(0,0,0,.14);
 }
 
 .u1-character-features__panel::before {
   content: "";
   position: absolute;
-  inset: 0;
-  z-index: -1;
+  inset: 3px;
+  border: 1px solid var(--cv-line-soft);
+  border-radius: clamp(6px, 1.7vw, 9px);
   pointer-events: none;
-  background:
-    radial-gradient(
-      circle at 16% 18%,
-      color-mix(in srgb, var(--cv-accent) 8%, transparent),
-      transparent 34%
-    );
-  opacity: .72;
 }
 
 .u1-character-features__panel-head {
@@ -74,6 +63,8 @@
 }
 
 .u1-character-features__panel-source {
+  position: relative;
+  z-index: 1;
   width: 100%;
   min-width: 0;
   border: 0;
@@ -113,15 +104,13 @@
   aspect-ratio: 1 / 1;
   display: grid;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--cv-accent) 42%, var(--cv-line));
+  border: 1px solid var(--cv-accent-line);
   border-radius: 50%;
   background:
-    radial-gradient(circle at 34% 28%, rgba(255,255,255,.045), transparent 42%),
-    color-mix(in srgb, var(--cv-accent) 7%, rgba(12,13,14,.7));
-  color: color-mix(in srgb, var(--cv-accent) 72%, var(--cv-text-soft));
-  box-shadow:
-    inset 0 0 0 4px rgba(0,0,0,.11),
-    0 0 16px color-mix(in srgb, var(--cv-accent) 7%, transparent);
+    radial-gradient(circle at 50% 45%, var(--cv-accent-soft), transparent 62%),
+    rgba(0,0,0,.16);
+  color: var(--cv-accent);
+  box-shadow: inset 0 0 12px rgba(0,0,0,.22);
 }
 
 .u1-character-features__panel-icon > svg {
@@ -129,9 +118,7 @@
   height: 52%;
   display: block;
   overflow: visible;
-  filter: drop-shadow(
-    0 0 5px color-mix(in srgb, var(--cv-accent) 15%, transparent)
-  );
+  filter: drop-shadow(0 0 7px var(--cv-accent-soft));
 }
 
 .u1-character-features__panel-identity {
@@ -163,6 +150,8 @@
 }
 
 .u1-character-features__panel-summary {
+  position: relative;
+  z-index: 1;
   min-width: 0;
   padding: 9px clamp(8px, 2.3vw, 11px) 9px clamp(10px, 2.8vw, 13px);
   border-left: 1px solid var(--cv-line-soft);
@@ -170,12 +159,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: clamp(7px, 2vw, 10px);
-  background:
-    linear-gradient(
-      90deg,
-      rgba(255,255,255,.01),
-      rgba(255,255,255,.018)
-    );
+  background: transparent;
 }
 
 .u1-character-features__preview {
@@ -239,12 +223,13 @@
   display: grid;
   place-items: center;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--cv-accent) 26%, var(--cv-line));
-  border-radius: 4px;
+  border: 1px solid var(--cv-line);
+  border-radius: clamp(4px, 1.1vw, 6px);
   background:
-    color-mix(in srgb, var(--cv-accent) 5%, rgba(10,11,12,.62));
-  color:
-    color-mix(in srgb, var(--cv-accent) 64%, var(--cv-text-muted));
+    radial-gradient(circle at 50% 45%, var(--cv-accent-soft), transparent 62%),
+    rgba(0,0,0,.16);
+  color: var(--cv-text-muted);
+  box-shadow: inset 0 0 8px rgba(0,0,0,.18);
   box-sizing: border-box;
 }
 
@@ -272,7 +257,7 @@
 }
 
 .u1-character-features__opened-count {
-  color: color-mix(in srgb, var(--cv-accent) 66%, var(--cv-text-soft));
+  color: var(--cv-accent);
 }
 
 .u1-character-features__panel-chevron-button {
@@ -296,7 +281,7 @@
 }
 
 .u1-character-features__panel-chevron {
-  color: color-mix(in srgb, var(--cv-accent) 62%, var(--cv-text-faint));
+  color: var(--cv-text-faint);
   font-family: Georgia, "Times New Roman", serif;
   font-size: 18px;
   line-height: 1;
@@ -311,13 +296,10 @@
 }
 
 .u1-character-features__expanded {
+  position: relative;
+  z-index: 1;
   border-top: 1px solid var(--cv-line-soft);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--cv-accent) 3%, transparent),
-      transparent 48%
-    );
+  background: transparent;
 }
 
 .u1-character-features__expanded[hidden] {
@@ -415,7 +397,8 @@
 .u1-character-features__panel-icon {
   color: var(--cv-text-faint);
   border-color: var(--cv-line);
-  box-shadow: inset 0 0 0 4px rgba(0,0,0,.1);
+  background: rgba(0,0,0,.12);
+  box-shadow: inset 0 0 10px rgba(0,0,0,.16);
 }
 
 .u1-character-features__panel[data-empty]
