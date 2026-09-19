@@ -969,19 +969,25 @@ Deno.serve(async (req: Request) => {
                 args,
               )
             : imageTool
-              ? await executeVossImageTool(
-                {
-                  userClient: authority === "admin" ? admin : userClient,
-                  admin,
-                  campaignId,
-                  userId: user.id,
-                  threadId,
-                  viewContext,
-                  isOwner: authority === "admin",
-                },
-                toolName,
-                args,
-              )
+              ? toolName === "generate_image" && !imageGenerationRequested
+                ? {
+                    error: "explicit_image_generation_command_required",
+                    message:
+                      "Image generation is locked until the current user message contains an explicit draw/generation command.",
+                  }
+                : await executeVossImageTool(
+                  {
+                    userClient: authority === "admin" ? admin : userClient,
+                    admin,
+                    campaignId,
+                    userId: user.id,
+                    threadId,
+                    viewContext,
+                    isOwner: authority === "admin",
+                  },
+                  toolName,
+                  args,
+                )
               : draftTool
                 ? await executeVossDraftTool(
                   {
