@@ -96,13 +96,13 @@ test("abilities v2 stage 2 keeps more-count and chevron in a compact right-side 
 
 test("abilities v2 stage 3 uses shared class tokens instead of an abilities-only skin", () => {
   assert.match(contract, /## Stage 3 acceptance/)
-  assert.match(styles, /background:[\s\S]*?var\(--cv-surface-soft\)/)
-  assert.match(styles, /border: 1px solid var\(--cv-accent-line\)/)
+  assert.match(styles, /background:\s*var\(--cv-panel-glass\)/)
+  assert.match(styles, /border: 1px solid var\(--cv-panel-edge\)/)
   assert.match(styles, /var\(--cv-accent-soft\)/)
   assert.match(styles, /color: var\(--cv-accent\)/)
   assert.doesNotMatch(
     styles,
-    /color-mix\(in srgb, var\(--cv-surface\)|radial-gradient\(\s*circle at 16% 18%/,
+    /\.u1-character-features__panel\s*\{[\s\S]*?var\(--cv-surface-soft\)|radial-gradient\(\s*circle at 16% 18%/,
   )
   assert.doesNotMatch(
     styles,
@@ -171,4 +171,22 @@ test("abilities v2 stage 6 preserves authored media without stretching or drift"
     styles,
     /\.u1-character-features__ability-icon-sprite\s*\{[\s\S]*?background-position:\s*var\(--u1-ability-icon-position, 50% 50%\)[\s\S]*?background-size:\s*var\(--u1-ability-icon-size, contain\)/,
   )
+})
+
+
+test("post-READY source completeness adds Feats and Special without inventing mechanics", () => {
+  assert.match(
+    fs.readFileSync(
+      "src/ui-v1-isolated/characterAbilitiesReadModel.ts",
+      "utf8",
+    ),
+    /"background",[\s\S]*?"feat",[\s\S]*?"special",[\s\S]*?"effect"/,
+  )
+  assert.match(features, /group === "feat"/)
+  assert.match(features, /group === "special"/)
+  assert.match(styles, /var\(--cv-panel-glass\)/)
+  assert.match(styles, /var\(--cv-panel-edge\)/)
+  assert.match(styles, /var\(--cv-panel-line\)/)
+  assert.match(styles, /var\(--cv-panel-specular\)/)
+  assert.match(styles, /var\(--cv-panel-filter\)/)
 })
