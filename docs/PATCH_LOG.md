@@ -2,6 +2,32 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
+## Active patch — 2026-09-19-L
+
+**Status:** OPEN
+**Branch:** `dev`
+**Base main:** `54783c111e1307e00efff2333b36295060fc85da`
+**Started:** 2026-09-19
+
+### Player-facing changes
+
+- AI image generation no longer starts from ordinary art discussion, composition/style planning, prompt drafting, references, or vague requests such as “сделай концепт”. Voss/Freddy waits for a clear current-turn draw/generation command such as “рисуй”, “нарисуй” or “сгенерируй изображение”.
+
+### Database / migration changes
+
+### Runtime and architecture changes
+
+- Added a deterministic image-intent gate. `generate_image` is removed from the model’s published tool set until the current user message contains an explicit positive drawing command, so model initiative cannot spend image-generation tokens during discussion.
+- The previous broad `image subject + сделай/создать` heuristic was removed. Negated commands such as “не рисуй пока” remain discussion-only.
+
+### Tests / verification
+
+- Added regressions covering positive draw commands and non-generating discussion/negation/quoted-command cases, plus a source guard requiring `generate_image` to stay unpublished before explicit intent.
+
+### Known incomplete work
+
+---
+
 ## Released patches
 
 ## Patch — 2026-09-19-K
