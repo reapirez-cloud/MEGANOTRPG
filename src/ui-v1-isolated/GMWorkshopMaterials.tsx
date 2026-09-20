@@ -77,11 +77,11 @@ export default function GMWorkshopMaterials({
     {
       screen: "gm-workshop-materials",
       title: currentFolder
-        ? "Материалы · " + currentFolder.name
-        : "Мастерская · Материалы",
+        ? "Личные материалы · " + currentFolder.name
+        : "Мастерская · Личные материалы",
       text: currentFolder
         ? "GM открыл папку материалов «" + currentFolder.name + "»."
-        : "GM просматривает материалы рабочего пространства.",
+        : "GM просматривает своё личное рабочее пространство. Другие GM эти материалы не видят.",
       entity: currentFolder
         ? {
             type: "gm-folder",
@@ -118,7 +118,7 @@ export default function GMWorkshopMaterials({
       label: "Новая заметка",
       surface: {
         kind: "editor",
-        eyebrow: "Материалы · только GM",
+        eyebrow: "Личные материалы · только ты",
         title: "Новая заметка",
         size: { width: "wide", height: "tall" },
         fields: [
@@ -158,7 +158,7 @@ export default function GMWorkshopMaterials({
       label: "Новая папка",
       surface: {
         kind: "editor",
-        eyebrow: "Материалы · только GM",
+        eyebrow: "Личные материалы · только ты",
         title: "Новая папка",
         fields: [
           { id: "name", label: "Название", type: "text", required: true },
@@ -192,7 +192,7 @@ export default function GMWorkshopMaterials({
       label: "Редактировать заметку",
       surface: {
         kind: "editor",
-        eyebrow: "Материалы · только GM",
+        eyebrow: "Личные материалы · только ты",
         title: material.title,
         size: { width: "wide", height: "tall" },
         fields: [
@@ -269,7 +269,7 @@ export default function GMWorkshopMaterials({
         label: "Переименовать",
         surface: {
           kind: "editor",
-          eyebrow: "Материалы · только GM",
+          eyebrow: "Личные материалы · только ты",
           title: folder.name,
           fields: [
             { id: "name", label: "Название", type: "text", required: true },
@@ -361,7 +361,7 @@ export default function GMWorkshopMaterials({
           kind: "confirm",
           eyebrow: "Материалы",
           title: "Удалить «" + folder.name + "»?",
-          body: "Материалы останутся и перейдут в «Без папки».",
+          body: "Материалы из этой папки перейдут в «Без папки». Дочерние папки сохранятся и поднимутся на уровень выше.",
           confirmLabel: "Удалить",
         },
         execute: async () => {
@@ -483,7 +483,7 @@ export default function GMWorkshopMaterials({
                   label: "Открыть заметку",
                   surface: {
                     kind: "detail",
-                    eyebrow: "Материалы · только GM",
+                    eyebrow: "Личные материалы · только ты",
                     title: material.title,
                     body: material.body || "Пустая заметка.",
                   },
@@ -600,7 +600,7 @@ export default function GMWorkshopMaterials({
 
                   snake.openSurface({
                     kind: "detail",
-                    eyebrow: "Материалы · только GM",
+                    eyebrow: "Личные материалы · только ты",
                     title: material.title,
                     body: material.body || "Пустая заметка.",
                   })
