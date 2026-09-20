@@ -86,7 +86,7 @@ test("AI model still has no tool that can approve or apply a draft", () => {
 })
 
 test("GM Workshop requires an explicit confirmation before apply", () => {
-  const workshop = read("src/ui-v1-isolated/GMWorkshopDraft.tsx")
+  const workshop = read("src/ui-v1-isolated/GMWorkshopReview.tsx")
 
   assert.match(workshop, /approveAIDraft/)
   assert.match(workshop, /kind: "confirm"/)
