@@ -11,6 +11,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Chats restores the compact **9:16 portrait-card** layout for personal histories and now uses the same card geometry for active scenes and completed rooms. Artwork fills the entire card while title, factual context, message preview, activity and unread state live in a dedicated readable overlay layer; Flood remains compact.
+- Chat-room Snake actions are now real management tools for GM/Owner: a personal history or scene can receive/replace its preview artwork through the shared 9:16 Media surface, while **Delete** exists only for scenes. Personal histories never expose a delete action.
+
 - AI image generation no longer starts from ordinary art discussion, composition/style planning, prompt drafting, references, or vague requests such as “сделай концепт”. Voss/Freddy waits for a clear current-turn draw/generation command such as “рисуй”, “нарисуй” or “сгенерируй изображение”.
 - Voss/Freddy chat is lighter and more responsive: ordinary conversation no longer publishes unrelated tool families, player security checks run in the accepted background turn with a lightweight profile, provider calls have bounded timeout/retry behavior, and pending replies no longer re-fetch the full thread catalog on every poll.
 - AI chat UX now locks destructive thread/model changes while a reply is pending, supports Ctrl/Cmd+Enter, improves mobile text/touch sizing and dialog focus, and shows useful fallback/degraded routing state only when relevant.
@@ -18,7 +21,12 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Database / migration changes
 
+- Added `chat_catalog_portrait_snake_actions`: manager-only chat preview binding persists uploaded preview media plus the normalized Snake crop presentation, and idempotent `delete_game_scene_v1` rejects every non-scene room before deletion. Scene-owned messages, participants, surfaces and other room children remain covered by their existing `ON DELETE CASCADE` foreign keys.
+
 ### Runtime and architecture changes
+
+- Scene deletion follows the named-engine path `Snake -> Oracle -> Larisa -> delete_game_scene_v1`; React does not delete `chat_rooms` directly. Preview artwork remains a presentation mutation and is registered in the shared media asset/binding system instead of becoming a second chat-specific image store.
+- The catalog adapter now reads saved chat-room media presentations, resolves private campaign media, and reapplies the normalized crop to the 9:16 card renderer. The three card sections reuse one `portraitCard` component rather than separate personal/event/archive visual implementations.
 
 - Added a deterministic image-intent gate. `generate_image` is removed from the model’s published tool set until the current user message contains an explicit positive drawing command, so model initiative cannot spend image-generation tokens during discussion.
 - The previous broad `image subject + сделай/создать` heuristic was removed. Negated commands such as “не рисуй пока” remain discussion-only.
@@ -30,6 +38,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - The current AI foundation document was reconciled with the actual per-user model choice, authority split and task-scoped runtime.
 
 ### Tests / verification
+
+- Updated UI 1.0 chat regressions to lock shared 9:16 full-bleed cards, the explicit text-overlay layer, Snake preview composition, scene-only deletion, Oracle/Larisa routing and the server-side non-scene delete guard.
 
 - Added regressions covering positive draw commands and non-generating discussion/negation/quoted-command cases, plus a source guard requiring `generate_image` to stay unpublished before explicit intent.
 - Added/updated regression coverage for lightweight security classification, provider timeout/retry, task-scoped tools/prompts, player capability fallback, tail polling, pending-state UI locks, exact generated-image references, cancel/retry controls and image-reply finalization.
