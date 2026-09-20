@@ -5,6 +5,7 @@ import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
 import { deleteCampaignMediaObject, uploadCampaignFile } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
 import { oracle } from "../oracle-engine/runtime.ts"
+import { chasovoy } from "../reference-engine/runtime.ts"
 import {
   normalizeDefinitionSlug,
   type ChasovoyDefinition,
