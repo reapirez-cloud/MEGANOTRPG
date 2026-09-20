@@ -8,7 +8,7 @@ const choiceRuntime = fs.readFileSync("src/rule-templates/CHOICE_RUNTIME.md", "u
 const typesSource = fs.readFileSync("src/rule-templates/types.ts", "utf8")
 const resolverSource = fs.readFileSync("src/rule-templates/resolver.ts", "utf8")
 const characterContext = fs.readFileSync("src/context/CharacterContext.tsx", "utf8")
-const appSource = fs.readFileSync("src/App.tsx", "utf8")
+const workspaceData = fs.readFileSync("src/ui-v1-isolated/useWorkspaceData.ts", "utf8")
 
 test("repository keeps AI/developer architecture instructions discoverable from code", () => {
   assert.match(root, /Active class \/ Character Engine work is done on `dev`/)
