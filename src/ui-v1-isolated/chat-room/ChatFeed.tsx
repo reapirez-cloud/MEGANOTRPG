@@ -125,6 +125,7 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
     error,
     reload,
     loadOlder,
+    markRead,
   } = useChatRoomEvents(roomId)
 
   const feedRef = useRef<HTMLDivElement | null>(null)
@@ -137,6 +138,19 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
     scrollTop: number
   } | null>(null)
   const [unseenCount, setUnseenCount] = useState(0)
+  const lastMarkedReadRef = useRef<number | null>(null)
+
+  const markLatestRead = useCallback(() => {
+    const lastId = events.length ? events[events.length - 1].id : null
+    if (!lastId || lastMarkedReadRef.current === lastId) return
+
+    lastMarkedReadRef.current = lastId
+    void markRead(lastId).then((ok) => {
+      if (!ok && lastMarkedReadRef.current === lastId) {
+        lastMarkedReadRef.current = null
+      }
+    })
+  }, [events, markRead])
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     const feed = feedRef.current
@@ -169,7 +183,8 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
     pinnedToBottomRef.current = true
     initialPositionedRef.current = true
     previousLastIdRef.current = events.length ? events[events.length - 1].id : null
-  }, [events, loading])
+    markLatestRead()
+  }, [events, loading, markLatestRead])
 
   useEffect(() => {
     const restore = pendingRestoreRef.current
@@ -204,12 +219,15 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
 
     if (pinnedToBottomRef.current || forceFollowNextRef.current) {
       forceFollowNextRef.current = false
-      window.requestAnimationFrame(() => scrollToBottom("smooth"))
+      window.requestAnimationFrame(() => {
+        scrollToBottom("smooth")
+        markLatestRead()
+      })
       return
     }
 
     setUnseenCount((current) => current + newCount)
-  }, [events, scrollToBottom])
+  }, [events, markLatestRead, scrollToBottom])
 
   useEffect(() => {
     const handleOwnMessage = (event: Event) => {
@@ -218,13 +236,14 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
 
       forceFollowNextRef.current = true
       scrollToBottom("smooth")
+      markLatestRead()
     }
 
     window.addEventListener(CHAT_MESSAGE_SENT_EVENT, handleOwnMessage)
     return () => {
       window.removeEventListener(CHAT_MESSAGE_SENT_EVENT, handleOwnMessage)
     }
-  }, [roomId, scrollToBottom])
+  }, [markLatestRead, roomId, scrollToBottom])
 
   const handleScroll = () => {
     const feed = feedRef.current
@@ -235,7 +254,10 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
     const pinned = distanceFromBottom <= BOTTOM_THRESHOLD
     pinnedToBottomRef.current = pinned
 
-    if (pinned && unseenCount) setUnseenCount(0)
+    if (pinned) {
+      if (unseenCount) setUnseenCount(0)
+      markLatestRead()
+    }
 
     if (
       feed.scrollTop <= LOAD_OLDER_THRESHOLD &&
@@ -324,7 +346,10 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
         <button
           type="button"
           className="u1-room-feed__new"
-          onClick={() => scrollToBottom("smooth")}
+          onClick={() => {
+            scrollToBottom("smooth")
+            markLatestRead()
+          }}
           aria-label={"Новых сообщений: " + unseenCount + ". Перейти вниз"}
         >
           <span>{unseenCount}</span>
