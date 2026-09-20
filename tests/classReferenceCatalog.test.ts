@@ -4,6 +4,7 @@ import test from "node:test"
 
 const app = fs.readFileSync("src/ui-v1-isolated/UiV1App.tsx", "utf8")
 const reference = fs.readFileSync("src/ui-v1-isolated/SectionScreens.tsx", "utf8")
+const presentation = fs.readFileSync("src/ui-v1-isolated/classReferencePresentation.ts", "utf8")
 const druid = fs.readFileSync("src/data/classes/druidReference.ts", "utf8")
 const clarity = fs.readFileSync("supabase/migrations/20260828010000_druid_rule_clarity.sql", "utf8")
 
