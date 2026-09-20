@@ -225,7 +225,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
     return (
       <main
         className="u1-room-shell"
-        data-chat-room-stage="6"
+        data-chat-room-stage="7"
         style={viewportStyle}
       >
         <div className="u1-room-topbar">
@@ -260,7 +260,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
   return (
     <main
       className="u1-room-shell"
-      data-chat-room-stage="6"
+      data-chat-room-stage="7"
       data-room-type={model.roomType}
       data-has-identity={Boolean(model.identity) || undefined}
       style={viewportStyle}
