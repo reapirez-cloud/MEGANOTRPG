@@ -52,3 +52,15 @@ test("Freddy treats fill-out tavern phrasing as manager mutation intent", () => 
   assert.match(edge, /проработай\|проработать/)
   assert.match(edge, /таверн\|комнат\|помещен/)
 })
+
+
+test("Freddy recovers DeepSeek textual tool calls instead of saving them as answers", () => {
+  const edge = read("supabase/functions/voss-agent/index.ts")
+
+  assert.match(edge, /function recoverTextToolCalls/)
+  assert.match(edge, /allowedToolNames/)
+  assert.match(edge, /"text-tool-" \+ round/)
+  assert.match(edge, /const recoveredTextCalls = nativeToolCalls\.length/)
+  assert.match(edge, /toolCalls = nativeToolCalls\.length/)
+  assert.match(edge, /timeoutMs: isFreddyTurn \? 65_000 : 45_000/)
+})
