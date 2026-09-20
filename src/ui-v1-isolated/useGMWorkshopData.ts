@@ -108,7 +108,12 @@ export type WorkshopOperations = {
   ) => Promise<WorkshopMutationResult & { id?: string }>
   updateCharacter: (
     characterId: string,
-    input: { name: string; characterType: "pc" | "npc"; bio: string },
+    input: { name: string; bio: string },
+  ) => Promise<WorkshopMutationResult>
+  convertCharacterType: (
+    characterId: string,
+    characterType: "pc" | "npc",
+    npcVisibilityMode?: "always" | "discover",
   ) => Promise<WorkshopMutationResult>
   assignTemplate: (
     characterId: string,
@@ -752,32 +757,39 @@ export function useGMWorkshopData(
       if (!character) return { ok: false, error: "Персонаж не найден." }
 
       return mutate(
-        async () => {
-          if (character.characterType === "npc" && input.characterType === "pc") {
-            const habitatIds = state.npcHabitats
-              .filter((link) => link.npcCharacterId === characterId)
-              .map((link) => link.locationId)
-            for (const locationId of habitatIds) {
-              await oracle.world.setNpcHabitat(context(), characterId, locationId, false)
-            }
-          }
-
-          await oracle.characters.update(context(), characterId, {
-            name: input.name.trim(),
-            character_class: character.characterClass,
-            level: character.level,
-            bio: input.bio.trim(),
-            avatar_url: character.avatarStoragePath,
-            assigned_user_id: input.characterType === "pc" ? character.assignedUserId : null,
-            character_type: input.characterType,
-            visibility: character.publicationState === "draft" ? "private" : "campaign",
-            visibility_mode: input.characterType === "npc"
-              ? character.visibilityMode
-              : character.publicationState === "draft" ? "private" : "always",
-            publication_state: character.publicationState,
-          })
-        },
+        () => oracle.characters.update(context(), characterId, {
+          name: input.name.trim(),
+          character_class: character.characterClass,
+          level: character.level,
+          bio: input.bio.trim(),
+          avatar_url: character.avatarStoragePath,
+          assigned_user_id: character.characterType === "pc"
+            ? character.assignedUserId
+            : null,
+          character_type: character.characterType,
+          visibility: character.publicationState === "draft"
+            ? "private"
+            : character.visibilityMode === "private" ? "private" : "campaign",
+          visibility_mode: character.visibilityMode,
+          publication_state: character.publicationState,
+        }),
         "Не удалось сохранить персонажа.",
+      )
+    },
+
+    convertCharacterType(characterId, characterType, npcVisibilityMode) {
+      const character = state.characters.find((item) => item.id === characterId)
+      if (!character) return Promise.resolve({ ok: false, error: "Персонаж не найден." })
+      if (character.characterType === characterType) return Promise.resolve({ ok: true })
+
+      return mutate(
+        () => oracle.characters.convertType(
+          context(),
+          characterId,
+          characterType,
+          npcVisibilityMode,
+        ),
+        "Не удалось преобразовать персонажа.",
       )
     },
 
