@@ -8,7 +8,7 @@ import ChatComposer from "./ChatComposer"
 import ChatFeed from "./ChatFeed"
 import { useChatRoomShell } from "./useChatRoomShell"
 import { useChatVisualViewportHeight } from "./useChatVisualViewport"
-import "./chat-room-stage1.css"
+import "./chat-room.css"
 
 type QuickActionId = "inventory" | "class" | "spells" | "attack"
 
@@ -132,7 +132,7 @@ function CharacterHeader({
       <div className="u1-room-character__main">
         <div className="u1-room-character__identity">
           <span>{identity.kind === "narrator" ? "Голос мастера" : "Персонаж"}</span>
-          <h1>{name}</h1>
+          <h1 title={name}>{name}</h1>
           <p>
             {character
               ? character.className + " · " + character.level + " уровень"
@@ -154,7 +154,9 @@ function CharacterHeader({
         <i aria-hidden="true" />
         <div>
           <span>Локация</span>
-          <strong>{model.context.locationName || "Не определена"}</strong>
+          <strong title={model.context.locationName || "Не определена"}>
+            {model.context.locationName || "Не определена"}
+          </strong>
         </div>
       </div>
     </section>
@@ -185,6 +187,7 @@ function QuickActions({
           data-action={action.id}
           data-placeholder="true"
           aria-label={action.label + " — будет подключено позже"}
+          title={action.label}
           onClick={() => undefined}
         >
           <span className="u1-room-quick-action__icon">
@@ -205,7 +208,7 @@ function LoadingShell() {
         <span className="u1-room-skeleton u1-room-skeleton--title" />
       </div>
       <div className="u1-room-skeleton u1-room-skeleton--hero" />
-      <div className="u1-room-feed-placeholder" aria-hidden="true" />
+      <div className="u1-room-skeleton u1-room-skeleton--feed" aria-hidden="true" />
     </main>
   )
 }
@@ -225,7 +228,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
     return (
       <main
         className="u1-room-shell"
-        data-chat-room-stage="7"
+        data-chat-room-stage="8"
         style={viewportStyle}
       >
         <div className="u1-room-topbar">
@@ -255,14 +258,18 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
   }
 
   const hasCharacterIdentity =
-    model.identity?.kind === "character" && model.quickActions.hasCharacter
+    model.canWrite &&
+    model.identity?.kind === "character" &&
+    model.quickActions.hasCharacter
 
   return (
     <main
       className="u1-room-shell"
-      data-chat-room-stage="7"
+      data-chat-room-stage="8"
       data-room-type={model.roomType}
       data-has-identity={Boolean(model.identity) || undefined}
+      data-observer={!model.identity || undefined}
+      data-read-only={model.readOnly || undefined}
       style={viewportStyle}
     >
       <header className="u1-room-topbar">
@@ -285,7 +292,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
                 ? "Сцена"
                 : "Флуд"}
           </span>
-          <strong>{model.roomTitle}</strong>
+          <strong title={model.roomTitle}>{model.roomTitle}</strong>
         </div>
 
         {model.readOnly ? (
