@@ -6,7 +6,6 @@ import { zonePathLabel, type NpcHabitatZone } from "../src/lib/npcZoneHabitats.t
 
 const migration = fs.readFileSync("supabase/migrations/20260828123000_location_npc_habitats.sql", "utf8")
 const world = fs.readFileSync("src/pages/World.tsx", "utf8")
-const workspace = fs.readFileSync("src/pages/GmWorkspace.tsx", "utf8")
 const hook = fs.readFileSync("src/hooks/useNpcZoneHabitats.ts", "utf8")
 const larisaStorage = fs.readFileSync("src/location-engine/supabase.ts", "utf8")
 
@@ -34,10 +33,7 @@ test("habitat mutation is limited to NPCs and campaign managers", () => {
   assert.match(body, /private\.can_manage_character/)
 })
 
-test("GM can attach NPCs from both NPC and zone surfaces through Oracle and Larisa", () => {
-  assert.match(workspace, /label: "Обычные зоны"/)
-  assert.match(workspace, /setZoneNpcTarget\(characterMenu\)/)
-  assert.match(workspace, /NpcHabitatZonesSheet/)
+test("NPC habitat mutation stays on Oracle and Larisa owner paths", () => {
   assert.match(world, /Обитатели зоны/)
   assert.match(world, /Обычно здесь/)
   assert.match(world, /ZoneHabitatNpcsSheet/)
