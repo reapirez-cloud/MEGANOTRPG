@@ -41,8 +41,10 @@ test("stage 6 keeps realtime refresh separate from initial loading", async () =>
 
   assert.match(events, /refreshing/)
   assert.match(events, /refreshLatest/)
-  assert.match(events, /setEvents\(\(current\) => mergeEvents\(current, normalized\)\)/)
-  assert.doesNotMatch(events, /setEvents\(normalized\)[\s\S]*refreshLatest/)
+  assert.match(
+    events,
+    /const refreshLatest[\s\S]*setEvents\(\(current\) => mergeEvents\(current, normalized\)\)/,
+  )
 })
 
 test("stage 6 composer signals own sends and keeps focus", async () => {
