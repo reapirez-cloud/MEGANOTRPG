@@ -1,9 +1,7 @@
 import { useEffect, useRef } from "react"
 
-import {
-  chatEventTypeLabel,
-  type UiChatEvent,
-} from "./chatEventModel"
+import ChatGameEventCard from "./ChatGameEventCard"
+import type { UiChatEvent } from "./chatEventModel"
 import { useChatRoomEvents } from "./useChatRoomEvents"
 
 function formatMessageTime(value: string) {
@@ -34,30 +32,6 @@ function AuthorAvatar({ event }: { event: UiChatEvent }) {
     <span className="u1-room-event__avatar u1-room-event__avatar--fallback" aria-hidden="true">
       {(event.author.name.trim()[0] || "◇").toLocaleUpperCase("ru-RU")}
     </span>
-  )
-}
-
-function GameEvent({ event }: { event: UiChatEvent }) {
-  return (
-    <article
-      className="u1-room-game-event"
-      data-event-type={event.type}
-      aria-label={chatEventTypeLabel(event.type)}
-    >
-      <span className="u1-room-game-event__rail" aria-hidden="true" />
-      <div className="u1-room-game-event__body">
-        <div className="u1-room-game-event__meta">
-          <span>{chatEventTypeLabel(event.type)}</span>
-          <time>{formatMessageTime(event.createdAt)}</time>
-        </div>
-        <strong>{event.game?.label || event.body || chatEventTypeLabel(event.type)}</strong>
-        {event.game?.detail ? <small>{event.game.detail}</small> : null}
-        {event.body && event.body !== event.game?.label ? (
-          <p>{event.body}</p>
-        ) : null}
-        <em>{event.author.name}</em>
-      </div>
-    </article>
   )
 }
 
@@ -116,7 +90,7 @@ function EventRow({ event }: { event: UiChatEvent }) {
     event.type === "item" ||
     event.type === "class_ability"
   ) {
-    return <GameEvent event={event} />
+    return <ChatGameEventCard event={event} />
   }
 
   return <MessageEvent event={event} />
