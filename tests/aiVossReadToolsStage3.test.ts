@@ -36,15 +36,18 @@ test("read tools execute with the signed-in user client, not service-role reads"
   assert.match(edge, /supports_tools/)
 })
 
-test("Voss read-tool loop is bounded and provider-controlled capability is explicit", () => {
+test("Voss stays bounded while Freddy can continue durable tool work", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
   const gateway = read("supabase/functions/voss-agent/provider-gateway.ts")
 
-  assert.match(edge, /for \(let round = 0; round < 5; round \+= 1\)/)
+  assert.match(edge, /const maxToolRounds = isFreddyTurn \? 24 : 5/)
+  assert.match(edge, /const turnTokenBudget = isFreddyTurn/)
+  assert.match(edge, /1000000/)
+  assert.match(edge, /action === "continue_freddy_turn"/)
   assert.match(edge, /tool_calls\.slice\(0, 6\)/)
   assert.match(gateway, /tool_choice: input\.toolChoice \|\| "auto"/)
   assert.match(edge, /toolChoice:[\s\S]*?imageGenerationRequested[\s\S]*?generate_image/)
-  assert.match(edge, /AI read-tool loop exceeded safe round limit/)
+  assert.doesNotMatch(edge, /AI read-tool loop exceeded safe round limit/)
 })
 
 test("tool results are treated as untrusted campaign data in the system prompt", () => {
