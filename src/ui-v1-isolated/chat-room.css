@@ -544,3 +544,8 @@
 .u1-chat-drawer[data-mode="workspace"] .u1-chat-drawer__body{padding:0;overflow:hidden;position:relative}
 .u1-chat-launcher__item:disabled{opacity:.34;cursor:default}
 .u1-chat-launcher__item:disabled .u1-chat-launcher__arrow{color:var(--u1-text-faint)}
+
+/* Stage 5 keeps participant context inside the existing right drawer. */
+.u1-chat-drawer[data-mode="context"] .u1-chat-drawer__body {
+  background: linear-gradient(180deg, rgba(255,255,255,.008), transparent 18%);
+}

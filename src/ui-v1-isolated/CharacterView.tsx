@@ -113,13 +113,15 @@ function SectionPlaceholder({ section }: { section: CharacterSheetSection }) {
 export default function CharacterView({
   characterId,
   onBack,
+  initialInterface = null,
 }: {
   characterId: string
   onBack: () => void
+  initialInterface?: "inventory" | null
 }) {
   const [auxiliaryEnabled, setAuxiliaryEnabled] = useState(false)
   const [section, setSection] = useState<CharacterSheetSection>("overview")
-  const [interfaceMode, setInterfaceMode] = useState<"inventory" | null>(null)
+  const [interfaceMode, setInterfaceMode] = useState<"inventory" | null>(initialInterface)
   const [spellsDataEnabled, setSpellsDataEnabled] = useState(false)
   const [inventoryDataEnabled, setInventoryDataEnabled] = useState(false)
   const [featuresDataEnabled, setFeaturesDataEnabled] = useState(false)
@@ -199,10 +201,12 @@ export default function CharacterView({
 
   useEffect(() => {
     setAuxiliaryEnabled(false)
+    setSection("overview")
+    setInterfaceMode(initialInterface)
     setSpellsDataEnabled(false)
-    setInventoryDataEnabled(false)
+    setInventoryDataEnabled(initialInterface === "inventory")
     setFeaturesDataEnabled(false)
-  }, [characterId])
+  }, [characterId, initialInterface])
 
   useEffect(() => {
     if (section === "spells") setSpellsDataEnabled(true)
@@ -377,7 +381,21 @@ export default function CharacterView({
   useEffect(() => {
     const current = readCharacterSheetHistory(window.history.state, characterId)
 
-    if (current) {
+    if (initialInterface === "inventory") {
+      const inventory: CharacterSheetHistorySnapshot = {
+        characterId,
+        kind: "interface",
+        interface: "inventory",
+        returnSection: "overview",
+        focusedItemId: null,
+      }
+      window.history.replaceState(
+        historyStateWith(inventory),
+        "",
+        window.location.href,
+      )
+      applyHistorySnapshot(inventory)
+    } else if (current) {
       applyHistorySnapshot(current)
     } else {
       const overview: CharacterSheetHistorySnapshot = {
@@ -400,7 +418,7 @@ export default function CharacterView({
 
     window.addEventListener("popstate", onPopState)
     return () => window.removeEventListener("popstate", onPopState)
-  }, [applyHistorySnapshot, characterId])
+  }, [applyHistorySnapshot, characterId, initialInterface])
 
   const ensureOverviewHistory = useCallback(() => {
     const current = readCharacterSheetHistory(window.history.state, characterId)

@@ -33,7 +33,7 @@ type SectionId =
 type Route =
   | { type: "root"; space: RootSpace }
   | { type: "section"; section: SectionId; subsection?: string; tail: string[] }
-  | { type: "workspace"; page: "character"; characterId: string }
+  | { type: "workspace"; page: "character"; characterId: string; surface?: "inventory" }
   | { type: "workspace"; page: "manage"; section?: WorkshopSection }
   | { type: "chat"; roomId: string }
 
@@ -101,8 +101,18 @@ function parseRoute(): Route {
     return { type: "workspace", page: "manage" }
   }
   if (path.startsWith("workspace/character/")) {
-    const characterId = path.slice("workspace/character/".length)
-    if (characterId) return { type: "workspace", page: "character", characterId }
+    const [characterId, surface] = path
+      .slice("workspace/character/".length)
+      .split("/")
+      .filter(Boolean)
+    if (characterId) {
+      return {
+        type: "workspace",
+        page: "character",
+        characterId,
+        ...(surface === "inventory" ? { surface: "inventory" as const } : {}),
+      }
+    }
   }
   if (path.startsWith("chats/")) {
     const roomId = path.slice("chats/".length)
@@ -165,7 +175,7 @@ function routeKey(route: Route) {
     return `section:${route.section}:${route.subsection || "index"}:${route.tail.join("/")}`
   }
   return route.page === "character"
-    ? `workspace:character:${route.characterId}`
+    ? `workspace:character:${route.characterId}:${route.surface || "sheet"}`
     : "workspace:manage:" + (route.section || "index")
 }
 
@@ -682,6 +692,7 @@ function Screen({ route }: { route: Route }) {
     return (
       <CharacterView
         characterId={route.characterId}
+        initialInterface={route.surface === "inventory" ? "inventory" : null}
         onBack={() => {
           if (window.history.length > 1) window.history.back()
           else go("workspace")

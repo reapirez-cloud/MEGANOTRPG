@@ -97,6 +97,7 @@ export function useUiV1ChatActorRuntime(enabled: boolean) {
 
   return {
     campaignId: campaign?.campaignId || "",
+    userId: user.id,
     canManage: campaign?.canManage === true,
     narrator: Boolean(enabled && campaign?.canManage && !characterId),
     character,

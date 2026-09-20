@@ -6,7 +6,9 @@ import { ChatActionLauncher, CHAT_ACTION_SECTIONS, type ChatActionSectionId } fr
 import { ChatActionWorkspace } from "./chat/ChatActionWorkspace"
 import { useUiV1ChatActorRuntime } from "./chat/useUiV1ChatActorRuntime"
 import { ChatDrawerHost } from "./chat/ChatDrawerHost"
+import { ChatRoomContextPanel } from "./chat/ChatRoomContextPanel"
 import { useChatDrawerRuntime } from "./chat/useChatDrawerRuntime"
+import { useUiV1ChatParticipants } from "./chat/useUiV1ChatParticipants"
 import { useUiV1ChatRoom, type UiV1ChatRoomSummary } from "./useUiV1ChatRoom"
 import "./chat-room.css"
 
@@ -26,56 +28,6 @@ function roomState(room: UiV1ChatRoomSummary) {
   if (room.room_state === "closed" || room.scene_state === "closed") return "Завершено"
   if (room.room_state === "gm_only") return "Пишет ГМ"
   return "Активно"
-}
-
-function roomTypeLabel(room: UiV1ChatRoomSummary) {
-  if (room.room_type === "character") return "Личная история"
-  if (room.room_type === "scene") return "Игровая сцена"
-  return "Флуд"
-}
-
-function RoomContextStage2({ room }: { room: UiV1ChatRoomSummary }) {
-  return (
-    <div className="u1-room-context" data-chat-drawer-context="stage-2">
-      <section className="u1-room-context__summary">
-        <small>Комната</small>
-        <strong>{room.title}</strong>
-        <span>{roomTypeLabel(room)} · {roomState(room)}</span>
-      </section>
-
-      <section className="u1-room-context__section">
-        <div className="u1-room-context__section-head">
-          <small>Участники</small>
-          <span>этап 5</span>
-        </div>
-        <p>
-          Персонажи комнаты будут отдельными строками. Отдых и персональные
-          действия открываются с конкретного персонажа, а не общей кнопкой на
-          всю комнату.
-        </p>
-      </section>
-
-      <section className="u1-room-context__section">
-        <div className="u1-room-context__section-head">
-          <small>Комната</small>
-          <span>контекст</span>
-        </div>
-        <dl>
-          <div><dt>Тип</dt><dd>{roomTypeLabel(room)}</dd></div>
-          <div><dt>Состояние</dt><dd>{roomState(room)}</dd></div>
-          <div><dt>День кампании</dt><dd>{room.campaign_day || "—"}</dd></div>
-        </dl>
-      </section>
-
-      <section className="u1-room-context__section u1-room-context__section--quiet">
-        <small>Инструменты</small>
-        <p>
-          Переходы к листу, инвентарю и GM-действиям подключаются через
-          контекст конкретного персонажа на следующем функциональном этапе.
-        </p>
-      </section>
-    </div>
-  )
 }
 
 function formatTime(value: string) {
@@ -172,12 +124,13 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
   const [launcherOpen, setLauncherOpen] = useState(false)
   const data = useUiV1ChatRoom(roomId)
   const gameplay = useUiV1ChatActorRuntime(launcherOpen || drawers.session?.mode === "workspace")
+  const participants = useUiV1ChatParticipants(data.room, drawers.session?.mode === "context")
 
   if (data.loading && !data.room) return <LoadingState />
 
   if (!data.room) {
     return (
-      <main className="u1-room" data-chat-room-stage="4">
+      <main className="u1-room" data-chat-room-stage="5">
         <section className="u1-room-state" role="alert">
           <span aria-hidden="true">!</span>
           <strong>Чат не открылся</strong>
@@ -241,7 +194,7 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
   }
 
   return (
-    <main className="u1-room" data-chat-room-stage="4">
+    <main className="u1-room" data-chat-room-stage="5">
       <header className="u1-room-header">
         <button type="button" className="u1-room-header__back" aria-label="Назад к чатам" onClick={onBack}>‹</button>
         <div className="u1-room-header__copy">
@@ -259,6 +212,7 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
               eyebrow: roomKind(room),
               title: "Контекст комнаты",
               subtitle: room.title,
+              contentKey: "room",
             })
           }}
         >◇</button>
@@ -340,7 +294,46 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
 
       <ChatDrawerHost session={drawers.session} onClose={drawers.close}>
         {drawers.session?.mode === "context"
-          ? <RoomContextStage2 room={room} />
+          ? <ChatRoomContextPanel
+              room={room}
+              participants={participants.participants}
+              loading={participants.loading}
+              error={participants.error}
+              targetCharacterId={
+                drawers.session.contentKey?.startsWith("character:")
+                  ? drawers.session.contentKey.slice("character:".length)
+                  : undefined
+              }
+              campaignId={gameplay.campaignId}
+              userId={gameplay.userId}
+              canManage={gameplay.canManage}
+              onOpenParticipant={(participant) => {
+                drawers.openContext({
+                  eyebrow: "Персонаж",
+                  title: participant.name,
+                  subtitle: participant.characterClass
+                    ? participant.characterClass + " · " + participant.level + " ур."
+                    : participant.level + " ур.",
+                  contentKey: "character:" + participant.id,
+                })
+              }}
+              onBackToRoom={() => {
+                drawers.openContext({
+                  eyebrow: roomKind(room),
+                  title: "Контекст комнаты",
+                  subtitle: room.title,
+                  contentKey: "room",
+                })
+              }}
+              onOpenSheet={(characterId) => {
+                drawers.close()
+                window.location.hash = "#/workspace/character/" + characterId
+              }}
+              onOpenInventory={(characterId) => {
+                drawers.close()
+                window.location.hash = "#/workspace/character/" + characterId + "/inventory"
+              }}
+            />
           : <ChatActionWorkspace
               roomId={roomId}
               sectionId={drawers.session?.contentKey}
