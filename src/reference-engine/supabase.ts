@@ -126,6 +126,16 @@ export class SupabaseChasovoyStorage implements ChasovoyStorage {
     return result
   }
 
+  async publishDraftDefinition(definitionId: string, _context: ChasovoyMutationContext) {
+    const { data, error } = await this.client.rpc("publish_reference_definition_draft_v1", {
+      p_definition_id: definitionId,
+    })
+    if (error || !data) fail(error, "Could not publish definition draft")
+    const result = await this.getDefinition({ id: String(data) })
+    if (!result) fail(null, "Published definition could not be loaded")
+    return result
+  }
+
   async setDefinitionStatus(definitionId: string, status: ChasovoyDefinitionStatus, _context: ChasovoyMutationContext) {
     const { error } = await this.client.rpc("set_reference_definition_status_v1", {
       p_definition_id: definitionId,
