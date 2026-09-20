@@ -48,14 +48,14 @@ export default function GMWorkshopMain({
       />
 
       <WorkshopPanel
-        title="Партия"
+        title="Участники"
         meta={String(data.members.length).padStart(2, "0")}
         detail={
           countText(activePc, "активный PC", "активных PC", "активных PC") +
           " · " +
           countText(freePc, "свободный", "свободных", "свободных")
         }
-        onClick={() => onNavigate("party")}
+        onClick={() => onNavigate("members")}
       >
         <span className="u1-gm-panel__preview">
           {data.members.slice(0, 4).map((member) => {
