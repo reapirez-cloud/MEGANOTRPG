@@ -90,7 +90,7 @@ export default function GMWorkshopMain({
       />
 
       <WorkshopPanel
-        title="Материалы"
+        title="Личные материалы"
         meta={String(data.materials.length).padStart(2, "0")}
         detail={
           countText(data.folders.length, "папка", "папки", "папок") +
