@@ -2133,3 +2133,341 @@
     min-height: 38px;
   }
 }
+
+
+/* Reference rebuild — header stage 3.
+   The target is a compact in-flow game header, not a card hero. */
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-frame__head {
+  padding-bottom: 0;
+  background: rgba(8,10,11,.96);
+}
+
+.u1-room-head-stage3 {
+  min-width: 0;
+  padding: 0 10px 7px;
+  display: grid;
+  gap: 6px;
+}
+
+.u1-room-head-stage3--observer {
+  padding-top: 6px;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character {
+  margin: 6px 0 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr);
+  grid-template-areas: "portrait main";
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character__portrait {
+  width: 50px;
+  height: 50px;
+  min-height: 50px;
+  align-self: center;
+  border-color: rgba(235,237,239,.075);
+  border-radius: 9px;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character__main {
+  min-height: 50px;
+  align-content: center;
+  gap: 5px;
+  padding: 0;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character__identity {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "eyebrow eyebrow"
+    "name meta";
+  align-items: baseline;
+  column-gap: 8px;
+  row-gap: 1px;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character__identity > span {
+  grid-area: eyebrow;
+  font-size: 6px;
+  letter-spacing: .12em;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character__identity h1 {
+  grid-area: name;
+  margin: 0;
+  min-width: 0;
+  font-size: clamp(17px, 4.6vw, 21px);
+  line-height: 1;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character__identity p {
+  grid-area: meta;
+  margin: 0;
+  max-width: 42vw;
+  color: rgba(225,227,223,.40);
+  font-size: 7px;
+  text-align: right;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-hp {
+  grid-template-columns: auto minmax(62px, 132px);
+  align-items: center;
+  justify-content: start;
+  gap: 7px;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-hp__label {
+  justify-content: flex-start;
+  gap: 5px;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-hp__label span {
+  font-size: 6px;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-hp__label strong {
+  font-size: 9px;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-hp__track {
+  width: 100%;
+  height: 2px;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-context {
+  min-height: 0;
+  padding: 5px 0 0;
+  display: grid;
+  grid-template-columns: minmax(112px, .72fr) minmax(0, 1.28fr);
+  gap: 7px;
+  border-top: 1px solid rgba(235,237,239,.05);
+}
+
+.u1-room-context__item {
+  min-width: 0;
+  min-height: 31px;
+  padding: 4px 7px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(235,237,239,.045);
+  border-radius: 8px;
+  background: rgba(255,255,255,.012);
+}
+
+.u1-room-context__icon {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  color: rgba(236,237,233,.30);
+}
+
+.u1-room-context__icon svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.u1-room-context__copy {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.u1-room-context__copy > span {
+  color: rgba(226,228,224,.26);
+  font-size: 5.5px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.u1-room-context__copy strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(239,240,236,.72);
+  font-size: 8px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-context__copy small {
+  color: rgba(226,228,224,.30);
+  font-size: 5.5px;
+  white-space: nowrap;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-quick-actions {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-quick-actions[data-action-count="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-quick-action {
+  min-height: 36px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.018), rgba(255,255,255,.006)),
+    rgba(14,17,19,.76);
+  box-shadow: none;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-quick-action__icon,
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-quick-action__icon svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-quick-action > span:last-child {
+  width: auto;
+  min-width: 0;
+  font-size: 6px;
+  line-height: 1.05;
+  white-space: normal;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character[data-identity-kind="narrator"] {
+  min-height: 0;
+}
+
+.u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character[data-identity-kind="narrator"] .u1-room-character__portrait {
+  min-height: 50px;
+}
+
+@media (max-width: 360px) {
+  .u1-room-head-stage3 {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character {
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character__portrait {
+    width: 46px;
+    height: 46px;
+    min-height: 46px;
+  }
+
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character__main {
+    min-height: 46px;
+  }
+
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character__identity p {
+    max-width: 38vw;
+  }
+
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-context {
+    grid-template-columns: minmax(100px, .78fr) minmax(0, 1.22fr);
+    gap: 5px;
+  }
+
+  .u1-room-context__item {
+    padding-left: 5px;
+    padding-right: 5px;
+    grid-template-columns: 15px minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .u1-room-context__copy {
+    gap: 3px;
+  }
+
+  .u1-room-context__copy > span {
+    display: none;
+  }
+
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-quick-action {
+    min-height: 34px;
+    padding-left: 4px;
+    padding-right: 4px;
+    gap: 3px;
+  }
+}
+
+@media (max-width: 320px) {
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character__identity {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "eyebrow"
+      "name";
+  }
+
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character__identity p {
+    display: none;
+  }
+
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-quick-action__icon {
+    display: none;
+  }
+
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-quick-action > span:last-child {
+    font-size: 6.25px;
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .u1-room-head-stage3 {
+    padding-bottom: 4px;
+    gap: 4px;
+  }
+
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character {
+    margin-top: 3px;
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character__portrait {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-character__main {
+    min-height: 40px;
+  }
+
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-context {
+    padding-top: 3px;
+  }
+
+  .u1-room-context__item {
+    min-height: 27px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+
+  .u1-room-shell[data-chat-room-header-stage="3"] .u1-room-quick-action {
+    min-height: 30px;
+  }
+}

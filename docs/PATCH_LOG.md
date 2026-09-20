@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Chat 1:1 Stage 3 replaces the remaining oversized top card with the reference-style compact game header: portrait/identity/HP are one slim actor strip, time + campaign day and current location are a separate scene-context row, and direct Inventory / Class abilities / Spells / conditional Attack actions now sit in one dense horizontal rail instead of tall tiles.
 - Chat 1:1 Stage 2 fixes speaking identity: an owner/admin who is still an ordinary campaign player now opens their eligible room as their own active PC instead of being silently collapsed into `Рассказчик`. The manager persona picker keeps explicit Narrator/NPC selection, but its new default is the room-scoped player character when one exists.
 - Игровой чат начал отдельную 1:1-переделку по выбранному референсу: Stage 1 заменяет прежнюю плоскую компоновку на единый viewport-frame с компактной фиксированной верхней зоной, лентой, которая забирает всё оставшееся место, и закреплённым нижним вводом; старая огромная hero-карточка уже ужата по геометрии без изменения игровой логики.
 - Chats restores the compact **9:16 portrait-card** layout for personal histories and now uses the same card geometry for active scenes and completed rooms. Artwork fills the entire card while title, factual context, message preview, activity and unread state live in a dedicated readable overlay layer; Flood remains compact.
@@ -28,6 +29,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added dedicated `ChatRoomHeader` ownership for actor presentation, scene context and quick-action geometry. `ChatRoomScreen` now only composes the fixed-head slot, keeping header internals out of the screen component and leaving action execution deferred to its dedicated later stage rather than smuggling new local panel logic into Stage 3.
 - Added one shared chat actor-selection contract. The room shell now reads the viewer's ordinary campaign `role` separately from `canManage`, while header and composer share the same versioned room speaker key/default rules. The v2 key intentionally drops the stale old “Narrator by default” state that caused owner-players to remain stuck on the wrong identity.
 - Новый `ChatRoomFrame` отделяет геометрию игрового диалога от уже работающих Stage 8 feed/composer/runtime-компонентов. Это сохраняет текущие данные и отправку сообщений, но создаёт стабильные слоты `fixed-head -> feed -> controls` для следующих этапов 1:1-переделки вместо дальнейшего наращивания старого card-stack layout.
 - Scene deletion follows the named-engine path `Snake -> Oracle -> Larisa -> delete_game_scene_v1`; React does not delete `chat_rooms` directly. Preview artwork remains a presentation mutation and is registered in the shared media asset/binding system instead of becoming a second chat-specific image store.
@@ -44,6 +46,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Added Stage 3 header regressions locking the dedicated component boundary, actor/context separation, unboxed 50px actor geometry, compact direct action rail, conditional Attack presence and narrow/landscape density rules.
 - Added Stage 2 actor-resolution regressions covering owner-player vs GM defaults, stale persisted speaker recovery, owned-PC inclusion in the manager selector, composer/header contract parity and the SQL guard that forbids `is_owner` from erasing player identity.
 - Добавлен регрессионный контракт нового chat reference layout Stage 1: один viewport-frame, feed с `min-height: 0` и flex-ownership оставшейся высоты, закреплённые controls, компактная геометрия header/quick-actions и защита узких/низких экранов.
 - Updated UI 1.0 chat regressions to lock shared 9:16 full-bleed cards, the explicit text-overlay layer, Snake preview composition, scene-only deletion, Oracle/Larisa routing and the server-side non-scene delete guard.
