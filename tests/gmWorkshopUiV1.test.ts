@@ -286,5 +286,7 @@ test("personal GM materials are explicit and folder mutations are transactional"
 test("successful Workshop mutation is not reported as failed when refresh fails", () => {
   assert.match(data, /refreshError/)
   assert.match(data, /Изменение сохранено, но экран не удалось обновить/)
-  assert.match(data, /refreshAfterSuccess/)\n  assert.match(data, /await action\(\)[\s\S]*ok: true,[\s\S]*refreshAfterSuccess/)\n  assert.doesNotMatch(data, /await action\(\)[\s\S]{0,220}await load\(\)/)
+  assert.match(data, /refreshAfterSuccess/)
+  assert.match(data, /await action\(\)[\s\S]*ok: true,[\s\S]*refreshAfterSuccess/)
+  assert.doesNotMatch(data, /await action\(\)[\s\S]{0,220}await load\(\)/)
 })
