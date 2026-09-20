@@ -37,12 +37,12 @@ test("stage 2 defines narrow context and near-full workspace geometry", async ()
 
 test("room context button opens the real drawer while plus still waits for stage 3 launcher", async () => {
   const room = await readFile(roomPath, "utf8")
-  assert.match(room, /data-chat-room-stage="2"/)
+  assert.match(room, /data-chat-room-stage="3"/)
   assert.match(room, /drawers\.openContext\(/)
   assert.match(room, /<ChatDrawerHost session=\{drawers\.session\}/)
-  assert.match(room, /<ActionWorkspaceStage2 \/>/)
-  assert.match(room, /"Игровые действия"[\s\S]*"Плюс откроет компактный список действий/)
-  assert.doesNotMatch(room, /onClick=\{\(\) => drawers\.openWorkspace/)
+  assert.match(room, /<ActionWorkspaceStage3 sectionId=\{drawers\.session\?\.contentKey\} \/>/)
+  assert.match(room, /<ChatActionLauncher/)
+  assert.match(room, /drawers\.openWorkspace\(/)
 })
 
 test("room context has no global rest button and records per-character ownership", async () => {

@@ -1,5 +1,8 @@
+import { useState } from "react"
+
 import type { ChatMessage } from "../types/chat"
 import { useSnake } from "./SnakeProvider"
+import { ChatActionLauncher, CHAT_ACTION_SECTIONS, type ChatActionSectionId } from "./chat/ChatActionLauncher"
 import { ChatDrawerHost } from "./chat/ChatDrawerHost"
 import { useChatDrawerRuntime } from "./chat/useChatDrawerRuntime"
 import { useUiV1ChatRoom, type UiV1ChatRoomSummary } from "./useUiV1ChatRoom"
@@ -73,15 +76,18 @@ function RoomContextStage2({ room }: { room: UiV1ChatRoomSummary }) {
   )
 }
 
-function ActionWorkspaceStage2() {
+function ActionWorkspaceStage3({ sectionId }: { sectionId?: string }) {
+  const section = CHAT_ACTION_SECTIONS.find((item) => item.id === sectionId)
+
   return (
-    <div className="u1-room-action-workspace" data-chat-drawer-workspace="stage-2">
-      <span aria-hidden="true">◇</span>
-      <small>Action workspace</small>
-      <strong>Действие не выбрано</strong>
+    <div className="u1-room-action-workspace" data-chat-drawer-workspace="stage-3">
+      <span aria-hidden="true">{section?.icon || "◇"}</span>
+      <small>Игровое действие</small>
+      <strong>{section?.label || "Действие"}</strong>
       <p>
-        Эта почти полноэкранная панель уже готова как общий контейнер. На этапе
-        3 компактный launcher по «+» будет открывать сюда выбранное действие.
+        {section
+          ? `Раздел «${section.label}» выбран через компактный launcher. Реальные доступные действия и CE/Snake-интерфейс подключаются на этапе 4.`
+          : "Выберите раздел через «+». Реальный список действий подключается на этапе 4."}
       </p>
     </div>
   )
@@ -178,13 +184,14 @@ function LoadingState() {
 export default function UiV1ChatRoom({ roomId, onBack }: Props) {
   const snake = useSnake()
   const drawers = useChatDrawerRuntime()
+  const [launcherOpen, setLauncherOpen] = useState(false)
   const data = useUiV1ChatRoom(roomId)
 
   if (data.loading && !data.room) return <LoadingState />
 
   if (!data.room) {
     return (
-      <main className="u1-room" data-chat-room-stage="2">
+      <main className="u1-room" data-chat-room-stage="3">
         <section className="u1-room-state" role="alert">
           <span aria-hidden="true">!</span>
           <strong>Чат не открылся</strong>
@@ -210,7 +217,7 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
   }
 
   return (
-    <main className="u1-room" data-chat-room-stage="2">
+    <main className="u1-room" data-chat-room-stage="3">
       <header className="u1-room-header">
         <button type="button" className="u1-room-header__back" aria-label="Назад к чатам" onClick={onBack}>‹</button>
         <div className="u1-room-header__copy">
@@ -222,11 +229,14 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
           type="button"
           className="u1-room-header__context"
           aria-label="Контекст комнаты"
-          onClick={() => drawers.openContext({
-            eyebrow: roomKind(room),
-            title: "Контекст комнаты",
-            subtitle: room.title,
-          })}
+          onClick={() => {
+            setLauncherOpen(false)
+            drawers.openContext({
+              eyebrow: roomKind(room),
+              title: "Контекст комнаты",
+              subtitle: room.title,
+            })
+          }}
         >◇</button>
       </header>
 
@@ -267,10 +277,12 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
           type="button"
           className="u1-room-composer__plus"
           aria-label="Игровые действия"
-          onClick={() => openDeferred(
-            "Игровые действия",
-            "Плюс откроет компактный список действий. Полноценный интерфейс выбранного действия будет выезжать справа и занимать почти весь экран.",
-          )}
+          aria-haspopup="menu"
+          aria-expanded={launcherOpen}
+          aria-controls="u1-chat-action-launcher"
+          data-open={launcherOpen ? "true" : undefined}
+          disabled={room.is_read_only || room.room_state === "closed" || room.scene_state === "closed"}
+          onClick={() => setLauncherOpen((value) => !value)}
         >+</button>
         <button
           type="button"
@@ -285,10 +297,27 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
         <button type="submit" className="u1-room-composer__send" aria-label="Отправить" disabled>➤</button>
       </form>
 
+      <ChatActionLauncher
+        open={launcherOpen}
+        items={CHAT_ACTION_SECTIONS}
+        onClose={() => setLauncherOpen(false)}
+        onSelect={(section: ChatActionSectionId) => {
+          const item = CHAT_ACTION_SECTIONS.find((candidate) => candidate.id === section)
+          if (!item) return
+          setLauncherOpen(false)
+          drawers.openWorkspace({
+            eyebrow: "Игровые действия",
+            title: item.label,
+            subtitle: room.title,
+            contentKey: item.id,
+          })
+        }}
+      />
+
       <ChatDrawerHost session={drawers.session} onClose={drawers.close}>
         {drawers.session?.mode === "context"
           ? <RoomContextStage2 room={room} />
-          : <ActionWorkspaceStage2 />}
+          : <ActionWorkspaceStage3 sectionId={drawers.session?.contentKey} />}
       </ChatDrawerHost>
     </main>
   )

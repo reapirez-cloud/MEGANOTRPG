@@ -6,6 +6,7 @@ export type ChatDrawerDescriptor = {
   eyebrow: string
   title: string
   subtitle?: string
+  contentKey?: string
 }
 
 export type ChatDrawerSession = ChatDrawerDescriptor & {
