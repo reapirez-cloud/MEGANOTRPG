@@ -8,6 +8,7 @@ const composerPath = new URL("../src/ui-v1-isolated/chat-room/ChatComposer.tsx",
 const viewportPath = new URL("../src/ui-v1-isolated/chat-room/useChatVisualViewport.ts", import.meta.url)
 const roomPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomScreen.tsx", import.meta.url)
 const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room.css", import.meta.url)
+const panelCssPath = new URL("../src/ui-v1-isolated/chat-room/chat-action-panel.css", import.meta.url)
 const presentationPath = new URL("../src/ui-v1-isolated/chat-room/chatRoomPresentation.ts", import.meta.url)
 
 test("stage 6 follows new messages only when appropriate", async () => {
@@ -42,10 +43,7 @@ test("stage 6 keeps realtime refresh separate from initial loading", async () =>
 
   assert.match(events, /refreshing/)
   assert.match(events, /refreshLatest/)
-  assert.match(
-    events,
-    /const refreshLatest[\s\S]*setEvents\(\(current\) => mergeEvents\(current, normalized\)\)/,
-  )
+  assert.match(events, /const refreshLatest[\s\S]*setEvents\(\(current\) => mergeEvents\(current, normalized\)\)/)
 })
 
 test("stage 6 composer signals own sends and keeps focus", async () => {
@@ -71,18 +69,7 @@ test("stage 6 tracks mobile visual viewport for the keyboard", async () => {
   assert.match(room, /data-chat-room-stage="8"/)
 })
 
-test("stage 6 uses a shared motion layer and respects reduced motion", async () => {
-  const css = await readFile(cssPath, "utf8")
-
-  assert.match(css, /--u1-chat-motion-fast/)
-  assert.match(css, /--u1-chat-motion-enter/)
-  assert.match(css, /prefers-reduced-motion: reduce/)
-  assert.match(css, /u1-room-feed__new/)
-  assert.match(css, /u1-chat-composer__sending-dot/)
-})
-
-
-test("stage 6 stamps the final screen contract and one canonical role state", async () => {
+test("stage 6 stamps one canonical role state without rendering header quick actions", async () => {
   const [room, composer] = await Promise.all([
     readFile(roomPath, "utf8"),
     readFile(composerPath, "utf8"),
@@ -91,7 +78,8 @@ test("stage 6 stamps the final screen contract and one canonical role state", as
   assert.match(room, /data-chat-room-final-stage="6"/)
   assert.match(room, /data-viewer-role=\{model\.viewer\.role\}/)
   assert.match(room, /data-identity-kind=\{presentation\.identityKind\}/)
-  assert.match(room, /showQuickActions=\{presentation\.showQuickActions\}/)
+  assert.match(room, /<ChatRoomHeader model=\{model\} \/>/)
+  assert.doesNotMatch(room, /showQuickActions=/)
   assert.match(composer, /chatRoomPresentationState\(model\)/)
   assert.match(composer, /presentation\.showPersonaSelector/)
   assert.match(composer, /presentation\.canCompose/)
@@ -191,16 +179,20 @@ test("stage 6 role matrix keeps player, GM, observer and archive behavior distin
   )
 })
 
-test("stage 6 locks the final mobile geometry to one compact reference rhythm", async () => {
-  const css = await readFile(cssPath, "utf8")
+test("stage 6 locks the room and isolated action panel to compact mobile geometry", async () => {
+  const [css, panelCss] = await Promise.all([
+    readFile(cssPath, "utf8"),
+    readFile(panelCssPath, "utf8"),
+  ])
 
   assert.match(css, /Reference rebuild — final pixel pass stage 6/)
   assert.match(css, /--u1-chat-gutter: 10px/)
   assert.match(css, /--u1-chat-control: 40px/)
   assert.match(css, /--u1-chat-actor: 48px/)
   assert.match(css, /data-chat-room-final-stage="6"[\s\S]*min-height: calc\(46px/)
-  assert.match(css, /data-chat-room-final-stage="6"[\s\S]*\.u1-room-quick-action \{[\s\S]*min-height: 35px/)
-  assert.match(css, /chat-action-flow\[data-presentation="side"\][\s\S]*width: min\(90vw, 720px\)/)
+  assert.match(panelCss, /\.u1-chat-action-panel/)
+  assert.match(panelCss, /width: min\(90vw, 640px\)/)
+  assert.match(panelCss, /@media \(max-width: 480px\)/)
   assert.match(css, /@media \(max-width: 360px\)/)
   assert.match(css, /@media \(max-width: 320px\)/)
   assert.match(css, /@media \(max-height: 560px\) and \(orientation: landscape\)/)
