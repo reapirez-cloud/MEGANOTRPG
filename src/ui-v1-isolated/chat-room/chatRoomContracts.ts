@@ -18,10 +18,26 @@ export type ChatRoomHeaderCharacter = {
   tempHp: number
 }
 
+export type ChatRoomHeaderIdentity =
+  | {
+      kind: "character"
+      character: ChatRoomHeaderCharacter
+    }
+  | {
+      kind: "narrator"
+      name: "Рассказчик"
+    }
+  | null
+
 export type ChatRoomHeaderContext = {
   campaignDay: number | null
   dayPeriod: ChatRoomDayPeriod | null
   locationName: string | null
+}
+
+export type ChatRoomQuickActions = {
+  hasCharacter: boolean
+  hasEquippedWeapon: boolean
 }
 
 export type ChatRoomShellModel = {
@@ -29,8 +45,10 @@ export type ChatRoomShellModel = {
   roomTitle: string
   roomType: "character" | "scene" | "flood"
   readOnly: boolean
-  character: ChatRoomHeaderCharacter | null
+  canManage: boolean
+  identity: ChatRoomHeaderIdentity
   context: ChatRoomHeaderContext
+  quickActions: ChatRoomQuickActions
 }
 
 export const CHAT_ROOM_DAY_PERIOD_LABELS: Record<ChatRoomDayPeriod, string> = {
@@ -45,4 +63,12 @@ export const CHAT_ROOM_DAY_PERIOD_LABELS: Record<ChatRoomDayPeriod, string> = {
 
 export function chatRoomDayPeriodLabel(value: ChatRoomDayPeriod | null) {
   return value ? CHAT_ROOM_DAY_PERIOD_LABELS[value] : "Время не определено"
+}
+
+export function chatSpeakerStorageKey(
+  campaignId: string,
+  roomId: string,
+  userId: string,
+) {
+  return `meganotrpg:chat-speaker:${campaignId}:${roomId}:${userId}`
 }
