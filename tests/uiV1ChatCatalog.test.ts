@@ -95,25 +95,81 @@ test("ui v1 chat rooms are Snake-managed persistent objects", async () => {
   assert.match(catalog, /createChatRoomSnakeActions/)
   assert.match(actions, /label: "Открыть"/)
   assert.match(actions, /label: "Сведения"/)
+  assert.match(actions, /Назначить превью|Заменить превью/)
+  assert.match(actions, /aspectRatio:\s*9 \/ 16/)
+  assert.match(actions, /label: "Удалить сцену"/)
+  assert.match(actions, /canManage && room\.room_type === "scene"/)
   assert.match(actions, /chatRoomOpenSurface/)
 })
 
-test("chat artwork uses full-bleed panoramic geometry with readable text scrims", async () => {
-  const css = await readFile(stylePath, "utf8")
+test("chat catalog uses unified 9:16 full-bleed cards with a real text overlay", async () => {
+  const [catalog, css] = await Promise.all([
+    readFile(catalogPath, "utf8"),
+    readFile(stylePath, "utf8"),
+  ])
 
-  assert.match(css, /Panoramic chat artwork: full-bleed room previews/)
+  assert.match(css, /Portrait chat cards: one 9:16 visual language/)
   assert.match(
     css,
-    /\.u1-chat-row:not\(\.u1-chat-row--flood\),\s*\.u1-chat-personal__card\s*\{[\s\S]*?aspect-ratio:\s*3\s*\/\s*1/,
+    /\.u1-chat-card\s*\{[\s\S]*?aspect-ratio:\s*9\s*\/\s*16/,
   )
   assert.match(
     css,
-    /\.u1-chat-row:not\(\.u1-chat-row--flood\) > \.u1-chat-art\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*0;[\s\S]*?width:\s*100%;[\s\S]*?height:\s*100%/,
+    /\.u1-chat-card__media,[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*0;[\s\S]*?width:\s*100%;[\s\S]*?height:\s*100%/,
   )
-  assert.match(
-    css,
-    /\.u1-chat-personal__media\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*0;[\s\S]*?width:\s*100%;[\s\S]*?height:\s*100%/,
-  )
-  assert.match(css, /linear-gradient\(90deg, rgba\(5,6,7,\.94\)/)
+  assert.match(css, /\.u1-chat-card__shade/)
+  assert.match(css, /\.u1-chat-card__copy/)
+  assert.match(css, /object-fit:\s*cover/)
+  assert.match(catalog, /portraitCard\(room, "personal"\)/)
+  assert.match(catalog, /portraitCard\(room, "event"\)/)
+  assert.match(catalog, /portraitCard\(room, "completed"\)/)
   assert.match(css, /\.u1-chat-row--flood\s*\{[\s\S]*?min-height:\s*52px/)
+  assert.doesNotMatch(css, /Panoramic chat artwork: full-bleed room previews/)
+})
+
+test("chat Snake mutations keep scene deletion behind Oracle Larisa and personal histories non-deletable", async () => {
+  const [data, actions, oracleEngine, oracleTypes, larisaTypes, larisaStorage, migration] =
+    await Promise.all([
+      readFile(dataPath, "utf8"),
+      readFile(
+        new URL("../src/ui-v1-isolated/chatSnakeActions.ts", import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL("../src/oracle-engine/engine.ts", import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL("../src/oracle-engine/types.ts", import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL("../src/location-engine/types.ts", import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL("../src/location-engine/supabase.ts", import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          "../supabase/migrations/20260920134000_chat_catalog_portrait_snake_actions.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ])
+
+  assert.match(data, /oracle\.world\.deleteScene/)
+  assert.match(data, /bind_chat_room_preview_upload_v1/)
+  assert.match(actions, /canManage && room\.room_type === "scene"/)
+  assert.doesNotMatch(actions, /room\.room_type === "character"[\s\S]{0,120}delete-scene/)
+  assert.match(oracleEngine, /deleteScene:[\s\S]*world\.scene_delete/)
+  assert.match(oracleTypes, /deleteScene\(context: OracleContext, roomId: string\)/)
+  assert.match(larisaTypes, /kind: "world\.scene_delete"/)
+  assert.match(larisaStorage, /delete_game_scene_v1/)
+  assert.match(migration, /if v_room\.room_type <> 'scene'/)
+  assert.match(migration, /Only scene rooms can be deleted/)
+  assert.match(migration, /target_type = 'chat_room'/)
+  assert.match(migration, /target_field = 'preview'/)
 })
