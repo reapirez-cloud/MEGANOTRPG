@@ -50,7 +50,13 @@ function SystemEvent({ event }: { event: UiChatEvent }) {
   )
 }
 
-function MessageEvent({ event }: { event: UiChatEvent }) {
+function MessageEvent({
+  event,
+  onMediaLoad,
+}: {
+  event: UiChatEvent
+  onMediaLoad: () => void
+}) {
   const gmNarration = event.type === "gm_message"
 
   return (
@@ -76,6 +82,7 @@ function MessageEvent({ event }: { event: UiChatEvent }) {
               alt={event.body ? "" : "Изображение в чате"}
               loading="lazy"
               decoding="async"
+              onLoad={onMediaLoad}
             />
           </figure>
         ) : null}
@@ -86,7 +93,13 @@ function MessageEvent({ event }: { event: UiChatEvent }) {
   )
 }
 
-function EventRow({ event }: { event: UiChatEvent }) {
+function EventRow({
+  event,
+  onMediaLoad,
+}: {
+  event: UiChatEvent
+  onMediaLoad: () => void
+}) {
   if (event.type === "system") return <SystemEvent event={event} />
 
   if (
@@ -99,7 +112,7 @@ function EventRow({ event }: { event: UiChatEvent }) {
     return <ChatGameEventCard event={event} />
   }
 
-  return <MessageEvent event={event} />
+  return <MessageEvent event={event} onMediaLoad={onMediaLoad} />
 }
 
 export default function ChatFeed({ roomId }: { roomId: string }) {
@@ -145,7 +158,8 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
       scrollHeight: feed.scrollHeight,
       scrollTop: feed.scrollTop,
     }
-    await loadOlder()
+    const loaded = await loadOlder()
+    if (!loaded) pendingRestoreRef.current = null
   }, [hasMore, loadOlder, loadingOlder])
 
   useEffect(() => {
@@ -203,13 +217,14 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
       if (detail?.roomId !== roomId) return
 
       forceFollowNextRef.current = true
+      scrollToBottom("smooth")
     }
 
     window.addEventListener(CHAT_MESSAGE_SENT_EVENT, handleOwnMessage)
     return () => {
       window.removeEventListener(CHAT_MESSAGE_SENT_EVENT, handleOwnMessage)
     }
-  }, [roomId])
+  }, [roomId, scrollToBottom])
 
   const handleScroll = () => {
     const feed = feedRef.current
@@ -295,7 +310,12 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
       <div className="u1-room-feed__list">
         {events.map((event) => (
           <div className="u1-room-feed__entry" key={event.id}>
-            <EventRow event={event} />
+            <EventRow
+              event={event}
+              onMediaLoad={() => {
+                if (pinnedToBottomRef.current) scrollToBottom("auto")
+              }}
+            />
           </div>
         ))}
       </div>
