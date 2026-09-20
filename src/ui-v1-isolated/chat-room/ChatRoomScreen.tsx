@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react"
+
 import {
   chatRoomDayPeriodLabel,
   type ChatRoomHeaderCharacter,
@@ -5,6 +7,7 @@ import {
 import ChatComposer from "./ChatComposer"
 import ChatFeed from "./ChatFeed"
 import { useChatRoomShell } from "./useChatRoomShell"
+import { useChatVisualViewportHeight } from "./useChatVisualViewport"
 import "./chat-room-stage1.css"
 
 type QuickActionId = "inventory" | "class" | "spells" | "attack"
@@ -209,12 +212,22 @@ function LoadingShell() {
 
 export default function ChatRoomScreen({ roomId }: { roomId: string }) {
   const { model, loading, error, reload } = useChatRoomShell(roomId)
+  const visualViewportHeight = useChatVisualViewportHeight()
+  const viewportStyle = visualViewportHeight
+    ? ({
+        "--u1-chat-viewport-height": visualViewportHeight + "px",
+      } as CSSProperties)
+    : undefined
 
   if (loading) return <LoadingShell />
 
   if (!model || error) {
     return (
-      <main className="u1-room-shell" data-chat-room-stage="5">
+      <main
+        className="u1-room-shell"
+        data-chat-room-stage="6"
+        style={viewportStyle}
+      >
         <div className="u1-room-topbar">
           <button
             type="button"
@@ -247,9 +260,10 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
   return (
     <main
       className="u1-room-shell"
-      data-chat-room-stage="5"
+      data-chat-room-stage="6"
       data-room-type={model.roomType}
       data-has-identity={Boolean(model.identity) || undefined}
+      style={viewportStyle}
     >
       <header className="u1-room-topbar">
         <button
