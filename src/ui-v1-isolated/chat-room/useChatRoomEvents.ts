@@ -252,6 +252,20 @@ export function useChatRoomEvents(roomId: string) {
     }
   }, [loadInitial, refreshLatest, roomId])
 
+  const markRead = useCallback(
+    async (messageId: number | null | undefined) => {
+      if (!messageId) return false
+
+      const result = await supabase.rpc("mark_chat_read", {
+        p_room_id: roomId,
+        p_message_id: messageId,
+      })
+
+      return !result.error
+    },
+    [roomId],
+  )
+
   return {
     events,
     loading,
@@ -261,5 +275,6 @@ export function useChatRoomEvents(roomId: string) {
     error,
     reload: loadInitial,
     loadOlder,
+    markRead,
   }
 }
