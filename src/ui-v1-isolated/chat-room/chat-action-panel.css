@@ -590,3 +590,413 @@
     animation: none;
   }
 }
+
+
+/* Geometry/readability audit for the isolated action surface. */
+.u1-chat-action-panel,
+.u1-chat-action-panel * {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.u1-chat-action-panel button,
+.u1-chat-action-panel input,
+.u1-chat-action-panel svg {
+  max-width: 100%;
+}
+
+.u1-chat-action-panel svg {
+  display: block;
+}
+
+.u1-chat-action-head {
+  min-width: 0;
+  padding-left: 12px;
+  padding-right: 10px;
+}
+
+.u1-chat-action-head > div {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.u1-chat-action-head span,
+.u1-chat-action-head strong,
+.u1-chat-action-head small {
+  max-width: 100%;
+}
+
+.u1-chat-action-head > button {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  max-width: 38px;
+  max-height: 38px;
+  aspect-ratio: 1;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  line-height: 1;
+}
+
+.u1-chat-action-body {
+  overflow-x: hidden;
+}
+
+.u1-chat-action-list > button {
+  min-width: 0;
+  min-height: 54px;
+  grid-template-columns: 32px minmax(0, 1fr) 16px;
+  gap: 8px;
+  padding: 7px 9px;
+  overflow: hidden;
+}
+
+.u1-chat-action-list__icon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.u1-chat-action-list > button > span:nth-child(2) {
+  overflow: hidden;
+}
+
+.u1-chat-action-list strong {
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.u1-chat-action-list small {
+  min-width: 0;
+  font-size: 8.5px;
+  line-height: 1.3;
+}
+
+.u1-chat-action-list em {
+  width: 16px;
+  min-width: 16px;
+  overflow: hidden;
+  line-height: 1;
+}
+
+.u1-chat-action-group {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.u1-chat-action-group > header {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.u1-chat-action-group > header span,
+.u1-chat-action-group > header strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-chat-action-resources {
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+}
+
+.u1-chat-action-resources > span {
+  min-width: 0;
+  max-width: min(220px, 82vw);
+  min-height: 30px;
+  overflow: hidden;
+}
+
+.u1-chat-action-resources b {
+  min-width: 0;
+  max-width: 170px;
+  overflow: hidden;
+  font-size: 8.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-chat-action-resources strong {
+  flex: 0 0 auto;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+/* Roll controls: buttons are real cells, not text trying to escape a tiny rectangle. */
+.u1-chat-roll__headline {
+  min-width: 0;
+}
+
+.u1-chat-roll__headline > div {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.u1-chat-roll__headline strong {
+  overflow: hidden;
+  font-size: 18px;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-chat-roll__headline > button,
+.u1-chat-action-primary {
+  min-width: 78px;
+  min-height: 38px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.u1-chat-roll__dice {
+  grid-template-columns: repeat(7, minmax(34px, 1fr));
+  gap: 5px;
+  overflow-x: auto;
+  padding-bottom: 1px;
+  scrollbar-width: none;
+}
+
+.u1-chat-roll__dice::-webkit-scrollbar {
+  display: none;
+}
+
+.u1-chat-roll__dice button {
+  width: 100%;
+  min-width: 34px;
+  height: auto;
+  min-height: 34px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.u1-chat-roll__controls {
+  min-width: 0;
+}
+
+.u1-chat-roll__controls label {
+  overflow: hidden;
+}
+
+.u1-chat-roll__controls label > span {
+  min-height: 24px;
+  padding: 0 2px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  font-size: 9px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+.u1-chat-roll__controls input {
+  min-width: 0;
+  height: 38px;
+  padding: 0 4px;
+  overflow: hidden;
+  font-size: 11px;
+}
+
+.u1-chat-checks > header {
+  min-width: 0;
+  min-height: 40px;
+  padding: 6px 8px;
+}
+
+.u1-chat-checks > header strong {
+  flex: 0 0 auto;
+  font-size: 10px;
+}
+
+.u1-chat-checks > header small {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 8px;
+  line-height: 1.2;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-chat-checks__grid {
+  grid-template-columns: repeat(3, minmax(78px, 1fr));
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.u1-chat-checks__grid::-webkit-scrollbar {
+  display: none;
+}
+
+.u1-chat-checks__grid > div {
+  min-width: 78px;
+  overflow: hidden;
+}
+
+.u1-chat-checks__grid > div > button:first-child {
+  min-width: 0;
+  min-height: 48px;
+  gap: 5px;
+  padding: 0 5px;
+  overflow: hidden;
+}
+
+.u1-chat-checks__grid > div > button:first-child span {
+  font-size: 8px;
+}
+
+.u1-chat-checks__grid > div > button:first-child strong {
+  font-size: 13px;
+}
+
+.u1-chat-checks__grid > div > button:last-child {
+  min-width: 0;
+  min-height: 28px;
+  padding: 0 4px;
+  overflow: hidden;
+  font-size: 8px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-chat-skills {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.u1-chat-skills summary {
+  min-width: 0;
+}
+
+.u1-chat-skills > div {
+  min-width: 0;
+}
+
+.u1-chat-skills > div button {
+  min-width: 0;
+  min-height: 38px;
+  overflow: hidden;
+  font-size: 9px;
+}
+
+.u1-chat-skills > div button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-chat-skills > div button strong {
+  flex: 0 0 auto;
+  font-size: 9px;
+}
+
+.u1-chat-action-primary {
+  width: 100%;
+  max-width: 100%;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* No control may grow outside the panel on narrow phones. */
+@media (max-width: 420px) {
+  .u1-chat-action-panel {
+    width: 90vw;
+    max-width: 90vw;
+  }
+
+  .u1-chat-action-head {
+    gap: 8px;
+    padding-left: 10px;
+  }
+
+  .u1-chat-action-head strong {
+    font-size: 18px;
+  }
+
+  .u1-chat-action-head small {
+    font-size: 8.5px;
+  }
+
+  .u1-chat-roll__dice {
+    grid-template-columns: repeat(4, minmax(38px, 1fr));
+    overflow: visible;
+  }
+
+  .u1-chat-roll__controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .u1-chat-checks__grid {
+    grid-template-columns: repeat(3, minmax(72px, 1fr));
+  }
+
+  .u1-chat-checks__grid > div {
+    min-width: 72px;
+  }
+}
+
+@media (max-width: 340px) {
+  .u1-chat-action-body {
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+
+  .u1-chat-roll__headline {
+    gap: 7px;
+  }
+
+  .u1-chat-roll__headline > button {
+    min-width: 70px;
+    padding-left: 9px;
+    padding-right: 9px;
+  }
+
+  .u1-chat-roll__controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .u1-chat-roll__controls label:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .u1-chat-checks > header {
+    display: grid;
+    gap: 2px;
+  }
+
+  .u1-chat-checks > header small {
+    text-align: left;
+    white-space: normal;
+  }
+
+  .u1-chat-checks__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .u1-chat-checks__grid > div {
+    min-width: 0;
+  }
+
+  .u1-chat-skills > div {
+    grid-template-columns: 1fr;
+  }
+}
