@@ -153,7 +153,7 @@ test("chat Snake mutations keep scene deletion behind Oracle Larisa and personal
       ),
       readFile(
         new URL(
-          "../supabase/migrations/20260920134000_chat_catalog_portrait_snake_actions.sql",
+          "../supabase/migrations/20260920102813_chat_catalog_portrait_snake_actions.sql",
           import.meta.url,
         ),
         "utf8",
