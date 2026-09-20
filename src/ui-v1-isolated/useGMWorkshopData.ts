@@ -1184,7 +1184,8 @@ export function useGMWorkshopData(
       const linked = linkedDefinitionRefs(target)
       if (linked.some((ref) => ref.id === definition.id)) return { ok: true }
 
-      const { linked_definition_ids: _legacyIds, ...baseData } = target.data
+      const baseData = { ...target.data }
+      delete baseData.linked_definition_ids
       const data = {
         ...baseData,
         linked_definitions: [
@@ -1250,7 +1251,8 @@ export function useGMWorkshopData(
       const linked = linkedDefinitionRefs(target)
       if (!linked.some((ref) => ref.id === definition.id)) return { ok: true }
 
-      const { linked_definition_ids: _legacyIds, ...baseData } = target.data
+      const baseData = { ...target.data }
+      delete baseData.linked_definition_ids
       const data = {
         ...baseData,
         linked_definitions: linked.filter((ref) => ref.id !== definition.id),
@@ -1545,7 +1547,7 @@ export function useGMWorkshopData(
     campaignCharacters: state.characters.filter((character) => character.publicationState === "campaign"),
     draftDefinitions: state.definitions.filter((definition) => definition.status === "draft"),
     activeDefinitions: state.definitions.filter((definition) => definition.status === "active"),
-    archivedDefinitions: state.definitions.filter((definition) => definition.status === "archived"),
+    archivedDefinitions: state.definitions.filter((definition) =>\n      definition.status === "archived" && !definition.data.revises_definition_id\n    ),
     classTemplates: state.templates.filter((template) => template.kind === "class" && template.is_active),
     subclassTemplates: state.templates.filter((template) => template.kind === "subclass" && template.is_active),
     operations,
