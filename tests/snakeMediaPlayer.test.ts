@@ -61,8 +61,8 @@ test("art sections pass the whole current collection into Snake media navigation
   assert.match(art, /collectionItems\.map\(\(candidate\) => \(\{/)
   assert.match(art, /data\.generated\.map\(\(candidate\) => \{/)
   assert.match(art, /initialIndex/)
-  assert.match(media, /count > 1/)
-  assert.match(media, /showIndex\(index \+ \(dx < 0 \? 1 : -1\)\)/)
+  assert.match(player, /count > 1/)
+  assert.match(player, /showIndex\(index \+ \(dx < 0 \? 1 : -1\)\)/)
 })
 
 
