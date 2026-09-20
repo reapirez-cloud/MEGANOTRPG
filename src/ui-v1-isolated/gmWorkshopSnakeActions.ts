@@ -47,32 +47,94 @@ export function createWorkshopCharacterEditAction({
       size: { width: "wide", height: "tall" },
       fields: [
         { id: "name", label: "Имя", type: "text", required: true },
-        {
-          id: "characterType",
-          label: "Тип",
-          type: "select",
-          options: [
-            { value: "pc", label: "PC" },
-            { value: "npc", label: "NPC" },
-          ],
-        },
         { id: "bio", label: "Описание", type: "textarea" },
       ],
       initialValues: {
         name: character.name,
-        characterType: character.characterType,
         bio: character.bio,
       },
       submitLabel: "Сохранить",
     },
     execute: async ({ input }) => {
-      const nextType = input?.characterType === "npc" ? "npc" : "pc"
       const response = await operations.updateCharacter(character.id, {
         name: String(input?.name || character.name),
-        characterType: nextType,
         bio: String(input?.bio || ""),
       })
       return actionResult(response.ok, response.error, "Персонаж сохранён.")
+    },
+  }
+}
+
+
+export function createWorkshopCharacterConvertAction({
+  character,
+  operations,
+}: {
+  character: WorkshopCharacter
+  operations: WorkshopOperations
+}): SnakeAction {
+  const targetType = character.characterType === "pc" ? "npc" : "pc"
+  const convertingToNpc = targetType === "npc"
+  const published = character.publicationState === "campaign"
+
+  return {
+    id: "convert-character-type",
+    label: convertingToNpc ? "Преобразовать в NPC" : "Преобразовать в PC",
+    tone: "danger",
+    surface: convertingToNpc && published
+      ? {
+          kind: "picker",
+          eyebrow: "Тип персонажа · преобразование",
+          title: "Преобразовать «" + character.name + "» в NPC?",
+          body:
+            "Назначение игроку и активность будут сняты атомарно. " +
+            "Выбери, когда игроки смогут видеть нового NPC.",
+          items: [
+            {
+              id: "discover",
+              label: "При встрече",
+              description: "NPC откроется игрокам после личной встречи.",
+            },
+            {
+              id: "always",
+              label: "Видно сразу",
+              description: "NPC сразу станет известен игрокам.",
+            },
+          ],
+          initialSelection: "discover",
+          submitLabel: "Преобразовать",
+        }
+      : {
+          kind: "confirm",
+          eyebrow: "Тип персонажа · преобразование",
+          title:
+            "Преобразовать «" +
+            character.name +
+            "» в " +
+            (convertingToNpc ? "NPC" : "PC") +
+            "?",
+          body: convertingToNpc
+            ? "Черновик останется приватным и неназначенным."
+            : "Обычные зоны NPC и записи обнаружения будут удалены. PC останется без назначения игроку.",
+          confirmLabel: "Преобразовать",
+        },
+    execute: async ({ input }) => {
+      const visibility =
+        convertingToNpc && published
+          ? (selection(input) as "always" | "discover") || "discover"
+          : undefined
+      const response = await operations.convertCharacterType(
+        character.id,
+        targetType,
+        visibility,
+      )
+      return actionResult(
+        response.ok,
+        response.error,
+        convertingToNpc
+          ? "Персонаж преобразован в NPC."
+          : "Персонаж преобразован в PC.",
+      )
     },
   }
 }
@@ -345,6 +407,7 @@ export function createWorkshopCharacterActions({
       },
     },
     createWorkshopCharacterEditAction({ character, operations }),
+    createWorkshopCharacterConvertAction({ character, operations }),
     {
       id: "classes",
       label: "Классы",
