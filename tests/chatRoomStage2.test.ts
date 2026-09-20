@@ -5,7 +5,7 @@ import test from "node:test"
 const roomPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomScreen.tsx", import.meta.url)
 const hookPath = new URL("../src/ui-v1-isolated/chat-room/useChatRoomShell.ts", import.meta.url)
 const contractsPath = new URL("../src/ui-v1-isolated/chat-room/chatRoomContracts.ts", import.meta.url)
-const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room-stage1.css", import.meta.url)
+const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room.css", import.meta.url)
 
 test("stage 2 resolves header identity from the room-scoped viewer contract", async () => {
   const [hook, contracts] = await Promise.all([
