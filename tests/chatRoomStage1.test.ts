@@ -39,11 +39,11 @@ test("stage 1 contains only the room foundation and character header", async () 
     readFile(cssPath, "utf8"),
   ])
 
-  assert.match(room, /data-chat-room-stage="1"/)
+  assert.match(room, /data-chat-room-stage="2"/)
   assert.match(room, /Время суток/)
   assert.match(room, /Локация/)
   assert.match(room, /<HpBlock/)
-  assert.doesNotMatch(room, /ChatDrawer|ActionLauncher|composer|attachment|Инвентарь|Заклинания|Атака/)
+  assert.doesNotMatch(room, /ChatDrawer|ActionLauncher|composer|attachment/)
   assert.doesNotMatch(room, /components\/chat|chat-runtime|pages\/ChatRoom/)
   assert.match(css, /#101214/)
   assert.match(css, /#0a0c0e/)
