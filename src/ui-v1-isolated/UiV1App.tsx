@@ -158,22 +158,6 @@ function softHaptic() {
 function routeKey(route: Route) {
   if (route.type === "root") return `root:${route.space}`
   if (route.type === "chat-room") return `chat-room:${route.roomId}`
-  if (route.type === "chat-room") {
-    return {
-      screen: "chat-room",
-      route: window.location.hash || "#/chats",
-      title: "Игровой чат",
-      text: "Открыто основное окно игрового чата.",
-      entity: {
-        type: "chat_room",
-        id: route.roomId,
-      },
-      facts: {
-        roomId: route.roomId,
-      },
-    }
-  }
-
   if (route.type === "section") {
     if (route.section === "knowledge-base" && route.subsection === "classes") {
       return "section:knowledge-base:classes"
@@ -206,6 +190,22 @@ function aiRouteContext(route: Route) {
       text: "Открыт корневой раздел нового интерфейса MEGANOT RPG.",
       facts: {
         space: route.space,
+      },
+    }
+  }
+
+  if (route.type === "chat-room") {
+    return {
+      screen: "chat-room",
+      route: window.location.hash || "#/chats",
+      title: "Игровой чат",
+      text: "Открыто основное окно игрового чата.",
+      entity: {
+        type: "chat_room",
+        id: route.roomId,
+      },
+      facts: {
+        roomId: route.roomId,
       },
     }
   }
