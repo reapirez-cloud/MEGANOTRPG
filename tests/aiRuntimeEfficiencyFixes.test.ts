@@ -83,3 +83,16 @@ test("generated-image UI uses exact references and direct cancel/retry actions",
   assert.match(shell, /Отменить/)
   assert.match(shell, /Повторить/)
 })
+
+
+test("queued image generation forces a text-only completion round", () => {
+  const edge = read("supabase/functions/voss-agent/index.ts")
+
+  assert.match(edge, /let forceTextOnlyNextRound = false/)
+  assert.match(edge, /const toolsForRound = forceTextOnlyNextRound \? \[\] : availableTools/)
+  assert.match(edge, /tools: toolsForRound/)
+  assert.match(
+    edge,
+    /toolName === "generate_image"[\s\S]*imageJobsQueued\.push\(resultRecord\.job_id\)[\s\S]*forceTextOnlyNextRound = true/,
+  )
+})
