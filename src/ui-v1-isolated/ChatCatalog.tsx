@@ -13,7 +13,7 @@ import {
 } from "../chat/catalogPresentation"
 import type { ChatRoom } from "../types/chat"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
-import { chatRoomOpenSurface, createChatRoomSnakeActions } from "./chatSnakeActions"
+import { createChatRoomSnakeActions } from "./chatSnakeActions"
 import { useUiV1ChatCatalog } from "./useUiV1ChatCatalog"
 import "./chat-catalog.css"
 
@@ -204,7 +204,7 @@ export default function ChatCatalog() {
   }
 
   function openRoom(room: ChatRoom) {
-    snake.openSurface(chatRoomOpenSurface(room))
+    window.location.hash = "#/chats/" + encodeURIComponent(room.id)
   }
 
   function roomSnakeActions(room: ChatRoom) {
