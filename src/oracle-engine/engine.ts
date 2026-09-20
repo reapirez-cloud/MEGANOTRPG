@@ -62,6 +62,7 @@ export class OracleEngine {
     this.characters = {
       create: (context, input) => direct(context, () => dependencies.shapoklyak.execute({ kind: "entity.create", context, input })),
       update: (context, characterId, input) => direct(context, () => dependencies.shapoklyak.execute({ kind: "entity.update", context, characterId, input })),
+      convertType: (context, characterId, characterType, npcVisibilityMode) => direct(context, () => dependencies.shapoklyak.execute({ kind: "entity.convert_type", context, characterId, characterType, ...(npcVisibilityMode ? { npcVisibilityMode } : {}) })),
       delete: (context, characterId) => direct(context, () => dependencies.shapoklyak.execute({ kind: "entity.delete", context, characterId })),
       setActive: (context, userId, characterId) => direct(context, () => dependencies.shapoklyak.execute({ kind: "entity.set_active", context, userId, characterId })),
       setAvatar: (context, characterId, avatarUrl) => direct(context, () => dependencies.shapoklyak.execute({ kind: "entity.set_avatar", context, characterId, avatarUrl })),
