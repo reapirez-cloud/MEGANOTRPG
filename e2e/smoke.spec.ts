@@ -8,17 +8,9 @@ test("new UI v1 is the default application entry on a mobile viewport", async ({
   await expect(page.getByText("Мунтар", { exact: true })).toBeVisible();
 });
 
-test("legacy application remains reachable only through its explicit entry", async ({ page }) => {
-  await page.route("https://telegram.org/js/**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/javascript",
-      body: "window.Telegram = window.Telegram || { WebApp: {} };",
-    });
-  });
-
+test("legacy application entry is physically removed", async ({ page }) => {
   const response = await page.goto("/legacy.html", { waitUntil: "domcontentloaded" });
 
-  expect(response?.ok()).toBeTruthy();
-  await expect(page.locator("#root")).toBeAttached();
+  expect(response?.status()).toBe(404);
+  await expect(page.locator("#root")).toHaveCount(0);
 });
