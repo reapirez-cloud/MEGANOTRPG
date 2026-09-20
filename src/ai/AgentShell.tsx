@@ -12,6 +12,7 @@ import {
   type AIAttachment,
   type AIGeneratedAssetRef,
 } from "./AIProvider"
+import ArtPlayer, { type ArtPlayerItem } from "../components/media/ArtPlayer"
 import {
   AGENT_OPEN_EVENT,
   type AgentOpenDetail,
@@ -139,7 +140,12 @@ export default function AgentShell() {
   const [selectedGeneratedAssetRef, setSelectedGeneratedAssetRef] =
     useState<AIGeneratedAssetRef | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
+  const [previewImage, setPreviewImage] = useState<{
+    key: string
+    title: string
+    items: ArtPlayerItem[]
+    initialIndex: number
+  } | null>(null)
   const [pendingDeleteThreadId, setPendingDeleteThreadId] =
     useState<string | null>(null)
   const [orbPosition, setOrbPosition] = useState(defaultOrbPosition)
@@ -512,27 +518,15 @@ export default function AgentShell() {
         />
       )}
 
-      {previewImageUrl && (
-        <div
-          className="u1-agent-image-preview"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Просмотр изображения"
-          onClick={() => setPreviewImageUrl(null)}
-        >
-          <button
-            type="button"
-            className="u1-agent-image-preview__close"
-            onClick={() => setPreviewImageUrl(null)}
-            aria-label="Закрыть изображение"
-          >
-            ×
-          </button>
-          <img
-            src={previewImageUrl}
-            alt="Сгенерированное изображение"
-            onClick={(event) => event.stopPropagation()}
-            draggable={false}
+      {previewImage && (
+        <div className="u1-art-player-layer">
+          <ArtPlayer
+            key={previewImage.key}
+            items={previewImage.items}
+            initialIndex={previewImage.initialIndex}
+            title={previewImage.title}
+            eyebrow={`ИИ · ${assistantName}`}
+            onClose={() => setPreviewImage(null)}
           />
         </div>
       )}
@@ -843,7 +837,36 @@ export default function AgentShell() {
                             {asset.url && (
                               <button
                                 type="button"
-                                onClick={() => setPreviewImageUrl(asset.url)}
+                                onClick={() => {
+                                  const items = job.outputs.flatMap((candidate) =>
+                                    candidate.url
+                                      ? [{
+                                          id: candidate.id,
+                                          src: candidate.url,
+                                          title: `Вариант ${candidate.variant_index}`,
+                                          alt: `Вариант ${candidate.variant_index}`,
+                                          facts: {
+                                            jobId: job.id,
+                                            assetId: candidate.id,
+                                            variantIndex: candidate.variant_index,
+                                            status: candidate.status,
+                                            purpose: candidate.purpose,
+                                            profile: candidate.profile,
+                                          },
+                                        }]
+                                      : [],
+                                  )
+                                  const initialIndex = Math.max(
+                                    0,
+                                    items.findIndex((item) => item.id === asset.id),
+                                  )
+                                  setPreviewImage({
+                                    key: `${job.id}:${asset.id}`,
+                                    title: "Генерация",
+                                    items,
+                                    initialIndex,
+                                  })
+                                }}
                               >
                                 Открыть
                               </button>
