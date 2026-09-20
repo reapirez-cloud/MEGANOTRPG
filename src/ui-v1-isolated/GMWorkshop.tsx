@@ -1,7 +1,7 @@
 import { useAIViewContextLayer } from "../ai/AIProvider"
 import GMWorkshopCharacters from "./GMWorkshopCharacters"
 import { WorkshopHeader } from "./GMWorkshopCommon"
-import GMWorkshopDraft from "./GMWorkshopDraft"
+import GMWorkshopReview from "./GMWorkshopReview"
 import GMWorkshopLibrary from "./GMWorkshopLibrary"
 import GMWorkshopMain from "./GMWorkshopMain"
 import GMWorkshopMaterials from "./GMWorkshopMaterials"
@@ -12,7 +12,7 @@ import {
 } from "./useGMWorkshopData"
 
 function sectionLabel(section?: WorkshopSection) {
-  if (section === "draft") return "Черновик"
+  if (section === "review") return "На проверку"
   if (section === "members") return "Участники"
   if (section === "characters") return "Персонажи"
   if (section === "library") return "Библиотека"
@@ -35,7 +35,7 @@ export default function GMWorkshop({
 
   const visible =
     section === "characters"
-      ? data.campaignCharacters.slice(0, 24).map((character) => ({
+      ? data.characters.slice(0, 24).map((character) => ({
           type: character.characterType,
           id: character.id,
           name: character.name,
@@ -44,26 +44,14 @@ export default function GMWorkshop({
           state: character.lifeState,
         }))
       : section === "library"
-        ? data.activeDefinitions.slice(0, 24).map((definition) => ({
+        ? data.definitions.slice(0, 24).map((definition) => ({
             type: definition.kind,
             id: definition.id,
             name: definition.name,
             summary: definition.summary,
           }))
-        : section === "draft"
-          ? [
-              ...data.draftCharacters.slice(0, 12).map((character) => ({
-                type: "character-draft",
-                id: character.id,
-                name: character.name,
-              })),
-              ...data.draftDefinitions.slice(0, 12).map((definition) => ({
-                type: "definition-draft",
-                id: definition.id,
-                name: definition.name,
-                kind: definition.kind,
-              })),
-            ]
+        : section === "review"
+          ? []
           : section === "materials"
             ? data.materials.slice(0, 24).map((material) => ({
                 type: material.kind,
@@ -152,11 +140,8 @@ export default function GMWorkshop({
               onNavigate={onNavigate}
             />
           )}
-          {section === "draft" && (
-            <GMWorkshopDraft
-              data={data}
-              onOpenCharacter={onOpenCharacter}
-            />
+          {section === "review" && (
+            <GMWorkshopReview data={data} />
           )}
           {section === "members" && (
             <GMWorkshopMembers
