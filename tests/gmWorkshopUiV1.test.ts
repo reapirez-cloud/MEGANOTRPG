@@ -29,6 +29,10 @@ const stage3Migration = fs.readFileSync(
   "supabase/migrations/20260920070533_gm_workshop_definition_lifecycle_stage3.sql",
   "utf8",
 )
+const materialStage3Migration = fs.readFileSync(
+  "supabase/migrations/20260920071633_gm_workspace_material_integrity_stage3.sql",
+  "utf8",
+)
 const referenceTypes = fs.readFileSync("src/reference-engine/types.ts", "utf8")
 const referenceStorage = fs.readFileSync("src/reference-engine/supabase.ts", "utf8")
 const definitionRuntime = fs.readFileSync("src/ui-v1-isolated/gmWorkshopDefinitionRuntime.ts", "utf8")
@@ -46,7 +50,7 @@ test("UI 1.0 management route is the real GM Workshop and uses destination panel
   assert.match(main, /title="Участники"/)
   assert.match(main, /title="Персонажи"/)
   assert.match(main, /title="Библиотека"/)
-  assert.match(main, /title="Материалы"/)
+  assert.match(main, /title="Личные материалы"/)
   assert.ok(main.indexOf('title="На проверку"') < main.indexOf('title="Участники"'))
   assert.doesNotMatch(
     main + review + members + characters + library + materials,
@@ -253,17 +257,34 @@ test("definition runtime projection is extracted from the GM Workshop god-hook",
   assert.doesNotMatch(data, /function itemInput|function spellInput|function definitionWeightKg/)
 })
 
-test("private GM materials preserve notes folders uploads and Storage cleanup", () => {
+test("personal GM materials are explicit and folder mutations are transactional", () => {
   assert.match(data, /uploadCampaignFile/)
   assert.match(data, /deleteCampaignMediaObject/)
   assert.match(data, /createNote/)
   assert.match(data, /updateNote/)
   assert.match(data, /createFolder/)
   assert.match(data, /renameFolder/)
+  assert.match(data, /reorder_gm_workspace_folder_v1/)
+  assert.match(data, /delete_gm_workspace_folder_v1/)
+  assert.match(materials, /Личные материалы · только ты/)
+  assert.match(materials, /Дочерние папки сохранятся и поднимутся на уровень выше/)
   assert.match(materials, /\+ Заметка/)
   assert.match(materials, /\+ Папка/)
   assert.match(materials, /\+ Файл/)
   assert.match(materials, /type="file"/)
   assert.match(materials, /window\.open\(material\.fileUrl/)
   assert.match(styles, /\.u1-gm-material-upload/)
+  assert.match(materialStage3Migration, /gm_workspace_folders_parent_workspace_fkey/)
+  assert.match(materialStage3Migration, /gm_workspace_files_folder_workspace_fkey/)
+  assert.match(materialStage3Migration, /on delete restrict/)
+  assert.match(materialStage3Migration, /reorder_gm_workspace_folder_v1/)
+  assert.match(materialStage3Migration, /delete_gm_workspace_folder_v1/)
+  assert.match(materialStage3Migration, /set parent_id = v_folder\.parent_id/)
+  assert.match(materialStage3Migration, /set folder_id = null/)
+})
+
+test("successful Workshop mutation is not reported as failed when refresh fails", () => {
+  assert.match(data, /refreshError/)
+  assert.match(data, /Изменение сохранено, но экран не удалось обновить/)
+  assert.match(data, /await action\(\)[\s\S]*try \{[\s\S]*await load\(\)[\s\S]*ok: true/)
 })
