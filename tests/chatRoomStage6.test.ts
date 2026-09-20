@@ -67,7 +67,7 @@ test("stage 6 tracks mobile visual viewport for the keyboard", async () => {
   assert.match(viewport, /addEventListener\("scroll"/)
   assert.match(room, /useChatVisualViewportHeight/)
   assert.match(room, /--u1-chat-viewport-height/)
-  assert.match(room, /data-chat-room-stage="6"/)
+  assert.match(room, /data-chat-room-stage="7"/)
 })
 
 test("stage 6 uses a shared motion layer and respects reduced motion", async () => {
