@@ -6,7 +6,11 @@ import {
 } from "react"
 
 import { supabase } from "../../lib/supabase"
-import type { ChatRoomShellModel, ChatSpeakerOption } from "./chatRoomContracts"
+import {
+  CHAT_MESSAGE_SENT_EVENT,
+  type ChatRoomShellModel,
+  type ChatSpeakerOption,
+} from "./chatRoomContracts"
 import { useChatSpeakerOptions } from "./useChatSpeakerOptions"
 
 function PlusIcon() {
@@ -161,14 +165,22 @@ export default function ChatComposer({
     setSendError(null)
 
     try {
-      await sendTextMessage({
+      const messageId = await sendTextMessage({
         roomId: model.roomId,
         userId: model.viewer.userId,
         characterId: selectedCharacterId,
         body,
       })
       setText("")
-      if (textareaRef.current) textareaRef.current.style.height = "auto"
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto"
+        textareaRef.current.focus()
+      }
+      window.dispatchEvent(
+        new CustomEvent(CHAT_MESSAGE_SENT_EVENT, {
+          detail: { roomId: model.roomId, messageId },
+        }),
+      )
     } catch (error) {
       setSendError(
         error instanceof Error ? error.message : "Сообщение не отправлено",
@@ -183,6 +195,8 @@ export default function ChatComposer({
       className="u1-chat-composer"
       data-can-compose={canCompose || undefined}
       data-read-only={model.readOnly || undefined}
+      data-sending={sending || undefined}
+      aria-busy={sending}
       onSubmit={(event) => void submit(event)}
     >
       {sendError ? (
@@ -289,7 +303,7 @@ export default function ChatComposer({
           disabled={!canCompose || !text.trim() || sending}
           data-sending={sending || undefined}
         >
-          <SendIcon />
+          {sending ? <span className="u1-chat-composer__sending-dot" /> : <SendIcon />}
         </button>
       </div>
     </form>
