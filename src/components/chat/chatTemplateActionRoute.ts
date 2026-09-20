@@ -1,1 +1,1 @@
-export * from "../../chat-runtime/templateActionRoute.ts"\n
+export * from "../../chat-runtime/templateActionRoute.ts"
