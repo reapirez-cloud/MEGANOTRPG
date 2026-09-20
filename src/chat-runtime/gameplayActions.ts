@@ -166,8 +166,17 @@ export function createResolvedActionSnakeAction(
         return success()
       }
 
-      if (action.costOptions.length) {
-        throw new Error("Альтернативная оплата этого действия пока не имеет авторитетного маршрута.")
+      const selectedCostOption = action.costOptions.length
+        ? action.costOptions.find(
+            (option) => option.key === (selectedOptionKey ?? paymentOption),
+          ) || null
+        : null
+
+      if (action.costOptions.length && !selectedCostOption) {
+        throw new Error("Сначала выберите способ расхода ресурса.")
+      }
+      if (selectedCostOption && !selectedCostOption.available) {
+        throw new Error("Выбранный способ расхода ресурса сейчас недоступен.")
       }
 
       const inventoryItemId = action.sources
@@ -175,8 +184,9 @@ export function createResolvedActionSnakeAction(
         .map((ref) => inventoryItemIdFromSourceId(ref.source.id))
         .find((itemId): itemId is string => Boolean(itemId))
 
+      const resolvedCosts = selectedCostOption?.costs ?? action.resourceCosts
       const costs = runtime.contract
-        ? resourceCostInputs(runtime.contract, action.resourceCosts)
+        ? resourceCostInputs(runtime.contract, resolvedCosts)
         : []
 
       if (inventoryItemId) {
