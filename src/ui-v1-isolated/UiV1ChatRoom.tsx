@@ -1,5 +1,7 @@
 import type { ChatMessage } from "../types/chat"
 import { useSnake } from "./SnakeProvider"
+import { ChatDrawerHost } from "./chat/ChatDrawerHost"
+import { useChatDrawerRuntime } from "./chat/useChatDrawerRuntime"
 import { useUiV1ChatRoom, type UiV1ChatRoomSummary } from "./useUiV1ChatRoom"
 import "./chat-room.css"
 
@@ -19,6 +21,70 @@ function roomState(room: UiV1ChatRoomSummary) {
   if (room.room_state === "closed" || room.scene_state === "closed") return "Завершено"
   if (room.room_state === "gm_only") return "Пишет ГМ"
   return "Активно"
+}
+
+function roomTypeLabel(room: UiV1ChatRoomSummary) {
+  if (room.room_type === "character") return "Личная история"
+  if (room.room_type === "scene") return "Игровая сцена"
+  return "Флуд"
+}
+
+function RoomContextStage2({ room }: { room: UiV1ChatRoomSummary }) {
+  return (
+    <div className="u1-room-context" data-chat-drawer-context="stage-2">
+      <section className="u1-room-context__summary">
+        <small>Комната</small>
+        <strong>{room.title}</strong>
+        <span>{roomTypeLabel(room)} · {roomState(room)}</span>
+      </section>
+
+      <section className="u1-room-context__section">
+        <div className="u1-room-context__section-head">
+          <small>Участники</small>
+          <span>этап 5</span>
+        </div>
+        <p>
+          Персонажи комнаты будут отдельными строками. Отдых и персональные
+          действия открываются с конкретного персонажа, а не общей кнопкой на
+          всю комнату.
+        </p>
+      </section>
+
+      <section className="u1-room-context__section">
+        <div className="u1-room-context__section-head">
+          <small>Комната</small>
+          <span>контекст</span>
+        </div>
+        <dl>
+          <div><dt>Тип</dt><dd>{roomTypeLabel(room)}</dd></div>
+          <div><dt>Состояние</dt><dd>{roomState(room)}</dd></div>
+          <div><dt>День кампании</dt><dd>{room.campaign_day || "—"}</dd></div>
+        </dl>
+      </section>
+
+      <section className="u1-room-context__section u1-room-context__section--quiet">
+        <small>Инструменты</small>
+        <p>
+          Переходы к листу, инвентарю и GM-действиям подключаются через
+          контекст конкретного персонажа на следующем функциональном этапе.
+        </p>
+      </section>
+    </div>
+  )
+}
+
+function ActionWorkspaceStage2() {
+  return (
+    <div className="u1-room-action-workspace" data-chat-drawer-workspace="stage-2">
+      <span aria-hidden="true">◇</span>
+      <small>Action workspace</small>
+      <strong>Действие не выбрано</strong>
+      <p>
+        Эта почти полноэкранная панель уже готова как общий контейнер. На этапе
+        3 компактный launcher по «+» будет открывать сюда выбранное действие.
+      </p>
+    </div>
+  )
 }
 
 function formatTime(value: string) {
@@ -111,13 +177,14 @@ function LoadingState() {
 
 export default function UiV1ChatRoom({ roomId, onBack }: Props) {
   const snake = useSnake()
+  const drawers = useChatDrawerRuntime()
   const data = useUiV1ChatRoom(roomId)
 
   if (data.loading && !data.room) return <LoadingState />
 
   if (!data.room) {
     return (
-      <main className="u1-room" data-chat-room-stage="1">
+      <main className="u1-room" data-chat-room-stage="2">
         <section className="u1-room-state" role="alert">
           <span aria-hidden="true">!</span>
           <strong>Чат не открылся</strong>
@@ -143,7 +210,7 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
   }
 
   return (
-    <main className="u1-room" data-chat-room-stage="1">
+    <main className="u1-room" data-chat-room-stage="2">
       <header className="u1-room-header">
         <button type="button" className="u1-room-header__back" aria-label="Назад к чатам" onClick={onBack}>‹</button>
         <div className="u1-room-header__copy">
@@ -155,10 +222,11 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
           type="button"
           className="u1-room-header__context"
           aria-label="Контекст комнаты"
-          onClick={() => openDeferred(
-            "Панель комнаты",
-            "Контекст комнаты, участники и инструменты ГМ появятся здесь во втором этапе как отдельная правая панель.",
-          )}
+          onClick={() => drawers.openContext({
+            eyebrow: roomKind(room),
+            title: "Контекст комнаты",
+            subtitle: room.title,
+          })}
         >◇</button>
       </header>
 
@@ -216,6 +284,12 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
         <input className="u1-room-composer__input" aria-label="Сообщение" readOnly placeholder="Сообщение…" />
         <button type="submit" className="u1-room-composer__send" aria-label="Отправить" disabled>➤</button>
       </form>
+
+      <ChatDrawerHost session={drawers.session} onClose={drawers.close}>
+        {drawers.session?.mode === "context"
+          ? <RoomContextStage2 room={room} />
+          : <ActionWorkspaceStage2 />}
+      </ChatDrawerHost>
     </main>
   )
 }
