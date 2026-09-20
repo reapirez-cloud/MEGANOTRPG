@@ -64,12 +64,12 @@ test("AI draft tables are manager-readable and client read-only", () => {
 })
 
 test("structured AI drafts live in Workshop instead of being injected into every chat", () => {
-  const workshop = read("src/ui-v1-isolated/GMWorkshopDraft.tsx")
+  const workshop = read("src/ui-v1-isolated/GMWorkshopReview.tsx")
   const shell = read("src/ai/AgentShell.tsx")
   const provider = read("src/ai/AIProvider.tsx")
 
-  assert.match(workshop, /Черновики Восса/)
-  assert.match(workshop, /AI DRAFT · НЕ КАНОН/)
+  assert.match(workshop, /На проверку/)
+  assert.match(workshop, /AI REVIEW · НЕ КАНОН/)
   assert.doesNotMatch(shell, /AI DRAFT · НЕ КАНОН/)
   assert.doesNotMatch(shell, /drafts\[0\]/)
   assert.match(provider, /from\("ai_drafts"\)/)
