@@ -2,26 +2,23 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 
-const app = fs.readFileSync("src/App.tsx", "utf8")
-const topBar = fs.readFileSync("src/components/app/TopBar.tsx", "utf8")
-const reference = fs.readFileSync("src/components/reference/ReferenceGuide.tsx", "utf8")
+const app = fs.readFileSync("src/ui-v1-isolated/UiV1App.tsx", "utf8")
+const reference = fs.readFileSync("src/ui-v1-isolated/SectionScreens.tsx", "utf8")
 const druid = fs.readFileSync("src/data/classes/druidReference.ts", "utf8")
 const clarity = fs.readFileSync("supabase/migrations/20260828010000_druid_rule_clarity.sql", "utf8")
 
-test("rules reference has an actual app entry point and campaign catalog", () => {
-  assert.match(topBar, /onOpenReference/)
-  assert.match(topBar, /aria-label="Справочник"/)
-  assert.match(app, /onOpenReference=\{\(\)=>setReferenceOpen\(true\)\}/)
-  assert.match(app, /<ReferenceGuide campaignId=\{campaignId\}/)
-  assert.match(reference, /useRuleTemplates\(campaignId\)/)
+test("rules reference has a canonical UI v1 entry point and campaign catalog", () => {
+  assert.match(app, /<KnowledgeBaseScreen subsection=\{route\.subsection\} path=\{route\.tail\}/)
+  assert.match(reference, /useRuleTemplates\(subsection === "classes" \? catalog\.campaignId : ""\)/)
+  assert.match(reference, /function ClassCatalogPanels/)
 })
 
-test("subclasses are navigable detail pages with real level progression", () => {
-  assert.match(reference, /"subclass-detail"/)
-  assert.match(reference, /function openSubclass/)
-  assert.match(reference, /onClick=\{\(\) => openSubclass\(subclass\)\}/)
-  assert.match(reference, /Прогрессия подкласса/)
-  assert.match(reference, /buildTemplateFeatures\(selectedSubclassTemplate, levels\)/)
+test("subclasses are navigable detail pages in the canonical knowledge-base route", () => {
+  assert.match(reference, /function ClassModeTabs/)
+  assert.match(reference, /active: "class" \| "subclasses"/)
+  assert.match(reference, /home\/knowledge-base\/classes\/\$\{entry\.id\}\/subclasses/)
+  assert.match(reference, /buildSubclassPresentation/)
+  assert.match(reference, /<SubclassDetailScreen/)
 })
 
 test("Druid resource exchanges are explicit instead of relying on vague prose", () => {
