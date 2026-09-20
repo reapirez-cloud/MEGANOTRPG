@@ -66,6 +66,6 @@ test("stage 7 preserves real HP, world state and equipped-weapon data", async ()
 test("stage 7 adds no action panels", async () => {
   const room = await readFile(roomPath, "utf8")
 
-  assert.match(room, /data-chat-room-stage="7"/)
+  assert.match(room, /data-chat-room-stage="8"/)
   assert.doesNotMatch(room, /ChatDrawer|ActionLauncher|ActionPanel|right-panel/i)
 })
