@@ -1,53 +1,5 @@
-import type {
-  ChatActionLauncherMode,
-  ChatRoomShellModel,
-} from "./chatRoomContracts"
-import {
-  CHAT_ACTION_REQUEST_EVENT,
-  chatRoomDayPeriodLabel,
-} from "./chatRoomContracts"
-
-type QuickActionId = "inventory" | "class" | "spells" | "attack"
-
-function QuickActionIcon({ action }: { action: QuickActionId }) {
-  if (action === "inventory") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M7 8.5V6.8A5 5 0 0 1 12 2a5 5 0 0 1 5 4.8v1.7" />
-        <path d="M4.5 8.5h15l-1 12h-13l-1-12Z" />
-        <path d="M8.2 12.2h7.6" />
-      </svg>
-    )
-  }
-
-  if (action === "class") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 2.8 15 9l6.2 3-6.2 3-3 6.2L9 15l-6.2-3L9 9l3-6.2Z" />
-        <circle cx="12" cy="12" r="2.1" />
-      </svg>
-    )
-  }
-
-  if (action === "spells") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4.2 4.5c3.1-.9 5.7-.4 7.8 1.5v14c-2.1-1.9-4.7-2.4-7.8-1.5v-14Z" />
-        <path d="M19.8 4.5c-3.1-.9-5.7-.4-7.8 1.5v14c2.1-1.9 4.7-2.4 7.8-1.5v-14Z" />
-        <path d="m16.6 8.2.5 1.1 1.1.5-1.1.5-.5 1.1-.5-1.1-1.1-.5 1.1-.5.5-1.1Z" />
-      </svg>
-    )
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="m5 19 4-4" />
-      <path d="m8 16 8.9-8.9 2 2L10 18l-2-2Z" />
-      <path d="m15.8 5.8 2.4-2.4 2.4 2.4-2.4 2.4" />
-      <path d="M4 20h5" />
-    </svg>
-  )
-}
+import type { ChatRoomShellModel } from "./chatRoomContracts"
+import { chatRoomDayPeriodLabel } from "./chatRoomContracts"
 
 function ClockIcon() {
   return (
@@ -123,9 +75,6 @@ function SceneContext({ model }: { model: ChatRoomShellModel }) {
         <span className="u1-room-context__copy">
           <span>Время суток</span>
           <strong>{dayPeriod}</strong>
-          {model.context.campaignDay ? (
-            <small>День {model.context.campaignDay}</small>
-          ) : null}
         </span>
       </div>
 
@@ -142,65 +91,10 @@ function SceneContext({ model }: { model: ChatRoomShellModel }) {
   )
 }
 
-function QuickActions({
-  hasEquippedWeapon,
-  roomId,
-}: {
-  hasEquippedWeapon: boolean
-  roomId: string
-}) {
-  const actions: Array<{
-    id: QuickActionId
-    label: string
-    mode: ChatActionLauncherMode
-  }> = [
-    { id: "inventory", label: "Инвентарь", mode: "item" },
-    { id: "class", label: "Классовые умения", mode: "ability" },
-    { id: "spells", label: "Заклинания", mode: "spell" },
-    ...(hasEquippedWeapon
-      ? [{ id: "attack" as const, label: "Атака", mode: "action" as const }]
-      : []),
-  ]
-
-  return (
-    <nav
-      className="u1-room-quick-actions"
-      aria-label="Быстрые действия"
-      data-action-count={actions.length}
-    >
-      {actions.map((action) => (
-        <button
-          key={action.id}
-          type="button"
-          className="u1-room-quick-action"
-          data-action={action.id}
-          data-action-mode={action.mode}
-          aria-label={"Открыть: " + action.label}
-          title={action.label}
-          onClick={() => {
-            window.dispatchEvent(
-              new CustomEvent(CHAT_ACTION_REQUEST_EVENT, {
-                detail: { roomId, mode: action.mode },
-              }),
-            )
-          }}
-        >
-          <span className="u1-room-quick-action__icon">
-            <QuickActionIcon action={action.id} />
-          </span>
-          <span>{action.label}</span>
-        </button>
-      ))}
-    </nav>
-  )
-}
-
 export default function ChatRoomHeader({
   model,
-  showQuickActions,
 }: {
   model: ChatRoomShellModel
-  showQuickActions: boolean
 }) {
   const identity = model.identity
   if (!identity) {
@@ -264,13 +158,6 @@ export default function ChatRoomHeader({
       </div>
 
       <SceneContext model={model} />
-
-      {showQuickActions ? (
-        <QuickActions
-          roomId={model.roomId}
-          hasEquippedWeapon={model.quickActions.hasEquippedWeapon}
-        />
-      ) : null}
     </section>
   )
 }
