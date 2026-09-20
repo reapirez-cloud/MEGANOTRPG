@@ -4,7 +4,6 @@ import test from "node:test"
 
 const html = fs.readFileSync("index.html", "utf8")
 const aliasHtml = fs.readFileSync("ui-v1.html", "utf8")
-const legacyHtml = fs.readFileSync("legacy.html", "utf8")
 const entry = fs.readFileSync("src/ui-v1-isolated/main.tsx", "utf8")
 const app = fs.readFileSync("src/ui-v1-isolated/UiV1App.tsx", "utf8")
 const styles = fs.readFileSync("src/ui-v1-isolated/styles.css", "utf8")
@@ -13,8 +12,6 @@ const workspaceData = fs.readFileSync("src/ui-v1-isolated/useWorkspaceData.ts", 
 const workspaceStyles = fs.readFileSync("src/ui-v1-isolated/workspace.css", "utf8")
 const workspaceIdentityRules = fs.readFileSync("src/ui-v1-isolated/workspaceIdentityRules.ts", "utf8")
 const agentShell = fs.readFileSync("src/ai/AgentShell.tsx", "utf8")
-const legacyApp = fs.readFileSync("src/App.tsx", "utf8")
-const legacyStyles = fs.readFileSync("src/App.css", "utf8")
 const whatsNew = fs.readFileSync("src/ui-v1-isolated/WhatsNew.tsx", "utf8")
 const chronicleData = fs.readFileSync("src/ui-v1-isolated/useChronicleData.ts", "utf8")
 const chronicleStyles = fs.readFileSync("src/ui-v1-isolated/whats-new.css", "utf8")
@@ -110,15 +107,17 @@ test("approved navigation PNG artwork is committed and lightweight", () => {
   }
 })
 
-test("legacy bottom navigation is removed instead of kept as dead fallback code", () => {
+test("legacy application surface is physically removed", () => {
+  assert.equal(fs.existsSync("legacy.html"), false)
+  assert.equal(fs.existsSync("src/main.tsx"), false)
+  assert.equal(fs.existsSync("src/App.tsx"), false)
+  assert.equal(fs.existsSync("src/App.css"), false)
   assert.equal(fs.existsSync("src/components/app/BottomNav.tsx"), false)
-  assert.doesNotMatch(legacyApp + legacyStyles, /BottomNav|bottom-nav/)
 })
 
 test("UI v1 is now the default application entry", () => {
   assert.match(html, /src\/ui-v1-isolated\/main\.tsx/)
   assert.match(aliasHtml, /src\/ui-v1-isolated\/main\.tsx/)
-  assert.match(legacyHtml, /src\/main\.tsx/)
   assert.match(entry, /\.\/UiV1App/)
   assert.match(entry, /\.\/styles\.css/)
   assert.doesNotMatch(entry + app, /\.\.\/App|pages\/|components\/app|CharacterContext/i)
@@ -128,8 +127,8 @@ test("UI v1 does not load the legacy stylesheet graph", () => {
   assert.doesNotMatch(entry + app + styles, /App\.css|social\.css|ui-v2\.css|gm-workspace\.css|character-profile/i)
 })
 
-test("legacy app does not import the isolated UI v1 tree", () => {
-  assert.doesNotMatch(legacyApp, /ui-v1-isolated/)
+test("canonical UI v1 has no legacy application fallback", () => {
+  assert.doesNotMatch(entry + app + styles, /legacy\.html|src\/main\.tsx|src\/App\.tsx/)
 })
 
 test("UI v1 start page keeps the approved grayscale visual direction", () => {
