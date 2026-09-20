@@ -34,7 +34,7 @@ test("Voss runtime has no mechanics authoring tools or mechanics route", () => {
   assert.doesNotMatch(edge, /executeVossMechanicsTool/)
   assert.doesNotMatch(edge, /isVossMechanicsTool/)
   assert.match(edge, /isMechanicsAuthoringRequest/)
-  assert.match(edge, /const scopedDraftTools[\s\S]*!mechanicsAuthoringRequested/)
+  assert.match(edge, /grantedCapabilities\.has\("content\.write"\) && !mechanicsAuthoringRequested/)
   assert.doesNotMatch(router, /\| "mechanics_compile"/)
   assert.doesNotMatch(router, /return "mechanics_compile"/)
   assert.doesNotMatch(shell, /MECHANICS COMPILER/)
