@@ -24,10 +24,10 @@ const ACTION_MENU_ITEMS: Array<{
   hint: string
 }> = [
   { mode: "roll", label: "Бросок", hint: "Кубы и проверки" },
-  { mode: "ability", label: "Умение", hint: "Класс и способности" },
-  { mode: "spell", label: "Заклинание", hint: "Ячейки и магия" },
-  { mode: "item", label: "Предмет", hint: "Инвентарь и расходники" },
-  { mode: "action", label: "Действие", hint: "Атаки и боевые действия" },
+  { mode: "ability", label: "Способности", hint: "Класс и подкласс" },
+  { mode: "spell", label: "Заклинания", hint: "Доступная магия" },
+  { mode: "item", label: "Инвентарь", hint: "Предметы и расходники" },
+  { mode: "action", label: "Атака", hint: "Оружие и боевые действия" },
 ]
 
 function PlusIcon() {
