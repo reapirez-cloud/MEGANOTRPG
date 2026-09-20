@@ -115,6 +115,8 @@ export default function ChatComposer({
   model: ChatRoomShellModel
 }) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const speakerRef = useRef<HTMLDivElement | null>(null)
+  const speakerTriggerRef = useRef<HTMLButtonElement | null>(null)
   const [text, setText] = useState("")
   const [speakerOpen, setSpeakerOpen] = useState(false)
   const [sending, setSending] = useState(false)
@@ -152,8 +154,32 @@ export default function ChatComposer({
   }, [text])
 
   useEffect(() => {
-    if (!model.canManage) setSpeakerOpen(false)
-  }, [model.canManage])
+    if (!model.canManage || !model.canWrite) setSpeakerOpen(false)
+  }, [model.canManage, model.canWrite])
+
+  useEffect(() => {
+    if (!speakerOpen) return
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (speakerRef.current?.contains(target)) return
+      setSpeakerOpen(false)
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return
+      setSpeakerOpen(false)
+      speakerTriggerRef.current?.focus()
+    }
+
+    document.addEventListener("pointerdown", onPointerDown)
+    document.addEventListener("keydown", onKeyDown)
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown)
+      document.removeEventListener("keydown", onKeyDown)
+    }
+  }, [speakerOpen])
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -207,8 +233,9 @@ export default function ChatComposer({
 
       <div className="u1-chat-composer__row">
         {model.canManage ? (
-          <div className="u1-chat-composer__speaker">
+          <div ref={speakerRef} className="u1-chat-composer__speaker">
             <button
+              ref={speakerTriggerRef}
               type="button"
               className="u1-chat-composer__speaker-trigger"
               aria-label={"Пишет: " + speakers.selected.name}
