@@ -39,7 +39,7 @@ test("stage 1 contains only the room foundation and character header", async () 
     readFile(cssPath, "utf8"),
   ])
 
-  assert.match(room, /data-chat-room-stage="3"/)
+  assert.match(room, /data-chat-room-stage="4"/)
   assert.match(room, /Время суток/)
   assert.match(room, /Локация/)
   assert.match(room, /<HpBlock/)
