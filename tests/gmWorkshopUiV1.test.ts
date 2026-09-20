@@ -28,7 +28,8 @@ const characterView = fs.readFileSync("src/ui-v1-isolated/CharacterView.tsx", "u
 
 test("UI 1.0 management route is the real GM Workshop and uses destination panels instead of legacy tabs", () => {
   assert.match(app, /<GMWorkshop/)
-  assert.match(app, /const workshopSections: WorkshopSection\[\] = \["draft", "members", "characters", "library", "materials"\]/)\n  assert.match(app, /workspace\/manage\/party[\s\S]*section: "members"/)
+  assert.match(app, /const workshopSections: WorkshopSection\[\] = \["draft", "members", "characters", "library", "materials"\]/)
+  assert.match(app, /workspace\/manage\/party[\s\S]*section: "members"/)
   assert.match(app, /path\.startsWith\("workspace\/manage\/"\)/)
   assert.match(app, /"workspace\/manage\/" \+ section/)
   assert.match(entry, /\.\/gm-workshop\.css/)
