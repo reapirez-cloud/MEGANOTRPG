@@ -1,119 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import {
-  CHAT_MESSAGE_SENT_EVENT,
-} from "./chatRoomContracts"
-import ChatGameEventCard from "./ChatGameEventCard"
-import type { UiChatEvent } from "./chatEventModel"
+import { CHAT_MESSAGE_SENT_EVENT } from "./chatRoomContracts"
+import ChatFeedItem from "./ChatFeedItem"
 import { useChatRoomEvents } from "./useChatRoomEvents"
 
 const BOTTOM_THRESHOLD = 96
 const LOAD_OLDER_THRESHOLD = 72
-
-function formatMessageTime(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ""
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date)
-}
-
-function AuthorAvatar({ event }: { event: UiChatEvent }) {
-  if (event.author.avatarUrl) {
-    return (
-      <img
-        className="u1-room-event__avatar"
-        src={event.author.avatarUrl}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        draggable={false}
-      />
-    )
-  }
-
-  return (
-    <span className="u1-room-event__avatar u1-room-event__avatar--fallback" aria-hidden="true">
-      {(event.author.name.trim()[0] || "◇").toLocaleUpperCase("ru-RU")}
-    </span>
-  )
-}
-
-function SystemEvent({ event }: { event: UiChatEvent }) {
-  return (
-    <div className="u1-room-system-event" role="note">
-      <span>{event.body || "Системное событие"}</span>
-      <time>{formatMessageTime(event.createdAt)}</time>
-    </div>
-  )
-}
-
-function MessageEvent({
-  event,
-  onMediaLoad,
-}: {
-  event: UiChatEvent
-  onMediaLoad: () => void
-}) {
-  const gmNarration = event.type === "gm_message"
-
-  return (
-    <article
-      className="u1-room-event"
-      data-event-type={event.type}
-      data-gm={gmNarration || undefined}
-    >
-      <AuthorAvatar event={event} />
-      <div className="u1-room-event__content">
-        <header>
-          <strong>{event.author.name}</strong>
-          {gmNarration ? <span>GM</span> : null}
-          <time>{formatMessageTime(event.createdAt)}</time>
-        </header>
-
-        {event.body ? <p>{event.body}</p> : null}
-
-        {event.media ? (
-          <figure className="u1-room-event__media">
-            <img
-              src={event.media.url}
-              alt={event.body ? "" : "Изображение в чате"}
-              loading="lazy"
-              decoding="async"
-              onLoad={onMediaLoad}
-            />
-          </figure>
-        ) : null}
-
-        {event.editedAt ? <small>изменено</small> : null}
-      </div>
-    </article>
-  )
-}
-
-function EventRow({
-  event,
-  onMediaLoad,
-}: {
-  event: UiChatEvent
-  onMediaLoad: () => void
-}) {
-  if (event.type === "system") return <SystemEvent event={event} />
-
-  if (
-    event.type === "roll" ||
-    event.type === "spell" ||
-    event.type === "attack" ||
-    event.type === "item" ||
-    event.type === "class_ability"
-  ) {
-    return <ChatGameEventCard event={event} />
-  }
-
-  return <MessageEvent event={event} onMediaLoad={onMediaLoad} />
-}
 
 export default function ChatFeed({ roomId }: { roomId: string }) {
   const {
@@ -304,6 +196,7 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
       ref={feedRef}
       className="u1-room-feed"
       aria-label="Лента чата"
+      data-chat-feed-stage="4"
       data-event-count={events.length}
       data-refreshing={refreshing || undefined}
       onScroll={handleScroll}
@@ -331,8 +224,12 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
 
       <div className="u1-room-feed__list">
         {events.map((event) => (
-          <div className="u1-room-feed__entry" key={event.id}>
-            <EventRow
+          <div
+            className="u1-room-feed__entry"
+            data-feed-entry-type={event.type}
+            key={event.id}
+          >
+            <ChatFeedItem
               event={event}
               onMediaLoad={() => {
                 if (pinnedToBottomRef.current) scrollToBottom("auto")

@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Chat 1:1 Stage 4 rebuilds the conversation feed around the reference hierarchy: ordinary dialogue is now the lightweight default row (30px avatar, name/time/text with no surrounding card), GM narration gets only a restrained left rule, system rows collapse into quiet inline notes, and rolls/spells/abilities/items/attacks become materially smaller special-event cards instead of dominating the viewport.
 - Chat 1:1 Stage 3 replaces the remaining oversized top card with the reference-style compact game header: portrait/identity/HP are one slim actor strip, time + campaign day and current location are a separate scene-context row, and direct Inventory / Class abilities / Spells / conditional Attack actions now sit in one dense horizontal rail instead of tall tiles.
 - Chat 1:1 Stage 2 fixes speaking identity: an owner/admin who is still an ordinary campaign player now opens their eligible room as their own active PC instead of being silently collapsed into `Рассказчик`. The manager persona picker keeps explicit Narrator/NPC selection, but its new default is the room-scoped player character when one exists.
 - Игровой чат начал отдельную 1:1-переделку по выбранному референсу: Stage 1 заменяет прежнюю плоскую компоновку на единый viewport-frame с компактной фиксированной верхней зоной, лентой, которая забирает всё оставшееся место, и закреплённым нижним вводом; старая огромная hero-карточка уже ужата по геометрии без изменения игровой логики.
@@ -29,6 +30,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Extracted `ChatFeedItem` from the scrolling runtime. `ChatFeed` now owns only history loading, realtime-follow behavior, read marking and scroll restoration, while row-type rendering is centralized in one dialogue/system/game-event dispatcher. Game-event presentation data remains unchanged and GM-owned outcome semantics are still never inferred by the client.
 - Added dedicated `ChatRoomHeader` ownership for actor presentation, scene context and quick-action geometry. `ChatRoomScreen` now only composes the fixed-head slot, keeping header internals out of the screen component and leaving action execution deferred to its dedicated later stage rather than smuggling new local panel logic into Stage 3.
 - Added one shared chat actor-selection contract. The room shell now reads the viewer's ordinary campaign `role` separately from `canManage`, while header and composer share the same versioned room speaker key/default rules. The v2 key intentionally drops the stale old “Narrator by default” state that caused owner-players to remain stuck on the wrong identity.
 - Новый `ChatRoomFrame` отделяет геометрию игрового диалога от уже работающих Stage 8 feed/composer/runtime-компонентов. Это сохраняет текущие данные и отправку сообщений, но создаёт стабильные слоты `fixed-head -> feed -> controls` для следующих этапов 1:1-переделки вместо дальнейшего наращивания старого card-stack layout.
@@ -46,6 +48,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Added Stage 4 feed regressions for the lightweight dialogue hierarchy, dedicated feed-item dispatcher, compact game-event geometry without the old full-height icon rail, conditional event routing, and preservation of pagination scroll anchoring / pinned-to-bottom / unseen-message behavior.
 - Added Stage 3 header regressions locking the dedicated component boundary, actor/context separation, unboxed 50px actor geometry, compact direct action rail, conditional Attack presence and narrow/landscape density rules.
 - Added Stage 2 actor-resolution regressions covering owner-player vs GM defaults, stale persisted speaker recovery, owned-PC inclusion in the manager selector, composer/header contract parity and the SQL guard that forbids `is_owner` from erasing player identity.
 - Добавлен регрессионный контракт нового chat reference layout Stage 1: один viewport-frame, feed с `min-height: 0` и flex-ownership оставшейся высоты, закреплённые controls, компактная геометрия header/quick-actions и защита узких/низких экранов.

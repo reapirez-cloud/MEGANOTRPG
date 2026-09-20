@@ -68,16 +68,17 @@ export default function ChatGameEventCard({ event }: { event: UiChatEvent }) {
       data-event-type={event.type}
       aria-label={presentation.eyebrow}
     >
-      <div className="u1-room-game-card__icon">
-        <GameIcon type={event.type} />
-      </div>
+      <header className="u1-room-game-card__header">
+        <span className="u1-room-game-card__icon" aria-hidden="true">
+          <GameIcon type={event.type} />
+        </span>
+        <span className="u1-room-game-card__eyebrow">
+          {presentation.eyebrow}
+        </span>
+        <time>{formatMessageTime(event.createdAt)}</time>
+      </header>
 
       <div className="u1-room-game-card__content">
-        <header className="u1-room-game-card__header">
-          <span>{presentation.eyebrow}</span>
-          <time>{formatMessageTime(event.createdAt)}</time>
-        </header>
-
         <div className="u1-room-game-card__title">
           <strong>{presentation.title}</strong>
           {presentation.subtitle ? <small>{presentation.subtitle}</small> : null}

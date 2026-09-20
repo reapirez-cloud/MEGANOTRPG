@@ -5,6 +5,7 @@ import test from "node:test"
 const modelPath = new URL("../src/ui-v1-isolated/chat-room/chatEventModel.ts", import.meta.url)
 const hookPath = new URL("../src/ui-v1-isolated/chat-room/useChatRoomEvents.ts", import.meta.url)
 const feedPath = new URL("../src/ui-v1-isolated/chat-room/ChatFeed.tsx", import.meta.url)
+const feedItemPath = new URL("../src/ui-v1-isolated/chat-room/ChatFeedItem.tsx", import.meta.url)
 const roomPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomScreen.tsx", import.meta.url)
 
 test("stage 3 has one normalized ChatEvent model for all feed rows", async () => {
@@ -42,13 +43,16 @@ test("stage 3 reads actual room history and listens only to that room", async ()
 })
 
 test("stage 3 renderer does not invent GM outcomes", async () => {
-  const feed = await readFile(feedPath, "utf8")
+  const [feed, feedItem] = await Promise.all([
+    readFile(feedPath, "utf8"),
+    readFile(feedItemPath, "utf8"),
+  ])
 
-  assert.match(feed, /ChatGameEventCard/)
-  assert.match(feed, /function SystemEvent/)
-  assert.match(feed, /function MessageEvent/)
-  assert.match(feed, /function EventRow/)
-  assert.doesNotMatch(feed, /Успех|Провал|Срабатывает|success|failure/)
+  assert.match(feed, /ChatFeedItem/)
+  assert.match(feedItem, /ChatGameEventCard/)
+  assert.match(feedItem, /function SystemEvent/)
+  assert.match(feedItem, /function DialogueMessage/)
+  assert.doesNotMatch(feed + feedItem, /Успех|Провал|Срабатывает|success|failure/)
 })
 
 test("stage 3 replaces the feed placeholder without adding composer or panels", async () => {
