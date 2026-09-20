@@ -54,6 +54,7 @@ export type CharacterTemplateAssignmentInput = {
 export type ShapoklyakCommand =
   | { kind: "entity.create"; context: EngineCommandContext; input: CharacterEntityInput }
   | { kind: "entity.update"; context: EngineCommandContext; characterId: string; input: CharacterEntityInput }
+  | { kind: "entity.convert_type"; context: EngineCommandContext; characterId: string; characterType: EntityKind; npcVisibilityMode?: Extract<EntityVisibilityMode, "always" | "discover"> }
   | { kind: "entity.delete"; context: EngineCommandContext; characterId: string }
   | { kind: "entity.set_active"; context: EngineCommandContext; userId: string; characterId: string | null }
   | { kind: "entity.set_avatar"; context: EngineCommandContext; characterId: string; avatarUrl: string | null }
