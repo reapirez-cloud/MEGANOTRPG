@@ -11,6 +11,7 @@ const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room.css", import.
 const appPath = new URL("../src/ui-v1-isolated/UiV1App.tsx", import.meta.url)
 const mainPath = new URL("../src/ui-v1-isolated/main.tsx", import.meta.url)
 const indexPath = new URL("../index.html", import.meta.url)
+const presentationPath = new URL("../src/ui-v1-isolated/chat-room/chatRoomPresentation.ts", import.meta.url)
 
 test("stage 8 is the final isolated room runtime", async () => {
   const [room, app, main, index] = await Promise.all([
@@ -28,10 +29,14 @@ test("stage 8 is the final isolated room runtime", async () => {
 })
 
 test("stage 8 hides character actions when the room cannot be written", async () => {
-  const room = await readFile(roomPath, "utf8")
+  const [room, presentation] = await Promise.all([
+    readFile(roomPath, "utf8"),
+    readFile(presentationPath, "utf8"),
+  ])
 
-  assert.match(room, /model\.canWrite &&/)
-  assert.match(room, /data-observer=\{!model\.identity \|\| undefined\}/)
+  assert.match(presentation, /showQuickActions: model\.canWrite && hasCharacter/)
+  assert.match(presentation, /canCompose/)
+  assert.match(room, /data-observer=\{presentation\.identityKind === "observer" \|\| undefined\}/)
   assert.match(room, /data-read-only=\{model\.readOnly \|\| undefined\}/)
 })
 

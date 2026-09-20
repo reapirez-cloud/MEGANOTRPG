@@ -7,6 +7,7 @@ const headerPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomHeader.tsx",
 const hookPath = new URL("../src/ui-v1-isolated/chat-room/useChatRoomShell.ts", import.meta.url)
 const contractsPath = new URL("../src/ui-v1-isolated/chat-room/chatRoomContracts.ts", import.meta.url)
 const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room.css", import.meta.url)
+const presentationPath = new URL("../src/ui-v1-isolated/chat-room/chatRoomPresentation.ts", import.meta.url)
 
 test("stage 2 resolves header identity from the room-scoped viewer contract", async () => {
   const [hook, contracts] = await Promise.all([
@@ -64,14 +65,17 @@ test("stage 2 shows attack only for a resolved equipped weapon", async () => {
 })
 
 test("stage 2 hides character quick actions when no character identity is present", async () => {
-  const [room, header] = await Promise.all([
+  const [room, header, presentation] = await Promise.all([
     readFile(roomPath, "utf8"),
     readFile(headerPath, "utf8"),
+    readFile(presentationPath, "utf8"),
   ])
 
-  assert.match(room, /model\.identity\?\.kind === "character"/)
-  assert.match(room, /model\.quickActions\.hasCharacter/)
-  assert.match(room, /showQuickActions=\{hasCharacterIdentity\}/)
+  assert.match(room, /chatRoomPresentationState\(model\)/)
+  assert.match(room, /showQuickActions=\{presentation\.showQuickActions\}/)
   assert.match(room, /<ChatRoomHeader/)
+  assert.match(presentation, /identityKind === "character"/)
+  assert.match(presentation, /model\.quickActions\.hasCharacter/)
+  assert.match(presentation, /showQuickActions: model\.canWrite && hasCharacter/)
   assert.match(header, /showQuickActions \?/)
 })

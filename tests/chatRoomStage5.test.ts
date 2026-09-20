@@ -20,7 +20,7 @@ test("stage 5 keeps GM persona selection and the player path identity-safe", asy
     readFile(contractsPath, "utf8"),
   ])
 
-  assert.match(composer, /model\.canManage \?/)
+  assert.match(composer, /presentation\.showPersonaSelector \?/)
   assert.match(composer, /selectedCharacterId/)
   assert.match(composer, /speakers\.selected\.kind === "character"/)
   assert.match(speakers, /from\("chat_actor_bindings"\)/)

@@ -14,7 +14,7 @@ test("stage 3 moves the fixed game header into one dedicated component", async (
 
   assert.match(room, /import ChatRoomHeader from "\.\/ChatRoomHeader"/)
   assert.match(room, /data-chat-room-header-stage="3"/)
-  assert.match(room, /<ChatRoomHeader[\s\S]*model=\{model\}[\s\S]*showQuickActions=\{hasCharacterIdentity\}/)
+  assert.match(room, /<ChatRoomHeader[\s\S]*model=\{model\}[\s\S]*showQuickActions=\{presentation\.showQuickActions\}/)
   assert.doesNotMatch(room, /function CharacterHeader|function QuickActions|function HpBlock/)
   assert.match(header, /function SceneContext/)
   assert.match(header, /function QuickActions/)

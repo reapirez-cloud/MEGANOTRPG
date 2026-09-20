@@ -8,6 +8,7 @@ const composerPath = new URL("../src/ui-v1-isolated/chat-room/ChatComposer.tsx",
 const contractsPath = new URL("../src/ui-v1-isolated/chat-room/chatRoomContracts.ts", import.meta.url)
 const roomPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomScreen.tsx", import.meta.url)
 const speakersPath = new URL("../src/ui-v1-isolated/chat-room/useChatSpeakerOptions.ts", import.meta.url)
+const presentationPath = new URL("../src/ui-v1-isolated/chat-room/chatRoomPresentation.ts", import.meta.url)
 
 test("stage 7 derives room access from one server viewer context", async () => {
   const [shell, events] = await Promise.all([
@@ -34,13 +35,16 @@ test("stage 7 uses server-selected viewer character instead of guessing scene pa
 })
 
 test("stage 7 gates composer by server write permission", async () => {
-  const [composer, contracts] = await Promise.all([
+  const [composer, contracts, presentation] = await Promise.all([
     readFile(composerPath, "utf8"),
     readFile(contractsPath, "utf8"),
+    readFile(presentationPath, "utf8"),
   ])
 
   assert.match(contracts, /canWrite: boolean/)
-  assert.match(composer, /model\.canWrite &&/)
+  assert.match(presentation, /const canCompose =/)
+  assert.match(presentation, /model\.canWrite &&/)
+  assert.match(composer, /const canCompose = presentation\.canCompose/)
   assert.match(composer, /disabled=\{speakers\.loading \|\| !model\.canWrite\}/)
   assert.match(composer, /Нет права писать в этот чат/)
 })

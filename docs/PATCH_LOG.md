@@ -52,6 +52,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Historical Stage 2/3/5/7/8 guards were reconciled with the final shared presentation-state seam, so older contracts now verify the same behavior through `chatRoomPresentationState` instead of requiring duplicated inline role expressions that Stage 6 intentionally removed.
 - Extended Stage 6 certification with a pure player/GM/observer/archive role matrix plus final-layout guards for the canonical topbar/actor/quick-action/composer geometry, narrow mobile breakpoints and the 90vw side action surface. Existing history anchoring, realtime follow, keyboard viewport and reduced-motion checks remain part of the same stage gate.
 - Reworked Stage 5 regressions around the real launcher: five-item compact `+` menu, shared header/composer action request contract, 90vw right-side action surface, item-source filtering, CE + GENA execution coverage, preserved GM persona selection, spell-modifier side flow and unchanged multiline text sending.
 - Added Stage 4 feed regressions for the lightweight dialogue hierarchy, dedicated feed-item dispatcher, compact game-event geometry without the old full-height icon rail, conditional event routing, and preservation of pagination scroll anchoring / pinned-to-bottom / unseen-message behavior.
