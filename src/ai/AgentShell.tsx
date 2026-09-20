@@ -151,6 +151,7 @@ export default function AgentShell() {
   const panelRef = useRef<HTMLElement | null>(null)
   const orbRef = useRef<HTMLButtonElement | null>(null)
   const wasOpenRef = useRef(false)
+  const followTailRef = useRef(true)
   const orbPositionRef = useRef(orbPosition)
   const orbFrameRef = useRef<number | null>(null)
   const pendingOrbPositionRef = useRef(orbPosition)
@@ -177,6 +178,26 @@ export default function AgentShell() {
     pendingDeleteThreadId
       ? threads.find((thread) => thread.id === pendingDeleteThreadId) || null
       : null
+
+  const visibleJobs = jobs.slice(0, 6)
+  const timelineOrder = new Map<string, number>(
+    [
+      ...messages.map((message) => ({
+        key: `message:${message.id}`,
+        createdAt: message.created_at,
+      })),
+      ...visibleJobs.map((job) => ({
+        key: `job:${job.id}`,
+        createdAt: job.created_at,
+      })),
+    ]
+      .sort((left, right) => {
+        const byTime = Date.parse(left.createdAt) - Date.parse(right.createdAt)
+        return byTime || left.key.localeCompare(right.key)
+      })
+      .map((entry, index) => [entry.key, index]),
+  )
+  const timelineTailOrder = timelineOrder.size + 1
 
   useEffect(() => {
     const onOpen = (event: Event) => {
@@ -224,7 +245,9 @@ export default function AgentShell() {
       return
     }
 
+    const opening = !wasOpenRef.current
     wasOpenRef.current = true
+    if (opening) followTailRef.current = true
     requestAnimationFrame(() => textareaRef.current?.focus())
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -266,12 +289,19 @@ export default function AgentShell() {
   }, [open, toolsOpen])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || !followTailRef.current) return
     requestAnimationFrame(() => {
       const node = logRef.current
-      if (node) node.scrollTop = node.scrollHeight
+      if (node && followTailRef.current) node.scrollTop = node.scrollHeight
     })
   }, [jobs, messages, open, pendingReply, sending])
+
+  function onLogScroll() {
+    const node = logRef.current
+    if (!node) return
+    followTailRef.current =
+      node.scrollHeight - node.scrollTop - node.clientHeight < 96
+  }
 
   if (!campaignId || loading) return null
 
@@ -715,19 +745,20 @@ export default function AgentShell() {
           </div>
         )}
 
-        <div className="u1-agent-log" ref={logRef} aria-live="polite">
+        <div className="u1-agent-log" ref={logRef} aria-live="polite" onScroll={onLogScroll}>
           {messages.map((message) => (
             <article
               key={message.id}
               className="u1-agent-message"
               data-role={message.role}
+              style={{ order: timelineOrder.get(`message:${message.id}`) }}
             >
               <small>{message.role === "assistant" ? assistantName.toLocaleUpperCase("ru-RU") : "ВЫ"}</small>
               <p>{message.body}</p>
             </article>
           ))}
 
-          {jobs.slice(0, 6).map((job) => {
+          {visibleJobs.map((job) => {
             const reviewSummary = recordField(
               (job.result as Record<string, unknown>).review,
               "summary",
@@ -738,6 +769,7 @@ export default function AgentShell() {
                 key={job.id}
                 className="u1-agent-image-job"
                 data-status={job.status}
+                style={{ order: timelineOrder.get(`job:${job.id}`) }}
               >
                 <header>
                   <div>
@@ -868,7 +900,7 @@ export default function AgentShell() {
           })}
 
           {lastRoute && (lastRoute.degraded || lastRoute.mode === "fallback") && (
-            <div className="u1-agent-route-note" role="status">
+            <div className="u1-agent-route-note" role="status" style={{ order: timelineTailOrder }}>
               {lastRoute.degraded
                 ? "Ответ работает в ограниченном режиме."
                 : `Использована совместимая модель: ${lastRoute.modelName}.`}
@@ -876,7 +908,7 @@ export default function AgentShell() {
           )}
 
           {(sending || pendingReply) && (
-            <div className="u1-agent-thinking">
+            <div className="u1-agent-thinking" style={{ order: timelineTailOrder + 1 }}>
               <AgentMark />
               <span>{assistantName} разбирается…</span>
             </div>
