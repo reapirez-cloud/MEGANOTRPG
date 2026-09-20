@@ -195,7 +195,7 @@ export default function AgentShell() {
         const byTime = Date.parse(left.createdAt) - Date.parse(right.createdAt)
         return byTime || left.key.localeCompare(right.key)
       })
-      .map((entry, index) => [entry.key, index]),
+      .map((entry, index) => [entry.key, index] as const),
   )
   const timelineTailOrder = timelineOrder.size + 1
 
