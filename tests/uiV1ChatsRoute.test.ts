@@ -14,7 +14,7 @@ test("ui v1 chats root mounts the isolated catalog instead of a future placehold
   ])
 
   assert.match(app, /import ChatCatalog from "\.\/ChatCatalog"/)
-  assert.match(app, /return <ChatCatalog onOpenRoom=/)
+  assert.match(app, /return <ChatCatalog \/>/)
   assert.doesNotMatch(app, /pages\/Chats|Новый интерфейс чатов будет построен отдельно/)
   assert.match(catalog, /data-chat-catalog-stage="8"/)
 })

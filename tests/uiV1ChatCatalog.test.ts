@@ -15,7 +15,7 @@ test("ui v1 chats root renders its isolated Stage 8 catalog instead of the devel
   ])
 
   assert.match(app, /import ChatCatalog from "\.\/ChatCatalog"/)
-  assert.match(app, /return <ChatCatalog onOpenRoom=/)
+  assert.match(app, /return <ChatCatalog \/>/)
   assert.doesNotMatch(app, /pages\/Chats|Новый интерфейс чатов будет построен отдельно/)
   assert.match(catalog, /data-chat-catalog-stage="8"/)
   assert.match(catalog, /Текущая история/)
@@ -52,7 +52,7 @@ test("ui v1 chat adapter keeps all certified realtime refresh sources", async ()
   }
 })
 
-test("ui v1 chat catalog opens isolated room routes while deferred creation still uses Snake", async () => {
+test("ui v1 chat unavailable actions use Snake placeholder surfaces", async () => {
   const [catalog, actions] = await Promise.all([
     readFile(catalogPath, "utf8"),
     readFile(
@@ -61,11 +61,12 @@ test("ui v1 chat catalog opens isolated room routes while deferred creation stil
     ),
   ])
 
-  assert.match(catalog, /onOpenRoom\(room\.id\)/)
-  assert.match(actions, /openRoom\(\)/)
+  assert.match(catalog, /useSnake\(\)/)
   assert.match(catalog, /kind: "placeholder"/)
-  assert.doesNotMatch(actions, /Внутренний игровой диалог подключается отдельным этапом/)
-  assert.doesNotMatch(catalog, /pages\/ChatRoom/)
+  assert.match(actions, /kind: "placeholder"/)
+  assert.match(actions, /Внутренний игровой диалог подключается отдельным этапом/)
+  assert.match(catalog, /Создание события подключается отдельным потоком/)
+  assert.doesNotMatch(catalog, /onOpenRoom|<ChatRoom|pages\/ChatRoom/)
 })
 
 test("ui v1 chat visual surface stays isolated and supports narrow screens", async () => {
@@ -98,7 +99,7 @@ test("ui v1 chat rooms are Snake-managed persistent objects", async () => {
   assert.match(actions, /aspectRatio:\s*9 \/ 16/)
   assert.match(actions, /label: "Удалить сцену"/)
   assert.match(actions, /canManage && room\.room_type === "scene"/)
-  assert.match(actions, /openRoom: \(\) => void/)
+  assert.match(actions, /chatRoomOpenSurface/)
 })
 
 test("chat catalog uses unified 9:16 full-bleed cards with a real text overlay", async () => {

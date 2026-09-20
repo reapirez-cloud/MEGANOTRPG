@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react"
 
-import type { SnakeAction, SnakeActionInput, SnakeActionPathEntry, SnakeActionResult, SnakeEntityRef, SnakeMenuRequest, SnakeSurfaceRequest } from "../../snake-engine"
+import type { SnakeMenuRequest, SnakeSurfaceRequest } from "../../snake-engine"
 import type { SnakeSurfaceSource, SnakeViewContext } from "./runtime"
 
 export type SnakeContextValue = {
@@ -13,12 +13,6 @@ export type SnakeContextValue = {
     source?: SnakeSurfaceSource,
   ) => void
   closeSurface: () => void
-  executeAction: (
-    action: SnakeAction,
-    entity: SnakeEntityRef,
-    input?: SnakeActionInput,
-    path?: SnakeActionPathEntry[],
-  ) => Promise<SnakeActionResult>
 }
 
 export const SnakeContext = createContext<SnakeContextValue | null>(null)

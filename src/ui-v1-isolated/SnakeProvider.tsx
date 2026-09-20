@@ -72,12 +72,12 @@ export function SnakeProvider({ children }: { children: ReactNode }) {
               },
             },
       )
-      return result
+      return
     }
 
     if (result.type === "surface") {
       openSurface(result.request, { action, entity, path })
-      return result
+      return
     }
 
     setSurface(null)
@@ -89,8 +89,6 @@ export function SnakeProvider({ children }: { children: ReactNode }) {
         body: result.notice,
       })
     }
-
-    return result
   }
 
   async function invokeCommand(
@@ -204,9 +202,6 @@ export function SnakeProvider({ children }: { children: ReactNode }) {
       openSurface,
       closeSurface() {
         if (!busy) setSurface(null)
-      },
-      executeAction(action, entity, input, path = []) {
-        return execute(action, entity, input, path)
       },
     }),
     [busy, menu.closeMenu, menu.openMenu, viewContext],
