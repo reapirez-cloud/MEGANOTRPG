@@ -94,6 +94,26 @@ export class SupabaseShapoklyakStorage implements ShapoklyakStorage {
       return { kind: command.kind, characterIds: [command.characterId], before, after: await this.getEntity(command.characterId), requiresResolution: true }
     }
 
+    if (command.kind === "entity.convert_type") {
+      const { error } = await this.client.rpc("convert_campaign_character_type_v1", {
+        p_character_id: command.characterId,
+        p_character_type: command.characterType,
+        p_npc_visibility_mode: command.npcVisibilityMode ?? "discover",
+      })
+      if (error) fail(error, "Could not convert character type")
+      return {
+        kind: command.kind,
+        characterIds: [command.characterId],
+        before,
+        after: await this.getEntity(command.characterId),
+        details: {
+          characterType: command.characterType,
+          npcVisibilityMode: command.npcVisibilityMode ?? null,
+        },
+        requiresResolution: true,
+      }
+    }
+
     if (command.kind === "entity.delete") {
       const { error } = await this.client.rpc("delete_campaign_character", { p_character_id: command.characterId })
       if (error) fail(error, "Could not delete character")
