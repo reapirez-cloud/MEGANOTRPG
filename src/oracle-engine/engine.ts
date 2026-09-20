@@ -151,6 +151,7 @@ export class OracleEngine {
     this.definitions = {
       create: (context, input) => direct(context, () => dependencies.chasovoy.execute({ kind: "definition.create", context, input })),
       revise: (context, definitionId, input) => direct(context, () => dependencies.chasovoy.execute({ kind: "definition.revise", context, definitionId, input })),
+      publishDraft: (context, definitionId) => direct(context, () => dependencies.chasovoy.execute({ kind: "definition.publish_draft", context, definitionId })),
       archive: (context, definitionId) => direct(context, () => dependencies.chasovoy.execute({ kind: "definition.archive", context, definitionId })),
       setStatus: (context, definitionId, status) => direct(context, () => dependencies.chasovoy.execute({ kind: "definition.set_status", context, definitionId, status })),
     }
