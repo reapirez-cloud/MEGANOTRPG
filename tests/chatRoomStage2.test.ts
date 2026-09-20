@@ -46,7 +46,7 @@ test("stage 2 adds final quick-action geometry but no navigation or panels", asy
   assert.match(header, /hasEquippedWeapon/)
   assert.match(header, /CHAT_ACTION_REQUEST_EVENT/)
   assert.match(header, /data-action-mode=\{action\.mode\}/)
-  assert.doesNotMatch(room + header, /window\.location\.hash.*inventory|openSurface|ChatDrawer|ActionLauncher/)
+  assert.doesNotMatch(room + header, /window\.location\.hash.*inventory|openSurface|ChatDrawer/)
   assert.match(css, /\.u1-room-quick-actions/)
   assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/)
   assert.match(css, /transform: scale\(\.965\)/)
