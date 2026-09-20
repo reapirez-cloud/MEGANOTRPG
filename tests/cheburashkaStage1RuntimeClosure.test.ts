@@ -4,7 +4,7 @@ import test from "node:test"
 
 const sheetHook = fs.readFileSync("src/hooks/useCharacterSheet.ts", "utf8")
 const itemEditor = fs.readFileSync("src/components/characters/InventoryItemEditor.tsx", "utf8")
-const itemLibrary = fs.readFileSync("src/components/gm/GmItemLibrary.tsx", "utf8")
+const itemRuntime = fs.readFileSync("src/ui-v1-isolated/gmWorkshopDefinitionRuntime.ts", "utf8")
 const migration = fs.readFileSync(
   "supabase/migrations/20260915161709_cheburashka_stage1_runtime_closure.sql",
   "utf8",
@@ -32,8 +32,8 @@ test("inventory editor preserves canonical Chasovoy provenance", () => {
 })
 
 test("GM item library issues definition-backed inventory instances", () => {
-  assert.match(itemLibrary, /definition_id: issueTarget\.id/)
-  assert.match(itemLibrary, /definition_revision: issueTarget\.revision/)
+  assert.match(itemRuntime, /definition_id: definition\.id/)
+  assert.match(itemRuntime, /definition_revision: definition\.revision/)
 })
 
 test("direct inventory Data API mutation and pre-versioned RPCs are sealed", () => {
