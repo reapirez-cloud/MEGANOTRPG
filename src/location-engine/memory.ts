@@ -38,6 +38,33 @@ export class MemoryLarisaStorage implements LarisaStorage {
       }
     }
 
+    if (command.kind === "world.scene_delete") {
+      const scene = this.snapshot.scenes.find((item) => item.room_id === command.roomId)
+      if (!scene) {
+        throw new EngineCommandError("world.scene_not_found", "Scene was not found")
+      }
+      this.snapshot.scenes = this.snapshot.scenes.filter(
+        (item) => item.room_id !== command.roomId,
+      )
+      this.snapshot.sceneParticipants = this.snapshot.sceneParticipants.filter(
+        (participant) => participant.room_id !== command.roomId,
+      )
+      this.snapshot.sceneSurfaces = this.snapshot.sceneSurfaces.filter(
+        (surface) => surface.room_id !== command.roomId,
+      )
+      return {
+        kind: command.kind,
+        characterIds: [],
+        locationIds: scene.location_id ? [scene.location_id] : [],
+        sceneIds: [command.roomId],
+        details: {
+          roomId: command.roomId,
+          locationId: scene.location_id,
+          title: scene.title,
+        },
+      }
+    }
+
     if (command.kind === "world.scene_move_character") {
       const target = command.roomId
         ? this.snapshot.scenes.find((scene) => scene.room_id === command.roomId && scene.scene_state === "active")
