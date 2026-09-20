@@ -31,6 +31,7 @@ const stage3Migration = fs.readFileSync(
 )
 const referenceTypes = fs.readFileSync("src/reference-engine/types.ts", "utf8")
 const referenceStorage = fs.readFileSync("src/reference-engine/supabase.ts", "utf8")
+const definitionRuntime = fs.readFileSync("src/ui-v1-isolated/gmWorkshopDefinitionRuntime.ts", "utf8")
 
 test("UI 1.0 management route is the real GM Workshop and uses destination panels instead of legacy tabs", () => {
   assert.match(app, /<GMWorkshop/)
@@ -227,20 +228,29 @@ test("library owns the full definition lifecycle and publishes staged revisions 
 
 test("linked item mechanics stay as revision references and compile only when an item is issued", () => {
   assert.match(data, /linked_definitions/)
-  assert.match(data, /linked_definition_refs/)
-  assert.match(data, /chasovoy\.getDefinition/)
-  assert.doesNotMatch(data, /mechanics: \[\.\.\.itemMechanics, \.\.\.linkedMechanics\]/)
+  assert.match(definitionRuntime, /linked_definition_refs/)
+  assert.match(definitionRuntime, /chasovoy\.getDefinition/)
+  assert.match(data, /compileWorkshopItemInput/)
+  assert.doesNotMatch(data, /chasovoy\.getDefinition/)
   assert.match(actions, /Привязать к предмету/)
   assert.match(actions, /linkedDefinitionIds/)
 })
 
 test("runtime feature issuance preserves definition semantics and provenance", () => {
-  assert.match(data, /definition\.kind === "condition"[\s\S]*"effect"/)
-  assert.match(data, /definition\.kind === "feat"[\s\S]*"feat"/)
-  assert.match(data, /source_definition_id: definition\.id/)
-  assert.match(data, /source_definition_revision: definition\.revision/)
-  assert.match(data, /source_definition_kind: definition\.kind/)
+  assert.match(definitionRuntime, /definition\.kind === "condition"[\s\S]*"effect"/)
+  assert.match(definitionRuntime, /definition\.kind === "feat"[\s\S]*"feat"/)
+  assert.match(definitionRuntime, /source_definition_id: definition\.id/)
+  assert.match(definitionRuntime, /source_definition_revision: definition\.revision/)
+  assert.match(definitionRuntime, /source_definition_kind: definition\.kind/)
+  assert.match(data, /workshopFeatureInput/)
   assert.match(stage3Migration, /source_definition_kind in \('feature','feat','condition'\)/)
+})
+
+test("definition runtime projection is extracted from the GM Workshop god-hook", () => {
+  assert.match(definitionRuntime, /compileWorkshopItemInput/)
+  assert.match(definitionRuntime, /workshopSpellInput/)
+  assert.match(definitionRuntime, /workshopFeatureInput/)
+  assert.doesNotMatch(data, /function itemInput|function spellInput|function definitionWeightKg/)
 })
 
 test("private GM materials preserve notes folders uploads and Storage cleanup", () => {
