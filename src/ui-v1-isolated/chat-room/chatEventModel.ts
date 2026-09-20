@@ -109,6 +109,12 @@ export function normalizeChatEvent(
     type = "roll"
   } else if (message.event_kind === "spell") {
     type = "spell"
+  } else if (message.event_kind === "attack") {
+    type = "attack"
+  } else if (message.event_kind === "item") {
+    type = "item"
+  } else if (message.event_kind === "class_ability") {
+    type = "class_ability"
   } else if (message.event_kind === "action") {
     type = normalizeActionType(message.event_payload)
   } else if (message.attachment_url) {
