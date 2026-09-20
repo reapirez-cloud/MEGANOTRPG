@@ -136,6 +136,7 @@ export default function ArtPlayer({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault()
+        event.stopImmediatePropagation()
         onClose()
       } else if (event.key === "ArrowLeft") {
         event.preventDefault()
