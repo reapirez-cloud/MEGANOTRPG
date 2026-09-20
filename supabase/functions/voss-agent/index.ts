@@ -866,6 +866,11 @@ Deno.serve(async (req: Request) => {
     persistedUserMessage = insertedUserMessage
   }
 
+  if (!persistedUserMessage) {
+    return reply({ error: "AI user message state missing" }, 500)
+  }
+  const persistedUserMessageId = persistedUserMessageId
+
   const { data: currentThread } = await admin
     .from("ai_threads")
     .select("title")
@@ -906,7 +911,7 @@ Deno.serve(async (req: Request) => {
           original_message: message,
           view_context: viewContext,
           resolved_model_id: resolvedModel.id,
-          user_message_id: persistedUserMessage.id,
+          user_message_id: persistedUserMessageId,
           started_at: startedAt,
         },
         result: {
@@ -947,7 +952,7 @@ Deno.serve(async (req: Request) => {
           campaignId,
           userId: user.id,
           threadId,
-          messageId: Number(persistedUserMessage.id),
+          messageId: Number(persistedUserMessageId),
           assessment,
         })
 
@@ -1917,7 +1922,7 @@ Deno.serve(async (req: Request) => {
   return reply({
     accepted: true,
     threadId,
-    messageId: persistedUserMessage.id,
+    messageId: persistedUserMessageId,
     model: {
       id: resolvedModel.id,
       name: resolvedModel.display_name,
