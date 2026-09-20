@@ -134,7 +134,10 @@ export default function ArtPlayer({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "ArrowLeft") {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        onClose()
+      } else if (event.key === "ArrowLeft") {
         event.preventDefault()
         showIndex(index - 1)
       } else if (event.key === "ArrowRight") {
@@ -158,7 +161,7 @@ export default function ArtPlayer({
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [index, resetTransform, showIndex])
+  }, [index, onClose, resetTransform, showIndex])
 
   useEffect(() => () => {
     if (tapTimerRef.current !== null) window.clearTimeout(tapTimerRef.current)
