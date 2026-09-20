@@ -211,6 +211,110 @@ function parseToolArguments(raw: unknown): JsonRecord {
   }
 }
 
+function recoverTextToolCalls(
+  content: unknown,
+  tools: Array<{ function: { name: string } }>,
+  round: number,
+) {
+  if (typeof content !== "string" || !content.trim() || !tools.length) {
+    return {
+      calls: [] as ProviderToolCall[],
+      cleanContent: typeof content === "string" ? content : null,
+    }
+  }
+
+  const allowedToolNames = new Set(
+    tools.map((tool) => tool.function.name).filter(Boolean),
+  )
+  const calls: ProviderToolCall[] = []
+  const ranges: Array<[number, number]> = []
+  const startPattern = /\{\s*"call"\s*:/g
+
+  let match: RegExpExecArray | null
+  while ((match = startPattern.exec(content)) && calls.length < 6) {
+    const start = match.index
+    let depth = 0
+    let inString = false
+    let escaped = false
+    let end = -1
+
+    for (let index = start; index < content.length; index += 1) {
+      const char = content[index]
+
+      if (inString) {
+        if (escaped) {
+          escaped = false
+        } else if (char === "\\") {
+          escaped = true
+        } else if (char === '"') {
+          inString = false
+        }
+        continue
+      }
+
+      if (char === '"') {
+        inString = true
+        continue
+      }
+      if (char === "{") depth += 1
+      if (char === "}") {
+        depth -= 1
+        if (depth === 0) {
+          end = index + 1
+          break
+        }
+      }
+    }
+
+    if (end <= start) continue
+
+    try {
+      const parsed = JSON.parse(content.slice(start, end))
+      const call =
+        parsed?.call && typeof parsed.call === "object" &&
+          !Array.isArray(parsed.call)
+          ? parsed.call as JsonRecord
+          : null
+      const name = typeof call?.name === "string" ? call.name : ""
+
+      if (!name || !allowedToolNames.has(name)) continue
+
+      const args = parseToolArguments(call?.arguments)
+      calls.push({
+        id: "text-tool-" + round + "-" + calls.length,
+        type: "function",
+        function: {
+          name,
+          arguments: JSON.stringify(args),
+        },
+      })
+      ranges.push([start, end])
+      startPattern.lastIndex = end
+    } catch {
+      // Provider emitted something that merely resembles a textual tool call.
+      // Leave it untouched rather than executing malformed or ambiguous text.
+    }
+  }
+
+  if (!calls.length) {
+    return { calls, cleanContent: content }
+  }
+
+  let cleanContent = ""
+  let cursor = 0
+  for (const [start, end] of ranges) {
+    cleanContent += content.slice(cursor, start)
+    cursor = end
+  }
+  cleanContent += content.slice(cursor)
+  cleanContent = cleanContent.replace(/\n{3,}/g, "\n\n").trim()
+
+  return {
+    calls,
+    cleanContent: cleanContent || null,
+  }
+}
+
 function toolContent(value: unknown, maxChars = 18000) {
   const raw = JSON.stringify(value)
   if (raw.length <= maxChars) return raw
@@ -1404,6 +1508,7 @@ Deno.serve(async (req: Request) => {
               }
             : "auto",
         temperature: 0.55,
+        timeoutMs: isFreddyTurn ? 65_000 : 45_000,
         allowOwnerOverride:
           developerMode &&
           isSystemAdmin &&
@@ -1435,9 +1540,33 @@ Deno.serve(async (req: Request) => {
     lastProviderPayload = providerPayload
     turnTokensUsed += providerUsageTokens(providerPayload, providerMessages)
     const assistantMessage = providerMessage(providerPayload)
-    const toolCalls = toolsForRound.length && Array.isArray(assistantMessage.tool_calls)
-      ? assistantMessage.tool_calls.slice(0, 6)
-      : []
+    const nativeToolCalls =
+      toolsForRound.length && Array.isArray(assistantMessage.tool_calls)
+        ? assistantMessage.tool_calls.slice(0, 6)
+        : []
+    const recoveredTextCalls = nativeToolCalls.length
+      ? {
+          calls: [] as ProviderToolCall[],
+          cleanContent:
+            typeof assistantMessage.content === "string"
+              ? assistantMessage.content
+              : null,
+        }
+      : recoverTextToolCalls(
+          assistantMessage.content,
+          toolsForRound,
+          round,
+        )
+    const toolCalls = nativeToolCalls.length
+      ? nativeToolCalls
+      : recoveredTextCalls.calls
+    const assistantContentForHistory = nativeToolCalls.length
+      ? (
+          typeof assistantMessage.content === "string"
+            ? assistantMessage.content
+            : null
+        )
+      : recoveredTextCalls.cleanContent
 
     if (!toolCalls.length) {
       answer = contentFromProvider(providerPayload)
@@ -1446,10 +1575,7 @@ Deno.serve(async (req: Request) => {
 
     providerMessages.push({
       role: "assistant",
-      content:
-        typeof assistantMessage.content === "string"
-          ? assistantMessage.content
-          : null,
+      content: assistantContentForHistory,
       tool_calls: toolCalls,
     })
 
