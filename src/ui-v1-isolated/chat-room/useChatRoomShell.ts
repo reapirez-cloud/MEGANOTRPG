@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react"
 import { resolveCampaignMediaUrl } from "../../lib/campaignMedia"
 import { supabase } from "../../lib/supabase"
 import {
+  CHAT_SPEAKER_CHANGED_EVENT,
   chatSpeakerStorageKey,
   type ChatRoomDayPeriod,
   type ChatRoomHeaderCharacter,
@@ -342,15 +343,15 @@ export function useChatRoomShell(roomId: string) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     setError(null)
 
     const auth = await supabase.auth.getUser()
     if (auth.error || !auth.data.user) {
       setModel(null)
       setError(auth.error?.message || "Сессия не найдена")
-      setLoading(false)
+      if (!silent) setLoading(false)
       return
     }
 
@@ -359,7 +360,7 @@ export function useChatRoomShell(roomId: string) {
     if (!membership) {
       setModel(null)
       setError("Кампания не найдена")
-      setLoading(false)
+      if (!silent) setLoading(false)
       return
     }
 
@@ -370,7 +371,7 @@ export function useChatRoomShell(roomId: string) {
     if (roomsResult.error) {
       setModel(null)
       setError(roomsResult.error.message)
-      setLoading(false)
+      if (!silent) setLoading(false)
       return
     }
 
@@ -381,7 +382,7 @@ export function useChatRoomShell(roomId: string) {
     if (!room) {
       setModel(null)
       setError("Комната недоступна")
-      setLoading(false)
+      if (!silent) setLoading(false)
       return
     }
 
@@ -431,6 +432,10 @@ export function useChatRoomShell(roomId: string) {
       roomType: normalizeRoomType(room.room_type),
       readOnly: Boolean(room.is_read_only),
       canManage,
+      viewer: {
+        campaignId: membership.campaign_id,
+        userId,
+      },
       identity: canManage
         ? presentation.character
           ? { kind: "character", character: presentation.character }
@@ -456,7 +461,7 @@ export function useChatRoomShell(roomId: string) {
         hasEquippedWeapon: presentation.hasEquippedWeapon,
       },
     })
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [roomId])
 
   useEffect(() => {
@@ -467,16 +472,25 @@ export function useChatRoomShell(roomId: string) {
       if (cancelled) return
     }
 
+    const handleSpeakerChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ roomId?: string }>).detail
+      if (detail?.roomId && detail.roomId !== roomId) return
+      void load(true)
+    }
+
+    window.addEventListener(CHAT_SPEAKER_CHANGED_EVENT, handleSpeakerChanged)
     void run()
+
     return () => {
       cancelled = true
+      window.removeEventListener(CHAT_SPEAKER_CHANGED_EVENT, handleSpeakerChanged)
     }
-  }, [load])
+  }, [load, roomId])
 
   return {
     model,
     loading,
     error,
-    reload: load,
+    reload: () => load(false),
   }
 }
