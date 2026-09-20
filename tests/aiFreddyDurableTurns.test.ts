@@ -47,10 +47,10 @@ test("Freddy can batch related location authoring instead of mutating one room a
 test("Freddy treats fill-out tavern phrasing as manager mutation intent", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
 
-  assert.match(edge, /заполни\|заполнить/)
-  assert.match(edge, /дополни\|дополнить/)
-  assert.match(edge, /проработай\|проработать/)
-  assert.match(edge, /таверн\|комнат\|помещен/)
+  assert.match(edge, /request_capability/)
+  assert.match(edge, /заполнить таверну комнатами/)
+  assert.match(edge, /предпочитай batch_location_changes/)
+  assert.match(edge, /granted_capabilities/)
 })
 
 
