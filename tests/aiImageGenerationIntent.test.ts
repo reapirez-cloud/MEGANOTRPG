@@ -58,12 +58,12 @@ test("art discussion, planning and negation never spend generation tokens", () =
 test("generate_image is not published to the model before explicit intent", () => {
   assert.match(
     edge,
-    /VOSS_IMAGE_TOOLS\.filter\([\s\S]*imageGenerationRequested[\s\S]*tool\.function\.name !== "generate_image"/,
+    /name === "generate_image" && !imageGenerationRequested/,
   )
   assert.match(edge, /Обсуждение арта, композиции, стиля, промпта и референсов не является разрешением генерировать/)
   assert.match(
     edge,
-    /imageGenerationRequested && round === 0[\s\S]*function: \{ name: "generate_image" \}/,
+    /imageGenerationRequested &&[\s\S]*!imageToolsUsed\.includes\("generate_image"\)[\s\S]*toolsForRound\.some\(\(tool\) => tool\.function\.name === "generate_image"\)[\s\S]*function: \{ name: "generate_image" \}/,
   )
   assert.match(
     edge,
