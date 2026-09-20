@@ -201,7 +201,14 @@ test("explicit one-image requests cannot silently degrade to text-only replies",
   const gateway = read("supabase/functions/voss-agent/provider-gateway.ts")
 
   assert.match(edge, /isExplicitImageGenerationRequest/)
-  assert.match(edge, /imageGenerationRequested && round === 0/)
+  assert.match(
+    edge,
+    /imageGenerationRequested[\s\S]*!imageToolsUsed\.includes\("generate_image"\)/,
+  )
+  assert.match(
+    edge,
+    /toolsForRound\.some\(\(tool\) => tool\.function\.name === "generate_image"\)/,
+  )
   assert.match(edge, /function: \{ name: "generate_image" \}/)
   assert.match(edge, /Для одной картинки variants=1/)
   assert.match(gateway, /toolChoice\?: "auto" \| Record<string, unknown>/)
