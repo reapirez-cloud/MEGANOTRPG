@@ -97,5 +97,5 @@ test("launcher availability and counts come from the resolved actor", async () =
   assert.match(room, /contract\?\.actions/)
   assert.match(room, /contract\?\.spells\.length/)
   assert.match(room, /disabled: noActor \|\| gameplay\.loading \|\| count === 0/)
-  assert.match(room, /data-chat-room-stage="4"/)
+  assert.match(room, /data-chat-room-stage="5"/)
 })
