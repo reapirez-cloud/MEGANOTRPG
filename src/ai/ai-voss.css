@@ -509,6 +509,8 @@
   z-index: 1;
   min-height: 0;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   padding: 20px 20px 22px 25px;
   scrollbar-width: thin;
   scrollbar-color: rgba(169, 158, 136, 0.14) transparent;
