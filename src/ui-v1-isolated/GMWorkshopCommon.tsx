@@ -48,7 +48,7 @@ export function WorkshopHeader({
   onBack: () => void
 }) {
   const title =
-    section === "draft" ? "Черновик" :
+    section === "review" ? "На проверку" :
     section === "members" ? "Участники" :
     section === "characters" ? "Персонажи" :
     section === "library" ? "Библиотека" :
