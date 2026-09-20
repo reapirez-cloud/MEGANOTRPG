@@ -154,6 +154,46 @@ export const VOSS_MANAGER_TOOLS = [
   {
     type: "function",
     function: {
+      name: "batch_location_changes",
+      description:
+        "GM/Admin only. Apply a related batch of location creates/updates in order. Use refs to connect locations created earlier in the same batch. Prefer this for filling a tavern, settlement, dungeon floor or another location tree instead of one tool call per room.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          operations: {
+            type: "array",
+            minItems: 1,
+            maxItems: 24,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                op: { type: "string", enum: ["create", "update"] },
+                ref: { type: "string" },
+                location_id: { type: "string" },
+                location_ref: { type: "string" },
+                parent_location_id: { type: "string" },
+                parent_ref: { type: "string" },
+                name: { type: "string" },
+                summary: { type: "string" },
+                description: { type: "string" },
+                visibility_mode: {
+                  type: "string",
+                  enum: ["always", "discover", "private"],
+                },
+              },
+              required: ["op"],
+            },
+          },
+        },
+        required: ["operations"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "set_location_archived",
       description:
         "GM/Admin only. Archive or restore a location without deleting it.",
