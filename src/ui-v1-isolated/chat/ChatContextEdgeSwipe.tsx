@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react"
 
 type Props = {
   disabled?: boolean
@@ -78,7 +78,7 @@ export function ChatContextEdgeSwipe({ disabled = false, onOpen }: Props) {
     <div
       className="u1-chat-context-edge"
       data-active={progress > 0 || undefined}
-      style={{ "--u1-chat-edge-progress": progress } as React.CSSProperties}
+      style={{ "--u1-chat-edge-progress": progress } as CSSProperties}
       aria-hidden="true"
       onPointerDown={begin}
       onPointerMove={move}

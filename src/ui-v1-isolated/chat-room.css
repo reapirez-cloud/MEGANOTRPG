@@ -635,3 +635,76 @@
     transition-duration: 1ms !important;
   }
 }
+
+/* Stage 6 · launcher exit, vector controls and mobile touch polish */
+.u1-room-header__context svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+}
+.u1-chat-launcher__icon svg {
+  width: 17px;
+  height: 17px;
+}
+.u1-chat-launcher-layer[data-closing="true"] {
+  animation: u1-chat-launcher-layer-out 135ms ease-in both;
+  pointer-events: none;
+}
+.u1-chat-launcher[data-closing="true"] {
+  animation: u1-chat-launcher-out 135ms cubic-bezier(.4,0,1,1) both;
+}
+@keyframes u1-chat-launcher-layer-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes u1-chat-launcher-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    clip-path: inset(0 0 0 0 round 16px);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(7px) scale(.988);
+    clip-path: inset(14% 0 0 0 round 16px);
+  }
+}
+@media (pointer: coarse) {
+  .u1-room-header__back,
+  .u1-room-header__context,
+  .u1-room-composer__actor,
+  .u1-room-composer__plus,
+  .u1-room-composer__attach,
+  .u1-room-composer__send,
+  .u1-chat-drawer__close {
+    position: relative;
+  }
+  .u1-room-header__back::after,
+  .u1-room-header__context::after,
+  .u1-room-composer__actor::after,
+  .u1-room-composer__plus::after,
+  .u1-room-composer__attach::after,
+  .u1-room-composer__send::after,
+  .u1-chat-drawer__close::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+  }
+}
+@media (max-width: 360px) {
+  .u1-room-composer {
+    grid-template-columns: 32px 32px 32px minmax(0,1fr) 36px;
+    gap: 3px;
+  }
+  .u1-room-composer__input {
+    padding-inline: 9px;
+    font-size: 10px;
+  }
+  .u1-chat-launcher {
+    left: 38px;
+    width: min(262px, calc(100% - 44px));
+  }
+}

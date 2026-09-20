@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import type { ChatMessage } from "../types/chat"
 import { useSnake } from "./SnakeProvider"
@@ -6,6 +6,7 @@ import { ChatActionLauncher, CHAT_ACTION_SECTIONS, type ChatActionSectionId } fr
 import { ChatActionWorkspace } from "./chat/ChatActionWorkspace"
 import { useUiV1ChatActorRuntime } from "./chat/useUiV1ChatActorRuntime"
 import { ChatDrawerHost } from "./chat/ChatDrawerHost"
+import { ChatContextEdgeSwipe } from "./chat/ChatContextEdgeSwipe"
 import { ChatRoomContextPanel } from "./chat/ChatRoomContextPanel"
 import { useChatDrawerRuntime } from "./chat/useChatDrawerRuntime"
 import { useUiV1ChatParticipants } from "./chat/useUiV1ChatParticipants"
@@ -122,6 +123,8 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
   const snake = useSnake()
   const drawers = useChatDrawerRuntime()
   const [launcherOpen, setLauncherOpen] = useState(false)
+  const messagesRef = useRef<HTMLElement | null>(null)
+  const stickToBottomRef = useRef(true)
   const data = useUiV1ChatRoom(roomId)
   const gameplay = useUiV1ChatActorRuntime(launcherOpen || drawers.session?.mode === "workspace")
   const participants = useUiV1ChatParticipants(data.room, drawers.session?.mode === "context")
@@ -145,6 +148,29 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
   }
 
   const room = data.room
+
+  const openRoomContext = () => {
+    setLauncherOpen(false)
+    drawers.openContext({
+      eyebrow: roomKind(room),
+      title: "Контекст комнаты",
+      subtitle: room.title,
+      contentKey: "room",
+    })
+  }
+
+  const lastMessageId = data.messages.at(-1)?.id || 0
+
+  useEffect(() => {
+    const root = messagesRef.current
+    if (!root || !stickToBottomRef.current) return
+
+    const frame = window.requestAnimationFrame(() => {
+      root.scrollTop = root.scrollHeight
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [lastMessageId, roomId])
+
   const actionSections = CHAT_ACTION_SECTIONS.map((item) => {
     if (item.id === "roll") return { ...item }
 
@@ -206,19 +232,28 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
           type="button"
           className="u1-room-header__context"
           aria-label="Контекст комнаты"
-          onClick={() => {
-            setLauncherOpen(false)
-            drawers.openContext({
-              eyebrow: roomKind(room),
-              title: "Контекст комнаты",
-              subtitle: room.title,
-              contentKey: "room",
-            })
-          }}
-        >◇</button>
+          onClick={openRoomContext}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 7h14M5 12h14M5 17h14" />
+            <circle cx="9" cy="7" r="1.6" />
+            <circle cx="15" cy="12" r="1.6" />
+            <circle cx="11" cy="17" r="1.6" />
+          </svg>
+        </button>
       </header>
 
-      <section className="u1-room-messages" aria-label="Сообщения">
+      <section
+        ref={messagesRef}
+        className="u1-room-messages"
+        aria-label="Сообщения"
+        onScroll={(event) => {
+          const root = event.currentTarget
+          const distance =
+            root.scrollHeight - root.scrollTop - root.clientHeight
+          stickToBottomRef.current = distance < 88
+        }}
+      >
         {data.error && (
           <button type="button" className="u1-room-warning" onClick={() => void data.reload()}>
             Не удалось обновить чат · Повторить
@@ -274,6 +309,11 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
         <input className="u1-room-composer__input" aria-label="Сообщение" readOnly placeholder="Сообщение…" />
         <button type="submit" className="u1-room-composer__send" aria-label="Отправить" disabled>➤</button>
       </form>
+
+      <ChatContextEdgeSwipe
+        disabled={Boolean(drawers.session) || launcherOpen}
+        onOpen={openRoomContext}
+      />
 
       <ChatActionLauncher
         open={launcherOpen}
