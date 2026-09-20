@@ -19,7 +19,7 @@ import type {
   RuleTemplate,
 } from "../rule-templates/types.ts"
 
-export type WorkshopSection = "draft" | "members" | "characters" | "library" | "materials"
+export type WorkshopSection = "review" | "members" | "characters" | "library" | "materials"
 
 export type WorkshopCharacter = {
   id: string
@@ -98,6 +98,7 @@ export type DraftDefinitionInput = {
 export type WorkshopMutationResult = {
   ok: boolean
   error?: string
+  refreshError?: string
 }
 
 export type WorkshopOperations = {
@@ -691,10 +692,18 @@ export function useGMWorkshopData(
   ): Promise<WorkshopMutationResult> => {
     try {
       await action()
+    } catch (reason) {
+      return { ok: false, error: errorMessage(reason, fallback) }
+    }
+
+    try {
       await load()
       return { ok: true }
     } catch (reason) {
-      return { ok: false, error: errorMessage(reason, fallback) }
+      return {
+        ok: true,
+        refreshError: errorMessage(reason, "Изменение сохранено, но экран не удалось обновить."),
+      }
     }
   }, [load])
 
