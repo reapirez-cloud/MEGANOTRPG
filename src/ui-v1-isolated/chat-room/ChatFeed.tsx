@@ -154,7 +154,7 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
     feedRef.current.scrollTop = feedRef.current.scrollHeight
     pinnedToBottomRef.current = true
     initialPositionedRef.current = true
-    previousLastIdRef.current = events.at(-1)?.id ?? null
+    previousLastIdRef.current = events.length ? events[events.length - 1].id : null
   }, [events, loading])
 
   useEffect(() => {
@@ -173,7 +173,7 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
     if (!initialPositionedRef.current) return
 
     const previousLastId = previousLastIdRef.current
-    const lastId = events.at(-1)?.id ?? null
+    const lastId = events.length ? events[events.length - 1].id : null
     if (lastId === null) return
 
     if (previousLastId === null) {
