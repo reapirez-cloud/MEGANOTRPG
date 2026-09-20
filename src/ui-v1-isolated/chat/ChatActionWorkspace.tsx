@@ -93,7 +93,7 @@ function ResourceStrip({ contract }: { contract: ResolvedCharacterContract }) {
     {visible.map((resource) => {
       const max = Math.max(0, Math.round(resource.max.value))
       const current = Math.max(0, Math.min(max, Math.round(resource.current)))
-      const label = labels.get(resource.stateKey) || resource.key.replaceAll("_", " ")
+      const label = labels.get(resource.stateKey) || resource.key.replace(/_/g, " ")
       return <div key={resource.stateKey} className="u1-action-resource" data-empty={current <= 0 || undefined}>
         <span><strong>{label}</strong><small>{current}/{max}</small></span>
         <i><b style={{ width: `${max ? (current / max) * 100 : 0}%` }} /></i>
@@ -198,10 +198,10 @@ function SkillsPanel({
   }
 
   const skills = Object.entries(runtime.contract.skills)
-    .map(([key, value]) => ({ key, ...value }))
+    .map(([skillKey, value]) => ({ ...value, skillKey }))
     .sort((left, right) =>
-      (SKILL_NAMES[left.key] || left.key).localeCompare(
-        SKILL_NAMES[right.key] || right.key,
+      (SKILL_NAMES[left.skillKey] || left.skillKey).localeCompare(
+        SKILL_NAMES[right.skillKey] || right.skillKey,
         "ru",
       ),
     )
@@ -215,12 +215,12 @@ function SkillsPanel({
         <button
           type="button"
           className="u1-action-row"
-          key={skill.key}
-          onClick={() => onCheck(SKILL_NAMES[skill.key] || skill.key, skill.bonus.value)}
+          key={skill.skillKey}
+          onClick={() => onCheck(SKILL_NAMES[skill.skillKey] || skill.skillKey, skill.bonus.value)}
         >
           <span className="u1-action-row__icon"><ActionIcon name="skill"/></span>
           <span className="u1-action-row__copy">
-            <strong>{SKILL_NAMES[skill.key] || skill.key}</strong>
+            <strong>{SKILL_NAMES[skill.skillKey] || skill.skillKey}</strong>
             <small>{skill.proficiencyRank >= 2 ? "Экспертиза" : skill.proficiencyRank ? "Владение" : "Без владения"}</small>
           </span>
           <b>{signed(skill.bonus.value)}</b>
