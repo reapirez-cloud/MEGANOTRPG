@@ -72,6 +72,7 @@ export function useChatSpeakerOptions({
         .select("id, name, avatar_url")
         .eq("campaign_id", campaignId)
         .in("id", ids)
+        .eq("character_type", "npc")
         .eq("life_state", "alive")
 
       const characters = (charactersResult.data || []) as CharacterRow[]
