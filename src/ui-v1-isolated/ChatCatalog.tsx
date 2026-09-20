@@ -197,7 +197,13 @@ export default function ChatCatalog() {
       formatRoomActivity(room) ? "Последняя активность · " + formatRoomActivity(room) : "",
     ].filter(Boolean).join("\n\n")
 
-    return createChatRoomSnakeActions({ room, details })
+    return createChatRoomSnakeActions({
+      room,
+      details,
+      canManage: data.canManage,
+      setPreview: (input) => data.setRoomPreview(room, input),
+      deleteScene: () => data.deleteScene(room),
+    })
   }
 
   function openCreateEvent() {
@@ -232,6 +238,64 @@ export default function ChatCatalog() {
         {open ? "Свернуть" : "Все (" + count + ")"}
         <span aria-hidden="true">{open ? "⌃" : "›"}</span>
       </button>
+    )
+  }
+
+  function portraitCard(
+    room: ChatRoom,
+    variant: "personal" | "event" | "completed",
+  ) {
+    const activity = formatRoomActivity(room)
+    const meta =
+      variant === "personal"
+        ? characterIdentity(room) || "Личная история"
+        : variant === "completed"
+          ? formatRoomCompletion(room)
+          : roomMeta(room)
+    const fallback =
+      variant === "personal" ? "◇" : variant === "event" ? "✦" : "◆"
+
+    return (
+      <SnakeTrigger
+        key={room.id}
+        entity={{ type: "chat_room", id: room.id }}
+        actions={roomSnakeActions(room)}
+      >
+        <button
+          type="button"
+          className={"u1-chat-card u1-chat-card--" + variant}
+          data-tone={roomStatus(room).tone}
+          onClick={() => openRoom(room)}
+          title={room.title}
+        >
+          <span className="u1-chat-card__media">
+            <ChatArt room={room} fallback={fallback} />
+          </span>
+          <span className="u1-chat-card__shade" aria-hidden="true" />
+
+          <span className="u1-chat-card__top">
+            <small>{roomTypeLabel(room)}</small>
+            {activity && <time>{activity}</time>}
+          </span>
+
+          <span className="u1-chat-card__copy">
+            <strong>{room.title}</strong>
+            {meta && <span className="u1-chat-card__meta">{meta}</span>}
+            <span className="u1-chat-card__preview">
+              {room.preview || "Пока без сообщений"}
+            </span>
+          </span>
+
+          {room.unread_count > 0 && (
+            <b
+              className="u1-chat-card__badge"
+              aria-label={"Непрочитанных: " + room.unread_count}
+            >
+              {formatUnreadCount(room.unread_count)}
+            </b>
+          )}
+        </button>
+      </SnakeTrigger>
     )
   }
 
@@ -435,31 +499,13 @@ export default function ChatCatalog() {
             {sectionControl("personal", visiblePersonal.length, PERSONAL_PREVIEW_LIMIT)}
           </div>
           {visiblePersonal.length ? (
-            <div className={"u1-chat-personal" + (expanded.personal ? " is-expanded" : "")}>
-              {personalShown.map((room) => (
-                <SnakeTrigger
-                  key={room.id}
-                  entity={{ type: "chat_room", id: room.id }}
-                  actions={roomSnakeActions(room)}
-                >
-                  <button
-                    type="button"
-                    className="u1-chat-personal__card"
-                    onClick={() => openRoom(room)}
-                    title={room.title}
-                  >
-                    <span className="u1-chat-personal__media">
-                      <ChatArt room={room} fallback="◇" />
-                      {room.unread_count > 0 && (
-                        <b>{formatUnreadCount(room.unread_count)}</b>
-                      )}
-                    </span>
-                    <strong>{room.title}</strong>
-                    <small>{characterIdentity(room) || "Личная история"}</small>
-                    <span>{room.preview || "Пока без сообщений"}</span>
-                  </button>
-                </SnakeTrigger>
-              ))}
+            <div
+              className={
+                "u1-chat-card-rail" +
+                (expanded.personal || browsing ? " is-expanded" : "")
+              }
+            >
+              {personalShown.map((room) => portraitCard(room, "personal"))}
             </div>
           ) : (
             <div className="u1-chat-empty">Личных историй пока нет.</div>
@@ -477,7 +523,14 @@ export default function ChatCatalog() {
             {sectionControl("events", visibleEvents.length, EVENT_PREVIEW_LIMIT)}
           </div>
           {eventsShown.length ? (
-            <div className="u1-chat-list">{eventsShown.map((room) => row(room, "event"))}</div>
+            <div
+              className={
+                "u1-chat-card-rail" +
+                (expanded.events || browsing ? " is-expanded" : "")
+              }
+            >
+              {eventsShown.map((room) => portraitCard(room, "event"))}
+            </div>
           ) : (
             <div className="u1-chat-empty">Активных событий пока нет.</div>
           )}
@@ -494,7 +547,14 @@ export default function ChatCatalog() {
             {sectionControl("completed", visibleCompleted.length, COMPLETED_PREVIEW_LIMIT)}
           </div>
           {completedShown.length ? (
-            <div className="u1-chat-list">{completedShown.map((room) => row(room, "completed"))}</div>
+            <div
+              className={
+                "u1-chat-card-rail" +
+                (expanded.completed || browsing ? " is-expanded" : "")
+              }
+            >
+              {completedShown.map((room) => portraitCard(room, "completed"))}
+            </div>
           ) : (
             <div className="u1-chat-empty">Завершённых историй пока нет.</div>
           )}
