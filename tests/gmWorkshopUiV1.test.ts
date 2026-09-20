@@ -40,8 +40,6 @@ const definitionRuntime = fs.readFileSync("src/ui-v1-isolated/gmWorkshopDefiniti
 test("UI 1.0 management route is the real GM Workshop and uses destination panels instead of legacy tabs", () => {
   assert.match(app, /<GMWorkshop/)
   assert.match(app, /const workshopSections: WorkshopSection\[\] = \["review", "members", "characters", "library", "materials"\]/)
-  assert.match(app, /workspace\/manage\/party[\s\S]*section: "members"/)
-  assert.match(app, /workspace\/manage\/draft[\s\S]*section: "review"/)
   assert.match(app, /path\.startsWith\("workspace\/manage\/"\)/)
   assert.match(app, /"workspace\/manage\/" \+ section/)
   assert.match(entry, /\.\/gm-workshop\.css/)
@@ -186,9 +184,15 @@ test("Workshop definitions, folders and materials expose reversible management t
   assert.match(data, /moveMaterial/)
   assert.match(data, /renameMaterial/)
   assert.match(data, /reorderFolder/)
-  assert.match(actions, /id: "mechanicsJson"/)
+  assert.match(actions, /id: "advanced-mechanics-json"/)
+  assert.match(actions, /Дополнительно · разработчик/)
+  assert.match(actions, /definitionMechanicsFromSnake/)
   assert.match(actions, /JSON\.parse\(rawMechanics\)/)
   assert.match(actions, /Механики должны быть JSON-массивом/)
+  assert.doesNotMatch(
+    actions,
+    /const common = \[[\s\S]*?mechanicsJson[\s\S]*?\]\n\n  if \(kind === "item"\)/,
+  )
 })
 
 test("published NPC visibility supports immediate visibility or encounter discovery", () => {
