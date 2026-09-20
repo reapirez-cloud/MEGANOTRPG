@@ -19,7 +19,7 @@ import type {
   RuleTemplate,
 } from "../rule-templates/types.ts"
 
-export type WorkshopSection = "draft" | "party" | "characters" | "library" | "materials"
+export type WorkshopSection = "draft" | "members" | "characters" | "library" | "materials"
 
 export type WorkshopCharacter = {
   id: string
