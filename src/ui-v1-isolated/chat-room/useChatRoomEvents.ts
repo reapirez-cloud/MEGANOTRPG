@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
 import { resolveCampaignMediaUrl } from "../../lib/campaignMedia"
@@ -71,20 +71,61 @@ async function hydrateMessageMedia(message: ChatMessage): Promise<ChatMessage> {
   }
 }
 
+function mergeEvents(current: UiChatEvent[], incoming: UiChatEvent[]) {
+  const byId = new Map<number, UiChatEvent>()
+
+  for (const event of current) byId.set(event.id, event)
+  for (const event of incoming) byId.set(event.id, event)
+
+  return [...byId.values()].sort((a, b) => a.id - b.id)
+}
+
 export function useChatRoomEvents(roomId: string) {
   const [events, setEvents] = useState<UiChatEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const gmUsersRef = useRef<Set<string>>(new Set())
 
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true)
+  const resolveGmUsers = useCallback(async (campaignId: string) => {
+    const rolesResult = await supabase
+      .from("campaign_members")
+      .select("user_id, role, is_owner")
+      .eq("campaign_id", campaignId)
+
+    const gmUsers = new Set(
+      ((rolesResult.data || []) as CampaignMemberRoleRow[])
+        .filter((member) => member.role === "gm" || member.is_owner === true)
+        .map((member) => member.user_id),
+    )
+    gmUsersRef.current = gmUsers
+    return gmUsers
+  }, [])
+
+  const normalizeRows = useCallback(
+    async (rows: ChatMessage[], gmUsers = gmUsersRef.current) => {
+      const hydrated = await Promise.all(rows.map(hydrateMessageMedia))
+      return hydrated.map((message) =>
+        normalizeChatEvent(
+          message,
+          Boolean(message.user_id && gmUsers.has(message.user_id)),
+        ),
+      )
+    },
+    [],
+  )
+
+  const loadInitial = useCallback(async () => {
+    setLoading(true)
     setError(null)
 
     const auth = await supabase.auth.getUser()
     if (auth.error || !auth.data.user) {
       setEvents([])
       setError(auth.error?.message || "Сессия не найдена")
-      if (!silent) setLoading(false)
+      setLoading(false)
       return
     }
 
@@ -92,11 +133,11 @@ export function useChatRoomEvents(roomId: string) {
     if (!campaignId) {
       setEvents([])
       setError("Кампания не найдена")
-      if (!silent) setLoading(false)
+      setLoading(false)
       return
     }
 
-    const [messagesResult, rolesResult] = await Promise.all([
+    const [messagesResult, gmUsers] = await Promise.all([
       supabase
         .from("chat_messages")
         .select(
@@ -105,38 +146,83 @@ export function useChatRoomEvents(roomId: string) {
         .eq("room_id", roomId)
         .order("id", { ascending: false })
         .limit(MESSAGE_LIMIT),
-      supabase
-        .from("campaign_members")
-        .select("user_id, role, is_owner")
-        .eq("campaign_id", campaignId),
+      resolveGmUsers(campaignId),
     ])
 
     if (messagesResult.error) {
       setEvents([])
       setError(messagesResult.error.message)
-      if (!silent) setLoading(false)
+      setLoading(false)
       return
     }
 
-    const gmUsers = new Set(
-      ((rolesResult.data || []) as CampaignMemberRoleRow[])
-        .filter((member) => member.role === "gm" || member.is_owner === true)
-        .map((member) => member.user_id),
-    )
+    const rawMessages = ((messagesResult.data || []) as ChatMessage[]).reverse()
+    const normalized = await normalizeRows(rawMessages, gmUsers)
+
+    setEvents(normalized)
+    setHasMore(rawMessages.length === MESSAGE_LIMIT)
+    setLoading(false)
+  }, [normalizeRows, resolveGmUsers, roomId])
+
+  const refreshLatest = useCallback(async () => {
+    setRefreshing(true)
+    setError(null)
+
+    const messagesResult = await supabase
+      .from("chat_messages")
+      .select(
+        "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at, attachment_url, attachment_kind, event_kind, event_payload",
+      )
+      .eq("room_id", roomId)
+      .order("id", { ascending: false })
+      .limit(MESSAGE_LIMIT)
+
+    if (messagesResult.error) {
+      setError(messagesResult.error.message)
+      setRefreshing(false)
+      return
+    }
 
     const rawMessages = ((messagesResult.data || []) as ChatMessage[]).reverse()
-    const hydrated = await Promise.all(rawMessages.map(hydrateMessageMedia))
+    const normalized = await normalizeRows(rawMessages)
 
-    setEvents(
-      hydrated.map((message) =>
-        normalizeChatEvent(
-          message,
-          Boolean(message.user_id && gmUsers.has(message.user_id)),
-        ),
-      ),
-    )
-    if (!silent) setLoading(false)
-  }, [roomId])
+    setEvents((current) => mergeEvents(current, normalized))
+    setRefreshing(false)
+  }, [normalizeRows, roomId])
+
+  const loadOlder = useCallback(async () => {
+    if (loadingOlder || !hasMore) return 0
+
+    const oldestId = events[0]?.id
+    if (!oldestId) return 0
+
+    setLoadingOlder(true)
+    setError(null)
+
+    const messagesResult = await supabase
+      .from("chat_messages")
+      .select(
+        "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at, attachment_url, attachment_kind, event_kind, event_payload",
+      )
+      .eq("room_id", roomId)
+      .lt("id", oldestId)
+      .order("id", { ascending: false })
+      .limit(MESSAGE_LIMIT)
+
+    if (messagesResult.error) {
+      setError(messagesResult.error.message)
+      setLoadingOlder(false)
+      return 0
+    }
+
+    const rawMessages = ((messagesResult.data || []) as ChatMessage[]).reverse()
+    const normalized = await normalizeRows(rawMessages)
+
+    setEvents((current) => mergeEvents(current, normalized))
+    setHasMore(rawMessages.length === MESSAGE_LIMIT)
+    setLoadingOlder(false)
+    return normalized.length
+  }, [events, hasMore, loadingOlder, normalizeRows, roomId])
 
   useEffect(() => {
     let channel: RealtimeChannel | null = null
@@ -145,11 +231,11 @@ export function useChatRoomEvents(roomId: string) {
     const refreshSoon = () => {
       if (refreshTimer !== null) window.clearTimeout(refreshTimer)
       refreshTimer = window.setTimeout(() => {
-        void load(true)
-      }, 100)
+        void refreshLatest()
+      }, 90)
     }
 
-    void load()
+    void loadInitial()
 
     channel = supabase
       .channel("ui-v1-chat-room-events-" + roomId)
@@ -172,12 +258,16 @@ export function useChatRoomEvents(roomId: string) {
         channel = null
       }
     }
-  }, [load, roomId])
+  }, [loadInitial, refreshLatest, roomId])
 
   return {
     events,
     loading,
+    refreshing,
+    loadingOlder,
+    hasMore,
     error,
-    reload: () => load(false),
+    reload: loadInitial,
+    loadOlder,
   }
 }
