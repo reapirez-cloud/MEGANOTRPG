@@ -134,6 +134,11 @@ export class ChasovoyEngine {
           mechanics: command.input.mechanics ?? [],
           data: command.input.data ?? {},
         }, command.context)
+      } else if (command.kind === "definition.publish_draft") {
+        if (before.status !== "draft") {
+          throw new EngineCommandError("definition.draft_required", "Only draft definitions can be published")
+        }
+        after = await this.storage.publishDraftDefinition(command.definitionId, command.context)
       } else if (command.kind === "definition.set_status") {
         after = await this.storage.setDefinitionStatus(command.definitionId, command.status, command.context)
       } else {
