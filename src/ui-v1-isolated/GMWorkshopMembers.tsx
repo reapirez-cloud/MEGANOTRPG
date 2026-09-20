@@ -174,7 +174,7 @@ export default function GMWorkshopMembers({
             {assigned.map((character) => {
               const isActive = member.activeCharacterId === character.id
               return (
-                <div key={character.id} className="u1-gm-party-character">
+                <div key={character.id} className="u1-gm-member-character">
                   <button
                     type="button"
                     onClick={() => onOpenCharacter(character.id)}
