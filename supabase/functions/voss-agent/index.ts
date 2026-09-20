@@ -233,6 +233,72 @@ function toolResultMeta(value: unknown) {
   }
 }
 
+type AgentToolLedgerEntry = {
+  name: string
+  arguments: JsonRecord
+  result: string
+}
+
+function providerUsageTokens(
+  payload: any,
+  messages: Array<Record<string, unknown>>,
+) {
+  const usage = payload?.usage
+  const direct = Number(usage?.total_tokens)
+  if (Number.isFinite(direct) && direct > 0) return Math.ceil(direct)
+
+  const prompt = Number(usage?.prompt_tokens ?? usage?.input_tokens)
+  const completion = Number(
+    usage?.completion_tokens ?? usage?.output_tokens,
+  )
+  if (
+    Number.isFinite(prompt) &&
+    prompt >= 0 &&
+    Number.isFinite(completion) &&
+    completion >= 0
+  ) {
+    return Math.ceil(prompt + completion)
+  }
+
+  // OpenAI-compatible providers usually expose usage, but keep a conservative
+  // fallback so a missing usage object cannot turn Freddy's budget unlimited.
+  const chars =
+    JSON.stringify(messages).length +
+    JSON.stringify(providerMessage(payload)).length
+  return Math.max(1, Math.ceil(chars / 3.5))
+}
+
+function normalizeToolLedger(value: unknown): AgentToolLedgerEntry[] {
+  if (!Array.isArray(value)) return []
+  return value.slice(-120).flatMap((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return []
+    const row = entry as JsonRecord
+    const name = typeof row.name === "string" ? row.name.slice(0, 120) : ""
+    if (!name) return []
+    const args =
+      row.arguments && typeof row.arguments === "object" &&
+        !Array.isArray(row.arguments)
+        ? row.arguments as JsonRecord
+        : {}
+    const result = typeof row.result === "string"
+      ? row.result.slice(0, 8000)
+      : ""
+    return [{ name, arguments: args, result }]
+  })
+}
+
+function compactToolLedger(entries: AgentToolLedgerEntry[]) {
+  const selected = entries.slice(-60)
+  let raw = JSON.stringify(selected)
+  if (raw.length <= 120000) return selected
+
+  while (selected.length > 8 && raw.length > 120000) {
+    selected.shift()
+    raw = JSON.stringify(selected)
+  }
+  return selected
+}
+
 type IncomingAttachment = {
   name: string
   storagePath: string
