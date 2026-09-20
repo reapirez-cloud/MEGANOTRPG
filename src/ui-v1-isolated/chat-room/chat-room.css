@@ -3189,3 +3189,765 @@
     padding-bottom: calc(5px + var(--u1-safe-bottom, 0px));
   }
 }
+
+
+/* Final geometry audit — one canonical sizing contract for the rebuilt chat.
+   This block intentionally wins over historical stage CSS above. */
+.u1-room-shell[data-chat-room-final-stage="6"] {
+  --u1-chat-gutter: clamp(8px, 2.6vw, 12px);
+  --u1-chat-control: 40px;
+  --u1-chat-icon-box: 30px;
+  --u1-chat-avatar: 48px;
+  --u1-chat-radius: 10px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] button,
+.u1-room-shell[data-chat-room-final-stage="6"] input,
+.u1-room-shell[data-chat-room-final-stage="6"] textarea,
+.u1-room-shell[data-chat-room-final-stage="6"] img,
+.u1-room-shell[data-chat-room-final-stage="6"] svg {
+  max-width: 100%;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] svg {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-topbar {
+  min-width: 0;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 8px;
+  padding-left: var(--u1-chat-gutter);
+  padding-right: var(--u1-chat-gutter);
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-back {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  padding: 0;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-back svg {
+  width: 17px;
+  height: 17px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-topbar__copy {
+  min-width: 0;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-topbar__copy > span {
+  font-size: 8px;
+  line-height: 1.1;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-topbar__copy > strong,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-topbar__title {
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.15;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-readonly {
+  min-width: 0;
+  min-height: 26px;
+  max-width: 84px;
+  padding: 0 8px;
+  overflow: hidden;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3 {
+  min-width: 0;
+  padding-left: var(--u1-chat-gutter);
+  padding-right: var(--u1-chat-gutter);
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character {
+  min-width: 0;
+  grid-template-columns: var(--u1-chat-avatar) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character__portrait {
+  width: var(--u1-chat-avatar);
+  height: var(--u1-chat-avatar);
+  min-width: var(--u1-chat-avatar);
+  min-height: var(--u1-chat-avatar);
+  max-width: var(--u1-chat-avatar);
+  max-height: var(--u1-chat-avatar);
+  aspect-ratio: 1;
+  overflow: hidden;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character__portrait > img,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character__fallback {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  object-fit: cover;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character__fallback {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character__main {
+  min-width: 0;
+  min-height: var(--u1-chat-avatar);
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character__identity {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "eyebrow"
+    "name"
+    "meta";
+  gap: 1px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character__identity > span {
+  grid-area: eyebrow;
+  min-width: 0;
+  font-size: 7px;
+  line-height: 1.1;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character__identity h1 {
+  grid-area: name;
+  min-width: 0;
+  max-height: none;
+  margin: 0;
+  display: block;
+  overflow: hidden;
+  font-size: clamp(17px, 4.6vw, 21px);
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-line-clamp: unset;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character__identity p {
+  grid-area: meta;
+  min-width: 0;
+  max-width: 100%;
+  max-height: none;
+  margin: 0;
+  display: block;
+  overflow: hidden;
+  font-size: 8.5px;
+  line-height: 1.2;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-line-clamp: unset;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-hp {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(54px, 112px);
+  align-items: center;
+  justify-content: start;
+  gap: 6px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-hp__label {
+  min-width: 0;
+  gap: 4px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-hp__label span {
+  font-size: 7px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-hp__label strong {
+  min-width: 0;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-hp__track {
+  min-width: 54px;
+  width: 100%;
+  height: 3px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context {
+  min-width: 0;
+  padding-top: 5px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__item {
+  min-width: 0;
+  min-height: 40px;
+  padding: 5px 7px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  overflow: hidden;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__icon {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 7px;
+  background: rgba(255,255,255,.018);
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__copy {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__copy > span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 7px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__copy strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__copy small {
+  display: none;
+}
+
+/* Feed geometry: readable text, fixed avatar squares, no horizontal leakage. */
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-feed {
+  overflow-x: hidden;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-feed__list,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-feed__entry,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__content,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__content {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line {
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__avatar {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
+  aspect-ratio: 1;
+  border-radius: 9px;
+  object-fit: cover;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__content {
+  width: 100%;
+  max-width: min(100%, 630px);
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__meta {
+  min-width: 0;
+  min-height: 16px;
+  gap: 5px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__meta > strong {
+  min-width: 0;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__meta > span {
+  font-size: 7px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__meta > time,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__edited {
+  font-size: 7px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__body {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.42;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__media {
+  max-width: 100%;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__media img {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-system-event {
+  max-width: 100%;
+  font-size: 8px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-system-event time {
+  font-size: 7px;
+}
+
+/* Game cards stay compact, but every internal cell is allowed to contain its content. */
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-feed[data-chat-feed-stage="4"] .u1-room-game-card {
+  width: calc(100% - 40px);
+  max-width: 620px;
+  margin-left: 40px;
+  padding: 8px 9px 9px;
+  overflow: hidden;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__header {
+  min-width: 0;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__icon {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  max-width: 22px;
+  max-height: 22px;
+  aspect-ratio: 1;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__icon svg,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card[data-event-type="spell"] .u1-room-game-card__icon svg {
+  width: 15px;
+  height: 15px;
+  max-width: 15px;
+  max-height: 15px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__eyebrow {
+  min-width: 0;
+  font-size: 7px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__header > time {
+  font-size: 7px;
+  white-space: nowrap;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__title > strong {
+  max-height: none;
+  display: block;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-line-clamp: unset;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__title > small {
+  font-size: 8.5px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__chips {
+  max-width: 100%;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__chips > span {
+  min-width: 0;
+  min-height: 20px;
+  max-width: 100%;
+  padding: 0 7px;
+  overflow: hidden;
+  font-size: 7.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__stats {
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__stats > div {
+  min-width: 0;
+  min-height: 42px;
+  padding: 6px 7px;
+  overflow: hidden;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__stats > div > span {
+  font-size: 7px;
+  line-height: 1.15;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__stats > div > strong {
+  font-size: 10px;
+  line-height: 1.15;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__stats > div[data-emphasis] > strong {
+  font-size: 15px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__resources > div {
+  min-width: 0;
+  min-height: 34px;
+  padding: 5px 7px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__resources > div > span {
+  min-width: 0;
+  font-size: 8px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__resources > div > strong {
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__resources > div > small,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__footer > span,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__footer > small {
+  font-size: 7px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__note {
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+/* Composer: every interactive control is a true square and its contents are bounded. */
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer {
+  min-width: 0;
+  padding-left: var(--u1-chat-gutter);
+  padding-right: var(--u1-chat-gutter);
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__row {
+  min-width: 0;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__action-anchor {
+  flex: 0 0 var(--u1-chat-control);
+  width: var(--u1-chat-control);
+  min-width: var(--u1-chat-control);
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker-trigger,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__plus,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__send {
+  width: var(--u1-chat-control);
+  height: var(--u1-chat-control);
+  min-width: var(--u1-chat-control);
+  min-height: var(--u1-chat-control);
+  max-width: var(--u1-chat-control);
+  max-height: var(--u1-chat-control);
+  aspect-ratio: 1;
+  overflow: hidden;
+  padding: 0;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker-trigger {
+  grid-template-columns: 25px 8px;
+  justify-content: center;
+  gap: 1px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker-avatar[data-compact] {
+  width: 25px;
+  height: 25px;
+  min-width: 25px;
+  min-height: 25px;
+  max-width: 25px;
+  max-height: 25px;
+  aspect-ratio: 1;
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker-trigger > svg {
+  width: 8px;
+  height: 8px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__plus svg,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__send svg {
+  width: 18px;
+  height: 18px;
+  max-width: 18px;
+  max-height: 18px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__field {
+  min-width: 0;
+  min-height: var(--u1-chat-control);
+  overflow: hidden;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__field textarea {
+  min-width: 0;
+  min-height: calc(var(--u1-chat-control) - 2px);
+  padding: 10px 11px 9px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker-menu,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__action-menu {
+  max-width: calc(100vw - (var(--u1-chat-gutter) * 2));
+  overflow-x: hidden;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker-menu > button,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__action-menu > button {
+  min-width: 0;
+  min-height: 48px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker-menu > button {
+  grid-template-columns: 32px minmax(0, 1fr);
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker-menu .u1-chat-composer__speaker-avatar {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker-menu strong,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__action-menu strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker-menu small,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__action-menu small {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 8px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__action-menu > button {
+  grid-template-columns: 32px minmax(0, 1fr) 14px;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__action-icon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__action-icon svg {
+  width: 17px;
+  height: 17px;
+  max-width: 17px;
+  max-height: 17px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__error {
+  font-size: 9px;
+}
+
+/* Responsive safety: preserve labels instead of hiding them and keep every square square. */
+@media (max-width: 360px) {
+  .u1-room-shell[data-chat-room-final-stage="6"] {
+    --u1-chat-control: 38px;
+    --u1-chat-avatar: 46px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__item {
+    min-height: 38px;
+    grid-template-columns: 21px minmax(0, 1fr);
+    gap: 5px;
+    padding: 4px 5px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__icon {
+    width: 21px;
+    height: 21px;
+    min-width: 21px;
+    min-height: 21px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__copy > span {
+    display: block;
+    font-size: 6.5px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__copy strong {
+    font-size: 9px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-feed[data-chat-feed-stage="4"] .u1-room-game-card {
+    width: calc(100% - 38px);
+    margin-left: 38px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__body {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 320px) {
+  .u1-room-shell[data-chat-room-final-stage="6"] {
+    --u1-chat-control: 36px;
+    --u1-chat-avatar: 44px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-topbar {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-back {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character__identity h1 {
+    font-size: 16px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character__identity p {
+    display: block;
+    font-size: 8px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__item {
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 4px;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__icon {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__icon svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__copy > span {
+    font-size: 6px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__copy strong {
+    font-size: 8.5px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-feed[data-chat-feed-stage="4"] .u1-room-game-card {
+    width: calc(100% - 36px);
+    margin-left: 36px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .u1-room-shell[data-chat-room-final-stage="6"] {
+    --u1-chat-avatar: 40px;
+    --u1-chat-control: 36px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-context__item {
+    min-height: 32px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__body {
+    font-size: 10.5px;
+  }
+}
