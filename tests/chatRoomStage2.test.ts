@@ -7,31 +7,28 @@ const hookPath = new URL("../src/ui-v1-isolated/chat-room/useChatRoomShell.ts", 
 const contractsPath = new URL("../src/ui-v1-isolated/chat-room/chatRoomContracts.ts", import.meta.url)
 const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room-stage1.css", import.meta.url)
 
-test("stage 2 resolves the header identity by viewer role instead of room population", async () => {
+test("stage 2 resolves header identity from the room-scoped viewer contract", async () => {
   const [hook, contracts] = await Promise.all([
     readFile(hookPath, "utf8"),
     readFile(contractsPath, "utf8"),
   ])
 
-  assert.match(hook, /membership\.role === "gm" \|\| membership\.is_owner === true/)
+  assert.match(hook, /rpc\("get_chat_room_viewer_context_v1"/)
+  assert.match(hook, /viewerContext\.can_manage/)
+  assert.match(hook, /viewerContext\.viewer_character_id/)
   assert.match(hook, /from\("chat_actor_bindings"\)/)
   assert.match(hook, /chatSpeakerStorageKey/)
-  assert.match(hook, /from\("scene_participants"\)/)
-  assert.match(hook, /roomCharacter\?\.assigned_user_id === userId/)
-  assert.match(hook, /identity: canManage/)
   assert.match(hook, /kind: "narrator", name: "Рассказчик"/)
-  assert.match(hook, /: null,/)
   assert.match(contracts, /ChatRoomHeaderIdentity/)
 })
 
-test("stage 2 keeps player identity local to the player's own participating character", async () => {
+test("stage 2 keeps player identity room-scoped instead of choosing another participant", async () => {
   const hook = await readFile(hookPath, "utf8")
 
-  assert.match(hook, /activeCharacterId/)
-  assert.match(hook, /room\.room_type !== "scene" \|\| !activeCharacterId/)
-  assert.match(hook, /\.eq\("room_id", room\.id\)/)
-  assert.match(hook, /\.eq\("character_id", activeCharacterId\)/)
-  assert.doesNotMatch(hook, /scene_participants[\s\S]*limit\(1\)[\s\S]*characterId =/)
+  assert.match(hook, /viewerContext\.viewer_character_id/)
+  assert.doesNotMatch(hook, /resolvePlayerCharacterId/)
+  assert.doesNotMatch(hook, /from\("scene_participants"\)/)
+  assert.doesNotMatch(hook, /from\("chat_room_members"\)/)
 })
 
 test("stage 2 adds final quick-action geometry but no navigation or panels", async () => {
