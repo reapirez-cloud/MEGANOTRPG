@@ -1,3 +1,5 @@
+export type ChatViewerRole = "player" | "gm"
+
 export type ChatRoomDayPeriod =
   | "dawn"
   | "morning"
@@ -50,6 +52,9 @@ export type ChatRoomShellModel = {
   viewer: {
     campaignId: string
     userId: string
+    role: ChatViewerRole
+    isOwner: boolean
+    playerCharacterId: string | null
   }
   identity: ChatRoomHeaderIdentity
   context: ChatRoomHeaderContext
@@ -75,7 +80,7 @@ export function chatSpeakerStorageKey(
   roomId: string,
   userId: string,
 ) {
-  return `meganotrpg:chat-speaker:${campaignId}:${roomId}:${userId}`
+  return `meganotrpg:chat-speaker-v2:${campaignId}:${roomId}:${userId}`
 }
 
 

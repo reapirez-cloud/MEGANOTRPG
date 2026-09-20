@@ -9,6 +9,11 @@ import {
   type ChatRoomHeaderCharacter,
   type ChatRoomShellModel,
 } from "./chatRoomContracts"
+import {
+  CHAT_NARRATOR_SPEAKER_ID,
+  chatDefaultSpeakerId,
+  normalizeChatViewerRole,
+} from "./chatActorResolver"
 
 type ViewerContextRow = {
   campaign_id: string
@@ -19,6 +24,11 @@ type ViewerContextRow = {
   room_state: string
   is_read_only: boolean
   viewer_character_id: string | null
+}
+
+type MembershipRow = {
+  role: string
+  is_owner: boolean
 }
 
 type RoomRow = {
@@ -134,43 +144,75 @@ function definitionHasWeaponRole(data: unknown) {
   return semanticRole.startsWith("weapon.")
 }
 
-async function resolveGmCharacterId({
+async function resolveManagerCharacterId({
   campaignId,
   roomId,
   userId,
+  viewerRole,
+  viewerCharacterId,
 }: {
   campaignId: string
   roomId: string
   userId: string
+  viewerRole: ChatRoomShellModel["viewer"]["role"]
+  viewerCharacterId: string | null
 }) {
-  const stored = window.localStorage.getItem(
-    chatSpeakerStorageKey(campaignId, roomId, userId),
-  )
+  const storageKey = chatSpeakerStorageKey(campaignId, roomId, userId)
+  const defaultId = chatDefaultSpeakerId({
+    canManage: true,
+    viewerRole,
+    viewerCharacterId,
+  })
+  const stored = window.localStorage.getItem(storageKey)
+  const requestedId = stored || defaultId
 
-  if (!stored || stored === "narrator") return null
+  if (!stored && defaultId) {
+    window.localStorage.setItem(storageKey, defaultId)
+  }
+
+  if (!requestedId || requestedId === CHAT_NARRATOR_SPEAKER_ID) {
+    return null
+  }
+
+  if (
+    viewerRole === "player" &&
+    viewerCharacterId &&
+    requestedId === viewerCharacterId
+  ) {
+    return viewerCharacterId
+  }
 
   const binding = await supabase
     .from("chat_actor_bindings")
     .select("character_id")
     .eq("campaign_id", campaignId)
     .eq("user_id", userId)
-    .eq("character_id", stored)
+    .eq("character_id", requestedId)
     .maybeSingle()
 
   const boundCharacterId =
     (binding.data as ActorBindingRow | null)?.character_id || null
-  if (!boundCharacterId) return null
 
-  const actor = await supabase
-    .from("characters")
-    .select("id")
-    .eq("campaign_id", campaignId)
-    .eq("id", boundCharacterId)
-    .eq("character_type", "npc")
-    .eq("life_state", "alive")
-    .maybeSingle()
+  if (boundCharacterId) {
+    const actor = await supabase
+      .from("characters")
+      .select("id")
+      .eq("campaign_id", campaignId)
+      .eq("id", boundCharacterId)
+      .eq("character_type", "npc")
+      .eq("life_state", "alive")
+      .maybeSingle()
 
-  return actor.data?.id || null
+    if (actor.data?.id) return actor.data.id
+  }
+
+  if (defaultId) {
+    window.localStorage.setItem(storageKey, defaultId)
+  }
+
+  return defaultId && defaultId !== CHAT_NARRATOR_SPEAKER_ID
+    ? defaultId
+    : null
 }
 
 async function loadCharacterPresentation(
@@ -321,6 +363,23 @@ export function useChatRoomShell(roomId: string) {
       return
     }
 
+    const membershipResult = await supabase
+      .from("campaign_members")
+      .select("role, is_owner")
+      .eq("campaign_id", viewerContext.campaign_id)
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    if (membershipResult.error || !membershipResult.data) {
+      setModel(null)
+      setError(membershipResult.error?.message || "Участник кампании не найден")
+      if (!silent) setLoading(false)
+      return
+    }
+
+    const membership = membershipResult.data as MembershipRow
+    const viewerRole = normalizeChatViewerRole(membership.role)
+
     const roomsResult = await supabase.rpc("get_campaign_chat_rooms", {
       p_campaign_id: viewerContext.campaign_id,
     })
@@ -344,10 +403,12 @@ export function useChatRoomShell(roomId: string) {
     }
 
     const characterId = viewerContext.can_manage
-      ? await resolveGmCharacterId({
+      ? await resolveManagerCharacterId({
           campaignId: viewerContext.campaign_id,
           roomId: room.id,
           userId,
+          viewerRole,
+          viewerCharacterId: viewerContext.viewer_character_id,
         })
       : viewerContext.viewer_character_id
 
@@ -385,6 +446,9 @@ export function useChatRoomShell(roomId: string) {
       viewer: {
         campaignId: viewerContext.campaign_id,
         userId,
+        role: viewerRole,
+        isOwner: membership.is_owner === true,
+        playerCharacterId: viewerContext.viewer_character_id,
       },
       identity: viewerContext.can_manage
         ? presentation.character

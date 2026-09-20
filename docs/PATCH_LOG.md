@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Chat 1:1 Stage 2 fixes speaking identity: an owner/admin who is still an ordinary campaign player now opens their eligible room as their own active PC instead of being silently collapsed into `Рассказчик`. The manager persona picker keeps explicit Narrator/NPC selection, but its new default is the room-scoped player character when one exists.
 - Игровой чат начал отдельную 1:1-переделку по выбранному референсу: Stage 1 заменяет прежнюю плоскую компоновку на единый viewport-frame с компактной фиксированной верхней зоной, лентой, которая забирает всё оставшееся место, и закреплённым нижним вводом; старая огромная hero-карточка уже ужата по геометрии без изменения игровой логики.
 - Chats restores the compact **9:16 portrait-card** layout for personal histories and now uses the same card geometry for active scenes and completed rooms. Artwork fills the entire card while title, factual context, message preview, activity and unread state live in a dedicated readable overlay layer; Flood remains compact.
 - Chat-room Snake actions are now real management tools for GM/Owner: a personal history or scene can receive/replace its preview artwork through the shared 9:16 Media surface, while **Delete** exists only for scenes. Personal histories never expose a delete action.
@@ -22,10 +23,12 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Database / migration changes
 
+- Added `chat_actor_identity_owner_player_fix_stage2`: `private.chat_player_viewer_character_for_room` no longer treats `is_owner` as if it were the exclusive GM role. Owner authority and player identity remain independent, so an owner with `role = player` resolves the same eligible personal/flood/scene PC identity as any other player.
 - Added `chat_catalog_portrait_snake_actions`: manager-only chat preview binding persists uploaded preview media plus the normalized Snake crop presentation, and idempotent `delete_game_scene_v1` rejects every non-scene room before deletion. Scene-owned messages, participants, surfaces and other room children remain covered by their existing `ON DELETE CASCADE` foreign keys.
 
 ### Runtime and architecture changes
 
+- Added one shared chat actor-selection contract. The room shell now reads the viewer's ordinary campaign `role` separately from `canManage`, while header and composer share the same versioned room speaker key/default rules. The v2 key intentionally drops the stale old “Narrator by default” state that caused owner-players to remain stuck on the wrong identity.
 - Новый `ChatRoomFrame` отделяет геометрию игрового диалога от уже работающих Stage 8 feed/composer/runtime-компонентов. Это сохраняет текущие данные и отправку сообщений, но создаёт стабильные слоты `fixed-head -> feed -> controls` для следующих этапов 1:1-переделки вместо дальнейшего наращивания старого card-stack layout.
 - Scene deletion follows the named-engine path `Snake -> Oracle -> Larisa -> delete_game_scene_v1`; React does not delete `chat_rooms` directly. Preview artwork remains a presentation mutation and is registered in the shared media asset/binding system instead of becoming a second chat-specific image store.
 - The catalog adapter now reads saved chat-room media presentations, resolves private campaign media, and reapplies the normalized crop to the 9:16 card renderer. The three card sections reuse one `portraitCard` component rather than separate personal/event/archive visual implementations.
@@ -41,6 +44,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Added Stage 2 actor-resolution regressions covering owner-player vs GM defaults, stale persisted speaker recovery, owned-PC inclusion in the manager selector, composer/header contract parity and the SQL guard that forbids `is_owner` from erasing player identity.
 - Добавлен регрессионный контракт нового chat reference layout Stage 1: один viewport-frame, feed с `min-height: 0` и flex-ownership оставшейся высоты, закреплённые controls, компактная геометрия header/quick-actions и защита узких/низких экранов.
 - Updated UI 1.0 chat regressions to lock shared 9:16 full-bleed cards, the explicit text-overlay layer, Snake preview composition, scene-only deletion, Oracle/Larisa routing and the server-side non-scene delete guard.
 

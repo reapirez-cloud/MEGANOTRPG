@@ -3,9 +3,15 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { resolveCampaignMediaUrl } from "../../lib/campaignMedia"
 import { supabase } from "../../lib/supabase"
 import {
+  CHAT_NARRATOR_SPEAKER_ID,
+  chatDefaultSpeakerId,
+  resolveChatSpeakerId,
+} from "./chatActorResolver"
+import {
   CHAT_SPEAKER_CHANGED_EVENT,
   chatSpeakerStorageKey,
   type ChatSpeakerOption,
+  type ChatViewerRole,
 } from "./chatRoomContracts"
 
 type BindingRow = {
@@ -19,10 +25,24 @@ type CharacterRow = {
 }
 
 const NARRATOR_OPTION: ChatSpeakerOption = {
-  id: "narrator",
+  id: CHAT_NARRATOR_SPEAKER_ID,
   kind: "narrator",
   name: "Рассказчик",
   avatarUrl: null,
+}
+
+async function characterOption(
+  character: CharacterRow,
+): Promise<ChatSpeakerOption> {
+  return {
+    id: character.id,
+    kind: "character",
+    name: character.name,
+    avatarUrl: character.avatar_url
+      ? (await resolveCampaignMediaUrl(character.avatar_url)) ||
+        character.avatar_url
+      : null,
+  }
 }
 
 export function useChatSpeakerOptions({
@@ -30,14 +50,20 @@ export function useChatSpeakerOptions({
   userId,
   roomId,
   enabled,
+  viewerRole,
+  playerCharacterId,
 }: {
   campaignId: string
   userId: string
   roomId: string
   enabled: boolean
+  viewerRole: ChatViewerRole
+  playerCharacterId: string | null
 }) {
   const [options, setOptions] = useState<ChatSpeakerOption[]>([NARRATOR_OPTION])
-  const [selectedId, setSelectedId] = useState("narrator")
+  const [selectedId, setSelectedId] = useState<string>(
+    CHAT_NARRATOR_SPEAKER_ID,
+  )
   const [loading, setLoading] = useState(enabled)
 
   const storageKey = useMemo(
@@ -48,7 +74,7 @@ export function useChatSpeakerOptions({
   const load = useCallback(async () => {
     if (!enabled) {
       setOptions([NARRATOR_OPTION])
-      setSelectedId("narrator")
+      setSelectedId(CHAT_NARRATOR_SPEAKER_ID)
       setLoading(false)
       return
     }
@@ -61,50 +87,77 @@ export function useChatSpeakerOptions({
       .eq("campaign_id", campaignId)
       .eq("user_id", userId)
 
-    const ids = ((bindingsResult.data || []) as BindingRow[]).map(
+    const boundNpcIds = ((bindingsResult.data || []) as BindingRow[]).map(
       (binding) => binding.character_id,
     )
 
-    let characterOptions: ChatSpeakerOption[] = []
-    if (ids.length) {
+    let playerOption: ChatSpeakerOption | null = null
+    if (viewerRole === "player" && playerCharacterId) {
+      const playerResult = await supabase
+        .from("characters")
+        .select("id, name, avatar_url")
+        .eq("campaign_id", campaignId)
+        .eq("id", playerCharacterId)
+        .eq("assigned_user_id", userId)
+        .eq("character_type", "pc")
+        .eq("life_state", "alive")
+        .maybeSingle()
+
+      if (playerResult.data) {
+        playerOption = await characterOption(playerResult.data as CharacterRow)
+      }
+    }
+
+    let npcOptions: ChatSpeakerOption[] = []
+    if (boundNpcIds.length) {
       const charactersResult = await supabase
         .from("characters")
         .select("id, name, avatar_url")
         .eq("campaign_id", campaignId)
-        .in("id", ids)
+        .in("id", boundNpcIds)
         .eq("character_type", "npc")
         .eq("life_state", "alive")
 
       const characters = (charactersResult.data || []) as CharacterRow[]
-      characterOptions = await Promise.all(
+      npcOptions = await Promise.all(
         characters
           .sort((a, b) => a.name.localeCompare(b.name, "ru"))
-          .map(async (character): Promise<ChatSpeakerOption> => ({
-            id: character.id,
-            kind: "character",
-            name: character.name,
-            avatarUrl: character.avatar_url
-              ? (await resolveCampaignMediaUrl(character.avatar_url)) ||
-                character.avatar_url
-              : null,
-          })),
+          .map(characterOption),
       )
     }
 
-    const nextOptions = [NARRATOR_OPTION, ...characterOptions]
-    const stored = window.localStorage.getItem(storageKey) || "narrator"
-    const validStored = nextOptions.some((option) => option.id === stored)
-      ? stored
-      : "narrator"
+    const nextOptions = [
+      ...(playerOption ? [playerOption] : []),
+      NARRATOR_OPTION,
+      ...npcOptions,
+    ]
+    const defaultId = chatDefaultSpeakerId({
+      canManage: true,
+      viewerRole,
+      viewerCharacterId: playerCharacterId,
+    })
+    const stored = window.localStorage.getItem(storageKey)
+    const selected = resolveChatSpeakerId({
+      storedId: stored,
+      defaultId,
+      availableIds: nextOptions.map((option) => option.id),
+    }) || CHAT_NARRATOR_SPEAKER_ID
 
-    if (validStored !== stored) {
-      window.localStorage.setItem(storageKey, validStored)
+    if (selected !== stored) {
+      window.localStorage.setItem(storageKey, selected)
     }
 
     setOptions(nextOptions)
-    setSelectedId(validStored)
+    setSelectedId(selected)
     setLoading(false)
-  }, [campaignId, enabled, storageKey, userId])
+  }, [
+    campaignId,
+    enabled,
+    playerCharacterId,
+    storageKey,
+    userId,
+    viewerRole,
+  ])
 
   useEffect(() => {
     void load()

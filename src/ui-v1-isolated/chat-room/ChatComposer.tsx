@@ -127,6 +127,8 @@ export default function ChatComposer({
     userId: model.viewer.userId,
     roomId: model.roomId,
     enabled: model.canManage,
+    viewerRole: model.viewer.role,
+    playerCharacterId: model.viewer.playerCharacterId,
   })
 
   const playerHasCharacter = model.identity?.kind === "character"
