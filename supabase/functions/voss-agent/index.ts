@@ -1076,16 +1076,18 @@ Deno.serve(async (req: Request) => {
   const adminToolsUsed: string[] = []
   let answer = ""
   let lastProviderPayload: any = null
+  let forceTextOnlyNextRound = false
 
   for (let round = 0; round < 5; round += 1) {
+    const toolsForRound = forceTextOnlyNextRound ? [] : availableTools
     let providerPayload: any
     try {
       providerPayload = await requestChatCompletion({
         model: resolvedModel,
         messages: providerMessages,
-        tools: availableTools,
+        tools: toolsForRound,
         toolChoice:
-          imageGenerationRequested && round === 0 && availableTools.length
+          imageGenerationRequested && round === 0 && toolsForRound.length
             ? {
                 type: "function",
                 function: { name: "generate_image" },
@@ -1114,7 +1116,7 @@ Deno.serve(async (req: Request) => {
     }
     lastProviderPayload = providerPayload
     const assistantMessage = providerMessage(providerPayload)
-    const toolCalls = availableTools.length && Array.isArray(assistantMessage.tool_calls)
+    const toolCalls = toolsForRound.length && Array.isArray(assistantMessage.tool_calls)
       ? assistantMessage.tool_calls.slice(0, 6)
       : []
 
@@ -1279,6 +1281,10 @@ Deno.serve(async (req: Request) => {
           typeof resultRecord.job_id === "string"
         ) {
           imageJobsQueued.push(resultRecord.job_id)
+          // Image rendering is asynchronous and the UI tracks the queued job separately.
+          // Do not let the model poll image/read tools until the safe-round guard trips;
+          // the next model round exists only to produce the assistant text response.
+          forceTextOnlyNextRound = true
         }
 
         if (
