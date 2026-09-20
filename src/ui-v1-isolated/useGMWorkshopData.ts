@@ -324,14 +324,53 @@ function definitionWeightKg(definition: ChasovoyDefinition): number | null {
     : null
 }
 
-function itemInput(definition: ChasovoyDefinition, quantityOverride?: number): InventoryInput {
+type LinkedDefinitionRef = {
+  id: string
+  revision?: number | null
+}
+
+function linkedDefinitionRefs(definition: ChasovoyDefinition): LinkedDefinitionRef[] {
+  const raw = definition.data.linked_definitions
+  if (Array.isArray(raw)) {
+    return raw.flatMap((value) => {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return []
+      const record = value as Record<string, ChasovoyJson>
+      const id = typeof record.id === "string" ? record.id : ""
+      const revision = typeof record.revision === "number" ? record.revision : null
+      return id ? [{ id, revision }] : []
+    })
+  }
+
+  const legacy = definition.data.linked_definition_ids
+  return Array.isArray(legacy)
+    ? legacy.flatMap((value) => typeof value === "string" ? [{ id: value, revision: null }] : [])
+    : []
+}
+
+async function itemInput(
+  definition: ChasovoyDefinition,
+  quantityOverride?: number,
+): Promise<InventoryInput> {
   const rawCategory = jsonString(definition.data, "category", "other")
   const category = INVENTORY_CATEGORIES.includes(rawCategory as InventoryCategory)
     ? rawCategory as InventoryCategory
     : "other"
-  const mechanics = Array.isArray(definition.mechanics)
+  const ownMechanics = Array.isArray(definition.mechanics)
     ? definition.mechanics as unknown as StoredMechanics
     : []
+  const refs = linkedDefinitionRefs(definition)
+  const linkedMechanics: StoredMechanics = []
+
+  for (const ref of refs) {
+    const linked = await chasovoy.getDefinition({
+      id: ref.id,
+      revision: ref.revision ?? undefined,
+    })
+    if (!linked || linked.status === "archived") continue
+    if (Array.isArray(linked.mechanics)) {
+      linkedMechanics.push(...linked.mechanics as unknown as StoredMechanics)
+    }
+  }
 
   return {
     name: definition.name,
@@ -346,13 +385,14 @@ function itemInput(definition: ChasovoyDefinition, quantityOverride?: number): I
     description: definition.rulesText || definition.summary,
     definition_id: definition.id,
     definition_revision: definition.revision,
-    mechanics,
+    mechanics: [...ownMechanics, ...linkedMechanics],
     usage_mode: (jsonString(definition.data, "usage_mode", "none") || "none") as InventoryInput["usage_mode"],
     charges_current: typeof definition.data.charges_current === "number" ? definition.data.charges_current : null,
     charges_max: typeof definition.data.charges_max === "number" ? definition.data.charges_max : null,
     item_state: {
       source_definition_id: definition.id,
       source_definition_revision: definition.revision,
+      linked_definition_refs: refs,
     },
   }
 }
