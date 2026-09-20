@@ -691,6 +691,32 @@ export function createWorkshopMemberAssignAction({
   }
 }
 
+export function createWorkshopMemberUnassignAction({
+  member,
+  character,
+  operations,
+}: {
+  member: WorkshopMember
+  character: WorkshopCharacter
+  operations: WorkshopOperations
+}): SnakeAction {
+  return {
+    id: "unassign-" + character.id,
+    label: "Снять назначение",
+    surface: {
+      kind: "confirm",
+      eyebrow: "Участники · персонаж",
+      title: "Снять «" + character.name + "» с " + member.displayName + "?",
+      body: "Персонаж станет свободным. Если он был активным, активный выбор участника будет снят.",
+      confirmLabel: "Снять назначение",
+    },
+    execute: async () => {
+      const response = await operations.assignCharacter(character.id, null)
+      return actionResult(response.ok, response.error, "Персонаж снова свободен.")
+    },
+  }
+}
+
 export function createWorkshopMemberSetActiveAction({
   member,
   character,
@@ -798,6 +824,9 @@ export function createWorkshopMemberActions({
 
   const characterChildren: SnakeAction[] = [
     createWorkshopMemberAssignAction({ member, freePc, operations }),
+    ...assigned.map((character) =>
+      createWorkshopMemberUnassignAction({ member, character, operations })
+    ),
   ]
 
   if (livingAssigned.length > 0) {
