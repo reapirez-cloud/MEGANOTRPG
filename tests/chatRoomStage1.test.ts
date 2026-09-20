@@ -6,7 +6,7 @@ const appPath = new URL("../src/ui-v1-isolated/UiV1App.tsx", import.meta.url)
 const catalogPath = new URL("../src/ui-v1-isolated/ChatCatalog.tsx", import.meta.url)
 const roomPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomScreen.tsx", import.meta.url)
 const hookPath = new URL("../src/ui-v1-isolated/chat-room/useChatRoomShell.ts", import.meta.url)
-const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room-stage1.css", import.meta.url)
+const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room.css", import.meta.url)
 
 test("stage 1 mounts a new isolated chat-room route", async () => {
   const [app, catalog] = await Promise.all([
@@ -39,7 +39,7 @@ test("stage 1 contains only the room foundation and character header", async () 
     readFile(cssPath, "utf8"),
   ])
 
-  assert.match(room, /data-chat-room-stage="7"/)
+  assert.match(room, /data-chat-room-stage="8"/)
   assert.match(room, /Время суток/)
   assert.match(room, /Локация/)
   assert.match(room, /<HpBlock/)
