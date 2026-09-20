@@ -1078,8 +1078,17 @@ Deno.serve(async (req: Request) => {
   let lastProviderPayload: any = null
   let forceTextOnlyNextRound = false
 
-  for (let round = 0; round < 5; round += 1) {
-    const toolsForRound = forceTextOnlyNextRound ? [] : availableTools
+  // Allow up to five tool-bearing rounds, then always give the model one
+  // tool-free round to turn gathered context into a user-facing answer.
+  // Previously the fifth tool request returned a 502 and discarded all work.
+  const maxToolRounds = 5
+  const maxRounds = maxToolRounds + 1
+
+  for (let round = 0; round < maxRounds; round += 1) {
+    const toolsForRound =
+      forceTextOnlyNextRound || round >= maxToolRounds
+        ? []
+        : availableTools
     let providerPayload: any
     try {
       providerPayload = await requestChatCompletion({
@@ -1123,10 +1132,6 @@ Deno.serve(async (req: Request) => {
     if (!toolCalls.length) {
       answer = contentFromProvider(providerPayload)
       break
-    }
-
-    if (round === 4) {
-      return reply({ error: "AI read-tool loop exceeded safe round limit" }, 502)
     }
 
     providerMessages.push({
