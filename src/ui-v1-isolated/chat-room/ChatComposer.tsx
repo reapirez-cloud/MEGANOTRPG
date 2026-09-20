@@ -6,12 +6,28 @@ import {
 } from "react"
 
 import { supabase } from "../../lib/supabase"
+import ChatActionHost from "./ChatActionHost"
 import {
+  CHAT_ACTION_REQUEST_EVENT,
   CHAT_MESSAGE_SENT_EVENT,
+  type ChatActionLauncherMode,
+  type ChatActionRequestDetail,
   type ChatRoomShellModel,
   type ChatSpeakerOption,
 } from "./chatRoomContracts"
 import { useChatSpeakerOptions } from "./useChatSpeakerOptions"
+
+const ACTION_MENU_ITEMS: Array<{
+  mode: ChatActionLauncherMode
+  label: string
+  hint: string
+}> = [
+  { mode: "roll", label: "Бросок", hint: "Кубы и проверки" },
+  { mode: "ability", label: "Умение", hint: "Класс и способности" },
+  { mode: "spell", label: "Заклинание", hint: "Ячейки и магия" },
+  { mode: "item", label: "Предмет", hint: "Инвентарь и расходники" },
+  { mode: "action", label: "Действие", hint: "Атаки и боевые действия" },
+]
 
 function PlusIcon() {
   return (
@@ -42,6 +58,50 @@ function NarratorIcon() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M6.5 7.5c1.7-2 3.5-3 5.5-3s3.8 1 5.5 3v6c-1.7 3.8-3.5 5.7-5.5 5.7s-3.8-1.9-5.5-5.7v-6Z" />
       <path d="M9 11h.1M14.9 11h.1M9.5 15c1.7 1 3.3 1 5 0" />
+    </svg>
+  )
+}
+
+function ActionIcon({ mode }: { mode: ChatActionLauncherMode }) {
+  if (mode === "roll") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m12 3 7 4v8l-7 6-7-6V7l7-4Z" />
+        <path d="m5 7 7 4 7-4M12 11v10" />
+      </svg>
+    )
+  }
+
+  if (mode === "spell") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4.5 4.5c3-.9 5.5-.4 7.5 1.5v14c-2-1.9-4.5-2.4-7.5-1.5v-14ZM19.5 4.5c-3-.9-5.5-.4-7.5 1.5v14c2-1.9 4.5-2.4 7.5-1.5v-14Z" />
+      </svg>
+    )
+  }
+
+  if (mode === "item") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7 8V6.8A5 5 0 0 1 12 2a5 5 0 0 1 5 4.8V8" />
+        <path d="M4.5 8h15l-1 12h-13l-1-12Z" />
+      </svg>
+    )
+  }
+
+  if (mode === "action") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m5 19 4-4M8 16l8.8-8.8 2 2L10 18l-2-2Z" />
+        <path d="m15.7 5.9 2.5-2.5 2.4 2.4-2.5 2.5M4 20h5" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2.8 15 9l6.2 3-6.2 3-3 6.2L9 15l-6.2-3L9 9l3-6.2Z" />
+      <circle cx="12" cy="12" r="2.1" />
     </svg>
   )
 }
@@ -117,8 +177,13 @@ export default function ChatComposer({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const speakerRef = useRef<HTMLDivElement | null>(null)
   const speakerTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const actionMenuRef = useRef<HTMLDivElement | null>(null)
+  const plusTriggerRef = useRef<HTMLButtonElement | null>(null)
   const [text, setText] = useState("")
   const [speakerOpen, setSpeakerOpen] = useState(false)
+  const [actionMenuOpen, setActionMenuOpen] = useState(false)
+  const [actionMode, setActionMode] =
+    useState<ChatActionLauncherMode | null>(null)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
 
@@ -143,6 +208,12 @@ export default function ChatComposer({
       ? model.identity.character.id
       : null
 
+  const speakerName = model.canManage
+    ? speakers.selected.name
+    : model.identity?.kind === "character"
+      ? model.identity.character.name
+      : null
+
   const resizeTextarea = () => {
     const textarea = textareaRef.current
     if (!textarea) return
@@ -157,7 +228,16 @@ export default function ChatComposer({
 
   useEffect(() => {
     if (!model.canManage || !model.canWrite) setSpeakerOpen(false)
-  }, [model.canManage, model.canWrite])
+    if (!canCompose) {
+      setActionMenuOpen(false)
+      setActionMode(null)
+    }
+  }, [canCompose, model.canManage, model.canWrite])
+
+  useEffect(() => {
+    setActionMode(null)
+    setActionMenuOpen(false)
+  }, [selectedCharacterId])
 
   useEffect(() => {
     if (!speakerOpen) return
@@ -182,6 +262,55 @@ export default function ChatComposer({
       document.removeEventListener("keydown", onKeyDown)
     }
   }, [speakerOpen])
+
+  useEffect(() => {
+    if (!actionMenuOpen) return
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (actionMenuRef.current?.contains(target)) return
+      setActionMenuOpen(false)
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return
+      setActionMenuOpen(false)
+      plusTriggerRef.current?.focus()
+    }
+
+    document.addEventListener("pointerdown", onPointerDown)
+    document.addEventListener("keydown", onKeyDown)
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown)
+      document.removeEventListener("keydown", onKeyDown)
+    }
+  }, [actionMenuOpen])
+
+  useEffect(() => {
+    const openRequestedAction = (event: Event) => {
+      const detail = (event as CustomEvent<ChatActionRequestDetail>).detail
+      if (!detail || detail.roomId !== model.roomId || !canCompose) return
+
+      setSpeakerOpen(false)
+      setActionMenuOpen(false)
+      setActionMode(detail.mode)
+    }
+
+    window.addEventListener(CHAT_ACTION_REQUEST_EVENT, openRequestedAction)
+    return () => {
+      window.removeEventListener(
+        CHAT_ACTION_REQUEST_EVENT,
+        openRequestedAction,
+      )
+    }
+  }, [canCompose, model.roomId])
+
+  const openAction = (mode: ChatActionLauncherMode) => {
+    setSpeakerOpen(false)
+    setActionMenuOpen(false)
+    setActionMode(mode)
+  }
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -219,124 +348,181 @@ export default function ChatComposer({
   }
 
   return (
-    <form
-      className="u1-chat-composer"
-      data-can-compose={canCompose || undefined}
-      data-read-only={model.readOnly || undefined}
-      data-sending={sending || undefined}
-      aria-busy={sending}
-      onSubmit={(event) => void submit(event)}
-    >
-      {sendError ? (
-        <div className="u1-chat-composer__error" role="status">
-          {sendError}
-        </div>
-      ) : null}
+    <>
+      <form
+        className="u1-chat-composer"
+        data-chat-composer-stage="5"
+        data-can-compose={canCompose || undefined}
+        data-read-only={model.readOnly || undefined}
+        data-sending={sending || undefined}
+        aria-busy={sending}
+        onSubmit={(event) => void submit(event)}
+      >
+        {sendError ? (
+          <div className="u1-chat-composer__error" role="status">
+            {sendError}
+          </div>
+        ) : null}
 
-      <div className="u1-chat-composer__row">
-        {model.canManage ? (
-          <div ref={speakerRef} className="u1-chat-composer__speaker">
+        <div className="u1-chat-composer__row">
+          {model.canManage ? (
+            <div ref={speakerRef} className="u1-chat-composer__speaker">
+              <button
+                ref={speakerTriggerRef}
+                type="button"
+                className="u1-chat-composer__speaker-trigger"
+                aria-label={"Пишет: " + speakers.selected.name}
+                aria-expanded={speakerOpen}
+                disabled={speakers.loading || !model.canWrite}
+                onClick={() => {
+                  setActionMenuOpen(false)
+                  setSpeakerOpen((value) => !value)
+                }}
+              >
+                <SpeakerAvatar option={speakers.selected} compact />
+                <ChevronIcon />
+              </button>
+
+              {speakerOpen ? (
+                <div
+                  className="u1-chat-composer__speaker-menu"
+                  role="listbox"
+                  aria-label="Выбор личности"
+                >
+                  {speakers.options.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="option"
+                      aria-selected={option.id === speakers.selectedId}
+                      data-selected={
+                        option.id === speakers.selectedId || undefined
+                      }
+                      onClick={() => {
+                        speakers.selectSpeaker(option.id)
+                        setSpeakerOpen(false)
+                      }}
+                    >
+                      <SpeakerAvatar option={option} />
+                      <span>
+                        <strong>{option.name}</strong>
+                        <small>
+                          {option.kind === "narrator"
+                            ? "Голос мастера"
+                            : "Персонаж"}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div
+            ref={actionMenuRef}
+            className="u1-chat-composer__action-anchor"
+          >
             <button
-              ref={speakerTriggerRef}
+              ref={plusTriggerRef}
               type="button"
-              className="u1-chat-composer__speaker-trigger"
-              aria-label={"Пишет: " + speakers.selected.name}
-              aria-expanded={speakerOpen}
-              disabled={speakers.loading || !model.canWrite}
-              onClick={() => setSpeakerOpen((value) => !value)}
+              className="u1-chat-composer__plus"
+              aria-label="Игровые действия"
+              aria-expanded={actionMenuOpen}
+              disabled={!canCompose}
+              onClick={() => {
+                setSpeakerOpen(false)
+                setActionMenuOpen((value) => !value)
+              }}
             >
-              <SpeakerAvatar option={speakers.selected} compact />
-              <ChevronIcon />
+              <PlusIcon />
             </button>
 
-            {speakerOpen ? (
+            {actionMenuOpen ? (
               <div
-                className="u1-chat-composer__speaker-menu"
-                role="listbox"
-                aria-label="Выбор личности"
+                className="u1-chat-composer__action-menu"
+                role="menu"
+                aria-label="Игровые действия"
               >
-                {speakers.options.map((option) => (
+                {ACTION_MENU_ITEMS.map((item) => (
                   <button
-                    key={option.id}
+                    key={item.mode}
                     type="button"
-                    role="option"
-                    aria-selected={option.id === speakers.selectedId}
-                    data-selected={
-                      option.id === speakers.selectedId || undefined
-                    }
-                    onClick={() => {
-                      speakers.selectSpeaker(option.id)
-                      setSpeakerOpen(false)
-                    }}
+                    role="menuitem"
+                    data-action-mode={item.mode}
+                    onClick={() => openAction(item.mode)}
                   >
-                    <SpeakerAvatar option={option} />
-                    <span>
-                      <strong>{option.name}</strong>
-                      <small>
-                        {option.kind === "narrator"
-                          ? "Голос мастера"
-                          : "Персонаж"}
-                      </small>
+                    <span className="u1-chat-composer__action-icon">
+                      <ActionIcon mode={item.mode} />
                     </span>
+                    <span>
+                      <strong>{item.label}</strong>
+                      <small>{item.hint}</small>
+                    </span>
+                    <em aria-hidden="true">›</em>
                   </button>
                 ))}
               </div>
             ) : null}
           </div>
-        ) : null}
 
-        <button
-          type="button"
-          className="u1-chat-composer__plus"
-          data-placeholder="true"
-          aria-label="Дополнительные действия — будут подключены позже"
-          disabled={!canCompose}
-          onClick={() => undefined}
-        >
-          <PlusIcon />
-        </button>
-
-        <label className="u1-chat-composer__field">
-          <span className="u1-sr-only">Сообщение</span>
-          <textarea
-            ref={textareaRef}
-            value={text}
-            rows={1}
-            maxLength={5000}
-            placeholder={
-              model.readOnly
-                ? "Чат закрыт"
-                : canCompose
-                  ? "Сообщение…"
-                  : playerHasCharacter
-                    ? "Нет права писать в этот чат"
-                    : "Нет персонажа в этой сцене"
-            }
-            disabled={!canCompose || sending}
-            onChange={(event) => setText(event.target.value)}
-            onKeyDown={(event) => {
-              if (
-                event.key === "Enter" &&
-                !event.shiftKey &&
-                !event.nativeEvent.isComposing
-              ) {
-                event.preventDefault()
-                event.currentTarget.form?.requestSubmit()
+          <label className="u1-chat-composer__field">
+            <span className="u1-sr-only">Сообщение</span>
+            <textarea
+              ref={textareaRef}
+              value={text}
+              rows={1}
+              maxLength={5000}
+              placeholder={
+                model.readOnly
+                  ? "Чат закрыт"
+                  : canCompose
+                    ? "Сообщение…"
+                    : playerHasCharacter
+                      ? "Нет права писать в этот чат"
+                      : "Нет персонажа в этой сцене"
               }
-            }}
-          />
-        </label>
+              disabled={!canCompose || sending}
+              onChange={(event) => setText(event.target.value)}
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Enter" &&
+                  !event.shiftKey &&
+                  !event.nativeEvent.isComposing
+                ) {
+                  event.preventDefault()
+                  event.currentTarget.form?.requestSubmit()
+                }
+              }}
+            />
+          </label>
 
-        <button
-          type="submit"
-          className="u1-chat-composer__send"
-          aria-label="Отправить"
-          disabled={!canCompose || !text.trim() || sending}
-          data-sending={sending || undefined}
-        >
-          {sending ? <span className="u1-chat-composer__sending-dot" /> : <SendIcon />}
-        </button>
-      </div>
-    </form>
+          <button
+            type="submit"
+            className="u1-chat-composer__send"
+            aria-label="Отправить"
+            disabled={!canCompose || !text.trim() || sending}
+            data-sending={sending || undefined}
+          >
+            {sending ? (
+              <span className="u1-chat-composer__sending-dot" />
+            ) : (
+              <SendIcon />
+            )}
+          </button>
+        </div>
+      </form>
+
+      {actionMode ? (
+        <ChatActionHost
+          key={actionMode + ":" + (selectedCharacterId || "narrator")}
+          model={model}
+          mode={actionMode}
+          characterId={selectedCharacterId}
+          speakerName={speakerName}
+          onClose={() => setActionMode(null)}
+        />
+      ) : null}
+    </>
   )
 }
