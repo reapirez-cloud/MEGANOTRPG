@@ -127,6 +127,7 @@ export type OracleWorldCommands = {
 export type OracleDefinitionCommands = {
   create(context: OracleContext, input: ChasovoyCreateInput): OracleDefinitionResult
   revise(context: OracleContext, definitionId: string, input: ChasovoyRevisionInput): OracleDefinitionResult
+  publishDraft(context: OracleContext, definitionId: string): OracleDefinitionResult
   archive(context: OracleContext, definitionId: string): OracleDefinitionResult
   setStatus(context: OracleContext, definitionId: string, status: "draft" | "active" | "archived"): OracleDefinitionResult
 }
