@@ -97,6 +97,7 @@ export type OracleWorldCommands = {
   discoverLocation(context: OracleContext, characterId: string, locationId: string, discovered?: boolean): OracleWorldResult
   moveCharacter(context: OracleContext, characterId: string, locationId: string | null, campaignDay: number, dayPeriod: DayPeriod): OracleWorldResult
   createScene(context: OracleContext, input: GameSceneCreateInput): OracleWorldResult
+  deleteScene(context: OracleContext, roomId: string): OracleWorldResult
   moveCharacterToScene(context: OracleContext, characterId: string, roomId: string | null, options?: { syncLocation?: boolean; syncTime?: boolean }): OracleWorldResult
   setScenePosition(context: OracleContext, roomId: string, locationId: string | null, campaignDay: number, dayPeriod: DayPeriod): OracleWorldResult
   setSceneParticipants(context: OracleContext, roomId: string, characterIds: string[]): OracleWorldResult
