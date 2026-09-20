@@ -327,7 +327,7 @@
 .u1-gm-member-row strong { color: rgba(235,236,232,.88); font-family: Georgia,"Times New Roman",serif; font-size: 14px; font-weight: 400; }
 .u1-gm-member-row small { color: var(--u1-text-faint); font-size: 8px; }
 .u1-gm-member-row i { color: rgba(224,232,234,.28); font-style: normal; }
-.u1-gm-party-character {
+.u1-gm-member-character {
   min-height: 58px;
   border-bottom: 1px solid var(--u1-line-soft);
   display: grid;
@@ -335,7 +335,7 @@
   align-items: center;
   gap: 10px;
 }
-.u1-gm-party-character > button {
+.u1-gm-member-character > button {
   min-height: 42px;
   padding: 0;
   border: 0;
@@ -347,9 +347,25 @@
   text-align: left;
   cursor: pointer;
 }
-.u1-gm-party-character > button strong { color: rgba(235,236,232,.86); font-family: Georgia,"Times New Roman",serif; font-size: 14px; font-weight: 400; }
-.u1-gm-party-character > button small { color: var(--u1-text-faint); font-size: 8px; }
-.u1-gm-party-character > button:last-child { padding: 0 8px; border-left: 1px solid var(--u1-line); color: var(--u1-text-muted); font-size: 8px; }
+.u1-gm-member-character > button strong { color: rgba(235,236,232,.86); font-family: Georgia,"Times New Roman",serif; font-size: 14px; font-weight: 400; }
+.u1-gm-member-character > button small { color: var(--u1-text-faint); font-size: 8px; }
+.u1-gm-member-character > div {
+  display: flex;
+  align-items: stretch;
+  align-self: stretch;
+}
+.u1-gm-member-character > div > button {
+  padding: 0 8px;
+  border: 0;
+  border-left: 1px solid var(--u1-line);
+  background: transparent;
+  color: var(--u1-text-muted);
+  font-size: 8px;
+  cursor: pointer;
+}
+.u1-gm-member-character > div > button[data-active] {
+  color: rgba(236,239,236,.88);
+}
 .u1-gm-search {
   height: 42px;
   border-top: 1px solid var(--u1-line);
