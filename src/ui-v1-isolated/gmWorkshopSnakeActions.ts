@@ -1302,7 +1302,7 @@ export function createWorkshopDefinitionActions({
       label: "Создать копию",
       execute: async () => {
         const response = await operations.cloneDefinition(definition)
-        return actionResult(response.ok, response.error, "Копия создана в Черновике.")
+        return actionResult(response.ok, response.error, "Черновик копии создан в Библиотеке.")
       },
     },
   )
