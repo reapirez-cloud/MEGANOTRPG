@@ -46,7 +46,7 @@ test("players never receive the draft tool from the gateway", () => {
 
   assert.match(edge, /const authority = resolveVossAuthority\(membership \|\| \{\}, isSystemAdmin\)/)
   assert.match(edge, /const canManage = canManageCampaignWithVoss\(authority\)/)
-  assert.match(edge, /const scopedDraftTools[\s\S]*canManage[\s\S]*!mechanicsAuthoringRequested[\s\S]*VOSS_DRAFT_TOOLS/)
+  assert.match(edge, /if \(authority === "player"\) return \[\][\s\S]*grantedCapabilities\.has\("content\.write"\) && !mechanicsAuthoringRequested[\s\S]*VOSS_DRAFT_TOOLS/)
   assert.match(edge, /executeVossDraftTool/)
   assert.match(edge, /isVossDraftTool/)
 })
