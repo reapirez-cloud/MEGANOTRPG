@@ -25,7 +25,7 @@ test("stage 1 header uses real character hp, world time and location", async () 
   const hook = await readFile(hookPath, "utf8")
 
   assert.match(hook, /get_campaign_chat_rooms/)
-  assert.match(hook, /active_character_id/)
+  assert.match(hook, /get_chat_room_viewer_context_v1/)
   assert.match(hook, /from\("character_sheets"\)/)
   assert.match(hook, /current_hp, max_hp, temp_hp/)
   assert.match(hook, /from\("character_world_state"\)/)
