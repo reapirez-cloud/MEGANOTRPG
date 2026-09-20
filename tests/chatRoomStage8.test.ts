@@ -7,11 +7,14 @@ const shellPath = new URL("../src/ui-v1-isolated/chat-room/useChatRoomShell.ts",
 const feedPath = new URL("../src/ui-v1-isolated/chat-room/ChatFeed.tsx", import.meta.url)
 const eventsPath = new URL("../src/ui-v1-isolated/chat-room/useChatRoomEvents.ts", import.meta.url)
 const composerPath = new URL("../src/ui-v1-isolated/chat-room/ChatComposer.tsx", import.meta.url)
+const hostPath = new URL("../src/ui-v1-isolated/chat-room/ChatActionHost.tsx", import.meta.url)
+const panelPath = new URL("../src/ui-v1-isolated/chat-room/ChatActionPanel.tsx", import.meta.url)
+const modifierPath = new URL("../src/ui-v1-isolated/chat-room/ChatSpellModifierPanel.tsx", import.meta.url)
+const headerPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomHeader.tsx", import.meta.url)
 const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room.css", import.meta.url)
 const appPath = new URL("../src/ui-v1-isolated/UiV1App.tsx", import.meta.url)
 const mainPath = new URL("../src/ui-v1-isolated/main.tsx", import.meta.url)
 const indexPath = new URL("../index.html", import.meta.url)
-const presentationPath = new URL("../src/ui-v1-isolated/chat-room/chatRoomPresentation.ts", import.meta.url)
 
 test("stage 8 is the final isolated room runtime", async () => {
   const [room, app, main, index] = await Promise.all([
@@ -28,16 +31,19 @@ test("stage 8 is the final isolated room runtime", async () => {
   assert.doesNotMatch(app + main, /pages\/ChatRoom|PreparedChatRoom|chat-v11|chat-release-fixes|chat-preview-v4/)
 })
 
-test("stage 8 hides character actions when the room cannot be written", async () => {
-  const [room, presentation] = await Promise.all([
-    readFile(roomPath, "utf8"),
-    readFile(presentationPath, "utf8"),
+test("stage 8 keeps actor context visible but all game actions behind plus", async () => {
+  const [header, composer] = await Promise.all([
+    readFile(headerPath, "utf8"),
+    readFile(composerPath, "utf8"),
   ])
 
-  assert.match(presentation, /showQuickActions: model\.canWrite && hasCharacter/)
-  assert.match(presentation, /canCompose/)
-  assert.match(room, /data-observer=\{presentation\.identityKind === "observer" \|\| undefined\}/)
-  assert.match(room, /data-read-only=\{model\.readOnly \|\| undefined\}/)
+  assert.match(header, /Время суток/)
+  assert.match(header, /Локация/)
+  assert.doesNotMatch(header, /QuickActions|Инвентарь|Классовые умения|Заклинания/)
+  assert.match(composer, /className="u1-chat-composer__plus"/)
+  assert.match(composer, /label: "Инвентарь"/)
+  assert.match(composer, /label: "Способности"/)
+  assert.match(composer, /label: "Заклинания"/)
 })
 
 test("stage 8 rejects a stale GM actor before rendering it", async () => {
@@ -76,21 +82,25 @@ test("stage 8 protects narrow and short screens without clipping core labels", a
   assert.match(css, /@media \(max-height: 560px\) and \(orientation: landscape\)/)
   assert.match(css, /overflow-wrap: anywhere/)
   assert.match(css, /-webkit-line-clamp: 2/)
-  assert.match(css, /u1-room-quick-action > span:last-child/)
-  assert.match(css, /u1-room-game-card__title > strong/)
   assert.match(css, /focus-visible/)
 })
 
-test("stage 8 keeps old chat panels outside the active room", async () => {
-  const [room, feed, composer] = await Promise.all([
+test("stage 8 keeps legacy visual chat panels outside the active room graph", async () => {
+  const [room, header, feed, composer, host, panel, modifier] = await Promise.all([
     readFile(roomPath, "utf8"),
+    readFile(headerPath, "utf8"),
     readFile(feedPath, "utf8"),
     readFile(composerPath, "utf8"),
+    readFile(hostPath, "utf8"),
+    readFile(panelPath, "utf8"),
+    readFile(modifierPath, "utf8"),
   ])
 
-  const activeRoom = room + feed + composer
+  const activeRoom = room + header + feed + composer + host + panel + modifier
   assert.doesNotMatch(
     activeRoom,
-    /ChatActionSheet|ChatContextSheet|ChatActorPicker|ChatRoomSettings|PreparedChatRoom|pages\/ChatRoom|components\/chat/,
+    /ChatActionSheet|ChatSpellModifierSheet|ChatContextSheet|ChatActorPicker|ChatRoomSettings|PreparedChatRoom|pages\/ChatRoom/,
   )
+  assert.match(activeRoom, /ChatActionPanel/)
+  assert.match(activeRoom, /u1-chat-action-panel/)
 })
