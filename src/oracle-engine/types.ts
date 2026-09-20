@@ -3,6 +3,7 @@ import type {
   CharacterEntityInput,
   CharacterSheetPatch,
   CharacterTemplateAssignmentInput,
+  EntityKind,
   EntityLifeState,
   EntityPublicationState,
   EntityMutation,
@@ -48,6 +49,7 @@ export type OracleDefinitionResult = Promise<EngineCommandResult<ChasovoyMutatio
 export type OracleCharacterCommands = {
   create(context: OracleContext, input: CharacterEntityInput): OracleEntityResult
   update(context: OracleContext, characterId: string, input: CharacterEntityInput): OracleEntityResult
+  convertType(context: OracleContext, characterId: string, characterType: EntityKind, npcVisibilityMode?: "always" | "discover"): OracleEntityResult
   delete(context: OracleContext, characterId: string): OracleEntityResult
   setActive(context: OracleContext, userId: string, characterId: string | null): OracleEntityResult
   setAvatar(context: OracleContext, characterId: string, avatarUrl: string | null): OracleEntityResult
