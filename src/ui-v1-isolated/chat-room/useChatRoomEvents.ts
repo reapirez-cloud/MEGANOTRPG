@@ -6,8 +6,9 @@ import { supabase } from "../../lib/supabase"
 import type { ChatMessage } from "../../types/chat"
 import { normalizeChatEvent, type UiChatEvent } from "./chatEventModel"
 
-type MembershipRow = {
+type ViewerContextRow = {
   campaign_id: string
+  can_read: boolean
 }
 
 type CampaignMemberRoleRow = {
@@ -18,40 +19,18 @@ type CampaignMemberRoleRow = {
 
 const MESSAGE_LIMIT = 150
 
-async function resolveCampaignId(userId: string) {
-  const rememberedCampaignId =
-    window.localStorage.getItem("meganotrpg:v1:campaign-id") ||
-    window.localStorage.getItem("meganotrpg:campaign-id") ||
-    ""
+async function resolveRoomCampaignId(roomId: string) {
+  const contextResult = await supabase.rpc("get_chat_room_viewer_context_v1", {
+    p_room_id: roomId,
+  })
 
-  if (rememberedCampaignId) {
-    const remembered = await supabase
-      .from("campaign_members")
-      .select("campaign_id")
-      .eq("campaign_id", rememberedCampaignId)
-      .eq("user_id", userId)
-      .maybeSingle()
+  if (contextResult.error) throw contextResult.error
 
-    if (!remembered.error && remembered.data) {
-      return (remembered.data as MembershipRow).campaign_id
-    }
-  }
+  const context =
+    ((contextResult.data || []) as ViewerContextRow[])[0] || null
 
-  const first = await supabase
-    .from("campaign_members")
-    .select("campaign_id, created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-
-  const membership = first.data?.[0] as MembershipRow | undefined
-  if (!membership) return null
-
-  window.localStorage.setItem(
-    "meganotrpg:v1:campaign-id",
-    membership.campaign_id,
-  )
-  return membership.campaign_id
+  if (!context?.can_read) return null
+  return context.campaign_id
 }
 
 async function hydrateMessageMedia(message: ChatMessage): Promise<ChatMessage> {
@@ -129,7 +108,20 @@ export function useChatRoomEvents(roomId: string) {
       return
     }
 
-    const campaignId = await resolveCampaignId(auth.data.user.id)
+    let campaignId: string | null = null
+    try {
+      campaignId = await resolveRoomCampaignId(roomId)
+    } catch (contextError) {
+      setEvents([])
+      setError(
+        contextError instanceof Error
+          ? contextError.message
+          : "Не удалось проверить доступ к комнате",
+      )
+      setLoading(false)
+      return
+    }
+
     if (!campaignId) {
       setEvents([])
       setError("Кампания не найдена")
