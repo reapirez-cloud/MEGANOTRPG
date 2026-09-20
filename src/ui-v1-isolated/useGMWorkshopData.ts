@@ -1417,7 +1417,7 @@ export function useGMWorkshopData(
         "Не удалось удалить папку.",
       )
     },
-  }), [context, load, mutate, state])
+  }), [context, load, mutate, refreshAfterSuccess, state])
 
   return {
     ...state,
