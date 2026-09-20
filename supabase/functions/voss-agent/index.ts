@@ -1407,6 +1407,7 @@ Deno.serve(async (req: Request) => {
       }, 502)
     }
     lastProviderPayload = providerPayload
+    turnTokensUsed += providerUsageTokens(providerPayload, providerMessages)
     const assistantMessage = providerMessage(providerPayload)
     const toolCalls = toolsForRound.length && Array.isArray(assistantMessage.tool_calls)
       ? assistantMessage.tool_calls.slice(0, 6)
@@ -1534,6 +1535,12 @@ Deno.serve(async (req: Request) => {
                     toolName,
                     args,
                   )
+
+      turnLedger.push({
+        name: toolName || "unknown",
+        arguments: args,
+        result: toolContent(result, 8000),
+      })
 
       if (adminTool) {
         adminToolsUsed.push(toolName || "unknown")
@@ -1703,6 +1710,68 @@ Deno.serve(async (req: Request) => {
         }
       }
     }
+
+    if (activeTurnJobId) {
+      await persistTurnProgress("running")
+    }
+  }
+
+  if (needsContinuation && activeTurnJobId) {
+    await persistTurnProgress("queued", { continuing: true })
+
+    let continuationResponse: Response
+    try {
+      continuationResponse = await fetch(
+        supabaseUrl + "/functions/v1/voss-agent",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": authHeader,
+            "apikey": publishableKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            campaignId,
+            agentKey,
+            action: "continue_freddy_turn",
+            jobId: activeTurnJobId,
+            deliveryMode: "async-v1",
+          }),
+        },
+      )
+    } catch (error) {
+      await persistTurnProgress("failed", {
+        continuation_error:
+          error instanceof Error ? error.message : String(error),
+      })
+      return reply({
+        error: "freddy_turn_continuation_failed",
+        detail: error instanceof Error ? error.message : String(error),
+      }, 502)
+    }
+
+    if (!continuationResponse.ok) {
+      const detail = (await continuationResponse.text()).slice(0, 1200)
+      await persistTurnProgress("failed", {
+        continuation_status: continuationResponse.status,
+        continuation_error: detail,
+      })
+      return reply({
+        error: "freddy_turn_continuation_failed",
+        providerStatus: continuationResponse.status,
+        detail,
+      }, 502)
+    }
+
+    return reply({
+      accepted: true,
+      continuing: true,
+      jobId: activeTurnJobId,
+      threadId,
+      tokensUsed: turnTokensUsed,
+      tokenBudget: turnTokenBudget,
+      chunk: currentChunk,
+    }, 202)
   }
 
   if (!answer && lastProviderPayload) {
