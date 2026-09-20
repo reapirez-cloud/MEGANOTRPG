@@ -61,6 +61,6 @@ test("stage 3 keeps action selection separate from gameplay execution", async ()
     readFile(roomPath, "utf8"),
     readFile(launcherPath, "utf8"),
   ])
-  assert.match(room, /CE\/Snake-интерфейс подключаются на этапе 4/)
+  assert.match(room, /<ChatActionWorkspace/)
   assert.doesNotMatch(launcher, /supabase|snakeAgent|execute\(/)
 })
