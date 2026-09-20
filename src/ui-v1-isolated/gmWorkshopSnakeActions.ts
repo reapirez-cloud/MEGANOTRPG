@@ -990,6 +990,21 @@ export function createWorkshopInviteActions({
   return actions
 }
 
+function linkedDefinitionIds(definition: ChasovoyDefinition): string[] {
+  const refs = definition.data.linked_definitions
+  if (Array.isArray(refs)) {
+    return refs.flatMap((value) => {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return []
+      const id = (value as Record<string, unknown>).id
+      return typeof id === "string" ? [id] : []
+    })
+  }
+  const legacy = definition.data.linked_definition_ids
+  return Array.isArray(legacy)
+    ? legacy.filter((value): value is string => typeof value === "string")
+    : []
+}
+
 export function createWorkshopDefinitionActions({
   definition,
   definitions,
@@ -1019,19 +1034,31 @@ export function createWorkshopDefinitionActions({
   ]
 
   if (definition.status === "draft") {
+    const revisionTargetId =
+      typeof definition.data.revises_definition_id === "string"
+        ? definition.data.revises_definition_id
+        : null
     actions.push({
       id: "publish",
-      label: "Отправить в кампанию",
+      label: revisionTargetId ? "Опубликовать ревизию" : "Отправить в кампанию",
       surface: {
         kind: "confirm",
-        eyebrow: "Черновик",
+        eyebrow: revisionTargetId ? "Черновик ревизии" : "Черновик",
         title: definition.name,
-        body: "Заготовка станет рабочим определением кампании. Она ничего автоматически не выдаст персонажам.",
-        confirmLabel: "Отправить",
+        body: revisionTargetId
+          ? "Черновик станет новой рабочей ревизией исходного определения одной транзакцией. Текущая активная версия не менялась до этого момента."
+          : "Заготовка станет рабочим определением кампании. Она ничего автоматически не выдаст персонажам.",
+        confirmLabel: revisionTargetId ? "Опубликовать ревизию" : "Отправить",
       },
       execute: async () => {
         const response = await operations.publishDefinition(definition.id)
-        return actionResult(response.ok, response.error, "Заготовка отправлена в кампанию.")
+        return actionResult(
+          response.ok,
+          response.error,
+          revisionTargetId
+            ? "Новая ревизия опубликована."
+            : "Заготовка отправлена в кампанию.",
+        )
       },
     })
   } else if (definition.status === "active") {
@@ -1104,8 +1131,12 @@ export function createWorkshopDefinitionActions({
         (candidate) => candidate.kind === "item" && candidate.status === "active",
       )
       const linkedItems = items.filter((item) => {
-        const linked = item.data.linked_definition_ids
-        return Array.isArray(linked) && linked.includes(definition.id)
+        const pending = definitions.find((candidate) =>
+          candidate.kind === "item" &&
+          candidate.status === "draft" &&
+          candidate.data.revises_definition_id === item.id
+        )
+        return linkedDefinitionIds(pending || item).includes(definition.id)
       })
       const unlinkedItems = items.filter(
         (item) => !linkedItems.some((linked) => linked.id === item.id),
@@ -1162,15 +1193,27 @@ export function createWorkshopDefinitionActions({
   actions.push(
     {
       id: "edit",
-      label: "Редактировать",
+      label:
+        definition.status === "active"
+          ? "Создать ревизию"
+          : definition.status === "archived"
+            ? "Редактировать после восстановления"
+            : "Редактировать",
+      enabled: definition.status !== "archived",
+      disabledReason: "Сначала верни определение из архива.",
       surface: {
         kind: "editor",
-        eyebrow: definition.status === "draft" ? "Черновик" : "Библиотека",
+        eyebrow:
+          definition.status === "active"
+            ? "Новая ревизия · черновик"
+            : definition.status === "draft"
+              ? "Черновик"
+              : "Архив",
         title: definition.name,
         size: { width: "wide", height: "tall" },
         fields: draftDefinitionFields(definition.kind),
         initialValues: definitionInitialValues(definition),
-        submitLabel: "Сохранить ревизию",
+        submitLabel: definition.status === "active" ? "Создать черновик ревизии" : "Сохранить",
       },
       execute: async ({ input }) => {
         try {
@@ -1179,7 +1222,13 @@ export function createWorkshopDefinitionActions({
             ...next,
             data: { ...definition.data, ...(next.data || {}) },
           })
-          return actionResult(response.ok, response.error, "Новая ревизия сохранена.")
+          return actionResult(
+            response.ok,
+            response.error,
+            definition.status === "active"
+              ? "Черновик ревизии создан. Рабочая версия не изменена."
+              : "Черновик сохранён.",
+          )
         } catch (reason) {
           return {
             type: "error",
