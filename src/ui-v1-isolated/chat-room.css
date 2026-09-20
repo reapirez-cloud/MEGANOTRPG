@@ -549,3 +549,89 @@
 .u1-chat-drawer[data-mode="context"] .u1-chat-drawer__body {
   background: linear-gradient(180deg, rgba(255,255,255,.008), transparent 18%);
 }
+
+/* Chat room Stage 6 · shared drawer motion + edge gestures */
+.u1-chat-drawer {
+  translate: var(--u1-chat-drawer-drag-x, 0px) 0;
+  transition: translate 135ms cubic-bezier(.22,1,.36,1);
+  will-change: transform, translate, opacity;
+}
+.u1-chat-drawer[data-dragging="true"] {
+  transition: none;
+}
+.u1-chat-drawer-layer[data-closing="true"] {
+  animation: u1-chat-drawer-backdrop-out 155ms ease-in both;
+  pointer-events: none;
+}
+.u1-chat-drawer[data-closing="true"] {
+  animation: u1-chat-drawer-out 155ms cubic-bezier(.4,0,1,1) both;
+}
+.u1-chat-drawer__swipe-edge {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  touch-action: pan-y;
+  cursor: ew-resize;
+}
+.u1-chat-drawer__swipe-edge > i {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  width: 2px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(231,232,228,.12);
+  transform: translateY(-50%);
+  transition: background 120ms ease, height 120ms ease;
+}
+.u1-chat-drawer[data-dragging="true"] .u1-chat-drawer__swipe-edge > i {
+  height: 48px;
+  background: rgba(231,232,228,.34);
+}
+.u1-chat-context-edge {
+  position: absolute;
+  z-index: 7;
+  top: calc(58px + var(--u1-safe-top));
+  right: 0;
+  bottom: calc(54px + var(--u1-safe-bottom));
+  width: 22px;
+  touch-action: pan-y;
+  overflow: hidden;
+}
+.u1-chat-context-edge > span {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: calc(3px + (var(--u1-chat-edge-progress, 0) * 7px));
+  height: calc(38px + (var(--u1-chat-edge-progress, 0) * 20px));
+  border-radius: 999px 0 0 999px;
+  background: rgba(222,224,220,calc(.08 + (var(--u1-chat-edge-progress, 0) * .22)));
+  transform: translateY(-50%);
+  transition: width 80ms linear, height 80ms linear, background 80ms linear;
+}
+@keyframes u1-chat-drawer-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes u1-chat-drawer-out {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: .55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .u1-chat-drawer-layer,
+  .u1-chat-drawer,
+  .u1-chat-context-edge > span,
+  .u1-chat-drawer__swipe-edge > i,
+  .u1-chat-launcher-layer,
+  .u1-chat-launcher,
+  .u1-room-loading__head,
+  .u1-room-loading__composer,
+  .u1-room-loading__messages i {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
