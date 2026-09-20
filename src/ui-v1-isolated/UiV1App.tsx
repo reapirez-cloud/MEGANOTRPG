@@ -91,12 +91,6 @@ function parseRoute(): Route {
 
   if (path === "workspace") return { type: "root", space: "workspace" }
   if (path === "workspace/manage") return { type: "workspace", page: "manage" }
-  if (path === "workspace/manage/party") {
-    return { type: "workspace", page: "manage", section: "members" }
-  }
-  if (path === "workspace/manage/draft") {
-    return { type: "workspace", page: "manage", section: "review" }
-  }
   if (path.startsWith("workspace/manage/")) {
     const workshopSection = path.slice("workspace/manage/".length) as WorkshopSection
     if (workshopSections.includes(workshopSection)) {
