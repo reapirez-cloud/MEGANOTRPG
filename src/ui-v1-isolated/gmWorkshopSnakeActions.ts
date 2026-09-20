@@ -979,7 +979,7 @@ export function createWorkshopInviteActions({
         try {
           await navigator.clipboard.writeText(response.code)
         } catch {
-          // Новый код остаётся видимым в Party.
+          // Новый код остаётся видимым в «Участниках».
         }
       }
 
