@@ -450,12 +450,12 @@ Deno.serve(async (req: Request) => {
 
   const campaignId = typeof body.campaignId === "string" ? body.campaignId : ""
   const action = typeof body.action === "string" ? body.action.trim() : ""
-  const message = typeof body.message === "string" ? body.message.trim() : ""
+  let message = typeof body.message === "string" ? body.message.trim() : ""
   const agentKey = body.agentKey === "voss" ? "voss" : "voss"
-  const requestedThreadId =
+  let requestedThreadId =
     typeof body.threadId === "string" ? body.threadId.trim() : ""
   const asyncDeliveryRequested = body.deliveryMode === "async-v1"
-  const viewContext = cleanContext(body.viewContext)
+  let viewContext = cleanContext(body.viewContext)
   const requestedDevSessionId =
     typeof body.devSessionId === "string" ? body.devSessionId : ""
   const requestedDevSessionToken =
@@ -477,13 +477,12 @@ Deno.serve(async (req: Request) => {
         variantIndex: Math.max(1, Math.min(2, Number(generatedAssetRefRaw.variantIndex))),
       }
     : null
-  const mechanicsAuthoringRequested = isMechanicsAuthoringRequest(message)
-  const imageGenerationRequested = isExplicitImageGenerationRequest(message)
-  const pureConversationRequested = isPureConversationRequest(message)
-  const imageWorkflowRequested = isImageWorkflowRequest(message)
-  const managerMutationRequested = isManagerMutationRequest(message)
-  const adminWorkflowRequested = isAdminWorkflowRequest(message)
-  const inventoryWorkflowRequested = isInventoryWorkflowRequest(message)
+  const continuationJobId =
+    action === "continue_freddy_turn" && typeof body.jobId === "string"
+      ? body.jobId.trim()
+      : ""
+  let continuationJobInput: JsonRecord | null = null
+  let continuationJobResult: JsonRecord | null = null
 
   if (!campaignId) return reply({ error: "campaignId is required" }, 400)
   if (!action && !message) return reply({ error: "message is required" }, 400)
