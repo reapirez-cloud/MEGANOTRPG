@@ -58,3 +58,56 @@
   .action-spell-slot{grid-template-columns:38px minmax(0,1fr) auto;padding:8px 9px;gap:8px}
   .action-spell-slot__level{width:38px;height:38px;border-radius:12px;font-size:15px}
 }
+
+
+/* Chat action side presentation used by the rebuilt room composer.
+   Keeps the existing gameplay engine and replaces only the old bottom-sheet geometry. */
+.chat-action-backdrop[data-presentation="side"]{
+  align-items:stretch;
+  justify-content:flex-end;
+  padding:0;
+  background:rgba(0,0,0,.48);
+  backdrop-filter:blur(4px);
+}
+.chat-action-flow[data-presentation="side"]{
+  width:min(90vw,720px);
+  max-width:90vw;
+  height:100dvh;
+  max-height:100dvh;
+  margin:0;
+  border:0;
+  border-left:1px solid rgba(235,237,239,.08);
+  border-radius:18px 0 0 18px;
+  background:
+    linear-gradient(180deg,rgba(20,22,25,.985),rgba(9,11,13,.995));
+  box-shadow:-28px 0 70px rgba(0,0,0,.42);
+  animation:chat-action-side-in 180ms cubic-bezier(.22,1,.36,1) both;
+}
+.chat-action-flow[data-presentation="side"] .chat-action-flow__handle{display:none}
+.chat-action-flow[data-presentation="side"] .action-v2-head{
+  min-height:calc(64px + env(safe-area-inset-top,0px));
+  padding-top:calc(10px + env(safe-area-inset-top,0px));
+  border-bottom:1px solid rgba(235,237,239,.055);
+}
+.chat-action-flow[data-presentation="side"] .action-v3-tabs{
+  padding-top:8px;
+  background:
+    linear-gradient(180deg,rgba(14,16,18,.99),rgba(12,14,16,.94));
+}
+.chat-action-flow[data-presentation="side"] .action-v2-body{
+  padding-bottom:calc(18px + env(safe-area-inset-bottom,0px));
+}
+@keyframes chat-action-side-in{
+  from{opacity:.78;transform:translateX(28px)}
+  to{opacity:1;transform:translateX(0)}
+}
+@media(max-width:480px){
+  .chat-action-flow[data-presentation="side"]{
+    width:92vw;
+    max-width:92vw;
+    border-radius:14px 0 0 14px;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .chat-action-flow[data-presentation="side"]{animation:none}
+}
