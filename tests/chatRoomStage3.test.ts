@@ -44,10 +44,10 @@ test("stage 3 reads actual room history and listens only to that room", async ()
 test("stage 3 renderer does not invent GM outcomes", async () => {
   const feed = await readFile(feedPath, "utf8")
 
-  assert.match(feed, /function GameEvent/)
+  assert.match(feed, /ChatGameEventCard/)
   assert.match(feed, /function SystemEvent/)
   assert.match(feed, /function MessageEvent/)
-  assert.match(feed, /chatEventTypeLabel/)
+  assert.match(feed, /function EventRow/)
   assert.doesNotMatch(feed, /Успех|Провал|Срабатывает|success|failure/)
 })
 
