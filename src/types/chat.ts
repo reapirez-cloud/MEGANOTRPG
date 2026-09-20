@@ -1,3 +1,5 @@
+import type { MediaPresentation } from "../media/presentation"
+
 export type RoomCategory = "game" | "flood"
 export type RoomType = "character" | "scene" | "flood"
 export type RoomState = "open" | "gm_only" | "closed"
@@ -11,6 +13,7 @@ export type ChatRoom = {
   room_type: RoomType
   position: number
   avatar_url: string | null
+  avatar_presentation?: MediaPresentation | null
   character_id: string | null
   character_life_state: "alive" | "dead" | null
   open_to_campaign: boolean
