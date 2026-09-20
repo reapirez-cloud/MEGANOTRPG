@@ -40,7 +40,7 @@ test("room context button opens the real drawer while plus still waits for stage
   assert.match(room, /data-chat-room-stage="4"/)
   assert.match(room, /drawers\.openContext\(/)
   assert.match(room, /<ChatDrawerHost session=\{drawers\.session\}/)
-  assert.match(room, /<ActionWorkspaceStage3 sectionId=\{drawers\.session\?\.contentKey\} \/>/)
+  assert.match(room, /<ChatActionWorkspace/)
   assert.match(room, /<ChatActionLauncher/)
   assert.match(room, /drawers\.openWorkspace\(/)
 })
