@@ -1,11 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
+import { createEngineCommandContext } from "../engine-contracts/index.ts"
 import { buildChatCatalogModel } from "../chat/catalogModel"
 import { resolveCampaignMediaUrl } from "../lib/campaignMedia"
+import { deleteCampaignMediaObjects, uploadCampaignImage } from "../lib/mediaUpload"
 import { supabase } from "../lib/supabase"
+import { parseMediaPresentation } from "../media/presentation"
+import { oracle } from "../oracle-engine/runtime.ts"
+import type { SnakeActionInput } from "../snake-engine"
 import type { ChatRoom, RoomState, RoomType } from "../types/chat"
 import type { DayPeriod } from "../world-state/types"
+
+type RoomPreviewMediaRow = {
+  room_id: string
+  asset_id: string
+  storage_path: string
+  presentation: unknown
+}
+
+type MutationResult = { ok: boolean; error?: string }
 
 type RoomRpcRow = {
   id: string
@@ -73,6 +87,7 @@ function normalizePeriod(value: string): DayPeriod {
 
 export function useUiV1ChatCatalog() {
   const [campaignId, setCampaignId] = useState("")
+  const [userId, setUserId] = useState("")
   const [campaignTitle, setCampaignTitle] = useState("")
   const [canManage, setCanManage] = useState(false)
   const [rooms, setRooms] = useState<ChatRoom[]>([])
@@ -99,6 +114,7 @@ export function useUiV1ChatCatalog() {
       }
 
       const userId = authData.user.id
+      setUserId(userId)
       let nextCampaignId =
         window.localStorage.getItem("meganotrpg:v1:campaign-id") ||
         window.localStorage.getItem("meganotrpg:campaign-id") ||
@@ -188,19 +204,27 @@ export function useUiV1ChatCatalog() {
     if (!silent) setRoomsLoading(true)
     setError(null)
 
-    const [roomsResult, charactersResult] = await Promise.all([
+    const [roomsResult, charactersResult, previewMediaResult] = await Promise.all([
       supabase.rpc("get_campaign_chat_rooms", { p_campaign_id: campaignId }),
       supabase
         .from("characters")
         .select("id, name, character_class, level")
         .eq("campaign_id", campaignId),
+      supabase.rpc("list_chat_room_preview_media_v1", {
+        p_campaign_id: campaignId,
+      }),
     ])
 
-    if (roomsResult.error) {
-      setError(roomsResult.error.message)
+    if (roomsResult.error || previewMediaResult.error) {
+      setError(roomsResult.error?.message || previewMediaResult.error?.message || "Не удалось загрузить превью чатов.")
       if (!silent) setRoomsLoading(false)
       return
     }
+
+    const previewMedia = new Map(
+      ((previewMediaResult.data || []) as RoomPreviewMediaRow[])
+        .map((item) => [item.room_id, item] as const),
+    )
 
     const hydrated = await Promise.all(
       ((roomsResult.data || []) as RoomRpcRow[]).map(async (room) => ({
@@ -214,6 +238,9 @@ export function useUiV1ChatCatalog() {
           (await resolveCampaignMediaUrl(room.avatar_url)) ||
           room.avatar_url ||
           null,
+        avatar_presentation: parseMediaPresentation(
+          previewMedia.get(room.id)?.presentation,
+        ),
         character_id: room.character_id || null,
         character_life_state:
           room.character_life_state === "dead"
@@ -257,6 +284,86 @@ export function useUiV1ChatCatalog() {
     }
     setRoomsLoading(false)
   }, [campaignId])
+
+  const setRoomPreview = useCallback(async (
+    room: ChatRoom,
+    input: SnakeActionInput,
+  ): Promise<MutationResult> => {
+    if (!canManage || !campaignId) {
+      return { ok: false, error: "Недостаточно прав для изменения превью." }
+    }
+    if (room.room_type !== "character" && room.room_type !== "scene") {
+      return { ok: false, error: "Для этой комнаты превью не настраивается." }
+    }
+
+    const file =
+      typeof File !== "undefined" && input?.file instanceof File
+        ? input.file
+        : null
+    if (!file) {
+      return { ok: false, error: "Выбери изображение для превью." }
+    }
+
+    const presentation = parseMediaPresentation(input?.presentation)
+    if (!presentation) {
+      return { ok: false, error: "Кадр превью не определён." }
+    }
+
+    const upload = await uploadCampaignImage(file, "chat-previews", campaignId)
+    if (!upload.ok) return { ok: false, error: upload.error }
+
+    const { error: bindError } = await supabase.rpc(
+      "bind_chat_room_preview_upload_v1",
+      {
+        p_room_id: room.id,
+        p_storage_path: upload.url,
+        p_mime_type: upload.mimeType,
+        p_width: upload.width,
+        p_height: upload.height,
+        p_presentation: presentation,
+      },
+    )
+
+    if (bindError) {
+      await deleteCampaignMediaObjects([upload.url])
+      return { ok: false, error: bindError.message }
+    }
+
+    await loadRooms(true)
+    return { ok: true }
+  }, [campaignId, canManage, loadRooms])
+
+  const deleteScene = useCallback(async (
+    room: ChatRoom,
+  ): Promise<MutationResult> => {
+    if (!canManage || !campaignId || !userId) {
+      return { ok: false, error: "Недостаточно прав для удаления сцены." }
+    }
+    if (room.room_type !== "scene") {
+      return { ok: false, error: "Удалять можно только сцены." }
+    }
+
+    try {
+      await oracle.world.deleteScene(
+        createEngineCommandContext({
+          campaignId,
+          requestedBy: userId,
+          authority: "gm",
+        }),
+        room.id,
+      )
+      await loadRooms(true)
+      return { ok: true }
+    } catch (reason) {
+      return {
+        ok: false,
+        error:
+          reason instanceof Error
+            ? reason.message
+            : "Не удалось удалить сцену.",
+      }
+    }
+  }, [campaignId, canManage, loadRooms, userId])
 
   useEffect(() => {
     if (!campaignId) return
@@ -328,5 +435,7 @@ export function useUiV1ChatCatalog() {
     loading: identityLoading || roomsLoading,
     error,
     reload: () => loadRooms(false),
+    setRoomPreview,
+    deleteScene,
   }
 }
