@@ -52,7 +52,7 @@ export function WorkshopHeader({
     section === "members" ? "Участники" :
     section === "characters" ? "Персонажи" :
     section === "library" ? "Библиотека" :
-    section === "materials" ? "Материалы" :
+    section === "materials" ? "Личные материалы" :
     "Мастерская"
 
   return (
