@@ -1547,7 +1547,9 @@ export function useGMWorkshopData(
     campaignCharacters: state.characters.filter((character) => character.publicationState === "campaign"),
     draftDefinitions: state.definitions.filter((definition) => definition.status === "draft"),
     activeDefinitions: state.definitions.filter((definition) => definition.status === "active"),
-    archivedDefinitions: state.definitions.filter((definition) =>\n      definition.status === "archived" && !definition.data.revises_definition_id\n    ),
+    archivedDefinitions: state.definitions.filter((definition) =>
+      definition.status === "archived" && !definition.data.revises_definition_id
+    ),
     classTemplates: state.templates.filter((template) => template.kind === "class" && template.is_active),
     subclassTemplates: state.templates.filter((template) => template.kind === "subclass" && template.is_active),
     operations,
