@@ -80,6 +80,22 @@ export class SupabaseLarisaStorage implements LarisaStorage {
       }
     }
 
+    if (command.kind === "world.scene_delete") {
+      const { data, error } = await this.client.rpc("delete_game_scene_v1", {
+        p_room_id: command.roomId,
+        p_command_id: command.context.commandId,
+      })
+      if (error) fail(error, "Could not delete game scene")
+      const row = (data || {}) as Record<string, unknown>
+      return {
+        kind: command.kind,
+        characterIds: [],
+        locationIds: row.locationId ? [String(row.locationId)] : [],
+        sceneIds: [command.roomId],
+        details: row,
+      }
+    }
+
     if (command.kind === "world.scene_move_character") {
       const { data, error } = await this.client.rpc("move_character_to_scene_v1", {
         p_character_id: command.characterId,
