@@ -157,7 +157,20 @@ async function resolveGmCharacterId({
     .eq("character_id", stored)
     .maybeSingle()
 
-  return (binding.data as ActorBindingRow | null)?.character_id || null
+  const boundCharacterId =
+    (binding.data as ActorBindingRow | null)?.character_id || null
+  if (!boundCharacterId) return null
+
+  const actor = await supabase
+    .from("characters")
+    .select("id")
+    .eq("campaign_id", campaignId)
+    .eq("id", boundCharacterId)
+    .eq("character_type", "npc")
+    .eq("life_state", "alive")
+    .maybeSingle()
+
+  return actor.data?.id || null
 }
 
 async function loadCharacterPresentation(
