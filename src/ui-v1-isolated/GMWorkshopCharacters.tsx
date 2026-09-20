@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
-import { SnakeTrigger } from "./SnakeProvider"
+import type { SnakeAction } from "../snake-engine"
+import { SnakeTrigger, useSnake } from "./SnakeProvider"
 import {
+  openSourceAction,
   visibilityLabel,
 } from "./GMWorkshopCommon"
 import { createWorkshopCharacterActions } from "./gmWorkshopSnakeActions"
@@ -11,7 +13,7 @@ import {
   type WorkshopCharacter,
 } from "./useGMWorkshopData"
 
-type CharacterFilter = "all" | "pc" | "npc" | "free" | "dead"
+type CharacterFilter = "all" | "draft" | "pc" | "npc" | "free" | "dead"
 
 function recentKey(campaignId: string) {
   return "meganotrpg:v1:gm-recent-characters:" + campaignId
@@ -24,6 +26,7 @@ export default function GMWorkshopCharacters({
   data: ReturnType<typeof useGMWorkshopData>
   onOpenCharacter: (characterId: string) => void
 }) {
+  const snake = useSnake()
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<CharacterFilter>("all")
   const [recentIds, setRecentIds] = useState<string[]>(() => {
@@ -59,19 +62,24 @@ export default function GMWorkshopCharacters({
   }
 
   const needle = query.trim().toLocaleLowerCase("ru-RU")
-  const visible = data.campaignCharacters
+  const visible = data.characters
     .filter((character) => {
+      if (filter === "draft" && character.publicationState !== "draft") return false
       if (filter === "pc" && character.characterType !== "pc") return false
       if (filter === "npc" && character.characterType !== "npc") return false
       if (
         filter === "free" &&
         !(
+          character.publicationState === "campaign" &&
           character.characterType === "pc" &&
           !character.assignedUserId &&
           character.lifeState === "alive"
         )
       ) return false
-      if (filter === "dead" && character.lifeState !== "dead") return false
+      if (
+        filter === "dead" &&
+        !(character.publicationState === "campaign" && character.lifeState === "dead")
+      ) return false
       if (!needle) return true
 
       const owner = character.assignedUserId
@@ -85,6 +93,7 @@ export default function GMWorkshopCharacters({
         character.characterType === "pc"
           ? "pc игрок персонаж игрока"
           : "npc персонаж мира",
+        character.publicationState === "draft" ? "черновик draft" : "кампания",
         character.lifeState === "dead" ? "мертв мёртв погиб" : "жив",
         !character.assignedUserId && character.characterType === "pc"
           ? "свободен свободный"
@@ -107,7 +116,7 @@ export default function GMWorkshopCharacters({
 
   const recent = recentIds
     .map((id) =>
-      data.campaignCharacters.find((character) => character.id === id),
+      data.characters.find((character) => character.id === id),
     )
     .filter(
       (character): character is WorkshopCharacter => Boolean(character),
@@ -115,18 +124,19 @@ export default function GMWorkshopCharacters({
     .slice(0, 5)
 
   const filters: Array<[CharacterFilter, string, number]> = [
-    ["all", "Все персонажи", data.campaignCharacters.length],
+    ["all", "Все персонажи", data.characters.length],
+    ["draft", "Черновики", data.draftCharacters.length],
     [
       "pc",
       "Персонажи игроков",
-      data.campaignCharacters.filter(
+      data.characters.filter(
         (character) => character.characterType === "pc",
       ).length,
     ],
     [
       "npc",
       "Персонажи мира",
-      data.campaignCharacters.filter(
+      data.characters.filter(
         (character) => character.characterType === "npc",
       ).length,
     ],
@@ -148,6 +158,52 @@ export default function GMWorkshopCharacters({
       ).length,
     ],
   ]
+
+  function createCharacter(type: "pc" | "npc") {
+    const action: SnakeAction = {
+      id: "create-draft-" + type,
+      label: "Создать",
+      surface: {
+        kind: "editor",
+        eyebrow: "Персонажи · черновик",
+        title: type === "pc" ? "Новый PC" : "Новый NPC",
+        size: { width: "wide", height: "tall" },
+        fields: [
+          { id: "name", label: "Имя", type: "text", required: true },
+          {
+            id: "classTemplateId",
+            label: "Класс",
+            type: "select",
+            options: [
+              { value: "", label: "Без класса" },
+              ...data.classTemplates.map((template) => ({
+                value: template.id,
+                label: template.name,
+              })),
+            ],
+          },
+          { id: "level", label: "Уровень класса", type: "number" },
+          { id: "bio", label: "Описание", type: "textarea" },
+        ],
+        initialValues: { classTemplateId: "", level: 1 },
+        submitLabel: "Создать черновик",
+      },
+      execute: async ({ input }) => {
+        const response = await data.operations.createDraftCharacter(type, {
+          name: String(input?.name || ""),
+          classTemplateId: String(input?.classTemplateId || "") || null,
+          level: Number(input?.level || 1),
+          bio: String(input?.bio || ""),
+        })
+        return response.ok
+          ? { type: "success", notice: "Черновик персонажа создан." }
+          : { type: "error", message: response.error || "Не удалось создать персонажа." }
+      },
+    }
+
+    openSourceAction(snake, { type: "gm-characters", id: type }, action)
+  }
+
 
   useAIViewContextLayer(
     "gm-workshop-characters",
@@ -176,6 +232,19 @@ export default function GMWorkshopCharacters({
 
   return (
     <div className="u1-gm-workshop__section">
+      <section className="u1-gm-workblock u1-gm-workblock--compact">
+        <header>
+          <div>
+            <span>Персонажи</span>
+            <small>{data.characters.length}</small>
+          </div>
+          <div className="u1-gm-workblock__create">
+            <button type="button" onClick={() => createCharacter("pc")}>+ PC</button>
+            <button type="button" onClick={() => createCharacter("npc")}>+ NPC</button>
+          </div>
+        </header>
+      </section>
+
       <label className="u1-gm-search">
         <span>⌕</span>
         <input
