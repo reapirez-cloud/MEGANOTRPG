@@ -1797,6 +1797,13 @@ Deno.serve(async (req: Request) => {
   })
   if (saveError) return reply({ error: saveError.message }, 500)
 
+  if (activeTurnJobId) {
+    await persistTurnProgress("completed", {
+      answer_saved: true,
+      answer_chars: answer.length,
+    })
+  }
+
   await admin
     .from("ai_threads")
     .update({ updated_at: new Date().toISOString() })
@@ -1881,6 +1888,21 @@ Deno.serve(async (req: Request) => {
         // Keep the stable user-facing fallback.
       }
 
+      if (activeTurnJobId) {
+        await admin
+          .from("agent_jobs")
+          .update({
+            status: "failed",
+            error_code: "conversation_turn_failed",
+            error_message: failure,
+            completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", activeTurnJobId)
+          .then(() => undefined)
+          .catch(() => undefined)
+      }
+
       await admin.from("ai_messages").insert({
         thread_id: threadId,
         role: "assistant",
@@ -1895,6 +1917,24 @@ Deno.serve(async (req: Request) => {
         .update({ updated_at: new Date().toISOString() })
         .eq("id", threadId)
     } catch (error) {
+      if (activeTurnJobId) {
+        await admin
+          .from("agent_jobs")
+          .update({
+            status: "failed",
+            error_code: "conversation_turn_exception",
+            error_message:
+              error instanceof Error
+                ? error.message.slice(0, 500)
+                : String(error).slice(0, 500),
+            completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", activeTurnJobId)
+          .then(() => undefined)
+          .catch(() => undefined)
+      }
+
       await admin.from("ai_messages").insert({
         thread_id: threadId,
         role: "assistant",
