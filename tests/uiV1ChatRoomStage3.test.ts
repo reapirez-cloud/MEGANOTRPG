@@ -37,7 +37,7 @@ test("stage 3 selection closes launcher and opens the shared workspace drawer", 
   assert.match(runtime, /contentKey\?: string/)
   assert.match(room, /setLauncherOpen\(false\)[\s\S]*drawers\.openWorkspace\(/)
   assert.match(room, /contentKey: item\.id/)
-  assert.match(room, /ActionWorkspaceStage3/)
+  assert.match(room, /ChatActionWorkspace/)
   assert.match(room, /sectionId=\{drawers\.session\?\.contentKey\}/)
 })
 
