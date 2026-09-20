@@ -11,8 +11,12 @@ const itemEditor = fs.readFileSync(
   "src/components/characters/InventoryItemEditor.tsx",
   "utf8",
 )
-const gmLibrary = fs.readFileSync(
-  "src/components/gm/GmItemLibrary.tsx",
+const gmWorkshopData = fs.readFileSync(
+  "src/ui-v1-isolated/useGMWorkshopData.ts",
+  "utf8",
+)
+const gmRuntime = fs.readFileSync(
+  "src/ui-v1-isolated/gmWorkshopDefinitionRuntime.ts",
   "utf8",
 )
 const referenceStorage = fs.readFileSync(
@@ -78,14 +82,13 @@ test("GM authoring can draw item shapes but normal container grids come from pre
   assert.match(physicalEditor, /gridTemplateColumns: "repeat\(" \+ value\.shape_width \+ ", 18px\)"/)
 })
 
-test("GM catalog exposes immutable system containers and narrative instance naming", () => {
-  assert.match(gmLibrary, /scope: "system"/)
-  assert.match(gmLibrary, /scope: "campaign"/)
-  assert.match(gmLibrary, /definition\.scope === "system" \? openIssue\(definition\) : setEditor\(definition\)/)
-  assert.match(gmLibrary, /menuTarget\.scope === "campaign"/)
-  assert.match(gmLibrary, /Название экземпляра/)
-  assert.match(gmLibrary, /issueName\.trim\(\) \|\| template\.name/)
-  assert.match(gmLibrary, /Это не анатомический слот/)
+test("canonical GM library keeps definition provenance and resolves item mechanics at issue time", () => {
+  assert.match(gmWorkshopData, /definition\.kind === "item"/)
+  assert.match(gmWorkshopData, /compileWorkshopItemInput/)
+  assert.match(gmRuntime, /definition_id: definition\.id/)
+  assert.match(gmRuntime, /definition_revision: definition\.revision/)
+  assert.match(gmRuntime, /linked_definition_refs/)
+  assert.match(gmRuntime, /inventory_profile/)
 })
 
 test("Chasovoy item writes use strict Stage 5 v2 RPCs", () => {
