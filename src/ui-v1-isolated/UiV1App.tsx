@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useAIViewContextLayer } from "../ai/AIProvider"
 import AgentShell from "../ai/AgentShell"
 import ChatCatalog from "./ChatCatalog"
+import ChatRoomScreen from "./chat-room/ChatRoomScreen"
 
 import { useHomeData, type HomeEvent, type HomeSocietyNews } from "./useHomeData"
 import { WhatsNew } from "./WhatsNew"
@@ -31,6 +32,7 @@ type SectionId =
 
 type Route =
   | { type: "root"; space: RootSpace }
+  | { type: "chat-room"; roomId: string }
   | { type: "section"; section: SectionId; subsection?: string; tail: string[] }
   | { type: "workspace"; page: "character"; characterId: string }
   | { type: "workspace"; page: "manage"; section?: WorkshopSection }
@@ -103,6 +105,10 @@ function parseRoute(): Route {
     if (characterId) return { type: "workspace", page: "character", characterId }
   }
   if (path === "chats") return { type: "root", space: "chats" }
+  if (path.startsWith("chats/")) {
+    const roomId = decodeURIComponent(path.slice("chats/".length))
+    if (roomId) return { type: "chat-room", roomId }
+  }
 
   const sectionPath = path.startsWith("home/") ? path.slice("home/".length) : ""
   const [section, subsection, ...tail] = sectionPath.split("/").filter(Boolean)
@@ -151,6 +157,23 @@ function softHaptic() {
 
 function routeKey(route: Route) {
   if (route.type === "root") return `root:${route.space}`
+  if (route.type === "chat-room") return `chat-room:${route.roomId}`
+  if (route.type === "chat-room") {
+    return {
+      screen: "chat-room",
+      route: window.location.hash || "#/chats",
+      title: "Игровой чат",
+      text: "Открыто основное окно игрового чата.",
+      entity: {
+        type: "chat_room",
+        id: route.roomId,
+      },
+      facts: {
+        roomId: route.roomId,
+      },
+    }
+  }
+
   if (route.type === "section") {
     if (route.section === "knowledge-base" && route.subsection === "classes") {
       return "section:knowledge-base:classes"
@@ -164,6 +187,7 @@ function routeKey(route: Route) {
 
 function activeRoot(route: Route): RootSpace {
   if (route.type === "root") return route.space
+  if (route.type === "chat-room") return "chats"
   if (route.type === "workspace") return "workspace"
   return "home"
 }
@@ -628,6 +652,10 @@ function Placeholder({
 }
 
 function Screen({ route }: { route: Route }) {
+  if (route.type === "chat-room") {
+    return <ChatRoomScreen roomId={route.roomId} />
+  }
+
   if (route.type === "section") {
     if (route.section === "whats-new") return <WhatsNew onBack={() => go("home")} />
     if (route.section === "world") return <WorldSectionScreen subsection={route.subsection} path={route.tail} />
@@ -727,7 +755,7 @@ export default function UiV1App() {
           </motion.div>
         </AnimatePresence>
 
-        <Dock route={route} onNavigate={navigateRoot} />
+        {route.type !== "chat-room" && <Dock route={route} onNavigate={navigateRoot} />}
       </div>
 
       <AgentShell />
