@@ -85,10 +85,7 @@ export function createWorkshopCharacterConvertAction({
       ? {
           kind: "picker",
           eyebrow: "Тип персонажа · преобразование",
-          title: "Преобразовать «" + character.name + "» в NPC?",
-          body:
-            "Назначение игроку и активность будут сняты атомарно. " +
-            "Выбери, когда игроки смогут видеть нового NPC.",
+          title: "Преобразовать «" + character.name + "» в NPC? Назначение и активность будут сняты.",
           items: [
             {
               id: "discover",
