@@ -55,7 +55,7 @@ test("revision metadata is persisted and visible in UI", () => {
     "supabase/migrations/20260914164528_ai_draft_revision_editing_stage5.sql",
   )
   const provider = read("src/ai/AIProvider.tsx")
-  const workshop = read("src/ui-v1-isolated/GMWorkshopDraft.tsx")
+  const workshop = read("src/ui-v1-isolated/GMWorkshopReview.tsx")
   assert.match(migration, /change_summary/)
   assert.match(migration, /operations jsonb/)
   assert.match(provider, /recent_revisions/)
