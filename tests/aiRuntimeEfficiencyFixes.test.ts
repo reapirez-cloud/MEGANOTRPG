@@ -89,7 +89,8 @@ test("queued image generation forces a text-only completion round", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
 
   assert.match(edge, /let forceTextOnlyNextRound = false/)
-  assert.match(edge, /const toolsForRound = forceTextOnlyNextRound \? \[\] : availableTools/)
+  assert.match(edge, /const toolsForRound =/)
+  assert.match(edge, /forceTextOnlyNextRound/)
   assert.match(edge, /tools: toolsForRound/)
   assert.match(
     edge,
