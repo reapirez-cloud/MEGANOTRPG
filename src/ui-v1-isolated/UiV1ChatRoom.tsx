@@ -128,7 +128,7 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
   const data = useUiV1ChatRoom(roomId)
   const gameplay = useUiV1ChatActorRuntime(launcherOpen || drawers.session?.mode === "workspace")
   const participants = useUiV1ChatParticipants(data.room, drawers.session?.mode === "context")
-  const lastMessageId = data.messages.at(-1)?.id || 0
+  const lastMessageId = data.messages[data.messages.length - 1]?.id || 0
 
   useEffect(() => {
     const root = messagesRef.current
