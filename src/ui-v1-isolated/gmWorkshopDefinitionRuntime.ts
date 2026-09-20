@@ -179,6 +179,7 @@ export function workshopFeatureInput(
     return null
   }
 
+  const sourceKind: "feature" | "feat" | "condition" = definition.kind
   const mechanics = Array.isArray(definition.mechanics)
     ? definition.mechanics as unknown as StoredMechanics
     : []
@@ -195,6 +196,6 @@ export function workshopFeatureInput(
     mechanics,
     source_definition_id: definition.id,
     source_definition_revision: definition.revision,
-    source_definition_kind: definition.kind,
+    source_definition_kind: sourceKind,
   }
 }
