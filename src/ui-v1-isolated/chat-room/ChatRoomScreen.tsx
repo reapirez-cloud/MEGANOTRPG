@@ -8,6 +8,14 @@ import { useChatRoomShell } from "./useChatRoomShell"
 import { useChatVisualViewportHeight } from "./useChatVisualViewport"
 import "./chat-room.css"
 
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M14.5 5.5 8 12l6.5 6.5" />
+    </svg>
+  )
+}
+
 function LoadingShell() {
   return (
     <main className="u1-room-shell u1-room-shell--loading" aria-busy="true">
