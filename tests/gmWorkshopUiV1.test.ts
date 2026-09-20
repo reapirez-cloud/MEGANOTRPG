@@ -245,7 +245,7 @@ test("runtime feature issuance preserves definition semantics and provenance", (
   assert.match(definitionRuntime, /definition\.kind === "feat"[\s\S]*"feat"/)
   assert.match(definitionRuntime, /source_definition_id: definition\.id/)
   assert.match(definitionRuntime, /source_definition_revision: definition\.revision/)
-  assert.match(definitionRuntime, /source_definition_kind: definition\.kind/)
+  assert.match(definitionRuntime, /source_definition_kind: sourceKind/)
   assert.match(data, /workshopFeatureInput/)
   assert.match(stage3Migration, /source_definition_kind in \('feature','feat','condition'\)/)
 })
