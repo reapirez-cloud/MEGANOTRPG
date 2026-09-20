@@ -28,11 +28,12 @@ type Props = {
   spell: ResolvedSpell
   modifierActions: ResolvedAction[]
   busy?: boolean
+  presentation?: "sheet" | "side"
   onClose: () => void
   onCast: (modifiers: ResolvedAction[]) => void | Promise<void>
 }
 
-export default function ChatSpellModifierSheet({ spell, modifierActions, busy = false, onClose, onCast }: Props) {
+export default function ChatSpellModifierSheet({ spell, modifierActions, busy = false, presentation = "sheet", onClose, onCast }: Props) {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([])
   const available = useMemo(() => spellModifierActions(modifierActions), [modifierActions])
   const selected = useMemo(
@@ -50,8 +51,8 @@ export default function ChatSpellModifierSheet({ spell, modifierActions, busy = 
     })
   }
 
-  return <div className="chat-action-backdrop" onMouseDown={onClose}>
-    <section className="chat-action-flow chat-action-flow--v3" onMouseDown={(event) => event.stopPropagation()}>
+  return <div className="chat-action-backdrop" data-presentation={presentation} onMouseDown={onClose}>
+    <section className="chat-action-flow chat-action-flow--v3" data-presentation={presentation} onMouseDown={(event) => event.stopPropagation()}>
       <div className="chat-action-flow__handle" />
       <header className="action-v2-head">
         <div>
