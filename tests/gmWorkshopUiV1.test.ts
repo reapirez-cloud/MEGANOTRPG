@@ -6,7 +6,7 @@ const app = fs.readFileSync("src/ui-v1-isolated/UiV1App.tsx", "utf8")
 const entry = fs.readFileSync("src/ui-v1-isolated/main.tsx", "utf8")
 const shell = fs.readFileSync("src/ui-v1-isolated/GMWorkshop.tsx", "utf8")
 const main = fs.readFileSync("src/ui-v1-isolated/GMWorkshopMain.tsx", "utf8")
-const draft = fs.readFileSync("src/ui-v1-isolated/GMWorkshopDraft.tsx", "utf8")
+const review = fs.readFileSync("src/ui-v1-isolated/GMWorkshopReview.tsx", "utf8")
 const members = fs.readFileSync("src/ui-v1-isolated/GMWorkshopMembers.tsx", "utf8")
 const characters = fs.readFileSync("src/ui-v1-isolated/GMWorkshopCharacters.tsx", "utf8")
 const library = fs.readFileSync("src/ui-v1-isolated/GMWorkshopLibrary.tsx", "utf8")
@@ -25,39 +25,49 @@ const partyAdminMigration = fs.readFileSync(
   "utf8",
 )
 const characterView = fs.readFileSync("src/ui-v1-isolated/CharacterView.tsx", "utf8")
+const stage3Migration = fs.readFileSync(
+  "supabase/migrations/20260920070533_gm_workshop_definition_lifecycle_stage3.sql",
+  "utf8",
+)
+const referenceTypes = fs.readFileSync("src/reference-engine/types.ts", "utf8")
+const referenceStorage = fs.readFileSync("src/reference-engine/supabase.ts", "utf8")
 
 test("UI 1.0 management route is the real GM Workshop and uses destination panels instead of legacy tabs", () => {
   assert.match(app, /<GMWorkshop/)
-  assert.match(app, /const workshopSections: WorkshopSection\[\] = \["draft", "members", "characters", "library", "materials"\]/)
+  assert.match(app, /const workshopSections: WorkshopSection\[\] = \["review", "members", "characters", "library", "materials"\]/)
   assert.match(app, /workspace\/manage\/party[\s\S]*section: "members"/)
+  assert.match(app, /workspace\/manage\/draft[\s\S]*section: "review"/)
   assert.match(app, /path\.startsWith\("workspace\/manage\/"\)/)
   assert.match(app, /"workspace\/manage\/" \+ section/)
   assert.match(entry, /\.\/gm-workshop\.css/)
   assert.match(shell, /GMWorkshopMain/)
-  assert.match(main, /title="Черновик"/)
+  assert.match(main, /title="На проверку"/)
   assert.match(main, /title="Участники"/)
   assert.match(main, /title="Персонажи"/)
   assert.match(main, /title="Библиотека"/)
   assert.match(main, /title="Материалы"/)
-  assert.ok(main.indexOf('title="Черновик"') < main.indexOf('title="Участники"'))
+  assert.ok(main.indexOf('title="На проверку"') < main.indexOf('title="Участники"'))
   assert.doesNotMatch(
-    main + draft + members + characters + library + materials,
+    main + review + members + characters + library + materials,
     /role="tab"|gm-primary-nav|gm-subrail/,
   )
 })
 
-test("GM draft is a canonical hidden lifecycle, not the old private-character toggle", () => {
+test("draft lifecycles live with their domains while review only contains AI proposals", () => {
   assert.match(migration, /publication_state text/)
   assert.match(migration, /check \(publication_state in \('draft','campaign'\)\)/)
-  assert.match(migration, /c\.publication_state = 'draft'[\s\S]*private\.can_manage_campaign/)
   assert.match(migration, /set_character_publication_state_v1/)
-  assert.match(migration, /assigned_user_id = null/)
-  assert.match(migration, /visibility_mode = 'private'/)
   assert.match(data, /publication_state: "draft"/)
   assert.match(data, /oracle\.characters\.setPublicationState/)
+  assert.match(characters, /Черновики/)
+  assert.match(characters, /createDraftCharacter/)
+  assert.match(library, /Черновики/)
+  assert.match(library, /createDraftDefinition/)
+  assert.match(review, /AI · REVIEW/)
+  assert.match(review, /applyAIDraft/)
+  assert.doesNotMatch(review, /createDraftCharacter|createDraftDefinition/)
   assert.match(workspaceData, /\.eq\("publication_state", "campaign"\)/)
   assert.match(sectionData, /\.eq\("publication_state", "campaign"\)/)
-  assert.doesNotMatch(draft, /Только я/)
 })
 
 test("PC assignment and active identity remain separate commands", () => {
@@ -88,9 +98,9 @@ test("Participants owns people and assignments without duplicating the global ch
 })
 
 test("Workshop character creation uses real class templates instead of a free-text class field", () => {
-  assert.match(draft, /classTemplateId/)
-  assert.match(draft, /data\.classTemplates\.map/)
-  assert.doesNotMatch(draft, /id: "characterClass"/)
+  assert.match(characters, /classTemplateId/)
+  assert.match(characters, /data\.classTemplates\.map/)
+  assert.doesNotMatch(characters, /id: "characterClass"/)
   assert.match(data, /oracle\.characters\.assignTemplate/)
   assert.match(data, /existing\?\.selected_choices \|\| \{\}/)
   assert.match(actions, /id: "classes"/)
@@ -200,17 +210,37 @@ test("character catalog is one searchable PC plus NPC workspace with filters and
   assert.doesNotMatch(characters, /characterKind|setCharacterKind/)
 })
 
-test("library authors reusable definitions and issues runtime copies through owner engines", () => {
-  assert.match(data, /oracle\.definitions\.create/)
-  assert.match(data, /oracle\.definitions\.revise/)
-  assert.match(data, /oracle\.definitions\.setStatus/)
-  assert.match(data, /oracle\.inventory\.create/)
-  assert.match(data, /oracle\.characters\.createSpell/)
-  assert.match(data, /oracle\.characters\.createFeature/)
-  assert.match(data, /linked_definition_ids/)
-  assert.match(actions, /Выдать персонажу/)
+test("library owns the full definition lifecycle and publishes staged revisions atomically", () => {
+  assert.match(library, /Черновики/)
+  assert.match(library, /Рабочая база/)
+  assert.match(library, /Архив/)
+  assert.match(data, /revises_definition_id/)
+  assert.match(data, /oracle\.definitions\.publishDraft/)
+  assert.match(referenceTypes, /definition\.publish_draft/)
+  assert.match(referenceStorage, /publish_reference_definition_draft_v1/)
+  assert.match(stage3Migration, /publish_reference_definition_draft_v1/)
+  assert.match(stage3Migration, /Target definition must be active/)
+  assert.match(stage3Migration, /current_revision = v_target_revision/)
+  assert.match(actions, /Создать ревизию/)
+  assert.match(actions, /Опубликовать ревизию/)
+})
+
+test("linked item mechanics stay as revision references and compile only when an item is issued", () => {
+  assert.match(data, /linked_definitions/)
+  assert.match(data, /linked_definition_refs/)
+  assert.match(data, /chasovoy\.getDefinition/)
+  assert.doesNotMatch(data, /mechanics: \[\.\.\.itemMechanics, \.\.\.linkedMechanics\]/)
   assert.match(actions, /Привязать к предмету/)
-  assert.match(library, /Найти в библиотеке/)
+  assert.match(actions, /linkedDefinitionIds/)
+})
+
+test("runtime feature issuance preserves definition semantics and provenance", () => {
+  assert.match(data, /definition\.kind === "condition"[\s\S]*"effect"/)
+  assert.match(data, /definition\.kind === "feat"[\s\S]*"feat"/)
+  assert.match(data, /source_definition_id: definition\.id/)
+  assert.match(data, /source_definition_revision: definition\.revision/)
+  assert.match(data, /source_definition_kind: definition\.kind/)
+  assert.match(stage3Migration, /source_definition_kind in \('feature','feat','condition'\)/)
 })
 
 test("private GM materials preserve notes folders uploads and Storage cleanup", () => {
