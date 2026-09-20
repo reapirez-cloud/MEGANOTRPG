@@ -128,6 +128,17 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
   const data = useUiV1ChatRoom(roomId)
   const gameplay = useUiV1ChatActorRuntime(launcherOpen || drawers.session?.mode === "workspace")
   const participants = useUiV1ChatParticipants(data.room, drawers.session?.mode === "context")
+  const lastMessageId = data.messages.at(-1)?.id || 0
+
+  useEffect(() => {
+    const root = messagesRef.current
+    if (!root || !stickToBottomRef.current) return
+
+    const frame = window.requestAnimationFrame(() => {
+      root.scrollTop = root.scrollHeight
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [lastMessageId, roomId])
 
   if (data.loading && !data.room) return <LoadingState />
 
@@ -158,18 +169,6 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
       contentKey: "room",
     })
   }
-
-  const lastMessageId = data.messages.at(-1)?.id || 0
-
-  useEffect(() => {
-    const root = messagesRef.current
-    if (!root || !stickToBottomRef.current) return
-
-    const frame = window.requestAnimationFrame(() => {
-      root.scrollTop = root.scrollHeight
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [lastMessageId, roomId])
 
   const actionSections = CHAT_ACTION_SECTIONS.map((item) => {
     if (item.id === "roll") return { ...item }
