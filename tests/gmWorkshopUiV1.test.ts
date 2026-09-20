@@ -106,6 +106,10 @@ test("Character View is a real GM-aware sheet surface instead of a placeholder r
   assert.match(characterView, /<CharacterSheetFeatures/)
   assert.match(actions, /id: "edit-character"/)
   assert.match(actions, /label: "Редактировать"/)
+  assert.match(actions, /id: "convert-character-type"/)
+  assert.match(data, /convertCharacterType/)
+  assert.match(data, /oracle\.characters\.convertType/)
+  assert.doesNotMatch(actions, /id: "characterType"/)
 })
 
 test("Workshop member and invite management are first-class Snake actions", () => {
