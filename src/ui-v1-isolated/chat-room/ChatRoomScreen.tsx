@@ -2,6 +2,7 @@ import {
   chatRoomDayPeriodLabel,
   type ChatRoomHeaderCharacter,
 } from "./chatRoomContracts"
+import ChatFeed from "./ChatFeed"
 import { useChatRoomShell } from "./useChatRoomShell"
 import "./chat-room-stage1.css"
 
@@ -212,7 +213,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
 
   if (!model || error) {
     return (
-      <main className="u1-room-shell" data-chat-room-stage="2">
+      <main className="u1-room-shell" data-chat-room-stage="3">
         <div className="u1-room-topbar">
           <button
             type="button"
@@ -245,7 +246,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
   return (
     <main
       className="u1-room-shell"
-      data-chat-room-stage="2"
+      data-chat-room-stage="3"
       data-room-type={model.roomType}
       data-has-identity={Boolean(model.identity) || undefined}
     >
@@ -285,10 +286,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
         />
       ) : null}
 
-      <section className="u1-room-feed-placeholder" aria-label="Лента чата">
-        <span aria-hidden="true" />
-        <p>Лента сообщений будет подключена следующим этапом.</p>
-      </section>
+      <ChatFeed roomId={roomId} />
     </main>
   )
 }
