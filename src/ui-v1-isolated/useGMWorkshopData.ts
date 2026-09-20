@@ -1007,23 +1007,79 @@ export function useGMWorkshopData(
     reviseDefinition(definitionId, input) {
       const current = state.definitions.find((definition) => definition.id === definitionId)
       if (!current) return Promise.resolve({ ok: false, error: "Определение не найдено." })
+      if (current.status === "archived") {
+        return Promise.resolve({
+          ok: false,
+          error: "Сначала верни определение из архива, затем редактируй его.",
+        })
+      }
+
+      const revisionInput = {
+        name: input.name.trim(),
+        summary: input.summary?.trim() || "",
+        rulesText: input.rulesText?.trim() || "",
+        mechanics: input.mechanics ?? current.mechanics,
+        data: input.data ?? current.data,
+      }
+
+      if (current.status === "draft") {
+        return mutate(
+          () => oracle.definitions.revise(context(), definitionId, revisionInput),
+          "Не удалось сохранить черновик.",
+        )
+      }
+
+      const pending = state.definitions.find((definition) =>
+        definition.status === "draft" &&
+        definition.kind === current.kind &&
+        definition.data.revises_definition_id === current.id
+      )
+
+      if (pending) {
+        return mutate(
+          () => oracle.definitions.revise(context(), pending.id, {
+            ...revisionInput,
+            data: {
+              ...revisionInput.data,
+              revises_definition_id: current.id,
+              revises_definition_revision: current.revision,
+            },
+          }),
+          "Не удалось обновить черновик ревизии.",
+        )
+      }
 
       return mutate(
-        () => oracle.definitions.revise(context(), definitionId, {
-          name: input.name.trim(),
-          summary: input.summary?.trim() || "",
-          rulesText: input.rulesText?.trim() || "",
-          mechanics: input.mechanics ?? current.mechanics,
-          data: input.data ?? current.data,
+        () => oracle.definitions.create(context(), {
+          kind: current.kind,
+          scope: "campaign",
+          campaignId: state.campaignId,
+          slug:
+            (normalizeDefinitionSlug(current.slug || current.name) || "revision") +
+            "-revision-" +
+            Date.now().toString(36),
+          visibility: "gm",
+          status: "draft",
+          sourceKind: "custom",
+          sourceLabel: "Ревизия: " + current.name,
+          name: revisionInput.name,
+          summary: revisionInput.summary,
+          rulesText: revisionInput.rulesText,
+          mechanics: revisionInput.mechanics,
+          data: {
+            ...revisionInput.data,
+            revises_definition_id: current.id,
+            revises_definition_revision: current.revision,
+          },
         }),
-        "Не удалось сохранить новую ревизию.",
+        "Не удалось создать черновик ревизии.",
       )
     },
 
     publishDefinition(definitionId) {
       return mutate(
-        () => oracle.definitions.setStatus(context(), definitionId, "active"),
-        "Не удалось отправить заготовку в кампанию.",
+        () => oracle.definitions.publishDraft(context(), definitionId),
+        "Не удалось опубликовать черновик определения.",
       )
     },
 
@@ -1068,7 +1124,11 @@ export function useGMWorkshopData(
     issueDefinition(definition, characterId, quantity) {
       if (definition.kind === "item") {
         return mutate(
-          () => oracle.inventory.create(context(), characterId, itemInput(definition, quantity)),
+          async () => oracle.inventory.create(
+            context(),
+            characterId,
+            await itemInput(definition, quantity),
+          ),
           "Не удалось выдать предмет.",
         )
       }
@@ -1084,12 +1144,21 @@ export function useGMWorkshopData(
         const mechanics = Array.isArray(definition.mechanics)
           ? definition.mechanics as unknown as StoredMechanics
           : []
+        const runtimeKind =
+          definition.kind === "condition"
+            ? "effect"
+            : definition.kind === "feat"
+              ? "feat"
+              : "feature"
         return mutate(
           () => oracle.characters.createFeature(context(), characterId, {
-            kind: "feature",
+            kind: runtimeKind,
             name: definition.name,
             description: definition.rulesText || definition.summary,
             mechanics,
+            source_definition_id: definition.id,
+            source_definition_revision: definition.revision,
+            source_definition_kind: definition.kind,
           }),
           "Не удалось выдать способность или эффект.",
         )
@@ -1099,77 +1168,131 @@ export function useGMWorkshopData(
     },
 
     async linkDefinitionToItem(definition, itemDefinitionId) {
-      const item = state.definitions.find((candidate) =>
+      const activeItem = state.definitions.find((candidate) =>
         candidate.id === itemDefinitionId &&
         candidate.kind === "item" &&
         candidate.status === "active"
       )
-      if (!item) return { ok: false, error: "Предмет не найден." }
+      if (!activeItem) return { ok: false, error: "Предмет не найден." }
 
-      const rawLinked = item.data.linked_definition_ids
-      const linked = Array.isArray(rawLinked)
-        ? rawLinked.filter((value): value is string => typeof value === "string")
-        : []
-      if (linked.includes(definition.id)) return { ok: true }
+      const pending = state.definitions.find((candidate) =>
+        candidate.kind === "item" &&
+        candidate.status === "draft" &&
+        candidate.data.revises_definition_id === activeItem.id
+      )
+      const target = pending || activeItem
+      const linked = linkedDefinitionRefs(target)
+      if (linked.some((ref) => ref.id === definition.id)) return { ok: true }
 
-      const itemMechanics = Array.isArray(item.mechanics) ? item.mechanics : []
-      const linkedMechanics = Array.isArray(definition.mechanics) ? definition.mechanics : []
+      const { linked_definition_ids: _legacyIds, ...baseData } = target.data
+      const data = {
+        ...baseData,
+        linked_definitions: [
+          ...linked,
+          { id: definition.id, revision: definition.revision },
+        ],
+      }
+
+      if (pending) {
+        return mutate(
+          () => oracle.definitions.revise(context(), pending.id, {
+            name: pending.name,
+            summary: pending.summary,
+            rulesText: pending.rulesText,
+            mechanics: pending.mechanics,
+            data,
+          }),
+          "Не удалось обновить связи предмета.",
+        )
+      }
 
       return mutate(
-        () => oracle.definitions.revise(context(), item.id, {
-          name: item.name,
-          summary: item.summary,
-          rulesText: item.rulesText,
-          mechanics: [...itemMechanics, ...linkedMechanics] as ChasovoyJson,
+        () => oracle.definitions.create(context(), {
+          kind: "item",
+          scope: "campaign",
+          campaignId: state.campaignId,
+          slug:
+            (normalizeDefinitionSlug(activeItem.slug || activeItem.name) || "item") +
+            "-revision-" +
+            Date.now().toString(36),
+          visibility: "gm",
+          status: "draft",
+          sourceKind: "custom",
+          sourceLabel: "Ревизия: " + activeItem.name,
+          name: activeItem.name,
+          summary: activeItem.summary,
+          rulesText: activeItem.rulesText,
+          mechanics: activeItem.mechanics,
           data: {
-            ...item.data,
-            linked_definition_ids: [...linked, definition.id],
+            ...data,
+            revises_definition_id: activeItem.id,
+            revises_definition_revision: activeItem.revision,
           },
         }),
-        "Не удалось привязать механику к предмету.",
+        "Не удалось создать черновик связи предмета.",
       )
     },
 
     async unlinkDefinitionFromItem(definition, itemDefinitionId) {
-      const item = state.definitions.find((candidate) =>
+      const activeItem = state.definitions.find((candidate) =>
         candidate.id === itemDefinitionId &&
-        candidate.kind === "item"
+        candidate.kind === "item" &&
+        candidate.status === "active"
       )
-      if (!item) return { ok: false, error: "Предмет не найден." }
+      if (!activeItem) return { ok: false, error: "Предмет не найден." }
 
-      const rawLinked = item.data.linked_definition_ids
-      const linked = Array.isArray(rawLinked)
-        ? rawLinked.filter((value): value is string => typeof value === "string")
-        : []
-      if (!linked.includes(definition.id)) return { ok: true }
-
-      const linkedMechanicIds = new Set(
-        (Array.isArray(definition.mechanics) ? definition.mechanics : [])
-          .map((mechanic) =>
-            mechanic && typeof mechanic === "object" && "id" in mechanic
-              ? String((mechanic as { id?: unknown }).id || "")
-              : ""
-          )
-          .filter(Boolean),
+      const pending = state.definitions.find((candidate) =>
+        candidate.kind === "item" &&
+        candidate.status === "draft" &&
+        candidate.data.revises_definition_id === activeItem.id
       )
-      const nextMechanics = (Array.isArray(item.mechanics) ? item.mechanics : [])
-        .filter((mechanic) => {
-          if (!mechanic || typeof mechanic !== "object" || !("id" in mechanic)) return true
-          return !linkedMechanicIds.has(String((mechanic as { id?: unknown }).id || ""))
-        })
+      const target = pending || activeItem
+      const linked = linkedDefinitionRefs(target)
+      if (!linked.some((ref) => ref.id === definition.id)) return { ok: true }
+
+      const { linked_definition_ids: _legacyIds, ...baseData } = target.data
+      const data = {
+        ...baseData,
+        linked_definitions: linked.filter((ref) => ref.id !== definition.id),
+      }
+
+      if (pending) {
+        return mutate(
+          () => oracle.definitions.revise(context(), pending.id, {
+            name: pending.name,
+            summary: pending.summary,
+            rulesText: pending.rulesText,
+            mechanics: pending.mechanics,
+            data,
+          }),
+          "Не удалось обновить связи предмета.",
+        )
+      }
 
       return mutate(
-        () => oracle.definitions.revise(context(), item.id, {
-          name: item.name,
-          summary: item.summary,
-          rulesText: item.rulesText,
-          mechanics: nextMechanics as ChasovoyJson,
+        () => oracle.definitions.create(context(), {
+          kind: "item",
+          scope: "campaign",
+          campaignId: state.campaignId,
+          slug:
+            (normalizeDefinitionSlug(activeItem.slug || activeItem.name) || "item") +
+            "-revision-" +
+            Date.now().toString(36),
+          visibility: "gm",
+          status: "draft",
+          sourceKind: "custom",
+          sourceLabel: "Ревизия: " + activeItem.name,
+          name: activeItem.name,
+          summary: activeItem.summary,
+          rulesText: activeItem.rulesText,
+          mechanics: activeItem.mechanics,
           data: {
-            ...item.data,
-            linked_definition_ids: linked.filter((id) => id !== definition.id),
+            ...data,
+            revises_definition_id: activeItem.id,
+            revises_definition_revision: activeItem.revision,
           },
         }),
-        "Не удалось отвязать механику от предмета.",
+        "Не удалось создать черновик связи предмета.",
       )
     },
 
