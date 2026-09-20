@@ -1,3 +1,4 @@
+import { useAI } from "../ai/AIProvider"
 import { WorkshopPanel } from "./GMWorkshopCommon"
 import type { WorkshopSection } from "./useGMWorkshopData"
 import { useGMWorkshopData } from "./useGMWorkshopData"
@@ -18,7 +19,7 @@ export default function GMWorkshopMain({
   data: ReturnType<typeof useGMWorkshopData>
   onNavigate: (section?: WorkshopSection) => void
 }) {
-  const draftCount = data.draftCharacters.length + data.draftDefinitions.length
+  const { drafts: aiDrafts } = useAI()
   const activePc = data.campaignCharacters.filter((character) =>
     character.characterType === "pc" &&
     data.members.some((member) => member.activeCharacterId === character.id)
@@ -35,16 +36,12 @@ export default function GMWorkshopMain({
   return (
     <div className="u1-gm-workshop__panels">
       <WorkshopPanel
-        eyebrow="Безопасная зона · только GM"
-        title="Черновик"
-        meta={String(draftCount).padStart(2, "0")}
-        detail={
-          countText(data.draftCharacters.length, "персонаж", "персонажа", "персонажей") +
-          " · " +
-          countText(data.draftDefinitions.length, "заготовка", "заготовки", "заготовок")
-        }
+        eyebrow="AI · до утверждения"
+        title="На проверку"
+        meta={String(aiDrafts.length).padStart(2, "0")}
+        detail={countText(aiDrafts.length, "предложение", "предложения", "предложений")}
         tone="draft"
-        onClick={() => onNavigate("draft")}
+        onClick={() => onNavigate("review")}
       />
 
       <WorkshopPanel
@@ -74,10 +71,11 @@ export default function GMWorkshopMain({
 
       <WorkshopPanel
         title="Персонажи"
-        meta={String(data.campaignCharacters.length).padStart(2, "0")}
+        meta={String(data.characters.length).padStart(2, "0")}
         detail={
           pc + " PC · " +
           npc + " NPC · " +
+          data.draftCharacters.length + " чернов. · " +
           freePc + " свободно · " +
           dead + " мёртв."
         }
@@ -87,7 +85,7 @@ export default function GMWorkshopMain({
       <WorkshopPanel
         title="Библиотека"
         meta={String(data.activeDefinitions.length).padStart(2, "0")}
-        detail="Предметы · заклинания · способности · эффекты"
+        detail={data.draftDefinitions.length + " чернов. · Предметы · заклинания · способности · эффекты"}
         onClick={() => onNavigate("library")}
       />
 
