@@ -258,6 +258,10 @@ export default function AgentShell() {
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (previewImage) {
+          setPreviewImage(null)
+          return
+        }
         if (toolsOpen) {
           setToolsOpen(false)
           return
@@ -292,7 +296,7 @@ export default function AgentShell() {
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [open, toolsOpen])
+  }, [open, previewImage, toolsOpen])
 
   useEffect(() => {
     if (!open || !followTailRef.current) return
