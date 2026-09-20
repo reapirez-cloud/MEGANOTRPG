@@ -100,7 +100,8 @@ function CharacterHeader({
   if (!identity) return null
 
   const character = identity.kind === "character" ? identity.character : null
-  const name = character?.name || identity.name
+  const name =
+    identity.kind === "character" ? identity.character.name : identity.name
   const dayPeriod = chatRoomDayPeriodLabel(model.context.dayPeriod)
 
   return (
