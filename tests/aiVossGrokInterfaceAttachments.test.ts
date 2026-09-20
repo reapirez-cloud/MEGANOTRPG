@@ -39,8 +39,9 @@ test("public model choice does not unlock GM-only tools", () => {
   assert.match(edge, /const authority = resolveVossAuthority\(membership \|\| \{\}, isSystemAdmin\)/)
   assert.match(edge, /const canManage = canManageCampaignWithVoss\(authority\)/)
   assert.match(edge, /const canChooseModel = true/)
-  assert.match(edge, /const scopedDraftTools[\s\S]*canManage/)
-  assert.match(edge, /const scopedManagerTools[\s\S]*canManage/)
+  assert.match(edge, /if \(authority === "player"\) return \[\]/)
+  assert.match(edge, /grantedCapabilities\.has\("content\.write"\)/)
+  assert.match(edge, /grantedCapabilities\.has\("campaign\.manage"\)/)
 })
 
 test("AI attachments use a private creator path and guarded storage policies", () => {
