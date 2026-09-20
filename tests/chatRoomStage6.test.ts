@@ -8,6 +8,7 @@ const composerPath = new URL("../src/ui-v1-isolated/chat-room/ChatComposer.tsx",
 const viewportPath = new URL("../src/ui-v1-isolated/chat-room/useChatVisualViewport.ts", import.meta.url)
 const roomPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomScreen.tsx", import.meta.url)
 const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room.css", import.meta.url)
+const presentationPath = new URL("../src/ui-v1-isolated/chat-room/chatRoomPresentation.ts", import.meta.url)
 
 test("stage 6 follows new messages only when appropriate", async () => {
   const feed = await readFile(feedPath, "utf8")
@@ -78,4 +79,129 @@ test("stage 6 uses a shared motion layer and respects reduced motion", async () 
   assert.match(css, /prefers-reduced-motion: reduce/)
   assert.match(css, /u1-room-feed__new/)
   assert.match(css, /u1-chat-composer__sending-dot/)
+})
+
+
+test("stage 6 stamps the final screen contract and one canonical role state", async () => {
+  const [room, composer] = await Promise.all([
+    readFile(roomPath, "utf8"),
+    readFile(composerPath, "utf8"),
+  ])
+
+  assert.match(room, /data-chat-room-final-stage="6"/)
+  assert.match(room, /data-viewer-role=\{model\.viewer\.role\}/)
+  assert.match(room, /data-identity-kind=\{presentation\.identityKind\}/)
+  assert.match(room, /showQuickActions=\{presentation\.showQuickActions\}/)
+  assert.match(composer, /chatRoomPresentationState\(model\)/)
+  assert.match(composer, /presentation\.showPersonaSelector/)
+  assert.match(composer, /presentation\.canCompose/)
+})
+
+test("stage 6 role matrix keeps player, GM, observer and archive behavior distinct", async () => {
+  const module = await import(presentationPath.href)
+  const state = module.chatRoomPresentationState
+
+  const base = {
+    roomId: "room",
+    roomTitle: "Scene",
+    roomType: "scene",
+    readOnly: false,
+    canManage: false,
+    canWrite: true,
+    viewer: {
+      campaignId: "campaign",
+      userId: "user",
+      role: "player",
+      isOwner: false,
+      playerCharacterId: "pc",
+    },
+    identity: {
+      kind: "character",
+      character: {
+        id: "pc",
+        name: "William",
+        className: "Warlock",
+        level: 5,
+        avatarUrl: null,
+        currentHp: 31,
+        maxHp: 38,
+        tempHp: 0,
+      },
+    },
+    context: {
+      campaignDay: 12,
+      dayPeriod: "night",
+      locationName: "Tavern",
+    },
+    quickActions: {
+      hasCharacter: true,
+      hasEquippedWeapon: true,
+    },
+  }
+
+  assert.deepEqual(state(base), {
+    identityKind: "character",
+    canCompose: true,
+    showQuickActions: true,
+    showPersonaSelector: false,
+    canOpenGameActions: true,
+  })
+
+  assert.deepEqual(
+    state({
+      ...base,
+      canManage: true,
+      viewer: { ...base.viewer, role: "gm", playerCharacterId: null },
+      identity: { kind: "narrator", name: "Рассказчик" },
+      quickActions: { hasCharacter: false, hasEquippedWeapon: false },
+    }),
+    {
+      identityKind: "narrator",
+      canCompose: true,
+      showQuickActions: false,
+      showPersonaSelector: true,
+      canOpenGameActions: true,
+    },
+  )
+
+  assert.deepEqual(
+    state({
+      ...base,
+      canWrite: false,
+      viewer: { ...base.viewer, playerCharacterId: null },
+      identity: null,
+      quickActions: { hasCharacter: false, hasEquippedWeapon: false },
+    }),
+    {
+      identityKind: "observer",
+      canCompose: false,
+      showQuickActions: false,
+      showPersonaSelector: false,
+      canOpenGameActions: false,
+    },
+  )
+
+  assert.equal(
+    state({
+      ...base,
+      readOnly: true,
+      canWrite: false,
+    }).canCompose,
+    false,
+  )
+})
+
+test("stage 6 locks the final mobile geometry to one compact reference rhythm", async () => {
+  const css = await readFile(cssPath, "utf8")
+
+  assert.match(css, /Reference rebuild — final pixel pass stage 6/)
+  assert.match(css, /--u1-chat-gutter: 10px/)
+  assert.match(css, /--u1-chat-control: 40px/)
+  assert.match(css, /--u1-chat-actor: 48px/)
+  assert.match(css, /data-chat-room-final-stage="6"[\s\S]*min-height: calc\(46px/)
+  assert.match(css, /data-chat-room-final-stage="6"[\s\S]*\.u1-room-quick-action \{[\s\S]*min-height: 35px/)
+  assert.match(css, /chat-action-flow\[data-presentation="side"\][\s\S]*width: min\(90vw, 720px\)/)
+  assert.match(css, /@media \(max-width: 360px\)/)
+  assert.match(css, /@media \(max-width: 320px\)/)
+  assert.match(css, /@media \(max-height: 560px\) and \(orientation: landscape\)/)
 })

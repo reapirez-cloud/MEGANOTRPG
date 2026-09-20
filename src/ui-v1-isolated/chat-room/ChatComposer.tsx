@@ -7,6 +7,7 @@ import {
 
 import { supabase } from "../../lib/supabase"
 import ChatActionHost from "./ChatActionHost"
+import { chatRoomPresentationState } from "./chatRoomPresentation"
 import {
   CHAT_ACTION_REQUEST_EVENT,
   CHAT_MESSAGE_SENT_EVENT,
@@ -196,9 +197,9 @@ export default function ChatComposer({
     playerCharacterId: model.viewer.playerCharacterId,
   })
 
-  const playerHasCharacter = model.identity?.kind === "character"
-  const canCompose =
-    model.canWrite && (model.canManage || playerHasCharacter)
+  const presentation = chatRoomPresentationState(model)
+  const playerHasCharacter = presentation.identityKind === "character"
+  const canCompose = presentation.canCompose
 
   const selectedCharacterId = model.canManage
     ? speakers.selected.kind === "character"
@@ -365,7 +366,7 @@ export default function ChatComposer({
         ) : null}
 
         <div className="u1-chat-composer__row">
-          {model.canManage ? (
+          {presentation.showPersonaSelector ? (
             <div ref={speakerRef} className="u1-chat-composer__speaker">
               <button
                 ref={speakerTriggerRef}

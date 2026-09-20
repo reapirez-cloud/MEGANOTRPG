@@ -4,6 +4,7 @@ import ChatComposer from "./ChatComposer"
 import ChatFeed from "./ChatFeed"
 import ChatRoomFrame from "./ChatRoomFrame"
 import ChatRoomHeader from "./ChatRoomHeader"
+import { chatRoomPresentationState } from "./chatRoomPresentation"
 import { useChatRoomShell } from "./useChatRoomShell"
 import { useChatVisualViewportHeight } from "./useChatVisualViewport"
 import "./chat-room.css"
@@ -73,10 +74,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
     )
   }
 
-  const hasCharacterIdentity =
-    model.canWrite &&
-    model.identity?.kind === "character" &&
-    model.quickActions.hasCharacter
+  const presentation = chatRoomPresentationState(model)
 
   return (
     <main
@@ -84,14 +82,19 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
       data-chat-room-stage="8"
       data-chat-room-layout-stage="1"
       data-chat-room-header-stage="3"
+      data-chat-room-final-stage="6"
       data-room-type={model.roomType}
+      data-viewer-role={model.viewer.role}
+      data-owner={model.viewer.isOwner || undefined}
+      data-manager={model.canManage || undefined}
+      data-identity-kind={presentation.identityKind}
       data-has-identity={Boolean(model.identity) || undefined}
-      data-observer={!model.identity || undefined}
+      data-observer={presentation.identityKind === "observer" || undefined}
       data-read-only={model.readOnly || undefined}
       style={viewportStyle}
     >
       <ChatRoomFrame>
-      <header className="u1-room-topbar">
+        <header className="u1-room-topbar">
         <button
           type="button"
           className="u1-room-back"
@@ -117,21 +120,21 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
         {model.readOnly ? (
           <span className="u1-room-readonly">Архив</span>
         ) : null}
-      </header>
+        </header>
 
-      <div className="u1-room-frame__head" data-room-slot="fixed-head">
+        <div className="u1-room-frame__head" data-room-slot="fixed-head">
         <ChatRoomHeader
           model={model}
-          showQuickActions={hasCharacterIdentity}
+          showQuickActions={presentation.showQuickActions}
         />
-      </div>
+        </div>
 
-      <div className="u1-room-frame__feed" data-room-slot="feed">
-        <ChatFeed roomId={roomId} />
-      </div>
-      <div className="u1-room-frame__controls" data-room-slot="controls">
-        <ChatComposer model={model} />
-      </div>
+        <div className="u1-room-frame__feed" data-room-slot="feed">
+          <ChatFeed roomId={roomId} />
+        </div>
+        <div className="u1-room-frame__controls" data-room-slot="controls">
+          <ChatComposer model={model} />
+        </div>
       </ChatRoomFrame>
     </main>
   )
