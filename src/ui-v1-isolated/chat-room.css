@@ -540,3 +540,7 @@
     width: min(268px, calc(100% - 50px));
   }
 }
+
+.u1-chat-drawer[data-mode="workspace"] .u1-chat-drawer__body{padding:0;overflow:hidden;position:relative}
+.u1-chat-launcher__item:disabled{opacity:.34;cursor:default}
+.u1-chat-launcher__item:disabled .u1-chat-launcher__arrow{color:var(--u1-text-faint)}

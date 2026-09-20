@@ -12,6 +12,9 @@ export type ChatActionSection = {
   label: string
   hint: string
   icon: string
+  count?: number
+  disabled?: boolean
+  disabledReason?: string
 }
 
 export const CHAT_ACTION_SECTIONS: readonly ChatActionSection[] = [
@@ -91,14 +94,21 @@ export function ChatActionLauncher({
               type="button"
               className="u1-chat-launcher__item"
               role="menuitem"
-              onClick={() => onSelect(item.id)}
+              disabled={item.disabled}
+              aria-disabled={item.disabled || undefined}
+              title={item.disabled ? item.disabledReason : undefined}
+              onClick={() => {
+                if (!item.disabled) onSelect(item.id)
+              }}
             >
               <span className="u1-chat-launcher__icon" aria-hidden="true">{item.icon}</span>
               <span className="u1-chat-launcher__copy">
                 <strong>{item.label}</strong>
                 <small>{item.hint}</small>
               </span>
-              <span className="u1-chat-launcher__arrow" aria-hidden="true">›</span>
+              <span className="u1-chat-launcher__arrow" aria-hidden="true">
+                {item.count !== undefined ? item.count : "›"}
+              </span>
             </button>
           ))}
         </div>

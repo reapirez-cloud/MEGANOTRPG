@@ -3,6 +3,8 @@ import { useState } from "react"
 import type { ChatMessage } from "../types/chat"
 import { useSnake } from "./SnakeProvider"
 import { ChatActionLauncher, CHAT_ACTION_SECTIONS, type ChatActionSectionId } from "./chat/ChatActionLauncher"
+import { ChatActionWorkspace } from "./chat/ChatActionWorkspace"
+import { useUiV1ChatActorRuntime } from "./chat/useUiV1ChatActorRuntime"
 import { ChatDrawerHost } from "./chat/ChatDrawerHost"
 import { useChatDrawerRuntime } from "./chat/useChatDrawerRuntime"
 import { useUiV1ChatRoom, type UiV1ChatRoomSummary } from "./useUiV1ChatRoom"
@@ -72,23 +74,6 @@ function RoomContextStage2({ room }: { room: UiV1ChatRoomSummary }) {
           контекст конкретного персонажа на следующем функциональном этапе.
         </p>
       </section>
-    </div>
-  )
-}
-
-function ActionWorkspaceStage3({ sectionId }: { sectionId?: string }) {
-  const section = CHAT_ACTION_SECTIONS.find((item) => item.id === sectionId)
-
-  return (
-    <div className="u1-room-action-workspace" data-chat-drawer-workspace="stage-3">
-      <span aria-hidden="true">{section?.icon || "◇"}</span>
-      <small>Игровое действие</small>
-      <strong>{section?.label || "Действие"}</strong>
-      <p>
-        {section
-          ? `Раздел «${section.label}» выбран через компактный launcher. Реальные доступные действия и CE/Snake-интерфейс подключаются на этапе 4.`
-          : "Выберите раздел через «+». Реальный список действий подключается на этапе 4."}
-      </p>
     </div>
   )
 }
@@ -186,12 +171,13 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
   const drawers = useChatDrawerRuntime()
   const [launcherOpen, setLauncherOpen] = useState(false)
   const data = useUiV1ChatRoom(roomId)
+  const gameplay = useUiV1ChatActorRuntime(launcherOpen || drawers.session?.mode === "workspace")
 
   if (data.loading && !data.room) return <LoadingState />
 
   if (!data.room) {
     return (
-      <main className="u1-room" data-chat-room-stage="3">
+      <main className="u1-room" data-chat-room-stage="4">
         <section className="u1-room-state" role="alert">
           <span aria-hidden="true">!</span>
           <strong>Чат не открылся</strong>
@@ -206,6 +192,44 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
   }
 
   const room = data.room
+  const actionSections = CHAT_ACTION_SECTIONS.map((item) => {
+    if (item.id === "roll") return { ...item }
+
+    const contract = gameplay.contract
+    const noActor = !gameplay.characterId
+    const count = item.id === "skill"
+      ? Object.keys(contract?.skills || {}).length
+      : item.id === "action"
+        ? (contract?.actions || []).filter((action) =>
+            !action.sources.some((ref) =>
+              ref.source.sourceType === "inventory_item" ||
+              ref.source.id.startsWith("item:"),
+            ) &&
+            !action.tags.includes("spell_modifier"),
+          ).length
+        : item.id === "item"
+          ? (contract?.actions || []).filter((action) =>
+              action.sources.some((ref) =>
+                ref.source.sourceType === "inventory_item" ||
+                ref.source.id.startsWith("item:"),
+              ),
+            ).length
+          : contract?.spells.length || 0
+
+    return {
+      ...item,
+      count,
+      disabled: noActor || gameplay.loading || count === 0,
+      disabledReason: noActor
+        ? "Сначала выберите персонажа."
+        : gameplay.loading
+          ? "Собираем данные персонажа."
+          : count === 0
+            ? "В resolved-персонаже этот раздел пуст."
+            : undefined,
+    }
+  })
+
   const openDeferred = (title: string, body: string) => {
     snake.openSurface({
       kind: "placeholder",
@@ -217,7 +241,7 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
   }
 
   return (
-    <main className="u1-room" data-chat-room-stage="3">
+    <main className="u1-room" data-chat-room-stage="4">
       <header className="u1-room-header">
         <button type="button" className="u1-room-header__back" aria-label="Назад к чатам" onClick={onBack}>‹</button>
         <div className="u1-room-header__copy">
@@ -299,10 +323,10 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
 
       <ChatActionLauncher
         open={launcherOpen}
-        items={CHAT_ACTION_SECTIONS}
+        items={actionSections}
         onClose={() => setLauncherOpen(false)}
         onSelect={(section: ChatActionSectionId) => {
-          const item = CHAT_ACTION_SECTIONS.find((candidate) => candidate.id === section)
+          const item = actionSections.find((candidate) => candidate.id === section)
           if (!item) return
           setLauncherOpen(false)
           drawers.openWorkspace({
@@ -317,7 +341,12 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
       <ChatDrawerHost session={drawers.session} onClose={drawers.close}>
         {drawers.session?.mode === "context"
           ? <RoomContextStage2 room={room} />
-          : <ActionWorkspaceStage3 sectionId={drawers.session?.contentKey} />}
+          : <ChatActionWorkspace
+              roomId={roomId}
+              sectionId={drawers.session?.contentKey}
+              runtime={gameplay}
+              onExecuted={drawers.close}
+            />}
       </ChatDrawerHost>
     </main>
   )
