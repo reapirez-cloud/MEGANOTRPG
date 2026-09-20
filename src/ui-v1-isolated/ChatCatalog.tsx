@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState, type CSSProperties } from "react"
 
 import {
   filterChatCatalogRooms,
@@ -42,12 +42,28 @@ function ChatArt({
   room,
   fallback,
   className = "u1-chat-art",
+  usePresentation = false,
 }: {
   room: ChatRoom
   fallback: string
   className?: string
+  usePresentation?: boolean
 }) {
   const [failed, setFailed] = useState(false)
+  const crop = usePresentation ? room.avatar_presentation?.crop : null
+  const imageStyle: CSSProperties | undefined = crop
+    ? {
+        position: "absolute",
+        width: `${100 / crop.width}%`,
+        height: `${100 / crop.height}%`,
+        left: `${(-100 * crop.x) / crop.width}%`,
+        top: `${(-100 * crop.y) / crop.height}%`,
+        right: "auto",
+        bottom: "auto",
+        maxWidth: "none",
+        objectFit: "fill",
+      }
+    : undefined
 
   return (
     <span className={className} aria-hidden="true">
@@ -57,6 +73,7 @@ function ChatArt({
           alt=""
           decoding="async"
           loading="lazy"
+          style={imageStyle}
           onError={() => setFailed(true)}
         />
       ) : (
@@ -269,7 +286,7 @@ export default function ChatCatalog() {
           title={room.title}
         >
           <span className="u1-chat-card__media">
-            <ChatArt room={room} fallback={fallback} />
+            <ChatArt room={room} fallback={fallback} usePresentation />
           </span>
           <span className="u1-chat-card__shade" aria-hidden="true" />
 
