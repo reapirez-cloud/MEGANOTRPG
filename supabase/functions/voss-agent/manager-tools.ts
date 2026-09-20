@@ -564,6 +564,147 @@ async function updateLocation(
   return { location: data, canonical_state_changed: true }
 }
 
+async function batchLocationChanges(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const operations = Array.isArray(args.operations)
+    ? args.operations.slice(0, 24)
+    : []
+  if (!operations.length) return { error: "location_operations_required" }
+
+  const declaredRefs = new Set<string>()
+  for (let index = 0; index < operations.length; index += 1) {
+    const raw = operations[index]
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return { error: "location_operation_invalid", failed_index: index }
+    }
+    const operation = raw as JsonRecord
+    const op = operation.op === "create" || operation.op === "update"
+      ? operation.op
+      : ""
+    if (!op) return { error: "location_operation_kind_invalid", failed_index: index }
+
+    const ref = text(operation.ref, 80)
+    if (ref) {
+      if (declaredRefs.has(ref)) {
+        return { error: "location_operation_ref_duplicate", failed_index: index, ref }
+      }
+      declaredRefs.add(ref)
+    }
+
+    if (op === "create" && !text(operation.name, 160)) {
+      return { error: "location_name_required", failed_index: index }
+    }
+
+    if (
+      op === "update" &&
+      !uuid(operation.location_id) &&
+      !text(operation.location_ref, 80)
+    ) {
+      return { error: "location_id_required", failed_index: index }
+    }
+  }
+
+  const refs = new Map<string, string>()
+  const results: JsonRecord[] = []
+
+  for (let index = 0; index < operations.length; index += 1) {
+    const operation = operations[index] as JsonRecord
+    const op = operation.op as "create" | "update"
+    const ref = text(operation.ref, 80)
+    const callArgs: JsonRecord = {}
+
+    for (const key of [
+      "location_id",
+      "parent_location_id",
+      "name",
+      "summary",
+      "description",
+      "visibility_mode",
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(operation, key)) {
+        callArgs[key] = operation[key]
+      }
+    }
+
+    const parentRef = text(operation.parent_ref, 80)
+    if (parentRef) {
+      const parentId = refs.get(parentRef)
+      if (!parentId) {
+        return {
+          error: "location_parent_ref_unresolved",
+          failed_index: index,
+          parent_ref: parentRef,
+          applied: results,
+        }
+      }
+      callArgs.parent_location_id = parentId
+    }
+
+    if (op === "update") {
+      const locationRef = text(operation.location_ref, 80)
+      if (locationRef) {
+        const locationId = refs.get(locationRef)
+        if (!locationId) {
+          return {
+            error: "location_ref_unresolved",
+            failed_index: index,
+            location_ref: locationRef,
+            applied: results,
+          }
+        }
+        callArgs.location_id = locationId
+      }
+    }
+
+    const result = op === "create"
+      ? await createLocation(context, callArgs)
+      : await updateLocation(context, callArgs)
+
+    const resultRecord =
+      result && typeof result === "object" && !Array.isArray(result)
+        ? result as JsonRecord
+        : { error: "location_operation_invalid_result" }
+
+    if (typeof resultRecord.error === "string" || resultRecord.not_found === true) {
+      return {
+        error:
+          typeof resultRecord.error === "string"
+            ? resultRecord.error
+            : "location_not_found",
+        failed_index: index,
+        applied: results,
+        partial_applied: results.length > 0,
+      }
+    }
+
+    const location =
+      resultRecord.location &&
+      typeof resultRecord.location === "object" &&
+      !Array.isArray(resultRecord.location)
+        ? resultRecord.location as JsonRecord
+        : null
+    const locationId =
+      location && typeof location.id === "string" ? location.id : ""
+
+    if (ref && locationId) refs.set(ref, locationId)
+    results.push({
+      index,
+      op,
+      ref: ref || null,
+      location: location || null,
+    })
+  }
+
+  return {
+    canonical_state_changed: true,
+    applied_count: results.length,
+    applied: results,
+    refs: Object.fromEntries(refs),
+  }
+}
+
 async function deleteLocation(
   context: VossManagerToolContext,
   args: JsonRecord,
@@ -634,6 +775,7 @@ export async function executeVossManagerTool(
     if (name === "delete_campaign_character") return await deleteCampaignCharacter(context, args)
     if (name === "create_location") return await createLocation(context, args)
     if (name === "update_location") return await updateLocation(context, args)
+    if (name === "batch_location_changes") return await batchLocationChanges(context, args)
     if (name === "set_location_archived") return await setLocationArchived(context, args)
     if (name === "delete_location") return await deleteLocation(context, args)
     return { error: "unknown_manager_tool" }
