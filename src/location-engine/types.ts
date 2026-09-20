@@ -97,6 +97,7 @@ export type LarisaCommand =
   | { kind: "world.discover_location"; context: EngineCommandContext; characterId: string; locationId: string; discovered: boolean }
   | { kind: "world.set_character_position"; context: EngineCommandContext; characterId: string; locationId: string | null; campaignDay: number; dayPeriod: DayPeriod }
   | { kind: "world.scene_create"; context: EngineCommandContext; input: GameSceneCreateInput }
+  | { kind: "world.scene_delete"; context: EngineCommandContext; roomId: string }
   | { kind: "world.scene_move_character"; context: EngineCommandContext; characterId: string; roomId: string | null; syncLocation: boolean; syncTime: boolean }
   | { kind: "world.set_scene_position"; context: EngineCommandContext; roomId: string; locationId: string | null; campaignDay: number; dayPeriod: DayPeriod }
   | { kind: "world.set_scene_participants"; context: EngineCommandContext; roomId: string; characterIds: string[] }
