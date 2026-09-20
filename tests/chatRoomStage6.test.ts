@@ -7,7 +7,7 @@ const eventsPath = new URL("../src/ui-v1-isolated/chat-room/useChatRoomEvents.ts
 const composerPath = new URL("../src/ui-v1-isolated/chat-room/ChatComposer.tsx", import.meta.url)
 const viewportPath = new URL("../src/ui-v1-isolated/chat-room/useChatVisualViewport.ts", import.meta.url)
 const roomPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomScreen.tsx", import.meta.url)
-const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room-stage1.css", import.meta.url)
+const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room.css", import.meta.url)
 
 test("stage 6 follows new messages only when appropriate", async () => {
   const feed = await readFile(feedPath, "utf8")
@@ -67,7 +67,7 @@ test("stage 6 tracks mobile visual viewport for the keyboard", async () => {
   assert.match(viewport, /addEventListener\("scroll"/)
   assert.match(room, /useChatVisualViewportHeight/)
   assert.match(room, /--u1-chat-viewport-height/)
-  assert.match(room, /data-chat-room-stage="7"/)
+  assert.match(room, /data-chat-room-stage="8"/)
 })
 
 test("stage 6 uses a shared motion layer and respects reduced motion", async () => {
