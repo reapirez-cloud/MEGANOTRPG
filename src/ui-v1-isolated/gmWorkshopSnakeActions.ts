@@ -670,7 +670,7 @@ export function createWorkshopMemberAssignAction({
     disabledReason: "Нет свободных живых PC.",
     surface: {
       kind: "picker",
-      eyebrow: "Партия",
+      eyebrow: "Участники",
       title: "Назначить персонажа · " + member.displayName,
       items: freePc.map((character) => ({
         id: character.id,
@@ -691,6 +691,54 @@ export function createWorkshopMemberAssignAction({
   }
 }
 
+export function createWorkshopMemberSetActiveAction({
+  member,
+  character,
+  operations,
+}: {
+  member: WorkshopMember
+  character: WorkshopCharacter
+  operations: WorkshopOperations
+}): SnakeAction {
+  const isActive = member.activeCharacterId === character.id
+  return {
+    id: "active-" + character.id,
+    label: isActive ? "Снять активность" : "Сделать активным",
+    enabled: character.lifeState === "alive",
+    disabledReason: "Мёртвый персонаж не может быть активным.",
+    execute: async () => {
+      const response = await operations.setActiveCharacter(
+        member.userId,
+        isActive ? null : character.id,
+      )
+      return actionResult(
+        response.ok,
+        response.error,
+        isActive ? "Активный персонаж снят." : "Активный персонаж изменён.",
+      )
+    },
+  }
+}
+
+export function createWorkshopMemberClearActiveAction({
+  member,
+  operations,
+}: {
+  member: WorkshopMember
+  operations: WorkshopOperations
+}): SnakeAction {
+  return {
+    id: "clear-active",
+    label: "Снять активность",
+    enabled: Boolean(member.activeCharacterId),
+    disabledReason: "Активный персонаж не выбран.",
+    execute: async () => {
+      const response = await operations.setActiveCharacter(member.userId, null)
+      return actionResult(response.ok, response.error, "Активный персонаж снят.")
+    },
+  }
+}
+
 export function createWorkshopMemberRoleAction({
   member,
   operations,
@@ -704,7 +752,7 @@ export function createWorkshopMemberRoleAction({
     label: nextRole === "gm" ? "Сделать GM" : "Сделать игроком",
     surface: {
       kind: "confirm",
-      eyebrow: "Партия · роль",
+      eyebrow: "Участники · роль",
       title: member.displayName,
       body: nextRole === "gm"
         ? "Игрок получит полномочия GM в кампании. Владение кампанией это не меняет."
@@ -758,30 +806,23 @@ export function createWorkshopMemberActions({
       label: "Активный персонаж",
       kind: "branch",
       children: [
-        ...livingAssigned.map((character): SnakeAction => ({
-          id: "active-" + character.id,
-          label: member.activeCharacterId === character.id
-            ? "✓ " + character.name
-            : character.name,
-          enabled: member.activeCharacterId !== character.id,
-          disabledReason: "Этот персонаж уже активен.",
-          execute: async () => {
-            const response = await operations.setActiveCharacter(
-              member.userId,
-              character.id,
-            )
-            return actionResult(response.ok, response.error, "Активный персонаж изменён.")
-          },
-        })),
+        ...livingAssigned.map((character): SnakeAction => {
+          const action = createWorkshopMemberSetActiveAction({
+            member,
+            character,
+            operations,
+          })
+          return {
+            ...action,
+            label: member.activeCharacterId === character.id
+              ? "✓ " + character.name
+              : character.name,
+            enabled: member.activeCharacterId !== character.id,
+            disabledReason: "Этот персонаж уже активен.",
+          }
+        }),
         ...(member.activeCharacterId
-          ? [{
-              id: "clear-active",
-              label: "Снять активность",
-              execute: async () => {
-                const response = await operations.setActiveCharacter(member.userId, null)
-                return actionResult(response.ok, response.error, "Активный персонаж снят.")
-              },
-            } satisfies SnakeAction]
+          ? [createWorkshopMemberClearActiveAction({ member, operations })]
           : []),
       ],
     })
@@ -815,7 +856,7 @@ export function createWorkshopMemberActions({
       tone: "danger",
       surface: {
         kind: "confirm",
-        eyebrow: "Партия",
+        eyebrow: "Участники",
         title: "Удалить «" + member.displayName + "» из кампании?",
         body: "Все назначенные этому участнику PC станут свободными. Сам участник потеряет доступ к кампании.",
         confirmLabel: "Удалить участника",
@@ -867,7 +908,7 @@ export function createWorkshopInviteActions({
       tone: "danger",
       surface: {
         kind: "confirm",
-        eyebrow: "Партия",
+        eyebrow: "Участники",
         title: "Отозвать код " + invite.code + "?",
         body: "После отзыва по этому коду больше нельзя будет вступить в кампанию.",
         confirmLabel: "Отозвать",
@@ -884,7 +925,7 @@ export function createWorkshopInviteActions({
     label: invite ? "Создать новый код" : "Создать код",
     surface: {
       kind: "editor",
-      eyebrow: "Партия",
+      eyebrow: "Участники",
       title: invite ? "Новый код приглашения" : "Создать приглашение",
       fields: [
         { id: "maxUses", label: "Лимит использований", type: "number", required: true },
