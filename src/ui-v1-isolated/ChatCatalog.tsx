@@ -13,7 +13,7 @@ import {
 } from "../chat/catalogPresentation"
 import type { ChatRoom } from "../types/chat"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
-import { chatRoomOpenSurface, createChatRoomSnakeActions } from "./chatSnakeActions"
+import { createChatRoomSnakeActions } from "./chatSnakeActions"
 import { useUiV1ChatCatalog } from "./useUiV1ChatCatalog"
 import "./chat-catalog.css"
 
@@ -100,7 +100,7 @@ function Skeleton() {
   )
 }
 
-export default function ChatCatalog() {
+export default function ChatCatalog({ onOpenRoom }: { onOpenRoom: (roomId: string) => void }) {
   const data = useUiV1ChatCatalog()
   const snake = useSnake()
   const [searchOpen, setSearchOpen] = useState(false)
@@ -204,7 +204,7 @@ export default function ChatCatalog() {
   }
 
   function openRoom(room: ChatRoom) {
-    snake.openSurface(chatRoomOpenSurface(room))
+    onOpenRoom(room.id)
   }
 
   function roomSnakeActions(room: ChatRoom) {
@@ -218,6 +218,7 @@ export default function ChatCatalog() {
       room,
       details,
       canManage: data.canManage,
+      openRoom: () => openRoom(room),
       setPreview: (input) => data.setRoomPreview(room, input),
       deleteScene: () => data.deleteScene(room),
     })

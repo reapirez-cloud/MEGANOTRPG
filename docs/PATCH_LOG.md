@@ -11,6 +11,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- UI 1.0 chat cards now open a real Stage 1 inner chat shell instead of the old placeholder. The room uses the MEGANOT graphite/charcoal language, a compact header, real RLS-visible message history, and a restrained bottom composer with identity, `+`, attachment, input and send positions; no permanent oversized Skills/Spells action block is mounted in the chat.
+- The inner chat occupies the full UI stage without the global bottom dock. The top context control and composer actions are present as clean connection points for the upcoming dual right-drawer/action-launcher stages rather than reviving legacy bottom sheets.
 - Chats restores the compact **9:16 portrait-card** layout for personal histories and now uses the same card geometry for active scenes and completed rooms. Artwork fills the entire card while title, factual context, message preview, activity and unread state live in a dedicated readable overlay layer; Flood remains compact.
 - Chat-room Snake actions are now real management tools for GM/Owner: a personal history or scene can receive/replace its preview artwork through the shared 9:16 Media surface, while **Delete** exists only for scenes. Personal histories never expose a delete action.
 
@@ -25,6 +27,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added the hard-isolated `#/chats/:roomId` route, `UiV1ChatRoom` shell and `useUiV1ChatRoom` adapter. The adapter reads `chat_rooms` / the latest 120 `chat_messages` under existing RLS and refreshes on room/message Realtime changes; it does not import the legacy `pages/ChatRoom`, CharacterContext or legacy chat CSS.
+- Chat-room ordinary tap and Snake `Открыть` now converge on the same real UI 1.0 route. Deferred event creation remains a Snake placeholder; gameplay action launcher, context drawer and 90% action workspace drawer stay intentionally deferred to their dedicated stages.
 - Scene deletion follows the named-engine path `Snake -> Oracle -> Larisa -> delete_game_scene_v1`; React does not delete `chat_rooms` directly. Preview artwork remains a presentation mutation and is registered in the shared media asset/binding system instead of becoming a second chat-specific image store.
 - The catalog adapter now reads saved chat-room media presentations, resolves private campaign media, and reapplies the normalized crop to the 9:16 card renderer. The three card sections reuse one `portraitCard` component rather than separate personal/event/archive visual implementations.
 
@@ -39,6 +43,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Added Stage 1 chat-room regressions for real isolated routing, legacy-tree exclusion, RLS/Realtime message reads, full-stage/no-dock geometry, compact graphite composer and the absence of the old persistent Skills/Spells action block.
 - Updated UI 1.0 chat regressions to lock shared 9:16 full-bleed cards, the explicit text-overlay layer, Snake preview composition, scene-only deletion, Oracle/Larisa routing and the server-side non-scene delete guard.
 
 - Added regressions covering positive draw commands and non-generating discussion/negation/quoted-command cases, plus a source guard requiring `generate_image` to stay unpublished before explicit intent.

@@ -1,7 +1,6 @@
 import type {
   SnakeAction,
   SnakeActionInput,
-  SnakeSurfaceRequest,
 } from "../snake-engine"
 import type { ChatRoom } from "../types/chat"
 
@@ -22,27 +21,18 @@ function mutationResult(response: MutationResult, notice: string) {
       }
 }
 
-export function chatRoomOpenSurface(room: ChatRoom): SnakeSurfaceRequest {
-  return {
-    kind: "placeholder",
-    eyebrow: roomKind(room),
-    title: room.title,
-    body:
-      "Внутренний игровой диалог подключается отдельным этапом. Комната и сообщения остаются без изменений.",
-    size: { width: "compact", height: "content" },
-  }
-}
-
 export function createChatRoomSnakeActions({
   room,
   details,
   canManage,
+  openRoom,
   setPreview,
   deleteScene,
 }: {
   room: ChatRoom
   details: string
   canManage: boolean
+  openRoom: () => void
   setPreview: (input: SnakeActionInput) => Promise<MutationResult>
   deleteScene: () => Promise<MutationResult>
 }): SnakeAction[] {
@@ -51,7 +41,10 @@ export function createChatRoomSnakeActions({
       id: "open",
       label: "Открыть",
       group: "primary",
-      surface: chatRoomOpenSurface(room),
+      execute: () => {
+        openRoom()
+        return { type: "success" as const }
+      },
     },
     {
       id: "details",
