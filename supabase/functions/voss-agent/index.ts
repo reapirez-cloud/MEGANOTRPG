@@ -529,6 +529,81 @@ Deno.serve(async (req: Request) => {
   const actorRole = authority
   const canManage = canManageCampaignWithVoss(authority)
 
+  if (continuationJobId) {
+    if (authority === "player") {
+      return reply({ error: "freddy_continuation_requires_manager" }, 403)
+    }
+
+    const { data: turnJob, error: turnJobError } = await admin
+      .from("agent_jobs")
+      .select("id,thread_id,status,input,result,error_code,error_message")
+      .eq("id", continuationJobId)
+      .eq("campaign_id", campaignId)
+      .eq("requested_by", user.id)
+      .eq("job_type", "conversation_turn")
+      .maybeSingle()
+
+    if (turnJobError) return reply({ error: turnJobError.message }, 500)
+    if (!turnJob) return reply({ error: "freddy_turn_not_found" }, 404)
+    if (turnJob.status === "completed" || turnJob.status === "cancelled") {
+      return reply({
+        accepted: true,
+        jobId: turnJob.id,
+        status: turnJob.status,
+      }, 200)
+    }
+    if (turnJob.status === "failed") {
+      return reply({
+        error: turnJob.error_message || "freddy_turn_failed",
+        code: turnJob.error_code || "freddy_turn_failed",
+      }, 409)
+    }
+
+    continuationJobInput =
+      turnJob.input && typeof turnJob.input === "object" &&
+        !Array.isArray(turnJob.input)
+        ? turnJob.input as JsonRecord
+        : {}
+    continuationJobResult =
+      turnJob.result && typeof turnJob.result === "object" &&
+        !Array.isArray(turnJob.result)
+        ? turnJob.result as JsonRecord
+        : {}
+
+    const originalMessage =
+      typeof continuationJobInput.original_message === "string"
+        ? continuationJobInput.original_message.trim()
+        : ""
+    if (!originalMessage) {
+      return reply({ error: "freddy_turn_message_missing" }, 409)
+    }
+
+    message = originalMessage
+    requestedThreadId =
+      typeof turnJob.thread_id === "string" ? turnJob.thread_id : ""
+    viewContext = cleanContext(continuationJobInput.view_context)
+
+    await admin
+      .from("agent_jobs")
+      .update({
+        status: "running",
+        started_at:
+          typeof continuationJobInput.started_at === "string"
+            ? continuationJobInput.started_at
+            : new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", continuationJobId)
+  }
+
+  const mechanicsAuthoringRequested = isMechanicsAuthoringRequest(message)
+  const imageGenerationRequested = isExplicitImageGenerationRequest(message)
+  const pureConversationRequested = isPureConversationRequest(message)
+  const imageWorkflowRequested = isImageWorkflowRequest(message)
+  const managerMutationRequested = isManagerMutationRequest(message)
+  const adminWorkflowRequested = isAdminWorkflowRequest(message)
+  const inventoryWorkflowRequested = isInventoryWorkflowRequest(message)
+
   if (authority === "player") {
     try {
       const existingBlock = await getPlayerVossBlock(admin, campaignId, user.id)
