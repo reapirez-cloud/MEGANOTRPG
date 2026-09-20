@@ -93,3 +93,6 @@ export type ChatSpeakerOption =
       name: string
       avatarUrl: string | null
     }
+
+
+export const CHAT_MESSAGE_SENT_EVENT = "meganotrpg:chat-message-sent"
