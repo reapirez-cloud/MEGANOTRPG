@@ -112,6 +112,7 @@ export class OracleEngine {
 
     this.world = {
       createScene: (context, input) => direct(context, () => dependencies.larisa.execute({ kind: "world.scene_create", context, input })),
+      deleteScene: (context, roomId) => direct(context, () => dependencies.larisa.execute({ kind: "world.scene_delete", context, roomId })),
       moveCharacterToScene: (context, characterId, roomId, options = {}) => direct(context, () => dependencies.larisa.execute({
         kind: "world.scene_move_character",
         context,
