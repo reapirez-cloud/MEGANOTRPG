@@ -173,6 +173,19 @@ export class MemoryShapoklyakStorage implements ShapoklyakStorage {
     let after: CharacterEntity
     if (command.kind === "entity.update") {
       after = { ...before, ...command.input, assigned_user_id: command.input.character_type === "npc" ? null : command.input.assigned_user_id, updated_at: command.context.occurredAt }
+    } else if (command.kind === "entity.convert_type") {
+      after = {
+        ...before,
+        character_type: command.characterType,
+        assigned_user_id: null,
+        visibility: before.publication_state === "draft" ? "private" : "campaign",
+        visibility_mode: before.publication_state === "draft"
+          ? "private"
+          : command.characterType === "npc"
+            ? command.npcVisibilityMode || "discover"
+            : "always",
+        updated_at: command.context.occurredAt,
+      }
     } else if (command.kind === "entity.set_life_state") {
       after = { ...before, life_state: command.lifeState, died_at: command.lifeState === "dead" ? command.context.occurredAt : null, updated_at: command.context.occurredAt }
     } else if (command.kind === "entity.set_publication_state") {
@@ -192,6 +205,21 @@ export class MemoryShapoklyakStorage implements ShapoklyakStorage {
       throw new EngineCommandError("entity.unsupported_command", `Unsupported Shapoklyak command: ${command satisfies never}`)
     }
     this.entities.set(characterId, after)
+
+    const invalidActive =
+      after.life_state === "dead" ||
+      after.publication_state === "draft" ||
+      after.character_type !== "pc" ||
+      after.assigned_user_id === null
+    for (const [userId, activeCharacterId] of this.activeByUser) {
+      if (
+        activeCharacterId === characterId &&
+        (invalidActive || userId !== after.assigned_user_id)
+      ) {
+        this.activeByUser.set(userId, null)
+      }
+    }
+
     return {
       kind: command.kind,
       characterIds: [characterId],
