@@ -34,22 +34,25 @@ test("provider requests have bounded latency and retry only transient failures",
   assert.match(gateway, /retryCount \?\? 1/)
 })
 
-test("Voss publishes tools by task instead of one giant always-on toolbox", () => {
+test("Voss/Freddy publishes narrow read tools and capability-gated mutation tools", () => {
   const edge = read("supabase/functions/voss-agent/index.ts")
+  const broker = read("supabase/functions/voss-agent/capability-broker.ts")
 
   assert.match(edge, /const scopedReadTools/)
   assert.match(edge, /const scopedMemoryReadTools/)
-  assert.match(edge, /const scopedImageTools/)
-  assert.match(edge, /const scopedManagerTools/)
-  assert.match(edge, /const scopedDraftTools/)
-  assert.match(edge, /const scopedAdminTools/)
+  assert.match(edge, /const toolsForGrantedCapabilities/)
+  assert.match(edge, /FREDDY_CAPABILITY_TOOL/)
+  assert.match(edge, /grantedCapabilities\.has\("campaign\.manage"\)/)
+  assert.match(edge, /grantedCapabilities\.has\("content\.write"\)/)
+  assert.match(edge, /grantedCapabilities\.has\("system\.admin"\) && authority === "admin"/)
+  assert.match(edge, /const buildAvailableTools/)
+  assert.match(edge, /name === "generate_image" && !imageGenerationRequested/)
   assert.match(edge, /const imageWorkflowInstructions/)
   assert.match(edge, /const memoryWorkflowInstructions/)
   assert.match(edge, /const draftWorkflowInstructions/)
-  assert.doesNotMatch(
-    edge,
-    /const availableTools = supportsReadTools\s*\? \[\s*\.\.\.VOSS_READ_TOOLS,\s*\.\.\.VOSS_MEMORY_READ_TOOLS,\s*\.\.\.VOSS_IMAGE_TOOLS/,
-  )
+  assert.match(broker, /if \(authority === "admin"\) return ADMIN_CAPABILITIES/)
+  assert.match(broker, /if \(authority === "gm"\) return GM_CAPABILITIES/)
+  assert.match(broker, /return new Set<FreddyCapability>\(\)/)
 })
 
 test("pending replies use a lightweight message-tail poll and lock thread mutations", () => {
