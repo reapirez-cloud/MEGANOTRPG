@@ -822,13 +822,21 @@ Deno.serve(async (req: Request) => {
 
   const { data: recentRows, error: historyError } = await admin
     .from("ai_messages")
-    .select("role,body")
+    .select("id,role,body")
     .eq("thread_id", threadId)
     .order("id", { ascending: false })
     .limit(24)
 
   if (historyError) return reply({ error: historyError.message }, 500)
-  const history = [...(recentRows || [])].reverse()
+  const historyRows = [...(recentRows || [])].reverse()
+  const continuationUserMessageId = Number(
+    continuationJobInput?.user_message_id || 0,
+  )
+  const history = continuationJobId
+    ? historyRows.filter(
+        (row) => Number(row.id) !== continuationUserMessageId,
+      )
+    : historyRows
 
   let persistedUserMessage: { id: number; created_at?: string } | null = null
 
@@ -1402,6 +1410,14 @@ Deno.serve(async (req: Request) => {
           routeDecision.routeMode === "owner_override",
       })
     } catch (error) {
+      const failureDetail =
+        error instanceof Error ? error.message : String(error)
+      if (activeTurnJobId) {
+        await persistTurnProgress("failed", {
+          failure_stage: "provider_request",
+          failure_detail: failureDetail.slice(0, 1000),
+        })
+      }
       if (error instanceof ProviderGatewayError) {
         return reply({
           error: error.message,
@@ -1413,7 +1429,7 @@ Deno.serve(async (req: Request) => {
       }
       return reply({
         error: "AI provider request failed",
-        detail: error instanceof Error ? error.message : String(error),
+        detail: failureDetail,
       }, 502)
     }
     lastProviderPayload = providerPayload
@@ -1789,6 +1805,11 @@ Deno.serve(async (req: Request) => {
   }
 
   if (!answer) {
+    if (activeTurnJobId) {
+      await persistTurnProgress("failed", {
+        failure_stage: "empty_answer",
+      })
+    }
     return reply({ error: "AI provider returned an empty answer" }, 502)
   }
 
@@ -1800,7 +1821,15 @@ Deno.serve(async (req: Request) => {
     task_key: routeDecision.taskKey,
     view_context: {},
   })
-  if (saveError) return reply({ error: saveError.message }, 500)
+  if (saveError) {
+    if (activeTurnJobId) {
+      await persistTurnProgress("failed", {
+        failure_stage: "save_answer",
+        failure_detail: saveError.message.slice(0, 1000),
+      })
+    }
+    return reply({ error: saveError.message }, 500)
+  }
 
   if (activeTurnJobId) {
     await persistTurnProgress("completed", {
