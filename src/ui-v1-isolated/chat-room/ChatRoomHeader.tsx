@@ -1,5 +1,11 @@
-import type { ChatRoomShellModel } from "./chatRoomContracts"
-import { chatRoomDayPeriodLabel } from "./chatRoomContracts"
+import type {
+  ChatActionLauncherMode,
+  ChatRoomShellModel,
+} from "./chatRoomContracts"
+import {
+  CHAT_ACTION_REQUEST_EVENT,
+  chatRoomDayPeriodLabel,
+} from "./chatRoomContracts"
 
 type QuickActionId = "inventory" | "class" | "spells" | "attack"
 
@@ -138,15 +144,21 @@ function SceneContext({ model }: { model: ChatRoomShellModel }) {
 
 function QuickActions({
   hasEquippedWeapon,
+  roomId,
 }: {
   hasEquippedWeapon: boolean
+  roomId: string
 }) {
-  const actions: Array<{ id: QuickActionId; label: string }> = [
-    { id: "inventory", label: "Инвентарь" },
-    { id: "class", label: "Классовые умения" },
-    { id: "spells", label: "Заклинания" },
+  const actions: Array<{
+    id: QuickActionId
+    label: string
+    mode: ChatActionLauncherMode
+  }> = [
+    { id: "inventory", label: "Инвентарь", mode: "item" },
+    { id: "class", label: "Классовые умения", mode: "ability" },
+    { id: "spells", label: "Заклинания", mode: "spell" },
     ...(hasEquippedWeapon
-      ? [{ id: "attack" as const, label: "Атака" }]
+      ? [{ id: "attack" as const, label: "Атака", mode: "action" as const }]
       : []),
   ]
 
@@ -162,10 +174,16 @@ function QuickActions({
           type="button"
           className="u1-room-quick-action"
           data-action={action.id}
-          data-placeholder="true"
-          aria-label={action.label + " — будет подключено на этапе действий"}
+          data-action-mode={action.mode}
+          aria-label={"Открыть: " + action.label}
           title={action.label}
-          onClick={() => undefined}
+          onClick={() => {
+            window.dispatchEvent(
+              new CustomEvent(CHAT_ACTION_REQUEST_EVENT, {
+                detail: { roomId, mode: action.mode },
+              }),
+            )
+          }}
         >
           <span className="u1-room-quick-action__icon">
             <QuickActionIcon action={action.id} />
@@ -249,6 +267,7 @@ export default function ChatRoomHeader({
 
       {showQuickActions ? (
         <QuickActions
+          roomId={model.roomId}
           hasEquippedWeapon={model.quickActions.hasEquippedWeapon}
         />
       ) : null}
