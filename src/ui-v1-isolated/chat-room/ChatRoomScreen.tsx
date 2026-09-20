@@ -123,10 +123,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
         </header>
 
         <div className="u1-room-frame__head" data-room-slot="fixed-head">
-        <ChatRoomHeader
-          model={model}
-          showQuickActions={presentation.showQuickActions}
-        />
+        <ChatRoomHeader model={model} />
         </div>
 
         <div className="u1-room-frame__feed" data-room-slot="feed">
