@@ -65,6 +65,6 @@ test("stage 5 speaker change refreshes header without full-screen loading", asyn
 test("stage 5 mounts the composer after the real feed", async () => {
   const room = await readFile(roomPath, "utf8")
 
-  assert.match(room, /data-chat-room-stage="5"/)
+  assert.match(room, /data-chat-room-stage="6"/)
   assert.match(room, /<ChatFeed roomId=\{roomId\} \/>[\s\S]*<ChatComposer model=\{model\} \/>/)
 })
