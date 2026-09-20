@@ -115,7 +115,7 @@ export default function ChatGameEventCard({ event }: { event: UiChatEvent }) {
                   {resource.amount !== null ? "−" + resource.amount : "Расход"}
                 </strong>
                 {resource.current !== null && resource.max !== null ? (
-                  <small>{resource.current} / {resource.max}</small>
+                  <small>Состояние {resource.current} / {resource.max}</small>
                 ) : null}
               </div>
             ))}
