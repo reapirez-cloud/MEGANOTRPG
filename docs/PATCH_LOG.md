@@ -44,6 +44,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Tests / verification
 
 - Added Stage 1 chat-room regressions for real isolated routing, legacy-tree exclusion, RLS/Realtime message reads, full-stage/no-dock geometry, compact graphite composer and the absence of the old persistent Skills/Spells action block.
+- Stage 1 verification on commit `4772e79318be13fb3525c50eb98f36f3ae670b0f`: Build and Lint passed, and all new/updated UI 1.0 chat regressions passed. The repository-wide Test job remains red on 12 pre-existing Voss/Freddy AI regressions; parent `dev` commit `8d5e4368c5a6fc4b1a10478bd58711592e76f722` was already failing CI before this chat work.
 - Updated UI 1.0 chat regressions to lock shared 9:16 full-bleed cards, the explicit text-overlay layer, Snake preview composition, scene-only deletion, Oracle/Larisa routing and the server-side non-scene delete guard.
 
 - Added regressions covering positive draw commands and non-generating discussion/negation/quoted-command cases, plus a source guard requiring `generate_image` to stay unpublished before explicit intent.
