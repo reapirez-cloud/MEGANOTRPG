@@ -1238,6 +1238,66 @@ export function createWorkshopDefinitionActions({
       },
     },
     {
+      id: "advanced",
+      label: "Дополнительно",
+      kind: "branch",
+      children: [
+        {
+          id: "advanced-mechanics-json",
+          label: "Механики JSON · разработчик",
+          enabled: definition.status !== "archived",
+          disabledReason: "Сначала верни определение из архива.",
+          surface: {
+            kind: "editor",
+            eyebrow: "Дополнительно · разработчик",
+            title: definition.name,
+            size: { width: "wide", height: "tall" },
+            fields: [
+              {
+                id: "mechanicsJson",
+                label: "Механики JSON",
+                type: "textarea",
+                placeholder: "[]",
+              },
+            ],
+            initialValues: {
+              mechanicsJson: JSON.stringify(definition.mechanics ?? [], null, 2),
+            },
+            submitLabel:
+              definition.status === "active"
+                ? "Создать ревизию механик"
+                : "Сохранить механику",
+          },
+          execute: async ({ input }) => {
+            try {
+              const mechanics = definitionMechanicsFromSnake(input)
+              const response = await operations.reviseDefinition(definition.id, {
+                name: definition.name,
+                summary: definition.summary,
+                rulesText: definition.rulesText,
+                mechanics,
+                data: definition.data,
+              })
+              return actionResult(
+                response.ok,
+                response.error,
+                definition.status === "active"
+                  ? "Черновик ревизии механик создан."
+                  : "Механика сохранена.",
+              )
+            } catch (reason) {
+              return {
+                type: "error",
+                message: reason instanceof Error
+                  ? reason.message
+                  : "Не удалось разобрать механику.",
+              }
+            }
+          },
+        },
+      ],
+    },
+    {
       id: "clone",
       label: "Создать копию",
       execute: async () => {
@@ -1290,7 +1350,6 @@ export function definitionInitialValues(definition: ChasovoyDefinition) {
     name: definition.name,
     summary: definition.summary,
     rulesText: definition.rulesText,
-    mechanicsJson: JSON.stringify(definition.mechanics ?? [], null, 2),
   }
 
   if (definition.kind === "item") {
@@ -1324,12 +1383,6 @@ export function draftDefinitionFields(kind: ChasovoyDefinitionKind) {
     { id: "name", label: "Название", type: "text" as const, required: true },
     { id: "summary", label: "Коротко", type: "text" as const },
     { id: "rulesText", label: "Описание / правила", type: "textarea" as const },
-    {
-      id: "mechanicsJson",
-      label: "Механики (JSON)",
-      type: "textarea" as const,
-      placeholder: "[]",
-    },
   ]
 
   if (kind === "item") {
@@ -1446,7 +1499,28 @@ export function definitionInputFromSnake(
     data.ritual = Boolean(values.ritual)
   }
 
-  const rawMechanics = String(values.mechanicsJson || "[]").trim() || "[]"
+  const result: {
+    name: string
+    summary: string
+    rulesText: string
+    data: Record<string, ChasovoyJson>
+    mechanics?: ChasovoyJson[]
+  } = {
+    name: String(values.name || ""),
+    summary: String(values.summary || ""),
+    rulesText: String(values.rulesText || ""),
+    data,
+  }
+
+  if (Object.prototype.hasOwnProperty.call(values, "mechanicsJson")) {
+    result.mechanics = definitionMechanicsFromSnake(input)
+  }
+
+  return result
+}
+
+export function definitionMechanicsFromSnake(input: SnakeActionInput): ChasovoyJson[] {
+  const rawMechanics = String(input?.mechanicsJson || "[]").trim() || "[]"
   let mechanics: ChasovoyJson
   try {
     mechanics = JSON.parse(rawMechanics) as ChasovoyJson
@@ -1456,12 +1530,5 @@ export function definitionInputFromSnake(
   if (!Array.isArray(mechanics)) {
     throw new Error("Механики должны быть JSON-массивом.")
   }
-
-  return {
-    name: String(values.name || ""),
-    summary: String(values.summary || ""),
-    rulesText: String(values.rulesText || ""),
-    data,
-    mechanics,
-  }
+  return mechanics
 }
