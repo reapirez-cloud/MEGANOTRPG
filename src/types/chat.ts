@@ -49,7 +49,7 @@ export type ChatRoomMember = {
   updated_at?: string
 }
 
-export type ChatEventKind = "roll" | "action" | "spell"
+export type ChatEventKind = "roll" | "action" | "spell" | "attack" | "item" | "class_ability"
 export type ChatEventPayload = Record<string, unknown>
 
 export type ChatMessage = {
