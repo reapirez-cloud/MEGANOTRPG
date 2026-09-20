@@ -115,7 +115,7 @@ function SceneContext({ model }: { model: ChatRoomShellModel }) {
           <ClockIcon />
         </span>
         <span className="u1-room-context__copy">
-          <span>Время</span>
+          <span>Время суток</span>
           <strong>{dayPeriod}</strong>
           {model.context.campaignDay ? (
             <small>День {model.context.campaignDay}</small>

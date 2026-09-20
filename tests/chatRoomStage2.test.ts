@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises"
 import test from "node:test"
 
 const roomPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomScreen.tsx", import.meta.url)
+const headerPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomHeader.tsx", import.meta.url)
 const hookPath = new URL("../src/ui-v1-isolated/chat-room/useChatRoomShell.ts", import.meta.url)
 const contractsPath = new URL("../src/ui-v1-isolated/chat-room/chatRoomContracts.ts", import.meta.url)
 const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room.css", import.meta.url)
@@ -32,19 +33,20 @@ test("stage 2 keeps player identity room-scoped instead of choosing another part
 })
 
 test("stage 2 adds final quick-action geometry but no navigation or panels", async () => {
-  const [room, css] = await Promise.all([
+  const [room, header, css] = await Promise.all([
     readFile(roomPath, "utf8"),
+    readFile(headerPath, "utf8"),
     readFile(cssPath, "utf8"),
   ])
 
   for (const label of ["Инвентарь", "Классовые умения", "Заклинания", "Атака"]) {
-    assert.match(room, new RegExp(label))
+    assert.match(header, new RegExp(label))
   }
 
-  assert.match(room, /data-placeholder="true"/)
-  assert.match(room, /onClick=\{\(\) => undefined\}/)
-  assert.match(room, /hasEquippedWeapon/)
-  assert.doesNotMatch(room, /window\.location\.hash.*inventory|openSurface|ChatDrawer|ActionLauncher/)
+  assert.match(header, /data-placeholder="true"/)
+  assert.match(header, /onClick=\{\(\) => undefined\}/)
+  assert.match(header, /hasEquippedWeapon/)
+  assert.doesNotMatch(room + header, /window\.location\.hash.*inventory|openSurface|ChatDrawer|ActionLauncher/)
   assert.match(css, /\.u1-room-quick-actions/)
   assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/)
   assert.match(css, /transform: scale\(\.965\)/)
@@ -62,10 +64,14 @@ test("stage 2 shows attack only for a resolved equipped weapon", async () => {
 })
 
 test("stage 2 hides character quick actions when no character identity is present", async () => {
-  const room = await readFile(roomPath, "utf8")
+  const [room, header] = await Promise.all([
+    readFile(roomPath, "utf8"),
+    readFile(headerPath, "utf8"),
+  ])
 
   assert.match(room, /model\.identity\?\.kind === "character"/)
   assert.match(room, /model\.quickActions\.hasCharacter/)
-  assert.match(room, /hasCharacterIdentity \?/)
-  assert.match(room, /<CharacterHeader model=\{model\}/)
+  assert.match(room, /showQuickActions=\{hasCharacterIdentity\}/)
+  assert.match(room, /<ChatRoomHeader/)
+  assert.match(header, /showQuickActions \?/)
 })
