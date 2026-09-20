@@ -76,6 +76,7 @@ export class ShapoklyakEngine {
     const gmOnly = new Set<ShapoklyakCommand["kind"]>([
       "entity.create",
       "entity.update",
+      "entity.convert_type",
       "entity.delete",
       "entity.set_life_state",
       "entity.set_publication_state",
@@ -131,6 +132,19 @@ export class ShapoklyakEngine {
 
   async execute(command: ShapoklyakCommand): Promise<EngineCommandResult<EntityMutation>> {
     await this.assertAuthority(command)
+
+    if (command.kind === "entity.convert_type") {
+      if (command.characterType !== "pc" && command.characterType !== "npc") {
+        throw new EngineCommandError("entity.invalid_type", "Character type must be pc or npc")
+      }
+      if (
+        command.npcVisibilityMode !== undefined &&
+        command.npcVisibilityMode !== "always" &&
+        command.npcVisibilityMode !== "discover"
+      ) {
+        throw new EngineCommandError("entity.invalid_visibility", "NPC visibility must be always or discover")
+      }
+    }
 
     if (command.kind === "entity.set_hp") {
       for (const [label, value] of Object.entries({ currentHp: command.currentHp, maxHp: command.maxHp, tempHp: command.tempHp })) {
