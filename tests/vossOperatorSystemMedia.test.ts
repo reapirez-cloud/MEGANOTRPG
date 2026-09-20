@@ -20,8 +20,14 @@ test("Freddy is the manager app operator while player Voss stays in-world", () =
 })
 
 test("player and GM conversations never receive admin-only System Materials tools", () => {
-  assert.match(edge, /const scopedOwnerReadTools[\s\S]*authority === "admin"[\s\S]*VOSS_OWNER_READ_TOOLS/)
-  assert.match(edge, /const scopedOwnerMediaTools[\s\S]*authority === "admin"[\s\S]*VOSS_OWNER_MEDIA_TOOLS/)
+  assert.match(
+    edge,
+    /grantedCapabilities\.has\("system\.admin"\) && authority === "admin"[\s\S]*VOSS_ADMIN_TOOLS[\s\S]*VOSS_OWNER_READ_TOOLS[\s\S]*VOSS_OWNER_MEDIA_TOOLS/,
+  )
+  assert.match(
+    edge,
+    /grantedCapabilities\.has\("media\.write"\)[\s\S]*authority === "admin"[\s\S]*VOSS_OWNER_MEDIA_TOOLS/,
+  )
   assert.match(reads, /if \(!context\.isOwner\) return \{ error: "owner_required" \}/)
   assert.match(images, /if \(!ctx\.isOwner\) return \{ error: "owner_required" \}/)
   assert.match(edge, /client: authority === "admin" \? admin : userClient/)
