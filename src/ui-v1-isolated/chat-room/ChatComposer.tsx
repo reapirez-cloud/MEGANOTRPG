@@ -129,7 +129,7 @@ export default function ChatComposer({
 
   const playerHasCharacter = model.identity?.kind === "character"
   const canCompose =
-    !model.readOnly && (model.canManage || playerHasCharacter)
+    model.canWrite && (model.canManage || playerHasCharacter)
 
   const selectedCharacterId = model.canManage
     ? speakers.selected.kind === "character"
@@ -213,7 +213,7 @@ export default function ChatComposer({
               className="u1-chat-composer__speaker-trigger"
               aria-label={"Пишет: " + speakers.selected.name}
               aria-expanded={speakerOpen}
-              disabled={speakers.loading || model.readOnly}
+              disabled={speakers.loading || !model.canWrite}
               onClick={() => setSpeakerOpen((value) => !value)}
             >
               <SpeakerAvatar option={speakers.selected} compact />
@@ -279,7 +279,9 @@ export default function ChatComposer({
                 ? "Чат закрыт"
                 : canCompose
                   ? "Сообщение…"
-                  : "Нет персонажа в этой сцене"
+                  : playerHasCharacter
+                    ? "Нет права писать в этот чат"
+                    : "Нет персонажа в этой сцене"
             }
             disabled={!canCompose || sending}
             onChange={(event) => setText(event.target.value)}
