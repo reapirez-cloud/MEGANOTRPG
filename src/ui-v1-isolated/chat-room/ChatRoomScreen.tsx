@@ -2,6 +2,7 @@ import {
   chatRoomDayPeriodLabel,
   type ChatRoomHeaderCharacter,
 } from "./chatRoomContracts"
+import ChatComposer from "./ChatComposer"
 import ChatFeed from "./ChatFeed"
 import { useChatRoomShell } from "./useChatRoomShell"
 import "./chat-room-stage1.css"
@@ -213,7 +214,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
 
   if (!model || error) {
     return (
-      <main className="u1-room-shell" data-chat-room-stage="4">
+      <main className="u1-room-shell" data-chat-room-stage="5">
         <div className="u1-room-topbar">
           <button
             type="button"
@@ -246,7 +247,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
   return (
     <main
       className="u1-room-shell"
-      data-chat-room-stage="4"
+      data-chat-room-stage="5"
       data-room-type={model.roomType}
       data-has-identity={Boolean(model.identity) || undefined}
     >
@@ -287,6 +288,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
       ) : null}
 
       <ChatFeed roomId={roomId} />
+      <ChatComposer model={model} />
     </main>
   )
 }
