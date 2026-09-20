@@ -43,6 +43,14 @@ test("stage 4 gameplay executors enter the existing GENA gateway", async () => {
   assert.doesNotMatch(gameplay, /supabase\.rpc|supabase\.from/)
 })
 
+test("stage 4 alternative action costs use the selected resolved cost option", async () => {
+  const gameplay = await readFile(gameplayPath, "utf8")
+  assert.match(gameplay, /const selectedCostOption = action\.costOptions\.length/)
+  assert.match(gameplay, /selectedCostOption\?\.costs \?\? action\.resourceCosts/)
+  assert.match(gameplay, /resourceCostInputs\(runtime\.contract, resolvedCosts\)/)
+  assert.doesNotMatch(gameplay, /Альтернативная оплата этого действия пока не имеет авторитетного маршрута/)
+})
+
 test("stage 4 has five real CE-backed workspace interfaces", async () => {
   const workspace = await readFile(workspacePath, "utf8")
   assert.match(workspace, /section === "roll"/)
