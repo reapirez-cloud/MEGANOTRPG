@@ -46,6 +46,7 @@ export type ChatRoomShellModel = {
   roomType: "character" | "scene" | "flood"
   readOnly: boolean
   canManage: boolean
+  canWrite: boolean
   viewer: {
     campaignId: string
     userId: string
