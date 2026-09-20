@@ -152,11 +152,12 @@ function isImageWorkflowRequest(message: string) {
 
 function isManagerMutationRequest(message: string) {
   const text = message.toLocaleLowerCase("ru-RU")
-  const mutation =
-    /(создай|создать|сделай|сделать|измени|изменить|обнови|обновить|удали|удалить|добавь|добавить|дополни|дополнить|заполни|заполнить|наполни|наполнить|проработай|проработать|распиши|расписать|назнач|опубликуй|скрой|скрыть|архив|оживи|убей|перемести|выдай|выдать)/u.test(text)
-  const domain =
-    /(персонаж|нпс|npc|локац|зон|таверн|комнат|помещен|предмет|инвентар|публикац|видимост|жизн|статус)/u.test(text)
-  return mutation && domain
+
+  // Manager intent must survive ordinary follow-ups. The target can already be
+  // established by thread history or viewContext, so requiring the current
+  // message to repeat "location", "character", etc. incorrectly strips Freddy
+  // of write tools for requests like "заполни красиво", "доделай" or "продолжи".
+  return /(создай|создать|сделай|сделать|доделай|доделать|продолжи|продолжить|шурши|дошурши|измени|изменить|исправь|исправить|почини|починить|обнови|обновить|удали|удалить|добавь|добавить|дополни|дополнить|заполни|заполнить|наполни|наполнить|проработай|проработать|распиши|расписать|запиши|записать|внеси|внести|примени|применить|назнач|опубликуй|скрой|скрыть|архив|оживи|убей|перемести|выдай|выдать)/u.test(text)
 }
 
 function isAdminWorkflowRequest(message: string) {
