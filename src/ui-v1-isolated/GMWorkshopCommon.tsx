@@ -49,7 +49,7 @@ export function WorkshopHeader({
 }) {
   const title =
     section === "draft" ? "Черновик" :
-    section === "party" ? "Партия" :
+    section === "members" ? "Участники" :
     section === "characters" ? "Персонажи" :
     section === "library" ? "Библиотека" :
     section === "materials" ? "Материалы" :
