@@ -348,12 +348,14 @@ function RollSurface({
   run,
   onFreeRoll,
   onCheck,
+  onClose,
 }: {
   contract: ResolvedCharacterContract | null
   busy: boolean
   run: (task: () => void | Promise<void>) => void
   onFreeRoll: Props["onFreeRoll"]
   onCheck: Props["onCheck"]
+  onClose: () => void
 }) {
   const [count, setCount] = useState(1)
   const [sides, setSides] = useState(20)
@@ -361,11 +363,14 @@ function RollSurface({
   const notation = `${count}d${sides}${modifier ? signed(modifier) : ""}`
 
   const skills = contract
-    ? (Object.entries(contract.skills) as Array<
-        [SkillKey, ResolvedCharacterContract["skills"][SkillKey]]
-      >).sort(([left], [right]) =>
-        skillNames[left].localeCompare(skillNames[right], "ru"),
-      )
+    ? Object.entries(contract.skills)
+        .map(([key, value]) => ({
+          ...value,
+          key: key as SkillKey,
+        }))
+        .sort((left, right) =>
+          skillNames[left.key].localeCompare(skillNames[right.key], "ru"),
+        )
     : []
 
   return (
@@ -381,7 +386,8 @@ function RollSurface({
             disabled={busy}
             onClick={() =>
               run(async () => {
-                await onFreeRoll({ count, sides, modifier })
+                const sent = await onFreeRoll({ count, sides, modifier })
+                if (sent !== false) onClose()
               })
             }
           >
@@ -490,16 +496,18 @@ function RollSurface({
               <strong>{skills.length}</strong>
             </summary>
             <div>
-              {skills.map(([key, skill]) => (
+              {skills.map((skill) => (
                 <button
                   type="button"
-                  key={key}
+                  key={skill.key}
                   disabled={busy}
                   onClick={() =>
-                    run(() => onCheck(skillNames[key], skill.bonus.value, "skill"))
+                    run(() =>
+                      onCheck(skillNames[skill.key], skill.bonus.value, "skill"),
+                    )
                   }
                 >
-                  <span>{skillNames[key]}</span>
+                  <span>{skillNames[skill.key]}</span>
                   <strong>{signed(skill.bonus.value)}</strong>
                 </button>
               ))}
@@ -601,6 +609,7 @@ export default function ChatActionPanel({
               run={run}
               onFreeRoll={onFreeRoll}
               onCheck={onCheck}
+              onClose={onClose}
             />
           ) : null}
 
