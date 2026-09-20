@@ -707,6 +707,12 @@ Deno.serve(async (req: Request) => {
     .eq("agent_key", agentKey)
     .maybeSingle()
   selectedModelId = settings?.selected_model_id || null
+  if (
+    continuationJobInput &&
+    typeof continuationJobInput.resolved_model_id === "string"
+  ) {
+    selectedModelId = continuationJobInput.resolved_model_id
+  }
 
   let routeDecision
   try {
