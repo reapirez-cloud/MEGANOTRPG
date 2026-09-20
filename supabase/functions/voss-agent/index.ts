@@ -153,9 +153,9 @@ function isImageWorkflowRequest(message: string) {
 function isManagerMutationRequest(message: string) {
   const text = message.toLocaleLowerCase("ru-RU")
   const mutation =
-    /(создай|создать|измени|изменить|обнови|обновить|удали|удалить|добавь|добавить|назнач|опубликуй|скрой|скрыть|архив|оживи|убей|перемести|выдай|выдать)/u.test(text)
+    /(создай|создать|сделай|сделать|измени|изменить|обнови|обновить|удали|удалить|добавь|добавить|дополни|дополнить|заполни|заполнить|наполни|наполнить|проработай|проработать|распиши|расписать|назнач|опубликуй|скрой|скрыть|архив|оживи|убей|перемести|выдай|выдать)/u.test(text)
   const domain =
-    /(персонаж|нпс|npc|локац|зон|предмет|инвентар|публикац|видимост|жизн|статус)/u.test(text)
+    /(персонаж|нпс|npc|локац|зон|таверн|комнат|помещен|предмет|инвентар|публикац|видимост|жизн|статус)/u.test(text)
   return mutation && domain
 }
 
@@ -869,7 +869,7 @@ Deno.serve(async (req: Request) => {
   if (!persistedUserMessage) {
     return reply({ error: "AI user message state missing" }, 500)
   }
-  const persistedUserMessageId = persistedUserMessageId
+  const persistedUserMessageId = persistedUserMessage.id
 
   const { data: currentThread } = await admin
     .from("ai_threads")
