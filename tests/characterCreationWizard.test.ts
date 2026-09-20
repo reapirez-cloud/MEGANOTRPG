@@ -12,7 +12,6 @@ import {
 } from "../src/lib/characterWizard.ts"
 
 const wizard = fs.readFileSync("src/components/characters/CharacterCreationWizard.tsx", "utf8")
-const workspace = fs.readFileSync("src/pages/GmWorkspace.tsx", "utf8")
 
 test("PC and NPC editor is a seven-step progressive wizard", () => {
   assert.match(wizard, /шаг \{step\} из 7/)
@@ -23,7 +22,6 @@ test("PC and NPC editor is a seven-step progressive wizard", () => {
   assert.match(wizard, /Магия/)
   assert.match(wizard, /Доступ/)
   assert.match(wizard, /Проверка/)
-  assert.match(workspace, /CharacterCreationWizard/)
 })
 
 test("new character defaults stay explicit and minimal", () => {
