@@ -830,29 +830,40 @@ Deno.serve(async (req: Request) => {
   if (historyError) return reply({ error: historyError.message }, 500)
   const history = [...(recentRows || [])].reverse()
 
-  const { data: persistedUserMessage, error: userMessageError } = await admin
-    .from("ai_messages")
-    .insert({
-      thread_id: threadId,
-      role: "user",
-      body: message,
-      view_context: {
-        ...viewContext,
-        attachments: loadedAttachments.map((attachment) => ({
-          name: attachment.name,
-          mimeType: attachment.mimeType,
-          size: attachment.size,
-        })),
-        ...(generatedAssetRef ? { generated_asset_ref: generatedAssetRef } : {}),
-      },
-    })
-    .select("id,created_at")
-    .single()
+  let persistedUserMessage: { id: number; created_at?: string } | null = null
 
-  if (userMessageError || !persistedUserMessage) {
-    return reply({
-      error: userMessageError?.message || "Failed to persist user message",
-    }, 500)
+  if (continuationJobId) {
+    const storedUserMessageId = Number(continuationJobInput?.user_message_id)
+    if (!Number.isInteger(storedUserMessageId) || storedUserMessageId <= 0) {
+      return reply({ error: "freddy_turn_user_message_missing" }, 409)
+    }
+    persistedUserMessage = { id: storedUserMessageId }
+  } else {
+    const { data: insertedUserMessage, error: userMessageError } = await admin
+      .from("ai_messages")
+      .insert({
+        thread_id: threadId,
+        role: "user",
+        body: message,
+        view_context: {
+          ...viewContext,
+          attachments: loadedAttachments.map((attachment) => ({
+            name: attachment.name,
+            mimeType: attachment.mimeType,
+            size: attachment.size,
+          })),
+          ...(generatedAssetRef ? { generated_asset_ref: generatedAssetRef } : {}),
+        },
+      })
+      .select("id,created_at")
+      .single()
+
+    if (userMessageError || !insertedUserMessage) {
+      return reply({
+        error: userMessageError?.message || "Failed to persist user message",
+      }, 500)
+    }
+    persistedUserMessage = insertedUserMessage
   }
 
   const { data: currentThread } = await admin
@@ -873,6 +884,51 @@ Deno.serve(async (req: Request) => {
       updated_at: new Date().toISOString(),
     })
     .eq("id", threadId)
+
+  let activeTurnJobId = continuationJobId
+
+  if (
+    !activeTurnJobId &&
+    authority !== "player" &&
+    asyncDeliveryRequested
+  ) {
+    const startedAt = new Date().toISOString()
+    const { data: turnJob, error: turnJobError } = await admin
+      .from("agent_jobs")
+      .insert({
+        campaign_id: campaignId,
+        thread_id: threadId,
+        requested_by: user.id,
+        agent_key: agentKey,
+        job_type: "conversation_turn",
+        status: "running",
+        input: {
+          original_message: message,
+          view_context: viewContext,
+          resolved_model_id: resolvedModel.id,
+          user_message_id: persistedUserMessage.id,
+          started_at: startedAt,
+        },
+        result: {
+          token_budget: 1000000,
+          tokens_used: 0,
+          chunks: 0,
+          ledger: [],
+        },
+        requested_outputs: 1,
+        completed_outputs: 0,
+        started_at: startedAt,
+      })
+      .select("id")
+      .single()
+
+    if (turnJobError || !turnJob?.id) {
+      return reply({
+        error: turnJobError?.message || "freddy_turn_job_create_failed",
+      }, 500)
+    }
+    activeTurnJobId = turnJob.id
+  }
 
   const processTurn = async () => {
   if (authority === "player") {
