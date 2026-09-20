@@ -5,7 +5,7 @@ import GMWorkshopDraft from "./GMWorkshopDraft"
 import GMWorkshopLibrary from "./GMWorkshopLibrary"
 import GMWorkshopMain from "./GMWorkshopMain"
 import GMWorkshopMaterials from "./GMWorkshopMaterials"
-import GMWorkshopParty from "./GMWorkshopParty"
+import GMWorkshopMembers from "./GMWorkshopMembers"
 import {
   useGMWorkshopData,
   type WorkshopSection,
@@ -13,7 +13,7 @@ import {
 
 function sectionLabel(section?: WorkshopSection) {
   if (section === "draft") return "Черновик"
-  if (section === "party") return "Партия"
+  if (section === "members") return "Участники"
   if (section === "characters") return "Персонажи"
   if (section === "library") return "Библиотека"
   if (section === "materials") return "Материалы"
@@ -71,7 +71,7 @@ export default function GMWorkshop({
                 title: material.title,
                 folderId: material.folderId,
               }))
-            : section === "party"
+            : section === "members"
               ? data.members.slice(0, 24).map((member) => ({
                   type: "member",
                   userId: member.userId,
@@ -158,8 +158,8 @@ export default function GMWorkshop({
               onOpenCharacter={onOpenCharacter}
             />
           )}
-          {section === "party" && (
-            <GMWorkshopParty
+          {section === "members" && (
+            <GMWorkshopMembers
               data={data}
               onOpenCharacter={onOpenCharacter}
             />
