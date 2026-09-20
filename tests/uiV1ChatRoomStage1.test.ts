@@ -30,7 +30,7 @@ test("stage 1 room shell is isolated from legacy chat UI", async () => {
     readFile(dataPath, "utf8"),
   ])
   assert.match(app, /import UiV1ChatRoom from "\.\/UiV1ChatRoom"/)
-  assert.match(room, /data-chat-room-stage="5"/)
+  assert.match(room, /data-chat-room-stage="6"/)
   assert.doesNotMatch(app + room + data, /pages\/ChatRoom|CharacterContext|game-story-v2|chat-v11|ChatActionSheet/)
   assert.match(data, /from\("chat_messages"\)/)
   assert.match(data, /table: "chat_messages"/)

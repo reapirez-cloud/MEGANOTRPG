@@ -25,7 +25,7 @@ test("stage 5 opens one participant context inside the shared room drawer", asyn
   assert.match(room, /<ChatRoomContextPanel/)
   assert.match(room, /contentKey: "character:" \+ participant\.id/)
   assert.match(room, /contentKey: "room"/)
-  assert.match(room, /data-chat-room-stage="5"/)
+  assert.match(room, /data-chat-room-stage="6"/)
   assert.doesNotMatch(room, /PlayerChat|GMChat|AdminChat/)
 })
 

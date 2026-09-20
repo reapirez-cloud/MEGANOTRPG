@@ -144,7 +144,7 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
 
   if (!data.room) {
     return (
-      <main className="u1-room" data-chat-room-stage="5">
+      <main className="u1-room" data-chat-room-stage="6">
         <section className="u1-room-state" role="alert">
           <span aria-hidden="true">!</span>
           <strong>Чат не открылся</strong>
@@ -219,7 +219,7 @@ export default function UiV1ChatRoom({ roomId, onBack }: Props) {
   }
 
   return (
-    <main className="u1-room" data-chat-room-stage="5">
+    <main className="u1-room" data-chat-room-stage="6">
       <header className="u1-room-header">
         <button type="button" className="u1-room-header__back" aria-label="Назад к чатам" onClick={onBack}>‹</button>
         <div className="u1-room-header__copy">
