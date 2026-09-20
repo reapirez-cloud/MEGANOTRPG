@@ -1954,3 +1954,182 @@
     padding-bottom: calc(5px + var(--u1-safe-bottom, env(safe-area-inset-bottom, 0px)));
   }
 }
+
+
+/* Reference rebuild — layout stage 1.
+   This is the structural 1:1 frame: compact fixed head, feed owns the
+   remaining viewport, controls stay pinned below it. Actor resolution,
+   event density and final visual tuning are later stages. */
+.u1-room-shell[data-chat-room-layout-stage="1"] {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.u1-room-frame {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.u1-room-frame > .u1-room-topbar,
+.u1-room-frame__head,
+.u1-room-frame__controls {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.u1-room-frame__head {
+  position: relative;
+  z-index: 2;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(235,237,239,.05);
+  background:
+    linear-gradient(180deg, rgba(13,15,17,.985), rgba(8,10,11,.94));
+}
+
+.u1-room-frame__feed {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.u1-room-frame__feed > .u1-room-feed {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0;
+  border-top: 0;
+}
+
+.u1-room-frame__controls {
+  position: relative;
+  z-index: 3;
+}
+
+/* Stage-1 geometry deliberately kills the oversized hero-card behavior. */
+.u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-topbar {
+  min-height: calc(50px + var(--u1-safe-top, 0px));
+  padding:
+    calc(7px + var(--u1-safe-top, 0px))
+    10px
+    6px;
+}
+
+.u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-character {
+  margin: 7px 10px 0;
+  min-height: 0;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 6px 9px;
+  padding: 7px 8px 6px;
+  border-radius: 11px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.14);
+}
+
+.u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-character__portrait {
+  width: 56px;
+  min-height: 64px;
+  border-radius: 9px;
+}
+
+.u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-character__main {
+  gap: 6px;
+  padding-top: 1px;
+}
+
+.u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-character__identity h1 {
+  margin-top: 2px;
+  font-size: clamp(18px, 4.9vw, 22px);
+  line-height: 1;
+}
+
+.u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-character__identity p {
+  margin-top: 3px;
+  font-size: 7px;
+}
+
+.u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-hp {
+  gap: 3px;
+}
+
+.u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-context {
+  min-height: 31px;
+  padding-top: 5px;
+  gap: 8px;
+}
+
+.u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-context > i {
+  height: 20px;
+}
+
+.u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-quick-actions {
+  margin: 5px 10px 0;
+  gap: 5px;
+}
+
+.u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-quick-action {
+  min-height: 44px;
+  padding: 4px 3px;
+  gap: 3px;
+  border-radius: 9px;
+}
+
+.u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-quick-action__icon,
+.u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-quick-action__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-quick-action > span:last-child {
+  font-size: 6px;
+  line-height: 1.08;
+}
+
+@media (max-width: 320px) {
+  .u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-character {
+    margin-left: 8px;
+    margin-right: 8px;
+    grid-template-columns: 50px minmax(0, 1fr);
+    gap: 5px 7px;
+    padding: 6px 7px 5px;
+  }
+
+  .u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-character__portrait {
+    width: 50px;
+    min-height: 58px;
+  }
+
+  .u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-quick-actions {
+    margin-left: 8px;
+    margin-right: 8px;
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-character {
+    margin-top: 4px;
+    grid-template-columns: 46px minmax(0, 1fr);
+    padding: 5px 7px;
+  }
+
+  .u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-character__portrait {
+    width: 46px;
+    min-height: 50px;
+  }
+
+  .u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-context {
+    min-height: 26px;
+    padding-top: 3px;
+  }
+
+  .u1-room-shell[data-chat-room-layout-stage="1"] .u1-room-quick-action {
+    min-height: 38px;
+  }
+}

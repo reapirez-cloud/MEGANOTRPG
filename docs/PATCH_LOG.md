@@ -11,6 +11,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Игровой чат начал отдельную 1:1-переделку по выбранному референсу: Stage 1 заменяет прежнюю плоскую компоновку на единый viewport-frame с компактной фиксированной верхней зоной, лентой, которая забирает всё оставшееся место, и закреплённым нижним вводом; старая огромная hero-карточка уже ужата по геометрии без изменения игровой логики.
 - Chats restores the compact **9:16 portrait-card** layout for personal histories and now uses the same card geometry for active scenes and completed rooms. Artwork fills the entire card while title, factual context, message preview, activity and unread state live in a dedicated readable overlay layer; Flood remains compact.
 - Chat-room Snake actions are now real management tools for GM/Owner: a personal history or scene can receive/replace its preview artwork through the shared 9:16 Media surface, while **Delete** exists only for scenes. Personal histories never expose a delete action.
 
@@ -25,6 +26,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Новый `ChatRoomFrame` отделяет геометрию игрового диалога от уже работающих Stage 8 feed/composer/runtime-компонентов. Это сохраняет текущие данные и отправку сообщений, но создаёт стабильные слоты `fixed-head -> feed -> controls` для следующих этапов 1:1-переделки вместо дальнейшего наращивания старого card-stack layout.
 - Scene deletion follows the named-engine path `Snake -> Oracle -> Larisa -> delete_game_scene_v1`; React does not delete `chat_rooms` directly. Preview artwork remains a presentation mutation and is registered in the shared media asset/binding system instead of becoming a second chat-specific image store.
 - The catalog adapter now reads saved chat-room media presentations, resolves private campaign media, and reapplies the normalized crop to the 9:16 card renderer. The three card sections reuse one `portraitCard` component rather than separate personal/event/archive visual implementations.
 
@@ -39,6 +41,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Добавлен регрессионный контракт нового chat reference layout Stage 1: один viewport-frame, feed с `min-height: 0` и flex-ownership оставшейся высоты, закреплённые controls, компактная геометрия header/quick-actions и защита узких/низких экранов.
 - Updated UI 1.0 chat regressions to lock shared 9:16 full-bleed cards, the explicit text-overlay layer, Snake preview composition, scene-only deletion, Oracle/Larisa routing and the server-side non-scene delete guard.
 
 - Added regressions covering positive draw commands and non-generating discussion/negation/quoted-command cases, plus a source guard requiring `generate_image` to stay unpublished before explicit intent.

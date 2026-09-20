@@ -6,6 +6,7 @@ import {
 } from "./chatRoomContracts"
 import ChatComposer from "./ChatComposer"
 import ChatFeed from "./ChatFeed"
+import ChatRoomFrame from "./ChatRoomFrame"
 import { useChatRoomShell } from "./useChatRoomShell"
 import { useChatVisualViewportHeight } from "./useChatVisualViewport"
 import "./chat-room.css"
@@ -266,12 +267,14 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
     <main
       className="u1-room-shell"
       data-chat-room-stage="8"
+      data-chat-room-layout-stage="1"
       data-room-type={model.roomType}
       data-has-identity={Boolean(model.identity) || undefined}
       data-observer={!model.identity || undefined}
       data-read-only={model.readOnly || undefined}
       style={viewportStyle}
     >
+      <ChatRoomFrame>
       <header className="u1-room-topbar">
         <button
           type="button"
@@ -300,16 +303,23 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
         ) : null}
       </header>
 
-      <CharacterHeader model={model} />
+      <div className="u1-room-frame__head" data-room-slot="fixed-head">
+        <CharacterHeader model={model} />
 
-      {hasCharacterIdentity ? (
-        <QuickActions
-          hasEquippedWeapon={model.quickActions.hasEquippedWeapon}
-        />
-      ) : null}
+        {hasCharacterIdentity ? (
+          <QuickActions
+            hasEquippedWeapon={model.quickActions.hasEquippedWeapon}
+          />
+        ) : null}
+      </div>
 
-      <ChatFeed roomId={roomId} />
-      <ChatComposer model={model} />
+      <div className="u1-room-frame__feed" data-room-slot="feed">
+        <ChatFeed roomId={roomId} />
+      </div>
+      <div className="u1-room-frame__controls" data-room-slot="controls">
+        <ChatComposer model={model} />
+      </div>
+      </ChatRoomFrame>
     </main>
   )
 }
