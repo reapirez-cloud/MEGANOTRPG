@@ -1145,6 +1145,19 @@ Deno.serve(async (req: Request) => {
       "]"
     : ""
 
+  const priorTurnLedger = normalizeToolLedger(continuationJobResult?.ledger)
+  const continuationInstruction = continuationJobId
+    ? [
+        "",
+        "[СЛУЖЕБНОЕ ПРОДОЛЖЕНИЕ ДЛИННОЙ ЗАДАЧИ]",
+        "Это не новый запрос пользователя. Продолжай исходную задачу до завершения.",
+        "Не повторяй уже успешно выполненные мутации. При сомнении перечитай каноническое состояние через read-tools.",
+        "Уже выполненные вызовы инструментов:",
+        JSON.stringify(priorTurnLedger.slice(-40)),
+        "[КОНЕЦ СЛУЖЕБНОГО ПРОДОЛЖЕНИЯ]",
+      ].join("\n")
+    : ""
+
   const userText =
     message +
     generatedAssetReferenceText +
@@ -1152,7 +1165,8 @@ Deno.serve(async (req: Request) => {
     (imageAttachments.length
       ? "\n\nПрикреплены изображения: " +
         imageAttachments.map((attachment) => attachment.name).join(", ")
-      : "")
+      : "") +
+    continuationInstruction
 
   const userContent: unknown = imageAttachments.length
     ? [
@@ -1279,16 +1293,83 @@ Deno.serve(async (req: Request) => {
   let answer = ""
   let lastProviderPayload: any = null
   let forceTextOnlyNextRound = false
+  let needsContinuation = false
 
-  // Allow up to five tool-bearing rounds, then always give the model one
-  // tool-free round to turn gathered context into a user-facing answer.
-  // Previously the fifth tool request returned a 502 and discarded all work.
-  const maxToolRounds = 5
+  // Voss is a reader and keeps a deliberately small turn. Freddy is a real
+  // operator: his logical budget spans multiple Edge Function invocations.
+  // The project currently runs on Supabase Free (150s worker wall clock), so
+  // one chunk must yield well before the platform kills the isolate.
+  const isFreddyTurn = authority !== "player"
+  const turnTokenBudget = isFreddyTurn
+    ? Math.max(
+        100000,
+        Math.min(
+          1000000,
+          Number(continuationJobResult?.token_budget || 1000000),
+        ),
+      )
+    : 160000
+  let turnTokensUsed = Math.max(
+    0,
+    Number(continuationJobResult?.tokens_used || 0),
+  )
+  let turnLedger = [...priorTurnLedger]
+  const previousChunks = Math.max(
+    0,
+    Number(continuationJobResult?.chunks || 0),
+  )
+  const currentChunk = previousChunks + 1
+  const chunkStartedAt = Date.now()
+  const chunkSoftLimitMs = 70000
+  const maxToolRounds = isFreddyTurn ? 24 : 5
   const maxRounds = maxToolRounds + 1
 
+  const persistTurnProgress = async (
+    status: "running" | "queued" | "completed" | "failed",
+    extra: JsonRecord = {},
+  ) => {
+    if (!activeTurnJobId) return
+    turnLedger = compactToolLedger(turnLedger)
+    await admin
+      .from("agent_jobs")
+      .update({
+        status,
+        result: {
+          token_budget: turnTokenBudget,
+          tokens_used: turnTokensUsed,
+          chunks: currentChunk,
+          ledger: turnLedger,
+          ...extra,
+        },
+        ...(status === "completed" || status === "failed"
+          ? { completed_at: new Date().toISOString() }
+          : {}),
+        ...(status === "completed" ? { completed_outputs: 1 } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", activeTurnJobId)
+  }
+
   for (let round = 0; round < maxRounds; round += 1) {
+    if (
+      isFreddyTurn &&
+      activeTurnJobId &&
+      !forceTextOnlyNextRound &&
+      (
+        round >= maxToolRounds ||
+        (round > 0 && Date.now() - chunkStartedAt >= chunkSoftLimitMs)
+      )
+    ) {
+      needsContinuation = true
+      break
+    }
+
+    if (turnTokensUsed >= turnTokenBudget) {
+      forceTextOnlyNextRound = true
+    }
+
     const toolsForRound =
-      forceTextOnlyNextRound || round >= maxToolRounds
+      forceTextOnlyNextRound || (!isFreddyTurn && round >= maxToolRounds)
         ? []
         : availableTools
     let providerPayload: any
