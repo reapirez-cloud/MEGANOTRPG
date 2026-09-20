@@ -158,12 +158,14 @@ test("Class Sheet and Spells consume the resolved contract while CE failure stay
   assert.match(profile, /tab === "arts"/)
 })
 
-test("player My Character and manager character routes use the same runtime frame", () => {
-  const app = source("src/App.tsx")
+test("canonical workspace and manager routes converge on CharacterView runtime", () => {
+  const app = source("src/ui-v1-isolated/UiV1App.tsx")
+  const characterView = source("src/ui-v1-isolated/CharacterView.tsx")
 
-  assert.match(app, /route\.type==="character"[\s\S]*?<CharacterGameFrame characterId=\{route\.id\}>[\s\S]*?<CharacterProfileV2 characterId=\{route\.id\}/)
-  assert.match(app, /route\.tab==="me"&&!canManage&&activeCharacter&&<CharacterGameFrame characterId=\{activeCharacter\.id\}>[\s\S]*?<CharacterProfileV2[\s\S]*?embedded/)
-  assert.match(app, /route\.tab==="me"&&canManage&&<GmWorkspace[\s\S]*?onOpenCharacter=/)
+  assert.match(app, /<CharacterView[\s\S]*?characterId=\{route\.characterId\}/)
+  assert.match(app, /<Workspace[\s\S]*?workspace\/character/)
+  assert.match(app, /<GMWorkshop[\s\S]*?workspace\/character/)
+  assert.match(characterView, /useResolvedCharacterRuntime/)
 })
 
 test("Chat and revolver remain on the same resolved runtime contract", () => {
