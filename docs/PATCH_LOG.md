@@ -2,68 +2,40 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-19-L
+## Released patches
 
-**Status:** OPEN
-**Branch:** `dev`
-**Base main:** `54783c111e1307e00efff2333b36295060fc85da`
-**Started:** 2026-09-19
+## Patch — 2026-09-20-N
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
+**Base main:** `60dbb5f6c0520b719f8e4d8f91ea67bbb52960cc`
+**Started:** 2026-09-20
+**Released:** 2026-09-20
+**Release identity:** `main / 2026-09-20-N`
 
 ### Player-facing changes
 
-- Chat 1:1 Stage 6 completes the mobile pixel pass: the room now uses one final graphite rhythm for the 46px top bar, 48px actor strip, compact scene context, 35px quick actions, dense feed and 40px composer controls, with dedicated 360px / 320px / short-landscape adjustments. The right action surface remains a non-reflowing 90vw overlay above the room.
-- Chat 1:1 Stage 5 turns the bottom composer into the intended game launcher: the `+` button now opens a compact animated list for Roll / Ability / Spell / Item / Action, while choosing one slides in a separate right-side gameplay panel covering about 90% of the viewport. The same host is opened by the direct Inventory / Class abilities / Spells / conditional Attack buttons above the feed, so there is one action path instead of five unrelated mini-UIs.
-- Chat 1:1 Stage 4 rebuilds the conversation feed around the reference hierarchy: ordinary dialogue is now the lightweight default row (30px avatar, name/time/text with no surrounding card), GM narration gets only a restrained left rule, system rows collapse into quiet inline notes, and rolls/spells/abilities/items/attacks become materially smaller special-event cards instead of dominating the viewport.
-- Chat 1:1 Stage 3 replaces the remaining oversized top card with the reference-style compact game header: portrait/identity/HP are one slim actor strip, time + campaign day and current location are a separate scene-context row, and direct Inventory / Class abilities / Spells / conditional Attack actions now sit in one dense horizontal rail instead of tall tiles.
-- Chat 1:1 Stage 2 fixes speaking identity: an owner/admin who is still an ordinary campaign player now opens their eligible room as their own active PC instead of being silently collapsed into `Рассказчик`. The manager persona picker keeps explicit Narrator/NPC selection, but its new default is the room-scoped player character when one exists.
-- Игровой чат начал отдельную 1:1-переделку по выбранному референсу: Stage 1 заменяет прежнюю плоскую компоновку на единый viewport-frame с компактной фиксированной верхней зоной, лентой, которая забирает всё оставшееся место, и закреплённым нижним вводом; старая огромная hero-карточка уже ужата по геометрии без изменения игровой логики.
-- Chats restores the compact **9:16 portrait-card** layout for personal histories and now uses the same card geometry for active scenes and completed rooms. Artwork fills the entire card while title, factual context, message preview, activity and unread state live in a dedicated readable overlay layer; Flood remains compact.
-- Chat-room Snake actions are now real management tools for GM/Owner: a personal history or scene can receive/replace its preview artwork through the shared 9:16 Media surface, while **Delete** exists only for scenes. Personal histories never expose a delete action.
-
-- AI image generation no longer starts from ordinary art discussion, composition/style planning, prompt drafting, references, or vague requests such as “сделай концепт”. Voss/Freddy waits for a clear current-turn draw/generation command such as “рисуй”, “нарисуй” or “сгенерируй изображение”.
-- Voss/Freddy chat is lighter and more responsive: ordinary conversation no longer publishes unrelated tool families, player security checks run in the accepted background turn with a lightweight profile, provider calls have bounded timeout/retry behavior, and pending replies no longer re-fetch the full thread catalog on every poll.
-- AI chat UX now locks destructive thread/model changes while a reply is pending, supports Ctrl/Cmd+Enter, improves mobile text/touch sizing and dialog focus, and shows useful fallback/degraded routing state only when relevant.
-- Generated-image cards now keep exact job/asset/variant identity. Running jobs can be cancelled directly, failed jobs can be retried directly, and selecting an older variant no longer ambiguously means “the second image from the latest generation”.
+- Rebuilt the mobile game chat against the selected reference from the frame upward: compact actor header, scene time/location, direct Inventory / Class abilities / Spells / conditional Attack actions, lightweight dialogue rows, compact game-event cards, and the final dense graphite geometry for narrow/landscape screens.
+- Fixed room speaking identity so an owner/admin who is still an ordinary `player` resolves their eligible active PC instead of silently becoming `Рассказчик`; explicit manager Narrator/NPC selection remains available without erasing player identity.
+- The bottom `+` now opens a compact Roll / Ability / Spell / Item / Action launcher, and both it and the direct header actions open the same animated right-side gameplay surface covering about 90% of the viewport.
+- Message history keeps stable prepend position, follows new messages only when appropriate, preserves focus/mobile visual-viewport behavior, and keeps ordinary dialogue visually primary while rolls/spells/attacks/items/abilities remain special events rather than giant feed cards.
 
 ### Database / migration changes
 
-- Added `chat_actor_identity_owner_player_fix_stage2`: `private.chat_player_viewer_character_for_room` no longer treats `is_owner` as if it were the exclusive GM role. Owner authority and player identity remain independent, so an owner with `role = player` resolves the same eligible personal/flood/scene PC identity as any other player.
-- Added `chat_catalog_portrait_snake_actions`: manager-only chat preview binding persists uploaded preview media plus the normalized Snake crop presentation, and idempotent `delete_game_scene_v1` rejects every non-scene room before deletion. Scene-owned messages, participants, surfaces and other room children remain covered by their existing `ON DELETE CASCADE` foreign keys.
+- Added `chat_actor_identity_owner_player_fix_stage2`: the private room-character resolver now suppresses player-character projection only for ordinary `role = 'gm'`, not merely because `is_owner = true`. The migration was already applied to the live Supabase project during development.
 
 ### Runtime and architecture changes
 
-- Added the pure `chatRoomPresentationState` contract so screen and composer derive player / GM / observer presentation from one role-state matrix. Quick actions, compose permission, persona selector visibility and observer identity are no longer recomputed independently across components, which closes the last role-drift seam before visual certification.
-- Added `ChatActionHost` as the Stage 5 gameplay bridge. It resolves the selected chat actor through the existing Character Engine runtime and executes rolls, template actions, inventory uses, spell-slot casts and spell modifiers through the existing GENA/resource/template routes. The previous action-sheet gameplay logic is reused with a new side-panel presentation rather than copied into another chat-specific mechanic engine.
-- Extracted `ChatFeedItem` from the scrolling runtime. `ChatFeed` now owns only history loading, realtime-follow behavior, read marking and scroll restoration, while row-type rendering is centralized in one dialogue/system/game-event dispatcher. Game-event presentation data remains unchanged and GM-owned outcome semantics are still never inferred by the client.
-- Added dedicated `ChatRoomHeader` ownership for actor presentation, scene context and quick-action geometry. `ChatRoomScreen` now only composes the fixed-head slot, keeping header internals out of the screen component and leaving action execution deferred to its dedicated later stage rather than smuggling new local panel logic into Stage 3.
-- Added one shared chat actor-selection contract. The room shell now reads the viewer's ordinary campaign `role` separately from `canManage`, while header and composer share the same versioned room speaker key/default rules. The v2 key intentionally drops the stale old “Narrator by default” state that caused owner-players to remain stuck on the wrong identity.
-- Новый `ChatRoomFrame` отделяет геометрию игрового диалога от уже работающих Stage 8 feed/composer/runtime-компонентов. Это сохраняет текущие данные и отправку сообщений, но создаёт стабильные слоты `fixed-head -> feed -> controls` для следующих этапов 1:1-переделки вместо дальнейшего наращивания старого card-stack layout.
-- Scene deletion follows the named-engine path `Snake -> Oracle -> Larisa -> delete_game_scene_v1`; React does not delete `chat_rooms` directly. Preview artwork remains a presentation mutation and is registered in the shared media asset/binding system instead of becoming a second chat-specific image store.
-- The catalog adapter now reads saved chat-room media presentations, resolves private campaign media, and reapplies the normalized crop to the 9:16 card renderer. The three card sections reuse one `portraitCard` component rather than separate personal/event/archive visual implementations.
-
-- Added a deterministic image-intent gate. `generate_image` is removed from the model’s published tool set until the current user message contains an explicit positive drawing command, so model initiative cannot spend image-generation tokens during discussion.
-- The previous broad `image subject + сделай/создать` heuristic was removed. Negated commands such as “не рисуй пока” remain discussion-only.
-- Tool publication and system instructions are task-scoped: reference, memory, image, Workshop/draft, inventory and admin rules are injected only when the request needs that workflow. Pure conversational turns are tool-free.
-- Player security classification no longer spends the selected model's maximum reasoning budget. It resolves a lightweight compatible campaign model, disables reasoning effort, uses a 12-second classifier timeout with no retry, and still runs before the normal answer inside the durable background turn.
-- Provider chat requests use an AbortController timeout and one bounded retry only for transient 429/502/503/504 failures.
-- Player routing now falls back to a compatible public tool-capable model for tool-required tasks instead of silently remaining degraded when the selected public model lacks tools.
-- Pending-reply synchronization reads only the recent message tail; image-job polling runs independently at a lower cadence. Image cancel/retry are direct authenticated Edge actions rather than new LLM turns.
-- The current AI foundation document was reconciled with the actual per-user model choice, authority split and task-scoped runtime.
+- Added the shared chat actor-selection contract and `chatRoomPresentationState`, keeping ordinary role, owner/manager authority, selected speaker, compose permission, persona selector visibility and quick-action visibility as separate concerns.
+- Added `ChatRoomFrame`, dedicated `ChatRoomHeader`, `ChatFeedItem`, and `ChatActionHost` boundaries. The room screen now composes fixed head → feed → controls instead of carrying another monolithic visual/runtime tree.
+- Chat gameplay actions reuse the existing Character Engine, GENA, resource runtime, inventory runtime and template mechanic routes. The new chat UI does not create a parallel mechanics engine.
+- Spell modifiers and the existing action-sheet gameplay surface gained the same right-side presentation, while item entry points filter to inventory-backed sources and header/composer actions share one request contract.
 
 ### Tests / verification
 
-- Historical Stage 2/3/5/7/8 guards were reconciled with the final shared presentation-state seam, so older contracts now verify the same behavior through `chatRoomPresentationState` instead of requiring duplicated inline role expressions that Stage 6 intentionally removed.
-- Extended Stage 6 certification with a pure player/GM/observer/archive role matrix plus final-layout guards for the canonical topbar/actor/quick-action/composer geometry, narrow mobile breakpoints and the 90vw side action surface. Existing history anchoring, realtime follow, keyboard viewport and reduced-motion checks remain part of the same stage gate.
-- Reworked Stage 5 regressions around the real launcher: five-item compact `+` menu, shared header/composer action request contract, 90vw right-side action surface, item-source filtering, CE + GENA execution coverage, preserved GM persona selection, spell-modifier side flow and unchanged multiline text sending.
-- Added Stage 4 feed regressions for the lightweight dialogue hierarchy, dedicated feed-item dispatcher, compact game-event geometry without the old full-height icon rail, conditional event routing, and preservation of pagination scroll anchoring / pinned-to-bottom / unseen-message behavior.
-- Added Stage 3 header regressions locking the dedicated component boundary, actor/context separation, unboxed 50px actor geometry, compact direct action rail, conditional Attack presence and narrow/landscape density rules.
-- Added Stage 2 actor-resolution regressions covering owner-player vs GM defaults, stale persisted speaker recovery, owned-PC inclusion in the manager selector, composer/header contract parity and the SQL guard that forbids `is_owner` from erasing player identity.
-- Добавлен регрессионный контракт нового chat reference layout Stage 1: один viewport-frame, feed с `min-height: 0` и flex-ownership оставшейся высоты, закреплённые controls, компактная геометрия header/quick-actions и защита узких/низких экранов.
-- Updated UI 1.0 chat regressions to lock shared 9:16 full-bleed cards, the explicit text-overlay layer, Snake preview composition, scene-only deletion, Oracle/Larisa routing and the server-side non-scene delete guard.
-
-- Added regressions covering positive draw commands and non-generating discussion/negation/quoted-command cases, plus a source guard requiring `generate_image` to stay unpublished before explicit intent.
-- Added/updated regression coverage for lightweight security classification, provider timeout/retry, task-scoped tools/prompts, player capability fallback, tail polling, pending-state UI locks, exact generated-image references, cancel/retry controls and image-reply finalization.
-- Exact-head CI `35490482090` on `8f4167c29bc3529c63fd4a0bd2ffddf20f72c7e4` passed Build, Lint, repository tests, Storybook and Playwright smoke. Live Supabase `voss-agent` v41 is ACTIVE with JWT verification enabled and all 18 deployed source files exactly match that green head.
+- Added and reconciled Stage 1–6 chat regressions covering layout ownership, actor resolution, compact header geometry, normalized feed/event rendering, functional action launcher, scroll restoration, mobile keyboard viewport, reduced motion and the final player / GM / observer / archive role matrix.
+- Legacy AI tests in the release diff were aligned with the already-shipped capability-broker behavior only; no new AI runtime behavior is introduced by this patch.
+- Pre-release exact-head CI on `7dfac4b7f03ba99ee3beecdb5f12fbd0b6ad3944` passed Build, Lint, repository tests, Storybook and Playwright smoke.
 
 ### Known incomplete work
 
