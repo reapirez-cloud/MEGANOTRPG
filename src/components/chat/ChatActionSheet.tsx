@@ -14,7 +14,10 @@ import { spellSlotResources } from "../characters/spellSlots.ts"
 import { buildChatActionModel, type ChatActionSourceGroup } from "./chatActionModel.ts"
 import "./ChatActionSheet.css"
 
-type Tab = "dice" | "attacks" | "spells" | "class" | "unique"
+export type ChatActionSheetTab = "dice" | "attacks" | "spells" | "class" | "unique"
+type Tab = ChatActionSheetTab
+export type ChatActionSheetPresentation = "sheet" | "side"
+export type ChatActionSheetScope = "all" | "item"
 type SpellChannel = "cantrips" | string | null
 type AttackChannel = "weapon" | "spell" | "special" | null
 
@@ -31,6 +34,9 @@ type Props = {
   contract: ResolvedCharacterContract | null
   loading?: boolean
   includePrivateSources?: boolean
+  initialTab?: ChatActionSheetTab
+  presentation?: ChatActionSheetPresentation
+  scope?: ChatActionSheetScope
   onClose: () => void
   onFreeRoll: (request: FreeDiceRequest) => boolean | void | Promise<boolean | void>
   onCheck: (label: string, modifier: number, kind: "ability" | "skill" | "save") => void | Promise<void>
@@ -222,8 +228,21 @@ function SourceGroup({ group, kind, resources, labels, busy, onAction, onSpell }
 })}{group.spells.map((spell) => <button disabled={busy || !spell.available} type="button" key={`spell:${spell.key}`} onClick={() => onSpell(spell)}><i>✧</i><span><strong>{spell.identity.name}</strong><small>{spellSummary(spell)}</small></span><em>›</em></button>)}</div>}</section>
 }
 
-export default function ChatActionSheet({ characterName, contract, loading = false, includePrivateSources = true, onClose, onFreeRoll, onCheck, onAction, onSpell }: Props) {
-  const [tab, setTab] = useState<Tab>("dice")
+export default function ChatActionSheet({
+  characterName,
+  contract,
+  loading = false,
+  includePrivateSources = true,
+  initialTab = "dice",
+  presentation = "sheet",
+  scope = "all",
+  onClose,
+  onFreeRoll,
+  onCheck,
+  onAction,
+  onSpell,
+}: Props) {
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [attackChannel, setAttackChannel] = useState<AttackChannel>(null)
   const [attackSpellChannel, setAttackSpellChannel] = useState<SpellChannel>(null)
   const [spellChannel, setSpellChannel] = useState<SpellChannel>(null)
@@ -237,7 +256,17 @@ export default function ChatActionSheet({ characterName, contract, loading = fal
   const labels = useMemo(() => resourceLabels(contract), [contract])
   const skills = useMemo(() => contract ? Object.entries(contract.skills).map(([key, value]) => ({ ...value, key: key as SkillKey })).sort((a, b) => skillNames[a.key].localeCompare(skillNames[b.key], "ru")) : [], [contract])
   const classCount = model.classGroups.reduce((sum, group) => sum + group.actions.length + group.spells.length, 0)
-  const uniqueCount = model.uniqueGroups.reduce((sum, group) => sum + group.actions.length + group.spells.length, 0)
+  const visibleUniqueGroups = useMemo(
+    () => scope === "item"
+      ? model.uniqueGroups.filter((group) =>
+          group.sourceType === "inventory_item" || group.id.startsWith("item:"))
+      : model.uniqueGroups,
+    [model.uniqueGroups, scope],
+  )
+  const uniqueCount = visibleUniqueGroups.reduce(
+    (sum, group) => sum + group.actions.length + group.spells.length,
+    0,
+  )
   const attackSpellKeys = useMemo(() => new Set(model.attackSpells.map((spell) => spell.key)), [model.attackSpells])
   const specialGroups = useMemo(() => model.uniqueGroups.map((group) => ({ ...group, actions: group.actions.filter(actionIsAttack), spells: group.spells.filter((spell) => attackSpellKeys.has(spell.key)) })).filter((group) => (group.sourceType === "inventory_item" || group.id.startsWith("item:")) && (group.actions.length || group.spells.length)), [attackSpellKeys, model.uniqueGroups])
   const specialCount = specialGroups.reduce((sum, group) => sum + group.actions.length + group.spells.length, 0)
@@ -248,17 +277,17 @@ export default function ChatActionSheet({ characterName, contract, loading = fal
   function chooseTab(next: Tab) { setTab(next); setAttackChannel(null); setAttackSpellChannel(null); if (next === "spells") setSpellChannel(null) }
   const notation = `${diceCount}d${diceSides}${diceModifier ? signed(diceModifier) : ""}`
   const tabs: Array<{ key: Tab; label: string; count?: number }> = [
-    { key: "dice", label: "Кубы" }, { key: "attacks", label: "Атака", count: model.attacks.length + model.attackSpells.length + specialCount }, { key: "spells", label: "Магия", count: model.spells.length }, { key: "class", label: "Класс", count: classCount }, { key: "unique", label: "Уникальное", count: uniqueCount },
+    { key: "dice", label: "Кубы" }, { key: "attacks", label: "Атака", count: model.attacks.length + model.attackSpells.length + specialCount }, { key: "spells", label: "Магия", count: model.spells.length }, { key: "class", label: "Класс", count: classCount }, { key: "unique", label: scope === "item" ? "Предметы" : "Уникальное", count: uniqueCount },
   ]
 
-  return <div className="chat-action-backdrop" onMouseDown={onClose}><section className="chat-action-flow chat-action-flow--v3" onMouseDown={(event) => event.stopPropagation()}><div className="chat-action-flow__handle"/><header className="action-v2-head"><div><span>Игровое действие</span><strong>{characterName || "Свободный бросок"}</strong><small>{contract ? "Данные персонажа" : "Кубы доступны без листа персонажа"}</small></div><button type="button" onClick={onClose}>×</button></header><nav className="action-v3-tabs" aria-label="Тип действия">{tabs.map((item) => <button key={item.key} className={tab === item.key ? "is-active" : ""} type="button" onClick={() => chooseTab(item.key)}><span>{item.label}</span>{Boolean(item.count) && <small>{item.count}</small>}</button>)}</nav><div className="action-v2-body">
+  return <div className="chat-action-backdrop" data-presentation={presentation} onMouseDown={onClose}><section className="chat-action-flow chat-action-flow--v3" data-presentation={presentation} onMouseDown={(event) => event.stopPropagation()}><div className="chat-action-flow__handle"/><header className="action-v2-head"><div><span>Игровое действие</span><strong>{characterName || "Свободный бросок"}</strong><small>{contract ? "Данные персонажа" : "Кубы доступны без листа персонажа"}</small></div><button type="button" onClick={onClose}>×</button></header><nav className="action-v3-tabs" aria-label="Тип действия">{tabs.map((item) => <button key={item.key} className={tab === item.key ? "is-active" : ""} type="button" onClick={() => chooseTab(item.key)}><span>{item.label}</span>{Boolean(item.count) && <small>{item.count}</small>}</button>)}</nav><div className="action-v2-body">
     {tab === "dice" && <><section className="free-dice-card"><div className="free-dice-head"><div><small>Без привязки к механике</small><strong>Свободный бросок</strong></div><b>{notation}</b></div><div className="free-dice-quick">{standardDice.map((sides) => <button key={sides} type="button" className={diceSides === sides ? "is-active" : ""} onClick={() => setDiceSides(sides)}>d{sides}</button>)}</div><div className="free-dice-controls"><label><span>Количество</span><div><button type="button" onClick={() => setDiceCount((value) => clamp(value - 1, 1, 40))}>−</button><input type="number" min="1" max="40" value={diceCount} onChange={(event) => setDiceCount(clamp(Number(event.target.value), 1, 40))}/><button type="button" onClick={() => setDiceCount((value) => clamp(value + 1, 1, 40))}>＋</button></div></label><label><span>Грани</span><div className="free-dice-sides"><b>d</b><input type="number" min="2" max="1000" value={diceSides} onChange={(event) => setDiceSides(clamp(Number(event.target.value), 2, 1000))}/></div></label><label><span>Модификатор</span><div><button type="button" onClick={() => setDiceModifier((value) => clamp(value - 1, -500, 500))}>−</button><input type="number" min="-500" max="500" value={diceModifier} onChange={(event) => setDiceModifier(clamp(Number(event.target.value), -500, 500))}/><button type="button" onClick={() => setDiceModifier((value) => clamp(value + 1, -500, 500))}>＋</button></div></label></div><button className="free-dice-roll" disabled={busy} type="button" onClick={() => void run(async () => { const sent = await onFreeRoll({ count: diceCount, sides: diceSides, modifier: diceModifier }); if (sent !== false) onClose() })}>◈ Бросить {notation}</button></section>{loading && <div className="action-inline-loading"><span className="status-spinner"/> Загружаем проверки персонажа…</div>}{!loading && contract && <><div className="action-v2-section-title"><strong>Характеристики и спасброски</strong><small>серверный d20</small></div><div className="action-v2-ability-grid">{abilityRows.map(([key, short, label]) => <div className="action-v2-ability" key={key}><button disabled={busy} type="button" onClick={() => void run(() => onCheck(label, contract.abilities[key].modifier, "ability"))}><span>{short}</span><strong>{signed(contract.abilities[key].modifier)}</strong></button><button disabled={busy} type="button" onClick={() => void run(() => onCheck(`Спасбросок: ${label}`, contract.savingThrows[key].bonus.value, "save"))}><small>Спас</small><b>{signed(contract.savingThrows[key].bonus.value)}</b></button></div>)}</div><div className="action-v2-section-title"><strong>Навыки</strong><small>{skills.length}</small></div><div className="action-v2-list">{skills.map((skill) => <button disabled={busy} type="button" key={skill.key} onClick={() => void run(() => onCheck(skillNames[skill.key], skill.bonus.value, "skill"))}><span><strong>{skillNames[skill.key]}</strong><small>{skill.proficiencyRank >= 2 ? "Экспертиза" : skill.proficiencyRank ? "Владение" : "Без владения"}</small></span><b>{signed(skill.bonus.value)}</b></button>)}</div></>}</>}
     {tab !== "dice" && loading && <div className="action-v2-empty"><span className="status-spinner"/><p>Собираем resolved-персонажа…</p></div>}
     {tab !== "dice" && !loading && !contract && <div className="action-v2-empty"><span>◇</span><strong>Нужен персонаж</strong><p>Эта вкладка использует его лист.</p></div>}
     {!loading && contract && tab === "attacks" && <>{!attackChannel ? <div className="action-v2-list action-v2-list--cards"><button type="button" disabled={!model.attacks.length} onClick={() => setAttackChannel("weapon")}><i>⚔</i><span><strong>Оружие</strong><small>{model.attacks.length ? `${model.attacks.length} доступно` : "Нет доступных атак оружием"}</small></span><em>›</em></button><button type="button" disabled={!model.attackSpells.length} onClick={() => setAttackChannel("spell")}><i>✧</i><span><strong>Заклинание</strong><small>{model.attackSpells.length ? `Урон · ${model.attackSpells.length} доступно` : "Нет наносящих урон заклинаний"}</small></span><em>›</em></button><button type="button" disabled={!specialCount} onClick={() => setAttackChannel("special")}><i>◆</i><span><strong>Особое</strong><small>{specialCount ? `Предметы и расходники · ${specialCount}` : "Нет особых атак из предметов"}</small></span><em>›</em></button></div> : <><div className="action-spell-results__head"><button type="button" onClick={() => { setAttackChannel(null); setAttackSpellChannel(null) }}>‹ Атака</button><div><small>Тип атаки</small><strong>{attackChannel === "weapon" ? "Оружие" : attackChannel === "spell" ? "Заклинание" : "Особое"}</strong></div></div>{attackChannel === "weapon" && <div className="action-v2-list action-v2-list--cards">{model.attacks.map((action) => <button disabled={busy || !action.available} type="button" key={`${action.key}:${action.variantKey}`} onClick={() => void run(() => onAction(action))}><i>⚔</i><span><strong>{action.label || action.key}</strong><small>{actionSummary(action, resources, labels)}</small></span><em>›</em></button>)}</div>}{attackChannel === "spell" && <SpellSlotFlow spells={model.attackSpells} contract={contract} channel={attackSpellChannel} setChannel={setAttackSpellChannel} busy={busy} emptyTitle="Нет атакующих заклинаний" onCast={(selection) => void run(() => cast(selection))}/>} {attackChannel === "special" && <div className="action-source-stack">{specialGroups.map((group) => <SourceGroup key={group.id} group={group} kind="unique" resources={resources} labels={labels} busy={busy} onAction={(action, optionKey) => void run(() => onAction(action, optionKey))} onSpell={(spell) => void run(() => castDefault(spell))}/>)}</div>}</>}</>}
     {!loading && contract && tab === "spells" && <SpellSlotFlow spells={model.spells} contract={contract} channel={spellChannel} setChannel={setSpellChannel} busy={busy} emptyTitle="Нет доступной магии" onCast={(selection) => void run(() => cast(selection))}/>} 
     {!loading && contract && tab === "class" && <>{model.classGroups.length ? <div className="action-source-stack">{model.classGroups.map((group) => <SourceGroup key={group.id} group={group} kind="class" resources={resources} labels={labels} busy={busy} onAction={(action, optionKey) => void run(() => onAction(action, optionKey))} onSpell={(spell) => void run(() => castDefault(spell))}/>)}</div> : <div className="action-v2-empty"><span>◇</span><strong>Нет классовых действий</strong><p>Ресурсы и способности появятся здесь из CE.</p></div>}</>}
-    {!loading && contract && tab === "unique" && <>{model.uniqueGroups.length ? <div className="action-source-stack">{model.uniqueGroups.map((group) => <SourceGroup key={group.id} group={group} kind="unique" resources={resources} labels={labels} busy={busy} onAction={(action, optionKey) => void run(() => onAction(action, optionKey))} onSpell={(spell) => void run(() => castDefault(spell))}/>)}</div> : <div className="action-v2-empty"><span>✦</span><strong>Нет уникальных способностей</strong><p>Артефакты, фиты и сюжетные способности появятся здесь по источнику.</p></div>}</>}
+    {!loading && contract && tab === "unique" && <>{visibleUniqueGroups.length ? <div className="action-source-stack">{visibleUniqueGroups.map((group) => <SourceGroup key={group.id} group={group} kind="unique" resources={resources} labels={labels} busy={busy} onAction={(action, optionKey) => void run(() => onAction(action, optionKey))} onSpell={(spell) => void run(() => castDefault(spell))}/>)}</div> : <div className="action-v2-empty"><span>✦</span><strong>{scope === "item" ? "Нет доступных предметов" : "Нет уникальных способностей"}</strong><p>{scope === "item" ? "Предметные действия появятся здесь из экипировки и инвентаря." : "Артефакты, фиты и сюжетные способности появятся здесь по источнику."}</p></div>}</>}
     {error && <div className="action-v3-error">{error}</div>}
   </div></section></div>
 }
