@@ -102,3 +102,18 @@ export type ChatSpeakerOption =
 
 
 export const CHAT_MESSAGE_SENT_EVENT = "meganotrpg:chat-message-sent"
+
+
+export type ChatActionLauncherMode =
+  | "roll"
+  | "ability"
+  | "spell"
+  | "item"
+  | "action"
+
+export const CHAT_ACTION_REQUEST_EVENT = "meganotrpg:chat-action-request"
+
+export type ChatActionRequestDetail = {
+  roomId: string
+  mode: ChatActionLauncherMode
+}
