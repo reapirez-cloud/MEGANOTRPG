@@ -46,6 +46,10 @@ export type ChatRoomShellModel = {
   roomType: "character" | "scene" | "flood"
   readOnly: boolean
   canManage: boolean
+  viewer: {
+    campaignId: string
+    userId: string
+  }
   identity: ChatRoomHeaderIdentity
   context: ChatRoomHeaderContext
   quickActions: ChatRoomQuickActions
@@ -72,3 +76,20 @@ export function chatSpeakerStorageKey(
 ) {
   return `meganotrpg:chat-speaker:${campaignId}:${roomId}:${userId}`
 }
+
+
+export const CHAT_SPEAKER_CHANGED_EVENT = "meganotrpg:chat-speaker-changed"
+
+export type ChatSpeakerOption =
+  | {
+      id: "narrator"
+      kind: "narrator"
+      name: "Рассказчик"
+      avatarUrl: null
+    }
+  | {
+      id: string
+      kind: "character"
+      name: string
+      avatarUrl: string | null
+    }
