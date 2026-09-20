@@ -61,6 +61,9 @@ export type CharacterSpellOption = CharacterSpell & { granted_by: string | null 
 export type CharacterFeature = {
   id: string; character_id: string; kind: "feat" | "class_feature" | "racial_trait" | "background_feature" | "effect" | "feature" | "other"
   name: string; description: string; mechanics?: StoredMechanics; sort_order: number; created_at: string; updated_at: string
+  source_definition_id?: string | null
+  source_definition_revision?: number | null
+  source_definition_kind?: "feature" | "feat" | "condition" | null
 }
 
 export type DiaryPost = { id: string; character_id: string; created_by: string; body: string; title: string; media_url: string | null; created_at: string; updated_at: string }
@@ -82,4 +85,12 @@ export type SpellInput = {
   components: string; concentration: boolean; ritual: boolean; prepared: boolean; cast_mode: "cantrip" | "slot"
   slot_level: number | null; description: string; source: string
 }
-export type FeatureInput = { kind: CharacterFeature["kind"]; name: string; description: string; mechanics?: StoredMechanics }
+export type FeatureInput = {
+  kind: CharacterFeature["kind"]
+  name: string
+  description: string
+  mechanics?: StoredMechanics
+  source_definition_id?: string | null
+  source_definition_revision?: number | null
+  source_definition_kind?: "feature" | "feat" | "condition" | null
+}
