@@ -52,7 +52,7 @@
 
 .u1-chat-action-head span {
   color: rgba(229, 231, 228, 0.34);
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 820;
   letter-spacing: .14em;
   text-transform: uppercase;
@@ -62,7 +62,7 @@
   overflow: hidden;
   color: rgba(245, 245, 240, 0.88);
   font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 680;
   line-height: 1;
   text-overflow: ellipsis;
@@ -72,7 +72,7 @@
 .u1-chat-action-head small {
   overflow: hidden;
   color: rgba(226, 228, 224, 0.36);
-  font-size: 7.5px;
+  font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -125,7 +125,7 @@
 .u1-chat-action-empty p {
   max-width: 34ch;
   margin: 5px 0 0;
-  font-size: 8px;
+  font-size: 9px;
   line-height: 1.4;
 }
 
@@ -136,7 +136,7 @@
 .u1-chat-action-empty > strong {
   margin-top: 6px;
   color: rgba(240, 241, 236, 0.66);
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .u1-chat-action-list {
@@ -189,7 +189,7 @@
 
 .u1-chat-action-list strong {
   overflow: hidden;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 720;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -198,7 +198,7 @@
 .u1-chat-action-list small {
   overflow: hidden;
   color: rgba(226, 228, 224, 0.31);
-  font-size: 6.5px;
+  font-size: 8.5px;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -234,14 +234,14 @@
 
 .u1-chat-action-group > header span {
   color: rgba(226, 228, 224, 0.27);
-  font-size: 6px;
+  font-size: 7.5px;
   font-weight: 780;
   letter-spacing: .09em;
   text-transform: uppercase;
 }
 
 .u1-chat-action-group > header strong {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -275,13 +275,13 @@
 
 .u1-chat-action-resources b {
   color: rgba(226, 228, 224, 0.31);
-  font-size: 6px;
+  font-size: 8px;
   font-weight: 620;
   text-transform: capitalize;
 }
 
 .u1-chat-action-resources strong {
-  font-size: 7px;
+  font-size: 9px;
 }
 
 .u1-chat-roll {
@@ -313,14 +313,14 @@
 
 .u1-chat-roll__headline span {
   color: rgba(226, 228, 224, 0.32);
-  font-size: 6.5px;
+  font-size: 8px;
   text-transform: uppercase;
   letter-spacing: .08em;
 }
 
 .u1-chat-roll__headline strong {
   color: rgba(245, 245, 240, 0.82);
-  font-size: 17px;
+  font-size: 19px;
 }
 
 .u1-chat-roll__headline > button,
@@ -333,7 +333,7 @@
     linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.014)),
     #171a1d;
   color: rgba(247, 247, 242, 0.78);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 760;
 }
 
@@ -352,7 +352,7 @@
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.012);
   color: rgba(226, 228, 224, 0.37);
-  font-size: 7px;
+  font-size: 9px;
   font-weight: 720;
 }
 
@@ -378,7 +378,7 @@
 .u1-chat-roll__controls label > span {
   padding-left: 2px;
   color: rgba(226, 228, 224, 0.29);
-  font-size: 6px;
+  font-size: 10px;
 }
 
 .u1-chat-roll__controls input {
@@ -390,7 +390,7 @@
   outline: 0;
   background: rgba(7, 9, 10, 0.76);
   color: rgba(244, 244, 239, 0.74);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   text-align: center;
 }
@@ -418,7 +418,7 @@
 
 .u1-chat-checks > header small {
   color: rgba(226, 228, 224, 0.26);
-  font-size: 5.5px;
+  font-size: 7.5px;
 }
 
 .u1-chat-checks__grid {
@@ -449,7 +449,7 @@
 
 .u1-chat-checks__grid > div > button:first-child span {
   color: rgba(226, 228, 224, 0.36);
-  font-size: 6.5px;
+  font-size: 8px;
   font-weight: 760;
 }
 
@@ -461,7 +461,7 @@
   min-height: 25px;
   border-top: 1px solid rgba(235, 237, 239, 0.035);
   color: rgba(226, 228, 224, 0.31);
-  font-size: 6px;
+  font-size: 8px;
 }
 
 .u1-chat-skills {
@@ -485,13 +485,13 @@
 }
 
 .u1-chat-skills summary span {
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
 }
 
 .u1-chat-skills summary strong {
   color: rgba(226, 228, 224, 0.29);
-  font-size: 7px;
+  font-size: 9px;
 }
 
 .u1-chat-skills > div {
@@ -512,7 +512,7 @@
   border-bottom: 1px solid rgba(235, 237, 239, 0.025);
   background: transparent;
   color: rgba(226, 228, 224, 0.44);
-  font-size: 6.5px;
+  font-size: 9px;
   text-align: left;
 }
 
@@ -527,7 +527,7 @@
   border: 1px solid rgba(235, 237, 239, 0.045);
   border-radius: 9px;
   color: rgba(226, 228, 224, 0.3);
-  font-size: 7px;
+  font-size: 9px;
   line-height: 1.4;
 }
 
@@ -538,7 +538,7 @@
   border-radius: 9px;
   background: rgba(151, 43, 54, 0.09);
   color: rgba(243, 163, 172, 0.76);
-  font-size: 7px;
+  font-size: 9px;
   line-height: 1.35;
 }
 
