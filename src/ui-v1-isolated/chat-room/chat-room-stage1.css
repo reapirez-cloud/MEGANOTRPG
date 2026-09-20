@@ -930,3 +930,318 @@
     animation: none;
   }
 }
+
+
+/* Stage 4: final game-event card geometry. Outcome remains GM-owned, so no success/failure colors. */
+.u1-room-game-card {
+  position: relative;
+  width: min(calc(100% - 43px), 650px);
+  margin-left: 43px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgba(235,237,239,.075);
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255,255,255,.032), transparent 28%),
+    linear-gradient(145deg, rgba(255,255,255,.024), rgba(255,255,255,.006) 62%),
+    rgba(13,16,18,.94);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.025),
+    0 10px 26px rgba(0,0,0,.16);
+}
+
+.u1-room-game-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(112deg, rgba(255,255,255,.018), transparent 32%);
+}
+
+.u1-room-game-card__icon {
+  position: relative;
+  z-index: 1;
+  min-height: 100%;
+  display: grid;
+  place-items: start center;
+  padding-top: 12px;
+  border-right: 1px solid rgba(235,237,239,.055);
+  color: rgba(232,234,230,.42);
+  background: rgba(255,255,255,.012);
+}
+
+.u1-room-game-card__icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.u1-room-game-card__content {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  padding: 10px 11px 9px;
+}
+
+.u1-room-game-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.u1-room-game-card__header > span {
+  color: rgba(226,228,224,.34);
+  font-size: 6px;
+  font-weight: 820;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+.u1-room-game-card__header time {
+  color: rgba(226,228,224,.20);
+  font-size: 6px;
+}
+
+.u1-room-game-card__title {
+  min-width: 0;
+  margin-top: 5px;
+  display: grid;
+  gap: 3px;
+}
+
+.u1-room-game-card__title > strong {
+  overflow: hidden;
+  color: rgba(245,245,240,.88);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: 13px;
+  font-weight: 680;
+  line-height: 1.08;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-game-card__title > small {
+  color: rgba(226,228,224,.40);
+  font-size: 7px;
+  font-weight: 620;
+  line-height: 1.35;
+}
+
+.u1-room-game-card__chips {
+  margin-top: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.u1-room-game-card__chips > span {
+  min-height: 20px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(235,237,239,.055);
+  border-radius: 999px;
+  color: rgba(230,232,228,.42);
+  background: rgba(255,255,255,.014);
+  font-size: 6px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.u1-room-game-card__stats {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid rgba(235,237,239,.055);
+  border-radius: 9px;
+  background: rgba(3,5,6,.18);
+}
+
+.u1-room-game-card__stats > div {
+  min-width: 0;
+  min-height: 43px;
+  padding: 6px 7px;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  border-right: 1px solid rgba(235,237,239,.045);
+}
+
+.u1-room-game-card__stats > div:last-child {
+  border-right: 0;
+}
+
+.u1-room-game-card__stats > div > span {
+  overflow: hidden;
+  color: rgba(226,228,224,.28);
+  font-size: 5.5px;
+  font-weight: 780;
+  letter-spacing: .06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.u1-room-game-card__stats > div > strong {
+  overflow: hidden;
+  color: rgba(239,240,236,.62);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-game-card__stats > div[data-emphasis] {
+  background: rgba(255,255,255,.025);
+}
+
+.u1-room-game-card__stats > div[data-emphasis] > strong {
+  color: rgba(248,248,243,.92);
+  font-size: 17px;
+  font-weight: 720;
+  letter-spacing: -.03em;
+}
+
+.u1-room-game-card__resources {
+  margin-top: 8px;
+  display: grid;
+  gap: 4px;
+}
+
+.u1-room-game-card__resources > div {
+  min-height: 32px;
+  padding: 5px 7px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label cost"
+    "state state";
+  align-items: center;
+  column-gap: 8px;
+  border: 1px solid rgba(235,237,239,.05);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.018), transparent 70%),
+    rgba(255,255,255,.008);
+}
+
+.u1-room-game-card__resources > div > span {
+  grid-area: label;
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(231,233,229,.48);
+  font-size: 7px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-game-card__resources > div > strong {
+  grid-area: cost;
+  color: rgba(244,244,239,.72);
+  font-size: 8px;
+  font-weight: 720;
+}
+
+.u1-room-game-card__resources > div > small {
+  grid-area: state;
+  margin-top: 2px;
+  color: rgba(226,228,224,.25);
+  font-size: 5.5px;
+}
+
+.u1-room-game-card__note {
+  margin: 8px 0 0;
+  color: rgba(235,236,232,.50);
+  font-size: 7.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.u1-room-game-card__footer {
+  margin-top: 8px;
+  padding-top: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  border-top: 1px solid rgba(235,237,239,.045);
+}
+
+.u1-room-game-card__footer > span {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(226,228,224,.30);
+  font-size: 6px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-game-card__footer > small {
+  color: rgba(226,228,224,.20);
+  font-size: 5.5px;
+}
+
+/* Tiny structural differences only. The cards never infer whether the action succeeded. */
+.u1-room-game-card[data-event-type="roll"] .u1-room-game-card__icon {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,255,255,.035), transparent 42%),
+    rgba(255,255,255,.012);
+}
+
+.u1-room-game-card[data-event-type="spell"] .u1-room-game-card__icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.u1-room-game-card[data-event-type="attack"] .u1-room-game-card__icon,
+.u1-room-game-card[data-event-type="class_ability"] .u1-room-game-card__icon {
+  border-right-color: rgba(235,237,239,.075);
+}
+
+@media (max-width: 360px) {
+  .u1-room-game-card {
+    width: calc(100% - 39px);
+    margin-left: 39px;
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .u1-room-game-card__content {
+    padding-left: 9px;
+    padding-right: 9px;
+  }
+
+  .u1-room-game-card__stats > div {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+}
+
+@media (max-width: 320px) {
+  .u1-room-game-card {
+    width: calc(100% - 37px);
+    margin-left: 37px;
+    grid-template-columns: 31px minmax(0, 1fr);
+    border-radius: 11px;
+  }
+
+  .u1-room-game-card__icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .u1-room-game-card__stats > div[data-emphasis] > strong {
+    font-size: 15px;
+  }
+}
