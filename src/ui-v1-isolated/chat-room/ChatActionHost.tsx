@@ -4,14 +4,10 @@ import type {
   ResolvedAction,
   ResolvedSpell,
 } from "../../character-engine/index.ts"
-import ChatActionSheet, {
-  type ChatActionSheetScope,
-  type ChatActionSheetTab,
+import ChatActionPanel, {
   type FreeDiceRequest,
-} from "../../components/chat/ChatActionSheet.tsx"
-import ChatSpellModifierSheet, {
-  spellModifierActions,
-} from "../../components/chat/ChatSpellModifierSheet.tsx"
+} from "./ChatActionPanel"
+import ChatSpellModifierPanel from "./ChatSpellModifierPanel"
 import {
   templateMechanicIdForChatAction,
   templateMechanicIdForSpellAccess,
@@ -31,18 +27,6 @@ import {
 
 const CHARACTER_FIELDS =
   "id, campaign_id, assigned_user_id, name, character_class, level, bio, avatar_url, character_type, visibility, visibility_mode, publication_state, life_state, died_at, created_by, created_at, updated_at"
-
-function modeTab(mode: ChatActionLauncherMode): ChatActionSheetTab {
-  if (mode === "roll") return "dice"
-  if (mode === "spell") return "spells"
-  if (mode === "ability") return "class"
-  if (mode === "item") return "unique"
-  return "attacks"
-}
-
-function modeScope(mode: ChatActionLauncherMode): ChatActionSheetScope {
-  return mode === "item" ? "item" : "all"
-}
 
 function useActionCharacter(
   campaignId: string,
@@ -99,7 +83,10 @@ export default function ChatActionHost({
   const actor = useActionCharacter(model.viewer.campaignId, characterId)
   const resolved = useResolvedCharacterRuntime(actor.character)
   const modifierActions = useMemo(
-    () => spellModifierActions(resolved.contract?.actions || []),
+    () =>
+      (resolved.contract?.actions || []).filter((action) =>
+        action.tags.includes("spell_modifier"),
+      ),
     [resolved.contract],
   )
   const [pendingModifiedSpell, setPendingModifiedSpell] =
@@ -422,8 +409,7 @@ export default function ChatActionHost({
 
   if (pendingModifiedSpell) {
     return (
-      <ChatSpellModifierSheet
-        presentation="side"
+      <ChatSpellModifierPanel
         spell={pendingModifiedSpell}
         modifierActions={modifierActions}
         busy={commandBusy}
@@ -437,11 +423,9 @@ export default function ChatActionHost({
   }
 
   return (
-    <ChatActionSheet
+    <ChatActionPanel
       key={mode}
-      presentation="side"
-      initialTab={modeTab(mode)}
-      scope={modeScope(mode)}
+      mode={mode}
       characterName={actor.character?.name || speakerName}
       contract={resolved.contract}
       loading={Boolean(characterId) && (actor.loading || resolved.loading)}
