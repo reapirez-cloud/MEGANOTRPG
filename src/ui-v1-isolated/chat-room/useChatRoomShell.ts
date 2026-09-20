@@ -10,11 +10,15 @@ import {
   type ChatRoomShellModel,
 } from "./chatRoomContracts"
 
-type MembershipRow = {
+type ViewerContextRow = {
   campaign_id: string
-  active_character_id: string | null
-  role: string
-  is_owner: boolean
+  can_manage: boolean
+  can_read: boolean
+  can_write: boolean
+  room_type: string
+  room_state: string
+  is_read_only: boolean
+  viewer_character_id: string | null
 }
 
 type RoomRow = {
@@ -23,10 +27,12 @@ type RoomRow = {
   room_type: string
   character_id: string | null
   is_read_only: boolean
+  room_state: string
   location_id: string | null
   campaign_day: number | null
   day_period: string | null
   context_location_id: string | null
+  context_location_name: string | null
   context_campaign_day: number | null
   context_day_period: string | null
 }
@@ -101,7 +107,10 @@ function itemMechanicsContainWeaponAction(mechanics: unknown) {
     const tags = Array.isArray(entry.tags)
       ? entry.tags.filter((tag): tag is string => typeof tag === "string")
       : []
-    const label = typeof entry.label === "string" ? entry.label.toLocaleLowerCase("ru-RU") : ""
+    const label =
+      typeof entry.label === "string"
+        ? entry.label.toLocaleLowerCase("ru-RU")
+        : ""
 
     return (
       tags.some((tag) => tag.toLocaleLowerCase("en-US") === "weapon") ||
@@ -123,84 +132,6 @@ function definitionHasWeaponRole(data: unknown) {
       : ""
 
   return semanticRole.startsWith("weapon.")
-}
-
-async function resolveMembership(userId: string): Promise<MembershipRow | null> {
-  const rememberedCampaignId =
-    window.localStorage.getItem("meganotrpg:v1:campaign-id") ||
-    window.localStorage.getItem("meganotrpg:campaign-id") ||
-    ""
-
-  if (rememberedCampaignId) {
-    const remembered = await supabase
-      .from("campaign_members")
-      .select("campaign_id, active_character_id, role, is_owner")
-      .eq("campaign_id", rememberedCampaignId)
-      .eq("user_id", userId)
-      .maybeSingle()
-
-    if (!remembered.error && remembered.data) {
-      return remembered.data as MembershipRow
-    }
-  }
-
-  const first = await supabase
-    .from("campaign_members")
-    .select("campaign_id, active_character_id, role, is_owner, created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-
-  const membership = first.data?.[0] as MembershipRow | undefined
-  if (!membership) return null
-
-  window.localStorage.setItem(
-    "meganotrpg:v1:campaign-id",
-    membership.campaign_id,
-  )
-  return membership
-}
-
-async function loadCharacter(
-  campaignId: string,
-  characterId: string,
-): Promise<CharacterRow | null> {
-  const result = await supabase
-    .from("characters")
-    .select("id, assigned_user_id, name, character_class, level, avatar_url")
-    .eq("campaign_id", campaignId)
-    .eq("id", characterId)
-    .maybeSingle()
-
-  return (result.data as CharacterRow | null) || null
-}
-
-async function resolvePlayerCharacterId({
-  campaignId,
-  room,
-  userId,
-  activeCharacterId,
-}: {
-  campaignId: string
-  room: RoomRow
-  userId: string
-  activeCharacterId: string | null
-}) {
-  if (room.room_type === "character" && room.character_id) {
-    const roomCharacter = await loadCharacter(campaignId, room.character_id)
-    return roomCharacter?.assigned_user_id === userId ? roomCharacter.id : null
-  }
-
-  if (room.room_type !== "scene" || !activeCharacterId) return null
-
-  const participant = await supabase
-    .from("scene_participants")
-    .select("character_id")
-    .eq("room_id", room.id)
-    .eq("character_id", activeCharacterId)
-    .maybeSingle()
-
-  return participant.data?.character_id || null
 }
 
 async function resolveGmCharacterId({
@@ -356,16 +287,29 @@ export function useChatRoomShell(roomId: string) {
     }
 
     const userId = auth.data.user.id
-    const membership = await resolveMembership(userId)
-    if (!membership) {
+    const contextResult = await supabase.rpc("get_chat_room_viewer_context_v1", {
+      p_room_id: roomId,
+    })
+
+    if (contextResult.error) {
       setModel(null)
-      setError("Кампания не найдена")
+      setError(contextResult.error.message)
+      if (!silent) setLoading(false)
+      return
+    }
+
+    const viewerContext =
+      ((contextResult.data || []) as ViewerContextRow[])[0] || null
+
+    if (!viewerContext || !viewerContext.can_read) {
+      setModel(null)
+      setError("Комната недоступна")
       if (!silent) setLoading(false)
       return
     }
 
     const roomsResult = await supabase.rpc("get_campaign_chat_rooms", {
-      p_campaign_id: membership.campaign_id,
+      p_campaign_id: viewerContext.campaign_id,
     })
 
     if (roomsResult.error) {
@@ -386,57 +330,50 @@ export function useChatRoomShell(roomId: string) {
       return
     }
 
-    const canManage = membership.role === "gm" || membership.is_owner === true
-    const characterId = canManage
+    const characterId = viewerContext.can_manage
       ? await resolveGmCharacterId({
-          campaignId: membership.campaign_id,
+          campaignId: viewerContext.campaign_id,
           roomId: room.id,
           userId,
         })
-      : await resolvePlayerCharacterId({
-          campaignId: membership.campaign_id,
-          room,
-          userId,
-          activeCharacterId: membership.active_character_id,
-        })
+      : viewerContext.viewer_character_id
 
     const presentation = characterId
-      ? await loadCharacterPresentation(membership.campaign_id, characterId)
+      ? await loadCharacterPresentation(viewerContext.campaign_id, characterId)
       : {
           character: null,
           world: null,
           hasEquippedWeapon: false,
         }
 
-    const locationId =
-      presentation.world?.location_id ||
-      room.context_location_id ||
-      room.location_id ||
-      null
+    let locationName = room.context_location_name || null
+    const characterLocationId = presentation.world?.location_id || null
 
-    let locationName: string | null = null
-    if (locationId) {
+    if (characterLocationId) {
       const locationResult = await supabase
         .from("locations")
         .select("name")
-        .eq("campaign_id", membership.campaign_id)
-        .eq("id", locationId)
+        .eq("campaign_id", viewerContext.campaign_id)
+        .eq("id", characterLocationId)
         .maybeSingle()
 
-      locationName = locationResult.data?.name || null
+      locationName = locationResult.data?.name || locationName
     }
 
     setModel({
       roomId: room.id,
       roomTitle: room.title,
       roomType: normalizeRoomType(room.room_type),
-      readOnly: Boolean(room.is_read_only),
-      canManage,
+      readOnly:
+        Boolean(room.is_read_only) ||
+        viewerContext.room_state === "closed",
+      canManage: viewerContext.can_manage,
+      canWrite: viewerContext.can_write,
       viewer: {
-        campaignId: membership.campaign_id,
+        campaignId: viewerContext.campaign_id,
         userId,
       },
-      identity: canManage
+      identity: viewerContext.can_manage
         ? presentation.character
           ? { kind: "character", character: presentation.character }
           : { kind: "narrator", name: "Рассказчик" }
@@ -465,13 +402,6 @@ export function useChatRoomShell(roomId: string) {
   }, [roomId])
 
   useEffect(() => {
-    let cancelled = false
-
-    const run = async () => {
-      await load()
-      if (cancelled) return
-    }
-
     const handleSpeakerChanged = (event: Event) => {
       const detail = (event as CustomEvent<{ roomId?: string }>).detail
       if (detail?.roomId && detail.roomId !== roomId) return
@@ -479,10 +409,9 @@ export function useChatRoomShell(roomId: string) {
     }
 
     window.addEventListener(CHAT_SPEAKER_CHANGED_EVENT, handleSpeakerChanged)
-    void run()
+    void load()
 
     return () => {
-      cancelled = true
       window.removeEventListener(CHAT_SPEAKER_CHANGED_EVENT, handleSpeakerChanged)
     }
   }, [load, roomId])
