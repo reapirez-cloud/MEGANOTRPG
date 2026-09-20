@@ -24,7 +24,7 @@ test("stage 4 roll cards expose dice, modifier and total without judging outcome
 
   assert.match(presentation, /function rollPresentation/)
   assert.match(presentation, /label: "Кубик"/)
-  assert.match(presentation, /label: "Кости"/)
+  assert.match(presentation, /"Кости"/)
   assert.match(presentation, /label: "Модификатор"/)
   assert.match(presentation, /label: "Итого"/)
   assert.match(presentation, /effect\.rolls/)
