@@ -49,7 +49,8 @@ test("stage 3 keeps direct quick actions compact and attack conditional", async 
 
   assert.match(header, /hasEquippedWeapon[\s\S]*id: "attack"/)
   assert.match(header, /data-action-count=\{actions\.length\}/)
-  assert.match(header, /data-placeholder="true"/)
+  assert.match(header, /CHAT_ACTION_REQUEST_EVENT/)
+  assert.match(header, /data-action-mode=\{action\.mode\}/)
   assert.match(css, /data-chat-room-header-stage="3"[\s\S]*\.u1-room-quick-action \{[\s\S]*min-height: 36px;/)
   assert.match(css, /u1-room-quick-actions\[data-action-count="3"\]/)
 })
