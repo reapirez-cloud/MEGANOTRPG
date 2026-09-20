@@ -35,7 +35,7 @@ type Route =
   | { type: "workspace"; page: "character"; characterId: string }
   | { type: "workspace"; page: "manage"; section?: WorkshopSection }
 
-const workshopSections: WorkshopSection[] = ["draft", "members", "characters", "library", "materials"]
+const workshopSections: WorkshopSection[] = ["review", "members", "characters", "library", "materials"]
 
 const sectionIds: SectionId[] = [
   "whats-new",
@@ -93,6 +93,9 @@ function parseRoute(): Route {
   if (path === "workspace/manage") return { type: "workspace", page: "manage" }
   if (path === "workspace/manage/party") {
     return { type: "workspace", page: "manage", section: "members" }
+  }
+  if (path === "workspace/manage/draft") {
+    return { type: "workspace", page: "manage", section: "review" }
   }
   if (path.startsWith("workspace/manage/")) {
     const workshopSection = path.slice("workspace/manage/".length) as WorkshopSection
