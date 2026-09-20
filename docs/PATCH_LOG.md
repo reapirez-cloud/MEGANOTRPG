@@ -12,6 +12,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Player-facing changes
 
 - AI image generation no longer starts from ordinary art discussion, composition/style planning, prompt drafting, references, or vague requests such as “сделай концепт”. Voss/Freddy waits for a clear current-turn draw/generation command such as “рисуй”, “нарисуй” or “сгенерируй изображение”.
+- Voss/Freddy chat is lighter and more responsive: ordinary conversation no longer publishes unrelated tool families, player security checks run in the accepted background turn with a lightweight profile, provider calls have bounded timeout/retry behavior, and pending replies no longer re-fetch the full thread catalog on every poll.
+- AI chat UX now locks destructive thread/model changes while a reply is pending, supports Ctrl/Cmd+Enter, improves mobile text/touch sizing and dialog focus, and shows useful fallback/degraded routing state only when relevant.
+- Generated-image cards now keep exact job/asset/variant identity. Running jobs can be cancelled directly, failed jobs can be retried directly, and selecting an older variant no longer ambiguously means “the second image from the latest generation”.
 
 ### Database / migration changes
 
@@ -19,10 +22,18 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 - Added a deterministic image-intent gate. `generate_image` is removed from the model’s published tool set until the current user message contains an explicit positive drawing command, so model initiative cannot spend image-generation tokens during discussion.
 - The previous broad `image subject + сделай/создать` heuristic was removed. Negated commands such as “не рисуй пока” remain discussion-only.
+- Tool publication and system instructions are task-scoped: reference, memory, image, Workshop/draft, inventory and admin rules are injected only when the request needs that workflow. Pure conversational turns are tool-free.
+- Player security classification no longer spends the selected model's maximum reasoning budget. It resolves a lightweight compatible campaign model, disables reasoning effort, uses a 12-second classifier timeout with no retry, and still runs before the normal answer inside the durable background turn.
+- Provider chat requests use an AbortController timeout and one bounded retry only for transient 429/502/503/504 failures.
+- Player routing now falls back to a compatible public tool-capable model for tool-required tasks instead of silently remaining degraded when the selected public model lacks tools.
+- Pending-reply synchronization reads only the recent message tail; image-job polling runs independently at a lower cadence. Image cancel/retry are direct authenticated Edge actions rather than new LLM turns.
+- The current AI foundation document was reconciled with the actual per-user model choice, authority split and task-scoped runtime.
 
 ### Tests / verification
 
 - Added regressions covering positive draw commands and non-generating discussion/negation/quoted-command cases, plus a source guard requiring `generate_image` to stay unpublished before explicit intent.
+- Added/updated regression coverage for lightweight security classification, provider timeout/retry, task-scoped tools/prompts, player capability fallback, tail polling, pending-state UI locks, exact generated-image references, cancel/retry controls and image-reply finalization.
+- Exact-head CI `35490482090` on `8f4167c29bc3529c63fd4a0bd2ffddf20f72c7e4` passed Build, Lint, repository tests, Storybook and Playwright smoke. Live Supabase `voss-agent` v41 is ACTIVE with JWT verification enabled and all 18 deployed source files exactly match that green head.
 
 ### Known incomplete work
 
