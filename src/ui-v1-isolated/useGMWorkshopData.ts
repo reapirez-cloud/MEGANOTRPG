@@ -594,6 +594,20 @@ export function useGMWorkshopData(
     authority: "gm",
   }), [state.campaignId, state.userId])
 
+  const refreshAfterSuccess = useCallback(async (): Promise<Pick<WorkshopMutationResult, "refreshError">> => {
+    try {
+      await load()
+      return {}
+    } catch (reason) {
+      return {
+        refreshError: errorMessage(
+          reason,
+          "Изменение сохранено, но экран не удалось обновить.",
+        ),
+      }
+    }
+  }, [load])
+
   const mutate = useCallback(async (
     action: () => Promise<unknown>,
     fallback: string,
@@ -604,16 +618,11 @@ export function useGMWorkshopData(
       return { ok: false, error: errorMessage(reason, fallback) }
     }
 
-    try {
-      await load()
-      return { ok: true }
-    } catch (reason) {
-      return {
-        ok: true,
-        refreshError: errorMessage(reason, "Изменение сохранено, но экран не удалось обновить."),
-      }
+    return {
+      ok: true,
+      ...(await refreshAfterSuccess()),
     }
-  }, [load])
+  }, [refreshAfterSuccess])
 
   const operations = useMemo<WorkshopOperations>(() => ({
     refresh: load,
@@ -654,8 +663,11 @@ export function useGMWorkshopData(
           })
         }
 
-        await load()
-        return { ok: true, id: createdId || undefined }
+        return {
+          ok: true,
+          id: createdId || undefined,
+          ...(await refreshAfterSuccess()),
+        }
       } catch (reason) {
         if (createdId) {
           try {
@@ -664,7 +676,7 @@ export function useGMWorkshopData(
             // Creation compensation is best-effort; original failure is returned below.
           }
         }
-        await load()
+        await refreshAfterSuccess()
         return { ok: false, error: errorMessage(reason, "Не удалось создать черновик персонажа.") }
       }
     },
@@ -807,8 +819,10 @@ export function useGMWorkshopData(
       if (!state.isOwner) return { ok: false, error: "Роли меняет только владелец кампании." }
       try {
         await oracle.campaign.setMemberRole(context(), userId, role)
-        await load()
-        return { ok: true }
+        return {
+          ok: true,
+          ...(await refreshAfterSuccess()),
+        }
       } catch (reason) {
         return { ok: false, error: errorMessage(reason, "Не удалось изменить роль участника.") }
       }
@@ -818,8 +832,10 @@ export function useGMWorkshopData(
       if (!state.isOwner) return { ok: false, error: "Удалять участников может только владелец кампании." }
       try {
         await oracle.campaign.removeMember(context(), userId)
-        await load()
-        return { ok: true }
+        return {
+          ok: true,
+          ...(await refreshAfterSuccess()),
+        }
       } catch (reason) {
         return { ok: false, error: errorMessage(reason, "Не удалось удалить участника.") }
       }
@@ -831,8 +847,11 @@ export function useGMWorkshopData(
           maxUses: Math.max(1, Math.min(500, Math.floor(maxUses))),
           expiresDays: Math.max(1, Math.min(365, Math.floor(expiresDays))),
         })
-        await load()
-        return { ok: true, code }
+        return {
+          ok: true,
+          code,
+          ...(await refreshAfterSuccess()),
+        }
       } catch (reason) {
         return { ok: false, error: errorMessage(reason, "Не удалось создать приглашение.") }
       }
@@ -841,8 +860,10 @@ export function useGMWorkshopData(
     async revokeInvite(code) {
       try {
         await oracle.campaign.revokeInvite(context(), code)
-        await load()
-        return { ok: true }
+        return {
+          ok: true,
+          ...(await refreshAfterSuccess()),
+        }
       } catch (reason) {
         return { ok: false, error: errorMessage(reason, "Не удалось отозвать приглашение.") }
       }
@@ -865,8 +886,11 @@ export function useGMWorkshopData(
           mechanics: input.mechanics ?? [],
           data: input.data ?? {},
         })
-        await load()
-        return { ok: true, id: result.value.after.id }
+        return {
+          ok: true,
+          id: result.value.after.id,
+          ...(await refreshAfterSuccess()),
+        }
       } catch (reason) {
         return { ok: false, error: errorMessage(reason, "Не удалось создать черновик.") }
       }
@@ -982,8 +1006,11 @@ export function useGMWorkshopData(
           mechanics: definition.mechanics,
           data: definition.data,
         })
-        await load()
-        return { ok: true, id: result.value.after.id }
+        return {
+          ok: true,
+          id: result.value.after.id,
+          ...(await refreshAfterSuccess()),
+        }
       } catch (reason) {
         return { ok: false, error: errorMessage(reason, "Не удалось создать копию.") }
       }
@@ -1168,8 +1195,10 @@ export function useGMWorkshopData(
         updated_at: new Date().toISOString(),
       })
       if (error) return { ok: false, error: error.message }
-      await load()
-      return { ok: true }
+      return {
+        ok: true,
+        ...(await refreshAfterSuccess()),
+      }
     },
 
     async updateNote(id, title, body) {
@@ -1188,8 +1217,10 @@ export function useGMWorkshopData(
         .eq("workspace_user_id", state.userId)
 
       if (error) return { ok: false, error: error.message }
-      await load()
-      return { ok: true }
+      return {
+        ok: true,
+        ...(await refreshAfterSuccess()),
+      }
     },
 
     async uploadMaterial(file, folderId = null) {
@@ -1214,8 +1245,10 @@ export function useGMWorkshopData(
         return { ok: false, error: error.message }
       }
 
-      await load()
-      return { ok: true }
+      return {
+        ok: true,
+        ...(await refreshAfterSuccess()),
+      }
     },
 
     async createFolder(name, parentId = null) {
@@ -1232,8 +1265,10 @@ export function useGMWorkshopData(
         name: cleanName,
       })
       if (error) return { ok: false, error: error.message }
-      await load()
-      return { ok: true }
+      return {
+        ok: true,
+        ...(await refreshAfterSuccess()),
+      }
     },
 
     async renameFolder(id, name) {
@@ -1248,8 +1283,10 @@ export function useGMWorkshopData(
         .eq("workspace_user_id", state.userId)
 
       if (error) return { ok: false, error: error.message }
-      await load()
-      return { ok: true }
+      return {
+        ok: true,
+        ...(await refreshAfterSuccess()),
+      }
     },
 
     async moveFolder(id, parentId) {
@@ -1287,8 +1324,10 @@ export function useGMWorkshopData(
         .eq("workspace_user_id", state.userId)
 
       if (error) return { ok: false, error: error.message }
-      await load()
-      return { ok: true }
+      return {
+        ok: true,
+        ...(await refreshAfterSuccess()),
+      }
     },
 
     async moveMaterial(id, folderId) {
@@ -1307,8 +1346,10 @@ export function useGMWorkshopData(
         .eq("workspace_user_id", state.userId)
 
       if (error) return { ok: false, error: error.message }
-      await load()
-      return { ok: true }
+      return {
+        ok: true,
+        ...(await refreshAfterSuccess()),
+      }
     },
 
     async renameMaterial(id, title) {
@@ -1326,8 +1367,10 @@ export function useGMWorkshopData(
         .eq("workspace_user_id", state.userId)
 
       if (error) return { ok: false, error: error.message }
-      await load()
-      return { ok: true }
+      return {
+        ok: true,
+        ...(await refreshAfterSuccess()),
+      }
     },
 
     reorderFolder(id, direction) {
@@ -1357,8 +1400,10 @@ export function useGMWorkshopData(
         await deleteCampaignMediaObject(material.storagePath)
       }
 
-      await load()
-      return { ok: true }
+      return {
+        ok: true,
+        ...(await refreshAfterSuccess()),
+      }
     },
 
     deleteFolder(id) {
