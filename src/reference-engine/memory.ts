@@ -161,6 +161,59 @@ export class MemoryChasovoyStorage implements ChasovoyStorage {
     return current(stored)!
   }
 
+  async publishDraftDefinition(
+    definitionId: string,
+    context: ChasovoyMutationContext,
+  ) {
+    const draft = this.definitions.get(definitionId)
+    if (!draft) throw new EngineCommandError("definition.not_found", "Definition was not found")
+    if (draft.identity.status !== "draft") {
+      throw new EngineCommandError("definition.draft_required", "Only draft definitions can be published")
+    }
+
+    const draftRevision = current(draft)!
+    const targetId = typeof draftRevision.data.revises_definition_id === "string"
+      ? draftRevision.data.revises_definition_id
+      : null
+
+    if (!targetId) {
+      draft.identity.status = "active"
+      draft.identity.visibility = "campaign"
+      const latest = draft.revisions[draft.revisions.length - 1]
+      if (latest) latest.updatedAt = context.occurredAt
+      return current(draft)!
+    }
+
+    const target = this.definitions.get(targetId)
+    if (!target) throw new EngineCommandError("definition.not_found", "Target definition was not found")
+    if (
+      target.identity.campaignId !== draft.identity.campaignId ||
+      target.identity.kind !== draft.identity.kind ||
+      target.identity.status !== "active"
+    ) {
+      throw new EngineCommandError("definition.invalid_revision_target", "Draft revision target is invalid")
+    }
+
+    const previous = current(target)!
+    const nextData = copy(draftRevision.data)
+    delete nextData.revises_definition_id
+    delete nextData.revises_definition_revision
+    target.revisions.push({
+      revision: previous.revision + 1,
+      name: draftRevision.name,
+      summary: draftRevision.summary,
+      rulesText: draftRevision.rulesText,
+      mechanics: copy(draftRevision.mechanics),
+      data: nextData,
+      updatedAt: context.occurredAt,
+    })
+    draft.identity.status = "archived"
+    draft.identity.visibility = "gm"
+    const draftLatest = draft.revisions[draft.revisions.length - 1]
+    if (draftLatest) draftLatest.updatedAt = context.occurredAt
+    return current(target)!
+  }
+
   async setDefinitionStatus(
     definitionId: string,
     status: ChasovoyDefinitionStatus,
