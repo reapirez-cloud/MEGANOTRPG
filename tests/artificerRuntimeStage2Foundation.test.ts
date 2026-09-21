@@ -37,7 +37,7 @@ function bundleAt(level: number): CharacterTemplateBundle {
       source_kind: "official",
       source_label: "Eberron: Forge of the Artificer (2025)",
       is_builtin: true,
-      mechanical_summary: "d8 Intelligence half-caster.",
+      mechanical_summary: "Intelligence-based magical inventor using prepared spells, tool proficiencies, shared spell slots, and item-focused class features across levels 1–20.",
       author_description: "",
       author_comment: "",
       rules_meta: {},
@@ -161,7 +161,7 @@ test("Stage 2 keeps literature deferred and hands off cleanly to Stage 3", () =>
   assert.match(plan, /Stage 2 — class foundation 1–20 \+ spellcasting:\s*COMPLETE_2026_09_21/)
   assert.match(plan, /Stage 3 — core item\/replication runtime:\s*NEXT/)
   assert.match(ledger, /stage_2_foundation_1_20_and_spellcasting: COMPLETE_2026_09_21/)
-  assert.match(ledger, /Text:\*\*\s*\`DEFERRED_USER_TRANSLATION\`/)
+  assert.match(ledger, /Text:\*\*\s*`DEFERRED_USER_TRANSLATION`/)
   assert.match(migration, /author_description='',author_comment=''/)
   assert.match(migration, /literary_layer_required_for_runtime',false/)
 })
