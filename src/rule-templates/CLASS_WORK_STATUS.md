@@ -657,6 +657,8 @@ Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and al
 - `literary_policy: USER_TRANSLATION_LATER`
 - `author_description / author_comment: intentionally blank until supplied by the user`
 - `stage7_gate: INSTALLED_2026_09_21`
+- `stage7_gate_production: APPLIED_2026_09_21`
+- `stage7_live_smoke: FAIL_CLOSED_ACTIVE_CLASS_NOT_FOUND_AS_EXPECTED`
 - `stage7_gate_function: private.certify_artificer_runtime_final_v1(uuid)`
 - `target_runtime_revision: eberron-2025-artificer-runtime-final-v1`
 - `supported_subclass_target: 5 — Alchemist, Armorer, Artillerist, Battle Smith, Cartographer`
