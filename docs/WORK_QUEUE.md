@@ -39,7 +39,7 @@ Current checkpoint:
 
 ## Artificer runtime work
 
-**Status:** STAGE_1_COMPLETE_STAGE_2_NEXT  
+**Status:** STAGES_1_2_COMPLETE_STAGE_3_NEXT  
 **Marked:** 2026-09-21  
 **Branch:** dev
 
@@ -48,16 +48,19 @@ Frozen feature matrix: `src/data/classes/artificerRuntimeFeatureMatrix.md`.
 Reuse audit: `src/data/classes/artificerRuntimeReuseAudit.md`.
 
 Current checkpoint:
-- Stage 1 source freeze/specification is complete.
+- Stages 1–2 are complete.
+- Stage 1 source freeze/specification remains frozen.
 - Canonical source is Eberron: Forge of the Artificer (2025).
 - Frozen runtime roster is exactly Alchemist, Armorer, Artillerist, Battle Smith and Cartographer.
 - The matrix contains 10 base + 33 subclass = 43 stable feature identities.
 - The retired historical Reanimator subclass is explicitly outside the supported roster.
 - Literary/Voss fields are intentionally blank; the user will add that translation layer later.
-- Production still has 0 Artificer class/subclass/level runtime rows.
-- Existing 29 Artificer spell links are audited as stale/incomplete and must be reconciled in Stage 2.
+- Production now has exactly one active Artificer class, 20 level rows and 0 active Artificer subclasses.
+- The stale 29-link spell state has been reconciled to 92 class spell links and 92 template spell links under revision `efota-2025-artificer-stage2-foundation-spellcasting-v1`.
+- Tinker's Magic grants Mending outside the ordinary cantrip quota; shared spell slots, cantrip replacement and Long-Rest preparation use the common runtime.
+- Generic Chasovoy `reference_item_plans` validation is installed for Stage 3.
 - The Stage 7 certifier exists only as a fail-closed future gate; it does not make the class READY.
-- Stage 2 is next: clean class foundation, all 20 levels and shared spellcasting integration.
+- Stage 3 is next: Tinker's Magic temporary item creation, Replicate Magic Item plan/loadout persistence, Cheburashka instances, provenance/expiry and Long-Rest reconciliation.
 - Do not restore the retired historical Artificer installer wholesale.
 
 ## Inventory / scene interaction follow-up
