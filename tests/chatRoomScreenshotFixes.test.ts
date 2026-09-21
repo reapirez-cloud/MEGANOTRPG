@@ -22,8 +22,9 @@ test("chat header splits actor from stacked time and location", async () => {
 test("character header opens the actual character route", async () => {
   const header = await readFile(headerPath, "utf8")
   assert.match(header, /u1-room-character--interactive/)
-  assert.match(header, /#\/workspace\/character\//)
-  assert.match(header, /encodeURIComponent\(character\.id\)/)
+  assert.match(header, /import \{ pushAppHash \} from "\.\.\/navigationGestures"/)
+  assert.match(header, /pushAppHash\(/)
+  assert.match(header, /"workspace\/character\/" \+ encodeURIComponent\(character\.id\)/)
 })
 
 test("feed makes GM and player authors explicit", async () => {

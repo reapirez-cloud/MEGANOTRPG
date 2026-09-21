@@ -25,7 +25,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Tests / verification
 
 - Added regression coverage for left- and right-edge swipe recognition, vertical/reverse gesture rejection, deterministic deep-link parent routes, unified Telegram/browser/swipe back wiring, direct-hash bypass removal on primary route surfaces, and removal of the unsafe raw `history.length` fallback.
-- Reconciled stale Stage 1/2 chat assertions with the current Stage 6 composer action launcher and the new shared navigation history contract; this is test maintenance only and does not restore the discarded old header quick-action UI.
+- Reconciled stale chat Stage 1/2 and screenshot assertions with the current Stage 6 composer action launcher and the new shared navigation history contract; this is test maintenance only and does not restore the discarded old header quick-action UI.
 
 ### Known incomplete work
 
