@@ -15,6 +15,10 @@ export type RuleChoiceOptionProvider =
       minimum_rank?: 1 | 2
       maximum_rank?: 1 | 2
     }
+  | {
+      /** Generic filter: only weapon identities covered by the character's active proficiency grants. */
+      kind: "weapon_proficiencies"
+    }
 
 
 export type RuleChoiceRequirement = {
