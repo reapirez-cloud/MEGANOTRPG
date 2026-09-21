@@ -47,6 +47,7 @@ type Props = {
     label: string,
     modifier: number,
     kind: "ability" | "skill" | "save",
+    context?: { key?: string; proficiencyRank?: number },
   ) => void | Promise<void>
   onAction: (
     action: ResolvedAction,
@@ -788,6 +789,7 @@ function RollSurface({
                           label,
                           contract.abilities[key].modifier,
                           "ability",
+                          { key },
                         ),
                       )
                     }
@@ -804,6 +806,11 @@ function RollSurface({
                           `Спасбросок: ${label}`,
                           contract.savingThrows[key].bonus.value,
                           "save",
+                          {
+                            key,
+                            proficiencyRank:
+                              contract.savingThrows[key].proficiencyRank,
+                          },
                         ),
                       )
                     }
@@ -832,6 +839,10 @@ function RollSurface({
                         skillNames[skill.key],
                         skill.bonus.value,
                         "skill",
+                        {
+                          key: skill.key,
+                          proficiencyRank: skill.proficiencyRank,
+                        },
                       ),
                     )
                   }
