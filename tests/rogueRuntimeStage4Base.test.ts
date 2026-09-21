@@ -292,7 +292,7 @@ function contract() {
       state: {
         currentHp: 100,
         tempHp: 0,
-        resources: { rogue_stroke_of_luck: 1 },
+        resources: { rogue_stroke_of_luck: { current: 1 } },
       },
       contributions: parsed.contributions,
     }),
