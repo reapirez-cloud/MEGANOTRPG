@@ -1,4 +1,9 @@
 export {
+  BONUS_DAMAGE_DICE_SACRIFICE_EFFECT,
+  resolveBonusDamageDiceSacrifice,
+  type ResolvedBonusDamageDiceSacrifice,
+} from "./actionSemantics.ts"
+export {
   ActionEngineError,
   actionAttackBonusTarget,
   actionDamageModifierTarget,
