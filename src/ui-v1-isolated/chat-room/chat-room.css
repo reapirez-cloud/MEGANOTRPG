@@ -3951,3 +3951,477 @@
     font-size: 10.5px;
   }
 }
+
+
+/* Chat screenshot correction pass — fixed composition, author roles and inspection. */
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(116px, 34%);
+  grid-template-areas: "actor context";
+  align-items: stretch;
+  gap: 8px;
+  padding-top: 5px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-character {
+  grid-area: actor;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  align-self: stretch;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character--interactive {
+  appearance: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character--interactive:active {
+  transform: scale(.992);
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-character--interactive:focus-visible {
+  outline: 1px solid rgba(239,240,236,.28);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-context {
+  grid-area: context;
+  min-width: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  align-self: stretch;
+  gap: 6px;
+  border-top: 0;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-context__item {
+  min-width: 0;
+  min-height: 38px;
+  height: 100%;
+  padding: 5px 7px;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-context__icon {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-context__copy {
+  align-content: center;
+  gap: 2px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-context__copy > span {
+  display: block;
+  font-size: 6.5px;
+  line-height: 1;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-context__copy strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-context__item[data-context="location"] .u1-room-context__copy strong {
+  display: -webkit-box;
+  max-height: 2.3em;
+  overflow: hidden;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Explicit player / GM language. GM-authored character messages remain visibly GM. */
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line[data-author-role="gm"] .u1-chat-line__content {
+  padding: 5px 7px 6px 9px;
+  border-left: 2px solid rgba(236,238,234,.22);
+  border-radius: 0 8px 8px 0;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.035), rgba(255,255,255,.008) 68%, transparent);
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line[data-author-role="gm"] .u1-chat-line__avatar {
+  border-color: rgba(239,240,236,.16);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.035);
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__role {
+  flex: 0 0 auto;
+  min-height: 16px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(235,237,239,.055);
+  border-radius: 999px;
+  color: rgba(226,228,224,.35);
+  background: rgba(255,255,255,.01);
+  font-size: 6.5px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line__role[data-role="gm"] {
+  border-color: rgba(235,237,239,.13);
+  color: rgba(244,244,239,.72);
+  background: rgba(255,255,255,.045);
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-line[data-message-kind="narration"] .u1-chat-line__content {
+  max-width: min(100%, 650px);
+  padding-left: 9px;
+}
+
+/* The selected speaker art is the button, not a postage stamp floating inside it. */
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker-trigger {
+  position: relative;
+  display: block;
+  padding: 0;
+  overflow: hidden;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker-trigger > .u1-chat-composer__speaker-avatar[data-compact] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  min-height: 100%;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker-trigger > svg {
+  position: absolute;
+  z-index: 2;
+  right: 3px;
+  bottom: 3px;
+  width: 12px;
+  height: 12px;
+  padding: 2px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  background: rgba(7,9,10,.82);
+  color: rgba(245,245,240,.78);
+  stroke: currentColor;
+  box-sizing: border-box;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer__speaker-trigger::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(235,237,239,.07);
+}
+
+/* Inspectable abilities/spells. */
+.u1-room-game-card[data-inspectable] {
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    transform 120ms cubic-bezier(.22,1,.36,1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.u1-room-game-card[data-inspectable]:active {
+  transform: scale(.992);
+  border-color: rgba(235,237,239,.12);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.028), rgba(255,255,255,.006) 68%),
+    rgba(14,17,19,.88);
+}
+
+.u1-room-game-card[data-inspectable]:focus-visible {
+  outline: 1px solid rgba(239,240,236,.30);
+  outline-offset: 2px;
+}
+
+.u1-room-game-detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: rgba(0,0,0,.62);
+  backdrop-filter: blur(5px);
+}
+
+.u1-room-game-detail {
+  width: min(100%, 720px);
+  max-height: min(72dvh, 680px);
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(235,237,239,.08);
+  border-bottom: 0;
+  border-radius: 16px 16px 0 0;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255,255,255,.035), transparent 34%),
+    linear-gradient(180deg, rgba(22,25,28,.99), rgba(8,10,12,.997));
+  box-shadow: 0 -22px 56px rgba(0,0,0,.42);
+}
+
+.u1-room-game-detail > header {
+  min-width: 0;
+  padding: 12px 12px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(235,237,239,.055);
+}
+
+.u1-room-game-detail > header > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.u1-room-game-detail > header span {
+  color: rgba(226,228,224,.34);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.u1-room-game-detail > header strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(245,245,240,.90);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: 19px;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-game-detail > header small {
+  color: rgba(226,228,224,.42);
+  font-size: 9px;
+}
+
+.u1-room-game-detail > header button {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(235,237,239,.065);
+  border-radius: 10px;
+  background: rgba(255,255,255,.018);
+  color: rgba(239,240,236,.55);
+  font-size: 21px;
+  line-height: 1;
+}
+
+.u1-room-game-detail__body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding:
+    10px
+    12px
+    calc(14px + env(safe-area-inset-bottom, 0px));
+  scrollbar-width: none;
+}
+
+.u1-room-game-detail__body::-webkit-scrollbar {
+  display: none;
+}
+
+.u1-room-game-detail__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 9px;
+}
+
+.u1-room-game-detail__meta > div {
+  min-width: 0;
+  min-height: 42px;
+  padding: 6px 8px;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  border: 1px solid rgba(235,237,239,.045);
+  border-radius: 8px;
+  background: rgba(255,255,255,.012);
+}
+
+.u1-room-game-detail__meta span {
+  color: rgba(226,228,224,.30);
+  font-size: 7px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.u1-room-game-detail__meta strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(241,242,238,.66);
+  font-size: 10px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-game-detail__description,
+.u1-room-game-detail__empty {
+  margin: 0;
+  color: rgba(239,240,236,.72);
+  font-size: 12px;
+  line-height: 1.56;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.u1-room-game-detail__empty {
+  color: rgba(226,228,224,.38);
+}
+
+.u1-room-game-detail__loading {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: rgba(226,228,224,.38);
+  font-size: 9px;
+}
+
+.u1-room-game-detail__loading i {
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(235,237,239,.16);
+  border-top-color: rgba(245,245,240,.65);
+  border-radius: 50%;
+  animation: u1-chat-spin 700ms linear infinite;
+}
+
+.u1-room-game-detail__error {
+  display: block;
+  margin-top: 8px;
+  color: rgba(226,228,224,.30);
+  font-size: 8px;
+}
+
+.u1-room-game-detail__body > footer {
+  margin-top: 12px;
+  padding-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid rgba(235,237,239,.045);
+  color: rgba(226,228,224,.26);
+  font-size: 8px;
+}
+
+@media (max-width: 360px) {
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) {
+    grid-template-columns: minmax(0, 1fr) minmax(108px, 35%);
+    gap: 6px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-character {
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-character__portrait {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-character__main {
+    min-height: 44px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-context__item {
+    min-height: 36px;
+    padding-left: 5px;
+    padding-right: 5px;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-context__icon {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-context__copy > span {
+    font-size: 5.8px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-context__copy strong {
+    font-size: 8.8px;
+  }
+
+  .u1-room-game-detail {
+    border-radius: 14px 14px 0 0;
+  }
+}
+
+@media (max-width: 320px) {
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) {
+    grid-template-columns: minmax(0, 1fr) 102px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-head-stage3:not(.u1-room-head-stage3--observer) .u1-room-character__identity p {
+    font-size: 7px;
+  }
+
+  .u1-room-game-detail__meta {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u1-room-game-card[data-inspectable],
+  .u1-room-character--interactive {
+    transition: none;
+  }
+
+  .u1-room-game-detail__loading i {
+    animation: none;
+  }
+}

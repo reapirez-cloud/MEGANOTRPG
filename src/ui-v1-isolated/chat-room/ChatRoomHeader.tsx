@@ -112,6 +112,43 @@ export default function ChatRoomHeader({
   const name =
     identity.kind === "character" ? identity.character.name : identity.name
 
+  const actorContent = (
+    <>
+      <div className="u1-room-character__portrait">
+        {character?.avatarUrl ? (
+          <img
+            src={character.avatarUrl}
+            alt=""
+            decoding="async"
+            draggable={false}
+          />
+        ) : (
+          <CharacterFallback name={name} />
+        )}
+        <span
+          className="u1-room-character__portrait-shade"
+          aria-hidden="true"
+        />
+      </div>
+
+      <div className="u1-room-character__main">
+        <div className="u1-room-character__identity">
+          <span>
+            {identity.kind === "narrator" ? "Голос мастера" : "Персонаж"}
+          </span>
+          <h1 title={name}>{name}</h1>
+          <p>
+            {character
+              ? character.className + " · " + character.level + " уровень"
+              : "Рассказчик сцены"}
+          </p>
+        </div>
+
+        {character ? <HpBlock character={character} /> : null}
+      </div>
+    </>
+  )
+
   return (
     <section
       className="u1-room-head-stage3"
@@ -122,40 +159,27 @@ export default function ChatRoomHeader({
           : "Персонаж и контекст сцены"
       }
     >
-      <div className="u1-room-character" data-identity-kind={identity.kind}>
-        <div className="u1-room-character__portrait">
-          {character?.avatarUrl ? (
-            <img
-              src={character.avatarUrl}
-              alt=""
-              decoding="async"
-              draggable={false}
-            />
-          ) : (
-            <CharacterFallback name={name} />
-          )}
-          <span
-            className="u1-room-character__portrait-shade"
-            aria-hidden="true"
-          />
+      {character ? (
+        <button
+          type="button"
+          className="u1-room-character u1-room-character--interactive"
+          data-identity-kind={identity.kind}
+          aria-label={"Открыть карточку персонажа " + character.name}
+          onClick={() => {
+            window.location.hash =
+              "#/workspace/character/" + encodeURIComponent(character.id)
+          }}
+        >
+          {actorContent}
+        </button>
+      ) : (
+        <div
+          className="u1-room-character"
+          data-identity-kind={identity.kind}
+        >
+          {actorContent}
         </div>
-
-        <div className="u1-room-character__main">
-          <div className="u1-room-character__identity">
-            <span>
-              {identity.kind === "narrator" ? "Голос мастера" : "Персонаж"}
-            </span>
-            <h1 title={name}>{name}</h1>
-            <p>
-              {character
-                ? character.className + " · " + character.level + " уровень"
-                : "Рассказчик сцены"}
-            </p>
-          </div>
-
-          {character ? <HpBlock character={character} /> : null}
-        </div>
-      </div>
+      )}
 
       <SceneContext model={model} />
     </section>

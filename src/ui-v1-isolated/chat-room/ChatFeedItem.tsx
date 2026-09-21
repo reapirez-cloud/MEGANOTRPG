@@ -52,19 +52,26 @@ function DialogueMessage({
   onMediaLoad: () => void
 }) {
   const gmNarration = event.type === "gm_message"
+  const gmAuthored = event.author.isGm
 
   return (
     <article
       className="u1-chat-line"
       data-message-kind={gmNarration ? "narration" : "dialogue"}
       data-event-type={event.type}
+      data-author-role={gmAuthored ? "gm" : "player"}
     >
       <AuthorAvatar event={event} />
 
       <div className="u1-chat-line__content">
         <header className="u1-chat-line__meta">
           <strong>{event.author.name}</strong>
-          {gmNarration ? <span>GM</span> : null}
+          <span
+            className="u1-chat-line__role"
+            data-role={gmAuthored ? "gm" : "player"}
+          >
+            {gmAuthored ? (gmNarration ? "GM · Рассказчик" : "GM") : "Игрок"}
+          </span>
           <time>{formatMessageTime(event.createdAt)}</time>
         </header>
 
