@@ -4,6 +4,7 @@ import {
   resolveBonusDamageDiceSacrifice,
   resolveD20Floor,
   resolveD20ResultOverride,
+  resolveSemanticDieRoll,
   type ResolvedAction,
   type ResolvedSpell,
 } from "../../character-engine/index.ts"
@@ -179,6 +180,9 @@ export default function ChatActionHost({
       ? resolveBonusDamageDiceSacrifice(action, resolved.contract.values)
       : null
     const d20Override = resolveD20ResultOverride(action)
+    const semanticDie = resolved.contract
+      ? resolveSemanticDieRoll(action, resolved.contract.values)
+      : null
     const mechanicId = templateMechanicIdForChatAction(action)
 
     if (mechanicId) {
@@ -211,15 +215,26 @@ export default function ChatActionHost({
       }
 
       await command(() =>
-        action.attack || damage?.dice || bonusDice
+        action.attack || damage?.dice || bonusDice || semanticDie
           ? genaSession.sendTemplateRoll({
               ...common,
               kind: "action",
               modifier: action.attack?.bonus.value || 0,
               rollD20: Boolean(action.attack),
-              diceCount: damage?.dice?.count ?? bonusDice?.remainingDice ?? 0,
-              diceSides: damage?.dice?.sides ?? bonusDice?.dieSides ?? 0,
-              diceModifier: damage?.modifier.value || 0,
+              diceCount:
+                damage?.dice?.count ??
+                bonusDice?.remainingDice ??
+                semanticDie?.count ??
+                0,
+              diceSides:
+                damage?.dice?.sides ??
+                bonusDice?.dieSides ??
+                semanticDie?.sides ??
+                0,
+              diceModifier:
+                damage?.modifier.value ??
+                semanticDie?.modifier ??
+                0,
             })
           : genaSession.sendTemplateAction({
               ...common,
@@ -280,7 +295,7 @@ export default function ChatActionHost({
       : []
 
     await command(() =>
-      action.attack || damage?.dice || bonusDice
+      action.attack || damage?.dice || bonusDice || semanticDie
         ? genaSession.sendRoll({
             roomId: model.roomId,
             characterId,
@@ -288,9 +303,20 @@ export default function ChatActionHost({
             kind: "action",
             modifier: action.attack?.bonus.value || 0,
             rollD20: Boolean(action.attack),
-            diceCount: damage?.dice?.count ?? bonusDice?.remainingDice ?? 0,
-            diceSides: damage?.dice?.sides ?? bonusDice?.dieSides ?? 0,
-            diceModifier: damage?.modifier.value || 0,
+            diceCount:
+              damage?.dice?.count ??
+              bonusDice?.remainingDice ??
+              semanticDie?.count ??
+              0,
+            diceSides:
+              damage?.dice?.sides ??
+              bonusDice?.dieSides ??
+              semanticDie?.sides ??
+              0,
+            diceModifier:
+              damage?.modifier.value ??
+              semanticDie?.modifier ??
+              0,
             resourceCosts: costs,
           })
         : genaSession.sendEvent({
