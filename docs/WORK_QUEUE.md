@@ -20,7 +20,7 @@ Resume trigger: `ALL_CLASS_TRANSLATIONS_COMPLETE`.
 
 ## Rogue READY work
 
-**Status:** STAGE_3_COMPLETE_STAGE_4_NEXT  
+**Status:** STAGE_4_COMPLETE_STAGE_5_NEXT  
 **Marked:** 2026-09-21  
 **Branch:** dev
 
@@ -56,9 +56,17 @@ Stage 3 checkpoint:
 - Production has 26 Rogue class actions, 21 dice-sacrifice routes, 20 level rows and zero active Rogue subclasses.
 - Rogue remains `referenceOnly=true` and overall mechanics are `IN_PROGRESS`.
 
-Next Rogue stage: **Stage 4 — remaining base class, recovery/state semantics and base certification**.
-- Implement/audit Uncanny Dodge, Evasion, Reliable Talent, Slippery Mind, Elusive and Stroke of Luck, then certify the complete base Rogue 1–20 package.
-- Do not redo Stages 1–3 unless their frozen contract actually changes.
+Stage 4 checkpoint:
+- Base Rogue 1–20 is production-certified at `xphb-2024-rogue-stage4-base-runtime-v1`.
+- Uncanny Dodge, Evasion, Reliable Talent, Slippery Mind, Elusive and Stroke of Luck now have shared structured/runtime contracts.
+- Reliable Talent uses generic CE `d20_minimum` plus server-authoritative `send_chat_roll_v4`; no Rogue-specific roll engine exists.
+- Stroke of Luck uses one real Short/Long Rest resource and a generic GM-confirmed result-20 override action.
+- Production has all 15 base feature contracts structured, 20 level rows, zero duplicate mechanic IDs, zero broken action-resource refs and zero active Rogue subclasses.
+- Base Rogue is complete, but the family remains `referenceOnly=true` / `IN_PROGRESS` until all supported subclasses and final Stage 7 certification pass.
+
+Next Rogue stage: **Stage 5 — PHB 2024 subclass runtime**.
+- Implement Thief, Assassin, Arcane Trickster and Soulknife on the certified Rogue parent using shared inventory/action/spell/resource primitives.
+- Do not redo Stages 1–4 unless their frozen contract actually changes.
 
 ## Inventory / scene interaction follow-up
 
