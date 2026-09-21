@@ -2,8 +2,13 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 
+import { resolveCharacterContract } from "../src/character-engine/index.ts"
 import { classReference } from "../src/data/classReferenceCatalog.ts"
 import { rogueReferenceCurrent } from "../src/data/classes/rogueReferenceCurrent.ts"
+import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
+import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
+import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
+import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
 
 const migration = fs.readFileSync(
   "supabase/migrations/20260921160000_rogue_stage7_final_certification_v1.sql",
@@ -33,6 +38,141 @@ const supportedSubclassIds = [
   "scout",
   "phantom",
 ]
+
+function stage7RepresentativeBundle(): CharacterTemplateBundle {
+  return {
+    assignment: {
+      id: "rogue-stage7-assignment",
+      character_id: "rogue-stage7-character",
+      template_id: "rogue-stage7-template",
+      template_level: 20,
+      selected_choices: {},
+      assigned_at: "2026-09-21T00:00:00Z",
+      updated_at: "2026-09-21T00:00:00Z",
+    },
+    template: {
+      id: "rogue-stage7-template",
+      campaign_id: "campaign",
+      kind: "class",
+      slug: "rogue-core",
+      name: "Разбойник",
+      description:
+        "Сертифицированный Разбойник 2024 использует общие CE-правила, ресурсы и исполнительный контур.",
+      version: 1,
+      mechanics: [],
+      choices: [],
+      parent_template_id: null,
+      unlock_level: null,
+      catalog_key: "class:rogue",
+      catalog_revision: "xphb-2024-rogue-runtime-final-v1",
+      source_kind: "official",
+      source_label: "Player's Handbook 2024",
+      is_builtin: true,
+      mechanical_summary:
+        "Полный базовый runtime Разбойника 1–20 и девять поддерживаемых подклассов сертифицированы общими Character Engine, Choice Runtime и GENA.",
+      author_description: "",
+      author_comment: "",
+      rules_meta: { mechanics_status: "READY", runtime_status: "ready" },
+      is_active: true,
+      created_by: null,
+      created_at: "2026-09-21T00:00:00Z",
+      updated_at: "2026-09-21T00:00:00Z",
+    },
+    levels: [{
+      id: "rogue-stage7-l20",
+      template_id: "rogue-stage7-template",
+      level: 20,
+      mechanics: [
+        {
+          id: "rogue-stage7-stroke-feature",
+          type: "grant",
+          sourceKey: "stroke-of-luck",
+          target: "feature",
+          key: "class:rogue:stroke-of-luck:l20",
+          payload: {
+            label: "Мастерский удар",
+            description:
+              "После проваленного D20 Test превратите результат d20 в 20. Одно использование восстанавливается после короткого или долгого отдыха.",
+            mechanic: {
+              kind: "d20_result_override",
+              result: 20,
+              trigger: "failed_d20_test",
+            },
+          },
+        },
+        {
+          id: "rogue-stage7-stroke-resource",
+          type: "resource",
+          sourceKey: "stroke-of-luck",
+          key: "rogue_stroke_of_luck",
+          label: "Мастерский удар",
+          max: 1,
+          recharge: ["short_rest", "long_rest"],
+          initial: "full",
+        },
+        {
+          id: "rogue-stage7-stroke-action",
+          type: "action",
+          sourceKey: "stroke-of-luck",
+          key: "rogue_stroke_of_luck_override",
+          label: "Мастерский удар: результат 20",
+          economy: "triggered",
+          range: { kind: "self" },
+          resourceCosts: [{ key: "rogue_stroke_of_luck", amount: 1 }],
+          effects: [{
+            kind: "semantic",
+            key: "d20_result_override",
+            payload: { result: 20, trigger: "failed_d20_test" },
+          }],
+          tags: ["rogue", "d20"],
+        },
+      ],
+      choices: [],
+    }],
+  }
+}
+
+test("Stage 7 representative READY package still passes the shared quality/resource/parser/CE gates", () => {
+  const bundle = stage7RepresentativeBundle()
+  assert.doesNotThrow(() => assertClassPackageQuality([bundle]))
+  assert.doesNotThrow(() => assertClassResourcePolicy([bundle]))
+
+  const parsed = resolveTemplateBundles([bundle], 20)
+  const contract = resolveCharacterContract({
+    base: {
+      id: "rogue-stage7-character",
+      name: "Разбойник",
+      level: 20,
+      abilities: {
+        strength: 10,
+        dexterity: 20,
+        constitution: 14,
+        intelligence: 14,
+        wisdom: 12,
+        charisma: 10,
+      },
+      baseMaxHp: 120,
+      baseSpeed: 30,
+    },
+    state: {
+      currentHp: 120,
+      tempHp: 0,
+      resources: { rogue_stroke_of_luck: { current: 1 } },
+    },
+    contributions: parsed.contributions,
+  })
+
+  assert.ok(
+    contract.resources.some(
+      (resource) => resource.stateKey === "rogue_stroke_of_luck",
+    ),
+  )
+  assert.ok(
+    contract.actions.some(
+      (action) => action.key === "rogue_stroke_of_luck_override",
+    ),
+  )
+})
 
 test("Stage 7 public Rogue reference is runtime-backed with the exact supported 9-subclass roster", () => {
   assert.equal(rogueReferenceCurrent.referenceOnly, false)
