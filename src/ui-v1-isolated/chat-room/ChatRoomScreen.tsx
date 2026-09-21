@@ -128,7 +128,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
         </div>
 
         <div className="u1-room-frame__feed" data-room-slot="feed">
-          <ChatFeed roomId={roomId} />
+          <ChatFeed roomId={roomId} viewerUserId={model.viewer.userId} />
         </div>
         <div className="u1-room-frame__controls" data-room-slot="controls">
           <ChatComposer model={model} />
