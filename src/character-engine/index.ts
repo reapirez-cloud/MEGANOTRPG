@@ -1,8 +1,10 @@
 export {
   resolveD20Floor,
+  resolveD20ResultOverride,
   type D20TestContext,
   type D20TestKind,
   type ResolvedD20Floor,
+  type ResolvedD20ResultOverride,
 } from "./d20Semantics.ts"
 export {
   BONUS_DAMAGE_DICE_SACRIFICE_EFFECT,
