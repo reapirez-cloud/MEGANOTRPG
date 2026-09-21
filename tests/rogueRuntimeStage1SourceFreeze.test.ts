@@ -31,12 +31,12 @@ function subclassFeature(subclassId: string, name: string) {
   return feature
 }
 
-test("Rogue Stage 1 freezes the complete supported literary/reference roster without activating runtime", () => {
+test("Rogue Stage 1 frozen roster survives Stage 7 runtime activation unchanged", () => {
   assert.ok(rogue, "rogue is absent from public class reference")
-  assert.equal(rogue.referenceOnly, true)
+  assert.equal(rogue.referenceOnly, false)
   assert.equal(rogue.features?.length, 15)
   assert.equal(rogue.subclasses.length, 9)
-  assert.ok(rogue.subclasses.every((value) => value.referenceOnly === true))
+  assert.ok(rogue.subclasses.every((value) => value.referenceOnly === false))
 
   const expectedCounts = new Map<string, number>([
     ["thief", 5],
