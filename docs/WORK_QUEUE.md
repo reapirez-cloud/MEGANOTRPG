@@ -21,7 +21,7 @@ Resume trigger: `ALL_CLASS_TRANSLATIONS_COMPLETE`.
 ## Rogue READY work
 
 **Status:** STAGE_1_COMPLETE_STAGE_2_NEXT  
-**Marked:** 2026-09-12  
+**Marked:** 2026-09-21  
 **Branch:** dev
 
 Canonical READY plan: `src/data/classes/rogueRuntimePlan.md`.  
@@ -34,6 +34,11 @@ Current checkpoint:
 - Frozen roster: Thief, Assassin, Arcane Trickster, Soulknife, Swashbuckler, Inquisitive, Mastermind, Scout and Phantom.
 - Source boundary remains: PHB 2024 base + Thief/Assassin/Arcane Trickster/Soulknife; Xanathar legacy Swashbuckler/Inquisitive/Mastermind/Scout; Tasha Phantom.
 - Rogue remains `referenceOnly=true`; no CE/Supabase runtime is claimed yet.
+- Pre-Stage-2 reuse audit is complete: `src/data/classes/rogueRuntimeReuseAudit.md`.
+- Historical Rogue work is salvageable selectively: adapt the old structural skeleton and action shapes, but do not restore the retired builtin installer.
+- Historical `rogue-scion-of-the-three` is explicitly outside the frozen supported roster.
+- Current shared runtime already covers long-rest choice refresh/replacement, CE resources/actions, alternative costs, shared spell execution and new-chat CE routing.
+- Stage 2's confirmed new generic prerequisite is a dynamic proficient-weapon choice provider for Weapon Mastery.
 
 Next Rogue stage: **Stage 2 — clean class foundation and 1–20 progression**.
 - Build the canonical `class:rogue` package, source-level progression, proficiencies, Expertise/Weapon Mastery choices, subclass unlock and structural feature identities through shared class/template infrastructure.
