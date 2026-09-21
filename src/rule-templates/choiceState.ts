@@ -6,6 +6,7 @@ import {
 } from "./resolver.ts"
 import { choiceOptionSourceAvailable } from "./choiceSourceRequirements.ts"
 import { storedStructuredChoiceInstances, type StructuredChoiceInstance } from "./choiceRuntimeV2.ts"
+import { weaponProficiencyCoversChoice } from "./weaponChoiceProvider.ts"
 import type {
   CharacterTemplateBundle,
   RuleChoiceDefinition,
@@ -191,11 +192,28 @@ function providerSkillRanks(
   return ranks
 }
 
+function providerWeaponProficiencies(
+  bundles: CharacterTemplateBundle[],
+  characterLevel: number,
+): string[] {
+  const parsed = resolveTemplateBundles(bundles, characterLevel)
+  return [...new Set(parsed.contributions.flatMap((contribution) => {
+    if (
+      contribution.kind !== "grant"
+      || contribution.target !== "proficiency"
+      || !contribution.key.startsWith("weapon:")
+      || contribution.operation === "SUPPRESS"
+    ) return []
+    return [contribution.key]
+  }))]
+}
+
 function providerAvailability(
   definition: RuleChoiceDefinition,
   optionKey: string,
   selected: boolean,
   skillRanks: Record<string, number>,
+  weaponProficiencies: readonly string[],
 ): { available: boolean; reason: string | null } {
   if (selected || !definition.option_provider) return { available: true, reason: null }
   const provider = definition.option_provider
@@ -209,6 +227,14 @@ function providerAvailability(
     const maximum = provider.maximum_rank ?? 2
     if (rank < minimum) return { available: false, reason: "Требуется владение этим навыком" }
     if (rank > maximum) return { available: false, reason: "Для этого навыка уже есть более высокий уровень владения" }
+  }
+  if (provider.kind === "weapon_proficiencies") {
+    if (!optionKey.startsWith("weapon:")) {
+      return { available: false, reason: "Вариант не является оружием" }
+    }
+    if (!weaponProficiencies.some((key) => weaponProficiencyCoversChoice(key, optionKey))) {
+      return { available: false, reason: "Требуется владение этим видом оружия" }
+    }
   }
   return { available: true, reason: null }
 }
@@ -225,6 +251,7 @@ export function resolveTemplateChoiceStates(
   )
   const result: TemplateChoiceState[] = []
   const skillRanks = providerSkillRanks(bundles, characterLevel, context)
+  const weaponProficiencies = providerWeaponProficiencies(bundles, characterLevel)
 
   for (const bundle of bundles) {
     const sourceLevel = sourceLevelForChoice(bundle, characterLevel, classLevels)
@@ -279,7 +306,13 @@ export function resolveTemplateChoiceStates(
         const missing = requiredOptions.filter((option) => !selectedOptionSet.has(option))
         const levelAvailable = choiceOptionAvailableAtLevel(definition, key, sourceLevel) && sourceLevel >= minLevel
         const sourceAvailable = choiceOptionSourceAvailable(rule, bundles, characterLevel)
-        const provider = providerAvailability(definition, key, selectedOptionSet.has(key), skillRanks)
+        const provider = providerAvailability(
+          definition,
+          key,
+          selectedOptionSet.has(key),
+          skillRanks,
+          weaponProficiencies,
+        )
         const available = levelAvailable && missing.length === 0 && sourceAvailable && provider.available
         const lockedReason = !levelAvailable
           ? `Доступно с ${minLevel} уровня`
