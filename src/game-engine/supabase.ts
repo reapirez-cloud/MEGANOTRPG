@@ -17,6 +17,8 @@ export type GenaChatRollCommand = {
   diceCount?: number
   diceSides?: number
   diceModifier?: number
+  /** Optional server-enforced floor for the raw d20 result, e.g. Reliable Talent. */
+  d20Floor?: number
   resourceCosts?: ResourceCostInput[]
 }
 
@@ -131,7 +133,7 @@ export class SupabaseGenaSessionGateway {
   }
 
   async sendRoll(command: GenaChatRollCommand): Promise<number> {
-    const { data, error } = await this.client.rpc("send_chat_roll_v3", {
+    const { data, error } = await this.client.rpc("send_chat_roll_v4", {
       p_room_id: command.roomId,
       p_character_id: command.characterId,
       p_label: command.label,
@@ -141,6 +143,7 @@ export class SupabaseGenaSessionGateway {
       p_dice_count: command.diceCount ?? 0,
       p_dice_sides: command.diceSides ?? 0,
       p_dice_modifier: command.diceModifier ?? 0,
+      p_d20_floor: command.d20Floor ?? 1,
       p_resource_costs: command.resourceCosts ?? [],
     })
     const id = resultId(data, error)
