@@ -3,7 +3,9 @@
 .auth-screen {
   min-height: 100dvh;
   width: 100%;
-  padding: max(18px, env(safe-area-inset-top, 0px)) 16px
+  padding:
+    max(18px, var(--u1-content-safe-top, env(safe-area-inset-top, 0px)))
+    16px
     max(18px, env(safe-area-inset-bottom, 0px));
   display: grid;
   place-items: center;

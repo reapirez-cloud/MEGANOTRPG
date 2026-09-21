@@ -17,6 +17,7 @@ import {
   AGENT_OPEN_EVENT,
   type AgentOpenDetail,
 } from "./agentUiBridge"
+import { TELEGRAM_SAFE_AREA_EVENT } from "../ui-v1-isolated/telegramMiniApp"
 
 const ORB_SIZE = 40
 const ORB_MARGIN = 10
@@ -52,6 +53,19 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), Math.max(min, max))
 }
 
+function contentSafeTop() {
+  if (typeof document === "undefined") return 0
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue("--u1-content-safe-top")
+    .trim()
+  const value = Number.parseFloat(raw)
+  return Number.isFinite(value) ? Math.max(0, value) : 0
+}
+
+function orbMinY() {
+  return contentSafeTop() + ORB_MARGIN
+}
+
 function defaultOrbPosition() {
   if (typeof window === "undefined") return { x: 10, y: 120 }
   try {
@@ -61,7 +75,7 @@ function defaultOrbPosition() {
       if (Number.isFinite(parsed?.x) && Number.isFinite(parsed?.y)) {
         return {
           x: clamp(parsed.x, ORB_MARGIN, window.innerWidth - ORB_SIZE - ORB_MARGIN),
-          y: clamp(parsed.y, ORB_MARGIN, window.innerHeight - ORB_SIZE - ORB_MARGIN),
+          y: clamp(parsed.y, orbMinY(), window.innerHeight - ORB_SIZE - ORB_MARGIN),
         }
       }
     }
@@ -73,7 +87,7 @@ function defaultOrbPosition() {
     x: Math.max(ORB_MARGIN, window.innerWidth - ORB_SIZE - ORB_MARGIN),
     y: clamp(
       Math.round(window.innerHeight * 0.33),
-      ORB_MARGIN,
+      orbMinY(),
       window.innerHeight - ORB_SIZE - ORB_MARGIN,
     ),
   }
@@ -83,7 +97,7 @@ function snapOrb(position: { x: number; y: number }) {
   const maxX = window.innerWidth - ORB_SIZE - ORB_MARGIN
   const maxY = window.innerHeight - ORB_SIZE - ORB_MARGIN
   const x = clamp(position.x, ORB_MARGIN, maxX)
-  const y = clamp(position.y, ORB_MARGIN, maxY)
+  const y = clamp(position.y, orbMinY(), maxY)
 
   const distances = [
     { edge: "left", value: x },
@@ -229,7 +243,11 @@ export default function AgentShell() {
       setOrbPosition(next)
     }
     window.addEventListener("resize", onResize)
-    return () => window.removeEventListener("resize", onResize)
+    window.addEventListener(TELEGRAM_SAFE_AREA_EVENT, onResize)
+    return () => {
+      window.removeEventListener("resize", onResize)
+      window.removeEventListener(TELEGRAM_SAFE_AREA_EVENT, onResize)
+    }
   }, [])
 
   useEffect(() => {
@@ -434,7 +452,7 @@ export default function AgentShell() {
       ),
       y: clamp(
         drag.originY + deltaY,
-        ORB_MARGIN,
+        orbMinY(),
         window.innerHeight - ORB_SIZE - ORB_MARGIN,
       ),
     })

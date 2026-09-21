@@ -14,6 +14,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Fixed Android/Telegram back-swipe behavior so repeated edge-back gestures no longer fall through to closing/minimizing the app after the in-app history stack reaches a root screen.
 - The exact OS gesture edge is now left to Telegram's native BackButton bridge, while MEGANOT's own swipe-back recognizer uses a nearby inner lane to avoid double-processing the same gesture.
 - Telegram's BackButton is now kept visible for the whole Mini App session, including root screens, so Android Back remains owned by MEGANOT instead of being handed back to Telegram to minimize/close the WebView.
+- UI 1.0 content now starts below Telegram's dynamic content safe area while the graphite backdrop still fills the physical screen; floating AI controls are clamped below the same boundary.
 
 ### Database / migration changes
 

@@ -16,11 +16,13 @@
   --u1-text-faint: #5d6267;
   --u1-steel: #a3a8ad;
   --u1-stone: #b3b0a9;
-  --u1-safe-top: max(
+  --u1-content-safe-top: max(
     env(safe-area-inset-top, 0px),
     var(--tg-safe-area-inset-top, 0px),
-    var(--tg-content-safe-area-inset-top, 0px)
+    var(--tg-content-safe-area-inset-top, 0px),
+    var(--u1-telegram-content-safe-top, 0px)
   );
+  --u1-safe-top: var(--u1-content-safe-top);
   --u1-safe-bottom: max(
     env(safe-area-inset-bottom, 0px),
     var(--tg-safe-area-inset-bottom, 0px),
@@ -94,8 +96,10 @@ button {
   width: min(100%, 760px);
   height: 100%;
   margin: 0 auto;
+  padding-top: var(--u1-content-safe-top);
   display: flex;
   flex-direction: column;
+  --u1-safe-top: 0px;
 }
 
 .u1-view {

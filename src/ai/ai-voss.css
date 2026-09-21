@@ -107,7 +107,7 @@
 .u1-agent-panel {
   position: fixed;
   z-index: 95;
-  top: 0;
+  top: var(--u1-content-safe-top, 0px);
   right: 0;
   bottom: 0;
   width: min(460px, 40vw);
@@ -1121,7 +1121,7 @@
     width: auto;
     min-width: 0;
     height: min(80dvh, 760px);
-    max-height: 86dvh;
+    max-height: calc(100dvh - var(--u1-content-safe-top, 0px));
     border-top: 1px solid rgba(180, 165, 136, 0.18);
     border-left: 0;
     box-shadow: 0 -28px 62px rgba(0, 0, 0, 0.58);
