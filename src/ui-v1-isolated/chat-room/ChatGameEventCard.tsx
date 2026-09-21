@@ -32,7 +32,14 @@ function StructuredRollSummary({ roll }: { roll: GameCardRoll }) {
   const density =
     roll.values.length <= 1 ? "single" :
     roll.values.length <= 4 ? "group" :
-    "dense"
+    roll.values.length <= 9 ? "dense" :
+    "packed"
+  const totalDensity =
+    totalLabel.length <= 3 ? "normal" :
+    totalLabel.length <= 5 ? "compact" :
+    "long"
+  const modifierDensity =
+    modifierLabel !== null && modifierLabel.length > 4 ? "compact" : "normal"
 
   return (
     <section
@@ -42,6 +49,8 @@ function StructuredRollSummary({ roll }: { roll: GameCardRoll }) {
       data-die-sides={roll.sides}
       data-dice-count={roll.count}
       data-dice-density={density}
+      data-total-density={totalDensity}
+      data-modifier-density={modifierDensity}
       aria-label={rawValuesLabel ? `Чистые кости: ${rawValuesLabel}` : roll.formula}
     >
       <div className="u1-room-roll-stage4__summary">

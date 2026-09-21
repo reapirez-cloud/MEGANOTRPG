@@ -4972,3 +4972,80 @@
     --u1-die-size: 56px;
   }
 }
+
+
+/* Chat final polish stage 5 — edge-case density and overflow hardening. */
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4__summary,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4__math,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4__modifier,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4__total {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4__math {
+  overflow: hidden;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4__modifier > strong,
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4__total > strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4[data-modifier-density="compact"] .u1-room-roll-stage4__modifier > strong {
+  font-size: 12px;
+  letter-spacing: -.02em;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4[data-total-density="compact"] .u1-room-roll-stage4__total > strong {
+  font-size: 20px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4[data-total-density="long"] .u1-room-roll-stage4__total > strong {
+  font-size: 16px;
+  letter-spacing: -.04em;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4[data-dice-density="packed"] .u1-room-roll-stage4__dice {
+  --u1-die-size: 28px;
+  max-width: 121px;
+  grid-template-columns: repeat(4, var(--u1-die-size));
+  gap: 3px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4[data-dice-density="packed"] .u1-die-glyph {
+  filter: drop-shadow(0 3px 5px rgba(0,0,0,.18));
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card[data-event-type="roll"] .u1-room-game-card__content {
+  overflow: hidden;
+}
+
+@media (max-width: 360px) {
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4[data-dice-density="packed"] .u1-room-roll-stage4__dice {
+    --u1-die-size: 25px;
+    max-width: 109px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4[data-total-density="compact"] .u1-room-roll-stage4__total > strong {
+    font-size: 18px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4[data-total-density="long"] .u1-room-roll-stage4__total > strong {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 320px) {
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4[data-dice-density="packed"] .u1-room-roll-stage4__dice {
+    --u1-die-size: 23px;
+    max-width: 101px;
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4__formula {
+    max-width: 88px;
+  }
+}

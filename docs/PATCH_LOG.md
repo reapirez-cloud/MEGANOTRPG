@@ -22,6 +22,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Roll cards now carry a structured dice result model that keeps die sides, every raw die value, dice count, modifier, total and formula as separate fields; the current text-grid rendering is only a temporary compatibility surface until the dedicated SVG dice presentation replaces it.
 - Replaced that temporary roll grid with the Stage 4 dice composition: canonical d4/d6/d8/d10/d12/d20 shapes are drawn as dedicated inline SVG geometry, d100 renders as a percentile d10 pair, arbitrary dN uses an explicitly faceted fallback, and each raw die value is rendered inside its die while modifier and total stay separate.
 - Single-die, small multi-die and dense multi-die rolls use separate responsive densities so the result area stays balanced instead of leaving the former empty upper-right pocket.
+- Final chat polish adds a fourth packed density for 10+ dice and scales unusually long modifier/total values, keeping large dice pools and extreme numeric results inside the same compact mobile card down to 320px.
 
 ### Database / migration changes
 
@@ -35,6 +36,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Dialogue grouping uses a five-minute consecutive-message window and requires the same account id, character id and stored author name, preventing one GM's multiple speaking identities from collapsing into a single visual author group.
 - Game-event presentation now exposes `GameCardRoll` as first-class structured data. Standard checks resolve as d20 with one raw value; free/effect rolls preserve arbitrary `dN` sides and all returned raw values without a canonical-dice whitelist. Valid roll events no longer use generic `stats` as their data source.
 - Added reusable `DiceGlyph` rendering as a pure presentation component. It consumes only `sides + raw value`, so future attack/damage/save surfaces can reuse the same dice grammar without duplicating roll parsing or mechanics.
+- Stage 5 does not change roll mechanics, persistence, GENA or CE ownership; it only hardens the renderer against dense pools, long formulas and wide numeric values while preserving every raw die value.
 
 ### Tests / verification
 
@@ -46,6 +48,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added dialogue Stage 2 regression coverage for left/right bubble geometry, persona-aware grouping, readable graphite styling, centered system events, dynamic actor avatars and removal of the repeated ordinary Player badge.
 - Reconciled two stale chat regressions with the Stage 1/2 ownership contract, then added Roll Stage 3 coverage for structured d20/free-die data, arbitrary die sides, raw-value preservation and string-parsing-free card rendering.
 - Added Roll Stage 4 regressions for canonical die geometry, d100 percentile rendering, arbitrary-dN fallback, raw values inside SVGs, responsive dice density and the separation of raw dice / modifier / total without invented success/failure judgement.
+- Added final Stage 5 regressions for 10+ dice packed layouts, 320px sizing, long modifier/total scaling, neutral roll semantics, reusable canonical/fallback dice and the removal of valid roll events from the legacy generic-stat rendering path.
 - Tightened the older graphite/outcome regression so it checks whole outcome/color tokens instead of falsely treating the `red` letters inside `StructuredRollSummary` as a red outcome color; also corrected the d12 outer silhouette to twelve vertices.
 - Percentile d100 pairs are constrained to the same die slot as ordinary glyphs, so multi-d100 rolls cannot overflow or collide with adjacent dice in grouped/dense layouts.
 
