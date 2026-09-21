@@ -27,6 +27,7 @@ Resume trigger: `ALL_CLASS_TRANSLATIONS_COMPLETE`.
 Canonical READY plan: `src/data/classes/rogueRuntimePlan.md`.
 
 Current checkpoint:
+- Pre-Stage-2 reuse audit is complete; its selective-reuse constraints remain part of the certified package history.
 - Rogue Stage 7 is complete at `xphb-2024-rogue-runtime-final-v1`.
 - Production has exactly one active builtin `class:rogue`, all 20 level rows and exactly nine supported READY subclasses.
 - The frozen roster is Thief, Assassin, Arcane Trickster, Soulknife, Swashbuckler, Inquisitive, Mastermind, Scout and Phantom.
