@@ -4672,3 +4672,303 @@
     font-size: 12px;
   }
 }
+
+
+/* Roll presentation stage 4 — real dice occupy the result space instead of empty stat cells. */
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card[data-event-type="roll"] {
+  padding: 8px 9px 9px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-game-card[data-event-type="roll"] .u1-room-game-card__title {
+  margin-top: 4px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4 {
+  min-width: 0;
+  min-height: 86px;
+  margin-top: 7px;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(235,237,239,.055);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.019), rgba(255,255,255,.004) 66%),
+    rgba(7,9,10,.46);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.018);
+}
+
+.u1-room-roll-stage4__summary {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  align-content: stretch;
+  gap: 7px;
+}
+
+.u1-room-roll-stage4__formula {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 19px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(235,237,239,.07);
+  border-radius: 999px;
+  color: rgba(235,237,233,.50);
+  background: rgba(255,255,255,.018);
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: .03em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-room-roll-stage4__math {
+  min-width: 0;
+  align-self: end;
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+.u1-room-roll-stage4__modifier,
+.u1-room-roll-stage4__total {
+  min-width: 0;
+  display: grid;
+  align-content: end;
+  gap: 1px;
+}
+
+.u1-room-roll-stage4__modifier > span,
+.u1-room-roll-stage4__total > span {
+  color: rgba(226,228,224,.30);
+  font-size: 7px;
+  font-weight: 740;
+  letter-spacing: .055em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.u1-room-roll-stage4__modifier > strong {
+  color: rgba(239,240,236,.64);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: 15px;
+  font-weight: 720;
+  line-height: 1;
+}
+
+.u1-room-roll-stage4__equals {
+  padding-bottom: 2px;
+  color: rgba(226,228,224,.22);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.u1-room-roll-stage4__total {
+  padding-left: 8px;
+  border-left: 1px solid rgba(235,237,239,.065);
+}
+
+.u1-room-roll-stage4__total > strong {
+  color: rgba(248,248,244,.90);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: 25px;
+  font-weight: 760;
+  line-height: .95;
+  letter-spacing: -.025em;
+}
+
+.u1-room-roll-stage4__dice {
+  --u1-die-size: 72px;
+  min-width: var(--u1-die-size);
+  align-self: center;
+  display: grid;
+  grid-template-columns: repeat(2, var(--u1-die-size));
+  justify-content: end;
+  align-content: center;
+  gap: 4px;
+}
+
+.u1-room-roll-stage4[data-dice-density="single"] .u1-room-roll-stage4__dice {
+  grid-template-columns: var(--u1-die-size);
+}
+
+.u1-room-roll-stage4[data-dice-density="group"] .u1-room-roll-stage4__dice {
+  --u1-die-size: 48px;
+  max-width: 100px;
+}
+
+.u1-room-roll-stage4[data-dice-density="dense"] .u1-room-roll-stage4__dice {
+  --u1-die-size: 36px;
+  max-width: 116px;
+  grid-template-columns: repeat(3, var(--u1-die-size));
+  gap: 3px;
+}
+
+.u1-die-glyph {
+  width: var(--u1-die-size);
+  height: var(--u1-die-size);
+  min-width: var(--u1-die-size);
+  min-height: var(--u1-die-size);
+  display: grid;
+  place-items: center;
+  color: rgba(240,241,237,.72);
+  filter: drop-shadow(0 6px 9px rgba(0,0,0,.22));
+}
+
+.u1-die-glyph > svg,
+.u1-die-glyph__percentile-die > svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.u1-die-glyph svg .u1-die-glyph__face {
+  fill: rgba(255,255,255,.018);
+  stroke: rgba(241,242,238,.72);
+  stroke-width: 2;
+}
+
+.u1-die-glyph svg text {
+  fill: rgba(249,249,245,.94);
+  stroke: none;
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-weight: 760;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  letter-spacing: -.035em;
+}
+
+.u1-die-glyph svg .u1-die-glyph__kind {
+  fill: rgba(228,230,226,.34);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: .02em;
+}
+
+.u1-die-glyph[data-die-kind="fallback"] svg .u1-die-glyph__face {
+  stroke-dasharray: 2 2;
+}
+
+.u1-die-glyph__percentile {
+  width: calc(var(--u1-die-size) * 1.22);
+  height: var(--u1-die-size);
+  display: grid;
+  grid-template-columns: repeat(2, calc(var(--u1-die-size) * .66));
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u1-die-size) * -.10);
+}
+
+.u1-die-glyph__percentile-die {
+  position: relative;
+  width: calc(var(--u1-die-size) * .66);
+  height: calc(var(--u1-die-size) * .66);
+  display: block;
+}
+
+.u1-die-glyph__percentile-die:first-child {
+  transform: translateY(-8%);
+}
+
+.u1-die-glyph__percentile-die:last-child {
+  transform: translateY(8%);
+}
+
+.u1-die-glyph__percentile-die > svg text {
+  display: none;
+}
+
+.u1-die-glyph__percentile-die > b {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(249,249,245,.94);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: calc(var(--u1-die-size) * .18);
+  font-weight: 760;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.u1-room-roll-stage4__missing {
+  width: var(--u1-die-size);
+  height: var(--u1-die-size);
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(235,237,239,.08);
+  border-radius: 10px;
+  color: rgba(226,228,224,.24);
+  font-size: 20px;
+}
+
+@media (max-width: 360px) {
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4 {
+    min-height: 80px;
+    padding: 7px;
+    gap: 6px;
+  }
+
+  .u1-room-roll-stage4__dice {
+    --u1-die-size: 64px;
+  }
+
+  .u1-room-roll-stage4[data-dice-density="group"] .u1-room-roll-stage4__dice {
+    --u1-die-size: 43px;
+    max-width: 90px;
+  }
+
+  .u1-room-roll-stage4[data-dice-density="dense"] .u1-room-roll-stage4__dice {
+    --u1-die-size: 32px;
+    max-width: 102px;
+  }
+
+  .u1-room-roll-stage4__total > strong {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 320px) {
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4 {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .u1-room-roll-stage4__dice {
+    --u1-die-size: 58px;
+  }
+
+  .u1-room-roll-stage4[data-dice-density="group"] .u1-room-roll-stage4__dice {
+    --u1-die-size: 39px;
+    max-width: 82px;
+  }
+
+  .u1-room-roll-stage4[data-dice-density="dense"] .u1-room-roll-stage4__dice {
+    --u1-die-size: 29px;
+    max-width: 93px;
+  }
+
+  .u1-room-roll-stage4__math {
+    gap: 5px;
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-room-roll-stage4 {
+    min-height: 70px;
+  }
+
+  .u1-room-roll-stage4__dice {
+    --u1-die-size: 56px;
+  }
+}

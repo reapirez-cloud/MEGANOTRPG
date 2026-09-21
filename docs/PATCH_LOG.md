@@ -20,6 +20,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Rebuilt ordinary dialogue presentation into compact graphite glass bubbles: the current account is right-aligned, everyone else is left-aligned, system notices stay centered, body text is readable at mobile sizes, and ordinary player-role pills are removed while GM/Narrator identity remains explicit.
 - Consecutive nearby messages from the same exact speaking persona are visually grouped without repeating the avatar/name on every row; changing the GM's selected NPC/character breaks the group even though the sending account is unchanged.
 - Roll cards now carry a structured dice result model that keeps die sides, every raw die value, dice count, modifier, total and formula as separate fields; the current text-grid rendering is only a temporary compatibility surface until the dedicated SVG dice presentation replaces it.
+- Replaced that temporary roll grid with the Stage 4 dice composition: canonical d4/d6/d8/d10/d12/d20 shapes are drawn as dedicated inline SVG geometry, d100 renders as a percentile d10 pair, arbitrary dN uses an explicitly faceted fallback, and each raw die value is rendered inside its die while modifier and total stay separate.
+- Single-die, small multi-die and dense multi-die rolls use separate responsive densities so the result area stays balanced instead of leaving the former empty upper-right pocket.
 
 ### Database / migration changes
 
@@ -32,6 +34,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - ChatRoomScreen now passes the authenticated viewer user id into the feed; ChatFeed classifies every entry as `own`, `other` or `system`, while ChatFeedItem keeps actor presentation sourced exclusively from the message event snapshot.
 - Dialogue grouping uses a five-minute consecutive-message window and requires the same account id, character id and stored author name, preventing one GM's multiple speaking identities from collapsing into a single visual author group.
 - Game-event presentation now exposes `GameCardRoll` as first-class structured data. Standard checks resolve as d20 with one raw value; free/effect rolls preserve arbitrary `dN` sides and all returned raw values without a canonical-dice whitelist. Valid roll events no longer use generic `stats` as their data source.
+- Added reusable `DiceGlyph` rendering as a pure presentation component. It consumes only `sides + raw value`, so future attack/damage/save surfaces can reuse the same dice grammar without duplicating roll parsing or mechanics.
 
 ### Tests / verification
 
@@ -42,6 +45,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added chat ownership Stage 1 regression coverage that locks account-based side classification separately from dynamic GM speaker name/avatar/character identity.
 - Added dialogue Stage 2 regression coverage for left/right bubble geometry, persona-aware grouping, readable graphite styling, centered system events, dynamic actor avatars and removal of the repeated ordinary Player badge.
 - Reconciled two stale chat regressions with the Stage 1/2 ownership contract, then added Roll Stage 3 coverage for structured d20/free-die data, arbitrary die sides, raw-value preservation and string-parsing-free card rendering.
+- Added Roll Stage 4 regressions for canonical die geometry, d100 percentile rendering, arbitrary-dN fallback, raw values inside SVGs, responsive dice density and the separation of raw dice / modifier / total without invented success/failure judgement.
 
 ### Known incomplete work
 

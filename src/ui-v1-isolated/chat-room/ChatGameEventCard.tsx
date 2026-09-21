@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 
 import { supabase } from "../../lib/supabase"
+import DiceGlyph from "./DiceGlyph"
 import type { UiChatEvent, UiChatEventType } from "./chatEventModel"
 import {
   presentGameEvent,
@@ -24,56 +25,60 @@ function signedRollValue(value: number) {
 }
 
 function StructuredRollSummary({ roll }: { roll: GameCardRoll }) {
-  const stats = [
-    ...(roll.values.length
-      ? [{
-          label: roll.values.length === 1 ? "Кубик" : "Кости",
-          value: roll.values.join(" · "),
-          emphasis: false,
-        }]
-      : []),
-    ...(roll.modifier !== null
-      ? [{
-          label: "Модификатор",
-          value: signedRollValue(roll.modifier),
-          emphasis: false,
-        }]
-      : []),
-    ...(roll.total !== null
-      ? [{
-          label: "Итого",
-          value: String(roll.total),
-          emphasis: true,
-        }]
-      : []),
-  ]
+  const rawValuesLabel = roll.values.join(" · ")
+  const modifierLabel =
+    roll.modifier === null ? null : signedRollValue(roll.modifier)
+  const totalLabel = roll.total === null ? "—" : String(roll.total)
+  const density =
+    roll.values.length <= 1 ? "single" :
+    roll.values.length <= 4 ? "group" :
+    "dense"
 
   return (
-    <>
-      <div className="u1-room-game-card__chips" data-roll-formula-stage="3">
-        <span>{roll.formula}</span>
+    <section
+      className="u1-room-roll-stage4"
+      data-roll-model-stage="3"
+      data-roll-visual-stage="4"
+      data-die-sides={roll.sides}
+      data-dice-count={roll.count}
+      data-dice-density={density}
+      aria-label={rawValuesLabel ? `Чистые кости: ${rawValuesLabel}` : roll.formula}
+    >
+      <div className="u1-room-roll-stage4__summary">
+        <span className="u1-room-roll-stage4__formula">{roll.formula}</span>
+
+        <div className="u1-room-roll-stage4__math">
+          {modifierLabel !== null ? (
+            <>
+              <div className="u1-room-roll-stage4__modifier">
+                <span>Модификатор</span>
+                <strong>{modifierLabel}</strong>
+              </div>
+              <span className="u1-room-roll-stage4__equals" aria-hidden="true">→</span>
+            </>
+          ) : null}
+
+          <div className="u1-room-roll-stage4__total">
+            <span>Итого</span>
+            <strong>{totalLabel}</strong>
+          </div>
+        </div>
       </div>
 
-      {stats.length ? (
-        <div
-          className="u1-room-game-card__stats"
-          data-roll-model-stage="3"
-          data-die-sides={roll.sides}
-          data-dice-count={roll.count}
-          data-stat-count={stats.length}
-        >
-          {stats.map((stat) => (
-            <div
-              key={stat.label}
-              data-emphasis={stat.emphasis || undefined}
-            >
-              <span>{stat.label}</span>
-              <strong>{stat.value}</strong>
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </>
+      <div className="u1-room-roll-stage4__dice" aria-label="Чистый результат кубиков">
+        {roll.values.length ? (
+          roll.values.map((value, index) => (
+            <DiceGlyph
+              key={index + ":" + value}
+              sides={roll.sides}
+              value={value}
+            />
+          ))
+        ) : (
+          <span className="u1-room-roll-stage4__missing">—</span>
+        )}
+      </div>
+    </section>
   )
 }
 
