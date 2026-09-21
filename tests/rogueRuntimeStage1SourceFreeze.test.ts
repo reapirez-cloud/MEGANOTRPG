@@ -129,7 +129,7 @@ test("Rogue Stage 1 matrix assigns all 61 features stable keys and runtime owner
   assert.match(matrix, /fallback token is after Long Rest rather than Initiative/i)
 })
 
-test("Rogue Stage 1 stays frozen while deployed Stages 2-6 advance the checkpoint to Stage 7", () => {
+test("Rogue Stage 1 stays frozen while Stages 2-7 advance the family to READY", () => {
   assert.match(plan, /Stage 1 — source freeze, literary closure and executable specification[\s\S]*?Status:\*\*\s*`COMPLETE_2026_09_12`/)
   assert.match(plan, /Stage 2 — clean class foundation and 1–20 progression[\s\S]*?Status:\*\*\s*`COMPLETE_2026_09_21`/)
   assert.match(plan, /Stage 3 — core Rogue gameplay runtime[\s\S]*?Status:\*\*\s*`COMPLETE_2026_09_21`/)
@@ -143,5 +143,8 @@ test("Rogue Stage 1 stays frozen while deployed Stages 2-6 advance the checkpoin
   assert.match(ledger, /stage_4_base_runtime_certification: COMPLETE_2026_09_21/)
   assert.match(ledger, /stage_5_phb2024_subclasses: COMPLETE_2026_09_21/)
   assert.match(ledger, /stage_6_legacy_supplement_subclasses: COMPLETE_2026_09_21/)
-  assert.match(queue, /Next Rogue stage: \*\*Stage 7 — final fail-closed production certification and public activation\*\*/)
+  assert.match(ledger, /stage_7_final_production_certification: COMPLETE_2026_09_21/)
+  assert.match(ledger, /stage_7_runtime_status: READY/)
+  assert.match(queue, /Status:\*\* COMPLETE_ALL_7_STAGES_READY/)
+  assert.match(queue, /Rogue is now \`Text: READY\` and \`Mechanics\/runtime: READY\`/)
 })
