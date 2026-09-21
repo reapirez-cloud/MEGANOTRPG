@@ -19,7 +19,9 @@ test("stage 1 mounts a new isolated chat-room route", async () => {
   assert.match(app, /path\.startsWith\("chats\/"\)/)
   assert.match(app, /<ChatRoomScreen roomId=\{route\.roomId\}/)
   assert.match(app, /route\.type !== "chat-room" && <Dock/)
-  assert.match(catalog, /window\.location\.hash = "#\/chats\/" \+ encodeURIComponent\(room\.id\)/)
+  assert.match(catalog, /import \{ pushAppHash \} from "\.\/navigationGestures"/)
+  assert.match(catalog, /pushAppHash\("chats\/" \+ encodeURIComponent\(room\.id\)\)/)
+  assert.doesNotMatch(catalog, /window\.location\.hash\s*=/)
 })
 
 test("stage 1 header uses real character hp, world time and location", async () => {
