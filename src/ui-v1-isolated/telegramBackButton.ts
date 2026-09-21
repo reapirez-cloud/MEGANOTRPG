@@ -72,9 +72,11 @@ export function bindTelegramBackButton(
   const options = isOptions
     ? optionsOrHost as TelegramBackButtonOptions
     : null
-  const host = options
+  const host: TelegramBackButtonHost = options
     ? options.host ?? browserHost()
-    : optionsOrHost ?? browserHost()
+    : optionsOrHost
+      ? optionsOrHost as TelegramBackButtonHost
+      : browserHost()
   const priority = options?.priority ?? 0
   const backButton = host.Telegram?.WebApp?.BackButton
   if (!backButton?.onClick) return () => {}
