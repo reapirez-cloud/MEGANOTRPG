@@ -131,7 +131,7 @@ test("internal back detection distinguishes sheet root from nested sheet state",
   )
 })
 
-test("Telegram BackButton binding shows, invokes, detaches and hides safely", () => {
+test("Telegram BackButton binding stays visible while route handlers detach safely", () => {
   let callback: (() => void) | null = null
   let shown = 0
   let hidden = 0
@@ -169,8 +169,10 @@ test("Telegram BackButton binding shows, invokes, detaches and hides safely", ()
   assert.equal(invoked, 1)
 
   cleanup()
-  assert.equal(hidden, 1)
-  assert.equal(callback, null)
+  assert.equal(hidden, 0)
+  assert.equal(typeof callback, "function")
+  ;(callback as () => void)()
+  assert.equal(invoked, 1)
 })
 
 test("Telegram BackButton binding is a no-op outside Telegram", () => {
@@ -238,7 +240,7 @@ test("Snake touch long press is cancelled by scrolling before the timer fires", 
 test("CharacterView owns native Telegram back with the same handleBack as its visible control", () => {
   assert.match(
     viewSource,
-    /useEffect\(\(\) => bindTelegramBackButton\(handleBack\), \[handleBack\]\)/,
+    /bindTelegramBackButton\(handleBack, \{ priority: 100 \}\)/,
   )
   assert.match(viewSource, /window\.addEventListener\("popstate", onPopState\)/)
   assert.match(viewSource, /window\.history\.back\(\)/)

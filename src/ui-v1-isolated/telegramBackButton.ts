@@ -50,16 +50,32 @@ function registryFor(backButton: TelegramBackButton) {
   return registry
 }
 
+type TelegramBackButtonOptions = {
+  priority?: number
+  host?: TelegramBackButtonHost
+}
+
+function browserHost(): TelegramBackButtonHost {
+  return typeof window === "undefined"
+    ? {}
+    : window as unknown as TelegramBackButtonHost
+}
+
 export function bindTelegramBackButton(
   onBack: () => void,
-  {
-    priority = 0,
-    host = window as unknown as TelegramBackButtonHost,
-  }: {
-    priority?: number
-    host?: TelegramBackButtonHost
-  } = {},
+  optionsOrHost?: TelegramBackButtonOptions | TelegramBackButtonHost,
 ) {
+  const isOptions = Boolean(
+    optionsOrHost &&
+    ("priority" in optionsOrHost || "host" in optionsOrHost),
+  )
+  const options = isOptions
+    ? optionsOrHost as TelegramBackButtonOptions
+    : null
+  const host = options
+    ? options.host ?? browserHost()
+    : optionsOrHost ?? browserHost()
+  const priority = options?.priority ?? 0
   const backButton = host.Telegram?.WebApp?.BackButton
   if (!backButton?.onClick) return () => {}
 
