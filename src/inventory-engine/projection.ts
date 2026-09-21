@@ -1,6 +1,7 @@
 import { inventoryMechanicContributions } from "../lib/characterMechanics.ts"
 import type { InventoryItem } from "../types/characterSheet.ts"
 import { createInventoryLoadProjection } from "./load.ts"
+import { readItemAttunement } from "./lifecycle.ts"
 import type { InventoryMechanicalProjection } from "./types.ts"
 
 /**
@@ -13,6 +14,11 @@ export function createInventoryMechanicalProjection(
   items: readonly InventoryItem[],
 ): InventoryMechanicalProjection {
   const projectedItems = items.map((item) => {
+    const attunement = readItemAttunement(item.item_state)
+    if (attunement.required && !attunement.attuned) {
+      return { ...item, mechanics: [] }
+    }
+
     const mode = item.usage_mode ?? (item.category === "consumable" ? "quantity" : "none")
     const depleted = mode === "charges"
       ? (item.charges_current ?? item.charges_max ?? 0) <= 0
@@ -31,7 +37,7 @@ export function createInventoryMechanicalProjection(
     return id ? [id] : []
   }))]
   const revision = items
-    .map((item) => `${item.id}:${item.version ?? 0}:${item.quantity}:${item.weight ?? "?"}:${item.charges_current ?? "-"}:${Number(item.equipped)}:${item.holder_item_id ?? "-"}:${item.placement_kind ?? "-"}`)
+    .map((item) => `${item.id}:${item.version ?? 0}:${item.quantity}:${item.weight ?? "?"}:${item.charges_current ?? "-"}:${Number(item.equipped)}:${Number(readItemAttunement(item.item_state).required)}:${Number(readItemAttunement(item.item_state).attuned)}:${item.holder_item_id ?? "-"}:${item.placement_kind ?? "-"}`)
     .sort()
     .join("|")
   return { characterId, revision, activeItemIds, contributions, load: createInventoryLoadProjection(characterId, items) }
