@@ -19,7 +19,13 @@ import type { CharacterTemplateBundle } from "../rule-templates/types.ts"
 import type { CharacterFeature, CharacterSheet, CharacterSpell } from "../types/characterSheet.ts"
 import type { ResourceSyncInput } from "../types/characterResources.ts"
 
-export type CharacterSpellCatalogLink = CharacterSpell & { catalog_spell_id?: string | null }
+export type CharacterSpellCatalogLink = CharacterSpell & {
+  catalog_spell_id?: string | null
+  /** Generic temporary-access metadata. Expired rows are ignored by the runtime source. */
+  temporary_until?: string | null
+  temporary_source_key?: string | null
+  temporary_assignment_id?: string | null
+}
 export type SpellCatalogRoutingRow = {
   id: string
   slug: string
