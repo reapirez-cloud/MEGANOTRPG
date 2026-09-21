@@ -1267,7 +1267,7 @@ begin
           'condition','rolled_die_changed_failure_to_success','adjudication','gm'
         )
       )),
-      'tags',jsonb_build_array('rogue','soulknife','conditional_spend','gm_confirmed')
+      'tags',jsonb_build_array('rogue','soulknife','conditional_spend','table_adjudicated')
     )
   );
 
@@ -1429,7 +1429,7 @@ begin
           'condition','rolled_die_changed_miss_to_hit','adjudication','gm'
         )
       )),
-      'tags',jsonb_build_array('rogue','soulknife','conditional_spend','gm_confirmed')
+      'tags',jsonb_build_array('rogue','soulknife','conditional_spend','table_adjudicated')
     )
   );
   perform private.rogue_stage3_upsert_level_mechanic_v1(v_soulknife,9,
