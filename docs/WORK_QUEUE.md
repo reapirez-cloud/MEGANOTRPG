@@ -37,6 +37,29 @@ Current checkpoint:
 - Rogue is now `Text: READY` and `Mechanics/runtime: READY`.
 - Do not reopen Stages 1–7 unless a frozen rules contract changes or a new supported subclass is intentionally added.
 
+## Artificer runtime work
+
+**Status:** STAGE_1_COMPLETE_STAGE_2_NEXT  
+**Marked:** 2026-09-21  
+**Branch:** dev
+
+Canonical plan: `src/data/classes/artificerRuntimePlan.md`.  
+Frozen feature matrix: `src/data/classes/artificerRuntimeFeatureMatrix.md`.  
+Reuse audit: `src/data/classes/artificerRuntimeReuseAudit.md`.
+
+Current checkpoint:
+- Stage 1 source freeze/specification is complete.
+- Canonical source is Eberron: Forge of the Artificer (2025).
+- Frozen runtime roster is exactly Alchemist, Armorer, Artillerist, Battle Smith and Cartographer.
+- The matrix contains 10 base + 33 subclass = 43 stable feature identities.
+- The retired historical Reanimator subclass is explicitly outside the supported roster.
+- Literary/Voss fields are intentionally blank; the user will add that translation layer later.
+- Production still has 0 Artificer class/subclass/level runtime rows.
+- Existing 29 Artificer spell links are audited as stale/incomplete and must be reconciled in Stage 2.
+- The Stage 7 certifier exists only as a fail-closed future gate; it does not make the class READY.
+- Stage 2 is next: clean class foundation, all 20 levels and shared spellcasting integration.
+- Do not restore the retired historical Artificer installer wholesale.
+
 ## Inventory / scene interaction follow-up
 
 **Status:** STAGES_1_4_COMPLETE_STAGE_5_NEXT  
