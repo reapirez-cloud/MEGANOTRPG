@@ -27,7 +27,7 @@ test("character header opens the actual character route", async () => {
   assert.match(header, /"workspace\/character\/" \+ encodeURIComponent\(character\.id\)/)
 })
 
-test("feed makes GM and player authors explicit", async () => {
+test("feed keeps GM identity explicit without repeating an ordinary player badge", async () => {
   const [feed, css] = await Promise.all([
     readFile(feedPath, "utf8"),
     readFile(cssPath, "utf8"),
@@ -35,7 +35,8 @@ test("feed makes GM and player authors explicit", async () => {
 
   assert.match(feed, /data-author-role=/)
   assert.match(feed, /GM · Рассказчик/)
-  assert.match(feed, /: "Игрок"/)
+  assert.doesNotMatch(feed, /: "Игрок"/)
+  assert.match(feed, /data-message-side=/)
   assert.match(css, /data-author-role="gm"/)
 })
 

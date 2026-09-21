@@ -5,6 +5,7 @@ import type { UiChatEvent, UiChatEventType } from "./chatEventModel"
 import {
   presentGameEvent,
   type GameCardPresentation,
+  type GameCardRoll,
 } from "./chatGameEventPresentation"
 
 function formatMessageTime(value: string) {
@@ -15,6 +16,65 @@ function formatMessageTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date)
+}
+
+function signedRollValue(value: number) {
+  if (value > 0) return "+" + value
+  return String(value)
+}
+
+function StructuredRollSummary({ roll }: { roll: GameCardRoll }) {
+  const stats = [
+    ...(roll.values.length
+      ? [{
+          label: roll.values.length === 1 ? "Кубик" : "Кости",
+          value: roll.values.join(" · "),
+          emphasis: false,
+        }]
+      : []),
+    ...(roll.modifier !== null
+      ? [{
+          label: "Модификатор",
+          value: signedRollValue(roll.modifier),
+          emphasis: false,
+        }]
+      : []),
+    ...(roll.total !== null
+      ? [{
+          label: "Итого",
+          value: String(roll.total),
+          emphasis: true,
+        }]
+      : []),
+  ]
+
+  return (
+    <>
+      <div className="u1-room-game-card__chips" data-roll-formula-stage="3">
+        <span>{roll.formula}</span>
+      </div>
+
+      {stats.length ? (
+        <div
+          className="u1-room-game-card__stats"
+          data-roll-model-stage="3"
+          data-die-sides={roll.sides}
+          data-dice-count={roll.count}
+          data-stat-count={stats.length}
+        >
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              data-emphasis={stat.emphasis || undefined}
+            >
+              <span>{stat.label}</span>
+              <strong>{stat.value}</strong>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </>
+  )
 }
 
 function GameIcon({ type }: { type: UiChatEventType }) {
@@ -545,6 +605,10 @@ export default function ChatGameEventCard({ event }: { event: UiChatEvent }) {
             <strong>{presentation.title}</strong>
             {presentation.subtitle ? <small>{presentation.subtitle}</small> : null}
           </div>
+
+          {presentation.roll ? (
+            <StructuredRollSummary roll={presentation.roll} />
+          ) : null}
 
           {presentation.chips.length ? (
             <div className="u1-room-game-card__chips">

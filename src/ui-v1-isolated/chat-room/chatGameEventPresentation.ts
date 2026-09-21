@@ -13,11 +13,21 @@ export type GameCardResource = {
   max: number | null
 }
 
+export type GameCardRoll = {
+  sides: number
+  values: number[]
+  count: number
+  modifier: number | null
+  total: number | null
+  formula: string
+}
+
 export type GameCardPresentation = {
   eyebrow: string
   title: string
   subtitle: string | null
   chips: string[]
+  roll: GameCardRoll | null
   stats: GameCardStat[]
   resources: GameCardResource[]
   note: string | null
@@ -99,57 +109,89 @@ function rollPresentation(event: UiChatEvent, payload: Record<string, unknown>):
   const effect = isRecord(payload.effect) ? payload.effect : null
 
   if (effect) {
-    const count = numberValue(effect, "count")
-    const sides = numberValue(effect, "sides")
+    const rawCount = numberValue(effect, "count")
+    const rawSides = numberValue(effect, "sides")
     const effectModifier = numberValue(effect, "modifier")
     const effectTotal = numberValue(effect, "total")
     const rolls = Array.isArray(effect.rolls)
       ? effect.rolls.filter((value): value is number => typeof value === "number" && Number.isFinite(value))
       : []
+    const count =
+      rawCount !== null && rawCount >= 1
+        ? Math.floor(rawCount)
+        : rolls.length || null
+    const sides =
+      rawSides !== null && rawSides >= 2
+        ? Math.floor(rawSides)
+        : null
     const formula =
       count !== null && sides !== null
         ? `${count}d${sides}${effectModifier ? signed(effectModifier) : ""}`
         : title
+    const roll: GameCardRoll | null =
+      count !== null && sides !== null
+        ? {
+            sides,
+            values: rolls,
+            count,
+            modifier: effectModifier,
+            total: effectTotal,
+            formula,
+          }
+        : null
 
     return {
       eyebrow: "Бросок",
       title,
       subtitle: kind,
-      chips: [formula],
-      stats: [
-        ...(rolls.length
-          ? [{ label: rolls.length === 1 ? "Кубик" : "Кости", value: rolls.join(" · ") }]
-          : []),
-        ...(effectModifier !== null
-          ? [{ label: "Модификатор", value: signed(effectModifier) }]
-          : []),
-        ...(effectTotal !== null
-          ? [{ label: "Итого", value: String(effectTotal), emphasis: true }]
-          : []),
-      ],
+      chips: [],
+      roll,
+      stats: roll
+        ? []
+        : [
+            ...(rolls.length
+              ? [{ label: rolls.length === 1 ? "Кубик" : "Кости", value: rolls.join(" · ") }]
+              : []),
+            ...(effectModifier !== null
+              ? [{ label: "Модификатор", value: signed(effectModifier) }]
+              : []),
+            ...(effectTotal !== null
+              ? [{ label: "Итого", value: String(effectTotal), emphasis: true }]
+              : []),
+          ],
       resources: [],
       note: event.body && event.body !== title ? event.body : null,
     }
   }
 
-  const formula = d20 !== null
-    ? `d20${modifier ? signed(modifier) : ""}`
-    : null
+  const roll: GameCardRoll | null =
+    d20 !== null
+      ? {
+          sides: 20,
+          values: [d20],
+          count: 1,
+          modifier,
+          total,
+          formula: `d20${modifier ? signed(modifier) : ""}`,
+        }
+      : null
 
   return {
     eyebrow: "Бросок",
     title,
     subtitle: kind,
-    chips: formula ? [formula] : [],
-    stats: [
-      ...(d20 !== null ? [{ label: "Кубик", value: String(d20) }] : []),
-      ...(modifier !== null
-        ? [{ label: "Модификатор", value: signed(modifier) }]
-        : []),
-      ...(total !== null
-        ? [{ label: "Итого", value: String(total), emphasis: true }]
-        : []),
-    ],
+    chips: [],
+    roll,
+    stats: roll
+      ? []
+      : [
+          ...(modifier !== null
+            ? [{ label: "Модификатор", value: signed(modifier) }]
+            : []),
+          ...(total !== null
+            ? [{ label: "Итого", value: String(total), emphasis: true }]
+            : []),
+        ],
     resources: [],
     note: event.body && event.body !== title ? event.body : null,
   }
@@ -167,6 +209,7 @@ function spellPresentation(event: UiChatEvent, payload: Record<string, unknown>)
     title,
     subtitle: segments[0] || null,
     chips: segments.slice(1),
+    roll: null,
     stats: [],
     resources: parseResources(payload),
     note: event.body && event.body !== title ? event.body : null,
@@ -187,6 +230,7 @@ function attackPresentation(event: UiChatEvent, payload: Record<string, unknown>
     title,
     subtitle: target ? "Цель: " + target : null,
     chips: [range, damage].filter((value): value is string => Boolean(value)),
+    roll: null,
     stats: [
       ...(attackRoll !== null ? [{ label: "Кубик", value: String(attackRoll) }] : []),
       ...(modifier !== null ? [{ label: "Модификатор", value: signed(modifier) }] : []),
@@ -207,6 +251,7 @@ function itemPresentation(event: UiChatEvent, payload: Record<string, unknown>):
     title,
     subtitle: use,
     chips: quantity !== null ? ["Количество: " + quantity] : [],
+    roll: null,
     stats: [],
     resources: parseResources(payload),
     note: event.body && event.body !== title ? event.body : null,
@@ -226,6 +271,7 @@ function abilityPresentation(event: UiChatEvent, payload: Record<string, unknown
     title,
     subtitle: activation,
     chips: kind === "character_ability" ? ["Способность персонажа"] : [],
+    roll: null,
     stats: [],
     resources: parseResources(payload),
     note: event.body && event.body !== title ? event.body : null,
