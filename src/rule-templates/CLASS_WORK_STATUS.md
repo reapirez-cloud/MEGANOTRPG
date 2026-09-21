@@ -547,7 +547,7 @@ Base Warlock, all 28 supported Eldritch Invocations and all nine supported runti
 - `base_authoring_source: src/data/classes/rogueReferenceCurrent.ts`
 - `subclass_authoring_sources: src/data/classes/rogueSubclassReferenceWave1.ts; src/data/classes/rogueSubclassReferenceWave2.ts; src/data/classes/rogueSubclassReferenceWave3.ts`
 - `runtime_plan: src/data/classes/rogueRuntimePlan.md`
-- `runtime_plan_status: STAGE_4_COMPLETE_STAGE_5_NEXT; STAGES_5_TO_7_REQUIRED_FOR_READY`
+- `runtime_plan_status: STAGE_6_COMPLETE_STAGE_7_NEXT; STAGE_7_REQUIRED_FOR_READY`
 - `stage_1_source_freeze_and_text_closure: COMPLETE_2026_09_12`
 - `stage_1_feature_matrix: src/data/classes/rogueRuntimeFeatureMatrix.md`
 - `pre_stage_2_reuse_audit: COMPLETE_2026_09_21`
@@ -592,17 +592,33 @@ Base Warlock, all 28 supported Eldritch Invocations and all nine supported runti
 - `stage_4_live_duplicate_mechanic_ids: 0`
 - `stage_4_live_broken_action_resource_refs: 0`
 - `stage_4_live_active_subclass_count: 0`
-- `stage_5_phb2024_subclasses: NOT_STARTED`
-- `stage_6_legacy_supplement_subclasses: NOT_STARTED`
+- `stage_5_phb2024_subclasses: COMPLETE_2026_09_21`
+- `stage_5_revision: xphb-2024-rogue-stage5-phb-subclasses-v1`
+- `stage_5_migration: 20260921150000_rogue_stage5_phb_subclasses_v1`
+- `stage_5_live_subclass_count: 4`
+- `stage_5_runtime_roster: thief, assassin, arcane-trickster, soulknife`
+- `stage_5_shared_temporary_spell_access: DEPLOYED_CHARACTER_SPELLS_8H_EXPIRY`
+- `stage_5_soulknife_runtime: READY_SHARED_PSIONIC_RESOURCE_AND_NATIVE_CE_ATTACKS`
+- `stage_6_legacy_supplement_subclasses: COMPLETE_2026_09_21`
+- `stage_6_revision: rogue-stage6-legacy-subclasses-v1`
+- `stage_6_migration: 20260921153000_rogue_stage6_legacy_subclasses_v1`
+- `stage_6_live_legacy_subclass_count: 5`
+- `stage_6_live_total_supported_subclass_count: 9`
+- `stage_6_runtime_roster: swashbuckler, inquisitive, mastermind, scout, phantom`
+- `stage_6_generic_choice_provider: DEPLOYED_unproficient_skill_or_tool`
+- `stage_6_generic_resource_recovery: DEPLOYED_ensure_minimum`
+- `stage_6_phantom_deaths_friend: LONG_REST_ENSURE_ONE_ONLY_IF_EMPTY`
+- `stage_6_scout_sudden_strike: BONUS_ATTACK_ANY_LEGAL_TARGET_SECOND_SNEAK_ATTACK_DIFFERENT_TARGET_ONLY`
+- `stage_6_mastermind_detector_regression: ZERO_INVENTED_INSIGHT_DETECTOR`
 - `stage_7_final_production_certification: NOT_STARTED`
 - `current_dev_text: base Rogue plus all nine supported subclass feature packs have complete authored Voss prose and exact neutral rule text; Steady Aim and Slippery Mind literary gaps are closed`
 - `exact_reference_rules: BASE_2024_READY_PLUS_9_SUBCLASS_PACKS_READY_2026_09_12`
 - `subclass_reference_roster: thief, assassin, arcane-trickster, soulknife, swashbuckler, inquisitive, mastermind, scout, phantom`
 - `wave3_reference_scope: Mastermind and Scout use legacy Xanathar rules; Phantom uses the published Tasha’s Cauldron of Everything rules`
 - `reference_visibility: BASE_AND_ALL_9_SUBCLASSES_REFERENCE_ONLY`
-- `dev_runtime: STAGE_4_BASE_RUNTIME_CERTIFIED`
-- `production_runtime: STAGE_4_BASE_RUNTIME_DEPLOYED_2026_09_21`
-- `production_template_audit: exactly one active class:rogue at xphb-2024-rogue-stage4-base-runtime-v1 with 20 level rows, all 15 base feature contracts structured, one Stroke resource/action, zero duplicate mechanic IDs, zero broken action-resource refs and zero active Rogue subclasses as of 2026-09-21`
+- `dev_runtime: STAGE_6_BASE_PLUS_ALL_9_SUBCLASSES_IMPLEMENTED`
+- `production_runtime: STAGE_6_BASE_PLUS_ALL_9_SUBCLASSES_DEPLOYED_2026_09_21`
+- `production_template_audit: exactly one active class:rogue with 20 base level rows and exactly 9 supported active child subclasses as of 2026-09-21; PHB four use xphb-2024-rogue-stage5-phb-subclasses-v1, legacy/supplement five use rogue-stage6-legacy-subclasses-v1; all children unlock at Rogue 3; unsupported Rogue subclass count is zero`
 - `runtime_boundary: reference mechanics are documentation only; no CE contribution, persistent resource, choice runtime, spell runtime or executable class action is claimed by this authoring pass`
 - `wave3_regression: tests/rogueSubclassReferenceWave3.test.ts`
 
@@ -614,7 +630,7 @@ Known source-copy corrections locked by Wave 3 regression:
 - Tasha's Tokens of the Departed has no extra Undead/Construct exclusion, and the queried spirit is not required to tell the truth.
 - Tasha's Death's Friend grants its fallback Soul Trinket at the end of a Long Rest when none are held; it does not use Initiative as that trigger.
 
-Rogue Stages 1–4 are closed: the literary/reference layer, shared foundation, defining gameplay and remaining base-class runtime are all complete. The base Rogue 1–20 package is certified, but the overall family remains `IN_PROGRESS` and reference-only until subclasses and Stage 7 pass. The canonical next step is Stage 5 in `src/data/classes/rogueRuntimePlan.md`.
+Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and all nine supported subclass runtimes are deployed. The family remains `IN_PROGRESS` and reference-only only because final fail-closed Stage 7 certification/public activation has not run yet. The canonical next step is Stage 7 in `src/data/classes/rogueRuntimePlan.md`.
 
 ---
 
