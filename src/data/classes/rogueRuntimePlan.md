@@ -6,7 +6,7 @@
 ## Overall target
 
 **Current text/reference:** `READY` — base Rogue and all 9 supported subclass feature packs have complete Voss prose plus independently audited neutral rule text.  
-**Current mechanics/runtime:** `IN_PROGRESS` — base Rogue Stages 2–4 are deployed and base-certified; Stages 5–7 remain required for full family `READY`.  
+**Current mechanics/runtime:** `READY` — all seven stages are complete; base Rogue 1–20 and all nine supported subclasses are production-certified at `xphb-2024-rogue-runtime-final-v1`.  
 **Target:** base Rogue 1–20 plus all 9 supported subclasses implemented through the shared Chasovoy → Shapoklyak/GENA → Character Engine pipeline, deployed to the connected Supabase project, regression-gated and final-certified as `READY`.
 
 Supported subclass roster:
@@ -482,8 +482,8 @@ Final revision:
 
 ## Completion rule
 
-Rogue is **not READY** because a migration exists, because a card is translated, because a test for one feature passes, or because the class looks correct in UI.
+Rogue was **not READY** merely because a migration existed, a card was translated, one feature test passed, or the class looked correct in UI.
 
-Rogue becomes **READY only after Stage 7** proves GitHub runtime, Character Engine resolution, shared persistent state, public reference, migrations and connected production Supabase all describe the same base class plus the same nine supported subclasses.
+Stage 7 has now proved that GitHub runtime, Character Engine resolution, shared persistent state, public reference, migrations and connected production Supabase describe the same base class plus the same nine supported subclasses.
 
 All seven Rogue stages are complete. Rogue is now the certified runtime-backed package for the frozen base class plus nine supported subclasses.
