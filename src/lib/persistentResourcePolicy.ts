@@ -16,7 +16,8 @@ function assertRestoreRule(value: unknown, context: string): asserts value is Re
   if (rule.restore === "full") return
   if (rule.restore === "amount" && typeof rule.amount === "number" && Number.isFinite(rule.amount) && rule.amount > 0) return
   if (rule.restore === "set" && typeof rule.amount === "number" && Number.isFinite(rule.amount) && rule.amount >= 0) return
-  throw new Error(`${context}: recovery rule must restore full, add a positive amount, or set a non-negative amount`)
+  if (rule.restore === "ensure_minimum" && typeof rule.amount === "number" && Number.isFinite(rule.amount) && rule.amount >= 0) return
+  throw new Error(`${context}: recovery rule must restore full, add a positive amount, set a non-negative amount, or ensure a non-negative minimum`)
 }
 
 /**
