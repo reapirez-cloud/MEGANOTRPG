@@ -12,6 +12,14 @@ import ArtSection from "./ArtSection"
 import Workspace from "./Workspace"
 import GMWorkshop from "./GMWorkshop"
 import CharacterView from "./CharacterView"
+import { bindTelegramBackButton } from "./telegramBackButton"
+import {
+  canNavigateBack,
+  ensureAppHistoryEntry,
+  navigateAppBack,
+  pushAppHash,
+  useSwipeBackNavigation,
+} from "./navigationGestures"
 import type { WorkshopSection } from "./useGMWorkshopData"
 import {
   AchievementsScreen,
@@ -125,7 +133,7 @@ function parseRoute(): Route {
 }
 
 function go(path: string) {
-  window.location.hash = path.startsWith("#") ? path : `#/${path}`
+  pushAppHash(path)
 }
 
 type TelegramHapticWindow = Window & {
@@ -688,8 +696,7 @@ function Screen({ route }: { route: Route }) {
       <CharacterView
         characterId={route.characterId}
         onBack={() => {
-          if (window.history.length > 1) window.history.back()
-          else go("workspace")
+          if (!navigateAppBack()) go("workspace")
         }}
       />
     )
@@ -713,6 +720,18 @@ export default function UiV1App() {
   const [route, setRoute] = useState<Route>(() => parseRoute())
   useAIViewContextLayer("ui-route", aiRouteContext(route), 10)
 
+  const navigateBack = useCallback(() => {
+    if (!navigateAppBack()) return
+
+    softHaptic()
+  }, [])
+  const canGoBack = canNavigateBack()
+
+  useSwipeBackNavigation({
+    enabled: canGoBack,
+    onBack: navigateBack,
+  })
+
   const navigateRoot = useCallback((space: RootSpace) => {
     if (route.type === "root" && route.space === space) return
 
@@ -721,15 +740,23 @@ export default function UiV1App() {
   }, [route])
 
   useEffect(() => {
-    if (!window.location.hash) {
-      window.history.replaceState(null, "", "#/home")
-    }
+    ensureAppHistoryEntry()
 
     const sync = () => setRoute(parseRoute())
 
     window.addEventListener("hashchange", sync)
-    return () => window.removeEventListener("hashchange", sync)
+    window.addEventListener("popstate", sync)
+    return () => {
+      window.removeEventListener("hashchange", sync)
+      window.removeEventListener("popstate", sync)
+    }
   }, [])
+
+  useEffect(() => {
+    if (!canGoBack) return
+
+    return bindTelegramBackButton(navigateBack)
+  }, [canGoBack, navigateBack])
 
   return (
     <div className="u1-app">

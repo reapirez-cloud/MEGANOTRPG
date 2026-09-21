@@ -11,11 +11,19 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Added app-wide mobile edge-swipe back navigation for UI 1.0. A deliberate right swipe from the left screen edge now returns through in-app history instead of doing nothing; direct deep links fall back to their logical parent screen without leaving the app.
+- Telegram's native BackButton now uses the same back contract as the swipe gesture and character-screen back control, so mobile navigation behaves consistently across entry points.
+
 ### Database / migration changes
 
 ### Runtime and architecture changes
 
+- Added one isolated navigation gesture/history helper for UI 1.0. App-owned history entries are marked with depth, browser popstate/hash changes share one route sync, and swipe-back ignores the bottom dock, dialogs, sliders and carousel-like surfaces to avoid stealing intentional horizontal gestures.
+- No Supabase schema or data changes were required; swipe-back is purely a client navigation concern.
+
 ### Tests / verification
+
+- Added regression coverage for edge-only swipe recognition, vertical/reverse gesture rejection, deterministic deep-link parent routes, unified Telegram/browser/swipe back wiring, and removal of the unsafe raw `history.length` fallback.
 
 ### Known incomplete work
 
