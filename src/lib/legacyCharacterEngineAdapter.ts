@@ -163,7 +163,8 @@ export function buildLegacyCharacterEngineInput(args: {
 
   const spellcastingAbility = parseLegacySpellcastingAbility(sheet.spellcasting_ability)
   const wizardSpellbookCatalogIds = new Set(args.wizardSpellbookCatalogIds ?? [])
-  if (sheet.spellcasting_enabled) for (const spell of spells) {
+  for (const spell of spells) {
+    if (!sheet.spellcasting_enabled && !spell.temporary_source_key) continue
     const isCantrip = spell.spell_level === 0 || spell.cast_mode === "cantrip"
     const alwaysPrepared = Boolean(spell.wizard_spell_mastery || spell.wizard_signature_spell)
     const options = isCantrip ? [] : slotOptions(spell.spell_level, slotLevels)
