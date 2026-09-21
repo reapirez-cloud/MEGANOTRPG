@@ -27,17 +27,16 @@ test("stage 5 reserves exactly the thirteen project class identities", () => {
   )
 })
 
-test("stage 5 certifies nine current classes and leaves only the four declared future runtimes pending", () => {
+test("class proficiency coverage certifies Rogue Stage 2 and leaves three future runtimes pending", () => {
   assert.equal(
     CHARACTER_PROFICIENCY_CLASS_COVERAGE.filter(
       (entry) => entry.status === "certified",
     ).length,
-    9,
+    10,
   )
   assert.deepEqual(
     new Set(CHARACTER_PROFICIENCY_PENDING_CLASS_KEYS),
     new Set([
-      "class:rogue",
       "class:barbarian",
       "class:ranger",
       "class:artificer",
