@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react"
 import {
   resolveBonusDamageDiceSacrifice,
   resolveD20Floor,
+  resolveD20ResultOverride,
   type ResolvedAction,
   type ResolvedSpell,
 } from "../../character-engine/index.ts"
@@ -177,6 +178,7 @@ export default function ChatActionHost({
     const bonusDice = resolved.contract
       ? resolveBonusDamageDiceSacrifice(action, resolved.contract.values)
       : null
+    const d20Override = resolveD20ResultOverride(action)
     const mechanicId = templateMechanicIdForChatAction(action)
 
     if (mechanicId) {
@@ -221,7 +223,16 @@ export default function ChatActionHost({
             })
           : genaSession.sendTemplateAction({
               ...common,
-              payload: { detail: action.economy, mechanicId },
+              payload: d20Override
+                ? {
+                    detail: `Результат d20 становится ${d20Override.result}`,
+                    mechanicId,
+                    d20ResultOverride: d20Override.result,
+                    ...(d20Override.trigger
+                      ? { trigger: d20Override.trigger }
+                      : {}),
+                  }
+                : { detail: action.economy, mechanicId },
             }),
       )
 
