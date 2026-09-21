@@ -77,3 +77,19 @@ export function writeItemRecharge(
   }
   return next
 }
+
+
+export type ItemAttunementState = {
+  required: boolean
+  attuned: boolean
+}
+
+export function readItemAttunement(
+  itemState: InventoryItem["item_state"] | undefined,
+): ItemAttunementState {
+  const attunement = record(record(itemState)?.attunement)
+  return {
+    required: attunement?.required === true,
+    attuned: attunement?.attuned === true,
+  }
+}
