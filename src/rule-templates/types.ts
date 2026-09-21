@@ -23,6 +23,11 @@ export type RuleChoiceOptionProvider =
       /** Generic refreshable choice over skills/tools the character does not currently own. */
       kind: "unproficient_skill_or_tool"
     }
+  | {
+      /** Chasovoy-backed dynamic item-plan choice. Options use stable refdef:<uuid> identities. */
+      kind: "reference_item_plans"
+      category?: string
+    }
 
 
 export type RuleChoiceRequirement = {
