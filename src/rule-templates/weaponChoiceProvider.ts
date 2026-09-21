@@ -54,10 +54,12 @@ export const WEAPON_CHOICE_CATALOG = [
   { key: "weapon:pistol", label: "Пистолет", category: "martial", properties: ["ammunition", "loading"], mastery: "Vex" },
 ] as const satisfies readonly WeaponChoiceCatalogEntry[]
 
-const byKey = new Map(WEAPON_CHOICE_CATALOG.map((entry) => [entry.key, entry] as const))
+const byKey = new Map<string, WeaponChoiceCatalogEntry>(
+  WEAPON_CHOICE_CATALOG.map((entry) => [entry.key, entry]),
+)
 
 export function weaponChoiceCatalogEntry(key: string): WeaponChoiceCatalogEntry | null {
-  return byKey.get(key as `weapon:${string}`) || null
+  return byKey.get(key) || null
 }
 
 export function weaponProficiencyCoversChoice(
