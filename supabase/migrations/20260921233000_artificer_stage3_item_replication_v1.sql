@@ -502,6 +502,7 @@ declare
   v_option text;
   v_def uuid;
   v_attune boolean;
+  v_requires_attunement boolean;
   v_max integer;
   v_item uuid;
 begin
@@ -552,6 +553,15 @@ begin
     ) then continue; end if;
 
     v_attune:=coalesce((v_instance#>>'{config,attune}')::boolean,false);
+    select coalesce((rr.data#>>'{attunement,required}')::boolean,false)
+    into v_requires_attunement
+    from public.reference_definitions d
+    join public.reference_definition_revisions rr
+      on rr.definition_id=d.id and rr.revision=d.current_revision
+    where d.id=v_def and d.kind='item' and d.status='active';
+    if v_attune and not coalesce(v_requires_attunement,false) then
+      raise exception 'ARTIFICER_REPLICATION_ATTUNEMENT_NOT_REQUIRED:%',v_option;
+    end if;
     v_item:=private.cheburashka_create_definition_instance_v1(
       p_character_id,v_def,
       jsonb_build_object(
