@@ -28,6 +28,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Tests / verification
 
 - Updated swipe navigation regression coverage for the reserved Android system edge, the inner MEGANOT gesture lane, explicit exit-guard state, and UiV1App popstate guard wiring.
+- Added regression coverage for persistent Telegram BackButton ownership, nested back-handler priority, disabled Telegram vertical collapse swipes, dynamic content safe-area wiring, global stage offset, and AI-orb safe-area clamping.
 
 ### Known incomplete work
 
