@@ -11,12 +11,16 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Added the Artificer to the class reference catalog as a reference-only mechanical specification. Its literary fields are deliberately blank so the user's later translation/Voss text is not replaced by generated filler.
+
 - Replaced the chat roll card's generated inline SVG dice for canonical d4/d6/d8/d10/d12/d20 with the graphite PNG dice authored for MEGANOT.
 - Every canonical die now overlays the raw die result on the intentionally empty central face; per-die vertical alignment keeps the number centered on the actual face rather than the image bounding box.
 - Canonical chat dice use optimized 192×192 PNG assets rather than the multi-megabyte generation sources, while preserving enough source resolution for the current 32–72px mobile render sizes.
 - d100 keeps the existing percentile behavior but now composes two graphite PNG d10s. Arbitrary unsupported dN rolls keep an explicit non-SVG fallback instead of pretending to have a canonical art asset.
 
 ### Database / migration changes
+
+- Artificer Stage 1 performs no runtime database mutation. Live audit remains 0 Artificer class rows, 0 subclass rows and 0 level rows; the existing 29 Artificer spell links are recorded as stale/incomplete for the 2025 target and must be reconciled in Stage 2.
 
 - Added an Artificer Stage 7 certification gate as private service-role-only infrastructure. It refuses READY unless the complete 1–20 class, exact five-subclass roster, Stage 1–6 metadata, coherent actions/resources/choices, spell catalog access and shared RPC permissions are present.
 
@@ -26,6 +30,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Completed Artificer Stage 1 source freeze against Eberron: Forge of the Artificer (2025): 10 base features, 33 subclass features and 43 stable feature identities across exactly Alchemist, Armorer, Artillerist, Battle Smith and Cartographer.
+- Added a dedicated Artificer reuse audit. The retired historical package is structural reference only; `artificer-reanimator` is explicitly excluded and the old installer must not be restored wholesale.
+- Frozen the generic runtime gaps exposed by Artificer before implementation: magic-item plan provider, class-created item provenance/expiry, Long-Rest loadout reconciliation, item-charge ↔ spell-slot exchange, temporary-slot expiry, stored-spell item methods, generic class constructs/companions, equipment-bound modes, generated consumable variants, linked-holder state and cross-owner zero-HP rescue orchestration.
+
 - Added the Artificer runtime plan and froze the final target roster to Alchemist, Armorer, Artillerist, Battle Smith and Cartographer. The certification gate deliberately does not inspect or require literary translation, `author_description` or `author_comment`; those fields remain reserved for the user's later text.
 
 - Completed Rogue Stage 7: public Rogue/reference cards now expose the same certified base + nine-subclass runtime roster; no Rogue-specific Sheet or Chat mechanics branch was introduced.
@@ -34,6 +42,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Removed inline canonical SVG geometry and SVG text rendering from `DiceGlyph`; the raw result is now an HTML overlay above the PNG asset.
 
 ### Tests / verification
+
+- Added Artificer Stage 1 regression coverage locking the exact five-subclass roster, 43 stable feature identities, blank literary fields, current base feature topology, Reanimator exclusion, stale 29-link spell audit and Stage 2 handoff.
 
 - Added Artificer Stage 7 regression coverage for fail-closed ordering, exact subclass roster, Stage 1–6 prerequisites, private-function permissions and the rule that blank literary fields cannot block mechanical certification.
 - Live Supabase verification confirmed the Artificer certifier exists, `anon=false`, `authenticated=false`, `service_role=true`; the current database still has 0 Artificer classes, 0 subclasses and 0 levels, and an explicit certification attempt fails closed with `ARTIFICER_FINAL_ACTIVE_CLASS_NOT_FOUND` as intended.
@@ -46,7 +56,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Known incomplete work
 
-- Artificer Stages 1–6 are not present yet. Production currently has no Artificer class/subclass/level runtime rows, so Stage 7 is correctly blocked and no READY state has been written.
+- Artificer Stage 1 is complete. Stages 2–6 remain; production still has no Artificer class/subclass/level runtime rows, so Stage 7 is correctly blocked and no READY state has been written.
 
 ---
 
