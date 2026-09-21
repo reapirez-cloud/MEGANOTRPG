@@ -541,13 +541,13 @@ Base Warlock, all 28 supported Eldritch Invocations and all nine supported runti
 ## Rogue (`class:rogue`)
 
 **Text:** `READY`  
-**Mechanics/runtime:** `IN_PROGRESS`
+**Mechanics/runtime:** `READY`
 
 - `authoring_started: 2026-09-10`
 - `base_authoring_source: src/data/classes/rogueReferenceCurrent.ts`
 - `subclass_authoring_sources: src/data/classes/rogueSubclassReferenceWave1.ts; src/data/classes/rogueSubclassReferenceWave2.ts; src/data/classes/rogueSubclassReferenceWave3.ts`
 - `runtime_plan: src/data/classes/rogueRuntimePlan.md`
-- `runtime_plan_status: STAGE_6_COMPLETE_STAGE_7_NEXT; STAGE_7_REQUIRED_FOR_READY`
+- `runtime_plan_status: COMPLETE_ALL_7_STAGES_READY`
 - `stage_1_source_freeze_and_text_closure: COMPLETE_2026_09_12`
 - `stage_1_feature_matrix: src/data/classes/rogueRuntimeFeatureMatrix.md`
 - `pre_stage_2_reuse_audit: COMPLETE_2026_09_21`
@@ -610,7 +610,22 @@ Base Warlock, all 28 supported Eldritch Invocations and all nine supported runti
 - `stage_6_phantom_deaths_friend: LONG_REST_ENSURE_ONE_ONLY_IF_EMPTY`
 - `stage_6_scout_sudden_strike: BONUS_ATTACK_ANY_LEGAL_TARGET_SECOND_SNEAK_ATTACK_DIFFERENT_TARGET_ONLY`
 - `stage_6_mastermind_detector_regression: ZERO_INVENTED_INSIGHT_DETECTOR`
-- `stage_7_final_production_certification: NOT_STARTED`
+- `stage_7_final_production_certification: COMPLETE_2026_09_21`
+- `stage_7_revision: xphb-2024-rogue-runtime-final-v1`
+- `stage_7_migration: 20260921162743_rogue_stage7_final_certification_v1`
+- `stage_7_ci_run: 35625289587`
+- `stage_7_ci_job: 106418485380`
+- `stage_7_live_base_count: 1`
+- `stage_7_live_level_rows: 20`
+- `stage_7_live_supported_subclasses_ready: 9_OF_9`
+- `stage_7_live_duplicate_catalog_keys: 0`
+- `stage_7_live_orphan_subclasses: 0`
+- `stage_7_private_installer_anon_auth_execute: 0`
+- `stage_7_assignment_level_smoke: PASS_CHOICES_PERSIST_PARENT_LEVEL_5`
+- `stage_7_soulknife_resource_smoke: PASS_SHARED_SPEND_RECOVERY_AND_REMOVE_CLEANUP`
+- `stage_7_arcane_trickster_spell_smoke: PASS_SHARED_SPELL_EXECUTOR`
+- `stage_7_reference_runtime: BASE_PLUS_9_RUNTIME_BACKED`
+- `stage_7_runtime_status: READY`
 - `current_dev_text: base Rogue plus all nine supported subclass feature packs have complete authored Voss prose and exact neutral rule text; Steady Aim and Slippery Mind literary gaps are closed`
 - `exact_reference_rules: BASE_2024_READY_PLUS_9_SUBCLASS_PACKS_READY_2026_09_12`
 - `subclass_reference_roster: thief, assassin, arcane-trickster, soulknife, swashbuckler, inquisitive, mastermind, scout, phantom`
