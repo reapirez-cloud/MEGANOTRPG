@@ -20,7 +20,7 @@ Resume trigger: `ALL_CLASS_TRANSLATIONS_COMPLETE`.
 
 ## Rogue READY work
 
-**Status:** STAGE_1_COMPLETE_STAGE_2_NEXT  
+**Status:** STAGE_2_COMPLETE_STAGE_3_NEXT  
 **Marked:** 2026-09-21  
 **Branch:** dev
 
@@ -40,9 +40,17 @@ Current checkpoint:
 - Current shared runtime already covers long-rest choice refresh/replacement, CE resources/actions, alternative costs, shared spell execution and new-chat CE routing.
 - Stage 2's confirmed new generic prerequisite is a dynamic proficient-weapon choice provider for Weapon Mastery.
 
-Next Rogue stage: **Stage 2 — clean class foundation and 1–20 progression**.
-- Build the canonical `class:rogue` package, source-level progression, proficiencies, Expertise/Weapon Mastery choices, subclass unlock and structural feature identities through shared class/template infrastructure.
-- Do not redo Stage 1 unless the user explicitly changes the source/version scope.
+Stage 2 checkpoint:
+- Canonical `class:rogue` is deployed at `xphb-2024-rogue-stage2-foundation-v1` with 20 source-level rows.
+- Base proficiency/language/skill choices, Expertise and Weapon Mastery use the same shared Choice Runtime/CE architecture as other classes.
+- Generic `weapon_proficiencies` provider is implemented in UI/read-model and server validation; Long Rest refresh validation uses the same provider boundary.
+- Sneak Attack dice progression is resolved as deterministic Rogue-level data.
+- No Rogue subclass runtime is active yet; the retired extra Scion package remains excluded.
+- Rogue remains `referenceOnly=true` and overall mechanics are `IN_PROGRESS`.
+
+Next Rogue stage: **Stage 3 — core Rogue gameplay runtime**.
+- Implement Sneak Attack structured execution boundary, Cunning Action, Steady Aim, Cunning Strike, Improved Cunning Strike and Devious Strikes through shared mechanics.
+- Do not redo Stage 1/2 unless their frozen contract actually changes.
 
 ## Inventory / scene interaction follow-up
 
