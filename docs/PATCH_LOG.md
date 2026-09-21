@@ -17,6 +17,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - UI 1.0 content now starts below Telegram's dynamic content safe area while the graphite backdrop still fills the physical screen; floating AI controls are clamped below the same boundary.
 - Chat feed entries now distinguish the current account's own messages from everyone else's, preparing the right/left dialogue layout without tying ownership to the currently selected character.
 - GM/owner speaker presentation remains dynamic: switching between Narrator or eligible characters/NPCs keeps each message's stored actor name, character identity and avatar while the account still determines which side is "mine".
+- Rebuilt ordinary dialogue presentation into compact graphite glass bubbles: the current account is right-aligned, everyone else is left-aligned, system notices stay centered, body text is readable at mobile sizes, and ordinary player-role pills are removed while GM/Narrator identity remains explicit.
+- Consecutive nearby messages from the same exact speaking persona are visually grouped without repeating the avatar/name on every row; changing the GM's selected NPC/character breaks the group even though the sending account is unchanged.
 
 ### Database / migration changes
 
@@ -27,6 +29,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Telegram BackButton dispatch now uses a priority registry: the app-level handler permanently owns system Back, while CharacterView temporarily takes higher priority for its internal sheet/inventory back stack without hiding the native button on cleanup.
 - Mini App bootstrap now calls Telegram `disableVerticalSwipes()` and synchronizes Telegram content safe-area changes into a MEGANOT CSS token.
 - ChatRoomScreen now passes the authenticated viewer user id into the feed; ChatFeed classifies every entry as `own`, `other` or `system`, while ChatFeedItem keeps actor presentation sourced exclusively from the message event snapshot.
+- Dialogue grouping uses a five-minute consecutive-message window and requires the same account id, character id and stored author name, preventing one GM's multiple speaking identities from collapsing into a single visual author group.
 
 ### Tests / verification
 
@@ -35,6 +38,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Reconciled the older character-sheet mobile BackButton test with the persistent native-back contract while preserving its legacy host-injection call shape for isolated tests.
 - Updated the Stage 16 Playwright safe-area assertion to verify the new global-stage contract: Telegram top inset belongs to the app stage, while character-sheet local padding/sticky offsets stay local instead of double-counting the same safe area.
 - Added chat ownership Stage 1 regression coverage that locks account-based side classification separately from dynamic GM speaker name/avatar/character identity.
+- Added dialogue Stage 2 regression coverage for left/right bubble geometry, persona-aware grouping, readable graphite styling, centered system events, dynamic actor avatars and removal of the repeated ordinary Player badge.
 
 ### Known incomplete work
 

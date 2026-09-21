@@ -44,37 +44,50 @@ function SystemEvent({ event }: { event: UiChatEvent }) {
   )
 }
 
+type DialogueGroupPosition = "single" | "first" | "middle" | "last"
+
 function DialogueMessage({
   event,
   isOwn,
+  groupPosition,
   onMediaLoad,
 }: {
   event: UiChatEvent
   isOwn: boolean
+  groupPosition: DialogueGroupPosition
   onMediaLoad: () => void
 }) {
   const gmNarration = event.type === "gm_message"
   const gmAuthored = event.author.isGm
+  const showAuthor = groupPosition === "single" || groupPosition === "first"
 
   return (
     <article
       className="u1-chat-line"
+      data-chat-dialogue-stage="2"
       data-message-kind={gmNarration ? "narration" : "dialogue"}
       data-event-type={event.type}
       data-author-role={gmAuthored ? "gm" : "player"}
       data-message-side={isOwn ? "own" : "other"}
+      data-message-group={groupPosition}
     >
-      <AuthorAvatar event={event} />
+      {showAuthor ? (
+        <AuthorAvatar event={event} />
+      ) : (
+        <span className="u1-chat-line__avatar-spacer" aria-hidden="true" />
+      )}
 
       <div className="u1-chat-line__content">
-        <header className="u1-chat-line__meta">
-          <strong>{event.author.name}</strong>
-          <span
-            className="u1-chat-line__role"
-            data-role={gmAuthored ? "gm" : "player"}
-          >
-            {gmAuthored ? (gmNarration ? "GM · Рассказчик" : "GM") : "Игрок"}
-          </span>
+        <header className="u1-chat-line__meta" data-author-visible={showAuthor || undefined}>
+          {showAuthor ? <strong>{event.author.name}</strong> : null}
+          {showAuthor && gmAuthored ? (
+            <span
+              className="u1-chat-line__role"
+              data-role="gm"
+            >
+              {gmNarration ? "GM · Рассказчик" : "GM"}
+            </span>
+          ) : null}
           <time>{formatMessageTime(event.createdAt)}</time>
         </header>
 
@@ -113,10 +126,12 @@ function isGameEvent(event: UiChatEvent) {
 export default function ChatFeedItem({
   event,
   isOwn,
+  groupPosition,
   onMediaLoad,
 }: {
   event: UiChatEvent
   isOwn: boolean
+  groupPosition: DialogueGroupPosition
   onMediaLoad: () => void
 }) {
   if (event.type === "system") {
@@ -131,6 +146,7 @@ export default function ChatFeedItem({
     <DialogueMessage
       event={event}
       isOwn={isOwn}
+      groupPosition={groupPosition}
       onMediaLoad={onMediaLoad}
     />
   )

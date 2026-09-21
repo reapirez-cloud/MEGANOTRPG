@@ -6,6 +6,56 @@ import { useChatRoomEvents } from "./useChatRoomEvents"
 
 const BOTTOM_THRESHOLD = 96
 const LOAD_OLDER_THRESHOLD = 72
+const DIALOGUE_GROUP_WINDOW_MS = 5 * 60 * 1000
+
+type DialogueGroupPosition = "single" | "first" | "middle" | "last"
+
+function isDialogueEvent(event: ReturnType<typeof useChatRoomEvents>["events"][number]) {
+  return (
+    event.type === "message" ||
+    event.type === "gm_message" ||
+    event.type === "media"
+  )
+}
+
+function sameDialogueSpeaker(
+  previous: ReturnType<typeof useChatRoomEvents>["events"][number] | undefined,
+  current: ReturnType<typeof useChatRoomEvents>["events"][number] | undefined,
+) {
+  if (!previous || !current || !isDialogueEvent(previous) || !isDialogueEvent(current)) {
+    return false
+  }
+
+  const previousTime = new Date(previous.createdAt).getTime()
+  const currentTime = new Date(current.createdAt).getTime()
+  const withinWindow =
+    Number.isFinite(previousTime) &&
+    Number.isFinite(currentTime) &&
+    Math.abs(currentTime - previousTime) <= DIALOGUE_GROUP_WINDOW_MS
+
+  return (
+    withinWindow &&
+    previous.author.userId === current.author.userId &&
+    previous.author.characterId === current.author.characterId &&
+    previous.author.name === current.author.name
+  )
+}
+
+function dialogueGroupPosition(
+  events: ReturnType<typeof useChatRoomEvents>["events"],
+  index: number,
+): DialogueGroupPosition {
+  const current = events[index]
+  if (!current || !isDialogueEvent(current)) return "single"
+
+  const joinsPrevious = sameDialogueSpeaker(events[index - 1], current)
+  const joinsNext = sameDialogueSpeaker(current, events[index + 1])
+
+  if (joinsPrevious && joinsNext) return "middle"
+  if (joinsPrevious) return "last"
+  if (joinsNext) return "first"
+  return "single"
+}
 
 export default function ChatFeed({
   roomId,
@@ -229,23 +279,26 @@ export default function ChatFeed({
       ) : null}
 
       <div className="u1-room-feed__list">
-        {events.map((event) => {
+        {events.map((event, index) => {
           const isOwn = Boolean(
             event.author.userId && event.author.userId === viewerUserId,
           )
           const side =
             event.type === "system" ? "system" : isOwn ? "own" : "other"
+          const groupPosition = dialogueGroupPosition(events, index)
 
           return (
             <div
               className="u1-room-feed__entry"
               data-feed-entry-type={event.type}
               data-feed-entry-side={side}
+              data-message-group={isDialogueEvent(event) ? groupPosition : undefined}
               key={event.id}
             >
               <ChatFeedItem
                 event={event}
                 isOwn={isOwn}
+                groupPosition={groupPosition}
                 onMediaLoad={() => {
                   if (pinnedToBottomRef.current) scrollToBottom("auto")
                 }}
