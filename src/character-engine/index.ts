@@ -9,7 +9,10 @@ export {
 export {
   BONUS_DAMAGE_DICE_SACRIFICE_EFFECT,
   resolveBonusDamageDiceSacrifice,
+  resolveSemanticDieRoll,
+  SEMANTIC_DIE_ROLL_EFFECT,
   type ResolvedBonusDamageDiceSacrifice,
+  type ResolvedSemanticDieRoll,
 } from "./actionSemantics.ts"
 export {
   ActionEngineError,
