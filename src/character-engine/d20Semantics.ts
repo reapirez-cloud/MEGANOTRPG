@@ -21,9 +21,12 @@ function asRecord(value: GrantPayload): Record<string, GrantPayload> | null {
 }
 
 function asStringArray(value: GrantPayload | undefined): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : []
+  if (!Array.isArray(value)) return []
+  const result: string[] = []
+  for (const item of value) {
+    if (typeof item === "string") result.push(item)
+  }
+  return result
 }
 
 /**
