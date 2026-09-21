@@ -419,7 +419,7 @@ Expected revision:
 
 ## Stage 7 — final fail-closed certification and public activation
 
-**Status:** `NOT_STARTED`
+**Status:** `COMPLETE_2026_09_21`
 
 Goal: only here may Rogue become `READY`.
 
@@ -466,9 +466,17 @@ Only after all checks pass:
 - record final production revision, migration journal, CI run and smoke/audit results in this file;
 - update the active patch journal.
 
-Expected final revision:
+Final revision:
 
 - `xphb-2024-rogue-runtime-final-v1`.
+- Migration: `20260921162743_rogue_stage7_final_certification_v1`.
+- CI: run `35625289587`, job `106418485380` — Build, Lint, repository tests, Storybook and Playwright smoke all green.
+- Live production audit: one active builtin Rogue, 20/20 level rows, 9/9 supported subclasses READY, zero duplicate Rogue catalog keys, zero orphan Rogue subclasses, and no anonymous/authenticated execute access to private Rogue installers/certifier.
+- Assignment/level smoke: Expertise and Weapon Mastery survive Rogue 3→5 reconstruction; subclass source level resolves to Rogue 5 even when total character level is higher.
+- Soulknife smoke: persistent Psionic Energy pool spends and recovers through the shared ledger; post-deploy subclass removal leaves no orphan `soulknife_psionic_energy` state.
+- Arcane Trickster smoke: prepared Wizard spell access casts through the shared template spell executor and consumes the shared spell-slot ledger.
+- Public reference: base Rogue and all nine supported subclass cards are runtime-backed; literary overlays preserve authored text without reverting `referenceOnly`.
+- Supabase advisors still report existing project-wide RLS/performance warnings outside Rogue; Stage 7 introduced no exposed Rogue installer/certifier RPC.
 
 ---
 
@@ -478,4 +486,4 @@ Rogue is **not READY** because a migration exists, because a card is translated,
 
 Rogue becomes **READY only after Stage 7** proves GitHub runtime, Character Engine resolution, shared persistent state, public reference, migrations and connected production Supabase all describe the same base class plus the same nine supported subclasses.
 
-Until then the canonical next unfinished stage is the first stage in this file whose status is not `COMPLETE`.
+All seven Rogue stages are complete. Rogue is now the certified runtime-backed package for the frozen base class plus nine supported subclasses.
