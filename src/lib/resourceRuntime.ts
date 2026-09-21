@@ -47,6 +47,9 @@ function recoveryStep(value: unknown, stateKey: string): ResourceRecoveryStep {
   if (record.restore === "set" && typeof record.amount === "number" && Number.isFinite(record.amount) && record.amount >= 0) {
     return { trigger, restore: "set", amount: record.amount }
   }
+  if (record.restore === "ensure_minimum" && typeof record.amount === "number" && Number.isFinite(record.amount) && record.amount >= 0) {
+    return { trigger, restore: "ensure_minimum", amount: record.amount }
+  }
   throw new Error(`${stateKey}: invalid recovery rule`)
 }
 
