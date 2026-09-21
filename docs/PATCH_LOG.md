@@ -20,6 +20,12 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Database / migration changes
 
+- Added Artificer Stage 3 at `efota-2025-artificer-stage3-item-replication-v1`: Tinker's Magic temporary instances, Replicate Magic Item plan persistence, real Cheburashka item creation, Long-Rest reconciliation, provenance cleanup and generic attunement.
+- Added 26 reusable Tinker's Magic mundane-item identities plus 52 explicit Replicate Magic Item plan identities to Chasovoy. Catch-all Common / Uncommon Wondrous / Rare Wondrous eligibility is resolved generically from item metadata.
+- Added generic private Cheburashka system-defined-item creation, safe container deletion, lifecycle expiry and assignment-plan cleanup primitives. No `artificer_items` shadow table was introduced.
+- Added authenticated generic `set_inventory_item_attuned_v1` and `reconcile_character_template_item_plan_loadout_v1`; the latter is assigned-player-only and Long-Rest-generation-locked.
+
+
 - Added Artificer Stage 2 at `efota-2025-artificer-stage2-foundation-spellcasting-v1`: one clean active builtin `class:artificer` per campaign, all 20 level rows, and canonical shared spell-slot state without enabling subclasses.
 - Reconciled the frozen 2025 Artificer spell set from 29 stale links to exactly 92 class links and 92 template spell links. Added the six missing shared spell definitions with concise structured metadata instead of copied source prose.
 - Added generic Chasovoy-backed `reference_item_plans` validation so Stage 3 can persist magic-item plan choices by stable definition identity rather than copying item definitions into class JSON.
@@ -33,6 +39,12 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Dice art and value placement remain presentation-only and do not change TOBIK or persisted roll payloads.
 
 ### Runtime and architecture changes
+
+- Tinker's Magic now has a CE resource with max `max(1, Intelligence modifier)`, a real action/cost, server-authoritative spend and automatic next-Long-Rest expiry keyed to creator provenance even if the temporary item was transferred.
+- Replicate Magic Item uses one persistent Choice Runtime plan choice with 4/5/6/7/8 known-plan progression and 2/3/4/5/6 active replicated-item capacity. Level-up replacement removes items from the forgotten plan immediately; overflow removes the oldest created replica.
+- Generic item attunement now lives in Cheburashka `item_state`; transfer/storage clears attunement, capacity defaults to three with a shared runtime-fact override, and CE receives no mechanics from an unattuned item whose definition requires attunement.
+- Replicated owner-death cleanup is recorded as a delayed 1d4-day lifecycle contract but intentionally does not use SQL randomness; the actual delayed roll/timer remains for the shared TOBIK/death-event bridge.
+
 
 - Completed Artificer Stage 2 foundation: d8, Constitution/Intelligence saves, Light/Medium armor + Shields, Simple weapons, Thieves'/Tinker's/one Artisan's Tools, two class skills, Intelligence spellcasting, exact 1–20 cantrip/prepared/slot progression, and level-3 subclass unlock.
 - Tinker's Magic grants Mending as real shared spell access outside the ordinary cantrip quota. Ordinary cantrips allow one Long-Rest replacement; levelled prepared spells use the shared Choice Runtime and may be rebuilt after Long Rest.
@@ -51,6 +63,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Added Artificer Stage 3 regression coverage for exact plan/item progression, Tinker's Magic resource/action/lifecycle, private Cheburashka ownership, Long-Rest generation locking, cleanup semantics, generic attunement and the rule that Stage 3 must not write final READY.
+- Added CE inventory projection coverage proving that attunement-required item mechanics are absent while unattuned and return when the same instance becomes attuned.
+
+
 - Added Artificer Stage 2 regression coverage for shared class-quality/resource/parser/CE gates, exact 20-level structure, 92-spell parity, the six missing shared spell definitions, separate Mending grant, exact half-caster progression, and generic item-plan provider validation.
 - Live Supabase Stage 2 audit: 1 active Artificer class, 20 level rows, 92 class spell links, 92 template spell links, 0 active Artificer subclasses, revision `efota-2025-artificer-stage2-foundation-spellcasting-v1`, and intentionally blank author fields.
 - Reconciled the Stage 2 CE regression assertion with the resolved resource contract: tests now inspect `spell_slot_1.max.value` instead of comparing the structured max object to a raw number; runtime and database mechanics are unchanged.
@@ -68,7 +84,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Known incomplete work
 
-- Artificer Stages 1–2 are complete. Stage 3 is next; Stages 4–6 remain. Stage 7 stays correctly blocked and no final READY state is written until the item/base/subclass runtime is complete.
+- Artificer Stages 1–3 are complete. Stage 4 is next; Stages 5–6 remain. Stage 7 stays correctly blocked and no final READY state is written until the remaining base/subclass runtime is complete.
 
 ---
 
