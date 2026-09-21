@@ -6,7 +6,7 @@
 ## Overall target
 
 **Current text/reference:** `READY` — base Rogue and all 9 supported subclass feature packs have complete Voss prose plus independently audited neutral rule text.  
-**Current mechanics/runtime:** `IN_PROGRESS` — Stages 2–3 are deployed; Stages 4–7 remain required for full `READY`.  
+**Current mechanics/runtime:** `IN_PROGRESS` — base Rogue Stages 2–4 are deployed and base-certified; Stages 5–7 remain required for full family `READY`.  
 **Target:** base Rogue 1–20 plus all 9 supported subclasses implemented through the shared Chasovoy → Shapoklyak/GENA → Character Engine pipeline, deployed to the connected Supabase project, regression-gated and final-certified as `READY`.
 
 Supported subclass roster:
@@ -242,9 +242,29 @@ Expected revision:
 
 ## Stage 4 — remaining base class, recovery/state semantics and base certification
 
-**Status:** `NOT_STARTED`
+**Status:** `COMPLETE_2026_09_21`
 
 Goal: make the base Rogue complete from level 1 through 20 before any subclass is allowed to carry the class to `READY`.
+
+Closure:
+
+- migration: `supabase/migrations/20260921140000_rogue_stage4_base_runtime_v1.sql`;
+- deployed migration: `20260921132939_rogue_stage4_base_runtime_v1`;
+- active revision: `xphb-2024-rogue-stage4-base-runtime-v1`;
+- base runtime is certified for Rogue source levels 1–20, while overall Rogue family status deliberately remains `IN_PROGRESS` / reference-only until subclass and final certification stages;
+- Uncanny Dodge is a shared Reaction action plus structured incoming-attack half-damage semantic; visibility/hit truth remains table-owned;
+- Evasion is a structured Dexterity-save damage rule and does not invent an incoming-effect simulator;
+- Reliable Talent uses a new generic `d20_minimum` CE rule. The normal chat check flow supplies skill proficiency context and GENA uses `send_chat_roll_v4` so the raw d20 floor of 10 is enforced server-side;
+- `send_chat_roll_v4` preserves the normal shared roll path, stores both raw/effective d20, rejects invalid floors, is unavailable to anon, and remains callable only by authenticated/service-role callers through the same room-write permission boundary as normal chat rolls;
+- Slippery Mind grants native `savingThrow:wisdom` and `savingThrow:charisma` proficiencies through ordinary CE grants;
+- Elusive is a structured passive attack-advantage prohibition with the Incapacitated exception; scene/combat ownership is not fabricated;
+- Stroke of Luck owns one real persistent `rogue_stroke_of_luck` resource, recovers on Short or Long Rest, and exposes a generic `d20_result_override` action that spends the use after a GM-confirmed failed D20 Test;
+- the generic d20 floor/result-override helpers live in `src/character-engine/d20Semantics.ts`; neither helper branches on Rogue;
+- Stage 4 also closes the last Stage 2 feature-summary hole for Thieves' Cant with a structured language/cant contract;
+- production fail-closed audit confirms exactly 20 levels, all 15 canonical base feature source keys structured, 2 Slippery Mind save grants, one Stroke resource, one Stroke action, 0 duplicate mechanic IDs, 0 broken action-resource references and 0 active Rogue subclasses;
+- SQL dry-run passed before deployment; build, lint, repository tests, Storybook and Playwright passed on the executable Stage 4 code before production apply.
+
+Stage 4 certifies the **base class only**. It does not set Rogue mechanics to `READY`, does not activate public runtime cards, and does not activate subclasses. Stage 5 is the canonical next step.
 
 Implement/audit:
 
