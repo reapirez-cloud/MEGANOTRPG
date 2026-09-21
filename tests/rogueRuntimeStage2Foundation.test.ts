@@ -2,7 +2,11 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
+import { resolveCharacterContract } from "../src/character-engine/index.ts"
+import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
+import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
 import { resolveTemplateChoiceStates } from "../src/rule-templates/choiceState.ts"
+import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
 import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
 import {
   WEAPON_CHOICE_CATALOG,
@@ -26,7 +30,7 @@ function weaponChoiceBundle(): CharacterTemplateBundle {
       kind: "class",
       slug: "rogue-core",
       name: "Разбойник",
-      description: "test",
+      description: "Класс с владением оружием и постоянным выбором Weapon Mastery через общий Character Engine.",
       version: 1,
       mechanics: [
         {
@@ -54,7 +58,7 @@ function weaponChoiceBundle(): CharacterTemplateBundle {
       source_kind: "official",
       source_label: "Player's Handbook 2024",
       is_builtin: true,
-      mechanical_summary: "test",
+      mechanical_summary: "К8 здоровья; Ловкость; простое оружие и ограниченная группа воинского оружия; постоянный выбор двух Weapon Mastery через общий Choice Runtime.",
       author_description: "",
       author_comment: "",
       rules_meta: {},
@@ -90,6 +94,40 @@ function weaponChoiceBundle(): CharacterTemplateBundle {
     }],
   }
 }
+
+test("Stage 2 foundation passes the shared class quality, resource, parser and CE gates", () => {
+  const bundle = weaponChoiceBundle()
+  assert.doesNotThrow(() => assertClassPackageQuality([bundle]))
+  assert.doesNotThrow(() => assertClassResourcePolicy([bundle]))
+
+  const parsed = resolveTemplateBundles([bundle], 1)
+  const contract = resolveCharacterContract({
+    base: {
+      id: "character",
+      name: "Разбойник",
+      level: 1,
+      abilities: {
+        strength: 10,
+        dexterity: 18,
+        constitution: 14,
+        intelligence: 12,
+        wisdom: 10,
+        charisma: 12,
+      },
+      baseMaxHp: 10,
+      baseSpeed: 30,
+    },
+    state: { currentHp: 10, tempHp: 0 },
+    contributions: parsed.contributions,
+  })
+
+  assert.ok(parsed.contributions.some((entry) =>
+    entry.kind === "grant"
+    && entry.target === "proficiency"
+    && entry.key === "weapon:simple"
+  ))
+  assert.ok(contract.capabilities.proficiencies.some((entry) => entry.key === "weapon:simple"))
+})
 
 test("generic weapon provider understands Rogue category proficiencies", () => {
   assert.equal(WEAPON_CHOICE_CATALOG.length, 38)
@@ -135,11 +173,11 @@ test("Stage 2 owns the exact base proficiency and persistent-choice foundation",
   ]) {
     assert.ok(migration.includes(key), key)
   }
-  assert.match(migration, /'rogue-skills'[sS]*?'count',4/)
-  assert.match(migration, /'rogue-extra-language'[sS]*?'count',1/)
-  assert.match(migration, /'rogue_expertise'[sS]*?'count_by_level',jsonb_build_object\('1',2,'6',4\)/)
+  assert.match(migration, /'rogue-skills'[\\s\\S]*?'count',4/)
+  assert.match(migration, /'rogue-extra-language'[\\s\\S]*?'count',1/)
+  assert.match(migration, /'rogue_expertise'[\\s\\S]*?'count_by_level',jsonb_build_object\('1',2,'6',4\)/)
   assert.match(migration, /'kind','skill_proficiencies','minimum_rank',1,'maximum_rank',1/)
-  assert.match(migration, /'rogue_weapon_mastery'[sS]*?'refresh','long_rest'/)
+  assert.match(migration, /'rogue_weapon_mastery'[\\s\\S]*?'refresh','long_rest'/)
   assert.match(migration, /'kind','weapon_proficiencies'/)
 })
 
