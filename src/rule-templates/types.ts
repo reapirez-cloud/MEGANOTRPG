@@ -30,11 +30,6 @@ export type RuleChoiceOptionProvider =
       /** Maximum simultaneously active created instances keyed by source level. */
       active_count_by_level?: Record<string, number>
     }
-  | {
-      /** Restrict options to refdef:* values already stored in another persistent choice. */
-      kind: "selected_reference_item_plans"
-      source_choice_key: string
-    }
 
 
 export type RuleChoiceRequirement = {
@@ -83,10 +78,6 @@ export type RuleChoiceDefinition = {
   target: RuleChoiceTarget
   options: string[]
   count?: number
-  /** When true, count/count_by_level are upper bounds instead of an exact required size. */
-  allow_fewer?: boolean
-  /** Lower bound used with allow_fewer; defaults to zero. */
-  minimum_count?: number
   /** The number of persistent selections allowed once source.level reaches each threshold. */
   count_by_level?: Record<string, number>
   /** Minimum source.level for an option to be selectable/emitted. */
