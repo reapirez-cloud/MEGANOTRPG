@@ -116,7 +116,7 @@ using database randomness behind the roll engine.
 
 ## Stage 4 — remaining base class 1–20
 
-**Status:** `NOT_STARTED`
+**Status:** `NEXT`
 
 Target:
 
