@@ -7,7 +7,13 @@ import { useChatRoomEvents } from "./useChatRoomEvents"
 const BOTTOM_THRESHOLD = 96
 const LOAD_OLDER_THRESHOLD = 72
 
-export default function ChatFeed({ roomId }: { roomId: string }) {
+export default function ChatFeed({
+  roomId,
+  viewerUserId,
+}: {
+  roomId: string
+  viewerUserId: string
+}) {
   const {
     events,
     loading,
@@ -223,20 +229,30 @@ export default function ChatFeed({ roomId }: { roomId: string }) {
       ) : null}
 
       <div className="u1-room-feed__list">
-        {events.map((event) => (
-          <div
-            className="u1-room-feed__entry"
-            data-feed-entry-type={event.type}
-            key={event.id}
-          >
-            <ChatFeedItem
-              event={event}
-              onMediaLoad={() => {
-                if (pinnedToBottomRef.current) scrollToBottom("auto")
-              }}
-            />
-          </div>
-        ))}
+        {events.map((event) => {
+          const isOwn = Boolean(
+            event.author.userId && event.author.userId === viewerUserId,
+          )
+          const side =
+            event.type === "system" ? "system" : isOwn ? "own" : "other"
+
+          return (
+            <div
+              className="u1-room-feed__entry"
+              data-feed-entry-type={event.type}
+              data-feed-entry-side={side}
+              key={event.id}
+            >
+              <ChatFeedItem
+                event={event}
+                isOwn={isOwn}
+                onMediaLoad={() => {
+                  if (pinnedToBottomRef.current) scrollToBottom("auto")
+                }}
+              />
+            </div>
+          )
+        })}
       </div>
 
       {unseenCount > 0 ? (
