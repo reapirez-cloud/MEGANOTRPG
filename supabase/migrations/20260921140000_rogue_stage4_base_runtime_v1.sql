@@ -166,6 +166,26 @@ begin
     raise exception 'ROGUE_STAGE4_REQUIRES_STAGE3:%',p_campaign_id;
   end if;
 
+  -- Level 1 — close the one remaining Stage 2 documentation placeholder.
+  -- The actual Cant/language grants and persistent language choice already exist;
+  -- Stage 4 gives the public feature a structured rule contract too.
+  perform private.rogue_stage3_upsert_level_mechanic_v1(
+    v_rogue,1,
+    private.rogue_stage3_feature_v1(
+      'rogue-thieves-cant-feature-l1',
+      'thieves-cant',
+      'class:rogue:thieves-cant:l1',
+      'Воровской жаргон',
+      'Вы знаете Воровской жаргон и дополнительно изучаете ещё один язык по выбору.',
+      jsonb_build_object(
+        'kind','language_and_cant_grant',
+        'cantKey','thieves-cant',
+        'additionalLanguageChoiceKey','rogue-extra-language',
+        'additionalLanguageCount',1
+      )
+    )
+  );
+
   -- Level 5 — Uncanny Dodge.
   perform private.rogue_stage3_upsert_level_mechanic_v1(
     v_rogue,5,
