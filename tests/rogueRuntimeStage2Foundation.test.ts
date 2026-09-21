@@ -30,7 +30,7 @@ function weaponChoiceBundle(): CharacterTemplateBundle {
       kind: "class",
       slug: "rogue-core",
       name: "Разбойник",
-      description: "Класс с владением оружием и постоянным выбором Weapon Mastery через общий Character Engine.",
+      description: "Разбойник владеет своим классовым оружием и выбирает два вида оружия для применения их свойств Weapon Mastery.",
       version: 1,
       mechanics: [
         {
@@ -58,7 +58,7 @@ function weaponChoiceBundle(): CharacterTemplateBundle {
       source_kind: "official",
       source_label: "Player's Handbook 2024",
       is_builtin: true,
-      mechanical_summary: "К8 здоровья; Ловкость; простое оружие и ограниченная группа воинского оружия; постоянный выбор двух Weapon Mastery через общий Choice Runtime.",
+      mechanical_summary: "К8 здоровья; Ловкость; простое оружие и воинское оружие со свойством Finesse или Light; постоянный выбор двух Weapon Mastery.",
       author_description: "",
       author_comment: "",
       rules_meta: {},
@@ -173,11 +173,11 @@ test("Stage 2 owns the exact base proficiency and persistent-choice foundation",
   ]) {
     assert.ok(migration.includes(key), key)
   }
-  assert.match(migration, /'rogue-skills'[\\s\\S]*?'count',4/)
-  assert.match(migration, /'rogue-extra-language'[\\s\\S]*?'count',1/)
-  assert.match(migration, /'rogue_expertise'[\\s\\S]*?'count_by_level',jsonb_build_object\('1',2,'6',4\)/)
+  assert.match(migration, /'rogue-skills'[\s\S]*?'count',4/)
+  assert.match(migration, /'rogue-extra-language'[\s\S]*?'count',1/)
+  assert.match(migration, /'rogue_expertise'[\s\S]*?'count_by_level',jsonb_build_object\('1',2,'6',4\)/)
   assert.match(migration, /'kind','skill_proficiencies','minimum_rank',1,'maximum_rank',1/)
-  assert.match(migration, /'rogue_weapon_mastery'[\\s\\S]*?'refresh','long_rest'/)
+  assert.match(migration, /'rogue_weapon_mastery'[\s\S]*?'refresh','long_rest'/)
   assert.match(migration, /'kind','weapon_proficiencies'/)
 })
 
