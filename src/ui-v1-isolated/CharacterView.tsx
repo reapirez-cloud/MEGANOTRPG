@@ -609,7 +609,10 @@ export default function CharacterView({
     onBack()
   }, [characterId, interfaceMode, onBack, section])
   
-  useEffect(() => bindTelegramBackButton(handleBack), [handleBack])
+  useEffect(
+    () => bindTelegramBackButton(handleBack, { priority: 100 }),
+    [handleBack],
+  )
 
 
   const workspaceCharacter =

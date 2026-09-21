@@ -5,6 +5,7 @@ import { AIProvider } from "../ai/AIProvider"
 import AuthGate from "../components/auth/AuthGate"
 import UiV1App from "./UiV1App"
 import { SnakeProvider } from "./SnakeProvider"
+import { initializeTelegramMiniApp } from "./telegramMiniApp"
 import "../ai/ai-voss.css"
 import "../components/media/art-player.css"
 import "../auth.css"
@@ -18,6 +19,8 @@ import "./character-sheet-header-stage4.css"
 import "./character-sheet-header-stage5.css"
 import "./character-sheet-overview-panel-fix.css"
 import "./character-sheet-spell-slot-charge-fix.css"
+
+initializeTelegramMiniApp()
 
 const root = document.getElementById("ui-v1-root")
 
