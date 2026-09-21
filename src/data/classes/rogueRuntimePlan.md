@@ -6,7 +6,7 @@
 ## Overall target
 
 **Current text/reference:** `READY` — base Rogue and all 9 supported subclass feature packs have complete Voss prose plus independently audited neutral rule text.  
-**Current mechanics/runtime:** `NOT_STARTED`.  
+**Current mechanics/runtime:** `IN_PROGRESS` — Stage 2 foundation is deployed; Stages 3–7 remain required for full `READY`.  
 **Target:** base Rogue 1–20 plus all 9 supported subclasses implemented through the shared Chasovoy → Shapoklyak/GENA → Character Engine pipeline, deployed to the connected Supabase project, regression-gated and final-certified as `READY`.
 
 Supported subclass roster:
@@ -120,9 +120,29 @@ No live Rogue catalog rows were created by this audit. Stage 2 remains the next 
 
 ## Stage 2 — clean class foundation and 1–20 progression
 
-**Status:** `NOT_STARTED`
+**Status:** `COMPLETE_2026_09_21`
 
 Goal: create the canonical `class:rogue` package without pretending the class is already ready.
+
+Closure:
+
+- migration: `supabase/migrations/20260921120000_rogue_stage2_foundation_v1.sql`;
+- deployed migration: `20260921122004_rogue_stage2_foundation_v1`;
+- active revision: `xphb-2024-rogue-stage2-foundation-v1`;
+- exactly one active builtin `class:rogue`, named `Разбойник`;
+- exactly 20 class-level rows and zero active Rogue subclass runtime rows;
+- base grants: d8, Dexterity/Intelligence saves, Light Armor, Simple weapons, Martial Finesse-or-Light weapons, Thieves' Tools and Thieves' Cant;
+- four starting Rogue skill choices plus one additional language use the shared persistent Choice Runtime;
+- Expertise uses the same generic `skill_proficiencies` provider pattern as Bard: 2 choices at Rogue 1, 4 total at Rogue 6;
+- Weapon Mastery uses the shared 38-weapon mastery shape already used by Paladin, plus the new generic `weapon_proficiencies` provider so Rogue only sees weapons it actually knows;
+- Weapon Mastery replacement uses the shared authoritative Long Rest choice window; the rest-choice RPC now applies dynamic provider validation too;
+- Sneak Attack dice are deterministic Rogue-level data: 1d6 at 1 → 10d6 at 19;
+- ASI hooks at 4/8/10/12/16, Epic Boon at 19, subclass unlock at Rogue 3 and later base feature identities are structurally present without falsely claiming their later runtime stages;
+- retired `rogue-scion-of-the-three` is not active and no Rogue subclass runtime is installed by Stage 2;
+- package passes `assertClassPackageQuality`, `assertClassResourcePolicy`, real template parser → CE resolution, build, lint, repository tests, Storybook and Playwright;
+- production audit confirms one active Rogue, 20 rows, 6 required fixed proficiency grants, exact Sneak Attack progression, provider helpers present and 0 active Rogue subclasses.
+
+Stage 2 intentionally leaves `referenceOnly=true`; overall Rogue mechanics remain `IN_PROGRESS`. Stage 3 is the canonical next step.
 
 Implement through shared class/template infrastructure:
 
