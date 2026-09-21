@@ -131,7 +131,11 @@ export class SupabaseCharacterRuntimeDataSource implements CharacterRuntimeDataS
     return {
       sheet: sheetResult.data as CharacterSheet | null,
       inventoryProjection,
-      spells: (spellsResult.data || []) as CharacterSpellCatalogLink[],
+      spells: ((spellsResult.data || []) as CharacterSpellCatalogLink[]).filter((spell) => {
+        if (!spell.temporary_until) return true
+        const expiresAt = Date.parse(spell.temporary_until)
+        return Number.isFinite(expiresAt) && expiresAt > Date.now()
+      }),
       features: (featuresResult.data || []) as CharacterFeature[],
       preparationSession: preparationResult.data as CharacterPreparationSession | null,
       preparationRecords: (preparationRecordsResult.data || []) as CharacterPreparationRecord[],
