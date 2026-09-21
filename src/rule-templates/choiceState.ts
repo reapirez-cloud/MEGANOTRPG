@@ -152,8 +152,6 @@ function choiceUsesV2(definition: RuleChoiceDefinition, selectedChoicesInput: un
     || definition.replacement_policy
     || definition.replacement_limit
     || definition.repeatable
-    || definition.allow_fewer
-    || definition.minimum_count !== undefined
     || definition.refresh === "short_rest"
     || definition.refresh === "long_rest"
     || definition.refresh === "short_or_long_rest"
@@ -241,7 +239,6 @@ function providerAvailability(
   skillRanks: Record<string, number>,
   weaponProficiencies: readonly string[],
   toolProficiencies: readonly string[],
-  selectedChoicesInput?: unknown,
 ): { available: boolean; reason: string | null } {
   if (selected || !definition.option_provider) return { available: true, reason: null }
   const provider = definition.option_provider
@@ -278,20 +275,6 @@ function providerAvailability(
       return { available: false, reason: "Нужен навык или инструмент" }
     }
   }
-  if (provider.kind === "selected_reference_item_plans") {
-    const selectedChoices = asRecord(selectedChoicesInput) || {}
-    const sourceValue = selectedChoices[provider.source_choice_key]
-    const sourceOptions = new Set(
-      (Array.isArray(sourceValue) ? sourceValue : typeof sourceValue === "string" ? [sourceValue] : []).map(String),
-    )
-    const sourceRuntime = runtimeEntry(selectedChoices, provider.source_choice_key)
-    const sourceInstances = Array.isArray(sourceRuntime?.instances) ? sourceRuntime.instances : []
-    for (const instance of sourceInstances) {
-      const record = asRecord(instance)
-      if (typeof record?.option === "string") sourceOptions.add(record.option)
-    }
-    if (!sourceOptions.has(optionKey)) return { available: false, reason: "Сначала изучите этот план" }
-  }
   return { available: true, reason: null }
 }
 
@@ -320,9 +303,6 @@ export function resolveTemplateChoiceStates(
       if (selectionMode !== "player_once") continue
 
       const required = choiceCountAtLevel(definition, sourceLevel)
-      const minimumRequired = definition.allow_fewer
-        ? Math.max(0, Math.min(required, Math.floor(Number(definition.minimum_count ?? 0))))
-        : required
       const usesV2 = choiceUsesV2(definition, bundle.assignment.selected_choices)
       const instances = usesV2
         ? storedStructuredChoiceInstances(definition, bundle.assignment.selected_choices)
@@ -347,7 +327,7 @@ export function resolveTemplateChoiceStates(
         || Boolean(definition.refresh)
       const status: TemplateChoiceStatus = !dependencyAvailable
         ? "hidden"
-        : instances.length < minimumRequired
+        : instances.length < required
           ? "pending"
           : canReplaceNow
             ? "editable"
@@ -373,7 +353,6 @@ export function resolveTemplateChoiceStates(
           skillRanks,
           weaponProficiencies,
           toolProficiencies,
-          bundle.assignment.selected_choices,
         )
         const available = levelAvailable && missing.length === 0 && sourceAvailable && provider.available
         const lockedReason = !levelAvailable
@@ -426,7 +405,7 @@ export function resolveTemplateChoiceStates(
         required,
         selected,
         instances,
-        remaining: Math.max(0, minimumRequired - instances.length),
+        remaining: Math.max(0, required - instances.length),
         status,
         options,
         runtimeVersion: usesV2 ? 2 : 1,
