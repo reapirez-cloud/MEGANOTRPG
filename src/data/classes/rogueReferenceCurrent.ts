@@ -8,9 +8,9 @@ export const rogueReferenceCurrent: ClassReferenceEntry = {
   nameEn: "Rogue",
   tagline: "Пешка в бархате: точность, грязная работа и талант оказаться там, где рыцарская честь уже бесполезна.",
   description:
-    "Литературный слой Восса завершён: исходный перевод Gemini сохранён, а отсутствовавшие Steady Aim и Slippery Mind дописаны в том же повествовательном регистре. Точные правила базового Rogue приведены отдельно по версии 2024; runtime-механики пока не подключены к Character Engine.",
+    "Литературный слой Восса и runtime Разбойника завершены. Базовый Rogue 2024 и девять поддерживаемых подклассов подключены к общему Character Engine, Choice Runtime, ресурсам, заклинаниям и GENA; справочные карточки описывают тот же сертифицированный набор правил.",
   mechanics:
-    "Reference-only пакет. Базовые правила Rogue 2024 подготовлены для будущего runtime-подключения: Sneak Attack, Expertise, Weapon Mastery, Cunning Action, Steady Aim, Cunning Strike, Uncanny Dodge, Evasion, Reliable Talent, Improved Cunning Strike, Devious Strikes, Slippery Mind, Elusive и Stroke of Luck.",
+    "Runtime-backed пакет Rogue 2024: Sneak Attack, Expertise, Weapon Mastery, Cunning Action, Steady Aim, Cunning Strike, Uncanny Dodge, Evasion, Reliable Talent, Improved Cunning Strike, Devious Strikes, Slippery Mind, Elusive и Stroke of Luck работают через общий Character Engine и связанные исполнительные контуры.",
   explanation: `В рыцарских хрониках любят малевать красивое: два короля в золоченых латах сходятся на холме, позади развеваются шелковые штандарты, геральды дуют в серебряные трубы, а монархи меряются фамильными мечами во славу предков.
 
 Какая же чушь. Война королей никогда не решается на холме.
@@ -33,7 +33,7 @@ export const rogueReferenceCurrent: ClassReferenceEntry = {
 
 Разбойник в бархате не ломает стены тараном. Он разрушает привычный, напыщенный порядок вещей изнутри. Он превращает рыцарскую честь в смешную глупость, а королевское величие — в мишень, по которой сподручнее всего бить из темноты.`,
   voss: `Дворяне платят тысячи золотых за уроки благородного фехтования, чтобы потом сдохнуть от копеечного шила, которое им в печень вогнал собственный виночерпий за то, что герцог забыл выдать на чай три медных гроша.`,
-  referenceOnly: true,
+  referenceOnly: false,
   features: [
     feature({
       level: 1,
@@ -298,63 +298,63 @@ export const rogueReferenceCurrent: ClassReferenceEntry = {
       name: "Вор",
       summary:
         "Классический мастер взлома, акробатики, карманных краж и быстрого применения предметов; имеет версии PHB 2014 и PHB 2024.",
-      referenceOnly: true,
+      referenceOnly: false,
     },
     {
       id: "assassin",
       name: "Убийца / Ассасин",
       summary:
         "Профессиональный ликвидатор: засады, яды, подделки и работа под чужой личиной; имеет версии PHB 2014 и PHB 2024.",
-      referenceOnly: true,
+      referenceOnly: false,
     },
     {
       id: "arcane-trickster",
       name: "Мистический ловкач",
       summary:
         "Разбойник с тайной магией, иллюзиями, очарованием и Mage Hand; имеет версии PHB 2014 и PHB 2024.",
-      referenceOnly: true,
+      referenceOnly: false,
     },
     {
       id: "soulknife",
       name: "Клинок души",
       summary:
         "Псионический разбойник с психическими клинками и телепатическими приёмами; Tasha’s Cauldron of Everything и PHB 2024.",
-      referenceOnly: true,
+      referenceOnly: false,
     },
     {
       id: "swashbuckler",
       name: "Головорез / Дуэлянт",
       summary:
         "Дерзкий дуэлянт одиночного боя, полагающийся на мобильность, рапиру и харизму; SCAG / Xanathar’s Guide to Everything.",
-      referenceOnly: true,
+      referenceOnly: false,
     },
     {
       id: "inquisitive",
       name: "Сыщик / Дознаватель",
       summary:
         "Мастер наблюдения, дедукции и чтения противника, раскрывающий ложь и уязвимости; Xanathar’s Guide to Everything.",
-      referenceOnly: true,
+      referenceOnly: false,
     },
     {
       id: "mastermind",
       name: "Мастер уловок / Проходимец",
       summary:
         "Теневой координатор и социальный манипулятор, помогающий союзникам и копирующий чужие манеры; SCAG / Xanathar’s Guide to Everything.",
-      referenceOnly: true,
+      referenceOnly: false,
     },
     {
       id: "scout",
       name: "Скаут / Разведчик",
       summary:
         "Мобильный разведчик и выживальщик, умеющий держать дистанцию и работать в дикой местности; Xanathar’s Guide to Everything.",
-      referenceOnly: true,
+      referenceOnly: false,
     },
     {
       id: "phantom",
       name: "Фантом",
       summary:
         "Мрачный разбойник, использующий отголоски умерших, жетоны душ и некротические эффекты; Tasha’s Cauldron of Everything.",
-      referenceOnly: true,
+      referenceOnly: false,
     },
   ],
 }
