@@ -5,12 +5,15 @@ import type {
   ResolvedAction,
   ResolvedCharacterContract,
   ResolvedSpell,
+  ResolvedSpellAccess,
+  ResolvedSpellCastingMethod,
   SkillKey,
 } from "../../character-engine/index.ts"
 import {
   buildChatActionModel,
   type ChatActionSourceGroup,
 } from "../../components/chat/chatActionModel.ts"
+import { spellSlotResources } from "../../components/characters/spellSlots.ts"
 import type { ChatActionLauncherMode } from "./chatRoomContracts"
 import "./chat-action-panel.css"
 
@@ -18,6 +21,16 @@ export type FreeDiceRequest = {
   count: number
   sides: number
   modifier: number
+}
+
+type SpellChannel = "cantrips" | string | null
+type AttackChannel = "weapon" | "spell" | "special" | null
+
+type SpellCastSelection = {
+  spell: ResolvedSpell
+  accessKey: string
+  methodKey: string
+  optionKey?: string
 }
 
 type Props = {
@@ -86,12 +99,12 @@ const modeCopy: Record<
   ability: {
     eyebrow: "Персонаж",
     title: "Способности",
-    hint: "Класс и подкласс",
+    hint: "Класс, подкласс и особые источники",
   },
   spell: {
     eyebrow: "Персонаж",
     title: "Заклинания",
-    hint: "Доступная магия",
+    hint: "Сначала ресурс, потом конкретный каст",
   },
   item: {
     eyebrow: "Персонаж",
@@ -101,7 +114,7 @@ const modeCopy: Record<
   action: {
     eyebrow: "Персонаж",
     title: "Атака",
-    hint: "Оружие и атакующая магия",
+    hint: "Оружие, магия или особый источник",
   },
 }
 
@@ -133,7 +146,7 @@ function actionSummary(action: ResolvedAction) {
     )
   }
 
-  return parts.join(" · ") || "Игровое действие"
+  return parts.join(" · ") || action.economy.split("_").join(" ")
 }
 
 function spellSummary(spell: ResolvedSpell) {
@@ -141,13 +154,125 @@ function spellSummary(spell: ResolvedSpell) {
     spell.identity.level > 0
       ? `${spell.identity.level} уровень`
       : "Заговор"
-  return level
+  return [level, spell.identity.school || ""].filter(Boolean).join(" · ")
+}
+
+function exactSpellCast(selection: SpellCastSelection): ResolvedSpell {
+  const access = selection.spell.accesses.find(
+    (entry) => entry.key === selection.accessKey,
+  )
+  const method = access?.methods.find(
+    (entry) => entry.key === selection.methodKey,
+  )
+  if (!access || !method) return selection.spell
+
+  const option = selection.optionKey
+    ? method.resourceOptions.find((entry) => entry.key === selection.optionKey)
+    : undefined
+
+  const selectedMethod: ResolvedSpellCastingMethod = {
+    ...method,
+    available: true,
+    resourceOptions: option ? [{ ...option, available: true }] : [],
+  }
+  const selectedAccess: ResolvedSpellAccess = {
+    ...access,
+    available: true,
+    methods: [selectedMethod],
+  }
+
+  return {
+    ...selection.spell,
+    available: true,
+    accesses: [selectedAccess],
+  }
+}
+
+function firstSpellCast(spell: ResolvedSpell): SpellCastSelection | null {
+  for (const access of spell.accesses) {
+    if (!access.available) continue
+    for (const method of access.methods) {
+      if (!method.available) continue
+      const option = method.resourceOptions.find((entry) => entry.available)
+      if (method.resourceOptions.length === 0 || option) {
+        return {
+          spell,
+          accessKey: access.key,
+          methodKey: method.key,
+          ...(option ? { optionKey: option.key } : {}),
+        }
+      }
+    }
+  }
+  return null
+}
+
+function cantripCast(spell: ResolvedSpell): SpellCastSelection | null {
+  if (spell.identity.level !== 0) return null
+
+  for (const access of spell.accesses) {
+    if (!access.available) continue
+    for (const method of access.methods) {
+      if (!method.available) continue
+      const option = method.resourceOptions.find(
+        (item) => item.available && item.castLevel === 0,
+      )
+      if (method.resourceOptions.length === 0 || option) {
+        return {
+          spell,
+          accessKey: access.key,
+          methodKey: method.key,
+          ...(option ? { optionKey: option.key } : {}),
+        }
+      }
+    }
+  }
+
+  return null
+}
+
+function spellCastForSlot(
+  spell: ResolvedSpell,
+  level: number,
+  stateKey: string,
+): SpellCastSelection | null {
+  for (const access of spell.accesses) {
+    if (!access.available) continue
+    for (const method of access.methods) {
+      if (!method.available) continue
+      const option = method.resourceOptions.find(
+        (item) =>
+          item.available &&
+          item.castLevel === level &&
+          item.costs.some(
+            (cost) => cost.stateKey === stateKey && cost.available,
+          ),
+      )
+      if (option) {
+        return {
+          spell,
+          accessKey: access.key,
+          methodKey: method.key,
+          optionKey: option.key,
+        }
+      }
+    }
+  }
+
+  return null
+}
+
+function actionIsAttack(action: ResolvedAction) {
+  return Boolean(action.attack) ||
+    action.damage.some((entry) => Boolean(entry.dice))
 }
 
 function actionChoice(
   action: ResolvedAction,
 ): { options: string[]; labels?: Record<string, string> } | null {
-  const choice = action.effects.find((effect) => effect.kind === "template_choice")
+  const choice = action.effects.find(
+    (effect) => effect.kind === "template_choice",
+  )
   if (!choice) return null
 
   const value = choice as unknown as {
@@ -214,7 +339,10 @@ function ActionRows({
   actions: ResolvedAction[]
   busy: boolean
   run: (task: () => void | Promise<void>) => void
-  onAction: (action: ResolvedAction, optionKey?: string) => void | Promise<void>
+  onAction: (
+    action: ResolvedAction,
+    optionKey?: string,
+  ) => void | Promise<void>
 }) {
   if (!actions.length) return null
 
@@ -294,6 +422,184 @@ function SpellRows({
   )
 }
 
+function SpellSlotFlow({
+  spells,
+  contract,
+  channel,
+  setChannel,
+  busy,
+  run,
+  onCast,
+  emptyTitle,
+}: {
+  spells: ResolvedSpell[]
+  contract: ResolvedCharacterContract
+  channel: SpellChannel
+  setChannel: (value: SpellChannel) => void
+  busy: boolean
+  run: (task: () => void | Promise<void>) => void
+  onCast: (selection: SpellCastSelection) => void | Promise<void>
+  emptyTitle: string
+}) {
+  const slots = useMemo(
+    () => spellSlotResources(contract.resources),
+    [contract.resources],
+  )
+  const cantrips = useMemo(
+    () =>
+      spells
+        .map(cantripCast)
+        .filter((item): item is SpellCastSelection => item !== null),
+    [spells],
+  )
+  const selectedSlot =
+    channel && channel !== "cantrips"
+      ? slots.find(({ resource }) => resource.stateKey === channel) || null
+      : null
+
+  const casts = useMemo(() => {
+    if (!channel) return []
+    if (channel === "cantrips") return cantrips
+
+    const slot = slots.find(({ resource }) => resource.stateKey === channel)
+    if (!slot || slot.resource.current <= 0) return []
+
+    return spells
+      .map((spell) =>
+        spellCastForSlot(spell, slot.level, slot.resource.stateKey),
+      )
+      .filter((item): item is SpellCastSelection => item !== null)
+  }, [cantrips, channel, slots, spells])
+
+  if (!spells.length) {
+    return (
+      <EmptyState
+        title={emptyTitle}
+        body="Подходящих заклинаний сейчас нет."
+      />
+    )
+  }
+
+  if (!channel) {
+    return (
+      <div className="u1-chat-action-route">
+        <header className="u1-chat-action-route__head">
+          <span>Шаг 1</span>
+          <strong>Выбери ячейку</strong>
+          <small>
+            Покажем только те заклинания, которые реально можно сотворить этим
+            ресурсом.
+          </small>
+        </header>
+
+        <div className="u1-chat-slot-grid">
+          {cantrips.length ? (
+            <button
+              type="button"
+              className="u1-chat-slot"
+              disabled={busy}
+              onClick={() => setChannel("cantrips")}
+            >
+              <b>∞</b>
+              <span>
+                <strong>Заговоры</strong>
+                <small>Без расхода ячейки · {cantrips.length}</small>
+              </span>
+              <em aria-hidden="true">›</em>
+            </button>
+          ) : null}
+
+          {slots.map(({ resource, level }) => {
+            const maximum = Math.max(0, Math.round(resource.max.value))
+            const current = Math.max(
+              0,
+              Math.min(maximum, Math.round(resource.current)),
+            )
+            const depleted = current <= 0
+
+            return (
+              <button
+                type="button"
+                className="u1-chat-slot"
+                data-depleted={depleted || undefined}
+                key={resource.stateKey}
+                disabled={busy || depleted}
+                onClick={() => setChannel(resource.stateKey)}
+              >
+                <b>{level}</b>
+                <span>
+                  <strong>Ячейка {level} уровня</strong>
+                  <i className="u1-chat-slot__orbs" aria-hidden="true">
+                    {Array.from({ length: maximum }, (_, index) => (
+                      <i
+                        className={index < current ? "is-lit" : ""}
+                        key={index}
+                      />
+                    ))}
+                  </i>
+                  <small>
+                    {depleted
+                      ? "Ячейки закончились"
+                      : `${current} из ${maximum} доступно`}
+                  </small>
+                </span>
+                <em>{current}/{maximum}</em>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="u1-chat-action-route">
+      <header className="u1-chat-action-route__head u1-chat-action-route__head--back">
+        <button type="button" onClick={() => setChannel(null)}>
+          ‹ Ячейки
+        </button>
+        <span>
+          {channel === "cantrips"
+            ? "Без ячейки"
+            : `Ячейка ${selectedSlot?.level || "—"} уровня`}
+        </span>
+        <strong>Шаг 2 · {casts.length} доступно</strong>
+        {selectedSlot ? (
+          <small>
+            {Math.round(selectedSlot.resource.current)}/
+            {Math.round(selectedSlot.resource.max.value)} ячеек осталось
+          </small>
+        ) : null}
+      </header>
+
+      {casts.length ? (
+        <div className="u1-chat-action-list">
+          {casts.map((selection) => (
+            <button
+              type="button"
+              key={`${selection.spell.key}:${selection.accessKey}:${selection.methodKey}:${selection.optionKey || "free"}`}
+              disabled={busy}
+              onClick={() => run(() => onCast(selection))}
+            >
+              <span className="u1-chat-action-list__icon">✧</span>
+              <span>
+                <strong>{selection.spell.identity.name}</strong>
+                <small>{spellSummary(selection.spell)}</small>
+              </span>
+              <em aria-hidden="true">›</em>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          title="Этой ячейкой нечего применить"
+          body="Вернись и выбери другой уровень."
+        />
+      )}
+    </div>
+  )
+}
+
 function SourceGroups({
   groups,
   busy,
@@ -306,7 +612,10 @@ function SourceGroups({
   groups: ChatActionSourceGroup[]
   busy: boolean
   run: (task: () => void | Promise<void>) => void
-  onAction: (action: ResolvedAction, optionKey?: string) => void | Promise<void>
+  onAction: (
+    action: ResolvedAction,
+    optionKey?: string,
+  ) => void | Promise<void>
   onSpell: (spell: ResolvedSpell) => void | Promise<void>
   emptyTitle: string
   emptyBody: string
@@ -317,27 +626,39 @@ function SourceGroups({
 
   return (
     <div className="u1-chat-action-groups">
-      {groups.map((group) => (
-        <section className="u1-chat-action-group" key={group.id}>
-          <header>
-            <span>{group.sourceType === "inventory_item" ? "Предмет" : "Источник"}</span>
-            <strong>{group.name}</strong>
-          </header>
-          <ResourceStrip group={group} />
-          <ActionRows
-            actions={group.actions}
-            busy={busy}
-            run={run}
-            onAction={onAction}
-          />
-          <SpellRows
-            spells={group.spells}
-            busy={busy}
-            run={run}
-            onSpell={onSpell}
-          />
-        </section>
-      ))}
+      {groups.map((group) => {
+        const sourceLabel =
+          group.sourceType === "inventory_item" || group.id.startsWith("item:")
+            ? "Предмет"
+            : group.sourceType === "class_template" ||
+                group.sourceType === "subclass_template" ||
+                group.id.startsWith("template:class:") ||
+                group.id.startsWith("template:subclass:")
+              ? "Класс / подкласс"
+              : "Особый источник"
+
+        return (
+          <section className="u1-chat-action-group" key={group.id}>
+            <header>
+              <span>{sourceLabel}</span>
+              <strong>{group.name}</strong>
+            </header>
+            <ResourceStrip group={group} />
+            <ActionRows
+              actions={group.actions}
+              busy={busy}
+              run={run}
+              onAction={onAction}
+            />
+            <SpellRows
+              spells={group.spells}
+              busy={busy}
+              run={run}
+              onSpell={onSpell}
+            />
+          </section>
+        )
+      })}
     </div>
   )
 }
@@ -463,7 +784,11 @@ function RollSurface({
                     disabled={busy}
                     onClick={() =>
                       run(() =>
-                        onCheck(label, contract.abilities[key].modifier, "ability"),
+                        onCheck(
+                          label,
+                          contract.abilities[key].modifier,
+                          "ability",
+                        ),
                       )
                     }
                   >
@@ -503,7 +828,11 @@ function RollSurface({
                   disabled={busy}
                   onClick={() =>
                     run(() =>
-                      onCheck(skillNames[skill.key], skill.bonus.value, "skill"),
+                      onCheck(
+                        skillNames[skill.key],
+                        skill.bonus.value,
+                        "skill",
+                      ),
                     )
                   }
                 >
@@ -537,6 +866,11 @@ export default function ChatActionPanel({
 }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+  const [spellChannel, setSpellChannel] = useState<SpellChannel>(null)
+  const [attackChannel, setAttackChannel] = useState<AttackChannel>(null)
+  const [attackSpellChannel, setAttackSpellChannel] =
+    useState<SpellChannel>(null)
+
   const model = useMemo(
     () => buildChatActionModel(contract, includePrivateSources),
     [contract, includePrivateSources],
@@ -550,6 +884,50 @@ export default function ChatActionPanel({
           group.id.startsWith("item:"),
       ),
     [model.uniqueGroups],
+  )
+
+  const nonItemUniqueGroups = useMemo(
+    () =>
+      model.uniqueGroups.filter(
+        (group) =>
+          group.sourceType !== "inventory_item" &&
+          !group.id.startsWith("item:"),
+      ),
+    [model.uniqueGroups],
+  )
+
+  const abilityGroups = useMemo(
+    () => [...model.classGroups, ...nonItemUniqueGroups],
+    [model.classGroups, nonItemUniqueGroups],
+  )
+
+  const attackSpellKeys = useMemo(
+    () => new Set(model.attackSpells.map((spell) => spell.key)),
+    [model.attackSpells],
+  )
+
+  const specialGroups = useMemo(
+    () =>
+      model.uniqueGroups
+        .map((group) => ({
+          ...group,
+          actions: group.actions.filter(actionIsAttack),
+          spells: group.spells.filter((spell) =>
+            attackSpellKeys.has(spell.key),
+          ),
+        }))
+        .filter(
+          (group) =>
+            (group.sourceType === "inventory_item" ||
+              group.id.startsWith("item:")) &&
+            (group.actions.length || group.spells.length),
+        ),
+    [attackSpellKeys, model.uniqueGroups],
+  )
+
+  const specialCount = specialGroups.reduce(
+    (sum, group) => sum + group.actions.length + group.spells.length,
+    0,
   )
 
   const copy = modeCopy[mode]
@@ -568,6 +946,17 @@ export default function ChatActionPanel({
         )
       })
       .finally(() => setBusy(false))
+  }
+
+  const castSelection = (selection: SpellCastSelection) =>
+    onSpell(exactSpellCast(selection))
+
+  const castDefault = (spell: ResolvedSpell) => {
+    const selection = firstSpellCast(spell)
+    if (!selection) {
+      throw new Error("У заклинания нет доступного способа сотворения.")
+    }
+    return castSelection(selection)
   }
 
   return (
@@ -622,30 +1011,27 @@ export default function ChatActionPanel({
 
           {!loading && contract && mode === "ability" ? (
             <SourceGroups
-              groups={model.classGroups}
+              groups={abilityGroups}
               busy={busy}
               run={run}
               onAction={onAction}
-              onSpell={onSpell}
+              onSpell={(spell) => castDefault(spell)}
               emptyTitle="Нет доступных способностей"
-              emptyBody="Классовые действия появятся здесь из Character Engine."
+              emptyBody="Классовые и особые действия появятся здесь из Character Engine."
             />
           ) : null}
 
           {!loading && contract && mode === "spell" ? (
-            model.spells.length ? (
-              <SpellRows
-                spells={model.spells}
-                busy={busy}
-                run={run}
-                onSpell={onSpell}
-              />
-            ) : (
-              <EmptyState
-                title="Нет доступных заклинаний"
-                body="Сейчас у персонажа нет доступной магии этого типа."
-              />
-            )
+            <SpellSlotFlow
+              spells={model.spells}
+              contract={contract}
+              channel={spellChannel}
+              setChannel={setSpellChannel}
+              busy={busy}
+              run={run}
+              onCast={castSelection}
+              emptyTitle="Нет доступной магии"
+            />
           ) : null}
 
           {!loading && contract && mode === "item" ? (
@@ -654,33 +1040,122 @@ export default function ChatActionPanel({
               busy={busy}
               run={run}
               onAction={onAction}
-              onSpell={onSpell}
+              onSpell={(spell) => castDefault(spell)}
               emptyTitle="Нет доступных предметов"
               emptyBody="Инвентарь не содержит доступных игровых действий."
             />
           ) : null}
 
           {!loading && contract && mode === "action" ? (
-            model.attacks.length || model.attackSpells.length ? (
-              <>
-                <ActionRows
-                  actions={model.attacks}
-                  busy={busy}
-                  run={run}
-                  onAction={onAction}
-                />
-                <SpellRows
-                  spells={model.attackSpells}
-                  busy={busy}
-                  run={run}
-                  onSpell={onSpell}
-                />
-              </>
+            !attackChannel ? (
+              <div className="u1-chat-action-list">
+                <button
+                  type="button"
+                  disabled={!model.attacks.length}
+                  onClick={() => setAttackChannel("weapon")}
+                >
+                  <span className="u1-chat-action-list__icon">⚔</span>
+                  <span>
+                    <strong>Оружие</strong>
+                    <small>
+                      {model.attacks.length
+                        ? `${model.attacks.length} доступно`
+                        : "Нет доступных атак оружием"}
+                    </small>
+                  </span>
+                  <em aria-hidden="true">›</em>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!model.attackSpells.length}
+                  onClick={() => setAttackChannel("spell")}
+                >
+                  <span className="u1-chat-action-list__icon">✧</span>
+                  <span>
+                    <strong>Заклинание</strong>
+                    <small>
+                      {model.attackSpells.length
+                        ? `Урон · ${model.attackSpells.length} доступно`
+                        : "Нет наносящих урон заклинаний"}
+                    </small>
+                  </span>
+                  <em aria-hidden="true">›</em>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!specialCount}
+                  onClick={() => setAttackChannel("special")}
+                >
+                  <span className="u1-chat-action-list__icon">◆</span>
+                  <span>
+                    <strong>Особое</strong>
+                    <small>
+                      {specialCount
+                        ? `Предметы и расходники · ${specialCount}`
+                        : "Нет особых атак из предметов"}
+                    </small>
+                  </span>
+                  <em aria-hidden="true">›</em>
+                </button>
+              </div>
             ) : (
-              <EmptyState
-                title="Нет доступных атак"
-                body="Оружие и атакующие заклинания здесь не найдены."
-              />
+              <div className="u1-chat-action-route">
+                <header className="u1-chat-action-route__head u1-chat-action-route__head--back">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAttackChannel(null)
+                      setAttackSpellChannel(null)
+                    }}
+                  >
+                    ‹ Атака
+                  </button>
+                  <span>Тип атаки</span>
+                  <strong>
+                    {attackChannel === "weapon"
+                      ? "Оружие"
+                      : attackChannel === "spell"
+                        ? "Заклинание"
+                        : "Особое"}
+                  </strong>
+                </header>
+
+                {attackChannel === "weapon" ? (
+                  <ActionRows
+                    actions={model.attacks}
+                    busy={busy}
+                    run={run}
+                    onAction={onAction}
+                  />
+                ) : null}
+
+                {attackChannel === "spell" ? (
+                  <SpellSlotFlow
+                    spells={model.attackSpells}
+                    contract={contract}
+                    channel={attackSpellChannel}
+                    setChannel={setAttackSpellChannel}
+                    busy={busy}
+                    run={run}
+                    onCast={castSelection}
+                    emptyTitle="Нет атакующих заклинаний"
+                  />
+                ) : null}
+
+                {attackChannel === "special" ? (
+                  <SourceGroups
+                    groups={specialGroups}
+                    busy={busy}
+                    run={run}
+                    onAction={onAction}
+                    onSpell={(spell) => castDefault(spell)}
+                    emptyTitle="Нет особых атак"
+                    emptyBody="Подходящих атак из предметов сейчас нет."
+                  />
+                ) : null}
+              </div>
             )
           ) : null}
 
