@@ -19,14 +19,14 @@ function subclassFeature(subclassId: string, name: string) {
   return feature
 }
 
-test("Rogue wave 1 publishes three complete literary subclasses without claiming runtime", () => {
+test("Rogue wave 1 publishes three complete literary subclasses with Stage 7 runtime activation", () => {
   for (const [id, expectedCount] of [
     ["thief", 5],
     ["assassin", 5],
     ["arcane-trickster", 5],
   ] as const) {
     const value = subclass(id)
-    assert.equal(value.referenceOnly, true)
+    assert.equal(value.referenceOnly, false)
     assert.equal(value.features?.length, expectedCount)
     assert.ok(value.explanation?.trim())
     assert.ok(value.voss?.trim())
