@@ -146,10 +146,12 @@ function runtimeEntry(selectedChoicesInput: unknown, choiceKey: string): Record<
 function choiceUsesV2(definition: RuleChoiceDefinition, selectedChoicesInput: unknown) {
   return Boolean(
     definition.option_rules
+    || definition.option_provider
     || definition.replacement_policy
     || definition.replacement_limit
     || definition.repeatable
     || definition.refresh === "short_rest"
+    || definition.refresh === "long_rest"
     || definition.refresh === "short_or_long_rest"
     || runtimeEntry(selectedChoicesInput, definition.key),
   )
