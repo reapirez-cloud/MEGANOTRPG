@@ -649,6 +649,26 @@ Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and al
 
 ---
 
+## Artificer (`class:artificer`)
+
+**Text:** `NOT_STARTED`  
+**Mechanics/runtime:** `BLOCKED`
+
+- `literary_policy: USER_TRANSLATION_LATER`
+- `author_description / author_comment: intentionally blank until supplied by the user`
+- `stage7_gate: INSTALLED_2026_09_21`
+- `stage7_gate_function: private.certify_artificer_runtime_final_v1(uuid)`
+- `target_runtime_revision: eberron-2025-artificer-runtime-final-v1`
+- `supported_subclass_target: 5 — Alchemist, Armorer, Artillerist, Battle Smith, Cartographer`
+- `current_dev_runtime: no Artificer class/subclass package exists yet`
+- `current_production_runtime: 0 class rows / 0 subclass rows / 0 level rows`
+
+Stage 7 is intentionally fail-closed. The private certification gate is present, but it cannot write `READY` until Stages 1–6 install and verify the complete Artificer package. Literary translation and Voss prose are not certification prerequisites and may remain blank while mechanics are built.
+
+The next executable dependency is Stage 1, not a READY write.
+
+---
+
 ## Legacy builtin catalog reset
 
 **Status:** `REMOVED_2026_08_29`
