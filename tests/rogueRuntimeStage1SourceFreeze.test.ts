@@ -136,7 +136,7 @@ test("Rogue Stage 1 stays frozen while Stages 2-7 advance the family to READY", 
   assert.match(plan, /Stage 4 — remaining base class, recovery\/state semantics and base certification[\s\S]*?Status:\*\*\s*`COMPLETE_2026_09_21`/)
   assert.match(plan, /Stage 5 — PHB 2024 subclass runtime[\s\S]*?Status:\*\*\s*`COMPLETE_2026_09_21`/)
   assert.match(plan, /Stage 6 — legacy\/supplement subclass runtime[\s\S]*?Status:\*\*\s*`COMPLETE_2026_09_21`/)
-  assert.match(plan, /Stage 7 — final fail-closed certification and public activation[\s\S]*?Status:\*\*\s*`NOT_STARTED`/)
+  assert.match(plan, /Stage 7 — final fail-closed certification and public activation[\s\S]*?Status:\*\*\s*`COMPLETE_2026_09_21`/)
   assert.match(ledger, /stage_1_source_freeze_and_text_closure: COMPLETE_2026_09_12/)
   assert.match(ledger, /stage_2_foundation_1_20: COMPLETE_2026_09_21/)
   assert.match(ledger, /stage_3_core_rogue_runtime: COMPLETE_2026_09_21/)
