@@ -547,7 +547,7 @@ Base Warlock, all 28 supported Eldritch Invocations and all nine supported runti
 - `base_authoring_source: src/data/classes/rogueReferenceCurrent.ts`
 - `subclass_authoring_sources: src/data/classes/rogueSubclassReferenceWave1.ts; src/data/classes/rogueSubclassReferenceWave2.ts; src/data/classes/rogueSubclassReferenceWave3.ts`
 - `runtime_plan: src/data/classes/rogueRuntimePlan.md`
-- `runtime_plan_status: STAGE_3_COMPLETE_STAGE_4_NEXT; STAGES_4_TO_7_REQUIRED_FOR_READY`
+- `runtime_plan_status: STAGE_4_COMPLETE_STAGE_5_NEXT; STAGES_5_TO_7_REQUIRED_FOR_READY`
 - `stage_1_source_freeze_and_text_closure: COMPLETE_2026_09_12`
 - `stage_1_feature_matrix: src/data/classes/rogueRuntimeFeatureMatrix.md`
 - `pre_stage_2_reuse_audit: COMPLETE_2026_09_21`
@@ -578,7 +578,20 @@ Base Warlock, all 28 supported Eldritch Invocations and all nine supported runti
 - `stage_3_generic_bonus_damage_sacrifice: DEPLOYED`
 - `stage_3_live_action_count: 26`
 - `stage_3_live_sacrifice_route_count: 21`
-- `stage_4_base_runtime_certification: NOT_STARTED`
+- `stage_4_base_runtime_certification: COMPLETE_2026_09_21`
+- `stage_4_revision: xphb-2024-rogue-stage4-base-runtime-v1`
+- `stage_4_migration: 20260921132939_rogue_stage4_base_runtime_v1`
+- `stage_4_base_feature_certification: READY_15_OF_15`
+- `stage_4_uncanny_dodge: READY_STRUCTURED_REACTION`
+- `stage_4_evasion: READY_STRUCTURED_PASSIVE`
+- `stage_4_reliable_talent: READY_GENERIC_SERVER_D20_FLOOR`
+- `stage_4_slippery_mind: READY_NATIVE_WISDOM_CHARISMA_SAVE_PROFICIENCY`
+- `stage_4_elusive: READY_STRUCTURED_PASSIVE`
+- `stage_4_stroke_of_luck: READY_RESOURCE_PLUS_GM_CONFIRMED_D20_OVERRIDE`
+- `stage_4_generic_d20_runtime: DEPLOYED_send_chat_roll_v4`
+- `stage_4_live_duplicate_mechanic_ids: 0`
+- `stage_4_live_broken_action_resource_refs: 0`
+- `stage_4_live_active_subclass_count: 0`
 - `stage_5_phb2024_subclasses: NOT_STARTED`
 - `stage_6_legacy_supplement_subclasses: NOT_STARTED`
 - `stage_7_final_production_certification: NOT_STARTED`
@@ -587,9 +600,9 @@ Base Warlock, all 28 supported Eldritch Invocations and all nine supported runti
 - `subclass_reference_roster: thief, assassin, arcane-trickster, soulknife, swashbuckler, inquisitive, mastermind, scout, phantom`
 - `wave3_reference_scope: Mastermind and Scout use legacy Xanathar rules; Phantom uses the published Tasha’s Cauldron of Everything rules`
 - `reference_visibility: BASE_AND_ALL_9_SUBCLASSES_REFERENCE_ONLY`
-- `dev_runtime: STAGE_3_CORE_RUNTIME_ACTIVE`
-- `production_runtime: STAGE_3_CORE_RUNTIME_DEPLOYED_2026_09_21`
-- `production_template_audit: exactly one active class:rogue at xphb-2024-rogue-stage3-core-runtime-v1 with 20 level rows, 26 action mechanics, 21 dice-sacrifice routes and zero active Rogue subclasses as of 2026-09-21`
+- `dev_runtime: STAGE_4_BASE_RUNTIME_CERTIFIED`
+- `production_runtime: STAGE_4_BASE_RUNTIME_DEPLOYED_2026_09_21`
+- `production_template_audit: exactly one active class:rogue at xphb-2024-rogue-stage4-base-runtime-v1 with 20 level rows, all 15 base feature contracts structured, one Stroke resource/action, zero duplicate mechanic IDs, zero broken action-resource refs and zero active Rogue subclasses as of 2026-09-21`
 - `runtime_boundary: reference mechanics are documentation only; no CE contribution, persistent resource, choice runtime, spell runtime or executable class action is claimed by this authoring pass`
 - `wave3_regression: tests/rogueSubclassReferenceWave3.test.ts`
 
@@ -601,7 +614,7 @@ Known source-copy corrections locked by Wave 3 regression:
 - Tasha's Tokens of the Departed has no extra Undead/Construct exclusion, and the queried spirit is not required to tell the truth.
 - Tasha's Death's Friend grants its fallback Soul Trinket at the end of a Long Rest when none are held; it does not use Initiative as that trigger.
 
-Rogue text/reference Stage 1, runtime foundation Stage 2 and defining gameplay Stage 3 are closed. Sneak Attack, Cunning Action, Steady Aim and the Cunning/Devious Strike family now use the shared template → CE → GENA path while scene-only facts remain GM-adjudicated. The canonical next step is Stage 4 in `src/data/classes/rogueRuntimePlan.md`; overall mechanics `READY` remains forbidden before Stage 7 production certification.
+Rogue Stages 1–4 are closed: the literary/reference layer, shared foundation, defining gameplay and remaining base-class runtime are all complete. The base Rogue 1–20 package is certified, but the overall family remains `IN_PROGRESS` and reference-only until subclasses and Stage 7 pass. The canonical next step is Stage 5 in `src/data/classes/rogueRuntimePlan.md`.
 
 ---
 
