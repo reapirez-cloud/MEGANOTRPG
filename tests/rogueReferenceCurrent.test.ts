@@ -12,14 +12,16 @@ function rogueFeature(name: string) {
   return feature
 }
 
-test("Rogue literary reference is published without claiming runtime integration", () => {
+test("Rogue literary reference stays authored while Stage 7 exposes certified runtime", () => {
   assert.ok(rogue, "rogue is absent from class reference")
-  assert.equal(rogue.referenceOnly, true)
+  assert.equal(rogue.referenceOnly, false)
   assert.ok(rogue.explanation?.includes("Пешка заносит клинок"))
   assert.ok(rogue.voss?.includes("Дворяне платят тысячи золотых"))
 
   assert.equal(rogue.subclasses.length, 9)
-  assert.ok(rogue.subclasses.every((subclass) => subclass.referenceOnly === true))
+  assert.ok(rogue.subclasses.every((subclass) => subclass.referenceOnly === false))
+  assert.match(rogue.description, /Character Engine/)
+  assert.doesNotMatch(rogue.mechanics || "", /Reference-only/i)
 })
 
 test("Rogue base reference covers the complete 2024 class-feature spine", () => {
