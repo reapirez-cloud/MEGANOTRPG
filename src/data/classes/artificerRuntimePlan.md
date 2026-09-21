@@ -29,8 +29,8 @@ fields are valid until the user supplies them.
 ## Current checkpoint
 
 - Stage 1 — source freeze/specification: COMPLETE_2026_09_21
-- Stage 2 — class foundation 1–20 + spellcasting: NEXT
-- Stage 3 — core item/replication runtime: NOT_STARTED
+- Stage 2 — class foundation 1–20 + spellcasting: COMPLETE_2026_09_21
+- Stage 3 — core item/replication runtime: NEXT
 - Stage 4 — remaining base class 1–20: NOT_STARTED
 - Stage 5 — subclass wave 1: NOT_STARTED
 - Stage 6 — subclass wave 2 + UX/runtime reconciliation: NOT_STARTED
@@ -63,31 +63,40 @@ the retired legacy catalog.
 
 ## Stage 2 — class foundation 1–20 + spellcasting
 
+**Status:** `COMPLETE_2026_09_21`
+
+Closed deliverables:
+
+- exactly one active builtin `class:artificer` is installed per campaign;
+- all 20 level rows exist with the 2025 cantrip, prepared-spell and slot progression;
+- d8, Constitution/Intelligence saves, Light/Medium armor + Shields, Simple weapons,
+  class skills and tool training are encoded through shared grants/choices;
+- the stale 29-link spell state is replaced by the frozen 92-spell 2025 target;
+- six missing shared spell definitions were added to the common spell catalog with
+  concise structured metadata rather than copied source prose;
+- Intelligence spellcasting and `spell_slot_1..5` use the shared CE/GENA resource path;
+- Tinker's Magic grants Mending independently of the ordinary cantrip quota;
+- one cantrip may be replaced after each Long Rest; the full levelled preparation
+  set may be refreshed after Long Rest through Choice Runtime;
+- subclass unlock is frozen at level 3 while all subclass runtime remains disabled;
+- generic Chasovoy-backed `reference_item_plans` validation now exists for Stage 3;
+- ASI/Epic Boon deliberately stay on the existing normal sheet/GM path until the
+  repository gains a generic feat-source runtime;
+- `referenceOnly` remains true and no final READY state is written.
+
+Runtime revision:
+`efota-2025-artificer-stage2-foundation-spellcasting-v1`.
+
+Live Stage 2 audit: 1 active Artificer, 20 level rows, 92 class spell links,
+92 template spell links, 0 active Artificer subclasses, and blank author fields.
+
+## Stage 3 — core item/replication runtime
+
 **Status:** `NEXT`
 
 Target:
 
-- create exactly one active builtin `class:artificer`;
-- create all 20 level rows;
-- encode base traits/proficiencies and class progression;
-- reconcile the current official 2025 Artificer spell list with the shared spell
-  catalog instead of trusting the existing 29 links;
-- implement Intelligence spellcasting through the shared spell runtime;
-- encode cantrip replacement and prepared-spell progression;
-- establish subclass unlock at Artificer level 3;
-- establish generic magic-item-plan option provider needed by Stage 3;
-- keep `referenceOnly` and non-READY status.
-
-Gate: low/mid/high representative Artificer bundles must pass package quality,
-parser → CE and `ResolvedCharacterContract` without class-specific Sheet/Chat logic.
-
-## Stage 3 — core item/replication runtime
-
-**Status:** `NOT_STARTED`
-
-Target:
-
-- Tinker's Magic;
+- Tinker's Magic temporary-item creation;
 - Replicate Magic Item;
 - plan choices and plan tiers;
 - real Cheburashka-created instances;
