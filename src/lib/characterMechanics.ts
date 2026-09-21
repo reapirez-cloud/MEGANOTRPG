@@ -131,6 +131,14 @@ export function contributionForStoredMechanic(mechanic: StoredMechanic, source: 
 function mechanicsArray(value: unknown): StoredMechanics { return Array.isArray(value) ? value as StoredMechanics : [] }
 export function storedMechanicContributions(mechanics: StoredMechanics, source: CharacterSource): CharacterContribution[] { return mechanicsArray(mechanics).map((mechanic) => contributionForStoredMechanic(mechanic, source)) }
 
+function itemAttunedToHolder(item: InventoryItem): boolean {
+  const state = item.item_state
+  if (!state || typeof state !== "object" || Array.isArray(state)) return false
+  const attunement = (state as Record<string, unknown>).attunement
+  if (!attunement || typeof attunement !== "object" || Array.isArray(attunement)) return false
+  return String((attunement as Record<string, unknown>).attuned_to_character_id || "") === String(item.character_id || "")
+}
+
 export function inventoryMechanicContributions(items: InventoryItem[]): CharacterContribution[] {
   const contributions: CharacterContribution[] = []
   for (const item of items) {
@@ -138,7 +146,9 @@ export function inventoryMechanicContributions(items: InventoryItem[]): Characte
     const privateCurseSource = sourceFor(`item:${item.id}:curse`, item.name, "inventory_item", "private", source.id)
     for (const mechanic of mechanicsArray(item.mechanics)) {
       const requiresEquipped = mechanic.activation === "equipped" && item.category === "equipment"
+      const requiresAttuned = mechanic.activation === "attuned"
       if (requiresEquipped && !item.equipped) continue
+      if (requiresAttuned && !itemAttunedToHolder(item)) continue
       contributions.push(contributionForStoredMechanic(mechanic, mechanic.curseEffect ? privateCurseSource : source))
     }
   }
@@ -228,7 +238,7 @@ export function mechanicSummary(mechanic: StoredMechanic): string {
     result = `Действие: ${mechanic.label}${cost ? ` · −${cost.amount} ${cost.key}` : ""}`
   }
   else result = `Заклинание: ${mechanic.payload.spell.name}`
-  return [result, mechanic.activation === "equipped" ? "надето" : "", conditionLabel(mechanic.condition)].filter(Boolean).join(" · ")
+  return [result, mechanic.activation === "equipped" ? "надето" : mechanic.activation === "attuned" ? "настроено" : "", conditionLabel(mechanic.condition)].filter(Boolean).join(" · ")
 }
 
 export function mechanicPayloadLabel(payload?: GrantPayload): string { if (typeof payload === "string") return payload; if (payload && typeof payload === "object" && !Array.isArray(payload)) { const label = (payload as Record<string, unknown>).label; return typeof label === "string" ? label : "" } return "" }
