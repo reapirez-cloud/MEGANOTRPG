@@ -46,9 +46,11 @@ function SystemEvent({ event }: { event: UiChatEvent }) {
 
 function DialogueMessage({
   event,
+  isOwn,
   onMediaLoad,
 }: {
   event: UiChatEvent
+  isOwn: boolean
   onMediaLoad: () => void
 }) {
   const gmNarration = event.type === "gm_message"
@@ -60,6 +62,7 @@ function DialogueMessage({
       data-message-kind={gmNarration ? "narration" : "dialogue"}
       data-event-type={event.type}
       data-author-role={gmAuthored ? "gm" : "player"}
+      data-message-side={isOwn ? "own" : "other"}
     >
       <AuthorAvatar event={event} />
 
@@ -109,9 +112,11 @@ function isGameEvent(event: UiChatEvent) {
 
 export default function ChatFeedItem({
   event,
+  isOwn,
   onMediaLoad,
 }: {
   event: UiChatEvent
+  isOwn: boolean
   onMediaLoad: () => void
 }) {
   if (event.type === "system") {
@@ -122,5 +127,11 @@ export default function ChatFeedItem({
     return <ChatGameEventCard event={event} />
   }
 
-  return <DialogueMessage event={event} onMediaLoad={onMediaLoad} />
+  return (
+    <DialogueMessage
+      event={event}
+      isOwn={isOwn}
+      onMediaLoad={onMediaLoad}
+    />
+  )
 }
