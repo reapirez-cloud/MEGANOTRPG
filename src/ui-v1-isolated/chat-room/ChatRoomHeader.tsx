@@ -1,5 +1,6 @@
 import type { ChatRoomShellModel } from "./chatRoomContracts"
 import { chatRoomDayPeriodLabel } from "./chatRoomContracts"
+import { pushAppHash } from "../navigationGestures"
 
 function ClockIcon() {
   return (
@@ -166,8 +167,9 @@ export default function ChatRoomHeader({
           data-identity-kind={identity.kind}
           aria-label={"Открыть карточку персонажа " + character.name}
           onClick={() => {
-            window.location.hash =
-              "#/workspace/character/" + encodeURIComponent(character.id)
+            pushAppHash(
+              "workspace/character/" + encodeURIComponent(character.id),
+            )
           }}
         >
           {actorContent}

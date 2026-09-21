@@ -4,6 +4,7 @@ import ChatComposer from "./ChatComposer"
 import ChatFeed from "./ChatFeed"
 import ChatRoomFrame from "./ChatRoomFrame"
 import ChatRoomHeader from "./ChatRoomHeader"
+import { navigateAppBack, pushAppHash } from "../navigationGestures"
 import { chatRoomPresentationState } from "./chatRoomPresentation"
 import { useChatRoomShell } from "./useChatRoomShell"
 import { useChatVisualViewportHeight } from "./useChatVisualViewport"
@@ -54,7 +55,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
             className="u1-room-back"
             aria-label="Назад к чатам"
             onClick={() => {
-              window.location.hash = "#/chats"
+              if (!navigateAppBack()) pushAppHash("chats")
             }}
           >
             <BackIcon />
@@ -100,7 +101,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
           className="u1-room-back"
           aria-label="Назад к чатам"
           onClick={() => {
-            window.location.hash = "#/chats"
+            if (!navigateAppBack()) pushAppHash("chats")
           }}
         >
           <BackIcon />

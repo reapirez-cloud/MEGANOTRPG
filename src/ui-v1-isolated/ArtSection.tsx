@@ -5,6 +5,7 @@ import CampaignImage from "../components/common/CampaignImage"
 import type { SnakeAction } from "../snake-engine"
 import { WorkshopPanel } from "./GMWorkshopCommon"
 import { SnakeTrigger, useSnake } from "./SnakeProvider"
+import { pushAppHash } from "./navigationGestures"
 import {
   useUiV1ArtData,
   type ArtCollection,
@@ -38,7 +39,7 @@ const sections: Array<{
 ]
 
 function go(path: string) {
-  window.location.hash = "#/" + path
+  pushAppHash(path)
 }
 
 function formatTime(value: string) {

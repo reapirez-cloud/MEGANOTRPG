@@ -22,8 +22,11 @@ export type SwipeBackSample = {
   viewportWidth: number
 }
 
+type SwipeBackEdge = "left" | "right"
+
 type ActiveSwipe = {
   pointerId: number
+  edge: SwipeBackEdge
   startX: number
   startY: number
   lastX: number
@@ -140,15 +143,29 @@ export function swipeBackEdgeWidth(viewportWidth: number) {
   return Math.max(24, Math.min(36, viewportWidth * 0.08))
 }
 
+export function swipeBackEdge(
+  startX: number,
+  viewportWidth: number,
+): SwipeBackEdge | null {
+  const edgeWidth = swipeBackEdgeWidth(viewportWidth)
+
+  if (startX <= edgeWidth) return "left"
+  if (startX >= viewportWidth - edgeWidth) return "right"
+  return null
+}
+
 export function isSwipeBackGesture(sample: SwipeBackSample) {
+  const edge = swipeBackEdge(sample.startX, sample.viewportWidth)
+  if (!edge) return false
+
   const deltaX = sample.endX - sample.startX
   const deltaY = sample.endY - sample.startY
   const horizontalDistance = Math.abs(deltaX)
   const verticalDistance = Math.abs(deltaY)
+  const inwardDistance = edge === "left" ? deltaX : -deltaX
 
   return (
-    sample.startX <= swipeBackEdgeWidth(sample.viewportWidth) &&
-    deltaX >= MIN_SWIPE_DISTANCE &&
+    inwardDistance >= MIN_SWIPE_DISTANCE &&
     horizontalDistance > verticalDistance * HORIZONTAL_DOMINANCE &&
     sample.durationMs <= MAX_SWIPE_DURATION_MS
   )
@@ -192,10 +209,12 @@ export function useSwipeBackNavigation({
       if (targetBlocksSwipeBack(event.target)) return
 
       const viewportWidth = window.visualViewport?.width || window.innerWidth
-      if (event.clientX > swipeBackEdgeWidth(viewportWidth)) return
+      const edge = swipeBackEdge(event.clientX, viewportWidth)
+      if (!edge) return
 
       active = {
         pointerId: event.pointerId,
+        edge,
         startX: event.clientX,
         startY: event.clientY,
         lastX: event.clientX,
@@ -213,7 +232,12 @@ export function useSwipeBackNavigation({
       const deltaX = active.lastX - active.startX
       const deltaY = active.lastY - active.startY
 
-      if (deltaX < -10 || (Math.abs(deltaY) > 56 && Math.abs(deltaY) > Math.abs(deltaX))) {
+      const inwardDistance = active.edge === "left" ? deltaX : -deltaX
+
+      if (
+        inwardDistance < -10 ||
+        (Math.abs(deltaY) > 56 && Math.abs(deltaY) > Math.abs(deltaX))
+      ) {
         active = null
       }
     }

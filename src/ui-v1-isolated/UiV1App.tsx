@@ -726,6 +726,8 @@ export default function UiV1App() {
     softHaptic()
   }, [])
   const canGoBack = canNavigateBack()
+  const screenOwnsTelegramBack =
+    route.type === "workspace" && route.page === "character"
 
   useSwipeBackNavigation({
     enabled: canGoBack,
@@ -753,10 +755,10 @@ export default function UiV1App() {
   }, [])
 
   useEffect(() => {
-    if (!canGoBack) return
+    if (!canGoBack || screenOwnsTelegramBack) return
 
     return bindTelegramBackButton(navigateBack)
-  }, [canGoBack, navigateBack])
+  }, [canGoBack, navigateBack, screenOwnsTelegramBack])
 
   return (
     <div className="u1-app">

@@ -5,6 +5,7 @@ import CampaignMediaFrame from "../components/common/CampaignMediaFrame"
 import type { SnakeAction, SnakeActionInput } from "../snake-engine"
 import { LocationNavigator } from "./LocationNavigator"
 import { SnakeTrigger } from "./SnakeProvider"
+import { pushAppHash } from "./navigationGestures"
 
 import { classReference, type ClassReferenceEntry, type ClassReferenceSubclass } from "../data/classReference"
 import { warlockInvocationsReference } from "../data/classes/warlockInvocationsReference"
@@ -38,7 +39,7 @@ import {
 import "./section-screens.css"
 
 function navigate(path: string) {
-  window.location.hash = `#/${path}`
+  pushAppHash(path)
 }
 
 function referenceArtActions({
