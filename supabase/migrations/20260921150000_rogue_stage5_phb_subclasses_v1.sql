@@ -1712,7 +1712,10 @@ begin
     if exists(
       select 1 from public.rule_templates s
       where s.campaign_id=r.campaign_id
-        and s.catalog_key='subclass:rogue:scion-of-the-three'
+        and (
+          s.catalog_key='subclass:rogue:scion-of-the-three'
+          or s.slug='rogue-scion-of-the-three'
+        )
         and s.is_active
     ) then
       raise exception 'ROGUE_STAGE5_RETIRED_SCION_ACTIVE:%',r.campaign_id;
