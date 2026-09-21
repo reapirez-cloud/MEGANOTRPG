@@ -65,6 +65,11 @@ test("Stage 3 uses generic bounded choices for optional replication loadouts", (
   assert.match(migration, /selected_reference_item_plans/)
 })
 
+test("instant replica attunement is server-validated against the definition", () => {
+  assert.match(migration, /ARTIFICER_REPLICATION_ATTUNEMENT_NOT_REQUIRED/)
+  assert.match(migration, /attunement,required/)
+})
+
 test("Stage 3 creates real Cheburashka inventory instances with provenance", () => {
   assert.match(migration, /cheburashka_create_definition_instance_v1/)
   assert.match(migration, /insert into public\.character_inventory_items/)
