@@ -52,7 +52,10 @@ export const classReference = publicClassReferenceCatalog.map((entry) => {
   if (entry.id === "rogue") {
     return {
       ...entry,
-      subclasses: entry.subclasses.map((subclass) => rogueTranslatedSubclassById.get(subclass.id) ?? subclass),
+      subclasses: entry.subclasses.map((subclass) => ({
+        ...(rogueTranslatedSubclassById.get(subclass.id) ?? subclass),
+        referenceOnly: false,
+      })),
     }
   }
 
