@@ -2,12 +2,16 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-20-O
+## Released patches
 
-**Status:** OPEN
-**Branch:** `dev`
-**Base main:** `8129d97a15c226bf842a93c748deb904a0cb3905`
+## Patch — 2026-09-20-O
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
+**Base main:** `16bf4a0b851d8e9ec509be09eedcfbe9e665057b`
 **Started:** 2026-09-20
+**Released:** 2026-09-21
+**Release identity:** `main / 2026-09-20-O`
 
 ### Player-facing changes
 
@@ -26,12 +30,12 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 - Added regression coverage for left- and right-edge swipe recognition, vertical/reverse gesture rejection, deterministic deep-link parent routes, unified Telegram/browser/swipe back wiring, direct-hash bypass removal on primary route surfaces, and removal of the unsafe raw `history.length` fallback.
 - Reconciled stale chat Stage 1/2 and screenshot assertions with the current Stage 6 composer action launcher and the new shared navigation history contract; this is test maintenance only and does not restore the discarded old header quick-action UI.
+- Pre-release exact-head CI on `1f4986738dace08bc56d405c9566bac05b2606c6` passed Build, Lint, repository tests, Storybook and Playwright smoke.
+- Release-budget gate saw 10 `main` push runs in the previous 24 hours; using the repository's conservative two-deployments-per-promotion proxy, estimated Vercel usage was about 20/100 before this release.
 
 ### Known incomplete work
 
 ---
-
-## Released patches
 
 ## Patch — 2026-09-20-N
 
