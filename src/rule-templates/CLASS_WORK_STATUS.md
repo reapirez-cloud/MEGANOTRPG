@@ -651,23 +651,40 @@ Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and al
 
 ## Artificer (`class:artificer`)
 
-**Text:** `NOT_STARTED`  
-**Mechanics/runtime:** `BLOCKED`
+**Text:** `DEFERRED_USER_TRANSLATION`  
+**Mechanics/runtime:** `IN_PROGRESS_STAGE_1_COMPLETE`
 
+- `canonical_source: Eberron: Forge of the Artificer (2025)`
 - `literary_policy: USER_TRANSLATION_LATER`
 - `author_description / author_comment: intentionally blank until supplied by the user`
+- `reference_explanation / voss: intentionally blank until supplied by the user`
+- `stage_1_source_freeze_and_executable_spec: COMPLETE_2026_09_21`
+- `stage_1_base_feature_identities: 10`
+- `stage_1_subclass_feature_identities: 33`
+- `stage_1_total_stable_feature_identities: 43`
+- `supported_subclass_target: 5 — Alchemist, Armorer, Artillerist, Battle Smith, Cartographer`
+- `unsupported_historical_subclass: artificer-reanimator — EXCLUDED`
+- `stage_2_foundation_1_20: NEXT`
+- `stage_3_core_item_replication_runtime: NOT_STARTED`
+- `stage_4_remaining_base_runtime: NOT_STARTED`
+- `stage_5_subclass_wave_1: NOT_STARTED`
+- `stage_6_subclass_wave_2_and_ux: NOT_STARTED`
 - `stage7_gate: INSTALLED_2026_09_21`
 - `stage7_gate_production: APPLIED_2026_09_21`
 - `stage7_live_smoke: FAIL_CLOSED_ACTIVE_CLASS_NOT_FOUND_AS_EXPECTED`
 - `stage7_gate_function: private.certify_artificer_runtime_final_v1(uuid)`
 - `target_runtime_revision: eberron-2025-artificer-runtime-final-v1`
-- `supported_subclass_target: 5 — Alchemist, Armorer, Artillerist, Battle Smith, Cartographer`
 - `current_dev_runtime: no Artificer class/subclass package exists yet`
 - `current_production_runtime: 0 class rows / 0 subclass rows / 0 level rows`
+- `current_production_spell_links: 29 — audited as stale/incomplete for the 2025 target`
 
-Stage 7 is intentionally fail-closed. The private certification gate is present, but it cannot write `READY` until Stages 1–6 install and verify the complete Artificer package. Literary translation and Voss prose are not certification prerequisites and may remain blank while mechanics are built.
+Stage 1 is complete as a source/architecture freeze. It deliberately does not create
+runtime rows or claim playability. The clean 2025 package must now begin at Stage 2;
+the retired generic Artificer installer may be consulted structurally but must never
+be restored wholesale.
 
-The next executable dependency is Stage 1, not a READY write.
+The Stage 7 gate remains intentionally blocked until Stages 2–6 are implemented.
+Literary translation and Voss prose are not mechanical prerequisites.
 
 ---
 
