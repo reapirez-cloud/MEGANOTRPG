@@ -550,6 +550,11 @@ Base Warlock, all 28 supported Eldritch Invocations and all nine supported runti
 - `runtime_plan_status: STAGE_1_COMPLETE_STAGE_2_NEXT; STAGES_2_TO_7_REQUIRED_FOR_READY`
 - `stage_1_source_freeze_and_text_closure: COMPLETE_2026_09_12`
 - `stage_1_feature_matrix: src/data/classes/rogueRuntimeFeatureMatrix.md`
+- `pre_stage_2_reuse_audit: COMPLETE_2026_09_21`
+- `pre_stage_2_reuse_audit_artifact: src/data/classes/rogueRuntimeReuseAudit.md`
+- `historical_builtin_reuse_policy: ADAPT_SELECTED_STRUCTURAL_AND_ACTION_FRAGMENTS_ONLY_DO_NOT_RESTORE_LEGACY_INSTALLER`
+- `historical_extra_subclass_excluded: rogue-scion-of-the-three`
+- `stage_2_confirmed_generic_gap: PROFICIENT_WEAPON_DYNAMIC_CHOICE_PROVIDER`
 - `stage_1_feature_count: 61_TOTAL = 15_BASE + 46_SUBCLASS`
 - `stage_1_source_audit: VERIFIED_BASE_2024_PLUS_9_FROZEN_SUBCLASS_PACKS_2026_09_12`
 - `stage_2_foundation_1_20: NOT_STARTED`
