@@ -4,9 +4,11 @@ import test from "node:test"
 
 import {
   fallbackBackPath,
+  isAppExitGuardState,
   isSwipeBackGesture,
   swipeBackEdge,
   swipeBackEdgeWidth,
+  swipeBackSystemInset,
 } from "../src/ui-v1-isolated/navigationGestures.ts"
 
 const appPath = new URL("../src/ui-v1-isolated/UiV1App.tsx", import.meta.url)
@@ -19,59 +21,72 @@ const routeSurfacePaths = [
   "../src/ui-v1-isolated/ArtSection.tsx",
 ].map((path) => new URL(path, import.meta.url))
 
-test("swipe back only accepts a deliberate rightward gesture from the left edge", () => {
+test("swipe back leaves the OS edge to Android and uses an inner app lane", () => {
   const viewportWidth = 390
+  const systemInset = swipeBackSystemInset(viewportWidth)
   const edge = swipeBackEdgeWidth(viewportWidth)
 
-  assert.equal(edge, 31.2)
-  assert.equal(swipeBackEdge(12, viewportWidth), "left")
-  assert.equal(swipeBackEdge(378, viewportWidth), "right")
+  assert.equal(systemInset, 23.4)
+  assert.equal(edge, 78)
+  assert.equal(swipeBackEdge(12, viewportWidth), null)
+  assert.equal(swipeBackEdge(40, viewportWidth), "left")
+  assert.equal(swipeBackEdge(350, viewportWidth), "right")
+  assert.equal(swipeBackEdge(378, viewportWidth), null)
   assert.equal(swipeBackEdge(120, viewportWidth), null)
+
+  assert.equal(isSwipeBackGesture({
+    startX: 40,
+    startY: 300,
+    endX: 132,
+    endY: 310,
+    durationMs: 330,
+    viewportWidth,
+  }), true)
+
+  assert.equal(isSwipeBackGesture({
+    startX: 350,
+    startY: 300,
+    endX: 258,
+    endY: 310,
+    durationMs: 330,
+    viewportWidth,
+  }), true)
 
   assert.equal(isSwipeBackGesture({
     startX: 12,
     startY: 300,
-    endX: 104,
-    endY: 310,
-    durationMs: 330,
-    viewportWidth,
-  }), true)
-
-  assert.equal(isSwipeBackGesture({
-    startX: 378,
-    startY: 300,
-    endX: 286,
-    endY: 310,
-    durationMs: 330,
-    viewportWidth,
-  }), true)
-
-  assert.equal(isSwipeBackGesture({
-    startX: edge + 1,
-    startY: 300,
-    endX: 130,
+    endX: 110,
     endY: 305,
     durationMs: 300,
     viewportWidth,
   }), false)
 
   assert.equal(isSwipeBackGesture({
-    startX: 12,
+    startX: 40,
     startY: 300,
-    endX: 84,
+    endX: 112,
     endY: 390,
     durationMs: 350,
     viewportWidth,
   }), false)
 
   assert.equal(isSwipeBackGesture({
-    startX: 12,
+    startX: 40,
     startY: 300,
-    endX: -60,
+    endX: -32,
     endY: 302,
     durationMs: 300,
     viewportWidth,
   }), false)
+})
+
+test("root exit guard state is explicit and cannot be confused with ordinary history", () => {
+  assert.equal(isAppExitGuardState(null), false)
+  assert.equal(isAppExitGuardState({}), false)
+  assert.equal(
+    isAppExitGuardState({ __meganot_ui_v1_exit_guard: true }),
+    true,
+  )
 })
 
 test("deep links have a deterministic in-app fallback back path", () => {
@@ -99,7 +114,9 @@ test("ui v1 routes swipe, browser, and Telegram back through one navigation cont
   assert.match(app, /screenOwnsTelegramBack/)
   assert.match(app, /!canGoBack \|\| screenOwnsTelegramBack/)
   assert.match(characterView, /bindTelegramBackButton\(handleBack\)/)
-  assert.match(app, /addEventListener\("popstate", sync\)/)
+  assert.match(app, /handleAppExitGuardPop\(\)/)
+  assert.match(app, /ensureRootExitGuard\(\)/)
+  assert.match(app, /addEventListener\("popstate", onPopState\)/)
   assert.doesNotMatch(app, /if \(window\.history\.length > 1\) window\.history\.back\(\)/)
 
   for (const source of routeSurfaces) {

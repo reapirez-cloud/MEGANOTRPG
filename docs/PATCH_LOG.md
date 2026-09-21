@@ -11,11 +11,19 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Fixed Android/Telegram back-swipe behavior so repeated edge-back gestures no longer fall through to closing/minimizing the app after the in-app history stack reaches a root screen.
+- The exact OS gesture edge is now left to the native WebView back gesture, while MEGANOT's own swipe-back recognizer uses a nearby inner lane to avoid double-processing the same gesture.
+
 ### Database / migration changes
 
 ### Runtime and architecture changes
 
+- Added a root history exit guard for the three UI 1.0 root spaces. Native browser/WebView back can consume the guard and rebound to the current root instead of escaping the Mini App; explicit Telegram/app close controls remain outside this history contract.
+- App-owned history states now strip root-guard metadata when pushing normal routes, preventing guard flags from leaking into child screens.
+
 ### Tests / verification
+
+- Updated swipe navigation regression coverage for the reserved Android system edge, the inner MEGANOT gesture lane, explicit exit-guard state, and UiV1App popstate guard wiring.
 
 ### Known incomplete work
 

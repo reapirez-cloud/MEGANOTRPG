@@ -16,6 +16,8 @@ import { bindTelegramBackButton } from "./telegramBackButton"
 import {
   canNavigateBack,
   ensureAppHistoryEntry,
+  ensureRootExitGuard,
+  handleAppExitGuardPop,
   navigateAppBack,
   pushAppHash,
   useSwipeBackNavigation,
@@ -744,13 +746,22 @@ export default function UiV1App() {
   useEffect(() => {
     ensureAppHistoryEntry()
 
-    const sync = () => setRoute(parseRoute())
+    const sync = () => {
+      const nextRoute = parseRoute()
+      setRoute(nextRoute)
+      if (nextRoute.type === "root") ensureRootExitGuard()
+    }
+
+    const onPopState = () => {
+      if (handleAppExitGuardPop()) return
+      sync()
+    }
 
     window.addEventListener("hashchange", sync)
-    window.addEventListener("popstate", sync)
+    window.addEventListener("popstate", onPopState)
     return () => {
       window.removeEventListener("hashchange", sync)
-      window.removeEventListener("popstate", sync)
+      window.removeEventListener("popstate", onPopState)
     }
   }, [])
 

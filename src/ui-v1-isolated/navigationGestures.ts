@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react"
 
 const APP_HISTORY_KEY = "__meganot_ui_v1_history"
+const APP_EXIT_GUARD_KEY = "__meganot_ui_v1_exit_guard"
+const APP_ROOT_PROTECTED_KEY = "__meganot_ui_v1_root_protected"
 const MIN_SWIPE_DISTANCE = 64
 const MAX_SWIPE_DURATION_MS = 900
 const HORIZONTAL_DOMINANCE = 1.35
@@ -11,6 +13,8 @@ type AppHistoryMarker = {
 
 type AppHistoryState = Record<string, unknown> & {
   [APP_HISTORY_KEY]?: AppHistoryMarker
+  [APP_EXIT_GUARD_KEY]?: boolean
+  [APP_ROOT_PROTECTED_KEY]?: boolean
 }
 
 export type SwipeBackSample = {
@@ -49,8 +53,12 @@ function currentMarker() {
 }
 
 function stateWithDepth(depth: number): AppHistoryState {
+  const state = { ...currentState() }
+  delete state[APP_EXIT_GUARD_KEY]
+  delete state[APP_ROOT_PROTECTED_KEY]
+
   return {
-    ...currentState(),
+    ...state,
     [APP_HISTORY_KEY]: {
       depth: Math.max(0, Math.trunc(depth)),
     },
@@ -65,17 +73,66 @@ function notifyRouteChange() {
   window.dispatchEvent(new Event("hashchange"))
 }
 
+function isRootHash(hash: string) {
+  const raw = hash.replace(/^#\/?/, "").split("?")[0]
+  return raw === "home" || raw === "workspace" || raw === "chats"
+}
+
+export function isAppExitGuardState(state: unknown) {
+  if (!state || typeof state !== "object") return false
+  return (state as AppHistoryState)[APP_EXIT_GUARD_KEY] === true
+}
+
+export function ensureRootExitGuard() {
+  const marker = currentMarker()
+  const state = currentState()
+  const hash = window.location.hash || "#/home"
+
+  if (
+    !marker ||
+    marker.depth !== 0 ||
+    !isRootHash(hash) ||
+    state[APP_ROOT_PROTECTED_KEY] === true ||
+    state[APP_EXIT_GUARD_KEY] === true
+  ) {
+    return false
+  }
+
+  const rootState = stateWithDepth(0)
+
+  window.history.replaceState(
+    { ...rootState, [APP_EXIT_GUARD_KEY]: true },
+    "",
+    hash,
+  )
+  window.history.pushState(
+    { ...rootState, [APP_ROOT_PROTECTED_KEY]: true },
+    "",
+    hash,
+  )
+  return true
+}
+
+export function handleAppExitGuardPop() {
+  if (!isAppExitGuardState(window.history.state)) return false
+
+  window.history.forward()
+  return true
+}
+
 export function ensureAppHistoryEntry() {
   const marker = currentMarker()
   const nextHash = window.location.hash || "#/home"
 
-  if (marker && window.location.hash) return
+  if (!marker || !window.location.hash) {
+    window.history.replaceState(
+      stateWithDepth(marker?.depth ?? 0),
+      "",
+      nextHash,
+    )
+  }
 
-  window.history.replaceState(
-    stateWithDepth(marker?.depth ?? 0),
-    "",
-    nextHash,
-  )
+  ensureRootExitGuard()
 }
 
 export function pushAppHash(path: string) {
@@ -90,6 +147,7 @@ export function pushAppHash(path: string) {
 function replaceAppHash(path: string) {
   const nextHash = toHash(path)
   window.history.replaceState(stateWithDepth(0), "", nextHash)
+  ensureRootExitGuard()
   notifyRouteChange()
 }
 
@@ -139,18 +197,28 @@ export function navigateAppBack() {
   return true
 }
 
+export function swipeBackSystemInset(viewportWidth: number) {
+  return Math.max(20, Math.min(28, viewportWidth * 0.06))
+}
+
 export function swipeBackEdgeWidth(viewportWidth: number) {
-  return Math.max(24, Math.min(36, viewportWidth * 0.08))
+  return Math.max(68, Math.min(88, viewportWidth * 0.2))
 }
 
 export function swipeBackEdge(
   startX: number,
   viewportWidth: number,
 ): SwipeBackEdge | null {
+  const systemInset = swipeBackSystemInset(viewportWidth)
   const edgeWidth = swipeBackEdgeWidth(viewportWidth)
 
-  if (startX <= edgeWidth) return "left"
-  if (startX >= viewportWidth - edgeWidth) return "right"
+  if (startX > systemInset && startX <= edgeWidth) return "left"
+  if (
+    startX < viewportWidth - systemInset &&
+    startX >= viewportWidth - edgeWidth
+  ) {
+    return "right"
+  }
   return null
 }
 
