@@ -1,5 +1,4 @@
 import { classReference as catalogClassReference } from "./classReferenceCatalog.ts"
-import { rogueReferenceCurrent } from "./classes/rogueReferenceCurrent.ts"
 import { rogueSubclassReferenceWave1 } from "./classes/rogueSubclassReferenceWave1.ts"
 import { rogueSubclassReferenceWave2 } from "./classes/rogueSubclassReferenceWave2.ts"
 import { rogueSubclassReferenceWave3 } from "./classes/rogueSubclassReferenceWave3.ts"
@@ -39,7 +38,7 @@ const rogueTranslatedSubclassById = new Map(
     (subclass) => [subclass.id, subclass],
   ),
 )
-const publicClassReferenceCatalog = [...catalogClassReference, rogueReferenceCurrent]
+const publicClassReferenceCatalog = catalogClassReference
 
 /**
  * Public reference catalog.
