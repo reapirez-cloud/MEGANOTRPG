@@ -55,11 +55,17 @@ function clamp(value: number, min: number, max: number) {
 
 function contentSafeTop() {
   if (typeof document === "undefined") return 0
-  const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue("--u1-content-safe-top")
-    .trim()
-  const value = Number.parseFloat(raw)
-  return Number.isFinite(value) ? Math.max(0, value) : 0
+  const styles = getComputedStyle(document.documentElement)
+  const candidates = [
+    "--u1-telegram-content-safe-top",
+    "--tg-content-safe-area-inset-top",
+    "--tg-safe-area-inset-top",
+  ]
+
+  return candidates.reduce((top, property) => {
+    const value = Number.parseFloat(styles.getPropertyValue(property).trim())
+    return Number.isFinite(value) ? Math.max(top, value) : top
+  }, 0)
 }
 
 function orbMinY() {
@@ -109,7 +115,7 @@ function snapOrb(position: { x: number; y: number }) {
   const edge = distances[0]?.edge
   if (edge === "left") return { x: ORB_MARGIN, y }
   if (edge === "right") return { x: maxX, y }
-  if (edge === "top") return { x, y: ORB_MARGIN }
+  if (edge === "top") return { x, y: orbMinY() }
   return { x, y: maxY }
 }
 

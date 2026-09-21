@@ -42,6 +42,8 @@ test("Telegram shell disables collapse swipes and synchronizes the content safe 
   assert.match(styles, /padding-top: var\(--u1-content-safe-top\)/)
   assert.match(styles, /--u1-safe-top: 0px/)
   assert.match(agent, /function orbMinY\(\)/)
+  assert.match(agent, /--u1-telegram-content-safe-top/)
+  assert.match(agent, /if \(edge === "top"\) return \{ x, y: orbMinY\(\) \}/)
   assert.match(agent, /TELEGRAM_SAFE_AREA_EVENT/)
   assert.match(aiCss, /top: var\(--u1-content-safe-top, 0px\)/)
 })
