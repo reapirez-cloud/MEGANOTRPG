@@ -4,6 +4,8 @@ import test from "node:test"
 
 const roomPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomScreen.tsx", import.meta.url)
 const headerPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomHeader.tsx", import.meta.url)
+const composerPath = new URL("../src/ui-v1-isolated/chat-room/ChatComposer.tsx", import.meta.url)
+const actionHostPath = new URL("../src/ui-v1-isolated/chat-room/ChatActionHost.tsx", import.meta.url)
 const hookPath = new URL("../src/ui-v1-isolated/chat-room/useChatRoomShell.ts", import.meta.url)
 const contractsPath = new URL("../src/ui-v1-isolated/chat-room/chatRoomContracts.ts", import.meta.url)
 const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room.css", import.meta.url)
@@ -33,24 +35,27 @@ test("stage 2 keeps player identity room-scoped instead of choosing another part
   assert.doesNotMatch(hook, /from\("chat_room_members"\)/)
 })
 
-test("stage 2 adds final quick-action geometry but no navigation or panels", async () => {
-  const [room, header, css] = await Promise.all([
+test("stage 2 action contract feeds the compact composer launcher instead of header navigation", async () => {
+  const [room, header, composer, actionHost, css] = await Promise.all([
     readFile(roomPath, "utf8"),
     readFile(headerPath, "utf8"),
+    readFile(composerPath, "utf8"),
+    readFile(actionHostPath, "utf8"),
     readFile(cssPath, "utf8"),
   ])
 
-  for (const label of ["Инвентарь", "Классовые умения", "Заклинания", "Атака"]) {
-    assert.match(header, new RegExp(label))
+  for (const label of ["Инвентарь", "Способности", "Заклинания", "Атака"]) {
+    assert.match(composer, new RegExp(label))
   }
 
-  assert.match(header, /hasEquippedWeapon/)
-  assert.match(header, /CHAT_ACTION_REQUEST_EVENT/)
-  assert.match(header, /data-action-mode=\{action\.mode\}/)
-  assert.doesNotMatch(room + header, /window\.location\.hash.*inventory|openSurface|ChatDrawer/)
-  assert.match(css, /\.u1-room-quick-actions/)
-  assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/)
-  assert.match(css, /transform: scale\(\.965\)/)
+  assert.match(composer, /ACTION_MENU_ITEMS/)
+  assert.match(composer, /data-action-mode=\{item\.mode\}/)
+  assert.match(composer, /<ChatActionHost/)
+  assert.match(actionHost, /useResolvedCharacterRuntime/)
+  assert.match(actionHost, /genaSession/)
+  assert.doesNotMatch(room + header + composer, /window\.location\.hash.*inventory|ChatDrawer/)
+  assert.match(css, /\.u1-chat-composer__action-menu/)
+  assert.match(css, /u1-chat-action-menu-in/)
 })
 
 test("stage 2 shows attack only for a resolved equipped weapon", async () => {
@@ -64,18 +69,22 @@ test("stage 2 shows attack only for a resolved equipped weapon", async () => {
   assert.match(hook, /semanticRole\.startsWith\("weapon\."\)/)
 })
 
-test("stage 2 hides character quick actions when no character identity is present", async () => {
-  const [room, header, presentation] = await Promise.all([
+test("stage 2 keeps the action launcher disabled for a non-manager observer", async () => {
+  const [room, composer, presentation] = await Promise.all([
     readFile(roomPath, "utf8"),
-    readFile(headerPath, "utf8"),
+    readFile(composerPath, "utf8"),
     readFile(presentationPath, "utf8"),
   ])
 
   assert.match(room, /chatRoomPresentationState\(model\)/)
-  assert.match(room, /showQuickActions=\{presentation\.showQuickActions\}/)
   assert.match(room, /<ChatRoomHeader/)
+  assert.match(composer, /const canCompose = presentation\.canCompose/)
+  assert.match(composer, /disabled=\{!canCompose\}/)
   assert.match(presentation, /identityKind === "character"/)
   assert.match(presentation, /model\.quickActions\.hasCharacter/)
-  assert.match(presentation, /showQuickActions: model\.canWrite && hasCharacter/)
-  assert.match(header, /showQuickActions \?/)
+  assert.match(
+    presentation,
+    /model\.canWrite && \(model\.canManage \|\| identityKind === "character"\)/,
+  )
+  assert.match(presentation, /canOpenGameActions: canCompose/)
 })
