@@ -50,15 +50,19 @@ test("chat final stage 5 keeps roll semantics raw and neutral", async () => {
   assert.doesNotMatch(card, /data-(success|failure|critical)/i)
 })
 
-test("chat final stage 5 keeps every canonical and fallback die inside one reusable component", async () => {
+test("chat final stage 5 keeps PNG canonical and fallback dice inside one reusable component", async () => {
   const dice = await readFile(dicePath, "utf8")
 
   for (const sides of [4, 6, 8, 10, 12, 20]) {
-    assert.match(dice, new RegExp(`sides === ${sides}`))
+    assert.ok(
+      dice.includes(`${sides}: "/ui-v1/dice/d${sides}-graphite.png"`),
+    )
   }
   assert.match(dice, /sides === 100/)
   assert.match(dice, /data-die-kind=\{sides === 100 \? "percentile"/)
-  assert.match(dice, /: "fallback"/)
+  assert.match(dice, /CANONICAL_DIE_ASSETS\[sides\] \? "canonical" : "fallback"/)
+  assert.match(dice, /className="u1-die-glyph__fallback"/)
+  assert.doesNotMatch(dice, /<svg/)
 })
 
 test("chat final stage 5 leaves roll cards outside the legacy generic stats path", async () => {

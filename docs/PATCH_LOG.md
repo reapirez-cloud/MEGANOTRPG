@@ -2,6 +2,38 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
+## Patch — 2026-09-21-Q
+
+**Status:** OPEN
+**Branch:** `dev`
+**Base main:** `b697a4053bf54f680de43899a7c566a417819baa`
+**Started:** 2026-09-21
+
+### Player-facing changes
+
+- Replaced the chat roll card's generated inline SVG dice for canonical d4/d6/d8/d10/d12/d20 with the graphite PNG dice authored for MEGANOT.
+- Every canonical die now overlays the raw die result on the intentionally empty central face; per-die vertical alignment keeps the number centered on the actual face rather than the image bounding box.
+- Canonical chat dice use optimized 192×192 PNG assets rather than the multi-megabyte generation sources, while preserving enough source resolution for the current 32–72px mobile render sizes.
+- d100 keeps the existing percentile behavior but now composes two graphite PNG d10s. Arbitrary unsupported dN rolls keep an explicit non-SVG fallback instead of pretending to have a canonical art asset.
+
+### Database / migration changes
+
+- None. Dice art and value placement are presentation-only and do not change TOBIK, persisted roll payloads, Supabase schema or gameplay state.
+
+### Runtime and architecture changes
+
+- Kept `DiceGlyph` as the single reusable roll presentation component. Canonical asset selection is centralized in one side-to-PNG map, with no duplicated parsing or roll mechanics.
+- Removed inline canonical SVG geometry and SVG text rendering from `DiceGlyph`; the raw result is now an HTML overlay above the PNG asset.
+
+### Tests / verification
+
+- Updated Roll Stage 4 regression coverage to require all six canonical PNG paths, 192×192 dimensions, sub-12KB optimized assets, raw-value overlay wiring, per-die face offsets, PNG d100 composition and a non-SVG arbitrary-dN fallback.
+- Updated final chat Stage 5 coverage so the reusable dice contract now rejects reintroduction of inline SVG canonical dice.
+
+### Known incomplete work
+
+---
+
 ## Patch — 2026-09-21-P
 
 **Status:** RELEASED

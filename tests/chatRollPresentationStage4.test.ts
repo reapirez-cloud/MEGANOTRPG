@@ -6,36 +6,55 @@ const dicePath = new URL("../src/ui-v1-isolated/chat-room/DiceGlyph.tsx", import
 const cardPath = new URL("../src/ui-v1-isolated/chat-room/ChatGameEventCard.tsx", import.meta.url)
 const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room.css", import.meta.url)
 
-test("chat roll stage 4 draws canonical dice with distinct SVG geometry", async () => {
+test("chat roll stage 4 uses lightweight PNG assets for canonical dice", async () => {
   const dice = await readFile(dicePath, "utf8")
 
   for (const sides of [4, 6, 8, 10, 12, 20]) {
-    assert.match(dice, new RegExp(`sides === ${sides}`))
+    assert.ok(
+      dice.includes(`${sides}: "/ui-v1/dice/d${sides}-graphite.png"`),
+    )
+
+    const asset = await readFile(
+      new URL(`../public/ui-v1/dice/d${sides}-graphite.png`, import.meta.url),
+    )
+    assert.equal(asset.readUInt32BE(16), 192)
+    assert.equal(asset.readUInt32BE(20), 192)
+    assert.ok(asset.byteLength < 12_000)
   }
 
-  assert.match(dice, /sides === 100/)
-  assert.match(dice, /PercentileDie/)
-  assert.match(dice, /data-die-kind=\{sides === 100 \? "percentile"/)
-  assert.match(dice, /className="u1-die-glyph__kind"/)
+  assert.match(dice, /CANONICAL_DIE_ASSETS/)
+  assert.match(dice, /className="u1-die-glyph__image"/)
+  assert.doesNotMatch(dice, /<svg/)
 })
 
-test("chat roll stage 4 puts the raw value inside the die SVG", async () => {
-  const dice = await readFile(dicePath, "utf8")
+test("chat roll stage 4 overlays the raw value on the PNG face", async () => {
+  const [dice, css] = await Promise.all([
+    readFile(dicePath, "utf8"),
+    readFile(cssPath, "utf8"),
+  ])
 
-  assert.match(dice, /const text = String\(value\)/)
-  assert.match(dice, /<text x="50" y="68" fontSize=\{fontSize\}>\{text\}<\/text>/)
-  assert.match(dice, /<text x="50" y="63" fontSize=\{fontSize\}>\{text\}<\/text>/)
+  assert.match(dice, /const text = displayValue \?\? String\(value\)/)
+  assert.match(dice, /className="u1-die-glyph__value"/)
+  assert.match(dice, /data-value-length=\{valueLength\(text\)\}/)
   assert.match(dice, /aria-label=\{label\}/)
+
+  for (const sides of [4, 6, 8, 10, 12, 20]) {
+    assert.ok(
+      css.includes(`.u1-die-glyph__asset[data-die-sides="${sides}"]`),
+    )
+  }
 })
 
-test("chat roll stage 4 uses percentile dice for d100 and honest fallback for arbitrary dN", async () => {
+test("chat roll stage 4 uses PNG d10 pair for d100 and non-SVG fallback for arbitrary dN", async () => {
   const dice = await readFile(dicePath, "utf8")
 
   assert.match(dice, /const tens = normalized === 100/)
   assert.match(dice, /const ones = normalized === 100/)
-  assert.match(dice, /<StandardDie sides=\{10\} value=\{Number\(tens\)\} \/>/)
-  assert.match(dice, /<StandardDie sides=\{10\} value=\{Number\(ones\)\} \/>/)
-  assert.match(dice, />d\{sides\}<\/text>/)
+  assert.match(dice, /<CanonicalDie[\s\S]*sides=\{10\}[\s\S]*displayValue=\{tens\}/)
+  assert.match(dice, /<CanonicalDie[\s\S]*sides=\{10\}[\s\S]*displayValue=\{ones\}/)
+  assert.match(dice, /className="u1-die-glyph__fallback"/)
+  assert.match(dice, />d\{sides\}<\/span>/)
+  assert.match(dice, /sides === 100/)
 })
 
 test("chat roll stage 4 replaces generic stat cells with one symmetric result composition", async () => {
