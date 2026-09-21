@@ -652,7 +652,7 @@ Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and al
 ## Artificer (`class:artificer`)
 
 **Text:** `DEFERRED_USER_TRANSLATION`  
-**Mechanics/runtime:** `IN_PROGRESS_STAGE_2_COMPLETE`
+**Mechanics/runtime:** `IN_PROGRESS_STAGE_3_COMPLETE`
 
 - `canonical_source: Eberron: Forge of the Artificer (2025)`
 - `literary_policy: USER_TRANSLATION_LATER`
@@ -672,8 +672,12 @@ Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and al
 - `stage_2_magic_item_plan_provider: reference_item_plans — generic Chasovoy validator installed`
 - `stage_2_subclass_runtime: false`
 - `stage_2_literary_fields: blank by user policy`
-- `stage_3_core_item_replication_runtime: NEXT`
-- `stage_4_remaining_base_runtime: NOT_STARTED`
+- `stage_3_core_item_replication_runtime: COMPLETE_2026_09_21`
+- `stage_3_runtime_revision: efota-2025-artificer-stage3-item-replication-v1`
+- `stage_3_tinkers_magic: real Cheburashka temporary instances + Long-Rest expiry`
+- `stage_3_replication_plans: 4/5/6/7/8 known plans; 2/3/4/5/6 active items`
+- `stage_3_attunement: generic Cheburashka item-state contract + CE projection gating`
+- `stage_4_remaining_base_runtime: NEXT`
 - `stage_5_subclass_wave_1: NOT_STARTED`
 - `stage_6_subclass_wave_2_and_ux: NOT_STARTED`
 - `stage7_gate: INSTALLED_2026_09_21`
@@ -681,16 +685,15 @@ Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and al
 - `stage7_live_smoke: FAIL_CLOSED_ACTIVE_CLASS_NOT_FOUND_AS_EXPECTED`
 - `stage7_gate_function: private.certify_artificer_runtime_final_v1(uuid)`
 - `target_runtime_revision: eberron-2025-artificer-runtime-final-v1`
-- `current_dev_runtime: no Artificer class/subclass package exists yet`
-- `current_production_runtime: 0 class rows / 0 subclass rows / 0 level rows`
-- `current_production_spell_links: 29 — audited as stale/incomplete for the 2025 target`
+- `current_dev_runtime: Stage 3 core item runtime installed; subclasses still absent`
+- `current_production_runtime: 1 active class / 20 levels / 0 subclasses`
+- `current_production_spell_links: 92 canonical Stage 2 links retained`
 
-Stages 1–2 are complete. Stage 2 now installs the clean 2025 class foundation,
-20 levels and shared spell runtime, but it does not claim full class playability.
-Stage 3 is the next executable dependency; the retired generic Artificer installer
-may be consulted structurally but must never be restored wholesale.
+Stages 1–3 are complete. Stage 3 adds the core item-generation/replication runtime
+without creating a parallel inventory owner. The class is still not READY because
+the remaining base features and all five subclasses belong to Stages 4–6.
 
-The Stage 7 gate remains intentionally blocked until Stages 2–6 are implemented.
+The Stage 7 gate remains intentionally blocked until Stages 4–6 are implemented.
 Literary translation and Voss prose are not mechanical prerequisites.
 
 ---
