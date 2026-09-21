@@ -62,3 +62,10 @@ Prepared-spell quotas are authored by the class package. Always-prepared class/s
 The same choice contract is intentionally source-agnostic. When feats become CE sources, their "choose from" clauses should use this runtime rather than inventing a second selection system.
 
 The next generic primitives are tracked in `./AGENTS.md`: additional dynamic option providers beyond skills, structured CE-owned prerequisites, uniqueness/exclusion constraints, bounded numeric allocations, explicit respec/change policy, multi-stage dependent choices, and first-class feat source integration. Implement each when a real rule first needs it, but implement it generically rather than inside one feat/class.
+
+
+## Bounded optional choices
+
+`allow_fewer: true` turns `count` / `count_by_level` into a maximum instead of an exact fill requirement. `minimum_count` supplies an optional lower bound and defaults to zero.
+
+This is a generic Choice Runtime primitive. It is used when a rule gives a capacity such as “up to N” rather than forcing the character to fill every slot. The server remains authoritative and rejects values outside the authored bounds.
