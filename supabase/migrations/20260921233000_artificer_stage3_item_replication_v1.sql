@@ -664,6 +664,7 @@ begin
   from public.reference_definitions d
   join public.reference_definition_revisions rr on rr.definition_id=d.id and rr.revision=d.current_revision
   where d.kind='item' and d.scope='system' and d.status='active'
+    and d.external_id like 'artificer-plan:%'
     and coalesce((rr.data#>>'{replication_plan,eligible}')::boolean,false);
 
   for r in select * from public.rule_templates
@@ -729,7 +730,7 @@ begin
         'base_item_runtime_pending_stage3',false,
         'tinkers_magic_item_runtime',true,
         'replicate_magic_item_runtime',true,
-        'replication_plan_count',(select count(*) from public.reference_definitions d join public.reference_definition_revisions rr on rr.definition_id=d.id and rr.revision=d.current_revision where coalesce((rr.data#>>'{replication_plan,eligible}')::boolean,false)),
+        'replication_plan_count',(select count(*) from public.reference_definitions d join public.reference_definition_revisions rr on rr.definition_id=d.id and rr.revision=d.current_revision where d.external_id like 'artificer-plan:%' and coalesce((rr.data#>>'{replication_plan,eligible}')::boolean,false)),
         'replication_plan_progression',jsonb_build_object('2',4,'6',5,'10',6,'14',7,'18',8),
         'replicated_item_cap_progression',jsonb_build_object('2',2,'6',3,'10',4,'14',5,'18',6),
         'attunement_state_runtime',true,
@@ -773,13 +774,15 @@ begin
   select count(*) into v_count
   from public.reference_definitions d join public.reference_definition_revisions rr
     on rr.definition_id=d.id and rr.revision=d.current_revision
-  where coalesce((rr.data#>>'{replication_plan,eligible}')::boolean,false);
+  where d.external_id like 'artificer-plan:%'
+    and coalesce((rr.data#>>'{replication_plan,eligible}')::boolean,false);
   if v_count<>56 then raise exception 'ARTIFICER_STAGE3_PLAN_COUNT_INVALID:%',v_count; end if;
 
   select count(*) into v_count
   from public.reference_definitions d join public.reference_definition_revisions rr
     on rr.definition_id=d.id and rr.revision=d.current_revision
-  where coalesce((rr.data#>>'{tinkers_magic,eligible}')::boolean,false);
+  where d.external_id like 'artificer-tinker:%'
+    and coalesce((rr.data#>>'{tinkers_magic,eligible}')::boolean,false);
   if v_count<>31 then raise exception 'ARTIFICER_STAGE3_TINKER_ITEM_COUNT_INVALID:%',v_count; end if;
 
   for r in select * from public.rule_templates
