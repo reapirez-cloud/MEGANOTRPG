@@ -168,10 +168,17 @@ export function buildLegacyCharacterEngineInput(args: {
     const alwaysPrepared = Boolean(spell.wizard_spell_mastery || spell.wizard_signature_spell)
     const options = isCantrip ? [] : slotOptions(spell.spell_level, slotLevels)
     const source = legacySource(`legacy-spell-source:${spell.id}`, spell.source || spell.name, "legacy_spell")
+    const temporaryAbility =
+      spell.temporary_casting_ability === "intelligence" ||
+      spell.temporary_casting_ability === "wisdom" ||
+      spell.temporary_casting_ability === "charisma"
+        ? spell.temporary_casting_ability
+        : undefined
+    const effectiveSpellcastingAbility = temporaryAbility || spellcastingAbility
     const methods: SpellCastingMethodDefinition[] = [{
-      key: "legacy-cast",
-      kind: "spellcasting",
-      ...(spellcastingAbility ? { ability: spellcastingAbility } : {}),
+      key: spell.temporary_source_key ? "temporary-cast" : "legacy-cast",
+      kind: spell.temporary_source_key ? "temporary_spell_access" : "spellcasting",
+      ...(effectiveSpellcastingAbility ? { ability: effectiveSpellcastingAbility } : {}),
       requiresPrepared: !isCantrip,
       ...(isCantrip ? {} : { resourceOptions: options }),
     }]
