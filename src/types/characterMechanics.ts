@@ -16,7 +16,7 @@ import type {
 } from "../character-engine/index.ts"
 import type { PersistentResourceRecoveryTrigger, ResourceRecoveryStep } from "./characterResources.ts"
 
-export type MechanicActivation = "carried" | "equipped" | "attuned"
+export type MechanicActivation = "carried" | "equipped"
 export type MechanicModuleTone = "neutral" | "violet" | "blue" | "cyan" | "green" | "amber" | "red"
 export type MechanicModuleDisplay = "counter" | "pips" | "bar"
 export type StoredGrantOperation = "GRANT" | "REPLACE"
