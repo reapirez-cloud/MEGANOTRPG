@@ -40,15 +40,16 @@ Post-rest GENA UI adds a generation lock on top: a refreshable choice can be dra
 
 `RuleChoiceDefinition.option_provider` is the generic hook for choices whose eligible options depend on authoritative character state.
 
-The first implemented provider is:
+Implemented providers are:
 
 - `{ kind: "skill_proficiencies", minimum_rank, maximum_rank }`;
-- UI derives current ranks from base/manual sheet proficiencies plus active template contributions;
-- the server independently recomputes proficiency eligibility from persistent sheet state and active template assignments before accepting a new structured choice;
-- already stored instances remain valid while later count increases request additional selections, so an Expertise choice does not invalidate its own rank-2 selections;
-- this provider is source-agnostic. Bard Expertise is only its first consumer.
+  UI derives current ranks from base/manual sheet proficiencies plus active template contributions, while the server independently recomputes eligibility before accepting a new structured choice. Already stored instances remain valid while later count increases request additional selections, so an Expertise choice does not invalidate its own rank-2 selections.
+- `{ kind: "weapon_proficiencies" }`;
+  UI derives active weapon proficiency grants from the resolved template contribution graph and filters concrete weapon identities through the shared 2024 weapon catalog. The server independently recomputes the same eligibility from active assignments before both ordinary and rest-refresh commits. Category grants such as `weapon:simple`, `weapon:martial`, `weapon:martial-light`, and `weapon:martial-finesse-or-light` are interpreted generically rather than by a class branch.
 
-Do not add class-specific option filtering. Future catalog/weapon/tool/language providers must extend the same contract and receive matching server validation.
+These providers are source-agnostic. Bard/Rogue Expertise and Rogue Weapon Mastery are consumers, not owners of the provider logic.
+
+Do not add class-specific option filtering. Future tool/language/catalog providers must extend the same contract and receive matching server validation.
 
 ## Spells and future feats
 
