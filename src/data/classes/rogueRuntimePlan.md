@@ -6,7 +6,7 @@
 ## Overall target
 
 **Current text/reference:** `READY` — base Rogue and all 9 supported subclass feature packs have complete Voss prose plus independently audited neutral rule text.  
-**Current mechanics/runtime:** `IN_PROGRESS` — Stage 2 foundation is deployed; Stages 3–7 remain required for full `READY`.  
+**Current mechanics/runtime:** `IN_PROGRESS` — Stages 2–3 are deployed; Stages 4–7 remain required for full `READY`.  
 **Target:** base Rogue 1–20 plus all 9 supported subclasses implemented through the shared Chasovoy → Shapoklyak/GENA → Character Engine pipeline, deployed to the connected Supabase project, regression-gated and final-certified as `READY`.
 
 Supported subclass roster:
@@ -178,9 +178,27 @@ Expected migration/revision naming:
 
 ## Stage 3 — core Rogue gameplay runtime
 
-**Status:** `NOT_STARTED`
+**Status:** `COMPLETE_2026_09_21`
 
 Goal: implement the defining Rogue mechanics before defensive/high-level cleanup.
+
+Closure:
+
+- migration: `supabase/migrations/20260921130000_rogue_stage3_core_runtime_v1.sql`;
+- deployed migration: `20260921124647_rogue_stage3_core_runtime_v1`;
+- active revision: `xphb-2024-rogue-stage3-core-runtime-v1`;
+- Sneak Attack is a real CE/GENA bonus-damage roll backed by `rogue_sneak_attack_dice`, preserving the Stage 2 1d6→10d6 Rogue-level progression;
+- Cunning Action exposes Dash / Disengage / Hide as ordinary shared bonus actions;
+- Steady Aim is a structured shared action with GM-adjudicated no-movement precondition, next-attack Advantage and Speed 0 until turn end, without inventing persistent turn state;
+- Cunning Strike exposes Poison / Trip / Withdraw with exact 1d6 sacrifice and shared save DC value `8 + Dex modifier + PB`;
+- Improved Cunning Strike exposes distinct two-rider combinations and sums their sacrificed Sneak Attack dice exactly;
+- Devious Strikes exposes Daze 2d6, Obscure 3d6 and Knock Out 6d6, plus payable two-rider combinations at the Rogue levels where the Sneak Attack pool can actually cover their cost;
+- the generic CE semantic `bonus_damage_dice_sacrifice` contains no Rogue-specific branching and is used by chat to roll the remaining bonus-damage dice after sacrifice;
+- scene truth remains with the GM: attack eligibility, Advantage/Disadvantage, adjacent ally, target size, Poisoner's Kit possession, movement/turn state, hit confirmation and once-per-turn legality are not fabricated as persistent state;
+- production audit confirms one active Rogue revision, 20 level rows, 26 class action mechanics, 21 dice-sacrifice routes and zero active Rogue subclasses;
+- migration dry-run passed; Build, Lint, repository Tests, Storybook and Playwright all passed before deployment.
+
+Stage 3 leaves `referenceOnly=true` and overall Rogue mechanics `IN_PROGRESS`. Stage 4 is the canonical next step.
 
 Scope:
 
