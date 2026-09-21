@@ -34,23 +34,6 @@ function feature(
   }
 }
 
-function action(
-  id: string,
-  sourceKey: string,
-  key: string,
-  label: string,
-  economy: string,
-  effects: StoredMechanic extends infer _Never ? never : never,
-): never {
-  void id
-  void sourceKey
-  void key
-  void label
-  void economy
-  void effects
-  throw new Error("type helper is compile-only")
-}
-
 const sacrifice = (diceCost: number, label: string) => ({
   kind: "semantic" as const,
   key: "bonus_damage_dice_sacrifice",
@@ -380,7 +363,7 @@ function stage3Bundle(level: number): CharacterTemplateBundle {
       source_kind: "official",
       source_label: "Player's Handbook 2024",
       is_builtin: true,
-      mechanical_summary: "Разбойник 2024: Скрытая атака 1к6–10к6, Хитрое действие, Точный прицел, Хитрый удар и Коварные удары через общий CE action/runtime.",
+      mechanical_summary: "Разбойник 2024: Скрытая атака 1к6–10к6, Хитрое действие, Точный прицел, Хитрый удар и Коварные удары с точной уровневой прогрессией.",
       author_description: "",
       author_comment: "",
       rules_meta: { mechanics_status: "IN_PROGRESS_STAGE3_CORE_RUNTIME_READY" },
