@@ -39,7 +39,7 @@ Current checkpoint:
 
 ## Artificer runtime work
 
-**Status:** STAGES_1_2_COMPLETE_STAGE_3_NEXT  
+**Status:** STAGES_1_3_COMPLETE_STAGE_4_NEXT  
 **Marked:** 2026-09-21  
 **Branch:** dev
 
@@ -48,7 +48,7 @@ Frozen feature matrix: `src/data/classes/artificerRuntimeFeatureMatrix.md`.
 Reuse audit: `src/data/classes/artificerRuntimeReuseAudit.md`.
 
 Current checkpoint:
-- Stages 1–2 are complete.
+- Stages 1–3 are complete.
 - Stage 1 source freeze/specification remains frozen.
 - Canonical source is Eberron: Forge of the Artificer (2025).
 - Frozen runtime roster is exactly Alchemist, Armorer, Artillerist, Battle Smith and Cartographer.
@@ -60,7 +60,7 @@ Current checkpoint:
 - Tinker's Magic grants Mending outside the ordinary cantrip quota; shared spell slots, cantrip replacement and Long-Rest preparation use the common runtime.
 - Generic Chasovoy `reference_item_plans` validation is installed for Stage 3.
 - The Stage 7 certifier exists only as a fail-closed future gate; it does not make the class READY.
-- Stage 3 is next: Tinker's Magic temporary item creation, Replicate Magic Item plan/loadout persistence, Cheburashka instances, provenance/expiry and Long-Rest reconciliation.
+- Stage 3 is complete: Tinker's Magic creates real temporary Cheburashka instances with Long-Rest expiry; Replicate Magic Item uses persistent Chasovoy plan identities, exact plan/item progression, server-authoritative Long-Rest reconciliation, provenance cleanup and generic attunement. Stage 4 is next: remaining base-class runtime.
 - Do not restore the retired historical Artificer installer wholesale.
 
 ## Inventory / scene interaction follow-up
