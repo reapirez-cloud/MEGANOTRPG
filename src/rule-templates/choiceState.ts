@@ -23,6 +23,8 @@ export type TemplateChoiceStatus = "hidden" | "pending" | "editable" | "locked"
 export type TemplateChoiceRuntimeContext = {
   /** Base/manual sheet ranks. Template grants are merged on top generically. */
   skillProficiencies?: Record<string, number>
+  /** Stable tool:* identities already owned outside template grants. */
+  toolProficiencies?: string[]
 }
 
 
@@ -194,6 +196,26 @@ function providerSkillRanks(
   return ranks
 }
 
+function providerToolProficiencies(
+  bundles: CharacterTemplateBundle[],
+  characterLevel: number,
+  context?: TemplateChoiceRuntimeContext,
+): string[] {
+  const parsed = resolveTemplateBundles(bundles, characterLevel)
+  return [...new Set([
+    ...(context?.toolProficiencies || []),
+    ...parsed.contributions.flatMap((contribution) => {
+      if (
+        contribution.kind !== "grant"
+        || contribution.target !== "proficiency"
+        || !contribution.key.startsWith("tool:")
+        || contribution.operation === "SUPPRESS"
+      ) return []
+      return [contribution.key]
+    }),
+  ])]
+}
+
 function providerWeaponProficiencies(
   bundles: CharacterTemplateBundle[],
   characterLevel: number,
@@ -216,6 +238,7 @@ function providerAvailability(
   selected: boolean,
   skillRanks: Record<string, number>,
   weaponProficiencies: readonly string[],
+  toolProficiencies: readonly string[],
 ): { available: boolean; reason: string | null } {
   if (selected || !definition.option_provider) return { available: true, reason: null }
   const provider = definition.option_provider
@@ -238,6 +261,20 @@ function providerAvailability(
       return { available: false, reason: "Требуется владение этим видом оружия" }
     }
   }
+  if (provider.kind === "unproficient_skill_or_tool") {
+    if (optionKey.startsWith("skill:")) {
+      const skill = optionKey.slice("skill:".length)
+      if ((skillRanks[skill] || 0) > 0) {
+        return { available: false, reason: "Этим навыком персонаж уже владеет" }
+      }
+    } else if (optionKey.startsWith("tool:")) {
+      if (toolProficiencies.includes(optionKey)) {
+        return { available: false, reason: "Этим инструментом персонаж уже владеет" }
+      }
+    } else {
+      return { available: false, reason: "Нужен навык или инструмент" }
+    }
+  }
   return { available: true, reason: null }
 }
 
@@ -254,6 +291,7 @@ export function resolveTemplateChoiceStates(
   const result: TemplateChoiceState[] = []
   const skillRanks = providerSkillRanks(bundles, characterLevel, context)
   const weaponProficiencies = providerWeaponProficiencies(bundles, characterLevel)
+  const toolProficiencies = providerToolProficiencies(bundles, characterLevel, context)
 
   for (const bundle of bundles) {
     const sourceLevel = sourceLevelForChoice(bundle, characterLevel, classLevels)
@@ -314,6 +352,7 @@ export function resolveTemplateChoiceStates(
           selectedOptionSet.has(key),
           skillRanks,
           weaponProficiencies,
+          toolProficiencies,
         )
         const available = levelAvailable && missing.length === 0 && sourceAvailable && provider.available
         const lockedReason = !levelAvailable
