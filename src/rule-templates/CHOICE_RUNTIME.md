@@ -46,6 +46,8 @@ Implemented providers are:
   UI derives current ranks from base/manual sheet proficiencies plus active template contributions, while the server independently recomputes eligibility before accepting a new structured choice. Already stored instances remain valid while later count increases request additional selections, so an Expertise choice does not invalidate its own rank-2 selections.
 - `{ kind: "weapon_proficiencies" }`;
   UI derives active weapon proficiency grants from the resolved template contribution graph and filters concrete weapon identities through the shared 2024 weapon catalog. The server independently recomputes the same eligibility from active assignments before both ordinary and rest-refresh commits. Category grants such as `weapon:simple`, `weapon:martial`, `weapon:martial-light`, and `weapon:martial-finesse-or-light` are interpreted generically rather than by a class branch.
+- `{ kind: "reference_item_plans", active_count_by_level? }`;
+  options are stable `refdef:<uuid>` identities owned by Chasovoy. The server verifies campaign visibility and level eligibility. `active_count_by_level` is orchestration metadata for server-authoritative item-instance reconciliation; Choice Runtime still owns only the persistent plan selection and never becomes an inventory owner.
 
 These providers are source-agnostic. Bard/Rogue Expertise and Rogue Weapon Mastery are consumers, not owners of the provider logic.
 
