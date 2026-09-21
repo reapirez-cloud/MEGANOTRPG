@@ -161,7 +161,7 @@ test("Stage 2 adds a generic Chasovoy item-plan validation primitive for Stage 3
 
 test("Stage 2 keeps literature deferred and hands off cleanly to Stage 3", () => {
   assert.match(plan, /Stage 2 — class foundation 1–20 \+ spellcasting:\s*COMPLETE_2026_09_21/)
-  assert.match(plan, /Stage 3 — core item\/replication runtime:\s*NEXT/)
+  assert.match(plan, /Stage 3 — core item\/replication runtime:\s*COMPLETE_2026_09_21/)
   assert.match(ledger, /stage_2_foundation_1_20_and_spellcasting: COMPLETE_2026_09_21/)
   assert.match(ledger, /Text:\*\*\s*`DEFERRED_USER_TRANSLATION`/)
   assert.match(migration, /author_description='',author_comment=''/)
