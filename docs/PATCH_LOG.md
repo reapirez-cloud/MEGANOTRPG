@@ -18,11 +18,15 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Database / migration changes
 
+- Added an Artificer Stage 7 certification gate as private service-role-only infrastructure. It refuses READY unless the complete 1–20 class, exact five-subclass roster, Stage 1–6 metadata, coherent actions/resources/choices, spell catalog access and shared RPC permissions are present.
+
 - Added Rogue Stage 7 final fail-closed certification at `xphb-2024-rogue-runtime-final-v1`; production now records base Rogue and all nine supported subclasses as runtime READY only after structural, reference, choice, spell, resource and permission checks pass.
 - Added generic assignment-resource cleanup so removing a class/subclass assignment deletes a persistent resource only when no remaining active assignment still contributes that resource identity.
 - Dice art and value placement remain presentation-only and do not change TOBIK or persisted roll payloads.
 
 ### Runtime and architecture changes
+
+- Added the Artificer runtime plan and froze the final target roster to Alchemist, Armorer, Artillerist, Battle Smith and Cartographer. The certification gate deliberately does not inspect or require literary translation, `author_description` or `author_comment`; those fields remain reserved for the user's later text.
 
 - Completed Rogue Stage 7: public Rogue/reference cards now expose the same certified base + nine-subclass runtime roster; no Rogue-specific Sheet or Chat mechanics branch was introduced.
 - Final Rogue certification audits shared CE/GENA actions, d20 semantics, Choice Runtime, Arcane Trickster Wizard spell access, Soulknife resource semantics and private installer permissions before writing READY.
@@ -31,6 +35,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Added Artificer Stage 7 regression coverage for fail-closed ordering, exact subclass roster, Stage 1–6 prerequisites, private-function permissions and the rule that blank literary fields cannot block mechanical certification.
+
 - Rogue final CI run `35625289587` / job `106418485380` passed Build, Lint, complete repository tests, Storybook and Playwright smoke.
 - Live Supabase audit after deployment found 1 active Rogue, 20 level rows, 9/9 READY subclasses, zero duplicate Rogue catalog keys, zero orphan Rogue subclasses and zero anon/auth execute permission on private Rogue installer/certifier functions.
 - Transactional live smoke verified Expertise/Weapon Mastery persistence through level changes, parent Rogue-level subclass resolution, Soulknife spend/recovery and assignment-removal cleanup, plus Arcane Trickster spell-slot consumption through the shared spell executor.
@@ -38,6 +44,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Updated final chat Stage 5 coverage so the reusable dice contract now rejects reintroduction of inline SVG canonical dice.
 
 ### Known incomplete work
+
+- Artificer Stages 1–6 are not present yet. Production currently has no Artificer class/subclass/level runtime rows, so Stage 7 is correctly blocked and no READY state has been written.
 
 ---
 
