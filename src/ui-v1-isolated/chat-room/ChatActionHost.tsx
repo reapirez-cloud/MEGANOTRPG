@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 
 import {
   resolveBonusDamageDiceSacrifice,
+  resolveD20Floor,
   type ResolvedAction,
   type ResolvedSpell,
 } from "../../character-engine/index.ts"
@@ -140,7 +141,16 @@ export default function ChatActionHost({
     label: string,
     modifier: number,
     kind: "ability" | "skill" | "save",
+    context?: { key?: string; proficiencyRank?: number },
   ) {
+    const d20Floor = resolved.contract
+      ? resolveD20Floor(resolved.contract, {
+          kind,
+          key: context?.key,
+          proficiencyRank: context?.proficiencyRank,
+        })?.minimum
+      : undefined
+
     await command(() =>
       genaSession.sendRoll({
         roomId: model.roomId,
@@ -149,6 +159,7 @@ export default function ChatActionHost({
         modifier,
         kind,
         rollD20: true,
+        ...(d20Floor ? { d20Floor } : {}),
       }),
     )
     onClose()
