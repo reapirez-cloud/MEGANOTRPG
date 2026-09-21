@@ -652,7 +652,7 @@ Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and al
 ## Artificer (`class:artificer`)
 
 **Text:** `DEFERRED_USER_TRANSLATION`  
-**Mechanics/runtime:** `IN_PROGRESS_STAGE_1_COMPLETE`
+**Mechanics/runtime:** `IN_PROGRESS_STAGE_2_COMPLETE`
 
 - `canonical_source: Eberron: Forge of the Artificer (2025)`
 - `literary_policy: USER_TRANSLATION_LATER`
@@ -664,8 +664,15 @@ Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and al
 - `stage_1_total_stable_feature_identities: 43`
 - `supported_subclass_target: 5 — Alchemist, Armorer, Artillerist, Battle Smith, Cartographer`
 - `unsupported_historical_subclass: artificer-reanimator — EXCLUDED`
-- `stage_2_foundation_1_20: NEXT`
-- `stage_3_core_item_replication_runtime: NOT_STARTED`
+- `stage_2_foundation_1_20_and_spellcasting: COMPLETE_2026_09_21`
+- `stage_2_runtime_revision: efota-2025-artificer-stage2-foundation-spellcasting-v1`
+- `stage_2_live_state: 1 active class / 20 levels / 92 class spell links / 92 template spell links / 0 active subclasses`
+- `stage_2_spell_choice_shape: 21 selectable cantrips + Mending from Tinker's Magic + 70 levelled spells`
+- `stage_2_shared_spell_definitions_added: 6`
+- `stage_2_magic_item_plan_provider: reference_item_plans — generic Chasovoy validator installed`
+- `stage_2_subclass_runtime: false`
+- `stage_2_literary_fields: blank by user policy`
+- `stage_3_core_item_replication_runtime: NEXT`
 - `stage_4_remaining_base_runtime: NOT_STARTED`
 - `stage_5_subclass_wave_1: NOT_STARTED`
 - `stage_6_subclass_wave_2_and_ux: NOT_STARTED`
@@ -678,10 +685,10 @@ Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and al
 - `current_production_runtime: 0 class rows / 0 subclass rows / 0 level rows`
 - `current_production_spell_links: 29 — audited as stale/incomplete for the 2025 target`
 
-Stage 1 is complete as a source/architecture freeze. It deliberately does not create
-runtime rows or claim playability. The clean 2025 package must now begin at Stage 2;
-the retired generic Artificer installer may be consulted structurally but must never
-be restored wholesale.
+Stages 1–2 are complete. Stage 2 now installs the clean 2025 class foundation,
+20 levels and shared spell runtime, but it does not claim full class playability.
+Stage 3 is the next executable dependency; the retired generic Artificer installer
+may be consulted structurally but must never be restored wholesale.
 
 The Stage 7 gate remains intentionally blocked until Stages 2–6 are implemented.
 Literary translation and Voss prose are not mechanical prerequisites.
