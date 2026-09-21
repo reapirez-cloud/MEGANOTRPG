@@ -2,12 +2,14 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-21-P
+## Patch — 2026-09-21-P
 
-**Status:** OPEN
-**Branch:** `dev`
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `e5040156d93d97ebc5b72ff0f7ce3706bcefd071`
 **Started:** 2026-09-21
+**Released:** 2026-09-21
+**Release identity:** `main / 2026-09-21-P`
 
 ### Player-facing changes
 
@@ -51,6 +53,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added final Stage 5 regressions for 10+ dice packed layouts, 320px sizing, long modifier/total scaling, neutral roll semantics, reusable canonical/fallback dice and the removal of valid roll events from the legacy generic-stat rendering path.
 - Tightened the older graphite/outcome regression so it checks whole outcome/color tokens instead of falsely treating the `red` letters inside `StructuredRollSummary` as a red outcome color; also corrected the d12 outer silhouette to twelve vertices.
 - Percentile d100 pairs are constrained to the same die slot as ordinary glyphs, so multi-d100 rolls cannot overflow or collide with adjacent dice in grouped/dense layouts.
+- Pre-release exact-head CI on `cc997231c83fce56004b01de10371aa08c765ed2` passed Build, Lint, repository tests, Storybook and Playwright smoke.
 
 ### Known incomplete work
 
