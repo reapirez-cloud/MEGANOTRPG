@@ -67,7 +67,7 @@ test("stage 4 supports attack, item and class ability without changing feed arch
 
 test("stage 4 keeps game cards graphite and avoids outcome colors", async () => {
   const card = await readFile(cardPath, "utf8")
-  assert.doesNotMatch(card, /success|failure|critical|green|red/i)
+  assert.doesNotMatch(card, /\b(success|failure|critical|green|red)\b/i)
 })
 
 

@@ -46,6 +46,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added dialogue Stage 2 regression coverage for left/right bubble geometry, persona-aware grouping, readable graphite styling, centered system events, dynamic actor avatars and removal of the repeated ordinary Player badge.
 - Reconciled two stale chat regressions with the Stage 1/2 ownership contract, then added Roll Stage 3 coverage for structured d20/free-die data, arbitrary die sides, raw-value preservation and string-parsing-free card rendering.
 - Added Roll Stage 4 regressions for canonical die geometry, d100 percentile rendering, arbitrary-dN fallback, raw values inside SVGs, responsive dice density and the separation of raw dice / modifier / total without invented success/failure judgement.
+- Tightened the older graphite/outcome regression so it checks whole outcome/color tokens instead of falsely treating the `red` letters inside `StructuredRollSummary` as a red outcome color; also corrected the d12 outer silhouette to twelve vertices.
 
 ### Known incomplete work
 

@@ -60,7 +60,7 @@ function StandardDie({
   if (sides === 12) {
     return (
       <svg viewBox="0 0 100 100" aria-hidden="true">
-        <polygon className="u1-die-glyph__face" points="50,4 72,11 89,28 96,50 87,74 67,91 40,96 17,82 5,59 8,34 27,14" />
+        <polygon className="u1-die-glyph__face" points="50,4 72,10 89,27 96,50 89,73 72,90 50,96 28,90 11,73 4,50 11,27 28,10" />
         <polygon points="50,23 72,39 64,66 36,66 28,39" />
         <path d="M50 4v19M72 11 72 39M89 28 72 39M96 50 64 66M87 74 64 66M67 91 64 66M40 96 36 66M17 82 36 66M5 59 28 39M8 34 28 39M27 14 28 39" />
         <text x="50" y="56" fontSize={fontSize}>{text}</text>
