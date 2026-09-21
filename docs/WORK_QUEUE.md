@@ -61,6 +61,7 @@ Current checkpoint:
 - Generic Chasovoy `reference_item_plans` validation is installed for Stage 3.
 - The Stage 7 certifier exists only as a fail-closed future gate; it does not make the class READY.
 - Stage 3 is complete: Tinker's Magic creates real temporary Cheburashka instances with Long-Rest expiry; Replicate Magic Item uses persistent Chasovoy plan identities, exact plan/item progression, server-authoritative Long-Rest reconciliation, provenance cleanup and generic attunement. Stage 4 is next: remaining base-class runtime.
+- Stage 4 is next: Magic Item Tinker, Flash of Genius, Magic Item Adept, Spell-Storing Item, Advanced Artifice, Magic Item Master and Soul of Artifice.
 - Do not restore the retired historical Artificer installer wholesale.
 
 ## Inventory / scene interaction follow-up
