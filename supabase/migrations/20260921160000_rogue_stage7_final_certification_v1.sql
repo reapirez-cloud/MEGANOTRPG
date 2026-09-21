@@ -99,7 +99,7 @@ select distinct
   case
     when coalesce(nullif(mechanic->>'variantKey',''),'default')='default'
       then mechanic->>'key'
-    else mechanic->>'key'||'::'||mechanic->>'variantKey'
+    else (mechanic->>'key')||'::'||(mechanic->>'variantKey')
   end state_key
 from mechanics
 where mechanic->>'type'='resource'
@@ -462,7 +462,7 @@ begin
       case
         when coalesce(nullif(mechanic->>'variantKey',''),'default')='default'
           then mechanic->>'key'
-        else mechanic->>'key'||'::'||mechanic->>'variantKey'
+        else (mechanic->>'key')||'::'||(mechanic->>'variantKey')
       end key
     from all_mechanics
     where mechanic->>'type'='resource'
