@@ -2,7 +2,12 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
+import { resolveCharacterContract } from "../src/character-engine/index.ts"
 import { createInventoryMechanicalProjection } from "../src/inventory-engine/projection.ts"
+import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
+import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
+import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
+import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
 import type { InventoryItem } from "../src/types/characterSheet.ts"
 
 const migration = readFileSync(
@@ -11,6 +16,109 @@ const migration = readFileSync(
 )
 const plan = readFileSync(new URL("../src/data/classes/artificerRuntimePlan.md", import.meta.url), "utf8")
 const ledger = readFileSync(new URL("../src/rule-templates/CLASS_WORK_STATUS.md", import.meta.url), "utf8")
+
+
+function stage3Bundle(): CharacterTemplateBundle {
+  return {
+    template: {
+      id: "artificer",
+      campaign_id: "campaign",
+      kind: "class",
+      slug: "artificer-core",
+      name: "Артификер",
+      description: "Technical Artificer 2025 Stage 3 runtime fixture.",
+      version: 1,
+      mechanics: [],
+      choices: [],
+      parent_template_id: null,
+      unlock_level: null,
+      catalog_key: "class:artificer",
+      catalog_revision: "efota-2025-artificer-stage3-item-replication-v1",
+      source_kind: "official",
+      source_label: "Eberron: Forge of the Artificer (2025)",
+      is_builtin: true,
+      mechanical_summary: "Item-creation and replication runtime fixture.",
+      author_description: "",
+      author_comment: "",
+      rules_meta: {},
+      is_active: true,
+      created_by: null,
+      created_at: "2026-09-21T00:00:00Z",
+      updated_at: "2026-09-21T00:00:00Z",
+    },
+    assignment: {
+      id: "assignment",
+      character_id: "character",
+      template_id: "artificer",
+      template_level: 6,
+      selected_choices: {},
+      assigned_at: "2026-09-21T00:00:00Z",
+      updated_at: "2026-09-21T00:00:00Z",
+    },
+    levels: [{
+      id: "artificer-l1",
+      template_id: "artificer",
+      level: 1,
+      mechanics: [
+        {
+          id: "artificer-tinkers-magic-feature",
+          type: "grant",
+          sourceKey: "tinkers-magic",
+          target: "feature",
+          key: "class:artificer:tinkers-magic",
+          payload: {
+            label: "Tinker's Magic",
+            description: "Магическим действием создайте один допустимый предмет. Число использований ограничено отдельным запасом и полностью восстанавливается после долгого отдыха.",
+          },
+        },
+        {
+          id: "artificer-tinkers-magic-resource",
+          type: "resource",
+          sourceKey: "tinkers-magic",
+          key: "tinkers_magic",
+          label: "Tinker's Magic",
+          max: 4,
+          recharge: "long_rest",
+          restore: "full",
+          initial: "full",
+        },
+        {
+          id: "artificer-tinkers-magic-create",
+          type: "action",
+          sourceKey: "tinkers-magic",
+          key: "class:artificer:tinkers-magic:create",
+          label: "Tinker's Magic",
+          economy: "magic_action",
+          resourceKey: "tinkers_magic",
+          resourceCost: 1,
+          tags: ["artificer", "inventory"],
+        },
+      ],
+      choices: [],
+    }],
+  }
+}
+
+test("Stage 3 representative bundle passes shared package/resource/parser/CE gates", () => {
+  const bundle = stage3Bundle()
+  assert.doesNotThrow(() => assertClassPackageQuality([bundle]))
+  assert.doesNotThrow(() => assertClassResourcePolicy([bundle]))
+  const parsed = resolveTemplateBundles([bundle], 6)
+  const contract = resolveCharacterContract({
+    base: {
+      id: "character",
+      name: "Artificer",
+      level: 6,
+      abilities: { strength: 8, dexterity: 14, constitution: 14, intelligence: 18, wisdom: 10, charisma: 10 },
+      baseMaxHp: 45,
+      baseSpeed: 30,
+    },
+    state: { currentHp: 45, tempHp: 0, resources: { tinkers_magic: { current: 4 } } },
+    contributions: parsed.contributions,
+  })
+  assert.equal(contract.resources.find((entry) => entry.key === "tinkers_magic")?.max.value, 4)
+  assert.ok(contract.actions.some((entry) => entry.key === "class:artificer:tinkers-magic:create"))
+})
 
 function item(attuned: boolean): InventoryItem {
   return {
