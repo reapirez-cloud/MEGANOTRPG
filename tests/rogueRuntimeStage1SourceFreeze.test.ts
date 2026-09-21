@@ -129,15 +129,19 @@ test("Rogue Stage 1 matrix assigns all 61 features stable keys and runtime owner
   assert.match(matrix, /fallback token is after Long Rest rather than Initiative/i)
 })
 
-test("Rogue Stage 1 stays frozen while deployed Stages 2-4 advance the checkpoint to Stage 5", () => {
+test("Rogue Stage 1 stays frozen while deployed Stages 2-6 advance the checkpoint to Stage 7", () => {
   assert.match(plan, /Stage 1 — source freeze, literary closure and executable specification[\s\S]*?Status:\*\*\s*`COMPLETE_2026_09_12`/)
   assert.match(plan, /Stage 2 — clean class foundation and 1–20 progression[\s\S]*?Status:\*\*\s*`COMPLETE_2026_09_21`/)
   assert.match(plan, /Stage 3 — core Rogue gameplay runtime[\s\S]*?Status:\*\*\s*`COMPLETE_2026_09_21`/)
   assert.match(plan, /Stage 4 — remaining base class, recovery\/state semantics and base certification[\s\S]*?Status:\*\*\s*`COMPLETE_2026_09_21`/)
-  assert.match(plan, /Stage 5 — PHB 2024 subclass runtime[\s\S]*?Status:\*\*\s*`NOT_STARTED`/)
+  assert.match(plan, /Stage 5 — PHB 2024 subclass runtime[\s\S]*?Status:\*\*\s*`COMPLETE_2026_09_21`/)
+  assert.match(plan, /Stage 6 — legacy\/supplement subclass runtime[\s\S]*?Status:\*\*\s*`COMPLETE_2026_09_21`/)
+  assert.match(plan, /Stage 7 — final fail-closed certification and public activation[\s\S]*?Status:\*\*\s*`NOT_STARTED`/)
   assert.match(ledger, /stage_1_source_freeze_and_text_closure: COMPLETE_2026_09_12/)
   assert.match(ledger, /stage_2_foundation_1_20: COMPLETE_2026_09_21/)
   assert.match(ledger, /stage_3_core_rogue_runtime: COMPLETE_2026_09_21/)
   assert.match(ledger, /stage_4_base_runtime_certification: COMPLETE_2026_09_21/)
-  assert.match(queue, /Next Rogue stage: \*\*Stage 5 — PHB 2024 subclass runtime\*\*/)
+  assert.match(ledger, /stage_5_phb2024_subclasses: COMPLETE_2026_09_21/)
+  assert.match(ledger, /stage_6_legacy_supplement_subclasses: COMPLETE_2026_09_21/)
+  assert.match(queue, /Next Rogue stage: \*\*Stage 7 — final fail-closed production certification and public activation\*\*/)
 })
