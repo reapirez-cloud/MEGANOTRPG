@@ -15,6 +15,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - The exact OS gesture edge is now left to Telegram's native BackButton bridge, while MEGANOT's own swipe-back recognizer uses a nearby inner lane to avoid double-processing the same gesture.
 - Telegram's BackButton is now kept visible for the whole Mini App session, including root screens, so Android Back remains owned by MEGANOT instead of being handed back to Telegram to minimize/close the WebView.
 - UI 1.0 content now starts below Telegram's dynamic content safe area while the graphite backdrop still fills the physical screen; floating AI controls are clamped below the same boundary.
+- Chat feed entries now distinguish the current account's own messages from everyone else's, preparing the right/left dialogue layout without tying ownership to the currently selected character.
+- GM/owner speaker presentation remains dynamic: switching between Narrator or eligible characters/NPCs keeps each message's stored actor name, character identity and avatar while the account still determines which side is "mine".
 
 ### Database / migration changes
 
@@ -24,6 +26,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - App-owned history states now strip root-guard metadata when pushing normal routes, preventing guard flags from leaking into child screens.
 - Telegram BackButton dispatch now uses a priority registry: the app-level handler permanently owns system Back, while CharacterView temporarily takes higher priority for its internal sheet/inventory back stack without hiding the native button on cleanup.
 - Mini App bootstrap now calls Telegram `disableVerticalSwipes()` and synchronizes Telegram content safe-area changes into a MEGANOT CSS token.
+- ChatRoomScreen now passes the authenticated viewer user id into the feed; ChatFeed classifies every entry as `own`, `other` or `system`, while ChatFeedItem keeps actor presentation sourced exclusively from the message event snapshot.
 
 ### Tests / verification
 
@@ -31,6 +34,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Added regression coverage for persistent Telegram BackButton ownership, nested back-handler priority, disabled Telegram vertical collapse swipes, dynamic content safe-area wiring, global stage offset, and AI-orb safe-area clamping.
 - Reconciled the older character-sheet mobile BackButton test with the persistent native-back contract while preserving its legacy host-injection call shape for isolated tests.
 - Updated the Stage 16 Playwright safe-area assertion to verify the new global-stage contract: Telegram top inset belongs to the app stage, while character-sheet local padding/sticky offsets stay local instead of double-counting the same safe area.
+- Added chat ownership Stage 1 regression coverage that locks account-based side classification separately from dynamic GM speaker name/avatar/character identity.
 
 ### Known incomplete work
 
