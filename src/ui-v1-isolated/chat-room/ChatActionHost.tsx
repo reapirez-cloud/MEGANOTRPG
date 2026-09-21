@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
 
-import type {
-  ResolvedAction,
-  ResolvedSpell,
+import {
+  resolveBonusDamageDiceSacrifice,
+  type ResolvedAction,
+  type ResolvedSpell,
 } from "../../character-engine/index.ts"
 import ChatActionPanel, {
   type FreeDiceRequest,
@@ -162,6 +163,9 @@ export default function ChatActionHost({
     }
 
     const damage = action.damage[0]
+    const bonusDice = resolved.contract
+      ? resolveBonusDamageDiceSacrifice(action, resolved.contract.values)
+      : null
     const mechanicId = templateMechanicIdForChatAction(action)
 
     if (mechanicId) {
@@ -194,14 +198,14 @@ export default function ChatActionHost({
       }
 
       await command(() =>
-        action.attack || damage?.dice
+        action.attack || damage?.dice || bonusDice
           ? genaSession.sendTemplateRoll({
               ...common,
               kind: "action",
               modifier: action.attack?.bonus.value || 0,
               rollD20: Boolean(action.attack),
-              diceCount: damage?.dice?.count || 0,
-              diceSides: damage?.dice?.sides || 0,
+              diceCount: damage?.dice?.count ?? bonusDice?.remainingDice ?? 0,
+              diceSides: damage?.dice?.sides ?? bonusDice?.dieSides ?? 0,
               diceModifier: damage?.modifier.value || 0,
             })
           : genaSession.sendTemplateAction({
@@ -254,7 +258,7 @@ export default function ChatActionHost({
       : []
 
     await command(() =>
-      action.attack || damage?.dice
+      action.attack || damage?.dice || bonusDice
         ? genaSession.sendRoll({
             roomId: model.roomId,
             characterId,
@@ -262,8 +266,8 @@ export default function ChatActionHost({
             kind: "action",
             modifier: action.attack?.bonus.value || 0,
             rollD20: Boolean(action.attack),
-            diceCount: damage?.dice?.count || 0,
-            diceSides: damage?.dice?.sides || 0,
+            diceCount: damage?.dice?.count ?? bonusDice?.remainingDice ?? 0,
+            diceSides: damage?.dice?.sides ?? bonusDice?.dieSides ?? 0,
             diceModifier: damage?.modifier.value || 0,
             resourceCosts: costs,
           })
