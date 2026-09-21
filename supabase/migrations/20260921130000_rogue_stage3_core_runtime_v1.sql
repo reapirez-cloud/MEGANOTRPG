@@ -415,7 +415,7 @@ begin
       jsonb_build_array(
         jsonb_build_object(
           'kind','semantic','key','scene_precondition',
-          'payload',jsonb_build_object('condition','no_movement_this_turn','enforcement','gm')
+          'payload',jsonb_build_object('condition','no_movement_this_turn','adjudication','gm')
         ),
         jsonb_build_object(
           'kind','semantic','key','next_attack_advantage',
