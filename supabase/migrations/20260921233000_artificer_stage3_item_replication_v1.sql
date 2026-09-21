@@ -129,7 +129,8 @@ begin
         select current_revision from public.reference_definitions where id=v_id
       );
       update public.reference_definitions set status='active',source_kind='official',
-        source_label='Eberron: Forge of the Artificer (2025)',updated_at=now()
+        source_label='Eberron: Forge of the Artificer (2025)',
+        external_id='artificer-plan:'||(v->>'key'),updated_at=now()
       where id=v_id;
     end if;
   end loop;
@@ -181,6 +182,10 @@ begin
       where definition_id=v_id and revision=(
         select current_revision from public.reference_definitions where id=v_id
       );
+      update public.reference_definitions set status='active',source_kind='official',
+        source_label='Player''s Handbook gear via Eberron: Forge of the Artificer (2025)',
+        external_id='artificer-tinker:'||(v->>'key'),updated_at=now()
+      where id=v_id;
     end if;
   end loop;
 end
