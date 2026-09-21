@@ -299,7 +299,15 @@ Expected revision:
 
 ## Stage 5 — PHB 2024 subclass runtime
 
-**Status:** `NOT_STARTED`
+**Status:** `COMPLETE_2026_09_21`
+
+Closure:
+- Thief, Assassin, Arcane Trickster and Soulknife are deployed under `xphb-2024-rogue-stage5-phb-subclasses-v1`;
+- all four inherit parent Rogue level and unlock at Rogue 3;
+- Arcane Trickster uses the shared Wizard catalog / `spell_slot_N` ledgers and generic 8-hour temporary spell access for Spell Thief;
+- Soulknife uses the shared persistent resource/action runtime, including exact Psionic Energy Dice recovery and native CE Psychic Blade attacks;
+- production audit after deployment found exactly 4 active Rogue subclasses and no unsupported package;
+- full build, lint, tests, Storybook and Playwright passed before production apply.
 
 Goal: implement the four subclasses whose active rules are part of the 2024 Rogue family.
 
@@ -358,7 +366,15 @@ Expected revision:
 
 ## Stage 6 — legacy/supplement subclass runtime
 
-**Status:** `NOT_STARTED`
+**Status:** `COMPLETE_2026_09_21`
+
+Closure:
+- Swashbuckler, Inquisitive, Mastermind and Scout are deployed as exact Xanathar legacy packages; Phantom is deployed from Tasha under `rogue-stage6-legacy-subclasses-v1`;
+- Stage 6 added only two genuinely generic primitives: `unproficient_skill_or_tool` Choice Runtime eligibility and `ensure_minimum` persistent rest recovery;
+- Phantom Whispers of the Dead uses shared Short/Long Rest choice refresh, Soul Trinkets use the shared resource ledger, and Death's Friend guarantees one trinket after Long Rest only when the pool is empty;
+- frozen regression locks are live: no Mastermind invented detector, Scout's Bonus Action attack may target any legal target, Wails uses half Sneak Attack dice rounded up, Phantom has no invented Undead/Construct exclusion, queried spirits need not tell the truth, and Death's Friend has no Initiative trigger;
+- production audit after deployment found exactly 9 supported active Rogue subclasses total, all parented to the one active Rogue class at unlock level 3;
+- SQL dry-run, strict package/resource/parser/CE tests, full repository tests, Storybook and Playwright all passed before production apply.
 
 Goal: implement the five supported non-PHB-2024 subclass packages without silently rewriting them into imaginary 2024 versions.
 
