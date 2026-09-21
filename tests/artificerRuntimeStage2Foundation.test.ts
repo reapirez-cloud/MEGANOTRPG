@@ -94,7 +94,9 @@ test("Artificer Stage 2 representative bundle passes shared package/resource/par
     contributions: parsed.contributions,
   })
   assert.ok(contract.capabilities.proficiencies.some((entry) => entry.key === "savingThrow:intelligence"))
-  assert.equal(contract.resources.find((entry) => entry.key === "spell_slot_1")?.max, 4)
+  const slot = contract.resources.find((entry) => entry.key === "spell_slot_1")
+  assert.ok(slot)
+  assert.equal(slot.max.value, 4)
   const mending = contract.spells.find((entry) => entry.key === "spell:mending")
   assert.ok(mending)
   assert.equal(mending.accesses[0]?.methods[0]?.ability, "intelligence")

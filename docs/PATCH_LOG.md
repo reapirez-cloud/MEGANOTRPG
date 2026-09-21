@@ -24,7 +24,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Reconciled the frozen 2025 Artificer spell set from 29 stale links to exactly 92 class links and 92 template spell links. Added the six missing shared spell definitions with concise structured metadata instead of copied source prose.
 - Added generic Chasovoy-backed `reference_item_plans` validation so Stage 3 can persist magic-item plan choices by stable definition identity rather than copying item definitions into class JSON.
 
-- Artificer Stage 1 performs no runtime database mutation. Live audit remains 0 Artificer class rows, 0 subclass rows and 0 level rows; the existing 29 Artificer spell links are recorded as stale/incomplete for the 2025 target and must be reconciled in Stage 2.
+- Artificer Stage 1 itself performed no runtime database mutation: its checkpoint had 0 Artificer class/subclass/level rows and 29 stale spell links. Stage 2 has since replaced that checkpoint with the clean 2025 runtime foundation and reconciled spell links.
 
 - Added an Artificer Stage 7 certification gate as private service-role-only infrastructure. It refuses READY unless the complete 1–20 class, exact five-subclass roster, Stage 1–6 metadata, coherent actions/resources/choices, spell catalog access and shared RPC permissions are present.
 
@@ -53,11 +53,12 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 - Added Artificer Stage 2 regression coverage for shared class-quality/resource/parser/CE gates, exact 20-level structure, 92-spell parity, the six missing shared spell definitions, separate Mending grant, exact half-caster progression, and generic item-plan provider validation.
 - Live Supabase Stage 2 audit: 1 active Artificer class, 20 level rows, 92 class spell links, 92 template spell links, 0 active Artificer subclasses, revision `efota-2025-artificer-stage2-foundation-spellcasting-v1`, and intentionally blank author fields.
+- Reconciled the Stage 2 CE regression assertion with the resolved resource contract: tests now inspect `spell_slot_1.max.value` instead of comparing the structured max object to a raw number; runtime and database mechanics are unchanged.
 
 - Added Artificer Stage 1 regression coverage locking the exact five-subclass roster, 43 stable feature identities, blank literary fields, current base feature topology, Reanimator exclusion, stale 29-link spell audit and Stage 2 handoff.
 
 - Added Artificer Stage 7 regression coverage for fail-closed ordering, exact subclass roster, Stage 1–6 prerequisites, private-function permissions and the rule that blank literary fields cannot block mechanical certification.
-- Live Supabase verification confirmed the Artificer certifier exists, `anon=false`, `authenticated=false`, `service_role=true`; the current database still has 0 Artificer classes, 0 subclasses and 0 levels, and an explicit certification attempt fails closed with `ARTIFICER_FINAL_ACTIVE_CLASS_NOT_FOUND` as intended.
+- Live Supabase verification confirmed the Artificer certifier exists, `anon=false`, `authenticated=false`, `service_role=true`. At the gate-install checkpoint it failed closed with `ARTIFICER_FINAL_ACTIVE_CLASS_NOT_FOUND`; after Stage 2 the gate remains intentionally blocked until Stages 3–6 exist.
 
 - Rogue final CI run `35625289587` / job `106418485380` passed Build, Lint, complete repository tests, Storybook and Playwright smoke.
 - Live Supabase audit after deployment found 1 active Rogue, 20 level rows, 9/9 READY subclasses, zero duplicate Rogue catalog keys, zero orphan Rogue subclasses and zero anon/auth execute permission on private Rogue installer/certifier functions.
