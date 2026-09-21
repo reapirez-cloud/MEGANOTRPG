@@ -1,4 +1,5 @@
 import type { SpellClassKey } from "../lib/spellCatalog"
+import { artificerReferenceCurrent } from "./classes/artificerReferenceCurrent.ts"
 import { bardReferenceCurrent } from "./classes/bardReferenceCurrent.ts"
 import { monkReferenceDraft } from "./classes/monkReferenceDraft.ts"
 import { monkSubclassReferenceDrafts } from "./classes/monkSubclassReferenceDraft.ts"
@@ -258,6 +259,7 @@ export const classReference: ClassReferenceEntry[] = [
     description: "Волшебник не получает силу по наследству и не вымаливает её у богов — он изучает, записывает и повторяет формулы, пока реальность не начинает подчиняться почерку. Его книга заклинаний хранит растущий арсенал; после отдыха он меняет подготовку под задачу, читает ритуалы прямо из книги и возвращает часть потраченной магии во время короткого отдыха. Восс обычно добавляет, что хороший волшебник готовится к завтрашней войне, а плохой становится причиной сегодняшней.",
     subclasses: [...wizardReferenceSubclasses, ...wizardTashaReferenceSubclasses, ...wizardSupplementReferenceSubclasses],
   },
+  artificerReferenceCurrent,
   bardReferenceCurrent,
   monkLiteraryReference,
   paladinReferenceComplete,
