@@ -36,6 +36,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Tests / verification
 
 - Added Artificer Stage 7 regression coverage for fail-closed ordering, exact subclass roster, Stage 1–6 prerequisites, private-function permissions and the rule that blank literary fields cannot block mechanical certification.
+- Live Supabase verification confirmed the Artificer certifier exists, `anon=false`, `authenticated=false`, `service_role=true`; the current database still has 0 Artificer classes, 0 subclasses and 0 levels, and an explicit certification attempt fails closed with `ARTIFICER_FINAL_ACTIVE_CLASS_NOT_FOUND` as intended.
 
 - Rogue final CI run `35625289587` / job `106418485380` passed Build, Lint, complete repository tests, Storybook and Playwright smoke.
 - Live Supabase audit after deployment found 1 active Rogue, 20 level rows, 9/9 READY subclasses, zero duplicate Rogue catalog keys, zero orphan Rogue subclasses and zero anon/auth execute permission on private Rogue installer/certifier functions.
