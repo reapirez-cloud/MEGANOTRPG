@@ -19,14 +19,14 @@ function subclassFeature(subclassId: string, name: string) {
   return feature
 }
 
-test("Rogue wave 3 publishes Mastermind Scout and Phantom literary feature packs without claiming runtime", () => {
+test("Rogue wave 3 publishes Mastermind Scout and Phantom literary feature packs with Stage 7 runtime activation", () => {
   for (const [id, expectedCount] of [
     ["mastermind", 5],
     ["scout", 5],
     ["phantom", 5],
   ] as const) {
     const value = subclass(id)
-    assert.equal(value.referenceOnly, true)
+    assert.equal(value.referenceOnly, false)
     assert.equal(value.features?.length, expectedCount)
     assert.ok(value.features?.every((feature) => feature.explanation.trim()))
     assert.ok(value.features?.every((feature) => feature.voss?.trim()))
