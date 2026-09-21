@@ -363,12 +363,6 @@ begin
       'resourceCosts',jsonb_build_array(jsonb_build_object(
         'key','rogue_stroke_of_luck','amount',1
       )),
-      'requirements',jsonb_build_array(jsonb_build_object(
-        'kind','state',
-        'key','failed_d20_test',
-        'enforcement','gm',
-        'label','Используйте только после проваленного D20 Test'
-      )),
       'effects',jsonb_build_array(jsonb_build_object(
         'kind','semantic',
         'key','d20_result_override',
