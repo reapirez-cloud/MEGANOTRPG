@@ -34,7 +34,7 @@ test("feed makes GM and player authors explicit", async () => {
 
   assert.match(feed, /data-author-role=/)
   assert.match(feed, /GM · Рассказчик/)
-  assert.match(feed, />Игрок</)
+  assert.match(feed, /: "Игрок"/)
   assert.match(css, /data-author-role="gm"/)
 })
 
