@@ -18,15 +18,22 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Database / migration changes
 
-- None. Dice art and value placement are presentation-only and do not change TOBIK, persisted roll payloads, Supabase schema or gameplay state.
+- Added Rogue Stage 7 final fail-closed certification at `xphb-2024-rogue-runtime-final-v1`; production now records base Rogue and all nine supported subclasses as runtime READY only after structural, reference, choice, spell, resource and permission checks pass.
+- Added generic assignment-resource cleanup so removing a class/subclass assignment deletes a persistent resource only when no remaining active assignment still contributes that resource identity.
+- Dice art and value placement remain presentation-only and do not change TOBIK or persisted roll payloads.
 
 ### Runtime and architecture changes
 
+- Completed Rogue Stage 7: public Rogue/reference cards now expose the same certified base + nine-subclass runtime roster; no Rogue-specific Sheet or Chat mechanics branch was introduced.
+- Final Rogue certification audits shared CE/GENA actions, d20 semantics, Choice Runtime, Arcane Trickster Wizard spell access, Soulknife resource semantics and private installer permissions before writing READY.
 - Kept `DiceGlyph` as the single reusable roll presentation component. Canonical asset selection is centralized in one side-to-PNG map, with no duplicated parsing or roll mechanics.
 - Removed inline canonical SVG geometry and SVG text rendering from `DiceGlyph`; the raw result is now an HTML overlay above the PNG asset.
 
 ### Tests / verification
 
+- Rogue final CI run `35625289587` / job `106418485380` passed Build, Lint, complete repository tests, Storybook and Playwright smoke.
+- Live Supabase audit after deployment found 1 active Rogue, 20 level rows, 9/9 READY subclasses, zero duplicate Rogue catalog keys, zero orphan Rogue subclasses and zero anon/auth execute permission on private Rogue installer/certifier functions.
+- Transactional live smoke verified Expertise/Weapon Mastery persistence through level changes, parent Rogue-level subclass resolution, Soulknife spend/recovery and assignment-removal cleanup, plus Arcane Trickster spell-slot consumption through the shared spell executor.
 - Updated Roll Stage 4 regression coverage to require all six canonical PNG paths, 192×192 dimensions, sub-12KB optimized assets, raw-value overlay wiring, per-die face offsets, PNG d100 composition and a non-SVG arbitrary-dN fallback.
 - Updated final chat Stage 5 coverage so the reusable dice contract now rejects reintroduction of inline SVG canonical dice.
 
