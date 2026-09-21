@@ -105,3 +105,72 @@ export function resolveBonusDamageDiceSacrifice(
     ...(label ? { label } : {}),
   }
 }
+
+
+export const SEMANTIC_DIE_ROLL_EFFECT = "semantic_die_roll" as const
+
+export type ResolvedSemanticDieRoll = {
+  count: number
+  sides: number
+  modifier: number
+  label?: string
+}
+
+/**
+ * Generic non-damage die roll requested by an action semantic. Useful for
+ * utility resources whose die result drives movement, duration, or a later
+ * GM-confirmed conditional spend without pretending the roll is damage.
+ */
+export function resolveSemanticDieRoll(
+  action: Pick<ResolvedAction, "effects">,
+  values: readonly ResolvedValue[],
+): ResolvedSemanticDieRoll | null {
+  const effect = action.effects.find(
+    (item) =>
+      item.kind === "semantic" &&
+      item.key === SEMANTIC_DIE_ROLL_EFFECT,
+  )
+  if (!effect || effect.kind !== "semantic") return null
+  const payload = asRecord(effect.payload)
+  if (!payload) return null
+
+  const count = positiveInteger(payload.count) ?? 1
+  const literalSides = positiveInteger(payload.sides)
+  const valueKey =
+    typeof payload.sidesValueKey === "string"
+      ? payload.sidesValueKey.trim()
+      : ""
+  const resolvedValue = valueKey
+    ? values.find(
+        (value) =>
+          value.key === valueKey &&
+          value.variantKey === "default",
+      )?.value.value
+    : undefined
+  const sides =
+    literalSides ??
+    (typeof resolvedValue === "number" &&
+    Number.isInteger(resolvedValue) &&
+    resolvedValue >= 2
+      ? resolvedValue
+      : null)
+
+  if (!sides) return null
+
+  const modifier =
+    typeof payload.modifier === "number" &&
+    Number.isFinite(payload.modifier)
+      ? payload.modifier
+      : 0
+  const label =
+    typeof payload.label === "string" && payload.label.trim()
+      ? payload.label.trim()
+      : undefined
+
+  return {
+    count,
+    sides,
+    modifier,
+    ...(label ? { label } : {}),
+  }
+}
