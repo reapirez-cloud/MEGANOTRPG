@@ -20,7 +20,7 @@ Resume trigger: `ALL_CLASS_TRANSLATIONS_COMPLETE`.
 
 ## Rogue READY work
 
-**Status:** STAGE_2_COMPLETE_STAGE_3_NEXT  
+**Status:** STAGE_3_COMPLETE_STAGE_4_NEXT  
 **Marked:** 2026-09-21  
 **Branch:** dev
 
@@ -48,9 +48,17 @@ Stage 2 checkpoint:
 - No Rogue subclass runtime is active yet; the retired extra Scion package remains excluded.
 - Rogue remains `referenceOnly=true` and overall mechanics are `IN_PROGRESS`.
 
-Next Rogue stage: **Stage 3 — core Rogue gameplay runtime**.
-- Implement Sneak Attack structured execution boundary, Cunning Action, Steady Aim, Cunning Strike, Improved Cunning Strike and Devious Strikes through shared mechanics.
-- Do not redo Stage 1/2 unless their frozen contract actually changes.
+Stage 3 checkpoint:
+- Active production revision is `xphb-2024-rogue-stage3-core-runtime-v1`.
+- Sneak Attack executes through shared CE/GENA and rolls the resolved Rogue-level bonus-damage pool.
+- Cunning Action and Steady Aim are shared actions; scene-only turn/movement legality remains GM-adjudicated rather than persisted as fake state.
+- Cunning Strike / Improved Cunning Strike / Devious Strikes use a generic `bonus_damage_dice_sacrifice` semantic so the remaining Sneak Attack dice are rolled correctly after exact rider costs.
+- Production has 26 Rogue class actions, 21 dice-sacrifice routes, 20 level rows and zero active Rogue subclasses.
+- Rogue remains `referenceOnly=true` and overall mechanics are `IN_PROGRESS`.
+
+Next Rogue stage: **Stage 4 — remaining base class, recovery/state semantics and base certification**.
+- Implement/audit Uncanny Dodge, Evasion, Reliable Talent, Slippery Mind, Elusive and Stroke of Luck, then certify the complete base Rogue 1–20 package.
+- Do not redo Stages 1–3 unless their frozen contract actually changes.
 
 ## Inventory / scene interaction follow-up
 
