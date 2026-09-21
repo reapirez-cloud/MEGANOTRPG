@@ -5,20 +5,42 @@ import test from "node:test"
 import {
   fallbackBackPath,
   isSwipeBackGesture,
+  swipeBackEdge,
   swipeBackEdgeWidth,
 } from "../src/ui-v1-isolated/navigationGestures.ts"
 
 const appPath = new URL("../src/ui-v1-isolated/UiV1App.tsx", import.meta.url)
+const characterViewPath = new URL("../src/ui-v1-isolated/CharacterView.tsx", import.meta.url)
+const routeSurfacePaths = [
+  "../src/ui-v1-isolated/ChatCatalog.tsx",
+  "../src/ui-v1-isolated/chat-room/ChatRoomScreen.tsx",
+  "../src/ui-v1-isolated/chat-room/ChatRoomHeader.tsx",
+  "../src/ui-v1-isolated/SectionScreens.tsx",
+  "../src/ui-v1-isolated/ArtSection.tsx",
+].map((path) => new URL(path, import.meta.url))
 
 test("swipe back only accepts a deliberate rightward gesture from the left edge", () => {
   const viewportWidth = 390
   const edge = swipeBackEdgeWidth(viewportWidth)
 
   assert.equal(edge, 31.2)
+  assert.equal(swipeBackEdge(12, viewportWidth), "left")
+  assert.equal(swipeBackEdge(378, viewportWidth), "right")
+  assert.equal(swipeBackEdge(120, viewportWidth), null)
+
   assert.equal(isSwipeBackGesture({
     startX: 12,
     startY: 300,
     endX: 104,
+    endY: 310,
+    durationMs: 330,
+    viewportWidth,
+  }), true)
+
+  assert.equal(isSwipeBackGesture({
+    startX: 378,
+    startY: 300,
+    endX: 286,
     endY: 310,
     durationMs: 330,
     viewportWidth,
@@ -64,12 +86,23 @@ test("deep links have a deterministic in-app fallback back path", () => {
 })
 
 test("ui v1 routes swipe, browser, and Telegram back through one navigation contract", async () => {
-  const app = await readFile(appPath, "utf8")
+  const [app, characterView, ...routeSurfaces] = await Promise.all([
+    readFile(appPath, "utf8"),
+    readFile(characterViewPath, "utf8"),
+    ...routeSurfacePaths.map((path) => readFile(path, "utf8")),
+  ])
 
   assert.match(app, /pushAppHash\(path\)/)
   assert.match(app, /useSwipeBackNavigation\(/)
   assert.match(app, /navigateAppBack\(\)/)
   assert.match(app, /bindTelegramBackButton\(navigateBack\)/)
+  assert.match(app, /screenOwnsTelegramBack/)
+  assert.match(app, /!canGoBack \|\| screenOwnsTelegramBack/)
+  assert.match(characterView, /bindTelegramBackButton\(handleBack\)/)
   assert.match(app, /addEventListener\("popstate", sync\)/)
   assert.doesNotMatch(app, /if \(window\.history\.length > 1\) window\.history\.back\(\)/)
+
+  for (const source of routeSurfaces) {
+    assert.doesNotMatch(source, /window\.location\.hash\s*=/)
+  }
 })

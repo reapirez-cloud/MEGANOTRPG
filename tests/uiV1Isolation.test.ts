@@ -6,6 +6,7 @@ const html = fs.readFileSync("index.html", "utf8")
 const aliasHtml = fs.readFileSync("ui-v1.html", "utf8")
 const entry = fs.readFileSync("src/ui-v1-isolated/main.tsx", "utf8")
 const app = fs.readFileSync("src/ui-v1-isolated/UiV1App.tsx", "utf8")
+const navigationGestures = fs.readFileSync("src/ui-v1-isolated/navigationGestures.ts", "utf8")
 const styles = fs.readFileSync("src/ui-v1-isolated/styles.css", "utf8")
 const workspace = fs.readFileSync("src/ui-v1-isolated/Workspace.tsx", "utf8")
 const workspaceData = fs.readFileSync("src/ui-v1-isolated/useWorkspaceData.ts", "utf8")
@@ -216,10 +217,14 @@ test("the five supplied Knowledge Base artworks are wired to their exact panels"
   assert.match(sectionRegistry, /id: "chaos"[\s\S]*?image: "\/ui-v1\/panels\/kb-chaos\.webp"[\s\S]*?state: "placeholder"/)
 })
 
-test("root navigation gestures stay on the bottom bar instead of hijacking the screen edge", () => {
+test("root tab swipes stay on the dock while back navigation owns only the screen edges", () => {
   assert.doesNotMatch(app, /event\.clientX <= 26|restoreAfterBackRef|scrollPositionsRef|currentScrollRoot/)
   assert.match(app, /className="u1-dock"[\s\S]*?onPointerDown=\{onPointerDown\}/)
   assert.match(app, /className="u1-dock"[\s\S]*?onPointerUp=\{finishSwipe\}/)
+  assert.match(navigationGestures, /function swipeBackEdge/)
+  assert.match(navigationGestures, /return "left"/)
+  assert.match(navigationGestures, /return "right"/)
+  assert.match(navigationGestures, /\.u1-dock/)
 })
 
 test("root spaces support deliberate horizontal swipe navigation with soft haptics", () => {
