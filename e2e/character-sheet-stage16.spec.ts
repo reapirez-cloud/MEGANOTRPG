@@ -93,23 +93,32 @@ test("Stage 16 consumes Telegram safe areas and stable viewport height", async (
       ".u1-character-sheet__topbar",
     )
     const app = document.querySelector<HTMLElement>(".u1-app")
-    if (!sheet || !topbar || !app) throw new Error("Stage 16 shell missing")
+    const stage = document.querySelector<HTMLElement>(".u1-stage")
+    if (!sheet || !topbar || !app || !stage) {
+      throw new Error("Stage 16 shell missing")
+    }
 
     const sheetStyle = getComputedStyle(sheet)
     const topbarStyle = getComputedStyle(topbar)
     const appStyle = getComputedStyle(app)
+    const stageStyle = getComputedStyle(stage)
 
     return {
+      stagePaddingTop: Number.parseFloat(stageStyle.paddingTop),
       paddingTop: Number.parseFloat(sheetStyle.paddingTop),
       paddingBottom: Number.parseFloat(sheetStyle.paddingBottom),
       stickyTop: Number.parseFloat(topbarStyle.top),
+      topbarViewportTop: topbar.getBoundingClientRect().top,
       appHeight: Number.parseFloat(appStyle.height),
     }
   })
 
-  expect(values.paddingTop).toBe(36)
+  expect(values.stagePaddingTop).toBe(28)
+  expect(values.paddingTop).toBe(8)
+  expect(values.stagePaddingTop + values.paddingTop).toBe(36)
   expect(values.paddingBottom).toBe(90)
-  expect(values.stickyTop).toBe(28)
+  expect(values.stickyTop).toBe(0)
+  expect(values.topbarViewportTop).toBeGreaterThanOrEqual(28)
   expect(values.appHeight).toBe(700)
 })
 
