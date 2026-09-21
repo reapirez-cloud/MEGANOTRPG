@@ -1,3 +1,9 @@
+-- CLASS_MIGRATION_SCOPE: mechanics
+-- CLASS_INTEGRATION_STRICT: class:artificer
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
+-- CLASS_PACKAGE_TEST: tests/artificerRuntimeStage3Replication.test.ts
+-- CLASS_WORK_STATUS: artificer:stage3_core_item_replication=COMPLETE,artificer:mechanics=IN_PROGRESS_STAGE3_COMPLETE
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 -- Artificer Stage 3: generic item-plan runtime + Cheburashka lifecycle.
 -- Scope: core Tinker's Magic and Replicate Magic Item infrastructure only.
 -- Literary/Voss text remains intentionally deferred.
