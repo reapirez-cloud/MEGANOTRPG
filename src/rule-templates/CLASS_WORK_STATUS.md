@@ -547,7 +547,7 @@ Base Warlock, all 28 supported Eldritch Invocations and all nine supported runti
 - `base_authoring_source: src/data/classes/rogueReferenceCurrent.ts`
 - `subclass_authoring_sources: src/data/classes/rogueSubclassReferenceWave1.ts; src/data/classes/rogueSubclassReferenceWave2.ts; src/data/classes/rogueSubclassReferenceWave3.ts`
 - `runtime_plan: src/data/classes/rogueRuntimePlan.md`
-- `runtime_plan_status: STAGE_1_COMPLETE_STAGE_2_NEXT; STAGES_2_TO_7_REQUIRED_FOR_READY`
+- `runtime_plan_status: STAGE_3_COMPLETE_STAGE_4_NEXT; STAGES_4_TO_7_REQUIRED_FOR_READY`
 - `stage_1_source_freeze_and_text_closure: COMPLETE_2026_09_12`
 - `stage_1_feature_matrix: src/data/classes/rogueRuntimeFeatureMatrix.md`
 - `pre_stage_2_reuse_audit: COMPLETE_2026_09_21`
@@ -566,7 +566,18 @@ Base Warlock, all 28 supported Eldritch Invocations and all nine supported runti
 - `stage_2_live_class_count: 1`
 - `stage_2_live_level_rows: 20`
 - `stage_2_live_active_subclass_count: 0`
-- `stage_3_core_rogue_runtime: NOT_STARTED`
+- `stage_3_core_rogue_runtime: COMPLETE_2026_09_21`
+- `stage_3_revision: xphb-2024-rogue-stage3-core-runtime-v1`
+- `stage_3_migration: 20260921124647_rogue_stage3_core_runtime_v1`
+- `stage_3_sneak_attack_execution: READY_SHARED_CE_GENA`
+- `stage_3_cunning_action: READY_DASH_DISENGAGE_HIDE`
+- `stage_3_steady_aim: READY_STRUCTURED_GM_SCENE_BOUNDARY`
+- `stage_3_cunning_strike: READY_POISON_TRIP_WITHDRAW`
+- `stage_3_improved_cunning_strike: READY_TWO_DISTINCT_RIDERS_SUMMED_COST`
+- `stage_3_devious_strikes: READY_DAZE_2D6_OBSCURE_3D6_KNOCKOUT_6D6`
+- `stage_3_generic_bonus_damage_sacrifice: DEPLOYED`
+- `stage_3_live_action_count: 26`
+- `stage_3_live_sacrifice_route_count: 21`
 - `stage_4_base_runtime_certification: NOT_STARTED`
 - `stage_5_phb2024_subclasses: NOT_STARTED`
 - `stage_6_legacy_supplement_subclasses: NOT_STARTED`
@@ -576,9 +587,9 @@ Base Warlock, all 28 supported Eldritch Invocations and all nine supported runti
 - `subclass_reference_roster: thief, assassin, arcane-trickster, soulknife, swashbuckler, inquisitive, mastermind, scout, phantom`
 - `wave3_reference_scope: Mastermind and Scout use legacy Xanathar rules; Phantom uses the published Tasha’s Cauldron of Everything rules`
 - `reference_visibility: BASE_AND_ALL_9_SUBCLASSES_REFERENCE_ONLY`
-- `dev_runtime: STAGE_2_FOUNDATION_ACTIVE`
-- `production_runtime: STAGE_2_FOUNDATION_DEPLOYED_2026_09_21`
-- `production_template_audit: exactly one active class:rogue with 20 level rows and zero active Rogue subclasses as of 2026-09-21`
+- `dev_runtime: STAGE_3_CORE_RUNTIME_ACTIVE`
+- `production_runtime: STAGE_3_CORE_RUNTIME_DEPLOYED_2026_09_21`
+- `production_template_audit: exactly one active class:rogue at xphb-2024-rogue-stage3-core-runtime-v1 with 20 level rows, 26 action mechanics, 21 dice-sacrifice routes and zero active Rogue subclasses as of 2026-09-21`
 - `runtime_boundary: reference mechanics are documentation only; no CE contribution, persistent resource, choice runtime, spell runtime or executable class action is claimed by this authoring pass`
 - `wave3_regression: tests/rogueSubclassReferenceWave3.test.ts`
 
@@ -590,7 +601,7 @@ Known source-copy corrections locked by Wave 3 regression:
 - Tasha's Tokens of the Departed has no extra Undead/Construct exclusion, and the queried spirit is not required to tell the truth.
 - Tasha's Death's Friend grants its fallback Soul Trinket at the end of a Long Rest when none are held; it does not use Initiative as that trigger.
 
-Rogue text/reference Stage 1 and runtime foundation Stage 2 are closed. The class now exists in the shared template/Choice Runtime/CE pipeline, but core Rogue gameplay remains intentionally incomplete. The canonical next step is Stage 3 in `src/data/classes/rogueRuntimePlan.md`; overall mechanics `READY` remains forbidden before Stage 7 production certification.
+Rogue text/reference Stage 1, runtime foundation Stage 2 and defining gameplay Stage 3 are closed. Sneak Attack, Cunning Action, Steady Aim and the Cunning/Devious Strike family now use the shared template → CE → GENA path while scene-only facts remain GM-adjudicated. The canonical next step is Stage 4 in `src/data/classes/rogueRuntimePlan.md`; overall mechanics `READY` remains forbidden before Stage 7 production certification.
 
 ---
 
