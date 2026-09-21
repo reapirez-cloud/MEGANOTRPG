@@ -30,6 +30,11 @@ export type RuleChoiceOptionProvider =
       /** Maximum simultaneously active created instances keyed by source level. */
       active_count_by_level?: Record<string, number>
     }
+  | {
+      /** Restrict options to refdef:* values already stored in another persistent choice. */
+      kind: "selected_reference_item_plans"
+      source_choice_key: string
+    }
 
 
 export type RuleChoiceRequirement = {
