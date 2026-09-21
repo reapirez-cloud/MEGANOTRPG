@@ -78,6 +78,10 @@ export type RuleChoiceDefinition = {
   target: RuleChoiceTarget
   options: string[]
   count?: number
+  /** When true, count/count_by_level are upper bounds instead of an exact required size. */
+  allow_fewer?: boolean
+  /** Lower bound used with allow_fewer; defaults to zero. */
+  minimum_count?: number
   /** The number of persistent selections allowed once source.level reaches each threshold. */
   count_by_level?: Record<string, number>
   /** Minimum source.level for an option to be selectable/emitted. */
