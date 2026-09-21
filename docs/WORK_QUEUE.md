@@ -20,64 +20,21 @@ Resume trigger: `ALL_CLASS_TRANSLATIONS_COMPLETE`.
 
 ## Rogue READY work
 
-**Status:** STAGE_6_COMPLETE_STAGE_7_NEXT  
+**Status:** COMPLETE_ALL_7_STAGES_READY  
 **Marked:** 2026-09-21  
 **Branch:** dev
 
-Canonical READY plan: `src/data/classes/rogueRuntimePlan.md`.  
-Stage 1 freeze matrix: `src/data/classes/rogueRuntimeFeatureMatrix.md`.
+Canonical READY plan: `src/data/classes/rogueRuntimePlan.md`.
 
 Current checkpoint:
-- Base Rogue literary/reference layer is complete. `Точный прицел / Steady Aim` and `Скользкий ум / Slippery Mind` now have authored Voss prose; no supported Rogue card carries `TRANSLATION_MISSING`.
-- Base Rogue 2024 and all nine supported subclass packs have independently audited exact neutral mechanics.
-- All 61 supported base/subclass features have stable feature keys and an explicit runtime ownership mode in the Stage 1 matrix.
-- Frozen roster: Thief, Assassin, Arcane Trickster, Soulknife, Swashbuckler, Inquisitive, Mastermind, Scout and Phantom.
-- Source boundary remains: PHB 2024 base + Thief/Assassin/Arcane Trickster/Soulknife; Xanathar legacy Swashbuckler/Inquisitive/Mastermind/Scout; Tasha Phantom.
-- Rogue remains `referenceOnly=true`; no CE/Supabase runtime is claimed yet.
-- Pre-Stage-2 reuse audit is complete: `src/data/classes/rogueRuntimeReuseAudit.md`.
-- Historical Rogue work is salvageable selectively: adapt the old structural skeleton and action shapes, but do not restore the retired builtin installer.
-- Historical `rogue-scion-of-the-three` is explicitly outside the frozen supported roster.
-- Current shared runtime already covers long-rest choice refresh/replacement, CE resources/actions, alternative costs, shared spell execution and new-chat CE routing.
-- Stage 2's confirmed new generic prerequisite is a dynamic proficient-weapon choice provider for Weapon Mastery.
-
-Stage 2 checkpoint:
-- Canonical `class:rogue` is deployed at `xphb-2024-rogue-stage2-foundation-v1` with 20 source-level rows.
-- Base proficiency/language/skill choices, Expertise and Weapon Mastery use the same shared Choice Runtime/CE architecture as other classes.
-- Generic `weapon_proficiencies` provider is implemented in UI/read-model and server validation; Long Rest refresh validation uses the same provider boundary.
-- Sneak Attack dice progression is resolved as deterministic Rogue-level data.
-- No Rogue subclass runtime is active yet; the retired extra Scion package remains excluded.
-- Rogue remains `referenceOnly=true` and overall mechanics are `IN_PROGRESS`.
-
-Stage 3 checkpoint:
-- Active production revision is `xphb-2024-rogue-stage3-core-runtime-v1`.
-- Sneak Attack executes through shared CE/GENA and rolls the resolved Rogue-level bonus-damage pool.
-- Cunning Action and Steady Aim are shared actions; scene-only turn/movement legality remains GM-adjudicated rather than persisted as fake state.
-- Cunning Strike / Improved Cunning Strike / Devious Strikes use a generic `bonus_damage_dice_sacrifice` semantic so the remaining Sneak Attack dice are rolled correctly after exact rider costs.
-- Production has 26 Rogue class actions, 21 dice-sacrifice routes, 20 level rows and zero active Rogue subclasses.
-- Rogue remains `referenceOnly=true` and overall mechanics are `IN_PROGRESS`.
-
-Stage 4 checkpoint:
-- Base Rogue 1–20 is production-certified at `xphb-2024-rogue-stage4-base-runtime-v1`.
-- Uncanny Dodge, Evasion, Reliable Talent, Slippery Mind, Elusive and Stroke of Luck now have shared structured/runtime contracts.
-- Reliable Talent uses generic CE `d20_minimum` plus server-authoritative `send_chat_roll_v4`; no Rogue-specific roll engine exists.
-- Stroke of Luck uses one real Short/Long Rest resource and a generic GM-confirmed result-20 override action.
-- Production has all 15 base feature contracts structured, 20 level rows, zero duplicate mechanic IDs, zero broken action-resource refs and zero active Rogue subclasses.
-- Base Rogue is complete, but the family remains `referenceOnly=true` / `IN_PROGRESS` until all supported subclasses and final Stage 7 certification pass.
-
-Stage 5 checkpoint:
-- Thief, Assassin, Arcane Trickster and Soulknife are deployed at `xphb-2024-rogue-stage5-phb-subclasses-v1`.
-- Arcane Trickster uses shared Wizard spell/catalog/slot runtime and generic temporary spell access; Soulknife uses shared CE resources/actions.
-- Production Stage 5 audit found exactly four active PHB Rogue subclasses.
-
-Stage 6 checkpoint:
-- Swashbuckler, Inquisitive, Mastermind, Scout and Phantom are deployed at `rogue-stage6-legacy-subclasses-v1` without rewriting their frozen Xanathar/Tasha rules.
-- Generic `unproficient_skill_or_tool` choices and `ensure_minimum` rest recovery were added instead of Phantom-only forks.
-- Production now has exactly nine supported active Rogue subclasses, all parented to Rogue and unlocked at Rogue 3.
-- Mastermind/Scout/Phantom regression locks are live and tested.
-
-Next Rogue stage: **Stage 7 — final fail-closed production certification and public activation**.
-- Do not redo Stages 1–6 unless their frozen contract actually changes.
-- Rogue remains `referenceOnly=true` / `IN_PROGRESS` until Stage 7 certifies GitHub, CE, persistent state and production as one coherent package.
+- Rogue Stage 7 is complete at `xphb-2024-rogue-runtime-final-v1`.
+- Production has exactly one active builtin `class:rogue`, all 20 level rows and exactly nine supported READY subclasses.
+- The frozen roster is Thief, Assassin, Arcane Trickster, Soulknife, Swashbuckler, Inquisitive, Mastermind, Scout and Phantom.
+- Public Rogue/reference cards are runtime-backed; the literary layer remains intact.
+- Expertise and Weapon Mastery persistence, Rogue-level subclass resolution, Soulknife resource spend/recovery/removal cleanup and Arcane Trickster shared spell casting passed live transactional smoke.
+- Final CI run `35625289587` / job `106418485380` passed Build, Lint, complete repository tests, Storybook and Playwright smoke.
+- Rogue is now `Text: READY` and `Mechanics/runtime: READY`.
+- Do not reopen Stages 1–7 unless a frozen rules contract changes or a new supported subclass is intentionally added.
 
 ## Inventory / scene interaction follow-up
 
