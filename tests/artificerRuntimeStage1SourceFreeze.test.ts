@@ -145,7 +145,7 @@ test("Stage 1 rejects the retired historical Reanimator and stale spell links as
   assert.match(audit, /ADAPT, DO NOT RESTORE/)
 })
 
-test("Artificer Stage 1 closes source freeze while leaving Stage 2 as the next runtime step", () => {
+test("Artificer Stage 1 source freeze remains intact after Stage 2 foundation completion", () => {
   assert.match(
     plan,
     /Stage 1 — source freeze\/specification:\s*COMPLETE_2026_09_21/,
@@ -157,10 +157,10 @@ test("Artificer Stage 1 closes source freeze while leaving Stage 2 as the next r
   assert.match(plan, /Stage 7 — final certification:\s*GATE_INSTALLED_BLOCKED/)
 
   assert.match(ledger, /stage_1_source_freeze_and_executable_spec: COMPLETE_2026_09_21/)
-  assert.match(ledger, /stage_2_foundation_1_20: NEXT/)
+  assert.match(ledger, /stage_2_foundation_1_20_and_spellcasting: COMPLETE_2026_09_21/)
   assert.match(ledger, /Text:\*\* \`DEFERRED_USER_TRANSLATION\`/)
-  assert.match(ledger, /Mechanics\/runtime:\*\* \`IN_PROGRESS_STAGE_1_COMPLETE\`/)
+  assert.match(ledger, /Mechanics\\/runtime:\\*\\* `IN_PROGRESS_STAGE_2_COMPLETE`/)
 
   assert.match(queue, /Artificer runtime work/)
-  assert.match(queue, /STAGE_1_COMPLETE_STAGE_2_NEXT/)
+  assert.match(queue, /STAGES_1_2_COMPLETE_STAGE_3_NEXT/)
 })
