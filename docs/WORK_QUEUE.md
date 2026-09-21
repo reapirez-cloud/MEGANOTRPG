@@ -20,7 +20,7 @@ Resume trigger: `ALL_CLASS_TRANSLATIONS_COMPLETE`.
 
 ## Rogue READY work
 
-**Status:** STAGE_4_COMPLETE_STAGE_5_NEXT  
+**Status:** STAGE_6_COMPLETE_STAGE_7_NEXT  
 **Marked:** 2026-09-21  
 **Branch:** dev
 
@@ -64,9 +64,20 @@ Stage 4 checkpoint:
 - Production has all 15 base feature contracts structured, 20 level rows, zero duplicate mechanic IDs, zero broken action-resource refs and zero active Rogue subclasses.
 - Base Rogue is complete, but the family remains `referenceOnly=true` / `IN_PROGRESS` until all supported subclasses and final Stage 7 certification pass.
 
-Next Rogue stage: **Stage 5 — PHB 2024 subclass runtime**.
-- Implement Thief, Assassin, Arcane Trickster and Soulknife on the certified Rogue parent using shared inventory/action/spell/resource primitives.
-- Do not redo Stages 1–4 unless their frozen contract actually changes.
+Stage 5 checkpoint:
+- Thief, Assassin, Arcane Trickster and Soulknife are deployed at `xphb-2024-rogue-stage5-phb-subclasses-v1`.
+- Arcane Trickster uses shared Wizard spell/catalog/slot runtime and generic temporary spell access; Soulknife uses shared CE resources/actions.
+- Production Stage 5 audit found exactly four active PHB Rogue subclasses.
+
+Stage 6 checkpoint:
+- Swashbuckler, Inquisitive, Mastermind, Scout and Phantom are deployed at `rogue-stage6-legacy-subclasses-v1` without rewriting their frozen Xanathar/Tasha rules.
+- Generic `unproficient_skill_or_tool` choices and `ensure_minimum` rest recovery were added instead of Phantom-only forks.
+- Production now has exactly nine supported active Rogue subclasses, all parented to Rogue and unlocked at Rogue 3.
+- Mastermind/Scout/Phantom regression locks are live and tested.
+
+Next Rogue stage: **Stage 7 — final fail-closed production certification and public activation**.
+- Do not redo Stages 1–6 unless their frozen contract actually changes.
+- Rogue remains `referenceOnly=true` / `IN_PROGRESS` until Stage 7 certifies GitHub, CE, persistent state and production as one coherent package.
 
 ## Inventory / scene interaction follow-up
 
