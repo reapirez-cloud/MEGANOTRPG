@@ -1,5 +1,5 @@
 import type { ResolvedCharacterContract } from "./contract.ts"
-import type { GrantPayload } from "./types.ts"
+import type { GrantPayload, ResolvedAction } from "./types.ts"
 
 export type D20TestKind = "ability" | "skill" | "tool" | "save" | "attack"
 
@@ -79,4 +79,47 @@ export function resolveD20Floor(
   return minimum > 1
     ? { minimum, ruleKeys: [...new Set(ruleKeys)] }
     : null
+}
+
+
+export type ResolvedD20ResultOverride = {
+  result: number
+  trigger?: string
+  adjudication?: string
+}
+
+/**
+ * Reads an explicit d20-result override from any resolved action. The action is
+ * still responsible for costs and requirements; this helper only exposes the
+ * semantic consequence to renderers/adapters.
+ */
+export function resolveD20ResultOverride(
+  action: Pick<ResolvedAction, "effects">,
+): ResolvedD20ResultOverride | null {
+  for (const effect of action.effects) {
+    if (effect.kind !== "semantic" || effect.key !== "d20_result_override") continue
+    const payload = effect.payload
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) continue
+
+    const result = payload.result
+    if (
+      typeof result !== "number" ||
+      !Number.isInteger(result) ||
+      result < 1 ||
+      result > 20
+    ) {
+      continue
+    }
+
+    return {
+      result,
+      ...(typeof payload.trigger === "string" && payload.trigger.trim()
+        ? { trigger: payload.trigger.trim() }
+        : {}),
+      ...(typeof payload.adjudication === "string" && payload.adjudication.trim()
+        ? { adjudication: payload.adjudication.trim() }
+        : {}),
+    }
+  }
+  return null
 }
