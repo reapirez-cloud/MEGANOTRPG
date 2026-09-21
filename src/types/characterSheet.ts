@@ -54,6 +54,11 @@ export type CharacterSpell = {
   cast_mode: "cantrip" | "slot"; slot_level: number | null; description: string; source: string
   /** Wizard 2024 durable selections. Missing values mean false for pre-migration fixtures. */
   wizard_spell_mastery?: boolean; wizard_signature_spell?: boolean
+  /** Generic temporary spell-access metadata used by effects such as stolen spells. */
+  temporary_until?: string | null
+  temporary_source_key?: string | null
+  temporary_assignment_id?: string | null
+  temporary_casting_ability?: "intelligence" | "wisdom" | "charisma" | null
   sort_order: number; created_at: string; updated_at: string
 }
 export type CharacterSpellOption = CharacterSpell & { granted_by: string | null }
