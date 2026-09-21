@@ -94,6 +94,30 @@ Expected durable artifacts:
 
 ---
 
+## Pre-Stage-2 reuse audit — existing Rogue work and current infrastructure
+
+**Status:** `COMPLETE_2026_09_21`
+
+Artifact: `src/data/classes/rogueRuntimeReuseAudit.md`
+
+The implementation is not a greenfield rewrite. Before Stage 2, the retired historical builtin Rogue package and the current shared runtime were audited for salvageability.
+
+Locked handoff:
+
+- current Rogue reference files and the 61-feature matrix remain authoritative for exact rules;
+- the historical level/proficiency skeleton may be adapted, but the retired catalog installer must not be restored wholesale;
+- historical Cunning Action action definitions are reusable as action-shape references and must be re-authored with current stable IDs/text;
+- selected historical subclass action shells may be adapted only after comparison with the current matrix;
+- historical generated mechanic summaries and empty `runtime: []` rows are not executable truth;
+- historical `rogue-scion-of-the-three` is outside the frozen nine-subclass roster and must not be installed;
+- Choice Runtime v2, long-rest refresh/replacement, CE resources/actions, `costOptions`, shared spell runtime and new-chat CE routing are already reusable infrastructure;
+- Stage 2 has one confirmed generic infrastructure prerequisite: a proficient-weapon dynamic choice provider for Weapon Mastery;
+- later confirmed generic gaps are tracked in the reuse audit and must be solved generically when their stage is reached.
+
+No live Rogue catalog rows were created by this audit. Stage 2 remains the next executable stage.
+
+---
+
 ## Stage 2 — clean class foundation and 1–20 progression
 
 **Status:** `NOT_STARTED`
