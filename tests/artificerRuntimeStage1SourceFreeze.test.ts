@@ -154,14 +154,14 @@ test("Artificer Stage 1 source freeze remains intact after Stage 2 foundation co
     plan,
     /Stage 2 — class foundation 1–20 \+ spellcasting:\s*COMPLETE_2026_09_21/,
   )
-  assert.match(plan, /Stage 3 — core item\/replication runtime:\s*NEXT/)
+  assert.match(plan, /Stage 3 — core item\/replication runtime:\s*COMPLETE_2026_09_21/)
   assert.match(plan, /Stage 7 — final certification:\s*GATE_INSTALLED_BLOCKED/)
 
   assert.match(ledger, /stage_1_source_freeze_and_executable_spec: COMPLETE_2026_09_21/)
   assert.match(ledger, /stage_2_foundation_1_20_and_spellcasting: COMPLETE_2026_09_21/)
   assert.match(ledger, /Text:\*\* `DEFERRED_USER_TRANSLATION`/)
-  assert.match(ledger, /Mechanics\/runtime:\*\* `IN_PROGRESS_STAGE_2_COMPLETE`/)
+  assert.match(ledger, /Mechanics\/runtime:\*\* `IN_PROGRESS_STAGE_3_COMPLETE`/)
 
   assert.match(queue, /Artificer runtime work/)
-  assert.match(queue, /STAGES_1_2_COMPLETE_STAGE_3_NEXT/)
+  assert.match(queue, /STAGES_1_3_COMPLETE_STAGE_4_NEXT/)
 })
