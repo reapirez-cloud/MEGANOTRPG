@@ -27,6 +27,8 @@ export type RuleChoiceOptionProvider =
       /** Chasovoy-backed dynamic item-plan choice. Options use stable refdef:<uuid> identities. */
       kind: "reference_item_plans"
       category?: string
+      /** Maximum simultaneously active created instances keyed by source level. */
+      active_count_by_level?: Record<string, number>
     }
 
 
