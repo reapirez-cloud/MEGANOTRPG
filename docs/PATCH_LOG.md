@@ -47,6 +47,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Reconciled two stale chat regressions with the Stage 1/2 ownership contract, then added Roll Stage 3 coverage for structured d20/free-die data, arbitrary die sides, raw-value preservation and string-parsing-free card rendering.
 - Added Roll Stage 4 regressions for canonical die geometry, d100 percentile rendering, arbitrary-dN fallback, raw values inside SVGs, responsive dice density and the separation of raw dice / modifier / total without invented success/failure judgement.
 - Tightened the older graphite/outcome regression so it checks whole outcome/color tokens instead of falsely treating the `red` letters inside `StructuredRollSummary` as a red outcome color; also corrected the d12 outer silhouette to twelve vertices.
+- Percentile d100 pairs are constrained to the same die slot as ordinary glyphs, so multi-d100 rolls cannot overflow or collide with adjacent dice in grouped/dense layouts.
 
 ### Known incomplete work
 

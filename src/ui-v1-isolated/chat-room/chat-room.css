@@ -4861,19 +4861,19 @@
 }
 
 .u1-die-glyph__percentile {
-  width: calc(var(--u1-die-size) * 1.22);
+  width: var(--u1-die-size);
   height: var(--u1-die-size);
   display: grid;
-  grid-template-columns: repeat(2, calc(var(--u1-die-size) * .66));
+  grid-template-columns: repeat(2, calc(var(--u1-die-size) * .54));
   align-items: center;
   justify-content: center;
-  gap: calc(var(--u1-die-size) * -.10);
+  gap: calc(var(--u1-die-size) * -.08);
 }
 
 .u1-die-glyph__percentile-die {
   position: relative;
-  width: calc(var(--u1-die-size) * .66);
-  height: calc(var(--u1-die-size) * .66);
+  width: calc(var(--u1-die-size) * .54);
+  height: calc(var(--u1-die-size) * .54);
   display: block;
 }
 
