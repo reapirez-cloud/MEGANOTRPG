@@ -19,6 +19,10 @@ export type RuleChoiceOptionProvider =
       /** Generic filter: only weapon identities covered by the character's active proficiency grants. */
       kind: "weapon_proficiencies"
     }
+  | {
+      /** Generic refreshable choice over skills/tools the character does not currently own. */
+      kind: "unproficient_skill_or_tool"
+    }
 
 
 export type RuleChoiceRequirement = {
