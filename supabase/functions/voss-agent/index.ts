@@ -47,6 +47,7 @@ import {
 import {
   executeVossQuestTool,
   isVossQuestTool,
+  VOSS_QUEST_CONTEXT_TOOLS,
   VOSS_QUEST_TOOLS,
 } from "./quest-tools.ts"
 import {
@@ -1233,6 +1234,8 @@ Deno.serve(async (req: Request) => {
           "Не создавай заранее NPC, предмет или локацию только потому, что они нужны будущему этапу. Создай quest target placeholder, например «Где-то в лесу», и bind_quest_target только когда каноническая сущность действительно появляется.",
           "Автоматические условия Quest Resolver не закрывай вручную. resolve_quest_condition используй только для custom_narrative и только когда события сцены действительно подтверждают вывод. В note кратко укажи фактическое основание.",
           "Игроку нельзя раскрывать существование будущих этапов, скрытых целей, GM notes, ai_directive или resolver evidence. Полный read_quest_plan является GM/Admin материалом.",
+          "Во время живой сцены, если известен character_id и действие персонажа может повлиять на квест, используй read_active_quest_context до скрытого квестового решения. Этот компактный read-only tool доступен без write-capability. Не тащи полный read_quest_plan на каждый игровой ход.",
+          "Если read_active_quest_context показывает автоматическое условие, не решай его сам: канонический Resolver обновит его по данным мира. Для custom_narrative используй resolve_quest_condition только после campaign evidence.",
         ]
       : []),
     ...(inventoryWorkflowRequested ? VOSS_INVENTORY_AUTHORING_RULES : []),
@@ -1425,6 +1428,7 @@ Deno.serve(async (req: Request) => {
     : [
         ...scopedReadTools,
         ...scopedMemoryReadTools,
+        ...VOSS_QUEST_CONTEXT_TOOLS,
         FREDDY_CAPABILITY_TOOL,
       ]
 
