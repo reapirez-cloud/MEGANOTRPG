@@ -685,6 +685,13 @@ Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and al
 - `stage_4_spell_storing_item: READY_INVENTORY_BINDING_PLUS_SHARED_CHAT_SPELL_EXECUTION`
 - `stage_4_soul_of_artifice: READY_CROSS_OWNER_DISMISS_PLUS_SHAPOKLYAK_HP`
 - `stage_4_regression: tests/artificerRuntimeStage4Base.test.ts`
+- `stage_4_production_deployment: APPLIED_AND_AUDITED_2026_09_22`
+- `stage_4_live_pending_placeholders: 0`
+- `stage_4_live_duplicate_mechanic_ids: 0`
+- `stage_4_live_rpc_permissions: AUTHENTICATED_ONLY_6_OF_6`
+- `stage_4_live_smoke_magic_item_tinker: PASS_ROLLBACK_CHARGE_TRANSMUTE_DRAIN`
+- `stage_4_live_smoke_high_level: PASS_ROLLBACK_ATTUNEMENT_FLASH_STORED_SPELL_SOUL`
+- `stage_4_stage3_reconcile_regression: FIXED_2026_09_22`
 - `stage_5_subclass_wave_1: NEXT`
 - `stage_6_subclass_wave_2_and_ux: NOT_STARTED`
 - `stage7_gate: INSTALLED_2026_09_21`
@@ -692,7 +699,7 @@ Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and al
 - `stage7_gate_function: private.certify_artificer_runtime_final_v1(uuid)`
 - `target_runtime_revision: eberron-2025-artificer-runtime-final-v1`
 - `current_dev_runtime: base Artificer 1–20 is Stage-4 complete through shared CE/GENA/Shapoklyak/Cheburashka owners; all five subclasses are still absent`
-- `current_production_runtime: Stage-4 deployment pending live migration audit`
+- `current_production_runtime: Stage-4 base runtime deployed and rollback-smoke audited; 1 active class / 20 levels / 0 subclasses`
 - `current_production_spell_links: 92 canonical Stage 2 links retained`
 
 Stages 1–4 close the entire base-class runtime. The class remains `IN_PROGRESS`
