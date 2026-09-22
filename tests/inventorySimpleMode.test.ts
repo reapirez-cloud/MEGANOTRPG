@@ -10,6 +10,14 @@ const swapMigration = fs.readFileSync(
   "supabase/migrations/20260922224000_simple_inventory_drag_swap_v1.sql",
   "utf8",
 )
+const quickMigration = fs.readFileSync(
+  "supabase/migrations/20260922225000_simple_inventory_quick_access_v1.sql",
+  "utf8",
+)
+const quickGuardMigration = fs.readFileSync(
+  "supabase/migrations/20260922225100_simple_inventory_quick_access_owner_guard_v1.sql",
+  "utf8",
+)
 const adapter = fs.readFileSync("src/inventory-engine/supabase.ts", "utf8")
 const helpers = fs.readFileSync("src/inventory-engine/simple.ts", "utf8")
 const simpleUi = fs.readFileSync(
@@ -79,26 +87,36 @@ test("every canonical item row or existing bulk stack occupies one simple slot",
   assert.match(stacking, /input\.stack_mode === "stack" \? "stack" : "instance"/)
 })
 
-test("active inventory UI shows equipment, quick access and every bag as draggable simple slots", () => {
+test("active inventory UI shows equipment, one non-physical quick shortcut and every bag as draggable simple slots", () => {
   assert.match(inventoryBoundary, /<InventorySimpleView/)
   assert.match(simpleUi, /<svg viewBox="0 0 48 48"/)
   assert.match(simpleUi, /inventorySimpleContainerTargets/)
   assert.match(simpleUi, /EQUIPMENT_SLOTS/)
-  assert.match(simpleUi, /QUICK_ACCESS_SLOTS/)
+  assert.match(simpleUi, /hasQuickAccess/)
   assert.match(simpleUi, /Не экипировано/)
   assert.match(simpleUi, /Можно положить любой предмет/)
   assert.match(simpleUi, /u1-simple-inventory__bag-panel/)
-  assert.match(simpleUi, /draggable=\{canControl && !item\.equipped\}/)
+  assert.match(simpleUi, /draggable=\{canControl\}/)
   assert.match(simpleUi, /onSwap\(item, target\)/)
-  assert.match(simpleUi, /onPlace\(item, \{ kind: "hand", index \}\)/)
+  assert.match(simpleUi, /onQuickAccess\(item, enabled\)/)
+  assert.match(simpleUi, /data-simple-drop-quick="true"/)
+  assert.match(simpleUi, /onPointerDown/)
+  assert.match(simpleUi, /document\.elementFromPoint/)
+  assert.doesNotMatch(simpleUi, /onPlace\(item, \{ kind: "hand", index \}\)/)
   assert.match(simpleUi, /Переложить/)
   assert.match(simpleUi, /Экипировать/)
   assert.match(simpleUi, /Использовать/)
   assert.match(swapMigration, /swap_inventory_items_simple_v1/)
   assert.match(swapMigration, /private\.can_operate_character_resources/)
+  assert.match(quickMigration, /set_inventory_quick_access_v1/)
+  assert.match(quickMigration, /item_state ->> 'quick_access'/)
+  assert.match(quickMigration, /private\.can_operate_character_resources/)
+  assert.match(quickGuardMigration, /one_quick_access_per_character/)
+  assert.match(quickGuardMigration, /clear_quick_access_on_owner_change_v1/)
   assert.match(characterControl, /rpc\(\s*"swap_inventory_items_simple_v1"/)
+  assert.match(characterControl, /rpc\(\s*"set_inventory_quick_access_v1"/)
   assert.match(characterView, /onMoveItem=\{control\.moveItemSimple\}/)
-  assert.match(characterView, /onPlaceItem=\{control\.moveItem\}/)
+  assert.match(characterView, /onQuickAccessItem=\{control\.setQuickAccessSimple\}/)
   assert.match(characterView, /onSwapItems=\{control\.swapItemsSimple\}/)
   assert.match(characterView, /onEquipItem=\{\(item\) => control\.setEquipped\(item, true\)\}/)
   assert.match(characterView, /onUseItem=\{control\.useItem\}/)
