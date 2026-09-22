@@ -1739,7 +1739,7 @@ begin
         'requirements',jsonb_build_array(jsonb_build_object(
           'kind','condition','condition',jsonb_build_object(
             'kind','state','key','current_hp','operator','EQUALS','value',0
-          ),'enforcement','gm','label','When you drop to 0 HP'
+          ),'label','When you drop to 0 HP'
         )),
         'effects',jsonb_build_array(jsonb_build_object(
           'kind','semantic','key','artificer_cheat_death',
