@@ -1,18 +1,33 @@
+import type { InventoryItem } from "../types/characterSheet"
 import { CHARACTER_INVENTORY_INTERFACE_CONTRACT } from "./characterSheetUiContract"
+import InventorySimpleView from "./InventorySimpleView"
+
+type Result = { ok: boolean; error?: string }
 
 export default function CharacterInventoryInterface({
   characterId,
   characterName,
   classKey,
+  items,
+  canControl,
   focusedItemId,
-  focusedItemName,
+  onMoveItem,
+  onEquipItem,
+  onUseItem,
   onBack,
 }: {
   characterId: string
   characterName: string
   classKey: string
+  items: InventoryItem[]
+  canControl: boolean
   focusedItemId?: string | null
-  focusedItemName?: string | null
+  onMoveItem: (
+    item: InventoryItem,
+    holderItemId: string | null,
+  ) => Promise<Result>
+  onEquipItem: (item: InventoryItem) => Promise<Result>
+  onUseItem: (item: InventoryItem, amount?: number) => Promise<Result>
   onBack: () => void
 }) {
   return (
@@ -31,29 +46,23 @@ export default function CharacterInventoryInterface({
         >
           ←
         </button>
-        <span>ИНВЕНТАРЬ</span>
+        <span>ИНВЕНТАРЬ · {characterName}</span>
         <i aria-hidden="true" />
       </header>
 
       <section
         className="u1-character-inventory-interface__body"
         data-focused-item-id={focusedItemId || undefined}
-        data-future-inventory-mount="reserved"
-        aria-label="Заглушка отдельного интерфейса инвентаря"
+        aria-label={"Инвентарь " + characterName}
       >
-        <small>{characterName}</small>
-        <strong>Отдельный интерфейс инвентаря</strong>
-        <p>
-          Граница интерфейса готова. Сам инвентарь пока остаётся заглушкой:
-          пространственная сетка, сумки, экипировка и перенос предметов
-          проектируются и подключаются отдельным планом инвентаря.
-        </p>
-        {focusedItemId && (
-          <div className="u1-character-inventory-interface__focus">
-            <small>ЦЕЛЬ ПЕРЕХОДА</small>
-            <strong>{focusedItemName || focusedItemId}</strong>
-          </div>
-        )}
+        <InventorySimpleView
+          items={items}
+          canControl={canControl}
+          focusedItemId={focusedItemId}
+          onMove={onMoveItem}
+          onEquip={onEquipItem}
+          onUse={onUseItem}
+        />
       </section>
     </main>
   )
