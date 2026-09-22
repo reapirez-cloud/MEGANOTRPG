@@ -131,9 +131,9 @@ test("Stage 16 Telegram Back restores Inventory focus and sheet history in order
   await page.getByRole("button", { name: "Инвентарь" }).click()
 
   await expect(
-    page.locator('[data-inventory-status="placeholder"]'),
+    page.locator('[data-inventory-status="simple-active"]'),
   ).toBeVisible()
-  await expect(page.getByText("Тестовый предмет")).toBeVisible()
+  await expect(page.locator('[data-focused-item-id="item-stage16"]')).toBeVisible()
 
   const telegramShown = await page.evaluate(
     () => (window as any).__stage16BackState.shown,
@@ -142,7 +142,7 @@ test("Stage 16 Telegram Back restores Inventory focus and sheet history in order
 
   await page.evaluate(() => (window as any).__fireStage16TelegramBack())
   await expect(
-    page.locator('[data-inventory-status="placeholder"]'),
+    page.locator('[data-inventory-status="simple-active"]'),
   ).toHaveCount(0)
   await expect.poll(
     () => page.evaluate(
@@ -155,9 +155,9 @@ test("Stage 16 Telegram Back restores Inventory focus and sheet history in order
   // heroic attempts to test it that way.
   await page.evaluate(() => window.history.forward())
   await expect(
-    page.locator('[data-inventory-status="placeholder"]'),
+    page.locator('[data-inventory-status="simple-active"]'),
   ).toBeVisible()
-  await expect(page.getByText("Тестовый предмет")).toBeVisible()
+  await expect(page.locator('[data-focused-item-id="item-stage16"]')).toBeVisible()
   await expect.poll(
     () => page.evaluate(
       () => (window.history.state as any)?.characterSheet?.focusedItemId,
