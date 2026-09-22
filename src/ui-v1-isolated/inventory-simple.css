@@ -57,6 +57,7 @@
 }
 
 .u1-simple-inventory__bags header strong,
+.u1-simple-inventory__equipment header strong,
 .u1-simple-inventory__contents-head strong {
   color: rgba(247,247,242,.82);
   font-family: Georgia, "Times New Roman", serif;
@@ -153,7 +154,7 @@
   font-size: 18px;
 }
 
-.u1-simple-inventory__equipment > div {
+.u1-simple-inventory__equipment-grid {
   padding: 7px;
   display: grid;
   grid-template-columns: repeat(5, minmax(0,1fr));
@@ -476,11 +477,221 @@
   }
 
   .u1-simple-inventory__slots,
-  .u1-simple-inventory__equipment > div {
+  .u1-simple-inventory__equipment-grid {
     grid-template-columns: repeat(4, minmax(0,1fr));
   }
 
   .u1-simple-inventory__action-row {
     grid-template-columns: 1fr;
+  }
+}
+
+
+/* Simple inventory v2: always-visible equipment, quick access and separated bags. */
+.u1-simple-inventory__equipment > header > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.u1-simple-inventory__equipment-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.u1-simple-inventory__equipment-slot,
+.u1-simple-inventory__quick-slot {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid rgba(235,237,239,.05);
+  border-radius: 10px;
+  background: rgba(8,10,12,.2);
+}
+
+.u1-simple-inventory__equipment-slot > span,
+.u1-simple-inventory__quick-slot > span {
+  overflow: hidden;
+  color: rgba(226,228,224,.3);
+  font-size: 6.5px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  line-height: 1.15;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-simple-inventory__equipment-slot .u1-simple-inventory__slot,
+.u1-simple-inventory__quick-slot .u1-simple-inventory__slot {
+  width: 100%;
+  min-height: 62px;
+  aspect-ratio: auto;
+}
+
+.u1-simple-inventory__equipment-empty,
+.u1-simple-inventory__quick-empty {
+  min-height: 62px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 3px;
+  border: 1px dashed rgba(235,237,239,.045);
+  border-radius: 8px;
+  color: rgba(226,228,224,.09);
+  background: rgba(0,0,0,.08);
+}
+
+.u1-simple-inventory__equipment-empty svg {
+  width: 24px;
+  height: 24px;
+}
+
+.u1-simple-inventory__equipment-empty small,
+.u1-simple-inventory__quick-empty small {
+  color: rgba(226,228,224,.22);
+  font-size: 6.5px;
+  text-align: center;
+}
+
+.u1-simple-inventory__quick {
+  margin: 0 7px 7px;
+  padding-top: 7px;
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid rgba(235,237,239,.045);
+}
+
+.u1-simple-inventory__quick > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.u1-simple-inventory__quick > header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.u1-simple-inventory__quick > header span {
+  color: rgba(230,232,228,.35);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.u1-simple-inventory__quick > header small {
+  color: rgba(226,228,224,.28);
+  font-size: 7px;
+}
+
+.u1-simple-inventory__quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 6px;
+}
+
+.u1-simple-inventory__quick-empty b {
+  color: rgba(234,236,231,.22);
+  font-size: 20px;
+  font-weight: 350;
+  line-height: 1;
+}
+
+.u1-simple-inventory__bag-stack {
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.u1-simple-inventory__bag-panel {
+  overflow: hidden;
+  border: 1px solid rgba(235,237,239,.05);
+  border-radius: 11px;
+  background: rgba(8,10,12,.2);
+}
+
+.u1-simple-inventory__bag-panel > header {
+  min-height: 48px;
+  padding: 7px 8px;
+  display: grid;
+  grid-template-columns: 36px minmax(0,1fr) 30px;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(235,237,239,.045);
+}
+
+.u1-simple-inventory__bag-panel > header > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.u1-simple-inventory__bag-panel > header strong {
+  overflow: hidden;
+  color: rgba(246,246,241,.72);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-simple-inventory__bag-panel > header small {
+  color: rgba(226,228,224,.3);
+  font-size: 8px;
+}
+
+.u1-simple-inventory__bag-panel > header button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(235,237,239,.05);
+  border-radius: 8px;
+  background: rgba(255,255,255,.012);
+  color: rgba(235,237,239,.35);
+}
+
+.u1-simple-inventory__slot[draggable="true"] {
+  cursor: grab;
+}
+
+.u1-simple-inventory__slot[data-dragging="true"] {
+  opacity: .42;
+  transform: scale(.96);
+}
+
+.u1-simple-inventory[data-dragging="true"] .u1-simple-inventory__bag-panel,
+.u1-simple-inventory[data-dragging="true"] .u1-simple-inventory__contents,
+.u1-simple-inventory[data-dragging="true"] .u1-simple-inventory__quick-slot {
+  border-color: rgba(235,237,239,.1);
+}
+
+.u1-simple-inventory__quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 6px;
+}
+
+.u1-simple-inventory__quick-actions button {
+  min-height: 34px;
+  border: 1px solid rgba(235,237,239,.06);
+  border-radius: 9px;
+  background: rgba(255,255,255,.014);
+  color: rgba(240,241,236,.52);
+  font-size: 8px;
+  font-weight: 760;
+}
+
+@media (max-width: 420px) {
+  .u1-simple-inventory__equipment-grid {
+    grid-template-columns: repeat(3, minmax(0,1fr));
+  }
+
+  .u1-simple-inventory__equipment-slot .u1-simple-inventory__slot,
+  .u1-simple-inventory__quick-slot .u1-simple-inventory__slot,
+  .u1-simple-inventory__equipment-empty,
+  .u1-simple-inventory__quick-empty {
+    min-height: 58px;
   }
 }
