@@ -14,7 +14,6 @@ import {
   inventorySimpleContainerTargets,
   inventorySimpleContainerUsage,
 } from "../inventory-engine"
-import type { InventoryPlacementTarget } from "../inventory-engine"
 import type { InventoryItem } from "../types/characterSheet"
 import "./inventory-simple.css"
 
@@ -25,7 +24,7 @@ type Props = {
   canControl: boolean
   focusedItemId?: string | null
   onMove: (item: InventoryItem, holderItemId: string | null) => Promise<Result>
-  onPlace: (item: InventoryItem, placement: InventoryPlacementTarget) => Promise<Result>
+  onQuickAccess: (item: InventoryItem, enabled: boolean) => Promise<Result>
   onSwap: (first: InventoryItem, second: InventoryItem) => Promise<Result>
   onEquip: (item: InventoryItem) => Promise<Result>
   onUse: (item: InventoryItem, amount?: number) => Promise<Result>
@@ -229,7 +228,9 @@ const EQUIPMENT_SLOTS: Array<{
   { key: "other", label: "Прочее" },
 ]
 
-const QUICK_ACCESS_SLOTS = [0, 1] as const
+function hasQuickAccess(item: InventoryItem) {
+  return item.item_state?.quick_access === true
+}
 
 function simplePlacement(item: InventoryItem) {
   return item.placement_kind || (item.holder_item_id ? "legacy" : "root")
@@ -240,7 +241,7 @@ export default function InventorySimpleView({
   canControl,
   focusedItemId,
   onMove,
-  onPlace,
+  onQuickAccess,
   onSwap,
   onEquip,
   onUse,
@@ -297,19 +298,10 @@ export default function InventorySimpleView({
     return map
   }, [items])
 
-  const quickByIndex = useMemo(() => {
-    const map = new Map<number, InventoryItem>()
-    for (const item of items) {
-      if (
-        !item.equipped &&
-        simplePlacement(item) === "hand" &&
-        (item.placement_index === 0 || item.placement_index === 1)
-      ) {
-        map.set(item.placement_index, item)
-      }
-    }
-    return map
-  }, [items])
+  const quickItem = useMemo(
+    () => items.find((item) => hasQuickAccess(item)) || null,
+    [items],
+  )
 
   const targets = useMemo(
     () => selectedItem ? inventorySimpleContainerTargets(items, selectedItem) : [],
@@ -368,7 +360,11 @@ export default function InventorySimpleView({
   }
 
   function moveToHolder(item: InventoryItem, holderItemId: string | null) {
-    if (item.equipped) return
+    if (item.equipped && holderItemId === null) {
+      setError("Экипированный предмет можно снять только в реальную сумку.")
+      setDragItemId(null)
+      return
+    }
     if (
       (item.holder_item_id ?? null) === holderItemId &&
       simplePlacement(item) !== "hand"
@@ -401,24 +397,13 @@ export default function InventorySimpleView({
     )
   }
 
-  function moveToQuick(
-    item: InventoryItem,
-    index: 0 | 1,
-    occupant: InventoryItem | undefined,
-  ) {
-    if (item.equipped) return
-    if (occupant && occupant.id !== item.id) {
-      swapWith(item, occupant)
-      return
-    }
-    if (occupant?.id === item.id) {
-      setDragItemId(null)
-      return
-    }
+  function setQuickAccess(item: InventoryItem, enabled: boolean) {
     void run(
       "quick:" + item.id,
-      () => onPlace(item, { kind: "hand", index }),
-      "Предмет добавлен в быстрый доступ.",
+      () => onQuickAccess(item, enabled),
+      enabled
+        ? "Предмет добавлен в быстрый доступ."
+        : "Предмет убран из быстрого доступа.",
     )
   }
 
@@ -449,7 +434,6 @@ export default function InventorySimpleView({
   ) {
     if (
       !canControl ||
-      item.equipped ||
       event.pointerType === "mouse" ||
       event.isPrimary === false
     ) {
@@ -512,11 +496,8 @@ export default function InventorySimpleView({
 
     const quickDrop = target.closest<HTMLElement>("[data-simple-drop-quick]")
     if (quickDrop) {
-      const index = Number(quickDrop.dataset.simpleDropQuick)
-      if (index === 0 || index === 1) {
-        moveToQuick(item, index, quickByIndex.get(index))
-        return
-      }
+      setQuickAccess(item, true)
+      return
     }
 
     const equipmentDrop = target.closest<HTMLElement>("[data-simple-drop-equipment]")
@@ -552,7 +533,7 @@ export default function InventorySimpleView({
     event: ReactDragEvent<HTMLButtonElement>,
     item: InventoryItem,
   ) {
-    if (!canControl || item.equipped) {
+    if (!canControl) {
       event.preventDefault()
       return
     }
@@ -589,16 +570,12 @@ export default function InventorySimpleView({
     swapWith(item, target)
   }
 
-  function dropQuick(
-    event: ReactDragEvent<HTMLElement>,
-    index: 0 | 1,
-    occupant: InventoryItem | undefined,
-  ) {
+  function dropQuick(event: ReactDragEvent<HTMLElement>) {
     event.preventDefault()
     event.stopPropagation()
     const item = draggedItem()
     if (!item) return
-    moveToQuick(item, index, occupant)
+    setQuickAccess(item, true)
   }
 
   function dropEquipment(
@@ -613,7 +590,11 @@ export default function InventorySimpleView({
     equipInto(item, slot, occupant)
   }
 
-  function itemSlot(item: InventoryItem, compact = false) {
+  function itemSlot(
+    item: InventoryItem,
+    compact = false,
+    acceptsItemDrop = true,
+  ) {
     return (
       <button
         type="button"
@@ -622,16 +603,16 @@ export default function InventorySimpleView({
         data-selected={selectedItemId === item.id || undefined}
         data-dragging={dragItemId === item.id || undefined}
         data-compact={compact || undefined}
-        data-simple-drop-item={item.id}
-        draggable={canControl && !item.equipped}
+        data-simple-drop-item={acceptsItemDrop ? item.id : undefined}
+        draggable={canControl}
         onDragStart={(event) => beginDrag(event, item)}
         onDragEnd={() => setDragItemId(null)}
         onPointerDown={(event) => beginPointerDrag(event, item)}
         onPointerMove={movePointerDrag}
         onPointerUp={finishPointerDrag}
         onPointerCancel={cancelPointerDrag}
-        onDragOver={allowDrop}
-        onDrop={(event) => dropOnItem(event, item)}
+        onDragOver={acceptsItemDrop ? allowDrop : undefined}
+        onDrop={acceptsItemDrop ? (event) => dropOnItem(event, item) : undefined}
         onClick={() => {
           if (performance.now() < suppressClickUntilRef.current) return
           selectItem(item)
@@ -716,27 +697,21 @@ export default function InventorySimpleView({
             </div>
           </header>
           <div className="u1-simple-inventory__quick-grid">
-            {QUICK_ACCESS_SLOTS.map((index) => {
-              const item = quickByIndex.get(index)
-              return (
-                <div
-                  className="u1-simple-inventory__quick-slot"
-                  data-empty={!item || undefined}
-                  data-simple-drop-quick={index}
-                  key={index}
-                  onDragOver={allowDrop}
-                  onDrop={(event) => dropQuick(event, index, item)}
-                >
-                  <span>Слот {index + 1}</span>
-                  {item ? itemSlot(item, true) : (
-                    <div className="u1-simple-inventory__quick-empty">
-                      <b>+</b>
-                      <small>Пусто</small>
-                    </div>
-                  )}
+            <div
+              className="u1-simple-inventory__quick-slot"
+              data-empty={!quickItem || undefined}
+              data-simple-drop-quick="true"
+              onDragOver={allowDrop}
+              onDrop={dropQuick}
+            >
+              <span>Быстрый доступ</span>
+              {quickItem ? itemSlot(quickItem, true, false) : (
+                <div className="u1-simple-inventory__quick-empty">
+                  <b>+</b>
+                  <small>Перетащи сюда любой предмет</small>
                 </div>
-              )
-            })}
+              )}
+            </div>
           </div>
         </div>
       </section>
@@ -851,6 +826,20 @@ export default function InventorySimpleView({
             </p>
           ) : null}
 
+          {canControl ? (
+            <div className="u1-simple-inventory__quick-actions">
+              <button
+                type="button"
+                disabled={Boolean(busy)}
+                onClick={() => setQuickAccess(selectedItem, !hasQuickAccess(selectedItem))}
+              >
+                {hasQuickAccess(selectedItem)
+                  ? "Убрать из быстрого доступа"
+                  : "В быстрый доступ"}
+              </button>
+            </div>
+          ) : null}
+
           {canControl && !selectedItem.equipped ? (
             <div className="u1-simple-inventory__actions">
               <label>
@@ -872,34 +861,6 @@ export default function InventorySimpleView({
                   ))}
                 </select>
               </label>
-
-              <div className="u1-simple-inventory__quick-actions">
-                {QUICK_ACCESS_SLOTS.map((index) => (
-                  <button
-                    type="button"
-                    key={index}
-                    disabled={Boolean(busy)}
-                    onClick={() => {
-                      const occupant = quickByIndex.get(index)
-                      if (occupant && occupant.id !== selectedItem.id) {
-                        void run(
-                          "swap:" + selectedItem.id,
-                          () => onSwap(selectedItem, occupant),
-                          "Предметы поменяны местами.",
-                        )
-                      } else if (!occupant) {
-                        void run(
-                          "quick:" + selectedItem.id,
-                          () => onPlace(selectedItem, { kind: "hand", index }),
-                          "Предмет добавлен в быстрый доступ.",
-                        )
-                      }
-                    }}
-                  >
-                    Быстрый {index + 1}
-                  </button>
-                ))}
-              </div>
 
               <div className="u1-simple-inventory__action-row">
                 <button
