@@ -11,6 +11,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Added a post-login world selector with two explicit branches: the existing «Мунтар» campaign and an experimental «ИИ мир» branch.
+- The experimental AI branch is protected by the requested numeric password gate, then exposes exactly five persistent slots that can be named independently.
+- Opening an AI slot currently lands on an isolated experimental placeholder instead of reusing «Мунтар» data; AI-GM/runtime integration will attach to these slots in later stages.
+
 - Added the Artificer to the class reference catalog as a reference-only mechanical specification. Its literary fields are deliberately blank so the user's later translation/Voss text is not replaced by generated filler.
 
 - Replaced the chat roll card's generated inline SVG dice for canonical d4/d6/d8/d10/d12/d20 with the graphite PNG dice authored for MEGANOT.
@@ -19,6 +23,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - d100 keeps the existing percentile behavior but now composes two graphite PNG d10s. Arbitrary unsupported dN rolls keep an explicit non-SVG fallback instead of pretending to have a canonical art asset.
 
 ### Database / migration changes
+
+- Added `public.ai_world_slots` with exactly five indexed slot positions per authenticated owner, owner-only RLS, and persistent slot names.
+- Kept AI slot persistence separate from `campaigns` for this stage because the existing new-campaign certification trigger currently aborts campaign creation on an incomplete Paladin runtime contract; no certification guard was bypassed.
 
 - Added Artificer Stage 3 at `efota-2025-artificer-stage3-item-replication-v1`: Tinker's Magic temporary instances, Replicate Magic Item plan persistence, real Cheburashka item creation, Long-Rest reconciliation, provenance cleanup and generic attunement.
 - Added 26 reusable Tinker's Magic mundane-item identities plus 52 explicit Replicate Magic Item plan identities to Chasovoy. Catch-all Common / Uncommon Wondrous / Rare Wondrous eligibility is resolved generically from item metadata.
@@ -62,6 +69,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Removed inline canonical SVG geometry and SVG text rendering from `DiceGlyph`; the raw result is now an HTML overlay above the PNG asset.
 
 ### Tests / verification
+
+- Added regression coverage for the world selector, AI password gate, five-slot contract, persistent naming, and owner-only RLS migration.
 
 - Added Artificer Stage 3 regression coverage for exact plan/item progression, Tinker's Magic resource/action/lifecycle, private Cheburashka ownership, Long-Rest generation locking, cleanup semantics, generic attunement and the rule that Stage 3 must not write final READY.
 - Added CE inventory projection coverage proving that attunement-required item mechanics are absent while unattuned and return when the same instance becomes attuned.
