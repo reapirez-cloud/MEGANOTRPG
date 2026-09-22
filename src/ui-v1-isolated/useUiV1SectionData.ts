@@ -468,6 +468,11 @@ export function useUiV1WorldData() {
       )
       .on(
         "postgres_changes",
+        { event: "*", schema: "public", table: "character_biography_revisions", filter: `campaign_id=eq.${scope.campaignId}` },
+        reload,
+      )
+      .on(
+        "postgres_changes",
         { event: "*", schema: "public", table: "character_relationships", filter: `campaign_id=eq.${scope.campaignId}` },
         reload,
       )
