@@ -23,20 +23,20 @@ const appPath = new URL(
   import.meta.url,
 )
 
-test("GM chat drawer opens from a deliberate left-to-right inner-edge swipe", async () => {
+test("GM chat drawer opens from an explicit side button and does not reserve back swipe", async () => {
   const [screen, navigation, app] = await Promise.all([
     readFile(screenPath, "utf8"),
     readFile(navigationPath, "utf8"),
     readFile(appPath, "utf8"),
   ])
 
-  assert.match(screen, /data-gm-drawer-swipe/)
-  assert.match(screen, /deltaX >= 64/)
-  assert.match(screen, /setGmDrawerOpen\(true\)/)
-  assert.match(screen, /event\.clientX < innerLeftEdge \|\| event\.clientX > gestureLane/)
+  assert.match(screen, /u1-gm-drawer-trigger/)
+  assert.match(screen, /aria-label="Открыть панель ГМ"/)
+  assert.match(screen, /onClick=\{\(\) => setGmDrawerOpen\(true\)\}/)
+  assert.doesNotMatch(screen, /data-gm-drawer-swipe/)
+  assert.doesNotMatch(screen, /deltaX >= 64/)
   assert.match(navigation, /disableLeftEdge = false/)
-  assert.match(navigation, /edge === "left" && disableLeftEdge/)
-  assert.match(
+  assert.doesNotMatch(
     app,
     /route\.type === "chat-room" && campaign\?\.canManage === true/,
   )
