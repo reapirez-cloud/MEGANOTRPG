@@ -100,6 +100,9 @@ function fail(error: { message: string } | null, fallback: string): never {
   if (message.includes("Inventory holder does not allow nested containers")) {
     throw new EngineCommandError("inventory.nesting_forbidden", message)
   }
+  if (message.includes("Inventory container is full")) {
+    throw new EngineCommandError("inventory.container_full", message)
+  }
   throw new EngineCommandError("inventory.persistence", message)
 }
 
@@ -451,7 +454,7 @@ export class SupabaseCheburashkaStorage implements CheburashkaStorage {
         return mutationFromRpc(command.kind, data)
       }
 
-      const { data, error } = await this.client.rpc("move_inventory_item_v1", {
+      const { data, error } = await this.client.rpc("move_inventory_item_simple_v1", {
         p_character_id: command.characterId,
         p_item_id: command.itemId,
         p_holder_item_id: command.holderItemId,
