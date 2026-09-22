@@ -315,6 +315,51 @@ function abilityModifier(score: number | undefined) {
   return `${modifier >= 0 ? "+" : ""}${modifier}`
 }
 
+const npcAbilityLabels: Record<string, string> = {
+  strength: "Сила",
+  dexterity: "Ловкость",
+  constitution: "Телосложение",
+  intelligence: "Интеллект",
+  wisdom: "Мудрость",
+  charisma: "Харизма",
+}
+
+const npcSkillLabels: Record<string, string> = {
+  acrobatics: "Акробатика",
+  animal_handling: "Уход за животными",
+  arcana: "Магия",
+  athletics: "Атлетика",
+  deception: "Обман",
+  history: "История",
+  insight: "Проницательность",
+  intimidation: "Запугивание",
+  investigation: "Расследование",
+  medicine: "Медицина",
+  nature: "Природа",
+  perception: "Внимательность",
+  performance: "Выступление",
+  persuasion: "Убеждение",
+  religion: "Религия",
+  sleight_of_hand: "Ловкость рук",
+  stealth: "Скрытность",
+  survival: "Выживание",
+}
+
+function npcSavingThrows(values: unknown[]) {
+  return values
+    .filter((value): value is string => typeof value === "string" && Boolean(value.trim()))
+    .map((value) => npcAbilityLabels[value] || value)
+}
+
+function npcSkills(values: Record<string, unknown>) {
+  return Object.entries(values)
+    .filter(([, rank]) => Number(rank) > 0)
+    .map(([key, rank]) => ({
+      name: npcSkillLabels[key] || key,
+      rank: Number(rank) >= 2 ? "экспертиза" : "владение",
+    }))
+}
+
 function WorldNpcDossierScreen({
   characterId,
 }: {
@@ -514,6 +559,20 @@ function WorldNpcDossierScreen({
         </summary>
         <div>
           {sheet.proficiencies && <p><strong>Владения:</strong> {sheet.proficiencies}</p>}
+          {npcSavingThrows(sheet.saving_throw_proficiencies).length > 0 && (
+            <p>
+              <strong>Спасброски:</strong>{" "}
+              {npcSavingThrows(sheet.saving_throw_proficiencies).join(", ")}
+            </p>
+          )}
+          {npcSkills(sheet.skill_proficiencies).length > 0 && (
+            <p>
+              <strong>Навыки:</strong>{" "}
+              {npcSkills(sheet.skill_proficiencies)
+                .map((skill) => `${skill.name} (${skill.rank})`)
+                .join(", ")}
+            </p>
+          )}
           {sheet.languages && <p><strong>Языки:</strong> {sheet.languages}</p>}
           {sheet.senses && <p><strong>Чувства:</strong> {sheet.senses}</p>}
           {sheet.alignment && <p><strong>Мировоззрение:</strong> {sheet.alignment}</p>}
