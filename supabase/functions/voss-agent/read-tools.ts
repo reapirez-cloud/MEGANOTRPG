@@ -70,7 +70,7 @@ export const VOSS_READ_TOOLS = [
     function: {
       name: "read_character",
       description:
-        "Read the visible resolved data stored for one character: sheet, HP, resources, inventory, spells, features, class/subclass assignments and world position.",
+        "Read the visible resolved data stored for one character: sheet, HP, resources, inventory, spells, features, class/subclass assignments and world position. For a world NPC, GM/Admin also receives its NPC profile, habitats and canonical relationship rows.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -601,6 +601,57 @@ async function readCharacter(
     location = data || null
   }
 
+  let npcProfile: unknown = null
+  let npcHabitats: unknown[] = []
+  let npcRelationships: unknown[] = []
+
+  if (character.character_type === "npc" && context.canManage) {
+    const [profileResult, habitatResult, relationshipResult] = await Promise.all([
+      context.client
+        .from("npc_profiles")
+        .select("character_id,role,species,creature_type,size,challenge_rating,occupation,faction,appearance,demeanor,motivation,public_notes,gm_notes,tags,updated_at")
+        .eq("campaign_id", context.campaignId)
+        .eq("character_id", characterId)
+        .maybeSingle(),
+      context.client
+        .from("location_npc_habitats")
+        .select("location_id,created_at")
+        .eq("campaign_id", context.campaignId)
+        .eq("npc_character_id", characterId),
+      context.client
+        .from("character_relationships")
+        .select("id,subject_character_id,target_character_id,relationship_kind,public_label,attitude_score,player_note,gm_note,player_visible,state,started_at,ended_at,updated_at")
+        .eq("campaign_id", context.campaignId)
+        .or(`subject_character_id.eq.${characterId},target_character_id.eq.${characterId}`)
+        .order("updated_at", { ascending: false }),
+    ])
+
+    const npcError =
+      profileResult.error ||
+      habitatResult.error ||
+      relationshipResult.error
+    if (npcError) return { error: npcError.message }
+
+    npcProfile = profileResult.data || null
+    npcRelationships = relationshipResult.data || []
+
+    const habitatIds = (habitatResult.data || []).map((row) => row.location_id)
+    if (habitatIds.length) {
+      const { data: habitatLocations, error: habitatLocationError } = await context.client
+        .from("locations")
+        .select("id,name,summary,visibility_mode,lifecycle_state")
+        .eq("campaign_id", context.campaignId)
+        .in("id", habitatIds)
+      if (habitatLocationError) return { error: habitatLocationError.message }
+
+      const byId = new Map((habitatLocations || []).map((row) => [row.id, row]))
+      npcHabitats = (habitatResult.data || []).map((row) => ({
+        ...row,
+        location: byId.get(row.location_id) || null,
+      }))
+    }
+  }
+
   return {
     character,
     sheet: sheetResult.data || null,
@@ -610,6 +661,9 @@ async function readCharacter(
     features: featuresResult.data || [],
     assignments,
     templates: templateRows,
+    npcProfile,
+    npcHabitats,
+    npcRelationships,
     worldState: worldStateResult.data
       ? {
           ...worldStateResult.data,
