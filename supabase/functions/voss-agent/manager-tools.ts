@@ -450,6 +450,59 @@ export const VOSS_MANAGER_TOOLS = [
   {
     type: "function",
     function: {
+      name: "upsert_location_secret",
+      description:
+        "GM/Admin only. Create or update one persistent hidden secret attached to a canonical location. secret_key is the idempotency key inside the location. This is for durable world truth, danger, resource, route, person, object or hook state that should survive quests and sessions. It is never player-visible automatically.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          location_id: { type: "string" },
+          secret_id: { type: "string" },
+          secret_key: { type: "string" },
+          secret_type: { type: "string" },
+          title: { type: "string" },
+          secret_text: { type: "string" },
+          ai_directive: { type: "string" },
+          reveal_text: { type: "string" },
+          status: { type: "string", enum: ["active", "resolved", "retired"] },
+          importance: { type: "integer", minimum: 1, maximum: 5 },
+          tags: {
+            type: "array",
+            maxItems: 24,
+            items: { type: "string" },
+          },
+          metadata: {
+            type: "object",
+            additionalProperties: true,
+          },
+          resolution_note: { type: "string" },
+        },
+        required: ["location_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_location_secret_state",
+      description:
+        "GM/Admin only. Change the lifecycle state of an existing location secret. resolved means the hidden situation has been resolved; retired means it is no longer canonical/relevant. This does not publish reveal_text to players.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          secret_id: { type: "string" },
+          status: { type: "string", enum: ["active", "resolved", "retired"] },
+          resolution_note: { type: "string" },
+        },
+        required: ["secret_id", "status"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_location",
       description:
         "GM/Admin only. Create a canonical location/zone in the campaign world. May be nested under an existing parent location.",
@@ -1073,6 +1126,72 @@ async function deleteLocationTransition(
   return { transition: data, canonical_state_changed: true }
 }
 
+async function upsertLocationSecret(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const locationId = uuid(args.location_id)
+  if (!locationId) return { error: "location_id_required" }
+
+  const input: JsonRecord = { ...args }
+  delete input.location_id
+
+  if (args.secret_id !== undefined) {
+    const secretId = uuid(args.secret_id)
+    if (!secretId) return { error: "secret_id_invalid" }
+    input.secret_id = secretId
+  }
+
+  if (args.secret_key !== undefined) {
+    input.secret_key = text(args.secret_key, 160)
+  }
+  if (args.title !== undefined) input.title = text(args.title, 240)
+  if (args.secret_text !== undefined) input.secret_text = text(args.secret_text, 24000)
+  if (args.ai_directive !== undefined) input.ai_directive = text(args.ai_directive, 12000)
+  if (args.reveal_text !== undefined) input.reveal_text = text(args.reveal_text, 12000)
+  if (args.resolution_note !== undefined) {
+    input.resolution_note = text(args.resolution_note, 12000)
+  }
+
+  const { data, error } = await managerClient(context).rpc(
+    "upsert_location_secret_v1",
+    {
+      p_location_id: locationId,
+      p_input: input,
+    },
+  )
+
+  if (error) return { error: error.message }
+  return { secret: data, canonical_state_changed: true }
+}
+
+async function setLocationSecretState(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const secretId = uuid(args.secret_id)
+  if (!secretId) return { error: "secret_id_required" }
+  const status =
+    args.status === "active" ||
+    args.status === "resolved" ||
+    args.status === "retired"
+      ? args.status
+      : ""
+  if (!status) return { error: "location_secret_status_invalid" }
+
+  const { data, error } = await managerClient(context).rpc(
+    "set_location_secret_state_v1",
+    {
+      p_secret_id: secretId,
+      p_status: status,
+      p_resolution_note: text(args.resolution_note, 12000),
+    },
+  )
+
+  if (error) return { error: error.message }
+  return { secret: data, canonical_state_changed: true }
+}
+
 async function createLocation(
   context: VossManagerToolContext,
   args: JsonRecord,
@@ -1394,6 +1513,8 @@ export async function executeVossManagerTool(
     if (name === "set_npc_habitat") return await setNpcHabitat(context, args)
     if (name === "upsert_location_transition") return await upsertLocationTransition(context, args)
     if (name === "delete_location_transition") return await deleteLocationTransition(context, args)
+    if (name === "upsert_location_secret") return await upsertLocationSecret(context, args)
+    if (name === "set_location_secret_state") return await setLocationSecretState(context, args)
     if (name === "set_character_life_state") return await setCharacterLifeState(context, args)
     if (name === "set_character_publication") return await setCharacterPublication(context, args)
     if (name === "delete_campaign_character") return await deleteCampaignCharacter(context, args)
