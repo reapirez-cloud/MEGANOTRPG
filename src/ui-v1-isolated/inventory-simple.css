@@ -531,6 +531,21 @@
   aspect-ratio: auto;
 }
 
+.u1-simple-inventory__equipment-filled {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.u1-simple-inventory__equipment-filled > small {
+  color: rgba(226,228,224,.32);
+  font-size: 6.5px;
+  font-weight: 760;
+  letter-spacing: .035em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 .u1-simple-inventory__equipment-empty,
 .u1-simple-inventory__quick-empty {
   min-height: 62px;
