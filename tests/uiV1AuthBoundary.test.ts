@@ -3,6 +3,7 @@ import fs from "node:fs"
 import test from "node:test"
 
 const gate = fs.readFileSync("src/components/auth/AuthGate.tsx", "utf8")
+const telegramAuth = fs.readFileSync("api/telegram-auth.mjs", "utf8")
 const context = fs.readFileSync("src/context/AuthContext.tsx", "utf8")
 const entry = fs.readFileSync("src/ui-v1-isolated/main.tsx", "utf8")
 const html = fs.readFileSync("index.html", "utf8")
@@ -25,8 +26,8 @@ test("UI 1.0 cannot mount outside the complete app access boundary", () => {
 
   assert.match(gate, /\.from\("campaign_members"\)/)
   assert.match(gate, /\.eq\("user_id", currentUser\.id\)/)
-  assert.match(gate, /phase === "invite"/)
-  assert.match(gate, /"join_campaign_by_invite"/)
+  assert.match(gate, /ownerRows = rows\.filter\(\(row\) => row\.is_owner === true\)/)
+  assert.match(gate, /phase === "not-found"/)
   assert.match(gate, /phase !== "ready"/)
   assert.match(gate, /<AuthProvider[\s\S]*campaign=\{campaign\}/)
 
@@ -38,21 +39,34 @@ test("UI 1.0 cannot mount outside the complete app access boundary", () => {
 test("remembered campaign id is only a hint after live membership lookup", () => {
   const queryIndex = gate.indexOf('.from("campaign_members")')
   const rememberedIndex = gate.indexOf("const remembered = rememberedCampaignId()")
-  const selectedIndex = gate.indexOf("rows.find")
+  const selectedIndex = gate.indexOf("ownerRows.find")
 
   assert.ok(queryIndex >= 0)
   assert.ok(rememberedIndex > queryIndex)
   assert.ok(selectedIndex > rememberedIndex)
-  assert.match(gate, /rows\.find\(\(row\) => row\.campaign_id === remembered\)/)
-})
-
-test("new users stay outside the app until invite redemption creates membership", () => {
-  assert.match(gate, /if \(!selected\) \{[\s\S]*setPhase\("invite"\)[\s\S]*return/)
   assert.match(
     gate,
-    /supabase\.rpc\([\s\S]*"join_campaign_by_invite"[\s\S]*p_code: code/,
+    /ownerRows\.find\(\(row\) => row\.campaign_id === remembered\)/,
   )
-  assert.match(gate, /await resolveCampaignAccess\(user, profile\)/)
+})
+
+test("production access is owner-only and unauthorized users see 404", () => {
+  assert.match(
+    gate,
+    /if \(!selected\) \{[\s\S]*signOut\(\{ scope: "local" \}\)[\s\S]*setPhase\("not-found"\)[\s\S]*return/,
+  )
+  assert.match(gate, /response\.status === 404/)
+  assert.match(gate, /<h1 className="auth-title">404<\/h1>/)
+  assert.match(gate, /Страница не найдена\./)
+
+  assert.match(telegramAuth, /\.from\("telegram_identities"\)/)
+  assert.match(telegramAuth, /\.from\("campaign_members"\)/)
+  assert.match(telegramAuth, /\.eq\("is_owner", true\)/)
+  assert.match(telegramAuth, /return json\(res, 404, \{ error: "Not found" \}\)/)
+  assert.match(
+    telegramAuth,
+    /linkData\.user\.id !== existingIdentity\.user_id/,
+  )
 })
 
 test("production never reuses a stale Supabase browser session without Telegram initData", () => {
