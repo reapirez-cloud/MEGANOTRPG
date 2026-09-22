@@ -139,7 +139,7 @@ test("Stage 4 package runs the shared class quality, resource, parser and CE gat
   assert.ok(resource)
   assert.equal(resource.max.value, 4)
   assert.ok(action)
-  assert.equal(action.resource?.key, "artificer_flash_of_genius")
+  assert.equal(action.resourceCosts[0]?.stateKey, "artificer_flash_of_genius")
 })
 
 test("Stage 4 replaces every pending base placeholder with runtime-backed mechanics", () => {
