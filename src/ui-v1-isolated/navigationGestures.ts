@@ -256,9 +256,13 @@ function targetBlocksSwipeBack(target: EventTarget | null) {
 export function useSwipeBackNavigation({
   enabled,
   onBack,
+  disableLeftEdge = false,
+  disableRightEdge = false,
 }: {
   enabled: boolean
   onBack: () => void
+  disableLeftEdge?: boolean
+  disableRightEdge?: boolean
 }) {
   const onBackRef = useRef(onBack)
 
@@ -279,6 +283,8 @@ export function useSwipeBackNavigation({
       const viewportWidth = window.visualViewport?.width || window.innerWidth
       const edge = swipeBackEdge(event.clientX, viewportWidth)
       if (!edge) return
+      if (edge === "left" && disableLeftEdge) return
+      if (edge === "right" && disableRightEdge) return
 
       active = {
         pointerId: event.pointerId,
@@ -358,5 +364,5 @@ export function useSwipeBackNavigation({
       window.removeEventListener("blur", cancelSwipe)
       window.removeEventListener("click", suppressGestureClick, true)
     }
-  }, [enabled])
+  }, [disableLeftEdge, disableRightEdge, enabled])
 }
