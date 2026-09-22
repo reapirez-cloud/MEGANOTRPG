@@ -86,7 +86,7 @@ export const VOSS_READ_TOOLS = [
     function: {
       name: "read_location",
       description:
-        "Read one visible location with its text sections, parent, children and visible transitions.",
+        "Read one visible location as live world context: text sections, hierarchy, directional transitions, current occupants, NPC habitats and visible world storages. GM/Admin also receives discovery state for the location and its transitions.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -701,7 +701,16 @@ async function readLocation(
   if (locationError) return { error: locationError.message }
   if (!location) return { not_found: true }
 
-  const [sectionsResult, childrenResult, parentResult] = await Promise.all([
+  const emptyRows = Promise.resolve({ data: [], error: null })
+  const [
+    sectionsResult,
+    childrenResult,
+    parentResult,
+    habitatResult,
+    presenceResult,
+    storageResult,
+    locationDiscoveryResult,
+  ] = await Promise.all([
     context.client
       .from("location_sections")
       .select("id,location_id,title,body,sort_order")
@@ -722,22 +731,51 @@ async function readLocation(
           .eq("id", location.parent_location_id)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    context.client
+      .from("location_npc_habitats")
+      .select("npc_character_id,created_at")
+      .eq("location_id", locationId)
+      .order("created_at"),
+    context.client
+      .from("character_world_state")
+      .select("character_id,campaign_day,day_period,updated_at")
+      .eq("campaign_id", context.campaignId)
+      .eq("location_id", locationId)
+      .order("updated_at", { ascending: false }),
+    context.client.rpc("list_world_storages_v1", {
+      p_campaign_id: context.campaignId,
+      p_location_id: locationId,
+    }),
+    context.canManage
+      ? context.client
+          .from("character_location_discoveries")
+          .select("character_id,discovered_at,source")
+          .eq("location_id", locationId)
+          .order("discovered_at")
+      : emptyRows,
   ])
 
   const firstError =
     sectionsResult.error ||
     childrenResult.error ||
-    parentResult.error
+    parentResult.error ||
+    habitatResult.error ||
+    presenceResult.error ||
+    storageResult.error ||
+    locationDiscoveryResult.error
   if (firstError) return { error: firstError.message }
 
   const sections = sectionsResult.data || []
   const sectionIds = sections.map((section) => section.id)
+  const sectionById = new Map(
+    sections.map((section) => [section.id, section]),
+  )
   let links: Array<Record<string, unknown>> = []
 
   if (sectionIds.length) {
     const { data, error } = await context.client
       .from("location_links")
-      .select("id,section_id,target_location_id,label,sort_order,visibility_mode")
+      .select("id,section_id,target_location_id,label,sort_order,visibility_mode,created_at")
       .in("section_id", sectionIds)
       .order("sort_order")
 
@@ -750,32 +788,144 @@ async function readLocation(
       .map((link) => link.target_location_id)
       .filter((value): value is string => typeof value === "string"),
   )]
-  let targets: unknown[] = []
+  let targets: Array<Record<string, unknown>> = []
 
   if (targetIds.length) {
     const { data, error } = await context.client
       .from("locations")
-      .select("id,name,summary")
+      .select("id,name,summary,visibility_mode,lifecycle_state")
       .eq("campaign_id", context.campaignId)
       .in("id", targetIds)
 
     if (error) return { error: error.message }
-    targets = data || []
+    targets = (data || []) as Array<Record<string, unknown>>
   }
 
-  const targetById = new Map(
-    (targets as Array<Record<string, unknown>>).map((target) => [target.id, target]),
+  const habitatRows = habitatResult.data || []
+  const presenceRows = presenceResult.data || []
+  const locationDiscoveryRows = locationDiscoveryResult.data || []
+  const relatedCharacterIds = [...new Set([
+    ...habitatRows.map((row) => row.npc_character_id),
+    ...presenceRows.map((row) => row.character_id),
+    ...locationDiscoveryRows.map((row) => row.character_id),
+  ].filter((value): value is string => typeof value === "string" && Boolean(value)))]
+
+  let characterRows: Array<Record<string, unknown>> = []
+  let profileRows: Array<Record<string, unknown>> = []
+
+  if (relatedCharacterIds.length) {
+    const [charactersResult, profilesResult] = await Promise.all([
+      context.client
+        .from("characters")
+        .select("id,name,character_class,level,character_type,life_state,visibility_mode,publication_state")
+        .eq("campaign_id", context.campaignId)
+        .in("id", relatedCharacterIds),
+      context.canManage
+        ? context.client
+            .from("npc_profiles")
+            .select("character_id,role,species,creature_type,occupation,faction,public_notes,tags")
+            .eq("campaign_id", context.campaignId)
+            .in("character_id", relatedCharacterIds)
+        : emptyRows,
+    ])
+
+    const relatedError = charactersResult.error || profilesResult.error
+    if (relatedError) return { error: relatedError.message }
+    characterRows = (charactersResult.data || []) as Array<Record<string, unknown>>
+    profileRows = (profilesResult.data || []) as Array<Record<string, unknown>>
+  }
+
+  const linkIds = links
+    .map((link) => link.id)
+    .filter((value): value is string => typeof value === "string")
+  let transitionDiscoveryRows: Array<Record<string, unknown>> = []
+
+  if (context.canManage && linkIds.length) {
+    const { data, error } = await context.client
+      .from("character_location_link_discoveries")
+      .select("character_id,location_link_id,discovered_at,source")
+      .in("location_link_id", linkIds)
+      .order("discovered_at")
+
+    if (error) return { error: error.message }
+    transitionDiscoveryRows = (data || []) as Array<Record<string, unknown>>
+
+    const missingCharacterIds = [...new Set(
+      transitionDiscoveryRows
+        .map((row) => row.character_id)
+        .filter((value): value is string =>
+          typeof value === "string" &&
+          !characterRows.some((character) => character.id === value)
+        ),
+    )]
+
+    if (missingCharacterIds.length) {
+      const { data: extraCharacters, error: extraError } = await context.client
+        .from("characters")
+        .select("id,name,character_class,level,character_type,life_state,visibility_mode,publication_state")
+        .eq("campaign_id", context.campaignId)
+        .in("id", missingCharacterIds)
+      if (extraError) return { error: extraError.message }
+      characterRows.push(...((extraCharacters || []) as Array<Record<string, unknown>>))
+    }
+  }
+
+  const targetById = new Map(targets.map((target) => [target.id, target]))
+  const characterById = new Map(
+    characterRows.map((character) => [character.id, character]),
   )
+  const profileByCharacterId = new Map(
+    profileRows.map((profile) => [profile.character_id, profile]),
+  )
+
+  const transitions = links.map((link) => ({
+    ...link,
+    section_title:
+      typeof link.section_id === "string"
+        ? sectionById.get(link.section_id)?.title || ""
+        : "",
+    directional: true,
+    target: targetById.get(link.target_location_id) || null,
+  }))
+
+  const currentOccupants = presenceRows.map((row) => ({
+    character_id: row.character_id,
+    character: characterById.get(row.character_id) || null,
+    campaign_day: row.campaign_day,
+    day_period: row.day_period,
+    updated_at: row.updated_at,
+  }))
+
+  const npcHabitats = habitatRows.map((row) => ({
+    npc_character_id: row.npc_character_id,
+    character: characterById.get(row.npc_character_id) || null,
+    profile: profileByCharacterId.get(row.npc_character_id) || null,
+    attached_at: row.created_at,
+  }))
+
+  const discovery = context.canManage
+    ? {
+        location: locationDiscoveryRows.map((row) => ({
+          ...row,
+          character: characterById.get(row.character_id) || null,
+        })),
+        transitions: transitionDiscoveryRows.map((row) => ({
+          ...row,
+          character: characterById.get(row.character_id) || null,
+        })),
+      }
+    : null
 
   return {
     location,
     parent: parentResult.data || null,
     children: childrenResult.data || [],
     sections,
-    transitions: links.map((link) => ({
-      ...link,
-      target: targetById.get(link.target_location_id) || null,
-    })),
+    transitions,
+    currentOccupants,
+    npcHabitats,
+    worldStorages: storageResult.data || [],
+    discovery,
   }
 }
 
