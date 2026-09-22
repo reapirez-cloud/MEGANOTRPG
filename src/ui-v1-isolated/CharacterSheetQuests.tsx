@@ -500,24 +500,27 @@ function GmQuestPlan({
             ]
 
             return (
-              <SnakeTrigger
+              <article
                 key={stage.id}
-                entity={{ type: "quest-stage", id: stage.id }}
-                actions={stageActions}
+                className="u1-character-quests__gm-stage"
+                data-status={stage.status}
               >
-                <article
-                  className="u1-character-quests__gm-stage"
-                  data-status={stage.status}
+                <SnakeTrigger
+                  entity={{ type: "quest-stage", id: stage.id }}
+                  actions={stageActions}
                 >
-                  <header>
-                    <span>Этап {stage.position + 1}</span>
-                    <b>{stageStatusLabel(stage.status)}</b>
-                  </header>
-                  <h4>
-                    {stage.secret.internal_title
-                      || stage.player_title
-                      || stage.stage_key}
-                  </h4>
+                  <div className="u1-character-quests__gm-stage-trigger">
+                    <header>
+                      <span>Этап {stage.position + 1}</span>
+                      <b>{stageStatusLabel(stage.status)}</b>
+                    </header>
+                    <h4>
+                      {stage.secret.internal_title
+                        || stage.player_title
+                        || stage.stage_key}
+                    </h4>
+                  </div>
+                </SnakeTrigger>
 
                   {stage.secret.objective ? (
                     <p className="u1-character-quests__gm-objective">
@@ -608,18 +611,21 @@ function GmQuestPlan({
                           }]
 
                           return (
-                            <SnakeTrigger
+                            <div
+                              className="u1-character-quests__gm-condition-group"
                               key={group.id}
-                              entity={{ type: "quest-condition-group", id: group.id }}
-                              actions={groupActions}
                             >
-                              <div className="u1-character-quests__gm-condition-group">
+                              <SnakeTrigger
+                                entity={{ type: "quest-condition-group", id: group.id }}
+                                actions={groupActions}
+                              >
                                 <header>
                                   <strong>{group.group_key}</strong>
                                   <span>{group.mode === "all" ? "ВСЕ" : "ЛЮБОЕ"}</span>
                                 </header>
+                              </SnakeTrigger>
 
-                                {groupConditions.map((condition) => {
+                              {groupConditions.map((condition) => {
                                   const conditionActions: SnakeAction[] = [{
                                     id: "quest-condition-edit",
                                     label: "Редактировать условие",
@@ -682,16 +688,14 @@ function GmQuestPlan({
                                       </div>
                                     </SnakeTrigger>
                                   )
-                                })}
-                              </div>
-                            </SnakeTrigger>
+                              })}
+                            </div>
                           )
                         })}
                       </div>
                     </div>
                   ) : null}
-                </article>
-              </SnakeTrigger>
+              </article>
             )
           })}
         </div>
