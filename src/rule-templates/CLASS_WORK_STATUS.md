@@ -652,7 +652,7 @@ Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and al
 ## Artificer (`class:artificer`)
 
 **Text:** `DEFERRED_USER_TRANSLATION`  
-**Mechanics/runtime:** `IN_PROGRESS_STAGE_3_COMPLETE`
+**Mechanics/runtime:** `IN_PROGRESS_STAGE_4_COMPLETE`
 
 - `canonical_source: Eberron: Forge of the Artificer (2025)`
 - `literary_policy: USER_TRANSLATION_LATER`
@@ -677,24 +677,30 @@ Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and al
 - `stage_3_tinkers_magic: real Cheburashka temporary instances + Long-Rest expiry`
 - `stage_3_replication_plans: 4/5/6/7/8 known plans; 2/3/4/5/6 active items`
 - `stage_3_attunement: generic Cheburashka item-state contract + CE projection gating`
-- `stage_4_remaining_base_runtime: NEXT`
-- `stage_5_subclass_wave_1: NOT_STARTED`
+- `stage_4_remaining_base_runtime: COMPLETE_2026_09_22`
+- `stage_4_runtime_revision: efota-2025-artificer-stage4-base-runtime-v1`
+- `stage_4_magic_item_tinker: READY_SHARED_CHEBURASHKA_AND_SPELL_SLOT_LEDGER`
+- `stage_4_flash_of_genius: READY_INT_RESOURCE_LONG_REST_PLUS_L14_SHORT_REST_ONE`
+- `stage_4_attunement_capacity: READY_REAL_ITEM_STATE_3_4_5_6`
+- `stage_4_spell_storing_item: READY_INVENTORY_BINDING_PLUS_SHARED_CHAT_SPELL_EXECUTION`
+- `stage_4_soul_of_artifice: READY_CROSS_OWNER_DISMISS_PLUS_SHAPOKLYAK_HP`
+- `stage_4_regression: tests/artificerRuntimeStage4Base.test.ts`
+- `stage_5_subclass_wave_1: NEXT`
 - `stage_6_subclass_wave_2_and_ux: NOT_STARTED`
 - `stage7_gate: INSTALLED_2026_09_21`
 - `stage7_gate_production: APPLIED_2026_09_21`
-- `stage7_live_smoke: FAIL_CLOSED_ACTIVE_CLASS_NOT_FOUND_AS_EXPECTED`
 - `stage7_gate_function: private.certify_artificer_runtime_final_v1(uuid)`
 - `target_runtime_revision: eberron-2025-artificer-runtime-final-v1`
-- `current_dev_runtime: Stage 3 core item runtime installed; subclasses still absent`
-- `current_production_runtime: 1 active class / 20 levels / 0 subclasses`
+- `current_dev_runtime: base Artificer 1–20 is Stage-4 complete through shared CE/GENA/Shapoklyak/Cheburashka owners; all five subclasses are still absent`
+- `current_production_runtime: Stage-4 deployment pending live migration audit`
 - `current_production_spell_links: 92 canonical Stage 2 links retained`
 
-Stages 1–3 are complete. Stage 3 adds the core item-generation/replication runtime
-without creating a parallel inventory owner. The class is still not READY because
-the remaining base features and all five subclasses belong to Stages 4–6.
+Stages 1–4 close the entire base-class runtime. The class remains `IN_PROGRESS`
+because all five supported subclasses belong to Stages 5–6 and the final Stage-7
+certifier must remain fail-closed until that roster is complete.
 
-The Stage 7 gate remains intentionally blocked until Stages 4–6 are implemented.
-Literary translation and Voss prose are not mechanical prerequisites.
+Literary translation and Voss prose remain deliberately deferred and are not
+mechanical prerequisites.
 
 ---
 
