@@ -475,6 +475,50 @@ export function useUiV1CharacterControl(
     }
   }, [canControlCharacter, characterId, context, load, playerContext, scope.canManage])
 
+  const moveItemSimple = useCallback(async (
+    item: InventoryItem,
+    holderItemId: string | null,
+  ): Promise<Result> => {
+    if (!canControlCharacter) return { ok: false, error: "Недостаточно прав." }
+
+    try {
+      if (scope.canManage) {
+        await oracle.inventory.move(
+          context(),
+          characterId,
+          item.id,
+          holderItemId,
+          item.version,
+        )
+      } else {
+        await cheburashka.execute({
+          kind: "inventory.move",
+          context: playerContext(),
+          characterId,
+          itemId: item.id,
+          holderItemId,
+          expectedVersion: item.version,
+        })
+      }
+
+      await load()
+      return { ok: true }
+    } catch (reason) {
+      await load()
+      return {
+        ok: false,
+        error: errorMessage(reason, "Не удалось переложить предмет."),
+      }
+    }
+  }, [
+    canControlCharacter,
+    characterId,
+    context,
+    load,
+    playerContext,
+    scope.canManage,
+  ])
+
   const storeItemInWorld = useCallback(async (
     item: InventoryItem,
     storage: UiV1CharacterWorldStorage,
@@ -657,6 +701,7 @@ export function useUiV1CharacterControl(
     setEquipped,
     useItem,
     moveItem,
+    moveItemSimple,
     storeItemInWorld,
     updateItem,
     removeItem,
