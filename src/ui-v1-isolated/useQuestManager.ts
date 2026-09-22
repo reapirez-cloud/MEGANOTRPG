@@ -247,7 +247,7 @@ export function useQuestManager(
   }, [enabled, load, questId])
 
   const mutate = useCallback(async (
-    action: () => Promise<{ error: { message?: string } | null }>,
+    action: () => PromiseLike<{ error: { message?: string } | null }>,
     fallback: string,
   ): Promise<MutationResult> => {
     if (!enabled || !questId) return { ok: false, error: "Недостаточно прав." }
