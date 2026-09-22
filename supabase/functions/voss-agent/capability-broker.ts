@@ -45,7 +45,7 @@ export const FREDDY_CAPABILITY_TOOL = {
             enum: FREDDY_CAPABILITIES,
           },
           description:
-            "world.write = locations/zones; characters.write = PCs/NPCs; content.write = GM drafts/definitions such as items, feats, spells, features, conditions and references; memory.write = durable GM memory; media.write = generated/attached media; campaign.manage = broad campaign character/location management; system.admin = system-admin settings/security only.",
+            "world.write = locations/zones; characters.write = PCs/NPCs; content.write = GM drafts/definitions such as items, feats, spells, features, conditions and references; memory.write = durable GM memory; media.write = generated/attached media; campaign.manage = broad campaign management including characters, locations and Quest Engine quests; system.admin = system-admin settings/security only.",
         },
         reason: {
           type: "string",
