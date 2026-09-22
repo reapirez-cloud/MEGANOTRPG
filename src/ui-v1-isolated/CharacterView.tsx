@@ -10,6 +10,7 @@ import type { AbilityKey } from "../character-engine/index.ts"
 import { useResolvedCharacterRuntime } from "../hooks/useResolvedCharacterRuntime"
 import type { SnakeAction } from "../snake-engine"
 import CharacterInventoryInterface from "./CharacterInventoryInterface"
+import CharacterSheetBiography from "./CharacterSheetBiography"
 import CharacterSheetCore from "./CharacterSheetCore"
 import CharacterSheetFeatures from "./CharacterSheetFeatures"
 import { buildCharacterAbilitiesReadModel } from "./characterAbilitiesReadModel"
@@ -40,6 +41,7 @@ import { useGMWorkshopData } from "./useGMWorkshopData"
 import { useSnake } from "./SnakeProvider"
 import { useUiV1CharacterControl } from "./useUiV1CharacterControl"
 import { useCharacterQuests } from "./useCharacterQuests"
+import { useCharacterBiography } from "./useCharacterBiography"
 import {
   classReferenceArtSlot,
   useUiV1ReferenceMedia,
@@ -49,6 +51,7 @@ import { useWorkspaceData } from "./useWorkspaceData"
 import { bindTelegramBackButton } from "./telegramBackButton"
 import "./character-sheet-theme.css"
 import "./character-sheet-backgrounds.css"
+import "./character-sheet-biography.css"
 import "./character-sheet-shell.css"
 import "./character-sheet-header-stage2.css"
 import "./character-sheet-header-stage3.css"
@@ -128,6 +131,7 @@ export default function CharacterView({
   const [inventoryDataEnabled, setInventoryDataEnabled] = useState(false)
   const [featuresDataEnabled, setFeaturesDataEnabled] = useState(false)
   const [questsDataEnabled, setQuestsDataEnabled] = useState(false)
+  const [biographyDataEnabled, setBiographyDataEnabled] = useState(false)
   const control = useUiV1CharacterControl(characterId, {
     loadSpells: spellsDataEnabled,
     loadInventory: inventoryDataEnabled,
@@ -135,6 +139,11 @@ export default function CharacterView({
     loadResources: false,
   })
   const quests = useCharacterQuests(characterId, questsDataEnabled)
+  const biography = useCharacterBiography(
+    characterId,
+    biographyDataEnabled,
+    control.canManage,
+  )
   const classKey = classKeyFrom(
     control.character?.characterClass || "",
     control.assignments,
@@ -209,12 +218,14 @@ export default function CharacterView({
     setInventoryDataEnabled(false)
     setFeaturesDataEnabled(false)
     setQuestsDataEnabled(false)
+    setBiographyDataEnabled(false)
   }, [characterId])
 
   useEffect(() => {
     if (section === "spells") setSpellsDataEnabled(true)
     if (section === "features") setFeaturesDataEnabled(true)
     if (section === "quests") setQuestsDataEnabled(true)
+    if (section === "biography") setBiographyDataEnabled(true)
     if (interfaceMode === "inventory") setInventoryDataEnabled(true)
   }, [interfaceMode, section])
 
@@ -1089,6 +1100,13 @@ export default function CharacterView({
                 name: definition.name,
               })),
           }}
+        />
+      ) : section === "biography" ? (
+        <CharacterSheetBiography
+          biography={biography.biography}
+          loading={biography.loading}
+          error={biography.error}
+          canManage={control.canManage}
         />
       ) : section === "proficiencies" ? (
         <CharacterSheetProficiencies
