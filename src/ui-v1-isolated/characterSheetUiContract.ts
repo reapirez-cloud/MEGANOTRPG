@@ -228,15 +228,23 @@ export const CHARACTER_SHEET_INTERACTION_CONTRACT = {
  * mounts its spatial UI here.
  */
 export const CHARACTER_INVENTORY_INTERFACE_CONTRACT = {
-  version: 1,
-  status: "placeholder",
-  implementationRoadmap: "inventory-separate",
+  version: 2,
+  status: "simple-active",
+  implementationRoadmap: "inventory-simple-active-spatial-isolated",
   rendering: "standalone-full-interface",
   historyOwner: "character-view",
   persists: [
     "characterId",
     "returnSection",
     "focusedItemId",
+  ],
+  activeCapabilities: [
+    "one-item-one-slot",
+    "bag-capacity",
+    "nested-bags",
+    "existing-stack-policy",
+    "equipment",
+    "inventory-holder",
   ],
   futureCapabilities: [
     "spatial-grid",
@@ -250,6 +258,8 @@ export const CHARACTER_INVENTORY_INTERFACE_CONTRACT = {
     neverRenderInsideSheetContent: true,
     doNotMountLegacyInventoryUi: true,
     doNotImplementInventoryMechanicsHere: true,
+    spatialRuntimeIsolatedUntilReenabled: true,
+    simpleModeUsesCanonicalCheburashkaItems: true,
     preserveFocusedItemAcrossHistory: true,
     shareGraphiteFoundation: true,
   },
