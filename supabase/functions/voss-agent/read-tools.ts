@@ -710,6 +710,7 @@ async function readLocation(
     presenceResult,
     storageResult,
     locationDiscoveryResult,
+    locationSecretsResult,
   ] = await Promise.all([
     context.client
       .from("location_sections")
@@ -753,6 +754,15 @@ async function readLocation(
           .eq("location_id", locationId)
           .order("discovered_at")
       : emptyRows,
+    context.canManage
+      ? context.client
+          .from("location_secrets")
+          .select("id,secret_key,secret_type,title,secret_text,ai_directive,reveal_text,status,importance,tags,metadata,resolution_note,resolved_at,created_at,updated_at")
+          .eq("location_id", locationId)
+          .order("status")
+          .order("importance", { ascending: false })
+          .order("updated_at", { ascending: false })
+      : emptyRows,
   ])
 
   const firstError =
@@ -762,7 +772,8 @@ async function readLocation(
     habitatResult.error ||
     presenceResult.error ||
     storageResult.error ||
-    locationDiscoveryResult.error
+    locationDiscoveryResult.error ||
+    locationSecretsResult.error
   if (firstError) return { error: firstError.message }
 
   const sections = sectionsResult.data || []
@@ -916,6 +927,44 @@ async function readLocation(
       }
     : null
 
+  const locationSecretRows =
+    context.canManage
+      ? ((locationSecretsResult.data || []) as Array<Record<string, unknown>>)
+      : []
+  const secretIds = locationSecretRows
+    .map((row) => row.id)
+    .filter((value): value is string => typeof value === "string")
+  let revisionRows: Array<Record<string, unknown>> = []
+
+  if (context.canManage && secretIds.length) {
+    const { data, error } = await context.client
+      .from("location_secret_revisions")
+      .select("id,secret_id,revision,change_kind,snapshot,changed_by,created_at")
+      .in("secret_id", secretIds)
+      .order("revision", { ascending: false })
+      .limit(120)
+
+    if (error) return { error: error.message }
+    revisionRows = (data || []) as Array<Record<string, unknown>>
+  }
+
+  const revisionsBySecret = new Map<string, Array<Record<string, unknown>>>()
+  for (const row of revisionRows) {
+    const secretId = typeof row.secret_id === "string" ? row.secret_id : ""
+    if (!secretId) continue
+    const current = revisionsBySecret.get(secretId) || []
+    if (current.length < 8) current.push(row)
+    revisionsBySecret.set(secretId, current)
+  }
+
+  const locationSecrets = locationSecretRows.map((row) => ({
+    ...row,
+    recent_revisions:
+      typeof row.id === "string"
+        ? revisionsBySecret.get(row.id) || []
+        : [],
+  }))
+
   return {
     location,
     parent: parentResult.data || null,
@@ -926,6 +975,7 @@ async function readLocation(
     npcHabitats,
     worldStorages: storageResult.data || [],
     discovery,
+    ...(context.canManage ? { locationSecrets } : {}),
   }
 }
 
