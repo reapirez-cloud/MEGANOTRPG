@@ -695,3 +695,10 @@
     min-height: 58px;
   }
 }
+
+
+@media (pointer: coarse) {
+  .u1-simple-inventory__slot[draggable="true"] {
+    touch-action: none;
+  }
+}
