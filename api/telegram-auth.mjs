@@ -162,6 +162,41 @@ export default async function handler(req, res) {
     },
   })
 
+  // Production is intentionally owner-only. We resolve the Telegram identity
+  // server-side and require the existing campaign owner before minting any
+  // Supabase session. No Telegram/user ID is hardcoded into this public repo.
+  const { data: existingIdentity, error: identityLookupError } = await admin
+    .from("telegram_identities")
+    .select("user_id")
+    .eq("telegram_user_id", telegramUser.id)
+    .maybeSingle()
+
+  if (identityLookupError) {
+    console.error("Telegram identity lookup failed:", identityLookupError)
+    return json(res, 500, { error: "Сервер авторизации временно недоступен." })
+  }
+
+  if (!existingIdentity?.user_id) {
+    return json(res, 404, { error: "Not found" })
+  }
+
+  const { data: ownerAccess, error: ownerAccessError } = await admin
+    .from("campaign_members")
+    .select("user_id")
+    .eq("user_id", existingIdentity.user_id)
+    .eq("is_owner", true)
+    .limit(1)
+    .maybeSingle()
+
+  if (ownerAccessError) {
+    console.error("Owner access lookup failed:", ownerAccessError)
+    return json(res, 500, { error: "Сервер авторизации временно недоступен." })
+  }
+
+  if (!ownerAccess) {
+    return json(res, 404, { error: "Not found" })
+  }
+
   const internalEmail = `tg_${telegramUser.id}@telegram.meganotrpg.invalid`
 
   const { data: linkData, error: linkError } =
@@ -173,6 +208,11 @@ export default async function handler(req, res) {
   if (linkError || !linkData?.user || !linkData?.properties?.hashed_token) {
     console.error("Supabase generateLink failed:", linkError)
     return json(res, 500, { error: "Не удалось создать сессию игрока." })
+  }
+
+  if (linkData.user.id !== existingIdentity.user_id) {
+    console.error("Telegram identity does not match generated Supabase user")
+    return json(res, 404, { error: "Not found" })
   }
 
   const cleanTelegramUser = {

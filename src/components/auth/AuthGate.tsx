@@ -15,6 +15,7 @@ type Phase =
   | "invite"
   | "ready"
   | "telegram-required"
+  | "not-found"
   | "error"
 
 type TelegramUser = {
@@ -145,14 +146,24 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     }
 
     const rows = (memberships || []) as MembershipRow[]
+    const ownerRows = rows.filter((row) => row.is_owner === true)
     const remembered = rememberedCampaignId()
     const selected =
-      rows.find((row) => row.campaign_id === remembered) ||
-      rows[0] ||
+      ownerRows.find((row) => row.campaign_id === remembered) ||
+      ownerRows[0] ||
       null
 
     if (!selected) {
-      setPhase("invite")
+      const { error: signOutError } = await supabase.auth.signOut({ scope: "local" })
+      if (signOutError) {
+        console.warn("Could not clear unauthorized Supabase session:", signOutError.message)
+      }
+      setUser(null)
+      setProfile(null)
+      setCampaign(null)
+      setTelegramUser(null)
+      setError("")
+      setPhase("not-found")
       return
     }
 
@@ -210,6 +221,20 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       payload = (await response.json()) as TelegramAuthResponse
     } catch {
       // Keep the generic error below.
+    }
+
+    if (response.status === 404) {
+      const { error: signOutError } = await supabase.auth.signOut({ scope: "local" })
+      if (signOutError) {
+        console.warn("Could not clear unauthorized Supabase session:", signOutError.message)
+      }
+      setUser(null)
+      setProfile(null)
+      setCampaign(null)
+      setTelegramUser(null)
+      setError("")
+      setPhase("not-found")
+      return
     }
 
     if (!response.ok || !payload.token_hash || !payload.telegram_user) {
@@ -466,6 +491,18 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           >
             Проверить снова
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === "not-found") {
+    return (
+      <div className="auth-screen">
+        <div className="auth-card">
+          <div className="auth-eyebrow">MEGANOTRPG</div>
+          <h1 className="auth-title">404</h1>
+          <p className="auth-muted">Страница не найдена.</p>
         </div>
       </div>
     )
