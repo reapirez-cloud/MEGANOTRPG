@@ -11,6 +11,78 @@ export type VossManagerToolContext = {
   authority: VossAuthority
 }
 
+const NPC_SHEET_PROPERTIES = {
+  race: { type: "string" },
+  background: { type: "string" },
+  alignment: { type: "string" },
+  strength: { type: "integer", minimum: 1, maximum: 40 },
+  dexterity: { type: "integer", minimum: 1, maximum: 40 },
+  constitution: { type: "integer", minimum: 1, maximum: 40 },
+  intelligence: { type: "integer", minimum: 1, maximum: 40 },
+  wisdom: { type: "integer", minimum: 1, maximum: 40 },
+  charisma: { type: "integer", minimum: 1, maximum: 40 },
+  armor_class: { type: "integer", minimum: 0, maximum: 50 },
+  initiative_bonus: { type: "integer", minimum: -30, maximum: 30 },
+  speed: { type: "integer", minimum: 0, maximum: 1000 },
+  proficiency_bonus: { type: "integer", minimum: 0, maximum: 20 },
+  max_hp: { type: "integer", minimum: 1, maximum: 100000 },
+  current_hp: { type: "integer", minimum: 0, maximum: 100000 },
+  temp_hp: { type: "integer", minimum: 0, maximum: 100000 },
+  hit_dice: { type: "string" },
+  passive_perception: { type: "integer", minimum: 0, maximum: 60 },
+  saving_throw_proficiencies: {
+    type: "array",
+    maxItems: 12,
+    items: { type: "string" },
+  },
+  skill_proficiencies: {
+    type: "object",
+    additionalProperties: true,
+  },
+  proficiencies: { type: "string" },
+  languages: { type: "string" },
+  senses: { type: "string" },
+  personality_traits: { type: "string" },
+  ideals: { type: "string" },
+  bonds: { type: "string" },
+  flaws: { type: "string" },
+  backstory: { type: "string" },
+  notes: { type: "string" },
+} as const
+
+const NPC_PROFILE_PROPERTIES = {
+  role: { type: "string" },
+  species: { type: "string" },
+  creature_type: { type: "string" },
+  size: {
+    type: "string",
+    enum: ["tiny", "small", "medium", "large", "huge", "gargantuan"],
+  },
+  challenge_rating: { type: "number", minimum: 0, maximum: 100 },
+  occupation: { type: "string" },
+  faction: { type: "string" },
+  appearance: { type: "string" },
+  demeanor: { type: "string" },
+  motivation: { type: "string" },
+  public_notes: { type: "string" },
+  gm_notes: { type: "string" },
+  tags: {
+    type: "array",
+    maxItems: 24,
+    items: { type: "string" },
+  },
+} as const
+
+const NPC_RELATIONSHIP_PROPERTIES = {
+  target_character_id: { type: "string" },
+  relationship_kind: { type: "string" },
+  public_label: { type: "string" },
+  attitude_score: { type: "integer", minimum: -100, maximum: 100 },
+  player_note: { type: "string" },
+  gm_note: { type: "string" },
+  player_visible: { type: "boolean" },
+} as const
+
 export const VOSS_MANAGER_TOOLS = [
   {
     type: "function",
@@ -48,6 +120,109 @@ export const VOSS_MANAGER_TOOLS = [
           character_class: { type: "string" },
           level: { type: "integer", minimum: 1, maximum: 30 },
           bio: { type: "string" },
+        },
+        required: ["character_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_world_npc",
+      description:
+        "GM/Admin only. Atomically create a canonical published NPC that exists in the world. Fill enough D&D sheet data for the NPC's actual role, plus NPC profile, optional current location/habitats, optional relationship to a character, and discovery for characters who have actually encountered the NPC. Do not use this for a future quest NPC that does not need to exist yet; keep that as a quest placeholder until it enters play.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          name: { type: "string" },
+          character_class: {
+            type: "string",
+            description: "NPC archetype or class label, e.g. Стражник, Торговец, Волшебник.",
+          },
+          level: { type: "integer", minimum: 1, maximum: 30 },
+          bio: { type: "string" },
+          avatar_url: { type: "string" },
+          visibility_mode: { type: "string", enum: ["always", "discover"] },
+          location_id: { type: "string" },
+          habitat_location_ids: {
+            type: "array",
+            maxItems: 24,
+            items: { type: "string" },
+          },
+          campaign_day: { type: "integer", minimum: 1 },
+          day_period: {
+            type: "string",
+            enum: ["dawn", "morning", "day", "late_day", "evening", "night", "deep_night"],
+          },
+          discover_for_character_ids: {
+            type: "array",
+            maxItems: 24,
+            items: { type: "string" },
+          },
+          sheet: {
+            type: "object",
+            additionalProperties: false,
+            properties: NPC_SHEET_PROPERTIES,
+          },
+          profile: {
+            type: "object",
+            additionalProperties: false,
+            properties: NPC_PROFILE_PROPERTIES,
+          },
+          relationship: {
+            type: "object",
+            additionalProperties: false,
+            properties: NPC_RELATIONSHIP_PROPERTIES,
+          },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_world_npc",
+      description:
+        "GM/Admin only. Atomically patch an existing canonical world NPC. Read the NPC first. Send only fields that truly changed. Use this for D&D stats, NPC profile, current location, replacement habitat list, relationship state, or discovery after an encounter.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          name: { type: "string" },
+          character_class: { type: "string" },
+          level: { type: "integer", minimum: 1, maximum: 30 },
+          bio: { type: "string" },
+          avatar_url: { type: "string" },
+          visibility_mode: { type: "string", enum: ["always", "discover"] },
+          location_id: { type: "string" },
+          habitat_location_ids: {
+            type: "array",
+            maxItems: 24,
+            items: { type: "string" },
+          },
+          discover_for_character_ids: {
+            type: "array",
+            maxItems: 24,
+            items: { type: "string" },
+          },
+          sheet: {
+            type: "object",
+            additionalProperties: false,
+            properties: NPC_SHEET_PROPERTIES,
+          },
+          profile: {
+            type: "object",
+            additionalProperties: false,
+            properties: NPC_PROFILE_PROPERTIES,
+          },
+          relationship: {
+            type: "object",
+            additionalProperties: false,
+            properties: NPC_RELATIONSHIP_PROPERTIES,
+          },
         },
         required: ["character_id"],
       },
@@ -459,6 +634,59 @@ async function setCharacterPublication(
   return { character: data, canonical_state_changed: true }
 }
 
+async function createWorldNpc(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const name = text(args.name, 160)
+  if (!name) return { error: "npc_name_required" }
+
+  const payload: JsonRecord = { ...args, name }
+  const { data, error } = await managerClient(context).rpc(
+    "create_world_npc_v1",
+    {
+      p_campaign_id: context.campaignId,
+      p_input: payload,
+    },
+  )
+
+  if (error) return { error: error.message }
+  return {
+    npc: data,
+    canonical_state_changed: true,
+  }
+}
+
+async function updateWorldNpc(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  if (!characterId) return { error: "character_id_required" }
+
+  const current = await readCharacter(context, characterId)
+  if (current.error) return { error: current.error }
+  if (!current.row) return { not_found: true }
+  if (current.row.character_type !== "npc") return { error: "world_npc_required" }
+
+  const patch: JsonRecord = { ...args }
+  delete patch.character_id
+
+  const { data, error } = await managerClient(context).rpc(
+    "update_world_npc_v1",
+    {
+      p_npc_character_id: characterId,
+      p_patch: patch,
+    },
+  )
+
+  if (error) return { error: error.message }
+  return {
+    npc: data,
+    canonical_state_changed: true,
+  }
+}
+
 async function createLocation(
   context: VossManagerToolContext,
   args: JsonRecord,
@@ -770,6 +998,8 @@ export async function executeVossManagerTool(
   try {
     if (name === "create_workshop_character") return await createWorkshopCharacter(context, args)
     if (name === "update_campaign_character") return await updateCampaignCharacter(context, args)
+    if (name === "create_world_npc") return await createWorldNpc(context, args)
+    if (name === "update_world_npc") return await updateWorldNpc(context, args)
     if (name === "set_character_life_state") return await setCharacterLifeState(context, args)
     if (name === "set_character_publication") return await setCharacterPublication(context, args)
     if (name === "delete_campaign_character") return await deleteCampaignCharacter(context, args)
