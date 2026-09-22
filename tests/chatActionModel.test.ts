@@ -176,6 +176,32 @@ test("subclass spell access stays in the Class chat bucket and spends ordinary c
   assert.equal(option?.costs[0]?.amount, 1)
 })
 
+test("class-granted cantrips are available from the Magic chat route without a spell slot", () => {
+  const contributions: CharacterContribution[] = [{
+    id: "cleric-sacred-flame",
+    kind: "grant",
+    operation: "GRANT",
+    target: "spell",
+    key: "spell:sacred-flame",
+    payload: {
+      spell: { name: "Священное пламя", level: 0, school: "Evocation" },
+      preparation: { mode: "not_required" },
+      methods: [{ key: "cleric-cantrip", kind: "class_spell", ability: "wisdom", requiresPrepared: false }],
+    },
+    source: clericSource,
+  }]
+  const resolved = resolveCharacterContract({
+    base: { id: "cleric", name: "Жрец", level: 1, abilities: { strength: 10, dexterity: 10, constitution: 14, intelligence: 10, wisdom: 16, charisma: 10 }, baseMaxHp: 10, baseSpeed: 30 },
+    state: { currentHp: 10, tempHp: 0, resources: {} },
+    contributions,
+  })
+
+  const spell = buildChatActionModel(resolved).spells[0]
+  assert.equal(spell?.identity.name, "Священное пламя")
+  assert.equal(spell?.accesses[0]?.methods[0]?.available, true)
+  assert.equal(spell?.accesses[0]?.methods[0]?.resourceOptions.length, 0)
+})
+
 test("one spell can route to Attacks, Magic and Class through independent rules", () => {
   const model = buildChatActionModel(routedSpellContract())
   const domain = model.classGroups.find((group) => group.name === "Домен жизни")
