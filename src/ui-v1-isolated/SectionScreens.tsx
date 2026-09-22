@@ -277,18 +277,18 @@ function WorldCharacterCard({
         {character.life_state === "dead" && (
           <span className="u1-world-character-card__dead">† Мёртв</span>
         )}
-      </span>
-      <span className="u1-world-character-card__caption">
-        <strong>{character.name}</strong>
-        <small>{npcMeta(character) || character.character_class || "Персонаж мира"}</small>
-        {relation && (
-          <span
-            className="u1-world-character-card__relation"
-            data-tone={relationTone(character.relationship?.attitude_score)}
-          >
-            {relation}
-          </span>
-        )}
+        <span className="u1-world-character-card__caption">
+          <strong>{character.name}</strong>
+          <small>{npcMeta(character) || character.character_class || "Персонаж мира"}</small>
+          {relation && (
+            <span
+              className="u1-world-character-card__relation"
+              data-tone={relationTone(character.relationship?.attitude_score)}
+            >
+              {relation}
+            </span>
+          )}
+        </span>
       </span>
     </button>
   )
