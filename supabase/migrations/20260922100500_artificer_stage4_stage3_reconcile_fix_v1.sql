@@ -1,6 +1,9 @@
 -- CLASS_MIGRATION_SCOPE: mechanics
 -- CLASS_INTEGRATION_STRICT: class:artificer
+-- CLASS_RESOURCE_POLICY: short-long-rest-v1
 -- CLASS_PACKAGE_TEST: tests/artificerRuntimeStage4Base.test.ts
+-- CLASS_WORK_STATUS: artificer:stage4_stage3_reconcile=COMPLETE,artificer:mechanics=IN_PROGRESS_STAGE4_COMPLETE
+-- CLASS_STATUS_LEDGER: src/rule-templates/CLASS_WORK_STATUS.md
 -- Stage-4 release gate: repair the Stage-3 replica reconciliation expression
 -- discovered by the transactional live smoke. The previous unparenthesized
 -- jsonb operator/concatenation expression could parse refdef:* as JSON.
