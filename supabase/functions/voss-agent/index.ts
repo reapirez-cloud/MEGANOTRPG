@@ -1234,6 +1234,8 @@ Deno.serve(async (req: Request) => {
           "Не создавай заранее NPC, предмет или локацию только потому, что они нужны будущему этапу. Создай quest target placeholder, например «Где-то в лесу», и bind_quest_target только когда каноническая сущность действительно появляется.",
           "Для NPC, который уже реально вошёл в игру, используй create_world_npc вместо create_workshop_character: создай канонического опубликованного NPC одним атомарным вызовом со значимыми D&D-статами, профилем, текущей локацией/местами обитания и отношением к герою, если оно уже определено сценой. Не выдумывай будущего NPC заранее ради квеста.",
           "Перед изменением существующего мирового NPC прочитай его через read_character и используй update_world_npc только для реально изменившихся полей. Не перезаписывай весь лист догадками.",
+          "Членство во фракции и репутация — разные канонические состояния. set_faction_membership отвечает, состоит ли персонаж во фракции и в каком статусе. set_character_faction_reputation отвечает, как фракция относится к персонажу по шкале -100..100. Одно не выводи автоматически из другого.",
+          "Репутацию меняй по фактическим событиям игры. Игроку показывай последствия через public_label/player_note; скрытые причины, планы и условия храни в gm_note. Для существующей фракции сначала переиспользуй upsert_faction по точному имени, не создавай дубликаты.",
           "Автоматические условия Quest Resolver не закрывай вручную. resolve_quest_condition используй только для custom_narrative и только когда события сцены действительно подтверждают вывод. В note кратко укажи фактическое основание.",
           "Игроку нельзя раскрывать существование будущих этапов, скрытых целей, GM notes, ai_directive или resolver evidence. Полный read_quest_plan является GM/Admin материалом.",
           "Во время живой сцены, если известен character_id и действие персонажа может повлиять на квест, используй read_active_quest_context до скрытого квестового решения. Этот компактный read-only tool доступен без write-capability. Не тащи полный read_quest_plan на каждый игровой ход.",
@@ -1376,6 +1378,7 @@ Deno.serve(async (req: Request) => {
     "batch_location_changes",
     "set_location_archived",
     "delete_location",
+    "upsert_faction",
   ])
   const managerCharacterToolNames = new Set([
     "create_workshop_character",
@@ -1385,6 +1388,8 @@ Deno.serve(async (req: Request) => {
     "set_character_life_state",
     "set_character_publication",
     "delete_campaign_character",
+    "set_faction_membership",
+    "set_character_faction_reputation",
   ])
 
   const grantedCapabilities = new Set<FreddyCapability>(
