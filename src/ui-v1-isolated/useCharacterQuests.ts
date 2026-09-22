@@ -88,12 +88,14 @@ function parseQuest(raw: unknown): CharacterQuest | null {
 
 export function useCharacterQuests(characterId: string, enabled: boolean) {
   const loadedCharacterIdRef = useRef<string | null>(null)
+  const loadSequenceRef = useRef(0)
   const [quests, setQuests] = useState<CharacterQuest[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!enabled || !characterId) return
+    const sequence = ++loadSequenceRef.current
 
     if (loadedCharacterIdRef.current !== characterId) {
       setLoading(true)
@@ -106,6 +108,7 @@ export function useCharacterQuests(characterId: string, enabled: boolean) {
     )
 
     if (rpcError) {
+      if (sequence !== loadSequenceRef.current) return
       setError(rpcError.message || "Не удалось загрузить квесты.")
       setLoading(false)
       return
@@ -115,12 +118,15 @@ export function useCharacterQuests(characterId: string, enabled: boolean) {
       ? data.map(parseQuest).filter((quest): quest is CharacterQuest => Boolean(quest))
       : []
 
+    if (sequence !== loadSequenceRef.current) return
+
     setQuests(rows)
     loadedCharacterIdRef.current = characterId
     setLoading(false)
   }, [characterId, enabled])
 
   useEffect(() => {
+    loadSequenceRef.current += 1
     loadedCharacterIdRef.current = null
     setQuests([])
     setError(null)
