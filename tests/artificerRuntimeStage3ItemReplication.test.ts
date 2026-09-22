@@ -94,9 +94,10 @@ test("generic attunement activation emits mechanics only for the current holder"
   assert.equal(contributions[0]?.kind, "grant")
 })
 
-test("Stage 3 stays non-READY and hands off to Stage 4", () => {
+test("Stage 3 stays non-READY while later base work advances to Stage 5", () => {
   assert.match(plan, /Stage 3 — core item\/replication runtime: COMPLETE_2026_09_21/)
-  assert.match(plan, /Stage 4 — remaining base class 1–20: NEXT/)
+  assert.match(plan, /Stage 4 — remaining base class 1–20: COMPLETE_2026_09_22/)
+  assert.match(plan, /Stage 5 — subclass wave 1: NEXT/)
   assert.match(ledger, /stage_3_core_item_replication_runtime: COMPLETE_2026_09_21/)
   assert.match(migration, /IN_PROGRESS_STAGE3_ITEM_REPLICATION_READY/)
   assert.doesNotMatch(migration, /'mechanics_status','READY'/)
