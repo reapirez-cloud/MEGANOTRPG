@@ -94,6 +94,7 @@ test("active inventory UI shows equipment, one non-physical quick shortcut and e
   assert.match(simpleUi, /EQUIPMENT_SLOTS/)
   assert.match(simpleUi, /hasQuickAccess/)
   assert.match(simpleUi, /Не экипировано/)
+  assert.match(simpleUi, />Экипировано</)
   assert.match(simpleUi, /Можно положить любой предмет/)
   assert.match(simpleUi, /u1-simple-inventory__bag-panel/)
   assert.match(simpleUi, /draggable=\{canControl\}/)
