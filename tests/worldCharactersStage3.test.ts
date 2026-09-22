@@ -23,11 +23,11 @@ const realtimeMigration = fs.readFileSync(
   "utf8",
 )
 
-test("world characters render as 9:16 portrait cards instead of simple rows", () => {
+test("world characters render as square full-art cards instead of simple rows", () => {
   assert.match(sectionScreens, /function WorldCharacterCard/)
   assert.match(sectionScreens, /u1-world-character-grid/)
   assert.match(sectionScreens, /u1-world-character-card__portrait/)
-  assert.match(css, /\.u1-world-character-card__portrait[\s\S]*aspect-ratio:\s*9\s*\/\s*16/)
+  assert.match(css, /\.u1-world-character-card__portrait[\s\S]*aspect-ratio:\s*1\s*\/\s*1/)
   assert.doesNotMatch(
     sectionScreens,
     /subsection === "characters"[\s\S]{0,500}<article className="u1-simple-row"/,
@@ -103,4 +103,20 @@ test("relationship and NPC profile tables are actually published to realtime", (
       new RegExp(`alter publication supabase_realtime add table public\\.${table}`),
     )
   }
+})
+
+
+test("world NPC caption is rendered inside the artwork with a text scrim", () => {
+  assert.match(
+    sectionScreens,
+    /u1-world-character-card__portrait[\s\S]*u1-world-character-card__caption[\s\S]*<\/span>/,
+  )
+  assert.match(
+    css,
+    /\.u1-world-character-card__caption[\s\S]*position:\s*absolute[\s\S]*bottom:\s*0/,
+  )
+  assert.match(
+    css,
+    /\.u1-world-character-card__caption[\s\S]*linear-gradient/,
+  )
 })
