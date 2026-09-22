@@ -25,7 +25,8 @@ The tracker currently owns the full AI-GM debt discussed for:
 - last-50-message GM context plus reconcile/archive every 45 player messages with campaign-day/day-period awareness;
 - player-intent/world-authority firewall;
 - Snake edit-and-resend / regenerate;
-- GM short/long rest and dawn recovery;\n- GM-turn rollback/replay, undo and runtime status.
+- GM short/long rest and dawn recovery;\n- short rest / long rest / dawn recovery controls for AI GM;
+- GM-turn rollback/replay, undo and runtime status.
 
 ## Sorcerer follow-up
 
