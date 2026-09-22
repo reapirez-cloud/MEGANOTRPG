@@ -5,7 +5,6 @@ import { SnakeTrigger } from "./SnakeProvider"
 import type { CharacterQuest } from "./useCharacterQuests"
 import {
   type QuestManagerCondition,
-  type QuestManagerConditionGroup,
   type QuestManagerPlan,
   type QuestManagerStage,
   type QuestManagerTarget,
@@ -182,6 +181,27 @@ function conditionTargetLabel(
   if (!condition.target_id) return null
   return targets.find((target) => target.id === condition.target_id)?.placeholder_label
     || condition.target_id
+}
+
+function conditionParamsLabel(params: Record<string, unknown>) {
+  const preferred = ["description", "note", "summary", "event_type", "state", "predicate", "value"]
+  for (const key of preferred) {
+    const value = params[key]
+    if (typeof value === "string" && value.trim()) return value.trim()
+    if (typeof value === "number" || typeof value === "boolean") {
+      return `${key}: ${String(value)}`
+    }
+  }
+
+  return Object.entries(params)
+    .filter(([, value]) =>
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    )
+    .slice(0, 2)
+    .map(([key, value]) => `${key}: ${String(value)}`)
+    .join(" · ")
 }
 
 function GmQuestPlan({
@@ -685,6 +705,9 @@ function GmQuestPlan({
                                             ? ` ×${condition.required_quantity}`
                                             : ""}
                                         </strong>
+                                        {conditionParamsLabel(condition.params) ? (
+                                          <small>{conditionParamsLabel(condition.params)}</small>
+                                        ) : null}
                                       </div>
                                     </SnakeTrigger>
                                   )
