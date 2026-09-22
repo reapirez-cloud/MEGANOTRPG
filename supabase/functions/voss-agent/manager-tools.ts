@@ -231,6 +231,78 @@ export const VOSS_MANAGER_TOOLS = [
   {
     type: "function",
     function: {
+      name: "upsert_faction",
+      description:
+        "GM/Admin only. Create a canonical campaign faction or update an existing faction. Reusing the same name returns/updates the existing faction instead of creating a duplicate. Faction identity is separate from a character's reputation with that faction.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          faction_id: { type: "string" },
+          name: { type: "string" },
+          summary: { type: "string" },
+          description: { type: "string" },
+          image_url: { type: "string" },
+          player_visible: { type: "boolean" },
+          state: { type: "string", enum: ["active", "archived"] },
+          tags: {
+            type: "array",
+            maxItems: 24,
+            items: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_faction_membership",
+      description:
+        "GM/Admin only. Set or update a character's membership in a canonical faction. Membership answers whether the character belongs to the faction and in what role/rank. It does NOT describe whether the faction likes the character.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          faction_id: { type: "string" },
+          membership_role: { type: "string" },
+          rank_label: { type: "string" },
+          is_primary: { type: "boolean" },
+          player_visible: { type: "boolean" },
+          state: { type: "string", enum: ["active", "ended"] },
+        },
+        required: ["character_id", "faction_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_character_faction_reputation",
+      description:
+        "GM/Admin only. Set or update the current reputation of one character with a canonical faction. reputation_score is -100..100 and may change as play events change the faction's disposition. Keep GM-only reasons in gm_note and player-visible consequences in player_note/public_label.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          faction_id: { type: "string" },
+          standing_kind: { type: "string" },
+          public_label: { type: "string" },
+          reputation_score: { type: "integer", minimum: -100, maximum: 100 },
+          player_note: { type: "string" },
+          gm_note: { type: "string" },
+          player_visible: { type: "boolean" },
+          state: { type: "string", enum: ["active", "ended"] },
+        },
+        required: ["character_id", "faction_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "set_character_life_state",
       description:
         "GM/Admin only. Mark an existing character alive or dead. Use only when the GM/Admin explicitly asks to change canonical life state.",
@@ -687,6 +759,83 @@ async function updateWorldNpc(
   }
 }
 
+async function upsertFaction(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const factionId = args.faction_id ? uuid(args.faction_id) : ""
+  if (args.faction_id && !factionId) return { error: "faction_id_invalid" }
+  const name = text(args.name, 160)
+  if (!factionId && !name) return { error: "faction_name_required" }
+
+  const payload: JsonRecord = { ...args }
+  if (factionId) payload.faction_id = factionId
+  if (name) payload.name = name
+
+  const { data, error } = await managerClient(context).rpc(
+    "upsert_faction_v1",
+    {
+      p_campaign_id: context.campaignId,
+      p_input: payload,
+    },
+  )
+
+  if (error) return { error: error.message }
+  return { faction: data, canonical_state_changed: true }
+}
+
+async function setFactionMembership(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  const factionId = uuid(args.faction_id)
+  if (!characterId) return { error: "character_id_required" }
+  if (!factionId) return { error: "faction_id_required" }
+
+  const payload: JsonRecord = { ...args }
+  delete payload.character_id
+  delete payload.faction_id
+
+  const { data, error } = await managerClient(context).rpc(
+    "set_faction_membership_v1",
+    {
+      p_character_id: characterId,
+      p_faction_id: factionId,
+      p_input: payload,
+    },
+  )
+
+  if (error) return { error: error.message }
+  return { membership: data, canonical_state_changed: true }
+}
+
+async function setCharacterFactionReputation(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  const factionId = uuid(args.faction_id)
+  if (!characterId) return { error: "character_id_required" }
+  if (!factionId) return { error: "faction_id_required" }
+
+  const payload: JsonRecord = { ...args }
+  delete payload.character_id
+  delete payload.faction_id
+
+  const { data, error } = await managerClient(context).rpc(
+    "set_character_faction_reputation_v1",
+    {
+      p_character_id: characterId,
+      p_faction_id: factionId,
+      p_input: payload,
+    },
+  )
+
+  if (error) return { error: error.message }
+  return { reputation: data, canonical_state_changed: true }
+}
+
 async function createLocation(
   context: VossManagerToolContext,
   args: JsonRecord,
@@ -1000,6 +1149,9 @@ export async function executeVossManagerTool(
     if (name === "update_campaign_character") return await updateCampaignCharacter(context, args)
     if (name === "create_world_npc") return await createWorldNpc(context, args)
     if (name === "update_world_npc") return await updateWorldNpc(context, args)
+    if (name === "upsert_faction") return await upsertFaction(context, args)
+    if (name === "set_faction_membership") return await setFactionMembership(context, args)
+    if (name === "set_character_faction_reputation") return await setCharacterFactionReputation(context, args)
     if (name === "set_character_life_state") return await setCharacterLifeState(context, args)
     if (name === "set_character_publication") return await setCharacterPublication(context, args)
     if (name === "delete_campaign_character") return await deleteCampaignCharacter(context, args)
