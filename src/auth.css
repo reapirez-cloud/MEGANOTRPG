@@ -152,3 +152,16 @@
   cursor: default;
   user-select: none;
 }
+
+
+.auth-secondary {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 10px;
+  border: 1px solid #303036;
+  border-radius: 14px;
+  background: #141416;
+  color: #d4d4d8;
+  font-weight: 800;
+  cursor: pointer;
+}
