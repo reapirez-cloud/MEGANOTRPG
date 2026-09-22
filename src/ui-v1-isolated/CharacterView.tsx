@@ -1065,6 +1065,30 @@ export default function CharacterView({
           onReload={() => {
             void quests.reload()
           }}
+          canManage={control.canManage}
+          managerCatalog={{
+            locations: workshop.locations
+              .filter((location) => location.lifecycleState !== "archived")
+              .map((location) => ({
+                id: location.id,
+                name: location.name,
+              })),
+            npcs: workshop.characters
+              .filter((candidate) => candidate.characterType === "npc")
+              .map((candidate) => ({
+                id: candidate.id,
+                name: candidate.name,
+              })),
+            items: workshop.definitions
+              .filter((definition) =>
+                definition.kind === "item" &&
+                definition.status !== "archived"
+              )
+              .map((definition) => ({
+                id: definition.id,
+                name: definition.name,
+              })),
+          }}
         />
       ) : section === "proficiencies" ? (
         <CharacterSheetProficiencies
