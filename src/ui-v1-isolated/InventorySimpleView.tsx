@@ -678,7 +678,12 @@ export default function InventorySimpleView({
                 onDrop={(event) => dropEquipment(event, slot.key, item)}
               >
                 <span>{slot.label}</span>
-                {item ? itemSlot(item, true) : (
+                {item ? (
+                  <div className="u1-simple-inventory__equipment-filled">
+                    {itemSlot(item, true)}
+                    <small>Экипировано</small>
+                  </div>
+                ) : (
                   <div className="u1-simple-inventory__equipment-empty">
                     <InventoryGlyph kind="equipment" />
                     <small>Не экипировано</small>
