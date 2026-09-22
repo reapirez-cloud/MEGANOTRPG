@@ -618,7 +618,7 @@ export function WorldSectionScreen({
                   id: item.id,
                   name: item.name,
                   class: item.character_class,
-                  type: item.character_type,
+                  type: "npc",
                 }))
               : [],
             lore: subsection === "lore"
