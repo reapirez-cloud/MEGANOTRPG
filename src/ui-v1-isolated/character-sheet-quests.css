@@ -830,3 +830,22 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+
+.u1-character-quests__gm-condition > em {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 2px 5px;
+  border: 1px solid var(--cv-line-soft);
+  color: var(--cv-text-faint);
+  font-size: 7px;
+  font-style: normal;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.u1-character-quests__gm-condition[data-satisfied] > em {
+  border-color: var(--cv-accent-line);
+  background: var(--cv-accent-soft);
+  color: var(--cv-text-soft);
+}
