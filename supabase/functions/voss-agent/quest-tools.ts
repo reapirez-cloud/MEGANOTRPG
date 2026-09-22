@@ -289,6 +289,30 @@ export const VOSS_QUEST_TOOLS = [
   {
     type: "function",
     function: {
+      name: "materialize_quest_target",
+      description:
+        "GM/Admin only. Atomically turn one unbound quest placeholder into a new canonical world entity, bind the quest target to it, and rerun the Quest Resolver. Use this only when the placeholder's entity genuinely enters canon now. For an entity that already exists, use bind_quest_target instead. Retrying an already-bound target is idempotent and returns the existing binding.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          quest_id: { type: "string" },
+          quest_key: { type: "string" },
+          target_key: { type: "string" },
+          entity: {
+            type: "object",
+            additionalProperties: true,
+            description:
+              "Creation payload determined by the target kind. location: name required; optional parent_location_id, summary, description, image_url, sort_order, visibility_mode=discover|always. npc: the same payload accepted by create_world_npc, including name, sheet, profile, location_id, habitat_location_ids, relationship and discover_for_character_ids. item: name and data.inventory_profile required; optional summary, rules_text, mechanics, visibility=gm|campaign, source_label.",
+          },
+        },
+        required: ["target_key", "entity"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "resolve_quest_condition",
       description:
         "GM/Admin AI-GM only. Resolve a custom_narrative condition when campaign events or scene evidence justify the narrative conclusion. Never use this for automatic condition types such as inventory_has or discover_location; the Quest Resolver owns those. Include a concise evidence note.",
@@ -747,6 +771,38 @@ async function bindQuestTarget(
   }
 }
 
+async function materializeQuestTarget(
+  context: VossQuestToolContext,
+  args: JsonRecord,
+) {
+  const resolved = await resolveQuestId(context, args)
+  if (resolved.error || !resolved.row) return { error: resolved.error }
+
+  const targetKey = text(args.target_key, 120)
+  if (!targetKey) return { error: "target_key_required" }
+
+  const entity = object(args.entity)
+  if (!Object.keys(entity).length) {
+    return { error: "materialization_entity_required" }
+  }
+
+  const { data, error } = await context.client.rpc(
+    "materialize_quest_target_v1",
+    {
+      p_quest_id: resolved.row.id,
+      p_target_key: targetKey,
+      p_input: entity,
+    },
+  )
+
+  if (error) return { error: error.message }
+
+  return {
+    ...(data && typeof data === "object" ? data : { result: data }),
+    canonical_state_changed: true,
+  }
+}
+
 async function resolveQuestCondition(
   context: VossQuestToolContext,
   args: JsonRecord,
@@ -833,6 +889,7 @@ export async function executeVossQuestTool(
     if (name === "activate_quest") return await activateQuest(context, args)
     if (name === "update_quest_brief") return await updateQuestBrief(context, args)
     if (name === "bind_quest_target") return await bindQuestTarget(context, args)
+    if (name === "materialize_quest_target") return await materializeQuestTarget(context, args)
     if (name === "resolve_quest_condition") return await resolveQuestCondition(context, args)
     if (name === "run_quest_resolver") return await runQuestResolver(context, args)
     if (name === "close_quest") return await closeQuest(context, args)
