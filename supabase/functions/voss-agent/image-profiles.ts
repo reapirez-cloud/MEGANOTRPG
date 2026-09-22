@@ -17,18 +17,18 @@ export type ImageProfileKey =
 export type ImageProfile = {
   key: ImageProfileKey
   purpose: ImagePurpose
-  model: "gpt-image-2"
+  model: "gpt-image-2.5-sunburst"
   size: "1024x1024" | "1024x1536" | "1536x1024"
   width: number
   height: number
-  quality: "low" | "medium" | "high"
+  quality: "low" | "high"
 }
 
 const PROFILES: Record<ImageProfileKey, ImageProfile> = {
   tiny_icon: {
     key: "tiny_icon",
     purpose: "icon",
-    model: "gpt-image-2",
+    model: "gpt-image-2.5-sunburst",
     size: "1024x1024",
     width: 1024,
     height: 1024,
@@ -37,7 +37,7 @@ const PROFILES: Record<ImageProfileKey, ImageProfile> = {
   ui_preview: {
     key: "ui_preview",
     purpose: "ui_preview",
-    model: "gpt-image-2",
+    model: "gpt-image-2.5-sunburst",
     size: "1024x1024",
     width: 1024,
     height: 1024,
@@ -46,7 +46,7 @@ const PROFILES: Record<ImageProfileKey, ImageProfile> = {
   portrait: {
     key: "portrait",
     purpose: "portrait",
-    model: "gpt-image-2",
+    model: "gpt-image-2.5-sunburst",
     size: "1024x1536",
     width: 1024,
     height: 1536,
@@ -55,7 +55,7 @@ const PROFILES: Record<ImageProfileKey, ImageProfile> = {
   panel: {
     key: "panel",
     purpose: "panel",
-    model: "gpt-image-2",
+    model: "gpt-image-2.5-sunburst",
     size: "1536x1024",
     width: 1536,
     height: 1024,
@@ -64,7 +64,7 @@ const PROFILES: Record<ImageProfileKey, ImageProfile> = {
   hero_art: {
     key: "hero_art",
     purpose: "hero_art",
-    model: "gpt-image-2",
+    model: "gpt-image-2.5-sunburst",
     size: "1536x1024",
     width: 1536,
     height: 1024,
@@ -73,7 +73,7 @@ const PROFILES: Record<ImageProfileKey, ImageProfile> = {
   master_art: {
     key: "master_art",
     purpose: "master_art",
-    model: "gpt-image-2",
+    model: "gpt-image-2.5-sunburst",
     size: "1536x1024",
     width: 1536,
     height: 1024,
