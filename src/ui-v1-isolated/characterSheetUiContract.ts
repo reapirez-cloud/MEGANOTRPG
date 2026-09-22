@@ -17,6 +17,7 @@ export const CHARACTER_SHEET_SECTIONS = [
   "features",
   "spells",
   "proficiencies",
+  "quests",
   "biography",
 ] as const
 
@@ -75,6 +76,12 @@ export const CHARACTER_SHEET_NAVIGATION: readonly CharacterSheetNavItem[] = [
     label: "Владения",
     iconSlot: characterSheetNavigationIconSlot("proficiencies"),
     target: { kind: "section", section: "proficiencies" },
+  },
+  {
+    id: "quests",
+    label: "Квесты",
+    iconSlot: characterSheetNavigationIconSlot("quests"),
+    target: { kind: "section", section: "quests" },
   },
   {
     id: "biography",
