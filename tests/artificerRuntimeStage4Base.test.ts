@@ -2,6 +2,12 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
+import { resolveCharacterContract } from "../src/character-engine/index.ts"
+import { assertClassResourcePolicy } from "../src/rule-templates/classResourcePolicy.ts"
+import { assertClassPackageQuality } from "../src/rule-templates/internalClassQuality.ts"
+import { resolveTemplateBundles } from "../src/rule-templates/resolver.ts"
+import type { CharacterTemplateBundle } from "../src/rule-templates/types.ts"
+
 const sql = readFileSync(
   new URL("../supabase/migrations/20260922095000_artificer_stage4_base_runtime_v1.sql", import.meta.url),
   "utf8",
@@ -21,6 +27,120 @@ const ledger = readFileSync(
   new URL("../src/rule-templates/CLASS_WORK_STATUS.md", import.meta.url),
   "utf8",
 )
+
+function representativeStage4Bundle(): CharacterTemplateBundle {
+  return {
+    template: {
+      id: "artificer-stage4",
+      campaign_id: "campaign",
+      kind: "class",
+      slug: "artificer",
+      name: "Артификер",
+      description: "Точный тестовый пакет базового Артификера после закрытия Stage 4.",
+      version: 1,
+      mechanics: [
+        {
+          id: "flash-feature",
+          type: "grant",
+          target: "feature",
+          key: "feature:artificer-flash-of-genius",
+          sourceKey: "flash-of-genius",
+          payload: {
+            label: "Вспышка гениальности",
+            description: "Когда видимое существо проваливает проверку характеристики или спасбросок, вы можете реакцией добавить к броску модификатор Интеллекта. Число использований равно модификатору Интеллекта, минимум 1; весь запас восстанавливается после долгого отдыха.",
+          },
+        },
+        {
+          id: "flash-resource",
+          type: "resource",
+          key: "artificer_flash_of_genius",
+          label: "Вспышка гениальности",
+          max: 4,
+          recharge: "long_rest",
+          sourceKey: "flash-of-genius",
+        },
+        {
+          id: "flash-action",
+          type: "action",
+          key: "artificer_flash_of_genius",
+          label: "Вспышка гениальности",
+          economy: "reaction",
+          resourceKey: "artificer_flash_of_genius",
+          resourceCost: 1,
+          sourceKey: "flash-of-genius",
+        },
+      ],
+      choices: [],
+      parent_template_id: null,
+      unlock_level: null,
+      catalog_key: "class:artificer",
+      catalog_revision: "efota-2025-artificer-stage4-base-runtime-v1",
+      source_kind: "official",
+      source_label: "Eberron: Forge of the Artificer (2025)",
+      is_builtin: true,
+      mechanical_summary: "Intelligence-based magical inventor with authoritative item, spell-slot, attunement, finite-resource and character-state integrations through the shared runtime.",
+      author_description: "",
+      author_comment: "",
+      rules_meta: {},
+      is_active: true,
+      created_by: null,
+      created_at: "2026-09-22T00:00:00Z",
+      updated_at: "2026-09-22T00:00:00Z",
+    },
+    assignment: {
+      id: "assignment",
+      character_id: "character",
+      template_id: "artificer-stage4",
+      template_level: 14,
+      selected_choices: {},
+      assigned_at: "2026-09-22T00:00:00Z",
+      updated_at: "2026-09-22T00:00:00Z",
+    },
+    levels: [],
+  }
+}
+
+test("Stage 4 package runs the shared class quality, resource, parser and CE gates", () => {
+  const bundle = representativeStage4Bundle()
+  assert.doesNotThrow(() => assertClassPackageQuality([bundle]))
+  assert.doesNotThrow(() => assertClassResourcePolicy([bundle]))
+
+  const parsed = resolveTemplateBundles([bundle], 14)
+  const contract = resolveCharacterContract({
+    base: {
+      id: "character",
+      name: "Artificer",
+      level: 14,
+      abilities: {
+        strength: 8,
+        dexterity: 14,
+        constitution: 14,
+        intelligence: 18,
+        wisdom: 10,
+        charisma: 10,
+      },
+      baseMaxHp: 100,
+      baseSpeed: 30,
+    },
+    state: {
+      currentHp: 100,
+      tempHp: 0,
+      resources: { artificer_flash_of_genius: { current: 4 } },
+    },
+    contributions: parsed.contributions,
+  })
+
+  const resource = contract.resources.find(
+    (entry) => entry.key === "artificer_flash_of_genius",
+  )
+  const action = contract.actions.find(
+    (entry) => entry.key === "artificer_flash_of_genius",
+  )
+  assert.ok(resource)
+  assert.equal(resource.max.value, 4)
+  assert.ok(action)
+  assert.equal(action.resource?.key, "artificer_flash_of_genius")
+})
 
 test("Stage 4 replaces every pending base placeholder with runtime-backed mechanics", () => {
   assert.match(sql, /efota-2025-artificer-stage4-base-runtime-v1/)
