@@ -1,0 +1,1 @@
+-- The final create_world_npc_v1 definition is already captured in the preceding migration.\n-- This marker preserves the applied Supabase migration history after reconciling the automatic character-sheet trigger.\nselect 1;\n
