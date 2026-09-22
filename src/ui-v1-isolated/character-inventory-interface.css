@@ -68,20 +68,6 @@
   padding: 10px 0 0;
 }
 
-.u1-character-inventory-interface__body small {
-  color: var(--cv-text-faint);
-  font-size: 8px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-
-.u1-character-inventory-interface__body strong {
-  color: var(--cv-text);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 22px;
-  font-weight: 400;
-}
-
 .u1-character-inventory-interface__focus {
   margin-top: 12px;
   padding: 9px 0 9px 10px;
