@@ -2,63 +2,6 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Patch — 2026-09-21-Q
-
-**Status:** OPEN
-**Branch:** `dev`
-**Base main:** `cc33b9d126b26004b2302a7f340c34cef637c336`
-**Started:** 2026-09-21
-
-### Player-facing changes
-
-- Added a post-login world selector for the existing «Мунтар» campaign and an experimental «ИИ мир» branch. The AI branch has the requested numeric password gate and exactly five persistent, independently nameable slots.
-- AI slots currently open an isolated experimental placeholder rather than reusing «Мунтар» state; the actual AI-GM/world runtime remains a later integration.
-- Fixed owner-player chat identity so a campaign owner whose ordinary role is `player` can send messages as their own playable PC instead of being rejected by the manager Narrator/NPC branch.
-- Added the missing right-side GM chat drawer. GM/owner opens it with a deliberate left-to-right swipe and can grant Short Rest / Long Rest / Dawn recovery, change location/day/time, synchronize scene participants, change player read/write access and change scene room state.
-- Reserved the GM chat left-swipe lane for the drawer while keeping right-edge/back-button/Telegram Back navigation; player swipe-back behavior is unchanged.
-- Class-granted cantrips now remain available from the chat Magic route even when their access comes from the current class/template rather than a legacy learned-spell row.
-- Replaced the inventory placeholder with the active simple bag inventory. Each canonical item instance or existing allowed stack occupies one slot; bag size comes from the existing authored container dimensions, nested bags remain supported, and the spatial/Tetris UI is preserved but isolated from the active character inventory.
-- Added a graphite MegANOT inventory presentation with custom inline SVG glyphs for bags, backpacks, pouches, chests, equipment, consumables, books, currency, materials and generic items, plus real move/equip/use actions.
-- Switched MEGANOT image generation profiles to CheapVibeCode GPT Image 2.5 Sunburst: icons use low quality, while UI previews, portraits, panels, hero art and master art use high quality.
-
-### Database / migration changes
-
-- Reconciled `set_chat_message_identity()` with the owner/player authority contract while retaining binding-scoped NPC speech for managers.
-- Added owner-only RLS-backed `public.ai_world_slots` with exactly five indexed positions per owner and persistent names.
-- Added Artificer Stage 4 base runtime at `efota-2025-artificer-stage4-base-runtime-v1`, including Magic Item Tinker Charge/Drain/Transmute, Flash of Genius resource recovery, real attunement-cap progression, Spell-Storing Item and Soul of Artifice cross-owner recovery.
-- Added the Stage-4/Stage-3 replica reconciliation fix discovered by live transactional smoke and brought both Stage-4 migrations under the repository class quality/resource/status metadata gates.
-- Added `move_inventory_item_simple_v1`: a server-authoritative Cheburashka move surface for the simple bag UI. Capacity is `internal_grid_width × internal_grid_height`; moves preserve canonical item/stack/holder identity, enforce nesting/cycle/depth and specialized-capacity rules, and clear spatial coordinates for simple containment.
-- Switched the canonical image model registration from the older GPT Image route to `gpt-image-2.5-sunburst` while disabling the superseded image model keys.
-
-### Runtime and architecture changes
-
-- GM recovery/world changes from the new chat drawer route through Oracle to Shapoklyak/Larisa; room access/state changes continue through the existing manager-authorized RPCs.
-- Simple inventory remains a projection over canonical Cheburashka rows and the existing holder tree. No second inventory table, abstract wallet or parallel item owner was introduced.
-- Existing stack policy remains authoritative: forced instances stay instances; explicitly stackable homogeneous bulk rows stay one stack and therefore one simple slot.
-- The spatial/Tetris inventory engine and UI remain in the repository for later reactivation but are no longer mounted as the active character-inventory surface.
-- Artificer Stage 4 keeps class state on shared owners: spell slots/resources on the existing character runtime, items/attunement on Cheburashka, HP on Shapoklyak, and class resolution through the normal CE path.
-- Artificer work queue now correctly records Stages 1–4 complete with Stage 5 subclass wave next.
-
-### Tests / verification
-
-- Added regression coverage for the AI-world selector/password/five-slot/RLS contract.
-- Added owner-player chat-send regression coverage and live rollback smoke for owner-player → own PC, ordinary player → own active PC and GM → Narrator.
-- Added GM-drawer gesture/control regression coverage and live rollback smoke for Short Rest, Long Rest, Dawn, room access/state, scene position and participant synchronization.
-- Added chat-action regression coverage proving class-granted cantrips remain reachable through the Magic route without a spell-slot cost.
-- Added `inventorySimpleMode.test.ts` covering one-row/one-slot semantics, existing stack policy, bag capacity, nested targets, SVG/simple UI wiring and preservation/isolation of the spatial runtime.
-- Live authenticated rollback smoke moved a real item into the current 6×5 bag through the new RPC; the bag resolves to 30 simple slots and the transaction was rolled back. Anonymous execution is denied and the private capacity helper remains inaccessible to anon/authenticated roles.
-- Added/updated Artificer Stage-4 quality/resource/parser/CE coverage and synchronized older Stage-1/Stage-3 checkpoint tests with the completed Stage-4 state.
-- Supabase advisors reported no new security/performance finding specific to the simple-inventory functions/index path.
-- Release CI result is recorded when this patch is closed.
-
-### Known incomplete work
-
-- Experimental AI-world slots are storage/entry placeholders; AI-GM memory, world generation and per-slot campaign runtime are not connected yet.
-- Artificer base class is complete through Stage 4, but the five supported subclasses remain Stages 5–6 and final Stage-7 certification therefore stays fail-closed.
-- The spatial/Tetris inventory remains intentionally isolated until the user chooses to resume that system.
-
----
-
 ## Patch — 2026-09-21-P
 
 **Status:** RELEASED
@@ -117,6 +60,66 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ---
 
 ## Released patches
+
+## Patch — 2026-09-21-Q
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
+**Base main:** `cc33b9d126b26004b2302a7f340c34cef637c336`
+**Started:** 2026-09-21
+**Released:** 2026-09-22
+**Release identity:** `main / 2026-09-21-Q`
+
+### Player-facing changes
+
+- Added a post-login world selector for the existing «Мунтар» campaign and an experimental «ИИ мир» branch. The AI branch has the requested numeric password gate and exactly five persistent, independently nameable slots.
+- AI slots currently open an isolated experimental placeholder rather than reusing «Мунтар» state; the actual AI-GM/world runtime remains a later integration.
+- Fixed owner-player chat identity so a campaign owner whose ordinary role is `player` can send messages as their own playable PC instead of being rejected by the manager Narrator/NPC branch.
+- Added the missing right-side GM chat drawer. GM/owner opens it with a deliberate left-to-right swipe and can grant Short Rest / Long Rest / Dawn recovery, change location/day/time, synchronize scene participants, change player read/write access and change scene room state.
+- Reserved the GM chat left-swipe lane for the drawer while keeping right-edge/back-button/Telegram Back navigation; player swipe-back behavior is unchanged.
+- Class-granted cantrips now remain available from the chat Magic route even when their access comes from the current class/template rather than a legacy learned-spell row.
+- Replaced the inventory placeholder with the active simple bag inventory. Each canonical item instance or existing allowed stack occupies one slot; bag size comes from the existing authored container dimensions, nested bags remain supported, and the spatial/Tetris UI is preserved but isolated from the active character inventory.
+- Added a graphite MegANOT inventory presentation with custom inline SVG glyphs for bags, backpacks, pouches, chests, equipment, consumables, books, currency, materials and generic items, plus real move/equip/use actions.
+- Switched MEGANOT image generation profiles to CheapVibeCode GPT Image 2.5 Sunburst: icons use low quality, while UI previews, portraits, panels, hero art and master art use high quality.
+
+### Database / migration changes
+
+- Reconciled `set_chat_message_identity()` with the owner/player authority contract while retaining binding-scoped NPC speech for managers.
+- Added owner-only RLS-backed `public.ai_world_slots` with exactly five indexed positions per owner and persistent names.
+- Added Artificer Stage 4 base runtime at `efota-2025-artificer-stage4-base-runtime-v1`, including Magic Item Tinker Charge/Drain/Transmute, Flash of Genius resource recovery, real attunement-cap progression, Spell-Storing Item and Soul of Artifice cross-owner recovery.
+- Added the Stage-4/Stage-3 replica reconciliation fix discovered by live transactional smoke and brought both Stage-4 migrations under the repository class quality/resource/status metadata gates.
+- Added `move_inventory_item_simple_v1`: a server-authoritative Cheburashka move surface for the simple bag UI. Capacity is `internal_grid_width × internal_grid_height`; moves preserve canonical item/stack/holder identity, enforce nesting/cycle/depth and specialized-capacity rules, and clear spatial coordinates for simple containment.
+- Switched the canonical image model registration from the older GPT Image route to `gpt-image-2.5-sunburst` while disabling the superseded image model keys.
+
+### Runtime and architecture changes
+
+- GM recovery/world changes from the new chat drawer route through Oracle to Shapoklyak/Larisa; room access/state changes continue through the existing manager-authorized RPCs.
+- Simple inventory remains a projection over canonical Cheburashka rows and the existing holder tree. No second inventory table, abstract wallet or parallel item owner was introduced.
+- Existing stack policy remains authoritative: forced instances stay instances; explicitly stackable homogeneous bulk rows stay one stack and therefore one simple slot.
+- The spatial/Tetris inventory engine and UI remain in the repository for later reactivation but are no longer mounted as the active character-inventory surface.
+- Artificer Stage 4 keeps class state on shared owners: spell slots/resources on the existing character runtime, items/attunement on Cheburashka, HP on Shapoklyak, and class resolution through the normal CE path.
+- Artificer work queue now correctly records Stages 1–4 complete with Stage 5 subclass wave next.
+
+### Tests / verification
+
+- Added regression coverage for the AI-world selector/password/five-slot/RLS contract.
+- Added owner-player chat-send regression coverage and live rollback smoke for owner-player → own PC, ordinary player → own active PC and GM → Narrator.
+- Added GM-drawer gesture/control regression coverage and live rollback smoke for Short Rest, Long Rest, Dawn, room access/state, scene position and participant synchronization.
+- Added chat-action regression coverage proving class-granted cantrips remain reachable through the Magic route without a spell-slot cost.
+- Added `inventorySimpleMode.test.ts` covering one-row/one-slot semantics, existing stack policy, bag capacity, nested targets, SVG/simple UI wiring and preservation/isolation of the spatial runtime.
+- Live authenticated rollback smoke moved a real item into the current 6×5 bag through the new RPC; the bag resolves to 30 simple slots and the transaction was rolled back. Anonymous execution is denied and the private capacity helper remains inaccessible to anon/authenticated roles.
+- Added/updated Artificer Stage-4 quality/resource/parser/CE coverage and synchronized older Stage-1/Stage-3 checkpoint tests with the completed Stage-4 state.
+- Supabase advisors reported no new security/performance finding specific to the simple-inventory functions/index path.
+- Final pre-release `dev` head `dcac64ef979e13aba4c4c2a7877dc0a6d0903afc` passed Build, Lint, the full repository test suite, Storybook and Playwright smoke in CI run `35772834674` / job `106898996652`.
+- Immediately before closure, `main...dev` was 62 commits ahead and 0 behind the production base `cc33b9d126b26004b2302a7f340c34cef637c336`.
+
+### Known incomplete work
+
+- Experimental AI-world slots are storage/entry placeholders; AI-GM memory, world generation and per-slot campaign runtime are not connected yet.
+- Artificer base class is complete through Stage 4, but the five supported subclasses remain Stages 5–6 and final Stage-7 certification therefore stays fail-closed.
+- The spatial/Tetris inventory remains intentionally isolated until the user chooses to resume that system.
+
+---
 
 ## Patch — 2026-09-20-O
 
