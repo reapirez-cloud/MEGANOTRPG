@@ -158,8 +158,12 @@ function Stage16Harness() {
         characterId={characterId}
         characterName="Сертификационный герой"
         classKey="fighter"
+        items={[]}
+        canControl
         focusedItemId={focusedItemId}
-        focusedItemName={focusedItemId ? "Тестовый предмет" : null}
+        onMoveItem={async () => ({ ok: true })}
+        onEquipItem={async () => ({ ok: true })}
+        onUseItem={async () => ({ ok: true })}
         onBack={handleBack}
       />
     )
