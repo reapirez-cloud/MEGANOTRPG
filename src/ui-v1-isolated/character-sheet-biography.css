@@ -1,0 +1,377 @@
+.u1-character-biography {
+  min-height: 100%;
+  padding: 0 0 22px;
+}
+
+.u1-character-biography__tabs {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--cv-accent-line, rgba(255,255,255,.1));
+  background: color-mix(in srgb, var(--cv-canvas, #0a0b0c) 92%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.u1-character-biography__tabs button {
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 5px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  color: var(--cv-text-muted, #757b7f);
+  font-size: 8px;
+  line-height: 1;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.u1-character-biography__tabs button[data-active] {
+  border-bottom-color: var(--cv-accent, rgba(240,240,236,.85));
+  color: var(--cv-text, #efeee9);
+}
+
+.u1-character-biography__tabs small {
+  display: inline-grid;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  place-items: center;
+  background: rgba(255,255,255,.055);
+  color: var(--cv-text-soft, #b9bdbe);
+  font-size: 7px;
+}
+
+.u1-character-biography__history,
+.u1-character-biography__list {
+  padding: 16px 14px 6px;
+}
+
+.u1-character-biography__identity {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.u1-character-biography__identity > span {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--cv-accent-line, rgba(255,255,255,.09));
+  border-radius: 9px;
+  display: grid;
+  gap: 4px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.035), transparent 58%),
+    color-mix(in srgb, var(--cv-surface, #121416) 82%, transparent);
+}
+
+.u1-character-biography__identity small,
+.u1-biography-history-block > span {
+  color: var(--cv-text-muted, #74797d);
+  font-size: 8px;
+  line-height: 1;
+  font-weight: 750;
+  letter-spacing: .095em;
+  text-transform: uppercase;
+}
+
+.u1-character-biography__identity strong {
+  overflow: hidden;
+  color: var(--cv-text-soft, #d0d1ce);
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 620;
+  text-overflow: ellipsis;
+}
+
+.u1-biography-history-block {
+  padding: 13px 0 15px;
+  border-top: 1px solid var(--cv-accent-line, rgba(255,255,255,.075));
+}
+
+.u1-biography-history-block p {
+  margin: 8px 0 0;
+  color: var(--cv-text-soft, #c6c8c7);
+  font-size: 13px;
+  line-height: 1.62;
+  white-space: pre-wrap;
+}
+
+.u1-character-biography__list {
+  display: grid;
+  gap: 9px;
+}
+
+.u1-biography-relationship,
+.u1-biography-asset,
+.u1-biography-faction {
+  border: 1px solid var(--cv-accent-line, rgba(255,255,255,.085));
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.025), transparent 48%),
+    color-mix(in srgb, var(--cv-surface, #111315) 88%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.015);
+}
+
+.u1-biography-relationship {
+  min-height: 78px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.u1-biography-relationship__avatar {
+  width: 50px;
+  height: 50px;
+  border: 1px solid var(--cv-accent-line, rgba(255,255,255,.1));
+  border-radius: 8px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,.035);
+  color: var(--cv-text-muted, #808486);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: 18px;
+}
+
+.u1-biography-relationship__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.u1-biography-relationship__body,
+.u1-biography-asset__body {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+
+.u1-biography-relationship__top,
+.u1-biography-asset__top {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.u1-biography-relationship__top strong,
+.u1-biography-asset__top strong,
+.u1-biography-faction header strong {
+  overflow: hidden;
+  color: var(--cv-text, #efeee9);
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 640;
+  text-overflow: ellipsis;
+}
+
+.u1-biography-relationship__top i,
+.u1-biography-faction header > i {
+  flex: 0 0 auto;
+  color: var(--cv-text-soft, #c2c4c2);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: 15px;
+  line-height: 1;
+  font-style: normal;
+  font-weight: 620;
+}
+
+.u1-biography-relationship__body > small,
+.u1-biography-asset__body > small,
+.u1-biography-faction header small {
+  color: var(--cv-text-muted, #777c80);
+  font-size: 8px;
+  line-height: 1.25;
+  font-weight: 630;
+}
+
+.u1-biography-relationship p,
+.u1-biography-asset p,
+.u1-biography-faction p {
+  margin: 3px 0 0;
+  color: var(--cv-text-soft, #bfc2c1);
+  font-size: 10px;
+  line-height: 1.48;
+  white-space: pre-wrap;
+}
+
+.u1-biography-score {
+  position: relative;
+  height: 3px;
+  margin-top: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.065);
+}
+
+.u1-biography-score > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--cv-accent, #d6d7d2) 58%, transparent);
+}
+
+.u1-biography-relationship[data-tone="hostile"],
+.u1-biography-faction[data-tone="hostile"] {
+  border-color: rgba(163, 98, 98, .24);
+}
+
+.u1-biography-relationship[data-tone="trusted"],
+.u1-biography-faction[data-tone="trusted"] {
+  border-color: color-mix(in srgb, var(--cv-accent, #d6d7d2) 26%, transparent);
+}
+
+.u1-biography-relationship[data-state="ended"],
+.u1-biography-asset:not([data-state="active"]) {
+  opacity: .62;
+}
+
+.u1-biography-gm-note {
+  margin-top: 5px;
+  padding: 7px 8px;
+  border: 1px dashed rgba(255,255,255,.11);
+  border-radius: 7px;
+  display: grid;
+  gap: 3px;
+  background: rgba(255,255,255,.018);
+}
+
+.u1-biography-gm-note b,
+.u1-biography-hidden-badge {
+  color: var(--cv-text-muted, #7d8285);
+  font-size: 7px;
+  line-height: 1;
+  font-weight: 760;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.u1-biography-gm-note em {
+  color: var(--cv-text-muted, #8b9092);
+  font-size: 9px;
+  line-height: 1.42;
+  font-style: normal;
+}
+
+.u1-biography-asset {
+  min-height: 74px;
+  padding: 11px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.u1-biography-asset__mark {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--cv-accent-line, rgba(255,255,255,.1));
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255,255,255,.07), transparent 34%),
+    rgba(255,255,255,.025);
+  color: var(--cv-text-soft, #c4c6c3);
+  font-size: 17px;
+}
+
+.u1-biography-asset__top i {
+  color: var(--cv-text-muted, #7a7f81);
+  font-size: 7px;
+  line-height: 1;
+  font-style: normal;
+  font-weight: 720;
+  text-transform: uppercase;
+}
+
+.u1-biography-asset__body > b {
+  color: var(--cv-text-muted, #888d8e);
+  font-size: 9px;
+  line-height: 1.3;
+  font-weight: 590;
+}
+
+.u1-biography-hidden-badge {
+  justify-self: start;
+  margin-top: 3px;
+  padding: 4px 5px;
+  border: 1px dashed rgba(255,255,255,.1);
+  border-radius: 999px;
+}
+
+.u1-biography-faction {
+  padding: 12px;
+}
+
+.u1-biography-faction header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.u1-biography-faction header > span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.u1-biography-faction__standing {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--cv-accent-line, rgba(255,255,255,.065));
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(80px, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.u1-biography-faction__standing strong {
+  color: var(--cv-text-soft, #c7c9c7);
+  font-size: 10px;
+  font-weight: 620;
+}
+
+.u1-biography-faction__note {
+  margin-top: 7px !important;
+}
+
+.u1-character-biography__state,
+.u1-character-biography__empty {
+  margin: 16px 14px;
+  padding: 18px 0;
+  border-top: 1px solid var(--cv-accent-line, rgba(255,255,255,.075));
+  border-bottom: 1px solid var(--cv-accent-line, rgba(255,255,255,.05));
+  color: var(--cv-text-muted, #777c7f);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.u1-character-biography__empty {
+  margin: 0;
+}
+
+@media (max-width: 380px) {
+  .u1-character-biography__tabs button {
+    font-size: 7px;
+    letter-spacing: .045em;
+  }
+
+  .u1-character-biography__history,
+  .u1-character-biography__list {
+    padding-inline: 11px;
+  }
+}
