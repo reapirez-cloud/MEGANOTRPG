@@ -547,6 +547,32 @@ export function useUiV1CharacterControl(
     return { ok: true }
   }, [canControlCharacter, characterId, load])
 
+  const setQuickAccessSimple = useCallback(async (
+    item: InventoryItem,
+    enabled: boolean,
+  ): Promise<Result> => {
+    if (!canControlCharacter) return { ok: false, error: "Недостаточно прав." }
+
+    const { error: quickError } = await supabase.rpc(
+      "set_inventory_quick_access_v1",
+      {
+        p_character_id: characterId,
+        p_item_id: item.id,
+        p_enabled: enabled,
+        p_expected_version: item.version,
+      },
+    )
+
+    await load()
+    if (quickError) {
+      return {
+        ok: false,
+        error: quickError.message || "Не удалось изменить быстрый доступ.",
+      }
+    }
+    return { ok: true }
+  }, [canControlCharacter, characterId, load])
+
   const storeItemInWorld = useCallback(async (
     item: InventoryItem,
     storage: UiV1CharacterWorldStorage,
@@ -731,6 +757,7 @@ export function useUiV1CharacterControl(
     moveItem,
     moveItemSimple,
     swapItemsSimple,
+    setQuickAccessSimple,
     storeItemInWorld,
     updateItem,
     removeItem,
