@@ -8,6 +8,8 @@
 >
 > Current checkpoint: **Stages 1–12 complete. Inventory certification is CLOSED.**
 >
+> **Temporary active UI override — 2026-09-22:** the certified spatial runtime remains intact but is not mounted. The active simple UI shows all equipment slots, every bag and every empty bag cell simultaneously, supports touch/desktop drag moves and swaps, and exposes one non-physical quick-access shortcut that references an existing item without consuming a hand slot.
+>
 > This file defines implementation order and completion boundaries. It does not by itself prove that a stage is implemented. Audits must verify source, live Supabase state where relevant, and real runtime behavior before changing a stage to complete.
 
 The final inventory target is a physical, tactile inventory system built on Cheburashka rather than a flat list. Items exist in real holders, bags open into their own grids, large items use authored shapes, two hand slots are always available, extra external carry slots are generic 1×1 cells with no anatomical semantics, currency remains physical items, shared scene loot uses surfaces, trade is a dedicated two-party chat block, and Voss/GM authoring can create new item footprints without inventing a second inventory engine.
