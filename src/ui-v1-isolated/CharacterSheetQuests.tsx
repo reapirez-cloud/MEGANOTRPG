@@ -309,6 +309,79 @@ function GmQuestPlan({
     },
   ]
 
+  function targetActionsFor(target: QuestManagerTarget): SnakeAction[] {
+    const candidates = targetCandidates(target, catalog)
+
+    return [
+      {
+        id: "quest-target-edit",
+        label: "Редактировать цель",
+        surface: {
+          kind: "editor",
+          eyebrow: targetKindLabel(target.target_kind),
+          title: target.placeholder_label,
+          fields: [
+            { id: "placeholder_label", label: "Внутренняя пометка", type: "text", required: true },
+            { id: "internal_note", label: "Что здесь задумано", type: "textarea" },
+          ],
+          initialValues: {
+            placeholder_label: target.placeholder_label,
+            internal_note: target.internal_note,
+          },
+        },
+        execute: ({ input }) => mutateAndRefresh(
+          () => manager.updateTarget(target.id, {
+            placeholderLabel: inputText(input, "placeholder_label"),
+            internalNote: inputText(input, "internal_note"),
+          }),
+          "Цель квеста обновлена.",
+        ),
+      },
+      {
+        id: "quest-target-bind",
+        label: target.binding_state === "bound"
+          ? "Изменить привязку"
+          : "Привязать к миру",
+        enabled: candidates.length > 0,
+        disabledReason: "Подходящих сущностей в кампании пока нет.",
+        surface: {
+          kind: "picker",
+          eyebrow: `${targetKindLabel(target.target_kind)} · привязка`,
+          title: target.placeholder_label,
+          initialSelection:
+            target.location_id
+            || target.npc_character_id
+            || target.item_definition_id
+            || undefined,
+          items: candidates.map((candidate) => ({
+            id: candidate.id,
+            label: candidate.name,
+          })),
+          submitLabel: "Привязать",
+        },
+        execute: ({ input }) => mutateAndRefresh(
+          () => manager.bindTarget(target, inputText(input, "selection")),
+          "Placeholder привязан к сущности мира.",
+        ),
+      },
+      {
+        id: "quest-target-unbind",
+        label: "Вернуть в placeholder",
+        hidden: target.binding_state !== "bound",
+        surface: {
+          kind: "confirm",
+          title: "Убрать привязку?",
+          body: `«${target.placeholder_label}» снова станет только внутренней пометкой квеста.`,
+          confirmLabel: "Отвязать",
+        },
+        execute: () => mutateAndRefresh(
+          () => manager.bindTarget(target, null),
+          "Цель снова стала placeholder.",
+        ),
+      },
+    ]
+  }
+
   return (
     <div className="u1-character-quests__gm-plan">
       <SnakeTrigger
@@ -472,76 +545,7 @@ function GmQuestPlan({
                       <div className="u1-character-quests__gm-targets">
                         {stageTargets.map((target) => {
                           const bound = bindingLabel(target, catalog)
-                          const candidates = targetCandidates(target, catalog)
-
-                          const targetActions: SnakeAction[] = [
-                            {
-                              id: "quest-target-edit",
-                              label: "Редактировать цель",
-                              surface: {
-                                kind: "editor",
-                                eyebrow: targetKindLabel(target.target_kind),
-                                title: target.placeholder_label,
-                                fields: [
-                                  { id: "placeholder_label", label: "Внутренняя пометка", type: "text", required: true },
-                                  { id: "internal_note", label: "Что здесь задумано", type: "textarea" },
-                                ],
-                                initialValues: {
-                                  placeholder_label: target.placeholder_label,
-                                  internal_note: target.internal_note,
-                                },
-                              },
-                              execute: ({ input }) => mutateAndRefresh(
-                                () => manager.updateTarget(target.id, {
-                                  placeholderLabel: inputText(input, "placeholder_label"),
-                                  internalNote: inputText(input, "internal_note"),
-                                }),
-                                "Цель квеста обновлена.",
-                              ),
-                            },
-                            {
-                              id: "quest-target-bind",
-                              label: target.binding_state === "bound"
-                                ? "Изменить привязку"
-                                : "Привязать к миру",
-                              enabled: candidates.length > 0,
-                              disabledReason: "Подходящих сущностей в кампании пока нет.",
-                              surface: {
-                                kind: "picker",
-                                eyebrow: `${targetKindLabel(target.target_kind)} · привязка`,
-                                title: target.placeholder_label,
-                                initialSelection:
-                                  target.location_id
-                                  || target.npc_character_id
-                                  || target.item_definition_id
-                                  || undefined,
-                                items: candidates.map((candidate) => ({
-                                  id: candidate.id,
-                                  label: candidate.name,
-                                })),
-                                submitLabel: "Привязать",
-                              },
-                              execute: ({ input }) => mutateAndRefresh(
-                                () => manager.bindTarget(target, inputText(input, "selection")),
-                                "Placeholder привязан к сущности мира.",
-                              ),
-                            },
-                            {
-                              id: "quest-target-unbind",
-                              label: "Вернуть в placeholder",
-                              hidden: target.binding_state !== "bound",
-                              surface: {
-                                kind: "confirm",
-                                title: "Убрать привязку?",
-                                body: `«${target.placeholder_label}» снова станет только внутренней пометкой квеста.`,
-                                confirmLabel: "Отвязать",
-                              },
-                              execute: () => mutateAndRefresh(
-                                () => manager.bindTarget(target, null),
-                                "Цель снова стала placeholder.",
-                              ),
-                            },
-                          ]
+                          const targetActions = targetActionsFor(target)
 
                           return (
                             <SnakeTrigger
@@ -702,17 +706,23 @@ function GmQuestPlan({
             {plan.targets
               .filter((target) => !target.stage_id)
               .map((target) => (
-                <div
-                  className="u1-character-quests__gm-target"
-                  data-binding={target.binding_state}
+                <SnakeTrigger
                   key={target.id}
+                  entity={{ type: "quest-target", id: target.id }}
+                  actions={targetActionsFor(target)}
                 >
-                  <div>
-                    <span>{targetKindLabel(target.target_kind)}</span>
-                    <strong>{target.placeholder_label}</strong>
+                  <div
+                    className="u1-character-quests__gm-target"
+                    data-binding={target.binding_state}
+                  >
+                    <div>
+                      <span>{targetKindLabel(target.target_kind)}</span>
+                      <strong>{target.placeholder_label}</strong>
+                    </div>
+                    <i>{bindingLabel(target, catalog) || "Не создано в мире"}</i>
+                    {target.internal_note ? <p>{target.internal_note}</p> : null}
                   </div>
-                  <i>{bindingLabel(target, catalog) || "Не создано в мире"}</i>
-                </div>
+                </SnakeTrigger>
               ))}
           </div>
         </section>
