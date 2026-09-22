@@ -7,6 +7,7 @@ import {
   inventorySimpleContainerTargets,
   inventorySimpleContainerUsage,
 } from "../inventory-engine"
+import type { InventoryPlacementTarget } from "../inventory-engine"
 import type { InventoryItem } from "../types/characterSheet"
 import "./inventory-simple.css"
 
@@ -17,6 +18,8 @@ type Props = {
   canControl: boolean
   focusedItemId?: string | null
   onMove: (item: InventoryItem, holderItemId: string | null) => Promise<Result>
+  onPlace: (item: InventoryItem, placement: InventoryPlacementTarget) => Promise<Result>
+  onSwap: (first: InventoryItem, second: InventoryItem) => Promise<Result>
   onEquip: (item: InventoryItem) => Promise<Result>
   onUse: (item: InventoryItem, amount?: number) => Promise<Result>
 }
@@ -195,17 +198,49 @@ function itemMeta(item: InventoryItem) {
   return chunks.join(" · ")
 }
 
+
+const EQUIPMENT_SLOTS: Array<{
+  key: Exclude<InventoryItem["equipment_slot"], null>
+  label: string
+}> = [
+  { key: "head", label: "Голова" },
+  { key: "neck", label: "Шея" },
+  { key: "shoulders", label: "Плечи" },
+  { key: "chest", label: "Корпус" },
+  { key: "back", label: "Спина" },
+  { key: "hands", label: "Кисти" },
+  { key: "wrists", label: "Запястья" },
+  { key: "waist", label: "Пояс" },
+  { key: "legs", label: "Ноги" },
+  { key: "feet", label: "Ступни" },
+  { key: "main_hand", label: "Основная рука" },
+  { key: "off_hand", label: "Вторая рука" },
+  { key: "two_hands", label: "Две руки" },
+  { key: "ring_left", label: "Кольцо I" },
+  { key: "ring_right", label: "Кольцо II" },
+  { key: "ammo", label: "Боеприпасы" },
+  { key: "other", label: "Прочее" },
+]
+
+const QUICK_ACCESS_SLOTS = [0, 1] as const
+
+function simplePlacement(item: InventoryItem) {
+  return item.placement_kind || (item.holder_item_id ? "legacy" : "root")
+}
+
 export default function InventorySimpleView({
   items,
   canControl,
   focusedItemId,
   onMove,
+  onPlace,
+  onSwap,
   onEquip,
   onUse,
 }: Props) {
-  const [activeHolderId, setActiveHolderId] = useState<string | null>(null)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(focusedItemId || null)
   const [targetHolderId, setTargetHolderId] = useState("")
+  const [dragItemId, setDragItemId] = useState<string | null>(null)
   const [busy, setBusy] = useState("")
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
@@ -213,28 +248,54 @@ export default function InventorySimpleView({
   const selectedItem = selectedItemId
     ? items.find((item) => item.id === selectedItemId) || null
     : null
-  const activeHolder = activeHolderId
-    ? items.find((item) => item.id === activeHolderId) || null
-    : null
 
-  const rootContainers = useMemo(
-    () => inventorySimpleChildren(items, null)
-      .filter((item) => item.category === "container"),
+  const bags = useMemo(
+    () => items
+      .filter((item) => item.category === "container" && !item.equipped)
+      .slice()
+      .sort((left, right) => {
+        const order = Number(left.sort_order || 0) - Number(right.sort_order || 0)
+        return order || left.name.localeCompare(right.name, "ru")
+      }),
     [items],
   )
+
   const rootLooseItems = useMemo(
-    () => inventorySimpleChildren(items, null)
-      .filter((item) => item.category !== "container"),
+    () => inventorySimpleChildren(items, null).filter((item) => {
+      const placement = simplePlacement(item)
+      return (
+        item.category !== "container" &&
+        placement !== "hand" &&
+        placement !== "external"
+      )
+    }),
     [items],
   )
-  const equippedItems = useMemo(
-    () => items.filter((item) => item.equipped),
-    [items],
-  )
-  const activeChildren = useMemo(
-    () => activeHolder ? inventorySimpleChildren(items, activeHolder.id) : [],
-    [activeHolder, items],
-  )
+
+  const equippedBySlot = useMemo(() => {
+    const map = new Map<string, InventoryItem>()
+    for (const item of items) {
+      if (item.equipped && item.equipment_slot && !map.has(item.equipment_slot)) {
+        map.set(item.equipment_slot, item)
+      }
+    }
+    return map
+  }, [items])
+
+  const quickByIndex = useMemo(() => {
+    const map = new Map<number, InventoryItem>()
+    for (const item of items) {
+      if (
+        !item.equipped &&
+        simplePlacement(item) === "hand" &&
+        (item.placement_index === 0 || item.placement_index === 1)
+      ) {
+        map.set(item.placement_index, item)
+      }
+    }
+    return map
+  }, [items])
+
   const targets = useMemo(
     () => selectedItem ? inventorySimpleContainerTargets(items, selectedItem) : [],
     [items, selectedItem],
@@ -242,10 +303,9 @@ export default function InventorySimpleView({
 
   useEffect(() => {
     if (!focusedItemId) return
-    const focused = items.find((item) => item.id === focusedItemId)
-    if (!focused) return
-    setSelectedItemId(focused.id)
-    setActiveHolderId(focused.holder_item_id ?? null)
+    if (items.some((item) => item.id === focusedItemId)) {
+      setSelectedItemId(focusedItemId)
+    }
   }, [focusedItemId, items])
 
   useEffect(() => {
@@ -253,15 +313,12 @@ export default function InventorySimpleView({
       setTargetHolderId("")
       return
     }
-
     const firstAvailable = targets.find((entry) => !entry.full)
-    if (selectedItem.holder_item_id) {
-      setTargetHolderId("")
-    } else if (firstAvailable) {
-      setTargetHolderId(firstAvailable.container.id)
-    } else {
-      setTargetHolderId("")
-    }
+    setTargetHolderId(
+      selectedItem.holder_item_id
+        ? ""
+        : firstAvailable?.container.id || "",
+    )
   }, [selectedItem?.id, selectedItem?.holder_item_id, targets])
 
   async function run(
@@ -273,10 +330,9 @@ export default function InventorySimpleView({
     setBusy(key)
     setMessage("")
     setError("")
-
     const result = await task()
     setBusy("")
-
+    setDragItemId(null)
     if (!result.ok) {
       setError(result.error || "Действие не выполнено.")
       return
@@ -290,13 +346,132 @@ export default function InventorySimpleView({
     setError("")
   }
 
-  function itemSlot(item: InventoryItem) {
+  function draggedItem() {
+    return dragItemId
+      ? items.find((item) => item.id === dragItemId) || null
+      : null
+  }
+
+  function beginDrag(
+    event: React.DragEvent<HTMLButtonElement>,
+    item: InventoryItem,
+  ) {
+    if (!canControl || item.equipped) {
+      event.preventDefault()
+      return
+    }
+    setDragItemId(item.id)
+    event.dataTransfer.effectAllowed = "move"
+    event.dataTransfer.setData("text/plain", item.id)
+  }
+
+  function allowDrop(event: React.DragEvent<HTMLElement>) {
+    if (!canControl) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "move"
+  }
+
+  function dropIntoHolder(
+    event: React.DragEvent<HTMLElement>,
+    holderItemId: string | null,
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+    const item = draggedItem()
+    if (!item || item.equipped) return
+    if ((item.holder_item_id ?? null) === holderItemId && simplePlacement(item) !== "hand") {
+      setDragItemId(null)
+      return
+    }
+    void run(
+      "move:" + item.id,
+      () => onMove(item, holderItemId),
+      holderItemId ? "Предмет переложен в сумку." : "Предмет переложен при себе.",
+    )
+  }
+
+  function dropOnItem(
+    event: React.DragEvent<HTMLElement>,
+    target: InventoryItem,
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+    const item = draggedItem()
+    if (!item || item.id === target.id || item.equipped || target.equipped) return
+    void run(
+      "swap:" + item.id,
+      () => onSwap(item, target),
+      "Предметы поменяны местами.",
+    )
+  }
+
+  function dropQuick(
+    event: React.DragEvent<HTMLElement>,
+    index: 0 | 1,
+    occupant: InventoryItem | undefined,
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+    const item = draggedItem()
+    if (!item || item.equipped) return
+    if (occupant && occupant.id !== item.id) {
+      void run(
+        "swap:" + item.id,
+        () => onSwap(item, occupant),
+        "Предметы поменяны местами.",
+      )
+      return
+    }
+    if (occupant?.id === item.id) {
+      setDragItemId(null)
+      return
+    }
+    void run(
+      "quick:" + item.id,
+      () => onPlace(item, { kind: "hand", index }),
+      "Предмет добавлен в быстрый доступ.",
+    )
+  }
+
+  function dropEquipment(
+    event: React.DragEvent<HTMLElement>,
+    slot: Exclude<InventoryItem["equipment_slot"], null>,
+    occupant: InventoryItem | undefined,
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+    const item = draggedItem()
+    if (
+      !item ||
+      occupant ||
+      item.category !== "equipment" ||
+      item.equipment_slot !== slot ||
+      item.equipped
+    ) {
+      setDragItemId(null)
+      return
+    }
+    void run(
+      "equip:" + item.id,
+      () => onEquip(item),
+      "Предмет экипирован.",
+    )
+  }
+
+  function itemSlot(item: InventoryItem, compact = false) {
     return (
       <button
         type="button"
         className="u1-simple-inventory__slot u1-simple-inventory__slot--filled"
         key={item.id}
         data-selected={selectedItemId === item.id || undefined}
+        data-dragging={dragItemId === item.id || undefined}
+        data-compact={compact || undefined}
+        draggable={canControl && !item.equipped}
+        onDragStart={(event) => beginDrag(event, item)}
+        onDragEnd={() => setDragItemId(null)}
+        onDragOver={allowDrop}
+        onDrop={(event) => dropOnItem(event, item)}
         onClick={() => selectItem(item)}
         aria-label={item.name}
       >
@@ -318,131 +493,170 @@ export default function InventorySimpleView({
     )
   }
 
-  function bagCard(container: InventoryItem) {
-    const usage = inventorySimpleContainerUsage(items, container.id)
-    const percentage = usage.capacity > 0
-      ? Math.min(100, (usage.used / usage.capacity) * 100)
-      : 100
-
+  function emptySlot(key: string) {
     return (
-      <button
-        type="button"
-        className="u1-simple-inventory__bag-card"
-        data-active={activeHolderId === container.id || undefined}
-        key={container.id}
-        onClick={() => {
-          setActiveHolderId(container.id)
-          setSelectedItemId(container.id)
-          setMessage("")
-          setError("")
-        }}
+      <div
+        className="u1-simple-inventory__slot u1-simple-inventory__slot--empty"
+        aria-hidden="true"
+        key={key}
       >
-        <span className="u1-simple-inventory__bag-icon">
-          <InventoryGlyph kind={glyphKind(container)} />
-        </span>
-        <span className="u1-simple-inventory__bag-copy">
-          <strong>{container.name}</strong>
-          <small>{usage.used} / {usage.capacity} ячеек</small>
-          <i aria-hidden="true">
-            <b style={{ width: percentage + "%" }} />
-          </i>
-        </span>
-        <span className="u1-simple-inventory__bag-arrow" aria-hidden="true">›</span>
-      </button>
+        <InventoryGlyph kind="generic" />
+      </div>
     )
   }
 
-  const activeUsage = activeHolder
-    ? inventorySimpleContainerUsage(items, activeHolder.id)
-    : null
-  const activeCapacity = activeHolder
-    ? inventorySimpleContainerCapacity(activeHolder)
-    : 0
-  const emptySlots = activeHolder
-    ? Math.max(0, activeCapacity - activeChildren.length)
-    : 0
-  const parentHolderId = activeHolder?.holder_item_id ?? null
-
   return (
-    <div className="u1-simple-inventory" data-simple-inventory="v1">
+    <div
+      className="u1-simple-inventory"
+      data-simple-inventory="v2"
+      data-dragging={Boolean(dragItemId) || undefined}
+    >
+      <section className="u1-simple-inventory__equipment" aria-label="Инвентарь — экипировка">
+        <header>
+          <div>
+            <span>ИНВЕНТАРЬ</span>
+            <strong>Экипировка</strong>
+          </div>
+          <small>{items.filter((item) => item.equipped).length} экипировано</small>
+        </header>
+
+        <div className="u1-simple-inventory__equipment-grid">
+          {EQUIPMENT_SLOTS.map((slot) => {
+            const item = equippedBySlot.get(slot.key)
+            return (
+              <div
+                className="u1-simple-inventory__equipment-slot"
+                data-empty={!item || undefined}
+                data-equipment-slot={slot.key}
+                key={slot.key}
+                onDragOver={allowDrop}
+                onDrop={(event) => dropEquipment(event, slot.key, item)}
+              >
+                <span>{slot.label}</span>
+                {item ? itemSlot(item, true) : (
+                  <div className="u1-simple-inventory__equipment-empty">
+                    <InventoryGlyph kind="equipment" />
+                    <small>Не экипировано</small>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="u1-simple-inventory__quick">
+          <header>
+            <div>
+              <span>БЫСТРЫЙ ДОСТУП</span>
+              <small>Можно положить любой предмет</small>
+            </div>
+          </header>
+          <div className="u1-simple-inventory__quick-grid">
+            {QUICK_ACCESS_SLOTS.map((index) => {
+              const item = quickByIndex.get(index)
+              return (
+                <div
+                  className="u1-simple-inventory__quick-slot"
+                  data-empty={!item || undefined}
+                  key={index}
+                  onDragOver={allowDrop}
+                  onDrop={(event) => dropQuick(event, index, item)}
+                >
+                  <span>Слот {index + 1}</span>
+                  {item ? itemSlot(item, true) : (
+                    <div className="u1-simple-inventory__quick-empty">
+                      <b>+</b>
+                      <small>Пусто</small>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
       <section className="u1-simple-inventory__bags" aria-label="Сумки">
         <header>
           <div>
             <span>КОНТЕЙНЕРЫ</span>
             <strong>Сумки</strong>
           </div>
-          <small>{rootContainers.length} шт.</small>
+          <small>{bags.length} шт.</small>
         </header>
-        {rootContainers.length ? (
-          <div className="u1-simple-inventory__bag-list">
-            {rootContainers.map(bagCard)}
+
+        {bags.length ? (
+          <div className="u1-simple-inventory__bag-stack">
+            {bags.map((bag) => {
+              const children = inventorySimpleChildren(items, bag.id)
+              const capacity = inventorySimpleContainerCapacity(bag)
+              const usage = inventorySimpleContainerUsage(items, bag.id)
+              const emptyCount = Math.max(0, capacity - children.length)
+
+              return (
+                <section
+                  className="u1-simple-inventory__bag-panel"
+                  key={bag.id}
+                  data-bag-id={bag.id}
+                  onDragOver={allowDrop}
+                  onDrop={(event) => dropIntoHolder(event, bag.id)}
+                >
+                  <header>
+                    <span className="u1-simple-inventory__bag-icon">
+                      <InventoryGlyph kind={glyphKind(bag)} />
+                    </span>
+                    <div>
+                      <strong>{bag.name}</strong>
+                      <small>{usage.used} / {usage.capacity} ячеек</small>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => selectItem(bag)}
+                      aria-label={"Открыть описание: " + bag.name}
+                    >
+                      ⋯
+                    </button>
+                  </header>
+                  <div className="u1-simple-inventory__slots">
+                    {children.map((item) => itemSlot(item))}
+                    {Array.from({ length: emptyCount }, (_, index) =>
+                      emptySlot(bag.id + ":empty:" + index)
+                    )}
+                  </div>
+                </section>
+              )
+            })}
           </div>
         ) : (
           <div className="u1-simple-inventory__empty-note">
-            Сумок пока нет. Свободные предметы остаются при персонаже.
+            Сумок пока нет.
           </div>
         )}
       </section>
 
-      {equippedItems.length ? (
-        <section className="u1-simple-inventory__equipment" aria-label="Экипировано">
-          <header>
-            <span>ЭКИПИРОВАНО</span>
-            <small>{equippedItems.length}</small>
-          </header>
-          <div>{equippedItems.map(itemSlot)}</div>
-        </section>
-      ) : null}
-
-      <section className="u1-simple-inventory__contents">
+      <section
+        className="u1-simple-inventory__contents"
+        onDragOver={allowDrop}
+        onDrop={(event) => dropIntoHolder(event, null)}
+      >
         <header className="u1-simple-inventory__contents-head">
           <div>
-            {activeHolder ? (
-              <button
-                type="button"
-                onClick={() => setActiveHolderId(parentHolderId)}
-                aria-label="Назад к родительской сумке"
-              >
-                ←
-              </button>
-            ) : (
-              <span className="u1-simple-inventory__contents-glyph" aria-hidden="true">◇</span>
-            )}
+            <span className="u1-simple-inventory__contents-glyph" aria-hidden="true">◇</span>
             <div>
-              <span>{activeHolder ? "ОТКРЫТАЯ СУМКА" : "ПРИ СЕБЕ"}</span>
-              <strong>{activeHolder?.name || "Свободные предметы"}</strong>
+              <span>ПРИ СЕБЕ</span>
+              <strong>Без сумки</strong>
             </div>
           </div>
-          <small>
-            {activeUsage
-              ? activeUsage.used + " / " + activeUsage.capacity
-              : rootLooseItems.length + " предметов"}
-          </small>
+          <small>{rootLooseItems.length} предметов</small>
         </header>
 
-        {activeHolder ? (
-          <div
-            className="u1-simple-inventory__slots"
-            aria-label={"Содержимое " + activeHolder.name}
-          >
-            {activeChildren.map(itemSlot)}
-            {Array.from({ length: emptySlots }, (_, index) => (
-              <div
-                className="u1-simple-inventory__slot u1-simple-inventory__slot--empty"
-                aria-hidden="true"
-                key={"empty-" + index}
-              >
-                <InventoryGlyph kind="generic" />
-              </div>
-            ))}
-          </div>
-        ) : rootLooseItems.length ? (
+        {rootLooseItems.length ? (
           <div className="u1-simple-inventory__slots u1-simple-inventory__slots--root">
-            {rootLooseItems.map(itemSlot)}
+            {rootLooseItems.map((item) => itemSlot(item))}
           </div>
         ) : (
           <div className="u1-simple-inventory__empty-note">
-            Здесь пусто. Предметы можно переложить в сумку или оставить при себе.
+            Здесь пусто. Предметы можно перетаскивать между сумками и этой областью.
           </div>
         )}
       </section>
@@ -470,40 +684,15 @@ export default function InventorySimpleView({
             </p>
           ) : null}
 
-          {selectedItem.category === "container" ? (
-            <button
-              type="button"
-              className="u1-simple-inventory__open-bag"
-              onClick={() => setActiveHolderId(selectedItem.id)}
-            >
-              <InventoryGlyph kind={glyphKind(selectedItem)} />
-              <span>
-                <strong>Открыть сумку</strong>
-                <small>
-                  {inventorySimpleContainerUsage(items, selectedItem.id).used}
-                  {" / "}
-                  {inventorySimpleContainerUsage(items, selectedItem.id).capacity}
-                  {" ячеек"}
-                </small>
-              </span>
-              <b aria-hidden="true">›</b>
-            </button>
-          ) : null}
-
-          {canControl ? (
+          {canControl && !selectedItem.equipped ? (
             <div className="u1-simple-inventory__actions">
               <label>
-                <span>Переложить</span>
+                <span>Переложить без перетаскивания</span>
                 <select
                   value={targetHolderId}
                   onChange={(event) => setTargetHolderId(event.target.value)}
                 >
-                  <option
-                    value=""
-                    disabled={!selectedItem.holder_item_id || selectedItem.equipped}
-                  >
-                    При себе
-                  </option>
+                  <option value="">При себе</option>
                   {targets.map((entry) => (
                     <option
                       value={entry.container.id}
@@ -517,15 +706,38 @@ export default function InventorySimpleView({
                 </select>
               </label>
 
+              <div className="u1-simple-inventory__quick-actions">
+                {QUICK_ACCESS_SLOTS.map((index) => (
+                  <button
+                    type="button"
+                    key={index}
+                    disabled={Boolean(busy)}
+                    onClick={() => {
+                      const occupant = quickByIndex.get(index)
+                      if (occupant && occupant.id !== selectedItem.id) {
+                        void run(
+                          "swap:" + selectedItem.id,
+                          () => onSwap(selectedItem, occupant),
+                          "Предметы поменяны местами.",
+                        )
+                      } else if (!occupant) {
+                        void run(
+                          "quick:" + selectedItem.id,
+                          () => onPlace(selectedItem, { kind: "hand", index }),
+                          "Предмет добавлен в быстрый доступ.",
+                        )
+                      }
+                    }}
+                  >
+                    Быстрый {index + 1}
+                  </button>
+                ))}
+              </div>
+
               <div className="u1-simple-inventory__action-row">
                 <button
                   type="button"
-                  disabled={
-                    Boolean(busy) ||
-                    (targetHolderId === "" && !selectedItem.holder_item_id) ||
-                    (targetHolderId !== "" &&
-                      targets.find((entry) => entry.container.id === targetHolderId)?.full === true)
-                  }
+                  disabled={Boolean(busy)}
                   onClick={() => void run(
                     "move",
                     () => onMove(selectedItem, targetHolderId || null),
@@ -535,7 +747,7 @@ export default function InventorySimpleView({
                   {busy === "move" ? "Перекладываем…" : "Переложить"}
                 </button>
 
-                {selectedItem.category === "equipment" && !selectedItem.equipped ? (
+                {selectedItem.category === "equipment" ? (
                   <button
                     type="button"
                     disabled={Boolean(busy)}
@@ -570,6 +782,8 @@ export default function InventorySimpleView({
           {message ? <div className="u1-simple-inventory__notice">{message}</div> : null}
           {error ? <div className="u1-simple-inventory__error">{error}</div> : null}
         </section>
+      ) : error ? (
+        <div className="u1-simple-inventory__error">{error}</div>
       ) : null}
     </div>
   )
