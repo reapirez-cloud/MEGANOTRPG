@@ -60,6 +60,17 @@ function CharacterSheetNavIcon({ id }: { id: string }) {
     )
   }
 
+  if (id === "quests") {
+    return (
+      <svg {...common}>
+        <path d="M6.2 4.5h11.6v15H6.2z" />
+        <path d="M9 4.5V3h6v1.5" />
+        <path d="m9 9 1.3 1.3L13 7.6" />
+        <path d="M9 14h6M9 17h4.2" />
+      </svg>
+    )
+  }
+
   if (id === "biography") {
     return (
       <svg {...common}>
