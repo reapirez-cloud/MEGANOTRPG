@@ -196,9 +196,10 @@ test("Stage 3 keeps delayed owner-death cleanup explicit instead of bypassing TO
   assert.doesNotMatch(migration, /\brandom\s*\(\s*\)/i)
 })
 
-test("Stage 3 status advances to Stage 4 while literary fields remain deferred", () => {
+test("Stage 3 remains closed after Stage 4 while literary fields remain deferred", () => {
   assert.match(plan, /Stage 3 — core item\/replication runtime:\s*COMPLETE_2026_09_21/)
-  assert.match(plan, /Stage 4 — remaining base class 1–20:\s*NEXT/)
+  assert.match(plan, /Stage 4 — remaining base class 1–20:\s*COMPLETE_2026_09_22/)
+  assert.match(plan, /Stage 5 — subclass wave 1:\s*NEXT/)
   assert.match(ledger, /stage_3_core_item_replication_runtime: COMPLETE_2026_09_21/)
   assert.match(ledger, /DEFERRED_USER_TRANSLATION/)
   assert.match(migration, /author_description='',author_comment=''/)
