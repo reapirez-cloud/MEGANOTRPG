@@ -239,7 +239,12 @@ export function buildChatActionModel(contract: ResolvedCharacterContract | null,
     if (!visible) continue
     if (spellDealsDamage(visible)) attackSpells.push(visible)
     const self = selfSpell(visible, includePrivateSources)
-    if (self) spells.push(self)
+    // Cantrips belong to the Magic route even when their access was granted by
+    // the current class/template rather than a legacy character_spells row.
+    // They do not consume a slot, so hiding them behind the Class route makes
+    // the spell picker look as if it only supports slots.
+    if (visible.identity.level === 0) addOrMergeSpell(spells, visible)
+    else if (self) spells.push(self)
     addSpellToGroups(classGroups, visible, ["class"], includePrivateSources)
     addSpellToGroups(uniqueGroups, visible, ["unique", "item"], includePrivateSources)
   }
