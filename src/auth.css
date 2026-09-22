@@ -165,3 +165,67 @@
   font-weight: 800;
   cursor: pointer;
 }
+
+
+.auth-world-card {
+  width: min(100%, 520px);
+}
+
+.auth-world-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.auth-world-choice {
+  width: 100%;
+  min-height: 78px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #303036;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(31, 31, 35, .96), rgba(20, 20, 23, .96));
+  color: #fafafa;
+  text-align: left;
+  cursor: pointer;
+}
+
+.auth-world-choice--experimental {
+  border-color: #44345f;
+  background:
+    radial-gradient(circle at 90% 10%, rgba(109, 40, 217, .12), transparent 42%),
+    linear-gradient(180deg, rgba(31, 31, 35, .96), rgba(20, 20, 23, .96));
+}
+
+.auth-world-choice__index {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid #3a3a40;
+  border-radius: 10px;
+  color: #8b5cf6;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.auth-world-choice__copy {
+  display: grid;
+  gap: 3px;
+}
+
+.auth-world-choice__copy strong {
+  font-size: 15px;
+}
+
+.auth-world-choice__copy small {
+  color: #8d8d97;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
