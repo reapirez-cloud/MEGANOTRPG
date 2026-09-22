@@ -256,7 +256,11 @@ export const VOSS_QUEST_TOOLS = [
           quest_id: { type: "string" },
           quest_key: { type: "string" },
           target_key: { type: "string" },
-          entity_id: { type: ["string", "null"] },
+          entity_id: {
+            type: "string",
+            description:
+              "Canonical entity UUID. Use an empty string to remove an existing binding and return the target to placeholder state.",
+          },
         },
         required: ["target_key", "entity_id"],
       },
@@ -676,11 +680,9 @@ async function bindQuestTarget(
   if (targetError) return { error: targetError.message }
   if (!target) return { error: "quest_target_not_found" }
 
-  const entityId =
-    args.entity_id === null || args.entity_id === undefined
-      ? null
-      : uuid(args.entity_id)
-  if (args.entity_id !== null && args.entity_id !== undefined && !entityId) {
+  const rawEntityId = text(args.entity_id, 80)
+  const entityId = rawEntityId ? uuid(rawEntityId) : null
+  if (rawEntityId && !entityId) {
     return { error: "entity_id_invalid" }
   }
 
