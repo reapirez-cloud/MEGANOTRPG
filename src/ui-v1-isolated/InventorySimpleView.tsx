@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState } from "react"
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent as ReactDragEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react"
 
 import {
   inventoryPhysicalProfile,
@@ -241,6 +248,14 @@ export default function InventorySimpleView({
   const [selectedItemId, setSelectedItemId] = useState<string | null>(focusedItemId || null)
   const [targetHolderId, setTargetHolderId] = useState("")
   const [dragItemId, setDragItemId] = useState<string | null>(null)
+  const pointerDragRef = useRef<{
+    pointerId: number
+    itemId: string
+    startX: number
+    startY: number
+    active: boolean
+  } | null>(null)
+  const suppressClickUntilRef = useRef(0)
   const [busy, setBusy] = useState("")
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
@@ -352,34 +367,12 @@ export default function InventorySimpleView({
       : null
   }
 
-  function beginDrag(
-    event: React.DragEvent<HTMLButtonElement>,
-    item: InventoryItem,
-  ) {
-    if (!canControl || item.equipped) {
-      event.preventDefault()
-      return
-    }
-    setDragItemId(item.id)
-    event.dataTransfer.effectAllowed = "move"
-    event.dataTransfer.setData("text/plain", item.id)
-  }
-
-  function allowDrop(event: React.DragEvent<HTMLElement>) {
-    if (!canControl) return
-    event.preventDefault()
-    event.dataTransfer.dropEffect = "move"
-  }
-
-  function dropIntoHolder(
-    event: React.DragEvent<HTMLElement>,
-    holderItemId: string | null,
-  ) {
-    event.preventDefault()
-    event.stopPropagation()
-    const item = draggedItem()
-    if (!item || item.equipped) return
-    if ((item.holder_item_id ?? null) === holderItemId && simplePlacement(item) !== "hand") {
+  function moveToHolder(item: InventoryItem, holderItemId: string | null) {
+    if (item.equipped) return
+    if (
+      (item.holder_item_id ?? null) === holderItemId &&
+      simplePlacement(item) !== "hand"
+    ) {
       setDragItemId(null)
       return
     }
@@ -390,14 +383,17 @@ export default function InventorySimpleView({
     )
   }
 
-  function dropOnItem(
-    event: React.DragEvent<HTMLElement>,
-    target: InventoryItem,
-  ) {
-    event.preventDefault()
-    event.stopPropagation()
-    const item = draggedItem()
-    if (!item || item.id === target.id || item.equipped || target.equipped) return
+  function swapWith(item: InventoryItem, target: InventoryItem) {
+    if (
+      item.id === target.id ||
+      item.equipped ||
+      target.equipped ||
+      item.category === "container" ||
+      target.category === "container"
+    ) {
+      setDragItemId(null)
+      return
+    }
     void run(
       "swap:" + item.id,
       () => onSwap(item, target),
@@ -405,21 +401,14 @@ export default function InventorySimpleView({
     )
   }
 
-  function dropQuick(
-    event: React.DragEvent<HTMLElement>,
+  function moveToQuick(
+    item: InventoryItem,
     index: 0 | 1,
     occupant: InventoryItem | undefined,
   ) {
-    event.preventDefault()
-    event.stopPropagation()
-    const item = draggedItem()
-    if (!item || item.equipped) return
+    if (item.equipped) return
     if (occupant && occupant.id !== item.id) {
-      void run(
-        "swap:" + item.id,
-        () => onSwap(item, occupant),
-        "Предметы поменяны местами.",
-      )
+      swapWith(item, occupant)
       return
     }
     if (occupant?.id === item.id) {
@@ -433,16 +422,12 @@ export default function InventorySimpleView({
     )
   }
 
-  function dropEquipment(
-    event: React.DragEvent<HTMLElement>,
+  function equipInto(
+    item: InventoryItem,
     slot: Exclude<InventoryItem["equipment_slot"], null>,
     occupant: InventoryItem | undefined,
   ) {
-    event.preventDefault()
-    event.stopPropagation()
-    const item = draggedItem()
     if (
-      !item ||
       occupant ||
       item.category !== "equipment" ||
       item.equipment_slot !== slot ||
@@ -458,6 +443,176 @@ export default function InventorySimpleView({
     )
   }
 
+  function beginPointerDrag(
+    event: ReactPointerEvent<HTMLButtonElement>,
+    item: InventoryItem,
+  ) {
+    if (
+      !canControl ||
+      item.equipped ||
+      event.pointerType === "mouse" ||
+      event.isPrimary === false
+    ) {
+      return
+    }
+
+    pointerDragRef.current = {
+      pointerId: event.pointerId,
+      itemId: item.id,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function movePointerDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = pointerDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    const distance = Math.hypot(
+      event.clientX - drag.startX,
+      event.clientY - drag.startY,
+    )
+    if (!drag.active && distance >= 8) {
+      drag.active = true
+      setDragItemId(drag.itemId)
+    }
+    if (drag.active) event.preventDefault()
+  }
+
+  function finishPointerDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = pointerDragRef.current
+    pointerDragRef.current = null
+    if (!drag || drag.pointerId !== event.pointerId) return
+    if (!drag.active) {
+      setDragItemId(null)
+      return
+    }
+
+    suppressClickUntilRef.current = performance.now() + 360
+    event.preventDefault()
+
+    const item = items.find((candidate) => candidate.id === drag.itemId)
+    const target = document.elementFromPoint(event.clientX, event.clientY)
+    if (!item || !(target instanceof Element)) {
+      setDragItemId(null)
+      return
+    }
+
+    const itemDrop = target.closest<HTMLElement>("[data-simple-drop-item]")
+    const targetItemId = itemDrop?.dataset.simpleDropItem
+    if (targetItemId && targetItemId !== item.id) {
+      const targetItem = items.find((candidate) => candidate.id === targetItemId)
+      if (targetItem) {
+        swapWith(item, targetItem)
+        return
+      }
+    }
+
+    const quickDrop = target.closest<HTMLElement>("[data-simple-drop-quick]")
+    if (quickDrop) {
+      const index = Number(quickDrop.dataset.simpleDropQuick)
+      if (index === 0 || index === 1) {
+        moveToQuick(item, index, quickByIndex.get(index))
+        return
+      }
+    }
+
+    const equipmentDrop = target.closest<HTMLElement>("[data-simple-drop-equipment]")
+    if (equipmentDrop?.dataset.simpleDropEquipment) {
+      const slot = equipmentDrop.dataset.simpleDropEquipment as Exclude<
+        InventoryItem["equipment_slot"],
+        null
+      >
+      equipInto(item, slot, equippedBySlot.get(slot))
+      return
+    }
+
+    const holderDrop = target.closest<HTMLElement>("[data-simple-drop-holder]")
+    if (holderDrop?.dataset.simpleDropHolder) {
+      moveToHolder(item, holderDrop.dataset.simpleDropHolder)
+      return
+    }
+
+    if (target.closest("[data-simple-drop-root]")) {
+      moveToHolder(item, null)
+      return
+    }
+
+    setDragItemId(null)
+  }
+
+  function cancelPointerDrag() {
+    pointerDragRef.current = null
+    setDragItemId(null)
+  }
+
+  function beginDrag(
+    event: ReactDragEvent<HTMLButtonElement>,
+    item: InventoryItem,
+  ) {
+    if (!canControl || item.equipped) {
+      event.preventDefault()
+      return
+    }
+    setDragItemId(item.id)
+    event.dataTransfer.effectAllowed = "move"
+    event.dataTransfer.setData("text/plain", item.id)
+  }
+
+  function allowDrop(event: ReactDragEvent<HTMLElement>) {
+    if (!canControl) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "move"
+  }
+
+  function dropIntoHolder(
+    event: ReactDragEvent<HTMLElement>,
+    holderItemId: string | null,
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+    const item = draggedItem()
+    if (!item) return
+    moveToHolder(item, holderItemId)
+  }
+
+  function dropOnItem(
+    event: ReactDragEvent<HTMLElement>,
+    target: InventoryItem,
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+    const item = draggedItem()
+    if (!item) return
+    swapWith(item, target)
+  }
+
+  function dropQuick(
+    event: ReactDragEvent<HTMLElement>,
+    index: 0 | 1,
+    occupant: InventoryItem | undefined,
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+    const item = draggedItem()
+    if (!item) return
+    moveToQuick(item, index, occupant)
+  }
+
+  function dropEquipment(
+    event: ReactDragEvent<HTMLElement>,
+    slot: Exclude<InventoryItem["equipment_slot"], null>,
+    occupant: InventoryItem | undefined,
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+    const item = draggedItem()
+    if (!item) return
+    equipInto(item, slot, occupant)
+  }
+
   function itemSlot(item: InventoryItem, compact = false) {
     return (
       <button
@@ -467,12 +622,20 @@ export default function InventorySimpleView({
         data-selected={selectedItemId === item.id || undefined}
         data-dragging={dragItemId === item.id || undefined}
         data-compact={compact || undefined}
+        data-simple-drop-item={item.id}
         draggable={canControl && !item.equipped}
         onDragStart={(event) => beginDrag(event, item)}
         onDragEnd={() => setDragItemId(null)}
+        onPointerDown={(event) => beginPointerDrag(event, item)}
+        onPointerMove={movePointerDrag}
+        onPointerUp={finishPointerDrag}
+        onPointerCancel={cancelPointerDrag}
         onDragOver={allowDrop}
         onDrop={(event) => dropOnItem(event, item)}
-        onClick={() => selectItem(item)}
+        onClick={() => {
+          if (performance.now() < suppressClickUntilRef.current) return
+          selectItem(item)
+        }}
         aria-label={item.name}
       >
         <span className="u1-simple-inventory__slot-icon">
@@ -528,6 +691,7 @@ export default function InventorySimpleView({
                 className="u1-simple-inventory__equipment-slot"
                 data-empty={!item || undefined}
                 data-equipment-slot={slot.key}
+                data-simple-drop-equipment={slot.key}
                 key={slot.key}
                 onDragOver={allowDrop}
                 onDrop={(event) => dropEquipment(event, slot.key, item)}
@@ -558,6 +722,7 @@ export default function InventorySimpleView({
                 <div
                   className="u1-simple-inventory__quick-slot"
                   data-empty={!item || undefined}
+                  data-simple-drop-quick={index}
                   key={index}
                   onDragOver={allowDrop}
                   onDrop={(event) => dropQuick(event, index, item)}
@@ -598,6 +763,7 @@ export default function InventorySimpleView({
                   className="u1-simple-inventory__bag-panel"
                   key={bag.id}
                   data-bag-id={bag.id}
+                  data-simple-drop-holder={bag.id}
                   onDragOver={allowDrop}
                   onDrop={(event) => dropIntoHolder(event, bag.id)}
                 >
@@ -636,6 +802,7 @@ export default function InventorySimpleView({
 
       <section
         className="u1-simple-inventory__contents"
+        data-simple-drop-root="true"
         onDragOver={allowDrop}
         onDrop={(event) => dropIntoHolder(event, null)}
       >
