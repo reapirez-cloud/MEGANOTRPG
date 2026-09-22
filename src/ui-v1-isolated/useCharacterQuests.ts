@@ -89,6 +89,7 @@ function parseQuest(raw: unknown): CharacterQuest | null {
 export function useCharacterQuests(characterId: string, enabled: boolean) {
   const loadedCharacterIdRef = useRef<string | null>(null)
   const loadSequenceRef = useRef(0)
+  const reloadTimerRef = useRef<number | null>(null)
   const [quests, setQuests] = useState<CharacterQuest[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -137,6 +138,66 @@ export function useCharacterQuests(characterId: string, enabled: boolean) {
     if (!enabled) return
     void load()
   }, [enabled, load])
+
+  useEffect(() => {
+    if (!enabled || !characterId) return
+
+    const scheduleReload = () => {
+      if (reloadTimerRef.current !== null) {
+        window.clearTimeout(reloadTimerRef.current)
+      }
+      reloadTimerRef.current = window.setTimeout(() => {
+        reloadTimerRef.current = null
+        void load()
+      }, 120)
+    }
+
+    const channel = supabase
+      .channel(`character-quests:${characterId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "campaign_events",
+          filter: "source_kind=eq.quest_engine",
+        },
+        (payload) => {
+          const row =
+            payload.new && typeof payload.new === "object"
+              ? payload.new as Record<string, unknown>
+              : {}
+          const participants = Array.isArray(row.participant_character_ids)
+            ? row.participant_character_ids
+            : []
+          const visibleCharacters = Array.isArray(row.visible_character_ids)
+            ? row.visible_character_ids
+            : []
+
+          if (
+            participants.includes(characterId) ||
+            visibleCharacters.includes(characterId)
+          ) {
+            scheduleReload()
+          }
+        },
+      )
+      .subscribe()
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") scheduleReload()
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange)
+
+    return () => {
+      if (reloadTimerRef.current !== null) {
+        window.clearTimeout(reloadTimerRef.current)
+        reloadTimerRef.current = null
+      }
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+      void supabase.removeChannel(channel)
+    }
+  }, [characterId, enabled, load])
 
   return {
     quests,
