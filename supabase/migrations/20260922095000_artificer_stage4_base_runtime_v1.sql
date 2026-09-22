@@ -1547,7 +1547,7 @@ begin
       jsonb_build_object(
         'id','artificer-magic-item-drain-action','type','action','sourceKey','magic-item-tinker',
         'key','class:artificer:magic-item-tinker:drain','label','Drain Magic Item',
-        'economy','bonus_action','resourceKey','artificer_magic_item_drain','resourceCost',1,
+        'economy','bonus_action',
         'effects',jsonb_build_array(jsonb_build_object(
           'kind','semantic','key','artificer_drain_replicated_item',
           'payload',jsonb_build_object('rpc','artificer_drain_magic_item_v1','temporarySlotExpiry','long_rest')
@@ -1557,7 +1557,7 @@ begin
       jsonb_build_object(
         'id','artificer-magic-item-transmute-action','type','action','sourceKey','magic-item-tinker',
         'key','class:artificer:magic-item-tinker:transmute','label','Transmute Magic Item',
-        'economy','magic_action','resourceKey','artificer_magic_item_transmute','resourceCost',1,
+        'economy','magic_action',
         'effects',jsonb_build_array(jsonb_build_object(
           'kind','semantic','key','artificer_transmute_replicated_item',
           'payload',jsonb_build_object('rpc','artificer_transmute_magic_item_v1')
