@@ -11,13 +11,33 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Replaced the GM chat-drawer swipe trigger with a persistent side `GM` button; the drawer opens by tap/click while the left-edge navigation gesture remains available for normal back navigation.
+- Reworked the active simple inventory into an always-visible `Инвентарь → Экипировка` surface: every supported equipment slot is rendered, empty slots explicitly show `Не экипировано`, and every carried bag is rendered as its own panel with all occupied and empty cells visible.
+- Added direct item drag/drop on desktop and touch: items can move between bags/root storage, swap occupied simple slots, move from equipment into a real bag, and equip into compatible empty equipment slots.
+- Added one dedicated quick-access shortcut that can reference any inventory item, including equipment and class-focus style objects, without pretending the item moved into a physical hand.
+- Experimental `ИИ мир` slots now default image policy to low quality with a modern high-detail pixel-art base prompt that explicitly rejects coarse 8/16-bit Dendy/NES/Sega sprite aesthetics.
+
 ### Database / migration changes
+
+- Added `swap_inventory_items_simple_v1` for server-authoritative simple-slot swaps with version/capacity/ownership checks.
+- Added isolated `ai_world_slots.image_quality` and `image_base_prompt` defaults for the experimental AI-world branch; ordinary campaign/Muntar image profiles remain unchanged.
+- Added `set_inventory_quick_access_v1`: an authenticated, character-authorized shortcut mutation stored on the existing item `item_state`; enabling a shortcut clears the previous shortcut for that character instead of creating a duplicate item.
+- Added a one-shortcut-per-character guard and owner-change cleanup so a quick-access marker cannot follow an item into another character/world/surface owner scope.
 
 ### Runtime and architecture changes
 
+- The spatial/Tetris inventory implementation remains isolated and intact; the simple inventory continues to project the same canonical Cheburashka item rows and holder tree.
+- Quick access is deliberately non-physical metadata. It does not consume `hand`, `external`, equipment or bag placement and therefore cannot silently rewrite carrying state.
+- Mobile simple-inventory drag uses pointer events and hit-testing rather than relying on desktop HTML5 drag behavior.
+
 ### Tests / verification
 
+- Added/updated regression coverage for GM drawer button activation, full equipment/empty-slot presentation, separated bag panels, desktop/touch drag, swap RPC wiring and non-physical quick-access wiring.
+- Supabase migration history confirms the simple drag/swap and experimental AI-world pixel/low defaults are applied; security advisors were reviewed after the quick-access RPC addition.
+
 ### Known incomplete work
+
+- The experimental AI-world selector is still an isolated placeholder runtime. Its low/pixel-art policy is persisted now so future AI-world image jobs inherit the intended settings, but no AI-world image job is currently executing from that placeholder.
 
 ---
 
