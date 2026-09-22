@@ -11,6 +11,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Added the missing right-side GM drawer to the isolated chat room. GM/owner can open it with a deliberate left-to-right swipe from the app's inner left gesture lane.
+- The GM drawer now exposes character recovery (Short Rest, Long Rest, Dawn), an explicit recovery target picker, room/location/time context editing, scene participant synchronization, player read/write visibility controls, and scene room-state controls.
+- The drawer uses the current graphite/glass chat language and leaves the normal chat feed/composer mounted underneath rather than restoring the retired legacy chat sheet.
+
 - Fixed chat sending for campaign owners whose ordinary campaign role is `player`: selecting their own playable PC now sends as that PC instead of being rejected by the manager-only Narrator/NPC identity branch.
 
 - Added a post-login world selector with two explicit branches: the existing «Мунтар» campaign and an experimental «ИИ мир» branch.
@@ -51,6 +55,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Reserved the left swipe-back edge for the GM drawer only while a manager is inside a chat room; right-edge swipe-back, Telegram Back and the visible back button remain available. Player swipe-back behavior is unchanged.
+- GM recovery and world-position changes route through Oracle into Shapoklyak/Larisa. Room access/state controls keep using their existing manager-authorized RPCs; no direct owner-table mutation path was added.
+
 - Tinker's Magic now has a CE resource with max `max(1, Intelligence modifier)`, a real action/cost, server-authoritative spend and automatic next-Long-Rest expiry keyed to creator provenance even if the temporary item was transferred.
 - Replicate Magic Item uses one persistent Choice Runtime plan choice with 4/5/6/7/8 known-plan progression and 2/3/4/5/6 active replicated-item capacity. Level-up replacement removes items from the forgotten plan immediately; overflow removes the oldest created replica.
 - Generic item attunement now lives in Cheburashka `item_state`; transfer/storage clears attunement, capacity defaults to three with a shared runtime-fact override, and CE receives no mechanics from an unattuned item whose definition requires attunement.
@@ -73,6 +80,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Removed inline canonical SVG geometry and SVG text rendering from `DiceGlyph`; the raw result is now an HTML overlay above the PNG asset.
 
 ### Tests / verification
+
+- Added `chatGmDrawer.test.ts` covering left-to-right GM invocation, separation from swipe-back, right-side drawer geometry and the Oracle/RPC control paths.
+- CI build and lint pass; all three new GM drawer regression tests pass. The repository-wide test step remains red only on pre-existing/unrelated Artificer Stage-4 status/quality-ledger assertions.
+- Live rollback-only Supabase smoke passed for Short Rest, Long Rest, Dawn recovery, room access/state changes, scene position update and scene participant synchronization.
 
 - Added a regression test covering owner-player PC chat identity and preventing arbitrary manager PC impersonation.
 - Live transactional Supabase smoke passed for owner-player → own PC, ordinary player → own active PC, and GM → Narrator; all test messages were rolled back.
