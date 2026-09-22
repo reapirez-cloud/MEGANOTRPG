@@ -20,7 +20,11 @@ import {
   useUiV1KnowledgeCatalog,
   useUiV1SocietyNews,
   useUiV1WorldData,
+  useUiV1WorldNpcDossier,
   type AchievementPreview,
+  type WorldCharacterPreview,
+  type WorldCharacterRelationshipPreview,
+  type WorldNpcDossier,
 } from "./useUiV1SectionData"
 import {
   buildClassPresentation,
@@ -206,6 +210,384 @@ function FutureConnection({
   )
 }
 
+
+function formatNpcCr(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return ""
+  const numeric = Number(value)
+  if (numeric === 0.125) return "1/8"
+  if (numeric === 0.25) return "1/4"
+  if (numeric === 0.5) return "1/2"
+  return Number.isInteger(numeric) ? String(numeric) : String(numeric)
+}
+
+function relationTone(score: number | null | undefined) {
+  const value = Number(score ?? 0)
+  if (value <= -50) return "hostile"
+  if (value < 0) return "cold"
+  if (value >= 60) return "trusted"
+  if (value > 0) return "warm"
+  return "neutral"
+}
+
+function relationshipLabel(relationship: WorldCharacterRelationshipPreview | null) {
+  if (!relationship) return ""
+  return relationship.public_label.trim() ||
+    relationship.relationship_kind.trim() ||
+    "Связь"
+}
+
+function npcMeta(character: WorldCharacterPreview) {
+  return [
+    character.species,
+    character.role || character.occupation,
+    character.challenge_rating !== null
+      ? `CR ${formatNpcCr(character.challenge_rating)}`
+      : "",
+  ].filter(Boolean).join(" · ")
+}
+
+function WorldCharacterCard({
+  character,
+  onOpen,
+}: {
+  character: WorldCharacterPreview
+  onOpen: () => void
+}) {
+  const relation = relationshipLabel(character.relationship)
+
+  return (
+    <button
+      type="button"
+      className="u1-world-character-card"
+      data-life-state={character.life_state}
+      onClick={onOpen}
+      aria-label={`Открыть персонажа: ${character.name}`}
+    >
+      <span className="u1-world-character-card__portrait">
+        <span className="u1-world-character-card__texture" aria-hidden="true" />
+        {character.avatar_url && (
+          <CampaignMediaFrame
+            className="u1-world-character-card__image"
+            value={character.avatar_url}
+            alt=""
+            aria-hidden="true"
+          />
+        )}
+        <span className="u1-world-character-card__vignette" aria-hidden="true" />
+        {character.life_state === "dead" && (
+          <span className="u1-world-character-card__dead">† Мёртв</span>
+        )}
+      </span>
+      <span className="u1-world-character-card__caption">
+        <strong>{character.name}</strong>
+        <small>{npcMeta(character) || character.character_class || "Персонаж мира"}</small>
+        {relation && (
+          <span
+            className="u1-world-character-card__relation"
+            data-tone={relationTone(character.relationship?.attitude_score)}
+          >
+            {relation}
+          </span>
+        )}
+      </span>
+    </button>
+  )
+}
+
+function NpcStat({
+  label,
+  value,
+}: {
+  label: string
+  value: React.ReactNode
+}) {
+  return (
+    <span className="u1-npc-stat">
+      <small>{label}</small>
+      <strong>{value}</strong>
+    </span>
+  )
+}
+
+function abilityModifier(score: number | undefined) {
+  const value = Number.isFinite(Number(score)) ? Number(score) : 10
+  const modifier = Math.floor((value - 10) / 2)
+  return `${modifier >= 0 ? "+" : ""}${modifier}`
+}
+
+function WorldNpcDossierScreen({
+  characterId,
+}: {
+  characterId: string
+}) {
+  const npc = useUiV1WorldNpcDossier(characterId)
+  const dossier = npc.dossier
+
+  useAIViewContextLayer(
+    "world-npc-dossier",
+    dossier
+      ? {
+          screen: "world-npc-dossier",
+          route: window.location.hash,
+          title: dossier.character.name,
+          text: "Открыто досье известного персонажа мира.",
+          entity: {
+            type: "character",
+            id: dossier.character.id,
+            label: dossier.character.name,
+          },
+          facts: {
+            role: dossier.profile.role,
+            species: dossier.profile.species,
+            faction: dossier.profile.faction,
+            challengeRating: dossier.profile.challenge_rating,
+            location: dossier.location,
+            relationship: dossier.relationship,
+          },
+        }
+      : null,
+    55,
+  )
+
+  if (npc.loading) {
+    return (
+      <main className="u1-section-page">
+        <SectionHeader title="Персонаж мира" backTo="home/world/characters" />
+        <EmptyState>Загрузка досье…</EmptyState>
+      </main>
+    )
+  }
+
+  if (npc.error || !dossier) {
+    return (
+      <main className="u1-section-page">
+        <SectionHeader title="Персонаж мира" backTo="home/world/characters" />
+        <EmptyState>Персонаж недоступен или ещё не открыт.</EmptyState>
+      </main>
+    )
+  }
+
+  const { character, profile, sheet, relationship, manager } = dossier
+  const relation = relationshipLabel(relationship)
+  const relationPercent = Math.max(
+    0,
+    Math.min(100, Math.round(((relationship?.attitude_score ?? 0) + 100) / 2)),
+  )
+  const abilities = [
+    ["СИЛ", sheet.strength],
+    ["ЛОВ", sheet.dexterity],
+    ["ТЕЛ", sheet.constitution],
+    ["ИНТ", sheet.intelligence],
+    ["МДР", sheet.wisdom],
+    ["ХАР", sheet.charisma],
+  ] as const
+  const identity = [
+    profile.species || sheet.race,
+    profile.role || profile.occupation,
+    profile.faction,
+  ].filter(Boolean)
+
+  return (
+    <main className="u1-section-page u1-npc-dossier">
+      <SectionHeader title={character.name} backTo="home/world/characters" />
+
+      <section className="u1-npc-dossier__hero">
+        <div className="u1-npc-dossier__portrait">
+          <span className="u1-npc-dossier__portrait-texture" aria-hidden="true" />
+          {character.avatar_url && (
+            <CampaignMediaFrame
+              className="u1-npc-dossier__portrait-image"
+              value={character.avatar_url}
+              alt={character.name}
+            />
+          )}
+          <span className="u1-npc-dossier__portrait-vignette" aria-hidden="true" />
+        </div>
+
+        <div className="u1-npc-dossier__identity">
+          <span>Персонаж мира</span>
+          <h2>{character.name}</h2>
+          {identity.length > 0 && <p>{identity.join(" · ")}</p>}
+          <div className="u1-npc-dossier__chips">
+            {profile.challenge_rating !== null && (
+              <i>CR {formatNpcCr(profile.challenge_rating)}</i>
+            )}
+            {profile.creature_type && <i>{profile.creature_type}</i>}
+            {profile.size && <i>{profile.size}</i>}
+            {character.life_state === "dead" && <i>† Мёртв</i>}
+          </div>
+          {dossier.location && (
+            <div className="u1-npc-dossier__where">
+              <small>Сейчас</small>
+              <strong>{dossier.location.name}</strong>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section
+        className="u1-npc-relation"
+        data-tone={relationTone(relationship?.attitude_score)}
+      >
+        <span>
+          {relationship?.direction === "character_to_npc"
+            ? "Ваше отношение"
+            : "Отношение к вашему персонажу"}
+        </span>
+        <strong>{relation || "Не определено"}</strong>
+        {relationship && (
+          <>
+            <div className="u1-npc-relation__meter" aria-hidden="true">
+              <i style={{ width: `${relationPercent}%` }} />
+            </div>
+            {relationship.player_note && <p>{relationship.player_note}</p>}
+          </>
+        )}
+      </section>
+
+      <section className="u1-npc-combat-grid" aria-label="Боевые параметры">
+        <NpcStat label="КД" value={sheet.armor_class ?? "—"} />
+        <NpcStat label="HP" value={`${sheet.current_hp ?? "—"}/${sheet.max_hp ?? "—"}`} />
+        <NpcStat
+          label="Инициатива"
+          value={
+            typeof sheet.initiative_bonus === "number"
+              ? `${sheet.initiative_bonus >= 0 ? "+" : ""}${sheet.initiative_bonus}`
+              : "—"
+          }
+        />
+        <NpcStat label="Скорость" value={sheet.speed ?? "—"} />
+        <NpcStat
+          label="Мастерство"
+          value={
+            typeof sheet.proficiency_bonus === "number"
+              ? `+${sheet.proficiency_bonus}`
+              : "—"
+          }
+        />
+        <NpcStat label="Пасс. внимание" value={sheet.passive_perception ?? "—"} />
+      </section>
+
+      <section className="u1-npc-abilities" aria-label="Характеристики">
+        {abilities.map(([label, value]) => (
+          <span key={label}>
+            <small>{label}</small>
+            <strong>{value ?? 10}</strong>
+            <i>{abilityModifier(value)}</i>
+          </span>
+        ))}
+      </section>
+
+      {(character.bio || profile.appearance || profile.demeanor || profile.public_notes) && (
+        <section className="u1-npc-copy">
+          {character.bio && (
+            <div>
+              <span>Биография</span>
+              <p>{character.bio}</p>
+            </div>
+          )}
+          {profile.appearance && (
+            <div>
+              <span>Внешность</span>
+              <p>{profile.appearance}</p>
+            </div>
+          )}
+          {profile.demeanor && (
+            <div>
+              <span>Манера</span>
+              <p>{profile.demeanor}</p>
+            </div>
+          )}
+          {profile.public_notes && (
+            <div>
+              <span>Известно</span>
+              <p>{profile.public_notes}</p>
+            </div>
+          )}
+        </section>
+      )}
+
+      <details className="u1-npc-details">
+        <summary>
+          <span>Владения, языки и чувства</span>
+          <i>+</i>
+        </summary>
+        <div>
+          {sheet.proficiencies && <p><strong>Владения:</strong> {sheet.proficiencies}</p>}
+          {sheet.languages && <p><strong>Языки:</strong> {sheet.languages}</p>}
+          {sheet.senses && <p><strong>Чувства:</strong> {sheet.senses}</p>}
+          {sheet.alignment && <p><strong>Мировоззрение:</strong> {sheet.alignment}</p>}
+          {sheet.hit_dice && <p><strong>Кости хитов:</strong> {sheet.hit_dice}</p>}
+          {sheet.spellcasting_enabled && (
+            <p>
+              <strong>Заклинания:</strong>{" "}
+              {[
+                sheet.spellcasting_ability,
+                sheet.spell_save_dc !== null ? `СЛ ${sheet.spell_save_dc}` : "",
+                sheet.spell_attack_bonus !== null
+                  ? `атака ${sheet.spell_attack_bonus >= 0 ? "+" : ""}${sheet.spell_attack_bonus}`
+                  : "",
+              ].filter(Boolean).join(" · ") || "есть"}
+            </p>
+          )}
+        </div>
+      </details>
+
+      {dossier.habitats.length > 0 && (
+        <details className="u1-npc-details">
+          <summary>
+            <span>Где встречается</span>
+            <i>+</i>
+          </summary>
+          <div className="u1-npc-habitats">
+            {dossier.habitats.map((location) => (
+              <span key={location.id}>
+                <strong>{location.name}</strong>
+                {location.summary && <small>{location.summary}</small>}
+              </span>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {manager && (
+        <section className="u1-npc-gm">
+          <span>GM / AI · скрыто от игрока</span>
+          {manager.profile.motivation && (
+            <div>
+              <strong>Мотивация</strong>
+              <p>{manager.profile.motivation}</p>
+            </div>
+          )}
+          {manager.profile.gm_notes && (
+            <div>
+              <strong>Заметки</strong>
+              <p>{manager.profile.gm_notes}</p>
+            </div>
+          )}
+          {manager.relationships.length > 0 && (
+            <div>
+              <strong>Все отношения</strong>
+              <div className="u1-npc-gm__relations">
+                {manager.relationships.map((item) => (
+                  <span key={item.id}>
+                    <b>{item.counterpart_name}</b>
+                    <small>
+                      {item.public_label || item.relationship_kind} · {item.attitude_score > 0 ? "+" : ""}{item.attitude_score}
+                      {!item.player_visible ? " · скрыто" : ""}
+                    </small>
+                    {item.gm_note && <em>{item.gm_note}</em>}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+    </main>
+  )
+}
+
 export function WorldSectionScreen({
   subsection,
   path = [],
@@ -285,6 +667,10 @@ export function WorldSectionScreen({
     )
   }
 
+  if (subsection === "characters" && path[0]) {
+    return <WorldNpcDossierScreen characterId={path[0]} />
+  }
+
   return (
     <main className="u1-section-page">
       <SectionHeader title={registered.title} backTo="home/world" />
@@ -293,15 +679,26 @@ export function WorldSectionScreen({
       ) : world.error ? (
         <EmptyState>Раздел временно недоступен.</EmptyState>
       ) : subsection === "characters" ? (
-        <div className="u1-simple-list">
-          {world.characters.map((item) => (
-            <article className="u1-simple-row" key={item.id}>
-              <strong>{item.name}</strong>
-              <small>{item.character_class || "Персонаж"}</small>
-            </article>
-          ))}
+        <>
+          <div className="u1-world-character-intro">
+            <span>{world.canManage ? "NPC кампании" : "Известные персонажи"}</span>
+            <p>
+              {world.canManage
+                ? "Опубликованные персонажи мира. Отношения и состояние обновляются вместе с каноническими данными кампании."
+                : "Здесь появляются только персонажи, которых ваш герой действительно знает или которые открыты для всей кампании."}
+            </p>
+          </div>
+          <div className="u1-world-character-grid">
+            {world.characters.map((item) => (
+              <WorldCharacterCard
+                key={item.id}
+                character={item}
+                onOpen={() => navigate(`home/world/characters/${item.id}`)}
+              />
+            ))}
+          </div>
           {!world.characters.length && <EmptyState>Персонажей пока нет.</EmptyState>}
-        </div>
+        </>
       ) : subsection === "lore" ? (
         <div className="u1-simple-list">
           {world.lore.map((item) => (
