@@ -13,6 +13,10 @@ type Phase =
   | "loading"
   | "profile"
   | "invite"
+  | "world-select"
+  | "ai-unlock"
+  | "ai-slots"
+  | "ai-world"
   | "ready"
   | "telegram-required"
   | "not-found"
@@ -40,7 +44,18 @@ type MembershipRow = {
   created_at: string
 }
 
+type AiWorldSlot = {
+  id: string
+  owner_user_id: string
+  slot_index: number
+  name: string
+  created_at: string
+  updated_at: string
+}
+
 const CAMPAIGN_STORAGE_KEY = "meganotrpg:v1:campaign-id"
+const AI_WORLD_PASSWORD = [1, 4, 8, 8].join("")
+const AI_WORLD_SLOT_COUNT = 5
 
 function isLocalDevelopment() {
   return (
@@ -112,6 +127,12 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [inviteCode, setInviteCode] = useState("")
   const [saving, setSaving] = useState(false)
   const [joining, setJoining] = useState(false)
+  const [aiPassword, setAiPassword] = useState("")
+  const [aiSlots, setAiSlots] = useState<AiWorldSlot[]>([])
+  const [aiSlotNames, setAiSlotNames] = useState<Record<string, string>>({})
+  const [aiSlotsLoading, setAiSlotsLoading] = useState(false)
+  const [aiSlotSaving, setAiSlotSaving] = useState<string | null>(null)
+  const [selectedAiSlot, setSelectedAiSlot] = useState<AiWorldSlot | null>(null)
 
   useEffect(() => {
     if (allowE2ETestAuthBypass()) return
@@ -169,7 +190,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
     rememberCampaignId(selected.campaign_id)
     setCampaign(campaignAccessFrom(selected))
-    setPhase("ready")
+    setSelectedAiSlot(null)
+    setAiPassword("")
+    setError("")
+    setPhase("world-select")
   }
 
   async function loadProfile(currentUser: User, suggestedName = "") {
@@ -449,6 +473,146 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     await resolveCampaignAccess(user, profile)
   }
 
+  function enterMuntar() {
+    if (!campaign) {
+      setError("Кампания «Мунтар» недоступна.")
+      setPhase("error")
+      return
+    }
+
+    setSelectedAiSlot(null)
+    setError("")
+    setPhase("ready")
+  }
+
+  function openAiUnlock() {
+    setAiPassword("")
+    setError("")
+    setPhase("ai-unlock")
+  }
+
+  async function loadAiSlots() {
+    if (!user || aiSlotsLoading) return
+
+    setAiSlotsLoading(true)
+    setError("")
+
+    const { data: currentRows, error: currentError } = await supabase
+      .from("ai_world_slots")
+      .select("id, owner_user_id, slot_index, name, created_at, updated_at")
+      .eq("owner_user_id", user.id)
+      .order("slot_index", { ascending: true })
+
+    if (currentError) {
+      setAiSlotsLoading(false)
+      setError(currentError.message)
+      return
+    }
+
+    const existing = (currentRows || []) as AiWorldSlot[]
+    const existingIndexes = new Set(existing.map((slot) => slot.slot_index))
+    const missing = Array.from({ length: AI_WORLD_SLOT_COUNT }, (_, index) => index + 1)
+      .filter((slotIndex) => !existingIndexes.has(slotIndex))
+      .map((slotIndex) => ({
+        owner_user_id: user.id,
+        slot_index: slotIndex,
+        name: "",
+      }))
+
+    if (missing.length > 0) {
+      const { error: insertError } = await supabase
+        .from("ai_world_slots")
+        .insert(missing)
+
+      if (insertError) {
+        setAiSlotsLoading(false)
+        setError(insertError.message)
+        return
+      }
+    }
+
+    const { data: rows, error: reloadError } = await supabase
+      .from("ai_world_slots")
+      .select("id, owner_user_id, slot_index, name, created_at, updated_at")
+      .eq("owner_user_id", user.id)
+      .order("slot_index", { ascending: true })
+
+    setAiSlotsLoading(false)
+
+    if (reloadError) {
+      setError(reloadError.message)
+      return
+    }
+
+    const slots = ((rows || []) as AiWorldSlot[]).slice(0, AI_WORLD_SLOT_COUNT)
+    setAiSlots(slots)
+    setAiSlotNames(
+      Object.fromEntries(slots.map((slot) => [slot.id, slot.name])),
+    )
+    setPhase("ai-slots")
+  }
+
+  async function unlockAiWorld(event: FormEvent) {
+    event.preventDefault()
+
+    if (aiPassword !== AI_WORLD_PASSWORD) {
+      setError("Неверный пароль.")
+      return
+    }
+
+    setError("")
+    await loadAiSlots()
+  }
+
+  async function persistAiSlotName(slot: AiWorldSlot) {
+    const nextName = (aiSlotNames[slot.id] ?? slot.name).trim().slice(0, 64)
+    if (nextName === slot.name) return slot
+
+    setAiSlotSaving(slot.id)
+    setError("")
+
+    const { data, error: updateError } = await supabase
+      .from("ai_world_slots")
+      .update({
+        name: nextName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", slot.id)
+      .eq("owner_user_id", slot.owner_user_id)
+      .select("id, owner_user_id, slot_index, name, created_at, updated_at")
+      .single()
+
+    setAiSlotSaving(null)
+
+    if (updateError) {
+      setError(updateError.message)
+      return null
+    }
+
+    const updated = data as AiWorldSlot
+    setAiSlots((current) =>
+      current.map((candidate) =>
+        candidate.id === updated.id ? updated : candidate,
+      ),
+    )
+    setAiSlotNames((current) => ({
+      ...current,
+      [updated.id]: updated.name,
+    }))
+    return updated
+  }
+
+  async function openAiSlot(slot: AiWorldSlot) {
+    if (aiSlotSaving) return
+
+    const updated = await persistAiSlotName(slot)
+    if (!updated) return
+
+    setSelectedAiSlot(updated)
+    setError("")
+    setPhase("ai-world")
+  }
+
   if (allowE2ETestAuthBypass()) {
     return (
       <AuthProvider user={E2E_USER} profile={E2E_PROFILE}>
@@ -522,6 +686,186 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             onClick={() => void bootstrap()}
           >
             Повторить
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === "world-select") {
+    return (
+      <div className="auth-screen">
+        <div className="auth-card auth-world-card">
+          <div className="auth-eyebrow">MEGANOTRPG</div>
+          <h1 className="auth-title">Выбери мир</h1>
+          <p className="auth-muted">
+            «Мунтар» остаётся основной кампанией. ИИ-мир живёт отдельно и пока
+            работает как экспериментальная ветка.
+          </p>
+
+          <div className="auth-world-grid">
+            <button
+              type="button"
+              className="auth-world-choice"
+              onClick={enterMuntar}
+            >
+              <span className="auth-world-choice__index">01</span>
+              <span className="auth-world-choice__copy">
+                <strong>Мунтар</strong>
+                <small>Основная кампания</small>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className="auth-world-choice auth-world-choice--experimental"
+              onClick={openAiUnlock}
+            >
+              <span className="auth-world-choice__index">02</span>
+              <span className="auth-world-choice__copy">
+                <strong>ИИ мир</strong>
+                <small>Экспериментальное</small>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === "ai-unlock") {
+    return (
+      <div className="auth-screen">
+        <form className="auth-card" onSubmit={unlockAiWorld}>
+          <div className="auth-eyebrow">ИИ МИР · ЭКСПЕРИМЕНТАЛЬНОЕ</div>
+          <h1 className="auth-title">Закрытый вход</h1>
+          <p className="auth-muted">
+            Введи пароль, чтобы открыть экспериментальные миры.
+          </p>
+
+          <label className="auth-label" htmlFor="ai-world-password">
+            Пароль
+          </label>
+          <input
+            id="ai-world-password"
+            type="password"
+            inputMode="numeric"
+            className="auth-input"
+            value={aiPassword}
+            onChange={(event) => setAiPassword(event.target.value)}
+            autoFocus
+            autoComplete="off"
+          />
+
+          {error && <div className="auth-error">{error}</div>}
+
+          <button
+            type="submit"
+            className="auth-primary"
+            disabled={aiSlotsLoading || aiPassword.length === 0}
+          >
+            {aiSlotsLoading ? "Открываем…" : "Войти"}
+          </button>
+
+          <button
+            type="button"
+            className="auth-secondary"
+            onClick={() => {
+              setError("")
+              setPhase("world-select")
+            }}
+          >
+            Назад
+          </button>
+        </form>
+      </div>
+    )
+  }
+
+  if (phase === "ai-slots") {
+    return (
+      <div className="auth-screen">
+        <div className="auth-card auth-world-card">
+          <div className="auth-eyebrow">ИИ МИР · 5 СЛОТОВ</div>
+          <h1 className="auth-title">Выбери мир</h1>
+          <p className="auth-muted">
+            Каждый слот хранится отдельно. Название можно менять прямо здесь.
+          </p>
+
+          <div className="auth-slot-list">
+            {aiSlots.map((slot) => (
+              <div className="auth-slot" key={slot.id}>
+                <div className="auth-slot__number">
+                  {String(slot.slot_index).padStart(2, "0")}
+                </div>
+                <input
+                  className="auth-slot__input"
+                  value={aiSlotNames[slot.id] ?? ""}
+                  onChange={(event) =>
+                    setAiSlotNames((current) => ({
+                      ...current,
+                      [slot.id]: event.target.value,
+                    }))
+                  }
+                  onBlur={() => void persistAiSlotName(slot)}
+                  placeholder={`Слот ${slot.slot_index}`}
+                  maxLength={64}
+                />
+                <button
+                  type="button"
+                  className="auth-slot__open"
+                  disabled={aiSlotSaving === slot.id}
+                  onClick={() => void openAiSlot(slot)}
+                >
+                  {aiSlotSaving === slot.id ? "…" : "Открыть"}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {error && <div className="auth-error">{error}</div>}
+
+          <button
+            type="button"
+            className="auth-secondary"
+            onClick={() => {
+              setError("")
+              setPhase("world-select")
+            }}
+          >
+            К выбору мира
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === "ai-world" && selectedAiSlot) {
+    const slotTitle =
+      selectedAiSlot.name.trim() || `Слот ${selectedAiSlot.slot_index}`
+
+    return (
+      <div className="auth-screen">
+        <div className="auth-card auth-ai-world-placeholder">
+          <div className="auth-eyebrow">ИИ МИР · ЭКСПЕРИМЕНТАЛЬНОЕ</div>
+          <h1 className="auth-title">{slotTitle}</h1>
+          <p className="auth-muted">
+            Слот создан и изолирован. AI-GM, память и генерация мира будут
+            подключаться сюда отдельными этапами, не затрагивая «Мунтар».
+          </p>
+          <div className="auth-note">
+            Слот
+            <strong>{String(selectedAiSlot.slot_index).padStart(2, "0")}</strong>
+          </div>
+          <button
+            type="button"
+            className="auth-secondary"
+            onClick={() => {
+              setError("")
+              setPhase("ai-slots")
+            }}
+          >
+            Назад к слотам
           </button>
         </div>
       </div>
