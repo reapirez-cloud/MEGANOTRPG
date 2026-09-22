@@ -7,13 +7,21 @@ type CanonicalDieProps = DiceGlyphProps & {
   displayValue?: string
 }
 
-const CANONICAL_DIE_ASSETS: Partial<Record<number, string>> = {
-  4: "/ui-v1/dice/d4-graphite.png",
-  6: "/ui-v1/dice/d6-graphite.png",
-  8: "/ui-v1/dice/d8-graphite.png",
-  10: "/ui-v1/dice/d10-graphite.png",
-  12: "/ui-v1/dice/d12-graphite.png",
-  20: "/ui-v1/dice/d20-graphite.png",
+const CANONICAL_DIE_FILES: Partial<Record<number, string>> = {
+  4: "d4-graphite.png",
+  6: "d6-graphite.png",
+  8: "d8-graphite.png",
+  10: "d10-graphite.png",
+  12: "d12-graphite.png",
+  20: "d20-graphite.png",
+}
+
+const DICE_ASSET_BASE =
+  (import.meta.env.BASE_URL || "/").replace(/\/?$/, "/") + "ui-v1/dice/"
+
+function canonicalDieAsset(sides: number) {
+  const file = CANONICAL_DIE_FILES[sides]
+  return file ? DICE_ASSET_BASE + file : null
 }
 
 function valueLength(value: string) {
@@ -25,7 +33,7 @@ function CanonicalDie({
   value,
   displayValue,
 }: CanonicalDieProps) {
-  const asset = CANONICAL_DIE_ASSETS[sides]
+  const asset = canonicalDieAsset(sides)
   if (!asset) return null
 
   const text = displayValue ?? String(value)
@@ -41,6 +49,8 @@ function CanonicalDie({
         src={asset}
         alt=""
         draggable={false}
+        loading="eager"
+        decoding="async"
       />
       <b
         className="u1-die-glyph__value"
@@ -105,14 +115,14 @@ export default function DiceGlyph({ sides, value }: DiceGlyphProps) {
     <span
       className="u1-die-glyph"
       data-die-sides={sides}
-      data-die-kind={sides === 100 ? "percentile" : CANONICAL_DIE_ASSETS[sides] ? "canonical" : "fallback"}
+      data-die-kind={sides === 100 ? "percentile" : canonicalDieAsset(sides) ? "canonical" : "fallback"}
       role="img"
       aria-label={label}
       title={label}
     >
       {sides === 100 ? (
         <PercentileDie value={value} />
-      ) : CANONICAL_DIE_ASSETS[sides] ? (
+      ) : canonicalDieAsset(sides) ? (
         <CanonicalDie sides={sides} value={value} />
       ) : (
         <FallbackDie sides={sides} value={value} />
