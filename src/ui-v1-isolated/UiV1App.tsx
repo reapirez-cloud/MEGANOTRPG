@@ -2,7 +2,6 @@ import { AnimatePresence, motion } from "motion/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
-import { useAuth } from "../context/AuthContext"
 import AgentShell from "../ai/AgentShell"
 import ChatCatalog from "./ChatCatalog"
 import ChatRoomScreen from "./chat-room/ChatRoomScreen"
@@ -720,7 +719,6 @@ function Screen({ route }: { route: Route }) {
 }
 
 export default function UiV1App() {
-  const { campaign } = useAuth()
   const [route, setRoute] = useState<Route>(() => parseRoute())
   useAIViewContextLayer("ui-route", aiRouteContext(route), 10)
 
@@ -733,8 +731,6 @@ export default function UiV1App() {
   useSwipeBackNavigation({
     enabled: canGoBack,
     onBack: navigateBack,
-    disableLeftEdge:
-      route.type === "chat-room" && campaign?.canManage === true,
   })
 
   const navigateRoot = useCallback((space: RootSpace) => {
