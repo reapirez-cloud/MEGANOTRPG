@@ -16,6 +16,7 @@ import { buildCharacterAbilitiesReadModel } from "./characterAbilitiesReadModel"
 import { buildCharacterProficienciesReadModel } from "./characterProficienciesReadModel"
 import CharacterSheetOverview from "./CharacterSheetOverview"
 import CharacterSheetProficiencies from "./CharacterSheetProficiencies"
+import CharacterSheetQuests from "./CharacterSheetQuests"
 import CharacterSheetShell from "./CharacterSheetShell"
 import CharacterSheetSpells from "./CharacterSheetSpells"
 import { characterSheetPortraitFrameUrl } from "./characterSheetVisualAssets"
@@ -38,6 +39,7 @@ import { createWorkshopCharacterActions } from "./gmWorkshopSnakeActions"
 import { useGMWorkshopData } from "./useGMWorkshopData"
 import { useSnake } from "./SnakeProvider"
 import { useUiV1CharacterControl } from "./useUiV1CharacterControl"
+import { useCharacterQuests } from "./useCharacterQuests"
 import {
   classReferenceArtSlot,
   useUiV1ReferenceMedia,
@@ -54,6 +56,7 @@ import "./character-sheet-core.css"
 import "./character-sheet-features.css"
 import "./character-sheet-overview.css"
 import "./character-sheet-proficiencies.css"
+import "./character-sheet-quests.css"
 import "./character-sheet-spells.css"
 import "./character-inventory-interface.css"
 
@@ -82,7 +85,7 @@ function classKeyFrom(
 }
 
 function SectionPlaceholder({ section }: { section: CharacterSheetSection }) {
-  const copy: Record<Exclude<CharacterSheetSection, "overview" | "features" | "spells">, { title: string; body: string }> = {
+  const copy: Record<Exclude<CharacterSheetSection, "overview" | "features" | "spells" | "quests">, { title: string; body: string }> = {
     proficiencies: {
       title: "Владения",
       body: "Владения, языки и чувства остаются частью листа и открываются в нижней области. Детальную раскладку этого раздела подключим отдельным этапом.",
@@ -96,7 +99,8 @@ function SectionPlaceholder({ section }: { section: CharacterSheetSection }) {
   if (
     section === "overview" ||
     section === "features" ||
-    section === "spells"
+    section === "spells" ||
+    section === "quests"
   ) return null
 
   return (
@@ -123,12 +127,14 @@ export default function CharacterView({
   const [spellsDataEnabled, setSpellsDataEnabled] = useState(false)
   const [inventoryDataEnabled, setInventoryDataEnabled] = useState(false)
   const [featuresDataEnabled, setFeaturesDataEnabled] = useState(false)
+  const [questsDataEnabled, setQuestsDataEnabled] = useState(false)
   const control = useUiV1CharacterControl(characterId, {
     loadSpells: spellsDataEnabled,
     loadInventory: inventoryDataEnabled,
     loadFeatures: featuresDataEnabled,
     loadResources: false,
   })
+  const quests = useCharacterQuests(characterId, questsDataEnabled)
   const classKey = classKeyFrom(
     control.character?.characterClass || "",
     control.assignments,
@@ -202,11 +208,13 @@ export default function CharacterView({
     setSpellsDataEnabled(false)
     setInventoryDataEnabled(false)
     setFeaturesDataEnabled(false)
+    setQuestsDataEnabled(false)
   }, [characterId])
 
   useEffect(() => {
     if (section === "spells") setSpellsDataEnabled(true)
     if (section === "features") setFeaturesDataEnabled(true)
+    if (section === "quests") setQuestsDataEnabled(true)
     if (interfaceMode === "inventory") setInventoryDataEnabled(true)
   }, [interfaceMode, section])
 
@@ -830,6 +838,7 @@ export default function CharacterView({
           level: control.character.level,
           spellCount: control.spells.length,
           featureCount: control.features.length,
+          questCount: section === "quests" ? quests.quests.length : null,
           inventoryCount: control.inventory.length,
           resourceCount: control.resources.length,
         }
@@ -861,6 +870,7 @@ export default function CharacterView({
     control.inventory.length,
     control.isOwner,
     control.resources.length,
+    quests.quests.length,
     control.spells.length,
     control.userId,
     entityFocus,
@@ -1046,6 +1056,15 @@ export default function CharacterView({
             setEntityFocus(null)
           }}
           onSetSuppressed={runtime.templates.suppressions.setSuppressed}
+        />
+      ) : section === "quests" ? (
+        <CharacterSheetQuests
+          quests={quests.quests}
+          loading={quests.loading}
+          error={quests.error}
+          onReload={() => {
+            void quests.reload()
+          }}
         />
       ) : section === "proficiencies" ? (
         <CharacterSheetProficiencies
