@@ -354,6 +354,102 @@ export const VOSS_MANAGER_TOOLS = [
   {
     type: "function",
     function: {
+      name: "move_character_world",
+      description:
+        "GM/Admin only. Move a canonical character to an active visible location. If campaign_day/day_period are omitted, preserve the character's current world time. Moving to a location automatically discovers that location and triggers quest location events.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          location_id: { type: "string" },
+          campaign_day: { type: "integer", minimum: 1 },
+          day_period: {
+            type: "string",
+            enum: ["dawn", "morning", "day", "late_day", "evening", "night", "deep_night"],
+          },
+        },
+        required: ["character_id", "location_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_world_discovery",
+      description:
+        "GM/Admin only. Mark a location, world NPC, or location transition as discovered or undiscovered for one character. This changes what that character knows; it does not move the character and it does not create the entity.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          entity_type: { type: "string", enum: ["location", "npc", "link"] },
+          entity_id: { type: "string" },
+          discovered: { type: "boolean" },
+        },
+        required: ["character_id", "entity_type", "entity_id", "discovered"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_npc_habitat",
+      description:
+        "GM/Admin only. Attach or detach an NPC from a location as a usual habitat. Habitat means where the NPC can normally be encountered and does not move the NPC's current world position.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          npc_character_id: { type: "string" },
+          location_id: { type: "string" },
+          attached: { type: "boolean" },
+        },
+        required: ["npc_character_id", "location_id", "attached"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "upsert_location_transition",
+      description:
+        "GM/Admin only. Create or update one directional canonical transition from a source location to a target location. Use link_id to edit a specific existing transition. Call again with reversed source/target if travel should work both ways.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          source_location_id: { type: "string" },
+          target_location_id: { type: "string" },
+          link_id: { type: "string" },
+          label: { type: "string" },
+          visibility_mode: { type: "string", enum: ["always", "discover", "private"] },
+          sort_order: { type: "integer" },
+        },
+        required: ["source_location_id", "target_location_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_location_transition",
+      description:
+        "GM/Admin only. Permanently delete one canonical directional location transition.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          link_id: { type: "string" },
+        },
+        required: ["link_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_location",
       description:
         "GM/Admin only. Create a canonical location/zone in the campaign world. May be nested under an existing parent location.",
@@ -836,6 +932,147 @@ async function setCharacterFactionReputation(
   return { reputation: data, canonical_state_changed: true }
 }
 
+async function moveCharacterWorld(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  const locationId = uuid(args.location_id)
+  if (!characterId) return { error: "character_id_required" }
+  if (!locationId) return { error: "location_id_required" }
+
+  const { data, error } = await managerClient(context).rpc(
+    "move_character_world_v1",
+    {
+      p_character_id: characterId,
+      p_location_id: locationId,
+      p_campaign_day:
+        args.campaign_day === undefined ? null : Number(args.campaign_day),
+      p_day_period:
+        args.day_period === undefined ? null : text(args.day_period, 40),
+    },
+  )
+
+  if (error) return { error: error.message }
+  return { movement: data, canonical_state_changed: true }
+}
+
+async function setWorldDiscovery(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  const entityId = uuid(args.entity_id)
+  const entityType =
+    args.entity_type === "location" ||
+    args.entity_type === "npc" ||
+    args.entity_type === "link"
+      ? args.entity_type
+      : ""
+
+  if (!characterId) return { error: "character_id_required" }
+  if (!entityId) return { error: "entity_id_required" }
+  if (!entityType) return { error: "entity_type_invalid" }
+
+  const { data, error } = await managerClient(context).rpc(
+    "manage_world_discovery_v1",
+    {
+      p_character_id: characterId,
+      p_entity_type: entityType,
+      p_entity_id: entityId,
+      p_discovered: args.discovered !== false,
+      p_source: "ai_gm",
+    },
+  )
+
+  if (error) return { error: error.message }
+  return { discovery: data, canonical_state_changed: true }
+}
+
+async function setNpcHabitat(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const npcCharacterId = uuid(args.npc_character_id)
+  const locationId = uuid(args.location_id)
+  if (!npcCharacterId) return { error: "npc_character_id_required" }
+  if (!locationId) return { error: "location_id_required" }
+
+  const attached = args.attached !== false
+  const { error } = await managerClient(context).rpc(
+    "set_npc_zone_habitat",
+    {
+      p_npc_character_id: npcCharacterId,
+      p_location_id: locationId,
+      p_attached: attached,
+    },
+  )
+
+  if (error) return { error: error.message }
+  return {
+    npc_character_id: npcCharacterId,
+    location_id: locationId,
+    attached,
+    canonical_state_changed: true,
+  }
+}
+
+async function upsertLocationTransition(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const sourceLocationId = uuid(args.source_location_id)
+  const targetLocationId = uuid(args.target_location_id)
+  if (!sourceLocationId) return { error: "source_location_id_required" }
+  if (!targetLocationId) return { error: "target_location_id_required" }
+
+  const input: JsonRecord = {}
+  if (args.link_id !== undefined) {
+    const linkId = uuid(args.link_id)
+    if (!linkId) return { error: "link_id_invalid" }
+    input.link_id = linkId
+  }
+  if (args.label !== undefined) input.label = text(args.label, 240)
+  if (
+    args.visibility_mode === "always" ||
+    args.visibility_mode === "discover" ||
+    args.visibility_mode === "private"
+  ) {
+    input.visibility_mode = args.visibility_mode
+  }
+  if (Number.isInteger(Number(args.sort_order))) {
+    input.sort_order = Number(args.sort_order)
+  }
+
+  const { data, error } = await managerClient(context).rpc(
+    "upsert_location_transition_v1",
+    {
+      p_source_location_id: sourceLocationId,
+      p_target_location_id: targetLocationId,
+      p_input: input,
+    },
+  )
+
+  if (error) return { error: error.message }
+  return { transition: data, canonical_state_changed: true }
+}
+
+async function deleteLocationTransition(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const linkId = uuid(args.link_id)
+  if (!linkId) return { error: "link_id_required" }
+
+  const { data, error } = await managerClient(context).rpc(
+    "delete_location_transition_v1",
+    { p_link_id: linkId },
+  )
+
+  if (error) return { error: error.message }
+  return { transition: data, canonical_state_changed: true }
+}
+
 async function createLocation(
   context: VossManagerToolContext,
   args: JsonRecord,
@@ -1152,6 +1389,11 @@ export async function executeVossManagerTool(
     if (name === "upsert_faction") return await upsertFaction(context, args)
     if (name === "set_faction_membership") return await setFactionMembership(context, args)
     if (name === "set_character_faction_reputation") return await setCharacterFactionReputation(context, args)
+    if (name === "move_character_world") return await moveCharacterWorld(context, args)
+    if (name === "set_world_discovery") return await setWorldDiscovery(context, args)
+    if (name === "set_npc_habitat") return await setNpcHabitat(context, args)
+    if (name === "upsert_location_transition") return await upsertLocationTransition(context, args)
+    if (name === "delete_location_transition") return await deleteLocationTransition(context, args)
     if (name === "set_character_life_state") return await setCharacterLifeState(context, args)
     if (name === "set_character_publication") return await setCharacterPublication(context, args)
     if (name === "delete_campaign_character") return await deleteCampaignCharacter(context, args)
