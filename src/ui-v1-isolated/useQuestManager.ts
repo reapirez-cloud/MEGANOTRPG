@@ -356,20 +356,31 @@ export function useQuestManager(
     "Не удалось сохранить скрытые данные этапа.",
   ), [mutate])
 
-  const setStageStatus = useCallback((
+  const setStageStatus = useCallback(async (
     stageId: string,
     status: QuestManagerStage["status"],
-  ) => mutate(
-    () => supabase
-      .from("quest_stages")
-      .update({
-        status,
-        completed_at: status === "completed" ? new Date().toISOString() : null,
-      })
-      .eq("id", stageId)
-      .eq("quest_id", questId!),
-    "Не удалось изменить статус этапа.",
-  ), [mutate, questId])
+  ): Promise<MutationResult> => {
+    if (!enabled || !questId) return { ok: false, error: "Недостаточно прав." }
+
+    const { error: rpcError } = await supabase.rpc(
+      "set_quest_stage_status_v1",
+      {
+        p_stage_id: stageId,
+        p_status: status,
+        p_note: "",
+      },
+    )
+
+    if (rpcError) {
+      return {
+        ok: false,
+        error: rpcError.message || "Не удалось изменить статус этапа.",
+      }
+    }
+
+    await load()
+    return { ok: true }
+  }, [enabled, load, questId])
 
   const updateTarget = useCallback((
     targetId: string,
