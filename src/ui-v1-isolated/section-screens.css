@@ -1595,7 +1595,7 @@
   position: relative;
   display: block;
   width: 100%;
-  aspect-ratio: 9 / 16;
+  aspect-ratio: 1 / 1;
   border: 1px solid rgba(235, 237, 239, .095);
   border-radius: 9px;
   overflow: hidden;
@@ -1633,15 +1633,16 @@
 
 .u1-world-character-card__vignette {
   background:
-    linear-gradient(180deg, rgba(4,5,6,.02) 48%, rgba(4,5,6,.18) 72%, rgba(4,5,6,.72) 100%),
-    linear-gradient(90deg, rgba(4,5,6,.18), transparent 22%, transparent 78%, rgba(4,5,6,.16));
+    linear-gradient(180deg, transparent 48%, rgba(4,5,6,.12) 66%, rgba(4,5,6,.84) 100%),
+    linear-gradient(90deg, rgba(4,5,6,.10), transparent 20%, transparent 80%, rgba(4,5,6,.10));
   pointer-events: none;
 }
 
 .u1-world-character-card__dead {
   position: absolute;
-  left: 8px;
-  bottom: 8px;
+  z-index: 4;
+  right: 8px;
+  top: 8px;
   padding: 4px 6px;
   border: 1px solid rgba(233, 232, 228, .13);
   border-radius: 999px;
@@ -1656,14 +1657,20 @@
 }
 
 .u1-world-character-card__caption {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: grid;
   gap: 4px;
-  padding: 9px 2px 0;
+  padding: 34px 10px 10px;
+  background: linear-gradient(180deg, transparent 0%, rgba(4,5,6,.46) 35%, rgba(4,5,6,.90) 100%);
 }
 
 .u1-world-character-card__caption strong {
   overflow: hidden;
-  color: var(--u1-text);
+  color: #f4f3ef;
   font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
   font-size: clamp(17px, 4.7vw, 22px);
   line-height: 1;
@@ -1674,7 +1681,7 @@
 }
 
 .u1-world-character-card__caption small {
-  min-height: 23px;
+  min-height: 0;
   overflow: hidden;
   display: -webkit-box;
   color: var(--u1-text-faint);
