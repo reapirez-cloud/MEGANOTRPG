@@ -34,7 +34,7 @@ test("production character sheet follows the persistent shell and standalone inv
   assert.match(shellStyles, /overflow-y:\s*auto/)
   assert.match(core, /expandedAbility/)
   assert.match(overview, /u1-character-overview__slot-viewport/)
-  assert.match(contract, /status: "placeholder"/)
+  assert.match(contract, /status: "simple-active"/)
   assert.match(contract, /neverRenderInsideSheetContent: true/)
   assert.match(history, /focusedItemId: string \| null/)
 })
