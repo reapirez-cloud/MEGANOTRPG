@@ -6,122 +6,56 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 **Status:** OPEN
 **Branch:** `dev`
-**Base main:** `b697a4053bf54f680de43899a7c566a417819baa`
+**Base main:** `cc33b9d126b26004b2302a7f340c34cef637c336`
 **Started:** 2026-09-21
 
 ### Player-facing changes
 
-- Replaced the inventory placeholder with the active simple bag inventory: bags have authored capacities, every canonical item/allowed stack occupies one slot, nested bags remain supported, and the old spatial/Tetris UI is isolated rather than deleted.
-- Added graphite MegANOT bag cards, slot cells, item detail/actions and inline SVG glyphs for bags, backpacks, pouches, chests, equipment, consumables, books, currency, materials and generic items.
-
-- Added the missing right-side GM drawer to the isolated chat room. GM/owner can open it with a deliberate left-to-right swipe from the app's inner left gesture lane.
-- The GM drawer now exposes character recovery (Short Rest, Long Rest, Dawn), an explicit recovery target picker, room/location/time context editing, scene participant synchronization, player read/write visibility controls, and scene room-state controls.
-- The drawer uses the current graphite/glass chat language and leaves the normal chat feed/composer mounted underneath rather than restoring the retired legacy chat sheet.
-
-- Fixed chat sending for campaign owners whose ordinary campaign role is `player`: selecting their own playable PC now sends as that PC instead of being rejected by the manager-only Narrator/NPC identity branch.
-
-- Added a post-login world selector with two explicit branches: the existing «Мунтар» campaign and an experimental «ИИ мир» branch.
-- The experimental AI branch is protected by the requested numeric password gate, then exposes exactly five persistent slots that can be named independently.
-- Opening an AI slot currently lands on an isolated experimental placeholder instead of reusing «Мунтар» data; AI-GM/runtime integration will attach to these slots in later stages.
-
-- Added the Artificer to the class reference catalog as a reference-only mechanical specification. Its literary fields are deliberately blank so the user's later translation/Voss text is not replaced by generated filler.
-
-- Replaced the chat roll card's generated inline SVG dice for canonical d4/d6/d8/d10/d12/d20 with the graphite PNG dice authored for MEGANOT.
-- Every canonical die now overlays the raw die result on the intentionally empty central face; per-die vertical alignment keeps the number centered on the actual face rather than the image bounding box.
-- Canonical chat dice use optimized 192×192 PNG assets rather than the multi-megabyte generation sources, while preserving enough source resolution for the current 32–72px mobile render sizes.
-- d100 keeps the existing percentile behavior but now composes two graphite PNG d10s. Arbitrary unsupported dN rolls keep an explicit non-SVG fallback instead of pretending to have a canonical art asset.
+- Added a post-login world selector for the existing «Мунтар» campaign and an experimental «ИИ мир» branch. The AI branch has the requested numeric password gate and exactly five persistent, independently nameable slots.
+- AI slots currently open an isolated experimental placeholder rather than reusing «Мунтар» state; the actual AI-GM/world runtime remains a later integration.
+- Fixed owner-player chat identity so a campaign owner whose ordinary role is `player` can send messages as their own playable PC instead of being rejected by the manager Narrator/NPC branch.
+- Added the missing right-side GM chat drawer. GM/owner opens it with a deliberate left-to-right swipe and can grant Short Rest / Long Rest / Dawn recovery, change location/day/time, synchronize scene participants, change player read/write access and change scene room state.
+- Reserved the GM chat left-swipe lane for the drawer while keeping right-edge/back-button/Telegram Back navigation; player swipe-back behavior is unchanged.
+- Class-granted cantrips now remain available from the chat Magic route even when their access comes from the current class/template rather than a legacy learned-spell row.
+- Replaced the inventory placeholder with the active simple bag inventory. Each canonical item instance or existing allowed stack occupies one slot; bag size comes from the existing authored container dimensions, nested bags remain supported, and the spatial/Tetris UI is preserved but isolated from the active character inventory.
+- Added a graphite MegANOT inventory presentation with custom inline SVG glyphs for bags, backpacks, pouches, chests, equipment, consumables, books, currency, materials and generic items, plus real move/equip/use actions.
+- Switched MEGANOT image generation profiles to CheapVibeCode GPT Image 2.5 Sunburst: icons use low quality, while UI previews, portraits, panels, hero art and master art use high quality.
 
 ### Database / migration changes
 
-- Reconciled `set_chat_message_identity()` with the owner/player authority contract. Owner authority remains additive; an owner-player may use their assigned playable PC while manager NPC speech stays explicitly binding-scoped.
-
-- Added `public.ai_world_slots` with exactly five indexed slot positions per authenticated owner, owner-only RLS, and persistent slot names.
-- Kept AI slot persistence separate from `campaigns` for this stage because the existing new-campaign certification trigger currently aborts campaign creation on an incomplete Paladin runtime contract; no certification guard was bypassed.
-
-- Added Artificer Stage 3 at `efota-2025-artificer-stage3-item-replication-v1`: Tinker's Magic temporary instances, Replicate Magic Item plan persistence, real Cheburashka item creation, Long-Rest reconciliation, provenance cleanup and generic attunement.
-- Added 26 reusable Tinker's Magic mundane-item identities plus 52 explicit Replicate Magic Item plan identities to Chasovoy. Catch-all Common / Uncommon Wondrous / Rare Wondrous eligibility is resolved generically from item metadata.
-- Added generic private Cheburashka system-defined-item creation, safe container deletion, lifecycle expiry and assignment-plan cleanup primitives. No `artificer_items` shadow table was introduced.
-- Added authenticated generic `set_inventory_item_attuned_v1` and `reconcile_character_template_item_plan_loadout_v1`; the latter is assigned-player-only and Long-Rest-generation-locked.
-
-
-- Added Artificer Stage 2 at `efota-2025-artificer-stage2-foundation-spellcasting-v1`: one clean active builtin `class:artificer` per campaign, all 20 level rows, and canonical shared spell-slot state without enabling subclasses.
-- Reconciled the frozen 2025 Artificer spell set from 29 stale links to exactly 92 class links and 92 template spell links. Added the six missing shared spell definitions with concise structured metadata instead of copied source prose.
-- Added generic Chasovoy-backed `reference_item_plans` validation so Stage 3 can persist magic-item plan choices by stable definition identity rather than copying item definitions into class JSON.
-
-- Artificer Stage 1 itself performed no runtime database mutation: its checkpoint had 0 Artificer class/subclass/level rows and 29 stale spell links. Stage 2 has since replaced that checkpoint with the clean 2025 runtime foundation and reconciled spell links.
-
-- Added an Artificer Stage 7 certification gate as private service-role-only infrastructure. It refuses READY unless the complete 1–20 class, exact five-subclass roster, Stage 1–6 metadata, coherent actions/resources/choices, spell catalog access and shared RPC permissions are present.
-
-- Added Rogue Stage 7 final fail-closed certification at `xphb-2024-rogue-runtime-final-v1`; production now records base Rogue and all nine supported subclasses as runtime READY only after structural, reference, choice, spell, resource and permission checks pass.
-- Added generic assignment-resource cleanup so removing a class/subclass assignment deletes a persistent resource only when no remaining active assignment still contributes that resource identity.
-- Dice art and value placement remain presentation-only and do not change TOBIK or persisted roll payloads.
+- Reconciled `set_chat_message_identity()` with the owner/player authority contract while retaining binding-scoped NPC speech for managers.
+- Added owner-only RLS-backed `public.ai_world_slots` with exactly five indexed positions per owner and persistent names.
+- Added Artificer Stage 4 base runtime at `efota-2025-artificer-stage4-base-runtime-v1`, including Magic Item Tinker Charge/Drain/Transmute, Flash of Genius resource recovery, real attunement-cap progression, Spell-Storing Item and Soul of Artifice cross-owner recovery.
+- Added the Stage-4/Stage-3 replica reconciliation fix discovered by live transactional smoke and brought both Stage-4 migrations under the repository class quality/resource/status metadata gates.
+- Added `move_inventory_item_simple_v1`: a server-authoritative Cheburashka move surface for the simple bag UI. Capacity is `internal_grid_width × internal_grid_height`; moves preserve canonical item/stack/holder identity, enforce nesting/cycle/depth and specialized-capacity rules, and clear spatial coordinates for simple containment.
+- Switched the canonical image model registration from the older GPT Image route to `gpt-image-2.5-sunburst` while disabling the superseded image model keys.
 
 ### Runtime and architecture changes
 
-- Added `move_inventory_item_simple_v1` as the authenticated Cheburashka move surface for the simple UI. It keeps canonical item IDs/holders/stacking, clears spatial coordinates when entering simple containment, enforces bag capacity, nesting/cycle/depth and existing specialized/external capacity invariants.
-- Bag capacity is projected from the existing physical container profile as `internal_grid_width × internal_grid_height`; no new inventory table or competing item model was introduced.
-
-- Reserved the left swipe-back edge for the GM drawer only while a manager is inside a chat room; right-edge swipe-back, Telegram Back and the visible back button remain available. Player swipe-back behavior is unchanged.
-- GM recovery and world-position changes route through Oracle into Shapoklyak/Larisa. Room access/state controls keep using their existing manager-authorized RPCs; no direct owner-table mutation path was added.
-
-- Tinker's Magic now has a CE resource with max `max(1, Intelligence modifier)`, a real action/cost, server-authoritative spend and automatic next-Long-Rest expiry keyed to creator provenance even if the temporary item was transferred.
-- Replicate Magic Item uses one persistent Choice Runtime plan choice with 4/5/6/7/8 known-plan progression and 2/3/4/5/6 active replicated-item capacity. Level-up replacement removes items from the forgotten plan immediately; overflow removes the oldest created replica.
-- Generic item attunement now lives in Cheburashka `item_state`; transfer/storage clears attunement, capacity defaults to three with a shared runtime-fact override, and CE receives no mechanics from an unattuned item whose definition requires attunement.
-- Replicated owner-death cleanup is recorded as a delayed 1d4-day lifecycle contract but intentionally does not use SQL randomness; the actual delayed roll/timer remains for the shared TOBIK/death-event bridge.
-
-
-- Completed Artificer Stage 2 foundation: d8, Constitution/Intelligence saves, Light/Medium armor + Shields, Simple weapons, Thieves'/Tinker's/one Artisan's Tools, two class skills, Intelligence spellcasting, exact 1–20 cantrip/prepared/slot progression, and level-3 subclass unlock.
-- Tinker's Magic grants Mending as real shared spell access outside the ordinary cantrip quota. Ordinary cantrips allow one Long-Rest replacement; levelled prepared spells use the shared Choice Runtime and may be rebuilt after Long Rest.
-- ASI and Epic Boon stay on the existing normal sheet/GM feat path until a generic feat-source runtime exists; no Artificer-specific feat engine was introduced.
-
-- Completed Artificer Stage 1 source freeze against Eberron: Forge of the Artificer (2025): 10 base features, 33 subclass features and 43 stable feature identities across exactly Alchemist, Armorer, Artillerist, Battle Smith and Cartographer.
-- Added a dedicated Artificer reuse audit. The retired historical package is structural reference only; `artificer-reanimator` is explicitly excluded and the old installer must not be restored wholesale.
-- Frozen the generic runtime gaps exposed by Artificer before implementation: magic-item plan provider, class-created item provenance/expiry, Long-Rest loadout reconciliation, item-charge ↔ spell-slot exchange, temporary-slot expiry, stored-spell item methods, generic class constructs/companions, equipment-bound modes, generated consumable variants, linked-holder state and cross-owner zero-HP rescue orchestration.
-
-- Added the Artificer runtime plan and froze the final target roster to Alchemist, Armorer, Artillerist, Battle Smith and Cartographer. The certification gate deliberately does not inspect or require literary translation, `author_description` or `author_comment`; those fields remain reserved for the user's later text.
-
-- Completed Rogue Stage 7: public Rogue/reference cards now expose the same certified base + nine-subclass runtime roster; no Rogue-specific Sheet or Chat mechanics branch was introduced.
-- Final Rogue certification audits shared CE/GENA actions, d20 semantics, Choice Runtime, Arcane Trickster Wizard spell access, Soulknife resource semantics and private installer permissions before writing READY.
-- Kept `DiceGlyph` as the single reusable roll presentation component. Canonical asset selection is centralized in one side-to-PNG map, with no duplicated parsing or roll mechanics.
-- Removed inline canonical SVG geometry and SVG text rendering from `DiceGlyph`; the raw result is now an HTML overlay above the PNG asset.
+- GM recovery/world changes from the new chat drawer route through Oracle to Shapoklyak/Larisa; room access/state changes continue through the existing manager-authorized RPCs.
+- Simple inventory remains a projection over canonical Cheburashka rows and the existing holder tree. No second inventory table, abstract wallet or parallel item owner was introduced.
+- Existing stack policy remains authoritative: forced instances stay instances; explicitly stackable homogeneous bulk rows stay one stack and therefore one simple slot.
+- The spatial/Tetris inventory engine and UI remain in the repository for later reactivation but are no longer mounted as the active character-inventory surface.
+- Artificer Stage 4 keeps class state on shared owners: spell slots/resources on the existing character runtime, items/attunement on Cheburashka, HP on Shapoklyak, and class resolution through the normal CE path.
+- Artificer work queue now correctly records Stages 1–4 complete with Stage 5 subclass wave next.
 
 ### Tests / verification
 
-- Added `inventorySimpleMode.test.ts` covering one-row/one-slot semantics, existing stack policy, bag capacity, SVG/simple UI wiring and preservation/isolation of the spatial runtime.
-- Live authenticated rollback smoke moved a real inventory item into the current 6×5 bag through the new RPC, yielding non-spatial holder placement with cleared grid coordinates; transaction rolled back.
-- Supabase privilege verification: anonymous cannot call the public move RPC, authenticated can; the private capacity helper is not executable by anon/authenticated. Current 6×5 bag resolves to 30 simple slots.
-
-- Added `chatGmDrawer.test.ts` covering left-to-right GM invocation, separation from swipe-back, right-side drawer geometry and the Oracle/RPC control paths.
-- CI build and lint pass; all three new GM drawer regression tests pass. The repository-wide test step remains red only on pre-existing/unrelated Artificer Stage-4 status/quality-ledger assertions.
-- Live rollback-only Supabase smoke passed for Short Rest, Long Rest, Dawn recovery, room access/state changes, scene position update and scene participant synchronization.
-
-- Added a regression test covering owner-player PC chat identity and preventing arbitrary manager PC impersonation.
-- Live transactional Supabase smoke passed for owner-player → own PC, ordinary player → own active PC, and GM → Narrator; all test messages were rolled back.
-
-- Added regression coverage for the world selector, AI password gate, five-slot contract, persistent naming, and owner-only RLS migration.
-
-- Added Artificer Stage 3 regression coverage for exact plan/item progression, Tinker's Magic resource/action/lifecycle, private Cheburashka ownership, Long-Rest generation locking, cleanup semantics, generic attunement and the rule that Stage 3 must not write final READY.
-- Added CE inventory projection coverage proving that attunement-required item mechanics are absent while unattuned and return when the same instance becomes attuned.
-
-
-- Added Artificer Stage 2 regression coverage for shared class-quality/resource/parser/CE gates, exact 20-level structure, 92-spell parity, the six missing shared spell definitions, separate Mending grant, exact half-caster progression, and generic item-plan provider validation.
-- Live Supabase Stage 2 audit: 1 active Artificer class, 20 level rows, 92 class spell links, 92 template spell links, 0 active Artificer subclasses, revision `efota-2025-artificer-stage2-foundation-spellcasting-v1`, and intentionally blank author fields.
-- Reconciled the Stage 2 CE regression assertion with the resolved resource contract: tests now inspect `spell_slot_1.max.value` instead of comparing the structured max object to a raw number; runtime and database mechanics are unchanged.
-
-- Added Artificer Stage 1 regression coverage locking the exact five-subclass roster, 43 stable feature identities, blank literary fields, current base feature topology, Reanimator exclusion, stale 29-link spell audit and Stage 2 handoff.
-
-- Added Artificer Stage 7 regression coverage for fail-closed ordering, exact subclass roster, Stage 1–6 prerequisites, private-function permissions and the rule that blank literary fields cannot block mechanical certification.
-- Live Supabase verification confirmed the Artificer certifier exists, `anon=false`, `authenticated=false`, `service_role=true`. At the gate-install checkpoint it failed closed with `ARTIFICER_FINAL_ACTIVE_CLASS_NOT_FOUND`; after Stage 2 the gate remains intentionally blocked until Stages 3–6 exist.
-
-- Rogue final CI run `35625289587` / job `106418485380` passed Build, Lint, complete repository tests, Storybook and Playwright smoke.
-- Live Supabase audit after deployment found 1 active Rogue, 20 level rows, 9/9 READY subclasses, zero duplicate Rogue catalog keys, zero orphan Rogue subclasses and zero anon/auth execute permission on private Rogue installer/certifier functions.
-- Transactional live smoke verified Expertise/Weapon Mastery persistence through level changes, parent Rogue-level subclass resolution, Soulknife spend/recovery and assignment-removal cleanup, plus Arcane Trickster spell-slot consumption through the shared spell executor.
-- Updated Roll Stage 4 regression coverage to require all six canonical PNG paths, 192×192 dimensions, sub-12KB optimized assets, raw-value overlay wiring, per-die face offsets, PNG d100 composition and a non-SVG arbitrary-dN fallback.
-- Updated final chat Stage 5 coverage so the reusable dice contract now rejects reintroduction of inline SVG canonical dice.
+- Added regression coverage for the AI-world selector/password/five-slot/RLS contract.
+- Added owner-player chat-send regression coverage and live rollback smoke for owner-player → own PC, ordinary player → own active PC and GM → Narrator.
+- Added GM-drawer gesture/control regression coverage and live rollback smoke for Short Rest, Long Rest, Dawn, room access/state, scene position and participant synchronization.
+- Added chat-action regression coverage proving class-granted cantrips remain reachable through the Magic route without a spell-slot cost.
+- Added `inventorySimpleMode.test.ts` covering one-row/one-slot semantics, existing stack policy, bag capacity, nested targets, SVG/simple UI wiring and preservation/isolation of the spatial runtime.
+- Live authenticated rollback smoke moved a real item into the current 6×5 bag through the new RPC; the bag resolves to 30 simple slots and the transaction was rolled back. Anonymous execution is denied and the private capacity helper remains inaccessible to anon/authenticated roles.
+- Added/updated Artificer Stage-4 quality/resource/parser/CE coverage and synchronized older Stage-1/Stage-3 checkpoint tests with the completed Stage-4 state.
+- Supabase advisors reported no new security/performance finding specific to the simple-inventory functions/index path.
+- Release CI result is recorded when this patch is closed.
 
 ### Known incomplete work
 
-- Artificer Stages 1–3 are complete. Stage 4 is next; Stages 5–6 remain. Stage 7 stays correctly blocked and no final READY state is written until the remaining base/subclass runtime is complete.
+- Experimental AI-world slots are storage/entry placeholders; AI-GM memory, world generation and per-slot campaign runtime are not connected yet.
+- Artificer base class is complete through Stage 4, but the five supported subclasses remain Stages 5–6 and final Stage-7 certification therefore stays fail-closed.
+- The spatial/Tetris inventory remains intentionally isolated until the user chooses to resume that system.
 
 ---
 
