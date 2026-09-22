@@ -692,6 +692,7 @@ Rogue Stages 1–6 are closed: the literary/reference layer, base runtime and al
 - `stage_4_live_smoke_magic_item_tinker: PASS_ROLLBACK_CHARGE_TRANSMUTE_DRAIN`
 - `stage_4_live_smoke_high_level: PASS_ROLLBACK_ATTUNEMENT_FLASH_STORED_SPELL_SOUL`
 - `stage_4_stage3_reconcile_regression: FIXED_2026_09_22`
+- `stage_4_quality_contract_reconciliation: ENGINE_OWNED_ZERO_HP_CONDITION_2026_09_22`
 - `stage_5_subclass_wave_1: NEXT`
 - `stage_6_subclass_wave_2_and_ux: NOT_STARTED`
 - `stage7_gate: INSTALLED_2026_09_21`
