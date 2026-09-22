@@ -33,7 +33,7 @@ test("player image quota counts outputs while GM and owner remain app-unlimited"
   assert.match(migration, /pg_advisory_xact_lock/)
 })
 
-test("image profiles map semantic cost and quality onto CheapVibeCode GPT Image 2", () => {
+test("image profiles map semantic quality onto CheapVibeCode GPT Image 2.5 Sunburst", () => {
   const profiles = read("supabase/functions/voss-agent/image-profiles.ts")
   const tools = read("supabase/functions/voss-agent/image-tools.ts")
 
