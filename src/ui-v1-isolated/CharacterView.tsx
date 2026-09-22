@@ -932,10 +932,12 @@ export default function CharacterView({
         characterId={characterId}
         characterName={character.name}
         classKey={classKey}
+        items={control.inventory}
+        canControl={control.canControlCharacter}
         focusedItemId={focusedItemId}
-        focusedItemName={
-          control.inventory.find((item) => item.id === focusedItemId)?.name || null
-        }
+        onMoveItem={control.moveItemSimple}
+        onEquipItem={(item) => control.setEquipped(item, true)}
+        onUseItem={control.useItem}
         onBack={handleBack}
       />
     )
