@@ -47,6 +47,14 @@ export type QuestManagerConditionGroup = {
   position: number
 }
 
+export type QuestManagerConditionState = {
+  satisfied: boolean
+  resolution_source: "pending" | "resolver" | "gm" | "ai"
+  evidence: Record<string, unknown>
+  satisfied_at: string | null
+  last_evaluated_at: string | null
+}
+
 export type QuestManagerCondition = {
   id: string
   group_id: string
@@ -57,6 +65,7 @@ export type QuestManagerCondition = {
   negated: boolean
   params: Record<string, unknown>
   position: number
+  state: QuestManagerConditionState
 }
 
 export type QuestManagerPlan = {
@@ -178,6 +187,7 @@ function parsePlan(value: unknown): QuestManagerPlan | null {
     }).filter((group) => Boolean(group.id)),
     conditions: conditions.map((entry) => {
       const row = object(entry)
+      const state = object(row.state)
       return {
         id: text(row.id),
         group_id: text(row.group_id),
@@ -188,6 +198,16 @@ function parsePlan(value: unknown): QuestManagerPlan | null {
         negated: row.negated === true,
         params: jsonObject(row.params),
         position: number(row.position),
+        state: {
+          satisfied: state.satisfied === true,
+          resolution_source:
+            ["pending", "resolver", "gm", "ai"].includes(text(state.resolution_source))
+              ? text(state.resolution_source) as QuestManagerConditionState["resolution_source"]
+              : "pending",
+          evidence: jsonObject(state.evidence),
+          satisfied_at: nullableText(state.satisfied_at),
+          last_evaluated_at: nullableText(state.last_evaluated_at),
+        },
       }
     }).filter((condition) => Boolean(condition.id)),
   }
@@ -405,6 +425,52 @@ export function useQuestManager(
     "Не удалось обновить условие.",
   ), [mutate])
 
+  const setNarrativeConditionResolution = useCallback(async (
+    conditionId: string,
+    satisfied: boolean,
+    note: string,
+  ): Promise<MutationResult> => {
+    if (!enabled || !questId) return { ok: false, error: "Недостаточно прав." }
+
+    const { error: rpcError } = await supabase.rpc(
+      "set_quest_condition_resolution_v1",
+      {
+        p_condition_id: conditionId,
+        p_satisfied: satisfied,
+        p_note: note.trim(),
+      },
+    )
+
+    if (rpcError) {
+      return {
+        ok: false,
+        error: rpcError.message || "Не удалось сохранить ручное решение условия.",
+      }
+    }
+
+    await load()
+    return { ok: true }
+  }, [enabled, load, questId])
+
+  const resolveQuest = useCallback(async (): Promise<MutationResult> => {
+    if (!enabled || !questId) return { ok: false, error: "Недостаточно прав." }
+
+    const { error: rpcError } = await supabase.rpc(
+      "resolve_quest_v1",
+      { p_quest_id: questId },
+    )
+
+    if (rpcError) {
+      return {
+        ok: false,
+        error: rpcError.message || "Не удалось проверить условия квеста.",
+      }
+    }
+
+    await load()
+    return { ok: true }
+  }, [enabled, load, questId])
+
   const setConditionGroupMode = useCallback((
     groupId: string,
     mode: "all" | "any",
@@ -430,6 +496,8 @@ export function useQuestManager(
     updateTarget,
     bindTarget,
     updateCondition,
+    setNarrativeConditionResolution,
+    resolveQuest,
     setConditionGroupMode,
   }
 }
