@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client"
 
 import { AIProvider } from "../ai/AIProvider"
 import type { SnakeAction } from "../snake-engine"
+import type { InventoryItem } from "../types/characterSheet"
 import CharacterInventoryInterface from "../ui-v1-isolated/CharacterInventoryInterface"
 import CharacterSheetShell from "../ui-v1-isolated/CharacterSheetShell"
 import {
@@ -29,6 +30,33 @@ import "../ui-v1-isolated/character-sheet-spells.css"
 import "../ui-v1-isolated/character-inventory-interface.css"
 
 const characterId = "stage16-character"
+
+const stage16InventoryItems: InventoryItem[] = [{
+  id: "item-stage16",
+  character_id: characterId,
+  name: "Тестовый предмет",
+  quantity: 1,
+  weight: 0.5,
+  equipped: false,
+  category: "tool",
+  equipment_slot: null,
+  image_url: null,
+  description: "Предмет для проверки истории нового простого инвентаря.",
+  usage_mode: "none",
+  stack_mode: "instance",
+  holder_item_id: null,
+  placement_kind: "root",
+  placement_index: null,
+  grid_x: null,
+  grid_y: null,
+  grid_rotation: 0,
+  item_state: {},
+  version: 1,
+  sort_order: 0,
+  created_at: "2026-09-22T00:00:00Z",
+  updated_at: "2026-09-22T00:00:00Z",
+}]
+
 
 function stateWith(snapshot: CharacterSheetHistorySnapshot) {
   return characterSheetHistoryStateWith(window.history.state, snapshot)
@@ -158,7 +186,7 @@ function Stage16Harness() {
         characterId={characterId}
         characterName="Сертификационный герой"
         classKey="fighter"
-        items={[]}
+        items={stage16InventoryItems}
         canControl
         focusedItemId={focusedItemId}
         onMoveItem={async () => ({ ok: true })}
