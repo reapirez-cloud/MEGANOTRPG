@@ -218,6 +218,11 @@ export function useCharacterBiography(
       )
       .on(
         "postgres_changes",
+        { event: "*", schema: "public", table: "character_biography_revisions", filter: `character_id=eq.${characterId}` },
+        reload,
+      )
+      .on(
+        "postgres_changes",
         { event: "*", schema: "public", table: "character_relationships", filter: `campaign_id=eq.${scope.campaignId}` },
         reload,
       )
