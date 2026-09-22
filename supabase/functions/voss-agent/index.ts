@@ -45,6 +45,11 @@ import {
   VOSS_MANAGER_TOOLS,
 } from "./manager-tools.ts"
 import {
+  executeVossQuestTool,
+  isVossQuestTool,
+  VOSS_QUEST_TOOLS,
+} from "./quest-tools.ts"
+import {
   executeVossAdminTool,
   isVossAdminTool,
   VOSS_ADMIN_TOOLS,
@@ -1223,6 +1228,11 @@ Deno.serve(async (req: Request) => {
     ...(canManage
       ? [
           "Если задача требует нескольких связанных изменений локаций (например заполнить таверну комнатами, поселение районами или подземелье зонами), предпочитай batch_location_changes вместо серии одиночных create_location/update_location. Используй refs для новых дочерних локаций.",
+          "Quest Engine является каноническим состоянием квестов, а не памятью ИИ. Для квестов запроси capability campaign.manage и используй quest-tools.",
+          "Новый квест всегда проектируй целиком через create_quest_plan одним атомарным вызовом: все будущие этапы, скрытые заметки, placeholders и условия. create_quest_plan создаёт DRAFT. activate_quest вызывай отдельно только когда квест реально должен войти в игру.",
+          "Не создавай заранее NPC, предмет или локацию только потому, что они нужны будущему этапу. Создай quest target placeholder, например «Где-то в лесу», и bind_quest_target только когда каноническая сущность действительно появляется.",
+          "Автоматические условия Quest Resolver не закрывай вручную. resolve_quest_condition используй только для custom_narrative и только когда события сцены действительно подтверждают вывод. В note кратко укажи фактическое основание.",
+          "Игроку нельзя раскрывать существование будущих этапов, скрытых целей, GM notes, ai_directive или resolver evidence. Полный read_quest_plan является GM/Admin материалом.",
         ]
       : []),
     ...(inventoryWorkflowRequested ? VOSS_INVENTORY_AUTHORING_RULES : []),
@@ -1381,6 +1391,7 @@ Deno.serve(async (req: Request) => {
 
     if (grantedCapabilities.has("campaign.manage")) {
       tools.push(...VOSS_MANAGER_TOOLS)
+      tools.push(...VOSS_QUEST_TOOLS)
     } else {
       if (grantedCapabilities.has("world.write")) {
         tools.push(...pickTools(VOSS_MANAGER_TOOLS, managerWorldToolNames))
@@ -1628,6 +1639,7 @@ Deno.serve(async (req: Request) => {
       const imageTool = isVossImageTool(toolName)
       const developerTool = isVossDeveloperTool(toolName)
       const managerTool = isVossManagerTool(toolName)
+      const questTool = isVossQuestTool(toolName)
       const adminTool = isVossAdminTool(toolName)
       const memoryWriteTool = memoryTool && isVossMemoryWriteTool(toolName)
       let result: unknown
@@ -1647,6 +1659,17 @@ Deno.serve(async (req: Request) => {
         result = await executeVossAdminTool(
           {
             admin,
+            campaignId,
+            userId: user.id,
+            authority,
+          },
+          toolName,
+          args,
+        )
+      } else if (questTool) {
+        result = await executeVossQuestTool(
+          {
+            client: userClient,
             campaignId,
             userId: user.id,
             authority,
@@ -1751,7 +1774,7 @@ Deno.serve(async (req: Request) => {
         // Capability requests are authorization plumbing, not domain mutations.
       } else if (adminTool) {
         adminToolsUsed.push(toolName || "unknown")
-      } else if (managerTool) {
+      } else if (questTool || managerTool) {
         managerToolsUsed.push(toolName || "unknown")
       } else if (developerTool) {
         developerToolsUsed.push(toolName || "unknown")
@@ -1863,7 +1886,7 @@ Deno.serve(async (req: Request) => {
         tool_call_id: toolCallId,
         content: toolContent(
           result,
-          capabilityTool || developerTool || imageTool || draftTool || memoryTool
+          capabilityTool || developerTool || imageTool || draftTool || memoryTool || questTool
             ? 180000
             : 18000,
         ),
