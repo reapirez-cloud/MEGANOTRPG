@@ -387,16 +387,49 @@
   color: rgba(244,187,187,.72);
 }
 
-.u1-gm-drawer-swipe-handle {
+.u1-gm-drawer-trigger {
   position: absolute;
-  left: 2px;
+  right: 0;
   top: 44%;
-  z-index: 5;
-  width: 4px;
-  height: 54px;
-  border-radius: 999px;
-  background: rgba(235,237,239,.11);
-  pointer-events: none;
+  z-index: 35;
+  width: 34px;
+  min-height: 72px;
+  padding: 8px 4px;
+  display: grid;
+  place-items: center;
+  gap: 5px;
+  border: 1px solid rgba(235,237,239,.09);
+  border-right: 0;
+  border-radius: 12px 0 0 12px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.012)),
+    rgba(13,16,18,.94);
+  color: rgba(238,239,235,.58);
+  box-shadow: -8px 8px 22px rgba(0,0,0,.24);
+  backdrop-filter: blur(14px);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.u1-gm-drawer-trigger:active {
+  transform: translateX(-1px) scale(.98);
+  color: rgba(248,248,244,.82);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018)),
+    rgba(17,20,22,.98);
+}
+
+.u1-gm-drawer-trigger > span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 8px;
+  font-weight: 820;
+  letter-spacing: .14em;
+}
+
+.u1-gm-drawer-trigger > i {
+  font-size: 18px;
+  font-style: normal;
+  line-height: 1;
 }
 
 @media (max-width: 420px) {
