@@ -22,10 +22,10 @@ The tracker currently owns the full AI-GM debt discussed for:
 - canonical NPC stats/abilities and text inventory;
 - NPC/location persistent art generation plus requested item art;
 - action/bonus-action/movement/text turn queue;
-- 20-narrative-message world maintenance;
+- last-50-message GM context plus reconcile/archive every 45 player messages with campaign-day/day-period awareness;
 - player-intent/world-authority firewall;
 - Snake edit-and-resend / regenerate;
-- GM-turn rollback/replay, undo and runtime status.
+- GM short/long rest and dawn recovery;\n- GM-turn rollback/replay, undo and runtime status.
 
 ## Sorcerer follow-up
 
