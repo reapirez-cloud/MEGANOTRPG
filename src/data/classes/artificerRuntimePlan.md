@@ -135,6 +135,8 @@ Runtime revision:
 Regression:
 `tests/artificerRuntimeStage4Base.test.ts`.
 
+Live Stage-4 audit: production Supabase accepted both Stage-4 migrations; `pending_stage4` count is zero, all six executable base actions are installed with no duplicate mechanic IDs, authenticated RPC access is present while anonymous execution is denied, and two rollback-only smoke scenarios passed: Magic Item Tinker Charge → Transmute → Drain, plus level-20 attunement/Flash/Spell-Storing Item/Soul of Artifice. The smoke also discovered and closed a Stage-3 JSON operator-precedence defect in replica reconciliation.
+
 ## Stage 5 — subclass wave 1
 
 **Status:** `NEXT`
