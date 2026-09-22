@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react"
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react"
 
 import ChatComposer from "./ChatComposer"
 import ChatGmDrawer from "./ChatGmDrawer"
@@ -73,7 +80,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
     gmSwipeRef.current = null
   }, [roomId])
 
-  const startGmDrawerSwipe = (event: React.PointerEvent<HTMLElement>) => {
+  const startGmDrawerSwipe = (event: ReactPointerEvent<HTMLElement>) => {
     if (
       !model?.canManage ||
       gmDrawerOpen ||
@@ -98,7 +105,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
     }
   }
 
-  const finishGmDrawerSwipe = (event: React.PointerEvent<HTMLElement>) => {
+  const finishGmDrawerSwipe = (event: ReactPointerEvent<HTMLElement>) => {
     const swipe = gmSwipeRef.current
     gmSwipeRef.current = null
 
@@ -128,7 +135,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
     gmSwipeRef.current = null
   }
 
-  const suppressGmSwipeClick = (event: React.MouseEvent<HTMLElement>) => {
+  const suppressGmSwipeClick = (event: ReactMouseEvent<HTMLElement>) => {
     if (performance.now() >= suppressClickUntilRef.current) return
     event.preventDefault()
     event.stopPropagation()
