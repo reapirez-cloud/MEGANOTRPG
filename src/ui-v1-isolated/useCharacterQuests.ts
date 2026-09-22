@@ -129,6 +129,7 @@ export function useCharacterQuests(characterId: string, enabled: boolean) {
     loadSequenceRef.current += 1
     loadedCharacterIdRef.current = null
     setQuests([])
+    setLoading(false)
     setError(null)
   }, [characterId])
 
