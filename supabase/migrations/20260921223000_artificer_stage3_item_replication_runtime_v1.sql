@@ -232,7 +232,7 @@ begin
   join public.reference_definition_revisions r on r.definition_id=d.id and r.revision=d.current_revision
   where d.id=p_definition_id and d.kind='item' and d.status='active'
     and (d.scope='system' or (d.scope='campaign' and d.campaign_id=v_campaign));
-  if v_revision is null then raise exception 'ITEM_DEFINITION_NOT_AVAILABLE'; end if;
+  if v_revision is null then raise exception 'ITEM_DEFINITION_MISSING_OR_INACTIVE'; end if;
   perform private.cheburashka_assert_inventory_definition_v1(p_character_id,p_definition_id,v_revision);
   v_category:=coalesce(nullif(v_data->>'category',''),'other');
   v_usage:=coalesce(nullif(v_data->>'usage_mode',''),'none');

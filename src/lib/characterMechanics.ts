@@ -139,6 +139,20 @@ export function inventoryMechanicContributions(items: InventoryItem[]): Characte
     for (const mechanic of mechanicsArray(item.mechanics)) {
       const requiresEquipped = mechanic.activation === "equipped" && item.category === "equipment"
       if (requiresEquipped && !item.equipped) continue
+
+      if (mechanic.activation === "attuned") {
+        const attunement = item.item_state?.attunement
+        const attunedToCharacterId =
+          attunement && typeof attunement === "object" && !Array.isArray(attunement)
+            ? (attunement as Record<string, unknown>).attuned_to_character_id
+            : null
+        if (
+          typeof attunedToCharacterId !== "string" ||
+          !item.character_id ||
+          attunedToCharacterId !== item.character_id
+        ) continue
+      }
+
       contributions.push(contributionForStoredMechanic(mechanic, mechanic.curseEffect ? privateCurseSource : source))
     }
   }
