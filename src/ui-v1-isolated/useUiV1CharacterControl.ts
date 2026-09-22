@@ -519,6 +519,34 @@ export function useUiV1CharacterControl(
     scope.canManage,
   ])
 
+  const swapItemsSimple = useCallback(async (
+    first: InventoryItem,
+    second: InventoryItem,
+  ): Promise<Result> => {
+    if (!canControlCharacter) return { ok: false, error: "Недостаточно прав." }
+    if (first.id === second.id) return { ok: true }
+
+    const { error: swapError } = await supabase.rpc(
+      "swap_inventory_items_simple_v1",
+      {
+        p_character_id: characterId,
+        p_item_a_id: first.id,
+        p_item_b_id: second.id,
+        p_expected_version_a: first.version,
+        p_expected_version_b: second.version,
+      },
+    )
+
+    await load()
+    if (swapError) {
+      return {
+        ok: false,
+        error: swapError.message || "Не удалось поменять предметы местами.",
+      }
+    }
+    return { ok: true }
+  }, [canControlCharacter, characterId, load])
+
   const storeItemInWorld = useCallback(async (
     item: InventoryItem,
     storage: UiV1CharacterWorldStorage,
@@ -702,6 +730,7 @@ export function useUiV1CharacterControl(
     useItem,
     moveItem,
     moveItemSimple,
+    swapItemsSimple,
     storeItemInWorld,
     updateItem,
     removeItem,
