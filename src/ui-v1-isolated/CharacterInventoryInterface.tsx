@@ -1,4 +1,3 @@
-import type { InventoryPlacementTarget } from "../inventory-engine"
 import type { InventoryItem } from "../types/characterSheet"
 import { CHARACTER_INVENTORY_INTERFACE_CONTRACT } from "./characterSheetUiContract"
 import InventorySimpleView from "./InventorySimpleView"
@@ -13,7 +12,7 @@ export default function CharacterInventoryInterface({
   canControl,
   focusedItemId,
   onMoveItem,
-  onPlaceItem,
+  onQuickAccessItem,
   onSwapItems,
   onEquipItem,
   onUseItem,
@@ -29,10 +28,7 @@ export default function CharacterInventoryInterface({
     item: InventoryItem,
     holderItemId: string | null,
   ) => Promise<Result>
-  onPlaceItem: (
-    item: InventoryItem,
-    placement: InventoryPlacementTarget,
-  ) => Promise<Result>
+  onQuickAccessItem: (item: InventoryItem, enabled: boolean) => Promise<Result>
   onSwapItems: (first: InventoryItem, second: InventoryItem) => Promise<Result>
   onEquipItem: (item: InventoryItem) => Promise<Result>
   onUseItem: (item: InventoryItem, amount?: number) => Promise<Result>
@@ -68,7 +64,7 @@ export default function CharacterInventoryInterface({
           canControl={canControl}
           focusedItemId={focusedItemId}
           onMove={onMoveItem}
-          onPlace={onPlaceItem}
+          onQuickAccess={onQuickAccessItem}
           onSwap={onSwapItems}
           onEquip={onEquipItem}
           onUse={onUseItem}
