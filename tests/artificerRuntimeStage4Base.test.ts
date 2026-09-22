@@ -7,6 +7,11 @@ const sql = readFileSync(
   "utf8",
 )
 
+const reconcileFix = readFileSync(
+  new URL("../supabase/migrations/20260922100500_artificer_stage4_stage3_reconcile_fix_v1.sql", import.meta.url),
+  "utf8",
+)
+
 const plan = readFileSync(
   new URL("../src/data/classes/artificerRuntimePlan.md", import.meta.url),
   "utf8",
@@ -26,6 +31,11 @@ test("Stage 4 replaces every pending base placeholder with runtime-backed mechan
   assert.match(sql, /artificer-spell-storing-item-action/)
   assert.match(sql, /artificer-soul-of-artifice-cheat-death-action/)
   assert.doesNotMatch(sql, /'mechanics_status','READY'/)
+})
+
+test("Stage 4 release gate repairs Stage 3 replica reconciliation precedence", () => {
+  assert.match(reconcileFix, /d\.value->>'option'=\('refdef:'\|\|\(i\.item_state->>'plan_definition_id'\)\)/)
+  assert.doesNotMatch(reconcileFix, /d\.value->>'option'='refdef:'\|\|i\.item_state->>'plan_definition_id'/)
 })
 
 test("Magic Item Tinker uses shared item and spell-slot owners", () => {
