@@ -70,3 +70,10 @@ export type {
   InventoryMechanicalProjection,
   InventoryMutation,
 } from "./types.ts"
+
+export {
+  inventorySimpleChildren,
+  inventorySimpleContainerCapacity,
+  inventorySimpleContainerTargets,
+  inventorySimpleContainerUsage,
+} from "./simple.ts"
