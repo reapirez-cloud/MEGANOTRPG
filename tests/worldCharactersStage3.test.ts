@@ -18,6 +18,10 @@ const migration = fs.readFileSync(
   "supabase/migrations/20260922212108_world_characters_ui_stage3_v1.sql",
   "utf8",
 )
+const realtimeMigration = fs.readFileSync(
+  "supabase/migrations/20260922212744_world_characters_ui_stage3_realtime_v1.sql",
+  "utf8",
+)
 
 test("world characters render as 9:16 portrait cards instead of simple rows", () => {
   assert.match(sectionScreens, /function WorldCharacterCard/)
@@ -84,4 +88,19 @@ test("world NPC faction remains visible metadata, not fabricated relationship st
   assert.match(sectionData, /faction: string/)
   assert.match(sectionScreens, /profile\.faction/)
   assert.doesNotMatch(sectionData, /faction_attitude|faction_relationship/)
+})
+
+
+test("relationship and NPC profile tables are actually published to realtime", () => {
+  for (const table of [
+    "npc_profiles",
+    "character_relationships",
+    "character_npc_discoveries",
+    "location_npc_habitats",
+  ]) {
+    assert.match(
+      realtimeMigration,
+      new RegExp(`alter publication supabase_realtime add table public\\.${table}`),
+    )
+  }
 })
