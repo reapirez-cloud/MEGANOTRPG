@@ -70,7 +70,7 @@ export const VOSS_READ_TOOLS = [
     function: {
       name: "read_character",
       description:
-        "Read the visible resolved data stored for one character: sheet, HP, resources, inventory, spells, features, class/subclass assignments and world position. For a world NPC, GM/Admin also receives its NPC profile, habitats and canonical relationship rows.",
+        "Read the visible resolved data stored for one character: sheet, HP, resources, inventory, spells, features, class/subclass assignments and world position. GM/Admin additionally receives canonical biography state including relationships, property, faction memberships and faction reputation; world NPCs also include NPC profile and habitats.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -601,9 +601,19 @@ async function readCharacter(
     location = data || null
   }
 
+  let biography: unknown = null
   let npcProfile: unknown = null
   let npcHabitats: unknown[] = []
   let npcRelationships: unknown[] = []
+
+  if (context.canManage) {
+    const { data: biographyData, error: biographyError } = await context.client.rpc(
+      "read_character_biography_manager_v1",
+      { p_character_id: characterId },
+    )
+    if (biographyError) return { error: biographyError.message }
+    biography = biographyData || null
+  }
 
   if (character.character_type === "npc" && context.canManage) {
     const [profileResult, habitatResult, relationshipResult] = await Promise.all([
@@ -661,6 +671,7 @@ async function readCharacter(
     features: featuresResult.data || [],
     assignments,
     templates: templateRows,
+    biography,
     npcProfile,
     npcHabitats,
     npcRelationships,
