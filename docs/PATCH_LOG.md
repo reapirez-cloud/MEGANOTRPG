@@ -11,6 +11,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Fixed chat sending for campaign owners whose ordinary campaign role is `player`: selecting their own playable PC now sends as that PC instead of being rejected by the manager-only Narrator/NPC identity branch.
+
 - Added a post-login world selector with two explicit branches: the existing «Мунтар» campaign and an experimental «ИИ мир» branch.
 - The experimental AI branch is protected by the requested numeric password gate, then exposes exactly five persistent slots that can be named independently.
 - Opening an AI slot currently lands on an isolated experimental placeholder instead of reusing «Мунтар» data; AI-GM/runtime integration will attach to these slots in later stages.
@@ -23,6 +25,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - d100 keeps the existing percentile behavior but now composes two graphite PNG d10s. Arbitrary unsupported dN rolls keep an explicit non-SVG fallback instead of pretending to have a canonical art asset.
 
 ### Database / migration changes
+
+- Reconciled `set_chat_message_identity()` with the owner/player authority contract. Owner authority remains additive; an owner-player may use their assigned playable PC while manager NPC speech stays explicitly binding-scoped.
 
 - Added `public.ai_world_slots` with exactly five indexed slot positions per authenticated owner, owner-only RLS, and persistent slot names.
 - Kept AI slot persistence separate from `campaigns` for this stage because the existing new-campaign certification trigger currently aborts campaign creation on an incomplete Paladin runtime contract; no certification guard was bypassed.
@@ -69,6 +73,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Removed inline canonical SVG geometry and SVG text rendering from `DiceGlyph`; the raw result is now an HTML overlay above the PNG asset.
 
 ### Tests / verification
+
+- Added a regression test covering owner-player PC chat identity and preventing arbitrary manager PC impersonation.
+- Live transactional Supabase smoke passed for owner-player → own PC, ordinary player → own active PC, and GM → Narrator; all test messages were rolled back.
 
 - Added regression coverage for the world selector, AI password gate, five-slot contract, persistent naming, and owner-only RLS migration.
 
