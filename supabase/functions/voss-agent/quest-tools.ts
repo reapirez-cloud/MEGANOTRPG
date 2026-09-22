@@ -33,7 +33,27 @@ const QUEST_STATUSES = [
 
 const TARGET_KINDS = ["location", "npc", "item"] as const
 
+export const VOSS_QUEST_CONTEXT_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "read_active_quest_context",
+      description:
+        "GM/Admin read-only. Read a compact hidden runtime context for the active quests of one character: active-stage objective, relevant placeholders, condition groups, resolver state and recent completed stages. Use this during live play when a character action may affect quest progress. This is deliberately smaller than read_quest_plan and must never be exposed to player authority.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+        },
+        required: ["character_id"],
+      },
+    },
+  },
+] as const
+
 export const VOSS_QUEST_TOOLS = [
+  ...VOSS_QUEST_CONTEXT_TOOLS,
   {
     type: "function",
     function: {
@@ -490,6 +510,26 @@ async function resolveQuestId(
   return { error: "", row: data }
 }
 
+async function readActiveQuestContext(
+  context: VossQuestToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  if (!characterId) return { error: "character_id_required" }
+
+  const { data, error } = await context.client.rpc(
+    "read_active_quest_context_v1",
+    { p_character_id: characterId },
+  )
+  if (error) return { error: error.message }
+
+  return {
+    character_id: characterId,
+    context: data,
+    canonical_state_changed: false,
+  }
+}
+
 async function readPlan(context: VossQuestToolContext, questId: string) {
   const { data, error } = await context.client.rpc(
     "read_quest_plan_v1",
@@ -786,6 +826,7 @@ export async function executeVossQuestTool(
   if (!canManage(context)) return { error: "gm_authority_required" }
 
   try {
+    if (name === "read_active_quest_context") return await readActiveQuestContext(context, args)
     if (name === "list_quests") return await listQuests(context, args)
     if (name === "create_quest_plan") return await createQuestPlan(context, args)
     if (name === "read_quest_plan") return await readQuestPlan(context, args)
