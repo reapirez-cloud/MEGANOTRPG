@@ -31,8 +31,8 @@ fields are valid until the user supplies them.
 - Stage 1 — source freeze/specification: COMPLETE_2026_09_21
 - Stage 2 — class foundation 1–20 + spellcasting: COMPLETE_2026_09_21
 - Stage 3 — core item/replication runtime: COMPLETE_2026_09_21
-- Stage 4 — remaining base class 1–20: NEXT
-- Stage 5 — subclass wave 1: NOT_STARTED
+- Stage 4 — remaining base class 1–20: COMPLETE_2026_09_22
+- Stage 5 — subclass wave 1: NEXT
 - Stage 6 — subclass wave 2 + UX/runtime reconciliation: NOT_STARTED
 - Stage 7 — final certification: GATE_INSTALLED_BLOCKED
 
@@ -116,23 +116,28 @@ using database randomness behind the roll engine.
 
 ## Stage 4 — remaining base class 1–20
 
-**Status:** `NEXT`
+**Status:** `COMPLETE_2026_09_22`
 
-Target:
+Closed deliverables:
 
-- Magic Item Tinker;
-- Flash of Genius;
-- Magic Item Adept;
-- Spell-Storing Item;
-- Advanced Artifice;
-- Magic Item Master;
-- Soul of Artifice;
-- cross-owner zero-HP rescue orchestration;
-- base-class mechanical certification.
+- Magic Item Tinker is authoritative: Charge spends a canonical spell slot and restores charges on a real replicated item; Drain dismisses a replica and grants one temporary canonical slot that expires on Long Rest; Transmute atomically replaces the active replica and its persisted loadout choice;
+- charged Replicate Magic Item definitions use forward Chasovoy revisions rather than Artificer-local item state;
+- Flash of Genius is a real Intelligence-modifier resource (minimum one) with a CE Reaction; Long Rest restores it, and Advanced Artifice restores one use on Short Rest;
+- Artificer attunement capacity is enforced against real Cheburashka attunement state with 3/4/5/6 progression at levels 1/10/14/18;
+- Spell-Storing Item binds one eligible level 1–3 Artificer spell to a real inventory item after Long Rest, rejects consumed Material components, exposes shared spell execution to any holder, and tracks exactly twice the creator Intelligence modifier uses (minimum two);
+- Soul of Artifice Cheat Death is a GENA-owned cross-owner transaction: only creator-owned Uncommon/Rare replicas qualify, each dismissed item restores 20 HP through the Shapoklyak HP owner, and the feature requires actual 0 HP;
+- level-20 Magical Guidance restores all Flash of Genius uses after Short Rest only while the Artificer is actually attuned to at least one magic item;
+- every Stage-2 `pending_stage4` placeholder is replaced by structured CE mechanics; the package remains non-READY because subclasses are Stages 5–6.
+
+Runtime revision:
+`efota-2025-artificer-stage4-base-runtime-v1`.
+
+Regression:
+`tests/artificerRuntimeStage4Base.test.ts`.
 
 ## Stage 5 — subclass wave 1
 
-**Status:** `NOT_STARTED`
+**Status:** `NEXT`
 
 Target subclasses:
 
