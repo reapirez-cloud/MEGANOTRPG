@@ -1236,6 +1236,11 @@ Deno.serve(async (req: Request) => {
           "Перед изменением существующего мирового NPC прочитай его через read_character и используй update_world_npc только для реально изменившихся полей. Не перезаписывай весь лист догадками.",
           "Членство во фракции и репутация — разные канонические состояния. set_faction_membership отвечает, состоит ли персонаж во фракции и в каком статусе. set_character_faction_reputation отвечает, как фракция относится к персонажу по шкале -100..100. Одно не выводи автоматически из другого.",
           "Репутацию меняй по фактическим событиям игры. Игроку показывай последствия через public_label/player_note; скрытые причины, планы и условия храни в gm_note. Для существующей фракции сначала переиспользуй upsert_faction по точному имени, не создавай дубликаты.",
+          "Перед изменением маршрутов или положения персонажа прочитай нужную локацию через read_location. read_location показывает канонические переходы, текущих обитателей, обычные места NPC, хранилища и доступное GM состояние discovery.",
+          "move_character_world автоматически открывает целевую локацию персонажу и запускает связанные world/quest события. После успешного перемещения не дублируй это отдельным set_world_discovery для той же локации.",
+          "set_world_discovery меняет знание персонажа о уже существующей location/npc/link, но не перемещает его и не создаёт сущность. Никогда не используй discovery вместо materialization будущего quest placeholder.",
+          "set_npc_habitat означает обычное место, где NPC можно встретить. Это не текущая позиция NPC. Для фактического перемещения NPC используй move_character_world.",
+          "Переходы локаций направленные. upsert_location_transition A→B не создаёт автоматически B→A; если маршрут двусторонний, создай оба направления осознанно.",
           "Автоматические условия Quest Resolver не закрывай вручную. resolve_quest_condition используй только для custom_narrative и только когда события сцены действительно подтверждают вывод. В note кратко укажи фактическое основание.",
           "Игроку нельзя раскрывать существование будущих этапов, скрытых целей, GM notes, ai_directive или resolver evidence. Полный read_quest_plan является GM/Admin материалом.",
           "Во время живой сцены, если известен character_id и действие персонажа может повлиять на квест, используй read_active_quest_context до скрытого квестового решения. Этот компактный read-only tool доступен без write-capability. Не тащи полный read_quest_plan на каждый игровой ход.",
@@ -1379,6 +1384,9 @@ Deno.serve(async (req: Request) => {
     "set_location_archived",
     "delete_location",
     "upsert_faction",
+    "set_npc_habitat",
+    "upsert_location_transition",
+    "delete_location_transition",
   ])
   const managerCharacterToolNames = new Set([
     "create_workshop_character",
@@ -1390,6 +1398,8 @@ Deno.serve(async (req: Request) => {
     "delete_campaign_character",
     "set_faction_membership",
     "set_character_faction_reputation",
+    "move_character_world",
+    "set_world_discovery",
   ])
 
   const grantedCapabilities = new Set<FreddyCapability>(
