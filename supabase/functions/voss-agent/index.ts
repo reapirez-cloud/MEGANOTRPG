@@ -1232,6 +1232,8 @@ Deno.serve(async (req: Request) => {
           "Quest Engine является каноническим состоянием квестов, а не памятью ИИ. Для квестов запроси capability campaign.manage и используй quest-tools.",
           "Новый квест всегда проектируй целиком через create_quest_plan одним атомарным вызовом: все будущие этапы, скрытые заметки, placeholders и условия. create_quest_plan создаёт DRAFT. activate_quest вызывай отдельно только когда квест реально должен войти в игру.",
           "Не создавай заранее NPC, предмет или локацию только потому, что они нужны будущему этапу. Создай quest target placeholder, например «Где-то в лесу», и bind_quest_target только когда каноническая сущность действительно появляется.",
+          "Для NPC, который уже реально вошёл в игру, используй create_world_npc вместо create_workshop_character: создай канонического опубликованного NPC одним атомарным вызовом со значимыми D&D-статами, профилем, текущей локацией/местами обитания и отношением к герою, если оно уже определено сценой. Не выдумывай будущего NPC заранее ради квеста.",
+          "Перед изменением существующего мирового NPC прочитай его через read_character и используй update_world_npc только для реально изменившихся полей. Не перезаписывай весь лист догадками.",
           "Автоматические условия Quest Resolver не закрывай вручную. resolve_quest_condition используй только для custom_narrative и только когда события сцены действительно подтверждают вывод. В note кратко укажи фактическое основание.",
           "Игроку нельзя раскрывать существование будущих этапов, скрытых целей, GM notes, ai_directive или resolver evidence. Полный read_quest_plan является GM/Admin материалом.",
           "Во время живой сцены, если известен character_id и действие персонажа может повлиять на квест, используй read_active_quest_context до скрытого квестового решения. Этот компактный read-only tool доступен без write-capability. Не тащи полный read_quest_plan на каждый игровой ход.",
@@ -1378,6 +1380,8 @@ Deno.serve(async (req: Request) => {
   const managerCharacterToolNames = new Set([
     "create_workshop_character",
     "update_campaign_character",
+    "create_world_npc",
+    "update_world_npc",
     "set_character_life_state",
     "set_character_publication",
     "delete_campaign_character",
