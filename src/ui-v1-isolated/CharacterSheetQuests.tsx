@@ -305,6 +305,15 @@ function GmQuestPlan({
       ),
     },
     {
+      id: "quest-resolve-now",
+      label: "Проверить условия сейчас",
+      execute: () => mutateAndRefresh(
+        () => manager.resolveQuest(),
+        "Условия квеста перепроверены.",
+        true,
+      ),
+    },
+    {
       id: "quest-set-status",
       label: "Статус квеста",
       surface: {
@@ -646,25 +655,26 @@ function GmQuestPlan({
                               </SnakeTrigger>
 
                               {groupConditions.map((condition) => {
-                                  const conditionActions: SnakeAction[] = [{
-                                    id: "quest-condition-edit",
-                                    label: "Редактировать условие",
-                                    surface: {
-                                      kind: "editor",
-                                      eyebrow: "Quest Engine · условие",
-                                      title: CONDITION_LABELS[condition.condition_type] || condition.condition_type,
-                                      fields: [
-                                        { id: "required_quantity", label: "Количество", type: "number" },
-                                        { id: "negated", label: "Инвертировать условие", type: "checkbox" },
-                                        { id: "params_json", label: "Дополнительные параметры JSON", type: "textarea" },
-                                      ],
-                                      initialValues: {
-                                        required_quantity: condition.required_quantity,
-                                        negated: condition.negated,
-                                        params_json: JSON.stringify(condition.params, null, 2),
+                                  const conditionActions: SnakeAction[] = [
+                                    {
+                                      id: "quest-condition-edit",
+                                      label: "Редактировать условие",
+                                      surface: {
+                                        kind: "editor",
+                                        eyebrow: "Quest Engine · условие",
+                                        title: CONDITION_LABELS[condition.condition_type] || condition.condition_type,
+                                        fields: [
+                                          { id: "required_quantity", label: "Количество", type: "number" },
+                                          { id: "negated", label: "Инвертировать условие", type: "checkbox" },
+                                          { id: "params_json", label: "Дополнительные параметры JSON", type: "textarea" },
+                                        ],
+                                        initialValues: {
+                                          required_quantity: condition.required_quantity,
+                                          negated: condition.negated,
+                                          params_json: JSON.stringify(condition.params, null, 2),
+                                        },
                                       },
-                                    },
-                                    execute: async ({ input }) => {
+                                      execute: async ({ input }) => {
                                       let params: Record<string, unknown> = {}
                                       try {
                                         const parsed = JSON.parse(inputText(input, "params_json") || "{}")
@@ -676,16 +686,58 @@ function GmQuestPlan({
                                         return { type: "error", message: "В params некорректный JSON." }
                                       }
 
-                                      return mutateAndRefresh(
-                                        () => manager.updateCondition(condition.id, {
-                                          requiredQuantity: inputNumber(input, "required_quantity", 1),
-                                          negated: inputBoolean(input, "negated"),
-                                          params,
-                                        }),
-                                        "Условие обновлено.",
-                                      )
+                                        return mutateAndRefresh(
+                                          () => manager.updateCondition(condition.id, {
+                                            requiredQuantity: inputNumber(input, "required_quantity", 1),
+                                            negated: inputBoolean(input, "negated"),
+                                            params,
+                                          }),
+                                          "Условие обновлено.",
+                                        )
+                                      },
                                     },
-                                  }]
+                                    {
+                                      id: "quest-condition-narrative",
+                                      label: condition.state.satisfied
+                                        ? "Снять ручное выполнение"
+                                        : "Подтвердить сюжетное условие",
+                                      hidden: condition.condition_type !== "custom_narrative",
+                                      surface: {
+                                        kind: "editor",
+                                        eyebrow: "Quest Engine · ручное решение",
+                                        title: CONDITION_LABELS[condition.condition_type] || condition.condition_type,
+                                        fields: [
+                                          {
+                                            id: "satisfied",
+                                            label: "Условие выполнено",
+                                            type: "checkbox",
+                                          },
+                                          {
+                                            id: "note",
+                                            label: "Основание / заметка",
+                                            type: "textarea",
+                                          },
+                                        ],
+                                        initialValues: {
+                                          satisfied: condition.state.satisfied,
+                                          note:
+                                            typeof condition.state.evidence.note === "string"
+                                              ? condition.state.evidence.note
+                                              : "",
+                                        },
+                                        submitLabel: "Сохранить решение",
+                                      },
+                                      execute: ({ input }) => mutateAndRefresh(
+                                        () => manager.setNarrativeConditionResolution(
+                                          condition.id,
+                                          inputBoolean(input, "satisfied"),
+                                          inputText(input, "note"),
+                                        ),
+                                        "Ручное условие обновлено.",
+                                        true,
+                                      ),
+                                    },
+                                  ]
 
                                   return (
                                     <SnakeTrigger
@@ -693,7 +745,10 @@ function GmQuestPlan({
                                       entity={{ type: "quest-condition", id: condition.id }}
                                       actions={conditionActions}
                                     >
-                                      <div className="u1-character-quests__gm-condition">
+                                      <div
+                                        className="u1-character-quests__gm-condition"
+                                        data-satisfied={condition.state.satisfied || undefined}
+                                      >
                                         <span>
                                           {condition.negated ? "НЕ · " : ""}
                                           {CONDITION_LABELS[condition.condition_type]
@@ -705,6 +760,13 @@ function GmQuestPlan({
                                             ? ` ×${condition.required_quantity}`
                                             : ""}
                                         </strong>
+                                        <em>
+                                          {condition.state.satisfied
+                                            ? "Выполнено"
+                                            : condition.condition_type === "custom_narrative"
+                                              ? "Ждёт решения"
+                                              : "Ждёт условия"}
+                                        </em>
                                         {conditionParamsLabel(condition.params) ? (
                                           <small>{conditionParamsLabel(condition.params)}</small>
                                         ) : null}
