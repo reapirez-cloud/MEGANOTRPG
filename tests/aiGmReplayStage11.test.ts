@@ -11,6 +11,9 @@ const migration = read(
 const ledgerLinks = read(
   "supabase/migrations/20260923140500_ai_gm_replay_stage11_ledger_links_v1.sql",
 )
+const indexMigration = read(
+  "supabase/migrations/20260923141000_ai_gm_replay_stage11_indexes_v1.sql",
+)
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
 const snakeActions = read(
   "src/ui-v1-isolated/chat-room/chatMessageSnakeActions.ts",
@@ -51,6 +54,11 @@ test("Stage 11 captures legacy reply_message_id and reply_message_ids", () => {
   assert.match(ledgerLinks, /v_job\.result->>'reply_message_id'/)
   assert.match(ledgerLinks, /jsonb_array_elements_text/)
   assert.match(ledgerLinks, /v_job\.result->'reply_message_ids'/)
+})
+
+test("Stage 11 covers campaign revision lookup", () => {
+  assert.match(indexMigration, /ai_gm_turn_revisions_campaign_idx/)
+  assert.match(indexMigration, /campaign_id,created_at desc/)
 })
 
 test("Stage 11 rollback is fail-closed for mechanics and later conversation", () => {
@@ -112,14 +120,17 @@ test("Stage 11 Snake exposes regenerate, edit-resend and manager undo", () => {
   assert.match(chatFeed, /createChatMessageSnakeActions/)
 })
 
-test("Stage 11 remains IN PROGRESS until irreversible and dependency E2E plus final CI", () => {
+test("Stage 11 is certified READY and replay rollback debt is removed", () => {
   assert.match(
     roadmap,
-    /\| 11 \| IN PROGRESS \| Regenerate, edit\/retry and undo ledger \|/,
+    /\| 11 \| READY \| Regenerate, edit\/retry and undo ledger \|/,
   )
-  assert.match(roadmap, /Stage 11 is IN PROGRESS/)
-  assert.match(readinessDebt, /id: "snake-edit-and-resend"/)
-  assert.match(readinessDebt, /id: "snake-regenerate-gm-turn"/)
-  assert.match(readinessDebt, /id: "gm-turn-replay-rollback"/)
-  assert.match(readinessDebt, /id: "undo-last-gm-turn"/)
+  assert.match(
+    roadmap,
+    /Stage 11 is READY\. READY stages: 1–11\. Next stage to execute: 12\./,
+  )
+  assert.doesNotMatch(readinessDebt, /id: "snake-edit-and-resend"/)
+  assert.doesNotMatch(readinessDebt, /id: "snake-regenerate-gm-turn"/)
+  assert.doesNotMatch(readinessDebt, /id: "gm-turn-replay-rollback"/)
+  assert.doesNotMatch(readinessDebt, /id: "undo-last-gm-turn"/)
 })
