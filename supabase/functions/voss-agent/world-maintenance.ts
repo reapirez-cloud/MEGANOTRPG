@@ -590,6 +590,7 @@ async function saveMaintenanceMemory(
   admin: SupabaseClient,
   campaignId: string,
   managerUserId: string,
+  jobId: string,
   model: RouterModel,
   analysis: MaintenanceAnalysis,
   snapshot: Awaited<ReturnType<typeof loadMaintenanceSnapshot>>,
@@ -607,9 +608,19 @@ async function saveMaintenanceMemory(
   const firstMessage = snapshot.targetMessages[0]
   const lastMessage = snapshot.targetMessages[snapshot.targetMessages.length - 1]
 
-  const summaryInsert = await admin
+  const existingSummary = await admin
     .from("campaign_memory_summaries")
-    .insert({
+    .select("id")
+    .eq("maintenance_job_id", jobId)
+    .maybeSingle()
+
+  if (existingSummary.error) throw new Error(existingSummary.error.message)
+
+  const summaryInsert = existingSummary.data?.id
+    ? { data: existingSummary.data, error: null }
+    : await admin
+      .from("campaign_memory_summaries")
+      .insert({
       campaign_id: campaignId,
       title: analysis.summaryTitle,
       summary: analysis.summary || "Окно обработано без устойчивых изменений.",
@@ -623,13 +634,14 @@ async function saveMaintenanceMemory(
       model_id: model.id,
       created_by: managerUserId,
       status: "active",
+      maintenance_job_id: jobId,
     })
-    .select("id")
-    .single()
+      .select("id")
+      .single()
 
   if (summaryInsert.error) throw new Error(summaryInsert.error.message)
 
-  const factRows = analysis.facts.flatMap((fact) => {
+  const factRows = analysis.facts.flatMap((fact, factIndex) => {
     const evidenceMessageIds = ids(fact.evidence_message_ids, 45)
     if (
       confidence(fact.confidence) < 0.75 ||
@@ -673,6 +685,8 @@ async function saveMaintenanceMemory(
         day_period: snapshot.room.day_period ?? null,
       },
       created_by: managerUserId,
+      maintenance_job_id: jobId,
+      maintenance_fact_index: factIndex,
     }]
   })
 
@@ -680,7 +694,9 @@ async function saveMaintenanceMemory(
   if (factRows.length) {
     const factsInsert = await admin
       .from("campaign_memory_facts")
-      .insert(factRows)
+      .upsert(factRows, {
+        onConflict: "maintenance_job_id,maintenance_fact_index",
+      })
       .select("id")
 
     if (factsInsert.error) throw new Error(factsInsert.error.message)
@@ -733,6 +749,7 @@ async function processMaintenanceJob(
     admin,
     campaignId,
     job.requested_by,
+    job.id,
     model,
     analysis,
     snapshot,
