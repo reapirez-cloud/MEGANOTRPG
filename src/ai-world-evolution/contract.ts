@@ -321,7 +321,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Daily 30% candidate Resolver",
     purpose:
       "Build whole-entity candidate pools, select entities server-side and pre-roll all daily d100 values before Flash is invoked.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "campaign_day/day_period state",
       "location-scoped dawn",
