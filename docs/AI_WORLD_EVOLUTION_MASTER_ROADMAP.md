@@ -409,6 +409,8 @@ Tests:
 
 ## Stage 7 — AI GM scene-actor integration
 
+**Status: CERTIFIED — 2026-09-23**
+
 Expose narrow AI-world tools to the primary GM/runtime:
 
 - spawn scene actor(s);

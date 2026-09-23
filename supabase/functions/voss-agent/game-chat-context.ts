@@ -21,6 +21,7 @@ export type Stage2GameChatContext = {
   inventoryChargeItems: JsonRecord[]
   npcProfiles: JsonRecord[]
   npcRuntime: JsonRecord[]
+  sceneActors: JsonRecord[]
   relationships: JsonRecord[]
   assets: JsonRecord[]
   factionMemberships: JsonRecord[]
@@ -455,6 +456,81 @@ export async function buildGameChatContextV2({
     ? locationById.get(sourceLocationId) || null
     : null
 
+  const sceneActorsResult = sourceLocationId
+    ? await admin
+        .from("ai_scene_actors")
+        .select("id,room_id,location_id,source_bestiary_slug,display_label,runtime_ordinal,current_hp,max_hp,life_state,conditions,effects,runtime_state,campaign_day,day_period,revision,mechanics_snapshot")
+        .eq("campaign_id", campaignId)
+        .eq("room_id", roomId)
+        .eq("location_id", sourceLocationId)
+        .eq("runtime_state", "active")
+        .eq("life_state", "alive")
+        .order("spawned_at", { ascending: true })
+        .limit(40)
+    : { data: [], error: null }
+
+  if (sceneActorsResult.error) throw new Error(sceneActorsResult.error.message)
+
+  const rawSceneActors = rows(sceneActorsResult.data)
+    .filter((actor) =>
+      currentDay === null ||
+      nullableNumber(actor.campaign_day) === null ||
+      Number(actor.campaign_day) <= currentDay
+    )
+  const sceneActorIds = rawSceneActors.map((actor) => String(actor.id))
+  const sceneActorResourcesResult = sceneActorIds.length
+    ? await admin
+        .from("ai_scene_actor_resources")
+        .select("actor_id,state_key,current,max_snapshot,label,recharge")
+        .in("actor_id", sceneActorIds)
+    : { data: [], error: null }
+
+  if (sceneActorResourcesResult.error) {
+    throw new Error(sceneActorResourcesResult.error.message)
+  }
+
+  const sceneActorResources = rows(sceneActorResourcesResult.data)
+  const sceneActors = rawSceneActors.map((actor) => {
+    const mechanics = Array.isArray(actor.mechanics_snapshot)
+      ? actor.mechanics_snapshot as JsonRecord[]
+      : []
+    return {
+      id: actor.id,
+      display_label: actor.display_label,
+      runtime_ordinal: actor.runtime_ordinal,
+      source_bestiary_slug: actor.source_bestiary_slug,
+      current_hp: actor.current_hp,
+      max_hp: actor.max_hp,
+      life_state: actor.life_state,
+      conditions: actor.conditions,
+      effects: actor.effects,
+      campaign_day: actor.campaign_day,
+      day_period: actor.day_period,
+      revision: actor.revision,
+      resources: sceneActorResources
+        .filter((resource) => String(resource.actor_id) === String(actor.id))
+        .map((resource) => ({
+          state_key: resource.state_key,
+          current: resource.current,
+          max: resource.max_snapshot,
+          label: resource.label,
+          recharge: resource.recharge,
+        })),
+      actions: mechanics.map((mechanic) => {
+        const runtime = record(mechanic.runtime)
+        const resource = record(mechanic.resource)
+        return {
+          mechanic_key: mechanic.stable_key,
+          label: mechanic.label,
+          economy: mechanic.economy,
+          kind: runtime.kind,
+          save_ability: runtime.saveAbility || null,
+          resource_key: resource.key || null,
+        }
+      }),
+    }
+  })
+
   const roomMembers = rows(roomMembersResult.data)
   const roomMemberByUser = new Map(
     roomMembers.map((member) => [String(member.user_id), member]),
@@ -821,6 +897,7 @@ export async function buildGameChatContextV2({
     inventoryChargeItems: rows(inventoryChargesResult.data),
     npcProfiles: rows(npcProfilesResult.data),
     npcRuntime: rows(npcRuntimeResult.data),
+    sceneActors,
     relationships,
     assets: rows(assetsResult.data),
     factionMemberships: factionMemberships.map((item) => ({
@@ -851,6 +928,8 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
       physical_scene_history_only: true,
       direct_pc_audience_is_server_authoritative: true,
       direct_pc_never_authorizes_ai_to_speak_for_recipient: true,
+      unnamed_mechanical_extras_use_scene_actors_not_characters: true,
+      scene_actor_runtime_ordinal_is_not_a_personal_name: true,
     },
     current_game_time: context.currentGameTime,
     source_audience: context.sourceAudience,
@@ -864,6 +943,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     charged_inventory_items_for_present_characters: context.inventoryChargeItems,
     present_npc_profiles: context.npcProfiles,
     canonical_npc_runtime: context.npcRuntime,
+    active_scene_actors: context.sceneActors,
     relationships: context.relationships,
     property_and_assets: context.assets,
     faction_memberships: context.factionMemberships,

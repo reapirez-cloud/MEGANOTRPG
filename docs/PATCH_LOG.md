@@ -33,6 +33,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Primary GM scene-actor tools delegate to Stage-5/6 service-only RPCs. Spawn keys are server-derived from the durable GM job/tool call, action/roll mechanics remain server-authoritative, and flee/remove use the current server context revision rather than model-supplied state.
+- Added compact `active_scene_actors` to game-chat canonical context with per-instance HP/resources/revision plus legal mechanic keys, while withholding model-owned attack/damage/DC parameters. Pure direct-PC dialogue hard-blocks every scene-actor tool.
+- Integrated AI World Evolution Stage 7 into the primary AI GM with real provider tools: `spawn_scene_actor`, `use_scene_actor_action`, `roll_scene_actor`, `flee_scene_actor`, and `remove_scene_actor`. Anonymous encounter actors no longer need world materialization or numbered permanent NPC cards.
 - Scene actors now support save-action hard waits through the existing player roll-request pipeline, actor-local damage/death, and revision-checked flee/remove transitions. No temporary `characters` row is used anywhere in the scene-actor combat path.
 - Added the shared AI combat actor-reference boundary `{ kind: "npc", characterId } | { kind: "scene_actor", actorId }`. Canonical NPCs continue through the existing Stage-6 NPC runtime; ephemeral actors resolve mechanics from their immutable Stage-4 snapshot, consume their own resources and roll dice server-side.
 - Added service-only AI-world scene-actor spawn/list/runtime-state/archive RPCs. Spawn derives HP/mechanics/resources from the shared Bestiary Runtime Compiler and room-owned location/day/period; generic display labels keep numbering in `runtime_ordinal` instead of creating fake permanent identities.
@@ -47,6 +50,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Certified AI World Evolution Stage 7 with tool-selection/context regressions, direct-PC isolation, Stage-6 action/roll delegation checks, save-resume duplicate blocking, and the existing world-materializer numbered/unnamed permanent-NPC rejection guard.
 - Certified AI World Evolution Stage 6 with live rollback combat smoke: bandit attack + skill roll, independent dragon resource spending, forged-mechanic rejection, Acid Breath player save wait/resume, server-roll-derived lethal damage, sibling isolation, flee and remove all passed.
 - Certified AI World Evolution Stage 5 with live rollback smoke: three bandits spawned as three independent UUID actors with no `characters` growth; sibling HP/effect state stayed isolated; two dragons kept independent Legendary Resistance resource state; archive/list and spawn replay semantics passed.
 - Certified AI World Evolution Stage 4 with deterministic `adult-black-dragon` compile fixtures and a live rollback Stage-6 equivalence run: canonical sheet/template/resource output matched the shared compiled snapshot; authenticated/anon direct compiler execution is denied.

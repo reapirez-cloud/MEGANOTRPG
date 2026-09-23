@@ -254,7 +254,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Primary AI GM scene-actor integration",
     purpose:
       "Make anonymous bestiary-backed actors the normal AI GM path for unnamed scene extras.",
-    status: "partial",
+    status: "certified",
     existingFoundation: [
       "World materializer prompt blocks persistent unnamed extras",
       "Primary AI GM already chooses canonical NPC actions",
