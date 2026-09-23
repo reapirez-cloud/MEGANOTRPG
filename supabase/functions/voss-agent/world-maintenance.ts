@@ -139,7 +139,7 @@ async function claimMaintenanceJob(
     .eq("agent_key", "world-worker")
     .eq("job_type", "world_maintenance")
     .eq("status", "queued")
-    .eq("input->>maintenance_room_id", roomId)
+    .contains("input", { maintenance_room_id: roomId })
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle()
