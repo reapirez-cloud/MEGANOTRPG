@@ -7,6 +7,10 @@ import {
 
 import { supabase } from "../../lib/supabase"
 import ChatActionHost from "./ChatActionHost"
+import {
+  loadPcDialogueRecipients,
+  type PcDialogueRecipient,
+} from "./chatAudience"
 import { chatRoomPresentationState } from "./chatRoomPresentation"
 import {
   CHAT_ACTION_REQUEST_EVENT,
@@ -160,11 +164,13 @@ async function sendTextMessage({
   userId,
   characterId,
   body,
+  recipientCharacterIds = [],
 }: {
   roomId: string
   userId: string
   characterId: string | null
   body: string
+  recipientCharacterIds?: string[]
 }) {
   const result = await supabase
     .from("chat_messages")
@@ -175,6 +181,8 @@ async function sendTextMessage({
       character_id: characterId,
       author_name: "",
       body,
+      audience_scope: recipientCharacterIds.length ? "direct_pc" : "scene",
+      recipient_character_ids: recipientCharacterIds,
     })
     .select("id")
     .single()
@@ -221,6 +229,8 @@ export default function ChatComposer({
   const [turnDraft, setTurnDraft] = useState<PlayerTurnDraft | null>(null)
   const [movementText, setMovementText] = useState("")
   const [turnLoading, setTurnLoading] = useState(false)
+  const [dialogueRecipients, setDialogueRecipients] = useState<PcDialogueRecipient[]>([])
+  const [recipientCharacterIds, setRecipientCharacterIds] = useState<string[]>([])
 
   const speakers = useChatSpeakerOptions({
     campaignId: model.viewer.campaignId,
@@ -292,6 +302,40 @@ export default function ChatComposer({
     let cancelled = false
 
     if (!queuePlayerTurn || !selectedCharacterId) {
+      setDialogueRecipients([])
+      setRecipientCharacterIds([])
+      return () => {
+        cancelled = true
+      }
+    }
+
+    void loadPcDialogueRecipients({
+      roomId: model.roomId,
+      sourceCharacterId: selectedCharacterId,
+    })
+      .then((rows) => {
+        if (cancelled) return
+        setDialogueRecipients(rows)
+        const available = new Set(rows.map((row) => row.character_id))
+        setRecipientCharacterIds((current) =>
+          current.filter((id) => available.has(id)),
+        )
+      })
+      .catch(() => {
+        if (cancelled) return
+        setDialogueRecipients([])
+        setRecipientCharacterIds([])
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [model.roomId, queuePlayerTurn, selectedCharacterId])
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!queuePlayerTurn || !selectedCharacterId) {
       setTurnDraft(null)
       setMovementText("")
       return () => {
@@ -309,6 +353,7 @@ export default function ChatComposer({
         setTurnDraft(draft)
         setMovementText(draft?.movement?.description || "")
         setText(draft?.description || "")
+        setRecipientCharacterIds(draft?.recipient_character_ids || [])
       })
       .catch((error) => {
         if (cancelled) return
@@ -428,6 +473,7 @@ export default function ChatComposer({
       componentOrder,
       description,
       expectedRevision: turnDraft?.revision ?? null,
+      recipientCharacterIds,
     })
     setTurnDraft(saved)
     setMovementText(saved.movement?.description || "")
@@ -539,11 +585,13 @@ export default function ChatComposer({
           draftId: saved.id,
           revision: saved.revision,
           turnCommandId: newPlayerTurnCommandId(),
+          recipientCharacterIds,
         })
 
         setTurnDraft(null)
         setMovementText("")
         setText("")
+        setRecipientCharacterIds([])
         if (textareaRef.current) {
           textareaRef.current.style.height = "auto"
           textareaRef.current.focus()
@@ -570,6 +618,7 @@ export default function ChatComposer({
         userId: model.viewer.userId,
         characterId: selectedCharacterId,
         body,
+        recipientCharacterIds,
       })
       setText("")
       if (textareaRef.current) {
@@ -734,6 +783,45 @@ export default function ChatComposer({
                 </button>
               ) : null}
             </div>
+          </div>
+        ) : null}
+
+        {queuePlayerTurn && dialogueRecipients.length ? (
+          <div
+            className="u1-chat-audience"
+            aria-label="Адресаты реплики"
+            data-direct={recipientCharacterIds.length > 0 || undefined}
+          >
+            <span>Кому</span>
+            <button
+              type="button"
+              data-selected={recipientCharacterIds.length === 0 || undefined}
+              disabled={sending || turnLoading}
+              onClick={() => setRecipientCharacterIds([])}
+            >
+              Сцена
+            </button>
+            {dialogueRecipients.map((recipient) => {
+              const selected = recipientCharacterIds.includes(recipient.character_id)
+              return (
+                <button
+                  key={recipient.character_id}
+                  type="button"
+                  data-selected={selected || undefined}
+                  aria-pressed={selected}
+                  disabled={sending || turnLoading}
+                  onClick={() =>
+                    setRecipientCharacterIds((current) =>
+                      current.includes(recipient.character_id)
+                        ? current.filter((id) => id !== recipient.character_id)
+                        : [...current, recipient.character_id],
+                    )
+                  }
+                >
+                  {recipient.character_name}
+                </button>
+              )
+            })}
           </div>
         ) : null}
 

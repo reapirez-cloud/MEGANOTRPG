@@ -2,31 +2,6 @@
 
 > Developer/agent checkpoint. Not player-facing content.
 
-## AI GM readiness debt
-
-**Status:** ACTIVE_TEMPORARY_DEBT  
-**Marked:** 2026-09-23  
-**Branch:** dev
-
-Persistent numbered stage counter: `docs/AI_GM_ROADMAP.md`.\n\nCanonical temporary code tracker: `src/ai/aiGmReadinessDebt.ts`.
-
-Hard rule: every item in that file carries the marker **«УДАЛИТЬ ПРИ РЕЙДИ»** and must be deleted as soon as the implementation is actually READY. Do not preserve completed entries as historical TODOs. When the array becomes empty, delete the tracker file and this queue section.
-
-The tracker currently owns the full AI-GM debt discussed for:
-- campaign-level selectable main GM model;
-- `AI` selector replacing `VI`;
-- hard stop/resume on player roll requests;
-- NPC rolls and canonical ability cards;
-- narrator vs NPC dialogue identities and avatars;
-- canonical NPC stats/abilities and text inventory;
-- NPC/location persistent art generation plus requested item art;
-- action/bonus-action/movement/text turn queue;
-- game-time-aware long-term memory consolidation and ageing of archived facts;
-- player-intent/world-authority firewall;
-- Snake edit-and-resend / regenerate;
-- GM short/long rest and dawn recovery;\n- short rest / long rest / dawn recovery controls for AI GM;
-- GM-turn rollback/replay, undo and runtime status;\n- cooperative split-party scene routing and explicit PC→PC recipient/audience metadata.
-
 ## Sorcerer follow-up
 
 **Status:** DEFERRED_AFTER_BASE_STAGE_6  

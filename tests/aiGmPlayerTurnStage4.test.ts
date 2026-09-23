@@ -125,10 +125,10 @@ test("Stage 4 client queues actions and spells instead of executing them immedia
   assert.match(composer, /cancelTurn/)
 
   assert.match(queue, /get_player_turn_draft_v1/)
-  assert.match(queue, /save_player_turn_draft_v1/)
+  assert.match(queue, /save_player_turn_draft_v2/)
   assert.match(queue, /p_component_order: componentOrder/)
   assert.match(queue, /reorderPlayerTurnComponents/)
-  assert.match(queue, /submit_player_turn_v1/)
+  assert.match(queue, /submit_player_turn_stage12_v1/)
 })
 
 test("Stage 4 AI GM starts only after atomic submit returns the final trigger message", () => {
@@ -273,11 +273,9 @@ test("Stage 4 draft table stays read-only and anonymous callers are rejected", (
   assert.match(hardening, /auth\.jwt\(\) ->> 'is_anonymous'/)
 })
 
-test("Stage 4 stays READY while later roadmap stages advance", () => {
-  const debt = read("src/ai/aiGmReadinessDebt.ts")
+test("Stage 4 stays READY after the roadmap closes", () => {
   const roadmap = read("docs/AI_GM_ROADMAP.md")
 
-  assert.doesNotMatch(debt, /id: "player-turn-action-queue"/)
   assert.match(roadmap, /\| 4 \| READY \|/)
-  assert.match(roadmap, /\| 5 \| (?:IN PROGRESS|READY) \|/)
+  assert.match(roadmap, /\| 12 \| READY \|/)
 })

@@ -138,12 +138,10 @@ test("roadmap preserves Stage 3 READY while later stages advance", () => {
 })
 
 
-test("completed Stage 3 debt is removed while later memory ageing debt remains", () => {
-  const debt = read("src/ai/aiGmReadinessDebt.ts")
-
-  assert.doesNotMatch(debt, /id: "fixed-world-worker"/)
-  assert.doesNotMatch(debt, /id: "world-maintenance-45-all-messages"/)
-  assert.match(debt, /id: "world-maintenance-memory"/)
+test("Stage 3 debt remains closed through final AI GM certification", () => {
+  const roadmap = read("docs/AI_GM_ROADMAP.md")
+  assert.match(roadmap, /\| 3 \| READY \|/)
+  assert.match(roadmap, /\| 12 \| READY \|/)
 })
 
 

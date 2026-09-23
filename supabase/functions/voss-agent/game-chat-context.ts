@@ -10,6 +10,10 @@ export type Stage2GameChatContext = {
     campaignDay: number | null
     dayPeriod: string | null
   }
+  sourceAudience: {
+    scope: "scene" | "direct_pc"
+    recipientCharacterIds: string[]
+  }
   players: JsonRecord[]
   presentCharacters: JsonRecord[]
   sheets: JsonRecord[]
@@ -74,6 +78,9 @@ function gameTimeFromEvent(event: JsonRecord | undefined) {
   return {
     campaignDay: nullableNumber(payload.campaign_day),
     dayPeriod: nullableString(payload.day_period),
+    sourceLocationId:
+      nullableString(event?.location_id) ||
+      nullableString(payload.location_snapshot),
   }
 }
 
@@ -91,6 +98,7 @@ function withGameAge(
       currentDay !== null && time.campaignDay !== null
         ? Math.max(0, currentDay - time.campaignDay)
         : null,
+    source_location_id: time.sourceLocationId,
   }
 }
 
@@ -345,7 +353,7 @@ export async function buildGameChatContextV2({
       .maybeSingle(),
     admin
       .from("chat_messages")
-      .select("id,author_name,body,user_id,character_id,event_kind,event_payload,attachment_kind,turn_command_id,turn_component,turn_order,created_at")
+      .select("id,author_name,body,user_id,character_id,event_kind,event_payload,attachment_kind,turn_command_id,turn_component,turn_order,audience_scope,recipient_character_ids,created_at")
       .eq("room_id", roomId)
       .lte("id", sourceMessageId)
       .order("id", { ascending: false })
@@ -404,7 +412,9 @@ export async function buildGameChatContextV2({
   )
   const sourceWorld = worldByCharacter.get(sourceCharacterId) || {}
   const sourceLocationId =
-    nullableString(sourceWorld.location_id) || nullableString(room.location_id)
+    nullableString(jobInput.source_location_id_snapshot) ||
+    nullableString(sourceWorld.location_id) ||
+    nullableString(room.location_id)
   const currentDay =
     nullableNumber(sourceWorld.campaign_day) ?? nullableNumber(room.campaign_day)
   const currentPeriod =
@@ -546,7 +556,7 @@ export async function buildGameChatContextV2({
     presentNpcIds.length
       ? admin
           .from("npc_profiles")
-          .select("character_id,role,species,creature_type,size,challenge_rating,occupation,faction,appearance,demeanor,motivation,public_notes,gm_notes,tags")
+          .select("character_id,role,species,creature_type,size,challenge_rating,occupation,faction,appearance,demeanor,motivation,public_notes,gm_notes,tags,inventory_text,inventory_data")
           .eq("campaign_id", campaignId)
           .in("character_id", presentNpcIds)
       : Promise.resolve({ data: [], error: null }),
@@ -629,12 +639,15 @@ export async function buildGameChatContextV2({
     )
   }
 
+  // The game chat is persistent for the character. Physical location can change
+  // many times inside the same room, so the GM always receives the latest 50
+  // messages from THIS CHAT, not the latest 50 from the current location.
   const history = rows(historyResult.data).reverse()
   const historyMessageIds = history.map((item) => String(item.id))
   const chatEventsResult = historyMessageIds.length
     ? await admin
         .from("campaign_events")
-        .select("id,source_id,payload,occurred_at")
+        .select("id,source_id,location_id,visibility,visible_character_ids,payload,occurred_at")
         .eq("campaign_id", campaignId)
         .eq("source_kind", "chat_message")
         .in("source_id", historyMessageIds)
@@ -646,22 +659,41 @@ export async function buildGameChatContextV2({
     rows(chatEventsResult.data).map((item) => [String(item.source_id), item]),
   )
 
-  const recentMessages = history.map((message) => {
-    const event = chatEventByMessage.get(String(message.id))
-    return withGameAge({
-      id: message.id,
-      author_name: message.author_name,
-      character_id: message.character_id,
-      body: message.body,
-      event_kind: message.event_kind,
-      event_payload: message.event_payload,
-      attachment_kind: message.attachment_kind,
-      turn_command_id: message.turn_command_id,
-      turn_component: message.turn_component,
-      turn_order: message.turn_order,
-      created_at: message.created_at,
-    }, event, currentDay)
-  })
+  const sourceMessage =
+    history.find((message) => Number(message.id) === sourceMessageId) || {}
+  const sourceAudienceScope =
+    nullableString(sourceMessage.audience_scope) === "direct_pc"
+      ? "direct_pc"
+      : "scene"
+  const sourceAudience = {
+    scope: sourceAudienceScope as "scene" | "direct_pc",
+    recipientCharacterIds: strings(sourceMessage.recipient_character_ids),
+  }
+
+  const recentMessages = history
+    .filter((message) => {
+      if (nullableString(message.audience_scope) !== "direct_pc") return true
+      if (String(message.character_id || "") === sourceCharacterId) return true
+      return strings(message.recipient_character_ids).includes(sourceCharacterId)
+    })
+    .map((message) => {
+      const event = chatEventByMessage.get(String(message.id))
+      return withGameAge({
+        id: message.id,
+        author_name: message.author_name,
+        character_id: message.character_id,
+        body: message.body,
+        event_kind: message.event_kind,
+        event_payload: message.event_payload,
+        attachment_kind: message.attachment_kind,
+        turn_command_id: message.turn_command_id,
+        turn_component: message.turn_component,
+        turn_order: message.turn_order,
+        audience_scope: message.audience_scope,
+        recipient_character_ids: message.recipient_character_ids,
+        created_at: message.created_at,
+      }, event, currentDay)
+    })
 
   const rawFacts = rows(memoryFactsResult.data)
     .filter((item) => memoryVisible(item, roomId))
@@ -681,7 +713,7 @@ export async function buildGameChatContextV2({
   if (memoryEventIds.length) {
     const memoryEventsResult = await admin
       .from("campaign_events")
-      .select("id,payload,occurred_at")
+      .select("id,location_id,visibility,visible_character_ids,payload,occurred_at")
       .eq("campaign_id", campaignId)
       .in("id", memoryEventIds)
 
@@ -701,6 +733,9 @@ export async function buildGameChatContextV2({
     return candidates[0]
   }
 
+  // Long-term memory also follows the persistent character chat/current domain
+  // owners. Location snapshots are retained as historical metadata, not used to
+  // throw away memories just because the character moved elsewhere.
   const memoryFacts = rawFacts.map((item) =>
     withGameAge(
       item,
@@ -740,6 +775,7 @@ export async function buildGameChatContextV2({
       campaignDay: currentDay,
       dayPeriod: currentPeriod,
     },
+    sourceAudience,
     players: playerCharacters,
     presentCharacters,
     sheets: rows(sheetsResult.data),
@@ -774,8 +810,12 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
       player_locations_are_independent: true,
       do_not_merge_split_party_scenes: true,
       pc_autonomy: "never speak, decide or act for a player character",
+      physical_scene_history_only: true,
+      direct_pc_audience_is_server_authoritative: true,
+      direct_pc_never_authorizes_ai_to_speak_for_recipient: true,
     },
     current_game_time: context.currentGameTime,
+    source_audience: context.sourceAudience,
     room: context.room,
     source_character: context.sourceCharacter,
     source_location: context.sourceLocation,
@@ -831,6 +871,10 @@ export function npcDialogueContextForPrompt(
     motivation: profile.motivation || null,
     public_notes: profile.public_notes || null,
     tags: profile.tags || [],
+    inventory_text: profile.inventory_text || "",
+    inventory_data: Array.isArray(profile.inventory_data)
+      ? profile.inventory_data
+      : [],
   }
 
   const nameById = new Map(

@@ -46,7 +46,7 @@ test("AI GM Stage 1 processes a queued job and writes the answer back to chat", 
 
   assert.match(runtime, /action !== "game_chat_turn"/)
   assert.match(runtime, /reserve_ai_gm_chat_turn_v1/)
-  assert.match(runtime, /\.eq\("status", "queued"\)/)
+  assert.match(runtime, /claim_ai_gm_scene_job_v1/)
   assert.match(context, /const CHAT_CONTEXT_LIMIT = 50/)
   assert.match(runtime, /resolveCampaignGmModel/)
   assert.match(runtime, /requestChatCompletion/)
@@ -74,11 +74,8 @@ test("UI triggers AI GM only after the player's own PC text message was stored",
   assert.match(composer, /void triggerAiGameMasterTurn/)
 })
 
-test("completed Stage 1 runtime debt is removed from the temporary tracker", () => {
-  const debt = read("src/ai/aiGmReadinessDebt.ts")
-  assert.doesNotMatch(debt, /id: "gm-runtime-in-game-chat"/)
-  assert.doesNotMatch(debt, /id: "campaign-gm-model"/)
-  assert.doesNotMatch(debt, /id: "ai-button-selector"/)
-  assert.doesNotMatch(debt, /id: "gm-turn-replay-rollback"/)
-  assert.match(debt, /id: "gm-turn-status-ui"/)
+test("Stage 1 stays certified after the AI GM roadmap closes", () => {
+  const roadmap = read("docs/AI_GM_ROADMAP.md")
+  assert.match(roadmap, /\| 1 \| READY \| Durable AI GM turn in the canonical game chat \|/)
+  assert.match(roadmap, /\| 12 \| READY \|/)
 })

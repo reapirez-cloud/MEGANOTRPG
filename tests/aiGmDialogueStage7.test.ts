@@ -11,7 +11,6 @@ const migration = read(
 const context = read("supabase/functions/voss-agent/game-chat-context.ts")
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
 const roadmap = read("docs/AI_GM_ROADMAP.md")
-const readinessDebt = read("src/ai/aiGmReadinessDebt.ts")
 
 test("Stage 7 publishes ordered GM outputs idempotently", () => {
   assert.match(migration, /chat_messages_ai_gm_output_sequence_unique/)
@@ -88,5 +87,4 @@ test("Stage 7 is certified READY and its readiness debt is removed", () => {
   )
   assert.match(roadmap, /\| 7 \| READY \|/)
   assert.match(roadmap, /READY stages: 1–(?:7|8|9|10|11|12)/)
-  assert.doesNotMatch(readinessDebt, /id: "narrator-and-npc-dialogue"/)
 })

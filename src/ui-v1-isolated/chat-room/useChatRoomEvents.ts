@@ -133,7 +133,7 @@ export function useChatRoomEvents(roomId: string) {
       supabase
         .from("chat_messages")
         .select(
-          "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at, attachment_url, attachment_kind, event_kind, event_payload",
+          "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at, attachment_url, attachment_kind, event_kind, event_payload, audience_scope, recipient_character_ids",
         )
         .eq("room_id", roomId)
         .order("id", { ascending: false })
@@ -163,7 +163,7 @@ export function useChatRoomEvents(roomId: string) {
     const messagesResult = await supabase
       .from("chat_messages")
       .select(
-        "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at, attachment_url, attachment_kind, event_kind, event_payload",
+        "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at, attachment_url, attachment_kind, event_kind, event_payload, audience_scope, recipient_character_ids",
       )
       .eq("room_id", roomId)
       .order("id", { ascending: false })
@@ -194,7 +194,7 @@ export function useChatRoomEvents(roomId: string) {
     const messagesResult = await supabase
       .from("chat_messages")
       .select(
-        "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at, attachment_url, attachment_kind, event_kind, event_payload",
+        "id, room_id, user_id, client_id, character_id, author_name, author_avatar_url, body, created_at, edited_at, attachment_url, attachment_kind, event_kind, event_payload, audience_scope, recipient_character_ids",
       )
       .eq("room_id", roomId)
       .lt("id", oldestId)

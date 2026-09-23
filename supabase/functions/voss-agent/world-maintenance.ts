@@ -30,6 +30,7 @@ const OWNER_TOOL_WHITELIST = new Set([
   "set_character_faction_reputation",
   "set_character_life_state",
   "set_location_secret_state",
+  "set_npc_text_inventory",
   "resolve_quest_condition",
   "run_quest_resolver",
 ])
@@ -41,7 +42,8 @@ const WORKER_SYSTEM = [
   "Подтверждённым evidence считается narration/GM message, NPC message или gameplay event card. Для owner_action обязательно укажи evidence_message_ids, среди которых есть хотя бы одно такое подтверждение.",
   "Не создавай новые NPC, локации, предметы, фракции или квесты из одного лишь упоминания. Не переписывай художественный текст в канон.",
   "owner_actions используй только для уже однозначно подтверждённых устойчивых изменений, которые ещё не отражены в current_state.",
-  "Разрешённые owner tools: move_character_world, set_world_discovery, update_world_npc, set_faction_membership, set_character_faction_reputation, set_character_life_state, set_location_secret_state, resolve_quest_condition, run_quest_resolver.",
+  "Разрешённые owner tools: move_character_world, set_world_discovery, update_world_npc, set_faction_membership, set_character_faction_reputation, set_character_life_state, set_location_secret_state, set_npc_text_inventory, resolve_quest_condition, run_quest_resolver.",
+  "Для подтверждённых вещей NPC используй set_npc_text_inventory: character_id, inventory_text и optional inventory_data array. Это лёгкий канонический список, он НЕ создаёт physical item instances. Не материализуй отдельные предметы, пока вещь не нужна механически или не передаётся игроку.",
   "Для update_world_npc меняй только поля, прямо подтверждённые окном: location_id, relationship или profile. Не переписывай имя, bio, stats, avatar.",
   "Факты memory_facts тоже должны иметь evidence_message_ids и не должны превращать неподтверждённое заявление PC в факт.",
   "Summary может описывать попытки игроков, но чётко отличай намерение от подтверждённого результата.",
@@ -498,6 +500,17 @@ function sourceEventIds(
 }
 
 function sanitizeOwnerArgs(tool: string, raw: JsonRecord): JsonRecord {
+  if (tool === "set_npc_text_inventory") {
+    const output: JsonRecord = {}
+    const characterId = text(raw.character_id, 100)
+    if (characterId) output.character_id = characterId
+    output.inventory_text = text(raw.inventory_text, 12000)
+    output.inventory_data = Array.isArray(raw.inventory_data)
+      ? raw.inventory_data.slice(0, 80)
+      : []
+    return output
+  }
+
   if (tool !== "update_world_npc") return raw
 
   const output: JsonRecord = {}
@@ -545,7 +558,22 @@ async function executeOwnerActions(
     const args = sanitizeOwnerArgs(tool, record(action.args))
     let result: unknown
 
-    if (tool === "resolve_quest_condition" || tool === "run_quest_resolver") {
+    if (tool === "set_npc_text_inventory") {
+      const characterId = text(args.character_id, 100)
+      if (!characterId) {
+        result = { error: "npc_character_id_required" }
+      } else {
+        const rpc = await admin.rpc("set_npc_text_inventory_v1", {
+          p_campaign_id: campaignId,
+          p_npc_character_id: characterId,
+          p_inventory_text: text(args.inventory_text, 12000),
+          p_inventory_data: Array.isArray(args.inventory_data)
+            ? args.inventory_data
+            : [],
+        })
+        result = rpc.error ? { error: rpc.error.message } : record(rpc.data)
+      }
+    } else if (tool === "resolve_quest_condition" || tool === "run_quest_resolver") {
       result = await executeVossQuestTool(
         {
           client: admin,
