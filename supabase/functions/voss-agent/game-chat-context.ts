@@ -284,9 +284,13 @@ async function loadActiveQuestContext(
 
 function memoryVisible(item: JsonRecord, roomId: string) {
   const visibility = nullableString(item.visibility) || "campaign"
-  if (visibility === "private" || visibility === "only_me") return false
   if (visibility === "room") return item.room_id === roomId
-  return true
+  if (visibility === "campaign" || visibility === "gm") return true
+
+  // Player/user-scoped memories are intentionally not promoted into the
+  // campaign-level GM context. This preserves the existing "Только я"
+  // privacy boundary instead of letting a service-role read erase it.
+  return false
 }
 
 function memoryRelevant(
