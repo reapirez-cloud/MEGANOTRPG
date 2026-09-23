@@ -24,7 +24,7 @@ const SYSTEM = [
   "Оценивай роль, класс/профессию, уровень, challenge_rating, creature_type и краткое описание NPC.",
   "Не придумывай новые числа, атаки, заклинания или ресурсы. Ты выбираешь только существующий bestiary_slug из candidates.",
   "Если точного совпадения нет, выбирай ближайший разумный статблок по функции и опасности, а не по имени.",
-  "Верни только JSON без markdown: {"bestiary_slug":"...","reason":"коротко"}.",
+  'Верни только JSON без markdown: {"bestiary_slug":"...","reason":"коротко"}.',
 ].join("\n")
 
 function record(value: unknown): JsonRecord {
@@ -47,7 +47,7 @@ function parseObject(value: string): JsonRecord | null {
   if (!trimmed) return null
   const candidates = [
     trimmed,
-    trimmed.replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/, ""),
+    trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, ""),
   ]
   const start = trimmed.indexOf("{")
   const end = trimmed.lastIndexOf("}")
