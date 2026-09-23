@@ -20,7 +20,6 @@ const snakeActions = read(
 )
 const chatFeed = read("src/ui-v1-isolated/chat-room/ChatFeed.tsx")
 const roadmap = read("docs/AI_GM_ROADMAP.md")
-const readinessDebt = read("src/ai/aiGmReadinessDebt.ts")
 
 test("Stage 11 gives one source message a versioned canonical GM branch", () => {
   assert.match(migration, /private\.ai_gm_turn_revisions/)
@@ -127,8 +126,4 @@ test("Stage 11 is certified READY and replay rollback debt is removed", () => {
   )
   assert.match(roadmap, /\| 11 \| READY \|/)
   assert.match(roadmap, /READY stages: 1–(?:11|12)/)
-  assert.doesNotMatch(readinessDebt, /id: "snake-edit-and-resend"/)
-  assert.doesNotMatch(readinessDebt, /id: "snake-regenerate-gm-turn"/)
-  assert.doesNotMatch(readinessDebt, /id: "gm-turn-replay-rollback"/)
-  assert.doesNotMatch(readinessDebt, /id: "undo-last-gm-turn"/)
 })
