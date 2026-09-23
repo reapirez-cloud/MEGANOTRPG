@@ -50,6 +50,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Restored the exact legacy `Не запрашивай world_materialization второй раз` continuation marker inside the Stage 7 tool-aware post-materialization prompt so the existing canonical reread regression remains explicit.
 - Reconciled legacy AI-GM regression markers with the Stage 7 provider-tool loop: preserved explicit post-roll/post-recovery/post-materialization continuation markers and updated the Stage 5 world-evolution contract test from its obsolete `planned` expectation to the certified scene-actor boundary.
 - Reconciled the Stage 6 flee/remove regression with the runtime's normalized `v_transition` validation variable; the previous assertion incorrectly searched for raw `p_transition` even though runtime behavior and live smoke were correct.
 - Fixed the AI World Evolution contract validator to widen `as const` stage literals back to the public stage shape during runtime sanity checks; Stage 7 certification no longer makes valid zero/status guard comparisons fail TypeScript compilation.

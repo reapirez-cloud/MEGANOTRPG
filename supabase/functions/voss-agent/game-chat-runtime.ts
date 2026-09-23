@@ -1966,7 +1966,7 @@ export async function runGameChatTurn(
         isResume: false,
         extraSystem: [
           "КАНОНИЧЕСКИЙ СНИМОК ПОСЛЕ WORLD MATERIALIZATION уже перечитан сервером.",
-          "WORLD MATERIALIZATION УЖЕ ВЫПОЛНЕНА В ЭТОМ ХОДЕ. Не запрашивай её повторно.",
+          "WORLD MATERIALIZATION УЖЕ ВЫПОЛНЕНА В ЭТОМ ХОДЕ. Не запрашивай world_materialization второй раз.",
         ],
         userContent:
           "Продолжи ТОТ ЖЕ ход после серверной материализации мира. Используй только обновлённые канонические UUID. Для безымянных encounter actors используй scene-actor tools. Верни JSON по контракту, если tool не завершил ход. Исходное сообщение игрока:\n" +
