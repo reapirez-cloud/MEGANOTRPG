@@ -17,6 +17,9 @@ const execution = read(
 const atomicSave = read(
   "supabase/migrations/20260923113500_ai_gm_npc_runtime_stage6_atomic_save_v1.sql",
 )
+const chatIdentity = read(
+  "supabase/migrations/20260923092804_ai_gm_npc_chat_identity_bridge_v1.sql",
+)
 const worker = read("supabase/functions/npc-runtime/index.ts")
 const context = read("supabase/functions/voss-agent/game-chat-context.ts")
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
@@ -133,4 +136,22 @@ test("GM Stage 6 can choose canonical NPC action or NPC roll without numeric mec
 test("GM Stage 6 blocks duplicate NPC action after a player-save resume", () => {
   assert.match(runtime, /last_npc_action_mechanic_id/)
   assert.match(runtime, /duplicate_npc_action_after_roll_resume_blocked/)
+})
+
+test("Stage 6 AI GM NPC events bypass manual actor binding only inside server runtime", () => {
+  assert.match(
+    chatIdentity,
+    /set_config\('meganot\.ai_gm_runtime','on',true\)/,
+  )
+  assert.match(
+    chatIdentity,
+    /if current_setting\('meganot\.ai_gm_runtime', true\) = 'on' then/,
+  )
+  assert.match(
+    chatIdentity,
+    /v_runtime_user_id := coalesce\(new\.user_id, auth\.uid\(\)\)/,
+  )
+  assert.match(chatIdentity, /c\.character_type = 'npc'/)
+  assert.match(chatIdentity, /c\.publication_state = 'campaign'/)
+  assert.match(chatIdentity, /if auth\.uid\(\) is null then/)
 })
