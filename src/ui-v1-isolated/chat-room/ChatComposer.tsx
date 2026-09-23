@@ -21,8 +21,11 @@ import {
   cancelPlayerTurnDraft,
   loadPlayerTurnDraft,
   newPlayerTurnCommandId,
+  orderedPlayerTurnComponents,
+  reorderPlayerTurnComponents,
   savePlayerTurnDraft,
   submitPlayerTurnDraft,
+  type PlayerTurnComponent,
   type PlayerTurnDraft,
   type PlayerTurnEntry,
   type PlayerTurnSlot,
@@ -403,11 +406,13 @@ export default function ChatComposer({
     movement = movementText.trim()
       ? { description: movementText.trim() }
       : null,
+    componentOrder = turnDraft?.component_order || [],
     description = text,
   }: {
     actionEntry?: PlayerTurnEntry | null
     bonusActionEntry?: PlayerTurnEntry | null
     movement?: { description?: string } | null
+    componentOrder?: PlayerTurnComponent[]
     description?: string
   } = {}) => {
     if (!queuePlayerTurn || !selectedCharacterId) {
@@ -420,6 +425,7 @@ export default function ChatComposer({
       actionEntry,
       bonusActionEntry,
       movement,
+      componentOrder,
       description,
       expectedRevision: turnDraft?.revision ?? null,
     })
@@ -447,13 +453,47 @@ export default function ChatComposer({
     }
   }
 
+  const moveTurnComponent = async (
+    component: PlayerTurnComponent,
+    direction: -1 | 1,
+  ) => {
+    if (!turnDraft) return
+
+    const currentOrder = orderedPlayerTurnComponents(turnDraft)
+    const nextOrder = reorderPlayerTurnComponents(
+      currentOrder,
+      component,
+      direction,
+    )
+    if (nextOrder.join(":") === currentOrder.join(":")) return
+
+    setSendError(null)
+    try {
+      await saveTurnState({ componentOrder: nextOrder })
+    } catch (error) {
+      setSendError(
+        error instanceof Error ? error.message : "Порядок хода не изменён",
+      )
+    }
+  }
+
   const clearTurnSlot = async (slot: PlayerTurnSlot) => {
     setSendError(null)
     try {
       await saveTurnState(
         slot === "action"
-          ? { actionEntry: null }
-          : { bonusActionEntry: null },
+          ? {
+              actionEntry: null,
+              componentOrder: orderedPlayerTurnComponents(turnDraft).filter(
+                (component) => component !== "action",
+              ),
+            }
+          : {
+              bonusActionEntry: null,
+              componentOrder: orderedPlayerTurnComponents(turnDraft).filter(
+                (component) => component !== "bonus_action",
+              ),
+            },
       )
     } catch (error) {
       setSendError(
@@ -586,33 +626,80 @@ export default function ChatComposer({
             data-turn-loading={turnLoading || undefined}
           >
             <div className="u1-player-turn__slots">
-              <div className="u1-player-turn__slot" data-filled={Boolean(turnDraft?.action_entry) || undefined}>
-                <span>Действие</span>
-                <strong>{turnDraft?.action_entry?.label || "Не выбрано"}</strong>
-                {turnDraft?.action_entry ? (
-                  <button
-                    type="button"
-                    aria-label="Убрать действие из хода"
-                    onClick={() => void clearTurnSlot("action")}
+              {(["action", "bonus_action"] as const).map((slot) => {
+                const entry =
+                  slot === "action"
+                    ? turnDraft?.action_entry
+                    : turnDraft?.bonus_action_entry
+                return (
+                  <div
+                    key={slot}
+                    className="u1-player-turn__slot"
+                    data-filled={Boolean(entry) || undefined}
                   >
-                    ×
-                  </button>
-                ) : null}
-              </div>
-              <div className="u1-player-turn__slot" data-filled={Boolean(turnDraft?.bonus_action_entry) || undefined}>
-                <span>Бонус</span>
-                <strong>{turnDraft?.bonus_action_entry?.label || "Не выбрано"}</strong>
-                {turnDraft?.bonus_action_entry ? (
-                  <button
-                    type="button"
-                    aria-label="Убрать бонусное действие из хода"
-                    onClick={() => void clearTurnSlot("bonus_action")}
-                  >
-                    ×
-                  </button>
-                ) : null}
-              </div>
+                    <span>{slot === "action" ? "Действие" : "Бонус"}</span>
+                    <strong>{entry?.label || "Не выбрано"}</strong>
+                    {entry ? (
+                      <button
+                        type="button"
+                        aria-label={
+                          slot === "action"
+                            ? "Убрать действие из хода"
+                            : "Убрать бонусное действие из хода"
+                        }
+                        onClick={() => void clearTurnSlot(slot)}
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
+
+            {turnDraft && orderedPlayerTurnComponents(turnDraft).length > 1 ? (
+              <div
+                className="u1-player-turn__order"
+                aria-label="Порядок компонентов хода"
+              >
+                {orderedPlayerTurnComponents(turnDraft).map(
+                  (component, index, order) => (
+                    <div key={component} data-turn-component={component}>
+                      <span>{index + 1}</span>
+                      <strong>
+                        {component === "action"
+                          ? turnDraft.action_entry?.label || "Действие"
+                          : component === "bonus_action"
+                            ? turnDraft.bonus_action_entry?.label || "Бонус"
+                            : turnDraft.movement?.description || "Движение"}
+                      </strong>
+                      <div>
+                        <button
+                          type="button"
+                          aria-label="Выше"
+                          disabled={index === 0 || sending}
+                          onClick={() =>
+                            void moveTurnComponent(component, -1)
+                          }
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Ниже"
+                          disabled={index === order.length - 1 || sending}
+                          onClick={() =>
+                            void moveTurnComponent(component, 1)
+                          }
+                        >
+                          ↓
+                        </button>
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : null}
             <div className="u1-player-turn__movement">
               <span>Движение</span>
               <input
