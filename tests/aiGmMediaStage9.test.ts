@@ -11,6 +11,7 @@ const migration = read(
 const worker = read("supabase/functions/ai-gm-media/index.ts")
 const imageTools = read("supabase/functions/voss-agent/image-tools.ts")
 const roadmap = read("docs/AI_GM_ROADMAP.md")
+const readinessDebt = read("src/ai/aiGmReadinessDebt.ts")
 
 test("Stage 9 queues NPC art from canonical NPC profile creation", () => {
   assert.match(migration, /queue_ai_gm_npc_media_after_profile_v1/)
@@ -168,10 +169,17 @@ test("Stage 9 private lifecycle tables enable RLS", () => {
   )
 })
 
-test("Stage 9 roadmap remains in progress until live certification", () => {
+test("Stage 9 is certified READY and closes only its media debt", () => {
   assert.match(
     roadmap,
-    /\| 9 \| IN PROGRESS \| NPC\/location art lifecycle and chat media publication \|/,
+    /\| 9 \| READY \| NPC\/location art lifecycle and chat media publication \|/,
   )
-  assert.match(roadmap, /Stage 9 is IN PROGRESS/)
+  assert.match(
+    roadmap,
+    /Stage 9 is READY\. READY stages: 1–9\. Next stage to execute: 10\./,
+  )
+  assert.doesNotMatch(readinessDebt, /id: "npc-art-on-database-create"/)
+  assert.doesNotMatch(readinessDebt, /id: "location-art-on-first-visit"/)
+  assert.doesNotMatch(readinessDebt, /id: "ai-art-directly-in-chat"/)
+  assert.match(readinessDebt, /id: "item-art-only-on-request"/)
 })
