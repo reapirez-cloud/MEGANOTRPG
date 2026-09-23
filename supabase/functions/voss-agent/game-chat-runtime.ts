@@ -10,7 +10,7 @@ import {
   ProviderGatewayError,
   requestChatCompletion,
 } from "./provider-gateway.ts"
-import { resolveVossModel } from "./model-router.ts"
+import { resolveCampaignGmModel } from "./model-router.ts"
 
 type JsonRecord = Record<string, unknown>
 
@@ -881,43 +881,16 @@ export async function runGameChatTurn(
       throw new Error("ai_gm_turn_input_invalid")
     }
 
-    const [{ data: setting, error: settingError }, initialContext] =
-      await Promise.all([
-        admin
-          .from("ai_agent_settings")
-          .select("selected_model_id")
-          .eq("campaign_id", campaignId)
-          .eq("agent_key", "voss")
-          .maybeSingle(),
-        buildGameChatContextV2({
-          admin,
-          campaignId,
-          jobInput: claimed.input,
-        }),
-      ])
-
-    if (settingError) throw new Error(settingError.message)
+    const [route, initialContext] = await Promise.all([
+      resolveCampaignGmModel(admin, { campaignId }),
+      buildGameChatContextV2({
+        admin,
+        campaignId,
+        jobInput: claimed.input,
+      }),
+    ])
 
     let context = initialContext
-    const selectedModelId =
-      typeof setting?.selected_model_id === "string"
-        ? setting.selected_model_id
-        : null
-
-    const route = await resolveVossModel(admin, {
-      campaignId,
-      canManage: true,
-      selectedModelId,
-      message: "Продолжение кооперативной игровой сцены",
-      viewContext: {
-        surface: "game_chat_runtime",
-        stage: 8,
-        source_location_id: context.sourceLocation?.id || null,
-        split_party: new Set(
-          context.players.map((player) => player.location_id).filter(Boolean),
-        ).size > 1,
-      },
-    })
 
     const providerPayload = await requestChatCompletion({
       model: route.model,
