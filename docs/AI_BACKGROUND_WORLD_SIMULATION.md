@@ -89,6 +89,29 @@ Examples:
 
 The goal is not to protect the story from insignificant characters becoming important. The goal is to let that happen naturally while excluding actors that do not possess a meaningful independent life.
 
+### 2.2 Persistent NPC identity requires a revealed personal name
+
+AI-world generation must not create permanent NPC cards merely to represent scene extras.
+
+Examples that stay non-persistent:
+- `Бандит 1`, `Бандит 2`;
+- `стражник у ворот`;
+- `случайный матрос`;
+- other generic labels used only to stage a scene.
+
+A permanent world-NPC card is created when an individual has a **canonical personal name that is known to the player**, or when the primary GM has explicitly committed to revealing that name in the current turn.
+
+Rules:
+- no technical numbering names just to obtain UUIDs;
+- unnamed extras do not enter background simulation;
+- once a real personal name is revealed, the actor may be promoted to one persistent NPC card;
+- after promotion, subsequent world/background state attaches to that same identity;
+- narrative importance is not required: a once-random goblin can become a persistent entity the moment the player learns the goblin's name.
+
+This identity threshold prevents entity spam while still allowing minor characters to grow into major ones organically.
+
+Current NPC combat runtime still expects canonical NPC cards. Therefore anonymous mechanically active combatants need a separate ephemeral scene-actor/runtime layer before this rule can be enforced as a hard database rejection for every NPC path. Until that layer exists, world materialization is instructed not to persist unnamed extras.
+
 For locations, hierarchy depth does not determine eligibility. A tavern may be a child of a district and still be a whole simulation unit. A room, toilet, staircase, corridor, individual table, closet or similar interior fragment is not independently simulated just because it was represented in the location tree.
 
 Add an explicit background classification used by AI-world generation for locations and persistent NPCs:
