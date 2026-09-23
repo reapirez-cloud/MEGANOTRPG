@@ -179,3 +179,15 @@ test("Stage 5 READY debt is removed and roadmap points to Stage 6", () => {
   assert.match(roadmap, /READY stages: 1–5/)
   assert.match(roadmap, /Next stage to execute: 6/)
 })
+
+
+test("Stage 5 hidden-DC table has an explicit deny-read RLS policy", () => {
+  const sql = read(
+    "supabase/migrations/20260923103500_ai_gm_player_roll_stage5_advisor_v1.sql",
+  )
+
+  assert.match(sql, /create policy pending_player_roll_requests_no_direct_reads/)
+  assert.match(sql, /for select/)
+  assert.match(sql, /to authenticated/)
+  assert.match(sql, /using \(false\)/)
+})
