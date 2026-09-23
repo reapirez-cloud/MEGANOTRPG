@@ -19,15 +19,23 @@ begin
     raise exception 'auth_required';
   end if;
 
-  select m.*,r.campaign_id
-    into v_message,v_campaign_id
+  select m.*
+    into v_message
   from public.chat_messages m
-  join public.chat_rooms r on r.id=m.room_id
   where m.id=p_message_id
-  for update of m;
+  for update;
 
   if v_message.id is null then
     raise exception 'chat_message_not_found';
+  end if;
+
+  select r.campaign_id
+    into v_campaign_id
+  from public.chat_rooms r
+  where r.id=v_message.room_id;
+
+  if v_campaign_id is null then
+    raise exception 'chat_room_not_found';
   end if;
 
   if v_message.user_id is distinct from v_user_id
