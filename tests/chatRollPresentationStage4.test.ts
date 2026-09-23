@@ -11,7 +11,7 @@ test("chat roll stage 4 uses lightweight PNG assets for canonical dice", async (
 
   for (const sides of [4, 6, 8, 10, 12, 20]) {
     assert.ok(
-      dice.includes(`${sides}: "/ui-v1/dice/d${sides}-graphite.png"`),
+      dice.includes(`${sides}: "d${sides}-graphite.png"`),
     )
 
     const asset = await readFile(
@@ -22,7 +22,7 @@ test("chat roll stage 4 uses lightweight PNG assets for canonical dice", async (
     assert.ok(asset.byteLength < 12_000)
   }
 
-  assert.match(dice, /CANONICAL_DIE_ASSETS/)
+  assert.match(dice, /CANONICAL_DIE_FILES/)\n  assert.match(dice, /DICE_ASSET_BASE/)
   assert.match(dice, /className="u1-die-glyph__image"/)
   assert.doesNotMatch(dice, /<svg/)
 })
