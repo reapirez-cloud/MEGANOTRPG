@@ -1459,6 +1459,32 @@ export async function startGameChatTurnRequest(
     return null
   }
 
+  const { data: aiWorldSlot, error: aiWorldError } = await input.admin
+    .from("ai_world_slots")
+    .select("id")
+    .eq("campaign_id", input.campaignId)
+    .maybeSingle()
+
+  if (aiWorldError) {
+    return {
+      status: 500,
+      body: {
+        error: aiWorldError.message,
+        code: "ai_gm_scope_check_failed",
+      },
+    }
+  }
+
+  if (!aiWorldSlot) {
+    return {
+      status: 404,
+      body: {
+        error: "ai_gm_not_available",
+        code: "ai_gm_not_available",
+      },
+    }
+  }
+
   const sourceChatMessageId = Number(input.body.sourceChatMessageId || 0)
   if (!Number.isInteger(sourceChatMessageId) || sourceChatMessageId <= 0) {
     return {
