@@ -380,6 +380,12 @@ export function useChatRoomShell(roomId: string) {
     const membership = membershipResult.data as MembershipRow
     const viewerRole = normalizeChatViewerRole(membership.role)
 
+    const aiScopeResult = await supabase.rpc("is_ai_world_campaign_v1", {
+      p_campaign_id: viewerContext.campaign_id,
+    })
+    const aiGameMasterEnabled =
+      !aiScopeResult.error && aiScopeResult.data === true
+
     const roomsResult = await supabase.rpc("get_campaign_chat_rooms", {
       p_campaign_id: viewerContext.campaign_id,
     })
@@ -449,6 +455,7 @@ export function useChatRoomShell(roomId: string) {
         role: viewerRole,
         isOwner: membership.is_owner === true,
         playerCharacterId: viewerContext.viewer_character_id,
+        aiGameMasterEnabled,
       },
       identity: viewerContext.can_manage
         ? presentation.character
