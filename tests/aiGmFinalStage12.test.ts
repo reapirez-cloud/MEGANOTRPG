@@ -52,12 +52,14 @@ test("Stage 12 player UI pages old chat history instead of loading the whole roo
   assert.match(feedHook, /setHasMore\(rawMessages\.length === MESSAGE_LIMIT\)/)
 })
 
-test("Stage 12 serializes GM turns by persistent room, not mutable location", () => {
-  assert.match(
-    migration,
-    /v_scene_key := 'room:'\|\|v_room_id::text/,
+test("Stage 12 serializes only explicit shared chat scenes", () => {
+  const queueFix = read(
+    "supabase/migrations/20260923150100_ai_gm_final_stage12_shared_scene_queue_fix_v1.sql",
   )
-  assert.match(migration, /'source_location_id_snapshot',v_location_id/)
+  assert.match(queueFix, /public\.scene_participants/)
+  assert.match(queueFix, /v_participant_count<2/)
+  assert.match(queueFix, /v_scene_key := 'room:'\|\|v_room_id::text/)
+  assert.match(queueFix, /same physical location/i)
   assert.match(migration, /claim_ai_gm_scene_job_v1/)
   assert.match(
     migration,
@@ -65,10 +67,8 @@ test("Stage 12 serializes GM turns by persistent room, not mutable location", ()
   )
   assert.match(runtime, /claim_ai_gm_scene_job_v1/)
   assert.match(runtime, /next_ai_gm_scene_job_v1/)
-  assert.match(
-    runtime,
-    /one game chat|один игровой чат персонажа|persistent room/,
-  )
+  assert.match(runtime, /free-play игроков параллельный/)
+  assert.match(runtime, /Одинаковая location_id сама по себе НЕ создаёт очередь/)
 })
 
 test("Stage 12 direct PC dialogue is explicit, location-validated and persisted", () => {
