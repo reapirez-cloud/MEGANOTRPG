@@ -11,6 +11,7 @@ const migration = read(
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
 const context = read("supabase/functions/voss-agent/game-chat-context.ts")
 const roadmap = read("docs/AI_GM_ROADMAP.md")
+const readinessDebt = read("src/ai/aiGmReadinessDebt.ts")
 
 test("Stage 8 uses canonical owner recovery boundaries", () => {
   assert.match(migration, /grant_character_short_rest\(v_target_id\)/)
@@ -98,12 +99,16 @@ test("Stage 8 preserves Stage 7 multi-message output-count contract", () => {
   assert.doesNotMatch(helper, /completed_outputs: messageIds\.length/)
 })
 
-test("Stage 8 roadmap is explicitly in progress until certification", () => {
+test("Stage 8 is certified READY and its readiness debt is removed", () => {
   assert.match(
     roadmap,
-    /\| 8 \| IN PROGRESS \| Short rest, long rest, dawn and game-time recovery \|/,
+    /\| 8 \| READY \| Short rest, long rest, dawn and game-time recovery \|/,
   )
-  assert.match(roadmap, /Stage 8 is IN PROGRESS/)
+  assert.match(
+    roadmap,
+    /Stage 8 is READY\. READY stages: 1–8\. Next stage to execute: 9\./,
+  )
+  assert.doesNotMatch(readinessDebt, /id: "gm-rest-and-dawn-controls"/)
 })
 
 
