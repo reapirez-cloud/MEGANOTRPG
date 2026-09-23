@@ -550,10 +550,10 @@ begin
       v_resource_key := 'npc_runtime_action_'||v_ord::text||'_uses';
       if lower(coalesce(v_usage->>'type',''))='per day' then
         v_resource_max := greatest(1,least(coalesce((v_usage->>'times')::integer,1),100));
-        v_recharge := '["long_rest"]'::jsonb;
+        v_recharge := '{"triggers":["long_rest"],"restore":"full"}'::jsonb;
       else
         v_resource_max := 1;
-        v_recharge := jsonb_build_array('special');
+        v_recharge := '{"triggers":["special"],"restore":"full"}'::jsonb;
       end if;
 
       insert into public.character_resource_states(
@@ -598,10 +598,10 @@ begin
     v_resource_key := 'npc_runtime_special_'||v_ord::text||'_uses';
     if lower(coalesce(v_usage->>'type',''))='per day' then
       v_resource_max := greatest(1,least(coalesce((v_usage->>'times')::integer,1),100));
-      v_recharge := '["long_rest"]'::jsonb;
+      v_recharge := '{"triggers":["long_rest"],"restore":"full"}'::jsonb;
     else
       v_resource_max := 1;
-      v_recharge := jsonb_build_array('special');
+      v_recharge := '{"triggers":["special"],"restore":"full"}'::jsonb;
     end if;
 
     insert into public.character_resource_states(
