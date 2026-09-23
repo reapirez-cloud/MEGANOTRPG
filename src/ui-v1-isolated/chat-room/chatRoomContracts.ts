@@ -55,6 +55,7 @@ export type ChatRoomShellModel = {
     role: ChatViewerRole
     isOwner: boolean
     playerCharacterId: string | null
+    aiGameMasterEnabled?: boolean
   }
   identity: ChatRoomHeaderIdentity
   context: ChatRoomHeaderContext
