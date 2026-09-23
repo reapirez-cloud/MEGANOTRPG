@@ -154,7 +154,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Shared Bestiary Runtime Compiler",
     purpose:
       "Provide one authoritative bestiary-to-runtime mechanical compiler for both canonical NPCs and ephemeral scene actors.",
-    status: "partial",
+    status: "certified",
     existingFoundation: [
       "Stage 6 NPC runtime currently compiles bestiary_catalog into character mechanics",
       "bestiary_catalog already exposes D&D stat blocks and mechanics",

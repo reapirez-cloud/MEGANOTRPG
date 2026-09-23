@@ -294,6 +294,8 @@ Tests:
 
 ## Stage 4 — Shared bestiary runtime compiler
 
+**Status: CERTIFIED — 2026-09-23**
+
 Refactor existing Stage 6 NPC bestiary compilation into one shared authoritative compiler.
 
 Input:

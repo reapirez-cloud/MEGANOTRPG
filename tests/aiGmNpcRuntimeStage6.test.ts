@@ -20,6 +20,9 @@ const atomicSave = read(
 const chatIdentity = read(
   "supabase/migrations/20260923114000_ai_gm_npc_chat_identity_bridge_v1.sql",
 )
+const sharedCompiler = read(
+  "supabase/migrations/20260923174503_ai_world_evolution_stage4_shared_bestiary_compiler_v1.sql",
+)
 const worker = read("supabase/functions/npc-runtime/index.ts")
 const context = read("supabase/functions/voss-agent/game-chat-context.ts")
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
@@ -72,6 +75,25 @@ test("NPC limited-use resources use canonical recharge object metadata", () => {
   assert.match(
     base,
     /'\{"triggers":\["special"\],"restore":"full"\}'::jsonb/,
+  )
+})
+
+test("Stage 6 canonical NPC materialization delegates to the shared bestiary compiler", () => {
+  assert.match(sharedCompiler, /compile_bestiary_runtime_v1/)
+  assert.match(
+    sharedCompiler,
+    /v_compiled := private\.compile_bestiary_runtime_v1\(p_bestiary_slug\)/,
+  )
+  assert.match(sharedCompiler, /bestiary_runtime_mechanic_for_npc_v1/)
+  assert.match(sharedCompiler, /bestiaryRuntimeCompilerVersion/)
+  const applyStart = sharedCompiler.indexOf(
+    "CREATE OR REPLACE FUNCTION public.apply_ai_gm_npc_runtime_build_v1",
+  )
+  assert.ok(applyStart >= 0)
+  const applyBody = sharedCompiler.slice(applyStart)
+  assert.doesNotMatch(
+    applyBody,
+    /jsonb_array_elements\(coalesce\(v_bestiary\.(actions|reactions|special_abilities)/,
   )
 })
 
