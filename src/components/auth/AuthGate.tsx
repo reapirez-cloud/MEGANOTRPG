@@ -16,7 +16,7 @@ type Phase =
   | "world-select"
   | "ai-unlock"
   | "ai-slots"
-  | "ai-world"
+  | "ai-character"
   | "ready"
   | "telegram-required"
   | "not-found"
@@ -59,6 +59,17 @@ type AiWorldCampaignAccess = {
   role: "gm" | "player"
   is_owner: boolean
   active_character_id: string | null
+}
+
+type AiWorldClassOption = {
+  id: string
+  name: string
+}
+
+type AiWorldCharacterBootstrap = {
+  character_id: string
+  room_id: string
+  active_character_id: string
 }
 
 const CAMPAIGN_STORAGE_KEY = "meganotrpg:v1:campaign-id"
@@ -142,6 +153,12 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [aiSlotsLoading, setAiSlotsLoading] = useState(false)
   const [aiSlotSaving, setAiSlotSaving] = useState<string | null>(null)
   const [selectedAiSlot, setSelectedAiSlot] = useState<AiWorldSlot | null>(null)
+  const [aiCharacterClasses, setAiCharacterClasses] = useState<AiWorldClassOption[]>([])
+  const [aiCharacterName, setAiCharacterName] = useState("")
+  const [aiCharacterClassId, setAiCharacterClassId] = useState("")
+  const [aiCharacterLevel, setAiCharacterLevel] = useState(1)
+  const [aiCharacterBio, setAiCharacterBio] = useState("")
+  const [aiCharacterCreating, setAiCharacterCreating] = useState(false)
 
   useEffect(() => {
     if (allowE2ETestAuthBypass()) return
@@ -615,7 +632,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }
 
   async function openAiSlot(slot: AiWorldSlot) {
-    if (aiSlotSaving) return
+    if (aiSlotSaving || !user) return
 
     const updated = await persistAiSlotName(slot)
     if (!updated) return
@@ -638,7 +655,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       return
     }
 
-    const nextCampaign = campaignAccessFrom({
+    let nextCampaign = campaignAccessFrom({
       campaign_id: access.campaign_id,
       role: access.role,
       is_owner: access.is_owner,
@@ -659,6 +676,149 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     setSelectedAiSlot(openedSlot)
     setCampaign(nextCampaign)
     rememberCampaignId(nextCampaign.campaignId)
+
+    if (nextCampaign.activeCharacterId) {
+      setPhase("ready")
+      return
+    }
+
+    const { data: existingCharacters, error: characterError } = await supabase
+      .from("characters")
+      .select("id")
+      .eq("campaign_id", nextCampaign.campaignId)
+      .eq("assigned_user_id", user.id)
+      .eq("character_type", "pc")
+      .eq("publication_state", "campaign")
+      .eq("life_state", "alive")
+      .order("created_at", { ascending: true })
+      .limit(1)
+
+    if (characterError) {
+      setError(characterError.message)
+      return
+    }
+
+    const existingCharacterId = existingCharacters?.[0]?.id as string | undefined
+    if (existingCharacterId) {
+      const { error: activeError } = await supabase.rpc(
+        "set_campaign_active_character",
+        {
+          p_campaign_id: nextCampaign.campaignId,
+          p_user_id: user.id,
+          p_character_id: existingCharacterId,
+        },
+      )
+
+      if (activeError) {
+        setError(activeError.message)
+        return
+      }
+
+      nextCampaign = {
+        ...nextCampaign,
+        activeCharacterId: existingCharacterId,
+      }
+      setCampaign(nextCampaign)
+
+      const { data: room } = await supabase
+        .from("chat_rooms")
+        .select("id")
+        .eq("campaign_id", nextCampaign.campaignId)
+        .eq("character_id", existingCharacterId)
+        .eq("room_type", "character")
+        .maybeSingle()
+
+      if (room?.id) {
+        window.location.hash = "#/chats/" + encodeURIComponent(room.id)
+      }
+      setPhase("ready")
+      return
+    }
+
+    const { data: classRows, error: classError } = await supabase
+      .from("rule_templates")
+      .select("id, name")
+      .eq("campaign_id", nextCampaign.campaignId)
+      .eq("kind", "class")
+      .eq("is_active", true)
+      .order("name", { ascending: true })
+
+    if (classError) {
+      setError(classError.message)
+      return
+    }
+
+    const classes = (classRows || []) as AiWorldClassOption[]
+    if (!classes.length) {
+      setError("В экспериментальном мире не установлены игровые классы.")
+      return
+    }
+
+    setAiCharacterClasses(classes)
+    setAiCharacterClassId(classes[0].id)
+    setAiCharacterName("")
+    setAiCharacterLevel(1)
+    setAiCharacterBio("")
+    setPhase("ai-character")
+  }
+
+  async function createAiWorldCharacter(event: FormEvent) {
+    event.preventDefault()
+
+    if (
+      !user ||
+      !campaign ||
+      !selectedAiSlot ||
+      aiCharacterCreating
+    ) {
+      return
+    }
+
+    const characterName = aiCharacterName.trim()
+    if (!characterName) {
+      setError("Нужно имя персонажа.")
+      return
+    }
+    if (!aiCharacterClassId) {
+      setError("Выбери класс.")
+      return
+    }
+
+    setAiCharacterCreating(true)
+    setError("")
+
+    const { data, error: createError } = await supabase.rpc(
+      "create_ai_world_player_character_v1",
+      {
+        p_campaign_id: campaign.campaignId,
+        p_name: characterName,
+        p_class_template_id: aiCharacterClassId,
+        p_level: Math.max(1, Math.min(30, Math.trunc(aiCharacterLevel || 1))),
+        p_bio: aiCharacterBio.trim(),
+      },
+    )
+
+    setAiCharacterCreating(false)
+
+    if (createError) {
+      setError(createError.message)
+      return
+    }
+
+    const created = ((data || []) as AiWorldCharacterBootstrap[])[0] || null
+    if (!created?.character_id || !created?.room_id) {
+      setError("Персонаж создан некорректно: игровой чат не найден.")
+      return
+    }
+
+    setCampaign({
+      ...campaign,
+      role: "player",
+      isOwner: true,
+      canManage: true,
+      activeCharacterId: created.active_character_id || created.character_id,
+    })
+    window.location.hash = "#/chats/" + encodeURIComponent(created.room_id)
     setPhase("ready")
   }
 
@@ -889,26 +1049,97 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     )
   }
 
-  if (phase === "ai-world" && selectedAiSlot) {
+  if (phase === "ai-character" && selectedAiSlot) {
     const slotTitle =
       selectedAiSlot.name.trim() || `Слот ${selectedAiSlot.slot_index}`
 
     return (
       <div className="auth-screen">
-        <div className="auth-card auth-ai-world-placeholder">
-          <div className="auth-eyebrow">ИИ МИР · ЭКСПЕРИМЕНТАЛЬНОЕ</div>
+        <form className="auth-card" onSubmit={createAiWorldCharacter}>
+          <div className="auth-eyebrow">ИИ МИР · ПЕРВЫЙ ГЕРОЙ</div>
           <h1 className="auth-title">{slotTitle}</h1>
           <p className="auth-muted">
-            Слот создан и изолирован. AI-GM, память и генерация мира будут
-            подключаться сюда отдельными этапами, не затрагивая «Мунтар».
+            Создай персонажа для этого мира. После сохранения сразу откроется
+            его игровая история, и следующий ход уже будет вести ИИ-ГМ.
           </p>
-          <div className="auth-note">
-            Слот
-            <strong>{String(selectedAiSlot.slot_index).padStart(2, "0")}</strong>
-          </div>
+
+          <label className="auth-label" htmlFor="ai-character-name">
+            Имя
+          </label>
+          <input
+            id="ai-character-name"
+            className="auth-input"
+            value={aiCharacterName}
+            onChange={(event) => setAiCharacterName(event.target.value)}
+            placeholder="Имя персонажа"
+            maxLength={120}
+            autoFocus
+          />
+
+          <label className="auth-label" htmlFor="ai-character-class">
+            Класс
+          </label>
+          <select
+            id="ai-character-class"
+            className="auth-input"
+            value={aiCharacterClassId}
+            onChange={(event) => setAiCharacterClassId(event.target.value)}
+          >
+            {aiCharacterClasses.map((option) => (
+              <option value={option.id} key={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </select>
+
+          <label className="auth-label" htmlFor="ai-character-level">
+            Уровень
+          </label>
+          <input
+            id="ai-character-level"
+            className="auth-input"
+            type="number"
+            min={1}
+            max={30}
+            value={aiCharacterLevel}
+            onChange={(event) =>
+              setAiCharacterLevel(
+                Math.max(1, Math.min(30, Number(event.target.value || 1))),
+              )
+            }
+          />
+
+          <label className="auth-label" htmlFor="ai-character-bio">
+            Предыстория
+          </label>
+          <textarea
+            id="ai-character-bio"
+            className="auth-input"
+            value={aiCharacterBio}
+            onChange={(event) => setAiCharacterBio(event.target.value)}
+            placeholder="Можно оставить пустой и заполнить позже."
+            maxLength={12000}
+            rows={5}
+          />
+
+          {error && <div className="auth-error">{error}</div>}
+
+          <button
+            type="submit"
+            className="auth-primary"
+            disabled={
+              aiCharacterCreating ||
+              !aiCharacterName.trim() ||
+              !aiCharacterClassId
+            }
+          >
+            {aiCharacterCreating ? "Создаём…" : "Создать и играть"}
+          </button>
+
           <button
             type="button"
             className="auth-secondary"
+            disabled={aiCharacterCreating}
             onClick={() => {
               setError("")
               setPhase("ai-slots")
@@ -916,7 +1147,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           >
             Назад к слотам
           </button>
-        </div>
+        </form>
       </div>
     )
   }
