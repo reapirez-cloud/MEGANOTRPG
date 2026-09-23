@@ -440,6 +440,13 @@ declare
   v_skill_profs jsonb := '{}'::jsonb;
   v_prof jsonb;
   v_prof_index text;
+  v_skill_key text;
+  v_skill_ability text;
+  v_skill_score integer;
+  v_skill_base integer;
+  v_prof_value integer;
+  v_skill_rank integer;
+  v_save_key text;
   v_speed integer := 30;
 begin
   if auth.role() <> 'service_role' then
@@ -492,14 +499,725 @@ begin
     select value from jsonb_array_elements(coalesce(v_bestiary.proficiencies,'[]'::jsonb))
   loop
     v_prof_index := lower(coalesce(v_prof#>>'{proficiency,index}',''));
+
     if v_prof_index like 'saving-throw-%' then
-      v_save_profs := v_save_profs || jsonb_build_array(
-        replace(v_prof_index,'saving-throw-','')
-      );
+      v_save_key := case replace(v_prof_index,'saving-throw-','')
+        when 'str' then 'strength'
+        when 'dex' then 'dexterity'
+        when 'con' then 'constitution'
+        when 'int' then 'intelligence'
+        when 'wis' then 'wisdom'
+        when 'cha' then 'charisma'
+        else null
+      end;
+
+      if v_save_key is not null and not (v_save_profs ? v_save_key) then
+        v_save_profs := v_save_profs || jsonb_build_array(v_save_key);
+      end if;
+
     elsif v_prof_index like 'skill-%' then
-      v_skill_profs := v_skill_profs || jsonb_build_object(
-        replace(v_prof_index,'skill-',''),1
+      v_skill_key := replace(v_prof_index,'skill-','');
+      v_skill_ability := case v_skill_key
+        when 'acrobatics' then 'dexterity'
+        when 'animal-handling' then 'wisdom'
+        when 'arcana' then 'intelligence'
+        when 'athletics' then 'strength'
+        when 'deception' then 'charisma'
+        when 'history' then 'intelligence'
+        when 'insight' then 'wisdom'
+        when 'intimidation' then 'charisma'
+        when 'investigation' then 'intelligence'
+        when 'medicine' then 'wisdom'
+        when 'nature' then 'intelligence'
+        when 'perception' then 'wisdom'
+        when 'performance' then 'charisma'
+        when 'persuasion' then 'charisma'
+        when 'religion' then 'intelligence'
+        when 'sleight-of-hand' then 'dexterity'
+        when 'stealth' then 'dexterity'
+        when 'survival' then 'wisdom'
+        else null
+      end;
+
+      -- The rest of the runtime uses snake_case D&D skill keys.
+      v_skill_key := replace(v_skill_key,'-','_');
+
+      v_skill_score := case v_skill_ability
+        when 'strength' then coalesce((v_bestiary.abilities->>'strength')::integer,10)
+        when 'dexterity' then coalesce((v_bestiary.abilities->>'dexterity')::integer,10)
+        when 'constitution' then coalesce((v_bestiary.abilities->>'constitution')::integer,10)
+        when 'intelligence' then coalesce((v_bestiary.abilities->>'intelligence')::integer,10)
+        when 'wisdom' then coalesce((v_bestiary.abilities->>'wisdom')::integer,10)
+        when 'charisma' then coalesce((v_bestiary.abilities->>'charisma')::integer,10)
+        else 10
+      end;
+
+      v_skill_base := floor((v_skill_score-10)::numeric/2)::integer;
+      v_prof_value := case
+        when coalesce(v_prof->>'value','') ~ '^-?[0-9]+
+
+  update public.character_sheets cs
+  set
+    strength=greatest(1,least(coalesce((v_bestiary.abilities->>'strength')::integer,10),40)),
+    dexterity=greatest(1,least(coalesce((v_bestiary.abilities->>'dexterity')::integer,10),40)),
+    constitution=greatest(1,least(coalesce((v_bestiary.abilities->>'constitution')::integer,10),40)),
+    intelligence=greatest(1,least(coalesce((v_bestiary.abilities->>'intelligence')::integer,10),40)),
+    wisdom=greatest(1,least(coalesce((v_bestiary.abilities->>'wisdom')::integer,10),40)),
+    charisma=greatest(1,least(coalesce((v_bestiary.abilities->>'charisma')::integer,10),40)),
+    armor_class=greatest(0,least(coalesce(v_bestiary.armor_class,10),50)),
+    max_hp=greatest(1,least(coalesce(v_bestiary.hit_points,1),100000)),
+    current_hp=least(
+      greatest(0,coalesce(cs.current_hp,coalesce(v_bestiary.hit_points,1))),
+      greatest(1,coalesce(v_bestiary.hit_points,1))
+    ),
+    hit_dice=left(coalesce(v_bestiary.hit_dice,''),120),
+    proficiency_bonus=greatest(0,least(coalesce(v_bestiary.proficiency_bonus,2),20)),
+    speed=greatest(0,least(v_speed,1000)),
+    passive_perception=greatest(
+      0,least(coalesce((v_bestiary.senses->>'passive_perception')::integer,10),60)
+    ),
+    saving_throw_proficiencies=v_save_profs,
+    skill_proficiencies=v_skill_profs,
+    senses=left(coalesce(v_bestiary.senses::text,''),2000),
+    languages=left(coalesce(v_bestiary.languages,''),2000),
+    runtime_facts=coalesce(cs.runtime_facts,'{}'::jsonb) || jsonb_build_object(
+      'npcRuntimeStage',6,
+      'npcRuntimeBestiarySlug',v_bestiary.slug,
+      'npcRuntimeBuiltAt',now()
+    ),
+    updated_at=now()
+  where cs.character_id=v_npc.id;
+
+  for v_action,v_ord in
+    select value,ordinality
+    from jsonb_array_elements(coalesce(v_bestiary.actions,'[]'::jsonb))
+      with ordinality
+  loop
+    v_mechanics := v_mechanics || jsonb_build_array(
+      private.npc_runtime_mechanic_v1(v_npc.id,'action',v_ord::integer,v_action)
+    );
+
+    v_usage := case when jsonb_typeof(v_action->'usage')='object'
+      then v_action->'usage' else '{}'::jsonb end;
+    if v_usage <> '{}'::jsonb then
+      v_resource_key := 'npc_runtime_action_'||v_ord::text||'_uses';
+      if lower(coalesce(v_usage->>'type',''))='per day' then
+        v_resource_max := greatest(1,least(coalesce((v_usage->>'times')::integer,1),100));
+        v_recharge := '{"triggers":["long_rest"],"restore":"full"}'::jsonb;
+      else
+        v_resource_max := 1;
+        v_recharge := '{"triggers":["special"],"restore":"full"}'::jsonb;
+      end if;
+
+      insert into public.character_resource_states(
+        character_id,state_key,current,max_snapshot,label,recharge,updated_by
+      )
+      values(
+        v_npc.id,v_resource_key,v_resource_max,v_resource_max,
+        left(coalesce(v_action->>'name','NPC ability'),160),
+        v_recharge,v_job.requested_by
+      )
+      on conflict(character_id,state_key) do update set
+        current=least(public.character_resource_states.current,excluded.max_snapshot),
+        max_snapshot=excluded.max_snapshot,
+        label=excluded.label,
+        recharge=excluded.recharge,
+        updated_by=excluded.updated_by,
+        updated_at=now();
+    end if;
+  end loop;
+
+  for v_action,v_ord in
+    select value,ordinality
+    from jsonb_array_elements(coalesce(v_bestiary.reactions,'[]'::jsonb))
+      with ordinality
+  loop
+    v_mechanics := v_mechanics || jsonb_build_array(
+      private.npc_runtime_mechanic_v1(v_npc.id,'reaction',v_ord::integer,v_action)
+    );
+  end loop;
+
+  for v_action,v_ord in
+    select value,ordinality
+    from jsonb_array_elements(coalesce(v_bestiary.special_abilities,'[]'::jsonb))
+      with ordinality
+    where jsonb_typeof(value->'usage')='object'
+  loop
+    v_mechanics := v_mechanics || jsonb_build_array(
+      private.npc_runtime_mechanic_v1(v_npc.id,'special',v_ord::integer,v_action)
+    );
+
+    v_usage := v_action->'usage';
+    v_resource_key := 'npc_runtime_special_'||v_ord::text||'_uses';
+    if lower(coalesce(v_usage->>'type',''))='per day' then
+      v_resource_max := greatest(1,least(coalesce((v_usage->>'times')::integer,1),100));
+      v_recharge := '{"triggers":["long_rest"],"restore":"full"}'::jsonb;
+    else
+      v_resource_max := 1;
+      v_recharge := '{"triggers":["special"],"restore":"full"}'::jsonb;
+    end if;
+
+    insert into public.character_resource_states(
+      character_id,state_key,current,max_snapshot,label,recharge,updated_by
+    )
+    values(
+      v_npc.id,v_resource_key,v_resource_max,v_resource_max,
+      left(coalesce(v_action->>'name','NPC ability'),160),
+      v_recharge,v_job.requested_by
+    )
+    on conflict(character_id,state_key) do update set
+      current=least(public.character_resource_states.current,excluded.max_snapshot),
+      max_snapshot=excluded.max_snapshot,
+      label=excluded.label,
+      recharge=excluded.recharge,
+      updated_by=excluded.updated_by,
+      updated_at=now();
+  end loop;
+
+  v_slug := 'npc-runtime-'||replace(v_npc.id::text,'-','');
+
+  select id into v_template_id
+  from public.rule_templates
+  where campaign_id=v_npc.campaign_id
+    and kind='class'
+    and slug=v_slug
+  for update;
+
+  if v_template_id is null then
+    insert into public.rule_templates(
+      campaign_id,kind,slug,name,description,version,mechanics,choices,is_active,
+      created_by,catalog_key,catalog_revision,source_kind,source_label,is_builtin,
+      mechanical_summary,author_description,author_comment,rules_meta
+    )
+    values(
+      v_npc.campaign_id,'class',v_slug,
+      'NPC Runtime · '||left(v_npc.name,120),
+      'Canonical Stage 6 NPC runtime generated from bestiary source.',
+      1,v_mechanics,'[]'::jsonb,true,v_job.requested_by,
+      'npc-runtime:'||v_npc.id::text,'stage6','custom',
+      'AI GM NPC Runtime',false,
+      'Server-authoritative NPC mechanics.','', '',
+      jsonb_build_object(
+        'npc_runtime_stage',6,
+        'npc_character_id',v_npc.id,
+        'bestiary_slug',v_bestiary.slug
+      )
+    )
+    returning id into v_template_id;
+  else
+    update public.rule_templates
+    set
+      name='NPC Runtime · '||left(v_npc.name,120),
+      mechanics=v_mechanics,
+      version=version+1,
+      is_active=true,
+      catalog_revision='stage6',
+      rules_meta=jsonb_build_object(
+        'npc_runtime_stage',6,
+        'npc_character_id',v_npc.id,
+        'bestiary_slug',v_bestiary.slug
+      ),
+      updated_at=now()
+    where id=v_template_id;
+  end if;
+
+  insert into public.character_template_assignments(
+    character_id,template_id,template_level,selected_choices,assigned_by
+  )
+  values(
+    v_npc.id,v_template_id,greatest(1,v_npc.level),'{}'::jsonb,v_job.requested_by
+  )
+  on conflict(character_id,template_id) do update set
+    template_level=excluded.template_level,
+    selected_choices='{}'::jsonb,
+    assigned_by=excluded.assigned_by,
+    updated_at=now();
+
+  update public.npc_runtime_builds
+  set
+    status='ready',
+    source_bestiary_slug=v_bestiary.slug,
+    template_id=v_template_id,
+    model_id=p_model_id,
+    build_revision=build_revision+1,
+    last_job_id=p_job_id,
+    build_payload=jsonb_build_object(
+      'bestiary_slug',v_bestiary.slug,
+      'action_count',jsonb_array_length(coalesce(v_bestiary.actions,'[]'::jsonb)),
+      'reaction_count',jsonb_array_length(coalesce(v_bestiary.reactions,'[]'::jsonb)),
+      'special_abilities',coalesce(v_bestiary.special_abilities,'[]'::jsonb)
+    ),
+    generated_at=now(),
+    updated_at=now()
+  where character_id=v_npc.id;
+
+  update public.agent_jobs
+  set
+    status='completed',
+    completed_outputs=1,
+    result=jsonb_build_object(
+      'surface','npc_runtime_build_v1',
+      'npc_character_id',v_npc.id,
+      'template_id',v_template_id,
+      'bestiary_slug',v_bestiary.slug,
+      'model_id',p_model_id,
+      'runtime_stage',6
+    ),
+    completed_at=now(),
+    updated_at=now(),
+    error_code=null,
+    error_message=null
+  where id=p_job_id;
+
+  return jsonb_build_object(
+    'npc_character_id',v_npc.id,
+    'template_id',v_template_id,
+    'bestiary_slug',v_bestiary.slug,
+    'runtime_stage',6
+  );
+end;
+$$;
+
+revoke all on function public.apply_ai_gm_npc_runtime_build_v1(uuid,text,uuid)
+  from public,anon,authenticated;
+grant execute on function public.apply_ai_gm_npc_runtime_build_v1(uuid,text,uuid)
+  to service_role;
+
+create or replace function public.read_ai_gm_npc_runtime_v1(
+  p_campaign_id uuid,
+  p_npc_ids uuid[]
+)
+returns jsonb
+language sql
+security definer
+set search_path=''
+stable
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'character_id',b.character_id,
+    'status',b.status,
+    'bestiary_slug',b.source_bestiary_slug,
+    'template_id',b.template_id,
+    'build_revision',b.build_revision,
+    'actions',
+      coalesce((
+        select jsonb_agg(m.value order by m.ordinality)
+        from public.rule_templates rt
+        cross join lateral jsonb_array_elements(coalesce(rt.mechanics,'[]'::jsonb))
+          with ordinality m(value,ordinality)
+        where rt.id=b.template_id
+          and m.value->>'type'='action'
+      ),'[]'::jsonb),
+    'resources',
+      coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'state_key',s.state_key,
+          'current',s.current,
+          'max',s.max_snapshot,
+          'label',s.label,
+          'recharge',s.recharge
+        ) order by s.state_key)
+        from public.character_resource_states s
+        where s.character_id=b.character_id
+          and s.state_key like 'npc_runtime_%'
+      ),'[]'::jsonb),
+    'special_abilities',coalesce(b.build_payload->'special_abilities','[]'::jsonb)
+  ) order by b.character_id),'[]'::jsonb)
+  from public.npc_runtime_builds b
+  where b.campaign_id=p_campaign_id
+    and b.character_id=any(coalesce(p_npc_ids,array[]::uuid[]))
+    and b.status='ready';
+$$;
+
+revoke all on function public.read_ai_gm_npc_runtime_v1(uuid,uuid[])
+  from public,anon,authenticated;
+grant execute on function public.read_ai_gm_npc_runtime_v1(uuid,uuid[])
+  to service_role;
+
+create or replace function private.npc_runtime_manager_claims_v1(
+  p_user_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path=''
+as $$
+begin
+  perform set_config('request.jwt.claim.sub',p_user_id::text,true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object(
+      'sub',p_user_id::text,
+      'role','authenticated',
+      'is_anonymous',false
+    )::text,
+    true
+  );
+end;
+$$;
+
+create or replace function public.execute_ai_gm_npc_action_v1(
+  p_job_id uuid,
+  p_npc_character_id uuid,
+  p_mechanic_id text,
+  p_option_key text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  v_job public.agent_jobs%rowtype;
+  v_mechanic jsonb;
+  v_runtime jsonb;
+  v_manager_user_id uuid;
+  v_source_character_id uuid;
+  v_source_location_id uuid;
+  v_npc_location_id uuid;
+  v_message_id bigint;
+  v_command_id uuid := p_job_id;
+  v_existing public.engine_command_receipts%rowtype;
+begin
+  if auth.role() <> 'service_role' then
+    raise exception 'service_role_required';
+  end if;
+
+  select * into v_job
+  from public.agent_jobs
+  where id=p_job_id
+    and job_type='conversation_turn'
+    and input->>'surface'='game_chat_v1'
+  for update;
+
+  if v_job.id is null or v_job.status <> 'running' then
+    raise exception 'ai_gm_turn_not_running';
+  end if;
+
+  v_manager_user_id := nullif(v_job.input->>'manager_user_id','')::uuid;
+  v_source_character_id := nullif(v_job.input->>'source_character_id','')::uuid;
+
+  if not exists(
+    select 1 from public.characters c
+    where c.id=p_npc_character_id
+      and c.campaign_id=v_job.campaign_id
+      and c.character_type='npc'
+      and c.publication_state='campaign'
+      and c.life_state='alive'
+  ) then
+    raise exception 'npc_action_actor_invalid';
+  end if;
+
+  select ws.location_id into v_source_location_id
+  from public.character_world_state ws
+  where ws.character_id=v_source_character_id;
+
+  select ws.location_id into v_npc_location_id
+  from public.character_world_state ws
+  where ws.character_id=p_npc_character_id;
+
+  if v_source_location_id is null
+     or v_npc_location_id is null
+     or v_source_location_id <> v_npc_location_id
+  then
+    raise exception 'npc_action_requires_same_location';
+  end if;
+
+  v_mechanic := private.character_template_selected_action_definition_v1(
+    p_npc_character_id,trim(p_mechanic_id)
+  );
+
+  if v_mechanic is null
+     or jsonb_typeof(v_mechanic->'npcRuntime') <> 'object'
+  then
+    raise exception 'npc_runtime_mechanic_not_found';
+  end if;
+
+  v_runtime := v_mechanic->'npcRuntime';
+
+  select * into v_existing
+  from public.engine_command_receipts
+  where command_id=v_command_id;
+
+  if v_existing.command_id is not null then
+    if v_existing.command_kind not in ('template.roll','template.action')
+       or v_existing.aggregate_id <> p_npc_character_id
+    then
+      raise exception 'npc_action_command_conflict';
+    end if;
+    v_message_id := (v_existing.result->>'messageId')::bigint;
+  else
+    perform private.npc_runtime_manager_claims_v1(v_manager_user_id);
+
+    if coalesce((v_runtime->>'rollD20')::boolean,false)
+       or coalesce((v_runtime->>'diceCount')::integer,0) > 0
+    then
+      v_message_id := public.send_chat_template_roll_v2(
+        (v_job.input->>'room_id')::uuid,
+        p_npc_character_id,
+        trim(p_mechanic_id),
+        nullif(trim(coalesce(p_option_key,'')),''),
+        v_mechanic->>'label',
+        'npc_action',
+        coalesce((v_runtime->>'attackBonus')::integer,0),
+        coalesce((v_runtime->>'rollD20')::boolean,false),
+        coalesce((v_runtime->>'diceCount')::integer,0),
+        coalesce((v_runtime->>'diceSides')::integer,0),
+        coalesce((v_runtime->>'diceModifier')::integer,0),
+        v_command_id
       );
+    else
+      v_message_id := public.send_chat_template_action_v2(
+        (v_job.input->>'room_id')::uuid,
+        p_npc_character_id,
+        trim(p_mechanic_id),
+        nullif(trim(coalesce(p_option_key,'')),''),
+        v_mechanic->>'label',
+        jsonb_build_object(
+          'detail',coalesce(v_runtime->>'description',''),
+          'npcRuntime',v_runtime,
+          'gmJobId',p_job_id
+        ),
+        v_command_id
+      );
+    end if;
+  end if;
+
+  update public.chat_messages
+  set event_payload=coalesce(event_payload,'{}'::jsonb) || jsonb_build_object(
+    'npcRuntime',v_runtime,
+    'gmJobId',p_job_id,
+    'npcCharacterId',p_npc_character_id
+  )
+  where id=v_message_id;
+
+  return jsonb_build_object(
+    'message_id',v_message_id,
+    'npc_character_id',p_npc_character_id,
+    'mechanic_id',trim(p_mechanic_id),
+    'label',v_mechanic->>'label',
+    'runtime',v_runtime,
+    'event_payload',(select event_payload from public.chat_messages where id=v_message_id)
+  );
+end;
+$$;
+
+revoke all on function public.execute_ai_gm_npc_action_v1(uuid,uuid,text,text)
+  from public,anon,authenticated;
+grant execute on function public.execute_ai_gm_npc_action_v1(uuid,uuid,text,text)
+  to service_role;
+
+create or replace function private.npc_roll_ability_v1(p_skill text)
+returns text
+language sql immutable
+as $$
+  select case lower(trim(coalesce(p_skill,'')))
+    when 'acrobatics' then 'dexterity'
+    when 'animal_handling' then 'wisdom'
+    when 'arcana' then 'intelligence'
+    when 'athletics' then 'strength'
+    when 'deception' then 'charisma'
+    when 'history' then 'intelligence'
+    when 'insight' then 'wisdom'
+    when 'intimidation' then 'charisma'
+    when 'investigation' then 'intelligence'
+    when 'medicine' then 'wisdom'
+    when 'nature' then 'intelligence'
+    when 'perception' then 'wisdom'
+    when 'performance' then 'charisma'
+    when 'persuasion' then 'charisma'
+    when 'religion' then 'intelligence'
+    when 'sleight_of_hand' then 'dexterity'
+    when 'stealth' then 'dexterity'
+    when 'survival' then 'wisdom'
+    else null
+  end;
+$$;
+
+create or replace function public.execute_ai_gm_npc_roll_v1(
+  p_job_id uuid,
+  p_npc_character_id uuid,
+  p_request_type text,
+  p_ability_key text,
+  p_skill_key text,
+  p_label text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  v_job public.agent_jobs%rowtype;
+  v_sheet public.character_sheets%rowtype;
+  v_type text := lower(trim(coalesce(p_request_type,'')));
+  v_ability text := lower(trim(coalesce(p_ability_key,'')));
+  v_skill text := nullif(lower(trim(coalesce(p_skill_key,''))),'');
+  v_score integer;
+  v_modifier integer;
+  v_message_id bigint;
+  v_manager_user_id uuid;
+  v_receipt public.engine_command_receipts%rowtype;
+  v_payload jsonb;
+begin
+  if auth.role() <> 'service_role' then
+    raise exception 'service_role_required';
+  end if;
+
+  select * into v_job
+  from public.agent_jobs
+  where id=p_job_id
+    and job_type='conversation_turn'
+    and input->>'surface'='game_chat_v1'
+  for update;
+
+  if v_job.id is null or v_job.status <> 'running' then
+    raise exception 'ai_gm_turn_not_running';
+  end if;
+
+  if v_type not in ('ability','save','skill') then
+    raise exception 'unsupported_npc_roll_type';
+  end if;
+
+  if v_type='skill' then
+    v_ability := private.npc_roll_ability_v1(v_skill);
+  end if;
+
+  if v_ability not in (
+    'strength','dexterity','constitution','intelligence','wisdom','charisma'
+  ) then
+    raise exception 'unsupported_npc_roll_ability';
+  end if;
+
+  select * into v_sheet
+  from public.character_sheets
+  where character_id=p_npc_character_id;
+
+  if v_sheet.character_id is null then raise exception 'npc_sheet_missing'; end if;
+
+  v_score := case v_ability
+    when 'strength' then v_sheet.strength
+    when 'dexterity' then v_sheet.dexterity
+    when 'constitution' then v_sheet.constitution
+    when 'intelligence' then v_sheet.intelligence
+    when 'wisdom' then v_sheet.wisdom
+    else v_sheet.charisma
+  end;
+
+  v_modifier := floor((v_score-10)::numeric/2)::integer;
+
+  if v_type='save'
+     and coalesce(v_sheet.saving_throw_proficiencies,'[]'::jsonb) ? v_ability
+  then
+    v_modifier := v_modifier + v_sheet.proficiency_bonus;
+  elsif v_type='skill'
+     and coalesce(v_sheet.skill_proficiencies,'{}'::jsonb) ? v_skill
+  then
+    v_modifier := v_modifier + v_sheet.proficiency_bonus;
+  end if;
+
+  select * into v_receipt
+  from public.engine_command_receipts
+  where command_id=p_job_id;
+
+  if v_receipt.command_id is not null then
+    if v_receipt.command_kind <> 'npc.roll.v1'
+       or v_receipt.aggregate_id <> p_npc_character_id
+    then
+      raise exception 'npc_roll_command_conflict';
+    end if;
+    v_message_id := (v_receipt.result->>'messageId')::bigint;
+  else
+    v_manager_user_id := nullif(v_job.input->>'manager_user_id','')::uuid;
+    perform private.npc_runtime_manager_claims_v1(v_manager_user_id);
+
+    v_message_id := public.send_chat_roll_v4(
+      (v_job.input->>'room_id')::uuid,
+      p_npc_character_id,
+      left(coalesce(nullif(trim(p_label),''),'NPC roll'),160),
+      'npc_'||v_type,
+      v_modifier,
+      true,0,0,0,1,'[]'::jsonb
+    );
+
+    insert into public.engine_command_receipts(
+      command_id,campaign_id,actor_character_id,engine,command_kind,
+      aggregate_id,result,created_by
+    )
+    values(
+      p_job_id,v_job.campaign_id,p_npc_character_id,'gena','npc.roll.v1',
+      p_npc_character_id,
+      jsonb_build_object(
+        'messageId',v_message_id,
+        'requestType',v_type,
+        'abilityKey',v_ability,
+        'skillKey',v_skill,
+        'modifier',v_modifier
+      ),
+      v_manager_user_id
+    );
+  end if;
+
+  update public.chat_messages
+  set event_payload=coalesce(event_payload,'{}'::jsonb) || jsonb_build_object(
+    'gmJobId',p_job_id,
+    'npcCharacterId',p_npc_character_id,
+    'npcRollType',v_type,
+    'abilityKey',v_ability,
+    'skillKey',v_skill
+  )
+  where id=v_message_id
+  returning event_payload into v_payload;
+
+  return jsonb_build_object(
+    'message_id',v_message_id,
+    'npc_character_id',p_npc_character_id,
+    'request_type',v_type,
+    'ability_key',v_ability,
+    'skill_key',v_skill,
+    'modifier',v_modifier,
+    'event_payload',v_payload
+  );
+end;
+$$;
+
+revoke all on function public.execute_ai_gm_npc_roll_v1(
+  uuid,uuid,text,text,text,text
+) from public,anon,authenticated;
+grant execute on function public.execute_ai_gm_npc_roll_v1(
+  uuid,uuid,text,text,text,text
+) to service_role;
+
+comment on table public.npc_runtime_builds is
+  'Stage 6 canonical NPC runtime build state. A fixed worker selects a bestiary basis; server materializes validated stats/actions into Character Engine templates.';
+
+comment on function public.execute_ai_gm_npc_action_v1(uuid,uuid,text,text) is
+  'Stage 6 server-authoritative NPC action executor. AI supplies only canonical NPC/mechanic ids; numbers and costs come from stored template mechanics.';
+
+          then (v_prof->>'value')::integer
+        else v_skill_base
+      end;
+
+      v_skill_rank := case
+        when coalesce(v_bestiary.proficiency_bonus,0) <= 0 then 0
+        else greatest(
+          0,
+          least(
+            2,
+            round(
+              (v_prof_value-v_skill_base)::numeric /
+              v_bestiary.proficiency_bonus
+            )::integer
+          )
+        )
+      end;
+
+      if v_skill_ability is not null and v_skill_rank > 0 then
+        v_skill_profs := v_skill_profs || jsonb_build_object(
+          v_skill_key,
+          v_skill_rank
+        );
+      end if;
     end if;
   end loop;
 
