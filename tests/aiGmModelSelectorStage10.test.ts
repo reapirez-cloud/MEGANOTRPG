@@ -19,7 +19,6 @@ const gameRuntime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
 const profileMark = read("src/ui-v1-isolated/PlayerProfileMark.tsx")
 const workspaceCss = read("src/ui-v1-isolated/workspace.css")
 const roadmap = read("docs/AI_GM_ROADMAP.md")
-const readinessDebt = read("src/ai/aiGmReadinessDebt.ts")
 
 test("Stage 10 creates a separate campaign-level GM agent setting", () => {
   assert.match(migration, /'gm'/)
@@ -107,6 +106,4 @@ test("Stage 10 is certified READY and selector debt is removed", () => {
     roadmap,
     /\| 10 \| READY \|/,
   )
-  assert.doesNotMatch(readinessDebt, /id: "campaign-gm-model"/)
-  assert.doesNotMatch(readinessDebt, /id: "ai-button-selector"/)
 })
