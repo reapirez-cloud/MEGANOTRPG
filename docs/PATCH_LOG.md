@@ -19,6 +19,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Database / migration changes
 
+- Added AI World Evolution Stage 3 classification columns with safe `disabled` legacy defaults: locations use `entity|detail|disabled`, persistent NPC profiles use `entity|disabled`; canonical NPC create/update RPCs now persist and validate the classification.
 - Added AI World Evolution Stage 2 background storage: unique daily runs, Resolver-backed roll projections, immutable effective-day events linked into `campaign_events`, and versioned compact entity snapshots with service-only write boundaries.
 - Added AI World Evolution Stage 1 World Resolver storage and RPC: one immutable server-owned random receipt per `campaign_id + decision_key`, AI-world-only execution, ordered gapless outcome bands, audit linkage and service-role-only access.
 - Added `swap_inventory_items_simple_v1` for server-authoritative simple-slot swaps with version/capacity/ownership checks.
@@ -28,6 +29,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added a server-side world-materializer guard against technical/unnamed persistent NPC labels such as numbered bandits, generic guards or random sailors. Human GM/admin character tools remain otherwise unchanged; the guard is specific to AI world materialization.
+- World materialization now carries deliberate background classification through create/update/batch tools and canonical context. New location creates without a scope are rejected by the materializer, hierarchy depth is never used as eligibility, and named persistent NPCs carry explicit entity/disabled eligibility.
 - Added temporal-safe background readers (`effective_game_day/through_game_day <= source_game_day`), prevented unmaterialized `ai_background` campaign events from resolving quests, and hardened game-chat memory/history so future game-day evidence is excluded instead of being relabeled age 0.
 - World Resolver now uses cryptographic 32-bit randomness with rejection sampling rather than modulo-biased or model-owned randomness; repeated identical decisions replay the stored receipt, while reuse of the same key with changed semantics is rejected instead of rerolled.
 - The spatial/Tetris inventory implementation remains isolated and intact; the simple inventory continues to project the same canonical Cheburashka item rows and holder tree.
@@ -36,6 +39,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Certified AI World Evolution Stage 3 with live rollback smoke for nested whole-location eligibility, detail exclusion, safe legacy defaults, named minor NPC eligibility and NPC scope validation, plus static runtime regression coverage for unnamed-scene-extra rejection.
 - Repaired the stale AI-world contract regression that still expected certified Stage 1 to be `planned`.
 - Certified AI World Evolution Stage 2 with live transactional smoke for duplicate daily-run idempotency, Stage-1 roll linkage, Day-3/Day-5 snapshot selection, future-event exclusion, campaign-event provenance and human-campaign isolation; added covering FK indexes after advisor review.
 - Certified AI World Evolution Stage 1 against the executable contract: live transactional smoke covered idempotent replay, d7 bounds/all faces, overlapping-band rejection, decision-key conflict rejection and human-campaign isolation; post-migration privilege checks confirm authenticated users cannot execute the Resolver and service role cannot update/delete receipts.

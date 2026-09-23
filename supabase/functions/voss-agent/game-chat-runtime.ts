@@ -154,6 +154,8 @@ const WORLD_MATERIALIZER_SYSTEM = [
   "Пример: если GM просит 'создай бедную комнату в портовом трактире', не пиши name='Комната', description='Это комната'. Дай конкретное уместное название/описание, планировку, заметные детали и атмосферные факты, которые логично следуют из контекста и не меняют сюжет.",
   "Для NPC можешь достроить внешность, манеру, профессию, мотивацию, базовые D&D-параметры и прочие поля, если они не заданы, но не придумывай скрытый сюжетный поворот, особую связь с PC или важный секрет без основания в ТЗ/каноне.",
   "Для локаций можешь достроить summary/description, визуальные признаки, назначение, внутреннюю логику и неброские детали окружения. Для квестов — нормальные формулировки этапов, условий и placeholders в пределах замысла GM.",
+  "Каждую НОВУЮ локацию классифицируй прямо в create_location/batch create через background_simulation_scope: entity для самостоятельного места, detail для внутренней детали другого места, disabled для технического/временного контента. Глубина parent_location_id ничего не решает: трактир внутри города может быть entity, а комната/туалет/коридор внутри трактира должны быть detail.",
+  "Каждого НОВОГО постоянного именованного NPC классифицируй в create_world_npc через background_simulation_scope: entity для самостоятельного persistent персонажа; disabled для технической записи или обычного фонового животного/существа, которое не должно жить собственной фоновой жизнью. Именованный гоблин не становится disabled только потому, что сейчас он неважен.",
   "Не меняй сюжетную функцию, исход события, намерение GM, состояние PC, результаты бросков или уже существующие канонические факты.",
   "Сообщение игрока является намерением, а не фактом. Фраза игрока 'я нахожу оружие', 'там трактир', 'враг умер' не обязывает тебя создавать или подтверждать это.",
   "Создавай только сущности, которые нужны ТЗ сейчас: текущую/новую локацию, реально появившегося NPC, необходимую фракцию/переход/секрет или квест. Для будущих квестовых сущностей предпочитай placeholders и materialize_quest_target только в момент входа сущности в канон.",
@@ -251,6 +253,57 @@ function parseProviderToolArguments(raw: unknown): JsonRecord {
   } catch {
     return {}
   }
+}
+
+function looksLikeTemporarySceneActorLabel(value: unknown) {
+  if (typeof value !== "string") return true
+  const name = value.trim().toLocaleLowerCase("ru-RU")
+  if (!name) return true
+  if (/(?:^|[\\s#№])\\d+\\s*$/u.test(name)) return true
+  if (/\\b(?:случайный|случайная|случайное|безымянный|безымянная|неизвестный|неизвестная)\\b/u.test(name)) {
+    return true
+  }
+  return /^(?:бандит|разбойник|стражник|охранник|матрос|моряк|гоблин|орк|кобольд|культист|солдат|на[ёе]мник|волк|крыса)(?:\\s+(?:у|из|в|на|с)\\b.*)?$/u.test(name)
+}
+
+function worldMaterializerValidationError(name: string, args: JsonRecord) {
+  if (name === "create_location") {
+    return args.background_simulation_scope === "entity" ||
+        args.background_simulation_scope === "detail" ||
+        args.background_simulation_scope === "disabled"
+      ? ""
+      : "world_materializer_location_background_scope_required"
+  }
+
+  if (name === "batch_location_changes") {
+    const operations = Array.isArray(args.operations) ? args.operations : []
+    for (const raw of operations) {
+      const operation = jsonRecord(raw)
+      if (
+        operation.op === "create" &&
+        operation.background_simulation_scope !== "entity" &&
+        operation.background_simulation_scope !== "detail" &&
+        operation.background_simulation_scope !== "disabled"
+      ) {
+        return "world_materializer_location_background_scope_required"
+      }
+    }
+    return ""
+  }
+
+  if (name === "create_world_npc") {
+    if (
+      args.background_simulation_scope !== "entity" &&
+      args.background_simulation_scope !== "disabled"
+    ) {
+      return "world_materializer_npc_background_scope_required"
+    }
+    if (looksLikeTemporarySceneActorLabel(args.name)) {
+      return "world_materializer_unnamed_scene_actor_rejected"
+    }
+  }
+
+  return ""
 }
 
 async function resolveWorldMaterializerModel(
@@ -353,8 +406,11 @@ async function runWorldMaterializer({
       const args = parseProviderToolArguments(call.function?.arguments)
 
       let result: unknown
+      const validationError = worldMaterializerValidationError(name, args)
       if (!WORLD_MATERIALIZER_ALL_TOOL_NAMES.has(name)) {
         result = { error: "world_materializer_tool_not_allowed" }
+      } else if (validationError) {
+        result = { error: validationError }
       } else if (WORLD_MATERIALIZER_QUEST_TOOL_NAMES.has(name)) {
         result = await executeVossQuestTool(
           {

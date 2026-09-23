@@ -117,7 +117,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Generation-time simulation-unit classification",
     purpose:
       "Classify AI-generated persistent world content as whole entity, internal detail or disabled at creation time.",
-    status: "partial",
+    status: "certified",
     existingFoundation: [
       "World materializer prompt already avoids unnamed permanent NPC extras",
       "locations already support hierarchy and location_sections",

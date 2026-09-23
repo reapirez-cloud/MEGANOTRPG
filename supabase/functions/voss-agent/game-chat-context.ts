@@ -440,7 +440,7 @@ export async function buildGameChatContextV2({
   const locationsResult = locationIds.length
     ? await admin
         .from("locations")
-        .select("id,name,summary,parent_location_id,visibility_mode,lifecycle_state")
+        .select("id,name,summary,parent_location_id,visibility_mode,background_simulation_scope,lifecycle_state")
         .eq("campaign_id", campaignId)
         .in("id", locationIds)
     : { data: [], error: null }
@@ -569,7 +569,7 @@ export async function buildGameChatContextV2({
     presentNpcIds.length
       ? admin
           .from("npc_profiles")
-          .select("character_id,role,species,creature_type,size,challenge_rating,occupation,faction,appearance,demeanor,motivation,public_notes,gm_notes,tags,inventory_text,inventory_data")
+          .select("character_id,role,species,creature_type,size,challenge_rating,occupation,faction,appearance,demeanor,motivation,public_notes,gm_notes,tags,inventory_text,inventory_data,background_simulation_scope")
           .eq("campaign_id", campaignId)
           .in("character_id", presentNpcIds)
       : Promise.resolve({ data: [], error: null }),

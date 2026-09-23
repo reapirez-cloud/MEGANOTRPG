@@ -144,6 +144,12 @@ export const VOSS_MANAGER_TOOLS = [
           bio: { type: "string" },
           avatar_url: { type: "string" },
           visibility_mode: { type: "string", enum: ["always", "discover"] },
+          background_simulation_scope: {
+            type: "string",
+            enum: ["entity", "disabled"],
+            description:
+              "Persistent background simulation classification. entity means independently evolvable; disabled excludes it.",
+          },
           location_id: { type: "string" },
           habitat_location_ids: {
             type: "array",
@@ -197,6 +203,12 @@ export const VOSS_MANAGER_TOOLS = [
           bio: { type: "string" },
           avatar_url: { type: "string" },
           visibility_mode: { type: "string", enum: ["always", "discover"] },
+          background_simulation_scope: {
+            type: "string",
+            enum: ["entity", "disabled"],
+            description:
+              "Persistent background simulation classification. entity means independently evolvable; disabled excludes it.",
+          },
           location_id: { type: "string" },
           habitat_location_ids: {
             type: "array",
@@ -518,6 +530,12 @@ export const VOSS_MANAGER_TOOLS = [
             type: "string",
             enum: ["always", "discover", "private"],
           },
+          background_simulation_scope: {
+            type: "string",
+            enum: ["entity", "detail", "disabled"],
+            description:
+              "entity = independently simulated whole place; detail = internal fragment of another place; disabled = never selected.",
+          },
         },
         required: ["name"],
       },
@@ -541,6 +559,10 @@ export const VOSS_MANAGER_TOOLS = [
           visibility_mode: {
             type: "string",
             enum: ["always", "discover", "private"],
+          },
+          background_simulation_scope: {
+            type: "string",
+            enum: ["entity", "detail", "disabled"],
           },
         },
         required: ["location_id"],
@@ -577,6 +599,10 @@ export const VOSS_MANAGER_TOOLS = [
                 visibility_mode: {
                   type: "string",
                   enum: ["always", "discover", "private"],
+                },
+                background_simulation_scope: {
+                  type: "string",
+                  enum: ["entity", "detail", "disabled"],
                 },
               },
               required: ["op"],
@@ -1204,6 +1230,11 @@ async function createLocation(
     args.visibility_mode === "always" || args.visibility_mode === "private"
       ? args.visibility_mode
       : "discover"
+  const backgroundSimulationScope =
+    args.background_simulation_scope === "entity" ||
+      args.background_simulation_scope === "detail"
+      ? args.background_simulation_scope
+      : "disabled"
 
   if (parentLocationId) {
     const { data: parent, error: parentError } = await managerClient(context)
@@ -1226,10 +1257,11 @@ async function createLocation(
       description: text(args.description, 12000),
       image_url: null,
       visibility_mode: visibility,
+      background_simulation_scope: backgroundSimulationScope,
       lifecycle_state: "active",
       created_by: context.userId,
     })
-    .select("id,parent_location_id,name,summary,description,visibility_mode,lifecycle_state")
+    .select("id,parent_location_id,name,summary,description,visibility_mode,background_simulation_scope,lifecycle_state")
     .single()
 
   if (error) return { error: error.message }
@@ -1245,7 +1277,7 @@ async function updateLocation(
 
   const { data: current, error: readError } = await managerClient(context)
     .from("locations")
-    .select("id,parent_location_id,name,summary,description,visibility_mode,lifecycle_state")
+    .select("id,parent_location_id,name,summary,description,visibility_mode,background_simulation_scope,lifecycle_state")
     .eq("campaign_id", context.campaignId)
     .eq("id", locationId)
     .maybeSingle()
@@ -1277,6 +1309,13 @@ async function updateLocation(
       ? args.visibility_mode
       : current.visibility_mode
 
+  const backgroundSimulationScope =
+    args.background_simulation_scope === "entity" ||
+      args.background_simulation_scope === "detail" ||
+      args.background_simulation_scope === "disabled"
+      ? args.background_simulation_scope
+      : current.background_simulation_scope
+
   const { data, error } = await managerClient(context)
     .from("locations")
     .update({
@@ -1285,11 +1324,12 @@ async function updateLocation(
       summary: args.summary === undefined ? current.summary : text(args.summary, 2000),
       description: args.description === undefined ? current.description : text(args.description, 12000),
       visibility_mode: visibility,
+      background_simulation_scope: backgroundSimulationScope,
       updated_at: new Date().toISOString(),
     })
     .eq("campaign_id", context.campaignId)
     .eq("id", locationId)
-    .select("id,parent_location_id,name,summary,description,visibility_mode,lifecycle_state")
+    .select("id,parent_location_id,name,summary,description,visibility_mode,background_simulation_scope,lifecycle_state")
     .maybeSingle()
 
   if (error) return { error: error.message }
@@ -1355,6 +1395,7 @@ async function batchLocationChanges(
       "summary",
       "description",
       "visibility_mode",
+      "background_simulation_scope",
     ]) {
       if (Object.prototype.hasOwnProperty.call(operation, key)) {
         callArgs[key] = operation[key]

@@ -264,6 +264,8 @@ Tests:
 
 ## Stage 3 — Generation-time entity classification
 
+**Status: CERTIFIED — 2026-09-23**
+
 Update AI-world materialization so new content is classified correctly immediately.
 
 Locations:
