@@ -587,6 +587,8 @@ Primary GM should use this for genuinely uncertain world/narrative outcomes, not
 
 ## Stage 12 — Compact state merger
 
+**Status: CERTIFIED — 2026-09-24**
+
 For every world/NPC/location background event:
 
 ```text
