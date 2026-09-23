@@ -88,6 +88,9 @@ function DialogueMessage({
               {gmNarration ? "GM · Рассказчик" : "GM"}
             </span>
           ) : null}
+          {event.audience.scope === "direct_pc" ? (
+            <span className="u1-chat-line__audience">Лично</span>
+          ) : null}
           <time>{formatMessageTime(event.createdAt)}</time>
         </header>
 
