@@ -10,6 +10,10 @@ export type Stage2GameChatContext = {
     campaignDay: number | null
     dayPeriod: string | null
   }
+  sourceAudience: {
+    scope: "scene" | "direct_pc"
+    recipientCharacterIds: string[]
+  }
   players: JsonRecord[]
   presentCharacters: JsonRecord[]
   sheets: JsonRecord[]
@@ -74,6 +78,9 @@ function gameTimeFromEvent(event: JsonRecord | undefined) {
   return {
     campaignDay: nullableNumber(payload.campaign_day),
     dayPeriod: nullableString(payload.day_period),
+    sourceLocationId:
+      nullableString(event?.location_id) ||
+      nullableString(payload.location_snapshot),
   }
 }
 
@@ -91,6 +98,7 @@ function withGameAge(
       currentDay !== null && time.campaignDay !== null
         ? Math.max(0, currentDay - time.campaignDay)
         : null,
+    source_location_id: time.sourceLocationId,
   }
 }
 
@@ -345,7 +353,7 @@ export async function buildGameChatContextV2({
       .maybeSingle(),
     admin
       .from("chat_messages")
-      .select("id,author_name,body,user_id,character_id,event_kind,event_payload,attachment_kind,turn_command_id,turn_component,turn_order,created_at")
+      .select("id,author_name,body,user_id,character_id,event_kind,event_payload,attachment_kind,turn_command_id,turn_component,turn_order,audience_scope,recipient_character_ids,created_at")
       .eq("room_id", roomId)
       .lte("id", sourceMessageId)
       .order("id", { ascending: false })
@@ -546,7 +554,7 @@ export async function buildGameChatContextV2({
     presentNpcIds.length
       ? admin
           .from("npc_profiles")
-          .select("character_id,role,species,creature_type,size,challenge_rating,occupation,faction,appearance,demeanor,motivation,public_notes,gm_notes,tags")
+          .select("character_id,role,species,creature_type,size,challenge_rating,occupation,faction,appearance,demeanor,motivation,public_notes,gm_notes,tags,inventory_text,inventory_data")
           .eq("campaign_id", campaignId)
           .in("character_id", presentNpcIds)
       : Promise.resolve({ data: [], error: null }),
@@ -646,22 +654,52 @@ export async function buildGameChatContextV2({
     rows(chatEventsResult.data).map((item) => [String(item.source_id), item]),
   )
 
-  const recentMessages = history.map((message) => {
-    const event = chatEventByMessage.get(String(message.id))
-    return withGameAge({
-      id: message.id,
-      author_name: message.author_name,
-      character_id: message.character_id,
-      body: message.body,
-      event_kind: message.event_kind,
-      event_payload: message.event_payload,
-      attachment_kind: message.attachment_kind,
-      turn_command_id: message.turn_command_id,
-      turn_component: message.turn_component,
-      turn_order: message.turn_order,
-      created_at: message.created_at,
-    }, event, currentDay)
-  })
+  const sourceMessage =
+    history.find((message) => Number(message.id) === sourceMessageId) || {}
+  const sourceAudienceScope =
+    nullableString(sourceMessage.audience_scope) === "direct_pc"
+      ? "direct_pc"
+      : "scene"
+  const sourceAudience = {
+    scope: sourceAudienceScope as "scene" | "direct_pc",
+    recipientCharacterIds: strings(sourceMessage.recipient_character_ids),
+  }
+
+  const recentMessages = history
+    .filter((message) => {
+      if (Number(message.id) === sourceMessageId) return true
+      const event = chatEventByMessage.get(String(message.id))
+      if (!event) return false
+
+      const eventLocationId = nullableString(event.location_id)
+      if (sourceLocationId && eventLocationId !== sourceLocationId) return false
+      if (!sourceLocationId && eventLocationId) return false
+
+      if (nullableString(event.visibility) === "characters") {
+        const visibleCharacterIds = strings(event.visible_character_ids)
+        return visibleCharacterIds.includes(sourceCharacterId)
+      }
+
+      return true
+    })
+    .map((message) => {
+      const event = chatEventByMessage.get(String(message.id))
+      return withGameAge({
+        id: message.id,
+        author_name: message.author_name,
+        character_id: message.character_id,
+        body: message.body,
+        event_kind: message.event_kind,
+        event_payload: message.event_payload,
+        attachment_kind: message.attachment_kind,
+        turn_command_id: message.turn_command_id,
+        turn_component: message.turn_component,
+        turn_order: message.turn_order,
+        audience_scope: message.audience_scope,
+        recipient_character_ids: message.recipient_character_ids,
+        created_at: message.created_at,
+      }, event, currentDay)
+    })
 
   const rawFacts = rows(memoryFactsResult.data)
     .filter((item) => memoryVisible(item, roomId))
@@ -681,7 +719,7 @@ export async function buildGameChatContextV2({
   if (memoryEventIds.length) {
     const memoryEventsResult = await admin
       .from("campaign_events")
-      .select("id,payload,occurred_at")
+      .select("id,location_id,visibility,visible_character_ids,payload,occurred_at")
       .eq("campaign_id", campaignId)
       .in("id", memoryEventIds)
 
@@ -701,20 +739,38 @@ export async function buildGameChatContextV2({
     return candidates[0]
   }
 
-  const memoryFacts = rawFacts.map((item) =>
-    withGameAge(
-      item,
-      newestSourceEvent(strings(item.source_event_ids)),
-      currentDay,
+  function belongsToSourceScene(item: JsonRecord) {
+    const sourceMemoryLocation = nullableString(item.source_location_id)
+    if (sourceMemoryLocation) {
+      return sourceMemoryLocation === sourceLocationId
+    }
+
+    // Old room-local memories without a location snapshot are ambiguous in a
+    // split-party room. Fail closed instead of leaking another scene.
+    if (item.room_id === roomId && sourceLocationId) return false
+
+    // Campaign/global facts without a physical location remain valid.
+    return true
+  }
+
+  const memoryFacts = rawFacts
+    .map((item) =>
+      withGameAge(
+        item,
+        newestSourceEvent(strings(item.source_event_ids)),
+        currentDay,
+      )
     )
-  )
-  const memorySummaries = rawSummaries.map((item) =>
-    withGameAge(
-      item,
-      newestSourceEvent(strings(item.key_event_ids)),
-      currentDay,
+    .filter(belongsToSourceScene)
+  const memorySummaries = rawSummaries
+    .map((item) =>
+      withGameAge(
+        item,
+        newestSourceEvent(strings(item.key_event_ids)),
+        currentDay,
+      )
     )
-  )
+    .filter(belongsToSourceScene)
 
   const originalMessage =
     nullableString(jobInput.original_message)?.toLocaleLowerCase("ru-RU") || ""
@@ -740,6 +796,7 @@ export async function buildGameChatContextV2({
       campaignDay: currentDay,
       dayPeriod: currentPeriod,
     },
+    sourceAudience,
     players: playerCharacters,
     presentCharacters,
     sheets: rows(sheetsResult.data),
@@ -774,8 +831,12 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
       player_locations_are_independent: true,
       do_not_merge_split_party_scenes: true,
       pc_autonomy: "never speak, decide or act for a player character",
+      physical_scene_history_only: true,
+      direct_pc_audience_is_server_authoritative: true,
+      direct_pc_never_authorizes_ai_to_speak_for_recipient: true,
     },
     current_game_time: context.currentGameTime,
+    source_audience: context.sourceAudience,
     room: context.room,
     source_character: context.sourceCharacter,
     source_location: context.sourceLocation,
