@@ -144,3 +144,41 @@ test("completed Stage 3 debt is removed while later memory ageing debt remains",
   assert.doesNotMatch(debt, /id: "world-maintenance-45-all-messages"/)
   assert.match(debt, /id: "world-maintenance-memory"/)
 })
+
+
+test("Stage 3 dispatch wakes a separate authenticated worker asynchronously", () => {
+  const migration = read(
+    "supabase/migrations/20260923093500_ai_gm_world_maintenance_dispatch_stage3_v1.sql",
+  )
+  const runner = read("supabase/functions/world-maintenance/index.ts")
+
+  assert.match(migration, /create extension if not exists pg_net/)
+  assert.match(migration, /net\.http_post/)
+  assert.match(migration, /world-maintenance/)
+  assert.match(migration, /dispatch_token/)
+  assert.match(migration, /verify_ai_gm_maintenance_dispatch_v1/)
+  assert.match(migration, /last_dispatched_job_id/)
+  assert.match(migration, /last_dispatch_at/)
+  assert.match(runner, /verify_ai_gm_maintenance_dispatch_v1/)
+  assert.match(runner, /runPendingWorldMaintenanceForRoom/)
+  assert.match(runner, /SUPABASE_SERVICE_ROLE_KEY/)
+})
+
+test("Stage 3 internal dispatch RPCs are service-role-only", () => {
+  const migration = read(
+    "supabase/migrations/20260923093500_ai_gm_world_maintenance_dispatch_stage3_v1.sql",
+  )
+
+  assert.match(
+    migration,
+    /revoke all on function public\.verify_ai_gm_maintenance_dispatch_v1\(text\)[\s\S]*from public, anon, authenticated/,
+  )
+  assert.match(
+    migration,
+    /grant execute on function public\.verify_ai_gm_maintenance_dispatch_v1\(text\)[\s\S]*to service_role/,
+  )
+  assert.match(
+    migration,
+    /revoke all on function public\.dispatch_ai_gm_maintenance_job_v1\(uuid\)[\s\S]*from public, anon, authenticated/,
+  )
+})
