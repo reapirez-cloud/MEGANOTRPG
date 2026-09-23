@@ -327,10 +327,14 @@ async function run(
   const snapshot = await loadSnapshot(admin, job.campaign_id, npcCharacterId)
   const { model, selected } = await selectBestiarySlug(admin, snapshot)
 
-  const applied = await admin.rpc("apply_ai_gm_npc_runtime_build_v1", {
+  const expectedSignature = text(job.input.build_signature, 128)
+  if (!expectedSignature) throw new Error("npc_runtime_build_signature_missing")
+
+  const applied = await admin.rpc("apply_ai_gm_npc_runtime_build_v2", {
     p_job_id: job.id,
     p_bestiary_slug: selected,
     p_model_id: model.id,
+    p_expected_signature: expectedSignature,
   })
   if (applied.error) throw new Error(applied.error.message)
 
