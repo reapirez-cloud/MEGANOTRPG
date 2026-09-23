@@ -261,7 +261,7 @@ export default function ChatComposer({
 
   const queuePlayerTurn = Boolean(
     model.viewer.aiGameMasterEnabled === true &&
-      !model.canManage &&
+      model.viewer.role === "player" &&
       model.roomType !== "flood" &&
       selectedCharacterId &&
       selectedCharacterId === model.viewer.playerCharacterId,
