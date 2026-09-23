@@ -5,8 +5,20 @@ import {
   ProviderGatewayError,
   requestChatCompletion,
 } from "./provider-gateway.ts"
+import {
+  executeRandomDecision,
+  RESOLVE_RANDOM_DECISION_TOOL,
+} from "./random-decision.ts"
 
 type JsonRecord = Record<string, unknown>
+
+type ProviderToolCall = {
+  id?: string
+  function?: {
+    name?: string
+    arguments?: string | JsonRecord
+  }
+}
 
 type ExpectedResult = {
   entityScope: "world" | "npc" | "location"
@@ -35,6 +47,9 @@ const WORKER_SYSTEM = [
   "effect_payload описывает структурированное последствие события. proposed_state содержит только компактное предлагаемое состояние/дельту для будущего Stage 12 merger.",
   "event_kind должен быть коротким machine key вида economy.shift, npc.recovery, location.damage. Для lasting_change=false используй event_kind=none.",
   "summary — 1–2 коротких предложения без художественной сцены.",
+  "Если после учёта supplied roll и канона остаются 2+ реально равноправных НЕРАЗРЕШЁННЫХ сюжетных исхода, можешь вызвать resolve_random_decision. Сначала полностью задай вопрос и все d100 bands. Сервер зафиксирует их до броска.",
+  "Никогда не используй resolve_random_decision для supplied daily roll, атаки, save/check, deterministic rule, уже существующего факта или чтобы переиграть неудобный исход.",
+  "После resolve_random_decision обязан следовать matched_outcome; повтор того же decision_key не даёт новый бросок.",
   "Верни только JSON без markdown: {world:Result,entities:Result[]}.",
   "Result={entity_scope:'world'|'npc'|'location',entity_id:string,roll_result:number,severity_key:string,direction:'negative'|'neutral'|'positive',magnitude:'critical'|'severe'|'notable'|'minor'|'neutral',lasting_change:boolean,event_kind:string,summary:string,importance:0|1|2|3|4|5,effect_payload:object,proposed_state:object}",
 ].join("\n")
@@ -53,8 +68,31 @@ function text(value: unknown, max = 1800) {
   return typeof value === "string" ? value.trim().slice(0, max) : ""
 }
 
+function providerMessage(payload: any): {
+  content?: string | null
+  tool_calls?: ProviderToolCall[]
+} {
+  const message = payload?.choices?.[0]?.message
+  return message && typeof message === "object" ? message : {}
+}
+
+function parseProviderToolArguments(raw: unknown): JsonRecord {
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as JsonRecord
+  }
+  if (typeof raw !== "string" || raw.length > 50000) return {}
+  try {
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as JsonRecord
+      : {}
+  } catch {
+    return {}
+  }
+}
+
 function providerText(payload: any) {
-  const direct = payload?.choices?.[0]?.message?.content
+  const direct = providerMessage(payload).content
   if (typeof direct === "string" && direct.trim()) return direct.trim()
   if (typeof payload?.output_text === "string" && payload.output_text.trim()) {
     return payload.output_text.trim()
@@ -288,6 +326,7 @@ async function fixedWorkerModel(
     .eq("model_kind", "agent")
     .eq("access_scope", "campaign")
     .eq("supports_json", true)
+    .eq("supports_tools", true)
     .maybeSingle()
 
   if (error) throw new Error(error.message)
@@ -346,27 +385,94 @@ export async function runAiWorldBackground(
 
     const model = await fixedWorkerModel(admin)
 
-    const payload = await requestChatCompletion({
-      model,
-      messages: [
-        { role: "system", content: WORKER_SYSTEM },
-        {
-          role: "user",
-          content:
-            "Обработай этот один игровой день. Используй только supplied entities/rolls и верни только JSON.\n" +
-            JSON.stringify(workerInput),
-        },
-      ],
-      temperature: 0.1,
-      disableReasoningEffort: false,
-      timeoutMs: 85_000,
-      retryCount: 0,
-      responseFormat: { type: "json_object" },
-    })
+    const messages: Array<Record<string, unknown>> = [
+      { role: "system", content: WORKER_SYSTEM },
+      {
+        role: "user",
+        content:
+          "Обработай этот один игровой день. Используй только supplied entities/rolls и верни только JSON.\n" +
+          JSON.stringify(workerInput),
+      },
+    ]
 
-    const raw = providerText(payload)
-    const parsed = parseJsonObject(raw)
-    const normalized = validateBackgroundWorkerOutput(parsed, workerInput)
+    let normalized: ReturnType<typeof validateBackgroundWorkerOutput> | null = null
+
+    for (let round = 0; round < 4; round += 1) {
+      const payload = await requestChatCompletion({
+        model,
+        messages,
+        tools: [
+          RESOLVE_RANDOM_DECISION_TOOL,
+        ] as unknown as Array<Record<string, unknown>>,
+        toolChoice: "auto",
+        temperature: 0.1,
+        disableReasoningEffort: false,
+        timeoutMs: 85_000,
+        retryCount: 0,
+        responseFormat: { type: "json_object" },
+      })
+
+      const assistant = providerMessage(payload)
+      const calls = Array.isArray(assistant.tool_calls)
+        ? assistant.tool_calls.slice(0, 4)
+        : []
+
+      if (!calls.length) {
+        const raw = providerText(payload)
+        const parsed = parseJsonObject(raw)
+        normalized = validateBackgroundWorkerOutput(parsed, workerInput)
+        break
+      }
+
+      messages.push({
+        role: "assistant",
+        content:
+          typeof assistant.content === "string" ? assistant.content : null,
+        tool_calls: calls,
+      })
+
+      for (let index = 0; index < calls.length; index += 1) {
+        const call = calls[index]
+        const callId = call.id || `background-random-${round}-${index}`
+        const name =
+          typeof call.function?.name === "string" ? call.function.name : ""
+        const args = parseProviderToolArguments(call.function?.arguments)
+
+        let result: unknown
+        if (name !== "resolve_random_decision") {
+          result = { error: "background_worker_tool_not_allowed" }
+        } else {
+          result = await executeRandomDecision(
+            {
+              admin,
+              campaignId: text(prepared.campaign_id, 100),
+              campaignDay: Number(prepared.campaign_day || 0),
+              runKey: runId,
+              surface: "background_flash",
+            },
+            args,
+          )
+        }
+
+        const rawResult = JSON.stringify(result)
+        messages.push({
+          role: "tool",
+          tool_call_id: callId,
+          name,
+          content:
+            rawResult.length <= 16000
+              ? rawResult
+              : JSON.stringify({
+                  truncated: true,
+                  preview: rawResult.slice(0, 16000),
+                }),
+        })
+      }
+    }
+
+    if (!normalized) {
+      throw new Error("background_worker_random_decision_round_limit")
+    }
 
     const complete = await admin.rpc(
       "complete_ai_background_daily_worker_v1",
