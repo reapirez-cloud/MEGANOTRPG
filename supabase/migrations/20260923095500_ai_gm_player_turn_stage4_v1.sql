@@ -12,6 +12,16 @@ alter table public.chat_messages
   add column if not exists turn_component text;
 
 alter table public.chat_messages
+  add column if not exists turn_order smallint;
+
+alter table public.chat_messages
+  drop constraint if exists chat_messages_turn_order_check;
+
+alter table public.chat_messages
+  add constraint chat_messages_turn_order_check
+  check (turn_order is null or turn_order >= 0);
+
+alter table public.chat_messages
   drop constraint if exists chat_messages_turn_component_check;
 
 alter table public.chat_messages
@@ -37,6 +47,7 @@ create table if not exists public.player_turn_drafts (
   action_entry jsonb,
   bonus_action_entry jsonb,
   movement jsonb,
+  component_order text[] not null default array[]::text[],
   description text not null default '',
   turn_command_id uuid,
   submission_result jsonb not null default '{}'::jsonb,
@@ -49,6 +60,11 @@ create table if not exists public.player_turn_drafts (
     check (bonus_action_entry is null or jsonb_typeof(bonus_action_entry) = 'object'),
   constraint player_turn_drafts_movement_object
     check (movement is null or jsonb_typeof(movement) = 'object'),
+  constraint player_turn_drafts_component_order_check
+    check (
+      component_order <@ array['action','bonus_action','movement']::text[]
+      and cardinality(component_order) <= 3
+    ),
   constraint player_turn_drafts_description_length
     check (char_length(description) <= 5000)
 );
@@ -231,12 +247,61 @@ begin
 end;
 $$;
 
+create or replace function private.normalize_player_turn_order_v1(
+  p_action_entry jsonb,
+  p_bonus_action_entry jsonb,
+  p_movement jsonb,
+  p_requested text[]
+)
+returns text[]
+language plpgsql
+security definer
+set search_path = ''
+immutable
+as $$
+declare
+  v_requested text[] := coalesce(p_requested, array[]::text[]);
+  v_result text[] := array[]::text[];
+  v_component text;
+begin
+  foreach v_component in array v_requested loop
+    if v_component not in ('action','bonus_action','movement') then
+      raise exception 'Unsupported player turn component: %', v_component;
+    end if;
+    if v_component = any(v_result) then
+      raise exception 'Duplicate player turn component: %', v_component;
+    end if;
+    if v_component = 'action' and p_action_entry is null then
+      continue;
+    elsif v_component = 'bonus_action' and p_bonus_action_entry is null then
+      continue;
+    elsif v_component = 'movement' and p_movement is null then
+      continue;
+    end if;
+    v_result := array_append(v_result, v_component);
+  end loop;
+
+  if p_action_entry is not null and not ('action' = any(v_result)) then
+    v_result := array_append(v_result, 'action');
+  end if;
+  if p_bonus_action_entry is not null and not ('bonus_action' = any(v_result)) then
+    v_result := array_append(v_result, 'bonus_action');
+  end if;
+  if p_movement is not null and not ('movement' = any(v_result)) then
+    v_result := array_append(v_result, 'movement');
+  end if;
+
+  return v_result;
+end;
+$$;
+
 create or replace function public.save_player_turn_draft_v1(
   p_room_id uuid,
   p_character_id uuid,
   p_action_entry jsonb default null,
   p_bonus_action_entry jsonb default null,
   p_movement jsonb default null,
+  p_component_order text[] default null,
   p_description text default '',
   p_expected_revision integer default null
 )
@@ -253,6 +318,7 @@ declare
   v_action jsonb;
   v_bonus jsonb;
   v_movement jsonb;
+  v_component_order text[];
 begin
   v_campaign_id :=
     private.assert_player_turn_actor_v1(
@@ -267,6 +333,12 @@ begin
     private.normalize_player_turn_entry_v1(p_bonus_action_entry, 'bonus_action');
   v_movement :=
     private.normalize_player_turn_movement_v1(p_movement);
+  v_component_order := private.normalize_player_turn_order_v1(
+    v_action,
+    v_bonus,
+    v_movement,
+    p_component_order
+  );
 
   select *
     into v_existing
@@ -290,6 +362,7 @@ begin
       action_entry,
       bonus_action_entry,
       movement,
+      component_order,
       description
     )
     values (
@@ -300,6 +373,7 @@ begin
       v_action,
       v_bonus,
       v_movement,
+      v_component_order,
       left(coalesce(p_description, ''), 5000)
     )
     returning * into v_row;
@@ -314,6 +388,7 @@ begin
     set action_entry = v_action,
         bonus_action_entry = v_bonus,
         movement = v_movement,
+        component_order = v_component_order,
         description = left(coalesce(p_description, ''), 5000),
         revision = revision + 1,
         updated_at = now()
@@ -392,6 +467,7 @@ create or replace function private.execute_player_turn_entry_v1(
   p_character_id uuid,
   p_turn_command_id uuid,
   p_component text,
+  p_turn_order integer,
   p_entry jsonb
 )
 returns bigint
@@ -531,10 +607,12 @@ begin
   update public.chat_messages
   set turn_command_id = p_turn_command_id,
       turn_component = p_component,
+      turn_order = p_turn_order,
       event_payload = coalesce(event_payload, '{}'::jsonb)
         || jsonb_build_object(
           'turnCommandId', p_turn_command_id,
-          'turnComponent', p_component
+          'turnComponent', p_component,
+          'turnOrder', p_turn_order
         )
   where id = v_message_id;
 
@@ -565,6 +643,9 @@ declare
   v_summary_parts text[] := array[]::text[];
   v_final_body text;
   v_result jsonb;
+  v_component text;
+  v_turn_order integer := 0;
+  v_existing_receipt public.engine_command_receipts%rowtype;
 begin
   if auth.uid() is null then
     raise exception 'Authentication required';
@@ -577,6 +658,21 @@ begin
   perform pg_catalog.pg_advisory_xact_lock(
     pg_catalog.hashtextextended(p_turn_command_id::text, 0)
   );
+
+  select *
+    into v_existing_receipt
+  from public.engine_command_receipts
+  where command_id = p_turn_command_id;
+
+  if v_existing_receipt.command_id is not null then
+    if v_existing_receipt.created_by is distinct from auth.uid()
+       or v_existing_receipt.engine is distinct from 'gena'
+       or v_existing_receipt.command_kind is distinct from 'player.turn.v1'
+    then
+      raise exception 'Turn command id is already used by another command';
+    end if;
+    return v_existing_receipt.result;
+  end if;
 
   select *
     into v_draft
@@ -621,72 +717,80 @@ begin
     raise exception 'Turn is empty';
   end if;
 
-  if v_draft.action_entry is not null then
-    v_action_message_id := private.execute_player_turn_entry_v1(
-      v_draft.room_id,
-      v_draft.character_id,
-      p_turn_command_id,
-      'action',
-      v_draft.action_entry
-    );
-    v_message_ids := array_append(v_message_ids, v_action_message_id);
-    v_summary_parts := array_append(
-      v_summary_parts,
-      coalesce(v_draft.action_entry ->> 'label', 'Действие')
-    );
-  end if;
+  foreach v_component in array v_draft.component_order loop
+    v_turn_order := v_turn_order + 1;
 
-  if v_draft.bonus_action_entry is not null then
-    v_bonus_message_id := private.execute_player_turn_entry_v1(
-      v_draft.room_id,
-      v_draft.character_id,
-      p_turn_command_id,
-      'bonus_action',
-      v_draft.bonus_action_entry
-    );
-    v_message_ids := array_append(v_message_ids, v_bonus_message_id);
-    v_summary_parts := array_append(
-      v_summary_parts,
-      'Бонус: ' || coalesce(
-        v_draft.bonus_action_entry ->> 'label',
-        'бонусное действие'
-      )
-    );
-  end if;
-
-  if v_draft.movement is not null then
-    v_movement_text :=
-      trim(coalesce(v_draft.movement ->> 'description', ''));
-
-    if v_movement_text <> '' then
-      v_movement_message_id := public.send_chat_event_v3(
+    if v_component = 'action' and v_draft.action_entry is not null then
+      v_action_message_id := private.execute_player_turn_entry_v1(
         v_draft.room_id,
         v_draft.character_id,
+        p_turn_command_id,
         'action',
-        'Перемещение',
-        jsonb_build_object(
-          'detail', v_movement_text,
-          'turnCommandId', p_turn_command_id,
-          'turnComponent', 'movement'
-        ),
-        '[]'::jsonb
+        v_turn_order,
+        v_draft.action_entry
       );
-
-      update public.chat_messages
-      set turn_command_id = p_turn_command_id,
-          turn_component = 'movement'
-      where id = v_movement_message_id;
-
-      v_message_ids := array_append(
-        v_message_ids,
-        v_movement_message_id
-      );
+      v_message_ids := array_append(v_message_ids, v_action_message_id);
       v_summary_parts := array_append(
         v_summary_parts,
-        'Движение: ' || v_movement_text
+        coalesce(v_draft.action_entry ->> 'label', 'Действие')
       );
+
+    elsif v_component = 'bonus_action'
+       and v_draft.bonus_action_entry is not null
+    then
+      v_bonus_message_id := private.execute_player_turn_entry_v1(
+        v_draft.room_id,
+        v_draft.character_id,
+        p_turn_command_id,
+        'bonus_action',
+        v_turn_order,
+        v_draft.bonus_action_entry
+      );
+      v_message_ids := array_append(v_message_ids, v_bonus_message_id);
+      v_summary_parts := array_append(
+        v_summary_parts,
+        'Бонус: ' || coalesce(
+          v_draft.bonus_action_entry ->> 'label',
+          'бонусное действие'
+        )
+      );
+
+    elsif v_component = 'movement' and v_draft.movement is not null then
+      v_movement_text :=
+        trim(coalesce(v_draft.movement ->> 'description', ''));
+
+      if v_movement_text <> '' then
+        v_movement_message_id := public.send_chat_event_v3(
+          v_draft.room_id,
+          v_draft.character_id,
+          'action',
+          'Перемещение',
+          jsonb_build_object(
+            'detail', v_movement_text,
+            'turnCommandId', p_turn_command_id,
+            'turnComponent', 'movement',
+            'turnOrder', v_turn_order
+          ),
+          '[]'::jsonb
+        );
+
+        update public.chat_messages
+        set turn_command_id = p_turn_command_id,
+            turn_component = 'movement',
+            turn_order = v_turn_order
+        where id = v_movement_message_id;
+
+        v_message_ids := array_append(
+          v_message_ids,
+          v_movement_message_id
+        );
+        v_summary_parts := array_append(
+          v_summary_parts,
+          'Движение: ' || v_movement_text
+        );
+      end if;
     end if;
-  end if;
+  end loop;
 
   v_description := trim(v_draft.description);
   v_final_body := case
@@ -699,14 +803,16 @@ begin
     character_id,
     body,
     turn_command_id,
-    turn_component
+    turn_component,
+    turn_order
   )
   values (
     v_draft.room_id,
     v_draft.character_id,
-    left(v_final_body, 5000),
+    left(v_final_body, 4000),
     p_turn_command_id,
-    'description'
+    'description',
+    v_turn_order + 1
   )
   returning id into v_trigger_message_id;
 
@@ -725,6 +831,27 @@ begin
     'trigger_message_id', v_trigger_message_id
   );
 
+  insert into public.engine_command_receipts (
+    command_id,
+    campaign_id,
+    actor_character_id,
+    engine,
+    command_kind,
+    aggregate_id,
+    result,
+    created_by
+  )
+  values (
+    p_turn_command_id,
+    v_campaign_id,
+    v_draft.character_id,
+    'gena',
+    'player.turn.v1',
+    v_draft.character_id,
+    v_result,
+    auth.uid()
+  );
+
   update public.player_turn_drafts
   set status = 'submitted',
       turn_command_id = p_turn_command_id,
@@ -738,7 +865,7 @@ end;
 $$;
 
 revoke all on function public.save_player_turn_draft_v1(
-  uuid,uuid,jsonb,jsonb,jsonb,text,integer
+  uuid,uuid,jsonb,jsonb,jsonb,text[],text,integer
 ) from public, anon;
 revoke all on function public.get_player_turn_draft_v1(
   uuid,uuid
@@ -751,7 +878,7 @@ revoke all on function public.submit_player_turn_v1(
 ) from public, anon;
 
 grant execute on function public.save_player_turn_draft_v1(
-  uuid,uuid,jsonb,jsonb,jsonb,text,integer
+  uuid,uuid,jsonb,jsonb,jsonb,text[],text,integer
 ) to authenticated;
 grant execute on function public.get_player_turn_draft_v1(
   uuid,uuid
