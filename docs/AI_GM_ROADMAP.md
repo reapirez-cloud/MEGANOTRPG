@@ -15,7 +15,7 @@ Update it when a stage actually reaches READY. Do not skip stage numbers.
 | 8 | READY | Short rest, long rest, dawn and game-time recovery |
 | 9 | READY | NPC/location art lifecycle and chat media publication |
 | 10 | READY | Campaign GM model selector and AI button |
-| 11 | IN PROGRESS | Regenerate, edit/retry and undo ledger |
+| 11 | READY | Regenerate, edit/retry and undo ledger |
 | 12 | TODO | Final READY audit, concurrency, RLS, long-campaign certification |
 
 ## Cross-cutting cooperative debt
@@ -29,4 +29,4 @@ These are not extra numbered stages. They remain explicit in `src/ai/aiGmReadine
 
 ## Current pointer
 
-**Stage 11 is IN PROGRESS. READY stages: 1–10. Next stage after READY: 12.**
+**Stage 11 is READY. READY stages: 1–11. Next stage to execute: 12.**
