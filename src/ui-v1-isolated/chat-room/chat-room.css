@@ -5397,3 +5397,102 @@
   font-size: 9px;
   line-height: 1.3;
 }
+
+
+/* AI GM Stage 12: explicit PC audience + durable runtime status. */
+.u1-chat-audience {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0 2px 7px;
+  scrollbar-width: none;
+}
+.u1-chat-audience::-webkit-scrollbar { display: none; }
+.u1-chat-audience > span {
+  flex: 0 0 auto;
+  color: rgba(225,227,223,.34);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+}
+.u1-chat-audience > button {
+  flex: 0 0 auto;
+  min-height: 25px;
+  padding: 0 9px;
+  border: 1px solid rgba(235,237,239,.08);
+  border-radius: 999px;
+  background: rgba(255,255,255,.018);
+  color: rgba(239,240,236,.54);
+  font-size: 8px;
+  font-weight: 650;
+}
+.u1-chat-audience > button[data-selected] {
+  border-color: rgba(235,237,239,.20);
+  background: rgba(235,237,239,.08);
+  color: rgba(247,247,242,.92);
+}
+.u1-chat-audience[data-direct] {
+  padding-left: 7px;
+  border-left: 1px solid rgba(235,237,239,.12);
+}
+.u1-chat-line__audience {
+  padding: 1px 5px;
+  border: 1px solid rgba(235,237,239,.10);
+  border-radius: 999px;
+  color: rgba(229,231,228,.46);
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.u1-ai-gm-status {
+  margin: 6px 10px 2px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(235,237,239,.07);
+  border-radius: 10px;
+  background: rgba(255,255,255,.018);
+  color: rgba(235,236,232,.58);
+}
+.u1-ai-gm-status > i {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .62;
+}
+.u1-ai-gm-status[data-active] > i {
+  animation: u1-ai-gm-pulse 1.2s ease-in-out infinite;
+}
+.u1-ai-gm-status > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.u1-ai-gm-status strong {
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: .03em;
+}
+.u1-ai-gm-status small {
+  overflow: hidden;
+  color: rgba(235,236,232,.38);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.u1-ai-gm-status[data-phase="failed"] {
+  color: rgba(238,174,174,.72);
+}
+.u1-ai-gm-status[data-phase="completed"] {
+  opacity: .52;
+}
+@keyframes u1-ai-gm-pulse {
+  0%, 100% { opacity: .25; transform: scale(.82); }
+  50% { opacity: .9; transform: scale(1); }
+}
