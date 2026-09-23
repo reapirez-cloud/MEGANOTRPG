@@ -11,7 +11,7 @@ create unique index if not exists agent_jobs_game_chat_source_unique
     and input ->> 'surface' = 'game_chat_v1'
     and input ? 'source_chat_message_id';
 
-create or replace function private.reserve_ai_gm_chat_turn_v1(
+create or replace function public.reserve_ai_gm_chat_turn_v1(
   p_campaign_id uuid,
   p_user_id uuid,
   p_source_chat_message_id bigint
@@ -176,14 +176,14 @@ begin
 end;
 $$;
 
-revoke all on function private.reserve_ai_gm_chat_turn_v1(uuid, uuid, bigint)
+revoke all on function public.reserve_ai_gm_chat_turn_v1(uuid, uuid, bigint)
   from public, anon, authenticated;
-grant execute on function private.reserve_ai_gm_chat_turn_v1(uuid, uuid, bigint)
+grant execute on function public.reserve_ai_gm_chat_turn_v1(uuid, uuid, bigint)
   to service_role;
 
 -- Keep the normal authenticated chat identity rules intact. The only auth-less
 -- insert accepted by this trigger is a service-role transaction explicitly
--- marked by private.publish_ai_gm_message_v1, and it still must name a real
+-- marked by public.publish_ai_gm_message_v1, and it still must name a real
 -- campaign manager as the narrator owner.
 create or replace function public.set_chat_message_identity()
 returns trigger
@@ -329,7 +329,7 @@ begin
 end;
 $$;
 
-create or replace function private.publish_ai_gm_message_v1(
+create or replace function public.publish_ai_gm_message_v1(
   p_job_id uuid,
   p_body text
 )
@@ -427,12 +427,12 @@ begin
 end;
 $$;
 
-revoke all on function private.publish_ai_gm_message_v1(uuid, text)
+revoke all on function public.publish_ai_gm_message_v1(uuid, text)
   from public, anon, authenticated;
-grant execute on function private.publish_ai_gm_message_v1(uuid, text)
+grant execute on function public.publish_ai_gm_message_v1(uuid, text)
   to service_role;
 
-comment on function private.reserve_ai_gm_chat_turn_v1(uuid, uuid, bigint)
+comment on function public.reserve_ai_gm_chat_turn_v1(uuid, uuid, bigint)
   is 'Stage 1 AI GM runtime: atomically reserves one durable GM turn per player-authored PC chat message.';
-comment on function private.publish_ai_gm_message_v1(uuid, text)
+comment on function public.publish_ai_gm_message_v1(uuid, text)
   is 'Stage 1 AI GM runtime: service-role-only idempotent narrator publication for a reserved GM turn.';
