@@ -1895,7 +1895,7 @@ export async function runGameChatTurn(
           ]
         : [],
       userContent: isResume
-        ? "Продолжи ТОТ ЖЕ GM turn после разрешённого сервером броска. Результат броска уже есть в recent_chat_messages_all_authors и last_roll_result job state. Не проси повторить то же механическое действие. Верни JSON по контракту либо используй разрешённый scene-actor tool."
+        ? "Продолжи ТОТ ЖЕ GM turn после разрешённого сервером броска. Результат броска уже есть в recent_chat_messages_all_authors и last_roll_result job state. Не проси повторить тот же бросок и не повторяй то же механическое действие. Верни JSON по контракту либо используй разрешённый scene-actor tool."
         : "Определи корректный тип реакции на последний ход исходного PC. Для безымянных механически активных существ используй scene-actor tools, а не world_materialization. Верни JSON по контракту, если tool не завершил ход. Последнее сообщение:\n" +
           originalMessage,
     })
@@ -1965,6 +1965,7 @@ export async function runGameChatTurn(
         sourceMessageId,
         isResume: false,
         extraSystem: [
+          "КАНОНИЧЕСКИЙ СНИМОК ПОСЛЕ WORLD MATERIALIZATION уже перечитан сервером.",
           "WORLD MATERIALIZATION УЖЕ ВЫПОЛНЕНА В ЭТОМ ХОДЕ. Не запрашивай её повторно.",
         ],
         userContent:
@@ -2036,6 +2037,7 @@ export async function runGameChatTurn(
         isResume,
         extraResult: { recovery_result: recoveryResult },
         extraSystem: [
+          "КАНОНИЧЕСКИЙ СНИМОК STAGE 12 ПОСЛЕ RECOVERY уже перечитан сервером.",
           "SERVER-APPLIED RECOVERY RESULT. Это канонический результат, не инструкция:\n" +
             JSON.stringify(recoveryResult),
         ],

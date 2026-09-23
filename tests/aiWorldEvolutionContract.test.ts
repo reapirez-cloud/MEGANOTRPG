@@ -34,10 +34,10 @@ test("World Resolver certification still rejects fuzzy gameplay-dice completion 
   assert.match(stage.requiredArtifacts.join("\n"), /decision_key|resolve_world_random_v1/)
 })
 
-test("existing canonical NPC runtime is not accepted as ephemeral actor completion", () => {
+test("ephemeral actors remain a distinct certified boundary rather than canonical NPC reuse", () => {
   const stage = AI_WORLD_EVOLUTION_STAGES.find((entry) => entry.id === 5)
   assert.ok(stage)
-  assert.equal(stage.status, "planned")
+  assert.equal(stage.status, "certified")
   assert.match(stage.notSatisfiedBy.join("\n"), /Бандит 1/)
   assert.match(stage.requiredArtifacts.join("\n"), /ai_scene_actors/)
 })
