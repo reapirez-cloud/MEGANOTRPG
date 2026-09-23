@@ -2,6 +2,10 @@
 
 > Status: **DESIGN LOCKED — implementation roadmap for experimental AI worlds**
 
+## Related design
+
+Ephemeral bestiary-backed combatants and promotion into persistent NPCs are specified in [AI_SCENE_ACTORS_ROADMAP.md](./AI_SCENE_ACTORS_ROADMAP.md).
+
 ## Goal
 
 Make an experimental AI world continue to change even when the player is not directly interacting with a person or place.
