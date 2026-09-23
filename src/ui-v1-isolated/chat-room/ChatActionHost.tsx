@@ -18,6 +18,11 @@ import {
   templatePaymentOptionKeyForChatAction,
 } from "../../components/chat/chatTemplateActionRoute.ts"
 import type { Character } from "../../context/CharacterContext.tsx"
+import {
+  playerTurnSlotForEconomy,
+  type PlayerTurnEntry,
+  type PlayerTurnSlot,
+} from "./playerTurnQueue"
 import { genaSession } from "../../game-engine/runtime.ts"
 import { inventoryItemIdFromSourceId } from "../../inventory-engine/index.ts"
 import { useResolvedCharacterRuntime } from "../../hooks/useResolvedCharacterRuntime.ts"
@@ -76,12 +81,19 @@ export default function ChatActionHost({
   mode,
   characterId,
   speakerName,
+  queuePlayerTurn = false,
+  onQueueTurnEntry,
   onClose,
 }: {
   model: ChatRoomShellModel
   mode: ChatActionLauncherMode
   characterId: string | null
   speakerName: string | null
+  queuePlayerTurn?: boolean
+  onQueueTurnEntry?: (
+    entry: PlayerTurnEntry,
+    slot: PlayerTurnSlot,
+  ) => void | Promise<void>
   onClose: () => void
 }) {
   const actor = useActionCharacter(model.viewer.campaignId, characterId)
@@ -114,6 +126,25 @@ export default function ChatActionHost({
     try {
       const messageId = await execute()
       announce(messageId)
+      return true
+    } finally {
+      setCommandBusy(false)
+    }
+  }
+
+  async function queueTurnEntry(
+    entry: PlayerTurnEntry,
+    slot: PlayerTurnSlot,
+  ) {
+    if (!queuePlayerTurn || !onQueueTurnEntry) return false
+    if (commandBusy) {
+      throw new Error("Предыдущее действие ещё добавляется.")
+    }
+
+    setCommandBusy(true)
+    try {
+      await onQueueTurnEntry(entry, slot)
+      onClose()
       return true
     } finally {
       setCommandBusy(false)
@@ -214,8 +245,61 @@ export default function ChatActionHost({
         label: action.label || action.key,
       }
 
+      const rolls = Boolean(
+        action.attack || damage?.dice || bonusDice || semanticDie,
+      )
+      const entry: PlayerTurnEntry = rolls
+        ? {
+            kind: "template_roll",
+            label: action.label || action.key,
+            mechanicId,
+            ...(optionKey ? { optionKey } : {}),
+            rollKind: "action",
+            modifier: action.attack?.bonus.value || 0,
+            rollD20: Boolean(action.attack),
+            diceCount:
+              damage?.dice?.count ??
+              bonusDice?.remainingDice ??
+              semanticDie?.count ??
+              0,
+            diceSides:
+              damage?.dice?.sides ??
+              bonusDice?.dieSides ??
+              semanticDie?.sides ??
+              0,
+            diceModifier:
+              damage?.modifier.value ??
+              semanticDie?.modifier ??
+              0,
+          }
+        : {
+            kind: "template_action",
+            label: action.label || action.key,
+            mechanicId,
+            ...(optionKey ? { optionKey } : {}),
+            payload: d20Override
+              ? {
+                  detail: `Результат d20 становится ${d20Override.result}`,
+                  mechanicId,
+                  d20ResultOverride: d20Override.result,
+                  ...(d20Override.trigger
+                    ? { trigger: d20Override.trigger }
+                    : {}),
+                }
+              : { detail: action.economy, mechanicId },
+          }
+
+      if (
+        await queueTurnEntry(
+          entry,
+          playerTurnSlotForEconomy(action.economy),
+        )
+      ) {
+        return
+      }
+
       await command(() =>
-        action.attack || damage?.dice || bonusDice || semanticDie
+        rolls
           ? genaSession.sendTemplateRoll({
               ...common,
               kind: "action",
@@ -267,6 +351,30 @@ export default function ChatActionHost({
         ? resourceCostInputs(contract, action.resourceCosts)
         : []
 
+      const inventoryRolls =
+        Boolean(action.attack) || Boolean(damage?.dice)
+      if (
+        await queueTurnEntry(
+          {
+            kind: inventoryRolls ? "inventory_roll" : "inventory_event",
+            label: action.label || action.key,
+            itemId: inventoryItemId,
+            itemAmount: 1,
+            rollKind: "action",
+            modifier: action.attack?.bonus.value || 0,
+            rollD20: Boolean(action.attack),
+            diceCount: damage?.dice?.count || 0,
+            diceSides: damage?.dice?.sides || 0,
+            diceModifier: damage?.modifier.value || 0,
+            resourceCosts: costs,
+            payload: { detail: action.economy },
+          },
+          playerTurnSlotForEconomy(action.economy),
+        )
+      ) {
+        return
+      }
+
       await command(() =>
         genaSession.useInventoryItem({
           roomId: model.roomId,
@@ -293,6 +401,49 @@ export default function ChatActionHost({
     const costs = contract
       ? resourceCostInputs(contract, action.resourceCosts)
       : []
+
+    const rawRolls = Boolean(
+      action.attack || damage?.dice || bonusDice || semanticDie,
+    )
+    const rawEntry: PlayerTurnEntry = rawRolls
+      ? {
+          kind: "raw_roll",
+          label: action.label || action.key,
+          rollKind: "action",
+          modifier: action.attack?.bonus.value || 0,
+          rollD20: Boolean(action.attack),
+          diceCount:
+            damage?.dice?.count ??
+            bonusDice?.remainingDice ??
+            semanticDie?.count ??
+            0,
+          diceSides:
+            damage?.dice?.sides ??
+            bonusDice?.dieSides ??
+            semanticDie?.sides ??
+            0,
+          diceModifier:
+            damage?.modifier.value ??
+            semanticDie?.modifier ??
+            0,
+          resourceCosts: costs,
+        }
+      : {
+          kind: "raw_event",
+          label: action.label || action.key,
+          eventKind: "action",
+          payload: { detail: action.economy },
+          resourceCosts: costs,
+        }
+
+    if (
+      await queueTurnEntry(
+        rawEntry,
+        playerTurnSlotForEconomy(action.economy),
+      )
+    ) {
+      return
+    }
 
     await command(() =>
       action.attack || damage?.dice || bonusDice || semanticDie
@@ -393,6 +544,29 @@ export default function ChatActionHost({
           ? resourceCostInputs(contract, option.costs)
           : []
 
+      if (
+        await queueTurnEntry(
+          {
+            kind: "spell_with_modifiers",
+            label: spell.identity.name,
+            ...(mechanicId
+              ? {
+                  spellMechanicId: mechanicId,
+                  methodKey: method.key,
+                  ...(option ? { optionKey: option.key } : {}),
+                }
+              : {
+                  spellResourceCosts: costs,
+                }),
+            modifierMechanicIds,
+            payload: { detail, spellKey: spell.key },
+          },
+          "action",
+        )
+      ) {
+        return true
+      }
+
       await command(() =>
         genaSession.sendSpellWithModifiers({
           roomId: model.roomId,
@@ -418,6 +592,22 @@ export default function ChatActionHost({
     }
 
     if (mechanicId) {
+      if (
+        await queueTurnEntry(
+          {
+            kind: "template_spell",
+            label: spell.identity.name,
+            mechanicId,
+            methodKey: method.key,
+            ...(option ? { optionKey: option.key } : {}),
+            payload: { detail, spellKey: spell.key },
+          },
+          "action",
+        )
+      ) {
+        return true
+      }
+
       await command(() =>
         genaSession.sendTemplateSpell({
           roomId: model.roomId,
@@ -433,6 +623,21 @@ export default function ChatActionHost({
       const contract = resolved.contract
       const costs =
         contract && option ? resourceCostInputs(contract, option.costs) : []
+
+      if (
+        await queueTurnEntry(
+          {
+            kind: "raw_event",
+            label: spell.identity.name,
+            eventKind: "spell",
+            payload: { detail, spellKey: spell.key },
+            resourceCosts: costs,
+          },
+          "action",
+        )
+      ) {
+        return true
+      }
 
       await command(() =>
         genaSession.sendEvent({
