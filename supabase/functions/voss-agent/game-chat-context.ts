@@ -412,7 +412,9 @@ export async function buildGameChatContextV2({
   )
   const sourceWorld = worldByCharacter.get(sourceCharacterId) || {}
   const sourceLocationId =
-    nullableString(sourceWorld.location_id) || nullableString(room.location_id)
+    nullableString(jobInput.source_location_id_snapshot) ||
+    nullableString(sourceWorld.location_id) ||
+    nullableString(room.location_id)
   const currentDay =
     nullableNumber(sourceWorld.campaign_day) ?? nullableNumber(room.campaign_day)
   const currentPeriod =
@@ -637,16 +639,68 @@ export async function buildGameChatContextV2({
     )
   }
 
-  const history = rows(historyResult.data).reverse()
+  const fallbackHistory = rows(historyResult.data).reverse()
+  let history = fallbackHistory
+  let sceneChatEvents: JsonRecord[] = []
+
+  const sourceEventResult = await admin
+    .from("campaign_events")
+    .select("id,source_id,room_id,location_id,visibility,visible_character_ids,payload,occurred_at")
+    .eq("campaign_id", campaignId)
+    .eq("source_kind", "chat_message")
+    .eq("source_id", String(sourceMessageId))
+    .maybeSingle()
+
+  if (sourceEventResult.error) throw new Error(sourceEventResult.error.message)
+
+  const sourceEvent = record(sourceEventResult.data)
+  const sourceOccurredAt = nullableString(sourceEvent.occurred_at)
+
+  if (sourceLocationId && sourceOccurredAt) {
+    const sceneEventsResult = await admin
+      .from("campaign_events")
+      .select("id,source_id,room_id,location_id,visibility,visible_character_ids,payload,occurred_at")
+      .eq("campaign_id", campaignId)
+      .eq("source_kind", "chat_message")
+      .eq("room_id", roomId)
+      .eq("location_id", sourceLocationId)
+      .lte("occurred_at", sourceOccurredAt)
+      .order("occurred_at", { ascending: false })
+      .limit(CHAT_CONTEXT_LIMIT)
+
+    if (sceneEventsResult.error) throw new Error(sceneEventsResult.error.message)
+    sceneChatEvents = rows(sceneEventsResult.data)
+
+    const sceneMessageIds = unique(
+      sceneChatEvents.map((item) => nullableString(item.source_id)),
+    )
+      .map((value) => Number(value))
+      .filter((value) => Number.isSafeInteger(value) && value > 0)
+
+    if (sceneMessageIds.length) {
+      const sceneMessagesResult = await admin
+        .from("chat_messages")
+        .select("id,author_name,body,user_id,character_id,event_kind,event_payload,attachment_kind,turn_command_id,turn_component,turn_order,audience_scope,recipient_character_ids,created_at")
+        .eq("room_id", roomId)
+        .in("id", sceneMessageIds)
+        .order("id", { ascending: true })
+
+      if (sceneMessagesResult.error) throw new Error(sceneMessagesResult.error.message)
+      history = rows(sceneMessagesResult.data)
+    }
+  }
+
   const historyMessageIds = history.map((item) => String(item.id))
-  const chatEventsResult = historyMessageIds.length
-    ? await admin
-        .from("campaign_events")
-        .select("id,source_id,location_id,visibility,visible_character_ids,payload,occurred_at")
-        .eq("campaign_id", campaignId)
-        .eq("source_kind", "chat_message")
-        .in("source_id", historyMessageIds)
-    : { data: [], error: null }
+  const chatEventsResult = sceneChatEvents.length
+    ? { data: sceneChatEvents, error: null }
+    : historyMessageIds.length
+      ? await admin
+          .from("campaign_events")
+          .select("id,source_id,location_id,visibility,visible_character_ids,payload,occurred_at")
+          .eq("campaign_id", campaignId)
+          .eq("source_kind", "chat_message")
+          .in("source_id", historyMessageIds)
+      : { data: [], error: null }
 
   if (chatEventsResult.error) throw new Error(chatEventsResult.error.message)
 
