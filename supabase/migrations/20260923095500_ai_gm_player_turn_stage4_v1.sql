@@ -139,7 +139,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = ''
-immutable
+volatile
 as $$
 declare
   v_kind text;
