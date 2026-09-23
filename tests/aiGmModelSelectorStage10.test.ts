@@ -8,6 +8,12 @@ const read = (path: string) =>
 const migration = read(
   "supabase/migrations/20260923133000_ai_gm_model_selector_stage10_v1.sql",
 )
+const invokerMigration = read(
+  "supabase/migrations/20260923133500_ai_gm_model_selector_stage10_invoker_v1.sql",
+)
+const helperMigration = read(
+  "supabase/migrations/20260923133700_ai_gm_model_selector_stage10_policy_helper_v1.sql",
+)
 const router = read("supabase/functions/voss-agent/model-router.ts")
 const gameRuntime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
 const profileMark = read("src/ui-v1-isolated/PlayerProfileMark.tsx")
@@ -44,6 +50,16 @@ test("Stage 10 model changes are manager-only and gm_selectable-only", () => {
   assert.match(
     migration,
     /agent_key='gm'[\s\S]*private\.can_select_campaign_gm_model_v1\(selected_model_id\)/,
+  )
+})
+
+test("Stage 10 selector RPCs are RLS-bound invokers", () => {
+  assert.match(invokerMigration, /security invoker/)
+  assert.match(invokerMigration, /drop policy if exists ai_models_read/)
+  assert.match(invokerMigration, /gm_selectable=true/)
+  assert.match(
+    helperMigration,
+    /grant execute on function private\.can_select_campaign_gm_model_v1\(uuid\)[\s\S]*to authenticated/,
   )
 })
 
