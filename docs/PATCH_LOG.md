@@ -19,6 +19,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Database / migration changes
 
+- Added AI World Evolution Stage 5 ephemeral scene-actor storage: one UUID row per bestiary-backed instance, actor-local HP/life/effects, separate per-actor resource rows, immutable Stage-4 mechanics/sheet provenance, room/location/game-time attachment and idempotent spawn keys.
 - Added AI World Evolution Stage 4 shared Bestiary Runtime Compiler (`compile_bestiary_runtime_v1`): a versioned actor-neutral snapshot of sheet stats, save/skill proficiencies, actions/reactions, limited-use resources, recharge metadata and bestiary source digest.
 - Added AI World Evolution Stage 3 classification columns with safe `disabled` legacy defaults: locations use `entity|detail|disabled`, persistent NPC profiles use `entity|disabled`; canonical NPC create/update RPCs now persist and validate the classification.
 - Added AI World Evolution Stage 2 background storage: unique daily runs, Resolver-backed roll projections, immutable effective-day events linked into `campaign_events`, and versioned compact entity snapshots with service-only write boundaries.
@@ -30,6 +31,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added service-only AI-world scene-actor spawn/list/runtime-state/archive RPCs. Spawn derives HP/mechanics/resources from the shared Bestiary Runtime Compiler and room-owned location/day/period; generic display labels keep numbering in `runtime_ordinal` instead of creating fake permanent identities.
 - Migrated canonical Stage-6 NPC materialization onto the shared compiler. NPC-specific code now only adapts compiled mechanics into legacy `npc-runtime-*` CE ids/resource keys; attack bonus, damage dice, DCs and usage limits are no longer independently parsed in the NPC path.
 - Added a server-side world-materializer guard against technical/unnamed persistent NPC labels such as numbered bandits, generic guards or random sailors. Human GM/admin character tools remain otherwise unchanged; the guard is specific to AI world materialization.
 - World materialization now carries deliberate background classification through create/update/batch tools and canonical context. New location creates without a scope are rejected by the materializer, hierarchy depth is never used as eligibility, and named persistent NPCs carry explicit entity/disabled eligibility.
@@ -41,6 +43,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Certified AI World Evolution Stage 5 with live rollback smoke: three bandits spawned as three independent UUID actors with no `characters` growth; sibling HP/effect state stayed isolated; two dragons kept independent Legendary Resistance resource state; archive/list and spawn replay semantics passed.
 - Certified AI World Evolution Stage 4 with deterministic `adult-black-dragon` compile fixtures and a live rollback Stage-6 equivalence run: canonical sheet/template/resource output matched the shared compiled snapshot; authenticated/anon direct compiler execution is denied.
 - Certified AI World Evolution Stage 3 with live rollback smoke for nested whole-location eligibility, detail exclusion, safe legacy defaults, named minor NPC eligibility and NPC scope validation, plus static runtime regression coverage for unnamed-scene-extra rejection.
 - Repaired the stale AI-world contract regression that still expected certified Stage 1 to be `planned`.

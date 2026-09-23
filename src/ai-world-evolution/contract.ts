@@ -184,7 +184,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Ephemeral bestiary-backed scene actors",
     purpose:
       "Represent unnamed mechanically active creatures as lightweight per-scene instances instead of permanent characters.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "bestiary_catalog",
       "chat rooms and location/time state",

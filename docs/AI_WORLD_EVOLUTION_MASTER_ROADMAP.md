@@ -326,6 +326,8 @@ Tests compare old canonical NPC results against the refactored compiler.
 
 ## Stage 5 — Ephemeral bestiary scene actors
 
+**Status: CERTIFIED — 2026-09-23**
+
 Create `ai_scene_actors`.
 
 Actor stores only per-instance mutable runtime:
