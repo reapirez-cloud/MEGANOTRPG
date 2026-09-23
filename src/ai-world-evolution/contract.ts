@@ -359,7 +359,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "DeepSeek V4.1 Flash background worker",
     purpose:
       "Interpret Resolver-selected world/NPC/location d100 results into compact coherent developments without owning randomness or candidate selection.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "deepseek-v4.1-flash configured as cheap fixed worker elsewhere",
       "World materializer already uses Flash for canonical creation",
