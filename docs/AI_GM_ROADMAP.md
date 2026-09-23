@@ -9,7 +9,7 @@ Update it when a stage actually reaches READY. Do not skip stage numbers.
 | 2 | READY | Canonical 50-message context, split-party awareness and PC autonomy |
 | 3 | READY | 45-message reconcile/archive worker with watermark |
 | 4 | READY | Player pending-turn queue: action + bonus action + movement + text |
-| 5 | IN PROGRESS | Durable player roll requests and hard wait/resume |
+| 5 | READY | Durable player roll requests and hard wait/resume |
 | 6 | TODO | Canonical NPC attacks, rolls, abilities and resources |
 | 7 | TODO | Multi-message Narrator/NPC dialogue tool flow |
 | 8 | TODO | Short rest, long rest, dawn and game-time recovery |
@@ -29,4 +29,4 @@ These are not extra numbered stages. They remain explicit in `src/ai/aiGmReadine
 
 ## Current pointer
 
-**Stage 5 is IN PROGRESS. READY stages: 1–4. Next stage after READY: 6.**
+**Stage 5 is READY. READY stages: 1–5. Next stage to execute: 6.**
