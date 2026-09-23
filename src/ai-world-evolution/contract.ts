@@ -220,7 +220,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Scene actor combat/runtime execution",
     purpose:
       "Let ephemeral actors use the same authoritative combat mechanics as canonical NPCs.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "execute_ai_gm_npc_action_turn_v1",
       "execute_ai_gm_npc_roll_v2",

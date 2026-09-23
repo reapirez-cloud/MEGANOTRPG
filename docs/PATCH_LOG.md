@@ -19,6 +19,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Database / migration changes
 
+- Added AI World Evolution Stage 6 scene-actor command/damage receipts plus service-only combat RPCs. Scene actor action/roll execution is idempotent per GM job, damage is derived from an existing server-generated roll message, and all mutable state remains actor-local.
 - Added AI World Evolution Stage 5 ephemeral scene-actor storage: one UUID row per bestiary-backed instance, actor-local HP/life/effects, separate per-actor resource rows, immutable Stage-4 mechanics/sheet provenance, room/location/game-time attachment and idempotent spawn keys.
 - Added AI World Evolution Stage 4 shared Bestiary Runtime Compiler (`compile_bestiary_runtime_v1`): a versioned actor-neutral snapshot of sheet stats, save/skill proficiencies, actions/reactions, limited-use resources, recharge metadata and bestiary source digest.
 - Added AI World Evolution Stage 3 classification columns with safe `disabled` legacy defaults: locations use `entity|detail|disabled`, persistent NPC profiles use `entity|disabled`; canonical NPC create/update RPCs now persist and validate the classification.
@@ -31,6 +32,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Scene actors now support save-action hard waits through the existing player roll-request pipeline, actor-local damage/death, and revision-checked flee/remove transitions. No temporary `characters` row is used anywhere in the scene-actor combat path.
+- Added the shared AI combat actor-reference boundary `{ kind: "npc", characterId } | { kind: "scene_actor", actorId }`. Canonical NPCs continue through the existing Stage-6 NPC runtime; ephemeral actors resolve mechanics from their immutable Stage-4 snapshot, consume their own resources and roll dice server-side.
 - Added service-only AI-world scene-actor spawn/list/runtime-state/archive RPCs. Spawn derives HP/mechanics/resources from the shared Bestiary Runtime Compiler and room-owned location/day/period; generic display labels keep numbering in `runtime_ordinal` instead of creating fake permanent identities.
 - Migrated canonical Stage-6 NPC materialization onto the shared compiler. NPC-specific code now only adapts compiled mechanics into legacy `npc-runtime-*` CE ids/resource keys; attack bonus, damage dice, DCs and usage limits are no longer independently parsed in the NPC path.
 - Added a server-side world-materializer guard against technical/unnamed persistent NPC labels such as numbered bandits, generic guards or random sailors. Human GM/admin character tools remain otherwise unchanged; the guard is specific to AI world materialization.
@@ -43,6 +46,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Certified AI World Evolution Stage 6 with live rollback combat smoke: bandit attack + skill roll, independent dragon resource spending, forged-mechanic rejection, Acid Breath player save wait/resume, server-roll-derived lethal damage, sibling isolation, flee and remove all passed.
 - Certified AI World Evolution Stage 5 with live rollback smoke: three bandits spawned as three independent UUID actors with no `characters` growth; sibling HP/effect state stayed isolated; two dragons kept independent Legendary Resistance resource state; archive/list and spawn replay semantics passed.
 - Certified AI World Evolution Stage 4 with deterministic `adult-black-dragon` compile fixtures and a live rollback Stage-6 equivalence run: canonical sheet/template/resource output matched the shared compiled snapshot; authenticated/anon direct compiler execution is denied.
 - Certified AI World Evolution Stage 3 with live rollback smoke for nested whole-location eligibility, detail exclusion, safe legacy defaults, named minor NPC eligibility and NPC scope validation, plus static runtime regression coverage for unnamed-scene-extra rejection.

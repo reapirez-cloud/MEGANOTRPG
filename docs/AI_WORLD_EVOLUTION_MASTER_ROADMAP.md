@@ -366,6 +366,8 @@ Three bandits =
 
 ## Stage 6 — Scene actor combat/runtime execution
 
+**Status: CERTIFIED — 2026-09-23**
+
 Generalize the existing NPC execution pipeline.
 
 Actor reference becomes either:
