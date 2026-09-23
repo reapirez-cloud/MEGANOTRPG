@@ -506,6 +506,8 @@ Persist all selection + rolls before model invocation.
 
 ## Stage 10 — DeepSeek Flash background worker
 
+**Status: CERTIFIED — 2026-09-23**
+
 Fixed worker:
 `deepseek-v4.1-flash`.
 
