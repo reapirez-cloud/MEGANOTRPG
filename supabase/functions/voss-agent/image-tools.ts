@@ -1203,9 +1203,39 @@ export async function processAgentImageJob({
   const refs = referenceIds(input.reference_asset_ids)
   const profile = imageProfileForPurpose(purpose, refs.length > 0)
   const requested = intBetween(job.requested_outputs, 1, 2, 1)
+  const autoLifecycle = input.surface === "ai_gm_media_stage9_v1"
   const outputs: StoredOutput[] = []
 
   try {
+    if (autoLifecycle) {
+      const { data: existingAssets, error: existingAssetsError } = await admin
+        .from("media_assets")
+        .select("id,variant_index,review")
+        .eq("source_job_id", jobId)
+        .order("variant_index", { ascending: true })
+
+      if (existingAssetsError) throw new Error(existingAssetsError.message)
+
+      for (const asset of (existingAssets || []) as any[]) {
+        const variantIndex = Number(asset.variant_index)
+        if (
+          Number.isInteger(variantIndex) &&
+          variantIndex >= 1 &&
+          variantIndex <= requested &&
+          !outputs.some((output) => output.variantIndex === variantIndex)
+        ) {
+          const assetReview = record(asset.review)
+          outputs.push({
+            assetId: String(asset.id),
+            variantIndex,
+            b64Json: "",
+            revisedPrompt:
+              stringValue(assetReview.revised_prompt, 6000) || null,
+          })
+        }
+      }
+    }
+
     const references = await loadReferences(admin, refs)
     let attempts = 0
 
@@ -1285,45 +1315,55 @@ export async function processAgentImageJob({
       return
     }
 
-    const { data: reviewJob, error: reviewJobError } = await admin
-      .from("agent_jobs")
-      .insert({
-        campaign_id: job.campaign_id,
-        thread_id: job.thread_id,
-        requested_by: job.requested_by,
-        agent_key: "voss",
-        job_type: "image_review",
-        status: "running",
-        input: {
-          source_job_id: job.id,
-          asset_ids: outputs.map((output) => output.assetId),
-        },
-        requested_outputs: 1,
-        started_at: new Date().toISOString(),
-      })
-      .select("id")
-      .single()
+    let review: JsonRecord
 
-    const review = record(await reviewOutputs(admin, outputs, prompt))
-    await applyReview(admin, outputs, review)
-
-    if (!reviewJobError && reviewJob?.id) {
-      await admin
+    if (autoLifecycle) {
+      review = {
+        status: "skipped",
+        reason: "stage9_single_output_auto_lifecycle",
+        presentation_rule: "show_all_requested_outputs",
+      }
+    } else {
+      const { data: reviewJob, error: reviewJobError } = await admin
         .from("agent_jobs")
-        .update({
-          status: review.status === "failed" ? "failed" : "completed",
-          completed_outputs: review.status === "failed" ? 0 : 1,
-          result: review,
-          error_code:
-            review.status === "failed" ? "image_review_failed" : null,
-          error_message:
-            review.status === "failed"
-              ? stringValue(review.error, 1200) || "Image review failed"
-              : null,
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+        .insert({
+          campaign_id: job.campaign_id,
+          thread_id: job.thread_id,
+          requested_by: job.requested_by,
+          agent_key: "voss",
+          job_type: "image_review",
+          status: "running",
+          input: {
+            source_job_id: job.id,
+            asset_ids: outputs.map((output) => output.assetId),
+          },
+          requested_outputs: 1,
+          started_at: new Date().toISOString(),
         })
-        .eq("id", reviewJob.id)
+        .select("id")
+        .single()
+
+      review = record(await reviewOutputs(admin, outputs, prompt))
+      await applyReview(admin, outputs, review)
+
+      if (!reviewJobError && reviewJob?.id) {
+        await admin
+          .from("agent_jobs")
+          .update({
+            status: review.status === "failed" ? "failed" : "completed",
+            completed_outputs: review.status === "failed" ? 0 : 1,
+            result: review,
+            error_code:
+              review.status === "failed" ? "image_review_failed" : null,
+            error_message:
+              review.status === "failed"
+                ? stringValue(review.error, 1200) || "Image review failed"
+                : null,
+            completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", reviewJob.id)
+      }
     }
 
     const attachment = await maybeAutoAttach(admin, job, outputs)
