@@ -15,7 +15,6 @@ Hard rule: every item in that file carries the marker **«УДАЛИТЬ ПРИ 
 The tracker currently owns the full AI-GM debt discussed for:
 - campaign-level selectable main GM model plus fixed worker model;
 - `AI` selector replacing `VI`;
-- in-chat GM runtime;
 - hard stop/resume on player roll requests;
 - NPC rolls and canonical ability cards;
 - narrator vs NPC dialogue identities and avatars;
