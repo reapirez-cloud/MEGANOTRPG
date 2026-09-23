@@ -87,6 +87,15 @@ test("Stage 9 makes shared image-job claiming atomic", () => {
   assert.match(code, /if \(!claimed\?\.id\) return/)
 })
 
+
+test("Stage 9 single-output lifecycle skips comparative vision review and can reuse an existing output", () => {
+  assert.match(imageTools, /autoLifecycle = input\.surface === "ai_gm_media_stage9_v1"/)
+  assert.match(imageTools, /from\("media_assets"\)/)
+  assert.match(imageTools, /\.eq\("source_job_id", jobId\)/)
+  assert.match(imageTools, /stage9_single_output_auto_lifecycle/)
+  assert.match(imageTools, /if \(autoLifecycle\)/)
+})
+
 test("Stage 9 generated media attaches through canonical media bindings", () => {
   assert.match(migration, /'attach_when_ready',true/)
   assert.match(migration, /public\.media_bindings/)
