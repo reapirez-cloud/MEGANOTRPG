@@ -12,7 +12,7 @@ Update it when a stage actually reaches READY. Do not skip stage numbers.
 | 5 | READY | Durable player roll requests and hard wait/resume |
 | 6 | READY | Canonical NPC attacks, rolls, abilities and resources |
 | 7 | READY | Multi-message Narrator/NPC dialogue tool flow |
-| 8 | IN PROGRESS | Short rest, long rest, dawn and game-time recovery |
+| 8 | READY | Short rest, long rest, dawn and game-time recovery |
 | 9 | TODO | NPC/location art lifecycle and chat media publication |
 | 10 | TODO | Campaign GM model selector and AI button |
 | 11 | TODO | Regenerate, edit/retry and undo ledger |
@@ -29,4 +29,4 @@ These are not extra numbered stages. They remain explicit in `src/ai/aiGmReadine
 
 ## Current pointer
 
-**Stage 8 is IN PROGRESS. READY stages: 1–7. Next stage after READY: 9.**
+**Stage 8 is READY. READY stages: 1–8. Next stage to execute: 9.**
