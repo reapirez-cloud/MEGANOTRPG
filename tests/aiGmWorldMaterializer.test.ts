@@ -56,11 +56,13 @@ test("AI GM rereads canonical context after world changes", () => {
 })
 
 
-test("primary GM hands a bounded technical task to Flash instead of delegating creative control", () => {
+test("primary GM hands intent and constraints while Flash enriches implementation details", () => {
   assert.match(runtime, /world_materialization_task/)
   assert.match(runtime, /worldMaterializationTask/)
   assert.match(runtime, /slice\(0, 2000\)/)
   assert.match(runtime, /ТЕХНИЧЕСКОЕ ЗАДАНИЕ ОСНОВНОГО ИИ-ГМ/)
+  assert.match(runtime, /МОЖЕШЬ и ДОЛЖЕН дополнять недостающие безопасные детали/)
+  assert.match(runtime, /Дополняй качество существующей задачи, а не её масштаб/)
   assert.match(runtime, /materializationTask: reaction\.worldMaterializationTask/)
 })
 
