@@ -2,6 +2,18 @@
 -- Each GM turn may publish a sequence of narration and canonical NPC dialogue.
 -- NPC identity is always resolved by the chat identity trigger from characters.
 
+alter table public.chat_messages
+  drop constraint if exists chat_messages_turn_component_check;
+
+alter table public.chat_messages
+  add constraint chat_messages_turn_component_check
+  check (
+    turn_component is null
+    or turn_component in (
+      'action','bonus_action','movement','description','ai_gm_output'
+    )
+  );
+
 create unique index if not exists chat_messages_ai_gm_output_sequence_unique
   on public.chat_messages(turn_command_id, turn_component, turn_order)
   where turn_command_id is not null
