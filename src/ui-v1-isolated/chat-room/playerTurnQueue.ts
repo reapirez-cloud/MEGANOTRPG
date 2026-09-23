@@ -66,7 +66,34 @@ function asSubmitResult(value: unknown): PlayerTurnSubmitResult {
 
 export function playerTurnSlotForEconomy(economy: string): PlayerTurnSlot {
   const normalized = economy.trim().toLocaleLowerCase("ru-RU")
+  if (normalized.includes("reaction") || normalized.includes("реакц")) {
+    throw new Error("Реакция не входит в текущий ход.")
+  }
   return normalized.includes("bonus") || normalized.includes("бонус")
+    ? "bonus_action"
+    : "action"
+}
+
+export async function playerTurnSlotForSpell(
+  spellKey: string,
+): Promise<PlayerTurnSlot> {
+  const result = await supabase
+    .from("spell_catalog")
+    .select("casting_time")
+    .eq("slug", spellKey)
+    .maybeSingle()
+
+  if (result.error) throw result.error
+
+  const castingTime = String(result.data?.casting_time || "")
+    .trim()
+    .toLocaleLowerCase("ru-RU")
+
+  if (castingTime.includes("reaction") || castingTime.includes("реакц")) {
+    throw new Error("Заклинание-реакция не входит в текущий ход.")
+  }
+
+  return castingTime.includes("bonus") || castingTime.includes("бонус")
     ? "bonus_action"
     : "action"
 }
