@@ -845,7 +845,7 @@ export default function ChatComposer({
               ref={textareaRef}
               value={text}
               rows={1}
-              maxLength={5000}
+              maxLength={4000}
               placeholder={
                 model.readOnly
                   ? "Чат закрыт"
