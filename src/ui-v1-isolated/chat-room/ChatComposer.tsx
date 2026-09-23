@@ -260,7 +260,8 @@ export default function ChatComposer({
       : null
 
   const queuePlayerTurn = Boolean(
-    !model.canManage &&
+    model.viewer.aiGameMasterEnabled === true &&
+      !model.canManage &&
       model.roomType !== "flood" &&
       selectedCharacterId &&
       selectedCharacterId === model.viewer.playerCharacterId,
@@ -606,10 +607,12 @@ export default function ChatComposer({
           }),
         )
 
-        void triggerAiGameMasterTurn({
-          campaignId: model.viewer.campaignId,
-          sourceChatMessageId: submitted.trigger_message_id,
-        })
+        if (model.viewer.aiGameMasterEnabled === true) {
+          void triggerAiGameMasterTurn({
+            campaignId: model.viewer.campaignId,
+            sourceChatMessageId: submitted.trigger_message_id,
+          })
+        }
         return
       }
 
@@ -632,6 +635,7 @@ export default function ChatComposer({
       )
 
       if (
+        model.viewer.aiGameMasterEnabled === true &&
         messageId &&
         model.roomType !== "flood" &&
         selectedCharacterId &&
