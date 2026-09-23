@@ -172,14 +172,11 @@ test("Stage 5 internal create/resume dispatch surfaces are service-only while pl
 })
 
 
-test("Stage 5 stays READY while later roadmap stages advance", () => {
-  const debt = read("src/ai/aiGmReadinessDebt.ts")
+test("Stage 5 stays READY after the roadmap closes", () => {
   const roadmap = read("docs/AI_GM_ROADMAP.md")
 
-  assert.doesNotMatch(debt, /id: "gm-request-player-roll"/)
-  assert.doesNotMatch(debt, /id: "gm-hard-wait-for-roll"/)
   assert.match(roadmap, /\| 5 \| READY \|/)
-  assert.match(roadmap, /\| 6 \| (?:IN PROGRESS|READY) \|/)
+  assert.match(roadmap, /\| 12 \| READY \|/)
 })
 
 
