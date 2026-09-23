@@ -182,3 +182,21 @@ test("Stage 3 internal dispatch RPCs are service-role-only", () => {
     /revoke all on function public\.dispatch_ai_gm_maintenance_job_v1\(uuid\)[\s\S]*from public, anon, authenticated/,
   )
 })
+
+
+test("Stage 3 dispatches the reserved job immediately after message commit", () => {
+  const migration = read(
+    "supabase/migrations/20260923093500_ai_gm_world_maintenance_dispatch_stage3_v1.sql",
+  )
+  const edge = read("supabase/functions/world-maintenance/index.ts")
+
+  assert.match(migration, /create extension if not exists pg_net/)
+  assert.match(migration, /net\.http_post/)
+  assert.match(migration, /reserve_ai_gm_room_maintenance_on_message_v1/)
+  assert.match(migration, /dispatch_ai_gm_maintenance_job_v1\(v_job_id\)/)
+  assert.match(migration, /dispatch_token/)
+  assert.match(migration, /last_dispatched_job_id/)
+  assert.match(edge, /verify_ai_gm_maintenance_dispatch_v1/)
+  assert.match(edge, /runPendingWorldMaintenanceForRoom/)
+  assert.match(edge, /dispatch_ai_gm_maintenance_job_v1/)
+})
