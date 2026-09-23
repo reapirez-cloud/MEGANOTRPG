@@ -93,7 +93,7 @@ function parseJsonObject(value: string): JsonRecord | null {
   if (!trimmed) return null
   const candidates = [
     trimmed,
-    trimmed.replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/, ""),
+    trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, ""),
   ]
   const first = trimmed.indexOf("{")
   const last = trimmed.lastIndexOf("}")
@@ -692,15 +692,34 @@ async function saveMaintenanceMemory(
 
   let factIds: string[] = []
   if (factRows.length) {
-    const factsInsert = await admin
+    const existingFacts = await admin
       .from("campaign_memory_facts")
-      .upsert(factRows, {
-        onConflict: "maintenance_job_id,maintenance_fact_index",
-      })
-      .select("id")
+      .select("id,maintenance_fact_index")
+      .eq("maintenance_job_id", jobId)
 
-    if (factsInsert.error) throw new Error(factsInsert.error.message)
-    factIds = records(factsInsert.data).map((row) => String(row.id))
+    if (existingFacts.error) throw new Error(existingFacts.error.message)
+
+    const existingRows = records(existingFacts.data)
+    const existingIndexes = new Set(
+      existingRows.map((row) => Number(row.maintenance_fact_index)),
+    )
+    const missingRows = factRows.filter(
+      (row) => !existingIndexes.has(Number(row.maintenance_fact_index)),
+    )
+
+    factIds = existingRows.map((row) => String(row.id))
+
+    if (missingRows.length) {
+      const factsInsert = await admin
+        .from("campaign_memory_facts")
+        .insert(missingRows)
+        .select("id")
+
+      if (factsInsert.error) throw new Error(factsInsert.error.message)
+      factIds.push(
+        ...records(factsInsert.data).map((row) => String(row.id)),
+      )
+    }
   }
 
   return {
