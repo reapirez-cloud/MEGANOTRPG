@@ -38,33 +38,15 @@ create index if not exists pending_player_roll_requests_character_status_idx
 
 alter table public.pending_player_roll_requests enable row level security;
 
+-- Hidden DC is stored here, therefore clients get no direct table access at all.
+-- The player-facing projection is only chat_messages.event_payload, where a
+-- hidden DC is emitted as null/omitted.
 revoke all on table public.pending_player_roll_requests
   from public, anon, authenticated;
-grant select on table public.pending_player_roll_requests to authenticated;
-grant all on table public.pending_player_roll_requests to service_role;
+grant all on public.pending_player_roll_requests to service_role;
 
 drop policy if exists pending_player_roll_requests_read_target
   on public.pending_player_roll_requests;
-
-create policy pending_player_roll_requests_read_target
-on public.pending_player_roll_requests
-for select
-to authenticated
-using (
-  exists (
-    select 1
-    from public.characters c
-    where c.id = pending_player_roll_requests.character_id
-      and c.assigned_user_id = (select auth.uid())
-  )
-  or exists (
-    select 1
-    from public.campaign_members cm
-    where cm.campaign_id = pending_player_roll_requests.campaign_id
-      and cm.user_id = (select auth.uid())
-      and (cm.is_owner = true or cm.role = 'gm')
-  )
-);
 
 create or replace function private.normalize_roll_ability_v1(p_value text)
 returns text
