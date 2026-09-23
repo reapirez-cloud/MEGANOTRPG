@@ -1,6 +1,7 @@
 import { supabase } from "../../lib/supabase"
 
 export type PlayerTurnSlot = "action" | "bonus_action"
+export type PlayerTurnComponent = PlayerTurnSlot | "movement"
 
 export type PlayerTurnEntry = {
   kind:
@@ -29,6 +30,7 @@ export type PlayerTurnDraft = {
   action_entry: PlayerTurnEntry | null
   bonus_action_entry: PlayerTurnEntry | null
   movement: { description?: string } | null
+  component_order: PlayerTurnComponent[]
   description: string
   turn_command_id: string | null
   submission_result: Record<string, unknown>
@@ -102,6 +104,44 @@ export function newPlayerTurnCommandId() {
   return crypto.randomUUID()
 }
 
+export function orderedPlayerTurnComponents(
+  draft: PlayerTurnDraft | null,
+): PlayerTurnComponent[] {
+  if (!draft) return []
+
+  const available = new Set<PlayerTurnComponent>()
+  if (draft.action_entry) available.add("action")
+  if (draft.bonus_action_entry) available.add("bonus_action")
+  if (draft.movement?.description?.trim()) available.add("movement")
+
+  const ordered: PlayerTurnComponent[] = []
+  for (const component of draft.component_order || []) {
+    if (available.has(component) && !ordered.includes(component)) {
+      ordered.push(component)
+    }
+  }
+  for (const component of ["action", "bonus_action", "movement"] as const) {
+    if (available.has(component) && !ordered.includes(component)) {
+      ordered.push(component)
+    }
+  }
+  return ordered
+}
+
+export function reorderPlayerTurnComponents(
+  order: PlayerTurnComponent[],
+  component: PlayerTurnComponent,
+  direction: -1 | 1,
+) {
+  const next = [...order]
+  const index = next.indexOf(component)
+  const target = index + direction
+  if (index < 0 || target < 0 || target >= next.length) return next
+  ;[next[index], next[target]] = [next[target], next[index]]
+  return next
+}
+
+
 export async function loadPlayerTurnDraft({
   roomId,
   characterId,
@@ -123,6 +163,7 @@ export async function savePlayerTurnDraft({
   actionEntry,
   bonusActionEntry,
   movement,
+  componentOrder,
   description,
   expectedRevision,
 }: {
@@ -131,6 +172,7 @@ export async function savePlayerTurnDraft({
   actionEntry: PlayerTurnEntry | null
   bonusActionEntry: PlayerTurnEntry | null
   movement: { description?: string } | null
+  componentOrder: PlayerTurnComponent[]
   description: string
   expectedRevision: number | null
 }) {
@@ -140,6 +182,7 @@ export async function savePlayerTurnDraft({
     p_action_entry: actionEntry,
     p_bonus_action_entry: bonusActionEntry,
     p_movement: movement,
+    p_component_order: componentOrder,
     p_description: description,
     p_expected_revision: expectedRevision,
   })
