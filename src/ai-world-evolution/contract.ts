@@ -285,7 +285,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Promotion of revealed actors into persistent NPCs",
     purpose:
       "Convert an existing ephemeral actor into exactly one canonical NPC when a real personal identity becomes known, preserving resolved state.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "create_world_npc",
       "NPC runtime build pipeline",

@@ -434,6 +434,8 @@ World materializer remains responsible for persistent canon, not disposable enco
 
 ## Stage 8 — Scene actor promotion
 
+**Status: CERTIFIED — 2026-09-23**
+
 Implement transactional:
 
 `promote_scene_actor_to_npc`

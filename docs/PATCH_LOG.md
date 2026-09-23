@@ -19,6 +19,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Database / migration changes
 
+- Added AI World Evolution Stage 8 transactional scene-actor promotion. `ai_scene_actors` now stores an idempotent promoted-character mapping/provenance, while `promote_ai_scene_actor_to_npc_v1` creates exactly one canonical NPC and preserves actor HP, resources, conditions/effects, location/game time and discovery state.
 - Added the Stage 6 FK-index follow-up so both scene-actor receipt composite foreign keys are covered in exact `(actor_id, campaign_id)` order after advisor review.
 - Added AI World Evolution Stage 6 scene-actor command/damage receipts plus service-only combat RPCs. Scene actor action/roll execution is idempotent per GM job, damage is derived from an existing server-generated roll message, and all mutable state remains actor-local.
 - Added AI World Evolution Stage 5 ephemeral scene-actor storage: one UUID row per bestiary-backed instance, actor-local HP/life/effects, separate per-actor resource rows, immutable Stage-4 mechanics/sheet provenance, room/location/game-time attachment and idempotent spawn keys.
@@ -33,6 +34,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- The primary AI GM now exposes `promote_scene_actor`. It is allowed only for an active scene actor with a real personal name and a non-empty subset of colocated PC discovery recipients; pure direct-PC turns remain blocked by the Stage-7 tool gate.
+- Added stale scene-actor reference resolution: promoted actor refs resolve to their canonical NPC, and legacy `action:N` / `reaction:N` / `special:N` keys are translated to canonical `npc-runtime-*` mechanic ids when a stale actor action is redirected.
+- Promotion adapts the actor's already-compiled Stage-4 mechanics snapshot directly into canonical NPC CE runtime instead of re-running bestiary selection or recompiling against possibly changed catalog data. NPC-runtime auto-dispatch is transaction-locally suppressed only during promotion and the reserved build is completed synchronously.
 - Primary GM scene-actor tools delegate to Stage-5/6 service-only RPCs. Spawn keys are server-derived from the durable GM job/tool call, action/roll mechanics remain server-authoritative, and flee/remove use the current server context revision rather than model-supplied state.
 - Added compact `active_scene_actors` to game-chat canonical context with per-instance HP/resources/revision plus legal mechanic keys, while withholding model-owned attack/damage/DC parameters. Pure direct-PC dialogue hard-blocks every scene-actor tool.
 - Integrated AI World Evolution Stage 7 into the primary AI GM with real provider tools: `spawn_scene_actor`, `use_scene_actor_action`, `roll_scene_actor`, `flee_scene_actor`, and `remove_scene_actor`. Anonymous encounter actors no longer need world materialization or numbered permanent NPC cards.
@@ -50,6 +54,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Certified AI World Evolution Stage 8 with live rollback smoke: injured Goblin 3/7 -> Ург 3/7, condition/effect/world-time/discovery transfer, idempotent replay, conflicting-name rejection, no duplicate NPC, stale-ref redirect and independent 2/3 Legendary Resistance resource transfer all passed.
 - Restored the exact legacy `Не запрашивай world_materialization второй раз` continuation marker inside the Stage 7 tool-aware post-materialization prompt so the existing canonical reread regression remains explicit.
 - Reconciled legacy AI-GM regression markers with the Stage 7 provider-tool loop: preserved explicit post-roll/post-recovery/post-materialization continuation markers and updated the Stage 5 world-evolution contract test from its obsolete `planned` expectation to the certified scene-actor boundary.
 - Reconciled the Stage 6 flee/remove regression with the runtime's normalized `v_transition` validation variable; the previous assertion incorrectly searched for raw `p_transition` even though runtime behavior and live smoke were correct.

@@ -177,6 +177,31 @@ const PRIMARY_GM_SCENE_ACTOR_TOOLS = [
   {
     type: "function",
     function: {
+      name: "promote_scene_actor",
+      description:
+        "Promote one existing scene actor into exactly one persistent named NPC when its real personal identity is revealed or canonically committed in this turn. Preserve HP, resources, conditions, location and time. Never use an ordinal or generic scene label as the personal name.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          actor_id: { type: "string" },
+          personal_name: { type: "string" },
+          discover_for_character_ids: {
+            type: "array",
+            minItems: 1,
+            maxItems: 12,
+            items: { type: "string" },
+            description:
+              "Current colocated player-character UUIDs that actually learned the personal identity.",
+          },
+        },
+        required: ["actor_id", "personal_name", "discover_for_character_ids"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "use_scene_actor_action",
       description:
         "Execute one legal compiled action for an active scene actor. Supply only actor id, mechanic key and optional present PC target. Never supply attack bonuses, dice, DCs or damage.",
@@ -289,6 +314,8 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Безымянные механически активные существа НЕ являются canonical NPC. Для них используй provider tool spawn_scene_actor. Пример: 'трое бандитов' => один spawn_scene_actor с bestiary_slug='bandit', display_label='Бандит', count=3. Никогда не создавай Бандит 1/2/3 через world_materialization.",
   "После spawn_scene_actor используй только actor_id и mechanic_key из active_scene_actors или tool result. use_scene_actor_action выполняет серверную механику, roll_scene_actor делает проверку, flee_scene_actor и remove_scene_actor меняют только конкретный ephemeral actor.",
   "runtime_ordinal у scene actor нужен только для различения экземпляров и НИКОГДА не является личным именем. Не называй актора 'Бандит 2' и не проси world materializer создать такую карточку.",
+  "Если существующий scene actor в текущем ходе раскрывает или получает настоящее личное имя, вызови promote_scene_actor В ЭТОМ ЖЕ ходе. Пример: Гоблин 3/7 HP говорит 'Я Ург' => promote_scene_actor(actor_id, personal_name='Ург', discover_for_character_ids=[те PC, которые реально услышали имя]). Не вызывай create_world_npc для этого случая.",
+  "Promotion не лечит, не перезаряжает и не пересоздаёт существо: это та же сущность с теми же HP/resources/conditions/location/time, только теперь persistent NPC.",
   "World materializer отвечает за постоянный канон: именованные persistent NPC, локации, фракции, квесты и другие долгоживущие сущности. Disposable encounter actors живут только в scene runtime.",
   "Для npc_action выбирай mechanic_id только из actions конкретного NPC. Если runtime.kind=save_action, обязательно укажи physically-present target_character_id PC.",
   "Если NPC должен сделать обычную проверку характеристики, спасбросок или навык, используй npc_roll. Модификатор считает сервер из character_sheets.",
@@ -1604,6 +1631,87 @@ async function requestPrimaryGmDecision({
               spawned_count: Array.isArray(jsonRecord(data).actors)
                 ? (jsonRecord(data).actors as unknown[]).length
                 : count,
+              active_scene_actors: context.sceneActors,
+            }
+          }
+        }
+      } else if (name === "promote_scene_actor") {
+        const actorId =
+          typeof args.actor_id === "string" ? args.actor_id.trim() : ""
+        const personalName =
+          typeof args.personal_name === "string"
+            ? args.personal_name.trim()
+            : ""
+        const actor = activeSceneActor(context, actorId)
+        const sourceLocationId = String(context.sourceLocation?.id || "")
+        const eligibleDiscoveryIds = new Set(
+          context.players
+            .filter((player) =>
+              String(player.location_id || "") === sourceLocationId
+            )
+            .map((player) => String(player.id || ""))
+            .filter(Boolean),
+        )
+        const discoverIds = Array.isArray(args.discover_for_character_ids)
+          ? [...new Set(
+              args.discover_for_character_ids
+                .map((value) => String(value || "").trim())
+                .filter(Boolean),
+            )]
+          : []
+        const managerUserId =
+          typeof claimed.input.manager_user_id === "string"
+            ? claimed.input.manager_user_id
+            : ""
+
+        if (!actor) {
+          result = { error: "scene_actor_promotion_not_in_active_context" }
+        } else if (
+          !personalName ||
+          looksLikeTemporarySceneActorLabel(personalName) ||
+          personalName.toLocaleLowerCase("ru-RU") ===
+            String(actor.display_label || "").trim().toLocaleLowerCase("ru-RU")
+        ) {
+          result = { error: "scene_actor_promotion_requires_real_personal_name" }
+        } else if (
+          !discoverIds.length ||
+          discoverIds.some((id) => !eligibleDiscoveryIds.has(id))
+        ) {
+          result = {
+            error: "scene_actor_promotion_discovery_scope_invalid",
+            eligible_discovery_character_ids: [...eligibleDiscoveryIds],
+          }
+        } else if (!managerUserId) {
+          result = { error: "scene_actor_promotion_manager_missing" }
+        } else {
+          const { data, error } = await admin.rpc(
+            "promote_ai_scene_actor_to_npc_v1",
+            {
+              p_actor_id: actorId,
+              p_personal_name: personalName,
+              p_discover_for_character_ids: discoverIds,
+              p_source_message_id: sourceMessageId,
+              p_requested_by: managerUserId,
+            },
+          )
+          if (error) {
+            result = { error: error.message }
+          } else {
+            const promotion = jsonRecord(data)
+            context = await buildGameChatContextV2({
+              admin,
+              campaignId,
+              jobInput: claimed.input,
+            })
+            const promotedNpcId = String(
+              promotion.npc_character_id || "",
+            )
+            result = {
+              promotion,
+              promoted_npc_runtime:
+                context.npcRuntime.find(
+                  (npc) => String(npc.character_id || "") === promotedNpcId,
+                ) || null,
               active_scene_actors: context.sceneActors,
             }
           }
