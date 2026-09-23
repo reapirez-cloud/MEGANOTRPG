@@ -467,6 +467,8 @@ No fresh healthy duplicate.
 
 ## Stage 9 — Daily candidate Resolver
 
+**Status: CERTIFIED — 2026-09-23**
+
 Build one idempotent daily simulation reservation per campaign game day.
 
 Determine campaign frontier day:
