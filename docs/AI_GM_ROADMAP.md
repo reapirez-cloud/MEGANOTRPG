@@ -16,17 +16,16 @@ Update it when a stage actually reaches READY. Do not skip stage numbers.
 | 9 | READY | NPC/location art lifecycle and chat media publication |
 | 10 | READY | Campaign GM model selector and AI button |
 | 11 | READY | Regenerate, edit/retry and undo ledger |
-| 12 | IN PROGRESS | Final READY audit, concurrency, RLS, long-campaign certification |
+| 12 | READY | Final READY audit, concurrency, RLS, long-campaign certification |
 
-## Cross-cutting cooperative debt
+## Cross-cutting cooperative certification
 
-These are not extra numbered stages. They remain explicit in `src/ai/aiGmReadinessDebt.ts` until their owning stage closes them.
-
-- Persistent character-chat sequencing: one room stays the same while location changes.
-- Explicit PC→PC recipient/audience metadata.
-- No AI speech or decisions for player characters.
-- Location controls physical presence; it does not reset the latest-50 room history.
+Stage 12 closed the remaining cooperative contracts:
+- explicit shared-scene sequencing with free-play concurrency outside shared scenes;
+- explicit PC→PC audience metadata with server validation and RLS;
+- no AI speech or decisions for player characters;
+- persistent latest-50 chat context across location changes with physical-presence snapshots.
 
 ## Current pointer
 
-**Stage 12 is IN PROGRESS. READY stages: 1–11. Final certification is running.**
+**Stage 12 is READY. READY stages: 1–12. AI GM roadmap complete.**
