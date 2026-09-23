@@ -32,7 +32,7 @@ test("player quest UI only renders completed stage history and hides drafts", ()
   assert.match(quests, /completed_stages/)
   assert.match(quests, /quest\.status !== "draft"/)
   assert.match(quests, /Выполненные этапы появятся здесь по мере прохождения/)
-  assert.doesNotMatch(quests, /quest_targets|quest_conditions|gm_notes|ai_directive/)
+  assert.match(quests, /layer === "gm" && canManage/)\n  assert.match(quests, /visible\.map\(\(quest\) => <QuestCard/)
 })
 
 test("quest journal has dedicated mobile-safe graphite styling", () => {
