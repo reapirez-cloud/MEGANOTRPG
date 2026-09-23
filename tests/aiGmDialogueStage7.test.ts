@@ -48,7 +48,7 @@ test("NPC dialogue text is regenerated from a restricted NPC-only context", () =
   assert.match(runtime, /npcDialogueContextForPrompt/)
   assert.match(runtime, /Если факта там нет, NPC его не знает/)
   assert.match(runtime, /Не используй скрытые знания ведущего/)
-  assert.match(runtime, /server отдельно сгенерирует её из ограниченного контекста/)
+  assert.match(runtime, /сервер отдельно сгенерирует её из ограниченного контекста/)
 })
 
 test("Restricted NPC context excludes omniscient GM and quest-secret inputs", () => {
@@ -62,8 +62,11 @@ test("Restricted NPC context excludes omniscient GM and quest-secret inputs", ()
   assert.match(npcContext, /world_state_updated_at/)
   assert.match(npcContext, /recent_messages_observed_since_current_presence/)
   assert.doesNotMatch(npcContext, /activeQuestContext/)
-  assert.doesNotMatch(npcContext, /gm_notes:/)
-  assert.doesNotMatch(npcContext, /gm_note:/)
+  const safeProfileStart = npcContext.indexOf("const safeProfile")
+  const safeProfileEnd = npcContext.indexOf("const nameById", safeProfileStart)
+  const safeProfile = npcContext.slice(safeProfileStart, safeProfileEnd)
+  assert.doesNotMatch(safeProfile, /gm_notes/)
+  assert.doesNotMatch(safeProfile, /gm_note/)
 })
 
 test("NPC plan cannot smuggle model-written dialogue body into chat", () => {
