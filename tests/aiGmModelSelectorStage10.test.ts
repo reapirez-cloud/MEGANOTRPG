@@ -98,12 +98,15 @@ test("Stage 10 selector preserves the mobile grimdark sheet contract", () => {
   assert.match(workspaceCss, /\.u1-ai-model-choice\[data-selected\]/)
 })
 
-test("Stage 10 remains IN PROGRESS until live selector/runtime certification", () => {
+test("Stage 10 is certified READY and selector debt is removed", () => {
   assert.match(
     roadmap,
-    /\| 10 \| IN PROGRESS \| Campaign GM model selector and AI button \|/,
+    /\| 10 \| READY \| Campaign GM model selector and AI button \|/,
   )
-  assert.match(roadmap, /Stage 10 is IN PROGRESS/)
-  assert.match(readinessDebt, /id: "campaign-gm-model"/)
-  assert.match(readinessDebt, /id: "ai-button-selector"/)
+  assert.match(
+    roadmap,
+    /Stage 10 is READY\. READY stages: 1–10\. Next stage to execute: 11\./,
+  )
+  assert.doesNotMatch(readinessDebt, /id: "campaign-gm-model"/)
+  assert.doesNotMatch(readinessDebt, /id: "ai-button-selector"/)
 })
