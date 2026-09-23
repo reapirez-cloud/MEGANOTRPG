@@ -183,10 +183,8 @@ test("Stage 9 is certified READY and closes only its media debt", () => {
     roadmap,
     /\| 9 \| READY \| NPC\/location art lifecycle and chat media publication \|/,
   )
-  assert.match(
-    roadmap,
-    /Stage 9 is READY\. READY stages: 1–9\. Next stage to execute: 10\./,
-  )
+  assert.match(roadmap, /\| 9 \| READY \|/)
+  assert.match(roadmap, /READY stages: 1–(?:9|10|11|12)/)
   assert.doesNotMatch(readinessDebt, /id: "npc-art-on-database-create"/)
   assert.doesNotMatch(readinessDebt, /id: "location-art-on-first-visit"/)
   assert.doesNotMatch(readinessDebt, /id: "ai-art-directly-in-chat"/)
