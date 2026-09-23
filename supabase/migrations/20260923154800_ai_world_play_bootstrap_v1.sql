@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- Experimental AI world: first playable character bootstrap.
 
 create or replace function public.open_ai_world_slot_v2(
