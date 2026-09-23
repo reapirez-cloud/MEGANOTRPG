@@ -254,3 +254,31 @@ test("Stage 4 queues a player roll instead of rolling before submit", () => {
       checkBody.indexOf("genaSession.sendRoll"),
   )
 })
+
+
+test("Stage 4 draft table stays read-only and anonymous callers are rejected", () => {
+  const hardening = read(
+    "supabase/migrations/20260923101000_ai_gm_player_turn_stage4_hardening_v1.sql",
+  )
+
+  assert.match(
+    hardening,
+    /revoke all on table public\.player_turn_drafts[\s\S]*from public, anon, authenticated/,
+  )
+  assert.match(
+    hardening,
+    /grant select on table public\.player_turn_drafts[\s\S]*to authenticated/,
+  )
+  assert.match(hardening, /Anonymous accounts cannot submit player turns/)
+  assert.match(hardening, /auth\.jwt\(\) ->> 'is_anonymous'/)
+})
+
+test("Stage 4 READY debt is removed and roadmap points to Stage 5", () => {
+  const debt = read("src/ai/aiGmReadinessDebt.ts")
+  const roadmap = read("docs/AI_GM_ROADMAP.md")
+
+  assert.doesNotMatch(debt, /id: "player-turn-action-queue"/)
+  assert.match(roadmap, /\| 4 \| READY \|/)
+  assert.match(roadmap, /READY stages: 1–4/)
+  assert.match(roadmap, /Next stage to execute: 5/)
+})
