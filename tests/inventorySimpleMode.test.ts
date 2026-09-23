@@ -3,7 +3,7 @@ import fs from "node:fs"
 import test from "node:test"
 
 const migration = fs.readFileSync(
-  "supabase/migrations/20260922223000_cheburashka_simple_inventory_mode_v1.sql",
+  "supabase/migrations/20260922184617_cheburashka_simple_inventory_mode_v1.sql",
   "utf8",
 )
 const swapMigration = fs.readFileSync(
