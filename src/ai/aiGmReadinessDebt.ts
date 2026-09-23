@@ -148,20 +148,6 @@ export const AI_GM_READINESS_DEBT: AiGmReadinessDebtItem[] = [
     ],
   },
   {
-    id: "gm-rest-and-dawn-controls",
-    title: "ИИ-ГМ даёт короткий отдых, длинный отдых и рассвет",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "Главный ИИ умеет через серверные gameplay/owner boundaries назначить short rest, long rest и dawn для нужного персонажа/сцены. Рассвет является отдельным суточным recovery trigger для способностей и предметов, которые восстанавливаются раз в день.",
-    readyWhen: [
-      "AI tools для short_rest, long_rest и dawn не пишут ресурсы напрямую, а вызывают существующие recovery boundaries.",
-      "Short rest использует grant_character_short_rest, long rest использует grant_character_long_rest, dawn использует recover_character_resources(trigger=dawn) или их актуальный owner facade.",
-      "Recovery выполняется идемпотентно для одного игрового события и сразу инвалидирует/обновляет Character Runtime.",
-      "Dawn связан с каноническим переходом игрового времени к новому рассвету и не может случайно сработать дважды для одного campaign day.",
-      "В чат публикуется понятное gameplay/system событие отдыха/рассвета, после которого GM продолжает сцену уже с обновлёнными ресурсами.",
-    ],
-  },
-  {
     id: "player-authority-firewall",
     title: "Игрок объявляет намерение, а не исход мира",
     removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
