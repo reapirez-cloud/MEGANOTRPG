@@ -21,6 +21,33 @@ export type AiGmReadinessDebtItem = {
 
 export const AI_GM_READINESS_DEBT: AiGmReadinessDebtItem[] = [
   {
+    id: "coop-split-party-sequencing",
+    title: "Кооператив: независимые сцены разделившейся группы",
+    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
+    requirement:
+      "Когда PC находятся в разных локациях, AI-GM обязан вести независимые физические сцены и не смешивать знания/присутствие. Stage 2 уже передаёт location_id каждого PC; остаётся серверная сериализация и маршрутизация параллельных GM-turn по scene/location.",
+    readyWhen: [
+      "GM jobs сериализуются минимум в пределах одной физической сцены/location и не приходят в чат в случайном порядке.",
+      "Разные location_id могут обрабатываться параллельно без блокировки друг друга.",
+      "Сообщение из другой локации не становится слышимым/видимым PC без канонического средства связи.",
+      "Переход персонажа между локациями атомарно меняет scene routing следующих GM turns.",
+    ],
+  },
+  {
+    id: "coop-pc-dialogue-routing",
+    title: "Кооператив: явный PC→PC диалог без перехвата управления",
+    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
+    requirement:
+      "Stage 2 уже запрещает ИИ говорить за PC и поддерживает none/environment/npc_interjection. Дальше нужен явный recipient/audience contract, чтобы адресат PC→PC определялся серверно, а не только по тексту и модели.",
+    readyWhen: [
+      "Chat turn может хранить явные recipient_character_ids/audience без изменения текста сообщения.",
+      "PC→PC turn никогда не генерирует реплику или действие за адресата-PC.",
+      "GM reaction выбирается только из none/environment/npc_interjection, пока сообщение не требует отдельного world adjudication.",
+      "NPC interjection допускается только для канонического живого NPC, физически присутствующего в той же location_id.",
+      "Кооперативные dialogue turns покрыты тестами для 2+ игроков и split-party.",
+    ],
+  },
+  {
     id: "campaign-gm-model",
     title: "Выбираемая главная модель кампании",
     removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
