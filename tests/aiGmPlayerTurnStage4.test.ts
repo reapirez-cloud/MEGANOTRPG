@@ -78,7 +78,10 @@ test("Stage 4 correlates every emitted component with one turn command and inser
 
   const actionIndex = submit.indexOf("private.execute_player_turn_entry_v1")
   const finalMessageIndex = submit.indexOf("insert into public.chat_messages")
-  const completeIndex = submit.indexOf("status = 'submitted'")
+  const completeIndex = submit.indexOf(
+    "update public.player_turn_drafts",
+    finalMessageIndex,
+  )
   assert.ok(actionIndex >= 0)
   assert.ok(finalMessageIndex > actionIndex)
   assert.ok(completeIndex > finalMessageIndex)
