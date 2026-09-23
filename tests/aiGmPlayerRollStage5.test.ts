@@ -167,3 +167,15 @@ test("Stage 5 internal create/resume dispatch surfaces are service-only while pl
     /grant execute on function public\.resolve_player_roll_request_v1\(uuid\)[\s\S]*to authenticated/,
   )
 })
+
+
+test("Stage 5 READY debt is removed and roadmap points to Stage 6", () => {
+  const debt = read("src/ai/aiGmReadinessDebt.ts")
+  const roadmap = read("docs/AI_GM_ROADMAP.md")
+
+  assert.doesNotMatch(debt, /id: "gm-request-player-roll"/)
+  assert.doesNotMatch(debt, /id: "gm-hard-wait-for-roll"/)
+  assert.match(roadmap, /\| 5 \| READY \|/)
+  assert.match(roadmap, /READY stages: 1–5/)
+  assert.match(roadmap, /Next stage to execute: 6/)
+})
