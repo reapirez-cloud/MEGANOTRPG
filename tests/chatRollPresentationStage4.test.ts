@@ -22,7 +22,8 @@ test("chat roll stage 4 uses lightweight PNG assets for canonical dice", async (
     assert.ok(asset.byteLength < 12_000)
   }
 
-  assert.match(dice, /CANONICAL_DIE_FILES/)\n  assert.match(dice, /DICE_ASSET_BASE/)
+  assert.match(dice, /CANONICAL_DIE_FILES/)
+  assert.match(dice, /DICE_ASSET_BASE/)
   assert.match(dice, /className="u1-die-glyph__image"/)
   assert.doesNotMatch(dice, /<svg/)
 })
