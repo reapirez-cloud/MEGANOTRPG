@@ -108,11 +108,14 @@ test("NPC interjection is canonical, service-only and physically co-located", ()
   assert.match(runtime, /invalid_or_absent_npc_downgraded_to_environment/)
 })
 
-test("remaining cooperative routing debt stays explicit and removable", () => {
-  const debt = read("src/ai/aiGmReadinessDebt.ts")
+test("Stage 2 cooperative routing debt is closed by Stage 12", () => {
+  const roadmap = read("docs/AI_GM_ROADMAP.md")
+  const stage12 = read(
+    "supabase/migrations/20260923150000_ai_gm_final_stage12_v1.sql",
+  )
 
-  assert.match(debt, /id: "coop-split-party-sequencing"/)
-  assert.match(debt, /id: "coop-pc-dialogue-routing"/)
-  assert.match(debt, /УДАЛИТЬ ПРИ РЕЙДИ/)
-  assert.match(debt, /recipient_character_ids/)
+  assert.match(roadmap, /\| 2 \| READY \|/)
+  assert.match(roadmap, /\| 12 \| READY \|/)
+  assert.match(stage12, /recipient_character_ids/)
+  assert.match(stage12, /claim_ai_gm_scene_job_v1/)
 })
