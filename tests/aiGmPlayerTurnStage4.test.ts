@@ -273,12 +273,11 @@ test("Stage 4 draft table stays read-only and anonymous callers are rejected", (
   assert.match(hardening, /auth\.jwt\(\) ->> 'is_anonymous'/)
 })
 
-test("Stage 4 READY debt is removed and roadmap points to Stage 5", () => {
+test("Stage 4 stays READY while later roadmap stages advance", () => {
   const debt = read("src/ai/aiGmReadinessDebt.ts")
   const roadmap = read("docs/AI_GM_ROADMAP.md")
 
   assert.doesNotMatch(debt, /id: "player-turn-action-queue"/)
   assert.match(roadmap, /\| 4 \| READY \|/)
-  assert.match(roadmap, /READY stages: 1–4/)
-  assert.match(roadmap, /Next stage to execute: 5/)
+  assert.match(roadmap, /\| 5 \| (?:IN PROGRESS|READY) \|/)
 })

@@ -5312,3 +5312,88 @@
     display: none;
   }
 }
+
+
+/* AI GM Stage 5 — hard-wait player roll request. */
+.u1-roll-request-card {
+  border-color: rgba(232,234,232,.11);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.028), rgba(255,255,255,.006) 62%),
+    rgba(8,10,11,.78);
+}
+
+.u1-roll-request-card[data-request-status="pending"] {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.026),
+    0 10px 28px rgba(0,0,0,.16);
+}
+
+.u1-roll-request-card[data-request-status="resolved"] {
+  opacity: .72;
+}
+
+.u1-roll-request-card__reason {
+  margin: 7px 0 0;
+  color: rgba(236,238,234,.68);
+  font-size: 11px;
+  line-height: 1.42;
+}
+
+.u1-roll-request-card__meta {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.u1-roll-request-card__meta > span {
+  min-width: 0;
+  padding: 6px 7px;
+  display: grid;
+  gap: 2px;
+  border: 1px solid rgba(232,234,232,.06);
+  border-radius: 7px;
+  background: rgba(0,0,0,.13);
+  color: rgba(224,227,224,.36);
+  font-size: 8px;
+  font-weight: 740;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.u1-roll-request-card__meta strong {
+  color: rgba(244,245,241,.82);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: 15px;
+  font-weight: 760;
+  line-height: 1;
+  text-transform: none;
+}
+
+.u1-roll-request-card__roll {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 8px;
+  border: 1px solid rgba(240,241,237,.12);
+  border-radius: 8px;
+  color: rgba(247,247,243,.88);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.018)),
+    rgba(20,23,24,.88);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: .02em;
+}
+
+.u1-roll-request-card__roll:disabled {
+  opacity: .52;
+}
+
+.u1-roll-request-card__waiting {
+  display: block;
+  margin-top: 8px;
+  color: rgba(224,227,224,.42);
+  font-size: 9px;
+  line-height: 1.3;
+}

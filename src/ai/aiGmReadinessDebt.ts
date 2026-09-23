@@ -72,32 +72,6 @@ export const AI_GM_READINESS_DEBT: AiGmReadinessDebtItem[] = [
     ],
   },
   {
-    id: "gm-request-player-roll",
-    title: "ИИ-ГМ запрашивает бросок игрока",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "Главный ИИ умеет вызвать проверку навыка, характеристики, спасбросок, атаку или custom-roll и обязан остановить сцену до результата.",
-    readyWhen: [
-      "Есть отдельная durable сущность pending roll request с room, character, type, reason, DC/visibility и статусом.",
-      "Модификатор игрока берётся из Character Engine/runtime, а не придумывается моделью.",
-      "Скрытый DC не утекает в доступный игроку event_payload.",
-      "В чат выводится интерактивная карточка запроса броска.",
-    ],
-  },
-  {
-    id: "gm-hard-wait-for-roll",
-    title: "Жёсткая пауза GM turn на броске",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "После request_player_roll сервер переводит GM job в waiting_for_user и физически не даёт модели продолжить сцену до разрешения броска.",
-    readyWhen: [
-      "agent_job/GM-turn сохраняет continuation state.",
-      "После создания roll request генерация прекращается.",
-      "Результат GENA/TOBIK переводит request в resolved и возобновляет тот же GM turn.",
-      "Повторный submit/realtime/retry не создаёт двойное продолжение.",
-    ],
-  },
-  {
     id: "gm-npc-rolls-and-abilities",
     title: "ИИ использует броски и способности NPC",
     removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",

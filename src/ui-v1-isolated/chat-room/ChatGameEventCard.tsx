@@ -92,7 +92,7 @@ function StructuredRollSummary({ roll }: { roll: GameCardRoll }) {
 }
 
 function GameIcon({ type }: { type: UiChatEventType }) {
-  if (type === "roll") {
+  if (type === "roll" || type === "roll_request") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="m12 2.7 7.3 4.2v8.2L12 21.3l-7.3-6.2V6.9L12 2.7Z" />
@@ -575,10 +575,201 @@ function GameEventDetails({
   )
 }
 
+function payloadNumber(
+  payload: Record<string, unknown>,
+  ...keys: string[]
+) {
+  for (const key of keys) {
+    const value = payload[key]
+    if (typeof value === "number" && Number.isFinite(value)) return value
+    if (
+      typeof value === "string" &&
+      value.trim() &&
+      Number.isFinite(Number(value))
+    ) {
+      return Number(value)
+    }
+  }
+  return null
+}
+
+function RollRequestCard({ event }: { event: UiChatEvent }) {
+  const payload = isRecord(event.game?.payload) ? event.game!.payload! : {}
+  const requestId = readString(payload, "requestId", "request_id")
+  const targetCharacterId = readString(
+    payload,
+    "targetCharacterId",
+    "target_character_id",
+  )
+  const [status, setStatus] = useState(
+    readString(payload, "status") || "pending",
+  )
+  const [canResolve, setCanResolve] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const label = readString(payload, "label") || "Проверка"
+  const reason =
+    readString(payload, "reason") || event.body || "Требуется бросок."
+  const requestType =
+    readString(payload, "requestType", "request_type") || "custom"
+  const skillKey = readString(payload, "skillKey", "skill_key")
+  const abilityKey = readString(payload, "abilityKey", "ability_key")
+  const attackKind = readString(payload, "attackKind", "attack_kind")
+  const modifier = payloadNumber(payload, "modifier")
+  const dcVisibility =
+    readString(payload, "dcVisibility", "dc_visibility") || "hidden"
+  const dc = payloadNumber(payload, "dc")
+  const resolved =
+    status === "resolved" ||
+    readString(payload, "status") === "resolved"
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!targetCharacterId || resolved) {
+      setCanResolve(false)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    void Promise.all([
+      supabase.auth.getUser(),
+      supabase
+        .from("characters")
+        .select("assigned_user_id")
+        .eq("id", targetCharacterId)
+        .maybeSingle(),
+    ]).then(([authResult, characterResult]) => {
+      if (cancelled) return
+      setCanResolve(
+        Boolean(
+          authResult.data.user?.id &&
+          characterResult.data?.assigned_user_id === authResult.data.user.id,
+        ),
+      )
+    }).catch(() => {
+      if (!cancelled) setCanResolve(false)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [resolved, targetCharacterId])
+
+  const resolve = async () => {
+    if (!requestId || busy || resolved) return
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await supabase.rpc("resolve_player_roll_request_v1", {
+        p_request_id: requestId,
+      })
+      if (result.error) throw result.error
+      setStatus("resolved")
+      setCanResolve(false)
+    } catch (reasonValue) {
+      setError(
+        reasonValue instanceof Error
+          ? reasonValue.message
+          : "Бросок не выполнен.",
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const kindLabel =
+    requestType === "skill"
+      ? skillKey || "Навык"
+      : requestType === "ability"
+        ? abilityKey || "Характеристика"
+        : requestType === "save"
+          ? "Спасбросок · " + (abilityKey || "характеристика")
+          : requestType === "attack"
+            ? "Атака · " + (attackKind || "атака")
+            : "Особая проверка"
+
+  return (
+    <article
+      className="u1-room-game-card u1-roll-request-card"
+      data-event-type="roll_request"
+      data-request-status={resolved ? "resolved" : "pending"}
+      aria-label="Запрос броска"
+    >
+      <header className="u1-room-game-card__header">
+        <span className="u1-room-game-card__icon" aria-hidden="true">
+          <GameIcon type="roll_request" />
+        </span>
+        <span className="u1-room-game-card__eyebrow">
+          {resolved ? "Бросок выполнен" : "GM просит бросок"}
+        </span>
+        <time>{formatMessageTime(event.createdAt)}</time>
+      </header>
+
+      <div className="u1-room-game-card__content">
+        <div className="u1-room-game-card__title">
+          <strong>{label}</strong>
+          <small>{kindLabel}</small>
+        </div>
+
+        <p className="u1-roll-request-card__reason">{reason}</p>
+
+        <div className="u1-roll-request-card__meta">
+          <span>
+            Модификатор
+            <strong>
+              {modifier === null ? "сервер" : signedRollValue(modifier)}
+            </strong>
+          </span>
+          <span>
+            СЛ
+            <strong>
+              {dcVisibility === "public" && dc !== null ? dc : "скрыта"}
+            </strong>
+          </span>
+        </div>
+
+        {!resolved && canResolve ? (
+          <button
+            type="button"
+            className="u1-roll-request-card__roll"
+            disabled={busy}
+            onClick={() => void resolve()}
+          >
+            {busy ? "Бросаю…" : "Бросить d20"}
+          </button>
+        ) : null}
+
+        {!resolved && !canResolve ? (
+          <small className="u1-roll-request-card__waiting">
+            Ожидается бросок выбранного персонажа
+          </small>
+        ) : null}
+
+        {resolved ? (
+          <small className="u1-roll-request-card__waiting">
+            Результат принят. GM продолжает тот же ход.
+          </small>
+        ) : null}
+
+        {error ? (
+          <small className="u1-room-game-detail__error">{error}</small>
+        ) : null}
+      </div>
+    </article>
+  )
+}
+
 export default function ChatGameEventCard({ event }: { event: UiChatEvent }) {
   const presentation = useMemo(() => presentGameEvent(event), [event])
   const [open, setOpen] = useState(false)
-  const inspectable = event.type !== "roll"
+  const inspectable = event.type !== "roll" && event.type !== "roll_request"
+
+  if (event.type === "roll_request") {
+    return <RollRequestCard event={event} />
+  }
 
   return (
     <>

@@ -116,6 +116,7 @@ function DialogueMessage({
 function isGameEvent(event: UiChatEvent) {
   return (
     event.type === "roll" ||
+    event.type === "roll_request" ||
     event.type === "spell" ||
     event.type === "attack" ||
     event.type === "item" ||
