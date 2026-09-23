@@ -21,19 +21,6 @@ export type AiGmReadinessDebtItem = {
 
 export const AI_GM_READINESS_DEBT: AiGmReadinessDebtItem[] = [
   {
-    id: "gm-runtime-in-game-chat",
-    title: "Фредди становится runtime-ГМом игрового чата",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "Главный ИИ ведёт кампанию прямо в обычном игровом chat_messages, а не в отдельном AgentShell. Side panel остаётся backstage-инструментом GM/admin.",
-    readyWhen: [
-      "Сообщение игрока запускает один идемпотентный GM turn в его комнате.",
-      "Ответ главного ИИ сохраняется в chat_messages и приходит через обычный realtime.",
-      "ИИ может читать сцену и менять канонический мир только через серверные owner/tool boundaries.",
-      "ИИ не отвечает сам на собственные сообщения и не создаёт рекурсивные GM turns.",
-    ],
-  },
-  {
     id: "campaign-gm-model",
     title: "Выбираемая главная модель кампании",
     removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
