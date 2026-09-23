@@ -42,11 +42,12 @@ test("AI GM Stage 1 processes a queued job and writes the answer back to chat", 
     "supabase/functions/voss-agent/game-chat-runtime.ts",
   )
   const edge = read("supabase/functions/voss-agent/index.ts")
+  const context = read("supabase/functions/voss-agent/game-chat-context.ts")
 
   assert.match(runtime, /action !== "game_chat_turn"/)
   assert.match(runtime, /reserve_ai_gm_chat_turn_v1/)
   assert.match(runtime, /\.eq\("status", "queued"\)/)
-  assert.match(runtime, /GAME_CHAT_CONTEXT_LIMIT = 24/)
+  assert.match(context, /const CHAT_CONTEXT_LIMIT = 50/)
   assert.match(runtime, /resolveVossModel/)
   assert.match(runtime, /requestChatCompletion/)
   assert.match(runtime, /publish_ai_gm_message_v1/)
