@@ -165,12 +165,31 @@ export default function ChatActionHost({
     const modifier = request.modifier
       ? (request.modifier > 0 ? "+" : "") + request.modifier
       : ""
+    const label = request.count + "d" + request.sides + modifier
+
+    if (
+      await queueTurnEntry(
+        {
+          kind: "raw_roll",
+          label,
+          economy: "action",
+          rollKind: "Свободный бросок",
+          rollD20: false,
+          diceCount: request.count,
+          diceSides: request.sides,
+          diceModifier: request.modifier,
+        },
+        "action",
+      )
+    ) {
+      return true
+    }
 
     return command(() =>
       genaSession.sendRoll({
         roomId: model.roomId,
         characterId,
-        label: request.count + "d" + request.sides + modifier,
+        label,
         kind: "Свободный бросок",
         rollD20: false,
         diceCount: request.count,
@@ -193,6 +212,23 @@ export default function ChatActionHost({
           proficiencyRank: context?.proficiencyRank,
         })?.minimum
       : undefined
+
+    if (
+      await queueTurnEntry(
+        {
+          kind: "raw_roll",
+          label,
+          economy: "action",
+          rollKind: kind,
+          modifier,
+          rollD20: true,
+          ...(d20Floor ? { d20Floor } : {}),
+        },
+        "action",
+      )
+    ) {
+      return
+    }
 
     await command(() =>
       genaSession.sendRoll({
