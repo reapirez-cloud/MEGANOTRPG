@@ -152,6 +152,15 @@ export default function ChatActionHost({
     }
   }
 
+  async function queueSpellTurnEntry(
+    entry: PlayerTurnEntry,
+    spellKey: string,
+  ) {
+    if (!queuePlayerTurn || !onQueueTurnEntry) return false
+    const slot = await playerTurnSlotForSpell(spellKey)
+    return queueTurnEntry({ ...entry, economy: slot }, slot)
+  }
+
   async function freeRoll(request: FreeDiceRequest) {
     const modifier = request.modifier
       ? (request.modifier > 0 ? "+" : "") + request.modifier
@@ -551,7 +560,7 @@ export default function ChatActionHost({
           : []
 
       if (
-        await queueTurnEntry(
+        await queueSpellTurnEntry(
           {
             kind: "spell_with_modifiers",
             label: spell.identity.name,
@@ -567,7 +576,7 @@ export default function ChatActionHost({
             modifierMechanicIds,
             payload: { detail, spellKey: spell.key },
           },
-          await playerTurnSlotForSpell(spell.key),
+          spell.key,
         )
       ) {
         return true
@@ -599,7 +608,7 @@ export default function ChatActionHost({
 
     if (mechanicId) {
       if (
-        await queueTurnEntry(
+        await queueSpellTurnEntry(
           {
             kind: "template_spell",
             label: spell.identity.name,
@@ -608,7 +617,7 @@ export default function ChatActionHost({
             ...(option ? { optionKey: option.key } : {}),
             payload: { detail, spellKey: spell.key },
           },
-          await playerTurnSlotForSpell(spell.key),
+          spell.key,
         )
       ) {
         return true
@@ -631,7 +640,7 @@ export default function ChatActionHost({
         contract && option ? resourceCostInputs(contract, option.costs) : []
 
       if (
-        await queueTurnEntry(
+        await queueSpellTurnEntry(
           {
             kind: "raw_event",
             label: spell.identity.name,
@@ -639,7 +648,7 @@ export default function ChatActionHost({
             payload: { detail, spellKey: spell.key },
             resourceCosts: costs,
           },
-          await playerTurnSlotForSpell(spell.key),
+          spell.key,
         )
       ) {
         return true
