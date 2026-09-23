@@ -1055,6 +1055,7 @@ declare
   v_skill text := nullif(lower(trim(coalesce(p_skill_key,''))),'');
   v_score integer;
   v_modifier integer;
+  v_skill_rank integer := 0;
   v_message_id bigint;
   v_manager_user_id uuid;
   v_receipt public.engine_command_receipts%rowtype;
@@ -1110,10 +1111,18 @@ begin
      and coalesce(v_sheet.saving_throw_proficiencies,'[]'::jsonb) ? v_ability
   then
     v_modifier := v_modifier + v_sheet.proficiency_bonus;
-  elsif v_type='skill'
-     and coalesce(v_sheet.skill_proficiencies,'{}'::jsonb) ? v_skill
-  then
-    v_modifier := v_modifier + v_sheet.proficiency_bonus;
+  elsif v_type='skill' then
+    v_skill_rank := greatest(
+      0,
+      least(
+        2,
+        coalesce(
+          (v_sheet.skill_proficiencies->>v_skill)::integer,
+          0
+        )
+      )
+    );
+    v_modifier := v_modifier + (v_sheet.proficiency_bonus * v_skill_rank);
   end if;
 
   select * into v_receipt
