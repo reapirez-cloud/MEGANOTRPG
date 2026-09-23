@@ -547,6 +547,8 @@ Flash cannot:
 
 ## Stage 11 — Resolver-driven narrative branching
 
+**Status: CERTIFIED — 2026-09-23**
+
 Add `resolve_random_decision` to Flash first, then the primary GM.
 
 Use when several plausible developments exist and no canonical reason determines one.
