@@ -642,7 +642,7 @@ export async function buildGameChatContextV2({
   const chatEventsResult = historyMessageIds.length
     ? await admin
         .from("campaign_events")
-        .select("id,source_id,payload,occurred_at")
+        .select("id,source_id,location_id,visibility,visible_character_ids,payload,occurred_at")
         .eq("campaign_id", campaignId)
         .eq("source_kind", "chat_message")
         .in("source_id", historyMessageIds)
@@ -892,6 +892,10 @@ export function npcDialogueContextForPrompt(
     motivation: profile.motivation || null,
     public_notes: profile.public_notes || null,
     tags: profile.tags || [],
+    inventory_text: profile.inventory_text || "",
+    inventory_data: Array.isArray(profile.inventory_data)
+      ? profile.inventory_data
+      : [],
   }
 
   const nameById = new Map(
