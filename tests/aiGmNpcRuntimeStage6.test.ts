@@ -18,7 +18,7 @@ const atomicSave = read(
   "supabase/migrations/20260923113500_ai_gm_npc_runtime_stage6_atomic_save_v1.sql",
 )
 const chatIdentity = read(
-  "supabase/migrations/20260923092804_ai_gm_npc_chat_identity_bridge_v1.sql",
+  "supabase/migrations/20260923114000_ai_gm_npc_chat_identity_bridge_v1.sql",
 )
 const worker = read("supabase/functions/npc-runtime/index.ts")
 const context = read("supabase/functions/voss-agent/game-chat-context.ts")
