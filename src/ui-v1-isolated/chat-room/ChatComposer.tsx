@@ -447,44 +447,6 @@ export default function ChatComposer({
     }
   }
 
-  const moveTurnEntry = async (
-    from: PlayerTurnSlot,
-    to: PlayerTurnSlot,
-  ) => {
-    if (!turnDraft || from === to) return
-    const fromEntry =
-      from === "action"
-        ? turnDraft.action_entry
-        : turnDraft.bonus_action_entry
-    if (!fromEntry) return
-    const targetEntry =
-      to === "action"
-        ? turnDraft.action_entry
-        : turnDraft.bonus_action_entry
-
-    setSendError(null)
-    try {
-      await saveTurnState({
-        actionEntry:
-          to === "action"
-            ? fromEntry
-            : from === "action"
-              ? targetEntry
-              : turnDraft.action_entry,
-        bonusActionEntry:
-          to === "bonus_action"
-            ? fromEntry
-            : from === "bonus_action"
-              ? targetEntry
-              : turnDraft.bonus_action_entry,
-      })
-    } catch (error) {
-      setSendError(
-        error instanceof Error ? error.message : "Слот хода не изменён",
-      )
-    }
-  }
-
   const clearTurnSlot = async (slot: PlayerTurnSlot) => {
     setSendError(null)
     try {
@@ -628,28 +590,26 @@ export default function ChatComposer({
                 <span>Действие</span>
                 <strong>{turnDraft?.action_entry?.label || "Не выбрано"}</strong>
                 {turnDraft?.action_entry ? (
-                  <div>
-                    <button type="button" onClick={() => void moveTurnEntry("action", "bonus_action")}>
-                      В бонус
-                    </button>
-                    <button type="button" onClick={() => void clearTurnSlot("action")}>
-                      ×
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    aria-label="Убрать действие из хода"
+                    onClick={() => void clearTurnSlot("action")}
+                  >
+                    ×
+                  </button>
                 ) : null}
               </div>
               <div className="u1-player-turn__slot" data-filled={Boolean(turnDraft?.bonus_action_entry) || undefined}>
                 <span>Бонус</span>
                 <strong>{turnDraft?.bonus_action_entry?.label || "Не выбрано"}</strong>
                 {turnDraft?.bonus_action_entry ? (
-                  <div>
-                    <button type="button" onClick={() => void moveTurnEntry("bonus_action", "action")}>
-                      В действие
-                    </button>
-                    <button type="button" onClick={() => void clearTurnSlot("bonus_action")}>
-                      ×
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    aria-label="Убрать бонусное действие из хода"
+                    onClick={() => void clearTurnSlot("bonus_action")}
+                  >
+                    ×
+                  </button>
                 ) : null}
               </div>
             </div>
