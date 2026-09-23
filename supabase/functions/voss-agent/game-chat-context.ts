@@ -13,6 +13,8 @@ export type Stage2GameChatContext = {
   players: JsonRecord[]
   presentCharacters: JsonRecord[]
   sheets: JsonRecord[]
+  resourceStates: JsonRecord[]
+  inventoryChargeItems: JsonRecord[]
   npcProfiles: JsonRecord[]
   npcRuntime: JsonRecord[]
   relationships: JsonRecord[]
@@ -511,6 +513,8 @@ export async function buildGameChatContextV2({
 
   const [
     sheetsResult,
+    resourceStatesResult,
+    inventoryChargesResult,
     npcProfilesResult,
     npcRuntimeResult,
     relationshipsResult,
@@ -524,6 +528,20 @@ export async function buildGameChatContextV2({
           .from("character_sheets")
           .select("character_id,race,background,alignment,strength,dexterity,constitution,intelligence,wisdom,charisma,armor_class,initiative_bonus,speed,proficiency_bonus,max_hp,current_hp,temp_hp,passive_perception,spellcasting_enabled,spellcasting_ability,spell_save_dc,spell_attack_bonus,runtime_facts")
           .in("character_id", relevantCharacterIds)
+      : Promise.resolve({ data: [], error: null }),
+    relevantCharacterIds.length
+      ? admin
+          .from("character_resource_states")
+          .select("character_id,state_key,current,max_snapshot,label,recharge,temporary_max_bonus,updated_at")
+          .in("character_id", relevantCharacterIds)
+      : Promise.resolve({ data: [], error: null }),
+    relevantCharacterIds.length
+      ? admin
+          .from("character_inventory_items")
+          .select("id,character_id,name,usage_mode,charges_current,charges_max,item_state,updated_at")
+          .in("character_id", relevantCharacterIds)
+          .eq("usage_mode", "charges")
+          .limit(120)
       : Promise.resolve({ data: [], error: null }),
     presentNpcIds.length
       ? admin
@@ -571,6 +589,8 @@ export async function buildGameChatContextV2({
 
   const contextError =
     sheetsResult.error ||
+    resourceStatesResult.error ||
+    inventoryChargesResult.error ||
     npcProfilesResult.error ||
     npcRuntimeResult.error ||
     relationshipsResult.error ||
@@ -723,6 +743,8 @@ export async function buildGameChatContextV2({
     players: playerCharacters,
     presentCharacters,
     sheets: rows(sheetsResult.data),
+    resourceStates: rows(resourceStatesResult.data),
+    inventoryChargeItems: rows(inventoryChargesResult.data),
     npcProfiles: rows(npcProfilesResult.data),
     npcRuntime: rows(npcRuntimeResult.data),
     relationships,
@@ -760,6 +782,8 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     players: context.players,
     characters_physically_present_with_source: context.presentCharacters,
     canonical_sheets_for_present_characters: context.sheets,
+    canonical_resource_states_for_present_characters: context.resourceStates,
+    charged_inventory_items_for_present_characters: context.inventoryChargeItems,
     present_npc_profiles: context.npcProfiles,
     canonical_npc_runtime: context.npcRuntime,
     relationships: context.relationships,
@@ -918,6 +942,12 @@ export function npcDialogueContextForPrompt(
       level: npc.level,
       profile: safeProfile,
       sheet,
+      resource_states: context.resourceStates.filter(
+        (item) => String(item.character_id) === npcCharacterId,
+      ),
+      charged_inventory_items: context.inventoryChargeItems.filter(
+        (item) => String(item.character_id) === npcCharacterId,
+      ),
     },
     source_character: {
       id: context.sourceCharacter.id,

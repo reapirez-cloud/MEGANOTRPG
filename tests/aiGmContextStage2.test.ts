@@ -77,7 +77,8 @@ test("PC to PC conversation cannot make AI speak or decide for another PC", () =
   assert.match(runtime, /Если сообщение в основном обращено к другому PC/)
   assert.match(runtime, /mode: "none"/)
   assert.match(runtime, /completeWithoutChatMessage/)
-  assert.match(runtime, /completed_outputs: 0/)
+  assert.match(runtime, /completedOutputs = 0/)
+  assert.match(runtime, /completed_outputs: completedOutputs/)
 })
 
 test("NPC interjection is canonical, service-only and physically co-located", () => {
