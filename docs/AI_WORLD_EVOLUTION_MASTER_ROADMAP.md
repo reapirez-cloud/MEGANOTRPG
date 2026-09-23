@@ -4,6 +4,10 @@
 >
 > Scope: experimental AI-world campaigns only.
 >
+> **Executable source of truth for implementation status:** `src/ai-world-evolution/contract.ts`.
+>
+> A stage is NOT complete because similar infrastructure exists. The code contract lists, for every stage, its purpose, existing foundation, explicit `notSatisfiedBy` shortcuts, required artifacts, acceptance criteria and certification checks. Stage status must be advanced deliberately only after those requirements exist.
+
 > This is the single implementation roadmap for:
 > - background world simulation;
 > - server-owned random Resolver;
