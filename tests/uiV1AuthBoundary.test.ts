@@ -39,14 +39,14 @@ test("UI 1.0 cannot mount outside the complete app access boundary", () => {
 test("remembered campaign id is only a hint after live membership lookup", () => {
   const queryIndex = gate.indexOf('.from("campaign_members")')
   const rememberedIndex = gate.indexOf("const remembered = rememberedCampaignId()")
-  const selectedIndex = gate.indexOf("ownerRows.find")
+  const selectedIndex = gate.indexOf("standardOwnerRows.find")
 
   assert.ok(queryIndex >= 0)
   assert.ok(rememberedIndex > queryIndex)
   assert.ok(selectedIndex > rememberedIndex)
   assert.match(
     gate,
-    /ownerRows\.find\(\(row\) => row\.campaign_id === remembered\)/,
+    /standardOwnerRows\.find\(\(row\) => row\.campaign_id === remembered\)/,
   )
 })
 
