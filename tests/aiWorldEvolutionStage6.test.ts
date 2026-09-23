@@ -76,7 +76,7 @@ test("damage is derived from a server roll receipt rather than a model-supplied 
 })
 
 test("flee and remove are revision-checked actor-local transitions", () => {
-  assert.match(migration, /p_transition not in \('flee','remove'\)/)
+  assert.match(migration, /v_transition not in \('flee','remove'\)/)
   assert.match(migration, /scene_actor_revision_conflict/)
   assert.match(migration, /set life_state='fled'/)
   assert.match(migration, /set runtime_state='archived'/)
