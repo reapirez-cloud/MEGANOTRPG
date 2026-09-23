@@ -46,7 +46,7 @@ test("Stage 8 dawn is canonical per location and campaign day", () => {
     migration,
     /when v_current_period='dawn' then v_current_day[\s\S]*else v_current_day\+1/,
   )
-  assert.match(migration, /day_period='dawn'/)
+  assert.match(migration, /v_effective_day,[\s\S]*'dawn'/)
   assert.match(migration, /public\.set_scene_position/)
   assert.match(migration, /public\.set_character_world_position/)
 })
