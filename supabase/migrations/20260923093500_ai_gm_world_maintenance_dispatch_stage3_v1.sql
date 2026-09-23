@@ -128,7 +128,7 @@ begin
     headers := jsonb_build_object(
       'Content-Type', 'application/json'
     ),
-    timeout_milliseconds := 90000
+    timeout_milliseconds := 5000
   )
   into v_request_id;
 
