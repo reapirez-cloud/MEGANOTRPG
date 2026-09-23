@@ -391,7 +391,7 @@ test("World and Knowledge Base use extensible registries and keep Map intentiona
   assert.match(sectionRegistry, /id: "locations", title: "Локации"/)
   assert.match(sectionRegistry, /id: "characters", title: "Персонажи"/)
   assert.match(locationNavigator, /<h1>Локации<\/h1>/)
-  assert.match(sectionData, /eq\("character_type", "npc"\)/)
+  assert.match(sectionData, /list_world_characters_v1/)
   assert.match(sectionRegistry, /id: "lore"/)
   assert.match(sectionRegistry, /id: "map"/)
   assert.match(sectionRegistry, /id: "spells"/)

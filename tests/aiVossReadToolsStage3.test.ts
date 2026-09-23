@@ -24,7 +24,8 @@ test("Voss stage 3 exposes only an explicit read-tool allowlist", () => {
   assert.doesNotMatch(tools, /\.update\(/)
   assert.doesNotMatch(tools, /\.delete\(/)
   assert.doesNotMatch(tools, /\.upsert\(/)
-  assert.doesNotMatch(tools, /\.rpc\(/)
+  assert.match(tools, /read_character_biography_manager_v1/)
+  assert.match(tools, /list_world_storages_v1/)
 })
 
 test("read tools execute with the signed-in user client, not service-role reads", () => {

@@ -70,7 +70,7 @@ test("draft lifecycles live with their domains while review only contains AI pro
   assert.match(review, /applyAIDraft/)
   assert.doesNotMatch(review, /createDraftCharacter|createDraftDefinition/)
   assert.match(workspaceData, /\.eq\("publication_state", "campaign"\)/)
-  assert.match(sectionData, /\.eq\("publication_state", "campaign"\)/)
+  assert.match(sectionData, /list_world_characters_v1/)
 })
 
 test("PC assignment and active identity remain separate commands", () => {

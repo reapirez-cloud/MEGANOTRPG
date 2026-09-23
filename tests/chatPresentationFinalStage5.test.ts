@@ -55,12 +55,12 @@ test("chat final stage 5 keeps PNG canonical and fallback dice inside one reusab
 
   for (const sides of [4, 6, 8, 10, 12, 20]) {
     assert.ok(
-      dice.includes(`${sides}: "/ui-v1/dice/d${sides}-graphite.png"`),
+      dice.includes(`${sides}: "d${sides}-graphite.png"`),
     )
   }
   assert.match(dice, /sides === 100/)
   assert.match(dice, /data-die-kind=\{sides === 100 \? "percentile"/)
-  assert.match(dice, /CANONICAL_DIE_ASSETS\[sides\] \? "canonical" : "fallback"/)
+  assert.match(dice, /canonicalDieAsset\(sides\) \? "canonical" : "fallback"/)
   assert.match(dice, /className="u1-die-glyph__fallback"/)
   assert.doesNotMatch(dice, /<svg/)
 })

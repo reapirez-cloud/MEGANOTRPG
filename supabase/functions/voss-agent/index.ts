@@ -74,6 +74,7 @@ import { VOSS_CONVERSATION_VOICE } from "./voss-voice.ts"
 import { FREDDY_CONVERSATION_VOICE } from "./freddy-voice.ts"
 import { VOSS_INVENTORY_AUTHORING_RULES } from "./inventory-authoring.ts"
 import { isExplicitImageGenerationRequest } from "./image-intent.ts"
+import { startGameChatTurnRequest } from "./game-chat-runtime.ts"
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -607,6 +608,17 @@ Deno.serve(async (req: Request) => {
   if (membershipError) return reply({ error: membershipError.message }, 500)
   if (!membership && !isSystemAdmin) {
     return reply({ error: "Campaign access denied" }, 403)
+  }
+
+  const gameChatTurn = await startGameChatTurnRequest({
+    admin,
+    campaignId,
+    userId: user.id,
+    body,
+  })
+  if (gameChatTurn) {
+    if (gameChatTurn.background) runBackground(gameChatTurn.background)
+    return reply(gameChatTurn.body, gameChatTurn.status)
   }
 
   if (action === "cancel_image_job") {

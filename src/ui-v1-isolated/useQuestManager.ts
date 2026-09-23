@@ -181,7 +181,7 @@ function parsePlan(value: unknown): QuestManagerPlan | null {
         id: text(row.id),
         stage_id: text(row.stage_id),
         group_key: text(row.group_key),
-        mode: text(row.mode) === "any" ? "any" : "all",
+        mode: (text(row.mode) === "any" ? "any" : "all") as QuestManagerConditionGroup["mode"],
         position: number(row.position),
       }
     }).filter((group) => Boolean(group.id)),
