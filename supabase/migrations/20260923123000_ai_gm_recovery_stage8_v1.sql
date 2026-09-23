@@ -18,6 +18,18 @@ create unique index if not exists chat_messages_ai_gm_recovery_turn_unique
   where turn_command_id is not null
     and turn_component='ai_gm_recovery';
 
+create table if not exists private.ai_gm_recovery_receipts (
+  job_id uuid primary key references public.agent_jobs(id) on delete cascade,
+  campaign_id uuid not null references public.campaigns(id) on delete cascade,
+  recovery_trigger text not null check (recovery_trigger in ('short_rest','long_rest','dawn')),
+  result jsonb not null check (jsonb_typeof(result)='object'),
+  created_by uuid,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists ai_gm_recovery_receipts_campaign_idx
+  on private.ai_gm_recovery_receipts(campaign_id,created_at desc);
+
 create table if not exists private.ai_gm_dawn_receipts (
   campaign_id uuid not null references public.campaigns(id) on delete cascade,
   location_id uuid not null references public.locations(id) on delete cascade,
@@ -46,7 +58,7 @@ as $function$
 declare
   v_job public.agent_jobs%rowtype;
   v_room public.chat_rooms%rowtype;
-  v_existing public.engine_command_receipts%rowtype;
+  v_existing_recovery private.ai_gm_recovery_receipts%rowtype;
   v_manager_user_id uuid;
   v_source_character_id uuid;
   v_source_location_id uuid;
@@ -82,18 +94,19 @@ begin
     raise exception 'ai_gm_turn_not_found';
   end if;
 
-  select * into v_existing
-  from public.engine_command_receipts
-  where command_id=p_job_id;
+  select * into v_existing_recovery
+  from private.ai_gm_recovery_receipts
+  where job_id=p_job_id
+  for update;
 
   if found then
-    if v_existing.campaign_id<>v_job.campaign_id
-       or v_existing.engine<>'ai_gm'
-       or v_existing.command_kind<>'ai_gm.recovery'
+    if v_existing_recovery.campaign_id<>v_job.campaign_id
+       or v_existing_recovery.recovery_trigger<>v_trigger
     then
       raise exception 'ai_gm_recovery_command_conflict';
     end if;
-    return v_existing.result || jsonb_build_object('idempotent_replay',true);
+    return v_existing_recovery.result
+      || jsonb_build_object('idempotent_replay',true);
   end if;
 
   if v_job.status<>'running' then
@@ -281,11 +294,10 @@ begin
         'runtime_stage',8
       );
 
-      insert into public.engine_command_receipts(
-        command_id,campaign_id,engine,command_kind,aggregate_id,result,created_by,actor_character_id
+      insert into private.ai_gm_recovery_receipts(
+        job_id,campaign_id,recovery_trigger,result,created_by
       ) values(
-        p_job_id,v_job.campaign_id,'ai_gm','ai_gm.recovery',
-        v_source_location_id,v_result,v_manager_user_id,v_source_character_id
+        p_job_id,v_job.campaign_id,'dawn',v_result,v_manager_user_id
       );
 
       return v_result;
@@ -381,12 +393,10 @@ begin
     );
   end if;
 
-  insert into public.engine_command_receipts(
-    command_id,campaign_id,engine,command_kind,aggregate_id,result,created_by,actor_character_id
+  insert into private.ai_gm_recovery_receipts(
+    job_id,campaign_id,recovery_trigger,result,created_by
   ) values(
-    p_job_id,v_job.campaign_id,'ai_gm','ai_gm.recovery',
-    case when v_trigger='dawn' then v_source_location_id else v_source_character_id end,
-    v_result,v_manager_user_id,v_source_character_id
+    p_job_id,v_job.campaign_id,v_trigger,v_result,v_manager_user_id
   );
 
   return v_result;
