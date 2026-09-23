@@ -147,7 +147,99 @@ begin
 end;
 $$;
 
+create or replace function private.player_turn_entry_economy_v1(
+  p_character_id uuid,
+  p_entry jsonb
+)
+returns text
+language plpgsql
+security definer
+set search_path = ''
+stable
+as $$
+declare
+  v_kind text;
+  v_mechanic_id text;
+  v_action jsonb;
+  v_economy text;
+  v_spell_key text;
+  v_casting_time text;
+begin
+  v_kind := trim(coalesce(p_entry ->> 'kind', ''));
+
+  if v_kind in ('template_action','template_roll') then
+    v_mechanic_id := nullif(trim(coalesce(p_entry ->> 'mechanicId', '')), '');
+    if v_mechanic_id is null then
+      raise exception 'Turn mechanic id is required';
+    end if;
+
+    v_action :=
+      private.character_template_selected_action_definition_v1(
+        p_character_id,
+        v_mechanic_id
+      );
+
+    if v_action is null then
+      raise exception 'Queued action is no longer available';
+    end if;
+
+    v_economy :=
+      lower(trim(coalesce(v_action ->> 'economy', 'action')));
+  elsif v_kind in ('template_spell','spell_with_modifiers')
+     or (
+       v_kind = 'raw_event'
+       and lower(trim(coalesce(p_entry ->> 'eventKind', ''))) = 'spell'
+     )
+  then
+    v_spell_key :=
+      nullif(trim(coalesce(p_entry #>> '{payload,spellKey}', '')), '');
+
+    if v_spell_key is null then
+      raise exception 'Queued spell key is required';
+    end if;
+
+    select lower(trim(coalesce(sc.casting_time, '')))
+      into v_casting_time
+    from public.spell_catalog sc
+    where sc.slug = v_spell_key
+    limit 1;
+
+    if v_casting_time is null then
+      raise exception 'Queued spell is not in the spell catalog';
+    end if;
+
+    if v_casting_time like '%реакц%'
+       or v_casting_time like '%reaction%'
+    then
+      v_economy := 'reaction';
+    elsif v_casting_time like '%бонус%'
+       or v_casting_time like '%bonus%'
+    then
+      v_economy := 'bonus_action';
+    else
+      v_economy := 'action';
+    end if;
+  else
+    v_economy :=
+      lower(trim(coalesce(p_entry ->> 'economy', 'action')));
+  end if;
+
+  if v_economy in ('bonus action','bonus-action','бонусное действие') then
+    v_economy := 'bonus_action';
+  elsif v_economy in ('main_action','standard_action','действие') then
+    v_economy := 'action';
+  end if;
+
+  if v_economy not in ('action','bonus_action','reaction') then
+    v_economy := 'action';
+  end if;
+
+  return v_economy;
+end;
+$$;
+
 create or replace function private.normalize_player_turn_entry_v1(
+  p_character_id uuid,
   p_entry jsonb,
   p_slot text
 )
@@ -161,6 +253,7 @@ declare
   v_kind text;
   v_command_id uuid;
   v_label text;
+  v_economy text;
 begin
   if p_entry is null then
     return null;
@@ -193,6 +286,24 @@ begin
     raise exception 'Turn entry label is required';
   end if;
 
+  v_economy :=
+    private.player_turn_entry_economy_v1(
+      p_character_id,
+      p_entry
+    );
+
+  if v_economy = 'reaction' then
+    raise exception 'Reaction is not part of the pending player turn';
+  end if;
+
+  if p_slot = 'action' and v_economy = 'bonus_action' then
+    raise exception 'Queued entry requires the bonus-action slot';
+  end if;
+
+  if p_slot = 'bonus_action' and v_economy <> 'bonus_action' then
+    raise exception 'Queued entry requires the action slot';
+  end if;
+
   begin
     v_command_id := nullif(trim(coalesce(p_entry ->> 'commandId', '')), '')::uuid;
   exception
@@ -209,6 +320,7 @@ begin
       'kind', v_kind,
       'label', left(v_label, 240),
       'slot', p_slot,
+      'economy', v_economy,
       'commandId', v_command_id::text
     );
 end;
@@ -328,9 +440,17 @@ begin
     );
 
   v_action :=
-    private.normalize_player_turn_entry_v1(p_action_entry, 'action');
+    private.normalize_player_turn_entry_v1(
+      p_character_id,
+      p_action_entry,
+      'action'
+    );
   v_bonus :=
-    private.normalize_player_turn_entry_v1(p_bonus_action_entry, 'bonus_action');
+    private.normalize_player_turn_entry_v1(
+      p_character_id,
+      p_bonus_action_entry,
+      'bonus_action'
+    );
   v_movement :=
     private.normalize_player_turn_movement_v1(p_movement);
   v_component_order := private.normalize_player_turn_order_v1(
