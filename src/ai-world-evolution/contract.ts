@@ -427,7 +427,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Compact versioned background state merger",
     purpose:
       "Merge old current state and new event into a concise replacement snapshot while preserving immutable history separately.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "campaign_memory_facts supports superseding facts",
       "campaign_memory_summaries",
