@@ -639,68 +639,19 @@ export async function buildGameChatContextV2({
     )
   }
 
-  const fallbackHistory = rows(historyResult.data).reverse()
-  let history = fallbackHistory
-  let sceneChatEvents: JsonRecord[] = []
-
-  const sourceEventResult = await admin
-    .from("campaign_events")
-    .select("id,source_id,room_id,location_id,visibility,visible_character_ids,payload,occurred_at")
-    .eq("campaign_id", campaignId)
-    .eq("source_kind", "chat_message")
-    .eq("source_id", String(sourceMessageId))
-    .maybeSingle()
-
-  if (sourceEventResult.error) throw new Error(sourceEventResult.error.message)
-
-  const sourceEvent = record(sourceEventResult.data)
-  const sourceOccurredAt = nullableString(sourceEvent.occurred_at)
-
-  if (sourceLocationId && sourceOccurredAt) {
-    const sceneEventsResult = await admin
-      .from("campaign_events")
-      .select("id,source_id,room_id,location_id,visibility,visible_character_ids,payload,occurred_at")
-      .eq("campaign_id", campaignId)
-      .eq("source_kind", "chat_message")
-      .eq("room_id", roomId)
-      .eq("location_id", sourceLocationId)
-      .lte("occurred_at", sourceOccurredAt)
-      .order("occurred_at", { ascending: false })
-      .limit(CHAT_CONTEXT_LIMIT)
-
-    if (sceneEventsResult.error) throw new Error(sceneEventsResult.error.message)
-    sceneChatEvents = rows(sceneEventsResult.data)
-
-    const sceneMessageIds = unique(
-      sceneChatEvents.map((item) => nullableString(item.source_id)),
-    )
-      .map((value) => Number(value))
-      .filter((value) => Number.isSafeInteger(value) && value > 0)
-
-    if (sceneMessageIds.length) {
-      const sceneMessagesResult = await admin
-        .from("chat_messages")
-        .select("id,author_name,body,user_id,character_id,event_kind,event_payload,attachment_kind,turn_command_id,turn_component,turn_order,audience_scope,recipient_character_ids,created_at")
-        .eq("room_id", roomId)
-        .in("id", sceneMessageIds)
-        .order("id", { ascending: true })
-
-      if (sceneMessagesResult.error) throw new Error(sceneMessagesResult.error.message)
-      history = rows(sceneMessagesResult.data)
-    }
-  }
-
+  // The game chat is persistent for the character. Physical location can change
+  // many times inside the same room, so the GM always receives the latest 50
+  // messages from THIS CHAT, not the latest 50 from the current location.
+  const history = rows(historyResult.data).reverse()
   const historyMessageIds = history.map((item) => String(item.id))
-  const chatEventsResult = sceneChatEvents.length
-    ? { data: sceneChatEvents, error: null }
-    : historyMessageIds.length
-      ? await admin
-          .from("campaign_events")
-          .select("id,source_id,location_id,visibility,visible_character_ids,payload,occurred_at")
-          .eq("campaign_id", campaignId)
-          .eq("source_kind", "chat_message")
-          .in("source_id", historyMessageIds)
-      : { data: [], error: null }
+  const chatEventsResult = historyMessageIds.length
+    ? await admin
+        .from("campaign_events")
+        .select("id,source_id,location_id,visibility,visible_character_ids,payload,occurred_at")
+        .eq("campaign_id", campaignId)
+        .eq("source_kind", "chat_message")
+        .in("source_id", historyMessageIds)
+    : { data: [], error: null }
 
   if (chatEventsResult.error) throw new Error(chatEventsResult.error.message)
 
@@ -721,20 +672,9 @@ export async function buildGameChatContextV2({
 
   const recentMessages = history
     .filter((message) => {
-      if (Number(message.id) === sourceMessageId) return true
-      const event = chatEventByMessage.get(String(message.id))
-      if (!event) return false
-
-      const eventLocationId = nullableString(event.location_id)
-      if (sourceLocationId && eventLocationId !== sourceLocationId) return false
-      if (!sourceLocationId && eventLocationId) return false
-
-      if (nullableString(event.visibility) === "characters") {
-        const visibleCharacterIds = strings(event.visible_character_ids)
-        return visibleCharacterIds.includes(sourceCharacterId)
-      }
-
-      return true
+      if (nullableString(message.audience_scope) !== "direct_pc") return true
+      if (String(message.character_id || "") === sourceCharacterId) return true
+      return strings(message.recipient_character_ids).includes(sourceCharacterId)
     })
     .map((message) => {
       const event = chatEventByMessage.get(String(message.id))
@@ -793,38 +733,23 @@ export async function buildGameChatContextV2({
     return candidates[0]
   }
 
-  function belongsToSourceScene(item: JsonRecord) {
-    const sourceMemoryLocation = nullableString(item.source_location_id)
-    if (sourceMemoryLocation) {
-      return sourceMemoryLocation === sourceLocationId
-    }
-
-    // Old room-local memories without a location snapshot are ambiguous in a
-    // split-party room. Fail closed instead of leaking another scene.
-    if (item.room_id === roomId && sourceLocationId) return false
-
-    // Campaign/global facts without a physical location remain valid.
-    return true
-  }
-
-  const memoryFacts = rawFacts
-    .map((item) =>
-      withGameAge(
-        item,
-        newestSourceEvent(strings(item.source_event_ids)),
-        currentDay,
-      )
+  // Long-term memory also follows the persistent character chat/current domain
+  // owners. Location snapshots are retained as historical metadata, not used to
+  // throw away memories just because the character moved elsewhere.
+  const memoryFacts = rawFacts.map((item) =>
+    withGameAge(
+      item,
+      newestSourceEvent(strings(item.source_event_ids)),
+      currentDay,
     )
-    .filter(belongsToSourceScene)
-  const memorySummaries = rawSummaries
-    .map((item) =>
-      withGameAge(
-        item,
-        newestSourceEvent(strings(item.key_event_ids)),
-        currentDay,
-      )
+  )
+  const memorySummaries = rawSummaries.map((item) =>
+    withGameAge(
+      item,
+      newestSourceEvent(strings(item.key_event_ids)),
+      currentDay,
     )
-    .filter(belongsToSourceScene)
+  )
 
   const originalMessage =
     nullableString(jobInput.original_message)?.toLocaleLowerCase("ru-RU") || ""
