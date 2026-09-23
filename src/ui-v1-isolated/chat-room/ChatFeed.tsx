@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { CHAT_MESSAGE_SENT_EVENT } from "./chatRoomContracts"
+import { SnakeTrigger } from "../SnakeProvider"
 import ChatFeedItem from "./ChatFeedItem"
+import { createChatMessageSnakeActions } from "./chatMessageSnakeActions"
 import { useChatRoomEvents } from "./useChatRoomEvents"
 
 const BOTTOM_THRESHOLD = 96
@@ -60,9 +62,11 @@ function dialogueGroupPosition(
 export default function ChatFeed({
   roomId,
   viewerUserId,
+  campaignId,
 }: {
   roomId: string
   viewerUserId: string
+  campaignId: string
 }) {
   const {
     events,
@@ -287,13 +291,12 @@ export default function ChatFeed({
             event.type === "system" ? "system" : isOwn ? "own" : "other"
           const groupPosition = dialogueGroupPosition(events, index)
 
-          return (
+          const entry = (
             <div
               className="u1-room-feed__entry"
               data-feed-entry-type={event.type}
               data-feed-entry-side={side}
               data-message-group={isDialogueEvent(event) ? groupPosition : undefined}
-              key={event.id}
             >
               <ChatFeedItem
                 event={event}
@@ -304,6 +307,23 @@ export default function ChatFeed({
                 }}
               />
             </div>
+          )
+
+          const actions = createChatMessageSnakeActions({
+            event,
+            campaignId,
+          })
+
+          return actions.length ? (
+            <SnakeTrigger
+              key={event.id}
+              entity={{ type: "chat_message", id: String(event.id) }}
+              actions={actions}
+            >
+              {entry}
+            </SnakeTrigger>
+          ) : (
+            <div key={event.id}>{entry}</div>
           )
         })}
       </div>

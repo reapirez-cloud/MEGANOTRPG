@@ -16,7 +16,7 @@ test("chat ownership stage 1 derives side from the sending account", async () =>
 
   assert.match(
     room,
-    /<ChatFeed roomId=\{roomId\} viewerUserId=\{model\.viewer\.userId\} \/>/,
+    /<ChatFeed[\s\S]*roomId=\{roomId\}[\s\S]*viewerUserId=\{model\.viewer\.userId\}[\s\S]*campaignId=\{model\.viewer\.campaignId\}[\s\S]*\/>/,
   )
   assert.match(feed, /event\.author\.userId === viewerUserId/)
   assert.match(feed, /event\.type === "system" \? "system" : isOwn \? "own" : "other"/)

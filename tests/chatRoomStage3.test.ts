@@ -59,7 +59,7 @@ test("stage 3 replaces the feed placeholder without adding composer or panels", 
   const room = await readFile(roomPath, "utf8")
 
   assert.match(room, /data-chat-room-stage="8"/)
-  assert.match(room, /<ChatFeed roomId=\{roomId\}/)
+  assert.match(room, /<ChatFeed[\s\S]*roomId=\{roomId\}/)
   assert.doesNotMatch(room, /Лента сообщений будет подключена/)
   assert.doesNotMatch(room, /composer|attachment|ChatDrawer|ActionLauncher/)
 })

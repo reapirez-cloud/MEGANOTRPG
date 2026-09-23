@@ -15,7 +15,7 @@ test("reference rebuild stage 1 mounts one viewport frame around the isolated ru
   assert.match(room, /data-chat-room-stage="8"/)
   assert.match(room, /data-chat-room-layout-stage="1"/)
   assert.match(room, /import ChatRoomFrame from "\.\/ChatRoomFrame"/)
-  assert.match(room, /<ChatRoomFrame>[\s\S]*<ChatFeed roomId=\{roomId\} viewerUserId=\{model\.viewer\.userId\} \/>[\s\S]*<ChatComposer model=\{model\} \/>[\s\S]*<\/ChatRoomFrame>/)
+  assert.match(room, /<ChatRoomFrame>[\s\S]*<ChatFeed[\s\S]*roomId=\{roomId\}[\s\S]*viewerUserId=\{model\.viewer\.userId\}[\s\S]*campaignId=\{model\.viewer\.campaignId\}[\s\S]*\/>[\s\S]*<ChatComposer model=\{model\} \/>[\s\S]*<\/ChatRoomFrame>/)
   assert.match(frame, /className="u1-room-frame"/)
   assert.match(frame, /data-chat-frame="reference-layout"/)
 })

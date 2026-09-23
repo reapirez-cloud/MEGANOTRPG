@@ -628,6 +628,16 @@ async function claimQueuedJob(
   }
 }
 
+async function syncStage11TurnLedger(
+  admin: SupabaseClient,
+  jobId: string,
+) {
+  const { error } = await admin.rpc("sync_ai_gm_turn_ledger_v1", {
+    p_job_id: jobId,
+  })
+  if (error) throw new Error(error.message)
+}
+
 async function completeWithoutChatMessage({
   admin,
   claimed,
@@ -678,6 +688,8 @@ async function completeWithoutChatMessage({
       error_message: null,
     })
     .eq("id", claimed.id)
+
+  await syncStage11TurnLedger(admin, claimed.id)
 }
 
 async function completeWithGameplayMessage({
@@ -735,6 +747,8 @@ async function completeWithGameplayMessage({
     })
     .eq("id", claimed.id)
     .eq("status", "running")
+
+  await syncStage11TurnLedger(admin, claimed.id)
 }
 
 
@@ -852,6 +866,8 @@ async function publishDialogueSequence({
     })
     .eq("id", claimed.id)
     .eq("status", "running")
+
+  await syncStage11TurnLedger(admin, claimed.id)
 }
 
 export async function runGameChatTurn(
@@ -1102,6 +1118,7 @@ export async function runGameChatTurn(
       }
 
       if (actionResult.waiting_for_user === true) {
+        await syncStage11TurnLedger(admin, jobId)
         return
       }
 
@@ -1199,6 +1216,7 @@ export async function runGameChatTurn(
         .eq("id", jobId)
         .eq("status", "waiting_for_user")
 
+      await syncStage11TurnLedger(admin, jobId)
       return
     }
 
@@ -1263,8 +1281,15 @@ export async function runGameChatTurn(
         error_message: null,
       })
       .eq("id", jobId)
+
+    await syncStage11TurnLedger(admin, jobId)
   } catch (error) {
     await failJob(admin, jobId, error)
+    try {
+      await syncStage11TurnLedger(admin, jobId)
+    } catch {
+      // A failed turn should not hide the original runtime error.
+    }
   }
 }
 
@@ -1273,7 +1298,9 @@ export async function startGameChatTurnRequest(
 ): Promise<GameChatTurnStart | null> {
   const action =
     typeof input.body.action === "string" ? input.body.action.trim() : ""
-  if (action !== "game_chat_turn") return null
+  if (action !== "game_chat_turn" && action !== "game_chat_replay") {
+    return null
+  }
 
   const sourceChatMessageId = Number(input.body.sourceChatMessageId || 0)
   if (!Number.isInteger(sourceChatMessageId) || sourceChatMessageId <= 0) {
@@ -1283,21 +1310,54 @@ export async function startGameChatTurnRequest(
     }
   }
 
-  const { data, error } = await input.admin.rpc(
-    "reserve_ai_gm_chat_turn_v1",
-    {
-      p_campaign_id: input.campaignId,
-      p_user_id: input.userId,
-      p_source_chat_message_id: sourceChatMessageId,
-    },
-  )
+  const replayMode =
+    action === "game_chat_replay" &&
+    (input.body.replayMode === "regenerate" ||
+      input.body.replayMode === "edit_resend")
+      ? input.body.replayMode
+      : null
+  const editedBody =
+    typeof input.body.editedBody === "string"
+      ? input.body.editedBody
+      : null
+
+  if (action === "game_chat_replay" && !replayMode) {
+    return {
+      status: 400,
+      body: { error: "replayMode is required" },
+    }
+  }
+
+  const rpcName =
+    action === "game_chat_replay"
+      ? "reserve_ai_gm_replay_v1"
+      : "reserve_ai_gm_chat_turn_v1"
+  const rpcArgs =
+    action === "game_chat_replay"
+      ? {
+          p_campaign_id: input.campaignId,
+          p_user_id: input.userId,
+          p_source_chat_message_id: sourceChatMessageId,
+          p_mode: replayMode,
+          p_edited_body: replayMode === "edit_resend" ? editedBody : null,
+        }
+      : {
+          p_campaign_id: input.campaignId,
+          p_user_id: input.userId,
+          p_source_chat_message_id: sourceChatMessageId,
+        }
+
+  const { data, error } = await input.admin.rpc(rpcName, rpcArgs)
 
   if (error) {
     return {
-      status: 403,
+      status: 409,
       body: {
         error: error.message,
-        code: "ai_gm_turn_reservation_denied",
+        code:
+          action === "game_chat_replay"
+            ? "ai_gm_replay_denied"
+            : "ai_gm_turn_reservation_denied",
       },
     }
   }
@@ -1307,6 +1367,11 @@ export async function startGameChatTurnRequest(
     typeof reservation.job_id === "string" ? reservation.job_id : ""
   const status =
     typeof reservation.status === "string" ? reservation.status : ""
+  const turnRevisionId =
+    typeof reservation.turn_revision_id === "string"
+      ? reservation.turn_revision_id
+      : null
+  const turnRevisionNo = Number(reservation.turn_revision_no || 0)
 
   if (!jobId) {
     return {
@@ -1329,6 +1394,9 @@ export async function startGameChatTurnRequest(
         jobId,
         status,
         result: jsonRecord(completedJob?.result),
+        turnRevisionId,
+        turnRevisionNo,
+        replayMode,
       },
     }
   }
@@ -1349,6 +1417,9 @@ export async function startGameChatTurnRequest(
         error: terminalJob?.error_message || "ai_gm_turn_failed",
         code: terminalJob?.error_code || "ai_gm_turn_failed",
         result: jsonRecord(terminalJob?.result),
+        turnRevisionId,
+        turnRevisionNo,
+        replayMode,
       },
     }
   }
@@ -1361,6 +1432,9 @@ export async function startGameChatTurnRequest(
       status: status || "queued",
       surface: GAME_CHAT_SURFACE,
       sourceChatMessageId,
+      turnRevisionId,
+      turnRevisionNo,
+      replayMode,
     },
     background:
       status === "queued"
