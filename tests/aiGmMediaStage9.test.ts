@@ -8,6 +8,9 @@ const read = (path: string) =>
 const migration = read(
   "supabase/migrations/20260923130000_ai_gm_media_stage9_v1.sql",
 )
+const indexMigration = read(
+  "supabase/migrations/20260923130500_ai_gm_media_stage9_indexes_v1.sql",
+)
 const worker = read("supabase/functions/ai-gm-media/index.ts")
 const imageTools = read("supabase/functions/voss-agent/image-tools.ts")
 const roadmap = read("docs/AI_GM_ROADMAP.md")
@@ -152,6 +155,12 @@ test("Stage 9 intentionally does not automate item art", () => {
   assert.doesNotMatch(migration, /character_inventory_items/)
   assert.doesNotMatch(migration, /item_definition/)
   assert.doesNotMatch(migration, /trigger_kind[^\n]*item/)
+})
+
+test("Stage 9 covers lifecycle foreign-key lookup paths", () => {
+  assert.match(indexMigration, /ai_gm_media_lifecycle_source_character_idx/)
+  assert.match(indexMigration, /ai_gm_media_publications_room_idx/)
+  assert.match(indexMigration, /ai_gm_media_publications_message_idx/)
 })
 
 test("Stage 9 private lifecycle tables enable RLS", () => {
