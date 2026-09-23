@@ -555,7 +555,35 @@ begin
 
       v_skill_base := floor((v_skill_score-10)::numeric/2)::integer;
       v_prof_value := case
-        when coalesce(v_prof->>'value','') ~ '^-?[0-9]+
+        when coalesce(v_prof->>'value','') ~ '^-?[0-9]+$'
+          then (v_prof->>'value')::integer
+        else v_skill_base
+      end;
+
+      v_skill_rank := case
+        when coalesce(v_bestiary.proficiency_bonus,0) <= 0 then 0
+        else greatest(
+          0,
+          least(
+            2,
+            round(
+              (v_prof_value-v_skill_base)::numeric /
+              v_bestiary.proficiency_bonus
+            )::integer
+          )
+        )
+      end;
+
+      if v_skill_ability is not null and v_skill_rank > 0 then
+        v_skill_profs := v_skill_profs || jsonb_build_object(
+          v_skill_key,
+          v_skill_rank
+        );
+      end if;
+    end if;
+  end loop;
+
+  update public.character_sheets cs
   set
     strength=greatest(1,least(coalesce((v_bestiary.abilities->>'strength')::integer,10),40)),
     dexterity=greatest(1,least(coalesce((v_bestiary.abilities->>'dexterity')::integer,10),40)),
