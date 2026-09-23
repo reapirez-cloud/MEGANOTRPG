@@ -5191,6 +5191,67 @@
   font-size: 13px;
 }
 
+.u1-player-turn__order {
+  display: grid;
+  gap: 4px;
+}
+
+.u1-player-turn__order > div {
+  min-width: 0;
+  min-height: 31px;
+  padding: 4px 5px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(232,234,232,.05);
+  border-radius: 7px;
+  background: rgba(255,255,255,.009);
+}
+
+.u1-player-turn__order > div > span {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  color: rgba(235,237,233,.46);
+  background: rgba(255,255,255,.025);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.u1-player-turn__order > div > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(239,240,236,.68);
+  font-size: 9px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-player-turn__order > div > div {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.u1-player-turn__order button {
+  width: 25px;
+  height: 23px;
+  padding: 0;
+  border: 1px solid rgba(231,233,230,.065);
+  border-radius: 6px;
+  color: rgba(232,234,230,.52);
+  background: rgba(255,255,255,.015);
+  font: inherit;
+  font-size: 11px;
+}
+
+.u1-player-turn__order button:disabled {
+  opacity: .26;
+}
+
 .u1-player-turn__movement {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
