@@ -635,7 +635,11 @@ export function validateAiWorldEvolutionContract(): string[] {
   const ids = new Set<number>()
   const keys = new Set<string>()
 
-  for (const stage of AI_WORLD_EVOLUTION_STAGES) {
+  for (const declaredStage of AI_WORLD_EVOLUTION_STAGES) {
+    // Widen the literal tuple member back to the public contract shape so this
+    // validator remains a real runtime sanity check as stage statuses advance.
+    const stage: AiWorldEvolutionStage = declaredStage
+
     if (ids.has(stage.id)) errors.push(`duplicate stage id: ${stage.id}`)
     ids.add(stage.id)
 

@@ -50,6 +50,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Fixed the AI World Evolution contract validator to widen `as const` stage literals back to the public stage shape during runtime sanity checks; Stage 7 certification no longer makes valid zero/status guard comparisons fail TypeScript compilation.
 - Certified AI World Evolution Stage 7 with tool-selection/context regressions, direct-PC isolation, Stage-6 action/roll delegation checks, save-resume duplicate blocking, and the existing world-materializer numbered/unnamed permanent-NPC rejection guard.
 - Certified AI World Evolution Stage 6 with live rollback combat smoke: bandit attack + skill roll, independent dragon resource spending, forged-mechanic rejection, Acid Breath player save wait/resume, server-roll-derived lethal damage, sibling isolation, flee and remove all passed.
 - Certified AI World Evolution Stage 5 with live rollback smoke: three bandits spawned as three independent UUID actors with no `characters` growth; sibling HP/effect state stayed isolated; two dragons kept independent Legendary Resistance resource state; archive/list and spawn replay semantics passed.
