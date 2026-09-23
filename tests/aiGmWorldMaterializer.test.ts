@@ -54,3 +54,26 @@ test("AI GM rereads canonical context after world changes", () => {
   assert.match(runtime, /КАНОНИЧЕСКИЙ СНИМОК ПОСЛЕ WORLD MATERIALIZATION/)
   assert.match(runtime, /Не запрашивай world_materialization второй раз/)
 })
+
+
+test("primary GM hands a bounded technical task to Flash instead of delegating creative control", () => {
+  assert.match(runtime, /world_materialization_task/)
+  assert.match(runtime, /worldMaterializationTask/)
+  assert.match(runtime, /slice\(0, 2000\)/)
+  assert.match(runtime, /ТЕХНИЧЕСКОЕ ЗАДАНИЕ ОСНОВНОГО ИИ-ГМ/)
+  assert.match(runtime, /materializationTask: reaction\.worldMaterializationTask/)
+})
+
+test("Flash creation worker can materialize quests and hidden location state", () => {
+  for (const tool of [
+    "upsert_location_secret",
+    "create_quest_plan",
+    "activate_quest",
+    "bind_quest_target",
+    "materialize_quest_target",
+  ]) {
+    assert.match(runtime, new RegExp('"' + tool + '"'))
+  }
+  assert.match(runtime, /executeVossQuestTool/)
+  assert.match(runtime, /WORLD_MATERIALIZER_QUEST_TOOL_NAMES/)
+})
