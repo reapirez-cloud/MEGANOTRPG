@@ -64,6 +64,22 @@ create index if not exists agent_jobs_world_maintenance_queue_idx
   on public.agent_jobs (campaign_id, status, created_at)
   where job_type = 'world_maintenance';
 
+alter table public.campaign_memory_summaries
+  add column if not exists maintenance_job_id uuid
+  references public.agent_jobs(id) on delete set null;
+
+alter table public.campaign_memory_facts
+  add column if not exists maintenance_job_id uuid
+  references public.agent_jobs(id) on delete set null;
+
+create unique index if not exists campaign_memory_summaries_maintenance_job_unique
+  on public.campaign_memory_summaries (maintenance_job_id)
+  where maintenance_job_id is not null;
+
+create index if not exists campaign_memory_facts_maintenance_job_idx
+  on public.campaign_memory_facts (maintenance_job_id)
+  where maintenance_job_id is not null;
+
 -- Existing rooms start after current history. New rooms have no row yet and
 -- will be initialized at zero by the first message trigger.
 insert into public.ai_gm_room_maintenance_state (
