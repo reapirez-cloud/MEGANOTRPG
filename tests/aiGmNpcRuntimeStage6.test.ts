@@ -81,7 +81,7 @@ test("Stage 6 build signatures prevent gratuitous rebuilds and stale worker outp
   assert.match(hardening, /for update/)
   assert.match(
     hardening,
-    /after update of\s+role,species,creature_type,size,challenge_rating,occupation,tags/,
+    /after insert or update of\s+role,species,creature_type,size,challenge_rating,occupation,tags/,
   )
   assert.match(hardening, /after update of character_class,level/)
 })
