@@ -695,8 +695,31 @@ export async function runGameChatTurn(
 
     if (reaction.mode === "npc_action" && reaction.npcAction) {
       const action = reaction.npcAction
+
+      if (
+        isResume &&
+        typeof claimed.result.last_npc_action_mechanic_id === "string" &&
+        claimed.result.last_npc_action_mechanic_id === action.mechanicId
+      ) {
+        await completeWithoutChatMessage({
+          admin,
+          claimed,
+          route,
+          sourceMessageId,
+          context,
+          reaction: {
+            ...reaction,
+            mode: "none",
+            npcCharacterId: null,
+            npcAction: null,
+            reason: "duplicate_npc_action_after_roll_resume_blocked",
+          },
+        })
+        return
+      }
+
       const { data: actionData, error: actionError } = await admin.rpc(
-        "execute_ai_gm_npc_action_v2",
+        "execute_ai_gm_npc_action_turn_v1",
         {
           p_job_id: jobId,
           p_npc_character_id: action.characterId,
@@ -714,85 +737,7 @@ export async function runGameChatTurn(
         throw new Error("npc_action_message_missing")
       }
 
-      const runtime = jsonRecord(actionResult.runtime)
-      const saveDc = Number(runtime.saveDc)
-      const saveAbility =
-        typeof runtime.saveAbility === "string"
-          ? runtime.saveAbility.trim()
-          : ""
-
-      if (
-        runtime.kind === "save_action" &&
-        action.targetCharacterId &&
-        saveAbility &&
-        Number.isInteger(saveDc) &&
-        saveDc >= 0 &&
-        saveDc <= 100
-      ) {
-        await admin
-          .from("agent_jobs")
-          .update({
-            result: {
-              ...claimed.result,
-              last_npc_action: actionResult,
-              last_npc_action_mechanic_id: action.mechanicId,
-              runtime_stage: 6,
-            },
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", jobId)
-          .eq("status", "running")
-
-        const { data: rollReservation, error: rollError } = await admin.rpc(
-          "create_ai_gm_player_roll_request_v1",
-          {
-            p_job_id: jobId,
-            p_character_id: action.targetCharacterId,
-            p_request_type: "save",
-            p_ability_key: saveAbility,
-            p_skill_key: null,
-            p_attack_kind: null,
-            p_label:
-              typeof actionResult.label === "string"
-                ? actionResult.label + ": спасбросок"
-                : "Спасбросок",
-            p_reason:
-              typeof actionResult.label === "string"
-                ? "NPC использует " + actionResult.label + "."
-                : "Требуется спасбросок против способности NPC.",
-            p_dc: saveDc,
-            p_dc_visibility: "hidden",
-          },
-        )
-
-        if (rollError) throw new Error(rollError.message)
-
-        const { data: waitingJob, error: waitingError } = await admin
-          .from("agent_jobs")
-          .select("result")
-          .eq("id", jobId)
-          .eq("status", "waiting_for_user")
-          .maybeSingle()
-
-        if (waitingError) throw new Error(waitingError.message)
-
-        await admin
-          .from("agent_jobs")
-          .update({
-            result: {
-              ...jsonRecord(waitingJob?.result),
-              ...jsonRecord(rollReservation),
-              last_npc_action: actionResult,
-              last_npc_action_mechanic_id: action.mechanicId,
-              reaction_mode: reaction.mode,
-              reaction_reason: reaction.reason,
-              runtime_stage: 6,
-            },
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", jobId)
-          .eq("status", "waiting_for_user")
-
+      if (actionResult.waiting_for_user === true) {
         return
       }
 
