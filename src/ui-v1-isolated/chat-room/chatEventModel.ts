@@ -4,6 +4,7 @@ export type UiChatEventType =
   | "message"
   | "gm_message"
   | "roll"
+  | "roll_request"
   | "spell"
   | "attack"
   | "item"
@@ -105,7 +106,9 @@ export function normalizeChatEvent(
 ): UiChatEvent {
   let type: UiChatEventType
 
-  if (message.event_kind === "roll") {
+  if (message.event_kind === "roll_request") {
+    type = "roll_request"
+  } else if (message.event_kind === "roll") {
     type = "roll"
   } else if (message.event_kind === "spell") {
     type = "spell"
@@ -129,6 +132,7 @@ export function normalizeChatEvent(
 
   const hasGameData =
     type === "roll" ||
+    type === "roll_request" ||
     type === "spell" ||
     type === "attack" ||
     type === "item" ||
@@ -170,6 +174,7 @@ export function normalizeChatEvent(
 }
 
 export function chatEventTypeLabel(type: UiChatEventType) {
+  if (type === "roll_request") return "Запрос броска"
   if (type === "roll") return "Бросок"
   if (type === "spell") return "Заклинание"
   if (type === "attack") return "Атака"
