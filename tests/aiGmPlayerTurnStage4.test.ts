@@ -112,7 +112,7 @@ test("Stage 4 client queues actions and spells instead of executing them immedia
   assert.match(composer, /Действие/)
   assert.match(composer, /Бонус/)
   assert.match(composer, /Движение/)
-  assert.match(composer, /moveTurnEntry/)
+  assert.doesNotMatch(composer, /moveTurnEntry/)
   assert.match(composer, /clearTurnSlot/)
   assert.match(composer, /cancelTurn/)
 
@@ -150,4 +150,55 @@ test("Stage 4 GM context receives turn grouping metadata", () => {
   assert.match(context, /turn_component/)
   assert.match(worker, /turn_command_id/)
   assert.match(worker, /turn_component/)
+})
+
+
+test("Stage 4 queues free rolls and checks instead of rolling before submit", () => {
+  const host = read(
+    "src/ui-v1-isolated/chat-room/ChatActionHost.tsx",
+  )
+
+  const freeRollStart = host.indexOf("async function freeRoll")
+  const checkStart = host.indexOf("async function rollCheck")
+  const actionStart = host.indexOf("async function runAction")
+  assert.ok(freeRollStart >= 0 && checkStart > freeRollStart)
+  assert.ok(actionStart > checkStart)
+
+  const freeRoll = host.slice(freeRollStart, checkStart)
+  const check = host.slice(checkStart, actionStart)
+  assert.match(freeRoll, /kind: "raw_roll"/)
+  assert.match(freeRoll, /await queueTurnEntry/)
+  assert.match(check, /kind: "raw_roll"/)
+  assert.match(check, /await queueTurnEntry/)
+})
+
+test("Stage 4 server revalidates canonical action economy and spell casting time", () => {
+  const sql = read(
+    "supabase/migrations/20260923095500_ai_gm_player_turn_stage4_v1.sql",
+  )
+  const queue = read(
+    "src/ui-v1-isolated/chat-room/playerTurnQueue.ts",
+  )
+
+  assert.match(sql, /player_turn_entry_economy_v1/)
+  assert.match(sql, /character_template_selected_action_definition_v1/)
+  assert.match(sql, /from public\.spell_catalog/)
+  assert.match(sql, /Reaction is not part of the pending player turn/)
+  assert.match(sql, /Queued entry requires the bonus-action slot/)
+  assert.match(sql, /Queued entry requires the action slot/)
+  assert.match(queue, /playerTurnSlotForSpell/)
+  assert.match(queue, /\.from\("spell_catalog"\)/)
+  assert.match(queue, /Заклинание-реакция не входит в текущий ход/)
+})
+
+test("Stage 4 UI does not let players manually move mechanics between action slots", () => {
+  const composer = read(
+    "src/ui-v1-isolated/chat-room/ChatComposer.tsx",
+  )
+
+  assert.doesNotMatch(composer, /В бонус/)
+  assert.doesNotMatch(composer, /В действие/)
+  assert.doesNotMatch(composer, /moveTurnEntry/)
+  assert.match(composer, /Убрать действие из хода/)
+  assert.match(composer, /Убрать бонусное действие из хода/)
 })
