@@ -132,6 +132,15 @@ test("roadmap stage counter is persistent and points to Stage 3", () => {
 
   assert.match(roadmap, /\| 1 \| READY \|/)
   assert.match(roadmap, /\| 2 \| READY \|/)
-  assert.match(roadmap, /\| 3 \| IN PROGRESS \|/)
-  assert.match(roadmap, /Next stage after READY: 4/)
+  assert.match(roadmap, /\| 3 \| READY \|/)
+  assert.match(roadmap, /Next stage to execute: 4/)
+})
+
+
+test("completed Stage 3 debt is removed while later memory ageing debt remains", () => {
+  const debt = read("src/ai/aiGmReadinessDebt.ts")
+
+  assert.doesNotMatch(debt, /id: "fixed-world-worker"/)
+  assert.doesNotMatch(debt, /id: "world-maintenance-45-all-messages"/)
+  assert.match(debt, /id: "world-maintenance-memory"/)
 })
