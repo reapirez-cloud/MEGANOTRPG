@@ -635,6 +635,14 @@ async function saveMaintenanceMemory(
       created_by: managerUserId,
       status: "active",
       maintenance_job_id: jobId,
+      provenance: {
+        kind: "world_maintenance_v1",
+        maintenance_job_id: jobId,
+        range_start_message_id: snapshot.rangeStart,
+        range_end_message_id: snapshot.rangeEnd,
+        campaign_day: snapshot.room.campaign_day ?? null,
+        day_period: snapshot.room.day_period ?? null,
+      },
     })
       .select("id")
       .single()
