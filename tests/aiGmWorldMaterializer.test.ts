@@ -79,3 +79,12 @@ test("Flash creation worker can materialize quests and hidden location state", (
   assert.match(runtime, /executeVossQuestTool/)
   assert.match(runtime, /WORLD_MATERIALIZER_QUEST_TOOL_NAMES/)
 })
+
+
+test("world materializer does not persist unnamed scene extras as NPC cards", () => {
+  assert.match(runtime, /Не материализуй безымянную массовку/)
+  assert.match(runtime, /Бандит 1/)
+  assert.match(runtime, /имя не раскрывается игроку/)
+  assert.match(runtime, /не вызывай create_world_npc/)
+  assert.match(runtime, /одну карточку с настоящим именем/)
+})
