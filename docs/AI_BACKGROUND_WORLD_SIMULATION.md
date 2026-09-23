@@ -110,7 +110,72 @@ Rules:
 
 This identity threshold prevents entity spam while still allowing minor characters to grow into major ones organically.
 
-Current NPC combat runtime still expects canonical NPC cards. Therefore anonymous mechanically active combatants need a separate ephemeral scene-actor/runtime layer before this rule can be enforced as a hard database rejection for every NPC path. Until that layer exists, world materialization is instructed not to persist unnamed extras.
+### 2.3 Anonymous combatants use ephemeral bestiary-backed scene actors
+
+Anonymous mechanically active creatures must not require a permanent `characters` row.
+
+Use a lightweight scene-instance layer backed by `bestiary_catalog`.
+
+Proposed `ai_scene_actors` shape:
+
+- `id uuid pk` — stable runtime actor id for the scene;
+- `campaign_id uuid`;
+- `room_id uuid`;
+- `location_id uuid nullable`;
+- `source_bestiary_slug text`;
+- `display_label text` — e.g. "Бандит", "Гоблин", "Волк";
+- `ordinal smallint nullable` — UI/runtime disambiguation only, never canonical identity;
+- `identity_state anonymous|named|promoted`;
+- `revealed_name text nullable`;
+- `life_state alive|dead|fled|removed`;
+- `current_hp integer`;
+- `max_hp integer`;
+- `runtime_state jsonb` — conditions, per-day/per-encounter resource counters, temporary effects;
+- `mechanics_snapshot jsonb` — compiled actions/reactions copied from the bestiary definition at spawn time;
+- `spawned_game_day integer`;
+- `spawned_day_period text`;
+- timestamps.
+
+The source bestiary entry remains the reusable species/stat-block definition. The scene actor stores only mutable per-instance state.
+
+Examples:
+- three bandits in one fight = three `ai_scene_actors`, all referencing the same bandit bestiary slug;
+- they may be rendered as "Бандит", "Бандит", "Бандит" in prose while the UI/runtime may internally distinguish them by actor id or temporary ordinal;
+- no permanent NPC profile, biography, background simulation state or world card is created yet.
+
+#### Promotion
+
+When the player learns an individual actor's real personal name, or the GM explicitly commits to revealing it now, promote the existing scene actor rather than creating an unrelated NPC.
+
+Promotion flow:
+
+1. lock the scene actor;
+2. create one canonical published NPC with the revealed name;
+3. copy bestiary source, current HP, relevant runtime resources/effects, location, campaign day and other surviving state;
+4. attach/build the normal canonical NPC runtime using the same bestiary source;
+5. record `promoted_character_id` on the scene actor;
+6. mark `identity_state='promoted'`;
+7. all future references resolve the old scene actor id to the canonical NPC;
+8. only then can that NPC enter background simulation.
+
+Promotion must be idempotent: the same scene actor can never create two canonical NPCs.
+
+If an anonymous actor dies, flees permanently or the scene ends without identity promotion, it may remain as short-lived encounter history and can be pruned/archived later without polluting the world entity set.
+
+#### Mechanics
+
+Do not make Flash invent anonymous combat stats.
+
+At spawn:
+- GM/worker chooses an existing `bestiary_catalog.slug`;
+- server snapshots that stat block's mechanical actions/reactions/resources into the scene actor;
+- server-authoritative action/roll execution uses the actor id and snapshot;
+- AI chooses only which legal action the actor attempts and its target;
+- numeric mechanics and dice continue to be server-owned.
+
+This should reuse/refactor the existing Stage 6 bestiary-to-NPC mechanic compiler instead of implementing a second interpretation of D&D stat blocks.
+
+This layer is AI-world-only. Human-run campaigns may continue using normal GM-created canonical NPC cards however the human GM prefers.
 
 For locations, hierarchy depth does not determine eligibility. A tavern may be a child of a district and still be a whole simulation unit. A room, toilet, staircase, corridor, individual table, closet or similar interior fragment is not independently simulated just because it was represented in the location tree.
 
