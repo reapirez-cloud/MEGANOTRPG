@@ -10,6 +10,7 @@ import {
   requestChatCompletion,
 } from "./provider-gateway.ts"
 import { resolveVossModel } from "./model-router.ts"
+import { runPendingWorldMaintenanceForRoom } from "./world-maintenance.ts"
 
 type JsonRecord = Record<string, unknown>
 
@@ -464,6 +465,19 @@ async function runGameChatTurn(
       .eq("id", jobId)
   } catch (error) {
     await failJob(admin, jobId, error)
+  } finally {
+    const roomId =
+      claimed && typeof claimed.input.room_id === "string"
+        ? claimed.input.room_id
+        : ""
+
+    if (roomId) {
+      await runPendingWorldMaintenanceForRoom(
+        admin,
+        campaignId,
+        roomId,
+      ).catch(() => undefined)
+    }
   }
 }
 
