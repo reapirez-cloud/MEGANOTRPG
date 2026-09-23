@@ -74,11 +74,8 @@ test("UI triggers AI GM only after the player's own PC text message was stored",
   assert.match(composer, /void triggerAiGameMasterTurn/)
 })
 
-test("completed Stage 1 runtime debt is removed from the temporary tracker", () => {
-  const debt = read("src/ai/aiGmReadinessDebt.ts")
-  assert.doesNotMatch(debt, /id: "gm-runtime-in-game-chat"/)
-  assert.doesNotMatch(debt, /id: "campaign-gm-model"/)
-  assert.doesNotMatch(debt, /id: "ai-button-selector"/)
-  assert.doesNotMatch(debt, /id: "gm-turn-replay-rollback"/)
-  assert.match(debt, /id: "gm-turn-status-ui"/)
+test("Stage 1 stays certified after the AI GM roadmap closes", () => {
+  const roadmap = read("docs/AI_GM_ROADMAP.md")
+  assert.match(roadmap, /\| 1 \| READY \| Durable AI GM turn in the canonical game chat \|/)
+  assert.match(roadmap, /\| 12 \| READY \|/)
 })
