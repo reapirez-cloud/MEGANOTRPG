@@ -49,8 +49,16 @@ type AiWorldSlot = {
   owner_user_id: string
   slot_index: number
   name: string
+  campaign_id: string | null
   created_at: string
   updated_at: string
+}
+
+type AiWorldCampaignAccess = {
+  campaign_id: string
+  role: "gm" | "player"
+  is_owner: boolean
+  active_character_id: string | null
 }
 
 const CAMPAIGN_STORAGE_KEY = "meganotrpg:v1:campaign-id"
@@ -121,6 +129,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<AppProfile | null>(null)
   const [campaign, setCampaign] = useState<AppCampaignAccess | null>(null)
+  const [baseCampaign, setBaseCampaign] = useState<AppCampaignAccess | null>(null)
   const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(null)
   const [error, setError] = useState("")
   const [name, setName] = useState("")
@@ -146,6 +155,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     setUser(currentUser)
     setProfile(currentProfile)
     setCampaign(null)
+    setBaseCampaign(null)
     setError("")
 
     // Keep anonymous localhost development usable without weakening production.
@@ -168,10 +178,30 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
     const rows = (memberships || []) as MembershipRow[]
     const ownerRows = rows.filter((row) => row.is_owner === true)
+
+    const { data: aiWorldRows, error: aiWorldError } = await supabase
+      .from("ai_world_slots")
+      .select("campaign_id")
+      .eq("owner_user_id", currentUser.id)
+
+    if (aiWorldError) {
+      setError(aiWorldError.message)
+      setPhase("error")
+      return
+    }
+
+    const aiCampaignIds = new Set(
+      (aiWorldRows || [])
+        .map((row) => row.campaign_id as string | null)
+        .filter((value): value is string => Boolean(value)),
+    )
+    const standardOwnerRows = ownerRows.filter(
+      (row) => !aiCampaignIds.has(row.campaign_id),
+    )
     const remembered = rememberedCampaignId()
     const selected =
-      ownerRows.find((row) => row.campaign_id === remembered) ||
-      ownerRows[0] ||
+      standardOwnerRows.find((row) => row.campaign_id === remembered) ||
+      standardOwnerRows[0] ||
       null
 
     if (!selected) {
@@ -188,8 +218,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       return
     }
 
+    const selectedAccess = campaignAccessFrom(selected)
     rememberCampaignId(selected.campaign_id)
-    setCampaign(campaignAccessFrom(selected))
+    setCampaign(selectedAccess)
+    setBaseCampaign(selectedAccess)
     setSelectedAiSlot(null)
     setAiPassword("")
     setError("")
@@ -474,12 +506,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }
 
   function enterMuntar() {
-    if (!campaign) {
+    if (!baseCampaign) {
       setError("Кампания «Мунтар» недоступна.")
       setPhase("error")
       return
     }
 
+    setCampaign(baseCampaign)
+    rememberCampaignId(baseCampaign.campaignId)
     setSelectedAiSlot(null)
     setError("")
     setPhase("ready")
@@ -497,43 +531,21 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     setAiSlotsLoading(true)
     setError("")
 
-    const { data: currentRows, error: currentError } = await supabase
-      .from("ai_world_slots")
-      .select("id, owner_user_id, slot_index, name, created_at, updated_at")
-      .eq("owner_user_id", user.id)
-      .order("slot_index", { ascending: true })
+    const { error: ensureError } = await supabase.rpc(
+      "ensure_ai_world_slots_v2",
+    )
 
-    if (currentError) {
+    if (ensureError) {
       setAiSlotsLoading(false)
-      setError(currentError.message)
+      setError(ensureError.message)
       return
-    }
-
-    const existing = (currentRows || []) as AiWorldSlot[]
-    const existingIndexes = new Set(existing.map((slot) => slot.slot_index))
-    const missing = Array.from({ length: AI_WORLD_SLOT_COUNT }, (_, index) => index + 1)
-      .filter((slotIndex) => !existingIndexes.has(slotIndex))
-      .map((slotIndex) => ({
-        owner_user_id: user.id,
-        slot_index: slotIndex,
-        name: "",
-      }))
-
-    if (missing.length > 0) {
-      const { error: insertError } = await supabase
-        .from("ai_world_slots")
-        .insert(missing)
-
-      if (insertError) {
-        setAiSlotsLoading(false)
-        setError(insertError.message)
-        return
-      }
     }
 
     const { data: rows, error: reloadError } = await supabase
       .from("ai_world_slots")
-      .select("id, owner_user_id, slot_index, name, created_at, updated_at")
+      .select(
+        "id, owner_user_id, slot_index, name, campaign_id, created_at, updated_at",
+      )
       .eq("owner_user_id", user.id)
       .order("slot_index", { ascending: true })
 
@@ -579,7 +591,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       })
       .eq("id", slot.id)
       .eq("owner_user_id", slot.owner_user_id)
-      .select("id, owner_user_id, slot_index, name, created_at, updated_at")
+      .select("id, owner_user_id, slot_index, name, campaign_id, created_at, updated_at")
       .single()
 
     setAiSlotSaving(null)
@@ -608,9 +620,46 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     const updated = await persistAiSlotName(slot)
     if (!updated) return
 
-    setSelectedAiSlot(updated)
     setError("")
-    setPhase("ai-world")
+
+    const { data, error: openError } = await supabase.rpc(
+      "open_ai_world_slot_v2",
+      { p_slot_id: updated.id },
+    )
+
+    if (openError) {
+      setError(openError.message)
+      return
+    }
+
+    const access = ((data || []) as AiWorldCampaignAccess[])[0] || null
+    if (!access?.campaign_id) {
+      setError("Экспериментальный мир не удалось открыть.")
+      return
+    }
+
+    const nextCampaign = campaignAccessFrom({
+      campaign_id: access.campaign_id,
+      role: access.role,
+      is_owner: access.is_owner,
+      active_character_id: access.active_character_id,
+      created_at: updated.created_at,
+    })
+
+    const openedSlot = {
+      ...updated,
+      campaign_id: access.campaign_id,
+    }
+
+    setAiSlots((current) =>
+      current.map((candidate) =>
+        candidate.id === openedSlot.id ? openedSlot : candidate,
+      ),
+    )
+    setSelectedAiSlot(openedSlot)
+    setCampaign(nextCampaign)
+    rememberCampaignId(nextCampaign.campaignId)
+    setPhase("ready")
   }
 
   if (allowE2ETestAuthBypass()) {
