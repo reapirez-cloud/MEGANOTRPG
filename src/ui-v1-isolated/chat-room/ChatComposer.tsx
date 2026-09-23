@@ -17,6 +17,16 @@ import {
   type ChatSpeakerOption,
 } from "./chatRoomContracts"
 import { useChatSpeakerOptions } from "./useChatSpeakerOptions"
+import {
+  cancelPlayerTurnDraft,
+  loadPlayerTurnDraft,
+  newPlayerTurnCommandId,
+  savePlayerTurnDraft,
+  submitPlayerTurnDraft,
+  type PlayerTurnDraft,
+  type PlayerTurnEntry,
+  type PlayerTurnSlot,
+} from "./playerTurnQueue"
 
 const ACTION_MENU_ITEMS: Array<{
   mode: ChatActionLauncherMode
@@ -205,6 +215,9 @@ export default function ChatComposer({
     useState<ChatActionLauncherMode | null>(null)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
+  const [turnDraft, setTurnDraft] = useState<PlayerTurnDraft | null>(null)
+  const [movementText, setMovementText] = useState("")
+  const [turnLoading, setTurnLoading] = useState(false)
 
   const speakers = useChatSpeakerOptions({
     campaignId: model.viewer.campaignId,
@@ -233,6 +246,20 @@ export default function ChatComposer({
       ? model.identity.character.name
       : null
 
+  const queuePlayerTurn = Boolean(
+    !model.canManage &&
+      model.roomType !== "flood" &&
+      selectedCharacterId &&
+      selectedCharacterId === model.viewer.playerCharacterId,
+  )
+
+  const hasQueuedTurnContent = Boolean(
+    turnDraft?.action_entry ||
+      turnDraft?.bonus_action_entry ||
+      movementText.trim() ||
+      text.trim(),
+  )
+
   const resizeTextarea = () => {
     const textarea = textareaRef.current
     if (!textarea) return
@@ -257,6 +284,45 @@ export default function ChatComposer({
     setActionMode(null)
     setActionMenuOpen(false)
   }, [selectedCharacterId])
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!queuePlayerTurn || !selectedCharacterId) {
+      setTurnDraft(null)
+      setMovementText("")
+      return () => {
+        cancelled = true
+      }
+    }
+
+    setTurnLoading(true)
+    void loadPlayerTurnDraft({
+      roomId: model.roomId,
+      characterId: selectedCharacterId,
+    })
+      .then((draft) => {
+        if (cancelled) return
+        setTurnDraft(draft)
+        setMovementText(draft?.movement?.description || "")
+        setText(draft?.description || "")
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setSendError(
+          error instanceof Error
+            ? error.message
+            : "Черновик хода не загрузился",
+        )
+      })
+      .finally(() => {
+        if (!cancelled) setTurnLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [model.roomId, queuePlayerTurn, selectedCharacterId])
 
   useEffect(() => {
     if (!speakerOpen) return
@@ -331,16 +397,172 @@ export default function ChatComposer({
     setActionMode(mode)
   }
 
+  const saveTurnState = async ({
+    actionEntry = turnDraft?.action_entry || null,
+    bonusActionEntry = turnDraft?.bonus_action_entry || null,
+    movement = movementText.trim()
+      ? { description: movementText.trim() }
+      : null,
+    description = text,
+  }: {
+    actionEntry?: PlayerTurnEntry | null
+    bonusActionEntry?: PlayerTurnEntry | null
+    movement?: { description?: string } | null
+    description?: string
+  } = {}) => {
+    if (!queuePlayerTurn || !selectedCharacterId) {
+      throw new Error("Очередь хода доступна только активному персонажу игрока.")
+    }
+
+    const saved = await savePlayerTurnDraft({
+      roomId: model.roomId,
+      characterId: selectedCharacterId,
+      actionEntry,
+      bonusActionEntry,
+      movement,
+      description,
+      expectedRevision: turnDraft?.revision ?? null,
+    })
+    setTurnDraft(saved)
+    setMovementText(saved.movement?.description || "")
+    return saved
+  }
+
+  const queueTurnEntry = async (
+    entry: PlayerTurnEntry,
+    slot: PlayerTurnSlot,
+  ) => {
+    setSendError(null)
+    try {
+      if (slot === "bonus_action") {
+        await saveTurnState({ bonusActionEntry: entry })
+      } else {
+        await saveTurnState({ actionEntry: entry })
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Действие не добавлено в ход"
+      setSendError(message)
+      throw error
+    }
+  }
+
+  const moveTurnEntry = async (
+    from: PlayerTurnSlot,
+    to: PlayerTurnSlot,
+  ) => {
+    if (!turnDraft || from === to) return
+    const fromEntry =
+      from === "action"
+        ? turnDraft.action_entry
+        : turnDraft.bonus_action_entry
+    if (!fromEntry) return
+    const targetEntry =
+      to === "action"
+        ? turnDraft.action_entry
+        : turnDraft.bonus_action_entry
+
+    setSendError(null)
+    try {
+      await saveTurnState({
+        actionEntry:
+          to === "action"
+            ? fromEntry
+            : from === "action"
+              ? targetEntry
+              : turnDraft.action_entry,
+        bonusActionEntry:
+          to === "bonus_action"
+            ? fromEntry
+            : from === "bonus_action"
+              ? targetEntry
+              : turnDraft.bonus_action_entry,
+      })
+    } catch (error) {
+      setSendError(
+        error instanceof Error ? error.message : "Слот хода не изменён",
+      )
+    }
+  }
+
+  const clearTurnSlot = async (slot: PlayerTurnSlot) => {
+    setSendError(null)
+    try {
+      await saveTurnState(
+        slot === "action"
+          ? { actionEntry: null }
+          : { bonusActionEntry: null },
+      )
+    } catch (error) {
+      setSendError(
+        error instanceof Error ? error.message : "Слот хода не очищен",
+      )
+    }
+  }
+
+  const cancelTurn = async () => {
+    setSendError(null)
+    try {
+      if (turnDraft?.id) await cancelPlayerTurnDraft(turnDraft.id)
+      setTurnDraft(null)
+      setMovementText("")
+      setText("")
+    } catch (error) {
+      setSendError(
+        error instanceof Error ? error.message : "Черновик хода не отменён",
+      )
+    }
+  }
+
   const submit = async (event: FormEvent) => {
     event.preventDefault()
 
     const body = text.trim()
-    if (!body || !canCompose || sending) return
+    if (!canCompose || sending) return
+    if (queuePlayerTurn && !hasQueuedTurnContent) return
+    if (!queuePlayerTurn && !body) return
 
     setSending(true)
     setSendError(null)
 
     try {
+      if (queuePlayerTurn && selectedCharacterId) {
+        const saved = await saveTurnState({
+          movement: movementText.trim()
+            ? { description: movementText.trim() }
+            : null,
+          description: body,
+        })
+        const submitted = await submitPlayerTurnDraft({
+          draftId: saved.id,
+          revision: saved.revision,
+          turnCommandId: newPlayerTurnCommandId(),
+        })
+
+        setTurnDraft(null)
+        setMovementText("")
+        setText("")
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "auto"
+          textareaRef.current.focus()
+        }
+
+        window.dispatchEvent(
+          new CustomEvent(CHAT_MESSAGE_SENT_EVENT, {
+            detail: {
+              roomId: model.roomId,
+              messageId: submitted.trigger_message_id,
+            },
+          }),
+        )
+
+        void triggerAiGameMasterTurn({
+          campaignId: model.viewer.campaignId,
+          sourceChatMessageId: submitted.trigger_message_id,
+        })
+        return
+      }
+
       const messageId = await sendTextMessage({
         roomId: model.roomId,
         userId: model.viewer.userId,
@@ -392,6 +614,79 @@ export default function ChatComposer({
         {sendError ? (
           <div className="u1-chat-composer__error" role="status">
             {sendError}
+          </div>
+        ) : null}
+
+        {queuePlayerTurn ? (
+          <div
+            className="u1-player-turn"
+            data-turn-draft={turnDraft?.id || undefined}
+            data-turn-loading={turnLoading || undefined}
+          >
+            <div className="u1-player-turn__slots">
+              <div className="u1-player-turn__slot" data-filled={Boolean(turnDraft?.action_entry) || undefined}>
+                <span>Действие</span>
+                <strong>{turnDraft?.action_entry?.label || "Не выбрано"}</strong>
+                {turnDraft?.action_entry ? (
+                  <div>
+                    <button type="button" onClick={() => void moveTurnEntry("action", "bonus_action")}>
+                      В бонус
+                    </button>
+                    <button type="button" onClick={() => void clearTurnSlot("action")}>
+                      ×
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              <div className="u1-player-turn__slot" data-filled={Boolean(turnDraft?.bonus_action_entry) || undefined}>
+                <span>Бонус</span>
+                <strong>{turnDraft?.bonus_action_entry?.label || "Не выбрано"}</strong>
+                {turnDraft?.bonus_action_entry ? (
+                  <div>
+                    <button type="button" onClick={() => void moveTurnEntry("bonus_action", "action")}>
+                      В действие
+                    </button>
+                    <button type="button" onClick={() => void clearTurnSlot("bonus_action")}>
+                      ×
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            <div className="u1-player-turn__movement">
+              <span>Движение</span>
+              <input
+                value={movementText}
+                maxLength={1000}
+                placeholder="Например: к двери, 20 футов"
+                disabled={sending || turnLoading}
+                onChange={(event) => setMovementText(event.target.value)}
+                onBlur={() => {
+                  if (!queuePlayerTurn || !selectedCharacterId) return
+                  void saveTurnState({
+                    movement: movementText.trim()
+                      ? { description: movementText.trim() }
+                      : null,
+                  }).catch((error) => {
+                    setSendError(
+                      error instanceof Error
+                        ? error.message
+                        : "Движение не сохранено",
+                    )
+                  })
+                }}
+              />
+              {hasQueuedTurnContent ? (
+                <button
+                  type="button"
+                  className="u1-player-turn__cancel"
+                  onClick={() => void cancelTurn()}
+                  disabled={sending}
+                >
+                  Сбросить
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : null}
 
@@ -507,11 +802,13 @@ export default function ChatComposer({
               placeholder={
                 model.readOnly
                   ? "Чат закрыт"
-                  : canCompose
-                    ? "Сообщение…"
-                    : playerHasCharacter
-                      ? "Нет права писать в этот чат"
-                      : "Нет персонажа в этой сцене"
+                  : queuePlayerTurn
+                    ? "Опиши ход или реплику…"
+                    : canCompose
+                      ? "Сообщение…"
+                      : playerHasCharacter
+                        ? "Нет права писать в этот чат"
+                        : "Нет персонажа в этой сцене"
               }
               disabled={!canCompose || sending}
               onChange={(event) => setText(event.target.value)}
@@ -531,8 +828,12 @@ export default function ChatComposer({
           <button
             type="submit"
             className="u1-chat-composer__send"
-            aria-label="Отправить"
-            disabled={!canCompose || !text.trim() || sending}
+            aria-label={queuePlayerTurn ? "Отправить ход" : "Отправить"}
+            disabled={
+              !canCompose ||
+              sending ||
+              (queuePlayerTurn ? !hasQueuedTurnContent : !text.trim())
+            }
             data-sending={sending || undefined}
           >
             {sending ? (
@@ -551,6 +852,8 @@ export default function ChatComposer({
           mode={actionMode}
           characterId={selectedCharacterId}
           speakerName={speakerName}
+          queuePlayerTurn={queuePlayerTurn}
+          onQueueTurnEntry={queueTurnEntry}
           onClose={() => setActionMode(null)}
         />
       ) : null}
