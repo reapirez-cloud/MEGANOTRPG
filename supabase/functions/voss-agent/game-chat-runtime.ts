@@ -92,7 +92,7 @@ function parseJsonObject(value: string): JsonRecord | null {
 
   const candidates = [
     trimmed,
-    trimmed.replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/, ""),
+    trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, ""),
   ]
 
   const firstBrace = trimmed.indexOf("{")
