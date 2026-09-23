@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- AI GM Stage 6 hardening: rebuild only for a real NPC build change and reject stale worker output.
 
 alter table public.npc_runtime_builds
