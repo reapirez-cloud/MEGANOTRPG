@@ -258,11 +258,9 @@ begin
       and r.campaign_id=new.campaign_id;
   end if;
 
-  v_scene_key := case
-    when v_location_id is not null
-      then 'location:'||v_location_id::text
-    else 'room:'||v_room_id::text
-  end;
+  -- A character keeps one persistent game dialogue while physical location changes.
+  -- Queue identity therefore follows the room, never the mutable location.
+  v_scene_key := 'room:'||v_room_id::text;
 
   insert into private.ai_gm_scene_sequence_state(
     campaign_id,scene_key,next_sequence,updated_at
