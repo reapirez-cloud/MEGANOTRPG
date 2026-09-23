@@ -61,7 +61,10 @@ test("Stage 5 GM runtime has a real request_player_roll branch and stops after r
   assert.match(runtime, /\| "request_player_roll"/)
   assert.match(runtime, /create_ai_gm_player_roll_request_v1/)
   assert.match(runtime, /if \(reaction\.mode === "request_player_roll"/)
-  assert.match(runtime, /return\n    }\n\n    const rpcName =/)
+  assert.match(
+    runtime,
+    /await syncStage11TurnLedger\(admin, jobId\)[\s\S]*return[\s\S]*await setRuntimePhase\(admin, claimed, "applying"\)/,
+  )
   assert.match(runtime, /body: ""/)
 })
 
@@ -104,7 +107,7 @@ test("Stage 5 resume worker claims the original conversation job rather than cre
   assert.match(runner, /status !== "queued"/)
   assert.doesNotMatch(runner, /reserve_ai_gm_chat_turn_v1/)
   assert.match(runtime, /export async function runGameChatTurn/)
-  assert.match(runtime, /\.eq\("status", "queued"\)/)
+  assert.match(runtime, /claim_ai_gm_scene_job_v1/)
 })
 
 test("Stage 5 resumed GM context ends at the canonical roll message and includes the resolved result", () => {
