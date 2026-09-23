@@ -60,9 +60,11 @@ function dialogueGroupPosition(
 export default function ChatFeed({
   roomId,
   viewerUserId,
+  campaignId,
 }: {
   roomId: string
   viewerUserId: string
+  campaignId: string
 }) {
   const {
     events,
@@ -302,6 +304,8 @@ export default function ChatFeed({
                 onMediaLoad={() => {
                   if (pinnedToBottomRef.current) scrollToBottom("auto")
                 }}
+                viewerUserId={viewerUserId}
+                campaignId={campaignId}
               />
             </div>
           )
