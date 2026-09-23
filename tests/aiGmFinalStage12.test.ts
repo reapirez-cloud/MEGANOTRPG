@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 
 const read = (path: string) =>
@@ -25,7 +25,6 @@ const turnQueue = read("src/ui-v1-isolated/chat-room/playerTurnQueue.ts")
 const feedHook = read("src/ui-v1-isolated/chat-room/useChatRoomEvents.ts")
 const statusUi = read("src/ui-v1-isolated/chat-room/AiGmTurnStatus.tsx")
 const roadmap = read("docs/AI_GM_ROADMAP.md")
-const readinessDebt = read("src/ai/aiGmReadinessDebt.ts")
 
 test("Stage 12 keeps exactly the latest 50 AI context messages from the persistent chat", () => {
   assert.match(context, /const CHAT_CONTEXT_LIMIT = 50/)
@@ -149,19 +148,19 @@ test("Stage 12 exposes durable GM turn status in chat", () => {
   assert.match(statusUi, /role="status"/)
 })
 
-test("Stage 12 is still IN PROGRESS until live long-campaign certification", () => {
+test("Stage 12 is certified READY and the temporary debt tracker is gone", () => {
   assert.match(
     roadmap,
-    /\| 12 \| IN PROGRESS \| Final READY audit, concurrency, RLS, long-campaign certification \|/,
+    /\| 12 \| READY \| Final READY audit, concurrency, RLS, long-campaign certification \|/,
   )
-  for (const debtId of [
-    "coop-split-party-sequencing",
-    "coop-pc-dialogue-routing",
-    "npc-text-inventory",
-    "world-maintenance-memory",
-    "player-authority-firewall",
-    "gm-turn-status-ui",
-  ]) {
-    assert.match(readinessDebt, new RegExp(`id: "${debtId}"`))
-  }
+  assert.match(
+    roadmap,
+    /Stage 12 is READY\. READY stages: 1–12\. AI GM roadmap complete\./,
+  )
+  assert.equal(
+    existsSync(
+      new URL("../src/ai/aiGmReadinessDebt.ts", import.meta.url),
+    ),
+    false,
+  )
 })
