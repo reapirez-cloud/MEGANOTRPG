@@ -30,6 +30,7 @@ function contextLabel(value: number | null) {
 export default function PlayerProfileMark() {
   const { campaignId, canManage } = useAI()
   const [open, setOpen] = useState(false)
+  const [gmEnabled, setGmEnabled] = useState(false)
   const [models, setModels] = useState<CampaignGmModel[]>([])
   const [loading, setLoading] = useState(false)
   const [savingId, setSavingId] = useState<string | null>(null)
@@ -42,12 +43,27 @@ export default function PlayerProfileMark() {
 
   const refresh = useCallback(async () => {
     if (!campaignId) {
+      setGmEnabled(false)
       setModels([])
       return
     }
 
     setLoading(true)
     setError(null)
+
+    const scopeResult = await supabase.rpc("is_ai_world_campaign_v1", {
+      p_campaign_id: campaignId,
+    })
+
+    if (scopeResult.error || scopeResult.data !== true) {
+      setGmEnabled(false)
+      setModels([])
+      setLoading(false)
+      return
+    }
+
+    setGmEnabled(true)
+
     const { data, error: readError } = await supabase.rpc(
       "list_campaign_gm_models_v1",
       { p_campaign_id: campaignId },
@@ -72,7 +88,7 @@ export default function PlayerProfileMark() {
   }, [open, refresh])
 
   async function chooseModel(modelId: string) {
-    if (!campaignId || !canManage || savingId) return
+    if (!campaignId || !gmEnabled || !canManage || savingId) return
 
     setSavingId(modelId)
     setError(null)
@@ -94,6 +110,8 @@ export default function PlayerProfileMark() {
     await refresh()
     setSavingId(null)
   }
+
+  if (!campaignId || !gmEnabled) return null
 
   return (
     <>
