@@ -407,6 +407,83 @@ begin
 end;
 $$;
 
+create or replace function private.assert_player_turn_entry_slot_v1(
+  p_character_id uuid,
+  p_component text,
+  p_entry jsonb
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+stable
+as $$
+declare
+  v_kind text := coalesce(p_entry->>'kind','');
+  v_economy text := lower(trim(coalesce(p_entry->>'economy','')));
+  v_action_def jsonb;
+  v_spell_key text;
+  v_casting_time text;
+  v_expected_component text;
+begin
+  if p_component not in ('action','bonus_action') then
+    raise exception 'Unsupported player turn action component';
+  end if;
+
+  if v_kind in ('template_action','template_roll') then
+    v_action_def := private.character_template_selected_action_definition_v1(
+      p_character_id,
+      nullif(trim(p_entry->>'mechanicId'),'')
+    );
+    if v_action_def is null then
+      raise exception 'Turn template action is unavailable';
+    end if;
+    v_economy := lower(trim(coalesce(v_action_def->>'economy','action')));
+  elsif v_kind in ('template_spell','spell_with_modifiers')
+     or (v_kind = 'raw_event' and coalesce(p_entry->>'eventKind','') = 'spell')
+  then
+    v_spell_key := nullif(trim(p_entry->'payload'->>'spellKey'),'');
+    if v_spell_key is not null then
+      select lower(trim(coalesce(sc.casting_time,'')))
+        into v_casting_time
+      from public.spell_catalog sc
+      where sc.slug = v_spell_key
+      limit 1;
+
+      if v_casting_time is not null and v_casting_time <> '' then
+        if v_casting_time like '%reaction%'
+           or v_casting_time like '%реакц%'
+        then
+          raise exception 'Reaction spell cannot be submitted as a normal turn';
+        elsif v_casting_time like '%bonus%'
+           or v_casting_time like '%бонус%'
+        then
+          v_economy := 'bonus_action';
+        else
+          v_economy := 'action';
+        end if;
+      end if;
+    end if;
+  end if;
+
+  if v_economy like '%reaction%' or v_economy like '%реакц%' then
+    raise exception 'Reaction cannot be submitted as a normal player turn';
+  end if;
+
+  v_expected_component := case
+    when v_economy = 'bonus_action'
+      or v_economy like '%bonus%'
+      or v_economy like '%бонус%'
+      then 'bonus_action'
+    else 'action'
+  end;
+
+  if p_component <> v_expected_component then
+    raise exception 'Queued entry does not match its action economy';
+  end if;
+end;
+$$;
+
 create or replace function public.save_player_turn_draft_v1(
   p_room_id uuid,
   p_character_id uuid,
@@ -607,6 +684,11 @@ begin
   end if;
 
   v_kind := p_entry ->> 'kind';
+  perform private.assert_player_turn_entry_slot_v1(
+    p_character_id,
+    p_component,
+    p_entry
+  );
   v_command_id := (p_entry ->> 'commandId')::uuid;
   v_payload :=
     coalesce(p_entry -> 'payload', '{}'::jsonb)
@@ -788,6 +870,7 @@ begin
     if v_existing_receipt.created_by is distinct from auth.uid()
        or v_existing_receipt.engine is distinct from 'gena'
        or v_existing_receipt.command_kind is distinct from 'player.turn.v1'
+       or v_existing_receipt.result->>'draft_id' is distinct from p_draft_id::text
     then
       raise exception 'Turn command id is already used by another command';
     end if;
