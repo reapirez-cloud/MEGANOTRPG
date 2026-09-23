@@ -14,6 +14,7 @@ export type Stage2GameChatContext = {
   presentCharacters: JsonRecord[]
   sheets: JsonRecord[]
   npcProfiles: JsonRecord[]
+  npcRuntime: JsonRecord[]
   relationships: JsonRecord[]
   assets: JsonRecord[]
   factionMemberships: JsonRecord[]
@@ -510,6 +511,7 @@ export async function buildGameChatContextV2({
   const [
     sheetsResult,
     npcProfilesResult,
+    npcRuntimeResult,
     relationshipsResult,
     assetsResult,
     factionMembershipResult,
@@ -528,6 +530,12 @@ export async function buildGameChatContextV2({
           .select("character_id,role,species,creature_type,size,challenge_rating,occupation,faction,appearance,demeanor,motivation,public_notes,gm_notes,tags")
           .eq("campaign_id", campaignId)
           .in("character_id", presentNpcIds)
+      : Promise.resolve({ data: [], error: null }),
+    presentNpcIds.length
+      ? admin.rpc("read_ai_gm_npc_runtime_v1", {
+          p_campaign_id: campaignId,
+          p_npc_ids: presentNpcIds,
+        })
       : Promise.resolve({ data: [], error: null }),
     admin
       .from("character_relationships")
@@ -563,6 +571,7 @@ export async function buildGameChatContextV2({
   const contextError =
     sheetsResult.error ||
     npcProfilesResult.error ||
+    npcRuntimeResult.error ||
     relationshipsResult.error ||
     assetsResult.error ||
     factionMembershipResult.error ||
@@ -714,6 +723,7 @@ export async function buildGameChatContextV2({
     presentCharacters,
     sheets: rows(sheetsResult.data),
     npcProfiles: rows(npcProfilesResult.data),
+    npcRuntime: rows(npcRuntimeResult.data),
     relationships,
     assets: rows(assetsResult.data),
     factionMemberships: factionMemberships.map((item) => ({
@@ -750,6 +760,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     characters_physically_present_with_source: context.presentCharacters,
     canonical_sheets_for_present_characters: context.sheets,
     present_npc_profiles: context.npcProfiles,
+    canonical_npc_runtime: context.npcRuntime,
     relationships: context.relationships,
     property_and_assets: context.assets,
     faction_memberships: context.factionMemberships,
