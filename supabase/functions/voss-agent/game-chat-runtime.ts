@@ -654,6 +654,99 @@ export async function startGameChatTurnRequest(
 ): Promise<GameChatTurnStart | null> {
   const action =
     typeof input.body.action === "string" ? input.body.action.trim() : ""
+
+  if (action === "resume_game_chat_roll") {
+    const requestId =
+      typeof input.body.requestId === "string"
+        ? input.body.requestId.trim()
+        : ""
+
+    if (!requestId) {
+      return {
+        status: 400,
+        body: { error: "requestId is required" },
+      }
+    }
+
+    const { data, error } = await input.admin.rpc(
+      "reserve_ai_gm_roll_resume_v1",
+      {
+        p_campaign_id: input.campaignId,
+        p_user_id: input.userId,
+        p_request_id: requestId,
+      },
+    )
+
+    if (error) {
+      return {
+        status: 403,
+        body: {
+          error: error.message,
+          code: "ai_gm_roll_resume_denied",
+        },
+      }
+    }
+
+    const reservation = jsonRecord(data)
+    const jobId =
+      typeof reservation.job_id === "string" ? reservation.job_id : ""
+    const status =
+      typeof reservation.status === "string" ? reservation.status : ""
+
+    if (!jobId) {
+      return {
+        status: 500,
+        body: { error: "ai_gm_roll_resume_failed" },
+      }
+    }
+
+    if (status === "completed") {
+      const { data: completedJob } = await input.admin
+        .from("agent_jobs")
+        .select("result")
+        .eq("id", jobId)
+        .maybeSingle()
+
+      return {
+        status: 200,
+        body: {
+          accepted: true,
+          jobId,
+          status,
+          requestId,
+          result: jsonRecord(completedJob?.result),
+        },
+      }
+    }
+
+    if (status === "failed" || status === "cancelled") {
+      return {
+        status: 409,
+        body: {
+          accepted: false,
+          jobId,
+          status,
+          requestId,
+        },
+      }
+    }
+
+    return {
+      status: 202,
+      body: {
+        accepted: true,
+        jobId,
+        status: status || "queued",
+        requestId,
+        surface: GAME_CHAT_SURFACE,
+      },
+      background:
+        status === "queued"
+          ? runGameChatTurn(input.admin, input.campaignId, jobId)
+          : undefined,
+    }
+  }
+
   if (action !== "game_chat_turn") return null
 
   const sourceChatMessageId = Number(input.body.sourceChatMessageId || 0)
