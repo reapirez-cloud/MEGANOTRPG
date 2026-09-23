@@ -23,8 +23,9 @@ test("Stage 8 uses canonical owner recovery boundaries", () => {
 })
 
 test("Stage 8 recovery is service-only, same-location and idempotent", () => {
-  assert.match(migration, /engine_command_receipts/)
-  assert.match(migration, /command_kind<>'ai_gm\.recovery'/)
+  assert.match(migration, /private\.ai_gm_recovery_receipts/)
+  assert.match(migration, /job_id uuid primary key references public\.agent_jobs/)
+  assert.doesNotMatch(migration, /insert into public\.engine_command_receipts/)
   assert.match(migration, /ai_gm_recovery_target_not_present/)
   assert.match(migration, /chat_messages_ai_gm_recovery_turn_unique/)
   assert.match(
@@ -103,4 +104,13 @@ test("Stage 8 roadmap is explicitly in progress until certification", () => {
     /\| 8 \| IN PROGRESS \| Short rest, long rest, dawn and game-time recovery \|/,
   )
   assert.match(roadmap, /Stage 8 is IN PROGRESS/)
+})
+
+
+test("Stage 8 recovery receipt cannot collide with Stage 6 gameplay receipts", () => {
+  assert.match(migration, /insert into private\.ai_gm_recovery_receipts/)
+  assert.doesNotMatch(migration, /engine,'ai_gm'/)
+  assert.doesNotMatch(migration, /command_kind,'ai_gm\.recovery'/)
+  assert.match(runtime, /execute_ai_gm_recovery_v1/)
+  assert.match(runtime, /execute_ai_gm_npc_action_turn_v1/)
 })
