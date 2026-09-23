@@ -19,6 +19,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Database / migration changes
 
+- Added the Stage 6 FK-index follow-up so both scene-actor receipt composite foreign keys are covered in exact `(actor_id, campaign_id)` order after advisor review.
 - Added AI World Evolution Stage 6 scene-actor command/damage receipts plus service-only combat RPCs. Scene actor action/roll execution is idempotent per GM job, damage is derived from an existing server-generated roll message, and all mutable state remains actor-local.
 - Added AI World Evolution Stage 5 ephemeral scene-actor storage: one UUID row per bestiary-backed instance, actor-local HP/life/effects, separate per-actor resource rows, immutable Stage-4 mechanics/sheet provenance, room/location/game-time attachment and idempotent spawn keys.
 - Added AI World Evolution Stage 4 shared Bestiary Runtime Compiler (`compile_bestiary_runtime_v1`): a versioned actor-neutral snapshot of sheet stats, save/skill proficiencies, actions/reactions, limited-use resources, recharge metadata and bestiary source digest.

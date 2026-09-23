@@ -12,6 +12,10 @@ const playerRoll = readFileSync(
   new URL("../supabase/migrations/20260923103000_ai_gm_player_roll_stage5_v1.sql", import.meta.url),
   "utf8",
 )
+const fkIndexes = readFileSync(
+  new URL("../supabase/migrations/20260923182711_ai_world_evolution_stage6_scene_actor_fk_indexes_v1.sql", import.meta.url),
+  "utf8",
+)
 
 test("AI world evolution Stage 6 is certified", () => {
   const stage = AI_WORLD_EVOLUTION_STAGES.find((entry) => entry.id === 6)
@@ -93,5 +97,17 @@ test("Stage 6 combat surfaces are service-only", () => {
   assert.match(
     migration,
     /grant execute on function public\.execute_ai_gm_actor_action_turn_v1[\s\S]*to service_role/,
+  )
+})
+
+
+test("Stage 6 receipt composite foreign keys have covering indexes in FK order", () => {
+  assert.match(
+    fkIndexes,
+    /ai_scene_actor_command_receipts\(actor_id,campaign_id\)/,
+  )
+  assert.match(
+    fkIndexes,
+    /ai_scene_actor_damage_receipts\(actor_id,campaign_id\)/,
   )
 })
