@@ -14,6 +14,7 @@ test("Stage 4 persists one durable draft for action, bonus action, movement and 
   assert.match(sql, /action_entry jsonb/)
   assert.match(sql, /bonus_action_entry jsonb/)
   assert.match(sql, /movement jsonb/)
+  assert.match(sql, /component_order text\[\]/)
   assert.match(sql, /description text/)
   assert.match(sql, /player_turn_drafts_one_open_per_actor/)
   assert.match(sql, /save_player_turn_draft_v1/)
@@ -57,6 +58,10 @@ test("Stage 4 submit executes queued gameplay only inside one authoritative RPC"
   assert.match(sql, /send_chat_event_v3/)
   assert.match(sql, /send_chat_roll_v4/)
   assert.match(sql, /pg_advisory_xact_lock/)
+  assert.match(sql, /engine_command_receipts/)
+  assert.match(sql, /command_kind,[\s\S]*'player\.turn\.v1'/)
+  assert.match(sql, /result->>'draft_id'/)
+  assert.match(sql, /assert_player_turn_entry_slot_v1/)
 })
 
 test("Stage 4 correlates every emitted component with one turn command and inserts trigger text last", () => {
@@ -71,6 +76,9 @@ test("Stage 4 correlates every emitted component with one turn command and inser
 
   assert.match(sql, /turn_command_id uuid/)
   assert.match(sql, /turn_component text/)
+  assert.match(sql, /turn_order smallint/)
+  assert.match(sql, /normalize_player_turn_order_v1/)
+  assert.match(submit, /foreach v_component in array v_draft\.component_order loop/)
   assert.match(submit, /'action'/)
   assert.match(submit, /'bonus_action'/)
   assert.match(submit, /'movement'/)
@@ -118,6 +126,8 @@ test("Stage 4 client queues actions and spells instead of executing them immedia
 
   assert.match(queue, /get_player_turn_draft_v1/)
   assert.match(queue, /save_player_turn_draft_v1/)
+  assert.match(queue, /p_component_order: componentOrder/)
+  assert.match(queue, /reorderPlayerTurnComponents/)
   assert.match(queue, /submit_player_turn_v1/)
 })
 
@@ -148,8 +158,10 @@ test("Stage 4 GM context receives turn grouping metadata", () => {
 
   assert.match(context, /turn_command_id/)
   assert.match(context, /turn_component/)
+  assert.match(context, /turn_order/)
   assert.match(worker, /turn_command_id/)
   assert.match(worker, /turn_component/)
+  assert.match(worker, /turn_order/)
 })
 
 
@@ -201,4 +213,44 @@ test("Stage 4 UI does not let players manually move mechanics between action slo
   assert.doesNotMatch(composer, /moveTurnEntry/)
   assert.match(composer, /Убрать действие из хода/)
   assert.match(composer, /Убрать бонусное действие из хода/)
+})
+
+
+test("Stage 4 preserves mechanics slots while allowing execution order changes", () => {
+  const sql = read(
+    "supabase/migrations/20260923095500_ai_gm_player_turn_stage4_v1.sql",
+  )
+  const composer = read(
+    "src/ui-v1-isolated/chat-room/ChatComposer.tsx",
+  )
+
+  assert.match(sql, /Queued entry does not match its action economy/)
+  assert.match(sql, /Reaction cannot be submitted as a normal player turn/)
+  assert.match(sql, /component_order/)
+  assert.match(composer, /aria-label="Порядок компонентов хода"/)
+  assert.doesNotMatch(composer, /В бонус|В действие/)
+})
+
+test("Stage 4 queues a player roll instead of rolling before submit", () => {
+  const host = read(
+    "src/ui-v1-isolated/chat-room/ChatActionHost.tsx",
+  )
+
+  const freeRoll = host.indexOf("async function freeRoll")
+  const check = host.indexOf("async function rollCheck", freeRoll)
+  const action = host.indexOf("async function runAction", check)
+  assert.ok(freeRoll >= 0 && check > freeRoll && action > check)
+
+  const freeRollBody = host.slice(freeRoll, check)
+  const checkBody = host.slice(check, action)
+  assert.match(freeRollBody, /queueTurnEntry/)
+  assert.match(checkBody, /queueTurnEntry/)
+  assert.ok(
+    freeRollBody.indexOf("queueTurnEntry") <
+      freeRollBody.indexOf("genaSession.sendRoll"),
+  )
+  assert.ok(
+    checkBody.indexOf("queueTurnEntry") <
+      checkBody.indexOf("genaSession.sendRoll"),
+  )
 })
