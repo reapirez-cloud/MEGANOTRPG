@@ -170,6 +170,24 @@ async function sendTextMessage({
   return result.data?.id as number | undefined
 }
 
+async function triggerAiGameMasterTurn({
+  campaignId,
+  sourceChatMessageId,
+}: {
+  campaignId: string
+  sourceChatMessageId: number
+}) {
+  const result = await supabase.functions.invoke("voss-agent", {
+    body: {
+      campaignId,
+      action: "game_chat_turn",
+      sourceChatMessageId,
+    },
+  })
+
+  return !result.error
+}
+
 export default function ChatComposer({
   model,
 }: {
@@ -339,6 +357,18 @@ export default function ChatComposer({
           detail: { roomId: model.roomId, messageId },
         }),
       )
+
+      if (
+        messageId &&
+        model.roomType !== "flood" &&
+        selectedCharacterId &&
+        selectedCharacterId === model.viewer.playerCharacterId
+      ) {
+        void triggerAiGameMasterTurn({
+          campaignId: model.viewer.campaignId,
+          sourceChatMessageId: messageId,
+        })
+      }
     } catch (error) {
       setSendError(
         error instanceof Error ? error.message : "Сообщение не отправлено",
