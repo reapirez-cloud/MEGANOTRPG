@@ -44,14 +44,16 @@ const WORKER_SYSTEM = [
   "Предпочитай продолжить current_snapshot/recent_events, если это логически связано с сущностью. Не притягивай старую линию насильно.",
   "quest_constraints являются жёстким каноническим контекстом. Не ломай их ради драматизма.",
   "Не создавай новые постоянные NPC, локации, квесты, предметы или фракции. Не мутируй канонические строки напрямую.",
-  "effect_payload описывает структурированное последствие события. proposed_state содержит только компактное предлагаемое состояние/дельту для будущего Stage 12 merger.",
+  "effect_payload описывает структурированное последствие события.",
+  "snapshot_summary — это ПОЛНЫЙ краткий актуальный итог состояния world/NPC/location ПОСЛЕ этого результата, а не описание только нового события. Он должен заменить предыдущий active summary и сохранять только всё ещё актуальные последствия/незакрытые линии.",
+  "proposed_state — ПОЛНЫЙ компактный replacement current-state ПОСЛЕ события. Это НЕ patch и НЕ дневник. Перенеси из current_snapshot.state только всё ещё актуальные поля, обнови изменившиеся, удали устаревшие. Не создавай history/events/timeline массивы.",
   "event_kind должен быть коротким machine key вида economy.shift, npc.recovery, location.damage. Для lasting_change=false используй event_kind=none.",
   "summary — 1–2 коротких предложения без художественной сцены.",
   "Если после учёта supplied roll и канона остаются 2+ реально равноправных НЕРАЗРЕШЁННЫХ сюжетных исхода, можешь вызвать resolve_random_decision. Сначала полностью задай вопрос и все d100 bands. Сервер зафиксирует их до броска.",
   "Никогда не используй resolve_random_decision для supplied daily roll, атаки, save/check, deterministic rule, уже существующего факта или чтобы переиграть неудобный исход.",
   "После resolve_random_decision обязан следовать matched_outcome; повтор того же decision_key не даёт новый бросок.",
   "Верни только JSON без markdown: {world:Result,entities:Result[]}.",
-  "Result={entity_scope:'world'|'npc'|'location',entity_id:string,roll_result:number,severity_key:string,direction:'negative'|'neutral'|'positive',magnitude:'critical'|'severe'|'notable'|'minor'|'neutral',lasting_change:boolean,event_kind:string,summary:string,importance:0|1|2|3|4|5,effect_payload:object,proposed_state:object}",
+  "Result={entity_scope:'world'|'npc'|'location',entity_id:string,roll_result:number,severity_key:string,direction:'negative'|'neutral'|'positive',magnitude:'critical'|'severe'|'notable'|'minor'|'neutral',lasting_change:boolean,event_kind:string,summary:string,snapshot_summary:string,importance:0|1|2|3|4|5,effect_payload:object,proposed_state:object}",
 ].join("\n")
 
 function record(value: unknown): JsonRecord {
@@ -212,9 +214,26 @@ function normalizeResult(
     eventKind = "none"
   }
 
+  const snapshotSummary = text(row.snapshot_summary, 1800)
+  if (!snapshotSummary) {
+    throw new Error("background_worker_snapshot_summary_required")
+  }
+
   const importance = exactInt(row.importance, 0, 5)
   const effectPayload = boundedObject(row.effect_payload, "effect_payload")
   const proposedState = boundedObject(row.proposed_state, "proposed_state")
+  for (const forbidden of [
+    "history",
+    "event_history",
+    "daily_history",
+    "timeline",
+    "events",
+    "event_log",
+  ]) {
+    if (Object.prototype.hasOwnProperty.call(proposedState, forbidden)) {
+      throw new Error("background_worker_snapshot_history_key_forbidden")
+    }
+  }
 
   return {
     entity_scope: expected.entityScope,
@@ -226,8 +245,13 @@ function normalizeResult(
     lasting_change: row.lasting_change,
     event_kind: eventKind,
     summary,
+    snapshot_summary: snapshotSummary,
     importance,
-    effect_payload: effectPayload,
+    effect_payload: {
+      ...effectPayload,
+      snapshot_mode: "replace",
+      snapshot_summary: snapshotSummary,
+    },
     proposed_state: proposedState,
   }
 }
