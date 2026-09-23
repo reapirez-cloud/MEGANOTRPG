@@ -84,43 +84,6 @@ export const AI_GM_READINESS_DEBT: AiGmReadinessDebtItem[] = [
     ],
   },
   {
-    id: "npc-art-on-database-create",
-    title: "Арт NPC сразу при добавлении в базу",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "Как только NPC успешно создан в канонической базе, автоматически запускается image job. Это не зависит от его первого появления перед игроком.",
-    readyWhen: [
-      "После create_world_npc/эквивалентного owner commit создаётся один идемпотентный portrait job.",
-      "Готовый арт привязывается к characters.avatar_url этого NPC.",
-      "Повторное появление NPC использует существующий avatar_url и не запускает новую генерацию.",
-      "Ошибка image job не откатывает создание NPC и допускает безопасный retry.",
-    ],
-  },
-  {
-    id: "location-art-on-first-visit",
-    title: "Арт локации при первом посещении",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "При первом фактическом посещении локации, если image_url отсутствует, запускается один image job; результат сохраняется у самой locations-сущности.",
-    readyWhen: [
-      "Visit/discovery path атомарно или идемпотентно резервирует генерацию.",
-      "Результат записывается в locations.image_url.",
-      "Следующие входы используют сохранённый арт без повторного рендера.",
-    ],
-  },
-  {
-    id: "ai-art-directly-in-chat",
-    title: "ИИ отправляет арт прямо в игровой диалог",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "Главный GM может инициировать нужный арт, а завершённая генерация автоматически публикуется в том же игровом чате как attachment/media message.",
-    readyWhen: [
-      "NPC/location media в чате ссылается на привязанный asset сущности.",
-      "Асинхронная image generation не блокирует текстовый GM turn.",
-      "Готовое изображение появляется в нужной комнате один раз.",
-    ],
-  },
-  {
     id: "item-art-only-on-request",
     title: "Арт предмета только по запросу",
     removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
