@@ -88,54 +88,6 @@ export const AI_GM_READINESS_DEBT: AiGmReadinessDebtItem[] = [
     ],
   },
   {
-    id: "snake-edit-and-resend",
-    title: "Снейк: Редактировать и отправить заново",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "Через контекстное меню Снейка игрок может открыть своё исходное сообщение, исправить текст и повторно запустить соответствующий GM turn.",
-    readyWhen: [
-      "Редактирование не создаёт две активные реальности.",
-      "Новый GM turn связан с исходным turn/version.",
-      "Права редактирования совпадают с владельцем сообщения/GM authority.",
-    ],
-  },
-  {
-    id: "snake-regenerate-gm-turn",
-    title: "Снейк: Новая генерация",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "Для того же входного сообщения можно запросить новый GM ответ, если главный ИИ неправильно понял игрока или дал плохой ход.",
-    readyWhen: [
-      "Повторная генерация использует тот же пользовательский input без ручного редактирования.",
-      "Предыдущий GM output помечается superseded/rolled-back и не остаётся второй канонической веткой.",
-    ],
-  },
-  {
-    id: "gm-turn-replay-rollback",
-    title: "Rollback/replay последствий GM turn",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "Edit-and-resend и regenerate безопасно отменяют/замещают последствия прошлого GM turn, а не только его текст.",
-    readyWhen: [
-      "Для GM turn хранится ledger вызванных tools, созданных сущностей, изменённых записей и опубликованных сообщений/events.",
-      "Есть обратимые операции или revision/supersede-механика для поддерживаемых mutations.",
-      "Rollback/replay идемпотентен и не дублирует ресурсные траты/создание NPC/quest events.",
-      "Необратимые операции явно блокируют regenerate либо требуют отдельного безопасного resolution path.",
-    ],
-  },
-  {
-    id: "undo-last-gm-turn",
-    title: "Undo последнего GM turn",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "GM/admin может вручную откатить последний AI GM turn через тот же rollback ledger, если ИИ создал неверную реальность.",
-    readyWhen: [
-      "Undo доступен только авторизованному manager.",
-      "UI показывает, что именно будет откатано.",
-      "Откат не затрагивает более поздние зависимые изменения без явного конфликта/предупреждения.",
-    ],
-  },
-  {
     id: "gm-turn-status-ui",
     title: "Видимый статус AI GM turn",
     removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
