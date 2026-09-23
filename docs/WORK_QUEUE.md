@@ -8,7 +8,7 @@
 **Marked:** 2026-09-23  
 **Branch:** dev
 
-Canonical temporary code tracker: `src/ai/aiGmReadinessDebt.ts`.
+Persistent numbered stage counter: `docs/AI_GM_ROADMAP.md`.\n\nCanonical temporary code tracker: `src/ai/aiGmReadinessDebt.ts`.
 
 Hard rule: every item in that file carries the marker **«УДАЛИТЬ ПРИ РЕЙДИ»** and must be deleted as soon as the implementation is actually READY. Do not preserve completed entries as historical TODOs. When the array becomes empty, delete the tracker file and this queue section.
 
