@@ -112,7 +112,8 @@ test("Stage 12 NPC text inventory stays lightweight until explicit materializati
   assert.match(maintenance, /"set_npc_text_inventory"/)
   assert.match(context, /inventory_text,inventory_data/)
   assert.match(hardeningMigration, /materialize_npc_text_inventory_item_v1/)
-  assert.match(hardeningMigration, /physical_items_created/)
+  assert.match(hardeningMigration, /physical_item_id/)
+  assert.match(hardeningMigration, /already_materialized/)
 })
 
 test("Stage 12 memory keeps game-time provenance and ages facts by campaign day", () => {
