@@ -1178,10 +1178,9 @@ export async function processAgentImageJob({
     .eq("id", jobId)
     .maybeSingle()
 
-  if (jobError || !job) return
-  if (job.status === "cancelled") return
+  if (jobError || !job || job.status !== "queued") return
 
-  await admin
+  const { data: claimed, error: claimError } = await admin
     .from("agent_jobs")
     .update({
       status: "running",
@@ -1192,6 +1191,11 @@ export async function processAgentImageJob({
     })
     .eq("id", jobId)
     .eq("status", "queued")
+    .select("id")
+    .maybeSingle()
+
+  if (claimError) throw new Error(claimError.message)
+  if (!claimed?.id) return
 
   const input = record(job.input)
   const prompt = stringValue(input.prompt, 6000)
