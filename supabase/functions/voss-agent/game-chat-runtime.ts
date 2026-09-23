@@ -101,7 +101,7 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Канонические изменения мира и ресурсов происходят только через серверные gameplay/owner boundaries и подтверждённые результаты, а не через свободный текст игрока.",
   "Никогда не говори, не действуй, не решай и не выбирай за player character. PC принадлежат только их игрокам.",
   "Если source_audience.scope=direct_pc, recipient_character_ids являются серверно подтверждёнными адресатами PC→PC. Никогда не отвечай, не действуй и не выбирай за этих PC.",
-  "Для чистой direct_pc реплики без world adjudication предпочитай none; допустимы только окружение/narration без речи PC или реплика реально присутствующего NPC.",
+  "Для чистой direct_pc реплики без world adjudication используй только none, environment или npc_interjection. environment пишет только окружение/нейтральную narration без речи PC. npc_interjection указывает только npc_character_id реально присутствующего NPC; текст реплики сервер сгенерирует отдельно из ограниченного NPC context.",
   "Если PC находятся в разных location_id, не считай их физически рядом и не передавай информацию между ними без уже канонически существующего способа связи. Не склеивай разделившуюся группу в одну сцену.",
   "Для обычной сцены используй dialogue_sequence. messages — упорядоченный массив максимум из 8 элементов.",
   "Элемент narration имеет вид {type:'narration',body:'...'} и является голосом Рассказчика.",
@@ -122,7 +122,7 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Для request_player_roll укажи roll_request: character_id, request_type(skill|ability|save|attack|custom), ability_key, skill_key, attack_kind(melee|ranged|spell), label, reason, dc, dc_visibility(public|hidden). Не указывай modifier.",
   "Для mechanic modes body пустой и messages пустой.",
   "Ответь ТОЛЬКО одним JSON-объектом без markdown с полями reaction_mode, messages, body, npc_character_id, roll_request, npc_action, npc_roll, recovery, reason.",
-  "reaction_mode: recovery|dialogue_sequence|request_player_roll|npc_action|npc_roll|none.",
+  "reaction_mode: recovery|dialogue_sequence|environment|npc_interjection|request_player_roll|npc_action|npc_roll|none.",
 ].join("\n")
 
 const NPC_DIALOGUE_SYSTEM = [
@@ -651,6 +651,48 @@ function enforceStage12Audience(
   context: Stage2GameChatContext,
 ): GameMasterReaction {
   if (context.sourceAudience.scope !== "direct_pc") return reaction
+
+  if (reaction.mode === "dialogue_sequence") {
+    if (
+      reaction.dialogueOutputs.length === 1 &&
+      reaction.dialogueOutputs[0]?.kind === "narration"
+    ) {
+      return {
+        ...reaction,
+        mode: "environment",
+        body: reaction.dialogueOutputs[0].body,
+        npcCharacterId: null,
+        reason: reaction.reason || "direct_pc_environment_only",
+        dialogueOutputs: [],
+      }
+    }
+
+    if (
+      reaction.dialogueOutputs.length === 1 &&
+      reaction.dialogueOutputs[0]?.kind === "npc_dialogue"
+    ) {
+      return {
+        ...reaction,
+        mode: "npc_interjection",
+        body: "",
+        npcCharacterId: reaction.dialogueOutputs[0].npcCharacterId,
+        reason: reaction.reason || "direct_pc_npc_interjection",
+        dialogueOutputs: [],
+      }
+    }
+
+    return {
+      mode: "none",
+      body: "",
+      npcCharacterId: null,
+      reason: "direct_pc_multi_output_blocked",
+      rollRequest: null,
+      npcAction: null,
+      npcRoll: null,
+      recoveryRequest: null,
+      dialogueOutputs: [],
+    }
+  }
 
   if (reaction.mode === "gm_response") {
     return {
@@ -1297,6 +1339,16 @@ export async function runGameChatTurn(
 
     await setRuntimePhase(admin, claimed, "applying")
 
+    const finalBody =
+      reaction.mode === "npc_interjection" && reaction.npcCharacterId
+        ? await generateNpcDialogue({
+            route,
+            context,
+            npcCharacterId: reaction.npcCharacterId,
+            priorOutputs: [],
+          })
+        : reaction.body
+
     const rpcName =
       reaction.mode === "npc_interjection"
         ? "publish_ai_gm_npc_message_v2"
@@ -1306,11 +1358,11 @@ export async function runGameChatTurn(
         ? {
             p_job_id: jobId,
             p_npc_character_id: reaction.npcCharacterId,
-            p_body: reaction.body,
+            p_body: finalBody,
           }
         : {
             p_job_id: jobId,
-            p_body: reaction.body,
+            p_body: finalBody,
           }
 
     const { data: replyMessageId, error: publishError } = await admin.rpc(
@@ -1350,7 +1402,7 @@ export async function runGameChatTurn(
           model_name: route.model.display_name,
           route_mode: route.routeMode,
           route_reason: route.reason,
-          answer_chars: reaction.body.length,
+          answer_chars: finalBody.length,
         },
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
