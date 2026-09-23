@@ -28,6 +28,10 @@ export type UiChatEvent = {
   body: string
   createdAt: string
   editedAt: string | null
+  audience: {
+    scope: "scene" | "direct_pc"
+    recipientCharacterIds: string[]
+  }
   media: {
     url: string
     kind: "image"
@@ -156,6 +160,10 @@ export function normalizeChatEvent(
     body: message.body.trim(),
     createdAt: message.created_at,
     editedAt: message.edited_at,
+    audience: {
+      scope: message.audience_scope === "direct_pc" ? "direct_pc" : "scene",
+      recipientCharacterIds: message.recipient_character_ids || [],
+    },
     media:
       message.attachment_url && message.attachment_kind === "image"
         ? {
