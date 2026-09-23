@@ -32,6 +32,8 @@ export type PlayerTurnDraft = {
   movement: { description?: string } | null
   component_order: PlayerTurnComponent[]
   description: string
+  audience_scope: "scene" | "direct_pc"
+  recipient_character_ids: string[]
   turn_command_id: string | null
   submission_result: Record<string, unknown>
   updated_at: string
@@ -166,6 +168,7 @@ export async function savePlayerTurnDraft({
   componentOrder,
   description,
   expectedRevision,
+  recipientCharacterIds = [],
 }: {
   roomId: string
   characterId: string
@@ -175,8 +178,9 @@ export async function savePlayerTurnDraft({
   componentOrder: PlayerTurnComponent[]
   description: string
   expectedRevision: number | null
+  recipientCharacterIds?: string[]
 }) {
-  const result = await supabase.rpc("save_player_turn_draft_v1", {
+  const result = await supabase.rpc("save_player_turn_draft_v2", {
     p_room_id: roomId,
     p_character_id: characterId,
     p_action_entry: actionEntry,
@@ -185,6 +189,8 @@ export async function savePlayerTurnDraft({
     p_component_order: componentOrder,
     p_description: description,
     p_expected_revision: expectedRevision,
+    p_audience_scope: recipientCharacterIds.length ? "direct_pc" : "scene",
+    p_recipient_character_ids: recipientCharacterIds,
   })
   if (result.error) throw result.error
   const draft = asDraft(result.data)
