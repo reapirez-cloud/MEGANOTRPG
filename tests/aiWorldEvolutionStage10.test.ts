@@ -27,12 +27,16 @@ test("stage 10 contract is certified", () => {
   assert.match(stage10, /status: "certified"/)
 })
 
-test("stage 10 uses exactly one fixed Flash batch call", () => {
+test("stage 10 keeps one fixed Flash batch workflow", () => {
   assert.match(worker, /WORKER_MODEL_KEY = "deepseek-v4\.1-flash"/)
   assert.equal((worker.match(/await requestChatCompletion\(/g) || []).length, 1)
   assert.match(worker, /retryCount: 0/)
   assert.match(worker, /responseFormat: \{ type: "json_object" \}/)
-  assert.doesNotMatch(worker, /tools:/)
+  // Stage 11 may continue the same daily batch workflow through the single
+  // resolve_random_decision tool, but Stage 10 still forbids owner/quest tools
+  // and per-entity provider call sites.
+  assert.match(worker, /RESOLVE_RANDOM_DECISION_TOOL/)
+  assert.doesNotMatch(worker, /VOSS_MANAGER_TOOLS|VOSS_QUEST_TOOLS/)
 })
 
 test("stage 10 worker cannot read rejected candidates or chat history", () => {
