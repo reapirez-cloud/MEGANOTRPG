@@ -1,4 +1,5 @@
 import ChatGameEventCard from "./ChatGameEventCard"
+import ChatRollRequestCard from "./ChatRollRequestCard"
 import type { UiChatEvent } from "./chatEventModel"
 
 function formatMessageTime(value: string) {
@@ -128,14 +129,28 @@ export default function ChatFeedItem({
   isOwn,
   groupPosition,
   onMediaLoad,
+  viewerUserId,
+  campaignId,
 }: {
   event: UiChatEvent
   isOwn: boolean
   groupPosition: DialogueGroupPosition
   onMediaLoad: () => void
+  viewerUserId: string
+  campaignId: string
 }) {
   if (event.type === "system") {
     return <SystemEvent event={event} />
+  }
+
+  if (event.type === "roll_request") {
+    return (
+      <ChatRollRequestCard
+        event={event}
+        viewerUserId={viewerUserId}
+        campaignId={campaignId}
+      />
+    )
   }
 
   if (isGameEvent(event)) {
