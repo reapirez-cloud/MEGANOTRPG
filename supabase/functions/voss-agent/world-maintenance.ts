@@ -218,7 +218,7 @@ async function loadMaintenanceSnapshot(
         .maybeSingle(),
       admin
         .from("chat_messages")
-        .select("id,author_name,body,user_id,character_id,event_kind,event_payload,attachment_kind,created_at")
+        .select("id,author_name,body,user_id,character_id,event_kind,event_payload,attachment_kind,turn_command_id,turn_component,turn_order,created_at")
         .eq("room_id", roomId)
         .lte("id", rangeEnd)
         .order("id", { ascending: false })

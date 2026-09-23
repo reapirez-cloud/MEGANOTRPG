@@ -128,13 +128,13 @@ test("Stage 3 maintenance is decoupled from the interactive GM runtime", () => {
   assert.match(runner, /dispatch_ai_gm_maintenance_job_v1/)
 })
 
-test("roadmap stage counter is persistent and points to Stage 3", () => {
+test("roadmap preserves Stage 3 READY while later stages advance", () => {
   const roadmap = read("docs/AI_GM_ROADMAP.md")
 
   assert.match(roadmap, /\| 1 \| READY \|/)
   assert.match(roadmap, /\| 2 \| READY \|/)
   assert.match(roadmap, /\| 3 \| READY \|/)
-  assert.match(roadmap, /Next stage to execute: 4/)
+  assert.match(roadmap, /\| 4 \| (?:IN PROGRESS|READY) \|/)
 })
 
 

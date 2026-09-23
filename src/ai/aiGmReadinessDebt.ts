@@ -198,19 +198,6 @@ export const AI_GM_READINESS_DEBT: AiGmReadinessDebtItem[] = [
     ],
   },
   {
-    id: "player-turn-action-queue",
-    title: "Очередь хода игрока вместо мгновенного исполнения",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "Выбор способности/заклинания/атаки сначала добавляет намерение в pending turn, чтобы игрок мог собрать действие, бонусное действие, перемещение и текстовое описание, а затем отправить всё одним ходом.",
-    readyWhen: [
-      "Есть client/runtime pending-turn model с упорядоченными intentions.",
-      "До финального submit не тратятся ресурсы, не бросаются кубы и не пишутся gameplay events.",
-      "Игрок может удалить/изменить порядок/описание элементов очереди.",
-      "Submit исполняется серверно, коррелируется одним turn/command id и только после этого запускает GM reaction.",
-    ],
-  },
-  {
     id: "world-maintenance-memory",
     title: "Память, игровая дата и консолидация мира через worker",
     removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",

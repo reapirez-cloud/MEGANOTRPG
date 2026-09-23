@@ -5102,3 +5102,213 @@
     max-width: 88px;
   }
 }
+
+
+/* AI GM Stage 4 — durable player turn composer. */
+.u1-player-turn {
+  margin: 0 0 7px;
+  padding: 7px;
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(232,234,232,.08);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.006)),
+    rgba(8,10,11,.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.025),
+    0 8px 18px rgba(0,0,0,.14);
+}
+
+.u1-player-turn__slots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.u1-player-turn__slot {
+  min-width: 0;
+  min-height: 43px;
+  padding: 6px 7px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 6px;
+  align-items: center;
+  border: 1px solid rgba(232,234,232,.055);
+  border-radius: 8px;
+  background: rgba(255,255,255,.012);
+}
+
+.u1-player-turn__slot[data-filled="true"] {
+  border-color: rgba(232,234,232,.12);
+  background: rgba(255,255,255,.025);
+}
+
+.u1-player-turn__slot > span {
+  grid-column: 1 / -1;
+  color: rgba(225,228,225,.38);
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: .08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.u1-player-turn__slot > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(241,242,238,.78);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: 11px;
+  font-weight: 720;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-player-turn__slot > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.u1-player-turn__slot button,
+.u1-player-turn__cancel {
+  min-height: 24px;
+  padding: 0 6px;
+  border: 1px solid rgba(231,233,230,.07);
+  border-radius: 6px;
+  color: rgba(228,230,226,.56);
+  background: rgba(255,255,255,.018);
+  font: inherit;
+  font-size: 8px;
+  font-weight: 720;
+}
+
+.u1-player-turn__slot button:last-child {
+  width: 24px;
+  padding: 0;
+  font-size: 13px;
+}
+
+.u1-player-turn__order {
+  display: grid;
+  gap: 4px;
+}
+
+.u1-player-turn__order > div {
+  min-width: 0;
+  min-height: 31px;
+  padding: 4px 5px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(232,234,232,.05);
+  border-radius: 7px;
+  background: rgba(255,255,255,.009);
+}
+
+.u1-player-turn__order > div > span {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  color: rgba(235,237,233,.46);
+  background: rgba(255,255,255,.025);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.u1-player-turn__order > div > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(239,240,236,.68);
+  font-size: 9px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u1-player-turn__order > div > div {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.u1-player-turn__order button {
+  width: 25px;
+  height: 23px;
+  padding: 0;
+  border: 1px solid rgba(231,233,230,.065);
+  border-radius: 6px;
+  color: rgba(232,234,230,.52);
+  background: rgba(255,255,255,.015);
+  font: inherit;
+  font-size: 11px;
+}
+
+.u1-player-turn__order button:disabled {
+  opacity: .26;
+}
+
+.u1-player-turn__movement {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.u1-player-turn__movement > span {
+  color: rgba(225,228,225,.38);
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.u1-player-turn__movement input {
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid rgba(232,234,232,.065);
+  border-radius: 7px;
+  outline: none;
+  color: rgba(241,242,238,.78);
+  background: rgba(0,0,0,.16);
+  font: inherit;
+  font-size: 10px;
+}
+
+.u1-player-turn__movement input:focus {
+  border-color: rgba(232,234,232,.14);
+  background: rgba(255,255,255,.02);
+}
+
+.u1-player-turn__cancel {
+  white-space: nowrap;
+}
+
+.u1-player-turn[data-turn-loading="true"] {
+  opacity: .58;
+  pointer-events: none;
+}
+
+@media (max-width: 360px) {
+  .u1-player-turn__slot > strong {
+    font-size: 10px;
+  }
+
+  .u1-player-turn__slot button {
+    padding: 0 4px;
+    font-size: 7px;
+  }
+
+  .u1-player-turn__movement {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .u1-player-turn__movement > span {
+    display: none;
+  }
+}
