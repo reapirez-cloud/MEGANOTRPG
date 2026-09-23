@@ -204,15 +204,18 @@ export async function submitPlayerTurnDraft({
   draftId,
   revision,
   turnCommandId,
+  recipientCharacterIds = [],
 }: {
   draftId: string
   revision: number
   turnCommandId: string
+  recipientCharacterIds?: string[]
 }) {
-  const result = await supabase.rpc("submit_player_turn_v1", {
+  const result = await supabase.rpc("submit_player_turn_stage12_v1", {
     p_draft_id: draftId,
     p_expected_revision: revision,
     p_turn_command_id: turnCommandId,
+    p_recipient_character_ids: recipientCharacterIds,
   })
   if (result.error) throw result.error
   return asSubmitResult(result.data)
