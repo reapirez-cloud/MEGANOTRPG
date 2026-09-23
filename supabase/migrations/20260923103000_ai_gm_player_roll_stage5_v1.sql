@@ -379,6 +379,14 @@ begin
     raise exception 'ai_gm_roll_target_invalid';
   end if;
 
+  if private.chat_player_actor_for_room(
+       v_room.id,
+       v_character.assigned_user_id
+     ) is distinct from v_character.id
+  then
+    raise exception 'ai_gm_roll_target_not_active_chat_actor';
+  end if;
+
   select cws.location_id into v_source_location_id
   from public.character_world_state cws
   where cws.campaign_id = v_job.campaign_id
