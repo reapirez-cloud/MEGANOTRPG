@@ -394,7 +394,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Resolver-driven AI narrative branching",
     purpose:
       "Prevent Flash and the primary GM from silently choosing their preferred outcome when multiple plausible unresolved developments exist.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "Server-authoritative gameplay roll concept",
     ],
