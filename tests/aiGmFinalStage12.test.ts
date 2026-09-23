@@ -17,6 +17,9 @@ const hardeningMigration = read(
 const audienceRlsMigration = read(
   "supabase/migrations/20260923152000_ai_gm_final_stage12_audience_rls_v1.sql",
 )
+const statusMigration = read(
+  "supabase/migrations/20260923152400_ai_gm_final_stage12_status_queue_label_v1.sql",
+)
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
 const context = read("supabase/functions/voss-agent/game-chat-context.ts")
 const maintenance = read("supabase/functions/voss-agent/world-maintenance.ts")
@@ -146,6 +149,9 @@ test("Stage 12 exposes durable GM turn status in chat", () => {
   assert.match(statusUi, /get_ai_gm_room_status_v1/)
   assert.match(statusUi, /window\.setInterval/)
   assert.match(statusUi, /role="status"/)
+  assert.match(statusMigration, /ИИ-ГМ ждёт очередь общей сцены/)
+  assert.match(statusMigration, /ИИ-ГМ запускается/)
+  assert.match(statusMigration, /v_scene_key is not null/)
 })
 
 test("Stage 12 is certified READY and the temporary debt tracker is gone", () => {
