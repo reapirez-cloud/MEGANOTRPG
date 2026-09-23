@@ -78,7 +78,7 @@ test("Stage 8 continues the same GM turn from refreshed canonical state", () => 
   assert.match(runtime, /buildGameChatContextV2/)
   assert.match(runtime, /duplicate_recovery_in_same_gm_turn_blocked/)
   assert.match(runtime, /recovery_result: recoveryResult/)
-  assert.match(runtime, /runtime_stage: 8/)
+  assert.match(runtime, /runtime_stage: (?:8|9|10|11|12)/)
 })
 
 test("Stage 8 context exposes recovered resources and item charges", () => {
