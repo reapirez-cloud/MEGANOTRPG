@@ -72,19 +72,6 @@ export const AI_GM_READINESS_DEBT: AiGmReadinessDebtItem[] = [
     ],
   },
   {
-    id: "gm-npc-rolls-and-abilities",
-    title: "ИИ использует броски и способности NPC",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "Главный ИИ может пользоваться реальными каноническими статами, атаками, спасбросками и способностями NPC; существующие карточки способностей/бросков должны появляться в игровом чате.",
-    readyWhen: [
-      "ИИ выбирает NPC ability/action по стабильному mechanic/template id, а не сочиняет бонусы и урон.",
-      "Исполнение идёт через существующие GENA/TOBIK/template RPC и server-authoritative ресурсы.",
-      "В chat_messages появляется существующая event card способности/атаки/броска.",
-      "Расходы, заряды и ограничения способности применяются владельцем состояния ровно один раз.",
-    ],
-  },
-  {
     id: "narrator-and-npc-dialogue",
     title: "Рассказчик и реплики NPC как разные сообщения",
     removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
@@ -96,19 +83,6 @@ export const AI_GM_READINESS_DEBT: AiGmReadinessDebtItem[] = [
       "Имя и avatar_url NPC сервер берёт из characters, а не из аргументов модели.",
       "Один GM turn может чередовать narration и несколько NPC dialogue messages.",
       "NPC отвечает только из доступных ему знаний/отношений/состояния, а не из omniscient GM context.",
-    ],
-  },
-  {
-    id: "npc-canonical-sheet-worker",
-    title: "Канонические статы и способности NPC",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "Служебный ИИ назначает NPC статы и набор способностей по классу/роли/уровню/CR, после чего главный GM обязан пользоваться сохранённым листом.",
-    readyWhen: [
-      "Назначение статов/способностей выполняется отдельной structured worker-задачей.",
-      "Результат проходит серверную валидацию и сохраняется в канонический character/NPC runtime.",
-      "Главный GM получает эти данные read-toolом и не придумывает новые цифры во время сцены.",
-      "Повторный maintenance не меняет билд NPC без явной причины/команды.",
     ],
   },
   {
