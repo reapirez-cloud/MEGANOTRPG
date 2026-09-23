@@ -68,16 +68,6 @@ alter table public.campaign_memory_summaries
   add column if not exists maintenance_job_id uuid
   references public.agent_jobs(id) on delete set null;
 
-alter table public.campaign_memory_summaries
-  add column if not exists provenance jsonb not null default '{}'::jsonb;
-
-alter table public.campaign_memory_summaries
-  drop constraint if exists campaign_memory_summaries_provenance_check;
-
-alter table public.campaign_memory_summaries
-  add constraint campaign_memory_summaries_provenance_check
-  check (jsonb_typeof(provenance) = 'object');
-
 alter table public.campaign_memory_facts
   add column if not exists maintenance_job_id uuid
   references public.agent_jobs(id) on delete set null;
