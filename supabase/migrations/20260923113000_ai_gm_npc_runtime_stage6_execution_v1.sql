@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- AI GM Stage 6 execution hardening: canonical actor/location validation and optional targets.
 
 create or replace function public.execute_ai_gm_npc_action_v2(
