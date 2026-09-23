@@ -96,13 +96,20 @@ test("Stage 3 memory writes are retry-safe and provenance-linked", () => {
   const migration = read(
     "supabase/migrations/20260923092000_ai_gm_world_maintenance_stage3_v1.sql",
   )
+  const provenanceMigration = read(
+    "supabase/migrations/20260923092500_ai_gm_world_maintenance_summary_provenance_v1.sql",
+  )
   const worker = read("supabase/functions/voss-agent/world-maintenance.ts")
 
   assert.match(migration, /maintenance_job_id/)
   assert.match(migration, /maintenance_fact_index/)
   assert.match(migration, /campaign_memory_summaries_maintenance_job_unique/)
   assert.match(migration, /campaign_memory_facts_maintenance_job_fact_unique/)
+  assert.match(provenanceMigration, /add column if not exists provenance jsonb/)
   assert.match(worker, /maintenance_job_id: jobId/)
+  assert.match(worker, /provenance: \{/)
+  assert.match(worker, /campaign_day: snapshot\.room\.campaign_day/)
+  assert.match(worker, /day_period: snapshot\.room\.day_period/)
   assert.match(worker, /maintenance_fact_index: factIndex/)
   assert.match(worker, /source_event_ids: eventIds/)
   assert.match(worker, /kind: "world_maintenance_v1"/)
