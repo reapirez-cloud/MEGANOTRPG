@@ -181,5 +181,5 @@ test("Stage 9 is certified READY and closes only its media debt", () => {
   assert.doesNotMatch(readinessDebt, /id: "npc-art-on-database-create"/)
   assert.doesNotMatch(readinessDebt, /id: "location-art-on-first-visit"/)
   assert.doesNotMatch(readinessDebt, /id: "ai-art-directly-in-chat"/)
-  assert.match(readinessDebt, /id: "item-art-only-on-request"/)
+  assert.doesNotMatch(readinessDebt, /id: "item-art-only-on-request"/)
 })
