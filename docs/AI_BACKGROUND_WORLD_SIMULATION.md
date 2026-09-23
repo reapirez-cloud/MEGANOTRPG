@@ -68,15 +68,34 @@ The final effective probability must remain bounded. The system must not guarant
 
 Background simulation operates on **whole world entities**, never arbitrary physical fragments.
 
-For NPCs, a published canonical NPC is a simulation unit.
+For characters/NPCs, eligibility is based on **persistent agency**, not narrative importance.
+
+A creature can be a background simulation unit even if it began as a minor or random encounter NPC. A goblin who survives an encounter may later change jobs, join a faction, gain status, lose money, become injured, start a family, betray someone, become a local leader, or otherwise develop independently.
+
+The AI must not equate "minor NPC" with "non-simulated".
+
+Default AI-world classification:
+- sapient/socially agentic persistent NPC -> `entity`;
+- generic animal or ambient wildlife -> `detail` / non-simulated;
+- temporary summon, disposable combat spawn, illusion, swarm fragment or other short-lived technical actor -> `disabled`;
+- a normally non-sapient creature may be explicitly promoted to `entity` only when canon establishes it as an individually persistent actor with meaningful agency.
+
+Examples:
+- random surviving goblin -> entity;
+- unnamed but persistent dock worker -> entity;
+- generic wolf in the forest -> detail/non-simulated;
+- named bonded wolf with established ongoing agency -> may be entity;
+- summoned wolf -> disabled.
+
+The goal is not to protect the story from insignificant characters becoming important. The goal is to let that happen naturally while excluding actors that do not possess a meaningful independent life.
 
 For locations, hierarchy depth does not determine eligibility. A tavern may be a child of a district and still be a whole simulation unit. A room, toilet, staircase, corridor, individual table, closet or similar interior fragment is not independently simulated just because it was represented in the location tree.
 
-Add an explicit location classification:
+Add an explicit background classification used by AI-world generation for locations and persistent NPCs:
 
 - `background_simulation_scope='entity'` — independently eligible for Resolver selection;
-- `background_simulation_scope='detail'` — part of another location; never selected independently;
-- `background_simulation_scope='disabled'` — intentionally excluded.
+- `background_simulation_scope='detail'` — part of another simulated thing / ambient actor; never selected independently;
+- `background_simulation_scope='disabled'` — technical, temporary or intentionally excluded.
 
 Creation/materialization policy:
 - places with their own identity, ongoing state and ability to change independently are locations with `entity`;
@@ -471,7 +490,7 @@ The 45-message worker must not re-invent background events. Provenance tags shou
 
 Hard limits for V1:
 
-- only AI-world campaigns;
+- only AI-world campaigns; human-run campaigns are unaffected and human GMs continue to decide their own world evolution;
 - one batch model call per campaign game-day under normal operation;
 - 30% expected inclusion chance separately for eligible NPCs and locations;
 - neutral results can yield no event;
@@ -489,8 +508,8 @@ Hard limits for V1:
 ### Stage 1 — Resolver + schema
 
 - create daily run / rolls / events / snapshot tables;
-- add explicit location `background_simulation_scope=entity|detail|disabled`;
-- update world materializer contract so whole places become `entity` and interior fragments normally become sections/`detail`;
+- add explicit AI-world `background_simulation_scope=entity|detail|disabled` classification for locations and persistent NPCs;
+- update world materializer contract so whole places become `entity`, interior fragments normally become sections/`detail`, and persistent agentic NPCs default to `entity` regardless of initial narrative importance;
 - AI-world-only guards;
 - idempotent server `resolve_world_random_v1`;
 - cryptographically unbiased dN roll;
