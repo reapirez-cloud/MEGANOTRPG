@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import { CHAT_MESSAGE_SENT_EVENT } from "./chatRoomContracts"
 import { SnakeTrigger } from "../SnakeProvider"
+import AiGmTurnStatus from "./AiGmTurnStatus"
 import ChatFeedItem from "./ChatFeedItem"
 import { createChatMessageSnakeActions } from "./chatMessageSnakeActions"
 import { useChatRoomEvents } from "./useChatRoomEvents"
@@ -327,6 +328,8 @@ export default function ChatFeed({
           )
         })}
       </div>
+
+      <AiGmTurnStatus roomId={roomId} />
 
       {unseenCount > 0 ? (
         <button
