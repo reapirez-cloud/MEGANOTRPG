@@ -36,13 +36,19 @@ There are two forms:
 
 The second form exists specifically to prevent models from repeatedly selecting the safest/highest-probability continuation.
 
-### 2. 30% means expected coverage, not mandatory churn
+### 2. Resolver owns both selection and daily d100 rolls
 
-For every new game day, each eligible NPC and location independently has a 30% inclusion chance.
+For every new game day, World Resolver builds the eligible simulation-unit pool and performs all random work before Flash is called.
 
-This is preferred to forcing exactly `round(count * .30)` entities because small worlds should naturally have days where nobody changes.
+For every eligible NPC and eligible location, Resolver independently applies the configured daily inclusion probability (default: 30%). It does **not** map entity numbers onto a d100 and it does not ask the model which entities should move today.
 
-Selection is server-side.
+After selection, Resolver rolls one separate d100 for every selected entity and one global world d100.
+
+Flash receives **only the selected simulation units and their already-resolved d100 values**. It does not receive the rejected candidate pool, cannot swap candidates, and cannot request a reroll of the daily selection/severity.
+
+The 30% rule is an expected coverage rate, not an exact quota. This is preferred to forcing exactly `round(count * .30)` entities because small worlds should naturally have days where nobody changes.
+
+Selection and daily severity rolls are server-side and auditable.
 
 Eligibility rules:
 - published, canonical entity;
@@ -57,6 +63,36 @@ Selection modifiers should be conservative:
 - entity that has gone many game-days without a background event: modest stale bonus.
 
 The final effective probability must remain bounded. The system must not guarantee that every stale entity changes.
+
+### 2.1 Simulation units are whole entities
+
+Background simulation operates on **whole world entities**, never arbitrary physical fragments.
+
+For NPCs, a published canonical NPC is a simulation unit.
+
+For locations, hierarchy depth does not determine eligibility. A tavern may be a child of a district and still be a whole simulation unit. A room, toilet, staircase, corridor, individual table, closet or similar interior fragment is not independently simulated just because it was represented in the location tree.
+
+Add an explicit location classification:
+
+- `background_simulation_scope='entity'` — independently eligible for Resolver selection;
+- `background_simulation_scope='detail'` — part of another location; never selected independently;
+- `background_simulation_scope='disabled'` — intentionally excluded.
+
+Creation/materialization policy:
+- places with their own identity, ongoing state and ability to change independently are locations with `entity`;
+- internal descriptive areas should normally be `location_sections` of the parent;
+- if an internal area must technically exist as a child `location`, mark it `detail`;
+- do not infer simulation-unit status from `parent_location_id` alone.
+
+Examples:
+- city -> entity;
+- port district -> entity;
+- tavern -> entity;
+- tavern kitchen as a meaningful independently tracked establishment area -> usually detail unless explicitly promoted;
+- tavern room -> detail;
+- tavern toilet -> detail.
+
+A background event on a tavern may change its rooms, staff or interior description as consequences, but those parts do not receive independent daily selection rolls.
 
 ### 3. d100 sets direction and magnitude, not literal prose
 
@@ -183,6 +219,19 @@ This tool should eventually be reusable by the primary GM for genuine uncertain 
 
 ## Daily run
 
+Resolver sequence for one game day:
+
+1. Load only eligible **simulation units**.
+2. Apply server-side 30% selection independently to NPC units and location units.
+3. Roll the global world d100.
+4. Roll one d100 for every selected unit.
+5. Persist selection and rolls before any model call.
+6. Build the compact selected-entity packet.
+7. Call DeepSeek V4.1 Flash once with that packet.
+8. Persist Flash interpretation as background events/snapshots.
+
+Flash never receives the full candidate pool.
+
 Proposed table:
 
 ### `ai_background_daily_runs`
@@ -240,6 +289,17 @@ Immutable event ledger.
 
 This is historical truth and is never repeatedly injected wholesale into GM context.
 
+### Location simulation classification
+
+Add to `public.locations`:
+
+- `background_simulation_scope text not null`
+- allowed values: `entity|detail|disabled`
+
+New AI-world materialization must always set this deliberately. The world materializer prompt must prefer `location_sections` for interior details and reserve child locations for navigable/canonical places. A child location still requires an explicit scope.
+
+Candidate selection queries include only `background_simulation_scope='entity'`.
+
 ### `ai_background_entity_snapshots`
 
 Versioned compact state, not an append-only list of prose facts.
@@ -285,7 +345,7 @@ This avoids:
 
 One batch request per game day.
 
-Input is deliberately compact:
+Input is deliberately compact and already filtered by Resolver. There is no candidate-selection decision left for Flash to make.
 
 ```json
 {
@@ -429,20 +489,24 @@ Hard limits for V1:
 ### Stage 1 — Resolver + schema
 
 - create daily run / rolls / events / snapshot tables;
+- add explicit location `background_simulation_scope=entity|detail|disabled`;
+- update world materializer contract so whole places become `entity` and interior fragments normally become sections/`detail`;
 - AI-world-only guards;
 - idempotent server `resolve_world_random_v1`;
 - cryptographically unbiased dN roll;
 - decision-band validation;
 - tests for replay and boundaries.
 
-### Stage 2 — Daily candidate selector
+### Stage 2 — Daily Resolver selection
 
 - detect first arrival to new campaign day;
 - reserve one daily run;
-- build eligible NPC/location sets;
-- server-side 30% sampling;
-- cooldown/stale weighting;
-- pre-roll d100 for world + selected entities.
+- build eligible NPC + location **simulation-unit** sets;
+- Resolver performs server-side 30% selection;
+- cooldown/stale weighting is applied before the final bounded selection probability;
+- Resolver pre-rolls d100 for world + every selected entity;
+- persist selection and all daily rolls before calling Flash;
+- Flash receives selected entities only.
 
 ### Stage 3 — Flash background worker
 
@@ -487,4 +551,6 @@ The world is not deterministic just because an LLM prefers the statistically mos
 
 When a situation has multiple reasonable possible developments, the AI should use the resolver rather than silently choosing its favorite.
 
-**Model proposes the question and outcome space. Server rolls. Model obeys.**
+**Daily world simulation: Resolver selects. Resolver rolls. Flash interprets.**
+
+**Additional uncertain branch: Model proposes the question and outcome space. Resolver rolls. Model obeys.**
