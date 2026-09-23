@@ -105,7 +105,7 @@ test("Stage 10 is certified READY and selector debt is removed", () => {
   )
   assert.match(
     roadmap,
-    /Stage 10 is READY\. READY stages: 1–10\. Next stage to execute: 11\./,
+    /\| 10 \| READY \|/,
   )
   assert.doesNotMatch(readinessDebt, /id: "campaign-gm-model"/)
   assert.doesNotMatch(readinessDebt, /id: "ai-button-selector"/)
