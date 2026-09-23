@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- AI GM Stage 6: canonical NPC runtime, fixed build worker and server-authoritative NPC mechanics.
 --
 -- NPC mechanics are materialized into the existing Character Engine template runtime.
