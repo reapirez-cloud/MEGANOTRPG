@@ -76,12 +76,23 @@ function unique(values: Array<string | null | undefined>) {
 function gameTimeFromEvent(event: JsonRecord | undefined) {
   const payload = record(event?.payload)
   return {
-    campaignDay: nullableNumber(payload.campaign_day),
+    campaignDay:
+      nullableNumber(payload.effective_game_day) ??
+      nullableNumber(payload.campaign_day),
     dayPeriod: nullableString(payload.day_period),
     sourceLocationId:
       nullableString(event?.location_id) ||
       nullableString(payload.location_snapshot),
   }
+}
+
+function eventVisibleAtGameDay(
+  event: JsonRecord | undefined,
+  currentDay: number | null,
+) {
+  if (currentDay === null) return true
+  const eventDay = gameTimeFromEvent(event).campaignDay
+  return eventDay === null || eventDay <= currentDay
 }
 
 function withGameAge(
@@ -95,8 +106,10 @@ function withGameAge(
     campaign_day: time.campaignDay,
     day_period: time.dayPeriod,
     game_age_days:
-      currentDay !== null && time.campaignDay !== null
-        ? Math.max(0, currentDay - time.campaignDay)
+      currentDay !== null &&
+        time.campaignDay !== null &&
+        time.campaignDay <= currentDay
+        ? currentDay - time.campaignDay
         : null,
     source_location_id: time.sourceLocationId,
   }
@@ -676,6 +689,12 @@ export async function buildGameChatContextV2({
       if (String(message.character_id || "") === sourceCharacterId) return true
       return strings(message.recipient_character_ids).includes(sourceCharacterId)
     })
+    .filter((message) =>
+      eventVisibleAtGameDay(
+        chatEventByMessage.get(String(message.id)),
+        currentDay,
+      )
+    )
     .map((message) => {
       const event = chatEventByMessage.get(String(message.id))
       return withGameAge({
@@ -723,33 +742,52 @@ export async function buildGameChatContextV2({
     )
   }
 
-  function newestSourceEvent(ids: string[]) {
-    const candidates = ids
+  function sourceEvents(ids: string[]) {
+    return ids
       .map((id) => memoryEventById.get(id))
       .filter((item): item is JsonRecord => Boolean(item))
-      .sort((a, b) =>
-        String(b.occurred_at || "").localeCompare(String(a.occurred_at || ""))
-      )
-    return candidates[0]
   }
 
-  // Long-term memory also follows the persistent character chat/current domain
-  // owners. Location snapshots are retained as historical metadata, not used to
-  // throw away memories just because the character moved elsewhere.
-  const memoryFacts = rawFacts.map((item) =>
-    withGameAge(
-      item,
-      newestSourceEvent(strings(item.source_event_ids)),
-      currentDay,
+  function newestSourceEvent(ids: string[]) {
+    return sourceEvents(ids)
+      .filter((event) => eventVisibleAtGameDay(event, currentDay))
+      .sort((a, b) =>
+        String(b.occurred_at || "").localeCompare(String(a.occurred_at || ""))
+      )[0]
+  }
+
+  function memorySourceSetVisibleAtGameDay(ids: string[]) {
+    if (currentDay === null || ids.length === 0) return true
+    return !sourceEvents(ids).some(
+      (event) => !eventVisibleAtGameDay(event, currentDay),
     )
-  )
-  const memorySummaries = rawSummaries.map((item) =>
-    withGameAge(
-      item,
-      newestSourceEvent(strings(item.key_event_ids)),
-      currentDay,
+  }
+
+  // An active memory row can already contain a statement updated by a future
+  // source event. If any known source event is ahead of this scene, exclude the
+  // whole row instead of disguising future state as game_age_days = 0.
+  const memoryFacts = rawFacts
+    .filter((item) =>
+      memorySourceSetVisibleAtGameDay(strings(item.source_event_ids))
     )
-  )
+    .map((item) =>
+      withGameAge(
+        item,
+        newestSourceEvent(strings(item.source_event_ids)),
+        currentDay,
+      )
+    )
+  const memorySummaries = rawSummaries
+    .filter((item) =>
+      memorySourceSetVisibleAtGameDay(strings(item.key_event_ids))
+    )
+    .map((item) =>
+      withGameAge(
+        item,
+        newestSourceEvent(strings(item.key_event_ids)),
+        currentDay,
+      )
+    )
 
   const originalMessage =
     nullableString(jobInput.original_message)?.toLocaleLowerCase("ru-RU") || ""

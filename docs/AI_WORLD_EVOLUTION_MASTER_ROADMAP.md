@@ -220,6 +220,8 @@ Tests:
 
 ## Stage 2 — Background simulation schema
 
+**Status: CERTIFIED — 2026-09-23**
+
 Create the persistent background runtime.
 
 Tables/structures:
@@ -248,13 +250,12 @@ Immutable historical event ledger.
 ### `ai_background_entity_snapshots`
 Versioned compact state by game day.
 
-Add explicit AI-world simulation classification:
-- locations: `entity|detail|disabled`;
-- persistent NPCs: equivalent simulation eligibility state.
+Entity/detail/disabled simulation classification remains exclusively **Stage 3** under the executable contract; Stage 2 only establishes temporal-safe storage and read boundaries.
 
 Tests:
 - duplicate day run impossible;
 - future snapshot versions coexist safely;
+- reads enforce `effective_game_day/through_game_day <= source_game_day`;
 - normal campaigns cannot create rows.
 
 **Done when:** storage can represent world evolution without touching live canon incorrectly.

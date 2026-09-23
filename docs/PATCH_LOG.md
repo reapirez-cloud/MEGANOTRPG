@@ -19,6 +19,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Database / migration changes
 
+- Added AI World Evolution Stage 2 background storage: unique daily runs, Resolver-backed roll projections, immutable effective-day events linked into `campaign_events`, and versioned compact entity snapshots with service-only write boundaries.
 - Added AI World Evolution Stage 1 World Resolver storage and RPC: one immutable server-owned random receipt per `campaign_id + decision_key`, AI-world-only execution, ordered gapless outcome bands, audit linkage and service-role-only access.
 - Added `swap_inventory_items_simple_v1` for server-authoritative simple-slot swaps with version/capacity/ownership checks.
 - Added isolated `ai_world_slots.image_quality` and `image_base_prompt` defaults for the experimental AI-world branch; ordinary campaign/Muntar image profiles remain unchanged.
@@ -27,6 +28,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Added temporal-safe background readers (`effective_game_day/through_game_day <= source_game_day`), prevented unmaterialized `ai_background` campaign events from resolving quests, and hardened game-chat memory/history so future game-day evidence is excluded instead of being relabeled age 0.
 - World Resolver now uses cryptographic 32-bit randomness with rejection sampling rather than modulo-biased or model-owned randomness; repeated identical decisions replay the stored receipt, while reuse of the same key with changed semantics is rejected instead of rerolled.
 - The spatial/Tetris inventory implementation remains isolated and intact; the simple inventory continues to project the same canonical Cheburashka item rows and holder tree.
 - Quick access is deliberately non-physical metadata. It does not consume `hand`, `external`, equipment or bag placement and therefore cannot silently rewrite carrying state.
@@ -34,6 +36,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Repaired the stale AI-world contract regression that still expected certified Stage 1 to be `planned`.
+- Certified AI World Evolution Stage 2 with live transactional smoke for duplicate daily-run idempotency, Stage-1 roll linkage, Day-3/Day-5 snapshot selection, future-event exclusion, campaign-event provenance and human-campaign isolation; added covering FK indexes after advisor review.
 - Certified AI World Evolution Stage 1 against the executable contract: live transactional smoke covered idempotent replay, d7 bounds/all faces, overlapping-band rejection, decision-key conflict rejection and human-campaign isolation; post-migration privilege checks confirm authenticated users cannot execute the Resolver and service role cannot update/delete receipts.
 - Added/updated regression coverage for GM drawer button activation, full equipment/empty-slot presentation, separated bag panels, desktop/touch drag, swap RPC wiring and non-physical quick-access wiring.
 - Supabase migration history confirms the simple drag/swap and experimental AI-world pixel/low defaults are applied; security advisors were reviewed after the quick-access RPC addition.

@@ -26,10 +26,10 @@ test("every AI world evolution stage explicitly blocks fuzzy completion claims",
   }
 })
 
-test("existing gameplay dice are explicitly not accepted as World Resolver completion", () => {
+test("World Resolver certification still rejects fuzzy gameplay-dice completion claims", () => {
   const stage = AI_WORLD_EVOLUTION_STAGES.find((entry) => entry.id === 1)
   assert.ok(stage)
-  assert.equal(stage.status, "planned")
+  assert.equal(stage.status, "certified")
   assert.match(stage.notSatisfiedBy.join("\n"), /Roll Engine|Tobik|player-roll/)
   assert.match(stage.requiredArtifacts.join("\n"), /decision_key|resolve_world_random_v1/)
 })

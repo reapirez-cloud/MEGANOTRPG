@@ -80,7 +80,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Background simulation schema",
     purpose:
       "Persist daily runs, rolls, immutable background events and versioned compact state without prematurely mutating present-day canon.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "campaign_events",
       "campaign_memory_facts",
