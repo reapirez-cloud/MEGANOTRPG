@@ -48,30 +48,6 @@ export const AI_GM_READINESS_DEBT: AiGmReadinessDebtItem[] = [
     ],
   },
   {
-    id: "campaign-gm-model",
-    title: "Выбираемая главная модель кампании",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "Главный ИИ-ГМ выбирается на уровне кампании и может быть DeepSeek Pro, Gemini, Grok или другой gm_selectable agent model.",
-    readyWhen: [
-      "В ai_agent_settings существует отдельный campaign-level agent_key для GM runtime.",
-      "Смена модели влияет на следующие GM turns всей кампании, а не только одного пользователя.",
-      "Игроки могут видеть выбранную модель, но менять её могут только GM/owner.",
-    ],
-  },
-  {
-    id: "ai-button-selector",
-    title: "Кнопка AI вместо VI",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "PlayerProfileMark больше не показывает захардкоженный VI. Кнопка AI открывает выбор главной модели кампании.",
-    readyWhen: [
-      "Кнопка показывает AI и больше не disabled.",
-      "Открывается sheet со списком gm_selectable моделей.",
-      "Текущая campaign GM model отмечена и сохраняется через защищённый серверный/DB контракт.",
-    ],
-  },
-  {
     id: "npc-text-inventory",
     title: "Текстовый инвентарь NPC",
     removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",

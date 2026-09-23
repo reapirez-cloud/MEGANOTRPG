@@ -48,7 +48,7 @@ test("AI GM Stage 1 processes a queued job and writes the answer back to chat", 
   assert.match(runtime, /reserve_ai_gm_chat_turn_v1/)
   assert.match(runtime, /\.eq\("status", "queued"\)/)
   assert.match(context, /const CHAT_CONTEXT_LIMIT = 50/)
-  assert.match(runtime, /resolveVossModel/)
+  assert.match(runtime, /resolveCampaignGmModel/)
   assert.match(runtime, /requestChatCompletion/)
   assert.match(runtime, /publish_ai_gm_message_v1/)
   assert.match(runtime, /status: "completed"/)
@@ -77,5 +77,7 @@ test("UI triggers AI GM only after the player's own PC text message was stored",
 test("completed Stage 1 runtime debt is removed from the temporary tracker", () => {
   const debt = read("src/ai/aiGmReadinessDebt.ts")
   assert.doesNotMatch(debt, /id: "gm-runtime-in-game-chat"/)
-  assert.match(debt, /id: "campaign-gm-model"/)
+  assert.doesNotMatch(debt, /id: "campaign-gm-model"/)
+  assert.doesNotMatch(debt, /id: "ai-button-selector"/)
+  assert.match(debt, /id: "gm-turn-replay-rollback"/)
 })
