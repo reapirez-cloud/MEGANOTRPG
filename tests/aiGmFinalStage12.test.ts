@@ -20,6 +20,9 @@ const audienceRlsMigration = read(
 const statusMigration = read(
   "supabase/migrations/20260923152400_ai_gm_final_stage12_status_queue_label_v1.sql",
 )
+const advisorIndexMigration = read(
+  "supabase/migrations/20260923152500_ai_gm_final_stage12_advisor_indexes_v1.sql",
+)
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
 const context = read("supabase/functions/voss-agent/game-chat-context.ts")
 const maintenance = read("supabase/functions/voss-agent/world-maintenance.ts")
@@ -152,6 +155,12 @@ test("Stage 12 exposes durable GM turn status in chat", () => {
   assert.match(statusMigration, /ИИ-ГМ ждёт очередь общей сцены/)
   assert.match(statusMigration, /ИИ-ГМ запускается/)
   assert.match(statusMigration, /v_scene_key is not null/)
+})
+
+test("Stage 12 closes remaining AI GM foreign-key advisor gaps", () => {
+  assert.match(advisorIndexMigration, /ai_gm_dawn_receipts_location_idx/)
+  assert.match(advisorIndexMigration, /ai_gm_dawn_receipts_message_idx/)
+  assert.match(advisorIndexMigration, /ai_gm_room_maintenance_state_dispatch_job_idx/)
 })
 
 test("Stage 12 is certified READY and the temporary debt tracker is gone", () => {
