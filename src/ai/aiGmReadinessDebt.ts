@@ -72,20 +72,6 @@ export const AI_GM_READINESS_DEBT: AiGmReadinessDebtItem[] = [
     ],
   },
   {
-    id: "narrator-and-npc-dialogue",
-    title: "Рассказчик и реплики NPC как разные сообщения",
-    removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",
-    requirement:
-      "Описание мира/результатов пишет Рассказчик, а прямые реплики NPC идут отдельными chat messages от канонической личности NPC с его аватаром.",
-    readyWhen: [
-      "AI tool send_narration создаёт GM narration без character_id.",
-      "AI tool send_npc_dialogue принимает только canonical npc_id + текст.",
-      "Имя и avatar_url NPC сервер берёт из characters, а не из аргументов модели.",
-      "Один GM turn может чередовать narration и несколько NPC dialogue messages.",
-      "NPC отвечает только из доступных ему знаний/отношений/состояния, а не из omniscient GM context.",
-    ],
-  },
-  {
     id: "npc-text-inventory",
     title: "Текстовый инвентарь NPC",
     removeWhenReady: "УДАЛИТЬ ПРИ РЕЙДИ",

@@ -493,6 +493,7 @@ export async function buildGameChatContextV2({
         location_id: nullableString(world.location_id),
         campaign_day: nullableNumber(world.campaign_day),
         day_period: nullableString(world.day_period),
+        world_state_updated_at: nullableString(world.updated_at),
       }
     })
 
@@ -769,5 +770,181 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     relevant_long_term_memory: context.memory,
     recent_chat_messages_all_authors: context.recentMessages,
     explicit_player_name_mentions: context.mentionedPlayerCharacters,
+  })
+}
+
+
+export function npcDialogueContextForPrompt(
+  context: Stage2GameChatContext,
+  npcCharacterId: string,
+  priorOutputs: JsonRecord[] = [],
+) {
+  const npc = context.presentCharacters.find(
+    (item) =>
+      String(item.id) === npcCharacterId &&
+      item.character_type === "npc",
+  )
+  if (!npc) throw new Error("ai_gm_npc_dialogue_context_absent")
+
+  const profile = context.npcProfiles.find(
+    (item) => String(item.character_id) === npcCharacterId,
+  ) || {}
+  const sheet = context.sheets.find(
+    (item) => String(item.character_id) === npcCharacterId,
+  ) || null
+
+  const safeProfile = {
+    character_id: profile.character_id || npcCharacterId,
+    role: profile.role || null,
+    species: profile.species || null,
+    creature_type: profile.creature_type || null,
+    size: profile.size || null,
+    challenge_rating: profile.challenge_rating ?? null,
+    occupation: profile.occupation || null,
+    faction: profile.faction || null,
+    appearance: profile.appearance || null,
+    demeanor: profile.demeanor || null,
+    motivation: profile.motivation || null,
+    public_notes: profile.public_notes || null,
+    tags: profile.tags || [],
+  }
+
+  const nameById = new Map(
+    context.presentCharacters.map((item) => [
+      String(item.id),
+      String(item.name || ""),
+    ]),
+  )
+  const relationships = context.relationships
+    .filter(
+      (item) =>
+        String(item.subject_character_id) === npcCharacterId ||
+        String(item.target_character_id) === npcCharacterId,
+    )
+    .map((item) => ({
+      subject_character_id: item.subject_character_id,
+      subject_name: nameById.get(String(item.subject_character_id)) || null,
+      target_character_id: item.target_character_id,
+      target_name: nameById.get(String(item.target_character_id)) || null,
+      relationship_kind: item.relationship_kind,
+      public_label: item.public_label,
+      attitude_score: item.attitude_score,
+      state: item.state,
+    }))
+
+  const visibleCharacterIds = new Set(
+    context.presentCharacters.map((item) => String(item.id)),
+  )
+  const presenceSinceRaw =
+    typeof npc.world_state_updated_at === "string"
+      ? npc.world_state_updated_at
+      : ""
+  const presenceSince = Date.parse(presenceSinceRaw)
+  const visibleRecentMessages = context.recentMessages
+    .filter((message) => {
+      const characterId =
+        typeof message.character_id === "string"
+          ? message.character_id
+          : null
+      if (characterId && !visibleCharacterIds.has(characterId)) return false
+      if (!Number.isFinite(presenceSince)) return false
+      const createdAt = Date.parse(String(message.created_at || ""))
+      return Number.isFinite(createdAt) && createdAt >= presenceSince
+    })
+    .slice(-16)
+    .map((message) => ({
+      id: message.id,
+      author_name: message.author_name,
+      character_id: message.character_id,
+      body: message.body,
+      event_kind: message.event_kind,
+      event_payload: message.event_payload,
+      campaign_day: message.campaign_day,
+      day_period: message.day_period,
+    }))
+
+  const visibleFacts = context.memory.facts
+    .filter((item) => item.visibility !== "gm")
+    .filter(
+      (item) =>
+        String(item.subject_id || "") === npcCharacterId ||
+        strings(item.visible_character_ids).includes(npcCharacterId),
+    )
+    .map((item) => ({
+      fact_key: item.fact_key,
+      subject_type: item.subject_type,
+      subject_id: item.subject_id,
+      predicate: item.predicate,
+      statement: item.statement,
+      structured_value: item.structured_value,
+      confidence: item.confidence,
+      campaign_day: item.campaign_day,
+      day_period: item.day_period,
+      game_age_days: item.game_age_days,
+    }))
+
+  const visibleSummaries = context.memory.summaries
+    .filter((item) => item.visibility !== "gm")
+    .filter((item) =>
+      strings(item.visible_character_ids).includes(npcCharacterId)
+    )
+    .map((item) => ({
+      title: item.title,
+      summary: item.summary,
+      campaign_day: item.campaign_day,
+      day_period: item.day_period,
+      game_age_days: item.game_age_days,
+    }))
+
+  return JSON.stringify({
+    contract: {
+      identity: "You are this NPC only, never the GM or a player character.",
+      knowledge_boundary:
+        "Use only this object. If a fact is absent, the NPC does not know it.",
+      no_omniscient_quest_context: true,
+      no_hidden_gm_notes: true,
+    },
+    current_game_time: context.currentGameTime,
+    room: {
+      id: context.room.id,
+      title: context.room.title,
+      location_id: context.room.location_id,
+    },
+    source_location: context.sourceLocation,
+    npc: {
+      id: npc.id,
+      name: npc.name,
+      character_class: npc.character_class,
+      level: npc.level,
+      profile: safeProfile,
+      sheet,
+    },
+    source_character: {
+      id: context.sourceCharacter.id,
+      name: context.sourceCharacter.name,
+      character_class: context.sourceCharacter.character_class,
+      level: context.sourceCharacter.level,
+    },
+    physically_present_characters: context.presentCharacters.map((item) => ({
+      id: item.id,
+      name: item.name,
+      character_type: item.character_type,
+    })),
+    relationships,
+    owned_assets: context.assets.filter(
+      (item) => String(item.owner_character_id) === npcCharacterId,
+    ),
+    faction_memberships: context.factionMemberships.filter(
+      (item) => String(item.character_id) === npcCharacterId,
+    ),
+    faction_reputations: context.factionReputations.filter(
+      (item) => String(item.character_id) === npcCharacterId,
+    ),
+    explicitly_visible_memory: {
+      facts: visibleFacts,
+      summaries: visibleSummaries,
+    },
+    recent_messages_observed_since_current_presence: visibleRecentMessages,
+    prior_messages_in_this_ai_turn: priorOutputs.slice(-12),
   })
 }
