@@ -20,6 +20,7 @@ import {
 import type { Character } from "../../context/CharacterContext.tsx"
 import {
   playerTurnSlotForEconomy,
+  playerTurnSlotForSpell,
   type PlayerTurnEntry,
   type PlayerTurnSlot,
 } from "./playerTurnQueue"
@@ -252,6 +253,7 @@ export default function ChatActionHost({
         ? {
             kind: "template_roll",
             label: action.label || action.key,
+            economy: action.economy,
             mechanicId,
             ...(optionKey ? { optionKey } : {}),
             rollKind: "action",
@@ -275,6 +277,7 @@ export default function ChatActionHost({
         : {
             kind: "template_action",
             label: action.label || action.key,
+            economy: action.economy,
             mechanicId,
             ...(optionKey ? { optionKey } : {}),
             payload: d20Override
@@ -358,6 +361,7 @@ export default function ChatActionHost({
           {
             kind: inventoryRolls ? "inventory_roll" : "inventory_event",
             label: action.label || action.key,
+            economy: action.economy,
             itemId: inventoryItemId,
             itemAmount: 1,
             rollKind: "action",
@@ -409,6 +413,7 @@ export default function ChatActionHost({
       ? {
           kind: "raw_roll",
           label: action.label || action.key,
+          economy: action.economy,
           rollKind: "action",
           modifier: action.attack?.bonus.value || 0,
           rollD20: Boolean(action.attack),
@@ -431,6 +436,7 @@ export default function ChatActionHost({
       : {
           kind: "raw_event",
           label: action.label || action.key,
+          economy: action.economy,
           eventKind: "action",
           payload: { detail: action.economy },
           resourceCosts: costs,
@@ -561,7 +567,7 @@ export default function ChatActionHost({
             modifierMechanicIds,
             payload: { detail, spellKey: spell.key },
           },
-          "action",
+          await playerTurnSlotForSpell(spell.key),
         )
       ) {
         return true
@@ -602,7 +608,7 @@ export default function ChatActionHost({
             ...(option ? { optionKey: option.key } : {}),
             payload: { detail, spellKey: spell.key },
           },
-          "action",
+          await playerTurnSlotForSpell(spell.key),
         )
       ) {
         return true
@@ -633,7 +639,7 @@ export default function ChatActionHost({
             payload: { detail, spellKey: spell.key },
             resourceCosts: costs,
           },
-          "action",
+          await playerTurnSlotForSpell(spell.key),
         )
       ) {
         return true
