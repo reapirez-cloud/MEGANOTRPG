@@ -12,6 +12,7 @@ type ChatRequest = {
   disableReasoningEffort?: boolean
   timeoutMs?: number
   retryCount?: number
+  responseFormat?: { type: "json_object" }
 }
 
 export class ProviderGatewayError extends Error {
@@ -213,6 +214,9 @@ export async function requestChatCompletion(input: ChatRequest) {
           temperature: input.temperature ?? 0.55,
           ...(reasoningEffort
             ? { reasoning_effort: reasoningEffort }
+            : {}),
+          ...(input.responseFormat
+            ? { response_format: input.responseFormat }
             : {}),
           ...(input.tools?.length
             ? {
