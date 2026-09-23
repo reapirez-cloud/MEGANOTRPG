@@ -317,7 +317,9 @@ export async function buildGameChatContextV2({
 }): Promise<Stage2GameChatContext> {
   const roomId = nullableString(jobInput.room_id)
   const sourceCharacterId = nullableString(jobInput.source_character_id)
-  const sourceMessageId = nullableNumber(jobInput.source_chat_message_id)
+  const sourceMessageId =
+    nullableNumber(jobInput.continuation_chat_message_id) ??
+    nullableNumber(jobInput.source_chat_message_id)
 
   if (!roomId || !sourceCharacterId || sourceMessageId === null) {
     throw new Error("ai_gm_stage2_context_input_invalid")
