@@ -340,7 +340,7 @@ export async function buildGameChatContextV2({
       .maybeSingle(),
     admin
       .from("chat_messages")
-      .select("id,author_name,body,user_id,character_id,event_kind,event_payload,attachment_kind,turn_command_id,turn_component,created_at")
+      .select("id,author_name,body,user_id,character_id,event_kind,event_payload,attachment_kind,turn_command_id,turn_component,turn_order,created_at")
       .eq("room_id", roomId)
       .lte("id", sourceMessageId)
       .order("id", { ascending: false })
@@ -626,6 +626,7 @@ export async function buildGameChatContextV2({
       attachment_kind: message.attachment_kind,
       turn_command_id: message.turn_command_id,
       turn_component: message.turn_component,
+      turn_order: message.turn_order,
       created_at: message.created_at,
     }, event, currentDay)
   })
