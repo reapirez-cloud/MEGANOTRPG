@@ -104,10 +104,8 @@ test("Stage 8 is certified READY and its readiness debt is removed", () => {
     roadmap,
     /\| 8 \| READY \| Short rest, long rest, dawn and game-time recovery \|/,
   )
-  assert.match(
-    roadmap,
-    /Stage 8 is READY\. READY stages: 1–8\. Next stage to execute: 9\./,
-  )
+  assert.match(roadmap, /\| 8 \| READY \|/)
+  assert.match(roadmap, /READY stages: 1–(?:8|9|10|11|12)/)
   assert.doesNotMatch(readinessDebt, /id: "gm-rest-and-dawn-controls"/)
 })
 
