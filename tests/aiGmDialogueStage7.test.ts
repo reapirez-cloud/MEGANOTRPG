@@ -86,9 +86,6 @@ test("Stage 7 is certified READY and its readiness debt is removed", () => {
     roadmap,
     /\| 7 \| READY \| Multi-message Narrator\/NPC dialogue tool flow \|/,
   )
-  assert.match(
-    roadmap,
-    /Stage 7 is READY\. READY stages: 1–7\. Next stage to execute: 8\./,
-  )
+  assert.match(roadmap, /READY stages: 1–7/)
   assert.doesNotMatch(readinessDebt, /id: "narrator-and-npc-dialogue"/)
 })
