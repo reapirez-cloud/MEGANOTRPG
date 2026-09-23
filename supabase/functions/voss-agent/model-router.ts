@@ -473,6 +473,74 @@ export async function resolveVossModel(
   }
 }
 
+export async function resolveCampaignGmModel(
+  admin: SupabaseClient,
+  input: {
+    campaignId: string
+  },
+): Promise<VossRouteDecision> {
+  const [{ data: setting, error: settingError }, { data: rows, error: modelError }] =
+    await Promise.all([
+      admin
+        .from("ai_agent_settings")
+        .select("selected_model_id")
+        .eq("campaign_id", input.campaignId)
+        .eq("agent_key", "gm")
+        .maybeSingle(),
+      admin
+        .from("ai_models")
+        .select(
+          "id,provider_key,model_key,display_name,enabled,is_base,gm_selectable,user_selectable,supports_tools,supports_json,supports_streaming,supports_vision,model_kind,access_scope,context_window,cost_tier,reasoning_tier,latency_tier",
+        )
+        .eq("enabled", true)
+        .eq("model_kind", "agent")
+        .eq("access_scope", "campaign")
+        .eq("gm_selectable", true)
+        .eq("supports_json", true),
+    ])
+
+  if (settingError) throw new Error(settingError.message)
+  if (modelError) throw new Error(modelError.message)
+
+  const models = (rows || []) as RouterModel[]
+  const selectedModelId =
+    typeof setting?.selected_model_id === "string"
+      ? setting.selected_model_id
+      : null
+  const selected =
+    models.find((model) => model.id === selectedModelId) || null
+
+  if (selected) {
+    return {
+      taskKey: "general",
+      model: selected,
+      routeMode: "primary",
+      reason: "Campaign GM runtime uses the model selected for agent_key=gm.",
+      degraded: false,
+    }
+  }
+
+  const fallback =
+    models.find((model) => model.is_base) ||
+    [...models].sort((left, right) =>
+      strongSort(left, right, true)
+    )[0] ||
+    null
+
+  if (!fallback) {
+    throw new Error("No active gm_selectable JSON-capable campaign model configured")
+  }
+
+  return {
+    taskKey: "general",
+    model: fallback,
+    routeMode: "fallback",
+    reason:
+      "Campaign GM selection is missing or unavailable; the safe campaign GM fallback is used.",
+    degraded: false,
+  }
+}
+
 export async function recordVossRouteRun(
   admin: SupabaseClient,
   input: {
