@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- AI GM Stage 6: execute a canonical NPC action and reserve its player save atomically.
 
 create or replace function public.execute_ai_gm_npc_action_turn_v1(
