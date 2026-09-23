@@ -19,6 +19,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Database / migration changes
 
+- Added AI World Evolution Stage 1 World Resolver storage and RPC: one immutable server-owned random receipt per `campaign_id + decision_key`, AI-world-only execution, ordered gapless outcome bands, audit linkage and service-role-only access.
 - Added `swap_inventory_items_simple_v1` for server-authoritative simple-slot swaps with version/capacity/ownership checks.
 - Added isolated `ai_world_slots.image_quality` and `image_base_prompt` defaults for the experimental AI-world branch; ordinary campaign/Muntar image profiles remain unchanged.
 - Added `set_inventory_quick_access_v1`: an authenticated, character-authorized shortcut mutation stored on the existing item `item_state`; enabling a shortcut clears the previous shortcut for that character instead of creating a duplicate item.
@@ -26,12 +27,14 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- World Resolver now uses cryptographic 32-bit randomness with rejection sampling rather than modulo-biased or model-owned randomness; repeated identical decisions replay the stored receipt, while reuse of the same key with changed semantics is rejected instead of rerolled.
 - The spatial/Tetris inventory implementation remains isolated and intact; the simple inventory continues to project the same canonical Cheburashka item rows and holder tree.
 - Quick access is deliberately non-physical metadata. It does not consume `hand`, `external`, equipment or bag placement and therefore cannot silently rewrite carrying state.
 - Mobile simple-inventory drag uses pointer events and hit-testing rather than relying on desktop HTML5 drag behavior.
 
 ### Tests / verification
 
+- Certified AI World Evolution Stage 1 against the executable contract: live transactional smoke covered idempotent replay, d7 bounds/all faces, overlapping-band rejection, decision-key conflict rejection and human-campaign isolation; post-migration privilege checks confirm authenticated users cannot execute the Resolver and service role cannot update/delete receipts.
 - Added/updated regression coverage for GM drawer button activation, full equipment/empty-slot presentation, separated bag panels, desktop/touch drag, swap RPC wiring and non-physical quick-access wiring.
 - Supabase migration history confirms the simple drag/swap and experimental AI-world pixel/low defaults are applied; security advisors were reviewed after the quick-access RPC addition.
 

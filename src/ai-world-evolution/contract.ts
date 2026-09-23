@@ -43,7 +43,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "World Resolver foundation",
     purpose:
       "Own all AI-world narrative/background randomness server-side with persistent idempotent decision keys, audit provenance and no rerolls.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "src/roll-engine/dice.ts provides unbiased dN rolling",
       "ENGINE_ARCHITECTURE.tobik owns gameplay randomness",

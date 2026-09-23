@@ -184,6 +184,8 @@ Irreversible future events must not leak backward through canonical base rows.
 
 ## Stage 1 — World Resolver foundation
 
+**Status: CERTIFIED — 2026-09-23**
+
 Build the server-owned randomness boundary.
 
 Implement:
