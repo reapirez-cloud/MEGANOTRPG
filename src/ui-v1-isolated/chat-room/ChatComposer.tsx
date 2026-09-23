@@ -353,6 +353,7 @@ export default function ChatComposer({
         setTurnDraft(draft)
         setMovementText(draft?.movement?.description || "")
         setText(draft?.description || "")
+        setRecipientCharacterIds(draft?.recipient_character_ids || [])
       })
       .catch((error) => {
         if (cancelled) return
@@ -472,6 +473,7 @@ export default function ChatComposer({
       componentOrder,
       description,
       expectedRevision: turnDraft?.revision ?? null,
+      recipientCharacterIds,
     })
     setTurnDraft(saved)
     setMovementText(saved.movement?.description || "")
