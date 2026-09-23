@@ -58,6 +58,7 @@ declare
   v_target_names text[] := '{}'::text[];
   v_target_id uuid;
   v_target_location_id uuid;
+  v_scene_room_id uuid;
   v_message_id bigint;
   v_body text;
   v_result jsonb;
@@ -305,14 +306,22 @@ begin
       v_targets:=array_append(v_targets,v_source_character_id);
     end if;
 
-    update public.chat_rooms
-    set campaign_day=v_effective_day,
-        day_period='dawn',
-        updated_at=now()
-    where campaign_id=v_job.campaign_id
-      and room_type='scene'
-      and scene_state='active'
-      and location_id=v_source_location_id;
+    for v_scene_room_id in
+      select r.id
+      from public.chat_rooms r
+      where r.campaign_id=v_job.campaign_id
+        and r.room_type='scene'
+        and r.scene_state='active'
+        and r.location_id=v_source_location_id
+      order by r.id
+    loop
+      perform public.set_scene_position(
+        v_scene_room_id,
+        v_source_location_id,
+        v_effective_day,
+        'dawn'
+      );
+    end loop;
 
     foreach v_target_id in array v_targets loop
       select ws.location_id into v_target_location_id
