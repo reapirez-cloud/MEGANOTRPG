@@ -74,7 +74,7 @@ test("PC to PC conversation cannot make AI speak or decide for another PC", () =
   }
 
   assert.match(runtime, /Никогда не говори, не действуй, не решай и не выбирай за player character/)
-  assert.match(runtime, /Если сообщение в основном обращено к другому PC/)
+  assert.match(runtime, /source_audience\.scope=direct_pc/)
   assert.match(runtime, /mode: "none"/)
   assert.match(runtime, /completeWithoutChatMessage/)
   assert.match(runtime, /completedOutputs = 0/)
