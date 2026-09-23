@@ -624,6 +624,8 @@ export async function buildGameChatContextV2({
       event_kind: message.event_kind,
       event_payload: message.event_payload,
       attachment_kind: message.attachment_kind,
+      turn_command_id: message.turn_command_id,
+      turn_component: message.turn_component,
       created_at: message.created_at,
     }, event, currentDay)
   })
