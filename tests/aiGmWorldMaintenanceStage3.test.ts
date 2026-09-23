@@ -117,14 +117,15 @@ test("Stage 3 memory writes are retry-safe and provenance-linked", () => {
   assert.match(worker, /range_end_message_id/)
 })
 
-test("AI GM runtime drains a queued maintenance job after each turn", () => {
+test("Stage 3 maintenance is decoupled from the interactive GM runtime", () => {
   const runtime = read(
     "supabase/functions/voss-agent/game-chat-runtime.ts",
   )
+  const runner = read("supabase/functions/world-maintenance/index.ts")
 
-  assert.match(runtime, /runPendingWorldMaintenanceForRoom/)
-  assert.match(runtime, /finally \{/)
-  assert.match(runtime, /campaignId,[\s\S]*roomId/)
+  assert.doesNotMatch(runtime, /runPendingWorldMaintenanceForRoom/)
+  assert.match(runner, /runPendingWorldMaintenanceForRoom/)
+  assert.match(runner, /dispatch_ai_gm_maintenance_job_v1/)
 })
 
 test("roadmap stage counter is persistent and points to Stage 3", () => {
