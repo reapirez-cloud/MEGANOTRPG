@@ -746,123 +746,634 @@ Do not delete permanent promoted NPC state.
 
 ---
 
-## Stage 17 — Canon-bound intent adjudication and real player rolls
+## Stage 17 — Canon-bound intent adjudication and delegated real player rolls
 
 **Status: PLANNED**
 
-The player d20 answers how well the character performs an action. It does **not** decide whether an unstated world fact suddenly exists.
+The primary GM does **not** need to know Supabase RPC names, UI implementation details or the application's roll API.
 
-Before a player roll, the AI GM must evaluate the declared intent against current canon and choose one of:
+Its job is fictional/mechanical judgment:
 
-- `deterministic_success` — no roll;
-- `deterministic_failure` — no roll;
-- `check` — real player d20 with a precommitted DC/outcome envelope;
-- `impossible_exact` — exact requested result is unavailable; natural 20 may unlock only a precommitted plausible partial result.
+1. understand what the player is trying to do;
+2. decide whether the result is already deterministic;
+3. decide whether world existence is actually established;
+4. if a real character check is needed, state the semantic check and logical difficulty;
+5. a smaller mechanic worker translates that directive into the existing real server roll request.
 
-### Required separation
+This must support ordinary D&D-style checks from context, not only authored buttons.
 
-World existence and character performance are different uncertainties.
+Examples:
+- exceptionally strong alcohol -> Constitution check/save when consequences are uncertain;
+- sprinting/climbing/swimming under pressure -> Athletics/Strength;
+- reading a suspicious NPC -> Insight;
+- tracking -> Survival;
+- spotting hidden detail -> Perception;
+- recalling plausible lore -> appropriate Intelligence check;
+- any other normal check the GM can logically justify.
 
-For example, “I search the forest for a hut”:
+The primary GM may provide the exact skill/save when obvious. The junior mechanic worker may normalize/infer the exact canonical mechanic from the character sheet and server rules. The server remains authoritative for modifier calculation.
 
-- if canon says the hut exists there, the AI can request Survival/Perception/Investigation with a difficulty chosen from the situation;
-- if canon says it does not exist, the exact result cannot succeed;
-- if no hut is established at all, the skill roll does not create one;
-- natural 20 may yield bounded partial success such as shelter, old foundations, human tracks, distant smoke or another useful lead.
+### World existence is not a skill check
 
-Likewise, “I search the forest for a dragon” cannot spawn a dragon on natural 20. A critical result may reveal a dragon-like clue or analogue only if the pre-roll adjudication allowed that partial envelope.
+Player d20 answers how well the character performs an action.
 
-If world existence is genuinely unresolved and should be randomized, Stage 11 World Resolver settles **existence first**. Only after existence is committed may a player skill roll determine whether the character finds or interacts with it.
+It does **not** manufacture an unstated hut, dragon, NPC, treasure or clue into existence.
 
-### Pre-roll receipt
+Before the real d20, persist an adjudication mode:
 
-Before exposing the d20 request, persist:
+- `deterministic_success`;
+- `deterministic_failure`;
+- `check`;
+- `impossible_exact`.
 
-- player intent + source-message fingerprint;
-- scene/canon evidence fingerprint;
+If existence is genuinely unresolved and the world can logically contain either outcome, Stage 11 Resolver settles existence first. Only then may a character check determine whether the character finds/interacts with what now exists.
+
+Natural 20 on `impossible_exact` can only reach a **precommitted partial-success envelope**. It cannot turn the exact impossible request into truth.
+
+### Frozen before the die
+
+Before the player sees the roll request, persist:
+- source player intent/fingerprint;
+- evidence/context fingerprint;
 - adjudication mode;
-- exact goal and whether exact success is allowed;
-- request type / ability / skill;
-- AI-selected DC and visibility for normal checks;
+- exact-goal permission;
+- semantic mechanic request;
+- normalized mechanic selected by junior worker;
+- DC + visibility where applicable;
 - natural-20 policy;
-- frozen success/failure/partial-success envelopes.
+- success/failure/partial envelopes.
 
-The existing `pending_player_roll_requests` must reference this receipt.
+After the d20 exists, these fields are immutable.
 
-After the roll exists, neither the model nor a retry may change the DC, canonical evidence, exact-goal permission or outcome envelope.
+**Done when:** the GM can ask for any sensible D&D-style check from fiction, a junior mechanic worker creates the real app check, and neither the model nor the roll can invent canon or move the DC after seeing the result.
 
-**Done when:** the AI can logically decide whether a check is appropriate, choose its difficulty before the roll, request the real player die, and narrate only inside the server-frozen outcome without using the d20 to invent canon.
-
-Full executable contract and examples:
+Detailed spec:
 `docs/AI_WORLD_EVOLUTION_STAGE17_LOGIC_ROLLS.md`
 
 ---
 
-## Stage 18 — Full certification
+## Stage 18 — Post-response junior world commit and turn gate
 
-Must pass at least:
+**Status: PLANNED**
 
-### Resolver
-- unbiased/bounded rolls;
-- decision key cannot reroll;
-- duplicate daily run blocked;
-- two simultaneous dawns cannot duplicate a day simulation.
+This changes the current ordering.
 
-### Selection
-- 200 eligible NPCs can all independently participate in 30% selection;
-- no d100/entity-index coupling;
-- Flash receives only selected entities.
+Current runtime can run world materialization before the final visible reply. Stage 18 intentionally reverses that for nonessential world bookkeeping.
 
-### Locations
-- tavern can be simulated;
-- tavern room/toilet cannot be independently selected when marked detail;
-- nested hierarchy does not automatically disable a whole location.
+### Target turn pipeline
 
-### Anonymous actors
-- three bandits spawn from one bestiary entry;
-- no permanent character rows;
-- independent HP/resources;
-- actor can die/flee independently.
+```text
+Player sends a turn
+        |
+        v
+Primary GM receives clean bounded context
+        |
+        +--> if a real roll is needed:
+        |      semantic roll directive
+        |            |
+        |            v
+        |      junior mechanic worker
+        |            |
+        |            v
+        |      real pending_player_roll_request
+        |            |
+        |      player may roll, but may not send a new free-form turn
+        |            |
+        |            v
+        |      same GM turn resumes with server result
+        |
+        v
+GM final visible answer is published
+        |
+        +--> hidden post_turn_intents are persisted
+        |
+        v
+Player can immediately read/open UI/etc.
+Chat send is server-gated
+UI: "Младший шуршит…"
+        |
+        v
+Junior world worker creates/updates canonical state
+NPCs / locations / quests / memory / bindings / other declared effects
+        |
+        v
+commit receipt
+        |
+        v
+turn gate opens
+        |
+        v
+next player message accepted
+```
+
+### Why
+
+World bookkeeping should not add invisible latency before the player sees prose.
+
+But the next player turn must never begin against state the previous answer already claimed existed but the database has not committed yet.
+
+Therefore response visibility and turn readiness are two different states.
+
+### Primary GM responsibilities
+
+The primary GM produces:
+- player-visible response;
+- a bounded hidden `post_turn_intents` plan containing **what the already-written answer requires the world to commit**.
+
+The hidden plan does not contain provider tool syntax.
+
+Examples:
+- “This answer introduced a named inn: make this location persistent.”
+- “The guard finally gave his real name: promote/bind this NPC.”
+- “The answer established that the bridge collapsed: update that location state.”
+- “This quest fact became canonical: persist it.”
+
+### Junior worker responsibilities
+
+The junior worker:
+- receives only the published answer, hidden intent list and narrow canonical context;
+- has manager/quest/materialization tools;
+- may implement only facts already established by the answer;
+- may resolve identity references and choose the correct owner boundary;
+- cannot rewrite the visible answer or add a new dramatic result after publication;
+- writes idempotent receipts for each intent.
+
+### Turn gate
+
+While junior status is `pending/running`:
+- UI send box is visibly disabled;
+- UI explicitly says **«Младший шуршит…»**;
+- server rejects a new free-form player message even if a modified client tries to send it.
+
+Client locking alone does not count.
+
+When a roll is pending, the allowed interaction is the requested roll only. That is not a new free-form turn.
+
+If junior work fails:
+- do not silently accept the next turn;
+- bounded retry/recovery must exist;
+- UI shows a recoverable synchronization failure instead of pretending the world is current.
+
+**Done when:** response latency is dominated by the GM, bookkeeping happens while the player is reading, and the next message is impossible until canonical state has caught up.
+
+---
+
+## Stage 19 — Bounded clean GM context
+
+**Status: PLANNED**
+
+The existing runtime already has:
+
+```ts
+CHAT_CONTEXT_LIMIT = 50
+MAX_MEMORY_FACTS = 24
+MAX_MEMORY_SUMMARIES = 8
+```
+
+Keep that principle, but make the projection stricter.
+
+### Primary GM receives
+
+Raw conversational history:
+- latest **up to 50** messages relevant/visible to this source PC and scene;
+- player speech/actions;
+- GM narration;
+- NPC dialogue;
+- compact player-visible roll/action results.
+
+Separate compact canon:
+- current game day / period / source location;
+- physically present relevant PCs/NPCs;
+- relevant sheets/resources, not every sheet in the campaign;
+- current NPC identity fingerprints;
+- relevant relationships/factions/assets;
+- active quest slice;
+- bounded memory facts/summaries;
+- current applicable background snapshots;
+- GM behavior profile;
+- participating-player director preferences;
+- enabled content profile;
+- recent cooperative catch-up information when relevant.
+
+### Primary GM does NOT receive as chat history
+
+- `agent_jobs` history;
+- provider traces;
+- junior tool calls;
+- `create_location`, `create_npc` etc. command transcripts;
+- hidden `post_turn_intents`;
+- raw materializer prompts;
+- previous tool-loop JSON;
+- full background event history;
+- all campaign NPCs/locations/quests;
+- giant raw `event_payload` objects when a compact visible result is enough.
+
+Worker commands belong to worker audit, not to narrative memory.
+
+The next GM learns that an inn now exists because the canonical location loader returns the inn, **not because it rereads “tool: create_location {...}” from yesterday's turn**.
+
+### Mechanical messages
+
+Visible roll/action messages may stay in the last-50 history, but must be projected to a compact shape:
+- who rolled;
+- what check;
+- d20/result/total;
+- public DC only if it was public;
+- outcome class when server-known.
+
+Do not forward internal request/dispatch state that does not help storytelling.
+
+### Long campaign behavior
+
+50 recent messages are not long-term memory.
+
+Important older events belong in:
+- compact memory facts;
+- summaries;
+- quests;
+- NPC fingerprint/evolving relationships;
+- background snapshots;
+- canonical world records.
+
+The existing 45-message maintenance process remains responsible for archival summarization.
+
+**Done when:** a 500-turn campaign still sends roughly one screenful of recent dialogue plus bounded relevant canon, not a geological core sample of every tool call since creation.
+
+---
+
+## Stage 20 — Persistent NPC identity fingerprint
+
+**Status: PLANNED**
+
+Current `npc_profiles` has useful but insufficient fields:
+- `demeanor`;
+- `motivation`;
+- notes;
+- tags.
+
+Those describe a sketch, not a durable person.
+
+Create a dedicated **NPC Identity Fingerprint** for every persistent NPC.
+
+### Stable identity core
+
+At minimum:
+- personality traits;
+- weighted values;
+- red lines / things they will not accept;
+- long-term desires;
+- fears;
+- loyalties;
+- attitude toward law/authority where meaningful;
+- risk tolerance;
+- violence threshold;
+- behavior under pressure;
+- self-image;
+- social style / speech tendencies;
+- decision priorities: what wins when values conflict.
+
+Example conceptually:
+
+```text
+Traits: calculating, calm, vindictive
+Values:
+  family 5/5
+  wealth 4/5
+  law 1/5
+Red lines:
+  will not betray daughter
+  will not accept public humiliation quietly
+Fear:
+  returning to poverty
+Pressure:
+  bargain -> threaten via connections -> fight only when cornered
+Decision priority:
+  family > survival > wealth > reputation > law
+```
+
+### Stable identity vs changing state
+
+Do not mix:
+- current mood;
+- current HP;
+- current location;
+- current relationship score;
+- temporary fear;
+- recent anger;
+
+into the stable fingerprint.
+
+Relationship can go from -10 to +40 in a week while core personality stays the same.
+
+Fingerprint evolution requires a **major canonical event** and version/provenance:
+- traumatic loss;
+- ideological conversion;
+- betrayal that actually changes worldview;
+- years of life change;
+- similarly meaningful transformation.
+
+Ordinary dialogue does not rewrite personality.
+
+### Consumers
+
+The exact same current fingerprint goes to:
+- NPC dialogue generation;
+- primary GM;
+- background simulation;
+- social intent adjudication.
+
+This matters mechanically.
+
+If a request directly violates a hard red line, Persuasion may be `impossible_exact` rather than DC 30 wish magic.
+
+### UI
+
+NPC card gets a GM-facing **«Личность»** section.
+
+Private fingerprint fields are not automatically player-visible.
+
+Player-observed traits can be exposed separately if actually discovered.
 
 ### Promotion
-- one actor gets a real name;
-- one canonical NPC created;
-- HP/resources/history preserved;
-- concurrent promotion creates no duplicate;
-- promoted NPC can later enter Resolver pool.
 
-### Background
-- critical 1/100 respected but constrained by canon;
-- neutral result may create no lasting event;
-- existing threads can continue;
-- no context growth proportional to total history.
+A scene actor that becomes a persistent named NPC receives a conservative initial fingerprint based on:
+- behavior already established in the scene;
+- bestiary/archetype context;
+- explicit GM facts.
 
-### Time
-- day-3 player cannot see day-5 event;
-- canonical materialization cannot leak future state backward.
+Do not invent an entire childhood merely because the goblin said his name was Ург.
 
-### Isolation
+**Done when:** the same NPC remains the same person in dialogue, off-screen life and social conflict months later.
+
+---
+
+## Stage 21 — GM behavior profiles
+
+**Status: PLANNED**
+
+Profiles change **how hard reality presses on the player**, not what reality is.
+
+Shared constitution above every profile:
+
+> Player intent is input, not canon.  
+> The world exists independently of what the player wants to be true.  
+> NPCs retain their own values, goals and agency.  
+> A player can change the world only through a logical action/mechanic that actually causes change.  
+> The GM itself is also bound by canon, mechanics and committed random outcomes.
+
+### Жестокий
+
+Meaning: **strict realism**, not “AI wants the player dead.”
+
+Properties:
+- minimal/no plot armor;
+- strong persistent legal/social/economic consequences;
+- power asymmetry is respected;
+- world does not level-scale itself around the PC;
+- stupid choices can lead to arrest, crippling loss or death;
+- guards, factions, witnesses and institutions remember what happened;
+- GM does not invent extra enemies/traps just to kill the PC;
+- if several outcomes are equally logical, it does not bend toward rescue merely because the player is the protagonist.
+
+Example:
+attacking a professional city guard unit as a weak PC can simply be suicidal. The city does not forget a massacre because the encounter ended.
+
+### Приключение
+
+Still realistic, but prefers playable adventure among equally plausible branches:
+- danger is telegraphed more often;
+- escape/surrender/debt/rivalry/complication can be preferred to abrupt death when equally logical;
+- hooks and useful coincidences are more common;
+- consequences remain;
+- NPCs still say no;
+- canon does not bend simply to preserve a plot.
+
+This should be the sensible default.
+
+### Симс
+
+Life-simulation-first:
+- low density of unmotivated lethal escalation;
+- daily life, work, housing, money, hobbies, friendships, dates, family and social conflict receive much more space;
+- ordinary NPCs behave like people, not quest dispensers;
+- rejection and failure remain normal;
+- player wishes do not become NPC wishes;
+- lethal consequences still happen when the player creates a genuinely lethal situation.
+
+A PC in Симс can still die after attacking ten guards with a knife. The profile merely stops the universe from arranging ten guards with knives every breakfast.
+
+### Internal dimensions
+
+Do not encode profile behavior as one vague prompt adjective.
+
+Persist normalized dimensions such as:
+- consequence strictness;
+- plot-armor allowance;
+- lethal escalation pressure;
+- danger telegraphing;
+- recoverable-complication preference;
+- adventure coincidence;
+- life/social focus;
+- pacing;
+- persistence/forgetfulness of consequences.
+
+**Done when:** changing profile changes the campaign pressure while identical facts, NPC identity and resolved dice remain authoritative.
+
+---
+
+## Stage 22 — Player director preferences
+
+**Status: PLANNED**
+
+Player preferences answer:
+
+> “What kind of future opportunities do I enjoy?”
+
+They do **not** answer:
+
+> “What must the world make true?”
+
+Store versioned per-player preferences.
+
+Structured interests may include:
+- combat;
+- exploration;
+- investigation;
+- social play;
+- romance;
+- ordinary daily life;
+- horror;
+- politics/intrigue;
+- economy/property;
+- pacing.
+
+Also allow bounded free text, e.g.:
+
+> “I want a slow story about living on the edge of a city, eventually buying a house and opening a shop.”
+
+### Hard rule
+
+“Хочу роман с этой NPC” means:
+- GM may offer plausible opportunities for closeness if consistent with that NPC.
+
+It does **not** mean:
+- NPC now likes the player;
+- NPC consents;
+- social check automatically succeeds;
+- fingerprint/red line is ignored.
+
+Likewise “меньше боёв” affects future flexible encounter selection, not a canonical ambush already happening.
+
+### Co-op
+
+For a shared scene:
+- use preferences of participating players;
+- merge them predictably;
+- no hidden winner-takes-all player priority.
+
+For split parties:
+- unrelated player's preferences do not steer another party's scene.
+
+**Done when:** preferences shape opportunities and pacing without becoming cheat codes.
+
+---
+
+## Stage 23 — Adult / life-simulation content profile
+
+**Status: PLANNED**
+
+This is an **application permission/profile**, not an attempt to remove provider safeguards.
+
+Desired principle:
+
+> When an eligible campaign enables mature content, MEGANOT does not add a second, stricter narrative-sanitization layer merely because the subject matter is adult. The active model/provider remains responsible for its own capabilities and restrictions.
+
+Suggested modes:
+- `off`;
+- `allowed`;
+- `adult_focused`.
+
+### allowed
+
+Mature themes may appear naturally when relevant.
+
+Do not automatically:
+- moralize;
+- force euphemisms;
+- force fade-to-black;
+- redirect the plot merely because the theme is adult.
+
+### adult_focused
+
+Especially useful with **Симс**:
+- adult relationships and adult venues can have higher opportunity priority;
+- life simulation may spend more time on relationships/intimacy and related adult social life when the provider supports it.
+
+But absolutely nothing here changes NPC agency.
+
+A transactional venue can behave transactionally when that is canonically its business.
+
+A random unrelated NPC still reacts from:
+- personality;
+- relationship;
+- circumstances;
+- preferences;
+- world norms.
+
+Adult-focused is **not** “everyone agrees with the player.”
+
+### Provider boundary
+
+Do not build jailbreak machinery.
+
+Do not promise that one provider can generate what another provider refuses.
+
+If a provider declines a particular output:
+- preserve world/canonical state;
+- degrade gracefully;
+- do not corrupt the campaign by rewriting what happened solely because generation was unavailable.
+
+**Done when:** life-sim can use the full mature range supported by the selected provider without MEGANOT unnecessarily adding another sanitization personality on top.
+
+---
+
+## Stage 24 — Full certification
+
+**Status: PLANNED**
+
+Must prove the entire stack, not merely that individual files exist.
+
+### Resolver/background
+- bounded unbiased server randomness;
+- no reroll by decision key;
+- independent 30% daily candidate selection;
+- 200+ entity simulation;
+- compact snapshots;
+- safe materialization;
+- retention.
+
+### Actors/promotion
+- anonymous bestiary actors stay ephemeral;
+- independent combat state;
+- promotion preserves encounter handoff;
+- named NPC later enters background simulation;
+- old actor compacts without losing redirect/audit.
+
+### Time/co-op
+- split parties cannot see each other's future;
+- colocated desynchronized PCs converge through idle-life catch-up;
+- catch-up grants no secret achievements/resources;
+- canonical materialization waits for safe time.
+
+### Logic-bound rolls
+- arbitrary sensible D&D checks can originate from primary-GM fiction;
+- junior mechanic worker invokes actual app mechanic;
+- strong-alcohol Constitution test;
+- known hidden target normal check;
+- impossible exact target cannot appear on natural 20;
+- Stage 11 existence decision is separate from player skill;
+- DC/outcome envelope frozen before d20.
+
+### Turn pipeline
+- visible answer precedes nonessential world bookkeeping;
+- UI shows «Младший шуршит…»;
+- server blocks new free-form messages until commit;
+- retries are idempotent;
+- next turn sees committed canon.
+
+### Context
+- hard recent-history bound;
+- no junior/tool command transcript in primary-GM context;
+- compact canonical results still present;
+- 500-turn prompt does not grow linearly.
+
+### NPC identity
+- fingerprint consistent across dialogue/GM/background;
+- red lines survive Persuasion;
+- relationships can change independently;
+- major identity change is versioned/provenanced.
+
+### GM/player configuration
+- Жестокий is strict, not adversarial;
+- Приключение preserves realism;
+- Симс preserves NPC refusal and world logic;
+- player preferences steer opportunities, not canon;
+- adult/life-sim profile does not override NPC autonomy or provider boundaries.
+
+### Isolation/regression
 - human-GM campaigns unchanged;
-- background system only operates in `ai_world_slots` campaigns.
-
-### Logic-bound player rolls
-- adjudication is persisted before the d20;
-- known target can use a normal AI-selected DC;
-- deterministic success/failure does not ask for a cosmetic roll;
-- unestablished hut/dragon cannot be created by the player roll;
-- impossible exact goal can yield only bounded natural-20 partial success;
-- DC/evidence/outcome envelope cannot change after the roll request exists;
-- Stage 11 world-existence decision remains separate from player skill.
-
-### Regression
-- existing player rolls;
-- Stage 6 canonical NPC runtime;
 - quests;
+- NPC runtime;
 - world materialization;
+- real player rolls;
 - 45-message maintenance;
 - rest/dawn;
-- cooperative split-party runtime;
+- cooperative chat;
 all remain green.
+
+**Done when:** a full campaign can run for a long time without prompt bloat, temporal leakage, personality drift, tool-log pollution, wish-fulfillment canon or bookkeeping stalls before every answer.
+
+---
 
 # Practical build order
 
@@ -881,10 +1392,16 @@ all remain green.
 12 Compact state merger
 13 Split-party temporal overlay
 14 Canonical materialization bridge
-15 Promoted actor background handoff
-16 Cleanup
-17 Canon-bound intent adjudication + real player rolls
-18 Full certification
+15 Promoted actor background handoff + colocated idle catch-up
+16 Cleanup / retention
+17 Logic-bound semantic checks + junior real-roll worker
+18 Post-response junior world commit + input gate
+19 Bounded clean GM context
+20 NPC identity fingerprint
+21 GM behavior profiles
+22 Player director preferences
+23 Adult / life-simulation content profile
+24 Full certification
 ```
 
 Stages 1–3 establish the world-evolution foundation.
