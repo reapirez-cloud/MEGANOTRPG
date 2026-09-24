@@ -26,6 +26,13 @@ const gameChatContext = fs.readFileSync(
   ),
   "utf8",
 )
+const temporalOverlay = fs.readFileSync(
+  path.join(
+    process.cwd(),
+    "supabase/functions/voss-agent/temporal-overlay.ts",
+  ),
+  "utf8",
+)
 
 test("AI world evolution Stage 2 is certified only with concrete background storage", () => {
   const stage = AI_WORLD_EVOLUTION_STAGES.find((entry) => entry.id === 2)
@@ -93,9 +100,9 @@ test("Stage 2 does not steal Stage 3 entity classification", () => {
 })
 
 test("game chat excludes future game-day evidence instead of clamping it to age zero", () => {
-  assert.match(gameChatContext, /payload\.effective_game_day/)
-  assert.match(gameChatContext, /function eventVisibleAtGameDay/)
-  assert.match(gameChatContext, /time\.campaignDay <= currentDay/)
+  assert.match(temporalOverlay, /payload\.effective_game_day/)
+  assert.match(temporalOverlay, /function eventVisibleAtGameDay/)
+  assert.match(temporalOverlay, /time\.campaignDay <= currentDay/)
   assert.match(gameChatContext, /memorySourceSetVisibleAtGameDay/)
   assert.doesNotMatch(
     gameChatContext,
