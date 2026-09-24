@@ -881,11 +881,20 @@ begin
         else 'Младший шуршит…'
       end,
       'room_id',p_room_id,
+      'campaign_id',v_commit.campaign_id,
       'commit_id',v_commit.id,
       'commit_state',v_commit.state,
       'attempts',v_commit.attempts,
       'max_attempts',v_commit.max_attempts,
       'can_recover',v_can_recover,
+      'wake_required',(
+        v_commit.state='queued'
+        or (
+          v_commit.state='running'
+          and v_commit.lease_expires_at is not null
+          and v_commit.lease_expires_at < now()
+        )
+      ),
       'error_code',case
         when v_commit.state='failed' then 'stage18_post_turn_commit_failed'
         else null
