@@ -25,6 +25,7 @@ const advisorIndexMigration = read(
 )
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
 const context = read("supabase/functions/voss-agent/game-chat-context.ts")
+const temporalOverlay = read("supabase/functions/voss-agent/temporal-overlay.ts")
 const maintenance = read("supabase/functions/voss-agent/world-maintenance.ts")
 const composer = read("src/ui-v1-isolated/chat-room/ChatComposer.tsx")
 const turnQueue = read("src/ui-v1-isolated/chat-room/playerTurnQueue.ts")
@@ -123,8 +124,9 @@ test("Stage 12 NPC text inventory stays lightweight until explicit materializati
 
 test("Stage 12 memory keeps game-time provenance and ages facts by campaign day", () => {
   assert.match(context, /game_age_days/)
-  assert.match(context, /campaign_day: time\.campaignDay/)
-  assert.match(context, /day_period: time\.dayPeriod/)
+  assert.match(context, /withGameAge/)
+  assert.match(temporalOverlay, /campaign_day: time\.campaignDay/)
+  assert.match(temporalOverlay, /day_period: time\.dayPeriod/)
   assert.match(maintenance, /range_start_message_id/)
   assert.match(maintenance, /range_end_message_id/)
   assert.match(maintenance, /source_event_ids/)
