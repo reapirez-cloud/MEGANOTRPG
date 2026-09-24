@@ -64,6 +64,18 @@ test("legacy immediate-submit RPCs are closed to authenticated clients", () => {
   assert.match(closure, /from public,anon,authenticated/)
 })
 
+test("current draft read/cancel stay public invokers while legacy saves are closed", () => {
+  const hardening = read(
+    "supabase/migrations/20260924191500_ai_gm_interruptible_player_turn_legacy_rpc_hardening_v4.sql",
+  )
+  assert.match(hardening, /alter function public\.get_player_turn_draft_v1\(uuid,uuid\)[\s\S]*set schema private/)
+  assert.match(hardening, /alter function public\.cancel_player_turn_draft_v1\(uuid\)[\s\S]*set schema private/)
+  assert.match(hardening, /create or replace function public\.get_player_turn_draft_v1[\s\S]*security invoker/)
+  assert.match(hardening, /create or replace function public\.cancel_player_turn_draft_v1[\s\S]*security invoker/)
+  assert.match(hardening, /revoke execute on function public\.save_player_turn_draft_v1/)
+  assert.match(hardening, /revoke execute on function public\.save_player_turn_draft_v2/)
+})
+
 test("AI can advance only the exact next declared non-reaction component", () => {
   const advance = block(
     migration,
