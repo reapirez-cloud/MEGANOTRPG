@@ -22,17 +22,35 @@ test("player security classification is lightweight and runs inside the turn", (
   assert.ok(background > assessment)
 })
 
-test("provider requests do not cap model thinking and retry only transient failures", () => {
+test("provider requests are bounded below Edge wall clock and surface timeouts", () => {
   const gateway = read("supabase/functions/voss-agent/provider-gateway.ts")
 
-  assert.doesNotMatch(gateway, /AbortController/)
-  assert.doesNotMatch(gateway, /ai_provider_timeout|AI provider request timed out/)
-  assert.match(gateway, /Provider thinking is intentionally not capped/)
+  assert.match(gateway, /AbortController/)
+  assert.match(gateway, /ai_provider_timeout|AI provider request timed out/)
+  assert.match(gateway, /Math\.min\(input\.timeoutMs \?\? 60_000, 95_000\)/)
+  assert.match(gateway, /response\.status === 504 \|\| response\.status === 524/)
+  assert.match(gateway, /A timed-out model call must never retry inside the same Edge execution/)
   assert.match(gateway, /response\.status === 429/)
   assert.match(gateway, /response\.status === 502/)
   assert.match(gateway, /response\.status === 503/)
-  assert.match(gateway, /response\.status === 504/)
   assert.match(gateway, /retryCount \?\? 1/)
+})
+
+test("AI GM provider timeouts requeue the same durable turn for a fresh worker", () => {
+  const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
+  const status = read("src/ui-v1-isolated/chat-room/AiGmTurnStatus.tsx")
+
+  assert.match(runtime, /PRIMARY_GM_PROVIDER_TIMEOUT_MS = 90_000/)
+  assert.match(runtime, /AI_GM_MAX_PROVIDER_CONTINUATIONS = 2/)
+  assert.match(runtime, /requeueTimedOutGameTurn/)
+  assert.match(runtime, /continuation_checkpoint/)
+  assert.match(runtime, /continuation_pending: true/)
+  assert.match(runtime, /status: "queued"/)
+  assert.match(runtime, /DURABLE GM CONTINUATION/)
+  assert.match(runtime, /retryCount: 0/)
+  assert.match(runtime, /3 \* 60 \* 1000/)
+  assert.match(status, /wake_required/)
+  assert.match(status, /game_chat_turn_resume/)
 })
 
 test("Voss/Freddy publishes narrow read tools and capability-gated mutation tools", () => {
