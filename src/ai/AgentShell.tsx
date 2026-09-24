@@ -119,6 +119,21 @@ function snapOrb(position: { x: number; y: number }) {
   return { x, y: maxY }
 }
 
+type AiGmBehaviorProfileChoice = {
+  profile_key: "brutal" | "adventure" | "sims"
+  display_name: string
+  summary: string
+  selected: boolean
+  dimensions: Record<string, number>
+}
+
+type AiGmBehaviorProfileResponse = {
+  ai_world: boolean
+  can_manage: boolean
+  selected_profile_key: string
+  profiles: AiGmBehaviorProfileChoice[]
+}
+
 function readableBytes(bytes: number) {
   if (bytes < 1024) return bytes + " Б"
   if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " КБ"
@@ -160,6 +175,9 @@ export default function AgentShell() {
   const [selectedGeneratedAssetRef, setSelectedGeneratedAssetRef] =
     useState<AIGeneratedAssetRef | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [gmBehavior, setGmBehavior] =
+    useState<AiGmBehaviorProfileResponse | null>(null)
+  const [gmBehaviorSaving, setGmBehaviorSaving] = useState(false)
   const [previewImage, setPreviewImage] = useState<{
     key: string
     title: string
@@ -321,6 +339,50 @@ export default function AgentShell() {
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [open, previewImage, toolsOpen])
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!toolsOpen || !campaignId) return () => { cancelled = true }
+
+    void supabase
+      .rpc("list_campaign_ai_gm_behavior_profiles_v1", {
+        p_campaign_id: campaignId,
+      })
+      .then(({ data, error: loadError }) => {
+        if (cancelled || loadError || !data || typeof data !== "object") return
+        setGmBehavior(data as AiGmBehaviorProfileResponse)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [campaignId, toolsOpen])
+
+  async function chooseGmBehaviorProfile(profileKey: string) {
+    if (!campaignId || !canManage || gmBehaviorSaving) return
+    setGmBehaviorSaving(true)
+    const { data, error: saveError } = await supabase.rpc(
+      "set_campaign_ai_gm_behavior_profile_v1",
+      {
+        p_campaign_id: campaignId,
+        p_profile_key: profileKey,
+      },
+    )
+    if (!saveError && data && typeof data === "object") {
+      setGmBehavior((current) => current
+        ? {
+            ...current,
+            selected_profile_key: String((data as Record<string, unknown>).profile_key || profileKey),
+            profiles: current.profiles.map((profile) => ({
+              ...profile,
+              selected: profile.profile_key === profileKey,
+            })),
+          }
+        : current)
+    }
+    setGmBehaviorSaving(false)
+  }
 
   useEffect(() => {
     if (!open || !followTailRef.current) return
@@ -643,6 +705,31 @@ export default function AgentShell() {
               ))}
             </div>
           </div>
+
+          {gmBehavior?.ai_world && (
+            <div className="u1-agent-tools-section">
+              <span className="u1-agent-tools-section__label">Режим ИИ-ГМ</span>
+              <div className="u1-agent-gm-behavior-list">
+                {gmBehavior.profiles.map((profile) => (
+                  <button
+                    type="button"
+                    key={profile.profile_key}
+                    className="u1-agent-gm-behavior-choice"
+                    data-selected={profile.selected || undefined}
+                    onClick={() => void chooseGmBehaviorProfile(profile.profile_key)}
+                    disabled={!canManage || gmBehaviorSaving || sending || pendingReply}
+                  >
+                    <strong>{profile.display_name}</strong>
+                    <small>{profile.summary}</small>
+                  </button>
+                ))}
+              </div>
+              <p className="u1-agent-gm-behavior-note">
+                Режим меняет давление и темп только между одинаково правдоподобными
+                ветвями. Канон, кубы и характер NPC остаются неизменными.
+              </p>
+            </div>
+          )}
 
           <div className="u1-agent-tools-section">
             <span className="u1-agent-tools-section__label">Файл</span>
