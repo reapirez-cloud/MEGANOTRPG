@@ -751,8 +751,6 @@ begin
 end;
 $;
 
-
-
 revoke all on function public.resolve_player_roll_request_v1(uuid)
   from public, anon;
 grant execute on function public.resolve_player_roll_request_v1(uuid)
