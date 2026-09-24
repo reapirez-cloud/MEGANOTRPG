@@ -169,5 +169,15 @@ Stage 17 is **not complete** if:
 - World-discovery checks require canonical entity proof or a Stage 11 resolver receipt from the same GM job.
 - `deterministic_success` and `deterministic_failure` persist immutable no-roll receipts.
 - `impossible_exact` can produce only precommitted partial success, never exact success on natural 20.
-- Requested player rolls set the narrow AI-runtime transaction flag before `send_chat_roll_v4`, so later free-form chat gates do not block the authorized d20.
+- Requested player rolls set the dedicated transaction-local `meganot.ai_gm_requested_roll` flag before `send_chat_roll_v4`; the free-form chat gate accepts only the matching `resolving` request while normal player identity handling remains intact.
 - Live Supabase migration `ai_world_evolution_stage17_world_proof_v2` applied and `voss-agent` deployed as version 85.
+
+
+### Creation authority remains separate
+
+The Stage 17 proof gate applies only to **player d20 adjudication**. It does not remove creation authority from the junior world materializer.
+
+- Primary GM / Stage 11 may establish that a new world fact should exist.
+- Junior materializer may then create the required location, named NPC, quest binding or other canonical entity through its normal validated tools.
+- A player d20 may subsequently measure whether the character notices, reaches, understands or interacts with that established fact.
+- The junior materializer is not restricted by this proof gate. The forbidden shortcut is only using the player's skill roll itself as the source of world existence.
