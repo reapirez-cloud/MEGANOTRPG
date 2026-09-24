@@ -145,8 +145,7 @@ create or replace function private.enforce_stage17_player_roll_freeze_v1()
 returns trigger
 language plpgsql
 set search_path = ''
-as $
-begin
+as 'begin
   if old.adjudication_id is null then
     return new;
   end if;
@@ -161,13 +160,11 @@ begin
      or new.dc is distinct from old.dc
      or new.dc_visibility is distinct from old.dc_visibility
   then
-    raise exception 'stage17_player_roll_contract_is_frozen';
+    raise exception ''stage17_player_roll_contract_is_frozen'';
   end if;
 
   return new;
-end;
-$;
-
+end;';
 drop trigger if exists pending_player_roll_requests_stage17_freeze
   on public.pending_player_roll_requests;
 
