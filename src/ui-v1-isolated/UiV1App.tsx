@@ -172,18 +172,6 @@ function routeKey(route: Route) {
   if (route.type === "root") return `root:${route.space}`
   if (route.type === "chat-room") return `chat-room:${route.roomId}`
   if (route.type === "ai-gm") return "ai-gm"
-  if (route.type === "ai-gm") {
-    return {
-      screen: "ai-gm-control",
-      route: window.location.hash || "#/ai-gm",
-      title: "Управление ИИ-ГМ",
-      text: "Открыт отдельный пульт моделей, поведения и директорских настроек ИИ-ГМ.",
-      facts: {
-        surface: "ai-gm-control",
-      },
-    }
-  }
-
   if (route.type === "section") {
     if (route.section === "knowledge-base" && route.subsection === "classes") {
       return "section:knowledge-base:classes"
@@ -233,6 +221,18 @@ function aiRouteContext(route: Route) {
       },
       facts: {
         roomId: route.roomId,
+      },
+    }
+  }
+
+  if (route.type === "ai-gm") {
+    return {
+      screen: "ai-gm-control",
+      route: window.location.hash || "#/ai-gm",
+      title: "Управление ИИ-ГМ",
+      text: "Открыт отдельный пульт моделей, поведения и директорских настроек ИИ-ГМ.",
+      facts: {
+        surface: "ai-gm-control",
       },
     }
   }
