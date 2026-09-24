@@ -7,6 +7,7 @@ import {
 
 import { supabase } from "../../lib/supabase"
 import ChatActionHost from "./ChatActionHost"
+import { loadAiGmRoomStatus, type AiGmRoomStatus } from "./aiGmRoomStatus"
 import {
   loadPcDialogueRecipients,
   type PcDialogueRecipient,
@@ -231,6 +232,7 @@ export default function ChatComposer({
   const [turnLoading, setTurnLoading] = useState(false)
   const [dialogueRecipients, setDialogueRecipients] = useState<PcDialogueRecipient[]>([])
   const [recipientCharacterIds, setRecipientCharacterIds] = useState<string[]>([])
+  const [aiRoomStatus, setAiRoomStatus] = useState<AiGmRoomStatus | null>(null)
 
   const speakers = useChatSpeakerOptions({
     campaignId: model.viewer.campaignId,
@@ -243,7 +245,9 @@ export default function ChatComposer({
 
   const presentation = chatRoomPresentationState(model)
   const playerHasCharacter = presentation.identityKind === "character"
-  const canCompose = presentation.canCompose
+  const sendLocked =
+    model.viewer.role === "player" && aiRoomStatus?.send_locked === true
+  const canCompose = presentation.canCompose && !sendLocked
 
   const selectedCharacterId = model.canManage
     ? speakers.selected.kind === "character"
@@ -273,6 +277,36 @@ export default function ChatComposer({
       movementText.trim() ||
       text.trim(),
   )
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (
+      model.viewer.aiGameMasterEnabled !== true ||
+      model.roomType === "flood"
+    ) {
+      setAiRoomStatus(null)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    const refresh = async () => {
+      try {
+        const next = await loadAiGmRoomStatus(model.roomId)
+        if (!cancelled) setAiRoomStatus(next)
+      } catch {
+        // The database send gate is authoritative if polling fails.
+      }
+    }
+
+    void refresh()
+    const timer = window.setInterval(() => void refresh(), 1200)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [model.roomId, model.roomType, model.viewer.aiGameMasterEnabled])
 
   const resizeTextarea = () => {
     const textarea = textareaRef.current
@@ -663,7 +697,8 @@ export default function ChatComposer({
         data-can-compose={canCompose || undefined}
         data-read-only={model.readOnly || undefined}
         data-sending={sending || undefined}
-        aria-busy={sending}
+        data-post-turn-locked={sendLocked || undefined}
+        aria-busy={sending || sendLocked}
         onSubmit={(event) => void submit(event)}
       >
         {sendError ? (
