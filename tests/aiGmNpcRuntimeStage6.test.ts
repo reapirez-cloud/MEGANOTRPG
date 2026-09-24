@@ -143,7 +143,7 @@ test("Stage 6 NPC save action and Stage 5 player wait are atomic", () => {
 test("GM context exposes canonical NPC runtime only for present NPCs", () => {
   assert.match(context, /npcRuntime: JsonRecord\[\]/)
   assert.match(context, /read_ai_gm_npc_runtime_v1/)
-  assert.match(context, /canonical_npc_runtime: context\.npcRuntime/)
+  assert.match(context, /canonical_npc_runtime: compactNpcRuntime\(context\.npcRuntime\)/)
 })
 
 test("GM Stage 6 can choose canonical NPC action or NPC roll without numeric mechanics", () => {
