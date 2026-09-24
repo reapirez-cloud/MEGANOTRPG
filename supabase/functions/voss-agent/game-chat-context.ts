@@ -32,6 +32,7 @@ export type Stage2GameChatContext = {
   npcRuntime: JsonRecord[]
   gmBehaviorProfile: JsonRecord
   directorPreferences: JsonRecord
+  contentProfile: JsonRecord
   sceneActors: JsonRecord[]
   relationships: JsonRecord[]
   assets: JsonRecord[]
@@ -1046,6 +1047,7 @@ export async function buildGameChatContextV2({
     npcRuntimeResult,
     gmBehaviorProfileResult,
     directorPreferencesResult,
+    contentSettingsResult,
     relationshipsResult,
     assetsResult,
     factionMembershipResult,
@@ -1120,6 +1122,11 @@ export async function buildGameChatContextV2({
           },
           error: null,
         }),
+    admin
+      .from("ai_gm_content_settings")
+      .select("mode,updated_at")
+      .eq("campaign_id", campaignId)
+      .maybeSingle(),
     relevantCharacterIds.length
       ? admin
           .from("character_relationships")
@@ -1165,12 +1172,35 @@ export async function buildGameChatContextV2({
     npcRuntimeResult.error ||
     gmBehaviorProfileResult.error ||
     directorPreferencesResult.error ||
+    contentSettingsResult.error ||
     relationshipsResult.error ||
     assetsResult.error ||
     factionMembershipResult.error ||
     factionReputationResult.error
 
   if (contextError) throw new Error(contextError.message)
+
+  const contentSetting = record(contentSettingsResult.data)
+  const contentMode = nullableString(contentSetting.mode)
+  const contentProfile: JsonRecord = {
+    mode:
+      contentMode === "allowed" || contentMode === "adult_focused"
+        ? contentMode
+        : "off",
+    enabled: contentMode === "allowed" || contentMode === "adult_focused",
+    updated_at: contentSetting.updated_at || null,
+    provider_boundary: {
+      provider_remains_authoritative: true,
+      no_provider_bypass: true,
+      graceful_refusal_preserves_canon: true,
+    },
+    invariants: {
+      npc_agency_unchanged: true,
+      canon_unchanged: true,
+      dice_unchanged: true,
+      prices_and_social_consequences_unchanged: true,
+    },
+  }
 
   const rawDirectorPreferences = record(directorPreferencesResult.data)
   const directorParticipants = rows(rawDirectorPreferences.participants)
@@ -1350,6 +1380,7 @@ export async function buildGameChatContextV2({
     npcRuntime: rows(npcRuntimeResult.data),
     gmBehaviorProfile: record(gmBehaviorProfileResult.data),
     directorPreferences,
+    contentProfile,
     sceneActors,
     relationships,
     assets: rows(assetsResult.data),
@@ -1806,6 +1837,18 @@ export function stage22DirectorPreferenceTelemetry(
       Array.isArray(preferences.version_vector)
         ? preferences.version_vector
         : [],
+  }
+}
+
+
+export function stage23ContentProfileTelemetry(
+  context: Stage2GameChatContext,
+) {
+  const profile = record(context.contentProfile)
+  return {
+    stage23_content_mode: nullableString(profile.mode) || "off",
+    stage23_content_enabled: profile.enabled === true,
+    stage23_provider_boundary: record(profile.provider_boundary),
   }
 }
 
