@@ -1992,6 +1992,7 @@ export function npcDialogueContextForPrompt(
       hard_red_lines_are_non_negotiable: true,
       mutable_relationship_or_mood_must_not_rewrite_identity: true,
     },
+    content_profile: context.contentProfile,
     current_game_time: context.currentGameTime,
     room: {
       id: context.room.id,
