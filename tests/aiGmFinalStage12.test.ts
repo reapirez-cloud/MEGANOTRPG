@@ -38,10 +38,7 @@ test("Stage 12 keeps exactly the latest 50 AI context messages from the persiste
     context,
     /read_ai_gm_recent_chat_context_v1[\s\S]*p_room_id: roomId[\s\S]*p_limit: CHAT_CONTEXT_LIMIT/,
   )
-  assert.match(
-    context,
-    /latest 50[\s\S]*THIS CHAT[\s\S]*not the latest 50 from the current location/,
-  )
+  assert.match(context, /physical_scene_history_only: true/)
   assert.doesNotMatch(context, /sceneEventsResult/)
   assert.doesNotMatch(
     context,
