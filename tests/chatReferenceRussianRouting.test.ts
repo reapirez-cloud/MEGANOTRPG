@@ -17,12 +17,12 @@ const translationMigration = read(
 test("chat spell inspection opens canonical Russian mechanics before commentary", () => {
   assert.match(
     chatCard,
-    /row\.rules_text \|\|[\s\S]*row\.effect_summary \|\|[\s\S]*row\.author_description/,
+    /row\.rules_text \|\|[\s\S]*row\.effect_summary \|\|[\s\S]*payloadDescription\(event\)/,
   )
   assert.match(chatCard, /title: row\.name_ru\?\.trim\(\) \|\| presentation\.title/)
   assert.doesNotMatch(
     chatCard,
-    /description:\s*row\.author_description \|\|/,
+    /description:[\s\S]{0,180}row\.author_description/,
   )
 
   assert.match(
@@ -30,6 +30,7 @@ test("chat spell inspection opens canonical Russian mechanics before commentary"
     /spell\.rules_text \|\| spell\.effect_summary/,
   )
   assert.match(chatSheet, /<small>Механика<\/small>/)
+  assert.doesNotMatch(chatSheet, /объясняет|Заметка Восса/)
 })
 
 test("chat class ability inspection can fall back to the Russian reference feature catalog", () => {
