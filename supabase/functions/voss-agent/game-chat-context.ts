@@ -28,6 +28,7 @@ export type Stage2GameChatContext = {
   resourceStates: JsonRecord[]
   inventoryChargeItems: JsonRecord[]
   npcProfiles: JsonRecord[]
+  npcIdentities: JsonRecord[]
   npcRuntime: JsonRecord[]
   sceneActors: JsonRecord[]
   relationships: JsonRecord[]
@@ -245,6 +246,34 @@ function projectStage19RecentMessages(
   return selectedNewestFirst.reverse()
 }
 
+
+function compactNpcIdentities(rowsValue: JsonRecord[]) {
+  return rowsValue.map((item) => {
+    const core = record(item.core)
+    return {
+      character_id: item.character_id,
+      version: item.version,
+      bootstrap_state: item.bootstrap_state,
+      fingerprint_hash: item.fingerprint_hash,
+      core: {
+        traits: strings(core.traits).slice(0, 12),
+        weighted_values: rows(core.weighted_values).slice(0, 12),
+        red_lines: rows(core.red_lines).slice(0, 12),
+        long_term_desires: strings(core.long_term_desires).slice(0, 12),
+        fears: strings(core.fears).slice(0, 12),
+        loyalties: strings(core.loyalties).slice(0, 12),
+        authority_attitude: record(core.authority_attitude),
+        risk_tolerance: core.risk_tolerance ?? null,
+        violence_threshold: core.violence_threshold ?? null,
+        pressure_behavior: strings(core.pressure_behavior).slice(0, 12),
+        self_image: boundedText(core.self_image, 1200) || "",
+        social_style: strings(core.social_style).slice(0, 12),
+        decision_priorities: strings(core.decision_priorities).slice(0, 12),
+      },
+      last_major_event_id: item.last_major_event_id || null,
+    }
+  })
+}
 
 function compactNpcRuntime(rowsValue: JsonRecord[]) {
   return rowsValue.map((item) => ({
@@ -985,6 +1014,7 @@ export async function buildGameChatContextV2({
     resourceStatesResult,
     inventoryChargesResult,
     npcProfilesResult,
+    npcIdentitiesResult,
     npcRuntimeResult,
     relationshipsResult,
     assetsResult,
@@ -1018,6 +1048,12 @@ export async function buildGameChatContextV2({
           .select("character_id,role,species,creature_type,size,challenge_rating,occupation,faction,appearance,demeanor,motivation,public_notes,gm_notes,tags,inventory_text,inventory_data,background_simulation_scope")
           .eq("campaign_id", campaignId)
           .in("character_id", presentNpcIds)
+      : Promise.resolve({ data: [], error: null }),
+    presentNpcIds.length
+      ? admin.rpc("read_ai_npc_identity_fingerprints_v1", {
+          p_campaign_id: campaignId,
+          p_npc_ids: presentNpcIds,
+        })
       : Promise.resolve({ data: [], error: null }),
     presentNpcIds.length
       ? admin.rpc("read_ai_gm_npc_runtime_v1", {
@@ -1066,6 +1102,7 @@ export async function buildGameChatContextV2({
     resourceStatesResult.error ||
     inventoryChargesResult.error ||
     npcProfilesResult.error ||
+    npcIdentitiesResult.error ||
     npcRuntimeResult.error ||
     relationshipsResult.error ||
     assetsResult.error ||
@@ -1209,6 +1246,7 @@ export async function buildGameChatContextV2({
     resourceStates: rows(resourceStatesResult.data),
     inventoryChargeItems: rows(inventoryChargesResult.data),
     npcProfiles: rows(npcProfilesResult.data),
+    npcIdentities: rows(npcIdentitiesResult.data),
     npcRuntime: rows(npcRuntimeResult.data),
     sceneActors,
     relationships,
@@ -1454,6 +1492,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
         item_state: item.item_state,
       })).slice(0, 80),
     present_npc_profiles: compactNpcProfiles,
+    present_npc_identity_fingerprints: compactNpcIdentities(context.npcIdentities),
     canonical_npc_runtime: compactNpcRuntime(context.npcRuntime),
     active_scene_actors: context.sceneActors.slice(0, 40),
     relationships: context.relationships.map((item) => ({
@@ -1602,6 +1641,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
         ? payload.canonical_resource_states_for_present_characters.slice(0, 40)
         : [],
     present_npc_profiles: payload.present_npc_profiles,
+    present_npc_identity_fingerprints: payload.present_npc_identity_fingerprints,
     canonical_npc_runtime: payload.canonical_npc_runtime,
     active_scene_actors: payload.active_scene_actors,
     active_quest_context: {
@@ -1651,6 +1691,9 @@ export function npcDialogueContextForPrompt(
   const profile = context.npcProfiles.find(
     (item) => String(item.character_id) === npcCharacterId,
   ) || {}
+  const identity = context.npcIdentities.find(
+    (item) => String(item.character_id) === npcCharacterId,
+  ) || null
   const sheet = context.sheets.find(
     (item) => String(item.character_id) === npcCharacterId,
   ) || null
@@ -1723,8 +1766,7 @@ export function npcDialogueContextForPrompt(
       author_name: message.author_name,
       character_id: message.character_id,
       body: message.body,
-      event_kind: message.event_kind,
-      event_payload: message.event_payload,
+      mechanic: message.mechanic || null,
       campaign_day: message.campaign_day,
       day_period: message.day_period,
     }))
@@ -1769,6 +1811,9 @@ export function npcDialogueContextForPrompt(
         "Use only this object. If a fact is absent, the NPC does not know it.",
       no_omniscient_quest_context: true,
       no_hidden_gm_notes: true,
+      identity_fingerprint_is_stable_personality_canon: true,
+      hard_red_lines_are_non_negotiable: true,
+      mutable_relationship_or_mood_must_not_rewrite_identity: true,
     },
     current_game_time: context.currentGameTime,
     room: {
