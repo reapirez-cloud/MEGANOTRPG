@@ -940,7 +940,7 @@ A rollback-only transactional smoke test proved: answer publication, atomic pare
 
 ## Stage 19 — Bounded clean GM context
 
-**Status: PLANNED**
+**Status: IMPLEMENTED — 2026-09-24**
 
 The existing runtime already has:
 
@@ -1016,6 +1016,21 @@ Important older events belong in:
 - canonical world records.
 
 The existing 45-message maintenance process remains responsible for archival summarization.
+
+### Implementation closure — 2026-09-24
+
+Stage 19 was rebuilt around a server-owned bounded context reader instead of filtering after a raw `LIMIT 50`.
+
+The implementation now:
+- applies audience, campaign-event visibility, current game-day and physical-scene eligibility **before** selecting the newest 50 messages;
+- projects visible mechanical events into a compact narrative/mechanical shape instead of forwarding raw `event_payload`;
+- never forwards `turn_command_id`, `turn_component`, provider/tool-loop state or junior bookkeeping as narrative history;
+- keeps runtime-rich canon available to mechanics while giving the primary GM a separate compact prompt projection;
+- bounds NPC runtime, sheets, resources, charged items, relationships, assets, factions, quests, long-term memory, background snapshots and cooperative catch-up data;
+- caps recent-history JSON at 48 KB and the complete primary-GM context JSON at 160 KB with deterministic lower-priority canon trimming;
+- records context byte/token telemetry on AI-GM jobs.
+
+A rollback-only long-history smoke test inserted 561 sequential messages: 420 eligible scene messages, 100 private direct-PC messages not visible to the source PC, 40 future-day messages and the current source turn. The reader returned exactly 50 eligible messages, leaked 0 private messages, leaked 0 future messages and retained the current source turn.
 
 **Done when:** a 500-turn campaign still sends roughly one screenful of recent dialogue plus bounded relevant canon, not a geological core sample of every tool call since creation.
 
