@@ -11,7 +11,6 @@ type AiGmStatus = {
   job_status?: string
   error_code?: string | null
   error_message?: string | null
-  gate_state?: string | null
   updated_at?: string | null
 }
 
@@ -48,13 +47,6 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
 
   if (!status || status.phase === "idle") return null
 
-  const label =
-    status.phase === "post_turn_commit"
-      ? status.gate_state === "failed"
-        ? "Синхронизация мира не завершилась"
-        : "Младший шуршит…"
-      : status.label || "ИИ-ГМ"
-
   return (
     <div
       className="u1-ai-gm-status"
@@ -65,7 +57,7 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
     >
       <i aria-hidden="true" />
       <span>
-        <strong>{label}</strong>
+        <strong>{status.label || "ИИ-ГМ"}</strong>
         {status.phase === "failed" && status.error_message ? (
           <small>{status.error_message}</small>
         ) : null}

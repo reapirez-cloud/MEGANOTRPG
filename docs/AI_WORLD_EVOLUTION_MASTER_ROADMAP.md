@@ -814,7 +814,7 @@ Detailed spec:
 
 ## Stage 18 — Post-response junior world commit and turn gate
 
-**Status: PLANNED**
+**Status: CERTIFIED — 2026-09-24**
 
 This changes the current ordering.
 
