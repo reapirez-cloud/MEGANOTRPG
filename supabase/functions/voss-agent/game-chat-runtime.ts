@@ -4,6 +4,7 @@ import {
   buildGameChatContextV2,
   npcDialogueContextForPrompt,
   stage2ContextForPrompt,
+  stage19ContextTelemetry,
   type Stage2GameChatContext,
 } from "./game-chat-context.ts"
 import {
@@ -2349,7 +2350,7 @@ async function completeWithoutChatMessage({
         reply_message_id: null,
         reaction_mode: reaction.mode,
         reaction_reason: reaction.reason,
-        context_message_count: context.recentMessages.length,
+        ...stage19ContextTelemetry(context),
         source_location_id: context.sourceLocation?.id || null,
         player_location_count: new Set(
           context.players.map((player) => player.location_id).filter(Boolean),
@@ -2407,7 +2408,7 @@ async function completeWithGameplayMessage({
         reaction_mode: reaction.mode,
         reaction_reason: reaction.reason,
         mechanic_result: mechanicResult,
-        context_message_count: context.recentMessages.length,
+        ...stage19ContextTelemetry(context),
         source_location_id: context.sourceLocation?.id || null,
         player_location_count: new Set(
           context.players.map((player) => player.location_id).filter(Boolean),
@@ -3418,7 +3419,7 @@ export async function runGameChatTurn(
             stage17_resolver_decision_key: request.resolverDecisionKey,
             stage17_logical_difficulty: request.logicalDifficulty,
             stage17_mechanic_worker_model_key: normalized.workerModelKey,
-            context_message_count: context.recentMessages.length,
+            ...stage19ContextTelemetry(context),
             model_id: route.model.id,
             model_key: route.model.model_key,
             model_name: route.model.display_name,
