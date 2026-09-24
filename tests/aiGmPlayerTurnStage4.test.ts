@@ -148,7 +148,7 @@ test("Stage 4 AI GM starts only after atomic submit returns the final trigger me
   )
 })
 
-test("Stage 4 GM context receives turn grouping metadata", () => {
+test("Stage 4 keeps turn grouping in maintenance while Stage 19 strips worker bookkeeping from GM context", () => {
   const context = read(
     "supabase/functions/voss-agent/game-chat-context.ts",
   )
@@ -156,9 +156,8 @@ test("Stage 4 GM context receives turn grouping metadata", () => {
     "supabase/functions/voss-agent/world-maintenance.ts",
   )
 
-  assert.match(context, /turn_command_id/)
-  assert.match(context, /turn_component/)
-  assert.match(context, /turn_order/)
+  assert.doesNotMatch(context, /turn_command_id/)
+  assert.match(context, /worker_commands_are_not_narrative_memory: true/)
   assert.match(worker, /turn_command_id/)
   assert.match(worker, /turn_component/)
   assert.match(worker, /turn_order/)
