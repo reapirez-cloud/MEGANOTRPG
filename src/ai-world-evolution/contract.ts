@@ -481,6 +481,8 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     acceptance: [
       "Day-3 player cannot observe day-5 background state",
       "Frontier group can observe day-5 state without forcing lagging group forward",
+      "When active PCs physically converge, lagging PCs may be advanced to the latest colocated game time through idle-life catch-up only",
+      "Idle catch-up cannot grant off-screen achievements, rewards, quest progress or mechanical recovery",
     ],
     certification: [
       "Split-party future-leak tests",
@@ -527,7 +529,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Promoted actor background handoff",
     purpose:
       "Allow once-anonymous actors that gain identity to become normal persistent background-simulation entities.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "NPC discovery/profile/world state",
     ],
