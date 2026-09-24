@@ -449,7 +449,15 @@ async function loadAbilityDetail(
   const assignments =
     (assignmentsResult.data || []) as TemplateAssignmentRow[]
   const templateIds = [...new Set(assignments.map((item) => item.template_id))]
-  if (!templateIds.length) return { description: null, meta: [] }
+  if (!templateIds.length) {
+    return (
+      (await loadReferenceFeatureDetail(presentation)) || {
+        title: presentation.title,
+        description: null,
+        meta: [],
+      }
+    )
+  }
 
   const [levelsResult, templatesResult] = await Promise.all([
     supabase
@@ -520,23 +528,34 @@ async function loadAbilityDetail(
         .find((value): value is string => Boolean(value))
     : null
 
-  const presentation = isRecord(direct.presentation)
+  const directPresentation = isRecord(direct.presentation)
     ? direct.presentation
     : null
   const fallback =
-    presentation
+    directPresentation
       ? readString(
-          presentation,
+          directPresentation,
           "authorExplanation",
           "author_explanation",
           "summary",
         )
       : null
 
-  return {
-    description: sourceDescription || fallback || null,
-    meta: [],
+  if (sourceDescription || fallback) {
+    return {
+      title: presentation.title,
+      description: sourceDescription || fallback || null,
+      meta: [],
+    }
   }
+
+  return (
+    (await loadReferenceFeatureDetail(presentation)) || {
+      title: presentation.title,
+      description: null,
+      meta: [],
+    }
+  )
 }
 
 async function loadDetail(
