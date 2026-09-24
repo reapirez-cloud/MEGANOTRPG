@@ -1514,18 +1514,20 @@ async function failJob(
   const message =
     error instanceof Error ? error.message : String(error || "ai_gm_turn_failed")
 
-  await admin
-    .from("agent_jobs")
-    .update({
-      status: "failed",
-      error_code: gateway?.code || "ai_gm_turn_failed",
-      error_message: message.slice(0, 500),
-      completed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", jobId)
-    .then(() => undefined)
-    .catch(() => undefined)
+  try {
+    await admin
+      .from("agent_jobs")
+      .update({
+        status: "failed",
+        error_code: gateway?.code || "ai_gm_turn_failed",
+        error_message: message.slice(0, 500),
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", jobId)
+  } catch {
+    // Preserve the original runtime failure even if failure bookkeeping fails.
+  }
 }
 
 async function claimQueuedJob(
