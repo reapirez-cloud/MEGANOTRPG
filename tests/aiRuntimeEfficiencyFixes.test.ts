@@ -22,11 +22,12 @@ test("player security classification is lightweight and runs inside the turn", (
   assert.ok(background > assessment)
 })
 
-test("provider requests have bounded latency and retry only transient failures", () => {
+test("provider requests do not cap model thinking and retry only transient failures", () => {
   const gateway = read("supabase/functions/voss-agent/provider-gateway.ts")
 
-  assert.match(gateway, /AbortController/)
-  assert.match(gateway, /AI provider request timed out/)
+  assert.doesNotMatch(gateway, /AbortController/)
+  assert.doesNotMatch(gateway, /ai_provider_timeout|AI provider request timed out/)
+  assert.match(gateway, /Provider thinking is intentionally not capped/)
   assert.match(gateway, /response\.status === 429/)
   assert.match(gateway, /response\.status === 502/)
   assert.match(gateway, /response\.status === 503/)
