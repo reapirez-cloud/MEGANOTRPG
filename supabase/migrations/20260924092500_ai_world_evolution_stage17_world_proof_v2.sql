@@ -777,9 +777,78 @@ grant execute on function public.create_ai_gm_player_roll_request_v3(
   uuid,uuid,text,text,text,text,text,text,text,text,text,jsonb,jsonb,jsonb,text,text,text,text,text,text,text
 ) to service_role;
 
--- Requested player rolls are server-owned interactions. The resolver marks
--- only its transaction as AI runtime before send_chat_roll_v4(), preserving the
--- free-form turn gate while allowing the requested d20.
+-- If the audited Stage 18 free-form gate is already present in a deployed
+-- database, teach it about the dedicated requested-roll transaction flag.
+-- This block is conditional so a clean Stage 17 schema does not depend on
+-- Stage 18 being installed yet.
+do $stage17_gate$
+begin
+  if pg_catalog.to_regclass('public.ai_gm_turn_commit_gates') is not null
+     and pg_catalog.to_regprocedure('private.ai_gm_post_turn_gate_trigger()') is not null
+  then
+    execute $stage17_sql$
+      create or replace function private.ai_gm_post_turn_gate_trigger()
+      returns trigger
+      language plpgsql
+      security definer
+      set search_path to ''
+      as $stage17_fn$
+      begin
+        if current_setting('meganot.ai_gm_runtime', true) = 'on' then
+          return new;
+        end if;
+
+        if current_setting('meganot.ai_gm_requested_roll', true) = 'on'
+           and new.event_kind = 'roll'
+           and exists (
+             select 1
+             from public.pending_player_roll_requests p
+             join public.agent_jobs j on j.id=p.gm_job_id
+             where p.room_id=new.room_id
+               and p.character_id=new.character_id
+               and p.status='resolving'
+               and j.status='waiting_for_user'
+               and j.job_type='conversation_turn'
+               and j.input->>'surface'='game_chat_v1'
+           )
+        then
+          return new;
+        end if;
+
+        if new.character_id is null then
+          return new;
+        end if;
+
+        if exists (
+          select 1
+          from public.ai_gm_turn_commit_gates g
+          where g.room_id=new.room_id
+            and g.state in ('pending','running','failed')
+        ) then
+          raise exception 'ai_gm_post_turn_commit_in_progress';
+        end if;
+
+        if exists (
+          select 1
+          from public.agent_jobs j
+          where j.job_type='conversation_turn'
+            and j.input->>'surface'='game_chat_v1'
+            and j.input->>'room_id'=new.room_id::text
+            and j.status='waiting_for_user'
+        ) then
+          raise exception 'ai_gm_roll_wait_in_progress';
+        end if;
+
+        return new;
+      end;
+      $stage17_fn$;
+    $stage17_sql$;
+  end if;
+end
+$stage17_gate$;
+
+-- Requested player rolls remain normal player-authored chat identity. Only the
+-- free-form gate sees meganot.ai_gm_requested_roll during this transaction.
 create or replace function public.resolve_player_roll_request_v1(p_request_id uuid)
 returns jsonb
 language plpgsql
@@ -877,9 +946,10 @@ begin
   );
 
   -- This is the one player interaction explicitly authorized while the GM job
-  -- is waiting_for_user. Mark only this transaction as AI-runtime traffic so
-  -- free-form chat gates cannot reject the server-owned requested roll.
-  perform set_config('meganot.ai_gm_runtime','on',true);
+  -- is waiting_for_user. Use a dedicated transaction-local flag. Do NOT set
+  -- meganot.ai_gm_runtime here: that flag also changes chat identity handling
+  -- and would incorrectly require the player to be GM/owner.
+  perform set_config('meganot.ai_gm_requested_roll','on',true);
 
   v_roll_message_id := public.send_chat_roll_v4(
     v_request.room_id,
