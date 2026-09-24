@@ -3700,7 +3700,11 @@ export async function startGameChatTurnRequest(
 ): Promise<GameChatTurnStart | null> {
   const action =
     typeof input.body.action === "string" ? input.body.action.trim() : ""
-  if (action !== "game_chat_turn" && action !== "game_chat_replay") {
+  if (
+    action !== "game_chat_turn" &&
+    action !== "game_chat_replay" &&
+    action !== "game_chat_post_turn_resume"
+  ) {
     return null
   }
 
@@ -3727,6 +3731,88 @@ export async function startGameChatTurnRequest(
         error: "ai_gm_not_available",
         code: "ai_gm_not_available",
       },
+    }
+  }
+
+  if (action === "game_chat_post_turn_resume") {
+    const commitId =
+      typeof input.body.commitId === "string"
+        ? input.body.commitId.trim()
+        : ""
+    if (!commitId) {
+      return {
+        status: 400,
+        body: { error: "commitId is required" },
+      }
+    }
+
+    const { data: commit, error: commitError } = await input.admin
+      .from("ai_gm_post_turn_commits")
+      .select("id,campaign_id,state,attempts,max_attempts,lease_expires_at,last_error")
+      .eq("id", commitId)
+      .eq("campaign_id", input.campaignId)
+      .maybeSingle()
+
+    if (commitError) {
+      return {
+        status: 500,
+        body: {
+          error: commitError.message,
+          code: "stage18_post_turn_lookup_failed",
+        },
+      }
+    }
+    if (!commit) {
+      return {
+        status: 404,
+        body: {
+          error: "stage18_post_turn_commit_not_found",
+          code: "stage18_post_turn_commit_not_found",
+        },
+      }
+    }
+
+    if (commit.state === "completed") {
+      return {
+        status: 200,
+        body: {
+          accepted: true,
+          commitId,
+          state: "completed",
+          runtimeStage: 18,
+        },
+      }
+    }
+
+    if (commit.state === "failed") {
+      return {
+        status: 409,
+        body: {
+          accepted: false,
+          commitId,
+          state: "failed",
+          error: commit.last_error || "stage18_post_turn_commit_failed",
+          code: "stage18_post_turn_commit_failed",
+          runtimeStage: 18,
+        },
+      }
+    }
+
+    return {
+      status: 202,
+      body: {
+        accepted: true,
+        commitId,
+        state: commit.state,
+        attempts: commit.attempts,
+        maxAttempts: commit.max_attempts,
+        runtimeStage: 18,
+      },
+      background: runStage18PostTurnCommit(
+        input.admin,
+        input.campaignId,
+        commitId,
+      ),
     }
   }
 
