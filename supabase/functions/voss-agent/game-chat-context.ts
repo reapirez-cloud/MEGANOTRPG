@@ -51,6 +51,8 @@ export type Stage2GameChatContext = {
 }
 
 const CHAT_CONTEXT_LIMIT = 50
+const MAX_RECENT_MESSAGE_JSON_BYTES = 48_000
+const MAX_PROMPT_CONTEXT_JSON_BYTES = 160_000
 const MAX_MEMORY_FACTS = 24
 const MAX_MEMORY_SUMMARIES = 8
 
@@ -213,6 +215,37 @@ export function projectStage19ChatMessage(
   }
 }
 
+function projectStage19RecentMessages(
+  messages: JsonRecord[],
+  currentDay: number | null,
+) {
+  const projected = messages
+    .map((message) => projectStage19ChatMessage(message, currentDay))
+    .slice(-CHAT_CONTEXT_LIMIT)
+
+  const selectedNewestFirst: JsonRecord[] = []
+  let usedBytes = 2
+
+  for (let index = projected.length - 1; index >= 0; index -= 1) {
+    const message = projected[index]
+    const messageBytes =
+      new TextEncoder().encode(JSON.stringify(message)).length + 1
+
+    if (
+      selectedNewestFirst.length > 0 &&
+      usedBytes + messageBytes > MAX_RECENT_MESSAGE_JSON_BYTES
+    ) {
+      break
+    }
+
+    selectedNewestFirst.push(message)
+    usedBytes += messageBytes
+  }
+
+  return selectedNewestFirst.reverse()
+}
+
+
 function compactNpcRuntime(rowsValue: JsonRecord[]) {
   return rowsValue.map((item) => ({
     character_id: item.character_id,
@@ -257,7 +290,12 @@ function compactBackground(backgroundValue: JsonRecord) {
           through_game_day: snapshot.through_game_day,
           version: snapshot.version,
           summary: boundedText(snapshot.summary, 900),
-          temporal_overlay: overlay,
+          temporal_overlay: {
+            location_id: overlay.location_id || null,
+            life_state: overlay.life_state || null,
+            lifecycle_state: overlay.lifecycle_state || null,
+            status: overlay.status || null,
+          },
         }
       : null
   }
@@ -670,9 +708,10 @@ export async function buildGameChatContextV2({
     scope: sourceAudienceScope as "scene" | "direct_pc",
     recipientCharacterIds: strings(sourceMessage.recipient_character_ids),
   }
-  const recentMessages = rows(historyEnvelope.messages)
-    .map((message) => projectStage19ChatMessage(message, currentDay))
-    .slice(-CHAT_CONTEXT_LIMIT)
+  const recentMessages = projectStage19RecentMessages(
+    rows(historyEnvelope.messages),
+    currentDay,
+  )
   const contextMetrics = {
     eligibleMessageCount:
       Math.min(
@@ -1236,7 +1275,10 @@ function compactQuestContext(value: JsonRecord) {
             target_id: condition.target_id,
             required_quantity: condition.required_quantity,
             negated: condition.negated,
-            params: record(condition.params),
+            params_json: boundedText(
+              JSON.stringify(record(condition.params)),
+              900,
+            ),
             state: {
               satisfied: record(condition.state).satisfied === true,
               resolution_source: record(condition.state).resolution_source,
@@ -1272,7 +1314,7 @@ function compactMemory(memory: Stage2GameChatContext["memory"]) {
       day_period: fact.day_period,
       game_age_days: fact.game_age_days,
       source_location_id: fact.source_location_id,
-    })).slice(0, MAX_MEMORY_FACTS),
+    })).slice(0, Math.min(MAX_MEMORY_FACTS, 20)),
     summaries: memory.summaries.map((summary) => ({
       id: summary.id,
       title: boundedText(summary.title, 300),
@@ -1284,7 +1326,7 @@ function compactMemory(memory: Stage2GameChatContext["memory"]) {
       day_period: summary.day_period,
       game_age_days: summary.game_age_days,
       source_location_id: summary.source_location_id,
-    })).slice(0, MAX_MEMORY_SUMMARIES),
+    })).slice(0, Math.min(MAX_MEMORY_SUMMARIES, 6)),
   }
 }
 
@@ -1347,7 +1389,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     background_simulation_scope: profile.background_simulation_scope,
   }))
 
-  return JSON.stringify({
+  const payload: JsonRecord = {
     contract: {
       recent_message_limit: CHAT_CONTEXT_LIMIT,
       history_projection: "stage19_bounded_clean_v1",
@@ -1435,8 +1477,43 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
       npc_character_id: item.npc_character_id,
       inventory_item_id: item.inventory_item_id,
     })).slice(0, 60),
-    faction_memberships: context.factionMemberships.slice(0, 60),
-    faction_reputations: context.factionReputations.slice(0, 60),
+    faction_memberships: context.factionMemberships.map((item) => {
+      const faction = record(item.faction)
+      return {
+        faction_id: item.faction_id,
+        character_id: item.character_id,
+        membership_role: item.membership_role,
+        rank_label: item.rank_label,
+        is_primary: item.is_primary,
+        faction: faction.id
+          ? {
+              id: faction.id,
+              name: faction.name,
+              summary: boundedText(faction.summary, 700),
+              tags: Array.isArray(faction.tags) ? faction.tags.slice(0, 20) : [],
+            }
+          : null,
+      }
+    }).slice(0, 40),
+    faction_reputations: context.factionReputations.map((item) => {
+      const faction = record(item.faction)
+      return {
+        faction_id: item.faction_id,
+        character_id: item.character_id,
+        standing_kind: item.standing_kind,
+        public_label: item.public_label,
+        reputation_score: item.reputation_score,
+        player_note: boundedText(item.player_note, 600),
+        gm_note: boundedText(item.gm_note, 600),
+        faction: faction.id
+          ? {
+              id: faction.id,
+              name: faction.name,
+              summary: boundedText(faction.summary, 700),
+            }
+          : null,
+      }
+    }).slice(0, 40),
     active_quest_context: compactQuestContext(context.activeQuestContext),
     relevant_long_term_memory: compactMemory(context.memory),
     background_temporal_context: compactBackground(context.background),
@@ -1453,7 +1530,10 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
           to_day: item.to_day,
           to_period: item.to_period,
           catchup_kind: item.catchup_kind,
-          meaningful_actions: item.meaningful_actions,
+          meaningful_actions_json: boundedText(
+            JSON.stringify(item.meaningful_actions ?? []),
+            1000,
+          ),
           narrative_semantics: boundedText(item.narrative_semantics, 1000),
         }))
         .slice(0, 8),
@@ -1461,6 +1541,84 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     recent_chat_messages_all_authors: context.recentMessages,
     context_metrics: context.contextMetrics,
     explicit_player_name_mentions: context.mentionedPlayerCharacters,
+  }
+
+  let json = JSON.stringify(payload)
+  if (
+    new TextEncoder().encode(json).length <= MAX_PROMPT_CONTEXT_JSON_BYTES
+  ) {
+    return json
+  }
+
+  const trimArray = (key: string, limit: number) => {
+    const value = payload[key]
+    if (Array.isArray(value)) payload[key] = value.slice(0, limit)
+  }
+
+  trimArray("relationships", 32)
+  trimArray("property_and_assets", 24)
+  trimArray("faction_memberships", 24)
+  trimArray("faction_reputations", 24)
+  trimArray("canonical_resource_states_for_present_characters", 64)
+  trimArray("charged_inventory_items_for_present_characters", 48)
+
+  const memory = record(payload.relevant_long_term_memory)
+  memory.facts = rows(memory.facts).slice(0, 12)
+  memory.summaries = rows(memory.summaries).slice(0, 4)
+  payload.relevant_long_term_memory = memory
+
+  const quests = record(payload.active_quest_context)
+  quests.active_quests = rows(quests.active_quests)
+    .slice(0, 6)
+    .map((quest) => ({
+      ...quest,
+      active_stages: rows(quest.active_stages).slice(0, 3),
+      recent_completed_stages:
+        rows(quest.recent_completed_stages).slice(0, 4),
+    }))
+  payload.active_quest_context = quests
+
+  json = JSON.stringify(payload)
+  if (
+    new TextEncoder().encode(json).length <= MAX_PROMPT_CONTEXT_JSON_BYTES
+  ) {
+    return json
+  }
+
+  return JSON.stringify({
+    contract: payload.contract,
+    current_game_time: payload.current_game_time,
+    source_audience: payload.source_audience,
+    room: payload.room,
+    source_character: payload.source_character,
+    source_location: payload.source_location,
+    participating_players: payload.participating_players,
+    characters_physically_present_with_source:
+      payload.characters_physically_present_with_source,
+    canonical_sheets_for_present_characters:
+      payload.canonical_sheets_for_present_characters,
+    canonical_resource_states_for_present_characters:
+      Array.isArray(payload.canonical_resource_states_for_present_characters)
+        ? payload.canonical_resource_states_for_present_characters.slice(0, 40)
+        : [],
+    present_npc_profiles: payload.present_npc_profiles,
+    canonical_npc_runtime: payload.canonical_npc_runtime,
+    active_scene_actors: payload.active_scene_actors,
+    active_quest_context: {
+      ...record(payload.active_quest_context),
+      active_quests: rows(record(payload.active_quest_context).active_quests)
+        .slice(0, 4),
+    },
+    relevant_long_term_memory: {
+      facts: rows(record(payload.relevant_long_term_memory).facts).slice(0, 8),
+      summaries:
+        rows(record(payload.relevant_long_term_memory).summaries).slice(0, 2),
+    },
+    background_temporal_context: payload.background_temporal_context,
+    cooperative_time_sync: payload.cooperative_time_sync,
+    recent_chat_messages_all_authors: payload.recent_chat_messages_all_authors,
+    context_metrics: payload.context_metrics,
+    explicit_player_name_mentions: payload.explicit_player_name_mentions,
   })
 }
 
