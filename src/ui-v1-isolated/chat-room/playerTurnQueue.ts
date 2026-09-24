@@ -60,10 +60,11 @@ export type PlayerTurnSubmitResult = {
   character_id: string
   turn_command_id: string
   message_ids: number[]
-  action_message_id: number | null
-  bonus_action_message_id: number | null
-  movement_message_id: number | null
   trigger_message_id: number
+  declaration_only: true
+  plan_entry_count: number
+  audience_scope: "scene" | "direct_pc"
+  recipient_character_ids: string[]
 }
 
 function asDraft(value: unknown): PlayerTurnDraft | null {
