@@ -5558,7 +5558,16 @@
 }
 
 .u1-room-shell[data-chat-room-final-stage="6"][data-keyboard-open] {
-  max-height: var(--u1-chat-viewport-height, 100dvh);
+  height:
+    calc(
+      var(--u1-chat-viewport-height, 100dvh) -
+      var(--u1-content-safe-top, 0px)
+    );
+  max-height:
+    calc(
+      var(--u1-chat-viewport-height, 100dvh) -
+      var(--u1-content-safe-top, 0px)
+    );
 }
 
 .u1-room-shell[data-chat-room-final-stage="6"][data-keyboard-open] .u1-chat-composer {
