@@ -221,3 +221,14 @@ test("Stage 17 proof kinds include explicit resolver absence for deterministic f
   )
   assert.match(sql, /stage17_world_failure_requires_canonical_or_resolver_absent_proof/)
 })
+
+
+test("Stage 17 source-of-truth status is certified after live verification", () => {
+  const contract = read("src/ai-world-evolution/contract.ts")
+  const roadmap = read("docs/AI_WORLD_EVOLUTION_MASTER_ROADMAP.md")
+  const spec = read("docs/AI_WORLD_EVOLUTION_STAGE17_LOGIC_ROLLS.md")
+
+  assert.match(contract, /id:\s*17,[\s\S]*?status:\s*"certified"/)
+  assert.match(roadmap, /## Stage 17[\s\S]*?\*\*Status: CERTIFIED — 2026-09-24\*\*/)
+  assert.match(spec, /Status: CERTIFIED — 2026-09-24/)
+})
