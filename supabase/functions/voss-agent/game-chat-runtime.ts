@@ -5,6 +5,7 @@ import {
   npcDialogueContextForPrompt,
   stage2ContextForPrompt,
   stage19ContextTelemetry,
+  stage21BehaviorProfileTelemetry,
   type Stage2GameChatContext,
 } from "./game-chat-context.ts"
 import {
@@ -1189,6 +1190,7 @@ async function finalizeStage18VisibleAnswer({
     reaction_reason: reaction.reason,
     dialogue_message_kinds: messages.map((item) => item.kind),
     ...stage19ContextTelemetry(context),
+    ...stage21BehaviorProfileTelemetry(context),
     source_location_id: context.sourceLocation?.id || null,
     player_location_count: new Set(
       context.players.map((player) => player.location_id).filter(Boolean),
@@ -2366,6 +2368,8 @@ async function completeWithoutChatMessage({
         reaction_mode: reaction.mode,
         reaction_reason: reaction.reason,
         ...stage19ContextTelemetry(context),
+        ...stage21BehaviorProfileTelemetry(context),
+    ...stage21BehaviorProfileTelemetry(context),
         source_location_id: context.sourceLocation?.id || null,
         player_location_count: new Set(
           context.players.map((player) => player.location_id).filter(Boolean),
@@ -2424,6 +2428,8 @@ async function completeWithGameplayMessage({
         reaction_reason: reaction.reason,
         mechanic_result: mechanicResult,
         ...stage19ContextTelemetry(context),
+        ...stage21BehaviorProfileTelemetry(context),
+    ...stage21BehaviorProfileTelemetry(context),
         source_location_id: context.sourceLocation?.id || null,
         player_location_count: new Set(
           context.players.map((player) => player.location_id).filter(Boolean),
@@ -3435,6 +3441,9 @@ export async function runGameChatTurn(
             stage17_logical_difficulty: request.logicalDifficulty,
             stage17_mechanic_worker_model_key: normalized.workerModelKey,
             ...stage19ContextTelemetry(context),
+            ...stage21BehaviorProfileTelemetry(context),
+        ...stage21BehaviorProfileTelemetry(context),
+    ...stage21BehaviorProfileTelemetry(context),
             model_id: route.model.id,
             model_key: route.model.model_key,
             model_name: route.model.display_name,
