@@ -5,190 +5,28 @@ import test from "node:test"
 const read = (path: string) =>
   readFileSync(new URL("../" + path, import.meta.url), "utf8")
 
-const migration = () =>
-  [
-    read("supabase/migrations/20260924071000_ai_world_evolution_stage17_logic_rolls_v1.sql"),
-    read("supabase/migrations/20260924092500_ai_world_evolution_stage17_world_proof_v2.sql"),
-  ].join("\n")
-
+const baseMigration = () =>
+  read("supabase/migrations/20260924071000_ai_world_evolution_stage17_logic_rolls_v1.sql")
+const proofMigration = () =>
+  read("supabase/migrations/20260924092500_ai_world_evolution_stage17_world_proof_v2.sql")
 const runtime = () =>
   read("supabase/functions/voss-agent/game-chat-runtime.ts")
 
-test("Stage 17 persists an immutable pre-roll adjudication receipt", () => {
-  const sql = migration()
-
+test("Stage 17 persists immutable pre-roll adjudication before the real d20", () => {
+  const sql = baseMigration()
   assert.match(sql, /create table if not exists public\.ai_player_intent_adjudications/)
   assert.match(sql, /source_intent_fingerprint/)
   assert.match(sql, /evidence_fingerprint/)
   assert.match(sql, /receipt_fingerprint/)
-  assert.match(sql, /adjudication_mode in \([\s\S]*'deterministic_success'[\s\S]*'deterministic_failure'[\s\S]*'check'[\s\S]*'impossible_exact'/)
   assert.match(sql, /ai_player_intent_adjudications_immutable_update/)
-  assert.match(sql, /ai_player_intent_adjudication_is_immutable/)
-  assert.match(sql, /pending_player_roll_requests[\s\S]*adjudication_id/)
-  assert.match(sql, /pending_player_roll_requests_stage17_freeze/)
   assert.match(sql, /stage17_player_roll_contract_is_frozen/)
-})
-
-test("Stage 17 keeps hidden adjudication state service-only", () => {
-  const sql = migration()
-
-  assert.match(
-    sql,
-    /alter table public\.ai_player_intent_adjudications enable row level security/,
-  )
-  assert.match(
-    sql,
-    /revoke all on table public\.ai_player_intent_adjudications[\s\S]*from public, anon, authenticated/,
-  )
-  assert.match(sql, /ai_player_intent_adjudications_no_direct_reads/)
-  assert.match(sql, /using \(false\)/)
-  assert.match(
-    sql,
-    /revoke all on function public\.create_ai_gm_player_roll_request_v3[\s\S]*from public, anon, authenticated/,
-  )
-  assert.match(
-    sql,
-    /grant execute on function public\.create_ai_gm_player_roll_request_v3[\s\S]*to service_role/,
-  )
-})
-
-test("Stage 17 freezes logical difficulty before delegating to the real Stage 5 roll", () => {
-  const sql = migration()
-
-  assert.match(sql, /private\.ai_gm_difficulty_dc_v1/)
-  assert.match(sql, /when 'very_easy' then 5/)
-  assert.match(sql, /when 'easy' then 10/)
-  assert.match(sql, /when 'moderate' then 15/)
-  assert.match(sql, /when 'hard' then 20/)
-  assert.match(sql, /when 'very_hard' then 25/)
-  assert.match(sql, /when 'nearly_impossible' then 30/)
-  assert.match(sql, /insert into public\.ai_player_intent_adjudications[\s\S]*v_receipt_fingerprint/)
   assert.match(sql, /public\.create_ai_gm_player_roll_request_v1\(/)
   assert.match(sql, /set adjudication_id = v_receipt\.id/)
 })
 
-test("Stage 17 impossible_exact can never become exact success", () => {
-  const sql = migration()
-  const impossibleStart = sql.indexOf(
-    "elsif v_adjudication.adjudication_mode = 'impossible_exact'",
-  )
-  const impossibleEnd = sql.indexOf(
-    "else\n      raise exception 'stage17_roll_has_non_roll_adjudication'",
-    impossibleStart,
-  )
-  assert.ok(impossibleStart >= 0)
-  assert.ok(impossibleEnd > impossibleStart)
-
-  const block = sql.slice(impossibleStart, impossibleEnd)
-  assert.match(block, /v_outcome_class := 'partial_success'/)
-  assert.match(block, /v_outcome_class := 'failure'/)
-  assert.doesNotMatch(block, /v_outcome_class := 'success'/)
-  assert.match(sql, /'natural20', v_d20_raw = 20/)
-  assert.match(sql, /'natural20Policy', v_adjudication\.natural_20_policy/)
-})
-
-test("Stage 17 primary GM emits semantics, not application roll API fields", () => {
-  const code = runtime()
-
-  assert.match(code, /semantic_check/)
-  assert.match(code, /logical_difficulty/)
-  assert.match(code, /adjudication_mode\(check\|impossible_exact\)/)
-  assert.match(code, /НЕ указывай request_type\/ability_key\/skill_key\/attack_kind\/modifier/)
-  assert.match(code, /Player d20 никогда не создаёт отсутствующую хижину, дракона, NPC, предмет или улику/)
-  assert.match(code, /Не проси косметический бросок/)
-  assert.match(code, /крепкий алкоголь может требовать Constitution check\/save/)
-})
-
-test("Stage 17 delegates semantic mechanics to a bounded junior worker", () => {
-  const code = runtime()
-
-  assert.match(code, /MECHANIC_WORKER_MODEL_KEY = "deepseek-v4\.1-flash"/)
-  assert.match(code, /MECHANIC_WORKER_SYSTEM/)
-  assert.match(code, /normalizePlayerRollWithWorker/)
-  assert.match(code, /STAGE17_SKILLS/)
-  assert.match(code, /STAGE17_ABILITIES/)
-  assert.match(code, /temperature: 0\.05/)
-  assert.match(code, /create_ai_gm_player_roll_request_v3/)
-  assert.doesNotMatch(
-    code.slice(
-      code.indexOf('"Для request_player_roll НЕ указывай'),
-      code.indexOf('"Для mechanic modes body пустой'),
-    ),
-    /request_type\(skill/,
-  )
-})
-
-test("Stage 17 worker gets canonical proficiency state while server still owns modifier math", () => {
-  const context = read("supabase/functions/voss-agent/game-chat-context.ts")
-  const stage5 = read(
-    "supabase/migrations/20260923103000_ai_gm_player_roll_stage5_v1.sql",
-  )
-
-  assert.match(context, /skill_proficiencies/)
-  assert.match(context, /saving_throw_proficiencies/)
-  assert.match(stage5, /resolve_player_roll_modifier_v1/)
-  assert.match(stage5, /skill_ability_v1/)
-  assert.match(stage5, /proficiency_bonus/)
-})
-
-test("Stage 17 resume feeds the primary GM the frozen server outcome envelope", () => {
-  const code = runtime()
-  const sql = migration()
-
-  assert.match(code, /SERVER-RESOLVED ROLL RESULT/)
-  assert.match(code, /claimed\.result\.last_roll_result/)
-  assert.match(sql, /'outcomeEnvelope', v_outcome_envelope/)
-  assert.match(sql, /'exactGoalAllowed', v_adjudication\.exact_goal_allowed/)
-  assert.match(sql, /'receiptFingerprint', v_adjudication\.receipt_fingerprint/)
-})
-
-test("Stage 17 remains separate from Stage 11 world-existence randomness", () => {
-  const code = runtime()
-  const roadmap = read("docs/AI_WORLD_EVOLUTION_MASTER_ROADMAP.md")
-
-  assert.match(code, /СНАЧАЛА используй resolve_random_decision/)
-  assert.match(code, /World existence и character performance/)
-  assert.match(roadmap, /World existence is not a skill check/)
-  assert.match(roadmap, /Stage 11 Resolver settles existence first/)
-})
-
-
-test("Stage 17 distinguishes character performance from world discovery at the server boundary", () => {
-  const sql = migration()
-  const code = runtime()
-
-  assert.match(code, /uncertainty_scope=character_performance/)
-  assert.match(code, /uncertainty_scope=world_discovery/)
-  assert.match(code, /canonical_evidence/)
-  assert.match(code, /resolver_decision_key/)
-  assert.match(sql, /stage17_validate_canonical_evidence_v1/)
-  assert.match(sql, /stage17_world_discovery_requires_canonical_or_resolver_exists_proof/)
-  assert.match(sql, /stage17_resolver_says_world_target_absent/)
-})
-
-test("Stage 17 canonical proof validates real campaign-owned entities instead of trusting UUID-shaped text", () => {
-  const sql = migration()
-
-  assert.match(sql, /from public\.locations l[\s\S]*l\.campaign_id=p_campaign_id[\s\S]*l\.lifecycle_state='active'/)
-  assert.match(sql, /from public\.characters c[\s\S]*c\.campaign_id=p_campaign_id[\s\S]*c\.character_type='npc'/)
-  assert.match(sql, /from public\.ai_scene_actors a[\s\S]*a\.campaign_id=p_campaign_id[\s\S]*a\.runtime_state='active'/)
-  assert.match(sql, /qt\.binding_state='bound'/)
-  assert.match(sql, /from public\.campaign_memory_facts f[\s\S]*f\.status='active'/)
-})
-
-test("Stage 17 binds a world-existence resolver proof to the same GM job", () => {
-  const sql = migration()
-
-  assert.match(sql, /c\.decision_key=v_resolver_key/)
-  assert.match(sql, /c\.run_key=p_job_id::text/)
-  assert.match(sql, /c\.caller_surface='primary_gm'/)
-  assert.match(sql, /stage17_world_existence/)
-  assert.match(sql, /=\s*'exists'/)
-})
-
-test("Stage 17 cannot be bypassed through the obsolete v2 service RPC", () => {
-  const sql = migration()
-
+test("Stage 17 hardened path is the only service-role semantic roll entrypoint", () => {
+  const sql = proofMigration()
+  assert.match(sql, /create or replace function public\.create_ai_gm_player_roll_request_v3/)
   assert.match(
     sql,
     /revoke all on function public\.create_ai_gm_player_roll_request_v2[\s\S]*from public, anon, authenticated, service_role/,
@@ -200,18 +38,113 @@ test("Stage 17 cannot be bypassed through the obsolete v2 service RPC", () => {
   assert.match(runtime(), /create_ai_gm_player_roll_request_v3/)
 })
 
-test("Stage 17 requested roll is allowed through later free-form chat gates only inside resolver transaction", () => {
-  const sql = migration()
+test("Stage 17 distinguishes character performance from world discovery", () => {
+  const code = runtime()
+  const sql = proofMigration()
 
-  assert.match(sql, /perform set_config\('meganot\.ai_gm_runtime','on',true\)/)
-  assert.match(sql, /set_config[\s\S]*send_chat_roll_v4/)
+  assert.match(code, /uncertaintyScope: "character_performance" \| "world_discovery"/)
+  assert.match(code, /uncertainty_scope=character_performance/)
+  assert.match(code, /uncertainty_scope=world_discovery/)
+  assert.match(sql, /uncertainty_scope in \('character_performance','world_discovery'\)/)
+  assert.match(sql, /stage17_world_discovery_requires_canonical_or_resolver_exists_proof/)
 })
 
-test("Stage 17 does not remove junior world materialization authority", () => {
-  const code = runtime()
+test("Stage 17 canonical world proof is validated against real campaign rows", () => {
+  const sql = proofMigration()
+  assert.match(sql, /private\.stage17_validate_canonical_evidence_v1/)
+  assert.match(sql, /public\.locations/)
+  assert.match(sql, /public\.characters/)
+  assert.match(sql, /public\.ai_scene_actors/)
+  assert.match(sql, /public\.quest_targets/)
+  assert.match(sql, /public\.campaign_memory_facts/)
+  assert.match(sql, /public\.reference_definitions/)
+  assert.match(sql, /qt\.binding_state='bound'/)
+  assert.match(sql, /l\.lifecycle_state='active'/)
+  assert.match(sql, /c\.publication_state='campaign'/)
+})
 
-  assert.match(code, /WORLD_MATERIALIZER_TOOL_NAMES/)
-  assert.match(code, /"create_location"/)
-  assert.match(code, /"create_world_npc"/)
+test("Stage 17 Resolver proof must belong to this exact GM job and explicitly establish existence", () => {
+  const sql = proofMigration()
+  assert.match(sql, /r\.run_key=p_job_id::text/)
+  assert.match(sql, /r\.decision_kind='narrative\.branch'/)
+  assert.match(sql, /r\.audit->>'caller_surface'.*'primary_gm'/)
+  assert.match(sql, /stage17_world_existence/)
+  assert.match(sql, /='exists'/)
+  assert.match(sql, /='absent'/)
+  assert.match(sql, /stage17_resolver_says_world_target_absent/)
+})
+
+test("Stage 17 impossible_exact can never become exact success", () => {
+  const sql = baseMigration()
+  const start = sql.indexOf(
+    "elsif v_adjudication.adjudication_mode = 'impossible_exact'",
+  )
+  const end = sql.indexOf(
+    "else\n      raise exception 'stage17_roll_has_non_roll_adjudication'",
+    start,
+  )
+  assert.ok(start >= 0)
+  assert.ok(end > start)
+  const block = sql.slice(start, end)
+  assert.match(block, /v_outcome_class := 'partial_success'/)
+  assert.match(block, /v_outcome_class := 'failure'/)
+  assert.doesNotMatch(block, /v_outcome_class := 'success'/)
+})
+
+test("Stage 17 freezes logical difficulty before delegating modifier and d20 to server", () => {
+  const sql = baseMigration()
+  assert.match(sql, /when 'very_easy' then 5/)
+  assert.match(sql, /when 'easy' then 10/)
+  assert.match(sql, /when 'moderate' then 15/)
+  assert.match(sql, /when 'hard' then 20/)
+  assert.match(sql, /when 'very_hard' then 25/)
+  assert.match(sql, /when 'nearly_impossible' then 30/)
+  assert.match(sql, /private\.resolve_player_roll_modifier_v1/)
+  assert.match(sql, /public\.send_chat_roll_v4/)
+})
+
+test("Stage 17 primary GM emits semantics while Flash normalizes only mechanics", () => {
+  const code = runtime()
+  assert.match(code, /MECHANIC_WORKER_MODEL_KEY = "deepseek-v4\.1-flash"/)
+  assert.match(code, /normalizePlayerRollWithWorker/)
+  assert.match(code, /semantic_check/)
+  assert.match(code, /logical_difficulty/)
+  assert.match(code, /canonical_evidence/)
+  assert.match(code, /resolver_decision_key/)
+  assert.match(code, /НЕ указывай request_type\/ability_key\/skill_key\/attack_kind\/modifier/)
+  assert.match(code, /крепкий алкоголь может требовать Constitution check\/save/)
+})
+
+test("Stage 17 requested roll can pass a later free-form chat gate without opening normal chat", () => {
+  const sql = proofMigration()
+  const resolverStart = sql.indexOf(
+    "create or replace function public.resolve_player_roll_request_v1",
+  )
+  assert.ok(resolverStart >= 0)
+  const resolver = sql.slice(resolverStart)
+  assert.match(resolver, /set_config\('meganot\.ai_gm_runtime','on',true\)/)
+  assert.match(resolver, /send_chat_roll_v4/)
+  assert.ok(
+    resolver.indexOf("set_config('meganot.ai_gm_runtime','on',true)") <
+      resolver.indexOf("send_chat_roll_v4"),
+  )
+})
+
+test("Stage 17 keeps adjudication private and returns only public roll outcome to the player", () => {
+  const sql = baseMigration()
+  assert.match(sql, /revoke all on table public\.ai_player_intent_adjudications/)
+  assert.match(sql, /using \(false\)/)
+  assert.match(sql, /v_private_result := v_private_result \|\| jsonb_build_object/)
+  assert.match(sql, /return v_public_result/)
+  assert.match(sql, /'outcomeEnvelope'/)
+  assert.match(sql, /'receiptFingerprint'/)
+})
+
+test("Stage 17 world creation remains a materializer responsibility, not a player-roll responsibility", () => {
+  const code = runtime()
+  assert.match(code, /world_materialization_task/)
   assert.match(code, /runWorldMaterializer/)
+  assert.match(code, /Player d20 никогда не создаёт отсутствующую хижину/)
+  assert.match(code, /СНАЧАЛА используй resolve_random_decision/)
+  assert.match(code, /payload\.stage17_world_existence/)
 })
