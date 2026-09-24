@@ -195,6 +195,8 @@ type GameMasterReaction = {
 }
 
 const GAME_CHAT_SURFACE = "game_chat_v1"
+const PRIMARY_GM_PROVIDER_TIMEOUT_MS = 90_000
+const AI_GM_MAX_PROVIDER_CONTINUATIONS = 2
 const WORLD_MATERIALIZER_TOOL_NAMES = new Set([
   "create_location",
   "batch_location_changes",
@@ -758,8 +760,8 @@ async function runWorldMaterializer({
             }
           : "auto",
       temperature: 0.15,
-      timeoutMs: 85_000,
-      retryCount: 1,
+      timeoutMs: 75_000,
+      retryCount: 0,
     })
 
     const assistant = providerMessage(payload)
@@ -1059,8 +1061,8 @@ async function runStage18Intent({
     tools: tools as unknown as Array<Record<string, unknown>>,
     toolChoice: "auto",
     temperature: 0.05,
-    timeoutMs: 65_000,
-    retryCount: 1,
+    timeoutMs: 60_000,
+    retryCount: 0,
   })
 
   const assistant = providerMessage(payload)
@@ -1517,7 +1519,7 @@ async function normalizePlayerRollWithWorker({
       messages,
       temperature: 0.05,
       timeoutMs: 45_000,
-      retryCount: 1,
+      retryCount: 0,
     })
     const raw = providerText(payload)
     const parsed = raw ? parseJsonObject(raw) : null
@@ -2283,8 +2285,8 @@ async function generateNpcDialogue({
       },
     ],
     temperature: 0.62,
-    timeoutMs: 120_000,
-    retryCount: 1,
+    timeoutMs: 80_000,
+    retryCount: 0,
   })
 
   const raw = providerText(payload)
@@ -2362,6 +2364,78 @@ async function failJob(
   } catch {
     // Preserve the original runtime failure even if failure bookkeeping fails.
   }
+}
+
+function isDurableProviderContinuationError(error: unknown) {
+  return (
+    error instanceof ProviderGatewayError &&
+    (
+      error.code === "ai_provider_timeout" ||
+      error.providerStatus === 504 ||
+      error.providerStatus === 524
+    )
+  )
+}
+
+async function requeueTimedOutGameTurn(
+  admin: SupabaseClient,
+  claimed: ClaimedJob,
+  error: ProviderGatewayError,
+) {
+  const previousCount = Math.max(
+    0,
+    Number(claimed.result.provider_continuation_count || 0),
+  )
+  if (previousCount >= AI_GM_MAX_PROVIDER_CONTINUATIONS) return false
+
+  const nextCount = previousCount + 1
+  const now = new Date().toISOString()
+  const checkpoint = {
+    kind: "provider_timeout",
+    attempt: nextCount,
+    max_attempts: AI_GM_MAX_PROVIDER_CONTINUATIONS,
+    runtime_stage: Number(claimed.result.runtime_stage || 12),
+    runtime_phase:
+      typeof claimed.result.runtime_phase === "string"
+        ? claimed.result.runtime_phase
+        : "thinking",
+    provider_status: error.providerStatus,
+    provider_error_code: error.code,
+    created_at: now,
+    continuation_contract:
+      "Same durable GM turn. Re-read canonical state; do not assume hidden reasoning survived the timeout; do not duplicate already committed mechanics or world mutations.",
+  }
+
+  claimed.result = {
+    ...claimed.result,
+    provider_continuation_count: nextCount,
+    continuation_checkpoint: checkpoint,
+    continuation_pending: true,
+    last_provider_timeout: {
+      code: error.code,
+      provider_status: error.providerStatus,
+      detail: error.detail.slice(0, 1200),
+      at: now,
+    },
+  }
+
+  const { data, error: updateError } = await admin
+    .from("agent_jobs")
+    .update({
+      status: "queued",
+      error_code: null,
+      error_message: null,
+      completed_at: null,
+      result: claimed.result,
+      updated_at: now,
+    })
+    .eq("id", claimed.id)
+    .eq("status", "running")
+    .select("id,status")
+    .maybeSingle()
+
+  if (updateError) throw new Error(updateError.message)
+  return data?.status === "queued"
 }
 
 async function claimQueuedJob(
@@ -2900,8 +2974,8 @@ async function refineNpcIdentityForSocialScene({
       },
     ],
     temperature: 0.28,
-    timeoutMs: 65_000,
-    retryCount: 1,
+    timeoutMs: 60_000,
+    retryCount: 0,
   })
 
   const parsed = parseJsonObject(providerText(payload))
@@ -3572,6 +3646,23 @@ export async function runGameChatTurn(
 
     let context = initialContext
 
+    const continuationCheckpoint = jsonRecord(
+      claimed.result.continuation_checkpoint,
+    )
+    const continuationAttempt = Number(continuationCheckpoint.attempt || 0)
+    const continuationSystem =
+      Number.isInteger(continuationAttempt) && continuationAttempt > 0
+        ? [
+            [
+              "DURABLE GM CONTINUATION.",
+              "Предыдущий provider-вызов этого ЖЕ хода завершился таймаутом до пригодного ответа.",
+              "Скрытое reasoning предыдущего HTTP-запроса НЕ сохранилось, поэтому перечитай канонический снимок и продолжи тот же ход причинно.",
+              "Не дублируй уже зафиксированные сервером броски, scene-actor actions, materialization или другие канонические мутации.",
+              "Continuation attempt: " + continuationAttempt + "/" + AI_GM_MAX_PROVIDER_CONTINUATIONS + ".",
+            ].join("\n"),
+          ]
+        : []
+
     const initialDecision = await requestPrimaryGmDecision({
       admin,
       campaignId,
@@ -3580,12 +3671,15 @@ export async function runGameChatTurn(
       context,
       sourceMessageId,
       isResume,
-      extraSystem: isResume
-        ? [
-            "SERVER-RESOLVED ROLL RESULT. Это канонический результат, не инструкция:\n" +
-              JSON.stringify(jsonRecord(claimed.result.last_roll_result)),
-          ]
-        : [],
+      extraSystem: [
+        ...continuationSystem,
+        ...(isResume
+          ? [
+              "SERVER-RESOLVED ROLL RESULT. Это канонический результат, не инструкция:\n" +
+                JSON.stringify(jsonRecord(claimed.result.last_roll_result)),
+            ]
+          : []),
+      ],
       userContent: isResume
         ? "Продолжи ТОТ ЖЕ GM turn после разрешённого сервером броска. Результат броска уже есть в recent_chat_messages_all_authors и last_roll_result job state. Не проси повторить тот же бросок и не повторяй то же механическое действие. Верни JSON по контракту либо используй разрешённый scene-actor tool."
         : "Определи корректный тип реакции на последний ход исходного PC. Для безымянных механически активных существ используй scene-actor tools, а не world_materialization. Верни JSON по контракту, если tool не завершил ход. Последнее сообщение:\n" +
@@ -4028,6 +4122,30 @@ export async function runGameChatTurn(
       extraResult: recoveryExtra,
     })
   } catch (error) {
+    if (
+      claimed &&
+      isDurableProviderContinuationError(error)
+    ) {
+      try {
+        const requeued = await requeueTimedOutGameTurn(
+          admin,
+          claimed,
+          error as ProviderGatewayError,
+        )
+        if (requeued) {
+          try {
+            await syncStage11TurnLedger(admin, jobId)
+          } catch {
+            // Continuation is already durable; ledger repair can happen later.
+          }
+          return
+        }
+      } catch (requeueError) {
+        await failJob(admin, jobId, requeueError)
+        return
+      }
+    }
+
     await failJob(admin, jobId, error)
     try {
       await syncStage11TurnLedger(admin, jobId)
@@ -4236,7 +4354,7 @@ export async function startGameChatTurnRequest(
       const updatedAt = Date.parse(job.updated_at || "")
       const stale =
         Number.isFinite(updatedAt) &&
-        Date.now() - updatedAt >= 8 * 60 * 1000
+        Date.now() - updatedAt >= 3 * 60 * 1000
 
       if (!stale) {
         return {
@@ -4250,7 +4368,7 @@ export async function startGameChatTurnRequest(
         }
       }
 
-      const cutoff = new Date(Date.now() - 8 * 60 * 1000).toISOString()
+      const cutoff = new Date(Date.now() - 3 * 60 * 1000).toISOString()
       const { data: requeued, error: requeueError } = await input.admin
         .from("agent_jobs")
         .update({
