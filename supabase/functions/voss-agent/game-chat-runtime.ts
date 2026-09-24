@@ -23,6 +23,10 @@ import {
   VOSS_QUEST_TOOLS,
 } from "./quest-tools.ts"
 import {
+  executeVossMemoryTool,
+  VOSS_MEMORY_WRITE_TOOLS,
+} from "./memory-tools.ts"
+import {
   executeRandomDecision,
   RESOLVE_RANDOM_DECISION_TOOL,
 } from "./random-decision.ts"
@@ -149,6 +153,13 @@ type RecoveryRequest = {
   targetCharacterIds: string[]
 }
 
+type PostTurnIntent = {
+  intentKey: string
+  kind: "location" | "npc" | "quest" | "memory" | "canonical_state" | "binding"
+  instruction: string
+  evidence: string
+}
+
 type GameMasterReaction = {
   mode: ReactionMode
   body: string
@@ -160,6 +171,7 @@ type GameMasterReaction = {
   npcRoll: NpcRollRequest | null
   recoveryRequest: RecoveryRequest | null
   dialogueOutputs: DialoguePlanOutput[]
+  postTurnIntents: PostTurnIntent[]
   worldMaterializationRequested?: boolean
   worldMaterializationTask?: string
 }
@@ -167,6 +179,7 @@ type GameMasterReaction = {
 const GAME_CHAT_SURFACE = "game_chat_v1"
 const WORLD_MATERIALIZER_MODEL_KEY = "deepseek-v4.1-flash"
 const MECHANIC_WORKER_MODEL_KEY = "deepseek-v4.1-flash"
+const POST_TURN_WORKER_MODEL_KEY = "deepseek-v4.1-flash"
 const WORLD_MATERIALIZER_TOOL_NAMES = new Set([
   "create_location",
   "batch_location_changes",
