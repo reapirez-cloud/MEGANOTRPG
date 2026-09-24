@@ -2651,6 +2651,167 @@ function primaryGmContextForPrompt(context: Stage2GameChatContext) {
   })
 }
 
+function npcIdentityNeedsRefinement(identity: JsonRecord | null) {
+  if (!identity) return false
+  const state = String(identity.bootstrap_state || "")
+  if (state !== "stub" && state !== "seeded") return false
+  const core = jsonRecord(identity.core)
+  const arrays = [
+    "traits",
+    "weighted_values",
+    "red_lines",
+    "long_term_desires",
+    "fears",
+    "loyalties",
+    "pressure_behavior",
+    "social_style",
+    "decision_priorities",
+  ]
+  const filledArrays = arrays.filter(
+    (key) => Array.isArray(core[key]) && (core[key] as unknown[]).length > 0,
+  ).length
+  const scalarSignals = [
+    typeof core.self_image === "string" && core.self_image.trim(),
+    Number.isFinite(Number(core.risk_tolerance)),
+    Number.isFinite(Number(core.violence_threshold)),
+    Object.keys(jsonRecord(core.authority_attitude)).length > 0,
+  ].filter(Boolean).length
+  return filledArrays + scalarSignals < 7
+}
+
+async function refineNpcIdentityForSocialScene({
+  admin,
+  campaignId,
+  context,
+  npcCharacterId,
+  reason,
+}: {
+  admin: SupabaseClient
+  campaignId: string
+  context: Stage2GameChatContext
+  npcCharacterId: string
+  reason: string
+}) {
+  const character = context.presentCharacters.find(
+    (item) =>
+      String(item.id || "") === npcCharacterId &&
+      item.character_type === "npc",
+  )
+  const identity =
+    context.npcIdentities.find(
+      (item) => String(item.character_id || "") === npcCharacterId,
+    ) || null
+
+  if (!character || !identity) {
+    return { error: "npc_identity_refinement_target_not_present" }
+  }
+  if (!npcIdentityNeedsRefinement(identity)) {
+    return {
+      changed: false,
+      reason: "npc_identity_already_sufficient",
+      identity,
+    }
+  }
+
+  const profile =
+    context.npcProfiles.find(
+      (item) => String(item.character_id || "") === npcCharacterId,
+    ) || {}
+  const relationships = context.relationships
+    .filter(
+      (item) =>
+        String(item.subject_character_id || "") === npcCharacterId ||
+        String(item.target_character_id || "") === npcCharacterId,
+    )
+    .slice(0, 20)
+  const factionMemberships = context.factionMemberships
+    .filter((item) => String(item.character_id || "") === npcCharacterId)
+    .slice(0, 12)
+  const factionReputations = context.factionReputations
+    .filter((item) => String(item.character_id || "") === npcCharacterId)
+    .slice(0, 12)
+
+  const route = await resolveCampaignJuniorModel(admin, { campaignId })
+  const sanitizedCanon = {
+    npc: {
+      id: character.id,
+      name: character.name,
+      class: character.character_class,
+      level: character.level,
+      bio: character.bio,
+      location_id: character.location_id,
+      profile,
+      existing_identity: identity,
+      relationships,
+      faction_memberships: factionMemberships,
+      faction_reputations: factionReputations,
+    },
+    location: context.sourceLocation,
+    current_game_time: context.currentGameTime,
+    refinement_reason_without_player_tactic:
+      reason.trim().slice(0, 600) ||
+      "Persistent NPC needs a coherent stable identity before consequential social adjudication.",
+  }
+
+  const payload = await requestChatCompletion({
+    model: route.model,
+    messages: [
+      {
+        role: "system",
+        content: [
+          "Ты младший психологический world-builder MEGANOT. Твоя задача — достроить недостающий СТАБИЛЬНЫЙ identity fingerprint NPC до того, как основной GM оценит социальную попытку игрока.",
+          "ТЕБЕ НАМЕРЕННО НЕ ПЕРЕДАЁТСЯ текущая тактика игрока. Никогда не придумывай страх, желание, red line или слабость специально под попытку, которую ты не видишь.",
+          "Строй целостного человека только из переданного канона: роль, биография, мотивация, фракция, отношения, мир и уже существующие части fingerprint.",
+          "Не придумывай скрытый сюжетный поворот, тайную связь с PC, преступление, родственника, предмет или факт мира без канонического основания.",
+          "Допустимо создавать обычные личностные свойства, ценности, страхи и приоритеты, логично следующие из уже существующего образа NPC.",
+          "Верни один JSON {core}. core обязан содержать ВСЕ поля: traits, weighted_values, red_lines, long_term_desires, fears, loyalties, authority_attitude, risk_tolerance, violence_threshold, pressure_behavior, self_image, social_style, decision_priorities.",
+          "weighted_values: максимум 12 объектов {key,label,weight:0..5,reason}. red_lines: максимум 12 объектов {key,label,hard:boolean,reason}. Остальные списки — короткие конкретные строки. risk_tolerance и violence_threshold — целые 0..5.",
+          "Не делай NPC удобным для игрока и не делай его искусственно враждебным. Нужна причинная личность, которая способна как согласиться, так и отказать по своим основаниям.",
+        ].join("\n"),
+      },
+      {
+        role: "user",
+        content:
+          "КАНОН NPC БЕЗ ТЕКУЩЕЙ ТАКТИКИ ИГРОКА:\n" +
+          JSON.stringify(sanitizedCanon),
+      },
+    ],
+    temperature: 0.28,
+    timeoutMs: 65_000,
+    retryCount: 1,
+  })
+
+  const parsed = parseJsonObject(providerText(payload))
+  const proposedCore = parsed ? jsonRecord(parsed.core) : {}
+  if (!Object.keys(proposedCore).length) {
+    throw new Error("npc_identity_refinement_invalid_output")
+  }
+
+  const { data, error } = await admin.rpc(
+    "refine_npc_identity_bootstrap_v2",
+    {
+      p_npc_character_id: npcCharacterId,
+      p_expected_version: Number(identity.version || 0),
+      p_proposed_core: proposedCore,
+      p_reason:
+        reason.trim().slice(0, 1200) ||
+        "Complete missing stable identity before social adjudication.",
+      p_provenance: {
+        model_key: route.model.model_key,
+        current_player_tactic_excluded: true,
+        current_chat_messages_excluded: true,
+      },
+    },
+  )
+  if (error) throw new Error(error.message)
+
+  return {
+    ...jsonRecord(data),
+    junior_model_key: route.model.model_key,
+    current_player_tactic_excluded: true,
+  }
+}
+
 async function requestPrimaryGmDecision({
   admin,
   campaignId,
