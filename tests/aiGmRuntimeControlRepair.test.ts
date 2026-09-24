@@ -12,6 +12,10 @@ const status = read("src/ui-v1-isolated/chat-room/AiGmTurnStatus.tsx")
 const control = read("src/ui-v1-isolated/AiGmControl.tsx")
 const app = read("src/ui-v1-isolated/UiV1App.tsx")
 const shell = read("src/ai/AgentShell.tsx")
+const workspace = read("src/ui-v1-isolated/Workspace.tsx")
+const controlMigration = read(
+  "supabase/migrations/20260925024500_ai_gm_control_panel_v1.sql",
+)
 const migration = read(
   "supabase/migrations/20260925013000_ai_gm_runtime_entity_authority_and_output_fix_v1.sql",
 )
@@ -58,27 +62,58 @@ test("orphaned long-running GM jobs can be resumed without adding a thinking tim
   assert.match(status, /action: "game_chat_turn_resume"/)
 })
 
-test("AI button routes managers to the dedicated AI GM control page", () => {
+test("dedicated AI button routes managers to the AI GM control page while Freddy stays Freddy", () => {
   assert.match(app, /type: "ai-gm"/)
   assert.match(app, /<AiGmControl/)
-  assert.match(app, /<AgentShell onOpenControl=\{\(\) => go\("ai-gm"\)\}/)
-  assert.match(shell, /onOpenControl\?: \(\) => void/)
-  assert.match(shell, /canManage && onOpenControl/)
+  assert.match(workspace, /className="u1-workspace__ai-button"/)
+  assert.match(workspace, /is_ai_world_campaign_v1/)
+  assert.match(workspace, /onOpenAiGm/)
+  assert.match(app, /onOpenAiGm=\{\(\) => go\("ai-gm"\)\}/)
+  assert.match(app, /<AgentShell \/>/)
+  assert.doesNotMatch(shell, /onOpenControl/)
+  assert.match(shell, /setOpen\(\(value\) => !value\)/)
 })
 
-test("AI GM control uses the campaign GM and junior model selectors", () => {
+test("AI GM control loads one complete panel and writes through canonical settings RPCs", () => {
+  assert.match(control, /read_ai_gm_control_panel_v1/)
   for (const rpc of [
-    "list_campaign_gm_models_v1",
     "set_campaign_gm_model_v1",
-    "list_campaign_ai_junior_models_v1",
     "set_campaign_ai_junior_model_v1",
-    "list_campaign_ai_gm_behavior_profiles_v1",
     "set_campaign_ai_gm_behavior_profile_v1",
-    "read_my_ai_director_preferences_v1",
     "set_my_ai_director_preferences_v1",
-    "list_campaign_ai_gm_content_profiles_v1",
     "set_campaign_ai_gm_content_profile_v1",
   ]) {
     assert.match(control, new RegExp(rpc))
+  }
+  for (const section of [
+    "01 · ГЛАВНЫЙ ИИ",
+    "02 · МЛАДШИЙ ИИ",
+    "03 · РЕЖИМ МАСТЕРА",
+    "04 · ДИРЕКТОР",
+    "05 · КОНТЕНТ-ПРОФИЛЬ",
+    "06 · ФУНКЦИИ МИРА",
+  ]) {
+    assert.match(control, new RegExp(section))
+  }
+})
+
+test("server AI GM control panel bundles models, gameplay profiles and core runtime features", () => {
+  assert.match(controlMigration, /read_ai_gm_control_panel_v1/)
+  assert.match(controlMigration, /list_campaign_gm_models_v1/)
+  assert.match(controlMigration, /list_campaign_ai_junior_models_v1/)
+  assert.match(controlMigration, /list_campaign_ai_gm_behavior_profiles_v1/)
+  assert.match(controlMigration, /read_my_ai_director_preferences_v1/)
+  assert.match(controlMigration, /list_campaign_ai_gm_content_profiles_v1/)
+  for (const feature of [
+    "server_resolver",
+    "junior_commit",
+    "background_world",
+    "npc_identity",
+    "coop_sync",
+    "bounded_context",
+    "maintenance",
+    "media_pipeline",
+  ]) {
+    assert.match(controlMigration, new RegExp(feature))
   }
 })
