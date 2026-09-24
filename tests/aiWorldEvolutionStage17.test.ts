@@ -22,6 +22,8 @@ test("Stage 17 persists an immutable pre-roll adjudication receipt", () => {
   assert.match(sql, /ai_player_intent_adjudications_immutable_update/)
   assert.match(sql, /ai_player_intent_adjudication_is_immutable/)
   assert.match(sql, /pending_player_roll_requests[\s\S]*adjudication_id/)
+  assert.match(sql, /pending_player_roll_requests_stage17_freeze/)
+  assert.match(sql, /stage17_player_roll_contract_is_frozen/)
 })
 
 test("Stage 17 keeps hidden adjudication state service-only", () => {
@@ -90,6 +92,8 @@ test("Stage 17 primary GM emits semantics, not application roll API fields", () 
   assert.match(code, /adjudication_mode\(check\|impossible_exact\)/)
   assert.match(code, /НЕ указывай request_type\/ability_key\/skill_key\/attack_kind\/modifier/)
   assert.match(code, /Player d20 никогда не создаёт отсутствующую хижину, дракона, NPC, предмет или улику/)
+  assert.match(code, /Не проси косметический бросок/)
+  assert.match(code, /крепкий алкоголь может требовать Constitution check\/save/)
 })
 
 test("Stage 17 delegates semantic mechanics to a bounded junior worker", () => {
