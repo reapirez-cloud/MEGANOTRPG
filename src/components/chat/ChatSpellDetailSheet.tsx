@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react"
-import { spellReferenceAuthor } from "../../data/spellReferenceAuthor"
 import { catalogSpellName, spellClassLabel, type CatalogSpell, type SpellClassKey } from "../../lib/spellCatalog"
 import { supabase } from "../../lib/supabase"
 import "./ChatSpellDetailSheet.css"
@@ -120,9 +119,7 @@ export default function ChatSpellDetailSheet({ spellKey, label, onClose }: Props
           {spell.effect_summary && <section className="chat-spell-detail__block"><small>Коротко</small><p>{spell.effect_summary}</p></section>}
           <section className="chat-spell-detail__block chat-spell-detail__rules"><small>Механика</small><p>{spell.rules_text || spell.effect_summary || "Описание ещё не заполнено в каталоге."}</p></section>
           {spell.upcast && <section className="chat-spell-detail__block"><small>На больших ячейках</small><p>{spell.upcast}</p></section>}
-          {spell.author_description && <section className="chat-spell-detail__author"><small>{spellReferenceAuthor.name} объясняет</small><p>{spell.author_description}</p></section>}
           {spell.notes && <section className="chat-spell-detail__block"><small>Нюансы</small><p>{spell.notes}</p></section>}
-          {spell.author_comment && <section className="chat-spell-detail__comment"><small>Заметка Восса</small><p>{spell.author_comment}</p></section>}
 
           <footer className="chat-spell-detail__source">
             <span><small>Классы</small><strong>{spell.classes.map(spellClassLabel).join(" · ") || "—"}</strong></span>
