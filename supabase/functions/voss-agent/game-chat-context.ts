@@ -42,6 +42,11 @@ export type Stage2GameChatContext = {
   background: JsonRecord
   temporalSync: JsonRecord
   recentMessages: JsonRecord[]
+  contextMetrics: {
+    eligibleMessageCount: number
+    projectedMessageCount: number
+    recentMessageJsonBytes: number
+  }
   mentionedPlayerCharacters: Array<{ id: string; name: string }>
 }
 
@@ -84,6 +89,188 @@ function unique(values: Array<string | null | undefined>) {
   return [...new Set(values.filter((value): value is string => Boolean(value)))]
 }
 
+
+function boundedText(value: unknown, max = 1200) {
+  if (typeof value !== "string") return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  return trimmed.length <= max ? trimmed : trimmed.slice(0, max - 1).trimEnd() + "…"
+}
+
+function numberArray(value: unknown, limit = 8) {
+  return Array.isArray(value)
+    ? value
+        .map((item) => Number(item))
+        .filter((item) => Number.isFinite(item))
+        .slice(0, limit)
+    : []
+}
+
+function compactMechanicalEvent(
+  eventKind: string,
+  payloadValue: unknown,
+) {
+  const payload = record(payloadValue)
+  const effect = record(payload.effect)
+  const label =
+    boundedText(payload.label, 240) ||
+    boundedText(payload.name, 240) ||
+    boundedText(payload.title, 240)
+  const detail =
+    boundedText(payload.detail, 500) ||
+    boundedText(payload.description, 500)
+  const d20 =
+    nullableNumber(payload.d20) ??
+    nullableNumber(payload.d20Raw)
+  const total =
+    nullableNumber(payload.total) ??
+    nullableNumber(effect.total)
+  const modifier =
+    nullableNumber(payload.modifier) ??
+    nullableNumber(effect.modifier)
+  const rolls = numberArray(effect.rolls)
+  const diceCount = nullableNumber(effect.count)
+  const diceSides = nullableNumber(effect.sides)
+  const outcome =
+    boundedText(payload.outcome_class, 80) ||
+    boundedText(payload.outcomeClass, 80) ||
+    boundedText(payload.outcome, 80) ||
+    (
+      typeof payload.success === "boolean"
+        ? payload.success ? "success" : "failure"
+        : null
+    )
+  const dcVisibility =
+    boundedText(payload.dc_visibility, 32) ||
+    boundedText(payload.dcVisibility, 32)
+  const publicDc =
+    dcVisibility === "public"
+      ? nullableNumber(payload.dc) ??
+        nullableNumber(payload.target_dc) ??
+        nullableNumber(payload.targetDc)
+      : null
+
+  return {
+    kind: eventKind,
+    ...(label ? { label } : {}),
+    ...(detail ? { detail } : {}),
+    ...(d20 !== null ? { d20 } : {}),
+    ...(modifier !== null ? { modifier } : {}),
+    ...(total !== null ? { total } : {}),
+    ...(rolls.length ? { rolls } : {}),
+    ...(diceCount !== null ? { dice_count: diceCount } : {}),
+    ...(diceSides !== null ? { dice_sides: diceSides } : {}),
+    ...(outcome ? { outcome } : {}),
+    ...(publicDc !== null ? { public_dc: publicDc } : {}),
+  }
+}
+
+export function projectStage19ChatMessage(
+  message: JsonRecord,
+  currentDay: number | null,
+): JsonRecord {
+  const eventKind = nullableString(message.event_kind)
+  const campaignDay = nullableNumber(message.campaign_day)
+  const mechanic = eventKind
+    ? compactMechanicalEvent(eventKind, message.event_payload)
+    : null
+  const body = boundedText(message.body, 4000)
+
+  return {
+    id: message.id,
+    author_name: boundedText(message.author_name, 160) || "Персонаж",
+    character_id: nullableString(message.character_id),
+    ...(body ? { body } : {}),
+    ...(mechanic ? { mechanic } : {}),
+    ...(message.attachment_kind === "image" ? { attachment: "image" } : {}),
+    audience_scope:
+      nullableString(message.audience_scope) === "direct_pc"
+        ? "direct_pc"
+        : "scene",
+    recipient_character_ids: strings(message.recipient_character_ids).slice(0, 16),
+    campaign_day: campaignDay,
+    day_period: nullableString(message.day_period),
+    game_age_days:
+      currentDay !== null &&
+      campaignDay !== null &&
+      campaignDay <= currentDay
+        ? currentDay - campaignDay
+        : null,
+    source_location_id: nullableString(message.source_location_id),
+    created_at: nullableString(message.created_at),
+  }
+}
+
+function compactNpcRuntime(rowsValue: JsonRecord[]) {
+  return rowsValue.map((item) => ({
+    character_id: item.character_id,
+    status: item.status,
+    bestiary_slug: item.bestiary_slug,
+    resources: rows(item.resources).map((resource) => ({
+      state_key: resource.state_key,
+      current: resource.current,
+      max: resource.max,
+      label: resource.label,
+      recharge: resource.recharge,
+    })).slice(0, 24),
+    actions: rows(item.actions).map((action) => {
+      const runtime = record(action.runtime)
+      const resource = record(action.resource)
+      return {
+        mechanic_key: action.stable_key,
+        label: action.label,
+        economy: action.economy,
+        kind: runtime.kind,
+        save_ability: runtime.saveAbility || null,
+        resource_key: resource.key || null,
+      }
+    }).slice(0, 24),
+    special_abilities: rows(item.special_abilities).map((ability) => ({
+      label: ability.label || ability.name || null,
+      kind: ability.kind || ability.type || null,
+      description: boundedText(ability.description, 700),
+    })).slice(0, 12),
+  }))
+}
+
+function compactBackground(backgroundValue: JsonRecord) {
+  const background = record(backgroundValue)
+  const compactSnapshot = (value: unknown) => {
+    const snapshot = record(value)
+    const state = record(snapshot.state)
+    const overlay = record(state.temporal_overlay)
+    return snapshot.id
+      ? {
+          id: snapshot.id,
+          through_game_day: snapshot.through_game_day,
+          version: snapshot.version,
+          summary: boundedText(snapshot.summary, 900),
+          temporal_overlay: overlay,
+        }
+      : null
+  }
+
+  return {
+    enabled: background.enabled === true,
+    scene_day: background.scene_day ?? null,
+    world_snapshot: compactSnapshot(background.world_snapshot),
+    source_location_snapshot: compactSnapshot(background.source_location_snapshot),
+    npc_snapshots: rows(background.npc_snapshots).map((row) => ({
+      entity_id: row.entity_id,
+      snapshot: compactSnapshot(row.snapshot),
+    })).slice(0, 24),
+    high_importance_events: rows(background.high_importance_events).map((event) => ({
+      id: event.id,
+      effective_game_day: event.effective_game_day,
+      entity_scope: event.entity_scope,
+      entity_id: event.entity_id,
+      event_kind: event.event_kind,
+      summary: boundedText(event.summary, 900),
+      importance: event.importance,
+    })).slice(0, 8),
+  }
+}
+
 async function loadActiveQuestContext(
   admin: SupabaseClient,
   campaignId: string,
@@ -112,6 +299,7 @@ async function loadActiveQuestContext(
     .eq("status", "active")
     .in("id", questIds)
     .order("sort_order", { ascending: true })
+    .limit(12)
 
   if (questsResult.error) throw new Error(questsResult.error.message)
 
@@ -129,13 +317,15 @@ async function loadActiveQuestContext(
     admin
       .from("quest_secrets")
       .select("quest_id,internal_summary,ai_directive")
-      .in("quest_id", activeQuestIds),
+      .in("quest_id", activeQuestIds)
+      .limit(120),
     admin
       .from("quest_stages")
       .select("id,quest_id,stage_key,position,status,player_title,completion_text,completed_at")
       .in("quest_id", activeQuestIds)
       .in("status", ["active", "completed"])
-      .order("position", { ascending: true }),
+      .order("position", { ascending: true })
+      .limit(96),
     admin
       .from("quest_targets")
       .select("id,quest_id,stage_id,target_key,target_kind,placeholder_label,internal_note,binding_state,location_id,npc_character_id,item_definition_id")
@@ -320,7 +510,6 @@ export async function buildGameChatContextV2({
 
   const [
     roomResult,
-    historyResult,
     charactersResult,
     worldStatesResult,
     roomMembersResult,
@@ -333,13 +522,6 @@ export async function buildGameChatContextV2({
       .eq("id", roomId)
       .eq("campaign_id", campaignId)
       .maybeSingle(),
-    admin
-      .from("chat_messages")
-      .select("id,author_name,body,user_id,character_id,event_kind,event_payload,attachment_kind,turn_command_id,turn_component,turn_order,audience_scope,recipient_character_ids,created_at")
-      .eq("room_id", roomId)
-      .lte("id", sourceMessageId)
-      .order("id", { ascending: false })
-      .limit(CHAT_CONTEXT_LIMIT),
     admin
       .from("characters")
       .select("id,assigned_user_id,name,character_class,level,character_type,life_state,publication_state,bio")
@@ -371,7 +553,6 @@ export async function buildGameChatContextV2({
 
   const firstError =
     roomResult.error ||
-    historyResult.error ||
     charactersResult.error ||
     worldStatesResult.error ||
     roomMembersResult.error ||
@@ -450,6 +631,41 @@ export async function buildGameChatContextV2({
   }
 
   temporalSync.recent_catchups = recentCatchups
+
+  const historyResult = await admin.rpc("read_ai_gm_recent_chat_context_v1", {
+    p_campaign_id: campaignId,
+    p_room_id: roomId,
+    p_source_character_id: sourceCharacterId,
+    p_source_message_id: sourceMessageId,
+    p_source_location_id: sourceLocationId,
+    p_current_day: currentDay,
+    p_limit: CHAT_CONTEXT_LIMIT,
+  })
+  if (historyResult.error) throw new Error(historyResult.error.message)
+
+  const historyEnvelope = record(historyResult.data)
+  const sourceMessage = record(historyEnvelope.source_message)
+  const sourceAudienceScope =
+    nullableString(sourceMessage.audience_scope) === "direct_pc"
+      ? "direct_pc"
+      : "scene"
+  const sourceAudience = {
+    scope: sourceAudienceScope as "scene" | "direct_pc",
+    recipientCharacterIds: strings(sourceMessage.recipient_character_ids),
+  }
+  const recentMessages = rows(historyEnvelope.messages)
+    .map((message) => projectStage19ChatMessage(message, currentDay))
+    .slice(-CHAT_CONTEXT_LIMIT)
+  const contextMetrics = {
+    eligibleMessageCount:
+      Math.min(
+        CHAT_CONTEXT_LIMIT,
+        Math.max(0, Number(historyEnvelope.eligible_message_count || recentMessages.length)),
+      ),
+    projectedMessageCount: recentMessages.length,
+    recentMessageJsonBytes:
+      new TextEncoder().encode(JSON.stringify(recentMessages)).length,
+  }
 
   const locationIds = unique(
     worldStates.map((item) => nullableString(item.location_id))
@@ -632,6 +848,8 @@ export async function buildGameChatContextV2({
           ) || member.can_write === true,
       }
     })
+    .filter((player) => player.can_read_room === true)
+    .slice(0, 16)
 
   const presentCharacters = characters
     .filter((character) => {
@@ -824,68 +1042,6 @@ export async function buildGameChatContextV2({
     )
   }
 
-  // The game chat is persistent for the character. Physical location can change
-  // many times inside the same room, so the GM always receives the latest 50
-  // messages from THIS CHAT, not the latest 50 from the current location.
-  const history = rows(historyResult.data).reverse()
-  const historyMessageIds = history.map((item) => String(item.id))
-  const chatEventsResult = historyMessageIds.length
-    ? await admin
-        .from("campaign_events")
-        .select("id,source_id,location_id,visibility,visible_character_ids,payload,occurred_at")
-        .eq("campaign_id", campaignId)
-        .eq("source_kind", "chat_message")
-        .in("source_id", historyMessageIds)
-    : { data: [], error: null }
-
-  if (chatEventsResult.error) throw new Error(chatEventsResult.error.message)
-
-  const chatEventByMessage = new Map(
-    rows(chatEventsResult.data).map((item) => [String(item.source_id), item]),
-  )
-
-  const sourceMessage =
-    history.find((message) => Number(message.id) === sourceMessageId) || {}
-  const sourceAudienceScope =
-    nullableString(sourceMessage.audience_scope) === "direct_pc"
-      ? "direct_pc"
-      : "scene"
-  const sourceAudience = {
-    scope: sourceAudienceScope as "scene" | "direct_pc",
-    recipientCharacterIds: strings(sourceMessage.recipient_character_ids),
-  }
-
-  const recentMessages = history
-    .filter((message) => {
-      if (nullableString(message.audience_scope) !== "direct_pc") return true
-      if (String(message.character_id || "") === sourceCharacterId) return true
-      return strings(message.recipient_character_ids).includes(sourceCharacterId)
-    })
-    .filter((message) =>
-      eventVisibleAtGameDay(
-        chatEventByMessage.get(String(message.id)),
-        currentDay,
-      )
-    )
-    .map((message) => {
-      const event = chatEventByMessage.get(String(message.id))
-      return withGameAge({
-        id: message.id,
-        author_name: message.author_name,
-        character_id: message.character_id,
-        body: message.body,
-        event_kind: message.event_kind,
-        event_payload: message.event_payload,
-        attachment_kind: message.attachment_kind,
-        turn_command_id: message.turn_command_id,
-        turn_component: message.turn_component,
-        turn_order: message.turn_order,
-        audience_scope: message.audience_scope,
-        recipient_character_ids: message.recipient_character_ids,
-        created_at: message.created_at,
-      }, event, currentDay)
-    })
-
   const rawFacts = rows(memoryFactsResult.data)
     .filter((item) => memoryVisible(item, roomId))
     .filter((item) => memoryRelevant(item, roomId, relevantIdSet))
@@ -1012,14 +1168,74 @@ export async function buildGameChatContextV2({
     background,
     temporalSync,
     recentMessages,
+    contextMetrics,
     mentionedPlayerCharacters,
   }
 }
 
 export function stage2ContextForPrompt(context: Stage2GameChatContext) {
+  const compactCharacters = context.presentCharacters.map((item) => ({
+    id: item.id,
+    name: item.name,
+    character_type: item.character_type,
+    character_class: item.character_class,
+    level: item.level,
+    bio: boundedText(item.bio, 1000),
+    life_state: item.life_state,
+    location_id: item.location_id,
+    temporal_status: item.temporal_status,
+    campaign_day: item.campaign_day,
+    day_period: item.day_period,
+  }))
+
+  const compactSheets = context.sheets.map((sheet) => ({
+    character_id: sheet.character_id,
+    race: sheet.race,
+    background: sheet.background,
+    alignment: sheet.alignment,
+    strength: sheet.strength,
+    dexterity: sheet.dexterity,
+    constitution: sheet.constitution,
+    intelligence: sheet.intelligence,
+    wisdom: sheet.wisdom,
+    charisma: sheet.charisma,
+    armor_class: sheet.armor_class,
+    initiative_bonus: sheet.initiative_bonus,
+    speed: sheet.speed,
+    proficiency_bonus: sheet.proficiency_bonus,
+    max_hp: sheet.max_hp,
+    current_hp: sheet.current_hp,
+    temp_hp: sheet.temp_hp,
+    passive_perception: sheet.passive_perception,
+    spellcasting_enabled: sheet.spellcasting_enabled,
+    spellcasting_ability: sheet.spellcasting_ability,
+    spell_save_dc: sheet.spell_save_dc,
+    spell_attack_bonus: sheet.spell_attack_bonus,
+  }))
+
+  const compactNpcProfiles = context.npcProfiles.map((profile) => ({
+    character_id: profile.character_id,
+    role: profile.role,
+    species: profile.species,
+    creature_type: profile.creature_type,
+    size: profile.size,
+    challenge_rating: profile.challenge_rating,
+    occupation: profile.occupation,
+    faction: profile.faction,
+    appearance: boundedText(profile.appearance, 900),
+    demeanor: boundedText(profile.demeanor, 900),
+    motivation: boundedText(profile.motivation, 900),
+    public_notes: boundedText(profile.public_notes, 900),
+    gm_notes: boundedText(profile.gm_notes, 900),
+    tags: Array.isArray(profile.tags) ? profile.tags.slice(0, 24) : [],
+    inventory_text: boundedText(profile.inventory_text, 900),
+    background_simulation_scope: profile.background_simulation_scope,
+  }))
+
   return JSON.stringify({
     contract: {
       recent_message_limit: CHAT_CONTEXT_LIMIT,
+      history_projection: "stage19_bounded_clean_v1",
       player_locations_are_independent: true,
       do_not_merge_split_party_scenes: true,
       pc_autonomy: "never speak, decide or act for a player character",
@@ -1028,33 +1244,118 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
       direct_pc_never_authorizes_ai_to_speak_for_recipient: true,
       unnamed_mechanical_extras_use_scene_actors_not_characters: true,
       scene_actor_runtime_ordinal_is_not_a_personal_name: true,
+      worker_commands_are_not_narrative_memory: true,
     },
     current_game_time: context.currentGameTime,
     source_audience: context.sourceAudience,
-    room: context.room,
+    room: {
+      id: context.room.id,
+      title: context.room.title,
+      room_type: context.room.room_type,
+      location_id: context.room.location_id,
+      campaign_day: context.room.campaign_day,
+      day_period: context.room.day_period,
+      scene_state: context.room.scene_state,
+    },
     source_character: context.sourceCharacter,
-    source_location: context.sourceLocation,
-    players: context.players,
-    characters_physically_present_with_source: context.presentCharacters,
-    canonical_sheets_for_present_characters: context.sheets,
-    canonical_resource_states_for_present_characters: context.resourceStates,
-    charged_inventory_items_for_present_characters: context.inventoryChargeItems,
-    present_npc_profiles: context.npcProfiles,
-    canonical_npc_runtime: context.npcRuntime,
-    active_scene_actors: context.sceneActors,
-    relationships: context.relationships,
-    property_and_assets: context.assets,
-    faction_memberships: context.factionMemberships,
-    faction_reputations: context.factionReputations,
+    source_location: context.sourceLocation
+      ? {
+          id: context.sourceLocation.id,
+          name: context.sourceLocation.name,
+          summary: boundedText(context.sourceLocation.summary, 1000),
+          parent_location_id: context.sourceLocation.parent_location_id,
+          lifecycle_state: context.sourceLocation.lifecycle_state,
+          temporal_status: context.sourceLocation.temporal_status,
+        }
+      : null,
+    participating_players: context.players.slice(0, 16),
+    characters_physically_present_with_source: compactCharacters,
+    canonical_sheets_for_present_characters: compactSheets,
+    canonical_resource_states_for_present_characters:
+      context.resourceStates.map((resource) => ({
+        character_id: resource.character_id,
+        state_key: resource.state_key,
+        current: resource.current,
+        max: resource.max_snapshot,
+        label: resource.label,
+        recharge: resource.recharge,
+        temporary_max_bonus: resource.temporary_max_bonus,
+      })).slice(0, 96),
+    charged_inventory_items_for_present_characters:
+      context.inventoryChargeItems.map((item) => ({
+        id: item.id,
+        character_id: item.character_id,
+        name: item.name,
+        charges_current: item.charges_current,
+        charges_max: item.charges_max,
+        item_state: item.item_state,
+      })).slice(0, 80),
+    present_npc_profiles: compactNpcProfiles,
+    canonical_npc_runtime: compactNpcRuntime(context.npcRuntime),
+    active_scene_actors: context.sceneActors.slice(0, 40),
+    relationships: context.relationships.map((item) => ({
+      id: item.id,
+      subject_character_id: item.subject_character_id,
+      target_character_id: item.target_character_id,
+      relationship_kind: item.relationship_kind,
+      public_label: item.public_label,
+      attitude_score: item.attitude_score,
+      player_note: boundedText(item.player_note, 700),
+      gm_note: boundedText(item.gm_note, 700),
+    })).slice(0, 80),
+    property_and_assets: context.assets.map((item) => ({
+      id: item.id,
+      owner_character_id: item.owner_character_id,
+      asset_kind: item.asset_kind,
+      ownership_kind: item.ownership_kind,
+      display_name: item.display_name,
+      description: boundedText(item.description, 900),
+      location_id: item.location_id,
+      npc_character_id: item.npc_character_id,
+      inventory_item_id: item.inventory_item_id,
+    })).slice(0, 60),
+    faction_memberships: context.factionMemberships.slice(0, 60),
+    faction_reputations: context.factionReputations.slice(0, 60),
     active_quest_context: context.activeQuestContext,
     relevant_long_term_memory: context.memory,
-    background_temporal_context: context.background,
-    cooperative_time_sync: context.temporalSync,
+    background_temporal_context: compactBackground(context.background),
+    cooperative_time_sync: {
+      synced_count: context.temporalSync.synced_count || 0,
+      recent_catchups: rows(context.temporalSync.recent_catchups)
+        .map((item) => ({
+          id: item.id,
+          location_id: item.location_id,
+          character_id: item.character_id,
+          source_character_id: item.source_character_id,
+          from_day: item.from_day,
+          from_period: item.from_period,
+          to_day: item.to_day,
+          to_period: item.to_period,
+          catchup_kind: item.catchup_kind,
+          meaningful_actions: item.meaningful_actions,
+          narrative_semantics: boundedText(item.narrative_semantics, 1000),
+        }))
+        .slice(0, 8),
+    },
     recent_chat_messages_all_authors: context.recentMessages,
+    context_metrics: context.contextMetrics,
     explicit_player_name_mentions: context.mentionedPlayerCharacters,
   })
 }
 
+export function stage19ContextTelemetry(context: Stage2GameChatContext) {
+  const bytes =
+    new TextEncoder().encode(stage2ContextForPrompt(context)).length
+  return {
+    context_message_count: context.recentMessages.length,
+    stage19_eligible_message_count: context.contextMetrics.eligibleMessageCount,
+    stage19_projected_message_count: context.contextMetrics.projectedMessageCount,
+    stage19_recent_message_json_bytes:
+      context.contextMetrics.recentMessageJsonBytes,
+    stage19_context_json_bytes: bytes,
+    stage19_estimated_context_tokens: Math.ceil(bytes / 4),
+  }
+}
 
 export function npcDialogueContextForPrompt(
   context: Stage2GameChatContext,
