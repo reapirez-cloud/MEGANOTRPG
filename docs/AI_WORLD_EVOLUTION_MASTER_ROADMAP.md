@@ -1410,8 +1410,8 @@ Stages 4–8 solve anonymous NPCs correctly.
 
 Stages 9–15 make the autonomous world actually live over game time.
 
-Stage 16 keeps it from becoming an immortal landfill of goblin state.
+Stages 16–20 keep runtime bounded, make turns non-blocking where possible, keep prompts clean, and make NPC behavior mechanically/personally consistent.
 
-Stage 17 makes player checks logic-bound instead of letting a lucky d20 manufacture world facts.
+Stages 21–23 make campaign style configurable without letting GM profile, player preference or content mode overrule canon, dice or NPC autonomy.
 
-Stage 18 certifies the whole stack end to end.
+Stage 24 certifies the whole stack end to end.
