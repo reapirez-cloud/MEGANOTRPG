@@ -13,6 +13,7 @@ export type PlayerTurnEntry = {
     | "inventory_roll"
     | "raw_event"
     | "raw_roll"
+    | "movement"
   label: string
   commandId?: string
   slot?: PlayerTurnSlot
