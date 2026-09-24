@@ -735,13 +735,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       return
     }
 
-    const { data: classRows, error: classError } = await supabase
-      .from("rule_templates")
-      .select("id, name")
-      .eq("campaign_id", nextCampaign.campaignId)
-      .eq("kind", "class")
-      .eq("is_active", true)
-      .order("name", { ascending: true })
+    const { data: classRows, error: classError } = await supabase.rpc(
+      "list_ai_world_class_templates_v1",
+      { p_campaign_id: nextCampaign.campaignId },
+    )
 
     if (classError) {
       setError(classError.message)
@@ -750,7 +747,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
     const classes = (classRows || []) as AiWorldClassOption[]
     if (!classes.length) {
-      setError("В экспериментальном мире не установлены игровые классы.")
+      setError("Каталог классов для ИИ-мира недоступен.")
       return
     }
 
