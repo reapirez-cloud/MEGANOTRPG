@@ -723,24 +723,82 @@ This is AI-world-only and does not change human-GM campaigns.
 
 ## Stage 16 — Cleanup and retention
 
+**Status: CERTIFIED — 2026-09-24**
+
 Scene actors:
 - active while referenced by live scene;
 - dead/fled/removed retained for encounter audit;
-- later compact/prune heavy mechanics snapshots where safe;
-- promoted actor keeps lightweight redirect/provenance.
+- full runtime retained for 14 game days after the actor's scene, measured against the lagging active-player safe day;
+- after the safe horizon, heavy sheet/mechanics/conditions/effects/resources are compacted into a bounded `retention_summary`;
+- command and damage receipts remain as encounter audit;
+- promoted actor keeps lightweight redirect/provenance and may compact only after its Stage 15 handoff snapshot exists;
+- active actors are never compacted;
+- compaction is idempotent and automatically retried as player game time advances.
 
 Background:
-- events retained;
-- snapshots versioned;
-- obsolete prompt material not loaded routinely.
+- immutable events remain retained;
+- snapshots remain versioned;
+- obsolete prompt material is not loaded routinely.
 
 Do not delete permanent promoted NPC state.
 
-**Done when:** long campaigns remain operationally small.
+**Done when:** long campaigns remain operationally small without losing encounter audit, promotion redirects or canonical promoted-NPC state.
 
 ---
 
-## Stage 17 — Full certification
+## Stage 17 — Canon-bound intent adjudication and real player rolls
+
+**Status: PLANNED**
+
+The player d20 answers how well the character performs an action. It does **not** decide whether an unstated world fact suddenly exists.
+
+Before a player roll, the AI GM must evaluate the declared intent against current canon and choose one of:
+
+- `deterministic_success` — no roll;
+- `deterministic_failure` — no roll;
+- `check` — real player d20 with a precommitted DC/outcome envelope;
+- `impossible_exact` — exact requested result is unavailable; natural 20 may unlock only a precommitted plausible partial result.
+
+### Required separation
+
+World existence and character performance are different uncertainties.
+
+For example, “I search the forest for a hut”:
+
+- if canon says the hut exists there, the AI can request Survival/Perception/Investigation with a difficulty chosen from the situation;
+- if canon says it does not exist, the exact result cannot succeed;
+- if no hut is established at all, the skill roll does not create one;
+- natural 20 may yield bounded partial success such as shelter, old foundations, human tracks, distant smoke or another useful lead.
+
+Likewise, “I search the forest for a dragon” cannot spawn a dragon on natural 20. A critical result may reveal a dragon-like clue or analogue only if the pre-roll adjudication allowed that partial envelope.
+
+If world existence is genuinely unresolved and should be randomized, Stage 11 World Resolver settles **existence first**. Only after existence is committed may a player skill roll determine whether the character finds or interacts with it.
+
+### Pre-roll receipt
+
+Before exposing the d20 request, persist:
+
+- player intent + source-message fingerprint;
+- scene/canon evidence fingerprint;
+- adjudication mode;
+- exact goal and whether exact success is allowed;
+- request type / ability / skill;
+- AI-selected DC and visibility for normal checks;
+- natural-20 policy;
+- frozen success/failure/partial-success envelopes.
+
+The existing `pending_player_roll_requests` must reference this receipt.
+
+After the roll exists, neither the model nor a retry may change the DC, canonical evidence, exact-goal permission or outcome envelope.
+
+**Done when:** the AI can logically decide whether a check is appropriate, choose its difficulty before the roll, request the real player die, and narrate only inside the server-frozen outcome without using the d20 to invent canon.
+
+Full executable contract and examples:
+`docs/AI_WORLD_EVOLUTION_STAGE17_LOGIC_ROLLS.md`
+
+---
+
+## Stage 18 — Full certification
 
 Must pass at least:
 
@@ -787,6 +845,15 @@ Must pass at least:
 - human-GM campaigns unchanged;
 - background system only operates in `ai_world_slots` campaigns.
 
+### Logic-bound player rolls
+- adjudication is persisted before the d20;
+- known target can use a normal AI-selected DC;
+- deterministic success/failure does not ask for a cosmetic roll;
+- unestablished hut/dragon cannot be created by the player roll;
+- impossible exact goal can yield only bounded natural-20 partial success;
+- DC/evidence/outcome envelope cannot change after the roll request exists;
+- Stage 11 world-existence decision remains separate from player skill.
+
 ### Regression
 - existing player rolls;
 - Stage 6 canonical NPC runtime;
@@ -816,7 +883,8 @@ all remain green.
 14 Canonical materialization bridge
 15 Promoted actor background handoff
 16 Cleanup
-17 Full certification
+17 Canon-bound intent adjudication + real player rolls
+18 Full certification
 ```
 
 Stages 1–3 establish the world-evolution foundation.
@@ -825,4 +893,8 @@ Stages 4–8 solve anonymous NPCs correctly.
 
 Stages 9–15 make the autonomous world actually live over game time.
 
-Stages 16–17 keep it from becoming an immortal landfill of goblin state.
+Stage 16 keeps it from becoming an immortal landfill of goblin state.
+
+Stage 17 makes player checks logic-bound instead of letting a lucky d20 manufacture world facts.
+
+Stage 18 certifies the whole stack end to end.
