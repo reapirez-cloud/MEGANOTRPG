@@ -218,9 +218,9 @@ create or replace function public.create_ai_gm_player_roll_request_v3(
 )
 returns jsonb
 language plpgsql
-security invoker
+security definer
 set search_path=''
-as $$
+as $
 declare
   v_job public.agent_jobs%rowtype;
   v_existing public.pending_player_roll_requests%rowtype;
@@ -251,6 +251,10 @@ declare
   v_resolver_receipt_id uuid;
   v_resolver_matched jsonb;
 begin
+  if auth.role() <> 'service_role' then
+    raise exception 'service_role_required';
+  end if;
+
   select * into v_job
   from public.agent_jobs
   where id=p_job_id
