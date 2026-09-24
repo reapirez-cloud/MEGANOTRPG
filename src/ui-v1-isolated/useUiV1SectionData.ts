@@ -207,6 +207,16 @@ export type KnowledgeCatalogRow = {
   meta: string
 }
 
+export type KnowledgeDetail = {
+  id: string
+  title: string
+  eyebrow: string
+  subtitle: string
+  notice: string
+  facts: Array<{ label: string; value: string }>
+  sections: Array<{ label: string; body: string }>
+}
+
 type CampaignMembership = {
   campaign_id: string
   role: string
@@ -678,7 +688,11 @@ export function useUiV1KnowledgeCatalog(section: string | undefined) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!section || !scope.campaignId || !["spells", "invocations", "bestiary"].includes(section)) {
+    if (
+      !section ||
+      !scope.campaignId ||
+      !["spells", "invocations", "bestiary"].includes(section)
+    ) {
       setRows([])
       setLoading(false)
       return
@@ -716,51 +730,51 @@ export function useUiV1KnowledgeCatalog(section: string | undefined) {
         if (cancelled) return
         if (definitions.error) {
           setError(definitions.error.message)
+        } else if (!definitions.data?.length) {
+          setRows([])
         } else {
-          const defs = definitions.data || []
-          const ids = defs.map((row) => row.id)
-          const revisions = ids.length
-            ? await supabase
-                .from("reference_definition_revisions")
-                .select("definition_id, revision, name, data")
-                .in("definition_id", ids)
-            : { data: [], error: null }
+          const currentRevision = new Map(
+            definitions.data.map((definition) => [
+              definition.id,
+              definition.current_revision,
+            ]),
+          )
+          const revisions = await supabase
+            .from("reference_definition_revisions")
+            .select("definition_id, revision, name, summary, rules_text, data")
+            .in("definition_id", definitions.data.map((definition) => definition.id))
 
           if (cancelled) return
           if (revisions.error) {
             setError(revisions.error.message)
           } else {
-            const currentRevision = new Map(
-              defs.map((row) => [row.id, row.current_revision]),
-            )
-            setRows((revisions.data || [])
-              .filter((row) => {
-                const data =
-                  row.data && typeof row.data === "object" && !Array.isArray(row.data)
-                    ? row.data as Record<string, unknown>
-                    : {}
+            const rows = (revisions.data || [])
+              .filter((revision) => {
+                const data = revision.data as Record<string, unknown> | null
                 return (
-                  currentRevision.get(row.definition_id) === row.revision &&
-                  data.feature_kind === "eldritch_invocation" &&
-                  data.class_key === "warlock"
+                  revision.revision === currentRevision.get(revision.definition_id) &&
+                  data?.feature_kind === "eldritch_invocation" &&
+                  data?.class_key === "warlock"
                 )
               })
-              .map((row) => {
-                const data = row.data as Record<string, unknown>
+              .map((revision) => {
+                const data = revision.data as Record<string, unknown> | null
                 const level =
-                  typeof data.minimum_warlock_level === "number"
+                  typeof data?.minimum_warlock_level === "number"
                     ? data.minimum_warlock_level
                     : 1
                 return {
-                  id: row.definition_id,
-                  title: row.name || "Воззвание",
+                  id: revision.definition_id,
+                  title: revision.name || "Воззвание",
                   meta: `${level} уровень колдуна`,
                 }
               })
               .sort((left, right) =>
-                Number.parseInt(left.meta, 10) - Number.parseInt(right.meta, 10) ||
+                left.meta.localeCompare(right.meta, "ru") ||
                 left.title.localeCompare(right.title, "ru"),
-              ))
+              )
+
+            setRows(rows)
           }
         }
       } else {
@@ -790,4 +804,246 @@ export function useUiV1KnowledgeCatalog(section: string | undefined) {
   }, [scope.campaignId, section])
 
   return { ...scope, rows, loading: scope.loading || loading, error: scope.error || error }
+}
+
+function textList(value: unknown) {
+  if (!Array.isArray(value)) return ""
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return ""
+      const row = item as Record<string, unknown>
+      const name = typeof row.name === "string" ? row.name.trim() : ""
+      const desc = typeof row.desc === "string" ? row.desc.trim() : ""
+      return [name, desc].filter(Boolean).join(": ")
+    })
+    .filter(Boolean)
+    .join("\n\n")
+}
+
+function objectPairs(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return ""
+  return Object.entries(value as Record<string, unknown>)
+    .map(([key, item]) => `${key.replace(/_/g, " ")}: ${String(item)}`)
+    .join(" · ")
+}
+
+export function useUiV1KnowledgeDetail(
+  section: string | undefined,
+  id: string | undefined,
+) {
+  const scope = useUiV1CampaignScope()
+  const [detail, setDetail] = useState<KnowledgeDetail | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (
+      !section ||
+      !id ||
+      !scope.campaignId ||
+      !["spells", "invocations", "bestiary"].includes(section)
+    ) {
+      setDetail(null)
+      setLoading(false)
+      setError(null)
+      return
+    }
+
+    let cancelled = false
+    void (async () => {
+      setLoading(true)
+      setError(null)
+      setDetail(null)
+
+      try {
+        if (section === "spells") {
+          const result = await supabase
+            .from("spell_catalog")
+            .select("id,name_ru,name_en,spell_level,school,casting_time,spell_range,area,duration,components,material,concentration,ritual,check_type,damage,effect_summary,rules_text,upcast,notes,source")
+            .eq("id", id)
+            .maybeSingle()
+          if (result.error) throw result.error
+          if (!result.data) throw new Error("Заклинание не найдено.")
+
+          const row = result.data
+          const title = row.name_ru || row.name_en || "Заклинание"
+          const level = row.spell_level === 0 ? "Заговор" : `${row.spell_level} уровень`
+          const components = Array.isArray(row.components)
+            ? row.components.join(", ")
+            : ""
+
+          if (!cancelled) {
+            setDetail({
+              id: row.id,
+              title,
+              eyebrow: "Заклинание",
+              subtitle: [row.name_en && row.name_en !== title ? row.name_en : "", level, row.school || ""]
+                .filter(Boolean)
+                .join(" · "),
+              notice: "",
+              facts: [
+                { label: "Наложение", value: row.casting_time || "—" },
+                { label: "Дистанция", value: row.spell_range || "—" },
+                { label: "Область", value: row.area || "—" },
+                { label: "Длительность", value: row.duration || "—" },
+                { label: "Компоненты", value: components || "—" },
+                { label: "Концентрация", value: row.concentration ? "Да" : "Нет" },
+                { label: "Ритуал", value: row.ritual ? "Да" : "Нет" },
+                { label: "Проверка", value: row.check_type || "—" },
+                { label: "Урон / лечение", value: row.damage || "—" },
+              ],
+              sections: [
+                ...(row.rules_text
+                  ? [{ label: "Механика", body: row.rules_text }]
+                  : row.effect_summary
+                    ? [{ label: "Механика", body: row.effect_summary }]
+                    : []),
+                ...(row.material ? [{ label: "Материал", body: row.material }] : []),
+                ...(row.upcast ? [{ label: "На больших ячейках", body: row.upcast }] : []),
+                ...(row.notes ? [{ label: "Нюансы", body: row.notes }] : []),
+                ...(row.source ? [{ label: "Источник", body: row.source }] : []),
+              ],
+            })
+          }
+        } else if (section === "invocations") {
+          const definition = await supabase
+            .from("reference_definitions")
+            .select("id,current_revision")
+            .eq("id", id)
+            .eq("kind", "feature")
+            .eq("scope", "system")
+            .eq("status", "active")
+            .maybeSingle()
+          if (definition.error) throw definition.error
+          if (!definition.data) throw new Error("Воззвание не найдено.")
+
+          const revision = await supabase
+            .from("reference_definition_revisions")
+            .select("name,summary,rules_text,data")
+            .eq("definition_id", id)
+            .eq("revision", definition.data.current_revision)
+            .maybeSingle()
+          if (revision.error) throw revision.error
+          if (!revision.data) throw new Error("Механика воззвания не найдена.")
+
+          const data = (revision.data.data || {}) as Record<string, unknown>
+          if (
+            data.feature_kind !== "eldritch_invocation" ||
+            data.class_key !== "warlock"
+          ) {
+            throw new Error("Эта запись не является воззванием колдуна.")
+          }
+          const level =
+            typeof data.minimum_warlock_level === "number"
+              ? data.minimum_warlock_level
+              : 1
+          const nameEn = typeof data.name_en === "string" ? data.name_en : ""
+          const requirements = Array.isArray(data.required_invocations)
+            ? data.required_invocations.filter((item): item is string => typeof item === "string")
+            : []
+
+          if (!cancelled) {
+            setDetail({
+              id,
+              title: revision.data.name || "Воззвание",
+              eyebrow: "Таинственное воззвание",
+              subtitle: [nameEn, `${level} уровень колдуна`].filter(Boolean).join(" · "),
+              notice: "",
+              facts: [
+                { label: "Доступ", value: `${level} уровень колдуна` },
+                {
+                  label: "Повторный выбор",
+                  value: data.repeatable === true ? "Разрешён правилом" : "Нет",
+                },
+                {
+                  label: "Требования",
+                  value: requirements.length ? requirements.join(", ") : "Нет",
+                },
+              ],
+              sections: [
+                {
+                  label: "Механика",
+                  body: revision.data.rules_text || revision.data.summary || "Описание ещё не заполнено.",
+                },
+              ],
+            })
+          }
+        } else {
+          const result = await supabase
+            .from("bestiary_catalog")
+            .select("id,name_en,size,creature_type,subtype,alignment,armor_class,hit_points,hit_dice,challenge_rating,xp,proficiency_bonus,abilities,speed,senses,languages,damage_vulnerabilities,damage_resistances,damage_immunities,condition_immunities,proficiencies,special_abilities,actions,reactions,legendary_actions,source_label")
+            .eq("id", id)
+            .eq("rules_year", 2014)
+            .maybeSingle()
+          if (result.error) throw result.error
+          if (!result.data) throw new Error("Существо не найдено.")
+
+          const row = result.data
+          if (!cancelled) {
+            setDetail({
+              id: row.id,
+              title: row.name_en || "Creature",
+              eyebrow: "Бестиарий",
+              subtitle: [
+                row.size || "",
+                row.creature_type || "",
+                row.subtype || "",
+                `CR ${row.challenge_rating ?? "—"}`,
+              ].filter(Boolean).join(" · "),
+              notice: "Русский перевод этой карточки в базе не заполнен. Показывается исходная механика без пересказа.",
+              facts: [
+                { label: "КД", value: String(row.armor_class ?? "—") },
+                { label: "HP", value: `${row.hit_points ?? "—"}${row.hit_dice ? ` (${row.hit_dice})` : ""}` },
+                { label: "XP", value: String(row.xp ?? "—") },
+                { label: "Бонус мастерства", value: String(row.proficiency_bonus ?? "—") },
+                { label: "Мировоззрение", value: row.alignment || "—" },
+                { label: "Характеристики", value: objectPairs(row.abilities) || "—" },
+                { label: "Скорость", value: objectPairs(row.speed) || "—" },
+                { label: "Чувства", value: objectPairs(row.senses) || "—" },
+                { label: "Языки", value: row.languages || "—" },
+              ],
+              sections: [
+                ...(textList(row.special_abilities)
+                  ? [{ label: "Особенности", body: textList(row.special_abilities) }]
+                  : []),
+                ...(textList(row.actions)
+                  ? [{ label: "Действия", body: textList(row.actions) }]
+                  : []),
+                ...(textList(row.reactions)
+                  ? [{ label: "Реакции", body: textList(row.reactions) }]
+                  : []),
+                ...(textList(row.legendary_actions)
+                  ? [{ label: "Легендарные действия", body: textList(row.legendary_actions) }]
+                  : []),
+                ...(row.source_label
+                  ? [{ label: "Источник", body: row.source_label }]
+                  : []),
+              ],
+            })
+          }
+        }
+      } catch (reason) {
+        if (!cancelled) {
+          setError(
+            reason instanceof Error
+              ? reason.message
+              : "Карточка временно недоступна.",
+          )
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [id, scope.campaignId, section])
+
+  return {
+    ...scope,
+    detail,
+    loading: scope.loading || loading,
+    error: scope.error || error,
+  }
 }
