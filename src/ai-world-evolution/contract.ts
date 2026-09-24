@@ -493,7 +493,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Safe canonical background materialization",
     purpose:
       "Apply temporally safe background consequences to canonical owner tables exactly once without overwriting newer player/GM state.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "Oracle/domain-owner mutations",
       "World/NPC manager tools",
