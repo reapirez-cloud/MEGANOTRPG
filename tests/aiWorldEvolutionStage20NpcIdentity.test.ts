@@ -102,7 +102,7 @@ test("stable identity schema rejects mutable state and arbitrary keys", () => {
 test("direct current-identity updates are fail closed", () => {
   assert.match(
     guardFix,
-    /coalesce\(current_setting\('meganot\.npc_identity_versioned_write',true\),'\'\'\)<>\'on\'/,
+    /coalesce\(current_setting\('meganot\.npc_identity_versioned_write',true\),''\)<>'on'/,
   )
   assert.match(guardFix, /npc_identity_direct_update_forbidden/)
   assert.match(foundation, /npc_identity_versions_immutable/)
@@ -160,7 +160,7 @@ test("background worker cannot smuggle identity drift through proposed state", (
     '"decision_priorities"',
     '"self_image"',
   ]) {
-    assert.match(background, new RegExp(forbidden.replace(/[.*+?^$\{\}()|[\]\\]/g, "\\$&")))
+    assert.equal(background.includes(forbidden), true, forbidden)
   }
 })
 
