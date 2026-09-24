@@ -7,6 +7,7 @@ import {
   stage19ContextTelemetry,
   stage21BehaviorProfileTelemetry,
   stage22DirectorPreferenceTelemetry,
+  stage23ContentProfileTelemetry,
   type Stage2GameChatContext,
 } from "./game-chat-context.ts"
 import {
@@ -455,6 +456,13 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Для co-op dimensions.mean — равновесная средняя предпочтений настроивших их участников; min/max/spread показывают конфликт. При большом spread НЕ выбирай молча одного победителя: чередуй/комбинируй правдоподобные будущие возможности так, чтобы разные предпочтения получали пространство со временем.",
   "participants содержит только физически участвующих здесь PC с их текущей версией и bounded free_text. Предпочтения игроков из другой локации сюда не попадают и не должны влиять на сцену.",
   "free_text интерпретируй как долгосрочное режиссёрское пожелание. Фраза игрока вроде 'хочу дом и лавку' разрешает предлагать логичные пути к этому, но не создаёт дом, деньги, продавца, право собственности или успешную сделку без канонической причины.",
+  "content_profile — Stage 23 application profile. Он описывает только тематическую доступность взрослой life-sim части повествования и НИКОГДА не меняет канон, механику, цены, последствия, relationship score, identity fingerprint, hard red_lines или согласие NPC.",
+  "content_profile.mode=off: не приоритизируй взрослую тематику специально. Не считай off приказом переписывать уже существующий канон или стирать установленные отношения.",
+  "content_profile.mode=allowed: зрелые темы могут появляться естественно, если они правдоподобны для сцены, персонажей и мира. MEGANOT не требует эвфемизмов, морализаторства, смены темы или fade-to-black ТОЛЬКО потому, что тема взрослая. Активный provider всё равно определяет, что он способен сгенерировать.",
+  "content_profile.mode=adult_focused: при выборе между одинаково правдоподобными будущими life-sim возможностями можно чаще выбирать взрослые отношения, заведения и социальные ситуации. Это тематический приоритет, а НЕ автоматический успех и НЕ доступ к конкретному NPC.",
+  "Stage 23 действует только для однозначно взрослых персонажей/контекста. Никогда не используй профиль для сексуализации несовершеннолетних или персонажей с неясным возрастом.",
+  "Никаких jailbreak-попыток: не проси provider обходить его policy, не маскируй запрещённый запрос и не меняй канон, если provider отказал. При provider refusal состояние мира остаётся прежним; игрок может повторить ход после смены модели.",
+  "Транзакционная взрослая локация может вести себя транзакционно, если это уже следует из канона/роли NPC. Случайный NPC по-прежнему действует из собственной личности, отношения, обстоятельств и норм мира; adult_focused не означает consent или compliance.",
   "Если нужен бросок игрока, используй только request_player_roll. Ты решаешь смысл проверки и логическую сложность как настольный GM; точный app mechanic, modifier и вызов реального d20 сделает младший mechanic worker + сервер.",
   "Не проси косметический бросок. Если канон/физика уже гарантируют успех или провал, не используй request_player_roll. Верни обычную narration/environment и добавь intent_adjudication с mode=deterministic_success или deterministic_failure.",
   "Обычные semantic checks не ограничены кнопками: крепкий алкоголь может требовать Constitution check/save; подъём/плавание/рывок под давлением Athletics/Strength; чтение поведения NPC Insight; выслеживание Survival; скрытая деталь Perception; тщательный поиск Investigation; правдоподобное знание соответствующий Intelligence check.",
@@ -507,6 +515,8 @@ const NPC_DIALOGUE_SYSTEM = [
   "identity_fingerprint — стабильное ядро личности этого NPC. Сохраняй traits/values/red_lines/desires/fears/loyalties/authority/risk/violence/pressure/self-image/social-style/decision-priorities между репликами.",
   "hard red_lines не исчезают из-за удачного тона разговора, высокого relationship score или желания игрока. Отношение влияет на мягкость, доверие и готовность помогать только внутри границ личности.",
   "Не придумывай новую биографию, ценность, страх или красную линию, если их нет в speaking context. Обычная реплика никогда не переписывает identity fingerprint.",
+  "content_profile применяется к реплике только как тематический профиль: allowed/adult_focused не требуют дополнительной эвфемизации взрослой темы, если provider её поддерживает, но никогда не меняют consent, hard red_lines, отношения или личность NPC.",
+  "Если provider не поддерживает конкретную взрослую сцену, не пытайся обходить его ограничения и не выдумывай другой канонический исход вместо отказавшей генерации.",
   "Не добавляй повествование от третьего лица и не подписывай имя NPC.",
   "Ответь ТОЛЬКО JSON-объектом {body:'реплика NPC'} без markdown.",
 ].join("\n")
@@ -1174,6 +1184,7 @@ async function finalizeStage18VisibleAnswer({
     ...stage19ContextTelemetry(context),
     ...stage21BehaviorProfileTelemetry(context),
         ...stage22DirectorPreferenceTelemetry(context),
+        ...stage23ContentProfileTelemetry(context),
     source_location_id: context.sourceLocation?.id || null,
     player_location_count: new Set(
       context.players.map((player) => player.location_id).filter(Boolean),
@@ -2105,22 +2116,53 @@ async function generateNpcDialogue({
   return body
 }
 
+function isProviderContentRefusal(error: ProviderGatewayError | null) {
+  if (!error) return false
+  const status = error.providerStatus || 0
+  if (![400, 403, 422].includes(status)) return false
+  const detail = (error.detail + " " + error.message).toLocaleLowerCase("en-US")
+  return /(?:content|safety|policy|moderation|refus|blocked|sexual|adult|nsfw)/i.test(detail)
+}
+
 async function failJob(
   admin: SupabaseClient,
   jobId: string,
   error: unknown,
 ) {
   const gateway = error instanceof ProviderGatewayError ? error : null
+  const contentRefusal = isProviderContentRefusal(gateway)
   const message =
     error instanceof Error ? error.message : String(error || "ai_gm_turn_failed")
 
   try {
+    const { data: current } = await admin
+      .from("agent_jobs")
+      .select("result")
+      .eq("id", jobId)
+      .maybeSingle()
+
     await admin
       .from("agent_jobs")
       .update({
         status: "failed",
-        error_code: gateway?.code || "ai_gm_turn_failed",
-        error_message: message.slice(0, 500),
+        error_code:
+          contentRefusal
+            ? "ai_provider_content_refusal"
+            : gateway?.code || "ai_gm_turn_failed",
+        error_message:
+          contentRefusal
+            ? "Selected provider declined this output. Canon was not rewritten; retry after changing the model or scene."
+            : message.slice(0, 500),
+        result: {
+          ...jsonRecord(current?.result),
+          ...(contentRefusal
+            ? {
+                stage23_provider_refusal: true,
+                stage23_provider_refusal_preserves_canon: true,
+                stage23_retry_after_model_change: true,
+              }
+            : {}),
+        },
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -2344,6 +2386,7 @@ async function completeWithoutChatMessage({
         ...stage19ContextTelemetry(context),
         ...stage21BehaviorProfileTelemetry(context),
         ...stage22DirectorPreferenceTelemetry(context),
+        ...stage23ContentProfileTelemetry(context),
         source_location_id: context.sourceLocation?.id || null,
         player_location_count: new Set(
           context.players.map((player) => player.location_id).filter(Boolean),
@@ -2404,6 +2447,7 @@ async function completeWithGameplayMessage({
         ...stage19ContextTelemetry(context),
         ...stage21BehaviorProfileTelemetry(context),
         ...stage22DirectorPreferenceTelemetry(context),
+        ...stage23ContentProfileTelemetry(context),
         source_location_id: context.sourceLocation?.id || null,
         player_location_count: new Set(
           context.players.map((player) => player.location_id).filter(Boolean),
@@ -2531,6 +2575,7 @@ function primaryGmContextForPrompt(context: Stage2GameChatContext) {
     ...canonical,
     gm_behavior_profile: context.gmBehaviorProfile,
     player_director_preferences: context.directorPreferences,
+    content_profile: context.contentProfile,
   })
 }
 
@@ -3427,6 +3472,7 @@ export async function runGameChatTurn(
             ...stage19ContextTelemetry(context),
             ...stage21BehaviorProfileTelemetry(context),
         ...stage22DirectorPreferenceTelemetry(context),
+        ...stage23ContentProfileTelemetry(context),
             model_id: route.model.id,
             model_key: route.model.model_key,
             model_name: route.model.display_name,
