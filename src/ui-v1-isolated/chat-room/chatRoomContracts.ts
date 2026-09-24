@@ -118,3 +118,14 @@ export type ChatActionRequestDetail = {
   roomId: string
   mode: ChatActionLauncherMode
 }
+
+
+export const AI_GM_TURN_STATUS_EVENT = "meganotrpg:ai-gm-turn-status"
+
+export type AiGmTurnStatusDetail = {
+  roomId: string
+  active: boolean
+  phase: string
+  label: string
+  commitId: string | null
+}
