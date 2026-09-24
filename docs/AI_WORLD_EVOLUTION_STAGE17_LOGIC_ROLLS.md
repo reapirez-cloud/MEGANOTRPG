@@ -10,6 +10,40 @@ The AI GM evaluates the player's declared intent against the current canonical s
 
 The server persists that adjudication before exposing the roll request. After the d20 exists, neither the model nor a retry may change the difficulty, exact-goal permission, canonical evidence fingerprint or outcome envelope.
 
+
+## Primary GM does not need the application API
+
+The primary GM should think like a tabletop GM, not like a Supabase client.
+
+It may semantically request any ordinary D&D-style check that follows from fiction, for example:
+
+- strong alcohol -> Constitution check/save;
+- forced march, climbing or swimming -> appropriate Strength/Constitution/Athletics check;
+- reading an NPC -> Insight;
+- tracking -> Survival;
+- noticing hidden detail -> Perception;
+- searching carefully -> Investigation where appropriate;
+- recalling plausible lore -> the relevant Intelligence check;
+- resisting fear/poison/charm -> the appropriate save;
+- other normal checks when the fiction and rules justify them.
+
+The primary GM does **not** need to know the RPC name, database schema, UI widget, modifier lookup or exact application call.
+
+It emits a bounded semantic mechanic directive.
+
+A smaller mechanic worker receives:
+- the semantic directive;
+- target character;
+- current canonical character mechanics;
+- current scene context;
+- the frozen pre-roll adjudication.
+
+That worker normalizes the request into the existing server roll system.
+
+The server remains authoritative for the real modifier and real d20.
+
+This also means we do not need to stuff the primary GM prompt with application tool documentation merely so it can ask for a Constitution check.
+
 ## Separate two kinds of uncertainty
 
 ### World existence
