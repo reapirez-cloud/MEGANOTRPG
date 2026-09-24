@@ -64,6 +64,47 @@
   line-height: 1.2;
 }
 
+.u1-workspace__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.u1-workspace__ai-button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1px;
+  padding: 0;
+  border: 1px solid rgba(216, 228, 233, 0.16);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 68% 22%, rgba(189, 207, 216, 0.14), transparent 36%),
+    rgba(10, 13, 15, 0.82);
+  color: var(--u1-text-soft);
+  cursor: pointer;
+}
+
+.u1-workspace__ai-button span {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.u1-workspace__ai-button small {
+  color: var(--u1-text-faint);
+  font-size: 7px;
+  line-height: 1;
+  letter-spacing: .12em;
+}
+
+.u1-workspace__ai-button:active {
+  transform: translateY(1px);
+  border-color: rgba(216, 228, 233, 0.28);
+}
+
 .u1-avatar[aria-disabled="true"] {
   cursor: default;
 }
