@@ -135,6 +135,45 @@ type AiGmBehaviorProfileResponse = {
   profiles: AiGmBehaviorProfileChoice[]
 }
 
+type AiDirectorInterestKey =
+  | "combat"
+  | "exploration"
+  | "investigation"
+  | "social_play"
+  | "romance"
+  | "daily_life"
+  | "horror"
+  | "politics_intrigue"
+  | "economy_property"
+  | "pacing"
+
+type AiDirectorPreferencesResponse = {
+  ai_world: boolean
+  configured: boolean
+  version: number
+  interests: Record<AiDirectorInterestKey, number>
+  free_text: string
+  updated_at: string | null
+}
+
+const AI_DIRECTOR_INTERESTS: Array<{
+  key: AiDirectorInterestKey
+  label: string
+  low: string
+  high: string
+}> = [
+  { key: "combat", label: "Бои", low: "реже", high: "чаще" },
+  { key: "exploration", label: "Исследование", low: "меньше", high: "больше" },
+  { key: "investigation", label: "Расследования", low: "меньше", high: "больше" },
+  { key: "social_play", label: "Социалка", low: "меньше", high: "больше" },
+  { key: "romance", label: "Романтика", low: "меньше", high: "больше" },
+  { key: "daily_life", label: "Обычная жизнь", low: "меньше", high: "больше" },
+  { key: "horror", label: "Хоррор", low: "меньше", high: "больше" },
+  { key: "politics_intrigue", label: "Политика / интриги", low: "меньше", high: "больше" },
+  { key: "economy_property", label: "Деньги / имущество", low: "меньше", high: "больше" },
+  { key: "pacing", label: "Темп", low: "медленнее", high: "быстрее" },
+]
+
 function readableBytes(bytes: number) {
   if (bytes < 1024) return bytes + " Б"
   if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " КБ"
@@ -179,6 +218,10 @@ export default function AgentShell() {
   const [gmBehavior, setGmBehavior] =
     useState<AiGmBehaviorProfileResponse | null>(null)
   const [gmBehaviorSaving, setGmBehaviorSaving] = useState(false)
+  const [directorPreferences, setDirectorPreferences] =
+    useState<AiDirectorPreferencesResponse | null>(null)
+  const [directorSaving, setDirectorSaving] = useState(false)
+  const [directorDirty, setDirectorDirty] = useState(false)
   const [previewImage, setPreviewImage] = useState<{
     key: string
     title: string
@@ -346,19 +389,95 @@ export default function AgentShell() {
 
     if (!toolsOpen || !campaignId) return () => { cancelled = true }
 
-    void supabase
-      .rpc("list_campaign_ai_gm_behavior_profiles_v1", {
-        p_campaign_id: campaignId,
-      })
-      .then(({ data, error: loadError }) => {
-        if (cancelled || loadError || !data || typeof data !== "object") return
-        setGmBehavior(data as AiGmBehaviorProfileResponse)
-      })
+    void (async () => {
+      const { data, error: loadError } = await supabase.rpc(
+        "list_campaign_ai_gm_behavior_profiles_v1",
+        { p_campaign_id: campaignId },
+      )
+      if (cancelled || loadError || !data || typeof data !== "object") return
+
+      const behavior = data as AiGmBehaviorProfileResponse
+      setGmBehavior(behavior)
+      if (!behavior.ai_world) {
+        setDirectorPreferences(null)
+        setDirectorDirty(false)
+        return
+      }
+
+      const director = await supabase.rpc(
+        "read_my_ai_director_preferences_v1",
+        { p_campaign_id: campaignId },
+      )
+      if (
+        cancelled ||
+        director.error ||
+        !director.data ||
+        typeof director.data !== "object"
+      ) return
+
+      setDirectorPreferences(
+        director.data as AiDirectorPreferencesResponse,
+      )
+      setDirectorDirty(false)
+    })()
 
     return () => {
       cancelled = true
     }
   }, [campaignId, toolsOpen])
+
+  function setDirectorInterest(
+    key: AiDirectorInterestKey,
+    value: number,
+  ) {
+    setDirectorPreferences((current) => current
+      ? {
+          ...current,
+          interests: {
+            ...current.interests,
+            [key]: Math.max(0, Math.min(5, Math.round(value))),
+          },
+        }
+      : current)
+    setDirectorDirty(true)
+  }
+
+  function setDirectorFreeText(value: string) {
+    setDirectorPreferences((current) => current
+      ? { ...current, free_text: value.slice(0, 1200) }
+      : current)
+    setDirectorDirty(true)
+  }
+
+  async function saveDirectorPreferences() {
+    if (!campaignId || !directorPreferences || directorSaving) return
+
+    setDirectorSaving(true)
+    const interests = directorPreferences.interests
+    const { data, error: saveError } = await supabase.rpc(
+      "set_my_ai_director_preferences_v1",
+      {
+        p_campaign_id: campaignId,
+        p_combat: interests.combat,
+        p_exploration: interests.exploration,
+        p_investigation: interests.investigation,
+        p_social_play: interests.social_play,
+        p_romance: interests.romance,
+        p_daily_life: interests.daily_life,
+        p_horror: interests.horror,
+        p_politics_intrigue: interests.politics_intrigue,
+        p_economy_property: interests.economy_property,
+        p_pacing: interests.pacing,
+        p_free_text: directorPreferences.free_text,
+      },
+    )
+
+    if (!saveError && data && typeof data === "object") {
+      setDirectorPreferences(data as AiDirectorPreferencesResponse)
+      setDirectorDirty(false)
+    }
+    setDirectorSaving(false)
+  }
 
   async function chooseGmBehaviorProfile(profileKey: string) {
     if (!campaignId || !canManage || gmBehaviorSaving) return
@@ -728,6 +847,82 @@ export default function AgentShell() {
               <p className="u1-agent-gm-behavior-note">
                 Режим меняет давление и темп только между одинаково правдоподобными
                 ветвями. Канон, кубы и характер NPC остаются неизменными.
+              </p>
+            </div>
+          )}
+
+          {gmBehavior?.ai_world && directorPreferences && (
+            <div className="u1-agent-tools-section">
+              <span className="u1-agent-tools-section__label">
+                Что мне нравится
+              </span>
+              <div className="u1-agent-director-list">
+                {AI_DIRECTOR_INTERESTS.map((interest) => {
+                  const value = directorPreferences.interests[interest.key] ?? 3
+                  return (
+                    <label
+                      className="u1-agent-director-row"
+                      key={interest.key}
+                    >
+                      <span>
+                        <strong>{interest.label}</strong>
+                        <small>{interest.low} · {interest.high}</small>
+                      </span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="5"
+                        step="1"
+                        value={value}
+                        onChange={(event) =>
+                          setDirectorInterest(
+                            interest.key,
+                            Number(event.target.value),
+                          )}
+                        disabled={directorSaving || sending || pendingReply}
+                      />
+                      <b>{value}</b>
+                    </label>
+                  )
+                })}
+              </div>
+
+              <label className="u1-agent-director-text">
+                <span>Свободное пожелание</span>
+                <textarea
+                  value={directorPreferences.free_text}
+                  maxLength={1200}
+                  rows={4}
+                  placeholder="Например: хочу медленную историю у города, со временем купить дом и открыть лавку."
+                  onChange={(event) => setDirectorFreeText(event.target.value)}
+                  disabled={directorSaving || sending || pendingReply}
+                />
+                <small>{directorPreferences.free_text.length}/1200</small>
+              </label>
+
+              <button
+                type="button"
+                className="u1-agent-director-save"
+                data-dirty={directorDirty || undefined}
+                onClick={() => void saveDirectorPreferences()}
+                disabled={
+                  !directorDirty ||
+                  directorSaving ||
+                  sending ||
+                  pendingReply
+                }
+              >
+                {directorSaving
+                  ? "Сохранение…"
+                  : directorPreferences.configured
+                    ? "Сохранить предпочтения"
+                    : "Задать предпочтения"}
+              </button>
+
+              <p className="u1-agent-gm-behavior-note">
+                Это пожелания о будущих возможностях, а не команды миру.
+                Они не меняют канон, кубы, отношение или границы NPC.
+                В общей сцене предпочтения игроков смешиваются поровну.
               </p>
             </div>
           )}
