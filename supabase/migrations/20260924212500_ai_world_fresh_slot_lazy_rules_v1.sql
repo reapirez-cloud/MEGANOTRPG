@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- AI world fresh-slot bootstrap v1.
 --
 -- AI-world campaigns are deliberately fiction-empty at first open. The old
