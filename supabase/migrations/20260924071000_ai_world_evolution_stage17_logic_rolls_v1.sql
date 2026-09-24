@@ -322,7 +322,7 @@ begin
   where gm_job_id = p_job_id;
 
   v_source_fingerprint := encode(
-    digest(
+    extensions.digest(
       convert_to(
         concat_ws(
           '|',
@@ -338,7 +338,7 @@ begin
   );
 
   v_evidence_fingerprint := encode(
-    digest(
+    extensions.digest(
       convert_to(coalesce(p_evidence_context,'{}'::jsonb)::text,'UTF8'),
       'sha256'
     ),
@@ -346,7 +346,7 @@ begin
   );
 
   v_receipt_fingerprint := encode(
-    digest(
+    extensions.digest(
       convert_to(
         jsonb_build_object(
           'job_id', p_job_id,
