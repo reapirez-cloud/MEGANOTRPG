@@ -40,7 +40,7 @@ test("Stage 7 planner supports alternating Narrator and NPC outputs", () => {
   assert.match(runtime, /publishDialogueSequence/)
   assert.match(runtime, /finalizeStage18VisibleAnswer/)
   assert.match(runtime, /messages,/)
-  assert.match(runtime, /runtime_stage: 18/)
+  assert.match(runtime, /finalize_ai_gm_turn_v18/)
 })
 
 test("NPC dialogue text is regenerated from a restricted NPC-only context", () => {
