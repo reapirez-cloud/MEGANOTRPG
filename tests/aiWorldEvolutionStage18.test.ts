@@ -6,7 +6,10 @@ const read = (path: string) =>
   readFileSync(new URL("../" + path, import.meta.url), "utf8")
 
 const migration = () =>
-  read("supabase/migrations/20260924111500_ai_world_evolution_stage18_post_turn_commit_v2.sql")
+  [
+    read("supabase/migrations/20260924111500_ai_world_evolution_stage18_post_turn_commit_v2.sql"),
+    read("supabase/migrations/20260924144500_ai_world_evolution_stage18_fenced_worker_v3.sql"),
+  ].join("\n")
 const runtime = () =>
   read("supabase/functions/voss-agent/game-chat-runtime.ts")
 const statusUi = () =>
@@ -100,13 +103,15 @@ test("Stage 18 retries are recoverable and preserve completed intent receipts", 
   assert.match(sql, /attempts=case when state='completed' then attempts else 0 end/)
 })
 
-test("Stage 18 hardens replay of create-style intents against duplicate entities", () => {
+test("Stage 18 hardens replay of create-style intents without name-based guessing", () => {
   const code = runtime()
+  const sql = migration()
 
-  assert.match(code, /reconcileStage18Create/)
-  assert.match(code, /stage18_existing_location_ambiguous/)
-  assert.match(code, /stage18_existing_npc_ambiguous/)
-  assert.match(code, /"stage18:" \+ commitId \+ ":" \+ intentKey/)
+  assert.doesNotMatch(code, /reconcileStage18Create/)
+  assert.doesNotMatch(code, /stage18_existing_location_ambiguous/)
+  assert.doesNotMatch(code, /stage18_existing_npc_ambiguous/)
+  assert.match(sql, /ai_gm_post_turn_entity_bindings/)
+  assert.match(code, /"stage18:" \+ commitId \+ ":" \+ intent\.intentKey/)
   assert.match(code, /toolName === "create_quest_plan"/)
   assert.match(code, /toolName === "remember_campaign_fact"/)
   assert.match(code, /toolName === "upsert_location_secret"/)
