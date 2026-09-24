@@ -47,6 +47,8 @@ const WORKER_SYSTEM = [
   "effect_payload описывает структурированное последствие события.",
   "snapshot_summary — это ПОЛНЫЙ краткий актуальный итог состояния world/NPC/location ПОСЛЕ этого результата, а не описание только нового события. Он должен заменить предыдущий active summary и сохранять только всё ещё актуальные последствия/незакрытые линии.",
   "proposed_state — ПОЛНЫЙ компактный replacement current-state ПОСЛЕ события. Это НЕ patch и НЕ дневник. Перенеси из current_snapshot.state только всё ещё актуальные поля, обнови изменившиеся, удали устаревшие. Не создавай history/events/timeline массивы.",
+  "Если событие меняет временно эффективное физическое состояние, используй proposed_state.temporal_overlay. Для NPC разрешены только life_state='alive'|'dead', location_id=существующий UUID или null, status=короткий machine key. Для location разрешены lifecycle_state='active'|'archived' и status. Для world разрешён только status.",
+  "temporal_overlay обязан описывать состояние, эффективное на campaign_day этого события, и переноситься в следующий replacement snapshot пока эффект остаётся актуальным. Не мутируй canonical rows напрямую: основной GM увидит overlay только в сценах с scene_day >= through_game_day.",
   "event_kind должен быть коротким machine key вида economy.shift, npc.recovery, location.damage. Для lasting_change=false используй event_kind=none.",
   "summary — 1–2 коротких предложения без художественной сцены.",
   "Если после учёта supplied roll и канона остаются 2+ реально равноправных НЕРАЗРЕШЁННЫХ сюжетных исхода, можешь вызвать resolve_random_decision. Сначала полностью задай вопрос и все d100 bands. Сервер зафиксирует их до броска.",
