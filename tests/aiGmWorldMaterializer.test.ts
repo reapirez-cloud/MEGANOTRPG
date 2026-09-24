@@ -14,10 +14,10 @@ test("AI GM can request canonical world materialization before narrating", () =>
   assert.match(runtime, /!context\.sourceLocation/)
 })
 
-test("world materializer is fixed to the cheap Flash worker", () => {
-  assert.match(runtime, /WORLD_MATERIALIZER_MODEL_KEY = "deepseek-v4\.1-flash"/)
+test("world materializer uses the campaign junior worker selection", () => {
   assert.match(runtime, /resolveWorldMaterializerModel/)
-  assert.match(runtime, /supports_tools/)
+  assert.match(runtime, /resolveCampaignJuniorModel/)
+  assert.match(runtime, /campaignId/)
 })
 
 test("world materializer exposes creation tools but no destructive world tools", () => {
