@@ -20,7 +20,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value)
 }
 
-function payloadText(mechanic: StoredMechanic | undefined, key: "label" | "description" | "authorExplanation" | "authorComment") {
+function payloadText(mechanic: StoredMechanic | undefined, key: "label" | "description") {
   if (!mechanic || mechanic.type !== "grant") return ""
   const payload: unknown = mechanic.payload
   if (!isRecord(payload)) return ""
@@ -85,18 +85,10 @@ export default function ChatActionDetailSheet({ campaignId, mechanicId, label, d
       .filter((entry) => entry.ownerKey === target.ownerKey && sourceKey(entry.mechanic) === key)
       .map((entry) => entry.mechanic)
     const feature = mechanics.find((mechanic) => mechanic.type === "grant" && mechanic.target === "feature")
-    const explanation = payloadText(feature, "authorExplanation")
-      || mechanics.map((mechanic) => mechanic.presentation?.authorExplanation?.trim() || "").find(Boolean)
-      || ""
     const description = payloadText(feature, "description") || detail.trim()
-    const comment = payloadText(feature, "authorComment")
-      || mechanics.map((mechanic) => mechanic.presentation?.authorComment?.trim() || "").find(Boolean)
-      || ""
     return {
       name: payloadText(feature, "label") || label,
-      explanation,
       description,
-      comment,
       facts: mechanicFacts(mechanics, detail),
     }
   }, [detail, label, levels, mechanicId, templates])
@@ -117,8 +109,6 @@ export default function ChatActionDetailSheet({ campaignId, mechanicId, label, d
         {view && <div className="chat-spell-detail__body">
           {view.description && <section className="chat-spell-detail__block chat-spell-detail__rules"><small>Механика способности</small><p>{view.description}</p></section>}
           {view.facts.length > 0 && <section className="chat-spell-detail__block"><small>Точные параметры</small>{view.facts.map((fact) => <p key={fact}>{fact}</p>)}</section>}
-          {view.explanation && <section className="chat-spell-detail__author"><small>Восс объясняет</small><p>{view.explanation}</p></section>}
-          {view.comment && <section className="chat-spell-detail__comment"><small>Заметка Восса</small><p>{view.comment}</p></section>}
         </div>}
       </article>
     </div>
