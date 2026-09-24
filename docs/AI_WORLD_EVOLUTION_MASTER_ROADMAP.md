@@ -1038,7 +1038,7 @@ A rollback-only long-history smoke test inserted 561 sequential messages: 420 el
 
 ## Stage 20 — Persistent NPC identity fingerprint
 
-**Status: PLANNED**
+**Status: IMPLEMENTED — 2026-09-24**
 
 Current `npc_profiles` has useful but insufficient fields:
 - `demeanor`;
@@ -1137,6 +1137,34 @@ A scene actor that becomes a persistent named NPC receives a conservative initia
 - explicit GM facts.
 
 Do not invent an entire childhood merely because the goblin said his name was Ург.
+
+### Implementation closure — 2026-09-24
+
+Stage 20 now has a server-owned, versioned NPC identity layer rather than relying on `npc_profiles.demeanor` and `motivation`.
+
+Implemented:
+- `npc_identity_fingerprints` stores the current stable core for every persistent NPC;
+- `npc_identity_fingerprint_versions` keeps immutable semantic versions;
+- `npc_identity_evolution_receipts` proves explicit major-event changes;
+- `npc_identity_observations` stores player-specific observed traits separately from GM-private identity;
+- direct UPDATE of the current fingerprint is blocked; all semantic writes go through the versioned writer;
+- mutable keys such as mood/HP/location/current relationship are rejected from the stable core schema;
+- ordinary/minor events cannot evolve identity: the evolution RPC requires a canonical event with importance >= 4 that actually involves the NPC;
+- promotion creates a conservative seeded fingerprint with scene-actor/bestiary provenance and explicitly records `conservative_no_unobserved_biography`;
+- primary GM, NPC dialogue, Stage 17 social adjudication and background simulation consume the same current fingerprint;
+- background worker output is forbidden from writing identity/personality fields into mutable snapshots;
+- hard red lines are explicitly treated by the GM/social adjudicator as possible `impossible_exact`, not a giant Persuasion DC;
+- world NPC dossier RPC v2 exposes full fingerprint only to GM/Admin and only player-specific observations to ordinary players;
+- GM dossier UI has a dedicated **«Личность»** section with version, traits, weighted values, red lines, desires, fears, loyalties, authority/risk/violence axes, pressure behavior, self-image, social style and decision priorities.
+
+Rollback-only database certification covered:
+- direct-update rejection;
+- unknown/mutable identity-key rejection;
+- minor-event evolution rejection;
+- major-event version + evolution receipt creation;
+- explicit profile bootstrap into a second seeded version;
+- GM/private dossier separation;
+- scene actor -> named NPC promotion, including actor+bestiary provenance and zero invented traits/desires/red-lines.
 
 **Done when:** the same NPC remains the same person in dialogue, off-screen life and social conflict months later.
 
