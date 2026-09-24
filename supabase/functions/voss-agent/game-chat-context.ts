@@ -48,6 +48,88 @@ export type Stage2GameChatContext = {
 const CHAT_CONTEXT_LIMIT = 50
 const MAX_MEMORY_FACTS = 24
 const MAX_MEMORY_SUMMARIES = 8
+const MAX_COMPACT_EVENT_PAYLOAD_BYTES = 1600
+
+const INTERNAL_TURN_COMPONENTS = new Set([
+  "worker",
+  "junior_worker",
+  "materializer",
+  "tool",
+  "tool_call",
+  "provider_trace",
+  "agent_job",
+  "post_turn_intent",
+])
+
+function utf8Bytes(value: string) {
+  return new TextEncoder().encode(value).length
+}
+
+function compactMechanicalPayload(value: unknown): JsonRecord | null {
+  const payload = record(value)
+  const compact: JsonRecord = {}
+  const allowed = [
+    "request_type",
+    "ability_key",
+    "skill_key",
+    "label",
+    "d20",
+    "roll",
+    "modifier",
+    "total",
+    "dc",
+    "outcome",
+    "outcome_class",
+    "success",
+    "critical",
+    "actor_id",
+    "character_id",
+    "npc_character_id",
+    "target_character_id",
+    "mechanic_id",
+    "action_label",
+    "damage_total",
+    "healing_total",
+  ] as const
+
+  for (const key of allowed) {
+    const item = payload[key]
+    if (
+      typeof item === "string" ||
+      typeof item === "number" ||
+      typeof item === "boolean"
+    ) compact[key] = item
+  }
+
+  return Object.keys(compact).length ? compact : null
+}
+
+function normalizeNarrativeMessage(message: JsonRecord): JsonRecord | null {
+  const turnComponent = nullableString(message.turn_component)
+  if (turnComponent && INTERNAL_TURN_COMPONENTS.has(turnComponent)) return null
+
+  const eventKind = nullableString(message.event_kind)
+  const body = nullableString(message.body)
+  const mechanical = eventKind && /roll|check|save|attack|damage|heal|action/i.test(eventKind)
+  const compactPayload = mechanical ? compactMechanicalPayload(message.event_payload) : null
+
+  if (!body && !compactPayload) return null
+
+  const normalized: JsonRecord = {
+    id: message.id,
+    author_name: message.author_name,
+    character_id: message.character_id,
+    body: body || null,
+    event_kind: eventKind,
+    audience_scope: message.audience_scope,
+    recipient_character_ids: message.recipient_character_ids,
+    created_at: message.created_at,
+  }
+
+  if (compactPayload) normalized.event_payload = compactPayload
+
+  return normalized
+}
 
 function record(value: unknown): JsonRecord {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -867,23 +949,12 @@ export async function buildGameChatContextV2({
         currentDay,
       )
     )
+    .map((message) => normalizeNarrativeMessage(message))
+    .filter((message): message is JsonRecord => Boolean(message))
+    .slice(-CHAT_CONTEXT_LIMIT)
     .map((message) => {
       const event = chatEventByMessage.get(String(message.id))
-      return withGameAge({
-        id: message.id,
-        author_name: message.author_name,
-        character_id: message.character_id,
-        body: message.body,
-        event_kind: message.event_kind,
-        event_payload: message.event_payload,
-        attachment_kind: message.attachment_kind,
-        turn_command_id: message.turn_command_id,
-        turn_component: message.turn_component,
-        turn_order: message.turn_order,
-        audience_scope: message.audience_scope,
-        recipient_character_ids: message.recipient_character_ids,
-        created_at: message.created_at,
-      }, event, currentDay)
+      return withGameAge(message, event, currentDay)
     })
 
   const rawFacts = rows(memoryFactsResult.data)
@@ -1017,7 +1088,7 @@ export async function buildGameChatContextV2({
 }
 
 export function stage2ContextForPrompt(context: Stage2GameChatContext) {
-  return JSON.stringify({
+  const payload = {
     contract: {
       recent_message_limit: CHAT_CONTEXT_LIMIT,
       player_locations_are_independent: true,
@@ -1052,6 +1123,22 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     cooperative_time_sync: context.temporalSync,
     recent_chat_messages_all_authors: context.recentMessages,
     explicit_player_name_mentions: context.mentionedPlayerCharacters,
+  }
+  const serialized = JSON.stringify(payload)
+  const messageBytes = utf8Bytes(JSON.stringify(context.recentMessages))
+  const totalBytes = utf8Bytes(serialized)
+  const approximateTokens = Math.ceil(totalBytes / 4)
+
+  return JSON.stringify({
+    ...payload,
+    context_telemetry: {
+      recent_message_count: context.recentMessages.length,
+      recent_message_bytes: messageBytes,
+      serialized_bytes: totalBytes,
+      approximate_tokens: approximateTokens,
+      hard_message_cap: CHAT_CONTEXT_LIMIT,
+      compact_event_payload_target_bytes: MAX_COMPACT_EVENT_PAYLOAD_BYTES,
+    },
   })
 }
 
