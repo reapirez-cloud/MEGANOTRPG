@@ -1,0 +1,1 @@
+-- Reconciled remote migration marker. Final world-proof schema and functions are folded into the Stage 17 foundation snapshot and the final hardening migration.\n
