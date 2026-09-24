@@ -34,7 +34,8 @@ test("post-16 roadmap has 24 executable stages", () => {
   assert.match(stage(18, 19), /status: "implemented"/)
   assert.match(stage(19, 20), /status: "implemented"/)
   assert.match(stage(20, 21), /status: "implemented"/)
-  for (let id = 21; id <= 24; id += 1) {
+  assert.match(stage(21, 22), /status: "implemented"/)
+  for (let id = 22; id <= 24; id += 1) {
     assert.match(stage(id, id < 24 ? id + 1 : null), /status: "planned"/)
   }
 })
