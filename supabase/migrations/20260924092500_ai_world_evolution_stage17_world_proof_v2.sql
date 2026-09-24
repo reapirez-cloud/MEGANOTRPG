@@ -220,7 +220,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path=''
-as $
+as $$
 declare
   v_job public.agent_jobs%rowtype;
   v_existing public.pending_player_roll_requests%rowtype;
