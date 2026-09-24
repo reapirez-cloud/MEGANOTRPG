@@ -1,7 +1,8 @@
-import { useState, type CSSProperties } from "react"
+import { useEffect, useState, type CSSProperties } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
 import CampaignMediaFrame from "../components/common/CampaignMediaFrame"
+import { supabase } from "../lib/supabase"
 import PlayerProfileMark from "./PlayerProfileMark"
 import { SnakeTrigger } from "./SnakeProvider"
 import { createCharacterSnakeActions } from "./characterSnakeActions"
@@ -15,6 +16,7 @@ import {
 type Props = {
   onOpenCharacter: (characterId: string) => void
   onOpenManagement: () => void
+  onOpenAiGm: () => void
 }
 
 function mediaStyle(url: string | null): CSSProperties | undefined {
@@ -293,8 +295,33 @@ function ActiveIdentity({
   )
 }
 
-export default function Workspace({ onOpenCharacter, onOpenManagement }: Props) {
+export default function Workspace({
+  onOpenCharacter,
+  onOpenManagement,
+  onOpenAiGm,
+}: Props) {
   const data = useWorkspaceData()
+  const [aiWorld, setAiWorld] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!data.campaignId || !data.canManage) {
+      setAiWorld(false)
+      return
+    }
+
+    void supabase
+      .rpc("is_ai_world_campaign_v1", { p_campaign_id: data.campaignId })
+      .then(({ data: value, error }) => {
+        if (cancelled) return
+        setAiWorld(!error && value === true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [data.campaignId, data.canManage])
 
   useAIViewContextLayer(
     "workspace",
@@ -373,7 +400,20 @@ export default function Workspace({ onOpenCharacter, onOpenManagement }: Props) 
           <strong>Я</strong>
           <span>{data.canManage ? "Кто говорит сейчас" : "Мои персонажи"}</span>
         </div>
-        <PlayerProfileMark />
+        <div className="u1-workspace__header-actions">
+          {data.canManage && aiWorld ? (
+            <button
+              type="button"
+              className="u1-workspace__ai-button"
+              onClick={onOpenAiGm}
+              aria-label="Открыть настройки ИИ-ГМ"
+            >
+              <span>AI</span>
+              <small>ГМ</small>
+            </button>
+          ) : null}
+          <PlayerProfileMark />
+        </div>
       </header>
 
       <section className="u1-workspace__actors" aria-label="Персонажи и текущий голос">
