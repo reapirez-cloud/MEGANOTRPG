@@ -2969,7 +2969,7 @@ export async function runGameChatTurn(
               : ""
 
           if (postJobId && terminalJob.status === "completed") {
-            void runPostTurnCommitJob({ admin, campaignId, postJobId })
+            await runPostTurnCommitJob({ admin, campaignId, postJobId })
           } else if (!postJobId) {
             const { data: nextJobId, error: nextError } = await admin.rpc(
               "next_ai_gm_scene_job_v1",
