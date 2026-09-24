@@ -678,6 +678,8 @@ Where immediate base mutation is unsafe, runtime continues to use temporal overl
 
 ## Stage 15 — Background simulation handoff for promoted actors
 
+**Status: CERTIFIED — 2026-09-24**
+
 After scene-actor promotion:
 
 - default appropriate persistent named NPCs to simulation-eligible;
@@ -701,6 +703,21 @@ appear unnamed
 No special importance flag is required.
 
 **Done when:** scene accidents can organically become long-running world stories.
+
+### Cooperative temporal convergence addendum
+
+When active player characters physically converge while their personal game clocks differ:
+
+- the shared scene advances to the latest colocated `campaign_day/day_period`;
+- lagging PCs receive an immutable `idle_life` catch-up receipt;
+- catch-up means ordinary life, routine and uneventful downtime;
+- a PC may have attempted something during the skipped interval, but no meaningful success exists without separate canonical evidence;
+- catch-up itself never grants rewards, quest progress, resources, relationships, discoveries or heroic accomplishments;
+- once converged, the PCs share one scene clock and can continue playing together normally.
+
+This is AI-world-only and does not change human-GM campaigns.
+
+**Certified when:** day-3/day-5 colocated PCs converge to day 5, mechanics remain unchanged, and the catch-up is recorded as non-meaningful idle time.
 
 ---
 
