@@ -678,7 +678,7 @@ export function useUiV1KnowledgeCatalog(section: string | undefined) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!section || !scope.campaignId || !["spells", "bestiary"].includes(section)) {
+    if (!section || !scope.campaignId || !["spells", "invocations", "bestiary"].includes(section)) {
       setRows([])
       setLoading(false)
       return
@@ -704,6 +704,64 @@ export function useUiV1KnowledgeCatalog(section: string | undefined) {
             title: row.name_ru || row.name_en || "Без названия",
             meta: `${row.spell_level === 0 ? "Заговор" : `${row.spell_level} уровень`}${row.school ? ` · ${row.school}` : ""}`,
           })))
+        }
+      } else if (section === "invocations") {
+        const definitions = await supabase
+          .from("reference_definitions")
+          .select("id, current_revision")
+          .eq("kind", "feature")
+          .eq("scope", "system")
+          .eq("status", "active")
+
+        if (cancelled) return
+        if (definitions.error) {
+          setError(definitions.error.message)
+        } else {
+          const defs = definitions.data || []
+          const ids = defs.map((row) => row.id)
+          const revisions = ids.length
+            ? await supabase
+                .from("reference_definition_revisions")
+                .select("definition_id, revision, name, data")
+                .in("definition_id", ids)
+            : { data: [], error: null }
+
+          if (cancelled) return
+          if (revisions.error) {
+            setError(revisions.error.message)
+          } else {
+            const currentRevision = new Map(
+              defs.map((row) => [row.id, row.current_revision]),
+            )
+            setRows((revisions.data || [])
+              .filter((row) => {
+                const data =
+                  row.data && typeof row.data === "object" && !Array.isArray(row.data)
+                    ? row.data as Record<string, unknown>
+                    : {}
+                return (
+                  currentRevision.get(row.definition_id) === row.revision &&
+                  data.feature_kind === "eldritch_invocation" &&
+                  data.class_key === "warlock"
+                )
+              })
+              .map((row) => {
+                const data = row.data as Record<string, unknown>
+                const level =
+                  typeof data.minimum_warlock_level === "number"
+                    ? data.minimum_warlock_level
+                    : 1
+                return {
+                  id: row.definition_id,
+                  title: row.name || "Воззвание",
+                  meta: `${level} уровень колдуна`,
+                }
+              })
+              .sort((left, right) =>
+                Number.parseInt(left.meta, 10) - Number.parseInt(right.meta, 10) ||
+                left.title.localeCompare(right.title, "ru"),
+              ))
+          }
         }
       } else {
         const { data, error: queryError } = await supabase
