@@ -647,7 +647,7 @@ export default function ChatComposer({
 
     const body = text.trim()
     if (!canCompose || sending) return
-    if (queuePlayerTurn && !hasQueuedTurnContent) return
+    if (queuePlayerTurn && !body) return
     if (!queuePlayerTurn && !body) return
 
     setSending(true)
@@ -1054,7 +1054,7 @@ export default function ChatComposer({
             disabled={
               !canCompose ||
               sending ||
-              (queuePlayerTurn ? !hasQueuedTurnContent : !text.trim())
+              (queuePlayerTurn ? !text.trim() : !text.trim())
             }
             data-sending={sending || undefined}
           >
