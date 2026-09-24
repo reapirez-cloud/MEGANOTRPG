@@ -50,6 +50,51 @@ const NPC_SHEET_PROPERTIES = {
   notes: { type: "string" },
 } as const
 
+const CHARACTER_SHEET_PROPERTIES = {
+  race: { type: "string" },
+  background: { type: "string" },
+  alignment: { type: "string" },
+  experience: { type: "integer", minimum: 0, maximum: 1000000000 },
+  strength: { type: "integer", minimum: 1, maximum: 30 },
+  dexterity: { type: "integer", minimum: 1, maximum: 30 },
+  constitution: { type: "integer", minimum: 1, maximum: 30 },
+  intelligence: { type: "integer", minimum: 1, maximum: 30 },
+  wisdom: { type: "integer", minimum: 1, maximum: 30 },
+  charisma: { type: "integer", minimum: 1, maximum: 30 },
+  armor_class: { type: "integer", minimum: 0, maximum: 99 },
+  initiative_bonus: { type: "integer", minimum: -30, maximum: 30 },
+  speed: { type: "integer", minimum: 0, maximum: 1000 },
+  proficiency_bonus: { type: "integer", minimum: 0, maximum: 20 },
+  max_hp: { type: "integer", minimum: 0, maximum: 1000000 },
+  current_hp: { type: "integer", minimum: 0, maximum: 1000000 },
+  temp_hp: { type: "integer", minimum: 0, maximum: 1000000 },
+  hit_dice: { type: "string" },
+  death_save_successes: { type: "integer", minimum: 0, maximum: 3 },
+  death_save_failures: { type: "integer", minimum: 0, maximum: 3 },
+  passive_perception: { type: "integer", minimum: 0, maximum: 99 },
+  saving_throw_proficiencies: { type: "array", items: { type: "string" } },
+  skill_proficiencies: { type: "object", additionalProperties: true },
+  proficiencies: { type: "string" },
+  languages: { type: "string" },
+  senses: { type: "string" },
+  personality_traits: { type: "string" },
+  ideals: { type: "string" },
+  bonds: { type: "string" },
+  flaws: { type: "string" },
+  backstory: { type: "string" },
+  notes: { type: "string" },
+  spellcasting_enabled: { type: "boolean" },
+  spellcasting_ability: {
+    type: "string",
+    enum: ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"],
+  },
+  spell_save_dc: { type: "integer", minimum: 0, maximum: 99 },
+  spell_attack_bonus: { type: "integer", minimum: -30, maximum: 99 },
+  spell_slots: { type: "object", additionalProperties: true },
+  spell_change_unlocked: { type: "boolean" },
+  runtime_facts: { type: "object", additionalProperties: true },
+} as const
+
 const NPC_PROFILE_PROPERTIES = {
   role: { type: "string" },
   species: { type: "string" },
@@ -120,8 +165,253 @@ export const VOSS_MANAGER_TOOLS = [
           character_class: { type: "string" },
           level: { type: "integer", minimum: 1, maximum: 30 },
           bio: { type: "string" },
+          avatar_url: { type: "string" },
+          sheet: {
+            type: "object",
+            additionalProperties: false,
+            properties: CHARACTER_SHEET_PROPERTIES,
+            description:
+              "Patch the canonical character sheet: race, stats, HP, spellcasting values, slots, proficiencies, biography fields and runtime facts. Omitted fields are preserved.",
+          },
         },
         required: ["character_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_character_spell",
+      description:
+        "GM/Admin only. Add, update preparation state, or remove a canonical spell/cantrip on a character. Resolve from spell_catalog by id, slug, Russian name or English name; never hand-copy spell mechanics.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          operation: { type: "string", enum: ["add", "remove"] },
+          catalog_spell_id: { type: "string" },
+          slug: { type: "string" },
+          name: { type: "string" },
+          prepared: { type: "boolean" },
+        },
+        required: ["character_id", "operation"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_character_template_assignment",
+      description:
+        "GM/Admin only. Assign or update a canonical rule template on a character (class, subclass or any future template kind). This is the correct path for durable template mechanics and may include selected_choices.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          template_id: { type: "string" },
+          template_slug: { type: "string" },
+          template_name: { type: "string" },
+          template_level: { type: "integer", minimum: 1, maximum: 30 },
+          selected_choices: { type: "object", additionalProperties: true },
+        },
+        required: ["character_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "commit_character_template_choice",
+      description:
+        "GM/Admin only. Change one validated choice on an existing character template assignment. Use this for invocations and other class/subclass choices; the Character Engine validates unlock levels, replacement limits and runtime effects.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          assignment_id: { type: "string" },
+          choice_key: { type: "string" },
+          instances: {
+            type: "array",
+            items: { type: "object", additionalProperties: true },
+          },
+        },
+        required: ["assignment_id", "choice_key", "instances"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "remove_character_template_assignment",
+      description:
+        "GM/Admin only. Remove a canonical class/subclass/template assignment from a character through Character Engine cleanup.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          assignment_id: { type: "string" },
+        },
+        required: ["character_id", "assignment_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "upsert_character_feature",
+      description:
+        "GM/Admin only. Create or patch a direct character feature/feat. Prefer canonical template choices when one exists; use this for character-specific feats/features or imported mechanics.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          feature_id: { type: "string" },
+          kind: { type: "string" },
+          name: { type: "string" },
+          description: { type: "string" },
+          mechanics: { type: "array", items: { type: "object", additionalProperties: true } },
+          sort_order: { type: "integer" },
+          source_definition_id: { type: "string" },
+          source_definition_revision: { type: "integer", minimum: 1 },
+        },
+        required: ["character_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_character_feature",
+      description:
+        "GM/Admin only. Delete one direct character feature/feat by id.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          feature_id: { type: "string" },
+        },
+        required: ["character_id", "feature_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_character_resource_state",
+      description:
+        "GM/Admin only. Set a character runtime resource state such as class resource, custom charges or temporary maximum. This changes current canonical runtime state, not the reusable class definition.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          state_key: { type: "string" },
+          current: { type: "integer", minimum: 0 },
+          max_snapshot: { type: "integer", minimum: 0 },
+          label: { type: "string" },
+          recharge: { type: "object", additionalProperties: true },
+          temporary_max_bonus: { type: "integer", minimum: 0 },
+        },
+        required: ["character_id", "state_key", "current", "max_snapshot"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_character_inventory_item",
+      description:
+        "GM/Admin only. Create an inventory item through the canonical Cheburashka inventory authoring RPC. It may reuse an existing definition or author a campaign definition from input/profile.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          input: { type: "object", additionalProperties: true },
+          inventory_profile: { type: "object", additionalProperties: true },
+        },
+        required: ["character_id", "input"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_character_inventory_item",
+      description:
+        "GM/Admin only. Patch one inventory item through the canonical Cheburashka inventory engine. expected_version is optional; when omitted Freddy reads the current version first.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          item_id: { type: "string" },
+          input: { type: "object", additionalProperties: true },
+          inventory_profile: { type: "object", additionalProperties: true },
+          expected_version: { type: "integer", minimum: 1 },
+        },
+        required: ["character_id", "item_id", "input"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "remove_character_inventory_item",
+      description:
+        "GM/Admin only. Permanently remove one inventory item through the canonical inventory engine. expected_version is optional and is resolved when omitted.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          item_id: { type: "string" },
+          expected_version: { type: "integer", minimum: 1 },
+        },
+        required: ["character_id", "item_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_character_inventory_equipped",
+      description:
+        "GM/Admin only. Equip one inventory item into a canonical equipment slot through the inventory engine.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          item_id: { type: "string" },
+          equipment_slot: { type: "string" },
+          expected_version: { type: "integer", minimum: 1 },
+        },
+        required: ["character_id", "item_id", "equipment_slot"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_character_inventory_quick_access",
+      description:
+        "GM/Admin only. Enable or disable the character's single quick-access inventory item.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          character_id: { type: "string" },
+          item_id: { type: "string" },
+          enabled: { type: "boolean" },
+          expected_version: { type: "integer", minimum: 1 },
+        },
+        required: ["character_id", "item_id", "enabled"],
       },
     },
   },
@@ -680,6 +970,39 @@ function canManage(context: VossManagerToolContext) {
   return context.authority === "gm" || context.authority === "admin"
 }
 
+function record(value: unknown): JsonRecord {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as JsonRecord
+    : {}
+}
+
+const CHARACTER_SHEET_KEYS = new Set(Object.keys(CHARACTER_SHEET_PROPERTIES))
+
+function sheetPatch(value: unknown) {
+  const source = record(value)
+  const patch: JsonRecord = {}
+  for (const [key, item] of Object.entries(source)) {
+    if (CHARACTER_SHEET_KEYS.has(key) && item !== undefined) patch[key] = item
+  }
+  return patch
+}
+
+async function currentInventoryVersion(
+  context: VossManagerToolContext,
+  characterId: string,
+  itemId: string,
+) {
+  const { data, error } = await context.admin
+    .from("character_inventory_items")
+    .select("id,character_id,version")
+    .eq("id", itemId)
+    .eq("character_id", characterId)
+    .maybeSingle()
+  if (error) return { error: error.message, version: 0 }
+  if (!data) return { error: "inventory_item_not_found", version: 0 }
+  return { error: "", version: Number(data.version || 0) }
+}
+
 async function readCharacter(context: VossManagerToolContext, characterId: string) {
   const { data, error } = await managerClient(context)
     .from("characters")
@@ -747,6 +1070,10 @@ async function updateCampaignCharacter(
         : text(args.character_class, 120) || "Персонаж",
     level: args.level === undefined ? row.level : level(args.level, row.level),
     bio: args.bio === undefined ? row.bio : text(args.bio, 12000),
+    avatar_url:
+      args.avatar_url === undefined
+        ? row.avatar_url
+        : text(args.avatar_url, 2000) || null,
     character_type: characterType,
     updated_at: new Date().toISOString(),
   }
@@ -767,7 +1094,533 @@ async function updateCampaignCharacter(
 
   if (error) return { error: error.message }
   if (!data) return { not_found: true }
-  return { character: data, canonical_state_changed: true }
+
+  let sheet: unknown = null
+  const requestedSheet = sheetPatch(args.sheet)
+  if (Object.keys(requestedSheet).length) {
+    requestedSheet.updated_at = new Date().toISOString()
+    const { data: sheetData, error: sheetError } = await context.admin
+      .from("character_sheets")
+      .upsert(
+        { character_id: characterId, ...requestedSheet },
+        { onConflict: "character_id" },
+      )
+      .select("*")
+      .single()
+    if (sheetError) return { error: sheetError.message, character: data }
+    sheet = sheetData
+  }
+
+  return { character: data, ...(sheet ? { sheet } : {}), canonical_state_changed: true }
+}
+
+async function resolveCatalogSpell(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const catalogId = uuid(args.catalog_spell_id)
+  if (catalogId) {
+    const result = await context.admin
+      .from("spell_catalog")
+      .select("id,slug,name_ru,name_en,spell_level")
+      .eq("id", catalogId)
+      .maybeSingle()
+    if (result.error) return { error: result.error.message, spell: null }
+    return { error: "", spell: result.data || null }
+  }
+
+  const slug = text(args.slug, 220)
+  if (slug) {
+    const result = await context.admin
+      .from("spell_catalog")
+      .select("id,slug,name_ru,name_en,spell_level")
+      .eq("slug", slug)
+      .maybeSingle()
+    if (result.error) return { error: result.error.message, spell: null }
+    if (result.data) return { error: "", spell: result.data }
+  }
+
+  const name = text(args.name, 240)
+  if (!name) return { error: "spell_identifier_required", spell: null }
+
+  const ru = await context.admin
+    .from("spell_catalog")
+    .select("id,slug,name_ru,name_en,spell_level")
+    .eq("name_ru", name)
+    .limit(1)
+    .maybeSingle()
+  if (ru.error) return { error: ru.error.message, spell: null }
+  if (ru.data) return { error: "", spell: ru.data }
+
+  const en = await context.admin
+    .from("spell_catalog")
+    .select("id,slug,name_ru,name_en,spell_level")
+    .eq("name_en", name)
+    .limit(1)
+    .maybeSingle()
+  if (en.error) return { error: en.error.message, spell: null }
+  return { error: "", spell: en.data || null }
+}
+
+async function setCharacterSpell(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  if (!characterId) return { error: "character_id_required" }
+  const current = await readCharacter(context, characterId)
+  if (current.error) return { error: current.error }
+  if (!current.row) return { not_found: true }
+
+  const resolved = await resolveCatalogSpell(context, args)
+  if (resolved.error) return { error: resolved.error }
+  if (!resolved.spell) return { error: "spell_not_found" }
+
+  const existing = await context.admin
+    .from("character_spells")
+    .select("id,prepared,catalog_spell_id")
+    .eq("character_id", characterId)
+    .eq("catalog_spell_id", resolved.spell.id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  if (existing.error) return { error: existing.error.message }
+
+  if (args.operation === "remove") {
+    if (!existing.data) {
+      return { removed: false, not_found: true, spell: resolved.spell }
+    }
+    const deleted = await context.admin
+      .from("character_spells")
+      .delete()
+      .eq("character_id", characterId)
+      .eq("catalog_spell_id", resolved.spell.id)
+    if (deleted.error) return { error: deleted.error.message }
+    return {
+      removed: true,
+      spell: resolved.spell,
+      canonical_state_changed: true,
+    }
+  }
+
+  const prepared =
+    typeof args.prepared === "boolean"
+      ? args.prepared
+      : Number(resolved.spell.spell_level || 0) === 0
+
+  if (existing.data) {
+    const updated = await context.admin
+      .from("character_spells")
+      .update({ prepared, updated_at: new Date().toISOString() })
+      .eq("id", existing.data.id)
+      .select("id,name,spell_level,prepared,cast_mode,slot_level,catalog_spell_id")
+      .single()
+    if (updated.error) return { error: updated.error.message }
+    return { spell: updated.data, canonical_state_changed: true }
+  }
+
+  const inserted = await context.admin
+    .from("character_spells")
+    .insert({
+      character_id: characterId,
+      catalog_spell_id: resolved.spell.id,
+      name: resolved.spell.name_ru || resolved.spell.name_en || resolved.spell.slug,
+      prepared,
+    })
+    .select("id,name,spell_level,prepared,cast_mode,slot_level,catalog_spell_id")
+    .single()
+  if (inserted.error) return { error: inserted.error.message }
+  return { spell: inserted.data, canonical_state_changed: true }
+}
+
+async function resolveRuleTemplate(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const templateId = uuid(args.template_id)
+  if (templateId) {
+    const result = await context.admin
+      .from("rule_templates")
+      .select("id,campaign_id,kind,slug,name,is_active")
+      .eq("id", templateId)
+      .eq("campaign_id", context.campaignId)
+      .maybeSingle()
+    if (result.error) return { error: result.error.message, template: null }
+    return { error: "", template: result.data || null }
+  }
+
+  const slug = text(args.template_slug, 220)
+  if (slug) {
+    const result = await context.admin
+      .from("rule_templates")
+      .select("id,campaign_id,kind,slug,name,is_active")
+      .eq("campaign_id", context.campaignId)
+      .eq("slug", slug)
+      .maybeSingle()
+    if (result.error) return { error: result.error.message, template: null }
+    if (result.data) return { error: "", template: result.data }
+  }
+
+  const name = text(args.template_name, 240)
+  if (!name) return { error: "template_identifier_required", template: null }
+  const result = await context.admin
+    .from("rule_templates")
+    .select("id,campaign_id,kind,slug,name,is_active")
+    .eq("campaign_id", context.campaignId)
+    .eq("name", name)
+    .limit(1)
+    .maybeSingle()
+  if (result.error) return { error: result.error.message, template: null }
+  return { error: "", template: result.data || null }
+}
+
+async function setCharacterTemplateAssignment(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  if (!characterId) return { error: "character_id_required" }
+  const current = await readCharacter(context, characterId)
+  if (current.error) return { error: current.error }
+  if (!current.row) return { not_found: true }
+
+  const resolved = await resolveRuleTemplate(context, args)
+  if (resolved.error) return { error: resolved.error }
+  if (!resolved.template || resolved.template.is_active !== true) {
+    return { error: "active_template_not_found" }
+  }
+
+  const selectedChoices = record(args.selected_choices)
+  const { data, error } = await context.client.rpc(
+    "set_character_template_assignment_owner_v1",
+    {
+      p_character_id: characterId,
+      p_template_id: resolved.template.id,
+      p_template_level:
+        args.template_level === undefined ? null : level(args.template_level, 1),
+      p_selected_choices: selectedChoices,
+    },
+  )
+  if (error) return { error: error.message }
+
+  const assignment = await context.admin
+    .from("character_template_assignments")
+    .select("id,character_id,template_id,template_level,selected_choices,updated_at")
+    .eq("id", data)
+    .maybeSingle()
+  if (assignment.error) return { error: assignment.error.message }
+  return {
+    assignment: assignment.data,
+    template: resolved.template,
+    canonical_state_changed: true,
+  }
+}
+
+async function commitCharacterTemplateChoice(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const assignmentId = uuid(args.assignment_id)
+  const choiceKey = text(args.choice_key, 240)
+  if (!assignmentId) return { error: "assignment_id_required" }
+  if (!choiceKey) return { error: "choice_key_required" }
+
+  const assignment = await context.admin
+    .from("character_template_assignments")
+    .select("id,character_id,template_id")
+    .eq("id", assignmentId)
+    .maybeSingle()
+  if (assignment.error) return { error: assignment.error.message }
+  if (!assignment.data) return { error: "assignment_not_found" }
+
+  const current = await readCharacter(context, assignment.data.character_id)
+  if (current.error) return { error: current.error }
+  if (!current.row) return { error: "assignment_character_not_in_campaign" }
+
+  const instances = Array.isArray(args.instances) ? args.instances : []
+  const result = await context.client.rpc(
+    "commit_character_template_choice_v2",
+    {
+      p_assignment_id: assignmentId,
+      p_choice_key: choiceKey,
+      p_instances: instances,
+    },
+  )
+  if (result.error) return { error: result.error.message }
+  return { choice: result.data, canonical_state_changed: true }
+}
+
+async function removeCharacterTemplateAssignment(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  const assignmentId = uuid(args.assignment_id)
+  if (!characterId) return { error: "character_id_required" }
+  if (!assignmentId) return { error: "assignment_id_required" }
+
+  const current = await readCharacter(context, characterId)
+  if (current.error) return { error: current.error }
+  if (!current.row) return { not_found: true }
+
+  const result = await context.client.rpc(
+    "remove_character_template_assignment_v2",
+    { p_character_id: characterId, p_assignment_id: assignmentId },
+  )
+  if (result.error) return { error: result.error.message }
+  return { removed: true, assignment_id: assignmentId, canonical_state_changed: true }
+}
+
+async function upsertCharacterFeature(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  if (!characterId) return { error: "character_id_required" }
+  const current = await readCharacter(context, characterId)
+  if (current.error) return { error: current.error }
+  if (!current.row) return { not_found: true }
+
+  const featureId = args.feature_id ? uuid(args.feature_id) : ""
+  if (args.feature_id && !featureId) return { error: "feature_id_invalid" }
+
+  const patch: JsonRecord = { updated_at: new Date().toISOString() }
+  if (args.kind !== undefined) patch.kind = text(args.kind, 80) || "feature"
+  if (args.name !== undefined) patch.name = text(args.name, 240)
+  if (args.description !== undefined) patch.description = text(args.description, 12000)
+  if (Array.isArray(args.mechanics)) patch.mechanics = args.mechanics
+  if (Number.isInteger(Number(args.sort_order))) patch.sort_order = Number(args.sort_order)
+  if (args.source_definition_id !== undefined) {
+    const definitionId = uuid(args.source_definition_id)
+    if (!definitionId) return { error: "source_definition_id_invalid" }
+    patch.source_definition_id = definitionId
+  }
+  if (args.source_definition_revision !== undefined) {
+    patch.source_definition_revision = Math.max(1, Number(args.source_definition_revision))
+  }
+
+  if (featureId) {
+    const result = await context.admin
+      .from("character_features")
+      .update(patch)
+      .eq("character_id", characterId)
+      .eq("id", featureId)
+      .select("*")
+      .maybeSingle()
+    if (result.error) return { error: result.error.message }
+    if (!result.data) return { not_found: true }
+    return { feature: result.data, canonical_state_changed: true }
+  }
+
+  if (!patch.name) return { error: "feature_name_required" }
+  const result = await context.admin
+    .from("character_features")
+    .insert({
+      character_id: characterId,
+      kind: patch.kind || "feature",
+      name: patch.name,
+      description: patch.description || "",
+      mechanics: patch.mechanics || [],
+      sort_order: patch.sort_order || 0,
+      ...(patch.source_definition_id ? { source_definition_id: patch.source_definition_id } : {}),
+      ...(patch.source_definition_revision ? { source_definition_revision: patch.source_definition_revision } : {}),
+    })
+    .select("*")
+    .single()
+  if (result.error) return { error: result.error.message }
+  return { feature: result.data, canonical_state_changed: true }
+}
+
+async function deleteCharacterFeature(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  const featureId = uuid(args.feature_id)
+  if (!characterId) return { error: "character_id_required" }
+  if (!featureId) return { error: "feature_id_required" }
+  const current = await readCharacter(context, characterId)
+  if (current.error) return { error: current.error }
+  if (!current.row) return { not_found: true }
+  const result = await context.admin
+    .from("character_features")
+    .delete()
+    .eq("character_id", characterId)
+    .eq("id", featureId)
+  if (result.error) return { error: result.error.message }
+  return { deleted: true, feature_id: featureId, canonical_state_changed: true }
+}
+
+async function setCharacterResourceState(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  const stateKey = text(args.state_key, 240)
+  if (!characterId) return { error: "character_id_required" }
+  if (!stateKey) return { error: "state_key_required" }
+  const currentCharacter = await readCharacter(context, characterId)
+  if (currentCharacter.error) return { error: currentCharacter.error }
+  if (!currentCharacter.row) return { not_found: true }
+
+  const payload: JsonRecord = {
+    character_id: characterId,
+    state_key: stateKey,
+    current: Math.max(0, Number(args.current || 0)),
+    max_snapshot: Math.max(0, Number(args.max_snapshot || 0)),
+    label: text(args.label, 240),
+    recharge: record(args.recharge),
+    temporary_max_bonus: Math.max(0, Number(args.temporary_max_bonus || 0)),
+    updated_by: context.userId,
+    updated_at: new Date().toISOString(),
+  }
+  const result = await context.admin
+    .from("character_resource_states")
+    .upsert(payload, { onConflict: "character_id,state_key" })
+    .select("*")
+    .single()
+  if (result.error) return { error: result.error.message }
+  return { resource: result.data, canonical_state_changed: true }
+}
+
+async function createCharacterInventoryItem(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  if (!characterId) return { error: "character_id_required" }
+  const current = await readCharacter(context, characterId)
+  if (current.error) return { error: current.error }
+  if (!current.row) return { not_found: true }
+  const input = record(args.input)
+  if (!Object.keys(input).length) return { error: "inventory_input_required" }
+
+  const result = await context.client.rpc("create_inventory_item_v3", {
+    p_character_id: characterId,
+    p_input: input,
+    p_inventory_profile:
+      Object.keys(record(args.inventory_profile)).length
+        ? record(args.inventory_profile)
+        : null,
+  })
+  if (result.error) return { error: result.error.message }
+  return { inventory: result.data, canonical_state_changed: true }
+}
+
+async function updateCharacterInventoryItem(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  const itemId = uuid(args.item_id)
+  if (!characterId) return { error: "character_id_required" }
+  if (!itemId) return { error: "item_id_required" }
+  const current = await readCharacter(context, characterId)
+  if (current.error) return { error: current.error }
+  if (!current.row) return { not_found: true }
+
+  let expectedVersion = Number(args.expected_version || 0)
+  if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
+    const version = await currentInventoryVersion(context, characterId, itemId)
+    if (version.error) return { error: version.error }
+    expectedVersion = version.version
+  }
+
+  const result = await context.client.rpc("update_inventory_item_v3", {
+    p_character_id: characterId,
+    p_item_id: itemId,
+    p_input: record(args.input),
+    p_inventory_profile:
+      Object.keys(record(args.inventory_profile)).length
+        ? record(args.inventory_profile)
+        : null,
+    p_expected_version: expectedVersion,
+  })
+  if (result.error) return { error: result.error.message }
+  return { inventory: result.data, canonical_state_changed: true }
+}
+
+async function removeCharacterInventoryItem(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  const itemId = uuid(args.item_id)
+  if (!characterId) return { error: "character_id_required" }
+  if (!itemId) return { error: "item_id_required" }
+  const current = await readCharacter(context, characterId)
+  if (current.error) return { error: current.error }
+  if (!current.row) return { not_found: true }
+
+  let expectedVersion = Number(args.expected_version || 0)
+  if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
+    const version = await currentInventoryVersion(context, characterId, itemId)
+    if (version.error) return { error: version.error }
+    expectedVersion = version.version
+  }
+
+  const result = await context.client.rpc("remove_inventory_item_v1", {
+    p_character_id: characterId,
+    p_item_id: itemId,
+    p_expected_version: expectedVersion,
+  })
+  if (result.error) return { error: result.error.message }
+  return { inventory: result.data, canonical_state_changed: true }
+}
+
+async function setCharacterInventoryEquipped(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  const itemId = uuid(args.item_id)
+  const slot = text(args.equipment_slot, 80)
+  if (!characterId) return { error: "character_id_required" }
+  if (!itemId) return { error: "item_id_required" }
+  if (!slot) return { error: "equipment_slot_required" }
+
+  let expectedVersion = Number(args.expected_version || 0)
+  if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
+    const version = await currentInventoryVersion(context, characterId, itemId)
+    if (version.error) return { error: version.error }
+    expectedVersion = version.version
+  }
+
+  const result = await context.client.rpc("set_inventory_item_equipped_v2", {
+    p_character_id: characterId,
+    p_item_id: itemId,
+    p_equipped: true,
+    p_equipment_slot: slot,
+    p_expected_version: expectedVersion,
+  })
+  if (result.error) return { error: result.error.message }
+  return { inventory: result.data, canonical_state_changed: true }
+}
+
+async function setCharacterInventoryQuickAccess(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  const characterId = uuid(args.character_id)
+  const itemId = uuid(args.item_id)
+  if (!characterId) return { error: "character_id_required" }
+  if (!itemId) return { error: "item_id_required" }
+
+  let expectedVersion = Number(args.expected_version || 0)
+  if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
+    const version = await currentInventoryVersion(context, characterId, itemId)
+    if (version.error) return { error: version.error }
+    expectedVersion = version.version
+  }
+
+  const result = await context.client.rpc("set_inventory_quick_access_v1", {
+    p_character_id: characterId,
+    p_item_id: itemId,
+    p_enabled: args.enabled === true,
+    p_expected_version: expectedVersion,
+  })
+  if (result.error) return { error: result.error.message }
+  return { inventory: result.data, canonical_state_changed: true }
 }
 
 async function setCharacterLifeState(
@@ -1544,6 +2397,18 @@ export async function executeVossManagerTool(
   try {
     if (name === "create_workshop_character") return await createWorkshopCharacter(context, args)
     if (name === "update_campaign_character") return await updateCampaignCharacter(context, args)
+    if (name === "set_character_spell") return await setCharacterSpell(context, args)
+    if (name === "set_character_template_assignment") return await setCharacterTemplateAssignment(context, args)
+    if (name === "commit_character_template_choice") return await commitCharacterTemplateChoice(context, args)
+    if (name === "remove_character_template_assignment") return await removeCharacterTemplateAssignment(context, args)
+    if (name === "upsert_character_feature") return await upsertCharacterFeature(context, args)
+    if (name === "delete_character_feature") return await deleteCharacterFeature(context, args)
+    if (name === "set_character_resource_state") return await setCharacterResourceState(context, args)
+    if (name === "create_character_inventory_item") return await createCharacterInventoryItem(context, args)
+    if (name === "update_character_inventory_item") return await updateCharacterInventoryItem(context, args)
+    if (name === "remove_character_inventory_item") return await removeCharacterInventoryItem(context, args)
+    if (name === "set_character_inventory_equipped") return await setCharacterInventoryEquipped(context, args)
+    if (name === "set_character_inventory_quick_access") return await setCharacterInventoryQuickAccess(context, args)
     if (name === "create_world_npc") return await createWorldNpc(context, args)
     if (name === "update_world_npc") return await updateWorldNpc(context, args)
     if (name === "upsert_faction") return await upsertFaction(context, args)
