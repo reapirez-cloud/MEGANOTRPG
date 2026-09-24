@@ -1249,6 +1249,8 @@ Implemented:
 - normalized 0..5 dimensions for consequence strictness, plot armor, lethal pressure, danger telegraphing, recoverable complications, adventure coincidence, life/social focus, pacing pressure and consequence persistence;
 - a shared server-owned constitution stating that player intent is not canon and profiles cannot modify facts, resolved mechanics/dice or NPC identity/agency;
 - **Приключение** is the default for AI-world campaigns;
+- binding an `ai_world_slot` persists that default immediately; it is not only a runtime fallback;
+- authenticated profile writes use `SECURITY INVOKER` + manager/AI-world RLS instead of an exposed authenticated `SECURITY DEFINER` mutation;
 - profile changes are campaign-level, AI-world-only and require campaign-manager authority;
 - primary GM receives the same selected profile in canonical context and is explicitly instructed to use it only as tie-breaking among already plausible branches;
 - background simulation receives the same profile, while its validator still freezes the server-supplied d100 result/direction/magnitude;
