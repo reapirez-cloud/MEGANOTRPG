@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
 import AgentShell from "../ai/AgentShell"
+import AiGmControl from "./AiGmControl"
 import ChatCatalog from "./ChatCatalog"
 import ChatRoomScreen from "./chat-room/ChatRoomScreen"
 
@@ -43,6 +44,7 @@ type SectionId =
 type Route =
   | { type: "root"; space: RootSpace }
   | { type: "chat-room"; roomId: string }
+  | { type: "ai-gm" }
   | { type: "section"; section: SectionId; subsection?: string; tail: string[] }
   | { type: "workspace"; page: "character"; characterId: string }
   | { type: "workspace"; page: "manage"; section?: WorkshopSection }
@@ -101,6 +103,7 @@ function parseRoute(): Route {
   const raw = window.location.hash.replace(/^#\/?/, "")
   const path = raw.split("?")[0]
 
+  if (path === "ai-gm") return { type: "ai-gm" }
   if (path === "workspace") return { type: "root", space: "workspace" }
   if (path === "workspace/manage") return { type: "workspace", page: "manage" }
   if (path.startsWith("workspace/manage/")) {
@@ -168,6 +171,19 @@ function softHaptic() {
 function routeKey(route: Route) {
   if (route.type === "root") return `root:${route.space}`
   if (route.type === "chat-room") return `chat-room:${route.roomId}`
+  if (route.type === "ai-gm") return "ai-gm"
+  if (route.type === "ai-gm") {
+    return {
+      screen: "ai-gm-control",
+      route: window.location.hash || "#/ai-gm",
+      title: "Управление ИИ-ГМ",
+      text: "Открыт отдельный пульт моделей, поведения и директорских настроек ИИ-ГМ.",
+      facts: {
+        surface: "ai-gm-control",
+      },
+    }
+  }
+
   if (route.type === "section") {
     if (route.section === "knowledge-base" && route.subsection === "classes") {
       return "section:knowledge-base:classes"
@@ -182,6 +198,7 @@ function routeKey(route: Route) {
 function activeRoot(route: Route): RootSpace {
   if (route.type === "root") return route.space
   if (route.type === "chat-room") return "chats"
+  if (route.type === "ai-gm") return "workspace"
   if (route.type === "workspace") return "workspace"
   return "home"
 }
@@ -666,6 +683,16 @@ function Screen({ route }: { route: Route }) {
     return <ChatRoomScreen roomId={route.roomId} />
   }
 
+  if (route.type === "ai-gm") {
+    return (
+      <AiGmControl
+        onBack={() => {
+          if (!navigateAppBack()) go("workspace")
+        }}
+      />
+    )
+  }
+
   if (route.type === "section") {
     if (route.section === "whats-new") return <WhatsNew onBack={() => go("home")} />
     if (route.section === "world") return <WorldSectionScreen subsection={route.subsection} path={route.tail} />
@@ -791,10 +818,12 @@ export default function UiV1App() {
           </motion.div>
         </AnimatePresence>
 
-        {route.type !== "chat-room" && <Dock route={route} onNavigate={navigateRoot} />}
+        {route.type !== "chat-room" && route.type !== "ai-gm" && (
+          <Dock route={route} onNavigate={navigateRoot} />
+        )}
       </div>
 
-      <AgentShell />
+      <AgentShell onOpenControl={() => go("ai-gm")} />
     </div>
   )
 }
