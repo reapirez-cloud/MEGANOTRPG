@@ -1359,7 +1359,7 @@ Rollback-only smoke certification used two real campaign members with deliberate
 
 ## Stage 23 — Adult / life-simulation content profile
 
-**Status: PLANNED**
+**Status: IMPLEMENTED — 2026-09-24**
 
 This is an **application permission/profile**, not an attempt to remove provider safeguards.
 
@@ -1412,7 +1412,21 @@ If a provider declines a particular output:
 - degrade gracefully;
 - do not corrupt the campaign by rewriting what happened solely because generation was unavailable.
 
-**Done when:** life-sim can use the full mature range supported by the selected provider without MEGANOT unnecessarily adding another sanitization personality on top.
+**Implementation closure — 2026-09-24**
+
+- `public.ai_gm_content_settings` stores one campaign mode: `off`, `allowed` or `adult_focused`; default is `off`.
+- The setting is AI-world-only, RLS-protected, readable by campaign members and writable only by a non-anonymous campaign manager.
+- `list_campaign_ai_gm_content_profiles_v1` and `set_campaign_ai_gm_content_profile_v1` are `SECURITY INVOKER` RPCs with explicit grants.
+- New AI-world slot bindings bootstrap the setting to `off`.
+- The profile is excluded from generic Stage 19 canonical context and world/background workers. It is injected only into narrative generation: the primary GM and restricted NPC dialogue context.
+- `allowed` permits mature themes to appear naturally when relevant without an extra MEGANOT-only euphemism/moralizing/fade-to-black rule. The selected provider remains authoritative.
+- `adult_focused` raises thematic priority for adult life-sim opportunities when they are otherwise plausible; it never alters NPC identity, consent, relationship state, canon, dice, prices or consequences.
+- The prompt explicitly forbids provider-bypass/jailbreak behavior and limits the profile to unambiguously adult characters/context.
+- Provider HTTP refusals that look like content-policy refusals are recorded as `ai_provider_content_refusal`; the job fails cleanly, no alternate canon is fabricated, and the user can switch model/retry.
+- AI tools UI exposes all three modes to members; only campaign managers can change the selected mode.
+- Stage 23 telemetry records selected mode and provider-boundary contract on GM jobs.
+
+**Done when:** life-sim can use the mature range supported by the selected provider without MEGANOT unnecessarily adding another sanitization personality on top.
 
 ---
 
