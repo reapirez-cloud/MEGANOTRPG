@@ -20,17 +20,20 @@ begin
       check (uncertainty_scope in ('character_performance','world_discovery'));
   end if;
 
-  if not exists (
+  if exists (
     select 1 from pg_catalog.pg_constraint
     where conname='ai_player_intent_adjudications_world_proof_kind_check'
       and conrelid='public.ai_player_intent_adjudications'::regclass
   ) then
     alter table public.ai_player_intent_adjudications
-      add constraint ai_player_intent_adjudications_world_proof_kind_check
-      check (world_proof_kind in (
-        'not_required','canonical_entities','resolver_exists','impossible_exact'
-      ));
+      drop constraint ai_player_intent_adjudications_world_proof_kind_check;
   end if;
+
+  alter table public.ai_player_intent_adjudications
+    add constraint ai_player_intent_adjudications_world_proof_kind_check
+    check (world_proof_kind in (
+      'not_required','canonical_entities','resolver_exists','resolver_absent','impossible_exact'
+    ));
 
   if not exists (
     select 1 from pg_catalog.pg_constraint
@@ -390,7 +393,7 @@ begin
   end if;
 
   select coalesce(max(sequence_no),0)+1 into v_sequence
-  from public.pending_player_roll_requests
+  from public.ai_player_intent_adjudications
   where gm_job_id=p_job_id;
 
   v_source_fingerprint := encode(
@@ -504,6 +507,265 @@ begin
   );
 end;
 $$;
+
+create or replace function public.record_ai_gm_deterministic_adjudication_v1(
+  p_job_id uuid,
+  p_character_id uuid,
+  p_adjudication_mode text,
+  p_uncertainty_scope text,
+  p_exact_goal text,
+  p_outcome_envelope text,
+  p_evidence_context jsonb,
+  p_evidence_refs jsonb,
+  p_canonical_evidence jsonb,
+  p_resolver_decision_key text,
+  p_reason text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=''
+as $
+declare
+  v_job public.agent_jobs%rowtype;
+  v_room_id uuid;
+  v_source_message_id bigint;
+  v_source_body text;
+  v_mode text := lower(btrim(coalesce(p_adjudication_mode,'')));
+  v_scope text := lower(btrim(coalesce(p_uncertainty_scope,'')));
+  v_goal text := btrim(coalesce(p_exact_goal,''));
+  v_outcome text := btrim(coalesce(p_outcome_envelope,''));
+  v_resolver_key text := nullif(btrim(coalesce(p_resolver_decision_key,'')),'');
+  v_canonical_evidence jsonb;
+  v_resolver_receipt_id uuid;
+  v_resolver_matched jsonb;
+  v_world_proof_kind text := 'not_required';
+  v_source_fingerprint text;
+  v_evidence_fingerprint text;
+  v_receipt_fingerprint text;
+  v_sequence integer;
+  v_existing public.ai_player_intent_adjudications%rowtype;
+  v_receipt public.ai_player_intent_adjudications%rowtype;
+begin
+  if auth.role() <> 'service_role' then
+    raise exception 'service_role_required';
+  end if;
+
+  if v_mode not in ('deterministic_success','deterministic_failure') then
+    raise exception 'stage17_deterministic_mode_invalid';
+  end if;
+  if v_scope not in ('character_performance','world_discovery') then
+    raise exception 'stage17_uncertainty_scope_invalid';
+  end if;
+  if length(v_goal)<1 or length(v_goal)>1600 then
+    raise exception 'stage17_exact_goal_required';
+  end if;
+  if length(v_outcome)<1 or length(v_outcome)>2400 then
+    raise exception 'stage17_deterministic_outcome_required';
+  end if;
+
+  select * into v_job
+  from public.agent_jobs
+  where id=p_job_id
+    and job_type='conversation_turn'
+    and input->>'surface'='game_chat_v1'
+  for update;
+
+  if v_job.id is null then raise exception 'ai_gm_turn_not_found'; end if;
+  if v_job.status <> 'running' then raise exception 'ai_gm_turn_not_running'; end if;
+
+  v_room_id := nullif(v_job.input->>'room_id','')::uuid;
+  v_source_message_id := nullif(v_job.input->>'source_chat_message_id','')::bigint;
+  if v_room_id is null or v_source_message_id is null then
+    raise exception 'stage17_source_identity_missing';
+  end if;
+
+  select m.body into v_source_body
+  from public.chat_messages m
+  where m.id=v_source_message_id and m.room_id=v_room_id;
+  if v_source_body is null then raise exception 'stage17_source_message_missing'; end if;
+
+  if not exists (
+    select 1 from public.characters c
+    where c.id=p_character_id
+      and c.campaign_id=v_job.campaign_id
+      and c.character_type='pc'
+      and c.life_state='alive'
+      and c.assigned_user_id is not null
+  ) then
+    raise exception 'roll_target_must_be_live_player_character';
+  end if;
+
+  v_canonical_evidence := private.stage17_validate_canonical_evidence_v1(
+    v_job.campaign_id,
+    coalesce(p_canonical_evidence,'[]'::jsonb)
+  );
+
+  if v_resolver_key is not null then
+    select c.resolver_receipt_id, r.matched_outcome
+      into v_resolver_receipt_id, v_resolver_matched
+    from private.ai_random_decision_commits c
+    join public.ai_world_random_receipts r on r.id=c.resolver_receipt_id
+    where c.campaign_id=v_job.campaign_id
+      and c.decision_key=v_resolver_key
+      and c.run_key=p_job_id::text
+      and c.caller_surface='primary_gm'
+      and c.resolver_receipt_id is not null;
+
+    if v_resolver_receipt_id is null then
+      raise exception 'stage17_resolver_proof_not_found';
+    end if;
+  end if;
+
+  if v_scope='world_discovery' and v_mode='deterministic_success' then
+    if jsonb_array_length(v_canonical_evidence)>0 then
+      v_world_proof_kind := 'canonical_entities';
+    elsif v_resolver_receipt_id is not null
+       and coalesce(v_resolver_matched #>> '{payload,stage17_world_existence}','')='exists'
+    then
+      v_world_proof_kind := 'resolver_exists';
+    else
+      raise exception 'stage17_world_success_requires_canonical_or_resolver_exists_proof';
+    end if;
+  elsif v_scope='world_discovery' and v_mode='deterministic_failure' then
+    if v_resolver_receipt_id is not null
+       and coalesce(v_resolver_matched #>> '{payload,stage17_world_existence}','')='absent'
+    then
+      v_world_proof_kind := 'resolver_absent';
+    elsif jsonb_array_length(v_canonical_evidence)>0 then
+      v_world_proof_kind := 'canonical_entities';
+    else
+      raise exception 'stage17_world_failure_requires_canonical_or_resolver_absent_proof';
+    end if;
+  elsif jsonb_array_length(v_canonical_evidence)>0 then
+    v_world_proof_kind := 'canonical_entities';
+  end if;
+
+  if v_resolver_receipt_id is not null then
+    if v_mode='deterministic_success'
+       and coalesce(v_resolver_matched #>> '{payload,stage17_world_existence}','')='absent'
+    then
+      raise exception 'stage17_resolver_says_world_target_absent';
+    end if;
+    if v_mode='deterministic_failure'
+       and coalesce(v_resolver_matched #>> '{payload,stage17_world_existence}','')='exists'
+       and v_scope='world_discovery'
+       and jsonb_array_length(v_canonical_evidence)=0
+    then
+      raise exception 'stage17_resolver_says_world_target_exists';
+    end if;
+  end if;
+
+  v_source_fingerprint := encode(
+    extensions.digest(
+      convert_to(
+        concat_ws('|',v_source_message_id::text,p_character_id::text,coalesce(v_source_body,'')),
+        'UTF8'
+      ),
+      'sha256'
+    ),
+    'hex'
+  );
+
+  v_evidence_fingerprint := encode(
+    extensions.digest(
+      convert_to(
+        jsonb_build_object(
+          'context',coalesce(p_evidence_context,'{}'::jsonb),
+          'canonical_evidence',v_canonical_evidence,
+          'resolver_receipt_id',v_resolver_receipt_id
+        )::text,
+        'UTF8'
+      ),
+      'sha256'
+    ),
+    'hex'
+  );
+
+  v_receipt_fingerprint := encode(
+    extensions.digest(
+      convert_to(
+        jsonb_build_object(
+          'job_id',p_job_id,
+          'source_message_id',v_source_message_id,
+          'target_character_id',p_character_id,
+          'source_intent_fingerprint',v_source_fingerprint,
+          'evidence_fingerprint',v_evidence_fingerprint,
+          'mode',v_mode,
+          'uncertainty_scope',v_scope,
+          'world_proof_kind',v_world_proof_kind,
+          'canonical_evidence',v_canonical_evidence,
+          'resolver_receipt_id',v_resolver_receipt_id,
+          'resolver_decision_key',v_resolver_key,
+          'exact_goal',v_goal,
+          'outcome_envelope',v_outcome
+        )::text,
+        'UTF8'
+      ),
+      'sha256'
+    ),
+    'hex'
+  );
+
+  select * into v_existing
+  from public.ai_player_intent_adjudications
+  where receipt_fingerprint=v_receipt_fingerprint;
+
+  if v_existing.id is not null then
+    return jsonb_build_object(
+      'adjudication_id',v_existing.id,
+      'adjudication_mode',v_existing.adjudication_mode,
+      'uncertainty_scope',v_existing.uncertainty_scope,
+      'world_proof_kind',v_existing.world_proof_kind,
+      'replayed',true,
+      'runtime_stage',17
+    );
+  end if;
+
+  select coalesce(max(sequence_no),0)+1 into v_sequence
+  from public.ai_player_intent_adjudications
+  where gm_job_id=p_job_id;
+
+  insert into public.ai_player_intent_adjudications (
+    campaign_id,room_id,gm_job_id,sequence_no,source_message_id,target_character_id,
+    source_intent_fingerprint,evidence_fingerprint,evidence_refs,
+    adjudication_mode,uncertainty_scope,world_proof_kind,canonical_evidence,
+    resolver_receipt_id,resolver_decision_key,
+    exact_goal,exact_goal_allowed,semantic_mechanic_request,logical_difficulty,
+    normalized_request_type,normalized_ability_key,normalized_skill_key,
+    normalized_attack_kind,dc,dc_visibility,natural_20_policy,
+    success_envelope,failure_envelope,partial_success_envelope,receipt_fingerprint
+  ) values (
+    v_job.campaign_id,v_room_id,p_job_id,v_sequence,v_source_message_id,p_character_id,
+    v_source_fingerprint,v_evidence_fingerprint,coalesce(p_evidence_refs,'{}'::jsonb),
+    v_mode,v_scope,v_world_proof_kind,v_canonical_evidence,
+    v_resolver_receipt_id,v_resolver_key,
+    v_goal,v_mode='deterministic_success','',null,
+    null,null,null,null,null,'hidden','not_applicable',
+    case when v_mode='deterministic_success' then v_outcome else '' end,
+    case when v_mode='deterministic_failure' then v_outcome else '' end,
+    '',v_receipt_fingerprint
+  )
+  returning * into v_receipt;
+
+  return jsonb_build_object(
+    'adjudication_id',v_receipt.id,
+    'adjudication_mode',v_receipt.adjudication_mode,
+    'uncertainty_scope',v_receipt.uncertainty_scope,
+    'world_proof_kind',v_receipt.world_proof_kind,
+    'receipt_fingerprint',v_receipt.receipt_fingerprint,
+    'replayed',false,
+    'runtime_stage',17
+  );
+end;
+$;
+
+revoke all on function public.record_ai_gm_deterministic_adjudication_v1(
+  uuid,uuid,text,text,text,text,jsonb,jsonb,jsonb,text,text
+) from public, anon, authenticated;
+grant execute on function public.record_ai_gm_deterministic_adjudication_v1(
+  uuid,uuid,text,text,text,text,jsonb,jsonb,jsonb,text,text
+) to service_role;
 
 revoke all on function public.create_ai_gm_player_roll_request_v2(
   uuid,uuid,text,text,text,text,text,text,text,text,jsonb,jsonb,text,text,text,text,text,text
