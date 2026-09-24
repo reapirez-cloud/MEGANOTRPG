@@ -606,7 +606,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     requiredArtifacts: [
       "Primary GM semantic roll directive that describes fictional intent, target PC, requested check/save/skill when known, reason and logical difficulty without exposing application implementation details",
       "Small mechanic/roll worker that reads the GM directive plus current character/context and maps it to the existing canonical roll request RPC",
-      "Worker may infer ordinary D&D checks from context, including Constitution checks/saves for strong alcohol, Athletics for exertion, Insight for reading behavior, Survival for tracking and other normal checks",
+      "Worker may infer ordinary D&D checks from context, including a Constitution check/save for strong alcohol, Athletics for exertion, Insight for reading behavior, Survival for tracking and other normal checks",
       "Server-persisted pre-roll intent adjudication receipt created before the player d20",
       "Receipt contains intent fingerprint, canonical evidence/context fingerprint, possibility mode, check specification, frozen DC/visibility and frozen outcome envelope",
       "Explicit possibility modes: deterministic_success, deterministic_failure, check and impossible_exact",
