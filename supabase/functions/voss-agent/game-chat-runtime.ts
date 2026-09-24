@@ -125,11 +125,19 @@ type RecoveryRequest = {
   targetCharacterIds: string[]
 }
 
+type PostTurnIntent = {
+  intentKey: string
+  kind: "location" | "npc" | "quest" | "memory" | "canonical_state" | "binding"
+  instruction: string
+  evidence: string
+}
+
 type GameMasterReaction = {
   mode: ReactionMode
   body: string
   npcCharacterId: string | null
   reason: string
+  postTurnIntents?: PostTurnIntent[]
   rollRequest: PlayerRollRequest | null
   npcAction: NpcActionRequest | null
   npcRoll: NpcRollRequest | null
@@ -364,6 +372,9 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Сервер передаст world_materialization_task в DeepSeek V4.1 Flash, тот выполнит только операции с базой, затем ты получишь обновлённый канонический снимок и продолжишь ТОТ ЖЕ ход.",
   "Если все нужные сущности уже существуют, world_materialization=false и world_materialization_task=''.",
   "Если вмешательство не нужно, используй none.",
+  "После опубликованного ответа отдельно верни bounded post_turn_intents: только уже установленные этим ответом канонические факты, которые младший worker должен записать ПОСЛЕ публикации. Это не план продолжения сюжета.",
+  "Каждый intent обязан иметь intent_key, kind, instruction и evidence. evidence должен указывать на конкретный факт опубликованного ответа.",
+  "Не добавляй в intents новые события, последствия, награды, секреты, NPC или локации, которых нет в опубликованном ответе. Если ответ ничего нового не установил, post_turn_intents=[].",
   "World existence и character performance — разные неопределённости. Player d20 никогда не создаёт отсутствующую хижину, дракона, NPC, предмет или улику. Если существование реально не определено каноном и допустимы 2+ исхода, СНАЧАЛА используй resolve_random_decision; только после зафиксированного existence result можно просить character check.",
   "Если точная цель канонически невозможна, но исключительное усилие может дать полезный НЕ-точный результат, используй request_player_roll с adjudication_mode=impossible_exact и заранее зафиксированным partial_success_envelope. Даже natural 20 не делает exact goal истинной.",
   "Если в мире остаются 2+ правдоподобных сюжетных исхода и ответ НЕ определяется каноном, deterministic rule, player/NPC roll, attack/save/check или уже полученным resolver result, используй provider tool resolve_random_decision.",
@@ -497,6 +508,16 @@ async function resolveWorldMaterializerModel(
   return data ? data as RouterModel : fallback
 }
 
+const STAGE18_POST_TURN_WORKER_SYSTEM = [
+  "Ты младший post-turn world commit worker MEGANOT.",
+  "Ответ GM уже опубликован игроку. Он является единственным источником новых нарративных фактов этого хода.",
+  "Записывай только уже установленные факты через разрешённые manager/quest tools.",
+  "Не добавляй новый драматический результат, награду, конфликт, секрет или NPC.",
+  "Если intent двусмысленен или факт уже существует, безопасно не меняй канон.",
+  "UUID бери только из канонического снимка или результатов текущих tool calls.",
+  "После tool calls не пиши художественный ответ игроку."
+].join("\n")
+
 async function runWorldMaterializer({
   admin,
   campaignId,
@@ -513,6 +534,8 @@ async function runWorldMaterializer({
   originalMessage: string
   materializationTask: string
   fallbackModel: RouterModel
+  allowSourceBootstrap?: boolean
+  systemOverride?: string
 }) {
   const model = await resolveWorldMaterializerModel(admin, fallbackModel)
   if (!model.supports_tools) {
@@ -520,7 +543,7 @@ async function runWorldMaterializer({
   }
 
   const messages: Array<Record<string, unknown>> = [
-    { role: "system", content: WORLD_MATERIALIZER_SYSTEM },
+    { role: "system", content: systemOverride || WORLD_MATERIALIZER_SYSTEM },
     {
       role: "user",
       content:
@@ -544,7 +567,7 @@ async function runWorldMaterializer({
       messages,
       tools: WORLD_MATERIALIZER_TOOLS as unknown as Array<Record<string, unknown>>,
       toolChoice:
-        round === 0 && !context.sourceLocation
+        round === 0 && !context.sourceLocation && allowSourceBootstrap !== false
           ? {
               type: "function",
               function: { name: "create_location" },
@@ -645,7 +668,7 @@ async function runWorldMaterializer({
       ? context.sourceCharacter.id
       : ""
 
-  if (!context.sourceLocation && firstCreatedLocationId && sourceCharacterId) {
+  if (allowSourceBootstrap !== false && !context.sourceLocation && firstCreatedLocationId && sourceCharacterId) {
     const alreadyMoved = toolRuns.some((run) =>
       run.name === "move_character_world" &&
       jsonRecord(run.arguments).character_id === sourceCharacterId &&
@@ -689,6 +712,140 @@ async function runWorldMaterializer({
     modelKey: model.model_key,
     toolRuns,
   }
+}
+
+async function runPostTurnCommitJob({
+  admin,
+  campaignId,
+  postJobId,
+}: {
+  admin: SupabaseClient
+  campaignId: string
+  postJobId: string
+}) {
+  const { data: job, error } = await admin
+    .from("agent_jobs")
+    .select("id,status,input")
+    .eq("id", postJobId)
+    .eq("job_type", "ai_gm_post_turn_commit")
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!job?.id || job.status === "completed") return
+  if (job.status !== "queued" && job.status !== "running") return
+
+  const input = jsonRecord(job.input)
+  const roomId = typeof input.room_id === "string" ? input.room_id : ""
+  const managerUserId = typeof input.manager_user_id === "string" ? input.manager_user_id : ""
+  const sourceMessageId = Number(input.source_chat_message_id || 0)
+  const publishedAnswer = typeof input.published_answer === "string" ? input.published_answer : ""
+  const intents = Array.isArray(input.post_turn_intents) ? input.post_turn_intents : []
+  if (!roomId || !managerUserId || !sourceMessageId || !publishedAnswer) {
+    throw new Error("stage18_post_turn_input_invalid")
+  }
+
+  const claimed = await admin
+    .from("agent_jobs")
+    .update({
+      status: "running",
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", postJobId)
+    .eq("status", "queued")
+    .select("id")
+    .maybeSingle()
+  if (claimed.error) throw new Error(claimed.error.message)
+  if (!claimed.data?.id) return
+
+  let lastError = ""
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const context = await buildGameChatContextV2({
+        admin,
+        campaignId,
+        jobInput: {
+          room_id: roomId,
+          source_chat_message_id: String(sourceMessageId),
+          source_character_id: String(input.source_character_id || ""),
+          original_message: String(input.original_message || ""),
+        },
+      })
+      const route = await resolveCampaignGmModel(admin, { campaignId })
+      const commit = await runWorldMaterializer({
+        admin,
+        campaignId,
+        managerUserId,
+        context,
+        originalMessage: publishedAnswer,
+        materializationTask:
+          "POST-TURN COMMIT. Выполни ТОЛЬКО эти уже установленные факты и ничего сверх них:\n" +
+          JSON.stringify(intents),
+        fallbackModel: route.model,
+        allowSourceBootstrap: false,
+        systemOverride: STAGE18_POST_TURN_WORKER_SYSTEM + "\n\n" + WORLD_MATERIALIZER_SYSTEM,
+      })
+      const now = new Date().toISOString()
+      await admin
+        .from("agent_jobs")
+        .update({
+          status: "completed",
+          completed_outputs: 1,
+          result: {
+            runtime_stage: 18,
+            changed: commit.changed,
+            model_key: commit.modelKey || null,
+            post_turn_intents: intents,
+            tool_runs: commit.toolRuns,
+            commit_receipt: {
+              committed_at: now,
+              attempt,
+              intent_count: intents.length,
+            },
+          },
+          completed_at: now,
+          updated_at: now,
+          error_code: null,
+          error_message: null,
+        })
+        .eq("id", postJobId)
+        .eq("status", "running")
+
+      await admin
+        .from("ai_gm_turn_commit_gates")
+        .update({
+          state: "completed",
+          last_error: null,
+          committed_at: now,
+          updated_at: now,
+        })
+        .eq("post_job_id", postJobId)
+      return
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error)
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 350 * attempt))
+    }
+  }
+
+  const now = new Date().toISOString()
+  await admin
+    .from("agent_jobs")
+    .update({
+      status: "failed",
+      error_code: "stage18_post_turn_commit_failed",
+      error_message: lastError.slice(0, 500),
+      completed_at: now,
+      updated_at: now,
+    })
+    .eq("id", postJobId)
+    .eq("status", "running")
+  await admin
+    .from("ai_gm_turn_commit_gates")
+    .update({
+      state: "failed",
+      last_error: lastError.slice(0, 500),
+      updated_at: now,
+    })
+    .eq("post_job_id", postJobId)
 }
 
 function fitChatBody(value: string) {
@@ -953,6 +1110,7 @@ function parseReaction(
 ): GameMasterReaction {
   let worldMaterializationRequested = false
   let worldMaterializationTask = ""
+  let postTurnIntents: PostTurnIntent[] = []
   const empty = (
     mode: ReactionMode,
     reason: string,
@@ -966,6 +1124,7 @@ function parseReaction(
     npcRoll: null,
     recoveryRequest: null,
     dialogueOutputs: [],
+    postTurnIntents,
     worldMaterializationRequested,
     worldMaterializationTask,
   })
@@ -977,6 +1136,21 @@ function parseReaction(
       typeof parsed.world_materialization_task === "string"
         ? parsed.world_materialization_task.trim().slice(0, 2000)
         : ""
+    if (Array.isArray(parsed.post_turn_intents)) {
+      postTurnIntents = parsed.post_turn_intents.slice(0, 12).flatMap((value) => {
+        const row = jsonRecord(value)
+        const intentKey = typeof row.intent_key === "string" ? row.intent_key.trim().slice(0, 120) : ""
+        const kind =
+          row.kind === "location" || row.kind === "npc" || row.kind === "quest" ||
+          row.kind === "memory" || row.kind === "canonical_state" || row.kind === "binding"
+            ? row.kind
+            : null
+        const instruction = typeof row.instruction === "string" ? row.instruction.trim().slice(0, 1200) : ""
+        const evidence = typeof row.evidence === "string" ? row.evidence.trim().slice(0, 600) : ""
+        if (!intentKey || !kind || !instruction || !evidence) return []
+        return [{ intentKey, kind, instruction, evidence }]
+      })
+    }
   }
 
   if (!parsed) {
@@ -2711,6 +2885,25 @@ export async function runGameChatTurn(
       throw new Error("ai_gm_reply_message_missing")
     }
 
+    const { data: postCommitJob, error: postCommitError } = await admin.rpc(
+      "create_ai_gm_post_turn_commit_v1",
+      {
+        p_parent_job_id: jobId,
+        p_campaign_id: campaignId,
+        p_room_id: String(claimed.input.room_id || ""),
+        p_source_chat_message_id: sourceMessageId,
+        p_reply_message_id: numericReplyId,
+        p_manager_user_id: String(claimed.input.manager_user_id || ""),
+        p_source_character_id: String(claimed.input.source_character_id || ""),
+        p_original_message: originalMessage,
+        p_published_answer: finalBody,
+        p_post_turn_intents: reaction.postTurnIntents || [],
+      },
+    )
+    if (postCommitError) throw new Error(postCommitError.message)
+    const postCommitJobId = String(jsonRecord(postCommitJob).job_id || "")
+    if (!postCommitJobId) throw new Error("stage18_post_turn_job_missing")
+
     await admin
       .from("agent_jobs")
       .update({
@@ -2719,6 +2912,7 @@ export async function runGameChatTurn(
         result: {
           ...claimed.result,
           ...recoveryExtra,
+          post_turn_commit_job_id: postCommitJobId,
           surface: GAME_CHAT_SURFACE,
           runtime_stage: 12,
           source_chat_message_id: String(sourceMessageId),
@@ -2758,7 +2952,7 @@ export async function runGameChatTurn(
       try {
         const { data: terminalJob } = await admin
           .from("agent_jobs")
-          .select("status")
+          .select("status,result")
           .eq("id", claimed.id)
           .maybeSingle()
 
@@ -2767,13 +2961,22 @@ export async function runGameChatTurn(
           terminalJob?.status === "failed" ||
           terminalJob?.status === "cancelled"
         ) {
-          const { data: nextJobId, error: nextError } = await admin.rpc(
-            "next_ai_gm_scene_job_v1",
-            { p_completed_job_id: claimed.id },
-          )
-          if (nextError) throw new Error(nextError.message)
-          if (typeof nextJobId === "string" && nextJobId && nextJobId !== claimed.id) {
-            await runGameChatTurn(admin, campaignId, nextJobId)
+          const result = jsonRecord(terminalJob.result)
+          const postJobId =
+            typeof result.post_turn_commit_job_id === "string"
+              ? result.post_turn_commit_job_id
+              : ""
+          if (postJobId && terminalJob.status === "completed") {
+            await runPostTurnCommitJob({ admin, campaignId, postJobId })
+          } else if (!postJobId) {
+            const { data: nextJobId, error: nextError } = await admin.rpc(
+              "next_ai_gm_scene_job_v1",
+              { p_completed_job_id: claimed.id },
+            )
+            if (nextError) throw new Error(nextError.message)
+            if (typeof nextJobId === "string" && nextJobId && nextJobId !== claimed.id) {
+              await runGameChatTurn(admin, campaignId, nextJobId)
+            }
           }
         }
       } catch {
