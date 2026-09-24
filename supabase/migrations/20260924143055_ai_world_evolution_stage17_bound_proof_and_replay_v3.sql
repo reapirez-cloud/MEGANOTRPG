@@ -489,7 +489,7 @@ begin
     p_reason
   );
 end;
-$function$
+$function$;
 
 
 revoke all on function public.create_ai_gm_player_roll_request_v1(uuid,uuid,text,text,text,text,text,text,integer,text)
