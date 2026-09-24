@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- The rule_template_levels spell-contract trigger already materializes
 -- rule_template_spell_links from cloned mechanics. Keep source-link copying only
 -- as a gap filler so the lazy bundle stays idempotent.
