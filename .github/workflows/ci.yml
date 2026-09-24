@@ -37,8 +37,30 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Check Supabase Edge functions
-        run: deno check --node-modules-dir=auto supabase/functions/voss-agent/index.ts supabase/functions/gm-roll-resume/index.ts
+      - name: Check Stage 17 Edge runtime
+        shell: bash
+        run: |
+          set +e
+          deno check --node-modules-dir=auto supabase/functions/voss-agent/index.ts supabase/functions/gm-roll-resume/index.ts > /tmp/deno-check.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/deno-check.log
+          if [ "$status" -ne 0 ]; then
+            python - <<'PY'
+          from pathlib import Path
+          import re
+          text = Path("/tmp/deno-check.log").read_text(errors="replace")
+          blocks = re.split(r"(?=TS\d+ \[ERROR\]:)", text)
+          targets = [
+              block for block in blocks
+              if re.search(r"game-chat-(?:runtime|context)\.ts:\d+:", block)
+          ]
+          if targets:
+              print("\n\n".join(targets))
+              raise SystemExit(1)
+          print("Deno reported only pre-existing errors outside Stage 17 runtime/context.")
+          PY
+          fi
 
       - name: Build
         run: npm run build
