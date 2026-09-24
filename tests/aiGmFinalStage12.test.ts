@@ -123,7 +123,8 @@ test("Stage 12 NPC text inventory stays lightweight until explicit materializati
 
 test("Stage 12 memory keeps game-time provenance and ages facts by campaign day", () => {
   assert.match(context, /game_age_days/)
-  const temporal = read("supabase/functions/voss-agent/temporal-overlay.ts")\n  assert.match(temporal, /campaign_day: time\.campaignDay/)
+  const temporal = read("supabase/functions/voss-agent/temporal-overlay.ts")
+  assert.match(temporal, /campaign_day: time\.campaignDay/)
   assert.match(temporal, /day_period: time\.dayPeriod/)
   assert.match(maintenance, /range_start_message_id/)
   assert.match(maintenance, /range_end_message_id/)
