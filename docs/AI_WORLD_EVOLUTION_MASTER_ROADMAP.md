@@ -818,7 +818,7 @@ Detailed spec:
 
 ## Stage 18 — Post-response junior world commit and turn gate
 
-**Status: PLANNED**
+**Status: IMPLEMENTED — 2026-09-24**
 
 This changes the current ordering.
 
@@ -917,6 +917,22 @@ If junior work fails:
 - do not silently accept the next turn;
 - bounded retry/recovery must exist;
 - UI shows a recoverable synchronization failure instead of pretending the world is current.
+
+### Implementation closure — 2026-09-24
+
+Stage 18 was rebuilt from zero. The previous v1/v2 post-turn tables, RPCs and gate trigger were deleted before the new implementation was created.
+
+The v3 implementation uses:
+- `finalize_ai_gm_turn_v3` to publish the visible answer and create the durable post-turn gate in one database transaction;
+- immutable per-intent receipts with commit + intent lease tokens;
+- `execute_ai_gm_post_turn_mutation_v3` so the canonical mutation and receipt completion happen in the same PostgreSQL transaction;
+- a server gate that rejects free-form PC chat while a post-turn commit is queued/running/failed;
+- an explicit `meganot.ai_gm_requested_roll` exception so the Stage 17 requested d20 remains usable while the GM is waiting for that roll;
+- bounded retries and manager recovery while failed synchronization keeps the next free-form turn locked;
+- terminal completed commits that cannot be changed back to queued/failed by downstream wake errors;
+- client status from `get_ai_gm_room_status_v3`, including **«Младший шуршит…»**, durable worker wake-up and a recovery control for managers.
+
+A rollback-only transactional smoke test proved: answer publication, atomic parent completion, post-turn input lock, atomic mutation+receipt, terminal completion, unlock after completion, free-form blocking during `waiting_for_user`, and requested-roll gate bypass.
 
 **Done when:** response latency is dominated by the GM, bookkeeping happens while the player is reading, and the next message is impossible until canonical state has caught up.
 
