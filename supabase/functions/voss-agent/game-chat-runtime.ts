@@ -261,8 +261,8 @@ const STAGE18_POST_TURN_WORKER_SYSTEM = [
   "Создавай или меняй только то, что буквально установлено published_messages + intent.instruction/evidence.",
   "Не достраивай новый сюжет, секрет, награду, отношения, имя, мотивацию, врага, исход проверки или событие.",
   "Не добавляй декоративные факты, которых нет в опубликованном ответе. Заполняй только минимально нужные поля.",
-  "Если канон уже удовлетворяет intent, НЕ вызывай write-tool. Верни только JSON {status:'already_satisfied',resolved_entity_ids:['UUID',...],reason:'...'}",
-  "Если intent невозможно безопасно выполнить по имеющимся данным, верни JSON {status:'unsafe_or_ambiguous',reason:'...'}; сервер оставит gate закрытым для recovery.",
+  "Для каждого intent обязан быть ровно ОДИН write-tool call. Даже если факт уже существует, вызови тот же минимальный create/update/upsert tool: серверная reconciliation/idempotency сама превратит повтор в no-op.",
+  "Если intent невозможно безопасно выполнить по имеющимся данным, не вызывай tool и верни JSON {status:'unsafe_or_ambiguous',reason:'...'}; сервер оставит gate закрытым для recovery.",
   "Никогда не придумывай UUID. Используй только canonical_context, published_messages или результаты серверной reconciliation.",
   "Для create_quest_plan quest_key задаёт сервер. Для memory fact_key/source_event_ids задаёт сервер.",
   "После успешного tool call не вызывай второй tool.",
@@ -992,6 +992,10 @@ async function reconcileStage18Create({
     args.quest_key = ("stage18:" + commitId + ":" + intentKey).slice(0, 120)
   }
 
+  if (toolName === "upsert_location_secret" && !args.secret_id) {
+    args.secret_key = ("stage18:" + commitId + ":" + intentKey).slice(0, 160)
+  }
+
   if (toolName === "remember_campaign_fact") {
     args.fact_key = ("stage18:" + commitId + ":" + intentKey).slice(0, 180)
     const { data, error } = await admin
@@ -1207,43 +1211,14 @@ async function runStage18Intent({
     ? assistant.tool_calls
     : []
 
-  if (calls.length > 1) {
-    throw new Error("stage18_post_turn_multiple_mutations_for_one_intent")
-  }
-
-  if (!calls.length) {
+  if (calls.length !== 1) {
     const raw = providerText(payload)
     const parsed = raw ? parseJsonObject(raw) : null
-    if (parsed?.status !== "already_satisfied") {
-      throw new Error(
-        parsed?.status === "unsafe_or_ambiguous"
-          ? "stage18_post_turn_intent_unsafe_or_ambiguous"
-          : "stage18_post_turn_worker_did_not_commit_or_reconcile",
-      )
-    }
-
-    const resolvedIds = Array.isArray(parsed.resolved_entity_ids)
-      ? parsed.resolved_entity_ids
-          .filter((value): value is string => typeof value === "string")
-          .filter((value) =>
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-              .test(value)
-          )
-          .slice(0, 24)
-      : []
-
-    const { error } = await admin.rpc(
-      "complete_ai_gm_post_turn_intent_v1",
-      {
-        p_intent_id: String(intentRow.id),
-        p_tool_name: "reconciled",
-        p_tool_arguments: {},
-        p_tool_result: parsed,
-        p_resolved_entity_ids: resolvedIds,
-      },
+    throw new Error(
+      parsed?.status === "unsafe_or_ambiguous"
+        ? "stage18_post_turn_intent_unsafe_or_ambiguous"
+        : "stage18_post_turn_requires_exactly_one_mutation",
     )
-    if (error) throw new Error(error.message)
-    return
   }
 
   const call = calls[0]
@@ -1328,6 +1303,22 @@ async function runStage18PostTurnCommit(
         { p_commit_id: commitId },
       )
       if (completeError) throw new Error(completeError.message)
+
+      const parentJobId = String(commit.parent_job_id || "")
+      if (parentJobId) {
+        const { data: nextJobId, error: nextError } = await admin.rpc(
+          "next_ai_gm_scene_job_v1",
+          { p_completed_job_id: parentJobId },
+        )
+        if (nextError) throw new Error(nextError.message)
+        if (
+          typeof nextJobId === "string" &&
+          nextJobId &&
+          nextJobId !== parentJobId
+        ) {
+          await runGameChatTurn(admin, campaignId, nextJobId)
+        }
+      }
       return
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
