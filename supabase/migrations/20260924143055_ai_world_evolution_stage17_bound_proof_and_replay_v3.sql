@@ -26,7 +26,8 @@ AS $function$
     and exists(select 1 from chain where id = p_scope_location_id),
     false
   );
-$function$
+$function$;
+
 
 
 CREATE OR REPLACE FUNCTION private.stage17_validate_bound_world_proof_v1(p_job_id uuid, p_campaign_id uuid, p_uncertainty_scope text, p_evidence_refs jsonb, p_canonical_evidence jsonb)
@@ -302,7 +303,8 @@ begin
 
   return v_validated;
 end;
-$function$
+$function$;
+
 
 
 CREATE OR REPLACE FUNCTION public.create_ai_gm_player_roll_request_v4(p_job_id uuid, p_character_id uuid, p_adjudication_mode text, p_uncertainty_scope text, p_exact_goal text, p_semantic_mechanic_request text, p_logical_difficulty text, p_dc_visibility text, p_success_envelope text, p_failure_envelope text, p_partial_success_envelope text, p_evidence_context jsonb, p_evidence_refs jsonb, p_canonical_evidence jsonb, p_resolver_decision_key text, p_request_type text, p_ability_key text, p_skill_key text, p_attack_kind text, p_label text, p_reason text)
@@ -436,7 +438,8 @@ begin
     p_reason
   );
 end;
-$function$
+$function$;
+
 
 
 CREATE OR REPLACE FUNCTION public.record_ai_gm_deterministic_adjudication_v2(p_job_id uuid, p_character_id uuid, p_adjudication_mode text, p_uncertainty_scope text, p_exact_goal text, p_outcome_envelope text, p_evidence_context jsonb, p_evidence_refs jsonb, p_canonical_evidence jsonb, p_resolver_decision_key text, p_reason text)
