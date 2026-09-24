@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- Correct future-campaign rule bootstrap ordering.
 --
 -- install_builtin_druid_base_v2 falls back to install_builtin_rule_catalog when
