@@ -2953,7 +2953,7 @@ export async function runGameChatTurn(
       try {
         const { data: terminalJob } = await admin
           .from("agent_jobs")
-          .select("status")
+          .select("status,result")
           .eq("id", claimed.id)
           .maybeSingle()
 
@@ -2962,13 +2962,23 @@ export async function runGameChatTurn(
           terminalJob?.status === "failed" ||
           terminalJob?.status === "cancelled"
         ) {
-          const { data: nextJobId, error: nextError } = await admin.rpc(
-            "next_ai_gm_scene_job_v1",
-            { p_completed_job_id: claimed.id },
-          )
-          if (nextError) throw new Error(nextError.message)
-          if (typeof nextJobId === "string" && nextJobId && nextJobId !== claimed.id) {
-            await runGameChatTurn(admin, campaignId, nextJobId)
+          const result = jsonRecord(terminalJob.result)
+          const postJobId =
+            typeof result.post_turn_commit_job_id === "string"
+              ? result.post_turn_commit_job_id
+              : ""
+
+          if (postJobId && terminalJob.status === "completed") {
+            void runPostTurnCommitJob({ admin, campaignId, postJobId })
+          } else if (!postJobId) {
+            const { data: nextJobId, error: nextError } = await admin.rpc(
+              "next_ai_gm_scene_job_v1",
+              { p_completed_job_id: claimed.id },
+            )
+            if (nextError) throw new Error(nextError.message)
+            if (typeof nextJobId === "string" && nextJobId && nextJobId !== claimed.id) {
+              await runGameChatTurn(admin, campaignId, nextJobId)
+            }
           }
         }
       } catch {
