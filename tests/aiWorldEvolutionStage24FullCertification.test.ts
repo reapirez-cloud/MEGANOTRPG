@@ -184,7 +184,8 @@ test("Stage 24 keeps one stable NPC identity across dialogue, GM and background"
   assert.match(identityFoundation, /npc_identity_fingerprint_versions/)
   assert.match(identityConsumers, /identity_fingerprint/)
   assert.match(runtime, /hard red_lines[\s\S]*impossible_exact/)
-  assert.match(context, /npcIdentityFingerprint/)
+  assert.match(context, /present_npc_identity_fingerprints/)
+  assert.match(context, /identity_fingerprint_is_stable_personality_canon/)
   assert.match(runtime, /identity_fingerprint/)
   assert.match(background, /identity_fingerprint/)
   assert.match(interruptibleTurns, /fill_missing_stable_dimensions_only/)
@@ -209,8 +210,8 @@ test("Stage 24 certifies configuration as style guidance, never canon authority"
 
   assert.match(adultContent, /'off','allowed','adult_focused'/)
   assert.match(runtime, /content_profile/)
-  assert.match(runtime, /не меняет consent/i)
-  assert.match(runtime, /не меняет канон/i)
+  assert.match(runtime, /adult_focused не означает consent or compliance/)
+  assert.match(runtime, /content_profile[\s\S]*НИКОГДА не меняет канон/)
 })
 
 test("Stage 24 retains human-GM, maintenance, quest and rest regressions", () => {
