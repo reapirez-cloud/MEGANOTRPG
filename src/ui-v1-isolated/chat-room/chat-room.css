@@ -5546,3 +5546,38 @@
   0%, 100% { opacity: .25; transform: scale(.82); }
   50% { opacity: .9; transform: scale(1); }
 }
+
+
+/* Mobile composer keyboard fix.
+   Keep the input visually lifted from the device edge, and when Android /
+   Telegram shrinks the Visual Viewport, trust that viewport instead of the
+   stable layout viewport so the keyboard cannot cover the composer row. */
+.u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer {
+  padding-bottom:
+    calc(12px + var(--u1-safe-bottom, env(safe-area-inset-bottom, 0px)));
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"][data-keyboard-open] {
+  max-height: var(--u1-chat-viewport-height, 100dvh);
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"][data-keyboard-open] .u1-chat-composer {
+  padding-top: 6px;
+  padding-bottom: 9px;
+}
+
+.u1-room-shell[data-chat-room-final-stage="6"][data-keyboard-open] .u1-room-frame__controls {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer {
+    padding-bottom:
+      calc(9px + var(--u1-safe-bottom, env(safe-area-inset-bottom, 0px)));
+  }
+
+  .u1-room-shell[data-chat-room-final-stage="6"][data-keyboard-open] .u1-chat-composer {
+    padding-bottom: 7px;
+  }
+}
