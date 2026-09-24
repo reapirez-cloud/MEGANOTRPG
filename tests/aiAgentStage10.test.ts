@@ -14,7 +14,7 @@ test("Stage 10 mounts exactly one global agent shell inside UiV1App", () => {
   assert.doesNotMatch(entry, /<VossDock\s*\/>/)
   assert.doesNotMatch(entry, /<AgentShell\s*\/>/)
   assert.match(app, /import AgentShell from "\.\.\/ai\/AgentShell"/)
-  assert.equal((app.match(/<AgentShell\s*\/>/g) || []).length, 1)
+  assert.equal((app.match(/<AgentShell\b/g) || []).length, 1)
 })
 
 test("global Voss launcher is draggable and snaps to the nearest viewport edge", () => {
