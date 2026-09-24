@@ -73,6 +73,9 @@ const turnStatus = read("src/ui-v1-isolated/chat-room/AiGmTurnStatus.tsx")
 const roadmap = read("docs/AI_WORLD_EVOLUTION_MASTER_ROADMAP.md")
 
 const maintenanceRegression = read("tests/aiGmWorldMaintenanceStage3.test.ts")
+const maintenanceSql = read(
+  "supabase/migrations/20260923092000_ai_gm_world_maintenance_stage3_v1.sql",
+)
 const questRegression = read("tests/questAiGmStage5.test.ts")
 const questBridgeRegression = read("tests/questWorldBridgeStage6.test.ts")
 const restRegression = read("tests/chatPostRestPreparationIntegration.test.ts")
@@ -134,7 +137,7 @@ test("Stage 24 keeps logic-bound fiction separate from real player d20 mechanics
   assert.match(rollStage17, /stage17_pending_roll_replay_contract_mismatch/)
   assert.match(rollStage17, /canonical_evidence is distinct from v_validated_evidence/)
   assert.match(runtime, /impossible_exact/)
-  assert.match(runtime, /натуральная 20/i)
+  assert.match(runtime, /natural 20/i)
 })
 
 test("Stage 24 keeps final answer, junior commit and player gate in the correct order", () => {
@@ -145,7 +148,12 @@ test("Stage 24 keeps final answer, junior commit and player gate in the correct 
   assert.match(runtime, /execute_ai_gm_post_turn_mutation_v3/)
   assert.match(runtime, /The commit is terminal now/)
   assert.match(turnStatus, /get_ai_gm_room_status_v3/)
-  assert.match(turnStatus, /Младший шуршит/)
+  assert.match(turnStatus, /status\.label/)
+  assert.match(turnStatus, /game_chat_post_turn_resume/)
+  assert.match(
+    read("tests/aiWorldEvolutionStage18Implementation.test.ts"),
+    /UI surfaces junior work and blocks player composer/,
+  )
   assert.match(composer, /aiGmTurnBlocked/)
   assert.match(composer, /presentation\.canCompose[\s\S]*aiGmTurnBlocked/)
 })
@@ -174,7 +182,8 @@ test("Stage 24 proves long rooms stay bounded and worker chatter stays out", () 
 test("Stage 24 keeps one stable NPC identity across dialogue, GM and background", () => {
   assert.match(identityFoundation, /npc_identity_fingerprints/)
   assert.match(identityFoundation, /npc_identity_fingerprint_versions/)
-  assert.match(identityConsumers, /impossible_exact/)
+  assert.match(identityConsumers, /identity_fingerprint/)
+  assert.match(runtime, /hard red_lines[\s\S]*impossible_exact/)
   assert.match(context, /npcIdentityFingerprint/)
   assert.match(runtime, /identity_fingerprint/)
   assert.match(background, /identity_fingerprint/)
@@ -192,7 +201,11 @@ test("Stage 24 certifies configuration as style guidance, never canon authority"
   assert.match(directorPreferences, /ai_player_director_preferences/)
   assert.match(context, /directorPreferences/)
   assert.match(runtime, /player_director_preferences/)
-  assert.match(runtime, /future/i)
+  assert.match(runtime, /БУДУЩИХ возможностях/)
+  assert.match(
+    directorPreferences,
+    /preserve_range_and_alternate_plausible_future_opportunities/,
+  )
 
   assert.match(adultContent, /'off','allowed','adult_focused'/)
   assert.match(runtime, /content_profile/)
@@ -206,7 +219,7 @@ test("Stage 24 retains human-GM, maintenance, quest and rest regressions", () =>
   assert.match(liveSmoke, /human_campaign_time_sync_not_isolated/)
 
   assert.match(maintenanceRegression, /45-message window/)
-  assert.match(maintenanceRegression, /context_limit/)
+  assert.match(maintenanceSql, /'context_limit', 50/)
   assert.match(questRegression, /test\(/)
   assert.match(questBridgeRegression, /test\(/)
   assert.match(restRegression, /test\(/)
