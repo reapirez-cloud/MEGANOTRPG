@@ -2369,7 +2369,6 @@ async function completeWithoutChatMessage({
         reaction_reason: reaction.reason,
         ...stage19ContextTelemetry(context),
         ...stage21BehaviorProfileTelemetry(context),
-    ...stage21BehaviorProfileTelemetry(context),
         source_location_id: context.sourceLocation?.id || null,
         player_location_count: new Set(
           context.players.map((player) => player.location_id).filter(Boolean),
@@ -3442,8 +3441,6 @@ export async function runGameChatTurn(
             stage17_mechanic_worker_model_key: normalized.workerModelKey,
             ...stage19ContextTelemetry(context),
             ...stage21BehaviorProfileTelemetry(context),
-        ...stage21BehaviorProfileTelemetry(context),
-    ...stage21BehaviorProfileTelemetry(context),
             model_id: route.model.id,
             model_key: route.model.model_key,
             model_name: route.model.display_name,
