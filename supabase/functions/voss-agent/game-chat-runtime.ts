@@ -2881,6 +2881,7 @@ async function requestPrimaryGmDecision({
       tool_calls: calls,
     })
 
+    let playerTurnMutationUsedThisRound = false
     for (let index = 0; index < calls.length; index += 1) {
       const call = calls[index]
       const callId = call.id || `scene-tool-${round}-${index}`
@@ -2902,6 +2903,128 @@ async function requestPrimaryGmDecision({
             args,
           ),
         )
+      } else if (name === "advance_player_turn_plan") {
+        const commandId =
+          typeof args.entry_command_id === "string"
+            ? args.entry_command_id.trim()
+            : ""
+        const legalityBasis =
+          typeof args.legality_basis === "string"
+            ? args.legality_basis.trim().slice(0, 800)
+            : ""
+        if (playerTurnMutationUsedThisRound) {
+          result = {
+            error:
+              "player_turn_requires_one_execution_tool_per_provider_round",
+          }
+        } else if (!commandId || !legalityBasis) {
+          result = { error: "player_turn_advance_arguments_invalid" }
+        } else {
+          playerTurnMutationUsedThisRound = true
+          const { data, error } = await admin.rpc(
+            "execute_ai_gm_player_turn_next_v1",
+            {
+              p_job_id: claimed.id,
+              p_entry_command_id: commandId,
+            },
+          )
+          if (error) {
+            result = { error: error.message }
+          } else {
+            context = await buildGameChatContextV2({
+              admin,
+              campaignId,
+              jobInput: claimed.input,
+            })
+            result = {
+              ...jsonRecord(data),
+              legality_basis: legalityBasis,
+              canonical_context_reloaded: true,
+            }
+          }
+        }
+      } else if (name === "trigger_player_reaction") {
+        const commandId =
+          typeof args.entry_command_id === "string"
+            ? args.entry_command_id.trim()
+            : ""
+        const triggerReason =
+          typeof args.trigger_reason === "string"
+            ? args.trigger_reason.trim().slice(0, 600)
+            : ""
+        if (playerTurnMutationUsedThisRound) {
+          result = {
+            error:
+              "player_turn_requires_one_execution_tool_per_provider_round",
+          }
+        } else if (!commandId || !triggerReason) {
+          result = { error: "player_reaction_arguments_invalid" }
+        } else {
+          playerTurnMutationUsedThisRound = true
+          const { data, error } = await admin.rpc(
+            "execute_ai_gm_player_turn_reaction_v1",
+            {
+              p_job_id: claimed.id,
+              p_entry_command_id: commandId,
+              p_trigger_reason: triggerReason,
+            },
+          )
+          if (error) {
+            result = { error: error.message }
+          } else {
+            context = await buildGameChatContextV2({
+              admin,
+              campaignId,
+              jobInput: claimed.input,
+            })
+            result = {
+              ...jsonRecord(data),
+              canonical_context_reloaded: true,
+            }
+          }
+        }
+      } else if (name === "refine_npc_identity_for_social_scene") {
+        const npcCharacterId =
+          typeof args.npc_character_id === "string"
+            ? args.npc_character_id.trim()
+            : ""
+        const refinementReason =
+          typeof args.reason === "string"
+            ? args.reason.trim().slice(0, 600)
+            : ""
+        const presentNpc = context.presentCharacters.some(
+          (item) =>
+            item.character_type === "npc" &&
+            String(item.id || "") === npcCharacterId,
+        )
+        if (!npcCharacterId || !presentNpc) {
+          result = { error: "npc_identity_refinement_target_not_present" }
+        } else {
+          result = jsonRecord(
+            await refineNpcIdentityForSocialScene({
+              admin,
+              campaignId,
+              context,
+              npcCharacterId,
+              reason:
+                refinementReason ||
+                "Stable identity is underspecified before consequential social adjudication.",
+            }),
+          )
+          context = await buildGameChatContextV2({
+            admin,
+            campaignId,
+            jobInput: claimed.input,
+          })
+          result = {
+            ...result,
+            refreshed_identity:
+              context.npcIdentities.find(
+                (item) =>
+                  String(item.character_id || "") === npcCharacterId,
+              ) || null,
+          }
+        }
       } else if (context.sourceAudience.scope === "direct_pc") {
         result = { error: "scene_actor_tool_blocked_for_direct_pc" }
       } else if (name === "spawn_scene_actor") {
