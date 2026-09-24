@@ -52,7 +52,7 @@ test("Stage 22 scene scoping uses physically present PCs only", () => {
 
 test("Stage 22 is injected only into primary GM guidance, not generic junior canon", () => {
   assert.match(runtime, /player_director_preferences: context\.directorPreferences/)
-  assert.match(runtime, /future_opportunities/i)
+  assert.match(runtime, /БУДУЩИХ возможностях/i)
   assert.match(runtime, /не меняют уже существующий факт/i)
   assert.match(runtime, /НЕ означает симпатию конкретного NPC/i)
   assert.match(runtime, /НЕ выбирай молча одного победителя/i)
