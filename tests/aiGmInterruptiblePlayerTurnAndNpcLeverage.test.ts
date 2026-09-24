@@ -49,6 +49,21 @@ test("final Send seals one declaration and does not execute abilities or rolls",
   assert.doesNotMatch(submit, /send_chat_(?:roll|template|inventory|spell)/)
 })
 
+test("legacy immediate-submit RPCs are closed to authenticated clients", () => {
+  const closure = read(
+    "supabase/migrations/20260924191000_ai_gm_interruptible_player_turn_legacy_submit_closure_v3.sql",
+  )
+  assert.match(
+    closure,
+    /revoke execute on function public\.submit_player_turn_v1\(uuid,integer,uuid\)/,
+  )
+  assert.match(
+    closure,
+    /revoke execute on function public\.submit_player_turn_stage12_v1\(uuid,integer,uuid,uuid\[\]\)/,
+  )
+  assert.match(closure, /from public,anon,authenticated/)
+})
+
 test("AI can advance only the exact next declared non-reaction component", () => {
   const advance = block(
     migration,
