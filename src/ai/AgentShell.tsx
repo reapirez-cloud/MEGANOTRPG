@@ -195,11 +195,7 @@ function readableBytes(bytes: number) {
   return (bytes / (1024 * 1024)).toFixed(1) + " МБ"
 }
 
-export default function AgentShell({
-  onOpenControl,
-}: {
-  onOpenControl?: () => void
-} = {}) {
+export default function AgentShell() {
   const {
     campaignId,
     canManage,
@@ -712,13 +708,7 @@ export default function AgentShell({
 
     if (!drag.moved) {
       setOrbPosition(current)
-      if (open) {
-        setOpen(false)
-      } else if (canManage && onOpenControl) {
-        onOpenControl()
-      } else {
-        setOpen(true)
-      }
+      setOpen((value) => !value)
       return
     }
 
@@ -761,22 +751,14 @@ export default function AgentShell({
         onKeyDown={(event) => {
           if (event.key !== "Enter" && event.key !== " ") return
           event.preventDefault()
-          if (open) {
-            setOpen(false)
-          } else if (canManage && onOpenControl) {
-            onOpenControl()
-          } else {
-            setOpen(true)
-          }
+          setOpen((current) => !current)
         }}
         aria-label={
           open
             ? `Свернуть ${assistantName}`
             : sending || pendingReply
               ? `${assistantName} работает в фоне`
-              : canManage && onOpenControl
-                ? "Открыть управление ИИ-ГМ"
-                : `Открыть ${assistantName}`
+              : `Открыть ${assistantName}`
         }
         aria-expanded={open}
         aria-controls="u1-agent-panel"
