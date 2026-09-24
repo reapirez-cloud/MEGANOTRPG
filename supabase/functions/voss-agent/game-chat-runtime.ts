@@ -125,11 +125,19 @@ type RecoveryRequest = {
   targetCharacterIds: string[]
 }
 
+type PostTurnIntent = {
+  intentKey: string
+  kind: "location" | "npc" | "quest" | "memory" | "canonical_state" | "binding"
+  instruction: string
+  evidence: string
+}
+
 type GameMasterReaction = {
   mode: ReactionMode
   body: string
   npcCharacterId: string | null
   reason: string
+  postTurnIntents: PostTurnIntent[]
   rollRequest: PlayerRollRequest | null
   npcAction: NpcActionRequest | null
   npcRoll: NpcRollRequest | null
@@ -364,6 +372,9 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Сервер передаст world_materialization_task в DeepSeek V4.1 Flash, тот выполнит только операции с базой, затем ты получишь обновлённый канонический снимок и продолжишь ТОТ ЖЕ ход.",
   "Если все нужные сущности уже существуют, world_materialization=false и world_materialization_task=''.",
   "Если вмешательство не нужно, используй none.",
+  "После опубликованного ответа отдельно верни bounded post_turn_intents: только уже установленные этим ответом канонические факты, которые младший worker должен записать ПОСЛЕ публикации. Это не план продолжения сюжета.",
+  "Каждый intent обязан иметь intent_key, kind, instruction и evidence. evidence должен указывать на конкретный факт опубликованного ответа.",
+  "Не добавляй в intents новые события, последствия, награды, секреты, NPC или локации, которых нет в опубликованном ответе. Если ответ ничего нового не установил, post_turn_intents=[].",
   "World existence и character performance — разные неопределённости. Player d20 никогда не создаёт отсутствующую хижину, дракона, NPC, предмет или улику. Если существование реально не определено каноном и допустимы 2+ исхода, СНАЧАЛА используй resolve_random_decision; только после зафиксированного existence result можно просить character check.",
   "Если точная цель канонически невозможна, но исключительное усилие может дать полезный НЕ-точный результат, используй request_player_roll с adjudication_mode=impossible_exact и заранее зафиксированным partial_success_envelope. Даже natural 20 не делает exact goal истинной.",
   "Если в мире остаются 2+ правдоподобных сюжетных исхода и ответ НЕ определяется каноном, deterministic rule, player/NPC roll, attack/save/check или уже полученным resolver result, используй provider tool resolve_random_decision.",
@@ -497,6 +508,16 @@ async function resolveWorldMaterializerModel(
   return data ? data as RouterModel : fallback
 }
 
+const STAGE18_POST_TURN_WORKER_SYSTEM = [
+  "Ты младший post-turn world commit worker MEGANOT.",
+  "Ответ GM уже опубликован игроку. Он является единственным источником новых нарративных фактов этого хода.",
+  "Записывай только уже установленные факты через разрешённые manager/quest tools.",
+  "Не добавляй новый драматический результат, награду, конфликт, секрет или NPC.",
+  "Если intent двусмысленен или факт уже существует, безопасно не меняй канон.",
+  "UUID бери только из канонического снимка или результатов текущих tool calls.",
+  "После tool calls не пиши художественный ответ игроку."
+].join("\n")
+
 async function runWorldMaterializer({
   admin,
   campaignId,
@@ -513,6 +534,8 @@ async function runWorldMaterializer({
   originalMessage: string
   materializationTask: string
   fallbackModel: RouterModel
+  allowSourceBootstrap?: boolean
+  systemOverride?: string
 }) {
   const model = await resolveWorldMaterializerModel(admin, fallbackModel)
   if (!model.supports_tools) {
@@ -520,7 +543,7 @@ async function runWorldMaterializer({
   }
 
   const messages: Array<Record<string, unknown>> = [
-    { role: "system", content: WORLD_MATERIALIZER_SYSTEM },
+    { role: "system", content: systemOverride || WORLD_MATERIALIZER_SYSTEM },
     {
       role: "user",
       content:
@@ -544,7 +567,7 @@ async function runWorldMaterializer({
       messages,
       tools: WORLD_MATERIALIZER_TOOLS as unknown as Array<Record<string, unknown>>,
       toolChoice:
-        round === 0 && !context.sourceLocation
+        round === 0 && !context.sourceLocation && allowSourceBootstrap !== false
           ? {
               type: "function",
               function: { name: "create_location" },
@@ -645,7 +668,7 @@ async function runWorldMaterializer({
       ? context.sourceCharacter.id
       : ""
 
-  if (!context.sourceLocation && firstCreatedLocationId && sourceCharacterId) {
+  if (allowSourceBootstrap !== false && !context.sourceLocation && firstCreatedLocationId && sourceCharacterId) {
     const alreadyMoved = toolRuns.some((run) =>
       run.name === "move_character_world" &&
       jsonRecord(run.arguments).character_id === sourceCharacterId &&
@@ -953,6 +976,7 @@ function parseReaction(
 ): GameMasterReaction {
   let worldMaterializationRequested = false
   let worldMaterializationTask = ""
+  let postTurnIntents: PostTurnIntent[] = []
   const empty = (
     mode: ReactionMode,
     reason: string,
@@ -966,6 +990,7 @@ function parseReaction(
     npcRoll: null,
     recoveryRequest: null,
     dialogueOutputs: [],
+    postTurnIntents,
     worldMaterializationRequested,
     worldMaterializationTask,
   })
@@ -977,6 +1002,21 @@ function parseReaction(
       typeof parsed.world_materialization_task === "string"
         ? parsed.world_materialization_task.trim().slice(0, 2000)
         : ""
+    if (Array.isArray(parsed.post_turn_intents)) {
+      postTurnIntents = parsed.post_turn_intents.slice(0, 12).flatMap((value) => {
+        const row = jsonRecord(value)
+        const intentKey = typeof row.intent_key === "string" ? row.intent_key.trim().slice(0, 120) : ""
+        const kind =
+          row.kind === "location" || row.kind === "npc" || row.kind === "quest" ||
+          row.kind === "memory" || row.kind === "canonical_state" || row.kind === "binding"
+            ? row.kind
+            : null
+        const instruction = typeof row.instruction === "string" ? row.instruction.trim().slice(0, 1200) : ""
+        const evidence = typeof row.evidence === "string" ? row.evidence.trim().slice(0, 600) : ""
+        if (!intentKey || !kind || !instruction || !evidence) return []
+        return [{ intentKey, kind, instruction, evidence }]
+      })
+    }
   }
 
   if (!parsed) {
