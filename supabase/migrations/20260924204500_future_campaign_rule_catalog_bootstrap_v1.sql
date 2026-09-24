@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- Repair the new-campaign builtin rule bootstrap after legacy helper renames.
 --
 -- install_builtin_rule_catalog still referenced three helpers that no longer
