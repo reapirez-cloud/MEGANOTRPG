@@ -793,6 +793,629 @@ async function runWorldMaterializer({
   }
 }
 
+
+async function resolvePostTurnWorkerModel(
+  admin: SupabaseClient,
+): Promise<RouterModel> {
+  const { data, error } = await admin
+    .from("ai_models")
+    .select(
+      "id,provider_key,model_key,display_name,enabled,is_base,gm_selectable,user_selectable,supports_tools,supports_json,supports_streaming,supports_vision,model_kind,access_scope,context_window,cost_tier,reasoning_tier,latency_tier",
+    )
+    .eq("model_key", POST_TURN_WORKER_MODEL_KEY)
+    .eq("enabled", true)
+    .eq("model_kind", "agent")
+    .eq("access_scope", "campaign")
+    .eq("supports_tools", true)
+    .eq("supports_json", true)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error("stage18_post_turn_worker_model_unavailable")
+  return data as RouterModel
+}
+
+function stage18ToolsForIntent(kind: PostTurnIntent["kind"]) {
+  const names =
+    kind === "location"
+      ? new Set([
+          "create_location",
+          "update_location",
+          "set_location_archived",
+          "upsert_location_transition",
+          "upsert_location_secret",
+          "set_location_secret_state",
+        ])
+      : kind === "npc"
+        ? new Set([
+            "create_world_npc",
+            "update_world_npc",
+            "set_npc_habitat",
+            "set_character_life_state",
+          ])
+        : kind === "quest"
+          ? STAGE18_POST_TURN_QUEST_TOOL_NAMES
+          : kind === "memory"
+            ? STAGE18_POST_TURN_MEMORY_TOOL_NAMES
+            : kind === "binding"
+              ? new Set([
+                  "bind_quest_target",
+                  "set_faction_membership",
+                  "set_character_faction_reputation",
+                  "set_npc_habitat",
+                  "set_world_discovery",
+                  "upsert_location_transition",
+                  "move_character_world",
+                ])
+              : new Set([
+                  "update_location",
+                  "update_world_npc",
+                  "upsert_faction",
+                  "set_faction_membership",
+                  "set_character_faction_reputation",
+                  "set_npc_habitat",
+                  "move_character_world",
+                  "set_world_discovery",
+                  "upsert_location_secret",
+                  "set_location_secret_state",
+                  "set_character_life_state",
+                  "set_location_archived",
+                ])
+
+  return STAGE18_POST_TURN_TOOLS.filter((tool) =>
+    names.has(tool.function.name)
+  )
+}
+
+function stage18UuidValues(value: unknown, output = new Set<string>()) {
+  if (typeof value === "string") {
+    if (
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+        .test(value)
+    ) {
+      output.add(value)
+    }
+    return output
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) stage18UuidValues(item, output)
+    return output
+  }
+  if (value && typeof value === "object") {
+    for (const item of Object.values(value as JsonRecord)) {
+      stage18UuidValues(item, output)
+    }
+  }
+  return output
+}
+
+async function stage18PublishedEventIds({
+  admin,
+  campaignId,
+  replyMessageIds,
+}: {
+  admin: SupabaseClient
+  campaignId: string
+  replyMessageIds: number[]
+}) {
+  if (!replyMessageIds.length) return [] as string[]
+
+  const { data, error } = await admin
+    .from("campaign_events")
+    .select("id,source_id")
+    .eq("campaign_id", campaignId)
+    .eq("source_kind", "chat_message")
+    .in("source_id", replyMessageIds.map(String))
+
+  if (error) throw new Error(error.message)
+  return (data || [])
+    .map((row) => typeof row.id === "string" ? row.id : "")
+    .filter(Boolean)
+}
+
+async function reconcileStage18Create({
+  admin,
+  campaignId,
+  toolName,
+  args,
+  commitId,
+  intentKey,
+}: {
+  admin: SupabaseClient
+  campaignId: string
+  toolName: string
+  args: JsonRecord
+  commitId: string
+  intentKey: string
+}): Promise<JsonRecord | null> {
+  if (toolName === "create_location") {
+    const name = typeof args.name === "string" ? args.name.trim() : ""
+    if (!name) return null
+
+    let query = admin
+      .from("locations")
+      .select("id,parent_location_id,name,summary,description,visibility_mode,background_simulation_scope,lifecycle_state")
+      .eq("campaign_id", campaignId)
+      .eq("name", name)
+      .eq("lifecycle_state", "active")
+      .limit(2)
+
+    const parentId =
+      typeof args.parent_location_id === "string" &&
+        args.parent_location_id.trim()
+        ? args.parent_location_id.trim()
+        : null
+    query = parentId
+      ? query.eq("parent_location_id", parentId)
+      : query.is("parent_location_id", null)
+
+    const { data, error } = await query
+    if (error) throw new Error(error.message)
+    if ((data || []).length > 1) {
+      throw new Error("stage18_existing_location_ambiguous")
+    }
+    if (data?.length === 1) {
+      return {
+        location: data[0],
+        reconciled_existing: true,
+        canonical_state_changed: false,
+      }
+    }
+  }
+
+  if (toolName === "create_world_npc") {
+    const name = typeof args.name === "string" ? args.name.trim() : ""
+    if (!name) return null
+    const { data, error } = await admin
+      .from("characters")
+      .select("id,name,character_type,publication_state,life_state")
+      .eq("campaign_id", campaignId)
+      .eq("character_type", "npc")
+      .eq("publication_state", "campaign")
+      .eq("name", name)
+      .limit(2)
+
+    if (error) throw new Error(error.message)
+    if ((data || []).length > 1) {
+      throw new Error("stage18_existing_npc_ambiguous")
+    }
+    if (data?.length === 1) {
+      return {
+        character: data[0],
+        reconciled_existing: true,
+        canonical_state_changed: false,
+      }
+    }
+  }
+
+  if (toolName === "create_quest_plan") {
+    args.quest_key = ("stage18:" + commitId + ":" + intentKey).slice(0, 120)
+  }
+
+  if (toolName === "remember_campaign_fact") {
+    args.fact_key = ("stage18:" + commitId + ":" + intentKey).slice(0, 180)
+    const { data, error } = await admin
+      .from("campaign_memory_facts")
+      .select("id,fact_key,statement,status")
+      .eq("campaign_id", campaignId)
+      .eq("fact_key", args.fact_key)
+      .eq("status", "active")
+      .limit(2)
+
+    if (error) throw new Error(error.message)
+    if ((data || []).length > 1) {
+      throw new Error("stage18_existing_memory_fact_ambiguous")
+    }
+    if (data?.length === 1) {
+      return {
+        fact_id: data[0].id,
+        stored: true,
+        reconciled_existing: true,
+        canonical_state_changed: false,
+      }
+    }
+  }
+
+  return null
+}
+
+async function executeStage18PostTurnTool({
+  admin,
+  campaignId,
+  managerUserId,
+  modelId,
+  roomId,
+  commitId,
+  intent,
+  toolName,
+  rawArgs,
+  sourceEventIds,
+}: {
+  admin: SupabaseClient
+  campaignId: string
+  managerUserId: string
+  modelId: string | null
+  roomId: string
+  commitId: string
+  intent: PostTurnIntent
+  toolName: string
+  rawArgs: JsonRecord
+  sourceEventIds: string[]
+}) {
+  const allowed = new Set(
+    stage18ToolsForIntent(intent.kind).map((tool) => tool.function.name),
+  )
+  if (!allowed.has(toolName)) {
+    throw new Error("stage18_post_turn_tool_not_allowed_for_intent")
+  }
+
+  const args: JsonRecord = { ...rawArgs }
+
+  if (toolName === "remember_campaign_fact") {
+    args.source_event_ids = sourceEventIds
+    args.visibility = "room"
+    args.room_id = roomId
+  }
+
+  const reconciled = await reconcileStage18Create({
+    admin,
+    campaignId,
+    toolName,
+    args,
+    commitId,
+    intentKey: intent.intentKey,
+  })
+  if (reconciled) return { args, result: reconciled }
+
+  let result: unknown
+  if (STAGE18_POST_TURN_MEMORY_TOOL_NAMES.has(toolName)) {
+    result = await executeVossMemoryTool(
+      {
+        client: admin,
+        admin,
+        campaignId,
+        userId: managerUserId,
+        modelId,
+        canManage: true,
+      },
+      toolName,
+      args,
+    )
+  } else if (STAGE18_POST_TURN_QUEST_TOOL_NAMES.has(toolName)) {
+    result = await executeVossQuestTool(
+      {
+        client: admin,
+        campaignId,
+        userId: managerUserId,
+        authority: "admin",
+      },
+      toolName,
+      args,
+    )
+  } else {
+    result = await executeVossManagerTool(
+      {
+        client: admin,
+        admin,
+        campaignId,
+        userId: managerUserId,
+        authority: "admin",
+      },
+      toolName,
+      args,
+    )
+  }
+
+  const resultRecord = jsonRecord(result)
+  if (typeof resultRecord.error === "string" && resultRecord.error) {
+    throw new Error(resultRecord.error)
+  }
+  return { args, result: resultRecord }
+}
+
+async function runStage18Intent({
+  admin,
+  commit,
+  intentRow,
+  model,
+}: {
+  admin: SupabaseClient
+  commit: JsonRecord
+  intentRow: JsonRecord
+  model: RouterModel
+}) {
+  const campaignId = String(commit.campaign_id || "")
+  const roomId = String(commit.room_id || "")
+  const managerUserId = String(commit.manager_user_id || "")
+  const sourceCharacterId = String(commit.source_character_id || "")
+  const sourceMessageId = Number(commit.source_message_id || 0)
+  const parentJobId = String(commit.parent_job_id || "")
+  const replyMessageIds = Array.isArray(commit.reply_message_ids)
+    ? commit.reply_message_ids.map(Number).filter((id) => Number.isInteger(id) && id > 0)
+    : []
+  const publishedMessages = Array.isArray(commit.published_messages)
+    ? commit.published_messages
+    : []
+
+  const intent: PostTurnIntent = {
+    intentKey: String(intentRow.intent_key || ""),
+    kind: String(intentRow.kind || "") as PostTurnIntent["kind"],
+    instruction: String(intentRow.instruction || ""),
+    evidence: String(intentRow.evidence || ""),
+  }
+
+  const { data: parentJob, error: parentError } = await admin
+    .from("agent_jobs")
+    .select("input")
+    .eq("id", parentJobId)
+    .maybeSingle()
+  if (parentError) throw new Error(parentError.message)
+
+  const parentInput = jsonRecord(parentJob?.input)
+  const context = await buildGameChatContextV2({
+    admin,
+    campaignId,
+    jobInput: {
+      ...parentInput,
+      room_id: roomId,
+      source_character_id: sourceCharacterId,
+      source_chat_message_id: String(sourceMessageId),
+      resume_chat_message_id:
+        replyMessageIds.length
+          ? String(replyMessageIds[replyMessageIds.length - 1])
+          : String(sourceMessageId),
+    },
+  })
+  const sourceEventIds = await stage18PublishedEventIds({
+    admin,
+    campaignId,
+    replyMessageIds,
+  })
+  const tools = stage18ToolsForIntent(intent.kind)
+  if (!tools.length) {
+    throw new Error("stage18_post_turn_intent_has_no_tools")
+  }
+
+  const payload = await requestChatCompletion({
+    model,
+    messages: [
+      { role: "system", content: STAGE18_POST_TURN_WORKER_SYSTEM },
+      {
+        role: "user",
+        content: JSON.stringify({
+          immutable_intent: {
+            intent_key: intent.intentKey,
+            kind: intent.kind,
+            instruction: intent.instruction,
+            evidence: intent.evidence,
+          },
+          published_messages: publishedMessages,
+          canonical_context: JSON.parse(stage2ContextForPrompt(context)),
+          published_source_event_ids: sourceEventIds,
+        }),
+      },
+    ],
+    tools: tools as unknown as Array<Record<string, unknown>>,
+    toolChoice: "auto",
+    temperature: 0.05,
+    timeoutMs: 65_000,
+    retryCount: 1,
+  })
+
+  const assistant = providerMessage(payload)
+  const calls = Array.isArray(assistant.tool_calls)
+    ? assistant.tool_calls
+    : []
+
+  if (calls.length > 1) {
+    throw new Error("stage18_post_turn_multiple_mutations_for_one_intent")
+  }
+
+  if (!calls.length) {
+    const raw = providerText(payload)
+    const parsed = raw ? parseJsonObject(raw) : null
+    if (parsed?.status !== "already_satisfied") {
+      throw new Error(
+        parsed?.status === "unsafe_or_ambiguous"
+          ? "stage18_post_turn_intent_unsafe_or_ambiguous"
+          : "stage18_post_turn_worker_did_not_commit_or_reconcile",
+      )
+    }
+
+    const resolvedIds = Array.isArray(parsed.resolved_entity_ids)
+      ? parsed.resolved_entity_ids
+          .filter((value): value is string => typeof value === "string")
+          .filter((value) =>
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+              .test(value)
+          )
+          .slice(0, 24)
+      : []
+
+    const { error } = await admin.rpc(
+      "complete_ai_gm_post_turn_intent_v1",
+      {
+        p_intent_id: String(intentRow.id),
+        p_tool_name: "reconciled",
+        p_tool_arguments: {},
+        p_tool_result: parsed,
+        p_resolved_entity_ids: resolvedIds,
+      },
+    )
+    if (error) throw new Error(error.message)
+    return
+  }
+
+  const call = calls[0]
+  const toolName =
+    typeof call.function?.name === "string" ? call.function.name : ""
+  const rawArgs = parseProviderToolArguments(call.function?.arguments)
+  const execution = await executeStage18PostTurnTool({
+    admin,
+    campaignId,
+    managerUserId,
+    modelId: model.id || null,
+    roomId,
+    commitId: String(commit.id),
+    intent,
+    toolName,
+    rawArgs,
+    sourceEventIds,
+  })
+  const resolvedIds = [...stage18UuidValues(execution.result)].slice(0, 24)
+
+  const { error } = await admin.rpc(
+    "complete_ai_gm_post_turn_intent_v1",
+    {
+      p_intent_id: String(intentRow.id),
+      p_tool_name: toolName,
+      p_tool_arguments: execution.args,
+      p_tool_result: execution.result,
+      p_resolved_entity_ids: resolvedIds,
+    },
+  )
+  if (error) throw new Error(error.message)
+}
+
+async function runStage18PostTurnCommit(
+  admin: SupabaseClient,
+  campaignId: string,
+  commitId: string,
+) {
+  const model = await resolvePostTurnWorkerModel(admin)
+
+  for (let cycle = 0; cycle < 3; cycle += 1) {
+    const { data: claimData, error: claimError } = await admin.rpc(
+      "claim_ai_gm_post_turn_commit_v1",
+      { p_commit_id: commitId },
+    )
+    if (claimError) throw new Error(claimError.message)
+    const commit = jsonRecord(claimData)
+    if (!commit.id || String(commit.campaign_id || "") !== campaignId) return
+    if (commit.state === "completed" || commit.state === "failed") return
+    if (commit.claimed !== true) return
+
+    try {
+      for (;;) {
+        const { data: intentData, error: intentClaimError } = await admin.rpc(
+          "claim_ai_gm_post_turn_intent_v1",
+          { p_commit_id: commitId },
+        )
+        if (intentClaimError) throw new Error(intentClaimError.message)
+        const intentRow = jsonRecord(intentData)
+        if (!intentRow.id) break
+
+        try {
+          await runStage18Intent({
+            admin,
+            commit,
+            intentRow,
+            model,
+          })
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error)
+          await admin.rpc("fail_ai_gm_post_turn_intent_v1", {
+            p_intent_id: String(intentRow.id),
+            p_error: message,
+          })
+          throw error
+        }
+      }
+
+      const { error: completeError } = await admin.rpc(
+        "complete_ai_gm_post_turn_commit_v1",
+        { p_commit_id: commitId },
+      )
+      if (completeError) throw new Error(completeError.message)
+      return
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const { data: failedData, error: failError } = await admin.rpc(
+        "fail_ai_gm_post_turn_commit_v1",
+        { p_commit_id: commitId, p_error: message },
+      )
+      if (failError) throw new Error(failError.message)
+      const failed = jsonRecord(failedData)
+      if (failed.state !== "queued") return
+      await new Promise((resolve) => setTimeout(resolve, 250 * (cycle + 1)))
+    }
+  }
+}
+
+async function finalizeStage18VisibleAnswer({
+  admin,
+  claimed,
+  route,
+  sourceMessageId,
+  context,
+  reaction,
+  messages,
+  extraResult = {},
+}: {
+  admin: SupabaseClient
+  claimed: ClaimedJob
+  route: Awaited<ReturnType<typeof resolveCampaignGmModel>>
+  sourceMessageId: number
+  context: Stage2GameChatContext
+  reaction: GameMasterReaction
+  messages: JsonRecord[]
+  extraResult?: JsonRecord
+}) {
+  const resultPatch: JsonRecord = {
+    ...claimed.result,
+    ...extraResult,
+    surface: GAME_CHAT_SURFACE,
+    source_chat_message_id: String(sourceMessageId),
+    reply_character_id:
+      reaction.mode === "npc_interjection" ? reaction.npcCharacterId : null,
+    reaction_mode: reaction.mode,
+    reaction_reason: reaction.reason,
+    dialogue_message_kinds: messages.map((item) => item.kind),
+    context_message_count: context.recentMessages.length,
+    source_location_id: context.sourceLocation?.id || null,
+    player_location_count: new Set(
+      context.players.map((player) => player.location_id).filter(Boolean),
+    ).size,
+    model_id: route.model.id,
+    model_key: route.model.model_key,
+    model_name: route.model.display_name,
+    route_mode: route.routeMode,
+    route_reason: route.reason,
+    answer_chars: messages.reduce(
+      (sum, item) =>
+        sum + (typeof item.body === "string" ? item.body.length : 0),
+      0,
+    ),
+  }
+
+  const { data, error } = await admin.rpc("finalize_ai_gm_turn_v18", {
+    p_job_id: claimed.id,
+    p_messages: messages,
+    p_post_turn_intents: reaction.postTurnIntents.map((intent) => ({
+      intent_key: intent.intentKey,
+      kind: intent.kind,
+      instruction: intent.instruction,
+      evidence: intent.evidence,
+    })),
+    p_result_patch: resultPatch,
+  })
+  if (error) throw new Error(error.message)
+
+  const finalized = jsonRecord(data)
+  await syncStage11TurnLedger(admin, claimed.id)
+
+  const commitId =
+    typeof finalized.post_turn_commit_id === "string"
+      ? finalized.post_turn_commit_id
+      : ""
+  if (commitId) {
+    await runStage18PostTurnCommit(admin, String(context.room.campaign_id || ""), commitId)
+  }
+
+  return finalized
+}
+
 function fitChatBody(value: string) {
   const text = value.replace(/\r\n/g, "\n").trim()
   if (text.length <= 4000) return text
