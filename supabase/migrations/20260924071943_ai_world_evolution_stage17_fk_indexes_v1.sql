@@ -1,0 +1,1 @@
+-- Reconciled remote migration marker. Final Stage 17 indexes and FK state are folded into 20260924071832_ai_world_evolution_stage17_logic_rolls_v1.sql for clean reproducibility.\n
