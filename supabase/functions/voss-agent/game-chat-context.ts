@@ -79,6 +79,18 @@ function nullableNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+function optionalNumber(value: unknown) {
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === "string" && !value.trim())
+  ) {
+    return null
+  }
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 function lower(value: unknown) {
   return typeof value === "string"
     ? value.toLocaleLowerCase("ru-RU")
@@ -120,17 +132,17 @@ function compactMechanicalEvent(
     boundedText(payload.detail, 500) ||
     boundedText(payload.description, 500)
   const d20 =
-    nullableNumber(payload.d20) ??
-    nullableNumber(payload.d20Raw)
+    optionalNumber(payload.d20) ??
+    optionalNumber(payload.d20Raw)
   const total =
-    nullableNumber(payload.total) ??
-    nullableNumber(effect.total)
+    optionalNumber(payload.total) ??
+    optionalNumber(effect.total)
   const modifier =
-    nullableNumber(payload.modifier) ??
-    nullableNumber(effect.modifier)
+    optionalNumber(payload.modifier) ??
+    optionalNumber(effect.modifier)
   const rolls = numberArray(effect.rolls)
-  const diceCount = nullableNumber(effect.count)
-  const diceSides = nullableNumber(effect.sides)
+  const diceCount = optionalNumber(effect.count)
+  const diceSides = optionalNumber(effect.sides)
   const outcome =
     boundedText(payload.outcome_class, 80) ||
     boundedText(payload.outcomeClass, 80) ||
@@ -145,9 +157,9 @@ function compactMechanicalEvent(
     boundedText(payload.dcVisibility, 32)
   const publicDc =
     dcVisibility === "public"
-      ? nullableNumber(payload.dc) ??
-        nullableNumber(payload.target_dc) ??
-        nullableNumber(payload.targetDc)
+      ? optionalNumber(payload.dc) ??
+        optionalNumber(payload.target_dc) ??
+        optionalNumber(payload.targetDc)
       : null
 
   return {
@@ -170,7 +182,7 @@ export function projectStage19ChatMessage(
   currentDay: number | null,
 ): JsonRecord {
   const eventKind = nullableString(message.event_kind)
-  const campaignDay = nullableNumber(message.campaign_day)
+  const campaignDay = optionalNumber(message.campaign_day)
   const mechanic = eventKind
     ? compactMechanicalEvent(eventKind, message.event_payload)
     : null
@@ -329,7 +341,8 @@ async function loadActiveQuestContext(
     admin
       .from("quest_targets")
       .select("id,quest_id,stage_id,target_key,target_kind,placeholder_label,internal_note,binding_state,location_id,npc_character_id,item_definition_id")
-      .in("quest_id", activeQuestIds),
+      .in("quest_id", activeQuestIds)
+      .limit(120),
   ])
 
   const firstError = secretResult.error || stageResult.error || targetResult.error
@@ -349,12 +362,14 @@ async function loadActiveQuestContext(
       admin
         .from("quest_stage_secrets")
         .select("stage_id,internal_title,objective,gm_notes")
-        .in("stage_id", activeStageIds),
+        .in("stage_id", activeStageIds)
+        .limit(96),
       admin
         .from("quest_condition_groups")
         .select("id,stage_id,group_key,mode,position")
         .in("stage_id", activeStageIds)
-        .order("position", { ascending: true }),
+        .order("position", { ascending: true })
+        .limit(96),
     ])
 
     if (stageSecretsResult.error) throw new Error(stageSecretsResult.error.message)
@@ -370,6 +385,7 @@ async function loadActiveQuestContext(
         .select("id,group_id,condition_key,condition_type,target_id,required_quantity,negated,params,position")
         .in("group_id", groupIds)
         .order("position", { ascending: true })
+        .limit(160)
 
       if (conditionsResult.error) throw new Error(conditionsResult.error.message)
       conditions = rows(conditionsResult.data)
@@ -382,6 +398,7 @@ async function loadActiveQuestContext(
           .from("quest_condition_states")
           .select("condition_id,satisfied,resolution_source,evidence,last_evaluated_at")
           .in("condition_id", conditionIds)
+          .limit(160)
 
         if (statesResult.error) throw new Error(statesResult.error.message)
         states = rows(statesResult.data)
@@ -969,13 +986,18 @@ export async function buildGameChatContextV2({
           p_npc_ids: presentNpcIds,
         })
       : Promise.resolve({ data: [], error: null }),
-    admin
-      .from("character_relationships")
-      .select("id,subject_character_id,target_character_id,relationship_kind,public_label,attitude_score,player_note,gm_note,state,updated_at")
-      .eq("campaign_id", campaignId)
-      .eq("state", "active")
-      .order("updated_at", { ascending: false })
-      .limit(120),
+    relevantCharacterIds.length
+      ? admin
+          .from("character_relationships")
+          .select("id,subject_character_id,target_character_id,relationship_kind,public_label,attitude_score,player_note,gm_note,state,updated_at")
+          .eq("campaign_id", campaignId)
+          .eq("state", "active")
+          .or(
+            `subject_character_id.in.(${relevantCharacterIds.join(",")}),target_character_id.in.(${relevantCharacterIds.join(",")})`,
+          )
+          .order("updated_at", { ascending: false })
+          .limit(80)
+      : Promise.resolve({ data: [], error: null }),
     admin
       .from("character_assets")
       .select("id,owner_character_id,asset_kind,ownership_kind,display_name,description,location_id,npc_character_id,inventory_item_id,world_storage_id,custom_data,state")
@@ -1173,6 +1195,99 @@ export async function buildGameChatContextV2({
   }
 }
 
+function compactQuestContext(value: JsonRecord) {
+  return {
+    character_id: value.character_id,
+    active_quests: rows(value.active_quests).map((quest) => ({
+      id: quest.id,
+      quest_key: quest.quest_key,
+      title: boundedText(quest.title, 300),
+      player_brief: boundedText(quest.player_brief, 1200),
+      internal_summary: boundedText(quest.internal_summary, 1200),
+      ai_directive: boundedText(quest.ai_directive, 1200),
+      active_stages: rows(quest.active_stages).map((stage) => ({
+        id: stage.id,
+        stage_key: stage.stage_key,
+        position: stage.position,
+        status: stage.status,
+        player_title: boundedText(stage.player_title, 500),
+        internal_title: boundedText(stage.internal_title, 500),
+        objective: boundedText(stage.objective, 1200),
+        gm_notes: boundedText(stage.gm_notes, 1200),
+        targets: rows(stage.targets).map((target) => ({
+          id: target.id,
+          target_key: target.target_key,
+          target_kind: target.target_kind,
+          placeholder_label: boundedText(target.placeholder_label, 400),
+          internal_note: boundedText(target.internal_note, 700),
+          binding_state: target.binding_state,
+          location_id: target.location_id,
+          npc_character_id: target.npc_character_id,
+          item_definition_id: target.item_definition_id,
+        })).slice(0, 24),
+        condition_groups: rows(stage.condition_groups).map((group) => ({
+          id: group.id,
+          key: group.key,
+          mode: group.mode,
+          conditions: rows(group.conditions).map((condition) => ({
+            id: condition.id,
+            condition_key: condition.condition_key,
+            condition_type: condition.condition_type,
+            target_id: condition.target_id,
+            required_quantity: condition.required_quantity,
+            negated: condition.negated,
+            params: record(condition.params),
+            state: {
+              satisfied: record(condition.state).satisfied === true,
+              resolution_source: record(condition.state).resolution_source,
+              evidence: boundedText(record(condition.state).evidence, 700),
+            },
+          })).slice(0, 24),
+        })).slice(0, 12),
+      })).slice(0, 12),
+      recent_completed_stages: rows(quest.recent_completed_stages).map((stage) => ({
+        id: stage.id,
+        stage_key: stage.stage_key,
+        position: stage.position,
+        player_title: boundedText(stage.player_title, 500),
+        completion_text: boundedText(stage.completion_text, 900),
+        completed_at: stage.completed_at,
+      })).slice(0, 8),
+    })).slice(0, 12),
+  }
+}
+
+function compactMemory(memory: Stage2GameChatContext["memory"]) {
+  return {
+    facts: memory.facts.map((fact) => ({
+      id: fact.id,
+      fact_key: fact.fact_key,
+      subject_type: fact.subject_type,
+      subject_id: fact.subject_id,
+      predicate: fact.predicate,
+      statement: boundedText(fact.statement, 1200),
+      confidence: fact.confidence,
+      room_id: fact.room_id,
+      campaign_day: fact.campaign_day,
+      day_period: fact.day_period,
+      game_age_days: fact.game_age_days,
+      source_location_id: fact.source_location_id,
+    })).slice(0, MAX_MEMORY_FACTS),
+    summaries: memory.summaries.map((summary) => ({
+      id: summary.id,
+      title: boundedText(summary.title, 300),
+      summary: boundedText(summary.summary, 1800),
+      room_id: summary.room_id,
+      period_start: summary.period_start,
+      period_end: summary.period_end,
+      campaign_day: summary.campaign_day,
+      day_period: summary.day_period,
+      game_age_days: summary.game_age_days,
+      source_location_id: summary.source_location_id,
+    })).slice(0, MAX_MEMORY_SUMMARIES),
+  }
+}
+
 export function stage2ContextForPrompt(context: Stage2GameChatContext) {
   const compactCharacters = context.presentCharacters.map((item) => ({
     id: item.id,
@@ -1257,7 +1372,13 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
       day_period: context.room.day_period,
       scene_state: context.room.scene_state,
     },
-    source_character: context.sourceCharacter,
+    source_character: {
+      id: context.sourceCharacter.id,
+      name: context.sourceCharacter.name,
+      character_class: context.sourceCharacter.character_class,
+      level: context.sourceCharacter.level,
+      bio: boundedText(context.sourceCharacter.bio, 1200),
+    },
     source_location: context.sourceLocation
       ? {
           id: context.sourceLocation.id,
@@ -1316,8 +1437,8 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     })).slice(0, 60),
     faction_memberships: context.factionMemberships.slice(0, 60),
     faction_reputations: context.factionReputations.slice(0, 60),
-    active_quest_context: context.activeQuestContext,
-    relevant_long_term_memory: context.memory,
+    active_quest_context: compactQuestContext(context.activeQuestContext),
+    relevant_long_term_memory: compactMemory(context.memory),
     background_temporal_context: compactBackground(context.background),
     cooperative_time_sync: {
       synced_count: context.temporalSync.synced_count || 0,
