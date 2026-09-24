@@ -813,7 +813,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Player director preferences",
     purpose:
       "Let players express what kinds of stories and pacing they want while treating those wishes as future opportunity preferences, never as commands that rewrite NPCs or canon.",
-    status: "planned",
+    status: "implemented",
     existingFoundation: [
       "player/campaign settings infrastructure",
       "GM behavior profiles from Stage 21",
