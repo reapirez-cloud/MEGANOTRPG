@@ -152,7 +152,7 @@ test("Stage 17 world creation remains a materializer responsibility, not a playe
 
 test("Stage 17 deterministic success/failure produces an immutable no-roll receipt", () => {
   const code = runtime()
-  const sql = migration()
+  const sql = proofMigration()
 
   assert.match(code, /intent_adjudication/)
   assert.match(code, /deterministic_success/)
@@ -166,7 +166,7 @@ test("Stage 17 deterministic success/failure produces an immutable no-roll recei
 })
 
 test("Stage 17 deterministic adjudication never creates a pending d20", () => {
-  const sql = migration()
+  const sql = proofMigration()
   const start = sql.indexOf("create or replace function public.record_ai_gm_deterministic_adjudication_v1")
   const end = sql.indexOf("revoke all on function public.record_ai_gm_deterministic_adjudication_v1", start)
   assert.ok(start >= 0)
@@ -179,7 +179,7 @@ test("Stage 17 deterministic adjudication never creates a pending d20", () => {
 })
 
 test("Stage 17 deterministic world outcomes require real proof", () => {
-  const sql = migration()
+  const sql = proofMigration()
 
   assert.match(sql, /stage17_world_success_requires_canonical_or_resolver_exists_proof/)
   assert.match(sql, /stage17_world_failure_requires_canonical_or_resolver_absent_proof/)
