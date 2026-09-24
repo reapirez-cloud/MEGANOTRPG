@@ -43,9 +43,9 @@ test("Stage 17 legacy service bypass is revoked", () => {
   assert.match(hardening, /record_ai_gm_deterministic_adjudication_v1[\s\S]*service_role/)
 })
 
-test("Stage 17 contract status is implemented", () => {
+test("Stage 17 contract status is certified", () => {
   const start = contract.indexOf("id: 17,")
   const end = contract.indexOf("id: 18,", start)
   assert.ok(start >= 0 && end > start)
-  assert.match(contract.slice(start, end), /status: "implemented"/)
+  assert.match(contract.slice(start, end), /status: "certified"/)
 })
