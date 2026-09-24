@@ -146,6 +146,7 @@ type DetailMeta = {
 
 type DetailState = {
   loading: boolean
+  title: string | null
   description: string | null
   meta: DetailMeta[]
   error: string | null
@@ -235,7 +236,7 @@ function spellSlug(event: UiChatEvent) {
 async function loadSpellDetail(
   event: UiChatEvent,
   presentation: GameCardPresentation,
-): Promise<Pick<DetailState, "description" | "meta">> {
+): Promise<Pick<DetailState, "title" | "description" | "meta">> {
   const slug = spellSlug(event)
   const fields =
     "name_ru, spell_level, school, casting_time, spell_range, duration, components, concentration, ritual, effect_summary, rules_text, author_description"
@@ -292,6 +293,7 @@ async function loadSpellDetail(
       | undefined
 
     return {
+      title: presentation.title,
       description: data?.description || payloadDescription(event),
       meta: [
         ...(data?.casting_time
@@ -311,10 +313,11 @@ async function loadSpellDetail(
   }
 
   return {
+    title: row.name_ru?.trim() || presentation.title,
     description:
-      row.rules_text ||
       row.author_description ||
       row.effect_summary ||
+      row.rules_text ||
       payloadDescription(event),
     meta: [
       ...(row.casting_time
@@ -337,11 +340,85 @@ async function loadSpellDetail(
   }
 }
 
+type ReferenceFeatureRevisionRow = {
+  definition_id: string
+  name: string
+  summary: string | null
+  rules_text: string | null
+  data: Record<string, unknown> | null
+}
+
+async function loadReferenceFeatureDetail(
+  presentation: GameCardPresentation,
+): Promise<Pick<DetailState, "title" | "description" | "meta"> | null> {
+  const title = presentation.title.trim()
+  if (!title) return null
+
+  const { data, error } = await supabase
+    .from("reference_definition_revisions")
+    .select("definition_id, name, summary, rules_text, data")
+    .eq("name", title)
+    .order("revision", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data) return null
+
+  const row = data as unknown as ReferenceFeatureRevisionRow
+  const definition = await supabase
+    .from("reference_definitions")
+    .select("kind, scope, status")
+    .eq("id", row.definition_id)
+    .maybeSingle()
+
+  if (
+    definition.error ||
+    !definition.data ||
+    definition.data.kind !== "feature" ||
+    definition.data.scope !== "system" ||
+    definition.data.status !== "active"
+  ) {
+    return null
+  }
+
+  const featureKind =
+    row.data && typeof row.data.feature_kind === "string"
+      ? row.data.feature_kind
+      : ""
+  const level =
+    row.data && typeof row.data.minimum_warlock_level === "number"
+      ? row.data.minimum_warlock_level
+      : null
+  const nameEn =
+    row.data && typeof row.data.name_en === "string"
+      ? row.data.name_en.trim()
+      : ""
+
+  return {
+    title: row.name || title,
+    description: row.rules_text || row.summary || null,
+    meta: [
+      ...(featureKind === "eldritch_invocation"
+        ? [{ label: "Тип", value: "Таинственное воззвание" }]
+        : []),
+      ...(level !== null ? [{ label: "Доступ", value: `${level} уровень колдуна` }] : []),
+      ...(nameEn ? [{ label: "Оригинал", value: nameEn }] : []),
+    ],
+  }
+}
+
 async function loadAbilityDetail(
   event: UiChatEvent,
-): Promise<Pick<DetailState, "description" | "meta">> {
+  presentation: GameCardPresentation,
+): Promise<Pick<DetailState, "title" | "description" | "meta">> {
   const embedded = payloadDescription(event)
-  if (embedded) return { description: embedded, meta: [] }
+  if (embedded) {
+    return {
+      title: presentation.title,
+      description: embedded,
+      meta: [],
+    }
+  }
 
   const characterId = event.author.characterId
   const mechanicId = payloadString(
@@ -353,10 +430,13 @@ async function loadAbilityDetail(
   )
 
   if (!characterId || !mechanicId) {
-    return {
-      description: null,
-      meta: [],
-    }
+    return (
+      (await loadReferenceFeatureDetail(presentation)) || {
+        title: presentation.title,
+        description: null,
+        meta: [],
+      }
+    )
   }
 
   const assignmentsResult = await supabase
@@ -399,7 +479,15 @@ async function loadAbilityDetail(
   ]
 
   const direct = records.find((record) => readString(record, "id") === mechanicId)
-  if (!direct) return { description: null, meta: [] }
+  if (!direct) {
+    return (
+      (await loadReferenceFeatureDetail(presentation)) || {
+        title: presentation.title,
+        description: null,
+        meta: [],
+      }
+    )
+  }
 
   const directPayload = isRecord(direct.payload) ? direct.payload : null
   const directDescription =
@@ -409,7 +497,11 @@ async function loadAbilityDetail(
       : null)
 
   if (directDescription) {
-    return { description: directDescription, meta: [] }
+    return {
+      title: presentation.title,
+      description: directDescription,
+      meta: [],
+    }
   }
 
   const sourceKey = readString(direct, "sourceKey", "source_key")
@@ -450,11 +542,14 @@ async function loadAbilityDetail(
 async function loadDetail(
   event: UiChatEvent,
   presentation: GameCardPresentation,
-): Promise<Pick<DetailState, "description" | "meta">> {
+): Promise<Pick<DetailState, "title" | "description" | "meta">> {
   if (event.type === "spell") return loadSpellDetail(event, presentation)
-  if (event.type === "class_ability") return loadAbilityDetail(event)
+  if (event.type === "class_ability") {
+    return loadAbilityDetail(event, presentation)
+  }
 
   return {
+    title: presentation.title,
     description: payloadDescription(event) || event.game?.detail || null,
     meta: [],
   }
@@ -471,6 +566,7 @@ function GameEventDetails({
 }) {
   const [state, setState] = useState<DetailState>({
     loading: true,
+    title: presentation.title,
     description: payloadDescription(event),
     meta: [],
     error: null,
@@ -484,6 +580,7 @@ function GameEventDetails({
         if (cancelled) return
         setState({
           loading: false,
+          title: result.title,
           description: result.description,
           meta: result.meta,
           error: null,
@@ -521,7 +618,7 @@ function GameEventDetails({
         <header>
           <div>
             <span>{presentation.eyebrow}</span>
-            <strong>{presentation.title}</strong>
+            <strong>{state.title || presentation.title}</strong>
             {presentation.subtitle ? <small>{presentation.subtitle}</small> : null}
           </div>
           <button type="button" aria-label="Закрыть" onClick={onClose}>
