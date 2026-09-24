@@ -217,7 +217,7 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
     setBusy("")
   }
 
-  async function setBehavior(profileKey: string) {
+  async function chooseBehaviorProfile(profileKey: string) {
     if (!campaignId || !canManage || busy) return
     setBusy("behavior:" + profileKey)
     setError("")
@@ -431,7 +431,7 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
                     className="u1-ai-gm-choice"
                     data-selected={profile.selected || undefined}
                     disabled={!canManage || Boolean(busy)}
-                    onClick={() => void setBehavior(profile.profile_key)}
+                    onClick={() => void chooseBehaviorProfile(profile.profile_key)}
                   >
                     <span>
                       <strong>{profile.display_name}</strong>
