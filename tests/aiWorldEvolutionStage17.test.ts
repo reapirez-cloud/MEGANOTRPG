@@ -115,19 +115,23 @@ test("Stage 17 primary GM emits semantics while Flash normalizes only mechanics"
   assert.match(code, /крепкий алкоголь может требовать Constitution check\/save/)
 })
 
-test("Stage 17 requested roll can pass a later free-form chat gate without opening normal chat", () => {
+test("Stage 17 requested roll bypass is narrow and does not impersonate AI GM identity", () => {
   const sql = proofMigration()
   const resolverStart = sql.indexOf(
     "create or replace function public.resolve_player_roll_request_v1",
   )
   assert.ok(resolverStart >= 0)
   const resolver = sql.slice(resolverStart)
-  assert.match(resolver, /set_config\('meganot\.ai_gm_runtime','on',true\)/)
+  assert.match(resolver, /set_config\('meganot\.ai_gm_requested_roll','on',true\)/)
+  assert.doesNotMatch(resolver, /set_config\('meganot\.ai_gm_runtime','on',true\)/)
   assert.match(resolver, /send_chat_roll_v4/)
   assert.ok(
-    resolver.indexOf("set_config('meganot.ai_gm_runtime','on',true)") <
+    resolver.indexOf("set_config('meganot.ai_gm_requested_roll','on',true)") <
       resolver.indexOf("send_chat_roll_v4"),
   )
+  assert.match(sql, /private\.ai_gm_post_turn_gate_trigger/)
+  assert.match(sql, /p\.status='resolving'/)
+  assert.match(sql, /j\.status='waiting_for_user'/)
 })
 
 test("Stage 17 keeps adjudication private and returns only public roll outcome to the player", () => {
