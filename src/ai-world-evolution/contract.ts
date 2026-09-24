@@ -850,7 +850,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Adult and life-simulation content profile",
     purpose:
       "Allow an eligible campaign to treat mature adult life as ordinary world content, especially for life-simulation play, without MEGANOT adding a second sanitization layer on top of the selected model provider.",
-    status: "planned",
+    status: "implemented",
     existingFoundation: [
       "GM behavior profiles including Симс",
       "player director preferences",
