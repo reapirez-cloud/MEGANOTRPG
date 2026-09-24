@@ -1037,7 +1037,7 @@ begin
 
   return v_public_result;
 end;
-$function$
+$function$;
 
 
 drop trigger if exists ai_player_intent_adjudications_immutable_update
