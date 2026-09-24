@@ -422,6 +422,7 @@ set search_path=''
 as $$
 declare
   v_commit public.ai_gm_post_turn_commits%rowtype;
+  v_claimed boolean := false;
 begin
   if auth.role() <> 'service_role' then
     raise exception 'service_role_required';
@@ -440,6 +441,10 @@ begin
       or (state='running' and lease_expires_at < now())
     )
   returning * into v_commit;
+
+  if v_commit.id is not null then
+    v_claimed := true;
+  end if;
 
   if v_commit.id is null then
     select * into v_commit
@@ -464,7 +469,8 @@ begin
     'state',v_commit.state,
     'attempts',v_commit.attempts,
     'max_attempts',v_commit.max_attempts,
-    'lease_expires_at',v_commit.lease_expires_at
+    'lease_expires_at',v_commit.lease_expires_at,
+    'claimed',v_claimed
   );
 end;
 $$;
@@ -886,6 +892,7 @@ begin
       end,
       'error_message',v_commit.last_error,
       'updated_at',v_commit.updated_at,
+      'lease_expires_at',v_commit.lease_expires_at,
       'runtime_stage',18
     );
   end if;
