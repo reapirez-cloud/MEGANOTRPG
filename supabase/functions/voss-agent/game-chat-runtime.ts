@@ -3622,69 +3622,28 @@ export async function runGameChatTurn(
           })
         : reaction.body
 
-    const rpcName =
-      reaction.mode === "npc_interjection"
-        ? "publish_ai_gm_npc_message_v2"
-        : "publish_ai_gm_message_v1"
-    const rpcArgs =
-      reaction.mode === "npc_interjection"
-        ? {
-            p_job_id: jobId,
-            p_npc_character_id: reaction.npcCharacterId,
-            p_body: finalBody,
-          }
-        : {
-            p_job_id: jobId,
-            p_body: finalBody,
-          }
-
-    const { data: replyMessageId, error: publishError } = await admin.rpc(
-      rpcName,
-      rpcArgs,
-    )
-
-    if (publishError) throw new Error(publishError.message)
-
-    const numericReplyId = Number(replyMessageId)
-    if (!Number.isInteger(numericReplyId) || numericReplyId <= 0) {
-      throw new Error("ai_gm_reply_message_missing")
-    }
-
-    await admin
-      .from("agent_jobs")
-      .update({
-        status: "completed",
-        completed_outputs: 1,
-        result: {
-          ...claimed.result,
-          ...recoveryExtra,
-          surface: GAME_CHAT_SURFACE,
-          runtime_stage: 12,
-          source_chat_message_id: String(sourceMessageId),
-          reply_message_id: numericReplyId,
-          reply_character_id: reaction.npcCharacterId,
-          reaction_mode: reaction.mode,
-          reaction_reason: reaction.reason,
-          context_message_count: context.recentMessages.length,
-          source_location_id: context.sourceLocation?.id || null,
-          player_location_count: new Set(
-            context.players.map((player) => player.location_id).filter(Boolean),
-          ).size,
-          model_id: route.model.id,
-          model_key: route.model.model_key,
-          model_name: route.model.display_name,
-          route_mode: route.routeMode,
-          route_reason: route.reason,
-          answer_chars: finalBody.length,
-        },
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        error_code: null,
-        error_message: null,
-      })
-      .eq("id", jobId)
-
-    await syncStage11TurnLedger(admin, jobId)
+    await finalizeStage18VisibleAnswer({
+      admin,
+      campaignId,
+      claimed,
+      route,
+      sourceMessageId,
+      context,
+      reaction,
+      messages: [
+        reaction.mode === "npc_interjection" && reaction.npcCharacterId
+          ? {
+              kind: "npc_dialogue",
+              npc_character_id: reaction.npcCharacterId,
+              body: finalBody,
+            }
+          : {
+              kind: "narration",
+              body: finalBody,
+            },
+      ],
+      extraResult: recoveryExtra,
+    })
   } catch (error) {
     await failJob(admin, jobId, error)
     try {
@@ -3706,6 +3665,20 @@ export async function runGameChatTurn(
           terminalJob?.status === "failed" ||
           terminalJob?.status === "cancelled"
         ) {
+          const { data: postTurnCommit, error: postTurnError } = await admin
+            .from("ai_gm_post_turn_commits")
+            .select("state")
+            .eq("parent_job_id", claimed.id)
+            .maybeSingle()
+          if (postTurnError) throw new Error(postTurnError.message)
+
+          if (
+            postTurnCommit &&
+            postTurnCommit.state !== "completed"
+          ) {
+            return
+          }
+
           const { data: nextJobId, error: nextError } = await admin.rpc(
             "next_ai_gm_scene_job_v1",
             { p_completed_job_id: claimed.id },
