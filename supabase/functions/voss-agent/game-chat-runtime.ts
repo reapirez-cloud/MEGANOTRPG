@@ -14,18 +14,9 @@ import {
   resolveCampaignGmModel,
   type RouterModel,
 } from "./model-router.ts"
-import {
-  executeVossManagerTool,
-  VOSS_MANAGER_TOOLS,
-} from "./manager-tools.ts"
-import {
-  executeVossQuestTool,
-  VOSS_QUEST_TOOLS,
-} from "./quest-tools.ts"
-import {
-  executeVossMemoryTool,
-  VOSS_MEMORY_WRITE_TOOLS,
-} from "./memory-tools.ts"
+import { VOSS_MANAGER_TOOLS } from "./manager-tools.ts"
+import { VOSS_QUEST_TOOLS } from "./quest-tools.ts"
+import { VOSS_MEMORY_WRITE_TOOLS } from "./memory-tools.ts"
 import {
   executeRandomDecision,
   RESOLVE_RANDOM_DECISION_TOOL,
