@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
 import CampaignMediaFrame from "../components/common/CampaignMediaFrame"
@@ -6,6 +6,7 @@ import type { SnakeAction, SnakeActionInput } from "../snake-engine"
 import { LocationNavigator } from "./LocationNavigator"
 import { SnakeTrigger } from "./SnakeProvider"
 import { pushAppHash } from "./navigationGestures"
+import { supabase } from "../lib/supabase"
 
 import { classReference, type ClassReferenceEntry, type ClassReferenceSubclass } from "../data/classReference"
 import { warlockInvocationsReference } from "../data/classes/warlockInvocationsReference"
@@ -1004,9 +1005,11 @@ function ClassCatalogPanels({
 function CatalogRows({
   rows,
   query,
+  onOpen,
 }: {
   rows: Array<{ id: string; title: string; meta: string }>
   query: string
+  onOpen?: (id: string) => void
 }) {
   const normalized = query.trim().toLocaleLowerCase("ru")
   const visible = useMemo(
@@ -1018,7 +1021,20 @@ function CatalogRows({
 
   return (
     <div className="u1-catalog-list">
-      {visible.map((row) => (
+      {visible.map((row) => onOpen ? (
+        <button
+          type="button"
+          className="u1-catalog-row u1-catalog-row--button"
+          key={row.id}
+          onClick={() => onOpen(row.id)}
+        >
+          <span>
+            <strong>{row.title}</strong>
+            <small>{row.meta}</small>
+          </span>
+          <em aria-hidden="true">›</em>
+        </button>
+      ) : (
         <article className="u1-catalog-row" key={row.id}>
           <strong>{row.title}</strong>
           <small>{row.meta}</small>
@@ -1676,6 +1692,293 @@ function SubclassDetailScreen({
   )
 }
 
+
+type KnowledgeDetailState = {
+  loading: boolean
+  error: string
+  eyebrow: string
+  title: string
+  subtitle: string
+  meta: Array<{ label: string; value: string }>
+  blocks: Array<{ label: string; lines: string[] }>
+}
+
+function knowledgeRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+}
+
+function knowledgeLines(value: unknown) {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    const record = knowledgeRecord(item)
+    const name = typeof record.name === "string" ? record.name.trim() : ""
+    const desc = typeof record.desc === "string" ? record.desc.trim() : ""
+    if (!name && !desc) return []
+    return [name && desc ? `${name}: ${desc}` : name || desc]
+  })
+}
+
+function compactObject(value: unknown, labels: Record<string, string> = {}) {
+  const record = knowledgeRecord(value)
+  return Object.entries(record)
+    .filter(([, item]) =>
+      typeof item === "string" ||
+      typeof item === "number" ||
+      typeof item === "boolean"
+    )
+    .map(([key, item]) => `${labels[key] || key}: ${String(item)}`)
+    .join(" · ")
+}
+
+function KnowledgeCatalogDetailScreen({
+  section,
+  id,
+}: {
+  section: "spells" | "invocations" | "bestiary"
+  id: string
+}) {
+  const [state, setState] = useState<KnowledgeDetailState>({
+    loading: true,
+    error: "",
+    eyebrow: "",
+    title: "",
+    subtitle: "",
+    meta: [],
+    blocks: [],
+  })
+
+  useEffect(() => {
+    let cancelled = false
+
+    void (async () => {
+      setState((current) => ({ ...current, loading: true, error: "" }))
+
+      try {
+        if (section === "spells") {
+          const result = await supabase
+            .from("spell_catalog")
+            .select("id,name_ru,name_en,spell_level,school,casting_time,spell_range,area,duration,components,material,concentration,ritual,check_type,damage,effect_summary,upcast,notes,rules_text,source")
+            .eq("id", id)
+            .maybeSingle()
+          if (result.error) throw result.error
+          if (!result.data) throw new Error("Заклинание не найдено.")
+
+          const row = result.data
+          const title = row.name_ru || row.name_en || "Заклинание"
+          const rule = row.rules_text || row.effect_summary || ""
+          const blocks = [
+            ...(rule ? [{ label: "Механика", lines: [rule] }] : []),
+            ...(row.effect_summary && row.effect_summary !== rule
+              ? [{ label: "Коротко", lines: [row.effect_summary] }]
+              : []),
+            ...(row.upcast ? [{ label: "На больших ячейках", lines: [row.upcast] }] : []),
+            ...(row.material ? [{ label: "Материал", lines: [row.material] }] : []),
+            ...(row.notes ? [{ label: "Нюансы", lines: [row.notes] }] : []),
+          ]
+
+          if (!cancelled) {
+            setState({
+              loading: false,
+              error: "",
+              eyebrow: row.spell_level === 0 ? "Заговор" : `Заклинание · ${row.spell_level} уровень`,
+              title,
+              subtitle: [row.name_en !== title ? row.name_en : "", row.school, row.source]
+                .filter(Boolean)
+                .join(" · "),
+              meta: [
+                { label: "Наложение", value: row.casting_time || "—" },
+                { label: "Дистанция", value: row.spell_range || "—" },
+                { label: "Область", value: row.area || "—" },
+                { label: "Длительность", value: row.duration || "—" },
+                { label: "Компоненты", value: row.components?.join(", ") || "—" },
+                { label: "Концентрация", value: row.concentration ? "Да" : "Нет" },
+                { label: "Ритуал", value: row.ritual ? "Да" : "Нет" },
+                ...(row.check_type ? [{ label: "Проверка", value: row.check_type }] : []),
+                ...(row.damage ? [{ label: "Урон / лечение", value: row.damage }] : []),
+              ],
+              blocks,
+            })
+          }
+          return
+        }
+
+        if (section === "invocations") {
+          const definition = await supabase
+            .from("reference_definitions")
+            .select("id,current_revision,slug,status")
+            .eq("id", id)
+            .eq("kind", "feature")
+            .eq("scope", "system")
+            .maybeSingle()
+          if (definition.error) throw definition.error
+          if (!definition.data || definition.data.status !== "active") {
+            throw new Error("Инвокация не найдена.")
+          }
+
+          const revision = await supabase
+            .from("reference_definition_revisions")
+            .select("name,summary,rules_text,data")
+            .eq("definition_id", id)
+            .eq("revision", definition.data.current_revision)
+            .maybeSingle()
+          if (revision.error) throw revision.error
+          if (!revision.data) throw new Error("Текущая редакция инвокации не найдена.")
+
+          const data = knowledgeRecord(revision.data.data)
+          if (
+            data.feature_kind !== "eldritch_invocation" ||
+            data.class_key !== "warlock"
+          ) {
+            throw new Error("Запись не является инвокацией колдуна.")
+          }
+          const required = Array.isArray(data.required_invocations)
+            ? data.required_invocations.filter((item): item is string => typeof item === "string")
+            : []
+          const level =
+            typeof data.minimum_warlock_level === "number"
+              ? data.minimum_warlock_level
+              : 1
+          const nameEn = typeof data.name_en === "string" ? data.name_en : ""
+          const rule = revision.data.rules_text || revision.data.summary || ""
+
+          if (!cancelled) {
+            setState({
+              loading: false,
+              error: "",
+              eyebrow: "Таинственное воззвание",
+              title: revision.data.name || "Инвокация",
+              subtitle: [`${level} уровень колдуна`, nameEn].filter(Boolean).join(" · "),
+              meta: [
+                { label: "Минимальный уровень", value: String(level) },
+                { label: "Можно повторять", value: data.repeatable === true ? "Да" : "Нет" },
+              ],
+              blocks: [
+                ...(rule ? [{ label: "Механика", lines: [rule] }] : []),
+                ...(required.length
+                  ? [{ label: "Требования", lines: required.map((item) => `Требуется: ${item}`) }]
+                  : []),
+              ],
+            })
+          }
+          return
+        }
+
+        const result = await supabase
+          .from("bestiary_catalog")
+          .select("id,name_en,size,creature_type,subtype,alignment,armor_class,hit_points,hit_dice,challenge_rating,xp,proficiency_bonus,abilities,speed,senses,languages,damage_vulnerabilities,damage_resistances,damage_immunities,condition_immunities,proficiencies,special_abilities,actions,reactions,legendary_actions,mechanics,source_label")
+          .eq("id", id)
+          .eq("rules_year", 2014)
+          .maybeSingle()
+        if (result.error) throw result.error
+        if (!result.data) throw new Error("Существо не найдено.")
+
+        const row = result.data
+        const abilityLabels: Record<string, string> = {
+          strength: "СИЛ",
+          dexterity: "ЛОВ",
+          constitution: "ТЕЛ",
+          intelligence: "ИНТ",
+          wisdom: "МДР",
+          charisma: "ХАР",
+        }
+        const mechanics = knowledgeLines(row.mechanics)
+        const special = knowledgeLines(row.special_abilities)
+        const actions = knowledgeLines(row.actions)
+        const reactions = knowledgeLines(row.reactions)
+        const legendary = knowledgeLines(row.legendary_actions)
+
+        if (!cancelled) {
+          setState({
+            loading: false,
+            error: "",
+            eyebrow: "Бестиарий · перевод отсутствует",
+            title: row.name_en || "Creature",
+            subtitle: [row.size, row.creature_type, row.subtype, row.alignment]
+              .filter(Boolean)
+              .join(" · "),
+            meta: [
+              { label: "КД", value: String(row.armor_class ?? "—") },
+              { label: "Хиты", value: `${row.hit_points ?? "—"}${row.hit_dice ? ` (${row.hit_dice})` : ""}` },
+              { label: "CR", value: String(row.challenge_rating ?? "—") },
+              { label: "XP", value: String(row.xp ?? "—") },
+              { label: "Бонус мастерства", value: row.proficiency_bonus == null ? "—" : `+${row.proficiency_bonus}` },
+              { label: "Характеристики", value: compactObject(row.abilities, abilityLabels) || "—" },
+              { label: "Скорость", value: compactObject(row.speed) || "—" },
+              { label: "Чувства", value: compactObject(row.senses) || "—" },
+              { label: "Языки", value: row.languages || "—" },
+            ],
+            blocks: [
+              ...(special.length ? [{ label: "Особенности", lines: special }] : []),
+              ...(actions.length ? [{ label: "Действия", lines: actions }] : []),
+              ...(reactions.length ? [{ label: "Реакции", lines: reactions }] : []),
+              ...(legendary.length ? [{ label: "Легендарные действия", lines: legendary }] : []),
+              ...(!special.length && !actions.length && mechanics.length
+                ? [{ label: "Механика", lines: mechanics }]
+                : []),
+            ],
+          })
+        }
+      } catch (reason) {
+        if (!cancelled) {
+          setState((current) => ({
+            ...current,
+            loading: false,
+            error: reason instanceof Error ? reason.message : "Карточка не загрузилась.",
+          }))
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [id, section])
+
+  return (
+    <main className="u1-section-page u1-knowledge-detail">
+      <SectionHeader
+        title={state.title || "Справочник"}
+        backTo={`home/knowledge-base/${section}`}
+      />
+
+      {state.loading ? <EmptyState>Загрузка карточки…</EmptyState> : null}
+      {state.error ? <EmptyState>{state.error}</EmptyState> : null}
+
+      {!state.loading && !state.error ? (
+        <>
+          <header className="u1-knowledge-detail__hero">
+            <span>{state.eyebrow}</span>
+            <h2>{state.title}</h2>
+            {state.subtitle ? <p>{state.subtitle}</p> : null}
+          </header>
+
+          {state.meta.length ? (
+            <section className="u1-knowledge-detail__meta">
+              {state.meta.map((item) => (
+                <div key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </div>
+              ))}
+            </section>
+          ) : null}
+
+          <div className="u1-knowledge-detail__blocks">
+            {state.blocks.map((block) => (
+              <section key={block.label}>
+                <span>{block.label}</span>
+                {block.lines.map((line, index) => <p key={index}>{line}</p>)}
+              </section>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </main>
+  )
+}
+
 export function KnowledgeBaseScreen({ subsection, path = [] }: { subsection?: string; path?: string[] }) {
   const catalog = useUiV1KnowledgeCatalog(subsection)
   const rules = useRuleTemplates(subsection === "classes" ? catalog.campaignId : "")
@@ -1743,16 +2046,24 @@ export function KnowledgeBaseScreen({ subsection, path = [] }: { subsection?: st
               : undefined,
           }
         })
-      : subsection === "invocations"
-        ? warlockInvocationsReference.map((entry, index) => ({
-            id: `${entry.level}:${entry.name}:${index}`,
-            title: entry.name.replace(/^Воззвание:\s*/, ""),
-            meta: `${entry.level} уровень`,
-          }))
-        : null
+      : null
 
   if (registered.state === "placeholder") {
     return <FutureConnection title={registered.title} backTo="home/knowledge-base" />
+  }
+
+  if (
+    (subsection === "spells" ||
+      subsection === "invocations" ||
+      subsection === "bestiary") &&
+    path[0]
+  ) {
+    return (
+      <KnowledgeCatalogDetailScreen
+        section={subsection}
+        id={path[0]}
+      />
+    )
   }
 
   if (subsection === "classes" && path.length) {
@@ -1869,7 +2180,13 @@ export function KnowledgeBaseScreen({ subsection, path = [] }: { subsection?: st
       ) : catalog.error ? (
         <EmptyState>Каталог временно недоступен.</EmptyState>
       ) : (
-        <CatalogRows rows={catalog.rows} query={query} />
+        <CatalogRows
+          rows={catalog.rows}
+          query={query}
+          onOpen={(id) =>
+            navigate(`home/knowledge-base/${subsection}/${id}`)
+          }
+        />
       )}
     </main>
   )
