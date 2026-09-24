@@ -1272,7 +1272,7 @@ Rollback-only smoke certification changed an existing campaign to AI-world only 
 
 ## Stage 22 — Player director preferences
 
-**Status: PLANNED**
+**Status: IMPLEMENTED — 2026-09-24**
 
 Player preferences answer:
 
@@ -1322,6 +1322,36 @@ For a shared scene:
 
 For split parties:
 - unrelated player's preferences do not steer another party's scene.
+
+### Implementation closure — 2026-09-24
+
+Stage 22 now has a versioned per-player director-preference layer for AI-world campaigns.
+
+Implemented:
+- current per-player preferences plus immutable semantic version history;
+- ten bounded 0..5 dimensions: combat, exploration, investigation, social play, romance, daily life, horror, politics/intrigue, economy/property and pacing;
+- bounded free text up to 1200 characters, projected to the GM at a smaller prompt budget;
+- each authenticated player can read/write only their own preference row; preference history is read-only to clients;
+- preferences are AI-world-only and do not require campaign-manager authority;
+- primary GM receives preferences only for player users whose PCs are physically present with the source PC;
+- split-party players in other locations are excluded from the preference projection;
+- co-op aggregation is equal-weight across configured participants and includes mean/min/max/spread per dimension so disagreement is visible instead of silently selecting a winner;
+- the primary-GM prompt explicitly treats preferences as future opportunity/pacing guidance only;
+- romance preference cannot create attraction, consent or social success; NPC fingerprint, hard red lines and relationships remain authoritative;
+- low combat affects only future flexible encounter selection and cannot erase an already established fight;
+- free-text wishes such as wanting a house/shop can cause plausible opportunities to appear, but do not create property, money or successful transactions;
+- junior materializer, mechanic worker, post-turn worker and background simulation do not receive Stage 22 preferences;
+- GM job telemetry records participating/configured counts, merged dimensions and the scene preference version vector;
+- the AI tools drawer exposes sliders and bounded free text to every participating player, independently of GM authority.
+
+Rollback-only smoke certification used two real campaign members with deliberately conflicting preferences and verified:
+- semantic updates created sequential immutable versions;
+- equal-weight combat merge produced the expected mean plus min/max;
+- romance disagreement retained its full spread instead of collapsing to one player's preference;
+- preference writes did not change campaign events;
+- preference writes did not create or mutate NPC identity fingerprint versions;
+- the service projection stayed bounded;
+- all temporary AI-world slot binding and preference data rolled back.
 
 **Done when:** preferences shape opportunities and pacing without becoming cheat codes.
 
