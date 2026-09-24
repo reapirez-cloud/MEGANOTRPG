@@ -602,15 +602,14 @@ begin
   );
 
   if v_resolver_key is not null then
-    select c.resolver_receipt_id, r.matched_outcome
+    select r.id, r.matched_outcome
       into v_resolver_receipt_id, v_resolver_matched
-    from private.ai_random_decision_commits c
-    join public.ai_world_random_receipts r on r.id=c.resolver_receipt_id
-    where c.campaign_id=v_job.campaign_id
-      and c.decision_key=v_resolver_key
-      and c.run_key=p_job_id::text
-      and c.caller_surface='primary_gm'
-      and c.resolver_receipt_id is not null;
+    from public.ai_world_random_receipts r
+    where r.campaign_id=v_job.campaign_id
+      and r.decision_key=v_resolver_key
+      and r.run_key=p_job_id::text
+      and r.decision_kind='narrative.branch'
+      and coalesce(r.audit->>'caller_surface','')='primary_gm';
 
     if v_resolver_receipt_id is null then
       raise exception 'stage17_resolver_proof_not_found';
