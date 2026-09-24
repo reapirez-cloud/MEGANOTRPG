@@ -219,7 +219,7 @@ test("UI 1.0 has one global AgentShell under one AI and Snake provider stack", (
 
   assert.match(main, /<AIProvider>/)
   assert.match(main, /<SnakeProvider>/)
-  assert.equal((app.match(/<AgentShell\s*\/>/g) || []).length, 1)
+  assert.equal((app.match(/<AgentShell\b/g) || []).length, 1)
 })
 
 test("Snake touch interaction requires a long press and suppresses the follow-up click", () => {
