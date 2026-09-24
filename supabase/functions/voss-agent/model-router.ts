@@ -548,8 +548,6 @@ export async function resolveCampaignJuniorModel(
     frozenModelKey?: string | null
   },
 ): Promise<VossRouteDecision> {
-  const allowedKeys = ["deepseek-v4.1-flash", "mimo-v2.5-pro"]
-
   const [{ data: setting, error: settingError }, { data: rows, error: modelError }] =
     await Promise.all([
       admin
@@ -567,8 +565,7 @@ export async function resolveCampaignJuniorModel(
         .eq("model_kind", "agent")
         .eq("access_scope", "campaign")
         .eq("supports_tools", true)
-        .eq("supports_json", true)
-        .in("model_key", allowedKeys),
+        .eq("supports_json", true),
     ])
 
   if (settingError) throw new Error(settingError.message)
