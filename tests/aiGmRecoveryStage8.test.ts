@@ -11,6 +11,9 @@ const migration = read(
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
 const context = read("supabase/functions/voss-agent/game-chat-context.ts")
 const roadmap = read("docs/AI_GM_ROADMAP.md")
+const stage18Migration = read(
+  "supabase/migrations/20260924111500_ai_world_evolution_stage18_post_turn_commit_v2.sql",
+)
 
 test("Stage 8 uses canonical owner recovery boundaries", () => {
   assert.match(migration, /grant_character_short_rest\(v_target_id\)/)
@@ -94,7 +97,8 @@ test("Stage 8 preserves Stage 7 multi-message output-count contract", () => {
   const end = runtime.indexOf("export async function runGameChatTurn", start)
   assert.ok(start >= 0 && end > start)
   const helper = runtime.slice(start, end)
-  assert.match(helper, /completed_outputs: 1/)
+  assert.match(helper, /finalizeStage18VisibleAnswer/)
+  assert.match(stage18Migration, /completed_outputs=1/)
   assert.doesNotMatch(helper, /completed_outputs: messageIds\.length/)
 })
 
