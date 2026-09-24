@@ -13,8 +13,10 @@ import {
 } from "./chatAudience"
 import { chatRoomPresentationState } from "./chatRoomPresentation"
 import {
+  AI_GM_TURN_STATUS_EVENT,
   CHAT_ACTION_REQUEST_EVENT,
   CHAT_MESSAGE_SENT_EVENT,
+  type AiGmTurnStatusDetail,
   type ChatActionLauncherMode,
   type ChatActionRequestDetail,
   type ChatRoomShellModel,
@@ -231,6 +233,8 @@ export default function ChatComposer({
   const [turnLoading, setTurnLoading] = useState(false)
   const [dialogueRecipients, setDialogueRecipients] = useState<PcDialogueRecipient[]>([])
   const [recipientCharacterIds, setRecipientCharacterIds] = useState<string[]>([])
+  const [aiGmTurnBlocked, setAiGmTurnBlocked] = useState(false)
+  const [aiGmTurnLabel, setAiGmTurnLabel] = useState("")
 
   const speakers = useChatSpeakerOptions({
     campaignId: model.viewer.campaignId,
@@ -243,7 +247,13 @@ export default function ChatComposer({
 
   const presentation = chatRoomPresentationState(model)
   const playerHasCharacter = presentation.identityKind === "character"
-  const canCompose = presentation.canCompose
+  const aiPlayerGateApplies =
+    model.viewer.aiGameMasterEnabled === true &&
+    model.viewer.role === "player" &&
+    model.roomType !== "flood"
+  const canCompose =
+    presentation.canCompose &&
+    !(aiPlayerGateApplies && aiGmTurnBlocked)
 
   const selectedCharacterId = model.canManage
     ? speakers.selected.kind === "character"
@@ -285,6 +295,26 @@ export default function ChatComposer({
   useEffect(() => {
     resizeTextarea()
   }, [text])
+
+  useEffect(() => {
+    if (!aiPlayerGateApplies) {
+      setAiGmTurnBlocked(false)
+      setAiGmTurnLabel("")
+      return
+    }
+
+    const onStatus = (event: Event) => {
+      const detail = (event as CustomEvent<AiGmTurnStatusDetail>).detail
+      if (!detail || detail.roomId !== model.roomId) return
+      setAiGmTurnBlocked(detail.active)
+      setAiGmTurnLabel(detail.active ? detail.label : "")
+    }
+
+    window.addEventListener(AI_GM_TURN_STATUS_EVENT, onStatus)
+    return () => {
+      window.removeEventListener(AI_GM_TURN_STATUS_EVENT, onStatus)
+    }
+  }, [aiPlayerGateApplies, model.roomId])
 
   useEffect(() => {
     if (!model.canManage || !model.canWrite) setSpeakerOpen(false)
@@ -941,9 +971,11 @@ export default function ChatComposer({
               placeholder={
                 model.readOnly
                   ? "Чат закрыт"
-                  : queuePlayerTurn
-                    ? "Опиши ход или реплику…"
-                    : canCompose
+                  : aiPlayerGateApplies && aiGmTurnBlocked
+                    ? aiGmTurnLabel || "ИИ-ГМ завершает ход…"
+                    : queuePlayerTurn
+                      ? "Опиши ход или реплику…"
+                      : canCompose
                       ? "Сообщение…"
                       : playerHasCharacter
                         ? "Нет права писать в этот чат"
