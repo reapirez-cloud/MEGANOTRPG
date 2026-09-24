@@ -541,6 +541,87 @@ export async function resolveCampaignGmModel(
   }
 }
 
+export async function resolveCampaignJuniorModel(
+  admin: SupabaseClient,
+  input: {
+    campaignId: string
+    frozenModelKey?: string | null
+  },
+): Promise<VossRouteDecision> {
+  const allowedKeys = ["deepseek-v4.1-flash", "mimo-v2.5-pro"]
+
+  const [{ data: setting, error: settingError }, { data: rows, error: modelError }] =
+    await Promise.all([
+      admin
+        .from("ai_agent_settings")
+        .select("selected_model_id")
+        .eq("campaign_id", input.campaignId)
+        .eq("agent_key", "junior")
+        .maybeSingle(),
+      admin
+        .from("ai_models")
+        .select(
+          "id,provider_key,model_key,display_name,enabled,is_base,gm_selectable,user_selectable,supports_tools,supports_json,supports_streaming,supports_vision,model_kind,access_scope,context_window,cost_tier,reasoning_tier,latency_tier",
+        )
+        .eq("enabled", true)
+        .eq("model_kind", "agent")
+        .eq("access_scope", "campaign")
+        .eq("supports_tools", true)
+        .eq("supports_json", true)
+        .in("model_key", allowedKeys),
+    ])
+
+  if (settingError) throw new Error(settingError.message)
+  if (modelError) throw new Error(modelError.message)
+
+  const models = (rows || []) as RouterModel[]
+  const frozenKey =
+    typeof input.frozenModelKey === "string" && input.frozenModelKey.trim()
+      ? input.frozenModelKey.trim()
+      : null
+
+  if (frozenKey) {
+    const frozen = models.find((model) => model.model_key === frozenKey) || null
+    if (!frozen) {
+      throw new Error("Frozen junior worker model is unavailable")
+    }
+    return {
+      taskKey: "general",
+      model: frozen,
+      routeMode: "fixed",
+      reason: "Junior worker uses the model frozen on this durable job/run.",
+      degraded: false,
+    }
+  }
+
+  const selectedModelId =
+    typeof setting?.selected_model_id === "string"
+      ? setting.selected_model_id
+      : null
+  const selected =
+    models.find((model) => model.id === selectedModelId) || null
+
+  const fallback =
+    models.find((model) => model.model_key === "deepseek-v4.1-flash") ||
+    models[0] ||
+    null
+
+  const model = selected || fallback
+  if (!model) {
+    throw new Error("No active junior AI model configured")
+  }
+
+  return {
+    taskKey: "general",
+    model,
+    routeMode: selected ? "primary" : "fallback",
+    reason: selected
+      ? "Junior AI runtime uses the campaign model selected for agent_key=junior."
+      : "Junior AI selection is missing or unavailable; DeepSeek V4.1 Flash fallback is used.",
+    degraded: false,
+  }
+}
+
 export async function recordVossRouteRun(
   admin: SupabaseClient,
   input: {
