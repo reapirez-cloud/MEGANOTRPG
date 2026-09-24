@@ -78,7 +78,7 @@ test("Stage 12 direct PC dialogue is explicit, location-validated and persisted"
   assert.match(migration, /recipient_character_ids uuid\[\]/)
   assert.match(migration, /direct_pc_recipient_not_present/)
   assert.match(dialogueMigration, /save_player_turn_draft_v2/)
-  assert.match(turnQueue, /save_player_turn_draft_v2/)
+  assert.match(turnQueue, /save_player_turn_draft_v3/)
   assert.match(turnQueue, /p_recipient_character_ids: recipientCharacterIds/)
   assert.match(composer, /aria-label="Адресаты реплики"/)
   assert.match(composer, /recipientCharacterIds\.includes/)
