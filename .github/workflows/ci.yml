@@ -38,7 +38,7 @@ jobs:
           deno-version: v2.x
 
       - name: Check Supabase Edge functions
-        run: deno check supabase/functions/voss-agent/index.ts supabase/functions/gm-roll-resume/index.ts
+        run: deno check --node-modules-dir=auto supabase/functions/voss-agent/index.ts supabase/functions/gm-roll-resume/index.ts
 
       - name: Build
         run: npm run build
