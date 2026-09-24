@@ -504,7 +504,9 @@ test("Workspace is a real role-aware identity surface instead of a dashboard pla
 
 test("global AgentMark replaces the inactive VI profile placeholder", () => {
   assert.doesNotMatch(app, /PlayerProfileMark/)
-  assert.match(app, /<AgentShell \\/>/)\n  assert.match(workspace, /u1-workspace__ai-button/)\n  assert.match(app, /onOpenAiGm=\\{\\(\\) => go\\("ai-gm"\\)\\}/)
+  assert.match(app, /<AgentShell \/>/)
+  assert.match(workspace, /u1-workspace__ai-button/)
+  assert.match(app, /onOpenAiGm=\{\(\) => go\("ai-gm"\)\}/)
   assert.match(agentShell, /className="u1-agent-orb"/)
   assert.match(agentShell, /\`Свернуть \$\{assistantName\}\`/)
   assert.match(agentShell, /\`\$\{assistantName\} работает в фоне\`/)
