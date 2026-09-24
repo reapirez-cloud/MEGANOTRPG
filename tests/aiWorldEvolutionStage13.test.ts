@@ -112,7 +112,7 @@ test("primary GM context consumes temporal background state", () => {
   assert.match(context, /read_ai_background_temporal_context_v1/)
   assert.match(context, /applyLocationTemporalOverlay/)
   assert.match(context, /effectiveNpcTemporalState/)
-  assert.match(context, /background_temporal_context: context\.background/)
+  assert.match(context, /background_temporal_context: compactBackground\(context\.background\)/)
   assert.match(runtime, /background_temporal_context — серверный временной слой/)
   assert.match(runtime, /не пытайся самостоятельно синхронизировать базу/)
 })
