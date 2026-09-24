@@ -9,7 +9,6 @@ import { pushAppHash } from "./navigationGestures"
 import { supabase } from "../lib/supabase"
 
 import { classReference, type ClassReferenceEntry, type ClassReferenceSubclass } from "../data/classReference"
-import { warlockInvocationsReference } from "../data/classes/warlockInvocationsReference"
 import { useRuleTemplates } from "../hooks/useRuleTemplates"
 import {
   knowledgeBaseSections,
