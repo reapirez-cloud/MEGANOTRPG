@@ -40,6 +40,7 @@ export type Stage2GameChatContext = {
     summaries: JsonRecord[]
   }
   background: JsonRecord
+  temporalSync: JsonRecord
   recentMessages: JsonRecord[]
   mentionedPlayerCharacters: Array<{ id: string; name: string }>
 }
@@ -387,19 +388,68 @@ export async function buildGameChatContextV2({
     characters.find((item) => item.id === sourceCharacterId) || null
   if (!sourceCharacter) throw new Error("ai_gm_stage2_source_character_not_found")
 
-  const worldStates = rows(worldStatesResult.data)
-  const worldByCharacter = new Map(
+  let worldStates = rows(worldStatesResult.data)
+  let worldByCharacter = new Map(
     worldStates.map((item) => [String(item.character_id), item]),
   )
-  const sourceWorld = worldByCharacter.get(sourceCharacterId) || {}
-  const sourceLocationId =
+  let sourceWorld = worldByCharacter.get(sourceCharacterId) || {}
+  let sourceLocationId =
     nullableString(jobInput.source_location_id_snapshot) ||
     nullableString(sourceWorld.location_id) ||
     nullableString(room.location_id)
-  const currentDay =
+  let currentDay =
     nullableNumber(sourceWorld.campaign_day) ?? nullableNumber(room.campaign_day)
-  const currentPeriod =
+  let currentPeriod =
     nullableString(sourceWorld.day_period) || nullableString(room.day_period)
+
+  const syncResult = await admin.rpc("sync_colocated_player_time_v1", {
+    p_campaign_id: campaignId,
+    p_source_character_id: sourceCharacterId,
+  })
+  if (syncResult.error) throw new Error(syncResult.error.message)
+
+  const temporalSync = record(syncResult.data)
+  if (Number(temporalSync.synced_count || 0) > 0) {
+    const refreshedWorldStates = await admin
+      .from("character_world_state")
+      .select("character_id,location_id,campaign_day,day_period,updated_at")
+      .eq("campaign_id", campaignId)
+
+    if (refreshedWorldStates.error) {
+      throw new Error(refreshedWorldStates.error.message)
+    }
+
+    worldStates = rows(refreshedWorldStates.data)
+    worldByCharacter = new Map(
+      worldStates.map((item) => [String(item.character_id), item]),
+    )
+    sourceWorld = worldByCharacter.get(sourceCharacterId) || {}
+    sourceLocationId =
+      nullableString(sourceWorld.location_id) ||
+      nullableString(jobInput.source_location_id_snapshot) ||
+      nullableString(room.location_id)
+    currentDay =
+      nullableNumber(sourceWorld.campaign_day) ?? nullableNumber(room.campaign_day)
+    currentPeriod =
+      nullableString(sourceWorld.day_period) || nullableString(room.day_period)
+  }
+
+  let recentCatchups: JsonRecord[] = []
+  if (sourceLocationId && currentDay !== null) {
+    const catchupsResult = await admin
+      .from("ai_player_time_catchup_receipts")
+      .select("id,location_id,character_id,source_character_id,from_day,from_period,to_day,to_period,catchup_kind,meaningful_actions,narrative_semantics,created_at")
+      .eq("campaign_id", campaignId)
+      .eq("location_id", sourceLocationId)
+      .gte("to_day", Math.max(1, currentDay - 1))
+      .order("created_at", { ascending: false })
+      .limit(8)
+
+    if (catchupsResult.error) throw new Error(catchupsResult.error.message)
+    recentCatchups = rows(catchupsResult.data)
+  }
+
+  temporalSync.recent_catchups = recentCatchups
 
   const locationIds = unique(
     worldStates.map((item) => nullableString(item.location_id))
@@ -960,6 +1010,7 @@ export async function buildGameChatContextV2({
       summaries: memorySummaries,
     },
     background,
+    temporalSync,
     recentMessages,
     mentionedPlayerCharacters,
   }
@@ -998,6 +1049,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     active_quest_context: context.activeQuestContext,
     relevant_long_term_memory: context.memory,
     background_temporal_context: context.background,
+    cooperative_time_sync: context.temporalSync,
     recent_chat_messages_all_authors: context.recentMessages,
     explicit_player_name_mentions: context.mentionedPlayerCharacters,
   })
@@ -1145,6 +1197,7 @@ export function npcDialogueContextForPrompt(
       location_id: context.room.location_id,
     },
     source_location: context.sourceLocation,
+    cooperative_time_sync: context.temporalSync,
     background_temporal_context: {
       scene_day: context.background.scene_day ?? null,
       world_snapshot: context.background.world_snapshot ?? null,
