@@ -793,9 +793,11 @@ async function runWorldMaterializer({
         result = await executeVossQuestTool(
           {
             client: admin,
+            admin,
             campaignId,
             userId: managerUserId,
             authority: "admin",
+            internalService: true,
           },
           name,
           args,
@@ -808,6 +810,7 @@ async function runWorldMaterializer({
             campaignId,
             userId: managerUserId,
             authority: "admin",
+            internalService: true,
           },
           name,
           args,
@@ -868,6 +871,7 @@ async function runWorldMaterializer({
           campaignId,
           userId: managerUserId,
           authority: "admin",
+          internalService: true,
         },
         "move_character_world",
         {
@@ -2333,6 +2337,16 @@ async function failJob(
             : message.slice(0, 500),
         result: {
           ...jsonRecord(current?.result),
+          ...(gateway
+            ? {
+                provider_error: {
+                  code: gateway.code,
+                  status: gateway.status,
+                  provider_status: gateway.providerStatus,
+                  detail: gateway.detail.slice(0, 1200),
+                },
+              }
+            : {}),
           ...(contentRefusal
             ? {
                 stage23_provider_refusal: true,
@@ -4072,6 +4086,7 @@ export async function startGameChatTurnRequest(
   if (
     action !== "game_chat_turn" &&
     action !== "game_chat_replay" &&
+    action !== "game_chat_turn_resume" &&
     action !== "game_chat_post_turn_resume"
   ) {
     return null
@@ -4100,6 +4115,190 @@ export async function startGameChatTurnRequest(
         error: "ai_gm_not_available",
         code: "ai_gm_not_available",
       },
+    }
+  }
+
+  if (action === "game_chat_turn_resume") {
+    const jobId =
+      typeof input.body.jobId === "string" ? input.body.jobId.trim() : ""
+    if (!jobId) {
+      return {
+        status: 400,
+        body: { error: "jobId is required" },
+      }
+    }
+
+    const { data: job, error: jobError } = await input.admin
+      .from("agent_jobs")
+      .select("id,campaign_id,requested_by,status,input,result,updated_at,error_code,error_message")
+      .eq("id", jobId)
+      .eq("campaign_id", input.campaignId)
+      .eq("job_type", "conversation_turn")
+      .maybeSingle()
+
+    if (jobError) {
+      return {
+        status: 500,
+        body: {
+          error: jobError.message,
+          code: "ai_gm_turn_resume_lookup_failed",
+        },
+      }
+    }
+    if (!job || jsonRecord(job.input).surface !== GAME_CHAT_SURFACE) {
+      return {
+        status: 404,
+        body: {
+          error: "ai_gm_turn_not_found",
+          code: "ai_gm_turn_not_found",
+        },
+      }
+    }
+
+    const jobInput = jsonRecord(job.input)
+    const managerUserId =
+      typeof jobInput.manager_user_id === "string"
+        ? jobInput.manager_user_id
+        : ""
+    let canResume =
+      job.requested_by === input.userId ||
+      managerUserId === input.userId
+
+    if (!canResume) {
+      const { data: membership, error: membershipError } = await input.admin
+        .from("campaign_members")
+        .select("role,is_owner")
+        .eq("campaign_id", input.campaignId)
+        .eq("user_id", input.userId)
+        .maybeSingle()
+      if (membershipError) {
+        return {
+          status: 500,
+          body: {
+            error: membershipError.message,
+            code: "ai_gm_turn_resume_authority_failed",
+          },
+        }
+      }
+      canResume = membership?.is_owner === true || membership?.role === "gm"
+    }
+
+    if (!canResume) {
+      return {
+        status: 403,
+        body: {
+          error: "ai_gm_turn_resume_denied",
+          code: "ai_gm_turn_resume_denied",
+        },
+      }
+    }
+
+    if (job.status === "completed") {
+      return {
+        status: 200,
+        body: {
+          accepted: true,
+          jobId,
+          status: "completed",
+          result: jsonRecord(job.result),
+        },
+      }
+    }
+
+    if (job.status === "failed" || job.status === "cancelled") {
+      return {
+        status: 409,
+        body: {
+          accepted: false,
+          jobId,
+          status: job.status,
+          error: job.error_message || "ai_gm_turn_failed",
+          code: job.error_code || "ai_gm_turn_failed",
+          result: jsonRecord(job.result),
+        },
+      }
+    }
+
+    if (job.status === "waiting_for_user") {
+      return {
+        status: 202,
+        body: {
+          accepted: true,
+          jobId,
+          status: "waiting_for_user",
+          resumed: false,
+        },
+      }
+    }
+
+    let runnable = job.status === "queued"
+    if (job.status === "running") {
+      const updatedAt = Date.parse(job.updated_at || "")
+      const stale =
+        Number.isFinite(updatedAt) &&
+        Date.now() - updatedAt >= 8 * 60 * 1000
+
+      if (!stale) {
+        return {
+          status: 202,
+          body: {
+            accepted: true,
+            jobId,
+            status: "running",
+            resumed: false,
+          },
+        }
+      }
+
+      const cutoff = new Date(Date.now() - 8 * 60 * 1000).toISOString()
+      const { data: requeued, error: requeueError } = await input.admin
+        .from("agent_jobs")
+        .update({
+          status: "queued",
+          error_code: null,
+          error_message: null,
+          completed_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", jobId)
+        .eq("status", "running")
+        .lt("updated_at", cutoff)
+        .select("id,status")
+        .maybeSingle()
+
+      if (requeueError) {
+        return {
+          status: 500,
+          body: {
+            error: requeueError.message,
+            code: "ai_gm_turn_requeue_failed",
+          },
+        }
+      }
+      runnable = requeued?.status === "queued"
+    }
+
+    if (!runnable) {
+      return {
+        status: 202,
+        body: {
+          accepted: true,
+          jobId,
+          status: job.status,
+          resumed: false,
+        },
+      }
+    }
+
+    return {
+      status: 202,
+      body: {
+        accepted: true,
+        jobId,
+        status: "queued",
+        resumed: true,
+      },
+      background: runGameChatTurn(input.admin, input.campaignId, jobId),
     }
   }
 
