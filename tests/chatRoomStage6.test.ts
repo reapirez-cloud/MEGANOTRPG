@@ -64,8 +64,10 @@ test("stage 6 tracks mobile visual viewport for the keyboard", async () => {
   assert.match(viewport, /window\.visualViewport/)
   assert.match(viewport, /addEventListener\("resize"/)
   assert.match(viewport, /addEventListener\("scroll"/)
-  assert.match(room, /useChatVisualViewportHeight/)
+  assert.match(room, /useChatVisualViewport/)
   assert.match(room, /--u1-chat-viewport-height/)
+  assert.match(room, /data-keyboard-open=/)
+  assert.doesNotMatch(viewport, /Math\.max\(280,/)
   assert.match(room, /data-chat-room-stage="8"/)
 })
 
