@@ -587,7 +587,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Canon-bound intent adjudication and delegated real player rolls",
     purpose:
       "Let the AI GM request any appropriate D&D-style check from world logic without needing application tool knowledge, while a smaller mechanic worker maps that semantic request onto the real server roll system and freezes difficulty before the die exists.",
-    status: "implemented",
+    status: "certified",
     existingFoundation: [
       "pending_player_roll_requests already pauses the GM turn and uses a real server-side player d20",
       "player roll modifiers are resolved server-side from the character sheet",
