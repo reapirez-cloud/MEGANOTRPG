@@ -96,7 +96,7 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
 
     setRecovering(true)
     try {
-      const retry = await supabase.rpc("retry_ai_gm_post_turn_commit_v1", {
+      const retry = await supabase.rpc("retry_ai_gm_post_turn_commit_v2", {
         p_commit_id: status.commit_id,
       })
       if (retry.error) throw retry.error
