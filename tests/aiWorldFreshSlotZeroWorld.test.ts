@@ -68,7 +68,8 @@ test("AI-world character picker reads a canonical catalog without populating the
 
 test("only the chosen class bundle is lazily materialized into the AI campaign", () => {
   assert.match(lazyRules, /ensure_ai_world_class_bundle_v1/)
-  assert.match(lazyRules, /v_source_subclass\.parent_template_id/)
+  assert.match(lazyRules, /t\.parent_template_id=v_source_class\.id/)
+  assert.match(lazyRules, /v_local_class_id/)
   assert.match(lazyRules, /insert into public\.rule_templates/)
   assert.match(lazyRules, /insert into public\.rule_template_levels/)
   assert.match(lazyRules, /insert into public\.rule_template_spell_links/)
