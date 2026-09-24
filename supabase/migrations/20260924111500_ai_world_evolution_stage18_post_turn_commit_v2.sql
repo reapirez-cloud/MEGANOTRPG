@@ -716,18 +716,20 @@ begin
 
   update public.ai_gm_post_turn_intent_receipts
   set state=case
-        when state='running' and v_next_state='queued' then 'pending'
+        when state in ('running','failed') and v_next_state='queued'
+          then 'pending'
         when state='running' then 'failed'
         else state
       end,
       lease_expires_at=null,
       last_error=case
-        when state='running' then left(coalesce(p_error,'stage18_intent_failed'),500)
+        when state in ('running','failed')
+          then left(coalesce(p_error,'stage18_intent_failed'),500)
         else last_error
       end,
       updated_at=now()
   where commit_id=p_commit_id
-    and state='running';
+    and state in ('running','failed');
 
   update public.ai_gm_post_turn_commits
   set state=v_next_state,
