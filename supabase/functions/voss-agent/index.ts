@@ -1794,13 +1794,14 @@ Deno.serve(async (req: Request) => {
       } else {
         result = await executeVossReadTool(
           {
-            client: authority === "admin" ? admin : userClient,
+            client: userClient,
+            dataClient: authority === "player" ? userClient : admin,
             admin,
             campaignId,
             userId: user.id,
             role: actorRole,
             canManage,
-            isOwner: authority === "admin",
+            isOwner: membership?.is_owner === true || authority === "admin",
           },
           toolName,
           args,
