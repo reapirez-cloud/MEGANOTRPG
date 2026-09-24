@@ -461,7 +461,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Split-party temporal background overlay",
     purpose:
       "Expose only world evolution valid for the source scene's game day and prevent future state from leaking to lagging players.",
-    status: "partial",
+    status: "certified",
     existingFoundation: [
       "character_world_state campaign_day/day_period",
       "chat_rooms campaign_day/day_period",
