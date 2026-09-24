@@ -155,7 +155,7 @@ type GameMasterReaction = {
   npcCharacterId: string | null
   reason: string
   rollRequest: PlayerRollRequest | null
-  deterministicAdjudication: DeterministicAdjudication | null
+  deterministicAdjudication?: DeterministicAdjudication | null
   npcAction: NpcActionRequest | null
   npcRoll: NpcRollRequest | null
   recoveryRequest: RecoveryRequest | null
