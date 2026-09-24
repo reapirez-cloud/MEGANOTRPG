@@ -79,7 +79,7 @@ test("stage 2 keeps the action launcher disabled for a non-manager observer", as
   assert.match(room, /chatRoomPresentationState\(model\)/)
   assert.match(room, /<ChatRoomHeader/)
   assert.match(composer, /const canCompose = presentation\.canCompose/)
-  assert.match(composer, /disabled=\{!canCompose\}/)
+  assert.match(composer, /disabled=\{!canCompose \|\| turnGateLocked\}/)
   assert.match(presentation, /identityKind === "character"/)
   assert.match(presentation, /model\.quickActions\.hasCharacter/)
   assert.match(
