@@ -18,7 +18,7 @@ test("stage 1 mounts a new isolated chat-room route", async () => {
   assert.match(app, /type: "chat-room"; roomId: string/)
   assert.match(app, /path\.startsWith\("chats\/"\)/)
   assert.match(app, /<ChatRoomScreen roomId=\{route\.roomId\}/)
-  assert.match(app, /route\.type !== "chat-room" && <Dock/)
+  assert.match(app, /route\.type !== "chat-room" && route\.type !== "ai-gm"/)
   assert.match(catalog, /import \{ pushAppHash \} from "\.\/navigationGestures"/)
   assert.match(catalog, /pushAppHash\("chats\/" \+ encodeURIComponent\(room\.id\)\)/)
   assert.doesNotMatch(catalog, /window\.location\.hash\s*=/)
