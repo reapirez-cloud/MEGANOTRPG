@@ -557,7 +557,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Scene/background retention and cleanup",
     purpose:
       "Keep long-running AI worlds operationally small without deleting canonical history or promoted identities.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "agent job lifecycle",
       "event/snapshot separation design",
@@ -583,6 +583,51 @@ export const AI_WORLD_EVOLUTION_STAGES = [
   },
   {
     id: 17,
+    key: "logic-bound-player-rolls",
+    title: "Canon-bound intent adjudication and real player rolls",
+    purpose:
+      "Let the AI GM decide from canonical logic whether a player action warrants a check, freeze the difficulty and outcome envelope before the real d20, and prevent rolls from creating impossible world facts.",
+    status: "planned",
+    existingFoundation: [
+      "pending_player_roll_requests already pauses the GM turn and uses a real server-side player d20",
+      "player roll modifiers are resolved server-side from the character sheet",
+      "Stage 11 World Resolver can settle genuinely unresolved world-existence branches before a player check",
+    ],
+    notSatisfiedBy: [
+      "Letting the model choose or change DC after seeing the roll",
+      "Using a player skill roll to decide whether an unestablished hut, dragon, NPC or item exists",
+      "Treating natural 20 as permission to materialize an exact impossible target",
+      "Requesting a roll when canon already makes the outcome deterministic",
+      "A prompt-only instruction without a persisted pre-roll adjudication receipt",
+    ],
+    requiredArtifacts: [
+      "Server-persisted pre-roll intent adjudication receipt created before the player d20",
+      "Receipt contains intent fingerprint, canonical evidence/context fingerprint, possibility mode, check specification, frozen DC/visibility and frozen outcome envelope",
+      "Explicit possibility modes: deterministic_success, deterministic_failure, check and impossible_exact",
+      "World-existence uncertainty is resolved by canon or Stage 11 Resolver before any player skill check; the player d20 never creates world existence",
+      "For impossible_exact, the exact requested result is forbidden even on natural 20; natural 20 may unlock only a precommitted plausible partial-success envelope",
+      "Existing real player-roll request references the adjudication receipt and the resume path consumes its frozen result",
+      "Server rejects changed DC, changed exact-goal permission, changed evidence fingerprint or outcome-envelope mutation after the roll request exists",
+    ],
+    acceptance: [
+      "Searching for a canonically present but hidden hut can request an appropriate Survival/Perception/Investigation check with a precommitted DC",
+      "Searching for an unestablished hut does not create the hut; impossible_exact may allow natural-20 partial success such as finding shelter, traces or a useful lead",
+      "Searching for an unestablished dragon cannot produce a dragon from the skill roll; natural 20 can only return a bounded dragon-like clue or analogue that does not assert the dragon exists",
+      "If canon already proves success or failure, the GM resolves it without a cosmetic roll",
+      "The AI chooses difficulty from current canon and circumstances before the roll and cannot revise it after seeing the result",
+    ],
+    certification: [
+      "Pre-roll DC/outcome immutability test",
+      "Known-target normal-check integration test",
+      "Unestablished-target natural-20 partial-success test",
+      "Anti-canon-creation test for impossible exact goals",
+      "Deterministic no-roll test",
+      "Stage 11 existence-resolution then player-skill-roll separation test",
+      "Real d20 request/resume tamper regression test",
+    ],
+  },
+  {
+    id: 18,
     key: "full-certification",
     title: "Full AI world evolution certification",
     purpose:
@@ -597,12 +642,12 @@ export const AI_WORLD_EVOLUTION_STAGES = [
       "Manually checking one campaign",
     ],
     requiredArtifacts: [
-      "Cross-system certification suite for stages 1-16",
+      "Cross-system certification suite for stages 1-17",
       "AI-world isolation regression coverage",
       "Existing Stage 5/6/8/12 AI GM regression coverage retained",
     ],
     acceptance: [
-      "Resolver, 30% selection, d100 interpretation, actor runtime, promotion, compaction and temporal overlays work as one system",
+      "Resolver, 30% selection, d100 interpretation, actor runtime, promotion, compaction, temporal overlays and canon-bound player-roll adjudication work as one system",
       "Human-GM campaigns remain unchanged",
       "Existing quests/rest/dawn/co-op/45-message maintenance remain green",
     ],
@@ -612,11 +657,12 @@ export const AI_WORLD_EVOLUTION_STAGES = [
       "200+ entity simulation test",
       "Actor promotion/background evolution end-to-end test",
       "Split-party temporal end-to-end test",
+      "Intent adjudication -> real player d20 -> frozen outcome end-to-end test",
     ],
   },
 ] as const satisfies readonly AiWorldEvolutionStage[]
 
-export const AI_WORLD_EVOLUTION_STAGE_COUNT = 17 as const
+export const AI_WORLD_EVOLUTION_STAGE_COUNT = 18 as const
 
 /**
  * Contract sanity validator.
