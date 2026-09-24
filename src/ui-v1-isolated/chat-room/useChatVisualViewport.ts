@@ -15,6 +15,13 @@ type VirtualKeyboardLike = {
   removeEventListener?: (type: "geometrychange", listener: () => void) => void
 }
 
+type TelegramWebAppLike = {
+  viewportHeight?: number
+  viewportStableHeight?: number
+  onEvent?: (event: "viewportChanged", listener: () => void) => void
+  offEvent?: (event: "viewportChanged", listener: () => void) => void
+}
+
 function activeTextControl() {
   const active = document.activeElement
   return active instanceof HTMLTextAreaElement ||
@@ -33,6 +40,11 @@ export function useChatVisualViewport() {
     const virtualKeyboard = (
       navigator as Navigator & { virtualKeyboard?: VirtualKeyboardLike }
     ).virtualKeyboard
+    const telegram = (
+      window as Window & {
+        Telegram?: { WebApp?: TelegramWebAppLike }
+      }
+    ).Telegram?.WebApp
 
     let frame = 0
 
@@ -46,6 +58,11 @@ export function useChatVisualViewport() {
         )
         const viewportBottom = offsetTop + viewportHeight
         const innerBottom = offsetTop + Math.max(1, window.innerHeight || viewportHeight)
+        const telegramHeight = Math.max(0, Number(telegram?.viewportHeight) || 0)
+        const telegramBottom =
+          telegramHeight >= 160
+            ? offsetTop + telegramHeight
+            : Number.POSITIVE_INFINITY
 
         const keyboardRect = virtualKeyboard?.boundingRect
         const keyboardHeight = Math.max(0, Number(keyboardRect?.height) || 0)
@@ -61,7 +78,14 @@ export function useChatVisualViewport() {
         // boundary is highest so the composer never ends up behind the keyboard.
         const visibleBottom = Math.max(
           160,
-          Math.round(Math.min(viewportBottom, innerBottom, keyboardTop)),
+          Math.round(
+            Math.min(
+              viewportBottom,
+              innerBottom,
+              telegramBottom,
+              keyboardTop,
+            ),
+          ),
         )
         const layoutHeight = Math.max(
           document.documentElement.clientHeight,
@@ -87,6 +111,7 @@ export function useChatVisualViewport() {
     viewport?.addEventListener("resize", update)
     viewport?.addEventListener("scroll", update)
     virtualKeyboard?.addEventListener?.("geometrychange", update)
+    telegram?.onEvent?.("viewportChanged", update)
     window.addEventListener("resize", update)
     window.addEventListener("orientationchange", update)
     document.addEventListener("focusin", update)
@@ -97,6 +122,7 @@ export function useChatVisualViewport() {
       viewport?.removeEventListener("resize", update)
       viewport?.removeEventListener("scroll", update)
       virtualKeyboard?.removeEventListener?.("geometrychange", update)
+      telegram?.offEvent?.("viewportChanged", update)
       window.removeEventListener("resize", update)
       window.removeEventListener("orientationchange", update)
       document.removeEventListener("focusin", update)
