@@ -20,10 +20,13 @@ export type AiGmRoomStatus = {
 export async function loadAiGmRoomStatus(roomId: string) {
   // Best-effort watchdog. The DB gate is authoritative; this call only wakes a
   // queued/stale post-turn worker if a prior HTTP dispatch was lost.
-  await supabase
-    .rpc("ensure_ai_gm_post_turn_dispatch_v2", { p_room_id: roomId })
-    .then(() => undefined)
-    .catch(() => undefined)
+  try {
+    await supabase.rpc("ensure_ai_gm_post_turn_dispatch_v2", {
+      p_room_id: roomId,
+    })
+  } catch {
+    // Status read below still works; the server gate remains authoritative.
+  }
 
   const result = await supabase.rpc("get_ai_gm_room_status_v1", {
     p_room_id: roomId,
