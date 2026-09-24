@@ -14,6 +14,14 @@ const guardFix = readFileSync(
   new URL("../supabase/migrations/20260924161049_ai_world_evolution_stage20_identity_guard_fix_v1.sql", import.meta.url),
   "utf8",
 )
+const hardening = readFileSync(
+  new URL("../supabase/migrations/20260924162355_ai_world_evolution_stage20_identity_hardening_v2.sql", import.meta.url),
+  "utf8",
+)
+const invokerFix = readFileSync(
+  new URL("../supabase/migrations/20260924162504_ai_world_evolution_stage20_dossier_invoker_fix_v3.sql", import.meta.url),
+  "utf8",
+)
 const context = readFileSync(
   new URL("../supabase/functions/voss-agent/game-chat-context.ts", import.meta.url),
   "utf8",
@@ -181,4 +189,26 @@ test("GM NPC dossier exposes a dedicated identity surface", () => {
   assert.match(screens, /identityFingerprint\.version/)
   assert.match(styles, /\.u1-npc-identity/)
   assert.match(styles, /\.u1-npc-identity__red-lines/)
+})
+
+
+test("Stage 20 hardening rejects anonymous-sign-in access and uses invoker dossier", () => {
+  assert.match(hardening, /auth\.jwt\(\)->>'is_anonymous'/)
+  assert.match(hardening, /security invoker/i)
+  assert.match(invokerFix, /security invoker/i)
+  assert.match(invokerFix, /permanent_user_required/)
+  assert.match(invokerFix, /from public\.characters c/)
+  assert.match(invokerFix, /from public\.campaign_members cm/)
+})
+
+test("Stage 20 hardening covers new foreign keys with indexes", () => {
+  for (const indexName of [
+    "npc_identity_versions_campaign_idx",
+    "npc_identity_evolution_campaign_idx",
+    "npc_identity_fingerprints_last_major_event_idx",
+    "npc_identity_observations_campaign_idx",
+    "npc_identity_observations_source_event_idx",
+  ]) {
+    assert.match(hardening, new RegExp(indexName))
+  }
 })
