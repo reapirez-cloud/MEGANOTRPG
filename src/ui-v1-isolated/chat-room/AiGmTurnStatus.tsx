@@ -62,6 +62,25 @@ async function wakePostTurnCommit(status: AiGmStatus) {
   })
 }
 
+async function wakeGameTurn(status: AiGmStatus) {
+  if (
+    !status.wake_required ||
+    status.commit_id ||
+    !status.job_id ||
+    !status.campaign_id
+  ) {
+    return
+  }
+
+  await supabase.functions.invoke("voss-agent", {
+    body: {
+      campaignId: status.campaign_id,
+      action: "game_chat_turn_resume",
+      jobId: status.job_id,
+    },
+  })
+}
+
 export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
   const [status, setStatus] = useState<AiGmStatus | null>(null)
   const [recovering, setRecovering] = useState(false)
@@ -83,12 +102,15 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
 
     const wakeKey =
       value?.wake_required && value.commit_id
-        ? value.commit_id + ":" + (value.updated_at || "")
-        : ""
+        ? "commit:" + value.commit_id + ":" + (value.updated_at || "")
+        : value?.wake_required && value.job_id
+          ? "job:" + value.job_id + ":" + (value.updated_at || "")
+          : ""
 
     if (wakeKey && wakeAttemptRef.current !== wakeKey) {
       wakeAttemptRef.current = wakeKey
-      void wakePostTurnCommit(value as AiGmStatus)
+      if (value?.commit_id) void wakePostTurnCommit(value as AiGmStatus)
+      else void wakeGameTurn(value as AiGmStatus)
     }
   }, [roomId])
 
