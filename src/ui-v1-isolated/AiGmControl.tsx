@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { useAI } from "../ai/AIProvider"
 import { openAgent } from "../ai/agentUiBridge"
@@ -24,6 +24,7 @@ type BehaviorChoice = {
   display_name: string
   summary: string
   selected: boolean
+  dimensions?: Record<string, number>
 }
 
 type BehaviorResponse = {
@@ -66,6 +67,25 @@ type DirectorResponse = {
   updated_at: string | null
 }
 
+type RuntimeFeature = {
+  key: string
+  display_name: string
+  summary: string
+  state: "always_on" | "triggered"
+}
+
+type ControlPanelResponse = {
+  campaign_id: string
+  ai_world: boolean
+  can_manage: boolean
+  gm_models: ModelChoice[]
+  junior_models: ModelChoice[]
+  behavior: BehaviorResponse | null
+  director: DirectorResponse | null
+  content: ContentResponse | null
+  features: RuntimeFeature[]
+}
+
 const DIRECTOR_CONTROLS: Array<{
   key: DirectorKey
   label: string
@@ -90,90 +110,52 @@ function modelMeta(model: ModelChoice) {
       ? Math.round(model.context_window / 1_000_000) + "M"
       : Math.round(model.context_window / 1000) + "K"
 
-  const parts = [
+  return [
     context + " контекст",
+    "reasoning " + model.reasoning_tier,
     model.supports_tools ? "tools" : null,
     model.supports_vision ? "vision" : null,
-  ].filter(Boolean)
+  ].filter(Boolean).join(" · ")
+}
 
-  return parts.join(" · ")
+function selectedModel(models: ModelChoice[]) {
+  return models.find((model) => model.selected) || models[0] || null
 }
 
 export default function AiGmControl({ onBack }: { onBack: () => void }) {
-  const { campaignId, canManage, assistantName } = useAI()
-  const [loading, setLoading] = useState(true)
-  const [aiWorld, setAiWorld] = useState(false)
-  const [gmModels, setGmModels] = useState<ModelChoice[]>([])
-  const [juniorModels, setJuniorModels] = useState<ModelChoice[]>([])
-  const [behavior, setBehavior] = useState<BehaviorResponse | null>(null)
-  const [content, setContent] = useState<ContentResponse | null>(null)
-  const [director, setDirector] = useState<DirectorResponse | null>(null)
+  const { campaignId, assistantName } = useAI()
+  const [panel, setPanel] = useState<ControlPanelResponse | null>(null)
+  const [directorDraft, setDirectorDraft] = useState<DirectorResponse | null>(null)
   const [directorDirty, setDirectorDirty] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState("")
   const [notice, setNotice] = useState("")
   const [error, setError] = useState("")
 
-  const load = useCallback(async () => {
-    if (!campaignId) return
-    setLoading(true)
+  const load = useCallback(async (showSpinner = true) => {
+    if (!campaignId) {
+      setError("Кампания ещё не выбрана.")
+      setLoading(false)
+      return
+    }
+
+    if (showSpinner) setLoading(true)
     setError("")
 
-    const behaviorResult = await supabase.rpc(
-      "list_campaign_ai_gm_behavior_profiles_v1",
+    const { data, error: loadError } = await supabase.rpc(
+      "read_ai_gm_control_panel_v1",
       { p_campaign_id: campaignId },
     )
 
-    if (behaviorResult.error || !behaviorResult.data) {
-      setError(behaviorResult.error?.message || "Не удалось прочитать настройки ИИ-ГМ.")
+    if (loadError || !data) {
+      setError(loadError?.message || "Не удалось прочитать настройки ИИ-ГМ.")
       setLoading(false)
       return
     }
 
-    const nextBehavior = behaviorResult.data as BehaviorResponse
-    setBehavior(nextBehavior)
-    setAiWorld(nextBehavior.ai_world === true)
-
-    if (!nextBehavior.ai_world) {
-      setGmModels([])
-      setJuniorModels([])
-      setContent(null)
-      setDirector(null)
-      setLoading(false)
-      return
-    }
-
-    const [gmResult, juniorResult, directorResult, contentResult] =
-      await Promise.all([
-        supabase.rpc("list_campaign_gm_models_v1", {
-          p_campaign_id: campaignId,
-        }),
-        supabase.rpc("list_campaign_ai_junior_models_v1", {
-          p_campaign_id: campaignId,
-        }),
-        supabase.rpc("read_my_ai_director_preferences_v1", {
-          p_campaign_id: campaignId,
-        }),
-        supabase.rpc("list_campaign_ai_gm_content_profiles_v1", {
-          p_campaign_id: campaignId,
-        }),
-      ])
-
-    const firstError =
-      gmResult.error ||
-      juniorResult.error ||
-      directorResult.error ||
-      contentResult.error
-
-    if (firstError) {
-      setError(firstError.message)
-      setLoading(false)
-      return
-    }
-
-    setGmModels((gmResult.data || []) as ModelChoice[])
-    setJuniorModels((juniorResult.data || []) as ModelChoice[])
-    setDirector(directorResult.data as DirectorResponse)
-    setContent(contentResult.data as ContentResponse)
+    const next = data as ControlPanelResponse
+    setPanel(next)
+    setDirectorDraft(next.director)
     setDirectorDirty(false)
     setLoading(false)
   }, [campaignId])
@@ -182,102 +164,101 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
     void load()
   }, [load])
 
-  async function setModel(kind: "gm" | "junior", modelId: string) {
-    if (!campaignId || !canManage || busy) return
-    setBusy(kind + ":" + modelId)
+  const gmModel = useMemo(
+    () => selectedModel(panel?.gm_models || []),
+    [panel?.gm_models],
+  )
+  const juniorModel = useMemo(
+    () => selectedModel(panel?.junior_models || []),
+    [panel?.junior_models],
+  )
+
+  const canManage = panel?.can_manage === true
+
+  async function saveAndReload(
+    key: string,
+    request: () => Promise<{ error: { message: string } | null }>,
+    successMessage: string,
+  ) {
+    if (busy) return
+    setBusy(key)
     setError("")
     setNotice("")
 
-    const rpc =
+    const result = await request()
+    if (result.error) {
+      setError(result.error.message)
+      setBusy("")
+      return
+    }
+
+    await load(false)
+    setNotice(successMessage)
+    setBusy("")
+  }
+
+  async function chooseModel(kind: "gm" | "junior", modelId: string) {
+    if (!campaignId || !canManage) return
+
+    await saveAndReload(
+      kind + ":" + modelId,
+      async () => {
+        const rpc =
+          kind === "gm"
+            ? "set_campaign_gm_model_v1"
+            : "set_campaign_ai_junior_model_v1"
+        const result = await supabase.rpc(rpc, {
+          p_campaign_id: campaignId,
+          p_model_id: modelId,
+        })
+        return { error: result.error }
+      },
       kind === "gm"
-        ? "set_campaign_gm_model_v1"
-        : "set_campaign_ai_junior_model_v1"
-
-    const result = await supabase.rpc(rpc, {
-      p_campaign_id: campaignId,
-      p_model_id: modelId,
-    })
-
-    if (result.error) {
-      setError(result.error.message)
-    } else {
-      const setter = kind === "gm" ? setGmModels : setJuniorModels
-      setter((current) =>
-        current.map((model) => ({
-          ...model,
-          selected: model.id === modelId,
-        })),
-      )
-      setNotice(
-        kind === "gm"
-          ? "Модель главного ИИ-ГМ сохранена."
-          : "Модель младшего шуршальщика сохранена.",
-      )
-    }
-    setBusy("")
+        ? "Модель главного ИИ-ГМ сохранена."
+        : "Модель младшего шуршальщика сохранена.",
+    )
   }
 
-  async function chooseBehaviorProfile(profileKey: string) {
-    if (!campaignId || !canManage || busy) return
-    setBusy("behavior:" + profileKey)
-    setError("")
-    setNotice("")
+  async function chooseBehavior(profileKey: string) {
+    if (!campaignId || !canManage) return
 
-    const result = await supabase.rpc(
-      "set_campaign_ai_gm_behavior_profile_v1",
-      {
-        p_campaign_id: campaignId,
-        p_profile_key: profileKey,
+    await saveAndReload(
+      "behavior:" + profileKey,
+      async () => {
+        const result = await supabase.rpc(
+          "set_campaign_ai_gm_behavior_profile_v1",
+          {
+            p_campaign_id: campaignId,
+            p_profile_key: profileKey,
+          },
+        )
+        return { error: result.error }
       },
+      "Режим ИИ-ГМ сохранён.",
     )
-
-    if (result.error) {
-      setError(result.error.message)
-    } else {
-      setBehavior((current) =>
-        current
-          ? {
-              ...current,
-              selected_profile_key: profileKey,
-              profiles: current.profiles.map((profile) => ({
-                ...profile,
-                selected: profile.profile_key === profileKey,
-              })),
-            }
-          : current,
-      )
-      setNotice("Стиль ИИ-ГМ сохранён.")
-    }
-    setBusy("")
   }
 
-  async function setContentMode(mode: ContentMode) {
-    if (!campaignId || !canManage || busy) return
-    setBusy("content:" + mode)
-    setError("")
-    setNotice("")
+  async function chooseContent(mode: ContentMode) {
+    if (!campaignId || !canManage) return
 
-    const result = await supabase.rpc(
-      "set_campaign_ai_gm_content_profile_v1",
-      {
-        p_campaign_id: campaignId,
-        p_mode: mode,
+    await saveAndReload(
+      "content:" + mode,
+      async () => {
+        const result = await supabase.rpc(
+          "set_campaign_ai_gm_content_profile_v1",
+          {
+            p_campaign_id: campaignId,
+            p_mode: mode,
+          },
+        )
+        return { error: result.error }
       },
+      "Контент-профиль сохранён.",
     )
-
-    if (result.error) {
-      setError(result.error.message)
-    } else {
-      setContent((current) =>
-        current ? { ...current, selected_mode: mode } : current,
-      )
-      setNotice("Контент-профиль сохранён.")
-    }
-    setBusy("")
   }
 
   function setInterest(key: DirectorKey, value: number) {
-    setDirector((current) =>
+    setDirectorDraft((current) =>
       current
         ? {
             ...current,
@@ -292,12 +273,13 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
   }
 
   async function saveDirector() {
-    if (!campaignId || !director || busy) return
+    if (!campaignId || !directorDraft || busy) return
+
     setBusy("director")
     setError("")
     setNotice("")
 
-    const interests = director.interests
+    const interests = directorDraft.interests
     const result = await supabase.rpc(
       "set_my_ai_director_preferences_v1",
       {
@@ -312,24 +294,27 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
         p_politics_intrigue: interests.politics_intrigue,
         p_economy_property: interests.economy_property,
         p_pacing: interests.pacing,
-        p_free_text: director.free_text,
+        p_free_text: directorDraft.free_text,
       },
     )
 
     if (result.error) {
       setError(result.error.message)
-    } else if (result.data && typeof result.data === "object") {
-      setDirector(result.data as DirectorResponse)
-      setDirectorDirty(false)
-      setNotice("Предпочтения директора сохранены.")
+      setBusy("")
+      return
     }
+
+    await load(false)
+    setNotice("Предпочтения директора сохранены.")
     setBusy("")
   }
 
   if (loading) {
     return (
       <main className="u1-ai-gm-control">
-        <div className="u1-ai-gm-control__loading">Поднимаем пульт ИИ-ГМ…</div>
+        <div className="u1-ai-gm-control__loading">
+          Поднимаем настоящий пульт ИИ-ГМ…
+        </div>
       </main>
     )
   }
@@ -344,43 +329,51 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
         </div>
         <button
           type="button"
-          className="u1-ai-gm-control__freddy"
-          onClick={() => openAgent()}
+          className="u1-ai-gm-control__refresh"
+          onClick={() => void load(false)}
+          disabled={Boolean(busy)}
         >
-          {assistantName}
+          ↻
         </button>
       </header>
 
-      {!aiWorld ? (
+      {!panel?.ai_world ? (
         <section className="u1-ai-gm-control__empty">
           <strong>Это не ИИ-мир</strong>
-          <p>Пульт ИИ-ГМ доступен для экспериментальной AI-кампании.</p>
+          <p>Настройки главного и младшего ИИ доступны внутри экспериментальной AI-кампании.</p>
+          {error && <p>{error}</p>}
         </section>
       ) : (
         <div className="u1-ai-gm-control__body">
-          <section className="u1-ai-gm-card u1-ai-gm-card--status">
-            <span className="u1-ai-gm-card__eyebrow">АРХИТЕКТУРА</span>
-            <h2>Главный решает, младший шуршит</h2>
-            <p>
-              Главный ИИ ведёт сцену. Младший материализует нужные локации,
-              NPC, квесты, связи и каноническое состояние после решения мастера.
-              Пустой мир может наращиваться по ходу игры.
-            </p>
+          <section className="u1-ai-gm-overview">
+            <div>
+              <span>ГЛАВНЫЙ</span>
+              <strong>{gmModel?.display_name || "Не выбран"}</strong>
+              <small>Ведёт сцену и принимает решения.</small>
+            </div>
+            <div>
+              <span>МЛАДШИЙ</span>
+              <strong>{juniorModel?.display_name || "Не выбран"}</strong>
+              <small>Шуршит канон после ответа.</small>
+            </div>
           </section>
 
           <section className="u1-ai-gm-card">
-            <span className="u1-ai-gm-card__eyebrow">ГЛАВНЫЙ ИИ</span>
-            <h2>Мастер</h2>
-            <p>Ведёт сцену, принимает решения и формирует задания младшему.</p>
+            <span className="u1-ai-gm-card__eyebrow">01 · ГЛАВНЫЙ ИИ</span>
+            <h2>Модель мастера</h2>
+            <p>
+              Именно эта модель пишет ответ игроку, назначает проверки и решает,
+              что логично происходит в сцене.
+            </p>
             <div className="u1-ai-gm-models">
-              {gmModels.map((model) => (
+              {(panel.gm_models || []).map((model) => (
                 <button
                   key={model.id}
                   type="button"
                   className="u1-ai-gm-choice"
                   data-selected={model.selected || undefined}
                   disabled={!canManage || Boolean(busy)}
-                  onClick={() => void setModel("gm", model.id)}
+                  onClick={() => void chooseModel("gm", model.id)}
                 >
                   <span>
                     <strong>{model.display_name}</strong>
@@ -393,21 +386,22 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
           </section>
 
           <section className="u1-ai-gm-card">
-            <span className="u1-ai-gm-card__eyebrow">МЛАДШИЙ ИИ</span>
+            <span className="u1-ai-gm-card__eyebrow">02 · МЛАДШИЙ ИИ</span>
             <h2>Шуршальщик</h2>
             <p>
-              Выполняет канонические изменения мира и не переписывает решение
-              главного мастера.
+              Не переписывает решение мастера. Его работа — после ответа
+              создать или обновить нужные сущности и довести базу до уже
+              объявленного канона.
             </p>
             <div className="u1-ai-gm-models">
-              {juniorModels.map((model) => (
+              {(panel.junior_models || []).map((model) => (
                 <button
                   key={model.id}
                   type="button"
                   className="u1-ai-gm-choice"
                   data-selected={model.selected || undefined}
                   disabled={!canManage || Boolean(busy)}
-                  onClick={() => void setModel("junior", model.id)}
+                  onClick={() => void chooseModel("junior", model.id)}
                 >
                   <span>
                     <strong>{model.display_name}</strong>
@@ -419,19 +413,23 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
             </div>
           </section>
 
-          {behavior && (
+          {panel.behavior && (
             <section className="u1-ai-gm-card">
-              <span className="u1-ai-gm-card__eyebrow">ПОВЕДЕНИЕ</span>
-              <h2>Стиль мастера</h2>
+              <span className="u1-ai-gm-card__eyebrow">03 · РЕЖИМ МАСТЕРА</span>
+              <h2>Как мир давит на игрока</h2>
+              <p>
+                Режим меняет выбор между одинаково правдоподобными ветками.
+                Канон, кубы и характер NPC он не переписывает.
+              </p>
               <div className="u1-ai-gm-behaviors">
-                {behavior.profiles.map((profile) => (
+                {panel.behavior.profiles.map((profile) => (
                   <button
                     key={profile.profile_key}
                     type="button"
-                    className="u1-ai-gm-choice"
+                    className="u1-ai-gm-choice u1-ai-gm-choice--behavior"
                     data-selected={profile.selected || undefined}
                     disabled={!canManage || Boolean(busy)}
-                    onClick={() => void chooseBehaviorProfile(profile.profile_key)}
+                    onClick={() => void chooseBehavior(profile.profile_key)}
                   >
                     <span>
                       <strong>{profile.display_name}</strong>
@@ -444,27 +442,27 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
             </section>
           )}
 
-          {director && (
+          {directorDraft && (
             <section className="u1-ai-gm-card">
-              <span className="u1-ai-gm-card__eyebrow">ДИРЕКТОР</span>
-              <h2>Что тебе интереснее</h2>
+              <span className="u1-ai-gm-card__eyebrow">04 · ДИРЕКТОР</span>
+              <h2>Что тебе интереснее играть</h2>
               <p>
-                Это не приказ миру. Значения помогают выбирать между одинаково
-                правдоподобными возможностями.
+                Это мягкое направление будущих возможностей, а не чит-код.
+                NPC всё ещё могут отказать, а мир не обязан исполнять желание.
               </p>
               <div className="u1-ai-gm-sliders">
                 {DIRECTOR_CONTROLS.map((control) => (
                   <label key={control.key}>
                     <span>
                       <strong>{control.label}</strong>
-                      <b>{director.interests[control.key]}</b>
+                      <b>{directorDraft.interests[control.key]}</b>
                     </span>
                     <input
                       type="range"
                       min={0}
                       max={5}
                       step={1}
-                      value={director.interests[control.key]}
+                      value={directorDraft.interests[control.key]}
                       onChange={(event) =>
                         setInterest(control.key, Number(event.target.value))
                       }
@@ -478,62 +476,90 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
               </div>
 
               <label className="u1-ai-gm-free-text">
-                <span>Свободная настройка</span>
+                <span>Свободное направление</span>
                 <textarea
-                  value={director.free_text}
+                  value={directorDraft.free_text}
                   maxLength={1200}
                   rows={4}
                   onChange={(event) => {
-                    setDirector((current) =>
+                    setDirectorDraft((current) =>
                       current
                         ? { ...current, free_text: event.target.value.slice(0, 1200) }
                         : current,
                     )
                     setDirectorDirty(true)
                   }}
-                  placeholder="Например: больше городской социалки, меньше случайных боёв."
+                  placeholder="Например: больше городской социалки, медленная жизнь, торговля и жильё; боёв поменьше."
                 />
               </label>
+
               <button
                 type="button"
                 className="u1-ai-gm-save"
                 disabled={!directorDirty || Boolean(busy)}
                 onClick={() => void saveDirector()}
               >
-                {busy === "director" ? "Сохраняем…" : "Сохранить интересы"}
+                {busy === "director" ? "Сохраняем…" : "Сохранить предпочтения"}
               </button>
             </section>
           )}
 
-          {content && (
+          {panel.content && (
             <section className="u1-ai-gm-card">
-              <span className="u1-ai-gm-card__eyebrow">КОНТЕНТ</span>
-              <h2>Профиль сцен</h2>
+              <span className="u1-ai-gm-card__eyebrow">05 · КОНТЕНТ-ПРОФИЛЬ</span>
+              <h2>Зрелая / life-sim тематика</h2>
+              <p>
+                Это профиль приложения. Он не отменяет ограничения провайдера,
+                причинность мира и самостоятельность NPC.
+              </p>
               <div className="u1-ai-gm-behaviors">
-                {content.modes.map((choice) => (
+                {panel.content.modes.map((choice) => (
                   <button
                     key={choice.mode}
                     type="button"
                     className="u1-ai-gm-choice"
-                    data-selected={content.selected_mode === choice.mode || undefined}
+                    data-selected={panel.content?.selected_mode === choice.mode || undefined}
                     disabled={!canManage || Boolean(busy)}
-                    onClick={() => void setContentMode(choice.mode)}
+                    onClick={() => void chooseContent(choice.mode)}
                   >
                     <span>
                       <strong>{choice.display_name}</strong>
                       <small>{choice.summary}</small>
                     </span>
-                    <i>{content.selected_mode === choice.mode ? "✓" : "›"}</i>
+                    <i>{panel.content?.selected_mode === choice.mode ? "✓" : "›"}</i>
                   </button>
                 ))}
               </div>
             </section>
           )}
 
+          <section className="u1-ai-gm-card">
+            <span className="u1-ai-gm-card__eyebrow">06 · ФУНКЦИИ МИРА</span>
+            <h2>Что работает автоматически</h2>
+            <p>
+              Эти функции являются частью причинного ядра ИИ-мира. Их нельзя
+              случайно отключить галочкой и потом удивляться, почему канон
+              разъехался с чатом.
+            </p>
+            <div className="u1-ai-gm-features">
+              {(panel.features || []).map((feature) => (
+                <article key={feature.key}>
+                  <div>
+                    <strong>{feature.display_name}</strong>
+                    <small>{feature.summary}</small>
+                  </div>
+                  <span data-triggered={feature.state === "triggered" || undefined}>
+                    {feature.state === "triggered" ? "по триггеру" : "включено"}
+                  </span>
+                </article>
+              ))}
+            </div>
+          </section>
+
           {!canManage && (
             <div className="u1-ai-gm-control__notice">
-              Режимы кампании доступны владельцу или ГМ. Личные интересы можно
-              менять для своего директора.
+              Модели и режим кампании меняет владелец/ГМ. Личные настройки
+              директора доступны каждому участнику для себя.
             </div>
           )}
 
@@ -546,7 +572,7 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
             onClick={() => openAgent()}
           >
             <span>Открыть {assistantName}</span>
-            <small>Ручное управление миром и каноном</small>
+            <small>Фредди — отдельный дворецкий/админ, а не вход в настройки ИИ-ГМ.</small>
           </button>
         </div>
       )}
