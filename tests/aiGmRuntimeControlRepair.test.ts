@@ -19,6 +19,9 @@ const controlMigration = read(
 const runtimeSettingsMigration = read(
   "supabase/migrations/20260925041000_ai_gm_control_panel_runtime_settings_v2.sql",
 )
+const juniorBackgroundRouteMigration = read(
+  "supabase/migrations/20260925042000_ai_gm_junior_background_route_v1.sql",
+)
 const migration = read(
   "supabase/migrations/20260925013000_ai_gm_runtime_entity_authority_and_output_fix_v1.sql",
 )
@@ -164,4 +167,11 @@ test("junior model selector accepts every compatible campaign tool model", () =>
   assert.match(runtimeSettingsMigration, /supports_tools=true/)
   assert.match(runtimeSettingsMigration, /supports_json=true/)
   assert.match(runtimeSettingsMigration, /list_campaign_ai_junior_models_v1/)
+})
+
+
+test("background world freezes the currently selected junior model instead of hardcoded Flash", () => {
+  assert.match(juniorBackgroundRouteMigration, /agent_key='junior'/)
+  assert.match(juniorBackgroundRouteMigration, /can_select_campaign_junior_model_v1/)
+  assert.match(juniorBackgroundRouteMigration, /v_model:=coalesce\(nullif\(v_selected_model,''\),v_model\)/)
 })
