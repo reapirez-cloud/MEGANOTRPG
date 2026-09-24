@@ -2386,3 +2386,113 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Knowledge catalog cards: every live database row is an actual navigation target. */
+.u1-catalog-row--button {
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  align-items: center;
+  border-top: 0;
+  border-left: 0;
+  border-right: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.u1-catalog-row--button > span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.u1-catalog-row--button > em {
+  color: var(--u1-text-faint);
+  font-size: 20px;
+  font-style: normal;
+  text-align: right;
+}
+
+.u1-catalog-row--button:active {
+  background: rgba(255,255,255,.018);
+}
+
+.u1-knowledge-detail__hero {
+  padding: 24px 2px 18px;
+  border-bottom: 1px solid var(--u1-line-soft);
+}
+
+.u1-knowledge-detail__hero > span,
+.u1-knowledge-detail__blocks > section > span,
+.u1-knowledge-detail__meta span {
+  color: var(--u1-text-faint);
+  font-size: 9px;
+  font-weight: 720;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.u1-knowledge-detail__hero h2 {
+  margin: 6px 0 0;
+  color: var(--u1-text);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: clamp(27px, 7vw, 38px);
+  line-height: .98;
+  font-weight: 620;
+  letter-spacing: -.035em;
+}
+
+.u1-knowledge-detail__hero p {
+  margin: 8px 0 0;
+  color: var(--u1-text-faint);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.u1-knowledge-detail__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-bottom: 1px solid var(--u1-line-soft);
+}
+
+.u1-knowledge-detail__meta > div {
+  min-width: 0;
+  padding: 12px 8px 12px 2px;
+  display: grid;
+  gap: 4px;
+  border-bottom: 1px solid rgba(235,237,239,.035);
+}
+
+.u1-knowledge-detail__meta strong {
+  overflow-wrap: anywhere;
+  color: var(--u1-text-soft);
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 610;
+}
+
+.u1-knowledge-detail__blocks {
+  display: grid;
+}
+
+.u1-knowledge-detail__blocks > section {
+  padding: 18px 2px;
+  border-bottom: 1px solid var(--u1-line-soft);
+}
+
+.u1-knowledge-detail__blocks p {
+  margin: 8px 0 0;
+  color: var(--u1-text-soft);
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 420px) {
+  .u1-knowledge-detail__meta {
+    grid-template-columns: 1fr;
+  }
+}
