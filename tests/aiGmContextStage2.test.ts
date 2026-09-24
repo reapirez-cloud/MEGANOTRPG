@@ -104,7 +104,8 @@ test("NPC interjection is canonical, service-only and physically co-located", ()
     migration,
     /grant execute[\s\S]*publish_ai_gm_npc_message_v2[\s\S]*to service_role/i,
   )
-  assert.match(runtime, /publish_ai_gm_npc_message_v2/)
+  assert.match(runtime, /finalizeStage18VisibleAnswer/)
+  assert.match(runtime, /kind: "npc_dialogue"/)
   assert.match(runtime, /invalid_or_absent_npc_downgraded_to_environment/)
 })
 
