@@ -1989,7 +1989,7 @@ function parseReaction(
       ? rawRoll.partial_success_envelope.trim().slice(0, 2400)
       : ""
 
-  const rollRequest: PlayerRollRequest | null =
+  let rollRequest: PlayerRollRequest | null =
     mode === "request_player_roll" &&
     adjudicationMode &&
     uncertaintyScope &&
@@ -2028,6 +2028,17 @@ function parseReaction(
               : semanticMechanicRequest.slice(0, 1200),
         }
       : null
+
+  if (
+    rollRequest &&
+    socialLeverageAnalysis &&
+    (
+      socialLeverageAnalysis.classification === "no_leverage" ||
+      socialLeverageAnalysis.classification === "blocked_by_identity"
+    )
+  ) {
+    rollRequest = null
+  }
 
   const rawNpcAction = jsonRecord(parsed.npc_action)
   const actionNpcId =
@@ -2203,6 +2214,41 @@ function parseReaction(
     postTurnIntents,
   }
 }
+
+async function settleDeclaredPlayerTurnAfterDecision(
+  admin: SupabaseClient,
+  claimed: ClaimedJob,
+  reaction: GameMasterReaction,
+) {
+  if (reaction.mode === "request_player_roll") return null
+
+  const { data, error } = await admin.rpc(
+    "settle_ai_gm_player_turn_plan_v1",
+    {
+      p_job_id: claimed.id,
+      p_reason:
+        reaction.mode === "npc_action" ||
+          reaction.mode === "npc_roll" ||
+          reaction.mode === "npc_interjection"
+          ? "world_or_npc_intervened_before_remaining_declared_actions"
+          : "gm_returned_control_before_remaining_declared_actions",
+    },
+  )
+  if (error) throw new Error(error.message)
+  const settlement = jsonRecord(data)
+  if (
+    settlement.status !== "not_a_declared_turn" &&
+    settlement.status !== "no_job" &&
+    settlement.status !== "plan_missing"
+  ) {
+    claimed.result = {
+      ...claimed.result,
+      player_turn_plan_settlement: settlement,
+    }
+  }
+  return settlement
+}
+
 
 async function generateNpcDialogue({
   route,
@@ -3585,6 +3631,7 @@ export async function runGameChatTurn(
     }
 
     reaction = enforceStage12Audience(reaction, context)
+    await settleDeclaredPlayerTurnAfterDecision(admin, claimed, reaction)
     let recoveryResult: JsonRecord | null = null
 
     if (reaction.mode === "recovery" && reaction.recoveryRequest) {
