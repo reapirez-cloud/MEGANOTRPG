@@ -1,32 +1,17 @@
 import { useCallback, useEffect, useState } from "react"
 
-import { supabase } from "../../lib/supabase"
 import { CHAT_MESSAGE_SENT_EVENT } from "./chatRoomContracts"
-
-type AiGmStatus = {
-  active?: boolean
-  phase?: string
-  label?: string
-  job_id?: string
-  job_status?: string
-  error_code?: string | null
-  error_message?: string | null
-  updated_at?: string | null
-}
+import { loadAiGmRoomStatus, type AiGmRoomStatus } from "./aiGmRoomStatus"
 
 export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
-  const [status, setStatus] = useState<AiGmStatus | null>(null)
+  const [status, setStatus] = useState<AiGmRoomStatus | null>(null)
 
   const refresh = useCallback(async () => {
-    const result = await supabase.rpc("get_ai_gm_room_status_v1", {
-      p_room_id: roomId,
-    })
-    if (result.error) return
-    const value =
-      result.data && typeof result.data === "object" && !Array.isArray(result.data)
-        ? result.data as AiGmStatus
-        : null
-    setStatus(value)
+    try {
+      setStatus(await loadAiGmRoomStatus(roomId))
+    } catch {
+      // The database gate remains authoritative if status polling fails.
+    }
   }, [roomId])
 
   useEffect(() => {
@@ -58,7 +43,8 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
       <i aria-hidden="true" />
       <span>
         <strong>{status.label || "ИИ-ГМ"}</strong>
-        {status.phase === "failed" && status.error_message ? (
+        {(status.phase === "failed" || status.phase === "post_turn_recovery") &&
+        status.error_message ? (
           <small>{status.error_message}</small>
         ) : null}
       </span>
