@@ -198,3 +198,10 @@ test("Stage 21 campaign profile write uses invoker RLS instead of authenticated 
     /set_campaign_ai_gm_behavior_profile_v1[\s\S]*?security definer/i,
   )
 })
+
+test("Stage 21 telemetry is not duplicated inside one result object", () => {
+  assert.doesNotMatch(
+    runtime,
+    /\.\.\.stage21BehaviorProfileTelemetry\(context\),\s*\.\.\.stage21BehaviorProfileTelemetry\(context\),/,
+  )
+})
