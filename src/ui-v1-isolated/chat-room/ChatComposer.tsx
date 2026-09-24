@@ -230,6 +230,7 @@ export default function ChatComposer({
   const [movementText, setMovementText] = useState("")
   const [turnLoading, setTurnLoading] = useState(false)
   const [dialogueRecipients, setDialogueRecipients] = useState<PcDialogueRecipient[]>([])
+  const [turnGateLocked, setTurnGateLocked] = useState(false)
   const [recipientCharacterIds, setRecipientCharacterIds] = useState<string[]>([])
 
   const speakers = useChatSpeakerOptions({
@@ -266,6 +267,27 @@ export default function ChatComposer({
       selectedCharacterId &&
       selectedCharacterId === model.viewer.playerCharacterId,
   )
+
+  useEffect(() => {
+    let cancelled = false
+    const refreshGate = async () => {
+      const result = await supabase.rpc("get_ai_gm_room_status_v1", {
+        p_room_id: model.roomId,
+      })
+      if (cancelled || result.error) return
+      const value =
+        result.data && typeof result.data === "object" && !Array.isArray(result.data)
+          ? result.data as { phase?: string }
+          : null
+      setTurnGateLocked(value?.phase === "post_turn_commit")
+    }
+    void refreshGate()
+    const timer = window.setInterval(() => void refreshGate(), 1000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [model.roomId])
 
   const hasQueuedTurnContent = Boolean(
     turnDraft?.action_entry ||
@@ -567,7 +589,7 @@ export default function ChatComposer({
     event.preventDefault()
 
     const body = text.trim()
-    if (!canCompose || sending) return
+    if (!canCompose || sending || turnGateLocked) return
     if (queuePlayerTurn && !hasQueuedTurnContent) return
     if (!queuePlayerTurn && !body) return
 
@@ -894,7 +916,7 @@ export default function ChatComposer({
               className="u1-chat-composer__plus"
               aria-label="Игровые действия"
               aria-expanded={actionMenuOpen}
-              disabled={!canCompose}
+              disabled={!canCompose || turnGateLocked}
               onClick={() => {
                 setSpeakerOpen(false)
                 setActionMenuOpen((value) => !value)
@@ -944,12 +966,12 @@ export default function ChatComposer({
                   : queuePlayerTurn
                     ? "Опиши ход или реплику…"
                     : canCompose
-                      ? "Сообщение…"
+                      ? (turnGateLocked ? "Младший шуршит…" : "Сообщение…")
                       : playerHasCharacter
                         ? "Нет права писать в этот чат"
                         : "Нет персонажа в этой сцене"
               }
-              disabled={!canCompose || sending}
+              disabled={!canCompose || sending || turnGateLocked}
               onChange={(event) => setText(event.target.value)}
               onKeyDown={(event) => {
                 if (
@@ -971,6 +993,7 @@ export default function ChatComposer({
             disabled={
               !canCompose ||
               sending ||
+              turnGateLocked ||
               (queuePlayerTurn ? !hasQueuedTurnContent : !text.trim())
             }
             data-sending={sending || undefined}
