@@ -185,3 +185,35 @@ test("Stage 17 deterministic world outcomes require real proof", () => {
   assert.match(sql, /stage17_world_failure_requires_canonical_or_resolver_absent_proof/)
   assert.match(sql, /resolver_absent/)
 })
+
+
+test("Stage 17 deterministic no-roll outcomes are persisted with the same proof boundary", () => {
+  const sql = proofMigration()
+  const code = runtime()
+
+  assert.match(sql, /record_ai_gm_deterministic_adjudication_v1/)
+  assert.match(sql, /deterministic_success/)
+  assert.match(sql, /deterministic_failure/)
+  assert.match(sql, /resolver_absent/)
+  assert.match(sql, /natural_20_policy[\s\S]*not_applicable/)
+  assert.match(code, /intent_adjudication/)
+  assert.match(code, /persistStage17DeterministicAdjudication/)
+  assert.match(code, /record_ai_gm_deterministic_adjudication_v1/)
+})
+
+test("Stage 17 receipt sequence is shared by deterministic and roll adjudications", () => {
+  const sql = proofMigration()
+  const matches = sql.match(
+    /select coalesce\(max\(sequence_no\),0\)\+1 into v_sequence\s+from public\.ai_player_intent_adjudications\s+where gm_job_id=p_job_id;/g,
+  )
+  assert.equal(matches?.length, 2)
+})
+
+test("Stage 17 proof kinds include explicit resolver absence for deterministic failure", () => {
+  const sql = proofMigration()
+  assert.match(
+    sql,
+    /world_proof_kind in \([\s\S]*'resolver_exists'[\s\S]*'resolver_absent'[\s\S]*'impossible_exact'/,
+  )
+  assert.match(sql, /stage17_world_failure_requires_canonical_or_resolver_absent_proof/)
+})
