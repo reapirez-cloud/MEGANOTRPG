@@ -14,7 +14,7 @@ const liveSmoke = read(
   "supabase/tests/ai_world_evolution_stage24_full_certification.sql",
 )
 const resolver = read(
-  "supabase/migrations/20260923170213_ai_world_evolution_stage1_world_resolver_v1.sql",
+  "supabase/migrations/20260923170205_ai_world_evolution_stage1_resolver_v1.sql",
 )
 const backgroundSchema = read(
   "supabase/migrations/20260923171818_ai_world_evolution_stage2_background_schema_v1.sql",
