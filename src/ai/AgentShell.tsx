@@ -135,6 +135,21 @@ type AiGmBehaviorProfileResponse = {
   profiles: AiGmBehaviorProfileChoice[]
 }
 
+type AiGmContentMode = "off" | "allowed" | "adult_focused"
+
+type AiGmContentProfileChoice = {
+  mode: AiGmContentMode
+  display_name: string
+  summary: string
+}
+
+type AiGmContentProfileResponse = {
+  ai_world: boolean
+  selected_mode: AiGmContentMode
+  updated_at: string | null
+  modes: AiGmContentProfileChoice[]
+}
+
 type AiDirectorInterestKey =
   | "combat"
   | "exploration"
@@ -221,6 +236,9 @@ export default function AgentShell() {
   const [directorPreferences, setDirectorPreferences] =
     useState<AiDirectorPreferencesResponse | null>(null)
   const [directorSaving, setDirectorSaving] = useState(false)
+  const [contentProfile, setContentProfile] =
+    useState<AiGmContentProfileResponse | null>(null)
+  const [contentProfileSaving, setContentProfileSaving] = useState(false)
   const [directorDirty, setDirectorDirty] = useState(false)
   const [previewImage, setPreviewImage] = useState<{
     key: string
@@ -400,23 +418,36 @@ export default function AgentShell() {
       setGmBehavior(behavior)
       if (!behavior.ai_world) {
         setDirectorPreferences(null)
+        setContentProfile(null)
         setDirectorDirty(false)
         return
       }
 
-      const director = await supabase.rpc(
-        "read_my_ai_director_preferences_v1",
-        { p_campaign_id: campaignId },
-      )
+      const [director, content] = await Promise.all([
+        supabase.rpc(
+          "read_my_ai_director_preferences_v1",
+          { p_campaign_id: campaignId },
+        ),
+        supabase.rpc(
+          "list_campaign_ai_gm_content_profiles_v1",
+          { p_campaign_id: campaignId },
+        ),
+      ])
       if (
         cancelled ||
         director.error ||
+        content.error ||
         !director.data ||
-        typeof director.data !== "object"
+        !content.data ||
+        typeof director.data !== "object" ||
+        typeof content.data !== "object"
       ) return
 
       setDirectorPreferences(
         director.data as AiDirectorPreferencesResponse,
+      )
+      setContentProfile(
+        content.data as AiGmContentProfileResponse,
       )
       setDirectorDirty(false)
     })()
@@ -477,6 +508,27 @@ export default function AgentShell() {
       setDirectorDirty(false)
     }
     setDirectorSaving(false)
+  }
+
+  async function chooseContentProfile(mode: AiGmContentMode) {
+    if (!campaignId || !canManage || contentProfileSaving) return
+    setContentProfileSaving(true)
+
+    const { data, error: saveError } = await supabase.rpc(
+      "set_campaign_ai_gm_content_profile_v1",
+      {
+        p_campaign_id: campaignId,
+        p_mode: mode,
+      },
+    )
+
+    if (!saveError && data && typeof data === "object") {
+      setContentProfile((current) =>
+        current ? { ...current, selected_mode: mode } : current
+      )
+    }
+
+    setContentProfileSaving(false)
   }
 
   async function chooseGmBehaviorProfile(profileKey: string) {
@@ -847,6 +899,41 @@ export default function AgentShell() {
               <p className="u1-agent-gm-behavior-note">
                 Режим меняет давление и темп только между одинаково правдоподобными
                 ветвями. Канон, кубы и характер NPC остаются неизменными.
+              </p>
+            </div>
+          )}
+
+          {gmBehavior?.ai_world && contentProfile && (
+            <div className="u1-agent-tools-section">
+              <span className="u1-agent-tools-section__label">
+                Взрослая тематика
+              </span>
+              <div className="u1-agent-content-profile-list">
+                {contentProfile.modes.map((choice) => (
+                  <button
+                    type="button"
+                    key={choice.mode}
+                    className="u1-agent-content-profile-choice"
+                    data-selected={
+                      contentProfile.selected_mode === choice.mode || undefined
+                    }
+                    onClick={() => void chooseContentProfile(choice.mode)}
+                    disabled={
+                      !canManage ||
+                      contentProfileSaving ||
+                      sending ||
+                      pendingReply
+                    }
+                  >
+                    <strong>{choice.display_name}</strong>
+                    <small>{choice.summary}</small>
+                  </button>
+                ))}
+              </div>
+              <p className="u1-agent-gm-behavior-note">
+                Это профиль тематики, а не обход ограничений модели.
+                Провайдер остаётся последней границей генерации. Режим не меняет
+                согласие и характер NPC, канон, кубы, цены или последствия.
               </p>
             </div>
           )}
