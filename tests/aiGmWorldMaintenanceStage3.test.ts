@@ -33,15 +33,15 @@ test("Stage 3 advances watermark only in atomic completion", () => {
   assert.match(migration, /private\.reserve_ai_gm_room_maintenance_v1\(v_room_id\)/)
 })
 
-test("Stage 3 uses a fixed cheap structured worker, not the selected GM model", () => {
+test("Stage 3 uses the campaign junior worker selector, not the primary GM model", () => {
   const worker = read("supabase/functions/voss-agent/world-maintenance.ts")
 
-  assert.match(worker, /WORKER_MODEL_KEY = "deepseek-v4\.1-flash"/)
-  assert.match(worker, /\.eq\("model_key", WORKER_MODEL_KEY\)/)
+  assert.match(worker, /resolveCampaignJuniorModel/)
+  assert.match(worker, /fixedWorkerModel\(admin, campaignId\)/)
   assert.match(worker, /Ты НЕ ведущий/)
   assert.match(worker, /вернуть только структурированный JSON/)
   assert.match(worker, /temperature: 0\.15/)
-  assert.doesNotMatch(worker, /selected_model_id/)
+  assert.doesNotMatch(worker, /resolveCampaignGmModel/)
 })
 
 test("Stage 3 reads 50-message context and current domain snapshots", () => {
