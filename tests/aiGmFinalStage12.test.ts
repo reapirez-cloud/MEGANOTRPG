@@ -20,6 +20,9 @@ const audienceRlsMigration = read(
 const statusMigration = read(
   "supabase/migrations/20260923152400_ai_gm_final_stage12_status_queue_label_v1.sql",
 )
+const stage18Migration = read(
+  "supabase/migrations/20260924111500_ai_world_evolution_stage18_post_turn_commit_v2.sql",
+)
 const advisorIndexMigration = read(
   "supabase/migrations/20260923152500_ai_gm_final_stage12_advisor_indexes_v1.sql",
 )
@@ -151,7 +154,9 @@ test("Stage 12 exposes durable GM turn status in chat", () => {
   assert.match(migration, /generating_art/)
   assert.match(runtime, /runtime_phase: phase/)
   assert.match(runtime, /setRuntimePhase/)
-  assert.match(statusUi, /get_ai_gm_room_status_v1/)
+  assert.match(statusUi, /get_ai_gm_room_status_v2/)
+  assert.match(stage18Migration, /get_ai_gm_room_status_v2/)
+  assert.match(stage18Migration, /drop function if exists public\.get_ai_gm_room_status_v1/)
   assert.match(statusUi, /window\.setInterval/)
   assert.match(statusUi, /role="status"/)
   assert.match(statusMigration, /ИИ-ГМ ждёт очередь общей сцены/)
