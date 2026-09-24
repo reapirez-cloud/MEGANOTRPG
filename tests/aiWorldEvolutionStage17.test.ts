@@ -6,7 +6,10 @@ const read = (path: string) =>
   readFileSync(new URL("../" + path, import.meta.url), "utf8")
 
 const migration = () =>
-  read("supabase/migrations/20260924071000_ai_world_evolution_stage17_logic_rolls_v1.sql")
+  [
+    read("supabase/migrations/20260924071000_ai_world_evolution_stage17_logic_rolls_v1.sql"),
+    read("supabase/migrations/20260924092500_ai_world_evolution_stage17_world_proof_v2.sql"),
+  ].join("\n")
 
 const runtime = () =>
   read("supabase/functions/voss-agent/game-chat-runtime.ts")
@@ -41,11 +44,11 @@ test("Stage 17 keeps hidden adjudication state service-only", () => {
   assert.match(sql, /using \(false\)/)
   assert.match(
     sql,
-    /revoke all on function public\.create_ai_gm_player_roll_request_v2[\s\S]*from public, anon, authenticated/,
+    /revoke all on function public\.create_ai_gm_player_roll_request_v3[\s\S]*from public, anon, authenticated/,
   )
   assert.match(
     sql,
-    /grant execute on function public\.create_ai_gm_player_roll_request_v2[\s\S]*to service_role/,
+    /grant execute on function public\.create_ai_gm_player_roll_request_v3[\s\S]*to service_role/,
   )
 })
 
@@ -105,7 +108,7 @@ test("Stage 17 delegates semantic mechanics to a bounded junior worker", () => {
   assert.match(code, /STAGE17_SKILLS/)
   assert.match(code, /STAGE17_ABILITIES/)
   assert.match(code, /temperature: 0\.05/)
-  assert.match(code, /create_ai_gm_player_roll_request_v2/)
+  assert.match(code, /create_ai_gm_player_roll_request_v3/)
   assert.doesNotMatch(
     code.slice(
       code.indexOf('"Для request_player_roll НЕ указывай'),
@@ -147,4 +150,68 @@ test("Stage 17 remains separate from Stage 11 world-existence randomness", () =>
   assert.match(code, /World existence и character performance/)
   assert.match(roadmap, /World existence is not a skill check/)
   assert.match(roadmap, /Stage 11 Resolver settles existence first/)
+})
+
+
+test("Stage 17 distinguishes character performance from world discovery at the server boundary", () => {
+  const sql = migration()
+  const code = runtime()
+
+  assert.match(code, /uncertainty_scope=character_performance/)
+  assert.match(code, /uncertainty_scope=world_discovery/)
+  assert.match(code, /canonical_evidence/)
+  assert.match(code, /resolver_decision_key/)
+  assert.match(sql, /stage17_validate_canonical_evidence_v1/)
+  assert.match(sql, /stage17_world_discovery_requires_canonical_or_resolver_exists_proof/)
+  assert.match(sql, /stage17_resolver_says_world_target_absent/)
+})
+
+test("Stage 17 canonical proof validates real campaign-owned entities instead of trusting UUID-shaped text", () => {
+  const sql = migration()
+
+  assert.match(sql, /from public\.locations l[\s\S]*l\.campaign_id=p_campaign_id[\s\S]*l\.lifecycle_state='active'/)
+  assert.match(sql, /from public\.characters c[\s\S]*c\.campaign_id=p_campaign_id[\s\S]*c\.character_type='npc'/)
+  assert.match(sql, /from public\.ai_scene_actors a[\s\S]*a\.campaign_id=p_campaign_id[\s\S]*a\.runtime_state='active'/)
+  assert.match(sql, /qt\.binding_state='bound'/)
+  assert.match(sql, /from public\.campaign_memory_facts f[\s\S]*f\.status='active'/)
+})
+
+test("Stage 17 binds a world-existence resolver proof to the same GM job", () => {
+  const sql = migration()
+
+  assert.match(sql, /c\.decision_key=v_resolver_key/)
+  assert.match(sql, /c\.run_key=p_job_id::text/)
+  assert.match(sql, /c\.caller_surface='primary_gm'/)
+  assert.match(sql, /stage17_world_existence/)
+  assert.match(sql, /=\s*'exists'/)
+})
+
+test("Stage 17 cannot be bypassed through the obsolete v2 service RPC", () => {
+  const sql = migration()
+
+  assert.match(
+    sql,
+    /revoke all on function public\.create_ai_gm_player_roll_request_v2[\s\S]*from public, anon, authenticated, service_role/,
+  )
+  assert.match(
+    sql,
+    /grant execute on function public\.create_ai_gm_player_roll_request_v3[\s\S]*to service_role/,
+  )
+  assert.match(runtime(), /create_ai_gm_player_roll_request_v3/)
+})
+
+test("Stage 17 requested roll is allowed through later free-form chat gates only inside resolver transaction", () => {
+  const sql = migration()
+
+  assert.match(sql, /perform set_config\('meganot\.ai_gm_runtime','on',true\)/)
+  assert.match(sql, /set_config[\s\S]*send_chat_roll_v4/)
+})
+
+test("Stage 17 does not remove junior world materialization authority", () => {
+  const code = runtime()
+
+  assert.match(code, /WORLD_MATERIALIZER_TOOL_NAMES/)
+  assert.match(code, /"create_location"/)
+  assert.match(code, /"create_world_npc"/)
+  assert.match(code, /runWorldMaterializer/)
 })
