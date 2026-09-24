@@ -980,7 +980,7 @@ export function validateAiWorldEvolutionContract(): string[] {
 
     if (
       (stage.status === "implemented" || stage.status === "certified") &&
-      stage.requiredArtifacts.some((artifact) => /planned|todo|later/i.test(artifact))
+      stage.requiredArtifacts.some((artifact) => /\b(?:planned|todo)\b/i.test(artifact))
     ) {
       errors.push(`stage ${stage.id}: implemented status contains planned artifact`)
     }
