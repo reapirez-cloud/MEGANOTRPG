@@ -30,6 +30,7 @@ export type Stage2GameChatContext = {
   npcProfiles: JsonRecord[]
   npcIdentities: JsonRecord[]
   npcRuntime: JsonRecord[]
+  gmBehaviorProfile: JsonRecord
   sceneActors: JsonRecord[]
   relationships: JsonRecord[]
   assets: JsonRecord[]
@@ -1016,6 +1017,7 @@ export async function buildGameChatContextV2({
     npcProfilesResult,
     npcIdentitiesResult,
     npcRuntimeResult,
+    gmBehaviorProfileResult,
     relationshipsResult,
     assetsResult,
     factionMembershipResult,
@@ -1061,6 +1063,9 @@ export async function buildGameChatContextV2({
           p_npc_ids: presentNpcIds,
         })
       : Promise.resolve({ data: [], error: null }),
+    admin.rpc("read_ai_gm_behavior_profile_v1", {
+      p_campaign_id: campaignId,
+    }),
     relevantCharacterIds.length
       ? admin
           .from("character_relationships")
@@ -1104,6 +1109,7 @@ export async function buildGameChatContextV2({
     npcProfilesResult.error ||
     npcIdentitiesResult.error ||
     npcRuntimeResult.error ||
+    gmBehaviorProfileResult.error ||
     relationshipsResult.error ||
     assetsResult.error ||
     factionMembershipResult.error ||
@@ -1248,6 +1254,7 @@ export async function buildGameChatContextV2({
     npcProfiles: rows(npcProfilesResult.data),
     npcIdentities: rows(npcIdentitiesResult.data),
     npcRuntime: rows(npcRuntimeResult.data),
+    gmBehaviorProfile: record(gmBehaviorProfileResult.data),
     sceneActors,
     relationships,
     assets: rows(assetsResult.data),
@@ -1442,6 +1449,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
       worker_commands_are_not_narrative_memory: true,
     },
     current_game_time: context.currentGameTime,
+    gm_behavior_profile: context.gmBehaviorProfile,
     source_audience: context.sourceAudience,
     room: {
       id: context.room.id,
