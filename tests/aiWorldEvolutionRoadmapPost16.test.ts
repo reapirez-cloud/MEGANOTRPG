@@ -37,7 +37,7 @@ test("post-16 roadmap has 24 executable stages", () => {
   assert.match(stage(21, 22), /status: "implemented"/)
   assert.match(stage(22, 23), /status: "implemented"/)
   assert.match(stage(23, 24), /status: "implemented"/)
-  assert.match(stage(24, null), /status: "planned"/)
+  assert.match(stage(24, null), /status: "certified"/)
 })
 
 test("stage 17 delegates semantic checks to a smaller mechanic worker", () => {
