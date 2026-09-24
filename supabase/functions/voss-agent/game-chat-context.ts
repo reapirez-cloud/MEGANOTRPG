@@ -31,6 +31,7 @@ export type Stage2GameChatContext = {
   npcIdentities: JsonRecord[]
   npcRuntime: JsonRecord[]
   gmBehaviorProfile: JsonRecord
+  directorPreferences: JsonRecord
   sceneActors: JsonRecord[]
   relationships: JsonRecord[]
   assets: JsonRecord[]
@@ -1010,6 +1011,32 @@ export async function buildGameChatContextV2({
     .filter((item) => item.character_type === "npc")
     .map((item) => String(item.id))
 
+  const presentPcCharacterIds = new Set(
+    presentCharacters
+      .filter((item) => item.character_type === "pc")
+      .map((item) => String(item.id)),
+  )
+  const participantCharacterByUser = new Map<
+    string,
+    { id: string; name: string }
+  >()
+  for (const character of characters) {
+    const userId = nullableString(character.assigned_user_id)
+    if (
+      character.character_type !== "pc" ||
+      !userId ||
+      !presentPcCharacterIds.has(String(character.id))
+    ) continue
+
+    if (!participantCharacterByUser.has(userId)) {
+      participantCharacterByUser.set(userId, {
+        id: String(character.id),
+        name: String(character.name || ""),
+      })
+    }
+  }
+  const participantUserIds = [...participantCharacterByUser.keys()].slice(0, 16)
+
   const [
     sheetsResult,
     resourceStatesResult,
@@ -1018,6 +1045,7 @@ export async function buildGameChatContextV2({
     npcIdentitiesResult,
     npcRuntimeResult,
     gmBehaviorProfileResult,
+    directorPreferencesResult,
     relationshipsResult,
     assetsResult,
     factionMembershipResult,
@@ -1066,6 +1094,32 @@ export async function buildGameChatContextV2({
     admin.rpc("read_ai_gm_behavior_profile_v1", {
       p_campaign_id: campaignId,
     }),
+    participantUserIds.length
+      ? admin.rpc("read_ai_gm_director_preferences_v1", {
+          p_campaign_id: campaignId,
+          p_participant_user_ids: participantUserIds,
+        })
+      : Promise.resolve({
+          data: {
+            enabled: true,
+            scope: "physically_present_player_users",
+            participant_count: 0,
+            configured_count: 0,
+            aggregation_rule: "equal_weight_mean_of_configured_participants",
+            conflict_rule: "preserve_range_and_alternate_plausible_future_opportunities",
+            dimensions: {},
+            participants: [],
+            version_vector: [],
+            contract: {
+              future_opportunities_only: true,
+              existing_canon_immutable: true,
+              resolved_rolls_immutable: true,
+              npc_identity_and_consent_immutable: true,
+              already_triggered_encounters_immutable: true,
+            },
+          },
+          error: null,
+        }),
     relevantCharacterIds.length
       ? admin
           .from("character_relationships")
@@ -1110,12 +1164,52 @@ export async function buildGameChatContextV2({
     npcIdentitiesResult.error ||
     npcRuntimeResult.error ||
     gmBehaviorProfileResult.error ||
+    directorPreferencesResult.error ||
     relationshipsResult.error ||
     assetsResult.error ||
     factionMembershipResult.error ||
     factionReputationResult.error
 
   if (contextError) throw new Error(contextError.message)
+
+  const rawDirectorPreferences = record(directorPreferencesResult.data)
+  const directorParticipants = rows(rawDirectorPreferences.participants)
+    .map((item) => {
+      const userId = nullableString(item.user_id)
+      const character = userId
+        ? participantCharacterByUser.get(userId) || null
+        : null
+      if (!character) return null
+
+      return {
+        character_id: character.id,
+        character_name: character.name,
+        version: nullableNumber(item.version) || 0,
+        interests: record(item.interests),
+        free_text: boundedText(item.free_text, 600),
+      }
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+
+  const directorPreferences: JsonRecord = {
+    enabled: rawDirectorPreferences.enabled === true,
+    scope: "physical_scene_participants_only",
+    participant_count: participantUserIds.length,
+    configured_count: directorParticipants.length,
+    aggregation_rule:
+      nullableString(rawDirectorPreferences.aggregation_rule) ||
+      "equal_weight_mean_of_configured_participants",
+    conflict_rule:
+      nullableString(rawDirectorPreferences.conflict_rule) ||
+      "preserve_range_and_alternate_plausible_future_opportunities",
+    dimensions: record(rawDirectorPreferences.dimensions),
+    participants: directorParticipants,
+    version_vector: directorParticipants.map((item) => ({
+      character_id: item.character_id,
+      version: item.version,
+    })),
+    contract: record(rawDirectorPreferences.contract),
+  }
 
   const relationships = rows(relationshipsResult.data).filter(
     (item) =>
@@ -1255,6 +1349,7 @@ export async function buildGameChatContextV2({
     npcIdentities: rows(npcIdentitiesResult.data),
     npcRuntime: rows(npcRuntimeResult.data),
     gmBehaviorProfile: record(gmBehaviorProfileResult.data),
+    directorPreferences,
     sceneActors,
     relationships,
     assets: rows(assetsResult.data),
@@ -1692,6 +1787,25 @@ export function stage21BehaviorProfileTelemetry(
       nullableString(profile.profile_key) || "adventure",
     stage21_gm_behavior_dimensions:
       record(profile.dimensions),
+  }
+}
+
+
+export function stage22DirectorPreferenceTelemetry(
+  context: Stage2GameChatContext,
+) {
+  const preferences = record(context.directorPreferences)
+  return {
+    stage22_director_participant_count:
+      nullableNumber(preferences.participant_count) || 0,
+    stage22_director_configured_count:
+      nullableNumber(preferences.configured_count) || 0,
+    stage22_director_dimensions:
+      record(preferences.dimensions),
+    stage22_director_version_vector:
+      Array.isArray(preferences.version_vector)
+        ? preferences.version_vector
+        : [],
   }
 }
 
