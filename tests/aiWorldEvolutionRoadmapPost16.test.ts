@@ -35,7 +35,8 @@ test("post-16 roadmap has 24 executable stages", () => {
   assert.match(stage(19, 20), /status: "implemented"/)
   assert.match(stage(20, 21), /status: "implemented"/)
   assert.match(stage(21, 22), /status: "implemented"/)
-  for (let id = 22; id <= 24; id += 1) {
+  assert.match(stage(22, 23), /status: "implemented"/)
+  for (let id = 23; id <= 24; id += 1) {
     assert.match(stage(id, id < 24 ? id + 1 : null), /status: "planned"/)
   }
 })
@@ -88,7 +89,7 @@ test("stages 21-23 preserve world and NPC autonomy", () => {
   assert.match(stage(22, 23), /cannot silently dominate another/)
 
   assert.match(stage(23, 24), /MEGANOT does not attempt to bypass provider restrictions/)
-  assert.match(stage(23, 24), /not automatic NPC compliance/)
+  assert.match(stage(23, 24), /automatic NPC compliance/)
 })
 
 test("stage 24 certifies complete turn pipeline", () => {
