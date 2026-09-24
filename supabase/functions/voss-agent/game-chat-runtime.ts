@@ -229,7 +229,7 @@ const STAGE18_POST_TURN_WORKER_SYSTEM = [
   "Не добавляй декоративные факты, которых нет в опубликованном ответе. Заполняй только минимально нужные поля.",
   "Для каждого intent обязан быть ровно ОДИН write-tool call. Даже если факт уже существует, вызови тот же минимальный create/update/upsert tool: серверная reconciliation/idempotency сама превратит повтор в no-op.",
   "Если intent невозможно безопасно выполнить по имеющимся данным, не вызывай tool и верни JSON {status:'unsafe_or_ambiguous',reason:'...'}; сервер оставит gate закрытым для recovery.",
-  "Никогда не придумывай UUID. Используй только canonical_context, published_messages или результаты серверной reconciliation.",
+  "Никогда не придумывай UUID. Используй только canonical_context, published_messages или prior_intent_receipts. Если предыдущий intent создал сущность, бери её UUID только из prior_intent_receipts.resolved_entity_ids/tool_result.",
   "Для create_quest_plan quest_key задаёт сервер. Для memory fact_key/source_event_ids задаёт сервер.",
   "После успешного tool call не вызывай второй tool.",
 ].join("\n")
@@ -383,7 +383,7 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Не проси косметический бросок. Если канон/физика уже гарантируют успех или провал, не используй request_player_roll. Верни обычную narration/environment и добавь intent_adjudication с mode=deterministic_success или deterministic_failure.",
   "Обычные semantic checks не ограничены кнопками: крепкий алкоголь может требовать Constitution check/save; подъём/плавание/рывок под давлением Athletics/Strength; чтение поведения NPC Insight; выслеживание Survival; скрытая деталь Perception; тщательный поиск Investigation; правдоподобное знание соответствующий Intelligence check.",
   "Если канонический NPC должен применить атаку/способность из canonical_npc_runtime.actions, используй npc_action и передай ТОЛЬКО character_id, mechanic_id, optional option_key и target_character_id. Никогда не передавай бонус атаки, урон, DC, кости или стоимость ресурса.",
-  "Безымянные механически активные существа НЕ являются canonical NPC. Для них используй provider tool spawn_scene_actor. Пример: 'трое бандитов' => один spawn_scene_actor с bestiary_slug='bandit', display_label='Бандит', count=3. Никогда не создавай Бандит 1/2/3 через world_materialization.",
+  "Безымянные механически активные существа НЕ являются canonical NPC. Для них используй provider tool spawn_scene_actor. Пример: 'трое бандитов' => один spawn_scene_actor с bestiary_slug='bandit', display_label='Бандит', count=3. Никогда не создавай Бандит 1/2/3 как persistent NPC.",
   "После spawn_scene_actor используй только actor_id и mechanic_key из active_scene_actors или tool result. use_scene_actor_action выполняет серверную механику, roll_scene_actor делает проверку, flee_scene_actor и remove_scene_actor меняют только конкретный ephemeral actor.",
   "runtime_ordinal у scene actor нужен только для различения экземпляров и НИКОГДА не является личным именем. Не называй актора 'Бандит 2' и не проси world materializer создать такую карточку.",
   "Если существующий scene actor в текущем ходе раскрывает или получает настоящее личное имя, вызови promote_scene_actor В ЭТОМ ЖЕ ходе. Пример: Гоблин 3/7 HP говорит 'Я Ург' => promote_scene_actor(actor_id, personal_name='Ург', discover_for_character_ids=[те PC, которые реально услышали имя]). Не вызывай create_world_npc для этого случая.",
@@ -416,6 +416,7 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Для request_player_roll НЕ указывай request_type/ability_key/skill_key/attack_kind/modifier и не думай о RPC/API. Укажи roll_request: character_id, adjudication_mode(check|impossible_exact), uncertainty_scope(character_performance|world_discovery), canonical_evidence, resolver_decision_key, exact_goal, semantic_check обычным языком D&D, logical_difficulty(very_easy|easy|moderate|hard|very_hard|nearly_impossible), dc_visibility(public|hidden), success_envelope, failure_envelope, partial_success_envelope, label, reason. Для check success/failure envelopes обязательны; для impossible_exact обязательны failure + partial_success, а exact goal остаётся false.",
   "Для mechanic modes body пустой и messages пустой.",
   "Если нужен scene actor, сначала вызывай доступные scene-actor provider tools. После их результата либо закончи механическое действие tool-вызовом, либо верни обычный JSON для narration/диалога.",
+  "Ответь ТОЛЬКО одним JSON-объектом без markdown с полями reaction_mode, post_turn_intents, messages, body, npc_character_id, intent_adjudication, roll_request, npc_action, npc_roll, recovery, reason.",
   "reaction_mode: recovery|dialogue_sequence|environment|npc_interjection|request_player_roll|npc_action|npc_roll|none.",
 ].join("\n")
 
