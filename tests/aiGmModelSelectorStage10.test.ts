@@ -100,7 +100,7 @@ test("Stage 10 selector preserves the mobile grimdark sheet contract", () => {
 test("Stage 10 is certified READY and selector debt is removed", () => {
   assert.match(
     roadmap,
-    /\| 10 \| READY \| Campaign GM model selector and AI button \|/,
+    /\| 10 \| READY \| Campaign GM \+ junior-worker model selectors and AI button \|/,
   )
   assert.match(
     roadmap,
