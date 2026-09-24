@@ -1430,6 +1430,44 @@ If a provider declines a particular output:
 
 ---
 
+## Pre-Stage 24 hardening — Interruptible player plans + situational NPC leverage
+
+**Status: IMPLEMENTED — 2026-09-24**
+
+Before final certification, the player-turn and NPC-resistance contracts were hardened:
+
+### Interruptible player plans
+- AI-world player action/spell/item/roll selections are draft declarations, not immediate gameplay.
+- Draft components can be assembled in order (up to 64 entries) and may include action, bonus action, movement and declared reaction.
+- Draft selection spends no slot/resource, rolls no dice and emits no AI-GM trigger.
+- Final Send seals one declaration message and only then wakes the primary GM.
+- The primary GM advances the plan one non-reaction component at a time through a service boundary; the server rejects out-of-order advancement.
+- Every executed component uses the existing authoritative gameplay RPCs, so resources and dice are spent only when that component actually occurs.
+- The GM must re-evaluate D&D action economy, current resources and the changed scene before every next component.
+- If NPCs, initiative, world state, a reaction window or a new player choice naturally interrupts the sequence, the unexecuted suffix is marked interrupted instead of being granted automatically.
+- Peaceful continuous narration is not forced into artificial one-verb turns when no actor or rule has a meaningful intervention window.
+- Declared reactions are armed conditions, not prepaid actions. They execute only after a canonical trigger and are tracked separately from the sequential cursor.
+
+### Situational NPC leverage
+- Social influence is evaluated from stable NPC identity plus current circumstances, not from a static whitelist of fears/weaknesses.
+- The GM classifies an approach as `no_leverage`, `weak_leverage`, `credible_leverage`, `decisive_leverage` or `blocked_by_identity`.
+- `no_leverage` and `blocked_by_identity` cannot silently become a Persuasion/Intimidation roll in runtime.
+- A threat can be meaningless even if it normally sounds severe. Example: threatening death to someone who is certainly being executed tomorrow and has accepted it may be deterministic failure; natural 20 does not create leverage.
+- If a persistent NPC fingerprint is too sparse for a consequential social decision, the primary GM can request a one-time bootstrap refinement.
+- The junior refiner deliberately receives canon without the player's current tactic or recent chat, preventing a tailor-made weakness from being invented for the current attempt.
+- Refinement fills only missing stable identity dimensions and cannot overwrite already established values, red lines, self-image or decision priorities.
+
+Rollback-only smoke certification proved:
+- final Send emits only the declaration and does not execute gameplay early;
+- the service GM executes exactly the next component;
+- an unexecuted suffix becomes interrupted when the world intervenes;
+- a first sparse-NPC refinement creates stable identity;
+- a later attempted yes-man refinement cannot overwrite already established identity.
+
+Supabase security advisor reports no new findings for the new public turn RPCs after the public wrappers were converted to `SECURITY INVOKER` and privileged implementations were moved to `private`.
+
+---
+
 ## Stage 24 — Full certification
 
 **Status: PLANNED**
