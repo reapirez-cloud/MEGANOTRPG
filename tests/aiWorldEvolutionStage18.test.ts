@@ -40,7 +40,7 @@ test("Stage 18 uses a dedicated durable queue rather than an unsupported agent_j
 test("Stage 18 atomically publishes visible output and creates the gate in one finalizer", () => {
   const sql = migration()
   const start = sql.indexOf("create or replace function public.finalize_ai_gm_turn_v18")
-  const end = sql.indexOf("create or replace function public.claim_ai_gm_post_turn_commit_v1", start)
+  const end = sql.indexOf("create or replace function public.claim_ai_gm_post_turn_commit_v2", start)
   assert.ok(start >= 0 && end > start)
   const block = sql.slice(start, end)
 
@@ -91,11 +91,11 @@ test("Stage 18 worker is hard-pinned to Flash and cannot inherit the broad world
 test("Stage 18 retries are recoverable and preserve completed intent receipts", () => {
   const sql = migration()
 
-  assert.match(sql, /claim_ai_gm_post_turn_commit_v1/)
+  assert.match(sql, /claim_ai_gm_post_turn_commit_v2/)
   assert.match(sql, /state='running'[\s\S]*attempts=attempts\+1/)
   assert.match(sql, /state in \('running','failed'\) and v_next_state='queued'[\s\S]*then 'pending'/)
   assert.match(sql, /when v_commit\.attempts < v_commit\.max_attempts then 'queued'/)
-  assert.match(sql, /retry_ai_gm_post_turn_commit_v1/)
+  assert.match(sql, /retry_ai_gm_post_turn_commit_v2/)
   assert.match(sql, /state=case when state='completed' then 'completed' else 'pending' end/)
   assert.match(sql, /attempts=case when state='completed' then attempts else 0 end/)
 })
@@ -149,9 +149,50 @@ test("Stage 18 status UI wakes stale work and exposes manager recovery", () => {
   assert.match(ui, /get_ai_gm_room_status_v2/)
   assert.match(ui, /game_chat_post_turn_resume/)
   assert.match(ui, /wake_required/)
-  assert.match(ui, /retry_ai_gm_post_turn_commit_v1/)
+  assert.match(ui, /retry_ai_gm_post_turn_commit_v2/)
   assert.match(ui, /Повторить синхронизацию/)
   assert.match(sql, /'wake_required'/)
   assert.match(sql, /'can_recover'/)
   assert.match(sql, /private\.can_manage_campaign/)
+})
+
+
+test("Stage 18 removes the old pre-response world materializer path completely", () => {
+  const code = runtime()
+  assert.doesNotMatch(code, /world_materialization/)
+  assert.doesNotMatch(code, /WORLD_MATERIALIZER_SYSTEM/)
+  assert.doesNotMatch(code, /runWorldMaterializer/)
+  assert.doesNotMatch(code, /worldMaterializationRequested/)
+  assert.match(code, /post_turn_intents/)
+  assert.match(code, /prior_intent_receipts/)
+})
+
+test("Stage 18 fences every junior mutation with a server lease token", () => {
+  const hardening = read("supabase/migrations/20260924144500_ai_world_evolution_stage18_fenced_worker_v3.sql")
+  const code = runtime()
+
+  assert.match(hardening, /lease_token uuid/)
+  assert.match(hardening, /stage18_worker_lease_invalid/)
+  assert.match(hardening, /execute_ai_gm_post_turn_tool_v3/)
+  assert.match(hardening, /p_lease_token uuid/)
+  assert.match(code, /claim_ai_gm_post_turn_commit_v2/)
+  assert.match(code, /p_lease_token: leaseToken/)
+  assert.match(code, /execute_ai_gm_post_turn_tool_v3/)
+})
+
+test("Stage 18 service worker executes owner-bound RPCs only through the fenced dispatcher", () => {
+  const hardening = read("supabase/migrations/20260924144500_ai_world_evolution_stage18_fenced_worker_v3.sql")
+  assert.match(hardening, /private\.can_manage_campaign\(v_campaign_id,v_manager_user_id\)/)
+  assert.match(hardening, /set_config\('request\.jwt\.claim\.sub'/)
+  assert.match(hardening, /public\.create_world_npc_v1/)
+  assert.match(hardening, /public\.create_quest_plan_v1/)
+  assert.match(hardening, /public\.upsert_faction_v1/)
+})
+
+test("Stage 18 create location and NPC replay bind entity identity to the immutable intent", () => {
+  const hardening = read("supabase/migrations/20260924144500_ai_world_evolution_stage18_fenced_worker_v3.sql")
+  assert.match(hardening, /ai_gm_post_turn_entity_bindings/)
+  assert.match(hardening, /intent_id uuid primary key/)
+  assert.match(hardening, /entity_kind in \('location','npc'\)/)
+  assert.match(hardening, /reconciled_existing/)
 })
