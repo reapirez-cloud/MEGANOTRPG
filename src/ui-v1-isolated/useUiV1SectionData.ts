@@ -118,11 +118,66 @@ export type WorldNpcDossier = {
     summary: string
   }>
   relationship: WorldCharacterRelationshipPreview | null
+  observed_identity: Array<{
+    observation_key: string
+    statement: string
+    confidence: number
+    source_event_id: string
+    discovered_at: string
+    updated_at: string
+  }>
   manager: {
     profile: {
       motivation: string
       gm_notes: string
     }
+    identity_fingerprint: {
+      version: number
+      bootstrap_state: "stub" | "seeded" | "evolved"
+      fingerprint_hash: string
+      core: {
+        traits: string[]
+        weighted_values: Array<{
+          key: string
+          label: string
+          weight: number
+          reason?: string
+        }>
+        red_lines: Array<{
+          key: string
+          label: string
+          hard: boolean
+          reason?: string
+        }>
+        long_term_desires: string[]
+        fears: string[]
+        loyalties: string[]
+        authority_attitude: {
+          stance?: string
+          notes?: string
+        }
+        risk_tolerance: number | null
+        violence_threshold: number | null
+        pressure_behavior: string[]
+        self_image: string
+        social_style: string[]
+        decision_priorities: string[]
+      }
+      source_kind: string
+      source_ref: string | null
+      provenance: Record<string, unknown>
+      last_major_event_id: string | null
+      updated_at: string
+      recent_versions: Array<{
+        version: number
+        change_kind: "bootstrap" | "bootstrap_refinement" | "major_event"
+        source_event_id: string | null
+        source_kind: string
+        source_ref: string | null
+        fingerprint_hash: string
+        created_at: string
+      }>
+    } | null
     relationships: Array<{
       id: string
       direction: "npc_to_character" | "character_to_npc"
@@ -530,7 +585,7 @@ export function useUiV1WorldNpcDossier(characterId: string | undefined) {
 
     setLoading(true)
     const { data, error: queryError } = await supabase.rpc(
-      "read_world_npc_dossier_v1",
+      "read_world_npc_dossier_v2",
       { p_npc_character_id: characterId },
     )
 
@@ -572,6 +627,16 @@ export function useUiV1WorldNpcDossier(characterId: string | undefined) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "npc_profiles", filter: `character_id=eq.${characterId}` },
+        reload,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "npc_identity_fingerprints", filter: `character_id=eq.${characterId}` },
+        reload,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "npc_identity_observations", filter: `npc_character_id=eq.${characterId}` },
         reload,
       )
       .on(
