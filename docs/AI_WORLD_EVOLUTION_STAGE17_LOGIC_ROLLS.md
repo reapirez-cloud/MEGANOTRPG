@@ -1,6 +1,6 @@
 # Stage 17 — Canon-bound intent adjudication and real player rolls
 
-Status: PLANNED
+Status: CERTIFIED — 2026-09-24
 
 This stage exists because a player d20 answers **how well the character performs an action**. It does not get to decide whether an unstated world fact suddenly exists.
 
@@ -159,3 +159,15 @@ Stage 17 is **not complete** if:
 4. Deterministic open door -> no roll.
 5. Canonically sealed impossible door -> deterministic failure unless another mechanic changes the situation.
 6. Genuinely unresolved world existence -> Stage 11 d100 resolves existence first -> only then, if present and still nontrivial to locate, player skill check happens.
+
+
+## Certified implementation notes — 2026-09-24
+
+- Primary GM emits semantic adjudication, never a model-supplied modifier.
+- DeepSeek V4.1 Flash is the bounded mechanic normalizer; server math and d20 remain authoritative.
+- `character_performance` and `world_discovery` are separate server-validated uncertainty scopes.
+- World-discovery checks require canonical entity proof or a Stage 11 resolver receipt from the same GM job.
+- `deterministic_success` and `deterministic_failure` persist immutable no-roll receipts.
+- `impossible_exact` can produce only precommitted partial success, never exact success on natural 20.
+- Requested player rolls set the narrow AI-runtime transaction flag before `send_chat_roll_v4`, so later free-form chat gates do not block the authorized d20.
+- Live Supabase migration `ai_world_evolution_stage17_world_proof_v2` applied and `voss-agent` deployed as version 85.
