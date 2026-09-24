@@ -1345,6 +1345,7 @@ async function runStage18PostTurnCommit(
 
 async function finalizeStage18VisibleAnswer({
   admin,
+  campaignId,
   claimed,
   route,
   sourceMessageId,
@@ -1354,6 +1355,7 @@ async function finalizeStage18VisibleAnswer({
   extraResult = {},
 }: {
   admin: SupabaseClient
+  campaignId: string
   claimed: ClaimedJob
   route: Awaited<ReturnType<typeof resolveCampaignGmModel>>
   sourceMessageId: number
@@ -1410,7 +1412,7 @@ async function finalizeStage18VisibleAnswer({
       ? finalized.post_turn_commit_id
       : ""
   if (commitId) {
-    await runStage18PostTurnCommit(admin, String(context.room.campaign_id || ""), commitId)
+    await runStage18PostTurnCommit(admin, campaignId, commitId)
   }
 
   return finalized
