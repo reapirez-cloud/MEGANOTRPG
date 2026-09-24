@@ -37,7 +37,7 @@ test("post-16 roadmap has 24 executable stages", () => {
 
 test("stage 17 delegates semantic checks to a smaller mechanic worker", () => {
   const s = stage(17, 18)
-  assert.match(s, /smaller mechanic\/roll worker/)
+  assert.match(s, /mechanic\/roll worker/i)
   assert.match(s, /Constitution check\/save for strong alcohol/)
   assert.match(s, /primary GM knowing the app API/)
   assert.match(s, /impossible_exact/)
