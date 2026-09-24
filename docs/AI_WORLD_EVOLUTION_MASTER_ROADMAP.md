@@ -1470,7 +1470,7 @@ Supabase security advisor reports no new findings for the new public turn RPCs a
 
 ## Stage 24 — Full certification
 
-**Status: PLANNED**
+**Status: CERTIFIED — 2026-09-24**
 
 Must prove the entire stack, not merely that individual files exist.
 
@@ -1542,7 +1542,33 @@ Must prove the entire stack, not merely that individual files exist.
 - cooperative chat;
 all remain green.
 
-**Done when:** a full campaign can run for a long time without prompt bloat, temporal leakage, personality drift, tool-log pollution, wish-fulfillment canon or bookkeeping stalls before every answer.
+### Certification closure — 2026-09-24
+
+Stage 24 now has a cross-system certification gate rather than treating the sum of old unit tests as proof.
+
+Evidence:
+- `supabase/tests/ai_world_evolution_stage24_full_certification.sql` is a rollback-only live database smoke against the real schema.
+- The live smoke first proves a normal human-GM campaign rejects AI-world background/time behavior, then temporarily binds an unbound AI slot inside the transaction.
+- It creates **205+ persistent NPC candidates**, verifies each stored 30% selection decision against its committed d100 roll, reruns the same day and proves the selection is replay-safe rather than rerolled.
+- It verifies colocated desynchronized PCs converge through an `idle_life` receipt with `meaningful_actions=false`.
+- It writes **500 messages** through the normal chat triggers, proves maintenance remains one serial active 45-message window, and proves Stage 19 exposes only the latest 50 eligible messages.
+- During smoke development, future-dated room history was correctly excluded by Stage 19; the final fixture separates background frontier time from scene time and retains that protection.
+- `tests/aiWorldEvolutionStage24FullCertification.test.ts` binds Resolver/background, promotion/retention, temporal sync, real player-roll plumbing, Stage 18 post-turn gating, interruptible player plans, bounded context, NPC identity and configuration non-override rules into one CI gate.
+- Existing quest, 45-message maintenance, rest, co-op and human-GM isolation regressions remain required by that gate.
+- The certification smoke ends with `ROLLBACK`; no fixture campaign, NPC, message, random receipt or maintenance job survives.
+
+Live certification result on 2026-09-24:
+- 205+ entity stress: PASS;
+- daily-run replay/idempotency: PASS;
+- candidate threshold vs committed roll: PASS;
+- human-GM isolation: PASS;
+- colocated idle catch-up: PASS;
+- 500-message room history: PASS;
+- serial 45-message maintenance reservation: PASS;
+- bounded latest-50 context: PASS;
+- rollback cleanliness: PASS.
+
+**Done when:** a full campaign can run for a long time without prompt bloat, temporal leakage, personality drift, tool-log pollution, wish-fulfillment canon or bookkeeping stalls before every answer. **CERTIFIED.**
 
 ---
 
