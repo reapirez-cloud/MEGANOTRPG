@@ -1,6 +1,6 @@
 import { supabase } from "../../lib/supabase"
 
-export type PlayerTurnSlot = "action" | "bonus_action"
+export type PlayerTurnSlot = "action" | "bonus_action" | "reaction"
 export type PlayerTurnComponent = PlayerTurnSlot | "movement"
 
 export type PlayerTurnEntry = {
@@ -31,6 +31,19 @@ export type PlayerTurnDraft = {
   bonus_action_entry: PlayerTurnEntry | null
   movement: { description?: string } | null
   component_order: PlayerTurnComponent[]
+  plan_entries: PlayerTurnEntry[]
+  execution_state:
+    | "draft"
+    | "pending"
+    | "executing"
+    | "completed"
+    | "interrupted"
+    | "cancelled"
+  execution_cursor: number
+  executed_message_ids: number[]
+  executed_reaction_command_ids: string[]
+  declaration_message_id: number | null
+  interruption_reason: string | null
   description: string
   audience_scope: "scene" | "direct_pc"
   recipient_character_ids: string[]
@@ -71,7 +84,7 @@ function asSubmitResult(value: unknown): PlayerTurnSubmitResult {
 export function playerTurnSlotForEconomy(economy: string): PlayerTurnSlot {
   const normalized = economy.trim().toLocaleLowerCase("ru-RU")
   if (normalized.includes("reaction") || normalized.includes("реакц")) {
-    throw new Error("Реакция не входит в текущий ход.")
+    return "reaction"
   }
   return normalized.includes("bonus") || normalized.includes("бонус")
     ? "bonus_action"
@@ -94,7 +107,7 @@ export async function playerTurnSlotForSpell(
     .toLocaleLowerCase("ru-RU")
 
   if (castingTime.includes("reaction") || castingTime.includes("реакц")) {
-    throw new Error("Заклинание-реакция не входит в текущий ход.")
+    return "reaction"
   }
 
   return castingTime.includes("bonus") || castingTime.includes("бонус")
@@ -130,6 +143,32 @@ export function orderedPlayerTurnComponents(
   return ordered
 }
 
+export function playerTurnEntryCommandId(entry: PlayerTurnEntry) {
+  return typeof entry.commandId === "string" && entry.commandId
+    ? entry.commandId
+    : ""
+}
+
+export function withPlayerTurnCommandId(entry: PlayerTurnEntry): PlayerTurnEntry {
+  return playerTurnEntryCommandId(entry)
+    ? entry
+    : { ...entry, commandId: newPlayerTurnCommandId() }
+}
+
+export function reorderPlayerTurnEntries(
+  entries: PlayerTurnEntry[],
+  index: number,
+  direction: -1 | 1,
+) {
+  const next = [...entries]
+  const target = index + direction
+  if (index < 0 || index >= next.length || target < 0 || target >= next.length) {
+    return next
+  }
+  ;[next[index], next[target]] = [next[target], next[index]]
+  return next
+}
+
 export function reorderPlayerTurnComponents(
   order: PlayerTurnComponent[],
   component: PlayerTurnComponent,
@@ -162,31 +201,22 @@ export async function loadPlayerTurnDraft({
 export async function savePlayerTurnDraft({
   roomId,
   characterId,
-  actionEntry,
-  bonusActionEntry,
-  movement,
-  componentOrder,
+  planEntries,
   description,
   expectedRevision,
   recipientCharacterIds = [],
 }: {
   roomId: string
   characterId: string
-  actionEntry: PlayerTurnEntry | null
-  bonusActionEntry: PlayerTurnEntry | null
-  movement: { description?: string } | null
-  componentOrder: PlayerTurnComponent[]
+  planEntries: PlayerTurnEntry[]
   description: string
   expectedRevision: number | null
   recipientCharacterIds?: string[]
 }) {
-  const result = await supabase.rpc("save_player_turn_draft_v2", {
+  const result = await supabase.rpc("save_player_turn_draft_v3", {
     p_room_id: roomId,
     p_character_id: characterId,
-    p_action_entry: actionEntry,
-    p_bonus_action_entry: bonusActionEntry,
-    p_movement: movement,
-    p_component_order: componentOrder,
+    p_plan_entries: planEntries,
     p_description: description,
     p_expected_revision: expectedRevision,
     p_audience_scope: recipientCharacterIds.length ? "direct_pc" : "scene",
@@ -217,7 +247,7 @@ export async function submitPlayerTurnDraft({
   turnCommandId: string
   recipientCharacterIds?: string[]
 }) {
-  const result = await supabase.rpc("submit_player_turn_stage12_v1", {
+  const result = await supabase.rpc("submit_player_turn_stage12_v2", {
     p_draft_id: draftId,
     p_expected_revision: revision,
     p_turn_command_id: turnCommandId,
