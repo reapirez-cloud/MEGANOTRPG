@@ -10,6 +10,10 @@ const bootstrap = readFileSync(
   new URL("../supabase/migrations/20260924165338_ai_world_evolution_stage21_profile_bootstrap_v2.sql", import.meta.url),
   "utf8",
 )
+const security = readFileSync(
+  new URL("../supabase/migrations/20260924165849_ai_world_evolution_stage21_behavior_security_v3.sql", import.meta.url),
+  "utf8",
+)
 const context = readFileSync(
   new URL("../supabase/functions/voss-agent/game-chat-context.ts", import.meta.url),
   "utf8",
@@ -179,4 +183,18 @@ test("AI tools drawer exposes profile selector only for AI-world campaigns", () 
   assert.match(shell, /gmBehavior\?\.ai_world/)
   assert.match(shell, /Режим ИИ-ГМ/)
   assert.match(shell, /Канон, кубы и характер NPC остаются неизменными/)
+})
+
+
+test("Stage 21 campaign profile write uses invoker RLS instead of authenticated SECURITY DEFINER", () => {
+  assert.match(security, /security invoker/i)
+  assert.match(security, /ai_gm_behavior_settings_manager_insert/)
+  assert.match(security, /ai_gm_behavior_settings_manager_update/)
+  assert.match(security, /private\.is_ai_world_campaign_v1\(campaign_id\)/)
+  assert.match(security, /private\.is_campaign_manager/)
+  assert.match(security, /updated_by=\(select auth\.uid\(\)\)/)
+  assert.doesNotMatch(
+    security,
+    /set_campaign_ai_gm_behavior_profile_v1[\s\S]*?security definer/i,
+  )
 })
