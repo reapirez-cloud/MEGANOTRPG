@@ -8,7 +8,7 @@ Update it when a stage actually reaches READY. Do not skip stage numbers.
 | 1 | READY | Durable AI GM turn in the canonical game chat |
 | 2 | READY | Canonical 50-message context, split-party awareness and PC autonomy |
 | 3 | READY | 45-message reconcile/archive worker with watermark |
-| 4 | READY | Player pending-turn queue: action + bonus action + movement + text |
+| 4 | READY | Declarative player turn composer: ordered action/bonus/movement/reaction plan, final-Send seal, interruptible execution |
 | 5 | READY | Durable player roll requests and hard wait/resume |
 | 6 | READY | Canonical NPC attacks, rolls, abilities and resources |
 | 7 | READY | Multi-message Narrator/NPC dialogue tool flow |
@@ -34,6 +34,14 @@ Stage 12 closed the remaining cooperative contracts:
 - Junior choices are intentionally bounded to DeepSeek V4.1 Flash and MiMo V2.5 Pro.
 - The same junior setting drives blocking materialization, mechanic normalization, Stage 18 post-turn commits, daily background simulation and 45-message maintenance.
 - Daily background runs freeze the selected junior model when the run is reserved so a mid-run setting change cannot alter replay semantics.
+
+## Interruptible-turn and NPC-resistance hardening — 2026-09-24
+
+- Clicking an AI-world player ability, spell, item or roll only appends a draft plan entry. It does not wake the AI GM, roll dice or spend resources.
+- Final Send creates one sealed turn declaration. The GM then advances legal components one at a time and may stop the remaining sequence at a real world/NPC intervention window.
+- Reactions are declared with a trigger condition and spend only when the trigger actually occurs.
+- Social checks now require situational leverage analysis; meaningless pressure is allowed to fail without a decorative roll.
+- Sparse persistent NPC identity can be completed by a tactic-blind junior refiner that cannot overwrite already established identity.
 
 ## Current pointer
 
