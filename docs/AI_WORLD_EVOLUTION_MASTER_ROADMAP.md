@@ -619,6 +619,8 @@ Historical events remain queryable separately.
 
 ## Stage 13 — Temporal overlay for split parties
 
+**Status: CERTIFIED — 2026-09-24**
+
 Integrate background snapshots into game-chat context by source character/scene game day.
 
 Context rule:
